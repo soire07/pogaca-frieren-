@@ -20,7 +20,7 @@ export default {
       .setColor(0x9b8cff)
       .setTitle('✨ Frieren’ın Günlüğü')
       .setDescription(fact)
-      .setImage(frierenGif)
+      .setImage('https://media1.tenor.com/m/mgN_JjdTDzYAAAAd/anime-spell.gif')
       .setFooter({ text: 'Poğaça Frieren • Frieren evreninden' });
 
     await interaction.reply({
