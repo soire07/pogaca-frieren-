@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
-import { pool } from '../../database/db.js';
+import { pool } from './database/db.js';
 export default {
   data: new SlashCommandBuilder().setName('timeout').setDescription('Bir üyeyi belirli süre susturur.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
