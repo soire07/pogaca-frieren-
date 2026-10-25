@@ -1,5 +1,5 @@
 
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { xpForNextLevel } from './utils.js';
 
@@ -31,6 +31,8 @@ export default {
       });
     }
 
+    const gif = new AttachmentBuilder('./profil.gif');
+
     const embed = new EmbedBuilder()
       .setColor(0x9b8cff)
       .setTitle(`🧙 ${target.username} | Maceracı Profili`)
@@ -44,8 +46,13 @@ export default {
         },
         { name: '🥐 Poğaça altını', value: String(u.coins), inline: true },
         { name: 'Sınıf', value: u.class_name ?? 'Belirlenmedi', inline: true }
-      );
+      )
+      .setImage('attachment://profil.gif')
+      .setFooter({ text: 'Poğaça Frieren • Maceracı Kayıtları' });
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.reply({
+      embeds: [embed],
+      files: [gif]
+    });
   }
 };
