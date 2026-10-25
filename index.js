@@ -5,6 +5,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { initDatabase, pool } from './database/db.js';
 import { levelForXp } from './utils.js';
+import { createServer } from 'node:http';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 if (!process.env.DISCORD_TOKEN) throw new Error('DISCORD_TOKEN eksik. Render Environment bölümünü kontrol et.');
@@ -89,4 +90,12 @@ process.on('SIGTERM', async () => {
   await client.destroy();
   await pool.end();
   process.exit(0);
+});
+const PORT = process.env.PORT || 3000;
+
+createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('Poğaça Frieren aktif! 🥐');
+}).listen(PORT, '0.0.0.0', () => {
+  console.log(`Web sunucusu ${PORT} portunda çalışıyor.`);
 });
