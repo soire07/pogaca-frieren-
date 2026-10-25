@@ -6,13 +6,12 @@ const facts = [
   'Bazen en önemsiz görünen büyü, en çok işe yarayan büyü olabilir.'
 ];
 
-const frierenGif = 'https://tenor.com/nnYr0bqkFSc.gif';
-
+const frierenGif = 'https://media1.tenor.com/m/mgN_JjdTDzYAAAAd/anime-spell.gif';
 export default {
   data: new SlashCommandBuilder()
     .setName('frieren')
     .setDescription('Frieren temalı rastgele bir bilgi gösterir.'),
-
+    .setImage(frierenGif)
   async execute(interaction) {
     const fact = facts[Math.floor(Math.random() * facts.length)];
 
@@ -23,8 +22,5 @@ export default {
       .setFooter({ text: 'Poğaça Frieren • Frieren evreninden' });
 
     await interaction.reply({
-      content: `✨ Frieren’dan bir an!\n${frierenGif}`,
-      embeds: [embed]
-    });
-  }
-};
+  embeds: [embed]
+});
