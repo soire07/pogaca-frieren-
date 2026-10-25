@@ -1,0 +1,31 @@
+name: Register Discord Commands
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'deploy-commands.js'
+      - '.github/workflows/register-commands.yml'
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Projeyi indir
+        uses: actions/checkout@v4
+
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Paketleri kur
+        run: npm install
+
+      - name: Komutları Discord'a kaydet
+        run: npm run deploy-commands
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          GUILD_ID: ${{ secrets.GUILD_ID }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
