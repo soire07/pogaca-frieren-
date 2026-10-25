@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { ensureUser, pool } from '../../database/db.js';
+import { pool } from './database/db.js';
 const outcomes = [
   { text: 'Ormanda kayıp bir büyü kitabı buldun!', coins: 35, xp: 25, item: 'eski_buyu_kitabi' },
   { text: 'Bir Mimic seni kovaladı ama kaçmayı başardın.', coins: 15, xp: 20, item: null },
