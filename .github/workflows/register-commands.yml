@@ -3,9 +3,11 @@ name: Register Discord Commands
 on:
   workflow_dispatch:
   push:
-    paths:
-      - 'deploy-commands.js'
-      - '.github/workflows/register-commands.yml'
+  paths:
+    - '*.js'
+    - 'database/**'
+    - 'package.json'
+    - '.github/workflows/register-commands.yml'
 
 jobs:
   register:
