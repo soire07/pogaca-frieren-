@@ -21,9 +21,13 @@ export default {
       .setColor(0x9b8cff)
       .setTitle('✨ Frieren’ın Günlüğü')
       .setDescription(fact)
-      .setImage(frierenGif)
       .setFooter({ text: 'Poğaça Frieren • Frieren evreninden' });
 
-    await interaction.reply({ embeds: [embed] });
-  }
-};
+    await interaction.reply({
+  content: '✨ Frieren’dan bir an!',
+  embeds: [embed]
+});
+
+await interaction.followUp({
+  content: 'https://tenor.com/nnYr0bqkFSc.gif'
+});
