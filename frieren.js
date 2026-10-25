@@ -1,8 +1,7 @@
-
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 const facts = [
-  'Frieren, insanlarla geçirdiği zamanı sonradan daha iyi anlamaya çalışan uzun ömürlü bir elf büyücüdür.',
+  'Frieren, insanlarla geçirdiği zamanı sonradan daha iyi anlamaya çalışan uzun ömürlü bir elf büyücüsüdür.',
   'Frieren evreninde büyüler hem gündelik hayatın hem de maceraların bir parçasıdır.',
   'Bazen en önemsiz görünen büyü, en çok işe yarayan büyü olabilir.'
 ];
@@ -24,10 +23,8 @@ export default {
       .setFooter({ text: 'Poğaça Frieren • Frieren evreninden' });
 
     await interaction.reply({
-  content: '✨ Frieren’dan bir an!',
-  embeds: [embed]
-});
-
-await interaction.followUp({
-  content: 'https://tenor.com/nnYr0bqkFSc.gif'
-});
+      content: `✨ Frieren’dan bir an!\n${frierenGif}`,
+      embeds: [embed]
+    });
+  }
+};
