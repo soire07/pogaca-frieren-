@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { pool, ensureUser } from '../../database/db.js';
+import { pool } from './database/db.js';
 export default {
   data: new SlashCommandBuilder().setName('gunlukodul').setDescription('Günlük RPG altın ödülünü al.'),
   async execute(interaction) {
