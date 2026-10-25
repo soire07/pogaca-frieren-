@@ -13,19 +13,29 @@ if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL eksik. Önce Render
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 client.commands = new Collection();
 
+
 async function loadCommands() {
-  const root = join(__dirname, 'commands');
-  for (const category of await readdir(root, { withFileTypes: true })) {
-    if (!category.isDirectory()) continue;
-    const dir = join(root, category.name);
-    for (const file of await readdir(dir)) {
-      if (!file.endsWith('.js')) continue;
-      const mod = await import(pathToFileURL(join(dir, file)).href);
-      if (mod.default?.data && mod.default?.execute) client.commands.set(mod.default.data.name, mod.default);
+  const root = __dirname;
+  const files = await readdir(root);
+
+  for (const file of files) {
+    if (!file.endsWith('.js')) continue;
+    if (file === 'index.js' || file === 'deploy-commands.js') continue;
+
+    try {
+      const mod = await import(pathToFileURL(join(root, file)).href);
+
+      if (mod.default?.data && mod.default?.execute) {
+        client.commands.set(mod.default.data.name, mod.default);
+      }
+    } catch (error) {
+      console.error(`${file} yüklenemedi:`, error);
     }
   }
+
   console.log(`${client.commands.size} komut yüklendi.`);
 }
+
 
 client.once(Events.ClientReady, readyClient => {
   console.log(`Poğaça Frieren aktif: ${readyClient.user.tag}`);
