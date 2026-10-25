@@ -1,7 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { pool } from './database/db.js';
-import { xpForNextLevel } from '../../utils.js';
-export default {
+import { pool, ensureUser } from './database/db.js';
+import { xpForNextLevel } from './utils.js';
   data: new SlashCommandBuilder().setName('profil').setDescription('RPG profilini veya başka bir oyuncunun profilini gösterir.')
     .addUserOption(o => o.setName('kullanici').setDescription('Profilini görmek istediğin kullanıcı').setRequired(false)),
   async execute(interaction) {
