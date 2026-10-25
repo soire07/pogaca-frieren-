@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { pool } from '../../database/db.js';
+import { pool } from './database/db.js';
 
 export default {
   data: new SlashCommandBuilder().setName('istatistik').setDescription('Bot ve sunucu istatistiklerini gösterir.'),
