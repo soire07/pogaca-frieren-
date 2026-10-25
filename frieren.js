@@ -7,11 +7,12 @@ const facts = [
 ];
 
 const frierenGif = 'https://media1.tenor.com/m/mgN_JjdTDzYAAAAd/anime-spell.gif';
+
 export default {
   data: new SlashCommandBuilder()
     .setName('frieren')
     .setDescription('Frieren temalı rastgele bir bilgi gösterir.'),
-    .setImage(frierenGif)
+
   async execute(interaction) {
     const fact = facts[Math.floor(Math.random() * facts.length)];
 
@@ -19,8 +20,11 @@ export default {
       .setColor(0x9b8cff)
       .setTitle('✨ Frieren’ın Günlüğü')
       .setDescription(fact)
+      .setImage(frierenGif)
       .setFooter({ text: 'Poğaça Frieren • Frieren evreninden' });
 
     await interaction.reply({
-  embeds: [embed]
-});
+      embeds: [embed]
+    });
+  }
+};
