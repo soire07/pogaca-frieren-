@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
-import { pool } from '../../database/db.js';
+import { pool } from './database/db.js';
 export default {
   data: new SlashCommandBuilder().setName('uyar').setDescription('Bir kullanıcıya uyarı verir ve kaydeder.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
