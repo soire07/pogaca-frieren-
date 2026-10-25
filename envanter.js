@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { ensureUser, pool } from '../../database/db.js';
+import { pool } from './database/db.js';
 export default {
   data: new SlashCommandBuilder().setName('envanter').setDescription('Kalıcı eşya envanterini gösterir.'),
   async execute(interaction) {
