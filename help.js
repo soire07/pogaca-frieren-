@@ -1,8 +1,14 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+
+import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js';
 
 export default {
-  data: new SlashCommandBuilder().setName('yardim').setDescription('Poğaça Frieren komutlarını kategorilerle gösterir.'),
+  data: new SlashCommandBuilder()
+    .setName('yardim')
+    .setDescription('Poğaça Frieren komutlarını kategorilerle gösterir.'),
+
   async execute(interaction) {
+    const gif = new AttachmentBuilder('./yardim.gif');
+
     const embed = new EmbedBuilder()
       .setColor(0x9b8cff)
       .setTitle('🥐 Poğaça Frieren | Komut Rehberi')
@@ -14,7 +20,13 @@ export default {
         { name: '🛡️ Moderasyon', value: '`/uyar` `/timeout` `/ban` `/temizle`', inline: true },
         { name: '📊 Genel', value: '`/istatistik` `/yardim`', inline: true }
       )
+      .setImage('attachment://yardim.gif')
       .setFooter({ text: 'Yeni özellikler aşama aşama eklenecek.' });
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+
+    await interaction.reply({
+      embeds: [embed],
+      files: [gif],
+      ephemeral: true
+    });
   }
 };
