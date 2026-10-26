@@ -3,22 +3,47 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const files = (await readdir(root)).filter(file =>
-  file.endsWith('.js') && file !== 'index.js' && file !== 'deploy-commands.js'
-);
+
+async function findCommandFiles(directory) {
+  let entries;
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+
+  const files = [];
+  for (const entry of entries) {
+    const fullPath = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await findCommandFiles(fullPath));
+    } else if (entry.isFile() && entry.name.endsWith('.js')) {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
+
+const rootFiles = (await readdir(root, { withFileTypes: true }))
+  .filter(entry => entry.isFile() && entry.name.endsWith('.js'))
+  .map(entry => join(root, entry.name))
+  .filter(file => !['index.js', 'deploy-commands.js'].includes(file.split(/[\\/]/).pop()));
+const nestedFiles = await findCommandFiles(join(root, 'commands'));
+const files = [...rootFiles, ...nestedFiles];
 const names = [];
 const errors = [];
 
-for (const file of files) {
+for (const filePath of files) {
   try {
-    const mod = await import(pathToFileURL(join(root, file)).href);
+    const mod = await import(pathToFileURL(filePath).href);
     if (mod.default?.data && typeof mod.default.data.toJSON === 'function' && typeof mod.default.execute === 'function') {
       const command = mod.default.data.toJSON();
       if (!command.name || !command.description) throw new Error('Komut adı veya açıklaması eksik.');
       names.push(command.name);
     }
   } catch (error) {
-    errors.push(`${file}: ${error.stack || error.message}`);
+    errors.push(`${filePath.slice(root.length + 1)}: ${error.stack || error.message}`);
   }
 }
 
