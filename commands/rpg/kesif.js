@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
+import { equipmentItems, equipmentBonus } from '../../equipment-data.js';
 
 const COOLDOWN_MS = 15 * 60 * 1000;
 const regions = {
@@ -103,6 +104,16 @@ export default {
         return interaction.editReply('❤️ Canın tükenmiş. Keşfe çıkmadan önce **/dinlen** komutuyla HP ve Mana değerlerini yenile.');
       }
 
+      const equippedResult = await client.query(
+        'SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2',
+        [interaction.guildId, interaction.user.id]
+      );
+      const gear = equipmentBonus(equippedResult.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean));
+      const effectiveMaxHp = Math.min(2000, Number(player.max_hp) + gear.hp);
+      const effectiveMaxMana = Math.min(2000, Number(player.max_mana) + gear.mana);
+      const currentHp = Math.min(effectiveMaxHp, Number(player.hp));
+      const currentMana = Math.min(effectiveMaxMana, Number(player.mana));
+
       const regionKey = interaction.options.getString('bolge');
       const region = regions[regionKey];
       if (Number(player.level) < region.minLevel) {
@@ -124,12 +135,12 @@ export default {
       const rewardMultiplier = Math.min(5, 1 + Math.floor((Number(player.level) - 1) / 10) * 0.1);
       const rewardXp = Math.round(encounter.xp * rewardMultiplier);
       const rewardCoins = Math.round(encounter.coins * rewardMultiplier);
-      const manaCost = Number(player.mana) >= encounter.manaCost ? encounter.manaCost : 0;
+      const manaCost = currentMana >= encounter.manaCost ? encounter.manaCost : 0;
       const hpDamage = encounter.hpDamage;
       const newXp = Number(player.xp) + rewardXp;
       const newLevel = Math.floor(Math.sqrt(newXp / 100)) + 1;
-      const newHp = Math.max(0, Number(player.hp) - hpDamage);
-      const newMana = Math.max(0, Number(player.mana) - manaCost);
+      const newHp = Math.max(0, currentHp - hpDamage);
+      const newMana = Math.max(0, currentMana - manaCost);
       const gainedPoints = Math.max(0, newLevel - Number(player.level));
 
       await client.query(
@@ -174,8 +185,8 @@ export default {
         .setTitle(`${region.name} • ${encounter.title}`)
         .setDescription(description)
         .addFields(
-          { name: '❤️ HP', value: `${newHp}/${player.max_hp}`, inline: true },
-          { name: '🔮 Mana', value: `${newMana}/${player.max_mana}`, inline: true },
+          { name: '❤️ HP', value: `${newHp}/${effectiveMaxHp}`, inline: true },
+          { name: '🔮 Mana', value: `${newMana}/${effectiveMaxMana}`, inline: true },
           { name: '🧭 Seviye', value: String(newLevel), inline: true }
         )
         .setFooter({ text: 'Keşif bekleme süresi: 15 dakika • Ödüller seviye ile artar • Poğaça Frieren' });
