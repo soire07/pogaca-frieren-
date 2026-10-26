@@ -25,15 +25,32 @@ export default {
           FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2`,[interaction.guildId,interaction.user.id])
       ]);
       const stats={coins:Number(u?.coins||0),level:Number(u?.level||1),xp:Number(u?.xp||0),uniqueCharacters:Number(c?.unique_count||0),totalCopies:Number(c?.total_copies||0),legendary:Number(c?.legendary||0)};
+      const claimKey=interaction.options.getString('odul');
+      if(claimKey){
+        const achievement=achievements.find(a=>a.id===claimKey);
+        if(!achievement) return interaction.editReply('Bu başarım bulunamadı.');
+        if(!achievement.check(stats)) return interaction.editReply('Bu başarımı henüz tamamlamadın.');
+        const db=await pool.connect();
+        try{
+          await db.query('BEGIN');
+          const claim=await db.query('INSERT INTO achievement_claims(guild_id,user_id,achievement_key) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING achievement_key',[interaction.guildId,interaction.user.id,achievement.id]);
+          if(!claim.rowCount){await db.query('ROLLBACK');return interaction.editReply('Bu başarımın ödülünü daha önce aldın.');}
+          await db.query('UPDATE users SET coins=coins+$3 WHERE guild_id=$1 AND user_id=$2',[interaction.guildId,interaction.user.id,achievement.reward]);
+          await db.query('COMMIT');
+          return interaction.editReply(`🏆 **${achievement.title}** ödülünü aldın: **${achievement.reward} altın**!`);
+        }catch(error){await db.query('ROLLBACK').catch(()=>{});throw error;}finally{db.release();}
+      }
+      const {rows:claimedRows}=await pool.query('SELECT achievement_key FROM achievement_claims WHERE guild_id=$1 AND user_id=$2',[interaction.guildId,interaction.user.id]);
+      const claimed=new Set(claimedRows.map(r=>r.achievement_key));
       const lines=achievements.map(a=>{
         const done=a.check(stats);
-        return `${done?'✅':'🔒'} ${a.emoji} **${a.title}** — ${a.description}\n${done?'Tamamlandı':'Ödül: '+a.reward+' altın'}`;
+        return `${claimed.has(a.id)?'💰 Ödül alındı':done?'✅ Tamamlandı':'🔒'} ${a.emoji} **${a.title}** — ${a.description}\n${claimed.has(a.id)?'Ödül alındı':done?'Ödül hazır: '+a.reward+' altın':'Ödül: '+a.reward+' altın'} · Kod: \`${a.id}\``;
       });
       const completed=achievements.filter(a=>a.check(stats)).length;
       const embed=new EmbedBuilder().setColor(0xb58cff).setTitle('🏅 Başarımlar • '+interaction.user.username)
         .setDescription(lines.join('\n\n'))
         .addFields({name:'İlerleme',value:`${completed}/${achievements.length} başarı`,inline:true},{name:'Farklı karakter',value:String(stats.uniqueCharacters),inline:true},{name:'Toplam kopya',value:String(stats.totalCopies),inline:true})
-        .setFooter({text:'Başarımlar şu an görüntülenir; ödüller otomatik yatırılmaz.'}).setTimestamp();
+        .setFooter({text:'Ödül almak için /basarimlar odul:<başarım kodu> kullan.'}).setTimestamp();
       return interaction.editReply({embeds:[embed]});
     } catch(error) {
       console.error('/basarimlar hatası:',error);
