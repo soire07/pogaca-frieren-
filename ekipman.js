@@ -9,7 +9,7 @@ export default {
     .setName('ekipman')
     .setDescription('Silahını, zırhını ve iki yüzüğünü yönet.')
     .addStringOption(option => option.setName('islem').setDescription('Yapılacak işlem').setRequired(true)
-      .addChoices({ name: 'Kuşan', value: 'equip' }, { name: 'Çıkar', value: 'unequip' }))
+      .addChoices({ name: 'Durumu gör', value: 'view' }, { name: 'Kuşan', value: 'equip' }, { name: 'Çıkar', value: 'unequip' }))
     .addStringOption(option => option.setName('esya').setDescription('Kuşanılacak ekipman').setRequired(false)
       .addChoices(...equipmentItems.map(item => ({ name: item.name.slice(0, 100), value: item.id }))))
     .addStringOption(option => option.setName('yuva').setDescription('Yüzük yuvası veya çıkarılacak yuva').setRequired(false)
@@ -28,6 +28,25 @@ export default {
     const requestedSlot = interaction.options.getString('yuva');
     const stats = await pool.query('SELECT level FROM users WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id]);
     const level = Number(stats.rows[0]?.level || 1);
+
+    if (action === 'view') {
+      const equipped = await pool.query("SELECT slot,item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2 ORDER BY CASE slot WHEN 'weapon' THEN 1 WHEN 'armor' THEN 2 WHEN 'ring1' THEN 3 ELSE 4 END", [interaction.guildId, interaction.user.id]);
+      const bySlot = new Map(equipped.rows.map(row => [row.slot, row.item_key]));
+      const lines = equipmentSlots.map(entry => {
+        const itemName = bySlot.get(entry.id);
+        const item = equipmentItems.find(value => value.name === itemName);
+        return entry.label + ': ' + (item ? '**' + item.name + '** · ' + formatEquipmentBonus(item) : '*Boş*');
+      });
+      const total = equipped.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean);
+      const totals = total.reduce((sum, item) => ({
+        attack: sum.attack + item.attack, defense: sum.defense + item.defense, hp: sum.hp + item.hp, mana: sum.mana + item.mana
+      }), { attack: 0, defense: 0, hp: 0, mana: 0 });
+      const embed = new EmbedBuilder().setColor(0x9b8cff).setTitle('🛡️ Kuşanılan Ekipman')
+        .setDescription(lines.join('\\n\\n'))
+        .addFields({ name: '✨ Toplam ekipman bonusu', value: formatEquipmentBonus(totals), inline: false })
+        .setFooter({ text: 'Eşyalar envanterinde kalır. /market ile ekipman alabilir, /ekipman ile kuşanabilirsin.' });
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    }
 
     if (action === 'unequip') {
       if (!requestedSlot) return interaction.reply({ content: 'Çıkarmak istediğin yuvayı **yuva** seçeneğinden belirt.', ephemeral: true });
