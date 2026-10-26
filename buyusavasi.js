@@ -2,18 +2,30 @@
 import {
   SlashCommandBuilder,
   EmbedBuilder,
+  AttachmentBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
   ComponentType
 } from 'discord.js';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const MAX_HP = 100;
 const TURN_TIME = 30_000;
+const INVITE_TIME = 30_000;
 const DUEL_TIME = 180_000;
 
-function makeEmbed(title, description, color, hp1, hp2) {
-  return new EmbedBuilder()
+const GIFS = {
+  start: 'buyusavasi.gif',
+  attack: 'buyusavasi_vurus.gif',
+  win: 'buyusavasi_kazandi.gif'
+};
+
+function createEmbed(title, description, color, hp1, hp2, gifName) {
+  const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle(title)
     .setDescription(description)
@@ -22,9 +34,17 @@ function makeEmbed(title, description, color, hp1, hp2) {
       { name: '🔮 Oyuncu 2', value: `❤️ ${hp2}/${MAX_HP} HP`, inline: true }
     )
     .setFooter({ text: 'Poğaça Frieren • Büyü Düellosu' });
+
+  if (gifName) embed.setImage(`attachment://${gifName}`);
+
+  return embed;
 }
 
-function actionRow(disabled = false) {
+function createAttachment(filename) {
+  return new AttachmentBuilder(join(__dirname, filename));
+}
+
+function createButtons(disabled = false) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('duel_attack')
@@ -32,12 +52,14 @@ function actionRow(disabled = false) {
       .setEmoji('⚡')
       .setStyle(ButtonStyle.Danger)
       .setDisabled(disabled),
+
     new ButtonBuilder()
       .setCustomId('duel_defend')
       .setLabel('Savun')
       .setEmoji('🛡️')
       .setStyle(ButtonStyle.Primary)
       .setDisabled(disabled),
+
     new ButtonBuilder()
       .setCustomId('duel_heal')
       .setLabel('İyileş')
@@ -60,10 +82,18 @@ export default {
 
   async execute(interaction) {
     const opponent = interaction.options.getUser('rakip', true);
+    const challenger = interaction.user;
 
-    if (opponent.bot || opponent.id === interaction.user.id) {
+    if (opponent.bot || opponent.id === challenger.id) {
       return interaction.reply({
         content: 'Kendinle veya bir botla düello yapamazsın! 🪄',
+        ephemeral: true
+      });
+    }
+
+    if (!interaction.channel?.isTextBased()) {
+      return interaction.reply({
+        content: 'Bu komut bir metin kanalında kullanılmalı.',
         ephemeral: true
       });
     }
@@ -72,16 +102,17 @@ export default {
       .setColor(0x9b8cff)
       .setTitle('⚔️ Büyü Düellosu Daveti')
       .setDescription(
-        `${opponent}, ${interaction.user} seni büyü düellosuna çağırdı!\n\n` +
-        'Kabul edersen ikiniz de sırayla hamle yapacaksınız.'
+        `${opponent}, ${challenger} seni düelloya çağırdı!\n\n` +
+        'Kabul edersen sırayla saldırabilir, savunabilir veya iyileşebilirsin.'
       )
-      .setFooter({ text: 'Davet 30 saniye içinde yanıtlanmalı.' });
+      .setFooter({ text: 'Davetin 30 saniye içinde yanıtlanması gerekiyor.' });
 
     const inviteRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('duel_accept')
-        .setLabel('Düelloyu kabul et')
+        .setLabel('Kabul et')
         .setStyle(ButtonStyle.Success),
+
       new ButtonBuilder()
         .setCustomId('duel_decline')
         .setLabel('Reddet')
@@ -97,7 +128,7 @@ export default {
 
     const inviteCollector = inviteMessage.createMessageComponentCollector({
       componentType: ComponentType.Button,
-      time: 30_000
+      time: INVITE_TIME
     });
 
     let invitationHandled = false;
@@ -110,7 +141,10 @@ export default {
         });
       }
 
-      if (invitationHandled) return;
+      if (invitationHandled) {
+        return button.deferUpdate();
+      }
+
       invitationHandled = true;
       inviteCollector.stop('handled');
 
@@ -130,58 +164,58 @@ export default {
 
       let hp1 = MAX_HP;
       let hp2 = MAX_HP;
+      let currentPlayer = challenger.id;
       let round = 1;
-      let currentPlayer = interaction.user.id;
       let gameOver = false;
-
-      const battleEmbed = () => makeEmbed(
-        `⚔️ Büyü Düellosu • Tur ${round}`,
-        `**${interaction.user.username}** vs **${opponent.username}**\n\n` +
-        `Sıra: <@${currentPlayer}>\n` +
-        'Aşağıdan hamleni seç. Her hamle için 30 saniyen var.',
-        0x9b8cff,
-        hp1,
-        hp2
-      );
-
-      await interaction.editReply({
-        embeds: [battleEmbed()],
-        components: [actionRow()]
-      });
-
-      const battleMessage = await interaction.fetchReply();
-
-      const turnCollector = battleMessage.createMessageComponentCollector({
-        componentType: ComponentType.Button,
-        time: DUEL_TIME
-      });
-
       let turnTimer;
+      let duelTimer;
+      let shield1 = false;
+      let shield2 = false;
+      let healUsed1 = false;
+      let healUsed2 = false;
+      let turnCollector;
 
-      const endGame = async (winner, reason) => {
+      const playerName = id =>
+        id === challenger.id ? challenger.username : opponent.username;
+
+      const playerHP = id =>
+        id === challenger.id ? hp1 : hp2;
+
+      const makeBattleEmbed = (description, gifName = null, color = 0x9b8cff) =>
+        createEmbed(
+          `⚔️ Büyü Düellosu • Tur ${round}`,
+          `${description}\n\nSıradaki oyuncu: <@${currentPlayer}>`,
+          color,
+          hp1,
+          hp2,
+          gifName
+        );
+
+      const finishGame = async (winner, reason) => {
         if (gameOver) return;
         gameOver = true;
-        clearTimeout(turnTimer);
-        turnCollector.stop('finished');
 
-        const finalEmbed = new EmbedBuilder()
-          .setColor(winner ? 0x57f287 : 0xe06c75)
-          .setTitle(winner ? '🏆 Düello Bitti!' : '⏰ Düello Sona Erdi')
-          .setDescription(
-            winner
-              ? `Kazanan: ${winner}\n\n${reason}`
-              : reason
-          )
-          .addFields(
-            { name: interaction.user.username, value: `❤️ ${hp1}/${MAX_HP} HP`, inline: true },
-            { name: opponent.username, value: `❤️ ${hp2}/${MAX_HP} HP`, inline: true }
-          )
-          .setFooter({ text: 'Poğaça Frieren • Büyü Düellosu' });
+        clearTimeout(turnTimer);
+        clearTimeout(duelTimer);
+
+        if (turnCollector) turnCollector.stop('finished');
+
+        const finalEmbed = createEmbed(
+          winner ? '🏆 Düello Bitti!' : '⏰ Düello Sona Erdi',
+          winner
+            ? `**Kazanan:** ${winner}\n\n${reason}`
+            : reason,
+          winner ? 0x57f287 : 0xe6c875,
+          hp1,
+          hp2,
+          GIFS.win
+        );
 
         try {
           await interaction.editReply({
             embeds: [finalEmbed],
-            components: [actionRow(true)]
+            files: [createAttachment(GIFS.win)],
+            components: [createButtons(true)]
           });
         } catch (error) {
           console.error('Düello sonucu gönderilemedi:', error);
@@ -190,20 +224,21 @@ export default {
 
       const startTurnTimer = () => {
         clearTimeout(turnTimer);
+
         turnTimer = setTimeout(() => {
           if (!gameOver) {
-            endGame(null, 'Hamle süresi dolduğu için düello sona erdi.');
+            finishGame(
+              null,
+              `${playerName(currentPlayer)} zamanında hamle yapmadığı için düello sona erdi.`
+            );
           }
         }, TURN_TIME);
       };
 
-      startTurnTimer();
-
-      turnCollector.on('collect', async move => {
+      const applyMove = async move => {
         if (gameOver) return;
 
-        if (move.user.id !== interaction.user.id &&
-            move.user.id !== opponent.id) {
+        if (![challenger.id, opponent.id].includes(move.user.id)) {
           return move.reply({
             content: 'Bu düelloda oyuncu olmadığın için hamle yapamazsın.',
             ephemeral: true
@@ -219,80 +254,137 @@ export default {
 
         clearTimeout(turnTimer);
 
+        const isPlayer1 = move.user.id === challenger.id;
         let description = '';
-        const isPlayer1 = move.user.id === interaction.user.id;
-        const damage = Math.floor(Math.random() * 16) + 15;
+        let showAttackGif = false;
 
         if (move.customId === 'duel_attack') {
+          let damage = Math.floor(Math.random() * 16) + 15;
+
+          if (isPlayer1 && shield2) {
+            damage = Math.ceil(damage * 0.5);
+            shield2 = false;
+            description = `🛡️ Rakibin savunması hasarı azalttı! `;
+          } else if (!isPlayer1 && shield1) {
+            damage = Math.ceil(damage * 0.5);
+            shield1 = false;
+            description = `🛡️ Rakibin savunması hasarı azalttı! `;
+          }
+
           if (isPlayer1) {
             hp2 = Math.max(0, hp2 - damage);
           } else {
             hp1 = Math.max(0, hp1 - damage);
           }
-          description = `⚡ ${move.user} saldırdı ve **${damage} hasar** verdi!`;
+
+          description += `⚡ ${move.user} büyü saldırısı yaptı ve **${damage} hasar** verdi!`;
+          showAttackGif = true;
         } else if (move.customId === 'duel_defend') {
-          description = `🛡️ ${move.user} savunma duruşuna geçti. Bir sonraki saldırısına karşı koruma kazandı.`;
+          if (isPlayer1) shield1 = true;
+          else shield2 = true;
+
+          description = `🛡️ ${move.user} savunma kalkanı oluşturdu! Bir sonraki saldırının hasarı yarıya inecek.`;
         } else if (move.customId === 'duel_heal') {
-          const heal = Math.floor(Math.random() * 11) + 10;
+          if ((isPlayer1 && healUsed1) || (!isPlayer1 && healUsed2)) {
+            startTurnTimer();
+            return move.reply({
+              content: 'Bu düelloda iyileşme hakkını zaten kullandın. Başka bir hamle seç!',
+              ephemeral: true
+            });
+          }
+
+          const healing = Math.floor(Math.random() * 11) + 10;
+
           if (isPlayer1) {
             const before = hp1;
-            hp1 = Math.min(MAX_HP, hp1 + heal);
+            hp1 = Math.min(MAX_HP, hp1 + healing);
+            healUsed1 = true;
             description = `💚 ${move.user} **${hp1 - before} HP** iyileşti!`;
           } else {
             const before = hp2;
-            hp2 = Math.min(MAX_HP, hp2 + heal);
+            hp2 = Math.min(MAX_HP, hp2 + healing);
+            healUsed2 = true;
             description = `💚 ${move.user} **${hp2 - before} HP** iyileşti!`;
           }
         }
 
-        if (hp1 <= 0) {
-          await move.update({
-            embeds: [makeEmbed('⚔️ Son Hamle!', description, 0xe06c75, hp1, hp2)],
-            components: []
-          });
-          return endGame(opponent, `${interaction.user.username} yenildi!`);
+        if (hp1 <= 0 || hp2 <= 0) {
+          await move.deferUpdate();
+          return finishGame(
+            hp1 <= 0 ? opponent : challenger,
+            `${hp1 <= 0 ? challenger.username : opponent.username} yenildi!`
+          );
         }
 
-        if (hp2 <= 0) {
-          await move.update({
-            embeds: [makeEmbed('⚔️ Son Hamle!', description, 0xe06c75, hp1, hp2)],
-            components: []
-          });
-          return endGame(interaction.user, `${opponent.username} yenildi!`);
-        }
-
-        currentPlayer = currentPlayer === interaction.user.id
+        currentPlayer = currentPlayer === challenger.id
           ? opponent.id
-          : interaction.user.id;
+          : challenger.id;
 
         round++;
 
-        await move.update({
-          embeds: [
-            makeEmbed(
-              `⚔️ Büyü Düellosu • Tur ${round}`,
-              `${description}\n\nSıra: <@${currentPlayer}>\nHamleni seç!`,
-              0x9b8cff,
-              hp1,
-              hp2
-            )
-          ],
-          components: [actionRow()]
-        });
+        try {
+          await move.update({
+            embeds: [
+              makeBattleEmbed(
+                description,
+                showAttackGif ? GIFS.attack : null
+              )
+            ],
+            files: showAttackGif ? [createAttachment(GIFS.attack)] : [],
+            components: [createButtons()]
+          });
+        } catch (error) {
+          console.error('Düello hamlesi güncellenemedi:', error);
+        }
 
         startTurnTimer();
+      };
+
+      const initialEmbed = createEmbed(
+        '⚔️ Düello Başladı!',
+        `${challenger} ile ${opponent} karşı karşıya!\n\n` +
+        `İlk hamle: ${challenger}\n` +
+        'Her oyuncunun 100 HP canı var. Hamleni seç!',
+        0x9b8cff,
+        hp1,
+        hp2,
+        GIFS.start
+      );
+
+      await interaction.editReply({
+        embeds: [initialEmbed],
+        files: [createAttachment(GIFS.start)],
+        components: [createButtons()]
       });
 
-      turnCollector.on('end', (_, reason) => {
+      const battleMessage = await interaction.fetchReply();
+
+      turnCollector = battleMessage.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        time: DUEL_TIME
+      });
+
+      turnCollector.on('collect', applyMove);
+
+      turnCollector.on('end', () => {
         clearTimeout(turnTimer);
-        if (!gameOver && reason !== 'finished') {
-          endGame(null, 'Düello süresi doldu.');
+
+        if (!gameOver) {
+          finishGame(null, 'Düellonun toplam süresi doldu.');
         }
       });
+
+      duelTimer = setTimeout(() => {
+        if (!gameOver) {
+          finishGame(null, 'Düellonun toplam süresi doldu.');
+        }
+      }, DUEL_TIME);
+
+      startTurnTimer();
     });
 
     inviteCollector.on('end', async (_, reason) => {
-      if (reason !== 'handled') {
+      if (reason !== 'handled' && !invitationHandled) {
         try {
           await interaction.editReply({
             embeds: [
@@ -303,8 +395,11 @@ export default {
             ],
             components: []
           });
-        } catch {}
+        } catch (error) {
+          console.error('Düello daveti güncellenemedi:', error);
+        }
       }
     });
   }
 };
+                   
