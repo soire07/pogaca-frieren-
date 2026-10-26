@@ -4,13 +4,15 @@ import { pool, ensureUser } from './database/db.js';
 const missions = [
   { key:'adventure', title:'Macera tutkunu', description:'Bugün bir maceraya çık', reward:100, sql:`SELECT (last_adventure_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2` },
   { key:'daily', title:'Fırın ziyareti', description:'Günlük ödülünü al', reward:75, sql:`SELECT (last_daily_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2` },
-  { key:'draw', title:'Yeni keşif', description:'Bugün ücretsiz karakter çek', reward:125, sql:`SELECT (last_free_character_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2` }
+  { key:'draw', title:'Karakter avcısı', description:'Bugün ücretsiz karakter çek', reward:125, sql:`SELECT (last_free_character_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2` },
+  { key:'explore', title:'Kuzeyin iz sürücüsü', description:'/kesif ile bugün bir keşif tamamla', reward:90, sql:`SELECT (last_exploration_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2` },
+  { key:'item', title:'Hazırlıklı maceracı', description:'Envanterinden bugün bir eşya kullan', reward:80, sql:`SELECT (last_item_used_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2` }
 ];
 
 export default {
  data:new SlashCommandBuilder().setName('gunlukgorev').setDescription('Günlük görevlerini kontrol et ve tamamladıklarının ödülünü al.')
    .addStringOption(o=>o.setName('odul').setDescription('Tamamlanan görevin ödülünü almak için görev kodunu seç.').addChoices(
-    {name:'Macera tutkunu',value:'adventure'},{name:'Fırın ziyareti',value:'daily'},{name:'Yeni keşif',value:'draw'}).setRequired(false)),
+    {name:'Macera tutkunu',value:'adventure'},{name:'Fırın ziyareti',value:'daily'},{name:'Karakter avcısı',value:'draw'},{name:'Kuzeyin iz sürücüsü',value:'explore'},{name:'Hazırlıklı maceracı',value:'item'}).setRequired(false)),
  async execute(interaction) {
   if(!interaction.guildId) return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',ephemeral:true});
   await interaction.deferReply({ephemeral:true});
