@@ -27,7 +27,10 @@ jobs:
       - name: JavaScript sözdizimini kontrol et
         run: |
           for file in *.js database/*.js scripts/*.js; do
-            [ -f "$file" ] && node --check "$file"
+            if [ -f "$file" ]; then
+              echo "Checking $file"
+              node --check "$file"
+            fi
           done
 
       - name: Komutları Discord'a kaydet
