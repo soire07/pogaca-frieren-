@@ -39,6 +39,26 @@ async function loadCommands() {
 }
 
 
+client.on(Events.GuildMemberAdd, async member => {
+  try {
+    const result = await pool.query(
+      'SELECT welcome_channel_id, welcome_message FROM guild_settings WHERE guild_id=$1',
+      [member.guild.id]
+    );
+    const settings = result.rows[0];
+    if (!settings?.welcome_channel_id) return;
+    const channel = await member.guild.channels.fetch(settings.welcome_channel_id).catch(() => null);
+    if (!channel?.isTextBased() || !channel.send) return;
+    const message = String(settings.welcome_message || 'Hoş geldin {user}! 🥐 {server} sunucusuna katıldın.')
+      .replaceAll('{user}', member.toString())
+      .replaceAll('{server}', member.guild.name)
+      .replaceAll('{count}', String(member.guild.memberCount));
+    await channel.send({ content: message.slice(0, 1900) });
+  } catch (error) {
+    console.error('Karşılama mesajı hatası:', error);
+  }
+});
+
 client.once(Events.ClientReady, readyClient => {
   console.log(`Poğaça Frieren aktif: ${readyClient.user.tag}`);
   readyClient.user.setActivity('büyü ve poğaça arıyor 🥐');
