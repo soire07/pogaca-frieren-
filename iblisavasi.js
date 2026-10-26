@@ -199,7 +199,7 @@ export default {
           try {
             await db.query('BEGIN');
             await db.query(
-              `UPDATE users SET coins=coins+$3, xp=xp+$4,
+              `UPDATE users SET coins=coins+$3, xp=xp+$4, boss_defeats=boss_defeats+1,
                 stat_points=stat_points+GREATEST(0,(FLOOR(SQRT((xp+$4)::numeric / 100))::int + 1)-level),
                 level=FLOOR(SQRT((xp+$4)::numeric / 100))::int + 1
                WHERE guild_id=$1 AND user_id=$2`,
