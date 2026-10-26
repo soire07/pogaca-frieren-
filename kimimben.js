@@ -39,7 +39,7 @@ async function claimDrawCooldown(guildId, userId) {
        AND (character_draw_cooldown_until IS NULL OR character_draw_cooldown_until <= NOW())
        AND (last_character_draw_at IS NULL OR last_character_draw_at <= NOW() - INTERVAL '15 seconds')
        AND ((character_draw_cooldown_until IS NOT NULL AND character_draw_cooldown_until <= NOW())
-            OR character_draw_count < 5)
+            OR character_draw_count < 8)
      RETURNING character_draw_count, character_draw_cooldown_until`,
     [guildId, userId]
   );
@@ -56,7 +56,7 @@ async function claimDrawCooldown(guildId, userId) {
     return { ok: false, reason: 'limit', cooldownUntil: row.character_draw_cooldown_until };
   }
   if (row?.last_character_draw_at) {
-    const remainingMs = 15000 - (Date.now() - new Date(row.last_character_draw_at).getTime());
+    const remainingMs = 0 - (Date.now() - new Date(row.last_character_draw_at).getTime());
     if (remainingMs > 0) return { ok: false, reason: 'wait', remainingSeconds: Math.ceil(remainingMs / 1000) };
   }
   return { ok: false, reason: 'limit', cooldownUntil: null };
@@ -66,9 +66,9 @@ function cooldownMessage(result) {
   if (result.reason === 'wait') return `Yeni karakter çekmeden önce **${result.remainingSeconds} saniye** beklemelisin.`;
   if (result.cooldownUntil) {
     const unix = Math.floor(new Date(result.cooldownUntil).getTime() / 1000);
-    return `5 karakter çekme hakkını kullandın. Yeni hakların <t:${unix}:R> hazır olacak.`;
+    return `8 karakter çekme hakkını kullandın. Yeni hakların <t:${unix}:R> hazır olacak.`;
   }
-  return '5 karakter çekme hakkını kullandın. Yeni hakların **30 dakika** sonra yenilenecek.';
+  return '5 karakter çekme hakkını kullandın. Yeni hakların **5 dakika** sonra yenilenecek.';
 }
 
 async function drawForUser(guildId, userId, previousName = null) {
