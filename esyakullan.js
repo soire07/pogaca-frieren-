@@ -117,6 +117,7 @@ export default {
         `UPDATE users SET
           xp = xp + $3,
           coins = coins + $4,
+          last_item_used_at = NOW(),
           mana = LEAST(max_mana, mana + $5),
           hp = LEAST(max_hp, hp + $6),
           stat_points = stat_points + GREATEST(0, (FLOOR(SQRT((xp + $3)::numeric / 100))::int + 1) - level),
