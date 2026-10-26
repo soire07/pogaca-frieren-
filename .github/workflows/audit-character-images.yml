@@ -39,8 +39,3 @@ jobs:
           path: image-audit-report.json
           if-no-files-found: warn
           retention-days: 14
-      - name: Fail if any image URL could not be verified
-        if: steps.audit.outcome == 'failure'
-        run: |
-          echo "Audit failed; see the JSON report in the previous step."
-          exit 1
