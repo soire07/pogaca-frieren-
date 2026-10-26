@@ -83,7 +83,6 @@ export default {
     );
     const upgradeBonus = Number(upgrades.rows[0]?.level || 0) * 2;
     let bossHp = BOSS_MAX_HP;
-    let playerHp = PLAYER_MAX_HP;
     let shield = false;
     let healUsed = false;
     let busy = false;
@@ -197,7 +196,7 @@ export default {
           finished = true;
           collector.stop('defeat');
           return button.update({
-            embeds: [battleEmbed({
+            embeds: [renderBattleEmbed({
               player: interaction.user, bossHp, playerHp: 0, bonus: upgradeBonus, lost: true,
               description: `${actionText}\n\n🌑 Bu kez geri çekilmek zorunda kaldın. Ödül kazanamadın; yarım saat dinlenip yeniden deneyebilirsin.`
             })],
@@ -222,7 +221,7 @@ export default {
       if (finished || reason === 'victory' || reason === 'defeat') return;
       finished = true;
       await interaction.editReply({
-        embeds: [battleEmbed({
+        embeds: [renderBattleEmbed({
           player: interaction.user, bossHp, playerHp, bonus: upgradeBonus, lost: true,
           description: '⏳ Savaşın süresi doldu. İblis karanlığa karıştı; yeniden denemek için bekleme süresinin bitmesini bekle.'
         })],
