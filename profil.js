@@ -29,6 +29,13 @@ export default {
       [interaction.guildId, target.id]
     );
 
+    if (!u) {
+      return interaction.reply({
+        content: 'Profil bilgileri bulunamadı. Lütfen tekrar dene.',
+        ephemeral: true
+      });
+    }
+
     const equippedResult = await pool.query('SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, target.id]);
     const equippedItems = equippedResult.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean);
     const gear = equipmentBonus(equippedItems);
@@ -36,13 +43,6 @@ export default {
     const effectiveMaxMana = Math.min(2000, Number(u.max_mana) + gear.mana);
     const effectiveAttack = Math.min(500, Number(u.attack) + gear.attack);
     const effectiveDefense = Math.min(250, Number(u.defense) + gear.defense);
-
-    if (!u) {
-      return interaction.reply({
-        content: 'Profil bilgileri bulunamadı. Lütfen tekrar dene.',
-        ephemeral: true
-      });
-    }
 
     const gif = new AttachmentBuilder('./profil.gif');
 
