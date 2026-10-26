@@ -10,6 +10,7 @@ import {
 } from 'discord.js';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pool, ensureUser } from './database/db.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -24,14 +25,14 @@ const GIFS = {
   win: 'buyusavasi_kazandi.gif'
 };
 
-function createEmbed(title, description, color, hp1, hp2, gifName) {
+function createEmbed(title, description, color, hp1, hp2, gifName, maxHp1 = MAX_HP, maxHp2 = MAX_HP, attack1 = 10, defense1 = 5, attack2 = 10, defense2 = 5) {
   const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle(title)
     .setDescription(description)
     .addFields(
-      { name: '🧙 Oyuncu 1', value: `❤️ ${hp1}/${MAX_HP} HP`, inline: true },
-      { name: '🔮 Oyuncu 2', value: `❤️ ${hp2}/${MAX_HP} HP`, inline: true }
+      { name: '🧙 Oyuncu 1', value: `❤️ ${hp1}/${maxHp1} HP\n⚔️ Saldırı: ${attack1} · 🛡️ Savunma: ${defense1}`, inline: true },
+      { name: '🔮 Oyuncu 2', value: `❤️ ${hp2}/${maxHp2} HP\n⚔️ Saldırı: ${attack2} · 🛡️ Savunma: ${defense2}`, inline: true }
     )
     .setFooter({ text: 'Poğaça Frieren • Büyü Düellosu' });
 
@@ -170,6 +171,23 @@ export default {
 
       await button.deferUpdate();
 
+      await Promise.all([
+        ensureUser(interaction.guildId, challenger.id),
+        ensureUser(interaction.guildId, opponent.id)
+      ]);
+      const [stats1Result, stats2Result] = await Promise.all([
+        pool.query('SELECT max_hp, attack, defense FROM users WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, challenger.id]),
+        pool.query('SELECT max_hp, attack, defense FROM users WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, opponent.id])
+      ]);
+      const stats1 = stats1Result.rows[0];
+      const stats2 = stats2Result.rows[0];
+      const maxHp1 = Number(stats1.max_hp);
+      const maxHp2 = Number(stats2.max_hp);
+      const attack1 = Number(stats1.attack);
+      const attack2 = Number(stats2.attack);
+      const defense1 = Number(stats1.defense);
+      const defense2 = Number(stats2.defense);
+
       const [upgrade1, upgrade2] = await Promise.all([
         pool.query('SELECT COALESCE(MAX(upgrade_level),0)::int AS level FROM character_upgrades WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, challenger.id]),
         pool.query('SELECT COALESCE(MAX(upgrade_level),0)::int AS level FROM character_upgrades WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, opponent.id])
@@ -177,8 +195,8 @@ export default {
       const bonus1 = Number(upgrade1.rows[0]?.level || 0) * 2;
       const bonus2 = Number(upgrade2.rows[0]?.level || 0) * 2;
 
-      let hp1 = MAX_HP;
-      let hp2 = MAX_HP;
+      let hp1 = maxHp1;
+      let hp2 = maxHp2;
       let currentPlayer = challenger.id;
       let round = 1;
       let gameOver = false;
@@ -193,8 +211,11 @@ export default {
       const playerName = id =>
         id === challenger.id ? challenger.username : opponent.username;
 
+      const makeDuelEmbed = (title, description, color, currentHp1, currentHp2, gifName) =>
+        createEmbed(title, description, color, currentHp1, currentHp2, gifName, maxHp1, maxHp2, attack1, defense1, attack2, defense2);
+
       const makeBattleEmbed = (description, gifName = null, color = 0x9b8cff) =>
-        createEmbed(
+        makeDuelEmbed(
           `⚔️ Büyü Düellosu • Tur ${round}`,
           `${description}\n\nSıradaki oyuncu: <@${currentPlayer}>`,
           color,
@@ -212,7 +233,7 @@ export default {
 
         if (turnCollector) turnCollector.stop('finished');
 
-        const finalEmbed = createEmbed(
+        const finalEmbed = makeDuelEmbed(
           winner ? '🏆 Düello Bitti!' : '⏰ Düello Sona Erdi',
           winner
             ? `**Kazanan:** ${winner}\n\n${reason}`
@@ -273,7 +294,8 @@ export default {
         let showAttackGif = false;
 
         if (move.customId === 'duel_attack') {
-          let damage = Math.floor(Math.random() * 16) + 15 + (isPlayer1 ? bonus1 : bonus2);
+          const rawDamage = Math.floor(Math.random() * 16) + 15 + (isPlayer1 ? attack1 : attack2) + (isPlayer1 ? bonus1 : bonus2);
+          let damage = Math.max(1, rawDamage - Math.floor((isPlayer1 ? defense2 : defense1) / 2));
 
           if (isPlayer1 && shield2) {
             damage = Math.ceil(damage * 0.5);
@@ -315,12 +337,12 @@ export default {
 
           if (isPlayer1) {
             const before = hp1;
-            hp1 = Math.min(MAX_HP, hp1 + healing);
+            hp1 = Math.min(maxHp1, hp1 + healing);
             healUsed1 = true;
             description = `💚 ${move.user} **${hp1 - before} HP** iyileşti!`;
           } else {
             const before = hp2;
-            hp2 = Math.min(MAX_HP, hp2 + healing);
+            hp2 = Math.min(maxHp2, hp2 + healing);
             healUsed2 = true;
             description = `💚 ${move.user} **${hp2 - before} HP** iyileşti!`;
           }
@@ -359,11 +381,11 @@ export default {
         startTurnTimer();
       };
 
-      const initialEmbed = createEmbed(
+      const initialEmbed = makeDuelEmbed(
         '⚔️ Düello Başladı!',
         `${challenger} ile ${opponent} karşı karşıya!\n\n` +
         `İlk hamle: ${challenger}\n` +
-        'Her oyuncunun 100 HP canı var. Hamleni seç!',
+        `Başlangıç HP: ${maxHp1} / ${maxHp2}. Saldırı ve savunma değerlerin artık savaşta etkili. Hamleni seç!`,
         0x9b8cff,
         hp1,
         hp2,
