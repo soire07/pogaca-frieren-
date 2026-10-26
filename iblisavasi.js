@@ -138,7 +138,7 @@ export default {
       bonus: upgradeBonus,
       description: `Kuzey sınırında tehlikeli bir iblisle karşılaştın, <@${interaction.user.id}>!\n\n**Hamleni seç:** Zoltraak dengeli saldırır; Alev Küresi daha güçlü hasar verir; Buz Mızrağı iblisi dondurup karşı saldırısını durdurabilir. Kalkan hasarı azaltır, Şifa ise savaşta bir kez can yeniler. Her karakter geliştirme seviyesi saldırı gücüne +2 hasar ekler.`
     });
-    await interaction.editReply({ embeds: [initial], components: [actionRow()] });
+    await interaction.editReply({ embeds: [initial], components: [actionRow(), rareActionRow()] });
     const message = await interaction.fetchReply();
     const collector = message.createMessageComponentCollector({ componentType: ComponentType.Button, time: 5 * 60 * 1000 });
 
@@ -175,6 +175,8 @@ export default {
         }
 
         let actionText = '';
+        let spellUsed = null;
+        let fortified = false;
         let frozenBoss = false;
         if (button.customId === 'demon_attack') {
           if (playerMana < 8) {
@@ -182,7 +184,8 @@ export default {
             return button.reply({ content: 'Zoltraak için en az **8 Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.', ephemeral: true });
           }
           playerMana -= 8;
-          const damage = Math.floor(Math.random() * 13) + 18 + attack + upgradeBonus;
+          spellUsed = 'zoltraak';
+          const damage = Math.floor(Math.random() * 13) + 18 + attack + upgradeBonus + (spellMastery.get('zoltraak') || 0) * 2;
           bossHp = Math.max(0, bossHp - damage);
           actionText = `⚡ Zoltraak isabet etti! İblise **${damage} hasar** verdin. (Saldırı: ${attack}, Mana: −8)`;
         } else if (button.customId === 'demon_fire') {
@@ -191,7 +194,8 @@ export default {
             return button.reply({ content: 'Alev Küresi için en az **14 Mana** gerekiyor.', ephemeral: true });
           }
           playerMana -= 14;
-          const damage = Math.floor(Math.random() * 13) + 28 + attack + upgradeBonus;
+          spellUsed = 'alev_kuresi';
+          const damage = Math.floor(Math.random() * 13) + 28 + attack + upgradeBonus + (spellMastery.get('alev_kuresi') || 0) * 2;
           bossHp = Math.max(0, bossHp - damage);
           actionText = `🔥 Alev Küresi patladı! İblise **${damage} hasar** verdin. (Mana: −14)`;
         } else if (button.customId === 'demon_ice') {
@@ -200,7 +204,8 @@ export default {
             return button.reply({ content: 'Buz Mızrağı için en az **12 Mana** gerekiyor.', ephemeral: true });
           }
           playerMana -= 12;
-          const damage = Math.floor(Math.random() * 11) + 22 + attack + upgradeBonus;
+          spellUsed = 'buz_mizragi';
+          const damage = Math.floor(Math.random() * 11) + 22 + attack + upgradeBonus + (spellMastery.get('buz_mizragi') || 0) * 2;
           bossHp = Math.max(0, bossHp - damage);
           frozenBoss = Math.random() < 0.35;
           actionText = `🧊 Buz Mızrağı isabet etti! İblise **${damage} hasar** verdin. (Mana: −12)${frozenBoss ? '\n❄️ İblis dondu ve bu tur karşı saldırı yapamadı!' : ''}`;
@@ -210,6 +215,7 @@ export default {
             return button.reply({ content: 'Savunma büyüsü için en az **6 Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.', ephemeral: true });
           }
           playerMana -= 6;
+          spellUsed = 'koruyucu_bariyer';
           shield = true;
           actionText = '🛡️ Koruyucu büyü kurdun. İblisin bir sonraki saldırısı yarı hasar verecek. (Mana: −6)';
         } else if (button.customId === 'demon_heal') {
@@ -222,10 +228,42 @@ export default {
             return button.reply({ content: 'İyileşme büyüsü için en az **20 Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.', ephemeral: true });
           }
           playerMana -= 20;
+          spellUsed = 'sifa_isigi';
           const before = playerHp;
           playerHp = Math.min(playerMaxHp, playerHp + Math.floor(Math.random() * 16) + 20);
           healUsed = true;
           actionText = `💚 İyileşme büyüsüyle **${playerHp - before} HP** geri kazandın. (Mana: −20)`;
+        }
+
+        if (button.customId === 'demon_chain') {
+          if (playerMana < 22) { busy = false; return button.reply({ content: 'Yıldırım Zinciri için en az **22 Mana** gerekiyor.', ephemeral: true }); }
+          playerMana -= 22; spellUsed = 'yildirim_zinciri';
+          const damage = Math.floor(Math.random() * 16) + 42 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 2;
+          bossHp = Math.max(0, bossHp - damage); actionText = `⚡ **Yıldırım Zinciri** hedefi sardı ve **${damage} hasar** verdi. (Mana: −22)`;
+        } else if (button.customId === 'demon_wall') {
+          if (playerMana < 12) { busy = false; return button.reply({ content: 'Taş Duvar için en az **12 Mana** gerekiyor.', ephemeral: true }); }
+          playerMana -= 12; spellUsed = 'tas_duvar'; fortified = true;
+          actionText = '🪨 **Taş Duvar** yükseldi. Bu tur alacağın boss hasarı %75 azalacak. (Mana: −12)';
+        } else if (button.customId === 'demon_burst') {
+          if (playerMana < 30) { busy = false; return button.reply({ content: 'Mana Patlaması için en az **30 Mana** gerekiyor.', ephemeral: true }); }
+          playerMana -= 30; spellUsed = 'mana_patlamasi';
+          const damage = Math.floor(Math.random() * 21) + 65 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 3;
+          bossHp = Math.max(0, bossHp - damage); actionText = `🌌 **Mana Patlaması** büyük bir enerji dalgası oluşturdu: **${damage} hasar**! (Mana: −30)`;
+        }
+
+        if (spellUsed) {
+          const masteryUpdate = await pool.query(
+            `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
+             VALUES ($1,$2,$3,1,0,NOW())
+             ON CONFLICT (guild_id,user_id,spell_key) DO UPDATE
+             SET casts=spell_mastery.casts+1,
+                 mastery_level=LEAST(10,FLOOR((spell_mastery.casts+1)/10.0)::int),
+                 updated_at=NOW()
+             RETURNING casts, mastery_level`,
+            [interaction.guildId, interaction.user.id, spellUsed]
+          );
+          spellMastery.set(spellUsed, Number(masteryUpdate.rows[0].mastery_level));
+          actionText += `\n📈 **${spellUsed.replaceAll('_', ' ')} ustalığı:** ${masteryUpdate.rows[0].casts} kullanım · Seviye ${masteryUpdate.rows[0].mastery_level}/10`;
         }
 
         if (bossHp <= 0) {
