@@ -11,7 +11,16 @@ const achievements = [
 ];
 
 export default {
-  data:new SlashCommandBuilder().setName('basarimlar').setDescription('Başarımlarını ve tamamladığın hedefleri göster.'),
+  data:new SlashCommandBuilder().setName('basarimlar').setDescription('Başarımlarını ve tamamladığın hedefleri göster.')
+    .addStringOption(o=>o.setName('odul').setDescription('Tamamladığın başarımın ödülünü al.')
+      .addChoices(
+        {name:'İlk Keşif',value:'first_draw'},
+        {name:'Koleksiyoncu',value:'collector_10'},
+        {name:'Arşiv Ustası',value:'collector_25'},
+        {name:'Poğaça Zengini',value:'rich_1000'},
+        {name:'Yolun Başında',value:'level_5'},
+        {name:'Efsane Avcısı',value:'legendary'}
+      ).setRequired(false)),
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',ephemeral:true});
     await interaction.deferReply({ephemeral:true});
