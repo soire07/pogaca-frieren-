@@ -39,6 +39,22 @@ async function loadCommands() {
 }
 
 
+async function sendConfiguredLog(guild, payload) {
+  try {
+    const result = await pool.query('SELECT log_channel_id FROM guild_settings WHERE guild_id=$1', [guild.id]);
+    const channelId = result.rows[0]?.log_channel_id;
+    if (!channelId) return;
+    const channel = await guild.channels.fetch(channelId).catch(() => null);
+    if (channel?.isTextBased() && channel.send) await channel.send(payload);
+  } catch (error) {
+    console.error('Moderasyon log hatası:', error);
+  }
+}
+
+client.on(Events.GuildMemberRemove, async member => {
+  await sendConfiguredLog(member.guild, { content: `📤 **Üye ayrıldı:** ${member.user?.tag ?? member.id} (${member.id})` });
+});
+
 client.on(Events.GuildMemberAdd, async member => {
   try {
     const result = await pool.query(
@@ -56,6 +72,15 @@ client.on(Events.GuildMemberAdd, async member => {
     await channel.send({ content: message.slice(0, 1900) });
   } catch (error) {
     console.error('Karşılama mesajı hatası:', error);
+  }
+});
+
+client.on(Events.GuildBanAdd, async ban => {
+  await sendConfiguredLog(ban.guild, { content: `🔨 **Ban olayı:** ${ban.user.tag} (${ban.user.id})` });
+});
+client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+  if (oldMember.nickname !== newMember.nickname) {
+    await sendConfiguredLog(newMember.guild, { content: `✏️ **Takma ad değişti:** ${newMember.user.tag} — ${oldMember.nickname ?? 'Yok'} → ${newMember.nickname ?? 'Yok'}` });
   }
 });
 
