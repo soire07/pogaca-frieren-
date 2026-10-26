@@ -16,22 +16,49 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 client.commands = new Collection();
 
 
+
+async function findCommandFiles(directory) {
+  let entries;
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+
+  const files = [];
+  for (const entry of entries) {
+    const fullPath = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await findCommandFiles(fullPath));
+    } else if (entry.isFile() && entry.name.endsWith('.js')) {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
+
 async function loadCommands() {
   const root = __dirname;
-  const files = await readdir(root);
+  const rootFiles = (await readdir(root, { withFileTypes: true }))
+    .filter(entry => entry.isFile() && entry.name.endsWith('.js'))
+    .map(entry => join(root, entry.name))
+    .filter(file => !['index.js', 'deploy-commands.js'].includes(file.split(/[\\/]/).pop()));
+  const nestedFiles = await findCommandFiles(join(root, 'commands'));
+  const files = [...rootFiles, ...nestedFiles];
 
-  for (const file of files) {
-    if (!file.endsWith('.js')) continue;
-    if (file === 'index.js' || file === 'deploy-commands.js') continue;
-
+  for (const filePath of files) {
     try {
-      const mod = await import(pathToFileURL(join(root, file)).href);
-
+      const mod = await import(pathToFileURL(filePath).href);
       if (mod.default?.data && mod.default?.execute) {
-        client.commands.set(mod.default.data.name, mod.default);
+        const name = mod.default.data.name;
+        if (client.commands.has(name)) {
+          throw new Error(`Yinelenen komut adı: /${name}`);
+        }
+        client.commands.set(name, mod.default);
       }
     } catch (error) {
-      console.error(`${file} yüklenemedi; bot başlatılamıyor:`, error);
+      console.error(`${filePath} yüklenemedi; bot başlatılamıyor:`, error);
       throw error;
     }
   }
