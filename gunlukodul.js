@@ -37,7 +37,7 @@ export default {
       .setColor(0x9b8cff)
       .setTitle('🥐 Günlük Fırın Ödülü')
       .setDescription(
-        `**${reward}** poğaça altını kazandın!\nYeni bakiyen: **${result.rows[0].coins}**`
+        `**${reward}** poğaça altını kazandın!\nYeni bakiyen: **${Number(result.rows[0].coins).toLocaleString('tr-TR')}**`
       )
       .setImage('attachment://gunlukodul.gif')
       .setFooter({ text: 'Poğaça Frieren • Günlük Fırın' });
