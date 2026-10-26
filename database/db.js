@@ -22,6 +22,13 @@ export async function initDatabase() {
       level INTEGER NOT NULL DEFAULT 1 CHECK (level >= 1),
       coins INTEGER NOT NULL DEFAULT 0 CHECK (coins >= 0),
       class_name TEXT NOT NULL DEFAULT 'Gezgin',
+      hp INTEGER NOT NULL DEFAULT 100 CHECK (hp >= 0),
+      max_hp INTEGER NOT NULL DEFAULT 100 CHECK (max_hp >= 1),
+      mana INTEGER NOT NULL DEFAULT 100 CHECK (mana >= 0),
+      max_mana INTEGER NOT NULL DEFAULT 100 CHECK (max_mana >= 1),
+      attack INTEGER NOT NULL DEFAULT 10 CHECK (attack >= 0),
+      defense INTEGER NOT NULL DEFAULT 5 CHECK (defense >= 0),
+      stat_points INTEGER NOT NULL DEFAULT 0 CHECK (stat_points >= 0),
       last_xp_at TIMESTAMPTZ NOT NULL DEFAULT '1970-01-01T00:00:00Z',
       last_daily_at TIMESTAMPTZ,
       last_adventure_at TIMESTAMPTZ,
@@ -36,6 +43,13 @@ export async function initDatabase() {
       PRIMARY KEY (guild_id, user_id)
     );
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_adventure_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS hp INTEGER NOT NULL DEFAULT 100 CHECK (hp >= 0);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS max_hp INTEGER NOT NULL DEFAULT 100 CHECK (max_hp >= 1);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS mana INTEGER NOT NULL DEFAULT 100 CHECK (mana >= 0);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS max_mana INTEGER NOT NULL DEFAULT 100 CHECK (max_mana >= 1);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS attack INTEGER NOT NULL DEFAULT 10 CHECK (attack >= 0);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS defense INTEGER NOT NULL DEFAULT 5 CHECK (defense >= 0);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS stat_points INTEGER NOT NULL DEFAULT 0 CHECK (stat_points >= 0);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_boss_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS pity_count INTEGER NOT NULL DEFAULT 0;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS free_character_pity_count INTEGER NOT NULL DEFAULT 0 CHECK (free_character_pity_count >= 0);
