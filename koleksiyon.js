@@ -22,7 +22,7 @@ export default {
     try {
       await ensureUser(interaction.guildId, target.id);
       const { rows } = await pool.query(
-        `SELECT character_name, anime, rarity, emoji, quantity
+        `SELECT character_name, anime, rarity, emoji, quantity, image, color
          FROM anime_character_collection
          WHERE guild_id = $1 AND user_id = $2
          ORDER BY CASE rarity
@@ -43,9 +43,9 @@ export default {
         : 'Henüz karakter keşfetmemişsin. **/kimimben** komutunu kullanarak ilk karakterini bul!';
 
       const embed = new EmbedBuilder()
-        .setColor(0x9b8cff)
+        .setColor(rows[0]?.color ?? 0x9b8cff)
         .setTitle(`📚 ${target.username} | Anime Koleksiyonu`)
-        .setThumbnail(target.displayAvatarURL())
+        .setThumbnail(rows.find(row => row.image)?.image ?? target.displayAvatarURL())
         .setDescription(description.slice(0, 4000))
         .addFields(
           { name: '🧩 Farklı karakter', value: `${uniqueCount}/${totalCharacters}`, inline: true },
