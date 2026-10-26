@@ -31,7 +31,8 @@ async function loadCommands() {
         client.commands.set(mod.default.data.name, mod.default);
       }
     } catch (error) {
-      console.error(`${file} yüklenemedi:`, error);
+      console.error(`${file} yüklenemedi; bot başlatılamıyor:`, error);
+      throw error;
     }
   }
 
