@@ -17,7 +17,8 @@ const rarityInfo = {
   Yaygın: { stars: '⭐' },
   Nadir: { stars: '⭐⭐' },
   Destansı: { stars: '⭐⭐⭐' },
-  Efsanevi: { stars: '🌟🌟🌟🌟' }
+  Efsanevi: { stars: '🌟🌟🌟🌟' },
+  Gizemli: { stars: '🌌✨🌌✨🌌' }
 };
 
 async function claimDrawCooldown(guildId, userId) {
@@ -100,7 +101,7 @@ async function saveCharacter(guildId, userId, character) {
     [guildId, userId, character.name, character.anime, character.rarity, character.emoji, character.color, character.description, character.traits, character.image]
   );
   await pool.query(
-    `UPDATE users SET pity_count = CASE WHEN $3 = 'Efsanevi' THEN 0 ELSE pity_count + 1 END
+    `UPDATE users SET pity_count = CASE WHEN $3 IN ('Efsanevi', 'Gizemli') THEN 0 ELSE pity_count + 1 END
      WHERE guild_id = $1 AND user_id = $2`,
     [guildId, userId, character.rarity]
   );
@@ -109,19 +110,20 @@ async function saveCharacter(guildId, userId, character) {
 
 function createCharacterEmbed(character, user, quantity) {
   const info = rarityInfo[character.rarity] ?? rarityInfo.Nadir;
-  const eliteNames = ['Goku', 'Naruto Uzumaki', 'Monkey D. Luffy', 'Levi Ackerman', 'Satoru Gojo'];
-  const elite = eliteNames.includes(character.name);
+  
   const rarityFrame = {
     Yaygın: '┌ · · · · · · · · · · ┐',
     Nadir: '┌ ◆ ───────────── ◆ ┐',
     Destansı: '┌ ✦ ═══════════ ✦ ┐',
-    Efsanevi: '╔ ✧ ═══════════ ✧ ╗'
+    Efsanevi: '╔ ✧ ═══════════ ✧ ╗',
+    Gizemli: '╔═══ ☾ ✧ ☽ ═══╗'
   }[character.rarity] ?? '┌ · · · · · · · · · · ┐';
   const discoveryLine = {
     Yaygın: 'Yeni bir yol arkadaşı buldun.',
     Nadir: 'Güzel bir keşif yaptın!',
     Destansı: 'Şanslısın, güçlü bir karakter keşfettin!',
-    Efsanevi: '🌟 Efsanevi bir keşif! Bu karakter koleksiyonuna değer katacak.'
+    Efsanevi: '🌟 Efsanevi bir keşif! Bu karakter koleksiyonuna değer katacak.',
+    Gizemli: '🌌 Eşsiz bir karşılaşma... Poğaça Frieren’in gizemli büyüsü ortaya çıktı!'
   }[character.rarity] ?? 'Yeni bir karakter keşfettin!';
   const embed = new EmbedBuilder()
     .setColor(character.color)
