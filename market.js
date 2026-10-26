@@ -18,7 +18,7 @@ export const marketItems = [
  { id:'frieren_tea', name:'🍵 Frieren Çayı', price:120, category:'Koleksiyon Eşyaları', rarity:'Yaygın', description:'Uzun yolculuklar için sıcak, huzurlu bir çay.', emoji:'🍵' },
  { id:'poagaca_box', name:'🥐 Büyülü Poğaça Kutusu', price:180, category:'Koleksiyon Eşyaları', rarity:'Yaygın', description:'Poğaça Frieren marketinin imza kutusu.', emoji:'🥐' },
  { id:'star_potion', name:'🌠 Yıldız İksiri', price:800, category:'Koleksiyon Eşyaları', rarity:'Efsanevi', description:'Yıldız ışığıyla parlayan sınırlı temalı hatıra.', emoji:'🌠' },
- { id:'healing_potion', name:'🧪 Şifa İksiri', price:220, category:'Koleksiyon Eşyaları', rarity:'Yaygın', description:'Kullanıldığında 60 HP ve 25 Mana yeniler. /esyakullan ile kullanabilirsin.', emoji:'🧪' }
+ { id:'healing_potion', name:'🧪 Şifa İksiri', price:220, category:'Koleksiyon Eşyaları', rarity:'Yaygın', description:'Kullanıldığında 60 HP ve 25 Mana yeniler. /esyakullan ile kullanabilirsin.', emoji:'🧪' },
   ...equipmentItems.map(item => ({
     ...item,
     category: 'Ekipman',
