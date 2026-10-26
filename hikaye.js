@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
+import { levelForXp } from './utils.js';
 
 const choices = [
   { name: 'Cesaret — Tehlikeye rağmen ilerle', value: 'cesaret' },
@@ -171,7 +172,7 @@ export default {
         const rewardCoins = chapter.reward.coins + scaledBonusCoins;
         const rewardXp = chapter.reward.xp + scaledBonusXp;
         const newXp = Number(user.xp) + rewardXp;
-        const newLevel = Math.floor(Math.sqrt(newXp / 100)) + 1;
+        const newLevel = levelForXp(newXp);
         const gainedPoints = Math.max(0, newLevel - Number(user.level));
 
         await client.query(
