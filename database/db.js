@@ -25,10 +25,14 @@ export async function initDatabase() {
       last_xp_at TIMESTAMPTZ NOT NULL DEFAULT '1970-01-01T00:00:00Z',
       last_daily_at TIMESTAMPTZ,
       last_adventure_at TIMESTAMPTZ,
+      pity_count INTEGER NOT NULL DEFAULT 0 CHECK (pity_count >= 0),
+      last_free_character_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY (guild_id, user_id)
     );
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_adventure_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS pity_count INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_free_character_at TIMESTAMPTZ;
     CREATE TABLE IF NOT EXISTS inventory (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
