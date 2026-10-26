@@ -1,8 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 
-const rarityOrder = { Efsanevi: 0, Destansı: 1, Nadir: 2, Yaygın: 3 };
-
 export default {
   data: new SlashCommandBuilder()
     .setName('koleksiyon')
@@ -37,7 +35,7 @@ export default {
       );
 
       const uniqueCount = rows.length;
-      const totalCharacters = 12;
+      const totalCharacters = 16;
       const percent = Math.min(100, Math.round((uniqueCount / totalCharacters) * 100));
       const totalCopies = rows.reduce((sum, row) => sum + Number(row.quantity), 0);
       const description = rows.length
