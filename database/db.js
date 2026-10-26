@@ -64,6 +64,14 @@ export async function initDatabase() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS welcome_message TEXT NOT NULL DEFAULT 'Hoş geldin {user}! 🥐 {server} sunucusuna katıldın.';
+    CREATE TABLE IF NOT EXISTS achievement_claims (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      achievement_key TEXT NOT NULL,
+      claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id,user_id,achievement_key),
+      FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS daily_mission_claims (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
