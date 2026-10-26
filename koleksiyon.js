@@ -139,7 +139,7 @@ export default {
         page = button.customId === 'collection_next'
           ? Math.min(page + 1, pageCount - 1)
           : Math.max(page - 1, 0);
-        await button.update(makePage(target, rows, page)).catch(() => {});
+        await button.update(makePage(target, rows, page, rarityFilter)).catch(() => {});
       });
 
       collector.on('end', async () => {
