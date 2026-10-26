@@ -18,8 +18,8 @@ const characters = [
   { name: 'Heiter', anime: 'Frieren: Beyond Journey’s End', rarity: 'Nadir', emoji: '🍃', color: 0x58b98a, description: 'Mizahı ve bilgeliğiyle öne çıkan eski kahraman grubunun rahibi.', traits: 'Bilge • Eğlenceli • Şefkatli', image: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g10-723x1024.jpg' },
   { name: 'Sein', anime: 'Frieren: Beyond Journey’s End', rarity: 'Destansı', emoji: '🌿', color: 0x52a88a, description: 'Arkadaşlarına yardım eden, deneyimli bir rahip.', traits: 'Olgun • Yardımsever • Rahat', image: 'https://frieren-anime.jp/wp-content/uploads/2023/12/g-724x1024.jpg' },
   { name: 'Goku', anime: 'Dragon Ball', rarity: 'Efsanevi', emoji: '🐉', color: 0xf0a33a, description: 'Sürekli güçlenmek ve daha güçlü rakiplerle karşılaşmak isteyen savaşçı.', traits: 'Neşeli • Azimli • Güçlü', image: 'https://dragonball-super.com/img/chara/cr-goku.jpg' },
-  { name: 'Naruto Uzumaki', anime: 'Naruto', rarity: 'Destansı', emoji: '🍥', color: 0xf08c38, description: 'Asla pes etmeyen ve hayallerinin peşinden giden ninja.', traits: 'Kararlı • Enerjik • Sadık', image: 'https://img.favpng.com/14/22/25/naruto-uzumaki-naruto-shippuden-ultimate-ninja-storm-3-kakashi-hatake-sasuke-uchiha-png-favpng-8DDhQkZ9Lb9GECpQpPxcmKnWa.jpg' },
-  { name: 'Monkey D. Luffy', anime: 'One Piece', rarity: 'Destansı', emoji: '🏴‍☠️', color: 0xd95757, description: 'Özgürlüğü ve arkadaşlarını her şeyin üstünde tutan korsan.', traits: 'Özgür ruhlu • Cesur • Eğlenceli', image: 'https://file.aiquickdraw.com/imgcompressed/img/compressed_aabeef15f811604759c6738e841b67e5.webp' },
+  { name: 'Naruto Uzumaki', anime: 'Naruto', rarity: 'Efsanevi', emoji: '🍥', color: 0xf08c38, description: 'Asla pes etmeyen ve hayallerinin peşinden giden ninja.', traits: 'Kararlı • Enerjik • Sadık', image: 'https://img.favpng.com/14/22/25/naruto-uzumaki-naruto-shippuden-ultimate-ninja-storm-3-kakashi-hatake-sasuke-uchiha-png-favpng-8DDhQkZ9Lb9GECpQpPxcmKnWa.jpg' },
+  { name: 'Monkey D. Luffy', anime: 'One Piece', rarity: 'Efsanevi', emoji: '🏴‍☠️', color: 0xd95757, description: 'Özgürlüğü ve arkadaşlarını her şeyin üstünde tutan korsan.', traits: 'Özgür ruhlu • Cesur • Eğlenceli', image: 'https://file.aiquickdraw.com/imgcompressed/img/compressed_aabeef15f811604759c6738e841b67e5.webp' },
   { name: 'Satoru Gojo', anime: 'Jujutsu Kaisen', rarity: 'Efsanevi', emoji: '👁️', color: 0x68a9ff, description: 'Kendine güveni ve olağanüstü yetenekleriyle tanınan büyücü.', traits: 'Kendinden emin • Şakacı • Güçlü', image: 'https://jujutsukaisen.jp/images/chara_thumb4.png' },
   { name: 'Tanjiro Kamado', anime: 'Demon Slayer', rarity: 'Nadir', emoji: '🌊', color: 0x50a9a0, description: 'Sevdiklerini korumak için mücadele eden şefkatli savaşçı.', traits: 'Şefkatli • Azimli • Dürüst', image: 'https://demonslayer-anime.com/eda/assets/img/character/thumb/thumb_tanjirou.png' },
   { name: 'Levi Ackerman', anime: 'Attack on Titan', rarity: 'Efsanevi', emoji: '🗡️', color: 0x8294a8, description: 'Soğukkanlılığı ve becerileriyle öne çıkan asker.', traits: 'Disiplinli • Soğukkanlı • Kararlı', image: 'https://p1.hiclipart.com/preview/111/995/813/shingeki-no-kyojin-levi-black-haired-man-holding-sword-anime-character-png-clipart.jpg' },
@@ -75,22 +75,30 @@ async function saveCharacter(guildId, userId, character) {
 
 function createCharacterEmbed(character, user, quantity) {
   const info = rarityInfo[character.rarity] ?? rarityInfo.Nadir;
+  const eliteNames = ['Goku', 'Naruto Uzumaki', 'Monkey D. Luffy', 'Levi Ackerman'];
+  const elite = eliteNames.includes(character.name);
   const embed = new EmbedBuilder()
     .setColor(character.color)
-    .setTitle(`${character.emoji} ${character.name}`)
-    .setDescription(`**${user.username}**, anime karakterin belli oldu!\n\n${character.description}`)
-    .addFields(
-      { name: '🎬 Anime', value: character.anime, inline: false },
-      { name: '💎 Nadirlik', value: `${info.stars} ${character.rarity}`, inline: true },
-      { name: '📚 Koleksiyon adedi', value: String(quantity), inline: true },
-      { name: '✨ Özellikler', value: character.traits, inline: false }
+    .setAuthor({
+      name: elite ? '✦ S CLASS • EFSANEVİ KARAKTER ✦' : `✧ ${character.rarity.toLocaleUpperCase('tr-TR')} SINIF ✧`
+    })
+    .setTitle(`${character.emoji}  ${character.name}  ${character.emoji}`)
+    .setDescription(
+      elite
+        ? `╭━━━ ✦ **EFSANEVİ KEŞİF** ✦ ━━━╮\n**${user.username}**, nadir bir karakter keşfettin!\n\n${character.description}\n\n**━━━━━━━━━━━━━━━━━━**\n${info.stars}  **LEGENDARY • S CLASS**  ${info.stars}`
+        : `**${user.username}**, anime karakterin belli oldu!\n\n${character.description}`
     )
-    .setFooter({ text: 'Poğaça Frieren • Karakter Keşfi' })
+    .addFields(
+      { name: '🎬  ANİME', value: `**${character.anime}**`, inline: true },
+      { name: '💎  SINIF', value: `**${character.rarity}**\n${info.stars}`, inline: true },
+      { name: '📚  KOLEKSİYON', value: `**×${quantity}**`, inline: true },
+      { name: '✧  KARAKTER ÖZELLİKLERİ', value: `┏  ${character.traits}\n┗━━━━━━━━━━━━━━━━`, inline: false }
+    )
+    .setFooter({ text: elite ? 'POĞAÇA FRIEREN  •  LEGENDARY COLLECTION' : 'Poğaça Frieren • Karakter Keşfi' })
     .setTimestamp();
   if (character.image) embed.setImage(character.image);
   return embed;
 }
-
 function createRow(disabled = false) {
   const button = new ButtonBuilder()
     .setCustomId('kimimben_again')
