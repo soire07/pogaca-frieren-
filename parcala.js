@@ -35,7 +35,7 @@ export default {
    const balance=await client.query('UPDATE users SET coins=coins+$3 WHERE guild_id=$1 AND user_id=$2 RETURNING coins',[interaction.guildId,interaction.user.id,reward]);
    await client.query('COMMIT');
    const embed=new EmbedBuilder().setColor(0x9b8cff).setTitle('♻️ Karakter kopyaları dönüştürüldü')
-    .setDescription('**'+c.character_name+'** karakterinden **'+amount+'** kopya parçaladın.\n\n🪙 Kopya başına: **'+rewardPerCopy+'** altın\n💰 Kazandığın toplam: **'+reward+'** altın\n🧺 Kalan kopya: **'+(owned-amount)+'**\n💳 Yeni bakiye: **'+Number(balance.rows[0].coins)+'**')
+    .setDescription('**'+c.character_name+'** karakterinden **'+amount+'** kopya parçaladın.\n\n🪙 Kopya başına: **'+rewardPerCopy+'** altın\n💰 Kazandığın toplam: **'+reward+'** altın\n🧺 Kalan kopya: **'+(owned-amount)+'**\n💳 Yeni bakiye: **'+Number(balance.rows[0].coins).toLocaleString('tr-TR')+'**')
     .setFooter({text:'Koleksiyonundaki son kopya her zaman korunur.'}).setTimestamp();
    return interaction.reply({embeds:[embed]});
   }catch(error){
