@@ -4,8 +4,11 @@ import {
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle
+  ButtonStyle,
+  ComponentType
 } from 'discord.js';
+
+const BUTTON_TIMEOUT = 10 * 60 * 1000;
 
 const characters = [
   {
@@ -131,13 +134,17 @@ const characters = [
 ];
 
 const rarityInfo = {
-  'Yaygın': { chance: 50, stars: '⭐' },
-  'Nadir': { chance: 30, stars: '⭐⭐' },
-  'Destansı': { chance: 15, stars: '⭐⭐⭐' },
-  'Efsanevi': { chance: 5, stars: '🌟🌟🌟🌟' }
+  Yaygın: { stars: '⭐' },
+  Nadir: { stars: '⭐⭐' },
+  Destansı: { stars: '⭐⭐⭐' },
+  Efsanevi: { stars: '🌟🌟🌟🌟' }
 };
 
-function drawCharacter() {
+function drawCharacter(previousName = null) {
+  let pool = characters.filter(c => c.name !== previousName);
+
+  // Nadirlik oranları: Yaygın %50, Nadir %30,
+  // Destansı %15, Efsanevi %5.
   const roll = Math.random() * 100;
 
   let rarity;
@@ -146,11 +153,20 @@ function drawCharacter() {
   else if (roll < 50) rarity = 'Nadir';
   else rarity = 'Yaygın';
 
-  const pool = characters.filter(character => character.rarity === rarity);
+  let rarityPool = pool.filter(c => c.rarity === rarity);
 
-  // Bu listede her nadirlikte karakter bulunduğundan
-  // seçilen seviyeden rastgele bir karakter gelir.
-  return pool[Math.floor(Math.random() * pool.length)];
+  // Seçilen nadirlikte önceki karakter hariç kimse yoksa
+  // aynı nadirlikteki karakterlerin tamamını kullan.
+  if (rarityPool.length === 0) {
+    rarityPool = characters.filter(c => c.rarity === rarity);
+  }
+
+  // Nadirlik listesinde karakter yoksa tüm karakterlerden seç.
+  if (rarityPool.length === 0) {
+    rarityPool = pool;
+  }
+
+  return rarityPool[Math.floor(Math.random() * rarityPool.length)];
 }
 
 function createCharacterEmbed(character, user) {
@@ -161,11 +177,15 @@ function createCharacterEmbed(character, user) {
     .setTitle(`${character.emoji} ${character.name}`)
     .setDescription(
       `**${user.username}**, senin anime karakterin belli oldu!\n\n` +
-      `${character.description}`
+      character.description
     )
     .addFields(
       { name: '🎬 Anime', value: character.anime, inline: false },
-      { name: '💎 Nadirlik', value: `${info.stars} ${character.rarity}`, inline: true },
+      {
+        name: '💎 Nadirlik',
+        value: `${info.stars} ${character.rarity}`,
+        inline: true
+      },
       { name: '✨ Özellikler', value: character.traits, inline: false }
     )
     .setFooter({ text: 'Poğaça Frieren • Karakter Keşfi' })
@@ -178,6 +198,17 @@ function createCharacterEmbed(character, user) {
   return embed;
 }
 
+function createRow(disabled = false) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('kimimben_again')
+      .setLabel(disabled ? 'Süre doldu' : 'Yeni karakter keşfet')
+      .setEmoji(disabled ? null : '🎲')
+      .setStyle(disabled ? ButtonStyle.Secondary : ButtonStyle.Primary)
+      .setDisabled(disabled)
+  );
+}
+
 export default {
   data: new SlashCommandBuilder()
     .setName('kimimben')
@@ -186,63 +217,60 @@ export default {
   async execute(interaction) {
     await interaction.deferReply();
 
-    const character = drawCharacter();
-    const embed = createCharacterEmbed(character, interaction.user);
-
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('kimimben_again')
-        .setLabel('Yeni karakter keşfet')
-        .setEmoji('🎲')
-        .setStyle(ButtonStyle.Primary)
-    );
+    let character = drawCharacter();
 
     const response = await interaction.editReply({
-      embeds: [embed],
-      components: [row]
+      embeds: [createCharacterEmbed(character, interaction.user)],
+      components: [createRow()]
     });
 
     const collector = response.createMessageComponentCollector({
-      time: 60_000
+      componentType: ComponentType.Button,
+      time: BUTTON_TIMEOUT
     });
 
     collector.on('collect', async button => {
-      if (button.customId !== 'kimimben_again') return;
+      if (button.customId !== 'kimimben_again') {
+        return button.deferUpdate().catch(() => {});
+      }
 
       if (button.user.id !== interaction.user.id) {
         return button.reply({
           content: 'Bu karakteri yalnızca komutu kullanan kişi yenileyebilir.',
           ephemeral: true
-        });
+        }).catch(() => {});
       }
 
-      const nextCharacter = drawCharacter();
+      try {
+        const nextCharacter = drawCharacter(character.name);
 
-      await button.update({
-        embeds: [
-          createCharacterEmbed(nextCharacter, interaction.user)
-        ],
-        components: [row]
-      });
+        await button.update({
+          embeds: [createCharacterEmbed(nextCharacter, interaction.user)],
+          components: [createRow()]
+        });
+
+        character = nextCharacter;
+      } catch (error) {
+        console.error('Kimimben buton hatası:', error);
+
+        if (!button.replied && !button.deferred) {
+          await button.reply({
+            content: 'Karakter değiştirilirken bir hata oluştu. Tekrar deneyebilirsin.',
+            ephemeral: true
+          }).catch(() => {});
+        }
+      }
     });
 
     collector.on('end', async () => {
       try {
         await interaction.editReply({
-          components: [
-            new ActionRowBuilder().addComponents(
-              new ButtonBuilder()
-                .setCustomId('kimimben_again_expired')
-                .setLabel('Süre doldu')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(true)
-            )
-          ]
+          components: [createRow(true)]
         });
       } catch (error) {
-        console.error('Kimimben butonu güncellenemedi:', error);
+        console.error('Kimimben butonu kapatılamadı:', error);
       }
     });
   }
 };
-    
+      
