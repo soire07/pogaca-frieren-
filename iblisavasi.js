@@ -163,10 +163,14 @@ export default {
         if (requiredSpell && !learnedSpells.has(requiredSpell)) {
           busy = false;
           const spellNames = {
+            zoltraak: 'Zoltraak',
             alev_kuresi: 'Alev Küresi',
             buz_mizragi: 'Buz Mızrağı',
             koruyucu_bariyer: 'Koruyucu Bariyer',
-            sifa_isigi: 'Şifa Işığı'
+            sifa_isigi: 'Şifa Işığı',
+            yildirim_zinciri: 'Yıldırım Zinciri',
+            tas_duvar: 'Taş Duvar',
+            mana_patlamasi: 'Mana Patlaması'
           };
           return button.reply({
             content: `Bu büyüyü henüz öğrenmedin. ${spellNames[requiredSpell] ? `**${spellNames[requiredSpell]}** için /buyuogren komutunu kullan.` : 'Başlangıç büyün hazır.'}`,
