@@ -52,7 +52,25 @@ export async function initDatabase() {
       welcome_channel_id TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS anime_character_collection (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      character_name TEXT NOT NULL,
+      anime TEXT NOT NULL,
+      rarity TEXT NOT NULL,
+      emoji TEXT NOT NULL DEFAULT '🎭',
+      color INTEGER NOT NULL DEFAULT 10194172,
+      description TEXT NOT NULL DEFAULT '',
+      traits TEXT NOT NULL DEFAULT '',
+      image TEXT,
+      quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
+      first_obtained_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_obtained_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id, user_id, character_name),
+      FOREIGN KEY (guild_id, user_id) REFERENCES users(guild_id, user_id) ON DELETE CASCADE
+    );
     CREATE INDEX IF NOT EXISTS idx_moderation_target ON moderation_cases(guild_id, target_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_anime_collection_user ON anime_character_collection(guild_id, user_id);
   `);
   console.log('PostgreSQL tabloları hazır.');
 }
