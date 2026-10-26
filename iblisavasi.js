@@ -12,13 +12,13 @@ const BOSS_MAX_HP = 160;
 const PLAYER_MAX_HP = 100;
 const COOLDOWN_MS = 30 * 60 * 1000;
 
-function battleEmbed({ player, bossHp, playerHp, bonus, description, won = false, lost = false }) {
+function battleEmbed({ player, bossHp, playerHp, playerMaxHp = PLAYER_MAX_HP, playerMana = 100, playerMaxMana = 100, attack = 10, defense = 5, bonus, description, won = false, lost = false }) {
   const embed = new EmbedBuilder()
     .setColor(won ? 0x65d6a6 : lost ? 0xe06c75 : 0x9b8cff)
     .setTitle(won ? '🏆 İblis yenildi!' : lost ? '🌑 Büyücü düştü...' : '⚔️ İblis Avı • Kuzey Sınırı')
     .setDescription(description)
     .addFields(
-      { name: '🧙 Gezgin', value: `❤️ **${Math.max(0, playerHp)}/${PLAYER_MAX_HP} HP**\n✨ Geliştirme bonusu: +${bonus} hasar`, inline: true },
+      { name: '🧙 Gezgin', value: `❤️ **${Math.max(0, playerHp)}/${playerMaxHp} HP** · 🔮 **${playerMana}/${playerMaxMana} Mana**\n⚔️ Saldırı: **${attack}** · 🛡️ Savunma: **${defense}**\n✨ Karakter bonusu: +${bonus} hasar`, inline: true },
       { name: '👹 İblis', value: `🩸 **${Math.max(0, bossHp)}/${BOSS_MAX_HP} HP**`, inline: true }
     )
     .setFooter({ text: 'Poğaça Frieren • Kuzey sınırında her büyü önemlidir.' })
@@ -48,6 +48,21 @@ export default {
     await interaction.deferReply();
     await ensureUser(interaction.guildId, interaction.user.id);
 
+    const statsResult = await pool.query(
+      'SELECT hp, max_hp, mana, max_mana, attack, defense FROM users WHERE guild_id=$1 AND user_id=$2',
+      [interaction.guildId, interaction.user.id]
+    );
+    const stats = statsResult.rows[0];
+    if (Number(stats.hp) <= 0) {
+      return interaction.editReply('🌑 Canın tükenmiş. Yeniden savaşa çıkmadan önce **/dinlen** komutuyla HP ve mananı yenilemelisin.');
+    }
+    const playerMaxHp = Number(stats.max_hp);
+    const playerMaxMana = Number(stats.max_mana);
+    const attack = Number(stats.attack);
+    const defense = Number(stats.defense);
+    let playerHp = Math.min(playerMaxHp, Number(stats.hp));
+    let playerMana = Math.min(playerMaxMana, Number(stats.mana));
+
     const claimed = await pool.query(
       `UPDATE users SET last_boss_at = NOW()
        WHERE guild_id=$1 AND user_id=$2
@@ -74,7 +89,9 @@ export default {
     let busy = false;
     let finished = false;
 
-    const initial = battleEmbed({
+    const renderBattleEmbed = options => battleEmbed({ ...options, playerMaxHp, playerMana, playerMaxMana, attack, defense });
+
+    const initial = renderBattleEmbed({
       player: interaction.user,
       bossHp,
       playerHp,
@@ -95,24 +112,40 @@ export default {
       try {
         let actionText = '';
         if (button.customId === 'demon_attack') {
-          const damage = Math.floor(Math.random() * 13) + 18 + upgradeBonus;
+          if (playerMana < 8) {
+            busy = false;
+            return button.reply({ content: 'Zoltraak için en az **8 Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.', ephemeral: true });
+          }
+          playerMana -= 8;
+          const damage = Math.floor(Math.random() * 13) + 18 + attack + upgradeBonus;
           bossHp = Math.max(0, bossHp - damage);
-          actionText = `⚡ Zoltraak isabet etti! İblise **${damage} hasar** verdin.`;
+          actionText = `⚡ Zoltraak isabet etti! İblise **${damage} hasar** verdin. (Saldırı: ${attack}, Mana: −8)`;
         } else if (button.customId === 'demon_defend') {
+          if (playerMana < 6) {
+            busy = false;
+            return button.reply({ content: 'Savunma büyüsü için en az **6 Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.', ephemeral: true });
+          }
+          playerMana -= 6;
           shield = true;
-          actionText = '🛡️ Koruyucu büyü kurdun. İblisin bir sonraki saldırısı yarı hasar verecek.';
+          actionText = '🛡️ Koruyucu büyü kurdun. İblisin bir sonraki saldırısı yarı hasar verecek. (Mana: −6)';
         } else if (button.customId === 'demon_heal') {
           if (healUsed) {
             busy = false;
             return button.reply({ content: 'İyileşme büyünü bu savaşta zaten kullandın.', ephemeral: true });
           }
+          if (playerMana < 20) {
+            busy = false;
+            return button.reply({ content: 'İyileşme büyüsü için en az **20 Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.', ephemeral: true });
+          }
+          playerMana -= 20;
           const before = playerHp;
-          playerHp = Math.min(PLAYER_MAX_HP, playerHp + Math.floor(Math.random() * 16) + 20);
+          playerHp = Math.min(playerMaxHp, playerHp + Math.floor(Math.random() * 16) + 20);
           healUsed = true;
-          actionText = `💚 İyileşme büyüsüyle **${playerHp - before} HP** geri kazandın.`;
+          actionText = `💚 İyileşme büyüsüyle **${playerHp - before} HP** geri kazandın. (Mana: −20)`;
         }
 
         if (bossHp <= 0) {
+          await pool.query('UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, playerHp, playerMana]);
           const rewardCoins = 140 + Math.floor(Math.random() * 81);
           const rewardXp = 90 + Math.floor(Math.random() * 41);
           const db = await pool.connect();
@@ -141,7 +174,7 @@ export default {
           finished = true;
           collector.stop('victory');
           return button.update({
-            embeds: [battleEmbed({
+            embeds: [renderBattleEmbed({
               player: interaction.user, bossHp: 0, playerHp, bonus: upgradeBonus, won: true,
               description: `${actionText}\n\n🌟 **Zafer!** İblisi alt ettin.\nÖdülün: **${rewardCoins} altın**, **${rewardXp} XP** ve **💎 Mana Kristali ×1**.`
             })],
@@ -149,7 +182,8 @@ export default {
           });
         }
 
-        let bossDamage = Math.floor(Math.random() * 12) + 12;
+        const rawBossDamage = Math.floor(Math.random() * 12) + 12;
+        let bossDamage = Math.max(1, rawBossDamage - Math.floor(defense / 2));
         if (shield) {
           bossDamage = Math.ceil(bossDamage / 2);
           shield = false;
@@ -159,6 +193,7 @@ export default {
         actionText += `\n👹 İblis karşılık verdi: **${bossDamage} hasar** aldın.`;
 
         if (playerHp <= 0) {
+          await pool.query('UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, playerHp, playerMana]);
           finished = true;
           collector.stop('defeat');
           return button.update({
@@ -170,8 +205,9 @@ export default {
           });
         }
 
+        await pool.query('UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, playerHp, playerMana]);
         await button.update({
-          embeds: [battleEmbed({ player: interaction.user, bossHp, playerHp, bonus: upgradeBonus, description: actionText })],
+          embeds: [renderBattleEmbed({ player: interaction.user, bossHp, playerHp, bonus: upgradeBonus, description: actionText })],
           components: [actionRow()]
         });
       } catch (error) {
