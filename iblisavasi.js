@@ -44,6 +44,14 @@ function actionRow(disabled = false) {
   );
 }
 
+function rareActionRow(disabled = false) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('demon_chain').setLabel('Yıldırım Zinciri · 22').setEmoji('⚡').setStyle(ButtonStyle.Danger).setDisabled(disabled),
+    new ButtonBuilder().setCustomId('demon_wall').setLabel('Taş Duvar · 12').setEmoji('🪨').setStyle(ButtonStyle.Primary).setDisabled(disabled),
+    new ButtonBuilder().setCustomId('demon_burst').setLabel('Mana Patlaması · 30').setEmoji('🌌').setStyle(ButtonStyle.Danger).setDisabled(disabled)
+  );
+}
+
 export default {
   data: new SlashCommandBuilder()
     .setName('iblisavasi')
@@ -61,6 +69,12 @@ export default {
       [interaction.guildId, interaction.user.id]
     );
     const learnedSpells = new Set(knownSpellResult.rows.map(row => row.spell_key));
+
+    const masteryResult = await pool.query(
+      'SELECT spell_key, casts, mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=$2',
+      [interaction.guildId, interaction.user.id]
+    );
+    const spellMastery = new Map(masteryResult.rows.map(row => [row.spell_key, Number(row.mastery_level)]));
 
     const statsResult = await pool.query(
       'SELECT hp, max_hp, mana, max_mana, attack, defense, level FROM users WHERE guild_id=$1 AND user_id=$2',
@@ -141,7 +155,10 @@ export default {
           demon_fire: 'alev_kuresi',
           demon_ice: 'buz_mizragi',
           demon_defend: 'koruyucu_bariyer',
-          demon_heal: 'sifa_isigi'
+          demon_heal: 'sifa_isigi',
+          demon_chain: 'yildirim_zinciri',
+          demon_wall: 'tas_duvar',
+          demon_burst: 'mana_patlamasi'
         }[button.customId];
         if (requiredSpell && !learnedSpells.has(requiredSpell)) {
           busy = false;
