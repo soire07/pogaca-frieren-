@@ -41,10 +41,10 @@ const usableItems = {
   dried_flower: { name: '🌼 Kurutulmuş Çiçek', key: '🌼 Kurutulmuş Çiçek', description: 'Çiçeğin sakinleştirici büyüsü 25 HP yeniledi.', xp: 0, coins: 0, hp: 25 },
   magic_poagaca: { name: '🥐 Büyülü Poğaça', key: '🥐 Büyülü Poğaça', description: 'Büyülü poğaça 20 HP ve 10 Mana yeniledi.', xp: 0, coins: 0, hp: 20, mana: 10 },
   healing_potion: { name: '🧪 Şifa İksiri', key: '🧪 Şifa İksiri', description: 'İksir 60 HP ve 25 Mana yeniledi.', xp: 0, coins: 0, hp: 60, mana: 25 },
-  shadowfang: { name: '🐺 Schattenwolfzahn', key: '🐺 Schattenwolfzahn', description: 'Schattenwolf dişi deneyim kazandırdı: 65 XP ve 25 altın.', xp: 65, coins: 25 },
-  guardian_rune: { name: '🗿 Muhafız Rünü', key: '🗿 Muhafız Rünü', description: 'Kadim rün büyü gücünü yeniledi: 45 Mana.', xp: 0, coins: 0, mana: 45 },
-  northern_demon_heart: { name: '🩸 Kuzey İblisinin Kalbi', key: '🩸 Kuzey İblisinin Kalbi', description: 'İblis kalbinin enerjisi 45 HP ve 35 Mana yeniledi.', xp: 0, coins: 0, hp: 45, mana: 35 },
-  commander_blood: { name: '🩸 İblis Komutanının Kanı', key: '🩸 İblis Komutanının Kanı', description: 'Komutanın özü seni güçlendirdi: 150 XP ve 100 altın.', xp: 150, coins: 100 }
+  shadowfang: { name: '🐺 Schattenwolfzahn', key: '🐺 Schattenwolfzahn', description: 'Schattenwolf dişi deneyim kazandırdı: 65 XP ve 25 altın. Dişin keskinliği saldırını kalıcı olarak +1 artırdı.', xp: 65, coins: 25, attack: 1 },
+  guardian_rune: { name: '🗿 Muhafız Rünü', key: '🗿 Muhafız Rünü', description: 'Kadim rün 45 Mana yeniledi ve savunmanı kalıcı olarak +1 artırdı.', xp: 0, coins: 0, mana: 45, defense: 1 },
+  northern_demon_heart: { name: '🩸 Kuzey İblisinin Kalbi', key: '🩸 Kuzey İblisinin Kalbi', description: 'İblis kalbi 45 HP ve 35 Mana yeniledi; maksimum canın kalıcı olarak +10 arttı.', xp: 0, coins: 0, hp: 45, mana: 35, maxHp: 10 },
+  commander_blood: { name: '🩸 İblis Komutanının Kanı', key: '🩸 İblis Komutanının Kanı', description: 'Komutanın özü 150 XP ve 100 altın kazandırdı; saldırını kalıcı +2 ve maksimum Mananı +10 artırdı.', xp: 150, coins: 100, attack: 2, maxMana: 10 }
 };
 
 export default {
@@ -127,13 +127,17 @@ export default {
           coins = coins + $4,
           last_item_used_at = NOW(),
           items_used_count = items_used_count + 1,
-          mana = LEAST(max_mana, mana + $5),
-          hp = LEAST(max_hp, hp + $6),
+          max_hp = LEAST(2000, max_hp + $7),
+          max_mana = LEAST(2000, max_mana + $8),
+          attack = LEAST(500, attack + $9),
+          defense = LEAST(250, defense + $10),
+          mana = LEAST(LEAST(2000, max_mana + $8), mana + $5),
+          hp = LEAST(LEAST(2000, max_hp + $7), hp + $6),
           stat_points = stat_points + GREATEST(0, (FLOOR(SQRT((xp + $3)::numeric / 100))::int + 1) - level),
           level = FLOOR(SQRT((xp + $3)::numeric / 100))::int + 1
          WHERE guild_id=$1 AND user_id=$2
          RETURNING xp, coins, level, hp, max_hp, mana, max_mana, stat_points`,
-        [interaction.guildId, interaction.user.id, item.xp, item.coins, item.mana || 0, item.hp || 0]
+        [interaction.guildId, interaction.user.id, item.xp, item.coins, item.mana || 0, item.hp || 0, item.maxHp || 0, item.maxMana || 0, item.attack || 0, item.defense || 0]
       );
 
       await db.query('COMMIT');
@@ -144,7 +148,11 @@ export default {
         .setDescription([
           item.description,
           item.hp ? `Şu anki HP: **${user.hp}/${user.max_hp}**.` : '',
-          item.mana ? `Şu anki Mana: **${user.mana}/${user.max_mana}**.` : ''
+          item.mana ? `Şu anki Mana: **${user.mana}/${user.max_mana}**.` : '',
+          item.attack ? `Kalıcı saldırı bonusu: **+${item.attack}**.` : '',
+          item.defense ? `Kalıcı savunma bonusu: **+${item.defense}**.` : '',
+          item.maxHp ? `Maksimum can bonusu: **+${item.maxHp}**.` : '',
+          item.maxMana ? `Maksimum Mana bonusu: **+${item.maxMana}**.` : ''
         ].filter(Boolean).join(' '))
         .addFields(
           { name: '⭐ Toplam XP', value: Number(user.xp).toLocaleString('tr-TR'), inline: true },
