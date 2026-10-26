@@ -57,7 +57,11 @@ export default {
       const embed = new EmbedBuilder()
         .setColor(rows[0]?.color ?? 0x9b8cff)
         .setTitle(`📚 ${target.username} | Anime Koleksiyonu`)
-        .setThumbnail(rows.find(row => row.image || artworkByCharacter[row.character_name])?.image || artworkByCharacter[rows.find(row => artworkByCharacter[row.character_name])?.character_name] || target.displayAvatarURL())
+        .setThumbnail(
+          (rows.find(row => artworkByCharacter[row.character_name]) && artworkByCharacter[rows.find(row => artworkByCharacter[row.character_name]).character_name]) ||
+          rows.find(row => row.image)?.image ||
+          target.displayAvatarURL()
+        )
         .setDescription(description.slice(0, 4000))
         .addFields(
           { name: '🧩 Farklı karakter', value: `${uniqueCount}/${totalCharacters}`, inline: true },
