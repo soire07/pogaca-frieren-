@@ -6,7 +6,10 @@ const spellDetails = {
   alev_kuresi: { name: '🔥 Alev Küresi', cost: '180 altın', effect: '14 Mana · Yüksek hasar' },
   buz_mizragi: { name: '🧊 Buz Mızrağı', cost: '160 altın', effect: '12 Mana · %35 dondurma ihtimali' },
   koruyucu_bariyer: { name: '🛡️ Koruyucu Bariyer', cost: '120 altın', effect: '6 Mana · Karşı saldırıyı azaltır' },
-  sifa_isigi: { name: '💚 Şifa Işığı', cost: '200 altın', effect: '20 Mana · Savaşta bir kez iyileştirir' }
+  sifa_isigi: { name: '💚 Şifa Işığı', cost: '200 altın', effect: '20 Mana · Savaşta bir kez iyileştirir' },
+  yildirim_zinciri: { name: '⚡ Yıldırım Zinciri', cost: '420 altın · Sv.10 + 3 boss', effect: '22 Mana · Yüksek zincir hasarı' },
+  tas_duvar: { name: '🪨 Taş Duvar', cost: '360 altın · Sv.15 + 5 boss', effect: '12 Mana · Bir sonraki saldırının %75’ini engeller' },
+  mana_patlamasi: { name: '🌌 Mana Patlaması', cost: '650 altın · Sv.25 + 10 boss', effect: '30 Mana · Çok yüksek hasar' }
 };
 
 export default {
