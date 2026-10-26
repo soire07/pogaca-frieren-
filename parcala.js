@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
-const shardValue={Yaygın:5,Nadir:12,Destansı:30,Efsanevi:75,Gizemli:150};
+const shardValue={Yaygın:5,Nadir:12,Destansı:30,Efsanevi:75,Gizemli:2000};
 export default {
  data:new SlashCommandBuilder()
   .setName('parcala')
