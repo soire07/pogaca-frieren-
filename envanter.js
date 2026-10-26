@@ -1,5 +1,5 @@
 
-import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 
 export default {
@@ -28,9 +28,18 @@ export default {
       .setImage('attachment://envanter.gif')
       .setFooter({ text: 'Poğaça Frieren • Büyülü Eşya Koleksiyonu' });
 
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('market_open:' + interaction.user.id)
+        .setLabel('Mağazaya git')
+        .setEmoji('🛍️')
+        .setStyle(ButtonStyle.Primary)
+    );
+
     await interaction.reply({
       embeds: [embed],
       files: [gif],
+      components: [row],
       ephemeral: true
     });
   }
