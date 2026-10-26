@@ -1,0 +1,42 @@
+name: Audit character image URLs
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "character-data.js"
+      - "scripts/check-character-images.js"
+      - ".github/workflows/audit-character-images.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Check all character image URLs
+        id: audit
+        continue-on-error: true
+        run: node scripts/check-character-images.js > image-audit-report.json
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: character-image-audit-report
+          path: image-audit-report.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Fail if any image URL could not be verified
+        if: steps.audit.outcome == 'failure'
+        run: |
+          echo "Some character image URLs returned errors or non-image content."
+          echo "Download the character-image-audit-report artifact to see which ones need fixing."
+          exit 1
