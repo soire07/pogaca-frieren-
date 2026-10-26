@@ -1,5 +1,5 @@
-
 import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js';
+import { existsSync } from 'node:fs';
 import { pool, ensureUser } from './database/db.js';
 
 export default {
@@ -31,20 +31,20 @@ export default {
       });
     }
 
-    const gif = new AttachmentBuilder('./gunlukodul.gif');
-
     const embed = new EmbedBuilder()
       .setColor(0x9b8cff)
       .setTitle('🥐 Günlük Fırın Ödülü')
       .setDescription(
         `**${reward}** poğaça altını kazandın!\nYeni bakiyen: **${Number(result.rows[0].coins).toLocaleString('tr-TR')}**`
       )
-      .setImage('attachment://gunlukodul.gif')
       .setFooter({ text: 'Poğaça Frieren • Günlük Fırın' });
 
-    await interaction.reply({
-      embeds: [embed],
-      files: [gif]
-    });
+    const files = [];
+    if (existsSync('./gunlukodul.gif')) {
+      files.push(new AttachmentBuilder('./gunlukodul.gif'));
+      embed.setImage('attachment://gunlukodul.gif');
+    }
+
+    await interaction.reply({ embeds: [embed], files });
   }
 };
