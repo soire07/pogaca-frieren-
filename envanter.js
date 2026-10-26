@@ -1,6 +1,7 @@
 
 import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
+import { equipmentItems, equipmentSlots, formatEquipmentBonus } from './equipment-data.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -19,6 +20,14 @@ export default {
       [interaction.guildId, interaction.user.id]
     );
 
+    const equippedResult = await pool.query('SELECT slot,item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id]);
+    const equippedMap = new Map(equippedResult.rows.map(row => [row.slot, row.item_key]));
+    const equipmentDescription = equipmentSlots.map(slot => {
+      const name = equippedMap.get(slot.id);
+      const item = equipmentItems.find(entry => entry.name === name);
+      return slot.label + ': ' + (item ? item.name + ' — ' + formatEquipmentBonus(item) : 'Boş');
+    }).join('\\n');
+
     const description = rows.length
       ? rows.map(r => `• **${r.item_key}** × ${r.quantity}`).join('\n')
       : 'Envanterin şimdilik boş. Maceraya çıkarak eşya bulabilirsin!';
@@ -28,7 +37,7 @@ export default {
     const embed = new EmbedBuilder()
       .setColor(0x9b8cff)
       .setTitle(`🎒 ${interaction.user.username} | Envanter`)
-      .setDescription(description)
+      .setDescription(description + '\\n\\n**🛡️ Kuşanılan ekipman**\\n' + equipmentDescription)
       .setImage('attachment://envanter.gif')
       .setFooter({ text: 'Poğaça Frieren • Büyülü Eşya Koleksiyonu' });
 
