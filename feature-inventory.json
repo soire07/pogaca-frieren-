@@ -349,6 +349,24 @@
       "name": "Character identification interaction",
       "category": "Fun",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-048",
+      "name": "Track co-op dungeon attempts",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-049",
+      "name": "Track successful co-op dungeon clears",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-050",
+      "name": "Claim rewards for co-op dungeon milestones",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
     }
   ]
 }
