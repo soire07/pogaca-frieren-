@@ -68,7 +68,8 @@ export default {
           hp=$6,
           mana=$7,
           stat_points=stat_points+$8,
-          last_exploration_at=NOW()
+          last_exploration_at=NOW(),
+          exploration_count=exploration_count+1
          WHERE guild_id=$1 AND user_id=$2`,
         [interaction.guildId, interaction.user.id, newXp, newLevel, encounter.coins, newHp, newMana, gainedPoints]
       );
