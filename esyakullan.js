@@ -136,7 +136,7 @@ export default {
           stat_points = stat_points + GREATEST(0, (FLOOR(SQRT((xp + $3)::numeric / 100))::int + 1) - level),
           level = FLOOR(SQRT((xp + $3)::numeric / 100))::int + 1
          WHERE guild_id=$1 AND user_id=$2
-         RETURNING xp, coins, level, hp, max_hp, mana, max_mana, stat_points`,
+         RETURNING xp, coins, level, hp, max_hp, mana, max_mana, attack, defense, stat_points`,
         [interaction.guildId, interaction.user.id, item.xp, item.coins, item.mana || 0, item.hp || 0, item.maxHp || 0, item.maxMana || 0, item.attack || 0, item.defense || 0]
       );
 
@@ -158,6 +158,8 @@ export default {
           { name: '⭐ Toplam XP', value: Number(user.xp).toLocaleString('tr-TR'), inline: true },
           { name: '🪙 Altın', value: Number(user.coins).toLocaleString('tr-TR'), inline: true },
           { name: '🧭 Seviye', value: String(user.level), inline: true },
+          { name: '⚔️ Saldırı', value: String(user.attack), inline: true },
+          { name: '🛡️ Savunma', value: String(user.defense), inline: true },
           { name: '✨ Harcanabilir stat puanı', value: String(user.stat_points), inline: true }
         )
         .setFooter({ text: 'Poğaça Frieren • Eşyalar kalıcı envanterinden düşülür' })
