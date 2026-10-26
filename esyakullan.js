@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
+import { equipmentItems, equipmentBonus } from './equipment-data.js';
 
 const usableItems = {
   frieren_staff: { name: '🪄 Frieren’in Asası', key: '🪄 Frieren’in Asası', description: '120 XP kazandın.', xp: 120, coins: 0 },
@@ -121,6 +122,12 @@ export default {
         );
       }
 
+      const equippedResult = await db.query(
+        'SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2',
+        [interaction.guildId, interaction.user.id]
+      );
+      const gear = equipmentBonus(equippedResult.rows.map(row => equipmentItems.find(entry => entry.name === row.item_key)).filter(Boolean));
+
       const updated = await db.query(
         `UPDATE users SET
           xp = xp + $3,
@@ -131,13 +138,13 @@ export default {
           max_mana = LEAST(2000, max_mana + $8),
           attack = LEAST(500, attack + $9),
           defense = LEAST(250, defense + $10),
-          mana = LEAST(LEAST(2000, max_mana + $8), mana + $5),
-          hp = LEAST(LEAST(2000, max_hp + $7), hp + $6),
+          mana = LEAST(LEAST(2000, max_mana + $8 + $12), mana + $5),
+          hp = LEAST(LEAST(2000, max_hp + $7 + $11), hp + $6),
           stat_points = stat_points + GREATEST(0, (FLOOR(SQRT((xp + $3)::numeric / 100))::int + 1) - level),
           level = FLOOR(SQRT((xp + $3)::numeric / 100))::int + 1
          WHERE guild_id=$1 AND user_id=$2
          RETURNING xp, coins, level, hp, max_hp, mana, max_mana, attack, defense, stat_points`,
-        [interaction.guildId, interaction.user.id, item.xp, item.coins, item.mana || 0, item.hp || 0, item.maxHp || 0, item.maxMana || 0, item.attack || 0, item.defense || 0]
+        [interaction.guildId, interaction.user.id, item.xp, item.coins, item.mana || 0, item.hp || 0, item.maxHp || 0, item.maxMana || 0, item.attack || 0, item.defense || 0, gear.hp, gear.mana]
       );
 
       await db.query('COMMIT');
@@ -147,8 +154,8 @@ export default {
         .setTitle('✨ Eşya kullanıldı!')
         .setDescription([
           item.description,
-          item.hp ? `Şu anki HP: **${user.hp}/${user.max_hp}**.` : '',
-          item.mana ? `Şu anki Mana: **${user.mana}/${user.max_mana}**.` : '',
+          item.hp ? `Şu anki HP: **${user.hp}/${Math.min(2000, Number(user.max_hp) + gear.hp)}**.` : '',
+          item.mana ? `Şu anki Mana: **${user.mana}/${Math.min(2000, Number(user.max_mana) + gear.mana)}**.` : '',
           item.attack ? `Kalıcı saldırı bonusu: **+${item.attack}**.` : '',
           item.defense ? `Kalıcı savunma bonusu: **+${item.defense}**.` : '',
           item.maxHp ? `Maksimum can bonusu: **+${item.maxHp}**.` : '',
