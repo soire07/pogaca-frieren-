@@ -41,14 +41,18 @@ export const characters = [
   { name: 'Mikasa Ackerman', anime: 'Attack on Titan', rarity: 'Destansı', emoji: '🧣', color: 10181985, description: 'Üstün savaş becerileriyle sevdiklerini koruyan seçkin asker.', traits: 'Sadık • Soğukkanlı • Güçlü' }
 ];
 
-export function drawCharacter(previousName = null, forceLegendary = false) {
-  const roll = forceLegendary ? 0 : Math.random() * 100;
+export function drawCharacter(previousName = null, forceEpicOrHigher = false) {
+  const roll = Math.random() * 100;
   let rarity;
-  if (!forceLegendary && roll < 1) rarity = 'Gizemli';
-  else if (roll < 6) rarity = 'Efsanevi';
-  else if (roll < 21) rarity = 'Destansı';
-  else if (roll < 51) rarity = 'Nadir';
+  if (roll < 0.01) rarity = 'Gizemli';
+  else if (roll < 0.11) rarity = 'Efsanevi';
+  else if (roll < 5.11) rarity = 'Destansı';
+  else if (roll < 40.11) rarity = 'Nadir';
   else rarity = 'Yaygın';
+
+  if (forceEpicOrHigher && !['Gizemli', 'Efsanevi', 'Destansı'].includes(rarity)) {
+    rarity = 'Destansı';
+  }
   let rarityPool = characters.filter(c => c.rarity === rarity && c.name !== previousName);
   if (!rarityPool.length) rarityPool = characters.filter(c => c.rarity === rarity);
   if (!rarityPool.length) rarityPool = characters.filter(c => c.name !== previousName);
