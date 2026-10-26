@@ -121,6 +121,14 @@ export async function initDatabase() {
       PRIMARY KEY (guild_id, user_id),
       FOREIGN KEY (guild_id, user_id) REFERENCES users(guild_id, user_id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS side_quest_claims (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      quest_key TEXT NOT NULL,
+      claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id, user_id, quest_key),
+      FOREIGN KEY (guild_id, user_id) REFERENCES users(guild_id, user_id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS daily_mission_claims (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
