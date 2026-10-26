@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 
 export const marketItems = [
@@ -112,13 +112,15 @@ export function renderPurchaseResult(itemId, balance, userId) {
 
 export async function renderMarketInventory(guildId, userId) {
  const result = await pool.query('SELECT item_key, quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 ORDER BY item_key',[guildId,userId]);
+ const gif = new AttachmentBuilder('./envanter.gif');
  const embed = new EmbedBuilder().setColor(0xb58cff).setTitle('📦 KOLEKSİYON ÇANTAN')
   .setDescription(result.rows.length ? result.rows.map(row=>'• **'+row.item_key+'** × '+row.quantity).join('\\n') : 'Çantan şimdilik boş. Marketten ilk eşyanı alabilirsin.')
+  .setImage('attachment://envanter.gif')
   .setFooter({text:'Poğaça Frieren • Envanter özeti'}).setTimestamp();
  const row = new ActionRowBuilder().addComponents(
   new ButtonBuilder().setCustomId('market_back:'+userId).setLabel('Markete dön').setEmoji('🛍️').setStyle(ButtonStyle.Primary)
  );
- return {embeds:[embed],components:[row]};
+ return {embeds:[embed],components:[row],files:[gif],attachments:[]};
 }
 
 export default {
