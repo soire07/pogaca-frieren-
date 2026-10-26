@@ -86,6 +86,16 @@ export async function initDatabase() {
       FOREIGN KEY (guild_id, user_id) REFERENCES users(guild_id, user_id) ON DELETE CASCADE
     );
     CREATE INDEX IF NOT EXISTS idx_learned_spells_user ON learned_spells(guild_id, user_id);
+    CREATE TABLE IF NOT EXISTS spell_mastery (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      spell_key TEXT NOT NULL,
+      casts INTEGER NOT NULL DEFAULT 0 CHECK (casts >= 0),
+      mastery_level INTEGER NOT NULL DEFAULT 0 CHECK (mastery_level >= 0 AND mastery_level <= 10),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id,user_id,spell_key),
+      FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS moderation_cases (
       id BIGSERIAL PRIMARY KEY,
       guild_id TEXT NOT NULL,
