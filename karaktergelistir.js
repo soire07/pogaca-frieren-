@@ -29,7 +29,7 @@ export default {
    if(!doUpgrade){
     await db.query('ROLLBACK');
     const embed=new EmbedBuilder().setColor(0x9b8cff).setTitle('✨ '+character.character_name+' • Geliştirme')
-     .setDescription(`Mevcut geliştirme: **+${level}**\nSonraki seviye maliyeti: **${costFor(level)} altın**\nKarakter kopyası: ×${character.quantity}\n\nYükseltmek için aynı komutu `yukselt: Evet` ile kullan.`);
+     .setDescription(`Mevcut geliştirme: **+${level}**\nSonraki seviye maliyeti: **${costFor(level)} altın**\nKarakter kopyası: ×${character.quantity}\n\nYükseltmek için aynı komutta yukselt seçeneğini Evet yap.`);
     return interaction.editReply({embeds:[embed]});
    }
    if(level>=10){await db.query('ROLLBACK');return interaction.editReply('Bu karakter en yüksek +10 seviyesine ulaştı.');}
