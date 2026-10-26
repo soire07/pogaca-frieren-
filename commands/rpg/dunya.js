@@ -2,57 +2,61 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 const regions = [
   {
-    name: '🌾 Kuzey Toprakları',
+    name: '🌾 Merkez Topraklar',
     level: '1–5',
     danger: 'Düşük',
-    description: 'Yolculuğa yeni başlayan büyücüler için güvenli yollar ve temel karşılaşmalar.'
+    description: 'Kasabalar, hanlar ve başlangıç görevleri. Yolculuğa yeni başlayan büyücüler için önerilen rota.'
   },
   {
-    name: '🌲 Orman Yolu',
+    name: '🌲 Büyük Orman Yolları',
     level: '5–12',
     danger: 'Orta',
-    description: 'Kaybolmuş patikalar, vahşi yaratıklar ve keşif görevleri.'
+    description: 'Sisli patikalar, büyülü bitkiler, mana izleri ve vahşi yaratıklarla karşılaşmalar.'
   },
   {
-    name: '🏚️ Harabe Sınırı',
+    name: '🏚️ Kadim Harabeler',
     level: '12–20',
     danger: 'Orta-Yüksek',
-    description: 'Eski büyü kalıntıları, tuzaklar ve daha dayanıklı düşmanlar.'
+    description: 'Eski uygarlıkların kalıntıları, mühürlü odalar, tuzaklar ve unutulmuş büyüler.'
   },
   {
-    name: '🌋 İblis Bölgesi',
+    name: '🧭 Kuzey Topraklarına Giden Yol',
     level: '20–35',
     danger: 'Yüksek',
-    description: 'İblislerle dolu tehlikeli alanlar; güçlü büyüler ve hazırlık gerektirir.'
+    description: 'Sert hava, uzun yolculuklar ve daha tehlikeli yaratıklar. İyi ekipman ve mana yönetimi gerekir.'
   },
   {
-    name: '🏰 Kuzey Platosu',
-    level: '35+',
+    name: '❄️ Kuzey Yaylaları',
+    level: '35–50',
     danger: 'Çok yüksek',
-    description: 'Usta maceracılar için zorlu mücadelelere ve boss karşılaşmalarına uygun son bölge.'
+    description: 'Zorlu geçitler, güçlü iblisler ve nadir ganimetler. İleride özel bölge bosslarıyla genişletilecek.'
+  },
+  {
+    name: '🏰 Äußerst ve Sınav Rotası',
+    level: '50+',
+    danger: 'Usta seviyesi',
+    description: 'Büyücü sınavı temalı görevler, özel karşılaşmalar ve yüksek seviyeli maceracılar için içerik rotası.'
   }
 ];
 
 export default {
   data: new SlashCommandBuilder()
     .setName('dunya')
-    .setDescription('Frieren RPG dünyasının bölgelerini ve önerilen seviyeleri göster.'),
+    .setDescription('Frieren dünyasının bölgelerini ve önerilen seviyeleri göster.'),
 
   async execute(interaction) {
     const embed = new EmbedBuilder()
       .setColor(0x9b8cff)
-      .setTitle('🗺️ Frieren Dünyası • Bölge Rehberi')
+      .setTitle('🗺️ Frieren Dünyası • Yolculuk Rehberi')
       .setDescription(
-        'Yolculuğunu planla, seviyene uygun bölgeyi seç. Seviyeler başlangıç için öneridir; bu rehber şimdilik bilgilendirme amaçlıdır.'
+        'Yolculuğunu planla ve seviyene uygun rotayı incele. Seviyeler oyun için öneridir; bu komut şimdilik rehber görevi görür, keşif bölgesini değiştirmez.'
       )
-      .addFields(
-        regions.map(region => ({
-          name: region.name,
-          value: `**Önerilen seviye:** ${region.level}\n**Tehlike:** ${region.danger}\n${region.description}`,
-          inline: false
-        }))
-      )
-      .setFooter({ text: 'Poğaça Frieren • Dünya rehberi | Yeni bölgeler aşamalı olarak eklenecek.' });
+      .addFields(regions.map(region => ({
+        name: region.name,
+        value: `**Önerilen seviye:** ${region.level}\n**Tehlike:** ${region.danger}\n${region.description}`,
+        inline: false
+      })))
+      .setFooter({ text: 'Poğaça Frieren • Yolculuk, büyüler ve hatıralar' });
 
     return interaction.reply({ embeds: [embed] });
   }
