@@ -11,6 +11,7 @@ import {
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pool, ensureUser } from './database/db.js';
+import { equipmentItems, equipmentBonus } from './equipment-data.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -175,18 +176,22 @@ export default {
         ensureUser(interaction.guildId, challenger.id),
         ensureUser(interaction.guildId, opponent.id)
       ]);
-      const [stats1Result, stats2Result] = await Promise.all([
+      const [stats1Result, stats2Result, gear1Result, gear2Result] = await Promise.all([
         pool.query('SELECT max_hp, attack, defense FROM users WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, challenger.id]),
-        pool.query('SELECT max_hp, attack, defense FROM users WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, opponent.id])
+        pool.query('SELECT max_hp, attack, defense FROM users WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, opponent.id]),
+        pool.query('SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, challenger.id]),
+        pool.query('SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, opponent.id])
       ]);
       const stats1 = stats1Result.rows[0];
       const stats2 = stats2Result.rows[0];
-      const maxHp1 = Number(stats1.max_hp);
-      const maxHp2 = Number(stats2.max_hp);
-      const attack1 = Number(stats1.attack);
-      const attack2 = Number(stats2.attack);
-      const defense1 = Number(stats1.defense);
-      const defense2 = Number(stats2.defense);
+      const gear1 = equipmentBonus(gear1Result.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean));
+      const gear2 = equipmentBonus(gear2Result.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean));
+      const maxHp1 = Math.min(2000, Number(stats1.max_hp) + gear1.hp);
+      const maxHp2 = Math.min(2000, Number(stats2.max_hp) + gear2.hp);
+      const attack1 = Math.min(500, Number(stats1.attack) + gear1.attack);
+      const attack2 = Math.min(500, Number(stats2.attack) + gear2.attack);
+      const defense1 = Math.min(250, Number(stats1.defense) + gear1.defense);
+      const defense2 = Math.min(250, Number(stats2.defense) + gear2.defense);
 
       const [upgrade1, upgrade2] = await Promise.all([
         pool.query('SELECT COALESCE(MAX(upgrade_level),0)::int AS level FROM character_upgrades WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, challenger.id]),
@@ -385,7 +390,7 @@ export default {
         '⚔️ Düello Başladı!',
         `${challenger} ile ${opponent} karşı karşıya!\n\n` +
         `İlk hamle: ${challenger}\n` +
-        `Başlangıç HP: ${maxHp1} / ${maxHp2}. Saldırı ve savunma değerlerin artık savaşta etkili. Hamleni seç!`,
+        `Başlangıç HP: ${maxHp1} / ${maxHp2}. Kuşanılan ekipmanların saldırı, savunma ve maksimum HP bonusları da uygulandı. Hamleni seç!`,
         0x9b8cff,
         hp1,
         hp2,
