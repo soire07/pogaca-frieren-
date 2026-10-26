@@ -3,7 +3,7 @@ import { pool, ensureUser } from '../../database/db.js';
 
 export default {
   data: new SlashCommandBuilder()
-    .setName('envanter')
+    .setName('cantam')
     .setDescription('Keşiflerde topladığın eşyaları ve miktarlarını göster.'),
 
   async execute(interaction) {
