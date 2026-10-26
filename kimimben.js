@@ -22,7 +22,11 @@ const characters = [
   { name: 'Monkey D. Luffy', anime: 'One Piece', rarity: 'Destansı', emoji: '🏴‍☠️', color: 0xd95757, description: 'Özgürlüğü ve arkadaşlarını her şeyin üstünde tutan korsan.', traits: 'Özgür ruhlu • Cesur • Eğlenceli', image: null },
   { name: 'Satoru Gojo', anime: 'Jujutsu Kaisen', rarity: 'Efsanevi', emoji: '👁️', color: 0x68a9ff, description: 'Kendine güveni ve olağanüstü yetenekleriyle tanınan büyücü.', traits: 'Kendinden emin • Şakacı • Güçlü', image: null },
   { name: 'Tanjiro Kamado', anime: 'Demon Slayer', rarity: 'Nadir', emoji: '🌊', color: 0x50a9a0, description: 'Sevdiklerini korumak için mücadele eden şefkatli savaşçı.', traits: 'Şefkatli • Azimli • Dürüst', image: null },
-  { name: 'Levi Ackerman', anime: 'Attack on Titan', rarity: 'Efsanevi', emoji: '🗡️', color: 0x8294a8, description: 'Soğukkanlılığı ve becerileriyle öne çıkan asker.', traits: 'Disiplinli • Soğukkanlı • Kararlı', image: null }
+  { name: 'Levi Ackerman', anime: 'Attack on Titan', rarity: 'Efsanevi', emoji: '🗡️', color: 0x8294a8, description: 'Soğukkanlılığı ve becerileriyle öne çıkan asker.', traits: 'Disiplinli • Soğukkanlı • Kararlı', image: null },
+  { name: 'Kanne', anime: 'Frieren: Beyond Journey’s End', rarity: 'Yaygın', emoji: '💧', color: 0x69b7e8, description: 'Suyu kontrol edebilen, büyü sınavına katılan genç büyücü.', traits: 'Meraklı • Duyarlı • Büyücü', image: null },
+  { name: 'Lawine', anime: 'Frieren: Beyond Journey’s End', rarity: 'Yaygın', emoji: '❄️', color: 0x78a9dc, description: 'Buz büyülerinde yetenekli, kararlı genç büyücü.', traits: 'Kararlı • Rekabetçi • Yetenekli', image: null },
+  { name: 'Laufen', anime: 'Frieren: Beyond Journey’s End', rarity: 'Yaygın', emoji: '🌬️', color: 0x80c7b0, description: 'Hızlı hareketleriyle öne çıkan genç büyücü.', traits: 'Çevik • Atik • Zeki', image: null },
+  { name: 'Richter', anime: 'Frieren: Beyond Journey’s End', rarity: 'Yaygın', emoji: '🪨', color: 0xb69a83, description: 'Toprak büyülerinde uzmanlaşmış, doğrudan konuşan büyücü.', traits: 'Pratik • Kendinden emin • Büyücü', image: null }
 ];
 
 const rarityInfo = {
