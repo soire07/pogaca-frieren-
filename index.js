@@ -211,7 +211,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const panel = await renderMarket(interaction.guildId, interaction.user.id);
         return interaction.update({...panel,content:null,attachments:[]});
       } else if (action === 'market_cat') {
-        const categories = ['Hepsi','Büyülü Eşyalar','Anime Hatıraları','Lanetli Eşyalar','Fırın Özel'];
+        const categories = ['Hepsi','Ekipman','Büyülü Eşyalar','Anime Hatıraları','Koleksiyon Eşyaları'];
         category = categories[Number(parts[1])] || 'Hepsi';
       } else if (action === 'market_prev' || action === 'market_next') {
         page = Number(parts[1]) + (action === 'market_prev' ? -1 : 1);
