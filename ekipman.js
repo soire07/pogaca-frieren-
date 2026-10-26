@@ -42,7 +42,7 @@ export default {
         attack: sum.attack + item.attack, defense: sum.defense + item.defense, hp: sum.hp + item.hp, mana: sum.mana + item.mana
       }), { attack: 0, defense: 0, hp: 0, mana: 0 });
       const embed = new EmbedBuilder().setColor(0x9b8cff).setTitle('🛡️ Kuşanılan Ekipman')
-        .setDescription(lines.join('\\n\\n'))
+        .setDescription(lines.join('\n\n'))
         .addFields({ name: '✨ Toplam ekipman bonusu', value: formatEquipmentBonus(totals), inline: false })
         .setFooter({ text: 'Eşyalar envanterinde kalır. /market ile ekipman alabilir, /ekipman ile kuşanabilirsin.' });
       return interaction.reply({ embeds: [embed], ephemeral: true });
