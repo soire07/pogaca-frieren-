@@ -4,7 +4,7 @@ import { readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { initDatabase, pool } from './database/db.js';
-import { renderMarket, renderMarketItem, buyMarketItem } from './market.js';
+import { renderMarket, renderMarketItem, buyMarketItem, renderPurchaseResult, renderMarketInventory } from './market.js';
 import { levelForXp } from './utils.js';
 import { createServer } from 'node:http';
 
@@ -76,7 +76,15 @@ client.on(Events.InteractionCreate, async interaction => {
         category = parts[2] || 'Hepsi';
       } else if (action === 'market_buy') {
         const result = await buyMarketItem(interaction.guildId, interaction.user.id, parts[1]);
+        if (result.ok) {
+          const balanceResult = await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[interaction.guildId,interaction.user.id]);
+          const success = renderPurchaseResult(parts[1], balanceResult.rows[0]?.coins ?? 0, interaction.user.id);
+          return interaction.update(success);
+        }
         notice = result.message;
+      } else if (action === 'market_inventory') {
+        const inventory = await renderMarketInventory(interaction.guildId, interaction.user.id);
+        return interaction.update(inventory);
       }
       const panel = await renderMarket(interaction.guildId, interaction.user.id, page, category);
       return interaction.update({ ...panel, content: notice });
