@@ -25,7 +25,7 @@ export default {
     await ensureUser(interaction.guildId, target.id);
 
     const { rows: [u] } = await pool.query(
-      'SELECT xp, level, coins, class_name, hp, max_hp, mana, max_mana, attack, defense, stat_points FROM users WHERE guild_id=$1 AND user_id=$2',
+      'SELECT xp, level, coins, class_name, hp, max_hp, mana, max_mana, attack, defense, stat_points, daily_streak, best_daily_streak FROM users WHERE guild_id=$1 AND user_id=$2',
       [interaction.guildId, target.id]
     );
 
@@ -58,6 +58,8 @@ export default {
           inline: true
         },
         { name: '🥐 Poğaça altını', value: Number(u.coins).toLocaleString('tr-TR'), inline: true },
+        { name: '🔥 Günlük seri', value: `${Number(u.daily_streak || 0)} gün`, inline: true },
+        { name: '🏆 En iyi seri', value: `${Number(u.best_daily_streak || 0)} gün`, inline: true },
         { name: 'Sınıf', value: u.class_name ?? 'Gezgin', inline: true },
         { name: '❤️ Can', value: `${Math.min(Number(u.hp), effectiveMaxHp)}/${effectiveMaxHp}`, inline: true },
         { name: '✨ Mana', value: `${Math.min(Number(u.mana), effectiveMaxMana)}/${effectiveMaxMana}`, inline: true },
