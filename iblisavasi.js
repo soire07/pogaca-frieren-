@@ -29,9 +29,11 @@ function battleEmbed({ player, bossHp, playerHp, playerMaxHp = PLAYER_MAX_HP, pl
 
 function actionRow(disabled = false) {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('demon_attack').setLabel('Zoltraak').setEmoji('⚡').setStyle(ButtonStyle.Danger).setDisabled(disabled),
-    new ButtonBuilder().setCustomId('demon_defend').setLabel('Savunma büyüsü').setEmoji('🛡️').setStyle(ButtonStyle.Primary).setDisabled(disabled),
-    new ButtonBuilder().setCustomId('demon_heal').setLabel('İyileş').setEmoji('💚').setStyle(ButtonStyle.Success).setDisabled(disabled)
+    new ButtonBuilder().setCustomId('demon_attack').setLabel('Zoltraak · 8 Mana').setEmoji('⚡').setStyle(ButtonStyle.Danger).setDisabled(disabled),
+    new ButtonBuilder().setCustomId('demon_fire').setLabel('Alev Küresi · 14').setEmoji('🔥').setStyle(ButtonStyle.Danger).setDisabled(disabled),
+    new ButtonBuilder().setCustomId('demon_ice').setLabel('Buz Mızrağı · 12').setEmoji('🧊').setStyle(ButtonStyle.Danger).setDisabled(disabled),
+    new ButtonBuilder().setCustomId('demon_defend').setLabel('Kalkan · 6 Mana').setEmoji('🛡️').setStyle(ButtonStyle.Primary).setDisabled(disabled),
+    new ButtonBuilder().setCustomId('demon_heal').setLabel('Şifa · 20 Mana').setEmoji('💚').setStyle(ButtonStyle.Success).setDisabled(disabled)
   );
 }
 
@@ -95,7 +97,7 @@ export default {
       bossHp,
       playerHp,
       bonus: upgradeBonus,
-      description: `Kuzey sınırında tehlikeli bir iblisle karşılaştın, <@${interaction.user.id}>!\n\n**Hamleni seç:** Zoltraak ile saldır, savunma büyüsüyle hasarı azalt veya savaş boyunca bir kez iyileş. Her karakter geliştirme seviyesi saldırı gücüne +2 hasar ekler.`
+      description: `Kuzey sınırında tehlikeli bir iblisle karşılaştın, <@${interaction.user.id}>!\n\n**Hamleni seç:** Zoltraak dengeli saldırır; Alev Küresi daha güçlü hasar verir; Buz Mızrağı iblisi dondurup karşı saldırısını durdurabilir. Kalkan hasarı azaltır, Şifa ise savaşta bir kez can yeniler. Her karakter geliştirme seviyesi saldırı gücüne +2 hasar ekler.`
     });
     await interaction.editReply({ embeds: [initial], components: [actionRow()] });
     const message = await interaction.fetchReply();
@@ -110,6 +112,7 @@ export default {
 
       try {
         let actionText = '';
+        let frozenBoss = false;
         if (button.customId === 'demon_attack') {
           if (playerMana < 8) {
             busy = false;
@@ -119,6 +122,25 @@ export default {
           const damage = Math.floor(Math.random() * 13) + 18 + attack + upgradeBonus;
           bossHp = Math.max(0, bossHp - damage);
           actionText = `⚡ Zoltraak isabet etti! İblise **${damage} hasar** verdin. (Saldırı: ${attack}, Mana: −8)`;
+        } else if (button.customId === 'demon_fire') {
+          if (playerMana < 14) {
+            busy = false;
+            return button.reply({ content: 'Alev Küresi için en az **14 Mana** gerekiyor.', ephemeral: true });
+          }
+          playerMana -= 14;
+          const damage = Math.floor(Math.random() * 13) + 28 + attack + upgradeBonus;
+          bossHp = Math.max(0, bossHp - damage);
+          actionText = `🔥 Alev Küresi patladı! İblise **${damage} hasar** verdin. (Mana: −14)`;
+        } else if (button.customId === 'demon_ice') {
+          if (playerMana < 12) {
+            busy = false;
+            return button.reply({ content: 'Buz Mızrağı için en az **12 Mana** gerekiyor.', ephemeral: true });
+          }
+          playerMana -= 12;
+          const damage = Math.floor(Math.random() * 11) + 22 + attack + upgradeBonus;
+          bossHp = Math.max(0, bossHp - damage);
+          frozenBoss = Math.random() < 0.35;
+          actionText = `🧊 Buz Mızrağı isabet etti! İblise **${damage} hasar** verdin. (Mana: −12)${frozenBoss ? '\n❄️ İblis dondu ve bu tur karşı saldırı yapamadı!' : ''}`;
         } else if (button.customId === 'demon_defend') {
           if (playerMana < 6) {
             busy = false;
@@ -183,13 +205,16 @@ export default {
 
         const rawBossDamage = Math.floor(Math.random() * 12) + 12;
         let bossDamage = Math.max(1, rawBossDamage - Math.floor(defense / 2));
-        if (shield) {
+        if (frozenBoss) bossDamage = 0;
+        if (shield && bossDamage > 0) {
           bossDamage = Math.ceil(bossDamage / 2);
           shield = false;
           actionText += '\n🛡️ Kalkanın iblisin saldırısını zayıflattı.';
         }
         playerHp = Math.max(0, playerHp - bossDamage);
-        actionText += `\n👹 İblis karşılık verdi: **${bossDamage} hasar** aldın.`;
+        actionText += bossDamage > 0
+          ? `\n👹 İblis karşılık verdi: **${bossDamage} hasar** aldın.`
+          : '\n❄️ Donduğu için iblis bu tur saldıramadı.';
 
         if (playerHp <= 0) {
           await pool.query('UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, playerHp, playerMana]);
