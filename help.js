@@ -15,7 +15,7 @@ const sections = [
   },
   {
     name: '💰 Ekonomi ve eşyalar',
-    value: '`/bakiye` • Altın bakiyesi\n`/market` • Büyülü market\n`/envanter` • Eşyalarını gör\n`/esyakullan` • Kullanılabilir eşya kullan'
+    value: '`/bakiye` • Altın bakiyesi\n`/market` • Ekipman ve büyülü market\n`/envanter` • Eşyalarını ve kuşanılanları gör\n`/ekipman` • Silah, zırh ve yüzük kuşan/çıkar\n`/esyakullan` • Kullanılabilir eşya kullan'
   },
   {
     name: '🎲 Eğlence ve topluluk',
