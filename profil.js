@@ -2,6 +2,7 @@
 import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { xpForNextLevel } from './utils.js';
+import { equipmentItems, equipmentBonus } from './equipment-data.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -28,6 +29,14 @@ export default {
       [interaction.guildId, target.id]
     );
 
+    const equippedResult = await pool.query('SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, target.id]);
+    const equippedItems = equippedResult.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean);
+    const gear = equipmentBonus(equippedItems);
+    const effectiveMaxHp = Math.min(2000, Number(u.max_hp) + gear.hp);
+    const effectiveMaxMana = Math.min(2000, Number(u.max_mana) + gear.mana);
+    const effectiveAttack = Math.min(500, Number(u.attack) + gear.attack);
+    const effectiveDefense = Math.min(250, Number(u.defense) + gear.defense);
+
     if (!u) {
       return interaction.reply({
         content: 'Profil bilgileri bulunamadı. Lütfen tekrar dene.',
@@ -50,11 +59,12 @@ export default {
         },
         { name: '🥐 Poğaça altını', value: Number(u.coins).toLocaleString('tr-TR'), inline: true },
         { name: 'Sınıf', value: u.class_name ?? 'Gezgin', inline: true },
-        { name: '❤️ Can', value: `${u.hp}/${u.max_hp}`, inline: true },
-        { name: '✨ Mana', value: `${u.mana}/${u.max_mana}`, inline: true },
-        { name: '⚔️ Saldırı', value: String(u.attack), inline: true },
-        { name: '🛡️ Savunma', value: String(u.defense), inline: true },
-        { name: '🌟 Dağıtılabilir puan', value: String(u.stat_points), inline: true }
+        { name: '❤️ Can', value: `${Math.min(Number(u.hp), effectiveMaxHp)}/${effectiveMaxHp}`, inline: true },
+        { name: '✨ Mana', value: `${Math.min(Number(u.mana), effectiveMaxMana)}/${effectiveMaxMana}`, inline: true },
+        { name: '⚔️ Saldırı', value: String(effectiveAttack), inline: true },
+        { name: '🛡️ Savunma', value: String(effectiveDefense), inline: true },
+        { name: '🌟 Dağıtılabilir puan', value: String(u.stat_points), inline: true },
+        { name: '🧥 Kuşanılan ekipman', value: equippedItems.length ? equippedItems.map(item => item.name).join('\n') : 'Henüz ekipman yok', inline: false }
       )
       .setImage('attachment://profil.gif')
       .setFooter({ text: 'Poğaça Frieren • Maceracı Kayıtları' });
