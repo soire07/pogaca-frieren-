@@ -34,6 +34,7 @@ export async function initDatabase() {
       last_adventure_at TIMESTAMPTZ,
       last_boss_at TIMESTAMPTZ,
       last_rest_at TIMESTAMPTZ,
+      last_exploration_at TIMESTAMPTZ,
       pity_count INTEGER NOT NULL DEFAULT 0 CHECK (pity_count >= 0),
       free_character_pity_count INTEGER NOT NULL DEFAULT 0 CHECK (free_character_pity_count >= 0),
       last_free_character_at TIMESTAMPTZ,
@@ -53,6 +54,7 @@ export async function initDatabase() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS stat_points INTEGER NOT NULL DEFAULT 0 CHECK (stat_points >= 0);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_boss_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_rest_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_exploration_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS pity_count INTEGER NOT NULL DEFAULT 0;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS free_character_pity_count INTEGER NOT NULL DEFAULT 0 CHECK (free_character_pity_count >= 0);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_free_character_at TIMESTAMPTZ;
