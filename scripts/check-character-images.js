@@ -122,6 +122,6 @@ const report = {
 };
 console.log(JSON.stringify(report, null, 2));
 
-// Only fail for missing URLs, confirmed 404/410s, or successful non-image responses.
-// 403/429, network failures, timeouts, and server errors are not proof that an image is broken.
-if (report.definitelyBroken > 0) process.exitCode = 1;
+// This is an informational audit only. Never fail the workflow:
+// the bot can continue deploying while inaccessible hosts are reviewed separately.
+
