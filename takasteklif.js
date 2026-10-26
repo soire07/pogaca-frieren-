@@ -18,7 +18,7 @@ export default {
   if(!owned.rowCount)return interaction.reply({content:'Koleksiyonunda **'+name+'** bulunamadı.',ephemeral:true});
   if(amount>=Number(owned.rows[0].quantity))return interaction.reply({content:'Son kopyanı korumak için en fazla **'+(Number(owned.rows[0].quantity)-1)+'** kopya teklif edebilirsin.',ephemeral:true});
   const c=owned.rows[0];
-  const encoded=Buffer.from(JSON.stringify({g:interaction.guildId,f:interaction.user.id,t:target.id,n:c.character_name,a:amount})).toString('base64url');
+  const encoded=Buffer.from(JSON.stringify({f:interaction.user.id,t:target.id,n:c.character_name,a:amount})).toString('base64url');
   if(encoded.length>70)return interaction.reply({content:'Bu teklif oluşturulamadı; lütfen daha kısa karakter adı kullan.',ephemeral:true});
   const row=new ActionRowBuilder().addComponents(
    new ButtonBuilder().setCustomId('trade_accept:'+encoded).setLabel('Teklifi kabul et').setStyle(ButtonStyle.Success),
