@@ -5,7 +5,10 @@ const spells = {
   alev_kuresi: { name: '🔥 Alev Küresi', cost: 180, description: 'Yüksek hasarlı ateş saldırısı.' },
   buz_mizragi: { name: '🧊 Buz Mızrağı', cost: 160, description: 'Hasar verir ve bazen düşmanın turunu durdurur.' },
   koruyucu_bariyer: { name: '🛡️ Koruyucu Bariyer', cost: 120, description: 'İblisin karşı saldırısını azaltır.' },
-  sifa_isigi: { name: '💚 Şifa Işığı', cost: 200, description: 'Savaş sırasında bir kez canını yeniler.' }
+  sifa_isigi: { name: '💚 Şifa Işığı', cost: 200, description: 'Savaş sırasında bir kez canını yeniler.' },
+  yildirim_zinciri: { name: '⚡ Yıldırım Zinciri', cost: 420, level: 10, bossDefeats: 3, description: 'Zincirleme yıldırım hasarı verir; seviye 10 ve 3 boss zaferi gerektirir.' },
+  tas_duvar: { name: '🪨 Taş Duvar', cost: 360, level: 15, bossDefeats: 5, description: 'Bir sonraki boss saldırısının etkisini büyük ölçüde azaltır; seviye 15 ve 5 boss zaferi gerektirir.' },
+  mana_patlamasi: { name: '🌌 Mana Patlaması', cost: 650, level: 25, bossDefeats: 10, description: 'Çok yüksek büyü hasarı verir; seviye 25 ve 10 boss zaferi gerektirir.' }
 };
 
 export default {
@@ -20,7 +23,10 @@ export default {
           { name: '🔥 Alev Küresi — 180 altın', value: 'alev_kuresi' },
           { name: '🧊 Buz Mızrağı — 160 altın', value: 'buz_mizragi' },
           { name: '🛡️ Koruyucu Bariyer — 120 altın', value: 'koruyucu_bariyer' },
-          { name: '💚 Şifa Işığı — 200 altın', value: 'sifa_isigi' }
+          { name: '💚 Şifa Işığı — 200 altın', value: 'sifa_isigi' },
+          { name: '⚡ Yıldırım Zinciri — 420 altın · Sv.10 + 3 boss', value: 'yildirim_zinciri' },
+          { name: '🪨 Taş Duvar — 360 altın · Sv.15 + 5 boss', value: 'tas_duvar' },
+          { name: '🌌 Mana Patlaması — 650 altın · Sv.25 + 10 boss', value: 'mana_patlamasi' }
         )
     ),
 
@@ -38,12 +44,17 @@ export default {
       await db.query('BEGIN');
       // Lock the player's row first so two simultaneous purchase attempts cannot both charge coins.
       const player = await db.query(
-        'SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+        'SELECT coins, level, boss_defeats FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
         [interaction.guildId, interaction.user.id]
       );
       if (!player.rowCount) {
         await db.query('ROLLBACK');
         return interaction.reply({ content: 'Maceracı kaydın bulunamadı. Lütfen komutu yeniden dene.', ephemeral: true });
+      }
+
+      if ((spell.level && Number(player.rows[0].level) < spell.level) || (spell.bossDefeats && Number(player.rows[0].boss_defeats) < spell.bossDefeats)) {
+        await db.query('ROLLBACK');
+        return interaction.reply({ content: `**${spell.name}** henüz kilitli. Gereksinimler: seviye **${spell.level}** ve **${spell.bossDefeats} boss zaferi**. Şu an: seviye **${player.rows[0].level}**, boss zaferi **${player.rows[0].boss_defeats}**.`, ephemeral: true });
       }
 
       const already = await db.query(
