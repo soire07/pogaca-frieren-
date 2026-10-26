@@ -4,7 +4,7 @@ import { readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { initDatabase, pool } from './database/db.js';
-import { renderMarket, buyMarketItem } from './market.js';
+import { renderMarket, renderMarketItem, buyMarketItem } from './market.js';
 import { levelForXp } from './utils.js';
 import { createServer } from 'node:http';
 
@@ -56,7 +56,19 @@ client.on(Events.InteractionCreate, async interaction => {
       let page = 0;
       let category = 'Hepsi';
       let notice = null;
-      if (action === 'market_cat') {
+      if (action === 'market_detail') {
+        const detail = renderMarketItem(parts[1], 0, interaction.user.id);
+        if (!detail) return interaction.reply({content:'Bu eşya bulunamadı.',ephemeral:true});
+        const balanceResult = await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[interaction.guildId,interaction.user.id]);
+        const actualDetail = renderMarketItem(parts[1], balanceResult.rows[0]?.coins ?? 0, interaction.user.id);
+        return interaction.update({...actualDetail,content:null});
+      } else if (action === 'market_back') {
+        const panel = await renderMarket(interaction.guildId, interaction.user.id);
+        return interaction.update({...panel,content:null});
+      } else if (action === 'market_refresh') {
+        const panel = await renderMarket(interaction.guildId, interaction.user.id);
+        return interaction.update({...panel,content:null});
+      } else if (action === 'market_cat') {
         const categories = ['Hepsi','Büyülü Eşyalar','Anime Hatıraları','Lanetli Eşyalar','Fırın Özel'];
         category = categories[Number(parts[1])] || 'Hepsi';
       } else if (action === 'market_prev' || action === 'market_next') {
