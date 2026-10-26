@@ -27,9 +27,18 @@ for (const file of files) {
       commands.push(mod.default.data.toJSON());
     }
   } catch (error) {
-    console.error(`${file} yüklenemedi:`, error);
+    console.error(`${file} yüklenemedi; komut kaydı durduruldu:`, error);
+    process.exitCode = 1;
+    throw error;
   }
 }
+
+const names = commands.map(command => command.name);
+const duplicates = names.filter((name, index) => names.indexOf(name) !== index);
+if (duplicates.length) {
+  throw new Error('Tekrarlanan slash komut adları: ' + [...new Set(duplicates)].join(', '));
+}
+console.log(`Kaydedilmeye hazır ${commands.length} komut doğrulandı.`);
 
 const rest = new REST({ version: '10' }).setToken(token);
 
