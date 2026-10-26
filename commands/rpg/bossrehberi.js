@@ -97,7 +97,7 @@ export default {
       )
       .addFields({
         name: '🧙 Savaş hazırlığı',
-        value: 'Canın veya Manan düşükse **/dinlen** kullan. Yeni büyüler öğrenmek için **/buyuogren**, büyü arşivini görmek için **/buyular**, ustalığını kontrol etmek için **/buyuustaligi** komutlarını kullan. Boss savaşı için **/iblisavasi** yaz.'
+        value: 'Canın veya Manan düşükse **/dinlen** kullan. **/market** üzerinden ekipman alıp **/ekipman** ile silah, zırh ve iki yüzük kuşan; bonuslar saldırı, savunma, maksimum HP ve Mana değerlerine yansır. Yeni büyüler için **/buyuogren**, büyü arşivi için **/buyular**, ustalık için **/buyuustaligi** kullan. Boss savaşı için **/iblisavasi** yaz.'
       })
       .setFooter({ text: 'Poğaça Frieren • Her zafer seni kuzeye bir adım daha yaklaştırır.' });
 
