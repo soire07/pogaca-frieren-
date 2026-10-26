@@ -39,7 +39,8 @@ const usableItems = {
   ruin_key: { name: '🗝️ Harabe Anahtarı', key: '🗝️ Harabe Anahtarı', description: 'Anahtarı gezgin koleksiyonculara sattın; 45 altın kazandın.', xp: 0, coins: 45 },
   demon_essence: { name: '🩸 İblis Özü', key: '🩸 İblis Özü', description: 'İblis özü bedenini güçlendirdi; 35 HP ve 20 Mana yeniledin.', xp: 0, coins: 0, hp: 35, mana: 20 },
   dried_flower: { name: '🌼 Kurutulmuş Çiçek', key: '🌼 Kurutulmuş Çiçek', description: 'Çiçeğin sakinleştirici büyüsü 25 HP yeniledi.', xp: 0, coins: 0, hp: 25 },
-  magic_poagaca: { name: '🥐 Büyülü Poğaça', key: '🥐 Büyülü Poğaça', description: 'Büyülü poğaça 20 HP ve 10 Mana yeniledi.', xp: 0, coins: 0, hp: 20, mana: 10 }
+  magic_poagaca: { name: '🥐 Büyülü Poğaça', key: '🥐 Büyülü Poğaça', description: 'Büyülü poğaça 20 HP ve 10 Mana yeniledi.', xp: 0, coins: 0, hp: 20, mana: 10 },
+  healing_potion: { name: '🧪 Şifa İksiri', key: '🧪 Şifa İksiri', description: 'İksir 60 HP ve 25 Mana yeniledi.', xp: 0, coins: 0, hp: 60, mana: 25 }
 };
 
 export default {
@@ -70,7 +71,8 @@ export default {
           { name: '🗝️ Harabe Anahtarı (+45 altın)', value: 'ruin_key' },
           { name: '🩸 İblis Özü (+35 HP, +20 Mana)', value: 'demon_essence' },
           { name: '🌼 Kurutulmuş Çiçek (+25 HP)', value: 'dried_flower' },
-          { name: '🥐 Büyülü Poğaça (+20 HP, +10 Mana)', value: 'magic_poagaca' }
+          { name: '🥐 Büyülü Poğaça (+20 HP, +10 Mana)', value: 'magic_poagaca' },
+          { name: '🧪 Şifa İksiri (+60 HP, +25 Mana)', value: 'healing_potion' }
         )
     ),
 
