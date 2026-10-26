@@ -36,8 +36,18 @@ export default {
     const db = await pool.connect();
     try {
       await db.query('BEGIN');
+      // Lock the player's row first so two simultaneous purchase attempts cannot both charge coins.
+      const player = await db.query(
+        'SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+        [interaction.guildId, interaction.user.id]
+      );
+      if (!player.rowCount) {
+        await db.query('ROLLBACK');
+        return interaction.reply({ content: 'Maceracı kaydın bulunamadı. Lütfen komutu yeniden dene.', ephemeral: true });
+      }
+
       const already = await db.query(
-        'SELECT 1 FROM learned_spells WHERE guild_id=$1 AND user_id=$2 AND spell_key=$3 FOR UPDATE',
+        'SELECT 1 FROM learned_spells WHERE guild_id=$1 AND user_id=$2 AND spell_key=$3',
         [interaction.guildId, interaction.user.id, spellKey]
       );
       if (already.rowCount) {
