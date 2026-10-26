@@ -48,7 +48,7 @@ function panelEmbed(page, category, balance, user) {
   .setDescription('Anime evrenlerinden ilham alan özel koleksiyon eşyaları!\nAltındaki butonlarla kategori değiştir, eşyaları incele ve satın al.')
   .addFields({name:'💰 Cüzdanın',value:'**'+Number(balance).toLocaleString('tr-TR')+'** poğaça altını',inline:true},
    {name:'🗂️ Kategori',value:'**'+category+'**',inline:true},
-   ...shown.map(item=>({name:item.emoji+' '+item.name+'  •  '+item.price.toLocaleString('tr-TR')+' altın',value:rarityEmoji[item.rarity]+' **'+item.rarity+'**\n'+item.description,inline:false})))
+   ...shown.map(item=>({name:item.name+'  •  '+item.price.toLocaleString('tr-TR')+' altın',value:rarityEmoji[item.rarity]+' **'+item.rarity+'**\n'+item.description,inline:false})))
   .setFooter({text:'Sayfa '+(safePage+1)+'/'+pages+' • Satın aldığın eşyalar /envanter içinde görünür.'})
   .setTimestamp();
  return {embed, page:safePage, pages, shown, category};
