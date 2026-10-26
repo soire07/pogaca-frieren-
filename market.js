@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
+import { equipmentItems, formatEquipmentBonus } from './equipment-data.js';
 
 export const marketItems = [
  { id:'frieren_staff', name:'🪄 Frieren’in Asası', price:900, category:'Büyülü Eşyalar', rarity:'Efsanevi', description:'Bin yıllık büyü bilgisini temsil eden koleksiyonluk asa.', emoji:'🪄' },
@@ -10,17 +11,23 @@ export const marketItems = [
  { id:'himmel_flower', name:'🌼 Himmel’in Mavi Çiçeği', price:600, category:'Anime Hatıraları', rarity:'Efsanevi', description:'Kahraman Himmel’i hatırlatan özel bir çiçek.', emoji:'🌼' },
  { id:'goku_orb', name:'🔴 Dört Yıldızlı Ejder Topu', price:650, category:'Anime Hatıraları', rarity:'Efsanevi', description:'Ejderha efsanesinden esinlenen parlak bir hatıra.', emoji:'🔴' },
  { id:'ninja_scroll', name:'📜 Gizli Ninja Parşömeni', price:280, category:'Anime Hatıraları', rarity:'Nadir', description:'Azim ve ninja ruhunu simgeleyen parşömen.', emoji:'📜' },
- { id:'cursed_charm', name:'🧿 Lanetli Muska', price:380, category:'Lanetli Eşyalar', rarity:'Destansı', description:'Jujutsu dünyasından esinlenen gizemli muska.', emoji:'🧿' },
- { id:'breathing_mask', name:'🌊 Su Nefesi Tılsımı', price:320, category:'Lanetli Eşyalar', rarity:'Nadir', description:'Sakinlik ve odaklanmayı simgeleyen tılsım.', emoji:'🌊' },
+ { id:'cursed_charm', name:'🧿 Lanetli Muska', price:380, category:'Koleksiyon Eşyaları', rarity:'Destansı', description:'Jujutsu dünyasından esinlenen gizemli muska.', emoji:'🧿' },
+ { id:'breathing_mask', name:'🌊 Su Nefesi Tılsımı', price:320, category:'Koleksiyon Eşyaları', rarity:'Nadir', description:'Sakinlik ve odaklanmayı simgeleyen tılsım.', emoji:'🌊' },
  { id:'survey_badge', name:'🪽 Keşif Birliği Rozeti', price:450, category:'Anime Hatıraları', rarity:'Destansı', description:'Cesur keşif askerlerine adanmış rozet.', emoji:'🪽' },
  { id:'lucky_charm', name:'🍀 Şans Tılsımı', price:250, category:'Büyülü Eşyalar', rarity:'Nadir', description:'Koleksiyonunda saklayabileceğin şanslı tılsım.', emoji:'🍀' },
- { id:'frieren_tea', name:'🍵 Frieren Çayı', price:120, category:'Fırın Özel', rarity:'Yaygın', description:'Uzun yolculuklar için sıcak, huzurlu bir çay.', emoji:'🍵' },
- { id:'poagaca_box', name:'🥐 Büyülü Poğaça Kutusu', price:180, category:'Fırın Özel', rarity:'Yaygın', description:'Poğaça Frieren marketinin imza kutusu.', emoji:'🥐' },
- { id:'star_potion', name:'🌠 Yıldız İksiri', price:800, category:'Fırın Özel', rarity:'Efsanevi', description:'Yıldız ışığıyla parlayan sınırlı temalı hatıra.', emoji:'🌠' },
- { id:'healing_potion', name:'🧪 Şifa İksiri', price:220, category:'Fırın Özel', rarity:'Yaygın', description:'Kullanıldığında 60 HP ve 25 Mana yeniler. /esyakullan ile kullanabilirsin.', emoji:'🧪' }
+ { id:'frieren_tea', name:'🍵 Frieren Çayı', price:120, category:'Koleksiyon Eşyaları', rarity:'Yaygın', description:'Uzun yolculuklar için sıcak, huzurlu bir çay.', emoji:'🍵' },
+ { id:'poagaca_box', name:'🥐 Büyülü Poğaça Kutusu', price:180, category:'Koleksiyon Eşyaları', rarity:'Yaygın', description:'Poğaça Frieren marketinin imza kutusu.', emoji:'🥐' },
+ { id:'star_potion', name:'🌠 Yıldız İksiri', price:800, category:'Koleksiyon Eşyaları', rarity:'Efsanevi', description:'Yıldız ışığıyla parlayan sınırlı temalı hatıra.', emoji:'🌠' },
+ { id:'healing_potion', name:'🧪 Şifa İksiri', price:220, category:'Koleksiyon Eşyaları', rarity:'Yaygın', description:'Kullanıldığında 60 HP ve 25 Mana yeniler. /esyakullan ile kullanabilirsin.', emoji:'🧪' }
+  ...equipmentItems.map(item => ({
+    ...item,
+    category: 'Ekipman',
+    itemType: 'equipment',
+    description: item.description + ' ' + formatEquipmentBonus(item) + ' · Kullanım seviyesi: ' + item.levelReq + '+.'
+  }))
 ];
 
-const categories = ['Hepsi','Büyülü Eşyalar','Anime Hatıraları','Lanetli Eşyalar','Fırın Özel'];
+const categories = ['Hepsi','Ekipman','Büyülü Eşyalar','Anime Hatıraları','Koleksiyon Eşyaları'];
 const rarityEmoji = { Yaygın:'⚪', Nadir:'🔹', Destansı:'🟣', Efsanevi:'🟡' };
 
 export function renderMarketItem(itemId, balance, userId) {
