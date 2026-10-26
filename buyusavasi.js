@@ -167,6 +167,13 @@ export default {
 
       await button.deferUpdate();
 
+      const [upgrade1, upgrade2] = await Promise.all([
+        pool.query('SELECT COALESCE(MAX(upgrade_level),0)::int AS level FROM character_upgrades WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, challenger.id]),
+        pool.query('SELECT COALESCE(MAX(upgrade_level),0)::int AS level FROM character_upgrades WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, opponent.id])
+      ]);
+      const bonus1 = Number(upgrade1.rows[0]?.level || 0) * 2;
+      const bonus2 = Number(upgrade2.rows[0]?.level || 0) * 2;
+
       let hp1 = MAX_HP;
       let hp2 = MAX_HP;
       let currentPlayer = challenger.id;
@@ -263,7 +270,7 @@ export default {
         let showAttackGif = false;
 
         if (move.customId === 'duel_attack') {
-          let damage = Math.floor(Math.random() * 16) + 15;
+          let damage = Math.floor(Math.random() * 16) + 15 + (isPlayer1 ? bonus1 : bonus2);
 
           if (isPlayer1 && shield2) {
             damage = Math.ceil(damage * 0.5);
@@ -281,7 +288,8 @@ export default {
             hp1 = Math.max(0, hp1 - damage);
           }
 
-          description += `⚡ ${move.user} büyü saldırısı yaptı ve **${damage} hasar** verdi!`;
+          const upgradeBonus = isPlayer1 ? bonus1 : bonus2;
+          description += `⚡ ${move.user} büyü saldırısı yaptı ve **${damage} hasar** verdi!${upgradeBonus ? ` (karakter geliştirmesi +${upgradeBonus})` : ''}`;
           showAttackGif = true;
 
         } else if (move.customId === 'duel_defend') {
