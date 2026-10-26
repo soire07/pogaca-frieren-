@@ -35,7 +35,7 @@ export default {
         await pool.query(`INSERT INTO guild_settings (guild_id, log_channel_id)
           VALUES ($1,$2) ON CONFLICT (guild_id) DO UPDATE SET log_channel_id=EXCLUDED.log_channel_id`,
           [interaction.guildId, channel.id]);
-        return interaction.reply({ content: `✅ Moderasyon log kanalı kaydedildi: ${channel}\nNot: Log kanalını kaydetmek tek başına her olay için log üretmez; olay entegrasyonları ayrıca gerekir.`, ephemeral: true });
+        return interaction.reply({ content: `✅ Moderasyon log kanalı kaydedildi: ${channel}\nBu kanala botun yakalayabildiği üye katılma/ayrılma, ban ve takma ad değişikliği olayları gönderilir. Botun kanalı görüntüleme ve mesaj gönderme izinleri olmalı.`, ephemeral: true });
       }
       const { rows: [settings] } = await pool.query(
         'SELECT welcome_channel_id, welcome_message, log_channel_id FROM guild_settings WHERE guild_id=$1',
