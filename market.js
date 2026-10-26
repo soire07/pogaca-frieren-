@@ -58,7 +58,7 @@ function panelComponents(view, userId) {
  const categoryRow = new ActionRowBuilder().addComponents(categories.map((cat,i)=>
   new ButtonBuilder().setCustomId('market_cat:'+i+':'+userId).setLabel(cat).setStyle(cat===view.category?ButtonStyle.Primary:ButtonStyle.Secondary)));
  const itemRow = new ActionRowBuilder().addComponents(view.shown.map(item=>
-  new ButtonBuilder().setCustomId('market_detail:'+item.id+':'+userId).setLabel(item.name.replace(/^\\p{Emoji_Presentation}\\s*/u,'').slice(0,70)).setEmoji(item.emoji).setStyle(ButtonStyle.Primary)));
+  new ButtonBuilder().setCustomId('market_detail:'+item.id+':'+userId).setLabel(item.name.replace(/^[^ ]+ /,'').slice(0,70)).setEmoji(item.emoji).setStyle(ButtonStyle.Primary)));
  const navRow = new ActionRowBuilder().addComponents(
   new ButtonBuilder().setCustomId('market_prev:'+view.page+':'+view.category+':'+userId).setLabel('◀ Önceki').setStyle(ButtonStyle.Secondary).setDisabled(view.page<=0),
   new ButtonBuilder().setCustomId('market_refresh:'+userId).setLabel('💰 Bakiyeyi yenile').setStyle(ButtonStyle.Primary),
