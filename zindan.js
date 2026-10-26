@@ -1,6 +1,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
+import { levelForXp } from './utils.js';
 
 const COOLDOWN_MINUTES = 30;
 const COOLDOWN_MS = COOLDOWN_MINUTES * 60_000;
@@ -160,15 +161,19 @@ export default {
 
       for (let i = 0; i < combatants.length; i++) {
         const player = combatants[i];
+        const newXp = Number(player.xp) + xpReward;
+        const newLevel = levelForXp(newXp);
+        const gainedPoints = Math.max(0, newLevel - Number(player.level));
         await db.query(
           `UPDATE users SET
             hp=$3,
-            xp=xp+$4,
-            level=FLOOR(SQRT((xp+$4)::numeric/100))::int+1,
-            coins=coins+$5,
+            xp=$4,
+            level=$5,
+            coins=coins+$6,
+            stat_points=stat_points+$7,
             last_dungeon_at=NOW()
            WHERE guild_id=$1 AND user_id=$2`,
-          [interaction.guildId, player.user_id, hpNow[i], xpReward, coinReward]
+          [interaction.guildId, player.user_id, hpNow[i], newXp, newLevel, coinReward, gainedPoints]
         );
         if (lootItem) {
           await db.query(
@@ -187,7 +192,7 @@ export default {
           `**${dungeon.name}**\n` +
           `Tur sayısı: **${turn}** · Kalan düşman HP: **${dungeonHp}/${dungeon.hp}**\n\n` +
           combatants.map((player, i) =>
-            `**<@${player.user_id}>** · Seviye ${player.level}\n❤️ HP: ${player.hp} → ${hpNow[i]} · ⚔️ Saldırı: ${player.attack} · 🛡️ Savunma: ${player.defense}`
+            `**<@${player.user_id}>** · Seviye ${player.level}${levelForXp(Number(player.xp) + xpReward) > player.level ? ` → ${levelForXp(Number(player.xp) + xpReward)} ✨` : ''}\n❤️ HP: ${player.hp} → ${hpNow[i]} · ⚔️ Saldırı: ${player.attack} · 🛡️ Savunma: ${player.defense}`
           ).join('\n\n') +
           (log.length ? '\n\n**⚔️ Savaş günlüğü**\n' + log.slice(-6).join('\n') : '')
         )
