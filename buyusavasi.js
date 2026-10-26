@@ -81,6 +81,9 @@ export default {
     ),
 
   async execute(interaction) {
+    if (!interaction.guildId) {
+      return interaction.reply({ content: 'Büyü düellosu yalnızca sunucularda yapılabilir.', ephemeral: true });
+    }
     const opponent = interaction.options.getUser('rakip', true);
     const challenger = interaction.user;
 
