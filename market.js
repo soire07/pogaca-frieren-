@@ -28,7 +28,7 @@ export function renderMarketItem(itemId, balance, userId) {
  const embed = new EmbedBuilder()
   .setColor(item.rarity === 'Efsanevi' ? 0xffc857 : item.rarity === 'Destansı' ? 0xb58cff : 0x72d6ff)
   .setTitle('✨ EŞYA İNCELEME • '+item.name)
-  .setDescription('╭─── ⋆｡°✩°｡⋆ ───╮\\n'+item.emoji+' **'+item.name+'**\\n╰─── ⋆｡°✩°｡⋆ ───╯\\n\\n'+item.description+'\\n\\n'+rarityEmoji[item.rarity]+' **Nadirlik:** '+item.rarity+'\\n🗂️ **Kategori:** '+item.category+'\\n💰 **Fiyat:** '+item.price.toLocaleString('tr-TR')+' altın\\n🪙 **Bakiyen:** '+Number(balance).toLocaleString('tr-TR')+' altın')
+  .setDescription('╭─── ⋆｡°✩°｡⋆ ───╮\n'+item.emoji+' **'+item.name+'**\n╰─── ⋆｡°✩°｡⋆ ───╯\n\n'+item.description+'\n\n'+rarityEmoji[item.rarity]+' **Nadirlik:** '+item.rarity+'\n🗂️ **Kategori:** '+item.category+'\n💰 **Fiyat:** '+item.price.toLocaleString('tr-TR')+' altın\n🪙 **Bakiyen:** '+Number(balance).toLocaleString('tr-TR')+' altın')
   .setFooter({text:'Poğaça Frieren • Büyülü koleksiyon marketi'})
   .setTimestamp();
  const row = new ActionRowBuilder().addComponents(
