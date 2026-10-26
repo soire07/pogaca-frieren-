@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
+import { characters } from './character-data.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -41,13 +42,13 @@ export default {
         Himmel: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g9-723x1024.jpg',
         Heiter: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g10-723x1024.jpg',
         Sein: 'https://frieren-anime.jp/wp-content/uploads/2023/12/g-724x1024.jpg',
-        Kanne: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara01_full1.png',
-        Lawine: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara02_full1.png',
-        Laufen: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara08_full1.png',
-        Richter: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara07_full1.png'
+        Kanne: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara02_full1.png',
+        Lawine: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara08_full1.png',
+        Laufen: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara07_full1.png',
+        Richter: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara01_full1.png'
       };
       const uniqueCount = rows.length;
-      const totalCharacters = 16;
+      const totalCharacters = characters.length;
       const percent = Math.min(100, Math.round((uniqueCount / totalCharacters) * 100));
       const totalCopies = rows.reduce((sum, row) => sum + Number(row.quantity), 0);
       const rarityCounts = {
