@@ -135,7 +135,7 @@ client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
   });
 });
 
-client.on(Events.MessageDeleteBulk, async messages => {
+client.on(Events.MessageBulkDelete, async messages => {
   const first = messages.first();
   if (!first?.guild) return;
   await sendConfiguredLog(first.guild, { content: `🧹 **Toplu mesaj silme:** <#${first.channelId}> kanalında ${messages.size} mesaj silindi.` });
