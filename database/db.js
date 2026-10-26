@@ -109,6 +109,16 @@ export async function initDatabase() {
       PRIMARY KEY (guild_id,user_id,achievement_key),
       FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS story_progress (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      current_chapter INTEGER NOT NULL DEFAULT 0 CHECK (current_chapter >= 0),
+      choices JSONB NOT NULL DEFAULT '[]'::jsonb,
+      started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id, user_id),
+      FOREIGN KEY (guild_id, user_id) REFERENCES users(guild_id, user_id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS daily_mission_claims (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
