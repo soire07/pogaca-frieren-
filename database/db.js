@@ -27,12 +27,18 @@ export async function initDatabase() {
       last_adventure_at TIMESTAMPTZ,
       pity_count INTEGER NOT NULL DEFAULT 0 CHECK (pity_count >= 0),
       last_free_character_at TIMESTAMPTZ,
+      character_draw_count INTEGER NOT NULL DEFAULT 0 CHECK (character_draw_count >= 0),
+      last_character_draw_at TIMESTAMPTZ,
+      character_draw_cooldown_until TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY (guild_id, user_id)
     );
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_adventure_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS pity_count INTEGER NOT NULL DEFAULT 0;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_free_character_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS character_draw_count INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_character_draw_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS character_draw_cooldown_until TIMESTAMPTZ;
     CREATE TABLE IF NOT EXISTS inventory (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
