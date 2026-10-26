@@ -195,6 +195,9 @@ export default {
           await pool.query('UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, playerHp, playerMana]);
           const rewardCoins = 140 + Math.floor(Math.random() * 81);
           const rewardXp = 90 + Math.floor(Math.random() * 41);
+          const bonusLoot = Math.random() < 0.35
+            ? ['🩸 İblis Özü', '✨ Eski Büyü Kalıntısı', '🗝️ Harabe Anahtarı'][Math.floor(Math.random() * 3)]
+            : null;
           const db = await pool.connect();
           try {
             await db.query('BEGIN');
@@ -210,6 +213,13 @@ export default {
                ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
               [interaction.guildId, interaction.user.id]
             );
+            if (bonusLoot) {
+              await db.query(
+                `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
+                 ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
+                [interaction.guildId, interaction.user.id, bonusLoot]
+              );
+            }
             await db.query('COMMIT');
           } catch (error) {
             await db.query('ROLLBACK').catch(() => {});
