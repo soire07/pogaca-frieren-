@@ -28,10 +28,10 @@ export default {
         [interaction.guildId, interaction.user.id]
       );
 
-      if (u.last_adventure_at && Date.now() - new Date(u.last_adventure_at).getTime() < 30_000) {
+      if (u.last_adventure_at && Date.now() - new Date(u.last_adventure_at).getTime() < 300_000) {
         await client.query('ROLLBACK');
         return interaction.reply({
-          content: '⏳ Yeni maceraya çıkmadan önce 30 saniye beklemelisin.',
+          content: '⏳ Yeni maceraya çıkmadan önce 5 dakika beklemelisin.',
           ephemeral: true
         });
       }
