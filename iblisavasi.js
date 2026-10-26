@@ -49,6 +49,11 @@ export default {
 
     await interaction.deferReply();
     await ensureUser(interaction.guildId, interaction.user.id);
+    const knownSpellResult = await pool.query(
+      'SELECT spell_key FROM learned_spells WHERE guild_id=$1 AND user_id=$2',
+      [interaction.guildId, interaction.user.id]
+    );
+    const learnedSpells = new Set(knownSpellResult.rows.map(row => row.spell_key));
 
     const statsResult = await pool.query(
       'SELECT hp, max_hp, mana, max_mana, attack, defense FROM users WHERE guild_id=$1 AND user_id=$2',
@@ -111,6 +116,27 @@ export default {
       busy = true;
 
       try {
+        const requiredSpell = {
+          demon_attack: 'zoltraak',
+          demon_fire: 'alev_kuresi',
+          demon_ice: 'buz_mizragi',
+          demon_defend: 'koruyucu_bariyer',
+          demon_heal: 'sifa_isigi'
+        }[button.customId];
+        if (requiredSpell && !learnedSpells.has(requiredSpell)) {
+          busy = false;
+          const spellNames = {
+            alev_kuresi: 'Alev Küresi',
+            buz_mizragi: 'Buz Mızrağı',
+            koruyucu_bariyer: 'Koruyucu Bariyer',
+            sifa_isigi: 'Şifa Işığı'
+          };
+          return button.reply({
+            content: `Bu büyüyü henüz öğrenmedin. ${spellNames[requiredSpell] ? `**${spellNames[requiredSpell]}** için /buyuogren komutunu kullan.` : 'Başlangıç büyün hazır.'}`,
+            ephemeral: true
+          });
+        }
+
         let actionText = '';
         let frozenBoss = false;
         if (button.customId === 'demon_attack') {
