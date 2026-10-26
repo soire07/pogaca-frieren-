@@ -136,7 +136,7 @@ export default {
       bossHp,
       playerHp,
       bonus: upgradeBonus,
-      description: `Kuzey sınırında tehlikeli bir iblisle karşılaştın, <@${interaction.user.id}>!\n\n**Hamleni seç:** Zoltraak dengeli saldırır; Alev Küresi daha güçlü hasar verir; Buz Mızrağı iblisi dondurup karşı saldırısını durdurabilir. Kalkan hasarı azaltır, Şifa ise savaşta bir kez can yeniler. Her karakter geliştirme seviyesi saldırı gücüne +2 hasar ekler.`
+      description: `Kuzey sınırında tehlikeli bir iblisle karşılaştın, <@${interaction.user.id}>!\n\n**Hamleni seç:** Zoltraak dengeli saldırır; Alev Küresi daha güçlü hasar verir; Buz Mızrağı iblisi dondurup karşı saldırısını durdurabilir. Kalkan hasarı azaltır, Şifa savaşta bir kez can yeniler. Seviye ve boss zaferleriyle Yıldırım Zinciri, Taş Duvar ve Mana Patlaması açılır. Büyü kullandıkça ustalığın yükselir. Her karakter geliştirme seviyesi saldırı gücüne +2 hasar ekler.`
     });
     await interaction.editReply({ embeds: [initial], components: [actionRow(), rareActionRow()] });
     const message = await interaction.fetchReply();
@@ -328,6 +328,11 @@ export default {
           }
         }
         if (frozenBoss) bossDamage = 0;
+        if (fortified && bossDamage > 0) {
+          bossDamage = Math.ceil(bossDamage * 0.25);
+          fortified = false;
+          actionText += '\n🪨 Taş Duvar boss saldırısının %75’ini engelledi.';
+        }
         if (shield && bossDamage > 0) {
           bossDamage = Math.ceil(bossDamage / 2);
           shield = false;
@@ -354,7 +359,7 @@ export default {
         await pool.query('UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, playerHp, playerMana]);
         await button.update({
           embeds: [renderBattleEmbed({ player: interaction.user, bossHp, playerHp, bonus: upgradeBonus, description: actionText })],
-          components: [actionRow()]
+          components: [actionRow(), rareActionRow()]
         });
       } catch (error) {
         console.error('/iblisavasi hatası:', error);
