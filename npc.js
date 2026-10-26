@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
+import { levelForXp } from './utils.js';
 
 const npcs = {
   frieren: {
@@ -163,7 +164,7 @@ export default {
         }
 
         const newXp = Number(user.xp) + npc.reward.xp;
-        const newLevel = Math.floor(Math.sqrt(newXp / 100)) + 1;
+        const newLevel = levelForXp(newXp);
         const gainedPoints = Math.max(0, newLevel - Number(user.level));
         await client.query(
           'UPDATE users SET coins=coins+$3, xp=$4, level=$5, stat_points=stat_points+$6 WHERE guild_id=$1 AND user_id=$2',
