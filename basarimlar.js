@@ -10,7 +10,10 @@ const achievements = [
   { id:'legendary', title:'Efsane Avcısı', emoji:'🌟', description:'En az bir Efsanevi karakter bulundur', check:s=>s.legendary>=1, reward:500 },
   { id:'first_exploration', title:'İlk Adım', emoji:'🧭', description:'İlk keşfini tamamla', check:s=>s.explorations>=1, reward:75 },
   { id:'explorer_10', title:'Yolun Tozunu Yutan', emoji:'🌲', description:'10 keşif tamamla', check:s=>s.explorations>=10, reward:250 },
-  { id:'item_user_10', title:'Hazırlıklı Büyücü', emoji:'🧪', description:'10 eşya kullan', check:s=>s.itemsUsed>=10, reward:200 }
+  { id:'item_user_10', title:'Hazırlıklı Büyücü', emoji:'🧪', description:'10 eşya kullan', check:s=>s.itemsUsed>=10, reward:200 },
+  { id:'streak_3', title:'Fırına Alışan', emoji:'🔥', description:'3 günlük ödül serisine ulaş', check:s=>s.bestDailyStreak>=3, reward:150 },
+  { id:'streak_7', title:'Haftalık Müdavim', emoji:'🥐', description:'7 günlük ödül serisine ulaş', check:s=>s.bestDailyStreak>=7, reward:350 },
+  { id:'streak_14', title:'Fırının Efsanesi', emoji:'🌟', description:'14 günlük ödül serisine ulaş', check:s=>s.bestDailyStreak>=14, reward:800 }
 ];
 
 export default {
@@ -25,7 +28,10 @@ export default {
         {name:'Efsane Avcısı',value:'legendary'},
         {name:'İlk Adım',value:'first_exploration'},
         {name:'Yolun Tozunu Yutan',value:'explorer_10'},
-        {name:'Hazırlıklı Büyücü',value:'item_user_10'}
+        {name:'Hazırlıklı Büyücü',value:'item_user_10'},
+        {name:'Fırına Alışan',value:'streak_3'},
+        {name:'Haftalık Müdavim',value:'streak_7'},
+        {name:'Fırının Efsanesi',value:'streak_14'}
       ).setRequired(false)),
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',ephemeral:true});
@@ -33,13 +39,13 @@ export default {
     try {
       await ensureUser(interaction.guildId,interaction.user.id);
       const [{rows:[u]}, {rows:[c]}] = await Promise.all([
-        pool.query('SELECT coins,level,xp,exploration_count,items_used_count FROM users WHERE guild_id=$1 AND user_id=$2',[interaction.guildId,interaction.user.id]),
+        pool.query('SELECT coins,level,xp,exploration_count,items_used_count,best_daily_streak FROM users WHERE guild_id=$1 AND user_id=$2',[interaction.guildId,interaction.user.id]),
         pool.query(`SELECT COUNT(*)::int AS unique_count,
           COALESCE(SUM(quantity),0)::int AS total_copies,
           COUNT(*) FILTER (WHERE rarity='Efsanevi')::int AS legendary
           FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2`,[interaction.guildId,interaction.user.id])
       ]);
-      const stats={coins:Number(u?.coins||0),level:Number(u?.level||1),xp:Number(u?.xp||0),uniqueCharacters:Number(c?.unique_count||0),totalCopies:Number(c?.total_copies||0),legendary:Number(c?.legendary||0),explorations:Number(u?.exploration_count||0),itemsUsed:Number(u?.items_used_count||0)};
+      const stats={coins:Number(u?.coins||0),level:Number(u?.level||1),xp:Number(u?.xp||0),uniqueCharacters:Number(c?.unique_count||0),totalCopies:Number(c?.total_copies||0),legendary:Number(c?.legendary||0),explorations:Number(u?.exploration_count||0),itemsUsed:Number(u?.items_used_count||0),bestDailyStreak:Number(u?.best_daily_streak||0)};
       const claimKey=interaction.options.getString('odul');
       if(claimKey){
         const achievement=achievements.find(a=>a.id===claimKey);
