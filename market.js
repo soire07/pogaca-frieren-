@@ -1,49 +1,83 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 
-const items = {
-  lucky_charm: { name:'🍀 Şans Tılsımı', price:250, description:'Koleksiyonunda saklayabileceğin nadir bir tılsım.' },
-  frieren_tea: { name:'🍵 Frieren Çayı', price:120, description:'Fırının özel temalı hatıra eşyası.' },
-  mana_crystal: { name:'💎 Mana Kristali', price:500, description:'Büyülü koleksiyon için değerli bir kristal.' }
-};
+export const marketItems = [
+ { id:'frieren_staff', name:'🪄 Frieren’in Asası', price:900, category:'Büyülü Eşyalar', rarity:'Efsanevi', description:'Bin yıllık büyü bilgisini temsil eden koleksiyonluk asa.', emoji:'🪄' },
+ { id:'mana_crystal', name:'💎 Mana Kristali', price:500, category:'Büyülü Eşyalar', rarity:'Destansı', description:'Saf mana ile parlayan gizemli bir kristal.', emoji:'💎' },
+ { id:'grimoire', name:'📖 Yasak Büyü Kitabı', price:750, category:'Büyülü Eşyalar', rarity:'Efsanevi', description:'Sayfalarında unutulmuş büyüler saklı.', emoji:'📖' },
+ { id:'mimic_chest', name:'📦 Mimic Sandığı', price:350, category:'Büyülü Eşyalar', rarity:'Nadir', description:'İçinden ne çıkacağı belli olmayan şüpheli sandık.', emoji:'📦' },
+ { id:'fern_ribbon', name:'🎀 Fern’in Kurdelası', price:420, category:'Anime Hatıraları', rarity:'Destansı', description:'Fern’den ilham alan zarif bir hatıra eşyası.', emoji:'🎀' },
+ { id:'himmel_flower', name:'🌼 Himmel’in Mavi Çiçeği', price:600, category:'Anime Hatıraları', rarity:'Efsanevi', description:'Kahraman Himmel’i hatırlatan özel bir çiçek.', emoji:'🌼' },
+ { id:'goku_orb', name:'🔴 Dört Yıldızlı Ejder Topu', price:650, category:'Anime Hatıraları', rarity:'Efsanevi', description:'Ejderha efsanesinden esinlenen parlak bir hatıra.', emoji:'🔴' },
+ { id:'ninja_scroll', name:'📜 Gizli Ninja Parşömeni', price:280, category:'Anime Hatıraları', rarity:'Nadir', description:'Azim ve ninja ruhunu simgeleyen parşömen.', emoji:'📜' },
+ { id:'cursed_charm', name:'🧿 Lanetli Muska', price:380, category:'Lanetli Eşyalar', rarity:'Destansı', description:'Jujutsu dünyasından esinlenen gizemli muska.', emoji:'🧿' },
+ { id:'breathing_mask', name:'🌊 Su Nefesi Tılsımı', price:320, category:'Lanetli Eşyalar', rarity:'Nadir', description:'Sakinlik ve odaklanmayı simgeleyen tılsım.', emoji:'🌊' },
+ { id:'survey_badge', name:'🪽 Keşif Birliği Rozeti', price:450, category:'Anime Hatıraları', rarity:'Destansı', description:'Cesur keşif askerlerine adanmış rozet.', emoji:'🪽' },
+ { id:'lucky_charm', name:'🍀 Şans Tılsımı', price:250, category:'Büyülü Eşyalar', rarity:'Nadir', description:'Koleksiyonunda saklayabileceğin şanslı tılsım.', emoji:'🍀' },
+ { id:'frieren_tea', name:'🍵 Frieren Çayı', price:120, category:'Fırın Özel', rarity:'Yaygın', description:'Uzun yolculuklar için sıcak, huzurlu bir çay.', emoji:'🍵' },
+ { id:'poagaca_box', name:'🥐 Büyülü Poğaça Kutusu', price:180, category:'Fırın Özel', rarity:'Yaygın', description:'Poğaça Frieren marketinin imza kutusu.', emoji:'🥐' },
+ { id:'star_potion', name:'🌠 Yıldız İksiri', price:800, category:'Fırın Özel', rarity:'Efsanevi', description:'Yıldız ışığıyla parlayan sınırlı temalı hatıra.', emoji:'🌠' }
+];
+
+const categories = ['Hepsi','Büyülü Eşyalar','Anime Hatıraları','Lanetli Eşyalar','Fırın Özel'];
+const rarityEmoji = { Yaygın:'⚪', Nadir:'🔹', Destansı:'🟣', Efsanevi:'🟡' };
+
+function panelEmbed(page, category, balance, user) {
+ const filtered = marketItems.filter(item => category === 'Hepsi' || item.category === category);
+ const pages = Math.max(1, Math.ceil(filtered.length / 4));
+ const safePage = Math.min(page, pages - 1);
+ const shown = filtered.slice(safePage * 4, safePage * 4 + 4);
+ const embed = new EmbedBuilder().setColor(0x9b8cff)
+  .setTitle('✨ POĞAÇA FRIEREN • BÜYÜLÜ MARKET')
+  .setDescription('Anime evrenlerinden ilham alan özel koleksiyon eşyaları!\nAltındaki butonlarla kategori değiştir, eşyaları incele ve satın al.')
+  .addFields({name:'💰 Cüzdanın',value:'**'+Number(balance).toLocaleString('tr-TR')+'** poğaça altını',inline:true},
+   {name:'🗂️ Kategori',value:'**'+category+'**',inline:true},
+   ...shown.map(item=>({name:item.emoji+' '+item.name+'  •  '+item.price.toLocaleString('tr-TR')+' altın',value:rarityEmoji[item.rarity]+' **'+item.rarity+'**\n'+item.description,inline:false})))
+  .setFooter({text:'Sayfa '+(safePage+1)+'/'+pages+' • Satın aldığın eşyalar /envanter içinde görünür.'})
+  .setTimestamp();
+ return {embed, page:safePage, pages, shown, category};
+}
+
+function panelComponents(view, userId) {
+ const categoryRow = new ActionRowBuilder().addComponents(categories.map((cat,i)=>
+  new ButtonBuilder().setCustomId('market_cat:'+i+':'+userId).setLabel(cat).setStyle(cat===view.category?ButtonStyle.Primary:ButtonStyle.Secondary)));
+ const itemRow = new ActionRowBuilder().addComponents(view.shown.map(item=>
+  new ButtonBuilder().setCustomId('market_buy:'+item.id+':'+userId).setLabel(item.name.replace(/^\p{Emoji_Presentation}\s*/u,'').slice(0,70)).setEmoji(item.emoji).setStyle(ButtonStyle.Success)));
+ const navRow = new ActionRowBuilder().addComponents(
+  new ButtonBuilder().setCustomId('market_prev:'+view.page+':'+view.category+':'+userId).setLabel('◀ Önceki').setStyle(ButtonStyle.Secondary).setDisabled(view.page<=0),
+  new ButtonBuilder().setCustomId('market_refresh:'+userId).setLabel('💰 Bakiyeyi yenile').setStyle(ButtonStyle.Primary),
+  new ButtonBuilder().setCustomId('market_next:'+view.page+':'+view.category+':'+userId).setLabel('Sonraki ▶').setStyle(ButtonStyle.Secondary).setDisabled(view.page>=view.pages-1)
+ );
+ return [categoryRow,itemRow,navRow];
+}
+
+export async function renderMarket(guildId,userId,page=0,category='Hepsi') {
+ await ensureUser(guildId,userId);
+ const result=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+ const view=panelEmbed(page,category,result.rows[0]?.coins??0,userId);
+ return {embeds:[view.embed],components:panelComponents(view,userId)};
+}
+
+export async function buyMarketItem(guildId,userId,itemId) {
+ const item=marketItems.find(x=>x.id===itemId);
+ if(!item) return {ok:false,message:'Bu eşya markette bulunamadı.'};
+ const db=await pool.connect();
+ try {
+  await db.query('BEGIN');
+  const charged=await db.query('UPDATE users SET coins=coins-$3 WHERE guild_id=$1 AND user_id=$2 AND coins >= $3 RETURNING coins',[guildId,userId,item.price]);
+  if(!charged.rowCount){await db.query('ROLLBACK');return {ok:false,message:'Yeterli altının yok! **'+item.price+'** altın gerekiyor.'};}
+  await db.query('INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1) ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1',[guildId,userId,item.name]);
+  await db.query('COMMIT');
+  return {ok:true,message:'🛍️ **'+item.name+'** satın alındı! '+item.description+'\n🪙 Ödenen: **'+item.price+'** altın • Kalan: **'+Number(charged.rows[0].coins).toLocaleString('tr-TR')+'** altın'};
+ } catch(error){await db.query('ROLLBACK').catch(()=>{});throw error;}
+ finally{db.release();}
+}
 
 export default {
- data:new SlashCommandBuilder().setName('market').setDescription('Poğaça altınıyla özel eşyalar satın al.')
-  .addStringOption(o=>o.setName('esya').setDescription('Satın almak istediğin eşya').setRequired(true)
-   .addChoices(
-    {name:'Şans Tılsımı — 250 altın',value:'lucky_charm'},
-    {name:'Frieren Çayı — 120 altın',value:'frieren_tea'},
-    {name:'Mana Kristali — 500 altın',value:'mana_crystal'}
-   ))
-  .addIntegerOption(o=>o.setName('miktar').setDescription('Kaç tane alacaksın?').setMinValue(1).setMaxValue(20).setRequired(true)),
+ data:new SlashCommandBuilder().setName('market').setDescription('Butonlu, görsel anime temalı eşyalar marketini aç.'),
  async execute(interaction){
   if(!interaction.guildId)return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',ephemeral:true});
-  const key=interaction.options.getString('esya',true);
-  const amount=interaction.options.getInteger('miktar',true);
-  const item=items[key];
-  await ensureUser(interaction.guildId,interaction.user.id);
-  const client=await pool.connect();
-  try{
-   await client.query('BEGIN');
-   const cost=item.price*amount;
-   const charged=await client.query('UPDATE users SET coins=coins-$3 WHERE guild_id=$1 AND user_id=$2 AND coins >= $3 RETURNING coins',[interaction.guildId,interaction.user.id,cost]);
-   if(!charged.rowCount){
-    await client.query('ROLLBACK');
-    return interaction.reply({content:'Yeterli altının yok. Bu alışveriş için **'+cost+'** altın gerekiyor.',ephemeral:true});
-   }
-   await client.query(`INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,$4)
-    ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+EXCLUDED.quantity`,
-    [interaction.guildId,interaction.user.id,item.name,amount]);
-   await client.query('COMMIT');
-   const embed=new EmbedBuilder().setColor(0x9b8cff).setTitle('🛍️ Poğaça Marketi')
-    .setDescription(item.name+' eşyasından **'+amount+'** adet satın aldın!\n\n'+item.description)
-    .addFields({name:'Ödenen',value:'🪙 '+cost+' altın',inline:true},{name:'Kalan bakiye',value:'🪙 '+Number(charged.rows[0].coins).toLocaleString('tr-TR')+' altın',inline:true})
-    .setFooter({text:'Eşyalarını /envanter komutuyla görebilirsin.'}).setTimestamp();
-   return interaction.reply({embeds:[embed]});
-  }catch(error){
-   await client.query('ROLLBACK').catch(()=>{});
-   console.error('Market hatası:',error);
-   return interaction.reply({content:'Alışveriş tamamlanamadı. Daha sonra tekrar dene.',ephemeral:true}).catch(()=>{});
-  }finally{client.release();}
+  const panel=await renderMarket(interaction.guildId,interaction.user.id);
+  return interaction.reply({...panel,ephemeral:true});
  }
 };
