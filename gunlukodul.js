@@ -8,6 +8,10 @@ export default {
     .setDescription('Günlük RPG altın ödülünü al.'),
 
   async execute(interaction) {
+    if (!interaction.guildId) {
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+    }
+
     await ensureUser(interaction.guildId, interaction.user.id);
 
     const reward = 50 + Math.floor(Math.random() * 51);
