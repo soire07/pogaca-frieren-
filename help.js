@@ -3,7 +3,7 @@ import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js
 const sections = [
   {
     name: '🪄 Frieren evreni',
-    value: '`/frieren` • Frieren günlüğü\n`/evren` • Evren ve karakter rehberi\n`/buyu` • Rastgele büyü\n`/buyukitabi` • Büyü arşivi\n`/karakter` • Karakter rehberi\n`/mimic` • Mimic şakası'
+    value: '`/frieren` • Frieren günlüğü\n`/evren` • Evren ve karakter rehberi\n`/buyu` • Rastgele büyü\n`/buyukitabi` • Büyü arşivi\n`/buyuogren` • Savaş büyüsü öğren\n`/buyular` • Öğrenilen büyüler\n`/buyuustaligi` • Büyü ustalığı\n`/karakter` • Karakter rehberi\n`/mimic` • Mimic şakası'
   },
   {
     name: '🎴 Karakter koleksiyonu',
