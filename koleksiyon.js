@@ -1,6 +1,88 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { characters } from './character-data.js';
+
+const PAGE_SIZE = 8;
+const BUTTON_TIMEOUT = 10 * 60 * 1000;
+
+const artworkByCharacter = {
+  Frieren: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g3-723x1024.jpg',
+  Fern: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g6-723x1024.jpg',
+  Stark: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g7-723x1024.jpg',
+  Himmel: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g9-723x1024.jpg',
+  Heiter: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g10-723x1024.jpg',
+  Sein: 'https://frieren-anime.jp/wp-content/uploads/2023/12/g-724x1024.jpg',
+  Kanne: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara02_full1.png',
+  Lawine: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara08_full1.png',
+  Laufen: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara07_full1.png',
+  Richter: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara01_full1.png'
+};
+
+function makeSummaryEmbed(target, rows, totalCharacters, page, pageCount) {
+  const uniqueCount = rows.length;
+  const percent = Math.min(100, Math.round((uniqueCount / totalCharacters) * 100));
+  const totalCopies = rows.reduce((sum, row) => sum + Number(row.quantity), 0);
+  const rarityCounts = {
+    Efsanevi: rows.filter(row => row.rarity === 'Efsanevi').length,
+    Destansı: rows.filter(row => row.rarity === 'Destansı').length,
+    Nadir: rows.filter(row => row.rarity === 'Nadir').length,
+    Yaygın: rows.filter(row => row.rarity === 'Yaygın').length
+  };
+  const filled = Math.round((percent / 100) * 12);
+  const progressBar = '▰'.repeat(filled) + '▱'.repeat(12 - filled);
+
+  return new EmbedBuilder()
+    .setColor(0x9b8cff)
+    .setTitle(`📚 ${target.username} | Anime Koleksiyonu`)
+    .setDescription(
+      `**Koleksiyon ilerlemesi**\n${progressBar} **${percent}%**\n\n🌟 ${rarityCounts.Efsanevi} Efsanevi · ✦ ${rarityCounts.Destansı} Destansı · ◆ ${rarityCounts.Nadir} Nadir · ⭐ ${rarityCounts.Yaygın} Yaygın\n\n📖 Sayfa ${page + 1}/${pageCount}`
+    )
+    .addFields(
+      { name: '🧩 Farklı karakter', value: `${uniqueCount}/${totalCharacters}`, inline: true },
+      { name: '📦 Toplam kopya', value: String(totalCopies), inline: true },
+      { name: '📈 Tamamlama', value: `${percent}%`, inline: true }
+    )
+    .setFooter({ text: 'Poğaça Frieren • Karakter kartları küçük görsellerle listelenir' })
+    .setTimestamp();
+}
+
+function makeCharacterEmbed(row) {
+  const image = artworkByCharacter[row.character_name] || row.image || characters.find(c => c.name === row.character_name)?.image;
+  const embed = new EmbedBuilder()
+    .setColor(row.color ?? 0x9b8cff)
+    .setTitle(`${row.emoji || '🎴'} ${row.character_name}`)
+    .setDescription(`**${row.rarity}** · ${row.anime}\n📦 Koleksiyon: **×${row.quantity}**`)
+    .setFooter({ text: 'Poğaça Frieren • Koleksiyon karakteri' });
+  if (image) embed.setThumbnail(image);
+  return embed;
+}
+
+function makeButtons(page, pageCount, disabled = false) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('collection_prev')
+      .setLabel('Önceki')
+      .setEmoji('◀️')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(disabled || page <= 0),
+    new ButtonBuilder()
+      .setCustomId('collection_next')
+      .setLabel('Sonraki')
+      .setEmoji('▶️')
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(disabled || page >= pageCount - 1)
+  );
+}
+
+function makePage(target, rows, page) {
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const start = page * PAGE_SIZE;
+  const pageRows = rows.slice(start, start + PAGE_SIZE);
+  const embeds = [makeSummaryEmbed(target, rows, characters.length, page, pageCount)];
+  if (pageRows.length) embeds.push(...pageRows.map(makeCharacterEmbed));
+  else embeds[0].setDescription('Henüz karakter keşfetmemişsin. **/kimimben** komutunu kullanarak ilk karakterini bul!');
+  return { embeds, components: pageCount > 1 ? [makeButtons(page, pageCount)] : [] };
+}
 
 export default {
   data: new SlashCommandBuilder()
@@ -35,54 +117,37 @@ export default {
         [interaction.guildId, target.id]
       );
 
-      const artworkByCharacter = {
-        Frieren: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g3-723x1024.jpg',
-        Fern: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g6-723x1024.jpg',
-        Stark: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g7-723x1024.jpg',
-        Himmel: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g9-723x1024.jpg',
-        Heiter: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g10-723x1024.jpg',
-        Sein: 'https://frieren-anime.jp/wp-content/uploads/2023/12/g-724x1024.jpg',
-        Kanne: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara02_full1.png',
-        Lawine: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara08_full1.png',
-        Laufen: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara07_full1.png',
-        Richter: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara01_full1.png'
-      };
-      const uniqueCount = rows.length;
-      const totalCharacters = characters.length;
-      const percent = Math.min(100, Math.round((uniqueCount / totalCharacters) * 100));
-      const totalCopies = rows.reduce((sum, row) => sum + Number(row.quantity), 0);
-      const rarityCounts = {
-        Efsanevi: rows.filter(row => row.rarity === 'Efsanevi').length,
-        Destansı: rows.filter(row => row.rarity === 'Destansı').length,
-        Nadir: rows.filter(row => row.rarity === 'Nadir').length,
-        Yaygın: rows.filter(row => row.rarity === 'Yaygın').length
-      };
-      const barSize = 12;
-      const filled = Math.round((percent / 100) * barSize);
-      const progressBar = '▰'.repeat(filled) + '▱'.repeat(barSize - filled);
-      const raritySummary = `🌟 ${rarityCounts.Efsanevi} Efsanevi  ·  ✦ ${rarityCounts.Destansı} Destansı  ·  ◆ ${rarityCounts.Nadir} Nadir  ·  ⭐ ${rarityCounts.Yaygın} Yaygın`;
-      const description = rows.length
-        ? rows.map(row => `${row.emoji} **${row.character_name}** — ${row.rarity} · ×${row.quantity}\n└ ${row.anime}`).join('\n')
-        : 'Henüz karakter keşfetmemişsin. **/kimimben** komutunu kullanarak ilk karakterini bul!';
+      let page = 0;
+      const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+      await interaction.editReply(makePage(target, rows, page));
+      if (pageCount <= 1) return;
 
-      const embed = new EmbedBuilder()
-        .setColor(rows[0]?.color ?? 0x9b8cff)
-        .setTitle(`📚 ${target.username} | Anime Koleksiyonu`)
-        .setThumbnail(
-          (rows.find(row => artworkByCharacter[row.character_name]) && artworkByCharacter[rows.find(row => artworkByCharacter[row.character_name]).character_name]) ||
-          rows.find(row => row.image)?.image ||
-          target.displayAvatarURL()
-        )
-        .setDescription(`${description.slice(0, 3000)}\n\n**İlerleme**\n${progressBar} **${percent}%**\n${raritySummary}`)
-        .addFields(
-          { name: '🧩 Farklı karakter', value: `${uniqueCount}/${totalCharacters}`, inline: true },
-          { name: '📦 Toplam kopya', value: String(totalCopies), inline: true },
-          { name: '📈 Tamamlama', value: `${percent}%`, inline: true }
-        )
-        .setFooter({ text: 'Poğaça Frieren • Koleksiyon kayıtları sunucuya özeldir' })
-        .setTimestamp();
+      const response = await interaction.fetchReply();
+      const collector = response.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        time: BUTTON_TIMEOUT
+      });
 
-      await interaction.editReply({ embeds: [embed] });
+      collector.on('collect', async button => {
+        if (!['collection_prev', 'collection_next'].includes(button.customId)) {
+          return button.deferUpdate().catch(() => {});
+        }
+        if (button.user.id !== interaction.user.id) {
+          return button.reply({ content: 'Bu koleksiyon sayfalarını yalnızca komutu kullanan kişi değiştirebilir.', ephemeral: true }).catch(() => {});
+        }
+        page = button.customId === 'collection_next'
+          ? Math.min(page + 1, pageCount - 1)
+          : Math.max(page - 1, 0);
+        await button.update(makePage(target, rows, page)).catch(() => {});
+      });
+
+      collector.on('end', async () => {
+        try {
+          await interaction.editReply({ components: [makeButtons(page, pageCount, true)] });
+        } catch (error) {
+          console.error('Koleksiyon sayfalama butonları kapatılamadı:', error);
+        }
+      });
     } catch (error) {
       console.error('Koleksiyon komutu hatası:', error);
       await interaction.editReply('Koleksiyon yüklenirken bir hata oluştu. Lütfen biraz sonra tekrar dene.');
