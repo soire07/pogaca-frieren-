@@ -64,7 +64,10 @@ function panelComponents(view, userId) {
   new ButtonBuilder().setCustomId('market_refresh:'+userId).setLabel('💰 Bakiyeyi yenile').setStyle(ButtonStyle.Primary),
   new ButtonBuilder().setCustomId('market_next:'+view.page+':'+view.category+':'+userId).setLabel('Sonraki ▶').setStyle(ButtonStyle.Secondary).setDisabled(view.page>=view.pages-1)
  );
- return [categoryRow,itemRow,navRow];
+ const inventoryRow = new ActionRowBuilder().addComponents(
+  new ButtonBuilder().setCustomId('market_inventory:'+userId).setLabel('Envanterime git').setEmoji('📦').setStyle(ButtonStyle.Success)
+ );
+ return [categoryRow,itemRow,navRow,inventoryRow];
 }
 
 export async function renderMarket(guildId,userId,page=0,category='Hepsi') {
