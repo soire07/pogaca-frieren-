@@ -3,7 +3,7 @@ import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js
 const sections = [
   {
     name: '🪄 Frieren evreni',
-    value: '`/frieren` • Bilgi kartı\n`/buyu` • Rastgele büyü\n`/buyukitabi` • Büyü arşivi\n`/karakter` • Karakter rehberi\n`/mimic` • Mimic şakası'
+    value: '`/frieren` • Frieren günlüğü\n`/evren` • Evren ve karakter rehberi\n`/buyu` • Rastgele büyü\n`/buyukitabi` • Büyü arşivi\n`/karakter` • Karakter rehberi\n`/mimic` • Mimic şakası'
   },
   {
     name: '🎴 Karakter koleksiyonu',
@@ -11,7 +11,7 @@ const sections = [
   },
   {
     name: '⚔️ Macera ve RPG',
-    value: '`/profil` • RPG profilin\n`/macera` • Keşfe çık\n`/buyusavasi` • Oyuncuya karşı düello\n`/iblisavasi` • İblis boss savaşı\n`/gunlukodul` • Günlük altın\n`/gunlukgorev` • Günlük görevler\n`/basarimlar` • Başarımlar\n`/liderlik` • Sunucu sıralaması'
+    value: '`/profil` • Maceracı profilin\n`/kesif` • Bölge keşfi\n`/dunya` • Bölgeleri incele\n`/hikaye` • Seçimlere dayalı hikâye\n`/npc` • Yol arkadaşları ve yan görevler\n`/buyusavasi` • Büyü düellosu\n`/iblisavasi` • İblis boss savaşı\n`/gunlukodul` • Günlük altın\n`/gunlukgorev` • Günlük görevler\n`/basarimlar` • Başarımlar\n`/liderlik` • Sunucu sıralaması'
   },
   {
     name: '💰 Ekonomi ve eşyalar',
