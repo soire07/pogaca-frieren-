@@ -27,27 +27,25 @@ export default {
       const db = await pool.connect();
       try {
       await db.query('BEGIN');
-      const claim = await db.query(`
-        UPDATE users SET last_free_character_at=NOW(),
-          pity_count=CASE WHEN pity_count >= 9 THEN 0 ELSE pity_count+1 END
-        WHERE guild_id=$1 AND user_id=$2
-          AND (last_free_character_at IS NULL OR last_free_character_at <= NOW()-INTERVAL '24 hours')
-        RETURNING pity_count
-      `,[guildId,user.id]);
-      if (!claim.rowCount) {
-        const next = await db.query(`
-          SELECT GREATEST(0,CEIL(EXTRACT(EPOCH FROM (last_free_character_at+INTERVAL '24 hours'-NOW()))))::int AS seconds
-          FROM users WHERE guild_id=$1 AND user_id=$2
-        `,[guildId,user.id]);
-        const secs=next.rows[0]?.seconds ?? 0;
+      const userState = await db.query(
+        'SELECT last_free_character_at, pity_count FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+        [guildId,user.id]
+      );
+      const state = userState.rows[0];
+      if (state.last_free_character_at && new Date(state.last_free_character_at).getTime() > Date.now() - 24 * 60 * 60 * 1000) {
+        const secs = Math.max(0, Math.ceil((new Date(state.last_free_character_at).getTime() + 24 * 60 * 60 * 1000 - Date.now()) / 1000));
         await db.query('ROLLBACK');
         return interaction.editReply('⏳ Ücretsiz karakter hakkın yenilenmedi. Yaklaşık **'+Math.floor(secs/3600)+' sa. '+Math.ceil((secs%3600)/60)+' dk.** sonra tekrar dene.');
       }
-      const pity=Number(claim.rows[0].pity_count);
-      const guaranteed=pity===0;
+      const previousPity = Number(state.pity_count || 0);
+      await db.query(
+        'UPDATE users SET last_free_character_at=NOW() WHERE guild_id=$1 AND user_id=$2',
+        [guildId,user.id]
+      );
+      const guaranteed = previousPity >= 9;
       const character=drawCharacter(null,guaranteed);
       const saved=await saveCharacter(db,guildId,user.id,character);
-      await db.query('UPDATE users SET pity_count=$3 WHERE guild_id=$1 AND user_id=$2',[guildId,user.id,character.rarity==='Efsanevi'?0:pity]);
+      await db.query('UPDATE users SET pity_count=$3 WHERE guild_id=$1 AND user_id=$2',[guildId,user.id,character.rarity==='Efsanevi'?0:previousPity+1]);
       await db.query('COMMIT');
       const stars={Yaygın:'⭐',Nadir:'⭐⭐',Destansı:'⭐⭐⭐',Efsanevi:'🌟🌟🌟🌟'};
       const embed=new EmbedBuilder().setColor(character.color)
@@ -58,7 +56,7 @@ export default {
           {name:'🎬 Anime',value:character.anime,inline:true},
           {name:'✨ Nadirlik',value:character.rarity+' '+stars[character.rarity],inline:true},
           {name:'📚 Koleksiyon kopyası',value:'×'+saved,inline:true},
-          {name:'🍀 Garanti sistemi',value:character.rarity==='Efsanevi'?'Efsanevi karakter geldi; sayaç sıfırlandı!':'Efsanevi garantiye '+Math.max(0,10-pity)+' hak kaldı.',inline:false}
+          {name:'🍀 Garanti sistemi',value:character.rarity==='Efsanevi'?'Efsanevi karakter geldi; sayaç sıfırlandı!':'Efsanevi garantiye '+Math.max(0,9-previousPity)+' hak kaldı.',inline:false}
         ).setFooter({text:'Poğaça Frieren • Ücretsiz günlük karakter'}).setTimestamp();
       if(character.image) embed.setImage(character.image);
       return interaction.editReply({embeds:[embed]});
