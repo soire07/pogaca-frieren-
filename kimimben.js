@@ -20,6 +20,16 @@ const rarityInfo = {
   Efsanevi: { stars: '🌟🌟🌟🌟' }
 };
 
+async function drawForUser(guildId, userId, previousName = null) {
+  await ensureUser(guildId, userId);
+  const result = await pool.query(
+    'SELECT pity_count FROM users WHERE guild_id = $1 AND user_id = $2',
+    [guildId, userId]
+  );
+  const pityCount = Number(result.rows[0]?.pity_count ?? 0);
+  return drawCharacter(previousName, pityCount >= 19);
+}
+
 async function saveCharacter(guildId, userId, character) {
   await ensureUser(guildId, userId);
   const result = await pool.query(
@@ -38,6 +48,11 @@ async function saveCharacter(guildId, userId, character) {
                    last_obtained_at = NOW()
      RETURNING quantity`,
     [guildId, userId, character.name, character.anime, character.rarity, character.emoji, character.color, character.description, character.traits, character.image]
+  );
+  await pool.query(
+    `UPDATE users SET pity_count = CASE WHEN $3 = 'Efsanevi' THEN 0 ELSE pity_count + 1 END
+     WHERE guild_id = $1 AND user_id = $2`,
+    [guildId, userId, character.rarity]
   );
   return result.rows[0].quantity;
 }
@@ -99,7 +114,7 @@ export default {
     }
     await interaction.deferReply();
 
-    let character = drawCharacter();
+    let character = await drawForUser(interaction.guildId, interaction.user.id);
     let quantity;
     try {
       quantity = await saveCharacter(interaction.guildId, interaction.user.id, character);
@@ -130,7 +145,7 @@ export default {
       }
 
       try {
-        const nextCharacter = drawCharacter(character.name);
+        const nextCharacter = await drawForUser(interaction.guildId, interaction.user.id, character.name);
         const nextQuantity = await saveCharacter(interaction.guildId, interaction.user.id, nextCharacter);
         await button.update({
           embeds: [createCharacterEmbed(nextCharacter, interaction.user, nextQuantity)],
