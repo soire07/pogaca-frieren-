@@ -163,8 +163,13 @@ export default {
 
         const newChoices = chapterIndex === 0 ? [decision] : [...previousChoices, decision];
         const ending = chapterIndex === chapters.length - 1 ? endings[decision] : null;
-        const rewardCoins = chapter.reward.coins + (ending?.bonusCoins ?? 0);
-        const rewardXp = chapter.reward.xp + (ending?.bonusXp ?? 0);
+        // Final ending bonuses scale with the player's level: a level-50 player
+        // receives 100 x 50 = 5,000 bonus coins on the courage ending.
+        const playerLevel = Math.max(1, Number(user.level) || 1);
+        const scaledBonusCoins = ending ? ending.bonusCoins * playerLevel : 0;
+        const scaledBonusXp = ending ? ending.bonusXp * playerLevel : 0;
+        const rewardCoins = chapter.reward.coins + scaledBonusCoins;
+        const rewardXp = chapter.reward.xp + scaledBonusXp;
         const newXp = Number(user.xp) + rewardXp;
         const newLevel = Math.floor(Math.sqrt(newXp / 100)) + 1;
         const gainedPoints = Math.max(0, newLevel - Number(user.level));
