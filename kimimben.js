@@ -78,11 +78,17 @@ function createCharacterEmbed(character, user, quantity) {
   const eliteNames = ['Goku', 'Naruto Uzumaki', 'Monkey D. Luffy', 'Levi Ackerman', 'Satoru Gojo'];
   const elite = eliteNames.includes(character.name);
   const rarityFrame = {
-    Yaygın: '╭─ ✧ ───────────── ✧ ─╮',
-    Nadir: '╭── ◆ ─────────── ◆ ──╮',
-    Destansı: '╭── ✦ ─────────── ✦ ──╮',
-    Efsanevi: '╭━━ ✧ ━━━━━━━━━ ✧ ━━╮'
-  }[character.rarity] ?? '╭─ ✧ ───────────── ✧ ─╮';
+    Yaygın: '┌ · · · · · · · · · · ┐',
+    Nadir: '┌ ◆ ───────────── ◆ ┐',
+    Destansı: '┌ ✦ ═══════════ ✦ ┐',
+    Efsanevi: '╔ ✧ ═══════════ ✧ ╗'
+  }[character.rarity] ?? '┌ · · · · · · · · · · ┐';
+  const discoveryLine = {
+    Yaygın: 'Yeni bir yol arkadaşı buldun.',
+    Nadir: 'Güzel bir keşif yaptın!',
+    Destansı: 'Şanslısın, güçlü bir karakter keşfettin!',
+    Efsanevi: '🌟 Efsanevi bir keşif! Bu karakter koleksiyonuna değer katacak.'
+  }[character.rarity] ?? 'Yeni bir karakter keşfettin!';
   const embed = new EmbedBuilder()
     .setColor(character.color)
     .setAuthor({
@@ -90,7 +96,7 @@ function createCharacterEmbed(character, user, quantity) {
     })
     .setTitle(`${character.emoji}  ${character.name}  ${character.emoji}`)
     .setDescription(
-      `${rarityFrame}\n**${user.username}**, ${elite ? 'özel bir karakter keşfettin!' : 'anime karakterin belli oldu!'}\n\n${character.description}\n\n${rarityFrame}`
+      `${rarityFrame}\n**${user.username}**, ${discoveryLine}\n\n${character.description}\n\n${rarityFrame}`
     )
     .addFields(
       { name: '🎬  ANİME', value: `**${character.anime}**`, inline: true },
