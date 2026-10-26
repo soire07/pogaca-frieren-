@@ -10,60 +10,64 @@ const choices = [
 const chapters = [
   {
     title: '📜 Prolog: Kuzeyden Gelen Mektup',
-    story: 'Kuzey topraklarından gelen mühürlü bir mektup, eski bir büyü kalıntısından söz ediyor. Frieren’in izinden giden bir gezgin olarak ilk kararın, yolculuğunun tonunu belirleyecek.',
-    objective: 'Hikâyeye başlamak için bir karar seç.',
-    requirement: async () => ({ ok: true, progress: 'Hazır' }),
+    story: 'Kuzey topraklarından gelen mühürlü mektup, unutulmuş bir büyü kalıntısından söz ediyor. Mektubun arkasında tek bir cümle var: “İlk seçimin, yolunu belirleyecek.”',
+    objective: 'Hikâyeye başlamak için kendi yolunu seç.',
+    requirement: async () => ({ ok: true, progress: 'Karar vermeye hazır' }),
     reward: { coins: 50, xp: 25 }
   },
   {
     title: '🌲 Bölüm I: Sisli Kuzey Ormanı',
-    story: 'Ormanın derinliklerinde büyülü izler birbirine karışıyor. Bir şey seni harabelere doğru yönlendiriyor; ama önce çevreyi dikkatlice incelemelisin.',
-    objective: ' /kesif komutuyla en az bir keşif tamamla.',
-    requirement: async (db, guildId, userId, user) => {
-      const count = Number(user.exploration_count);
-      return { ok: count >= 1, progress: count + ' / 1 keşif' };
-    },
-    reward: { coins: 100, xp: 50 }
-  },
-  {
-    title: '📖 Bölüm II: Kayıp Büyü Tomarı',
-    story: 'Harabelerdeki yazıt, gücün yalnızca doğuştan gelmediğini anlatıyor. Yeni bir büyü öğrenirsen kapının ardındaki mühür çözülebilir.',
-    objective: ' /buyuogren ile başlangıç büyün Zoltraak dışında en az bir büyü öğren.',
-    requirement: async (db, guildId, userId) => {
+    story: 'İlk kararın ormanın sana nasıl karşılık vereceğini belirledi. Seçtiğin yol, karşılaşacağın sınavı değiştirdi.',
+    objective: 'Seçtiğin yolun sınavını tamamla.',
+    requirement: async (db, guildId, userId, user, path) => {
+      if (path === 'cesaret') {
+        const count = Number(user.boss_defeats);
+        return { ok: count >= 1, progress: count + ' / 1 iblis zaferi', detail: 'Cesaret yolunda /iblisavasi ile bir iblisi yen.' };
+      }
+      if (path === 'merhamet') {
+        const count = Number(user.items_used_count);
+        return { ok: count >= 1, progress: count + ' / 1 kullanılan eşya', detail: 'Merhamet yolunda envanterinden bir eşya kullan.' };
+      }
       const result = await db.query("SELECT COUNT(*)::int AS count FROM learned_spells WHERE guild_id=$1 AND user_id=$2 AND spell_key <> 'zoltraak'", [guildId, userId]);
       const count = Number(result.rows[0]?.count || 0);
-      return { ok: count >= 1, progress: count + ' / 1 yeni büyü' };
+      return { ok: count >= 1, progress: count + ' / 1 yeni büyü', detail: 'Merak yolunda /buyuogren ile Zoltraak dışında bir büyü öğren.' };
     },
-    reward: { coins: 150, xp: 80 }
+    reward: { coins: 140, xp: 70 }
   },
   {
-    title: '🧪 Bölüm III: Gezginin Hazırlığı',
-    story: 'Yolun devamı tehlikeli. Eski bir gezgin, iyi hazırlanmış bir büyücünün bazen en güçlü büyüden daha fazlasını başarabileceğini söylüyor.',
-    objective: 'Envanterinden en az bir eşya kullan.',
+    title: '🗝️ Bölüm II: Harabelerin Mührü',
+    story: 'Ormanın sonunda eski bir kapı buldun. Mühür, yalnızca kararlı bir gezginin yolculuğuna devam etmesine izin veriyor. Kapının ardındaki izler kuzeydeki büyük tehdide işaret ediyor.',
+    objective: 'Toplamda en az 2 keşif tamamla.',
     requirement: async (db, guildId, userId, user) => {
-      const count = Number(user.items_used_count);
-      return { ok: count >= 1, progress: count + ' / 1 eşya' };
+      const count = Number(user.exploration_count);
+      return { ok: count >= 2, progress: count + ' / 2 keşif' };
     },
-    reward: { coins: 200, xp: 100 }
+    reward: { coins: 180, xp: 90 }
   },
   {
-    title: '⚔️ Bölüm IV: Kuzey Sınavı',
-    story: 'Kuzey sınırında karanlık bir büyü dalgası hissediliyor. Artık acemi değilsin; fakat bir sonraki adım için deneyimini kanıtlamalısın.',
+    title: '⚔️ Bölüm III: Kuzey Sınavı',
+    story: 'Harabelerdeki mühür kırıldığında karanlık bir dalga yayıldı. Bir sonraki geçit, gücünü ve deneyimini kanıtlamanı istiyor.',
     objective: 'En az 3. seviyeye ulaş.',
     requirement: async (db, guildId, userId, user) => {
       const level = Number(user.level);
       return { ok: level >= 3, progress: 'Seviye ' + level + ' / 3' };
     },
-    reward: { coins: 300, xp: 150 }
+    reward: { coins: 250, xp: 125 }
   },
   {
-    title: '🌟 Bölüm V: Yolculuğun İlk Mührü',
-    story: 'Mühür açılıyor ve kuzey yolunun haritası beliriyor. Bu yalnızca başlangıç: daha uzak bölgeler, yeni yoldaşlar ve çok daha eski büyüler seni bekliyor.',
+    title: '🌟 Bölüm IV: Yolculuğun İlk Mührü',
+    story: 'Mühür açılıyor ve kuzey yolunun haritası beliriyor. Seçtiğin yol seni buraya getirdi; ancak daha uzak bölgeler, kadim büyüler ve güçlü düşmanlar ileride seni bekliyor.',
     objective: 'İlk hikâye zincirini tamamladın!',
-    requirement: async () => ({ ok: true, progress: 'Tamamlandı' }),
-    reward: { coins: 0, xp: 0 }
+    requirement: async () => ({ ok: true, progress: 'Finale hazır' }),
+    reward: { coins: 300, xp: 150 }
   }
 ];
+
+const pathDetails = {
+  cesaret: { label: 'Cesaret', description: 'Bir iblisi yenerek korkunun karşısında dur.' },
+  merhamet: { label: 'Merhamet', description: 'Bir eşya kullanarak hazırlığını ve kendine özenini göster.' },
+  merak: { label: 'Merak', description: 'Yeni bir büyü öğrenerek bilinmeyenin peşine düş.' }
+};
 
 function choiceLabel(value) {
   return choices.find(choice => choice.value === value)?.name.split(' — ')[0] ?? value;
@@ -72,7 +76,7 @@ function choiceLabel(value) {
 export default {
   data: new SlashCommandBuilder()
     .setName('hikaye')
-    .setDescription('Ana hikâyeyi, görev zincirini ve kalıcı ilerlemeni görüntüle.')
+    .setDescription('Ana hikâyeyi ilerlet; seçimlerine göre farklı sınavlarla karşılaş.')
     .addStringOption(option =>
       option.setName('karar')
         .setDescription('Bu bölümde vereceğin karar')
@@ -102,7 +106,7 @@ export default {
       try {
         await client.query('BEGIN');
         const userResult = await client.query(
-          'SELECT xp, level, coins, exploration_count, items_used_count FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+          'SELECT xp, level, coins, exploration_count, items_used_count, boss_defeats FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
           [guildId, userId]
         );
         const user = userResult.rows[0];
@@ -119,31 +123,39 @@ export default {
           return interaction.editReply('🌟 Ana hikâyeyi zaten tamamladın! Yeni hikâye bölümleri ileride eklenecek.');
         }
 
-        const requirement = await chapter.requirement(client, guildId, userId, user);
+        const previousChoices = Array.isArray(progress.choices) ? progress.choices : [];
+        const chosenPath = previousChoices[0] ?? decision ?? 'merak';
+        const requirement = await chapter.requirement(client, guildId, userId, user, chosenPath);
+
         if (!decision) {
           await client.query('COMMIT');
-          const previousChoices = Array.isArray(progress.choices) ? progress.choices : [];
+          const path = pathDetails[previousChoices[0]];
           const embed = new EmbedBuilder()
             .setColor(0x9b8cff)
             .setTitle(chapter.title)
-            .setDescription(chapter.story)
+            .setDescription(chapter.story + (chapterIndex === 1 && path ? '\n\n**Seçtiğin yol:** ' + path.label + ' — ' + path.description : ''))
             .addFields(
-              { name: '🎯 Görev', value: chapter.objective.trim(), inline: false },
+              { name: '🎯 Görev', value: chapterIndex === 1 ? (requirement.detail ?? chapter.objective) : chapter.objective, inline: false },
               { name: '📊 İlerleme', value: requirement.progress, inline: true },
               { name: '🎁 Bölüm ödülü', value: chapter.reward.coins ? chapter.reward.coins + ' altın · ' + chapter.reward.xp + ' XP' : 'Hikâye sonu', inline: true },
               { name: '🧭 Önceki kararların', value: previousChoices.length ? previousChoices.map((value, index) => (index + 1) + '. ' + choiceLabel(value)).join('\n') : 'Henüz karar vermedin.', inline: false }
             )
-            .setFooter({ text: 'Karar vermek için /hikaye karar:<seçim> kullan.' });
+            .setFooter({ text: chapterIndex === 0 ? 'İlk kararın hikâye yolunu belirler. /hikaye karar:<seçim>' : 'Görevi tamamladıktan sonra /hikaye karar:<seçim> ile ilerle.' });
           return interaction.editReply({ embeds: [embed] });
+        }
+
+        if (chapterIndex === 1 && !previousChoices.length && !pathDetails[decision]) {
+          await client.query('ROLLBACK');
+          return interaction.editReply('İlk kararın için Cesaret, Merhamet veya Merak seçeneklerinden birini seçmelisin.');
         }
 
         if (!requirement.ok) {
           await client.query('COMMIT');
-          return interaction.editReply('🔒 Bu bölümün şartı henüz tamamlanmadı. **' + chapter.objective.trim() + '**\nİlerleme: ' + requirement.progress + '\n\nGörevi tamamladıktan sonra /hikaye komutuyla kararını verebilirsin.');
+          const task = chapterIndex === 1 ? requirement.detail : chapter.objective;
+          return interaction.editReply('🔒 Bu bölüm henüz tamamlanmadı. **' + task.trim() + '**\nİlerleme: ' + requirement.progress + '\n\nGörevi tamamladıktan sonra /hikaye komutuyla devam edebilirsin.');
         }
 
-        const previousChoices = Array.isArray(progress.choices) ? progress.choices : [];
-        const newChoices = [...previousChoices, decision];
+        const newChoices = chapterIndex === 0 ? [decision] : [...previousChoices, decision];
         const reward = chapter.reward;
         const newXp = Number(user.xp) + reward.xp;
         const newLevel = Math.floor(Math.sqrt(newXp / 100)) + 1;
@@ -161,7 +173,11 @@ export default {
         );
         await client.query('COMMIT');
 
-        resultMessage = '📖 **' + chapter.title + '** tamamlandı!\nKararın: **' + choiceLabel(decision) + '**\nÖdül: **' + reward.coins + ' altın** ve **' + reward.xp + ' XP**' + (gainedPoints ? '\n✨ Seviye atladın: +' + gainedPoints + ' stat puanı.' : '');
+        const pathName = pathDetails[newChoices[0]]?.label ?? choiceLabel(decision);
+        resultMessage = '📖 **' + chapter.title + '** tamamlandı!\n' +
+          (chapterIndex === 0 ? 'Seçtiğin yol: **' + pathName + '**\n' : 'Yolun: **' + pathName + '**\n') +
+          'Kararın: **' + choiceLabel(decision) + '**\nÖdül: **' + reward.coins + ' altın** ve **' + reward.xp + ' XP**' +
+          (gainedPoints ? '\n✨ Seviye atladın: +' + gainedPoints + ' stat puanı.' : '');
       } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
         throw error;
