@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
-import { equipmentItems, equipmentSlots, formatEquipmentBonus } from './equipment-data.js';
+import { equipmentItems, equipmentSlots, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
 
 const rarityEmoji = { Yaygın: '⚪', Nadir: '🔹', Destansı: '🟣', Efsanevi: '🟡' };
 
@@ -50,9 +50,34 @@ export default {
 
     if (action === 'unequip') {
       if (!requestedSlot) return interaction.reply({ content: 'Çıkarmak istediğin yuvayı **yuva** seçeneğinden belirt.', ephemeral: true });
-      const removed = await pool.query('DELETE FROM user_equipment WHERE guild_id=$1 AND user_id=$2 AND slot=$3 RETURNING item_key', [interaction.guildId, interaction.user.id, requestedSlot]);
-      if (!removed.rowCount) return interaction.reply({ content: 'Bu yuvada takılı ekipman yok.', ephemeral: true });
-      return interaction.reply({ content: '↩️ **' + removed.rows[0].item_key + '** çıkarıldı. Eşya envanterinde duruyor; istediğin zaman tekrar kuşanabilirsin.', ephemeral: true });
+      const db = await pool.connect();
+      try {
+        await db.query('BEGIN');
+        const removed = await db.query('DELETE FROM user_equipment WHERE guild_id=$1 AND user_id=$2 AND slot=$3 RETURNING item_key', [interaction.guildId, interaction.user.id, requestedSlot]);
+        if (!removed.rowCount) {
+          await db.query('ROLLBACK');
+          return interaction.reply({ content: 'Bu yuvada takılı ekipman yok.', ephemeral: true });
+        }
+        const [remaining, baseStats] = await Promise.all([
+          db.query('SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id]),
+          db.query('SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [interaction.guildId, interaction.user.id])
+        ]);
+        const gear = equipmentBonus(remaining.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean));
+        const effectiveMaxHp = Math.min(2000, Number(baseStats.rows[0].max_hp) + gear.hp);
+        const effectiveMaxMana = Math.min(2000, Number(baseStats.rows[0].max_mana) + gear.mana);
+        await db.query(
+          'UPDATE users SET hp=LEAST(hp,$3), mana=LEAST(mana,$4) WHERE guild_id=$1 AND user_id=$2',
+          [interaction.guildId, interaction.user.id, effectiveMaxHp, effectiveMaxMana]
+        );
+        await db.query('COMMIT');
+        return interaction.reply({ content: '↩️ **' + removed.rows[0].item_key + '** çıkarıldı. Eşya envanterinde duruyor; istediğin zaman tekrar kuşanabilirsin.\n❤️ HP ve 🔮 Mana, yeni ekipman sınırına göre düzenlendi.', ephemeral: true });
+      } catch (error) {
+        await db.query('ROLLBACK').catch(() => {});
+        console.error('/ekipman çıkarma hatası:', error);
+        return interaction.reply({ content: 'Ekipman çıkarılırken hata oluştu. Biraz sonra tekrar dene.', ephemeral: true });
+      } finally {
+        db.release();
+      }
     }
 
     const item = equipmentItems.find(entry => entry.id === itemId);
@@ -80,9 +105,20 @@ export default {
         return interaction.reply({ content: 'Bu ekipman envanterinde yeterli sayıda yok. Önce **/market** üzerinden satın al.', ephemeral: true });
       }
       await db.query('INSERT INTO user_equipment(guild_id,user_id,slot,item_key) VALUES($1,$2,$3,$4) ON CONFLICT(guild_id,user_id,slot) DO UPDATE SET item_key=EXCLUDED.item_key,equipped_at=NOW()', [interaction.guildId, interaction.user.id, slot, item.name]);
+      const [allEquipped, baseStats] = await Promise.all([
+        db.query('SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id]),
+        db.query('SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [interaction.guildId, interaction.user.id])
+      ]);
+      const gear = equipmentBonus(allEquipped.rows.map(row => equipmentItems.find(entry => entry.name === row.item_key)).filter(Boolean));
+      const effectiveMaxHp = Math.min(2000, Number(baseStats.rows[0].max_hp) + gear.hp);
+      const effectiveMaxMana = Math.min(2000, Number(baseStats.rows[0].max_mana) + gear.mana);
+      await db.query(
+        'UPDATE users SET hp=LEAST(hp,$3), mana=LEAST(mana,$4) WHERE guild_id=$1 AND user_id=$2',
+        [interaction.guildId, interaction.user.id, effectiveMaxHp, effectiveMaxMana]
+      );
       await db.query('COMMIT');
       const slotLabel = equipmentSlots.find(entry => entry.id === slot)?.label || slot;
-      return interaction.reply({ content: '✨ **' + item.name + '** kuşanıldı!\n' + slotLabel + '\n' + rarityEmoji[item.rarity] + ' ' + item.rarity + ' · Seviye ' + item.levelReq + '+\n' + formatEquipmentBonus(item) + '\n\nEkipman bonusları **/iblisavasi** savaşında uygulanır.', ephemeral: true });
+      return interaction.reply({ content: '✨ **' + item.name + '** kuşanıldı!\n' + slotLabel + '\n' + rarityEmoji[item.rarity] + ' ' + item.rarity + ' · Seviye ' + item.levelReq + '+\n' + formatEquipmentBonus(item) + '\n\nEkipman bonusları **/iblisavasi** ve **/buyusavasi** savaşlarında uygulanır.', ephemeral: true });
     } catch (error) {
       await db.query('ROLLBACK').catch(() => {});
       console.error('/ekipman hatası:', error);
