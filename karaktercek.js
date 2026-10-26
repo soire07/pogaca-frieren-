@@ -43,7 +43,7 @@ export default {
         [guildId,user.id]
       );
       const guaranteed = previousPity >= 9;
-      const character=drawCharacter(null,guaranteed);
+      const character=drawCharacter(null,false,guaranteed);
       const saved=await saveCharacter(db,guildId,user.id,character);
       await db.query('UPDATE users SET pity_count=$3 WHERE guild_id=$1 AND user_id=$2',[guildId,user.id,character.rarity==='Efsanevi'?0:previousPity+1]);
       await db.query('COMMIT');
