@@ -43,7 +43,7 @@ export default {
       const newLevel = Math.floor(Math.sqrt(newXp / 100)) + 1;
 
       await client.query(
-        'UPDATE users SET coins=coins+$3, xp=$4, level=$5, last_adventure_at=NOW() WHERE guild_id=$1 AND user_id=$2',
+        'UPDATE users SET coins=coins+$3, xp=$4, stat_points=stat_points+GREATEST(0,$5-level), level=$5, last_adventure_at=NOW() WHERE guild_id=$1 AND user_id=$2',
         [interaction.guildId, interaction.user.id, outcome.coins, newXp, newLevel]
       );
 
