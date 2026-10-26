@@ -32,12 +32,12 @@ async function claimDrawCooldown(guildId, userId) {
          character_draw_cooldown_until =
            CASE WHEN (CASE WHEN character_draw_cooldown_until IS NOT NULL
                                 AND character_draw_cooldown_until <= NOW()
-                           THEN 1 ELSE character_draw_count + 1 END) >= 5
+                           THEN 1 ELSE character_draw_count + 1 END) >= 8
                 THEN NOW() + INTERVAL '5 minutes'
                 ELSE NULL END
      WHERE guild_id = $1 AND user_id = $2
        AND (character_draw_cooldown_until IS NULL OR character_draw_cooldown_until <= NOW())
-       AND (last_character_draw_at IS NULL OR last_character_draw_at <= NOW())
+       AND (last_character_draw_at IS NULL OR last_character_draw_at <= NOW() - INTERVAL '1 second')
        AND ((character_draw_cooldown_until IS NOT NULL AND character_draw_cooldown_until <= NOW())
             OR character_draw_count < 8)
      RETURNING character_draw_count, character_draw_cooldown_until`,
@@ -56,7 +56,7 @@ async function claimDrawCooldown(guildId, userId) {
     return { ok: false, reason: 'limit', cooldownUntil: row.character_draw_cooldown_until };
   }
   if (row?.last_character_draw_at) {
-    const remainingMs = 0 - (Date.now() - new Date(row.last_character_draw_at).getTime());
+    const remainingMs = 1000 - (Date.now() - new Date(row.last_character_draw_at).getTime());
     if (remainingMs > 0) return { ok: false, reason: 'wait', remainingSeconds: Math.ceil(remainingMs / 1000) };
   }
   return { ok: false, reason: 'limit', cooldownUntil: null };
