@@ -120,6 +120,7 @@ export default {
             await db.query('BEGIN');
             await db.query(
               `UPDATE users SET coins=coins+$3, xp=xp+$4,
+                stat_points=stat_points+GREATEST(0,(FLOOR(SQRT((xp+$4)::numeric / 100))::int + 1)-level),
                 level=FLOOR(SQRT((xp+$4)::numeric / 100))::int + 1
                WHERE guild_id=$1 AND user_id=$2`,
               [interaction.guildId, interaction.user.id, rewardCoins, rewardXp]
