@@ -22,6 +22,22 @@ export const marketItems = [
 const categories = ['Hepsi','Büyülü Eşyalar','Anime Hatıraları','Lanetli Eşyalar','Fırın Özel'];
 const rarityEmoji = { Yaygın:'⚪', Nadir:'🔹', Destansı:'🟣', Efsanevi:'🟡' };
 
+export function renderMarketItem(itemId, balance, userId) {
+ const item = marketItems.find(x => x.id === itemId);
+ if (!item) return null;
+ const embed = new EmbedBuilder()
+  .setColor(item.rarity === 'Efsanevi' ? 0xffc857 : item.rarity === 'Destansı' ? 0xb58cff : 0x72d6ff)
+  .setTitle('✨ EŞYA İNCELEME • '+item.name)
+  .setDescription('╭─── ⋆｡°✩°｡⋆ ───╮\\n'+item.emoji+' **'+item.name+'**\\n╰─── ⋆｡°✩°｡⋆ ───╯\\n\\n'+item.description+'\\n\\n'+rarityEmoji[item.rarity]+' **Nadirlik:** '+item.rarity+'\\n🗂️ **Kategori:** '+item.category+'\\n💰 **Fiyat:** '+item.price.toLocaleString('tr-TR')+' altın\\n🪙 **Bakiyen:** '+Number(balance).toLocaleString('tr-TR')+' altın')
+  .setFooter({text:'Poğaça Frieren • Büyülü koleksiyon marketi'})
+  .setTimestamp();
+ const row = new ActionRowBuilder().addComponents(
+  new ButtonBuilder().setCustomId('market_buy:'+item.id+':'+userId).setLabel('Satın al • '+item.price+' altın').setEmoji('🛍️').setStyle(ButtonStyle.Success),
+  new ButtonBuilder().setCustomId('market_back:'+userId).setLabel('Markete dön').setEmoji('↩️').setStyle(ButtonStyle.Secondary)
+ );
+ return {embeds:[embed],components:[row]};
+}
+
 function panelEmbed(page, category, balance, user) {
  const filtered = marketItems.filter(item => category === 'Hepsi' || item.category === category);
  const pages = Math.max(1, Math.ceil(filtered.length / 4));
