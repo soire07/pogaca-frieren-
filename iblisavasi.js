@@ -8,18 +8,25 @@ import {
 } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 
-const BOSS_MAX_HP = 160;
 const PLAYER_MAX_HP = 100;
 const COOLDOWN_MS = 30 * 60 * 1000;
 
-function battleEmbed({ player, bossHp, playerHp, playerMaxHp = PLAYER_MAX_HP, playerMana = 100, playerMaxMana = 100, attack = 10, defense = 5, bonus, description, won = false, lost = false }) {
+const bossTiers = [
+  { minLevel: 1, name: '🐺 Schattenwolf', region: 'Merkez Topraklar', maxHp: 120, minDamage: 7, maxDamage: 12, coinMin: 90, coinMax: 130, xpMin: 55, xpMax: 85, lootChance: 0.2 },
+  { minLevel: 10, name: '🗿 Kadim Harabe Muhafızı', region: 'Kadim Harabeler', maxHp: 210, minDamage: 10, maxDamage: 16, coinMin: 150, coinMax: 210, xpMin: 95, xpMax: 140, lootChance: 0.3 },
+  { minLevel: 20, name: '👹 Kuzey İblisi', region: 'Kuzey Toprakları', maxHp: 330, minDamage: 13, maxDamage: 20, coinMin: 230, coinMax: 320, xpMin: 150, xpMax: 210, lootChance: 0.35 },
+  { minLevel: 35, name: '🩸 Büyük İblis Komutanı', region: 'Kuzey Yaylaları', maxHp: 470, minDamage: 16, maxDamage: 24, coinMin: 340, coinMax: 470, xpMin: 220, xpMax: 310, lootChance: 0.45 },
+  { minLevel: 50, name: '👑 Äußerst Sınavının İblis Efendisi', region: 'Äußerst Sınav Rotası', maxHp: 650, minDamage: 20, maxDamage: 29, coinMin: 500, coinMax: 700, xpMin: 330, xpMax: 460, lootChance: 0.55 }
+];
+
+function battleEmbed({ player, bossHp, bossMaxHp = 160, bossName = 'İblis', bossRegion = 'Kuzey Sınırı', playerHp, playerMaxHp = PLAYER_MAX_HP, playerMana = 100, playerMaxMana = 100, attack = 10, defense = 5, bonus, description, won = false, lost = false }) {
   const embed = new EmbedBuilder()
     .setColor(won ? 0x65d6a6 : lost ? 0xe06c75 : 0x9b8cff)
-    .setTitle(won ? '🏆 İblis yenildi!' : lost ? '🌑 Büyücü düştü...' : '⚔️ İblis Avı • Kuzey Sınırı')
+    .setTitle(won ? `🏆 ${bossName} yenildi!` : lost ? '🌑 Büyücü düştü...' : `⚔️ ${bossName} • ${bossRegion}`)
     .setDescription(description)
     .addFields(
       { name: '🧙 Gezgin', value: `❤️ **${Math.max(0, playerHp)}/${playerMaxHp} HP** · 🔮 **${playerMana}/${playerMaxMana} Mana**\n⚔️ Saldırı: **${attack}** · 🛡️ Savunma: **${defense}**\n✨ Karakter bonusu: +${bonus} hasar`, inline: true },
-      { name: '👹 İblis', value: `🩸 **${Math.max(0, bossHp)}/${BOSS_MAX_HP} HP**`, inline: true }
+      { name: bossName, value: `🩸 **${Math.max(0, bossHp)}/${bossMaxHp} HP**`, inline: true }
     )
     .setFooter({ text: 'Poğaça Frieren • Kuzey sınırında her büyü önemlidir.' })
     .setTimestamp();
@@ -56,7 +63,7 @@ export default {
     const learnedSpells = new Set(knownSpellResult.rows.map(row => row.spell_key));
 
     const statsResult = await pool.query(
-      'SELECT hp, max_hp, mana, max_mana, attack, defense FROM users WHERE guild_id=$1 AND user_id=$2',
+      'SELECT hp, max_hp, mana, max_mana, attack, defense, level FROM users WHERE guild_id=$1 AND user_id=$2',
       [interaction.guildId, interaction.user.id]
     );
     const stats = statsResult.rows[0];
@@ -89,13 +96,25 @@ export default {
       [interaction.guildId, interaction.user.id]
     );
     const upgradeBonus = Number(upgrades.rows[0]?.level || 0) * 2;
-    let bossHp = BOSS_MAX_HP;
+    const playerLevel = Number(stats.level || 1);
+    const boss = [...bossTiers].reverse().find(tier => playerLevel >= tier.minLevel) || bossTiers[0];
+    let bossHp = boss.maxHp;
     let shield = false;
     let healUsed = false;
     let busy = false;
     let finished = false;
 
-    const renderBattleEmbed = options => battleEmbed({ ...options, playerMaxHp, playerMana, playerMaxMana, attack, defense });
+    const renderBattleEmbed = options => battleEmbed({
+      ...options,
+      bossMaxHp: boss.maxHp,
+      bossName: boss.name,
+      bossRegion: boss.region,
+      playerMaxHp,
+      playerMana,
+      playerMaxMana,
+      attack,
+      defense
+    });
 
     const initial = renderBattleEmbed({
       player: interaction.user,
@@ -193,9 +212,9 @@ export default {
 
         if (bossHp <= 0) {
           await pool.query('UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, playerHp, playerMana]);
-          const rewardCoins = 140 + Math.floor(Math.random() * 81);
-          const rewardXp = 90 + Math.floor(Math.random() * 41);
-          const bonusLoot = Math.random() < 0.35
+          const rewardCoins = boss.coinMin + Math.floor(Math.random() * (boss.coinMax - boss.coinMin + 1));
+          const rewardXp = boss.xpMin + Math.floor(Math.random() * (boss.xpMax - boss.xpMin + 1));
+          const bonusLoot = Math.random() < boss.lootChance
             ? ['🩸 İblis Özü', '✨ Eski Büyü Kalıntısı', '🗝️ Harabe Anahtarı'][Math.floor(Math.random() * 3)]
             : null;
           const db = await pool.connect();
@@ -239,7 +258,7 @@ export default {
           });
         }
 
-        const rawBossDamage = Math.floor(Math.random() * 12) + 12;
+        const rawBossDamage = Math.floor(Math.random() * (boss.maxDamage - boss.minDamage + 1)) + boss.minDamage;
         let bossDamage = Math.max(1, rawBossDamage - Math.floor(defense / 2));
         if (frozenBoss) bossDamage = 0;
         if (shield && bossDamage > 0) {
