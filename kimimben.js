@@ -18,11 +18,11 @@ const characters = [
   { name: 'Heiter', anime: 'Frieren: Beyond Journey’s End', rarity: 'Nadir', emoji: '🍃', color: 0x58b98a, description: 'Mizahı ve bilgeliğiyle öne çıkan eski kahraman grubunun rahibi.', traits: 'Bilge • Eğlenceli • Şefkatli', image: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g10-723x1024.jpg' },
   { name: 'Sein', anime: 'Frieren: Beyond Journey’s End', rarity: 'Destansı', emoji: '🌿', color: 0x52a88a, description: 'Arkadaşlarına yardım eden, deneyimli bir rahip.', traits: 'Olgun • Yardımsever • Rahat', image: 'https://frieren-anime.jp/wp-content/uploads/2023/12/g-724x1024.jpg' },
   { name: 'Goku', anime: 'Dragon Ball', rarity: 'Efsanevi', emoji: '🐉', color: 0xf0a33a, description: 'Sürekli güçlenmek ve daha güçlü rakiplerle karşılaşmak isteyen savaşçı.', traits: 'Neşeli • Azimli • Güçlü', image: 'https://dragonball-super.com/img/chara/cr-goku.jpg' },
-  { name: 'Naruto Uzumaki', anime: 'Naruto', rarity: 'Efsanevi', emoji: '🍥', color: 0xf08c38, description: 'Asla pes etmeyen ve hayallerinin peşinden giden ninja.', traits: 'Kararlı • Enerjik • Sadık', image: 'https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/283be11b-2521-41f1-89dd-51da31e618a2/dhmmxdk-5b9f3fec-ccd2-47e4-ab86-ed638e4942a5.jpg' },
-  { name: 'Monkey D. Luffy', anime: 'One Piece', rarity: 'Efsanevi', emoji: '🏴‍☠️', color: 0xd95757, description: 'Özgürlüğü ve arkadaşlarını her şeyin üstünde tutan korsan.', traits: 'Özgür ruhlu • Cesur • Eğlenceli', image: 'https://s.panlai.com/upload/20241101121805173043468573106.jpg' },
-  { name: 'Satoru Gojo', anime: 'Jujutsu Kaisen', rarity: 'Efsanevi', emoji: '👁️', color: 0x68a9ff, description: 'Kendine güveni ve olağanüstü yetenekleriyle tanınan büyücü.', traits: 'Kendinden emin • Şakacı • Güçlü', image: 'https://i.pinimg.com/736x/26/df/0f/26df0f496752aacd235737b59779962c.jpg' },
+  { name: 'Naruto Uzumaki', anime: 'Naruto', rarity: 'Efsanevi', emoji: '🍥', color: 0xf08c38, description: 'Asla pes etmeyen ve hayallerinin peşinden giden ninja.', traits: 'Kararlı • Enerjik • Sadık', image: 'https://i.pinimg.com/736x/1b/52/07/1b52070987b60e23275c4d0897c90bab.jpg' },
+  { name: 'Monkey D. Luffy', anime: 'One Piece', rarity: 'Efsanevi', emoji: '🏴‍☠️', color: 0xd95757, description: 'Özgürlüğü ve arkadaşlarını her şeyin üstünde tutan korsan.', traits: 'Özgür ruhlu • Cesur • Eğlenceli', image: 'https://img.uhdpaper.com/wallpaper/luffy-sun-god-nika-gear-5-one-piece-370%405%40l' },
+  { name: 'Satoru Gojo', anime: 'Jujutsu Kaisen', rarity: 'Efsanevi', emoji: '👁️', color: 0x68a9ff, description: 'Kendine güveni ve olağanüstü yetenekleriyle tanınan büyücü.', traits: 'Kendinden emin • Şakacı • Güçlü', image: 'https://cdn.sweezy-wallpapers.com/wallpapers/1971ab3c-0151-403a-95a5-1852fda021a0/satoru-gojo-jujutsu-kaisen-blue-energy-desktop-wallpaper-5k-preview.webp' },
   { name: 'Tanjiro Kamado', anime: 'Demon Slayer', rarity: 'Nadir', emoji: '🌊', color: 0x50a9a0, description: 'Sevdiklerini korumak için mücadele eden şefkatli savaşçı.', traits: 'Şefkatli • Azimli • Dürüst', image: 'https://demonslayer-anime.com/eda/assets/img/character/thumb/thumb_tanjirou.png' },
-  { name: 'Levi Ackerman', anime: 'Attack on Titan', rarity: 'Efsanevi', emoji: '🗡️', color: 0x8294a8, description: 'Soğukkanlılığı ve becerileriyle öne çıkan asker.', traits: 'Disiplinli • Soğukkanlı • Kararlı', image: 'https://uhdwalls.com/2025/levi-ackerman-rage-mode-aot/levi-ackerman-rage-mode-aot-2732x2732.jpg' },
+  { name: 'Levi Ackerman', anime: 'Attack on Titan', rarity: 'Efsanevi', emoji: '🗡️', color: 0x8294a8, description: 'Soğukkanlılığı ve becerileriyle öne çıkan asker.', traits: 'Disiplinli • Soğukkanlı • Kararlı', image: 'https://images.hdqwalls.com/download/levi-ackerman-2z-2932x2932.jpg' },
   { name: 'Kanne', anime: 'Frieren: Beyond Journey’s End', rarity: 'Yaygın', emoji: '💧', color: 0x69b7e8, description: 'Suyu kontrol edebilen, büyü sınavına katılan genç büyücü.', traits: 'Meraklı • Duyarlı • Büyücü', image: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara02_full1.png' },
   { name: 'Lawine', anime: 'Frieren: Beyond Journey’s End', rarity: 'Yaygın', emoji: '❄️', color: 0x78a9dc, description: 'Buz büyülerinde yetenekli, kararlı genç büyücü.', traits: 'Kararlı • Rekabetçi • Yetenekli', image: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara08_full1.png' },
   { name: 'Laufen', anime: 'Frieren: Beyond Journey’s End', rarity: 'Yaygın', emoji: '🌬️', color: 0x80c7b0, description: 'Hızlı hareketleriyle öne çıkan genç büyücü.', traits: 'Çevik • Atik • Zeki', image: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara07_full1.png' },
@@ -80,12 +80,12 @@ function createCharacterEmbed(character, user, quantity) {
   const embed = new EmbedBuilder()
     .setColor(character.color)
     .setAuthor({
-      name: elite ? '✦ S CLASS • EFSANEVİ KARAKTER ✦' : `✧ ${character.rarity.toLocaleUpperCase('tr-TR')} SINIF ✧`
+      name: `✧ ${character.rarity.toLocaleUpperCase('tr-TR')} ✧`
     })
     .setTitle(`${character.emoji}  ${character.name}  ${character.emoji}`)
     .setDescription(
       elite
-        ? `╭━━━ ✦ **EFSANEVİ KEŞİF** ✦ ━━━╮\n**${user.username}**, nadir bir karakter keşfettin!\n\n${character.description}\n\n**━━━━━━━━━━━━━━━━━━**\n${info.stars}  **LEGENDARY • S CLASS**  ${info.stars}`
+        ? `**${user.username}**, efsanevi bir karakter keşfettin!\n\n${character.description}`
         : `**${user.username}**, anime karakterin belli oldu!\n\n${character.description}`
     )
     .addFields(
@@ -94,7 +94,7 @@ function createCharacterEmbed(character, user, quantity) {
       { name: '📚  KOLEKSİYON', value: `**×${quantity}**`, inline: true },
       { name: '✧  KARAKTER ÖZELLİKLERİ', value: `┏  ${character.traits}\n┗━━━━━━━━━━━━━━━━`, inline: false }
     )
-    .setFooter({ text: elite ? 'POĞAÇA FRIEREN  •  LEGENDARY COLLECTION' : 'Poğaça Frieren • Karakter Keşfi' })
+    .setFooter({ text: 'Poğaça Frieren • Karakter Keşfi' })
     .setTimestamp();
   if (character.image) embed.setImage(character.image);
   return embed;
