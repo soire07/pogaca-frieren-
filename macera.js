@@ -3,10 +3,10 @@ import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js
 import { pool, ensureUser } from './database/db.js';
 
 const outcomes = [
-  { text: 'Ormanda kayıp bir büyü kitabı buldun!', coins: 35, xp: 25, item: '📖 Yasak Büyü Kitabı' },
-  { text: 'Bir Mimic seni kovaladı ama kaçmayı başardın.', coins: 15, xp: 20, item: null },
-  { text: 'Yol kenarında bir fırın buldun. Fırıncı sana ödül verdi!', coins: 60, xp: 15, item: '🥐 Büyülü Poğaça Kutusu' },
-  { text: 'Eski bir harabede gizli bir oda keşfettin.', coins: 45, xp: 40, item: '💎 Mana Kristali' }
+  { text: 'Ormanda kayıp bir büyü kitabı buldun!', coins: 25, xp: 25, item: '📖 Yasak Büyü Kitabı' },
+  { text: 'Bir Mimic seni kovaladı ama kaçmayı başardın.', coins: 10, xp: 20, item: null },
+  { text: 'Yol kenarında bir fırın buldun. Fırıncı sana ödül verdi!', coins: 40, xp: 15, item: '🥐 Büyülü Poğaça Kutusu' },
+  { text: 'Eski bir harabede gizli bir oda keşfettin.', coins: 30, xp: 40, item: '💎 Mana Kristali' }
 ];
 
 export default {
@@ -31,10 +31,10 @@ export default {
         [interaction.guildId, interaction.user.id]
       );
 
-      if (u.last_adventure_at && Date.now() - new Date(u.last_adventure_at).getTime() < 300_000) {
+      if (u.last_adventure_at && Date.now() - new Date(u.last_adventure_at).getTime() < 600_000) {
         await client.query('ROLLBACK');
         return interaction.reply({
-          content: '⏳ Yeni maceraya çıkmadan önce 5 dakika beklemelisin.',
+          content: '⏳ Yeni maceraya çıkmadan önce 10 dakika beklemelisin.',
           ephemeral: true
         });
       }
