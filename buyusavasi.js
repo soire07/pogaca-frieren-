@@ -102,7 +102,7 @@ export default {
       .setColor(0x9b8cff)
       .setTitle('⚔️ Büyü Düellosu Daveti')
       .setDescription(
-        `${opponent}, ${challenger} seni düelloya çağırdı!\n\n` +
+        `${challenger} seni düelloya çağırdı!\n\n` +
         'Kabul edersen sırayla saldırabilir, savunabilir veya iyileşebilirsin.'
       )
       .setFooter({ text: 'Davetin 30 saniye içinde yanıtlanması gerekiyor.' });
@@ -119,9 +119,14 @@ export default {
         .setStyle(ButtonStyle.Secondary)
     );
 
+    // Gerçek Discord kullanıcı etiketlemesi ve bildirim izni
     await interaction.reply({
+      content: `⚔️ <@${opponent.id}>`,
       embeds: [inviteEmbed],
-      components: [inviteRow]
+      components: [inviteRow],
+      allowedMentions: {
+        users: [opponent.id]
+      }
     });
 
     const inviteMessage = await interaction.fetchReply();
@@ -178,9 +183,6 @@ export default {
       const playerName = id =>
         id === challenger.id ? challenger.username : opponent.username;
 
-      const playerHP = id =>
-        id === challenger.id ? hp1 : hp2;
-
       const makeBattleEmbed = (description, gifName = null, color = 0x9b8cff) =>
         createEmbed(
           `⚔️ Büyü Düellosu • Tur ${round}`,
@@ -236,7 +238,9 @@ export default {
       };
 
       const applyMove = async move => {
-        if (gameOver) return;
+        if (gameOver) {
+          return move.deferUpdate().catch(() => {});
+        }
 
         if (![challenger.id, opponent.id].includes(move.user.id)) {
           return move.reply({
@@ -264,11 +268,11 @@ export default {
           if (isPlayer1 && shield2) {
             damage = Math.ceil(damage * 0.5);
             shield2 = false;
-            description = `🛡️ Rakibin savunması hasarı azalttı! `;
+            description = '🛡️ Rakibin savunması hasarı azalttı! ';
           } else if (!isPlayer1 && shield1) {
             damage = Math.ceil(damage * 0.5);
             shield1 = false;
-            description = `🛡️ Rakibin savunması hasarı azalttı! `;
+            description = '🛡️ Rakibin savunması hasarı azalttı! ';
           }
 
           if (isPlayer1) {
@@ -279,14 +283,17 @@ export default {
 
           description += `⚡ ${move.user} büyü saldırısı yaptı ve **${damage} hasar** verdi!`;
           showAttackGif = true;
+
         } else if (move.customId === 'duel_defend') {
           if (isPlayer1) shield1 = true;
           else shield2 = true;
 
           description = `🛡️ ${move.user} savunma kalkanı oluşturdu! Bir sonraki saldırının hasarı yarıya inecek.`;
+
         } else if (move.customId === 'duel_heal') {
           if ((isPlayer1 && healUsed1) || (!isPlayer1 && healUsed2)) {
             startTurnTimer();
+
             return move.reply({
               content: 'Bu düelloda iyileşme hakkını zaten kullandın. Başka bir hamle seç!',
               ephemeral: true
@@ -310,6 +317,7 @@ export default {
 
         if (hp1 <= 0 || hp2 <= 0) {
           await move.deferUpdate();
+
           return finishGame(
             hp1 <= 0 ? opponent : challenger,
             `${hp1 <= 0 ? challenger.username : opponent.username} yenildi!`
@@ -402,4 +410,4 @@ export default {
     });
   }
 };
-                   
+    
