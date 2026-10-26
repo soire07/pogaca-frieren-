@@ -2,19 +2,80 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
 
 const COOLDOWN_MS = 15 * 60 * 1000;
-const encounters = [
-  { title: '🌲 Kuzey Ormanı', text: 'Sislerin arasından eski bir büyü kalıntısı buldun.', xp: 35, coins: 24, manaCost: 8, hpDamage: 0, item: '✨ Eski Büyü Kalıntısı' },
-  { title: '🪨 Sessiz Harabeler', text: 'Taşların arasında saklı bir sandık keşfettin; tuzağı atlatırken hafifçe yaralandın.', xp: 45, coins: 32, manaCost: 0, hpDamage: 12, item: '🗝️ Harabe Anahtarı' },
-  { title: '🧙 Gezgin Büyücü', text: 'Yaşlı bir büyücü sana küçük bir ders verdi ve yol masrafı için altın bıraktı.', xp: 30, coins: 45, manaCost: 0, hpDamage: 0, item: null },
-  { title: '👹 İblis İzleri', text: 'Bir iblisin izini sürdün. Kısa bir çatışmadan sonra ganimetini aldın.', xp: 55, coins: 38, manaCost: 10, hpDamage: 18, item: '🩸 İblis Özü' },
-  { title: '🌼 Çiçek Tarlası', text: 'Fern’in öğrettiği sakinleştirici nefes tekniğini hatırladın; yolculuğun sana iyi geldi.', xp: 25, coins: 15, manaCost: 0, hpDamage: 0, item: '🌼 Kurutulmuş Çiçek' },
-  { title: '🥐 Gezgin Fırın', text: 'Yol kenarındaki fırıncı, yardımın karşılığında sana altın ve taze poğaça verdi.', xp: 20, coins: 55, manaCost: 0, hpDamage: 0, item: '🥐 Büyülü Poğaça' }
-];
+const regions = {
+  merkez: {
+    name: '🌾 Merkez Topraklar',
+    minLevel: 1,
+    encounters: [
+      { title: '🏘️ Yol Kenarı Kasabası', text: 'Kasaba halkına yardım ettin. Bir tüccar yol masrafın için altın verdi.', xp: 25, coins: 35, manaCost: 0, hpDamage: 0, item: null },
+      { title: '🌼 Çiçek Tarlası', text: 'Yol boyunca nadir çiçekler topladın ve Himmel’in eski bir anıtında kısa bir mola verdin.', xp: 30, coins: 18, manaCost: 0, hpDamage: 0, item: '🌼 Kurutulmuş Çiçek' },
+      { title: '🥐 Gezgin Fırın', text: 'Fırıncıya yardım ettin; karşılığında taze poğaça ve birkaç altın aldın.', xp: 20, coins: 45, manaCost: 0, hpDamage: 0, item: '🥐 Büyülü Poğaça' }
+    ]
+  },
+  orman: {
+    name: '🌲 Büyük Orman Yolu',
+    minLevel: 5,
+    encounters: [
+      { title: '🌲 Mana İzleri', text: 'Ağaçların arasında eski bir büyünün izlerini takip edip büyü kalıntısı buldun.', xp: 42, coins: 30, manaCost: 8, hpDamage: 0, item: '✨ Eski Büyü Kalıntısı' },
+      { title: '🐺 Orman Yaratığı', text: 'Bir yaratık yolunu kesti. Dikkatli bir hamleyle onu savuşturup ganimetini aldın.', xp: 50, coins: 38, manaCost: 8, hpDamage: 12, item: '🌼 Kurutulmuş Çiçek' },
+      { title: '🧙 Gezgin Büyücü', text: 'Yaşlı bir büyücü sana büyü kontrolü hakkında kısa bir ders verdi.', xp: 38, coins: 45, manaCost: 0, hpDamage: 0, item: null }
+    ]
+  },
+  harabeler: {
+    name: '🏚️ Kadim Harabeler',
+    minLevel: 12,
+    encounters: [
+      { title: '🗝️ Mühürlü Oda', text: 'Harabelerdeki eski bir mührü çözdün. Sandıktan bir anahtar ve altın çıktı.', xp: 65, coins: 55, manaCost: 0, hpDamage: 10, item: '🗝️ Harabe Anahtarı' },
+      { title: '✨ Unutulmuş Grimoire', text: 'Taş bir nişin içinde eski büyü notları buldun; araştırırken mana harcadın.', xp: 78, coins: 48, manaCost: 12, hpDamage: 0, item: '✨ Eski Büyü Kalıntısı' },
+      { title: '🪤 Harabe Tuzağı', text: 'Bir tuzağı fark edip atlattın, ancak çıkış yolunda hafifçe yaralandın.', xp: 70, coins: 68, manaCost: 0, hpDamage: 18, item: '🗝️ Harabe Anahtarı' }
+    ]
+  },
+  kuzey: {
+    name: '❄️ Kuzey Topraklarına Giden Yol',
+    minLevel: 20,
+    encounters: [
+      { title: '❄️ Kar Fırtınası', text: 'Fırtınadan korunmak için mana kullandın ve terk edilmiş bir kampın malzemelerini buldun.', xp: 95, coins: 90, manaCost: 12, hpDamage: 12, item: '🩸 İblis Özü' },
+      { title: '👹 İblis İzleri', text: 'Kuzey yolunda bir iblisin izini sürdün. Kısa ama zorlu çatışmadan ganimetle çıktın.', xp: 115, coins: 105, manaCost: 16, hpDamage: 22, item: '🩸 İblis Özü' },
+      { title: '🪨 Eski Geçit', text: 'Kayalık geçitte saklı bir sandık keşfettin; içindeki eşyalar yolculuğunu kolaylaştıracak.', xp: 100, coins: 120, manaCost: 0, hpDamage: 15, item: '🗝️ Harabe Anahtarı' }
+    ]
+  },
+  yayla: {
+    name: '🏔️ Kuzey Yaylaları',
+    minLevel: 35,
+    encounters: [
+      { title: '👁️ Güçlü İblisin Aurası', text: 'Tehlikeli bir iblisin aurasını fark edip doğrudan çatışmadan kaçındın; geride bıraktığı kalıntıları topladın.', xp: 150, coins: 155, manaCost: 20, hpDamage: 20, item: '🩸 İblis Özü' },
+      { title: '🔮 Kadim Mana Damarı', text: 'Buzların altında yoğun mana taşıyan bir damar keşfettin ve enerjisini dikkatle topladın.', xp: 175, coins: 135, manaCost: 10, hpDamage: 0, item: '✨ Eski Büyü Kalıntısı' },
+      { title: '⚔️ Kuzey Geçidi Çatışması', text: 'Geçidi tutan güçlü bir yaratıkla savaştın. Zaferin pahalıya mal oldu ama ganimetin değerli.', xp: 190, coins: 185, manaCost: 22, hpDamage: 28, item: '🩸 İblis Özü' }
+    ]
+  },
+  aus: {
+    name: '🏰 Äußerst Sınav Rotası',
+    minLevel: 50,
+    encounters: [
+      { title: '🎖️ Büyücü Sınavı Kalıntısı', text: 'Sınav rotasının eski bir alanında büyü kontrolünü sınayan bir mekanizmayı çözdün.', xp: 220, coins: 230, manaCost: 24, hpDamage: 12, item: '✨ Eski Büyü Kalıntısı' },
+      { title: '🛡️ Sınav Muhafızı', text: 'Sınav alanındaki güçlü muhafızı alt edip nadir malzemeler topladın.', xp: 260, coins: 270, manaCost: 28, hpDamage: 32, item: '🩸 İblis Özü' },
+      { title: '📜 Mühürlü Büyü Arşivi', text: 'Zorlu bir büyü bilmecesini çözüp eski bir arşive ulaştın.', xp: 245, coins: 290, manaCost: 18, hpDamage: 0, item: '🗝️ Harabe Anahtarı' }
+    ]
+  }
+};
 
 export default {
   data: new SlashCommandBuilder()
     .setName('kesif')
-    .setDescription('Frieren evreninde keşfe çık; XP, altın ve nadir eşyalar bul.'),
+    .setDescription('Frieren evreninde bölge seçerek keşfe çık; seviye ve ganimet kazan.')
+    .addStringOption(option =>
+      option.setName('bolge')
+        .setDescription('Keşfe çıkmak istediğin bölge')
+        .setRequired(true)
+        .addChoices(
+          { name: 'Merkez Topraklar (Seviye 1+)', value: 'merkez' },
+          { name: 'Büyük Orman Yolu (Seviye 5+)', value: 'orman' },
+          { name: 'Kadim Harabeler (Seviye 12+)', value: 'harabeler' },
+          { name: 'Kuzey Topraklarına Giden Yol (Seviye 20+)', value: 'kuzey' },
+          { name: 'Kuzey Yaylaları (Seviye 35+)', value: 'yayla' },
+          { name: 'Äußerst Sınav Rotası (Seviye 50+)', value: 'aus' }
+        )
+    ),
 
   async execute(interaction) {
     if (!interaction.guildId) {
@@ -42,6 +103,13 @@ export default {
         return interaction.editReply('❤️ Canın tükenmiş. Keşfe çıkmadan önce **/dinlen** komutuyla HP ve Mana değerlerini yenile.');
       }
 
+      const regionKey = interaction.options.getString('bolge');
+      const region = regions[regionKey];
+      if (Number(player.level) < region.minLevel) {
+        await client.query('ROLLBACK');
+        return interaction.editReply(`🔒 **${region.name}** için en az **${region.minLevel}. seviye** olmalısın. Şu anki seviyen: **${player.level}**.`);
+      }
+
       if (player.last_exploration_at) {
         const remaining = COOLDOWN_MS - (Date.now() - new Date(player.last_exploration_at).getTime());
         if (remaining > 0) {
@@ -51,10 +119,14 @@ export default {
         }
       }
 
-      const encounter = encounters[Math.floor(Math.random() * encounters.length)];
+      const encounter = region.encounters[Math.floor(Math.random() * region.encounters.length)];
+      // Rewards rise with player level: +10% per 10 levels, capped at 5x.
+      const rewardMultiplier = Math.min(5, 1 + Math.floor((Number(player.level) - 1) / 10) * 0.1);
+      const rewardXp = Math.round(encounter.xp * rewardMultiplier);
+      const rewardCoins = Math.round(encounter.coins * rewardMultiplier);
       const manaCost = Number(player.mana) >= encounter.manaCost ? encounter.manaCost : 0;
       const hpDamage = encounter.hpDamage;
-      const newXp = Number(player.xp) + encounter.xp;
+      const newXp = Number(player.xp) + rewardXp;
       const newLevel = Math.floor(Math.sqrt(newXp / 100)) + 1;
       const newHp = Math.max(0, Number(player.hp) - hpDamage);
       const newMana = Math.max(0, Number(player.mana) - manaCost);
@@ -71,7 +143,7 @@ export default {
           last_exploration_at=NOW(),
           exploration_count=exploration_count+1
          WHERE guild_id=$1 AND user_id=$2`,
-        [interaction.guildId, interaction.user.id, newXp, newLevel, encounter.coins, newHp, newMana, gainedPoints]
+        [interaction.guildId, interaction.user.id, newXp, newLevel, rewardCoins, newHp, newMana, gainedPoints]
       );
 
       if (encounter.item) {
@@ -89,23 +161,24 @@ export default {
       const description = [
         encounter.text,
         '',
-        `**Ödüller:** +${encounter.coins} altın · +${encounter.xp} XP`,
+        `**Ödüller:** +${rewardCoins} altın · +${rewardXp} XP`,
+        rewardMultiplier > 1 ? `**Seviye bonusu:** x${rewardMultiplier.toFixed(1)}` : '',
         encounter.item ? `**Bulunan eşya:** ${encounter.item}` : '',
         hpDamage ? `**Can kaybı:** −${hpDamage} HP` : '',
         manaCost ? `**Büyü maliyeti:** −${manaCost} Mana` : encounter.manaCost ? 'Mana yetersiz olduğu için büyü kullanmadın.' : '',
         gainedPoints ? `**Seviye atladın!** +${gainedPoints} stat puanı kazandın.` : ''
-      ].filter(Boolean).join('\n');
+      ].filter(Boolean).join('\\n');
 
       const embed = new EmbedBuilder()
         .setColor(newHp === 0 ? 0xc0392b : 0x9b8cff)
-        .setTitle(encounter.title)
+        .setTitle(`${region.name} • ${encounter.title}`)
         .setDescription(description)
         .addFields(
           { name: '❤️ HP', value: `${newHp}/${player.max_hp}`, inline: true },
           { name: '🔮 Mana', value: `${newMana}/${player.max_mana}`, inline: true },
           { name: '🧭 Seviye', value: String(newLevel), inline: true }
         )
-        .setFooter({ text: 'Keşif bekleme süresi: 15 dakika • Poğaça Frieren RPG' });
+        .setFooter({ text: 'Keşif bekleme süresi: 15 dakika • Ödüller seviye ile artar • Poğaça Frieren' });
 
       return interaction.editReply({ embeds: [embed] });
     } catch (error) {
