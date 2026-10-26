@@ -69,6 +69,12 @@ const pathDetails = {
   merak: { label: 'Merak', description: 'Yeni bir büyü öğrenerek bilinmeyenin peşine düş.' }
 };
 
+const endings = {
+  cesaret: { title: '🔥 Cesaretin Mührü', story: 'Kuzey rüzgârı sert eserken geri adım atmadın. Mühür, kararlılığını tanıdı ve önünde yeni bir yol açıldı.', bonusCoins: 100, bonusXp: 40 },
+  merhamet: { title: '🌿 Merhametin Mührü', story: 'Yol boyunca yalnızca gücünü değil, başkalarını gözetme iradeni de korudun. Eski mühür yumuşak bir ışıkla açıldı.', bonusCoins: 120, bonusXp: 50 },
+  merak: { title: '🔮 Bilginin Mührü', story: 'Bilinmeyeni araştırmaktan vazgeçmedin. Mühür, öğrenme isteğine karşılık vererek kadim bir işaret gösterdi.', bonusCoins: 90, bonusXp: 60 }
+};
+
 function choiceLabel(value) {
   return choices.find(choice => choice.value === value)?.name.split(' — ')[0] ?? value;
 }
@@ -156,15 +162,17 @@ export default {
         }
 
         const newChoices = chapterIndex === 0 ? [decision] : [...previousChoices, decision];
-        const reward = chapter.reward;
-        const newXp = Number(user.xp) + reward.xp;
+        const ending = chapterIndex === chapters.length - 1 ? endings[decision] : null;
+        const rewardCoins = chapter.reward.coins + (ending?.bonusCoins ?? 0);
+        const rewardXp = chapter.reward.xp + (ending?.bonusXp ?? 0);
+        const newXp = Number(user.xp) + rewardXp;
         const newLevel = Math.floor(Math.sqrt(newXp / 100)) + 1;
         const gainedPoints = Math.max(0, newLevel - Number(user.level));
 
         await client.query(
           `UPDATE users SET coins=coins+$3, xp=$4, level=$5, stat_points=stat_points+$6
            WHERE guild_id=$1 AND user_id=$2`,
-          [guildId, userId, reward.coins, newXp, newLevel, gainedPoints]
+          [guildId, userId, rewardCoins, newXp, newLevel, gainedPoints]
         );
         await client.query(
           `UPDATE story_progress SET current_chapter=current_chapter+1, choices=$3::jsonb, updated_at=NOW()
@@ -174,10 +182,16 @@ export default {
         await client.query('COMMIT');
 
         const pathName = pathDetails[newChoices[0]]?.label ?? choiceLabel(decision);
-        resultMessage = '📖 **' + chapter.title + '** tamamlandı!\n' +
-          (chapterIndex === 0 ? 'Seçtiğin yol: **' + pathName + '**\n' : 'Yolun: **' + pathName + '**\n') +
-          'Kararın: **' + choiceLabel(decision) + '**\nÖdül: **' + reward.coins + ' altın** ve **' + reward.xp + ' XP**' +
-          (gainedPoints ? '\n✨ Seviye atladın: +' + gainedPoints + ' stat puanı.' : '');
+        if (ending) {
+          resultMessage = '🌟 **' + ending.title + '**\\n' + ending.story + '\\n\\nİlk yolun: **' + pathName + '**\\nFinal kararın: **' + choiceLabel(decision) + '**\\n\\nToplam ödül: **' + rewardCoins + ' altın** ve **' + rewardXp + ' XP**' +
+            (gainedPoints ? '\\n✨ Seviye atladın: +' + gainedPoints + ' stat puanı.' : '') +
+            '\\n\\nAna hikâyenin ilk zinciri tamamlandı. Yeni bölümler sonraki güncellemelerde eklenecek.';
+        } else {
+          resultMessage = '📖 **' + chapter.title + '** tamamlandı!\\n' +
+            (chapterIndex === 0 ? 'Seçtiğin yol: **' + pathName + '**\\n' : 'Yolun: **' + pathName + '**\\n') +
+            'Kararın: **' + choiceLabel(decision) + '**\\nÖdül: **' + rewardCoins + ' altın** ve **' + rewardXp + ' XP**' +
+            (gainedPoints ? '\\n✨ Seviye atladın: +' + gainedPoints + ' stat puanı.' : '');
+        }
       } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
         throw error;
