@@ -40,7 +40,11 @@ const usableItems = {
   demon_essence: { name: '🩸 İblis Özü', key: '🩸 İblis Özü', description: 'İblis özü bedenini güçlendirdi; 35 HP ve 20 Mana yeniledin.', xp: 0, coins: 0, hp: 35, mana: 20 },
   dried_flower: { name: '🌼 Kurutulmuş Çiçek', key: '🌼 Kurutulmuş Çiçek', description: 'Çiçeğin sakinleştirici büyüsü 25 HP yeniledi.', xp: 0, coins: 0, hp: 25 },
   magic_poagaca: { name: '🥐 Büyülü Poğaça', key: '🥐 Büyülü Poğaça', description: 'Büyülü poğaça 20 HP ve 10 Mana yeniledi.', xp: 0, coins: 0, hp: 20, mana: 10 },
-  healing_potion: { name: '🧪 Şifa İksiri', key: '🧪 Şifa İksiri', description: 'İksir 60 HP ve 25 Mana yeniledi.', xp: 0, coins: 0, hp: 60, mana: 25 }
+  healing_potion: { name: '🧪 Şifa İksiri', key: '🧪 Şifa İksiri', description: 'İksir 60 HP ve 25 Mana yeniledi.', xp: 0, coins: 0, hp: 60, mana: 25 },
+  shadowfang: { name: '🐺 Schattenwolfzahn', key: '🐺 Schattenwolfzahn', description: 'Schattenwolf dişi deneyim kazandırdı: 65 XP ve 25 altın.', xp: 65, coins: 25 },
+  guardian_rune: { name: '🗿 Muhafız Rünü', key: '🗿 Muhafız Rünü', description: 'Kadim rün büyü gücünü yeniledi: 45 Mana.', xp: 0, coins: 0, mana: 45 },
+  northern_demon_heart: { name: '🩸 Kuzey İblisinin Kalbi', key: '🩸 Kuzey İblisinin Kalbi', description: 'İblis kalbinin enerjisi 45 HP ve 35 Mana yeniledi.', xp: 0, coins: 0, hp: 45, mana: 35 },
+  commander_blood: { name: '🩸 İblis Komutanının Kanı', key: '🩸 İblis Komutanının Kanı', description: 'Komutanın özü seni güçlendirdi: 150 XP ve 100 altın.', xp: 150, coins: 100 }
 };
 
 export default {
@@ -72,7 +76,11 @@ export default {
           { name: '🩸 İblis Özü (+35 HP, +20 Mana)', value: 'demon_essence' },
           { name: '🌼 Kurutulmuş Çiçek (+25 HP)', value: 'dried_flower' },
           { name: '🥐 Büyülü Poğaça (+20 HP, +10 Mana)', value: 'magic_poagaca' },
-          { name: '🧪 Şifa İksiri (+60 HP, +25 Mana)', value: 'healing_potion' }
+          { name: '🧪 Şifa İksiri (+60 HP, +25 Mana)', value: 'healing_potion' },
+          { name: '🐺 Schattenwolfzahn (+65 XP, +25 altın)', value: 'shadowfang' },
+          { name: '🗿 Muhafız Rünü (+45 Mana)', value: 'guardian_rune' },
+          { name: '🩸 Kuzey İblisinin Kalbi (+45 HP, +35 Mana)', value: 'northern_demon_heart' },
+          { name: '🩸 İblis Komutanının Kanı (+150 XP, +100 altın)', value: 'commander_blood' }
         )
     ),
 
