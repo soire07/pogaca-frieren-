@@ -50,6 +50,16 @@ export default {
       const totalCharacters = 16;
       const percent = Math.min(100, Math.round((uniqueCount / totalCharacters) * 100));
       const totalCopies = rows.reduce((sum, row) => sum + Number(row.quantity), 0);
+      const rarityCounts = {
+        Efsanevi: rows.filter(row => row.rarity === 'Efsanevi').length,
+        Destansı: rows.filter(row => row.rarity === 'Destansı').length,
+        Nadir: rows.filter(row => row.rarity === 'Nadir').length,
+        Yaygın: rows.filter(row => row.rarity === 'Yaygın').length
+      };
+      const barSize = 12;
+      const filled = Math.round((percent / 100) * barSize);
+      const progressBar = '▰'.repeat(filled) + '▱'.repeat(barSize - filled);
+      const raritySummary = `🌟 ${rarityCounts.Efsanevi} Efsanevi  ·  ✦ ${rarityCounts.Destansı} Destansı  ·  ◆ ${rarityCounts.Nadir} Nadir  ·  ⭐ ${rarityCounts.Yaygın} Yaygın`;
       const description = rows.length
         ? rows.map(row => `${row.emoji} **${row.character_name}** — ${row.rarity} · ×${row.quantity}\n└ ${row.anime}`).join('\n')
         : 'Henüz karakter keşfetmemişsin. **/kimimben** komutunu kullanarak ilk karakterini bul!';
@@ -62,7 +72,7 @@ export default {
           rows.find(row => row.image)?.image ||
           target.displayAvatarURL()
         )
-        .setDescription(description.slice(0, 4000))
+        .setDescription(`${description.slice(0, 3000)}\n\n**İlerleme**\n${progressBar} **${percent}%**\n${raritySummary}`)
         .addFields(
           { name: '🧩 Farklı karakter', value: `${uniqueCount}/${totalCharacters}`, inline: true },
           { name: '📦 Toplam kopya', value: String(totalCopies), inline: true },
