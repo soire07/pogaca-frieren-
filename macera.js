@@ -1,6 +1,7 @@
 
 import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
+import { levelForXp } from './utils.js';
 
 const outcomes = [
   { text: 'Ormanda kayıp bir büyü kitabı buldun!', coins: 25, xp: 25, item: '📖 Yasak Büyü Kitabı' },
@@ -40,7 +41,7 @@ export default {
       }
 
       const newXp = u.xp + outcome.xp;
-      const newLevel = Math.floor(Math.sqrt(newXp / 100)) + 1;
+      const newLevel = levelForXp(newXp);
 
       await client.query(
         'UPDATE users SET coins=coins+$3, xp=$4, stat_points=stat_points+GREATEST(0,$5-level), level=$5, last_adventure_at=NOW() WHERE guild_id=$1 AND user_id=$2',
