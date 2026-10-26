@@ -143,7 +143,20 @@ client.on(Events.MessageBulkDelete, async messages => {
 
 client.once(Events.ClientReady, readyClient => {
   console.log(`Poğaça Frieren aktif: ${readyClient.user.tag}`);
-  readyClient.user.setActivity('büyü ve poğaça arıyor 🥐');
+  const activities = [
+    'bin yıllık büyüler öğreniyor ✨',
+    'Fern ile büyü çalışıyor 🔮',
+    'Stark ile iblis avlıyor ⚔️',
+    'Himmel’in yolculuklarını hatırlıyor 🌼',
+    'mimic sandıklarından uzak duruyor 📦',
+    'poğaça ve mana arıyor 🥐'
+  ];
+  let activityIndex = 0;
+  readyClient.user.setActivity(activities[activityIndex]);
+  setInterval(() => {
+    activityIndex = (activityIndex + 1) % activities.length;
+    readyClient.user.setActivity(activities[activityIndex]);
+  }, 60_000);
 });
 
 client.on(Events.InteractionCreate, async interaction => {
