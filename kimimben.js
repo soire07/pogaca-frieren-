@@ -23,13 +23,51 @@ const rarityInfo = {
 async function claimDrawCooldown(guildId, userId) {
   const result = await pool.query(
     `UPDATE users
-     SET last_free_character_at = NOW()
+     SET character_draw_count =
+           CASE WHEN character_draw_cooldown_until IS NOT NULL
+                     AND character_draw_cooldown_until <= NOW()
+                THEN 1 ELSE character_draw_count + 1 END,
+         last_character_draw_at = NOW(),
+         character_draw_cooldown_until =
+           CASE WHEN (CASE WHEN character_draw_cooldown_until IS NOT NULL
+                                AND character_draw_cooldown_until <= NOW()
+                           THEN 1 ELSE character_draw_count + 1 END) >= 5
+                THEN NOW() + INTERVAL '30 minutes'
+                ELSE NULL END
      WHERE guild_id = $1 AND user_id = $2
-       AND (last_free_character_at IS NULL OR last_free_character_at <= NOW() - INTERVAL '30 seconds')
-     RETURNING last_free_character_at`,
+       AND (character_draw_cooldown_until IS NULL OR character_draw_cooldown_until <= NOW())
+       AND (last_character_draw_at IS NULL OR last_character_draw_at <= NOW() - INTERVAL '15 seconds')
+       AND ((character_draw_cooldown_until IS NOT NULL AND character_draw_cooldown_until <= NOW())
+            OR character_draw_count < 5)
+     RETURNING character_draw_count, character_draw_cooldown_until`,
     [guildId, userId]
   );
-  return result.rowCount > 0;
+  if (result.rowCount > 0) {
+    return { ok: true, count: Number(result.rows[0].character_draw_count), cooldownUntil: result.rows[0].character_draw_cooldown_until };
+  }
+  const status = await pool.query(
+    `SELECT character_draw_count, last_character_draw_at, character_draw_cooldown_until
+     FROM users WHERE guild_id = $1 AND user_id = $2`,
+    [guildId, userId]
+  );
+  const row = status.rows[0];
+  if (row?.character_draw_cooldown_until && new Date(row.character_draw_cooldown_until) > new Date()) {
+    return { ok: false, reason: 'limit', cooldownUntil: row.character_draw_cooldown_until };
+  }
+  if (row?.last_character_draw_at) {
+    const remainingMs = 15000 - (Date.now() - new Date(row.last_character_draw_at).getTime());
+    if (remainingMs > 0) return { ok: false, reason: 'wait', remainingSeconds: Math.ceil(remainingMs / 1000) };
+  }
+  return { ok: false, reason: 'limit', cooldownUntil: null };
+}
+
+function cooldownMessage(result) {
+  if (result.reason === 'wait') return `Yeni karakter çekmeden önce **${result.remainingSeconds} saniye** beklemelisin.`;
+  if (result.cooldownUntil) {
+    const unix = Math.floor(new Date(result.cooldownUntil).getTime() / 1000);
+    return `5 karakter çekme hakkını kullandın. Yeni hakların <t:${unix}:R> hazır olacak.`;
+  }
+  return '5 karakter çekme hakkını kullandın. Yeni hakların **30 dakika** sonra yenilenecek.';
 }
 
 async function drawForUser(guildId, userId, previousName = null) {
@@ -126,9 +164,8 @@ export default {
     }
     await interaction.deferReply();
     await ensureUser(interaction.guildId, interaction.user.id);
-    if (!(await claimDrawCooldown(interaction.guildId, interaction.user.id))) {
-      return interaction.editReply('Yeni karakter çekmeden önce **30 saniye** beklemelisin.');
-    }
+    const drawClaim = await claimDrawCooldown(interaction.guildId, interaction.user.id);
+    if (!drawClaim.ok) return interaction.editReply(cooldownMessage(drawClaim));
 
     let character = await drawForUser(interaction.guildId, interaction.user.id);
     let quantity;
@@ -161,8 +198,9 @@ export default {
       }
 
       try {
-        if (!(await claimDrawCooldown(interaction.guildId, interaction.user.id))) {
-          return button.reply({ content: 'Yeni karakter çekmeden önce **30 saniye** beklemelisin.', ephemeral: true }).catch(() => {});
+        const drawClaim = await claimDrawCooldown(interaction.guildId, interaction.user.id);
+        if (!drawClaim.ok) {
+          return button.reply({ content: cooldownMessage(drawClaim), ephemeral: true }).catch(() => {});
         }
         const nextCharacter = await drawForUser(interaction.guildId, interaction.user.id, character.name);
         const nextQuantity = await saveCharacter(interaction.guildId, interaction.user.id, nextCharacter);
