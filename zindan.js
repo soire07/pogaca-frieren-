@@ -171,9 +171,11 @@ export default {
             level=$5,
             coins=coins+$6,
             stat_points=stat_points+$7,
+            dungeon_wins=dungeon_wins+$8,
+            dungeon_runs=dungeon_runs+1,
             last_dungeon_at=NOW()
            WHERE guild_id=$1 AND user_id=$2`,
-          [interaction.guildId, player.user_id, hpNow[i], newXp, newLevel, coinReward, gainedPoints]
+          [interaction.guildId, player.user_id, hpNow[i], newXp, newLevel, coinReward, gainedPoints, win ? 1 : 0]
         );
         if (lootItem) {
           await db.query(
