@@ -99,7 +99,7 @@ export function renderPurchaseResult(itemId, balance, userId) {
  const embed = new EmbedBuilder()
   .setColor(0x65d6a6)
   .setTitle('🎉 SATIN ALMA BAŞARILI!')
-  .setDescription('✨ ⋆｡°✩°｡⋆ ✨\\n\\n'+item.emoji+' **'+item.name+'** artık koleksiyonunda!\\n\\n'+item.description+'\\n\\n💸 **Harcanan:** '+item.price.toLocaleString('tr-TR')+' altın\\n💰 **Kalan bakiye:** '+Number(balance).toLocaleString('tr-TR')+' altın\\n📦 Eşyalarını görmek için **/envanter** komutunu kullan.')
+  .setDescription('✨ ⋆｡°✩°｡⋆ ✨\n\n'+item.emoji+' **'+item.name+'** artık koleksiyonunda!\n\n'+item.description+'\n\n💸 **Harcanan:** '+item.price.toLocaleString('tr-TR')+' altın\n💰 **Kalan bakiye:** '+Number(balance).toLocaleString('tr-TR')+' altın\n📦 Eşyalarını görmek için **/envanter** komutunu kullan.')
   .setFooter({text:'Poğaça Frieren • Güzel koleksiyonlar!'})
   .setTimestamp();
  const row = new ActionRowBuilder().addComponents(
@@ -114,7 +114,7 @@ export async function renderMarketInventory(guildId, userId) {
  const result = await pool.query('SELECT item_key, quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 ORDER BY item_key',[guildId,userId]);
  const gif = new AttachmentBuilder('./envanter.gif');
  const embed = new EmbedBuilder().setColor(0xb58cff).setTitle('📦 KOLEKSİYON ÇANTAN')
-  .setDescription(result.rows.length ? result.rows.map(row=>'• **'+row.item_key+'** × '+row.quantity).join('\\n') : 'Çantan şimdilik boş. Marketten ilk eşyanı alabilirsin.')
+  .setDescription(result.rows.length ? result.rows.map(row=>'• **'+row.item_key+'** × '+row.quantity).join('\n') : 'Çantan şimdilik boş. Marketten ilk eşyanı alabilirsin.')
   .setImage('attachment://envanter.gif')
   .setFooter({text:'Poğaça Frieren • Envanter özeti'}).setTimestamp();
  const row = new ActionRowBuilder().addComponents(
