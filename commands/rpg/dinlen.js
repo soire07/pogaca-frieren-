@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
+import { equipmentItems, equipmentBonus } from '../../equipment-data.js';
 
 const REST_COOLDOWN_MS = 5 * 60 * 1000;
 
@@ -19,18 +20,22 @@ export default {
       [interaction.guildId, interaction.user.id]
     );
     const stats = current.rows[0];
+    const equipped = await pool.query('SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id]);
+    const gear = equipmentBonus(equipped.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean));
+    const effectiveMaxHp = Math.min(2000, Number(stats.max_hp) + gear.hp);
+    const effectiveMaxMana = Math.min(2000, Number(stats.max_mana) + gear.mana);
 
-    if (Number(stats.hp) >= Number(stats.max_hp) && Number(stats.mana) >= Number(stats.max_mana)) {
+    if (Number(stats.hp) >= effectiveMaxHp && Number(stats.mana) >= effectiveMaxMana) {
       return interaction.reply({ content: '✨ HP ve Mana değerlerin zaten tamamen dolu.', ephemeral: true });
     }
 
     const restored = await pool.query(
       `UPDATE users
-       SET hp=max_hp, mana=max_mana, last_rest_at=NOW()
+       SET hp=$3, mana=$4, last_rest_at=NOW()
        WHERE guild_id=$1 AND user_id=$2
          AND (last_rest_at IS NULL OR last_rest_at <= NOW() - INTERVAL '5 minutes')
        RETURNING hp, max_hp, mana, max_mana`,
-      [interaction.guildId, interaction.user.id]
+      [interaction.guildId, interaction.user.id, effectiveMaxHp, effectiveMaxMana]
     );
 
     if (!restored.rowCount) {
@@ -46,10 +51,10 @@ export default {
     const embed = new EmbedBuilder()
       .setColor(0x65d6a6)
       .setTitle('🌿 Dinlenme Tamamlandı')
-      .setDescription('Güvenli bir yerde dinlendin; büyü gücün ve dayanıklılığın tamamen yenilendi.')
+      .setDescription('Güvenli bir yerde dinlendin; büyü gücün ve dayanıklılığın tamamen yenilendi. Kuşanılan ekipmanların maksimum HP ve Mana bonusları da hesaba katıldı.')
       .addFields(
-        { name: '❤️ HP', value: `**${updated.hp}/${updated.max_hp}**`, inline: true },
-        { name: '🔮 Mana', value: `**${updated.mana}/${updated.max_mana}**`, inline: true }
+        { name: '❤️ HP', value: `**${updated.hp}/${effectiveMaxHp}**`, inline: true },
+        { name: '🔮 Mana', value: `**${updated.mana}/${effectiveMaxMana}**`, inline: true }
       )
       .setFooter({ text: 'Dinlenme bekleme süresi: 5 dakika' });
 
