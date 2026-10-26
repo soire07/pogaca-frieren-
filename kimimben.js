@@ -20,6 +20,18 @@ const rarityInfo = {
   Efsanevi: { stars: '🌟🌟🌟🌟' }
 };
 
+async function claimDrawCooldown(guildId, userId) {
+  const result = await pool.query(
+    `UPDATE users
+     SET last_free_character_at = NOW()
+     WHERE guild_id = $1 AND user_id = $2
+       AND (last_free_character_at IS NULL OR last_free_character_at <= NOW() - INTERVAL '30 seconds')
+     RETURNING last_free_character_at`,
+    [guildId, userId]
+  );
+  return result.rowCount > 0;
+}
+
 async function drawForUser(guildId, userId, previousName = null) {
   await ensureUser(guildId, userId);
   const result = await pool.query(
@@ -113,6 +125,10 @@ export default {
       return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
     }
     await interaction.deferReply();
+    await ensureUser(interaction.guildId, interaction.user.id);
+    if (!(await claimDrawCooldown(interaction.guildId, interaction.user.id))) {
+      return interaction.editReply('Yeni karakter çekmeden önce **30 saniye** beklemelisin.');
+    }
 
     let character = await drawForUser(interaction.guildId, interaction.user.id);
     let quantity;
@@ -145,6 +161,9 @@ export default {
       }
 
       try {
+        if (!(await claimDrawCooldown(interaction.guildId, interaction.user.id))) {
+          return button.reply({ content: 'Yeni karakter çekmeden önce **30 saniye** beklemelisin.', ephemeral: true }).catch(() => {});
+        }
         const nextCharacter = await drawForUser(interaction.guildId, interaction.user.id, character.name);
         const nextQuantity = await saveCharacter(interaction.guildId, interaction.user.id, nextCharacter);
         await button.update({
