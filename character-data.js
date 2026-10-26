@@ -1,5 +1,5 @@
 export const characters = [
-  { name: 'Frieren', anime: 'Frieren: Beyond Journey’s End', rarity: 'Efsanevi', emoji: '🪄', color: 0x9b8cff, description: 'Bin yılı aşan ömrüyle büyülerin peşinden giden elf büyücü.', traits: 'Bilge • Sakin • Güçlü', image: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g3-723x1024.jpg' },
+  { name: 'Frieren', anime: 'Frieren: Beyond Journey’s End', rarity: 'Gizemli', emoji: '🪄', color: 0x9b8cff, description: 'Bin yılı aşan ömrüyle büyülerin peşinden giden elf büyücü.', traits: 'Bilge • Sakin • Güçlü', image: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g3-723x1024.jpg' },
   { name: 'Fern', anime: 'Frieren: Beyond Journey’s End', rarity: 'Destansı', emoji: '🔮', color: 0x8c7bd9, description: 'Disiplinli, yetenekli ve son derece kontrollü bir büyücü.', traits: 'Disiplinli • Zeki • Soğukkanlı', image: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g6-723x1024.jpg' },
   { name: 'Stark', anime: 'Frieren: Beyond Journey’s End', rarity: 'Nadir', emoji: '⚔️', color: 0xc47b58, description: 'Korkularına rağmen arkadaşları için savaşan cesur savaşçı.', traits: 'Cesur • Sadık • Güçlü', image: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g7-723x1024.jpg' },
   { name: 'Himmel', anime: 'Frieren: Beyond Journey’s End', rarity: 'Efsanevi', emoji: '🌟', color: 0x58a6ff, description: 'İnsanlara umut veren, iyiliksever kahraman.', traits: 'Karizmatik • Fedakâr • İdealist', image: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g9-723x1024.jpg' },
@@ -44,9 +44,10 @@ export const characters = [
 export function drawCharacter(previousName = null, forceLegendary = false) {
   const roll = forceLegendary ? 0 : Math.random() * 100;
   let rarity;
-  if (roll < 5) rarity = 'Efsanevi';
-  else if (roll < 20) rarity = 'Destansı';
-  else if (roll < 50) rarity = 'Nadir';
+  if (!forceLegendary && roll < 1) rarity = 'Gizemli';
+  else if (roll < 6) rarity = 'Efsanevi';
+  else if (roll < 21) rarity = 'Destansı';
+  else if (roll < 51) rarity = 'Nadir';
   else rarity = 'Yaygın';
   let rarityPool = characters.filter(c => c.rarity === rarity && c.name !== previousName);
   if (!rarityPool.length) rarityPool = characters.filter(c => c.rarity === rarity);
