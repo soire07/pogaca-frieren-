@@ -34,6 +34,13 @@ export default {
         [interaction.guildId, target.id]
       );
 
+      const artworkByCharacter = {
+        Frieren: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g3-723x1024.jpg',
+        Fern: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g6-723x1024.jpg',
+        Stark: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g7-723x1024.jpg',
+        Himmel: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g9-723x1024.jpg',
+        Heiter: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g10-723x1024.jpg'
+      };
       const uniqueCount = rows.length;
       const totalCharacters = 16;
       const percent = Math.min(100, Math.round((uniqueCount / totalCharacters) * 100));
@@ -45,7 +52,7 @@ export default {
       const embed = new EmbedBuilder()
         .setColor(rows[0]?.color ?? 0x9b8cff)
         .setTitle(`📚 ${target.username} | Anime Koleksiyonu`)
-        .setThumbnail(rows.find(row => row.image)?.image ?? target.displayAvatarURL())
+        .setThumbnail(rows.find(row => row.image || artworkByCharacter[row.character_name])?.image || artworkByCharacter[rows.find(row => artworkByCharacter[row.character_name])?.character_name] || target.displayAvatarURL())
         .setDescription(description.slice(0, 4000))
         .addFields(
           { name: '🧩 Farklı karakter', value: `${uniqueCount}/${totalCharacters}`, inline: true },
