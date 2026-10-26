@@ -61,13 +61,13 @@ client.on(Events.InteractionCreate, async interaction => {
         if (!detail) return interaction.reply({content:'Bu eşya bulunamadı.',ephemeral:true});
         const balanceResult = await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[interaction.guildId,interaction.user.id]);
         const actualDetail = renderMarketItem(parts[1], balanceResult.rows[0]?.coins ?? 0, interaction.user.id);
-        return interaction.update({...actualDetail,content:null});
+        return interaction.update({...actualDetail,content:null,attachments:[]});
       } else if (action === 'market_back' || action === 'market_open') {
         const panel = await renderMarket(interaction.guildId, interaction.user.id);
-        return interaction.update({...panel,content:null});
+        return interaction.update({...panel,content:null,attachments:[]});
       } else if (action === 'market_refresh') {
         const panel = await renderMarket(interaction.guildId, interaction.user.id);
-        return interaction.update({...panel,content:null});
+        return interaction.update({...panel,content:null,attachments:[]});
       } else if (action === 'market_cat') {
         const categories = ['Hepsi','Büyülü Eşyalar','Anime Hatıraları','Lanetli Eşyalar','Fırın Özel'];
         category = categories[Number(parts[1])] || 'Hepsi';
@@ -87,7 +87,7 @@ client.on(Events.InteractionCreate, async interaction => {
         return interaction.update(inventory);
       }
       const panel = await renderMarket(interaction.guildId, interaction.user.id, page, category);
-      return interaction.update({ ...panel, content: notice });
+      return interaction.update({ ...panel, content: notice, attachments:[] });
     } catch (error) {
       console.error('Market paneli hatası:', error);
       return interaction.reply({ content: 'Market panelinde bir sorun oluştu. Biraz sonra tekrar dene.', ephemeral: true }).catch(() => {});
