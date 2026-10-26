@@ -152,7 +152,7 @@ export default {
         if (shield) {
           bossDamage = Math.ceil(bossDamage / 2);
           shield = false;
-          actionText += '\\n🛡️ Kalkanın iblisin saldırısını zayıflattı.';
+          actionText += '\n🛡️ Kalkanın iblisin saldırısını zayıflattı.';
         }
         playerHp = Math.max(0, playerHp - bossDamage);
         actionText += `\n👹 İblis karşılık verdi: **${bossDamage} hasar** aldın.`;
