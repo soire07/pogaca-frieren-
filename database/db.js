@@ -113,6 +113,20 @@ export async function initDatabase() {
       PRIMARY KEY (guild_id,user_id,spell_key),
       FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS trade_offers (
+      offer_id TEXT PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      from_user_id TEXT NOT NULL,
+      to_user_id TEXT NOT NULL,
+      character_name TEXT NOT NULL,
+      amount INTEGER NOT NULL CHECK (amount > 0),
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','declined','expired','invalid')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expires_at TIMESTAMPTZ NOT NULL,
+      resolved_at TIMESTAMPTZ,
+      CHECK (from_user_id <> to_user_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_trade_offers_pending ON trade_offers(guild_id, to_user_id, expires_at) WHERE status='pending';
     CREATE TABLE IF NOT EXISTS moderation_cases (
       id BIGSERIAL PRIMARY KEY,
       guild_id TEXT NOT NULL,
