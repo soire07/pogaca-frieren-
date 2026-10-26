@@ -25,6 +25,7 @@ export async function initDatabase() {
       last_xp_at TIMESTAMPTZ NOT NULL DEFAULT '1970-01-01T00:00:00Z',
       last_daily_at TIMESTAMPTZ,
       last_adventure_at TIMESTAMPTZ,
+      last_boss_at TIMESTAMPTZ,
       pity_count INTEGER NOT NULL DEFAULT 0 CHECK (pity_count >= 0),
       free_character_pity_count INTEGER NOT NULL DEFAULT 0 CHECK (free_character_pity_count >= 0),
       last_free_character_at TIMESTAMPTZ,
@@ -35,6 +36,7 @@ export async function initDatabase() {
       PRIMARY KEY (guild_id, user_id)
     );
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_adventure_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_boss_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS pity_count INTEGER NOT NULL DEFAULT 0;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS free_character_pity_count INTEGER NOT NULL DEFAULT 0 CHECK (free_character_pity_count >= 0);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_free_character_at TIMESTAMPTZ;
