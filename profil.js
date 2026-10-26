@@ -24,7 +24,7 @@ export default {
     await ensureUser(interaction.guildId, target.id);
 
     const { rows: [u] } = await pool.query(
-      'SELECT xp, level, coins, class_name FROM users WHERE guild_id=$1 AND user_id=$2',
+      'SELECT xp, level, coins, class_name, hp, max_hp, mana, max_mana, attack, defense, stat_points FROM users WHERE guild_id=$1 AND user_id=$2',
       [interaction.guildId, target.id]
     );
 
@@ -48,8 +48,13 @@ export default {
           value: `${u.xp} / ${xpForNextLevel(u.level)}`,
           inline: true
         },
-        { name: '🥐 Poğaça altını', value: String(u.coins), inline: true },
-        { name: 'Sınıf', value: u.class_name ?? 'Belirlenmedi', inline: true }
+        { name: '🥐 Poğaça altını', value: Number(u.coins).toLocaleString('tr-TR'), inline: true },
+        { name: 'Sınıf', value: u.class_name ?? 'Gezgin', inline: true },
+        { name: '❤️ Can', value: `${u.hp}/${u.max_hp}`, inline: true },
+        { name: '✨ Mana', value: `${u.mana}/${u.max_mana}`, inline: true },
+        { name: '⚔️ Saldırı', value: String(u.attack), inline: true },
+        { name: '🛡️ Savunma', value: String(u.defense), inline: true },
+        { name: '🌟 Dağıtılabilir puan', value: String(u.stat_points), inline: true }
       )
       .setImage('attachment://profil.gif')
       .setFooter({ text: 'Poğaça Frieren • Maceracı Kayıtları' });
