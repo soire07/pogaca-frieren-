@@ -23,10 +23,10 @@ const characters = [
   { name: 'Satoru Gojo', anime: 'Jujutsu Kaisen', rarity: 'Efsanevi', emoji: '👁️', color: 0x68a9ff, description: 'Kendine güveni ve olağanüstü yetenekleriyle tanınan büyücü.', traits: 'Kendinden emin • Şakacı • Güçlü', image: 'https://jujutsukaisen.jp/images/chara_thumb4.png' },
   { name: 'Tanjiro Kamado', anime: 'Demon Slayer', rarity: 'Nadir', emoji: '🌊', color: 0x50a9a0, description: 'Sevdiklerini korumak için mücadele eden şefkatli savaşçı.', traits: 'Şefkatli • Azimli • Dürüst', image: 'https://demonslayer-anime.com/eda/assets/img/character/thumb/thumb_tanjirou.png' },
   { name: 'Levi Ackerman', anime: 'Attack on Titan', rarity: 'Efsanevi', emoji: '🗡️', color: 0x8294a8, description: 'Soğukkanlılığı ve becerileriyle öne çıkan asker.', traits: 'Disiplinli • Soğukkanlı • Kararlı', image: 'https://shingeki.tv/season2/assets/img/character/levi.png' },
-  { name: 'Kanne', anime: 'Frieren: Beyond Journey’s End', rarity: 'Yaygın', emoji: '💧', color: 0x69b7e8, description: 'Suyu kontrol edebilen, büyü sınavına katılan genç büyücü.', traits: 'Meraklı • Duyarlı • Büyücü', image: 'https://frieren-anime.jp/wp-content/uploads/2023/11/g-1.jpg' },
-  { name: 'Lawine', anime: 'Frieren: Beyond Journey’s End', rarity: 'Yaygın', emoji: '❄️', color: 0x78a9dc, description: 'Buz büyülerinde yetenekli, kararlı genç büyücü.', traits: 'Kararlı • Rekabetçi • Yetenekli', image: 'https://frieren-anime.jp/wp-content/uploads/2023/11/g-1.jpg' },
-  { name: 'Laufen', anime: 'Frieren: Beyond Journey’s End', rarity: 'Yaygın', emoji: '🌬️', color: 0x80c7b0, description: 'Hızlı hareketleriyle öne çıkan genç büyücü.', traits: 'Çevik • Atik • Zeki', image: 'https://frieren-anime.jp/wp-content/uploads/2023/11/g-1.jpg' },
-  { name: 'Richter', anime: 'Frieren: Beyond Journey’s End', rarity: 'Yaygın', emoji: '🪨', color: 0xb69a83, description: 'Toprak büyülerinde uzmanlaşmış, doğrudan konuşan büyücü.', traits: 'Pratik • Kendinden emin • Büyücü', image: 'https://frieren-anime.jp/wp-content/uploads/2023/11/g-1.jpg' }
+  { name: 'Kanne', anime: 'Frieren: Beyond Journey’s End', rarity: 'Yaygın', emoji: '💧', color: 0x69b7e8, description: 'Suyu kontrol edebilen, büyü sınavına katılan genç büyücü.', traits: 'Meraklı • Duyarlı • Büyücü', image: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara02_full1.png' },
+  { name: 'Lawine', anime: 'Frieren: Beyond Journey’s End', rarity: 'Yaygın', emoji: '❄️', color: 0x78a9dc, description: 'Buz büyülerinde yetenekli, kararlı genç büyücü.', traits: 'Kararlı • Rekabetçi • Yetenekli', image: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara08_full1.png' },
+  { name: 'Laufen', anime: 'Frieren: Beyond Journey’s End', rarity: 'Yaygın', emoji: '🌬️', color: 0x80c7b0, description: 'Hızlı hareketleriyle öne çıkan genç büyücü.', traits: 'Çevik • Atik • Zeki', image: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara07_full1.png' },
+  { name: 'Richter', anime: 'Frieren: Beyond Journey’s End', rarity: 'Yaygın', emoji: '🪨', color: 0xb69a83, description: 'Toprak büyülerinde uzmanlaşmış, doğrudan konuşan büyücü.', traits: 'Pratik • Kendinden emin • Büyücü', image: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara01_full1.png' }
 ];
 
 const rarityInfo = {
@@ -59,6 +59,13 @@ async function saveCharacter(guildId, userId, character) {
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
      ON CONFLICT (guild_id, user_id, character_name)
      DO UPDATE SET quantity = anime_character_collection.quantity + 1,
+                   anime = EXCLUDED.anime,
+                   rarity = EXCLUDED.rarity,
+                   emoji = EXCLUDED.emoji,
+                   color = EXCLUDED.color,
+                   description = EXCLUDED.description,
+                   traits = EXCLUDED.traits,
+                   image = EXCLUDED.image,
                    last_obtained_at = NOW()
      RETURNING quantity`,
     [guildId, userId, character.name, character.anime, character.rarity, character.emoji, character.color, character.description, character.traits, character.image]
