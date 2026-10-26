@@ -265,11 +265,11 @@ export default {
         if (turnCount % 3 === 0) {
           const specialDamage = boss.specialType === 'arcane' ? 12 : boss.specialType === 'heavy' ? 8 : 5;
           bossDamage += specialDamage;
-          actionText += `\\n💥 **${boss.special}**! Boss özel saldırı yaptı ve hasarını **+${specialDamage}** artırdı.`;
+          actionText += `\n💥 **${boss.special}**! Boss özel saldırı yaptı ve hasarını **+${specialDamage}** artırdı.`;
           if (boss.specialType === 'drain') {
             const drainedMana = Math.min(10, playerMana);
             playerMana -= drainedMana;
-            actionText += `\\n🔮 Lanet **${drainedMana} Mana** emdi!`;
+            actionText += `\n🔮 Lanet **${drainedMana} Mana** emdi!`;
           }
         }
         if (frozenBoss) bossDamage = 0;
