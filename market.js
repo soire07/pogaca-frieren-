@@ -16,7 +16,8 @@ export const marketItems = [
  { id:'lucky_charm', name:'🍀 Şans Tılsımı', price:250, category:'Büyülü Eşyalar', rarity:'Nadir', description:'Koleksiyonunda saklayabileceğin şanslı tılsım.', emoji:'🍀' },
  { id:'frieren_tea', name:'🍵 Frieren Çayı', price:120, category:'Fırın Özel', rarity:'Yaygın', description:'Uzun yolculuklar için sıcak, huzurlu bir çay.', emoji:'🍵' },
  { id:'poagaca_box', name:'🥐 Büyülü Poğaça Kutusu', price:180, category:'Fırın Özel', rarity:'Yaygın', description:'Poğaça Frieren marketinin imza kutusu.', emoji:'🥐' },
- { id:'star_potion', name:'🌠 Yıldız İksiri', price:800, category:'Fırın Özel', rarity:'Efsanevi', description:'Yıldız ışığıyla parlayan sınırlı temalı hatıra.', emoji:'🌠' }
+ { id:'star_potion', name:'🌠 Yıldız İksiri', price:800, category:'Fırın Özel', rarity:'Efsanevi', description:'Yıldız ışığıyla parlayan sınırlı temalı hatıra.', emoji:'🌠' },
+ { id:'healing_potion', name:'🧪 Şifa İksiri', price:220, category:'Fırın Özel', rarity:'Yaygın', description:'Kullanıldığında 60 HP ve 25 Mana yeniler. /esyakullan ile kullanabilirsin.', emoji:'🧪' }
 ];
 
 const categories = ['Hepsi','Büyülü Eşyalar','Anime Hatıraları','Lanetli Eşyalar','Fırın Özel'];
