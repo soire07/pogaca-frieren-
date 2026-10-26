@@ -182,6 +182,13 @@ client.on(Events.InteractionCreate, async interaction => {
       return interaction.reply({ content: 'Takas sırasında hata oluştu. Daha sonra tekrar dene.', ephemeral: true }).catch(() => {});
     } finally { db.release(); }
   }
+  if (interaction.isAutocomplete()) {
+    const command = client.commands.get(interaction.commandName);
+    if (!command?.autocomplete) return interaction.respond([]).catch(() => {});
+    try { await command.autocomplete(interaction); }
+    catch (error) { console.error('Otomatik tamamlama hatası:', error); await interaction.respond([]).catch(() => {}); }
+    return;
+  }
   if (!interaction.isChatInputCommand()) return;
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
