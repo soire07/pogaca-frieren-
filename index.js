@@ -4,6 +4,7 @@ import { readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { initDatabase, pool } from './database/db.js';
+import { renderMarket, buyMarketItem } from './market.js';
 import { levelForXp } from './utils.js';
 import { createServer } from 'node:http';
 
@@ -44,6 +45,34 @@ client.once(Events.ClientReady, readyClient => {
 });
 
 client.on(Events.InteractionCreate, async interaction => {
+  if (interaction.isButton() && interaction.customId.startsWith('market_')) {
+    const parts = interaction.customId.split(':');
+    const action = parts[0];
+    const ownerId = parts[parts.length - 1];
+    if (interaction.user.id !== ownerId) {
+      return interaction.reply({ content: 'Bu market paneli başka bir kullanıcıya ait. Kendi panelin için /market yaz.', ephemeral: true });
+    }
+    try {
+      let page = 0;
+      let category = 'Hepsi';
+      let notice = null;
+      if (action === 'market_cat') {
+        const categories = ['Hepsi','Büyülü Eşyalar','Anime Hatıraları','Lanetli Eşyalar','Fırın Özel'];
+        category = categories[Number(parts[1])] || 'Hepsi';
+      } else if (action === 'market_prev' || action === 'market_next') {
+        page = Number(parts[1]) + (action === 'market_prev' ? -1 : 1);
+        category = parts[2] || 'Hepsi';
+      } else if (action === 'market_buy') {
+        const result = await buyMarketItem(interaction.guildId, interaction.user.id, parts[1]);
+        notice = result.message;
+      }
+      const panel = await renderMarket(interaction.guildId, interaction.user.id, page, category);
+      return interaction.update({ ...panel, content: notice });
+    } catch (error) {
+      console.error('Market paneli hatası:', error);
+      return interaction.reply({ content: 'Market panelinde bir sorun oluştu. Biraz sonra tekrar dene.', ephemeral: true }).catch(() => {});
+    }
+  }
   if (interaction.isButton() && (interaction.customId.startsWith('trade_accept:') || interaction.customId.startsWith('trade_decline:'))) {
     const [action, encoded] = interaction.customId.split(':');
     let offer;
