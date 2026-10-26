@@ -3,7 +3,7 @@ import { pool, ensureUser } from './database/db.js';
 
 const usableItems = {
   frieren_staff: { name: '🪄 Frieren’in Asası', key: '🪄 Frieren’in Asası', description: '120 XP kazandın.', xp: 120, coins: 0 },
-  mana_crystal: { name: '💎 Mana Kristali', key: '💎 Mana Kristali', description: '70 XP kazandın.', xp: 70, coins: 0 },
+  mana_crystal: { name: '💎 Mana Kristali', key: '💎 Mana Kristali', description: '50 Mana yeniledin.', xp: 0, coins: 0, mana: 50 },
   grimoire: { name: '📖 Yasak Büyü Kitabı', key: '📖 Yasak Büyü Kitabı', description: '100 XP kazandın.', xp: 100, coins: 0 },
   mimic_chest: { name: '📦 Mimic Sandığı', key: '📦 Mimic Sandığı', description: 'Sandıktan 60 altın çıktı!', xp: 0, coins: 60 },
   fern_ribbon: { name: '🎀 Fern’in Kurdelası', key: '🎀 Fern’in Kurdelası', description: '35 XP kazandın.', xp: 35, coins: 0 },
@@ -47,7 +47,7 @@ export default {
         .setRequired(true)
         .addChoices(
           { name: '🪄 Frieren’in Asası (+120 XP)', value: 'frieren_staff' },
-          { name: '💎 Mana Kristali (+70 XP)', value: 'mana_crystal' },
+          { name: '💎 Mana Kristali (+50 Mana)', value: 'mana_crystal' },
           { name: '📖 Yasak Büyü Kitabı (+100 XP)', value: 'grimoire' },
           { name: '📦 Mimic Sandığı (+60 altın)', value: 'mimic_chest' },
           { name: '🎀 Fern’in Kurdelası (+35 XP)', value: 'fern_ribbon' },
@@ -105,10 +105,12 @@ export default {
         `UPDATE users SET
           xp = xp + $3,
           coins = coins + $4,
+          mana = LEAST(max_mana, mana + $5),
+          stat_points = stat_points + GREATEST(0, (FLOOR(SQRT((xp + $3)::numeric / 100))::int + 1) - level),
           level = FLOOR(SQRT((xp + $3)::numeric / 100))::int + 1
          WHERE guild_id=$1 AND user_id=$2
-         RETURNING xp, coins, level`,
-        [interaction.guildId, interaction.user.id, item.xp, item.coins]
+         RETURNING xp, coins, level, mana, max_mana, stat_points`,
+        [interaction.guildId, interaction.user.id, item.xp, item.coins, item.mana || 0]
       );
 
       await db.query('COMMIT');
@@ -116,11 +118,12 @@ export default {
       const embed = new EmbedBuilder()
         .setColor(0x9b8cff)
         .setTitle('✨ Eşya kullanıldı!')
-        .setDescription(item.description)
+        .setDescription(item.mana ? `${item.description} Şu anki Mana: **${user.mana}/${user.max_mana}**.` : item.description)
         .addFields(
           { name: '⭐ Toplam XP', value: Number(user.xp).toLocaleString('tr-TR'), inline: true },
           { name: '🪙 Altın', value: Number(user.coins).toLocaleString('tr-TR'), inline: true },
-          { name: '🧭 Seviye', value: String(user.level), inline: true }
+          { name: '🧭 Seviye', value: String(user.level), inline: true },
+          { name: '✨ Harcanabilir stat puanı', value: String(user.stat_points), inline: true }
         )
         .setFooter({ text: 'Poğaça Frieren • Eşyalar kalıcı envanterinden düşülür' })
         .setTimestamp();
