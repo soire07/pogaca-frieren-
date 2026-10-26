@@ -34,7 +34,12 @@ const usableItems = {
     description: 'Yıldız büyüsü sana 100 XP kazandırdı.',
     xp: 100,
     coins: 0
-  }
+  },
+  old_magic_relic: { name: '✨ Eski Büyü Kalıntısı', key: '✨ Eski Büyü Kalıntısı', description: 'Kalıntıdan 35 XP ve 15 Mana kazandın.', xp: 35, coins: 0, mana: 15 },
+  ruin_key: { name: '🗝️ Harabe Anahtarı', key: '🗝️ Harabe Anahtarı', description: 'Anahtarı gezgin koleksiyonculara sattın; 45 altın kazandın.', xp: 0, coins: 45 },
+  demon_essence: { name: '🩸 İblis Özü', key: '🩸 İblis Özü', description: 'İblis özü bedenini güçlendirdi; 35 HP ve 20 Mana yeniledin.', xp: 0, coins: 0, hp: 35, mana: 20 },
+  dried_flower: { name: '🌼 Kurutulmuş Çiçek', key: '🌼 Kurutulmuş Çiçek', description: 'Çiçeğin sakinleştirici büyüsü 25 HP yeniledi.', xp: 0, coins: 0, hp: 25 },
+  magic_poagaca: { name: '🥐 Büyülü Poğaça', key: '🥐 Büyülü Poğaça', description: 'Büyülü poğaça 20 HP ve 10 Mana yeniledi.', xp: 0, coins: 0, hp: 20, mana: 10 }
 };
 
 export default {
@@ -60,7 +65,12 @@ export default {
           { name: '🍀 Şans Tılsımı (+25 altın)', value: 'lucky_charm' },
           { name: '🍵 Frieren Çayı (+25 XP)', value: 'frieren_tea' },
           { name: '🥐 Büyülü Poğaça Kutusu (+40 altın)', value: 'poagaca_box' },
-          { name: '🌠 Yıldız İksiri (+100 XP)', value: 'star_potion' }
+          { name: '🌠 Yıldız İksiri (+100 XP)', value: 'star_potion' },
+          { name: '✨ Eski Büyü Kalıntısı (+35 XP, +15 Mana)', value: 'old_magic_relic' },
+          { name: '🗝️ Harabe Anahtarı (+45 altın)', value: 'ruin_key' },
+          { name: '🩸 İblis Özü (+35 HP, +20 Mana)', value: 'demon_essence' },
+          { name: '🌼 Kurutulmuş Çiçek (+25 HP)', value: 'dried_flower' },
+          { name: '🥐 Büyülü Poğaça (+20 HP, +10 Mana)', value: 'magic_poagaca' }
         )
     ),
 
@@ -106,11 +116,12 @@ export default {
           xp = xp + $3,
           coins = coins + $4,
           mana = LEAST(max_mana, mana + $5),
+          hp = LEAST(max_hp, hp + $6),
           stat_points = stat_points + GREATEST(0, (FLOOR(SQRT((xp + $3)::numeric / 100))::int + 1) - level),
           level = FLOOR(SQRT((xp + $3)::numeric / 100))::int + 1
          WHERE guild_id=$1 AND user_id=$2
-         RETURNING xp, coins, level, mana, max_mana, stat_points`,
-        [interaction.guildId, interaction.user.id, item.xp, item.coins, item.mana || 0]
+         RETURNING xp, coins, level, hp, max_hp, mana, max_mana, stat_points`,
+        [interaction.guildId, interaction.user.id, item.xp, item.coins, item.mana || 0, item.hp || 0]
       );
 
       await db.query('COMMIT');
@@ -118,7 +129,11 @@ export default {
       const embed = new EmbedBuilder()
         .setColor(0x9b8cff)
         .setTitle('✨ Eşya kullanıldı!')
-        .setDescription(item.mana ? `${item.description} Şu anki Mana: **${user.mana}/${user.max_mana}**.` : item.description)
+        .setDescription([
+          item.description,
+          item.hp ? `Şu anki HP: **${user.hp}/${user.max_hp}**.` : '',
+          item.mana ? `Şu anki Mana: **${user.mana}/${user.max_mana}**.` : ''
+        ].filter(Boolean).join(' '))
         .addFields(
           { name: '⭐ Toplam XP', value: Number(user.xp).toLocaleString('tr-TR'), inline: true },
           { name: '🪙 Altın', value: Number(user.coins).toLocaleString('tr-TR'), inline: true },
