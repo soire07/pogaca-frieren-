@@ -23,6 +23,7 @@ function makeSummaryEmbed(target, rows, totalCharacters, page, pageCount) {
   const percent = Math.min(100, Math.round((uniqueCount / totalCharacters) * 100));
   const totalCopies = rows.reduce((sum, row) => sum + Number(row.quantity), 0);
   const rarityCounts = {
+    Gizemli: rows.filter(row => row.rarity === 'Gizemli').length,
     Efsanevi: rows.filter(row => row.rarity === 'Efsanevi').length,
     Destansı: rows.filter(row => row.rarity === 'Destansı').length,
     Nadir: rows.filter(row => row.rarity === 'Nadir').length,
@@ -35,7 +36,7 @@ function makeSummaryEmbed(target, rows, totalCharacters, page, pageCount) {
     .setColor(0x9b8cff)
     .setTitle(`📚 ${target.username} | Anime Koleksiyonu`)
     .setDescription(
-      `**Koleksiyon ilerlemesi**\n${progressBar} **${percent}%**\n\n🌟 ${rarityCounts.Efsanevi} Efsanevi · ✦ ${rarityCounts.Destansı} Destansı · ◆ ${rarityCounts.Nadir} Nadir · ⭐ ${rarityCounts.Yaygın} Yaygın\n\n📖 Sayfa ${page + 1}/${pageCount}`
+      `**Koleksiyon ilerlemesi**\n${progressBar} **${percent}%**\n\n🌌 ${rarityCounts.Gizemli} Gizemli · 🌟 ${rarityCounts.Efsanevi} Efsanevi · ✦ ${rarityCounts.Destansı} Destansı · ◆ ${rarityCounts.Nadir} Nadir · ⭐ ${rarityCounts.Yaygın} Yaygın\n\n📖 Sayfa ${page + 1}/${pageCount}`
     )
     .addFields(
       { name: '🧩 Farklı karakter', value: `${uniqueCount}/${totalCharacters}`, inline: true },
@@ -49,7 +50,7 @@ function makeSummaryEmbed(target, rows, totalCharacters, page, pageCount) {
 function makeCharacterEmbed(row) {
   const image = artworkByCharacter[row.character_name] || row.image || characters.find(c => c.name === row.character_name)?.image;
   const embed = new EmbedBuilder()
-    .setColor(row.color ?? 0x9b8cff)
+    .setColor(row.color ?? (row.rarity === 'Gizemli' ? 0x30105e : 0x9b8cff))
     .setTitle(`${row.emoji || '🎴'} ${row.character_name}`)
     .setDescription(`**${row.rarity}** · ${row.anime}\n📦 Koleksiyon: **×${row.quantity}**`)
     .setFooter({ text: 'Poğaça Frieren • Koleksiyon karakteri' });
@@ -109,10 +110,11 @@ export default {
          FROM anime_character_collection
          WHERE guild_id = $1 AND user_id = $2
          ORDER BY CASE rarity
-           WHEN 'Efsanevi' THEN 0
-           WHEN 'Destansı' THEN 1
-           WHEN 'Nadir' THEN 2
-           ELSE 3
+           WHEN 'Gizemli' THEN 0
+           WHEN 'Efsanevi' THEN 1
+           WHEN 'Destansı' THEN 2
+           WHEN 'Nadir' THEN 3
+           ELSE 4
          END, character_name`,
         [interaction.guildId, target.id]
       );
