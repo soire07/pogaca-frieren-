@@ -44,6 +44,50 @@ client.once(Events.ClientReady, readyClient => {
 });
 
 client.on(Events.InteractionCreate, async interaction => {
+  if (interaction.isButton() && (interaction.customId.startsWith('trade_accept:') || interaction.customId.startsWith('trade_decline:'))) {
+    const [action, encoded] = interaction.customId.split(':');
+    let offer;
+    try { offer = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')); }
+    catch { return interaction.reply({ content: 'Bu takas teklifi geçersiz.', ephemeral: true }); }
+    if (!interaction.guildId || interaction.user.id !== offer.t) {
+      return interaction.reply({ content: 'Bu teklife yalnızca teklif gönderilen kullanıcı yanıt verebilir.', ephemeral: true });
+    }
+    if (Date.now() - interaction.message.createdTimestamp > 5 * 60 * 1000) {
+      return interaction.update({ content: '⏰ Takas teklifinin süresi doldu.', embeds: [], components: [] });
+    }
+    if (action === 'trade_decline') {
+      return interaction.update({ content: '❌ Takas teklifi reddedildi.', embeds: [], components: [] });
+    }
+    const db = await pool.connect();
+    try {
+      await db.query('BEGIN');
+      const found = await db.query(`SELECT character_name, quantity FROM anime_character_collection
+        WHERE guild_id=$1 AND user_id=$2 AND LOWER(character_name)=LOWER($3) FOR UPDATE`,
+        [interaction.guildId, offer.f, offer.n]);
+      if (!found.rowCount || Number(found.rows[0].quantity) <= Number(offer.a)) {
+        await db.query('ROLLBACK');
+        return interaction.update({ content: 'Takas yapılamadı: gönderenin yeterli kopyası kalmamış. Son kopya korunur.', embeds: [], components: [] });
+      }
+      const character = await db.query(`SELECT anime, rarity, emoji, color, description, traits, image
+        FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name=$3`,
+        [interaction.guildId, offer.f, found.rows[0].character_name]);
+      await db.query('UPDATE anime_character_collection SET quantity=quantity-$4 WHERE guild_id=$1 AND user_id=$2 AND character_name=$3',
+        [interaction.guildId, offer.f, found.rows[0].character_name, Number(offer.a)]);
+      const c = character.rows[0];
+      await db.query(`INSERT INTO anime_character_collection
+        (guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,image,quantity)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+        ON CONFLICT(guild_id,user_id,character_name) DO UPDATE SET quantity=anime_character_collection.quantity+EXCLUDED.quantity,
+        last_obtained_at=NOW()`,
+        [interaction.guildId, offer.t, found.rows[0].character_name, c.anime, c.rarity, c.emoji, c.color, c.description, c.traits, c.image, Number(offer.a)]);
+      await db.query('COMMIT');
+      return interaction.update({ content: '✅ Takas tamamlandı! **' + found.rows[0].character_name + '** ×' + offer.a + ' kopya yeni sahibine aktarıldı.', embeds: [], components: [] });
+    } catch (error) {
+      await db.query('ROLLBACK').catch(() => {});
+      console.error('Takas kabul hatası:', error);
+      return interaction.reply({ content: 'Takas sırasında hata oluştu. Daha sonra tekrar dene.', ephemeral: true }).catch(() => {});
+    } finally { db.release(); }
+  }
   if (!interaction.isChatInputCommand()) return;
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
