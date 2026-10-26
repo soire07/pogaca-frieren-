@@ -24,6 +24,12 @@ jobs:
       - name: Paketleri kur
         run: npm install
 
+      - name: JavaScript sözdizimini kontrol et
+        run: |
+          for file in *.js database/*.js scripts/*.js; do
+            [ -f "$file" ] && node --check "$file"
+          done
+
       - name: Komutları Discord'a kaydet
         run: npm run deploy-commands
         env:
