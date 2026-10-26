@@ -23,6 +23,7 @@ export const marketItems = [
     ...item,
     category: 'Ekipman',
     itemType: 'equipment',
+    emoji: item.name.split(' ')[0],
     description: item.description + ' ' + formatEquipmentBonus(item) + ' · Kullanım seviyesi: ' + item.levelReq + '+.'
   }))
 ];
