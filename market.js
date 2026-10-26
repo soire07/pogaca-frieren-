@@ -89,6 +89,23 @@ export async function buyMarketItem(guildId,userId,itemId) {
  finally{db.release();}
 }
 
+
+export function renderPurchaseResult(itemId, balance, userId) {
+ const item = marketItems.find(x => x.id === itemId);
+ if (!item) return null;
+ const embed = new EmbedBuilder()
+  .setColor(0x65d6a6)
+  .setTitle('🎉 SATIN ALMA BAŞARILI!')
+  .setDescription('✨ ⋆｡°✩°｡⋆ ✨\\n\\n'+item.emoji+' **'+item.name+'** artık koleksiyonunda!\\n\\n'+item.description+'\\n\\n💸 **Harcanan:** '+item.price.toLocaleString('tr-TR')+' altın\\n💰 **Kalan bakiye:** '+Number(balance).toLocaleString('tr-TR')+' altın\\n📦 Eşyalarını görmek için **/envanter** komutunu kullan.')
+  .setFooter({text:'Poğaça Frieren • Güzel koleksiyonlar!'})
+  .setTimestamp();
+ const row = new ActionRowBuilder().addComponents(
+  new ButtonBuilder().setCustomId('market_back:'+userId).setLabel('Markete dön').setEmoji('🛍️').setStyle(ButtonStyle.Primary),
+  new ButtonBuilder().setCustomId('market_inventory:'+userId).setLabel('Envanter nasıl açılır?').setEmoji('📦').setStyle(ButtonStyle.Secondary)
+ );
+ return {embeds:[embed],components:[row]};
+}
+
 export default {
  data:new SlashCommandBuilder().setName('market').setDescription('Butonlu, görsel anime temalı eşyalar marketini aç.'),
  async execute(interaction){
