@@ -3,10 +3,10 @@ import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js
 import { pool, ensureUser } from './database/db.js';
 
 const outcomes = [
-  { text: 'Ormanda kayıp bir büyü kitabı buldun!', coins: 35, xp: 25, item: 'eski_buyu_kitabi' },
+  { text: 'Ormanda kayıp bir büyü kitabı buldun!', coins: 35, xp: 25, item: '📖 Yasak Büyü Kitabı' },
   { text: 'Bir Mimic seni kovaladı ama kaçmayı başardın.', coins: 15, xp: 20, item: null },
-  { text: 'Yol kenarında bir fırın buldun. Fırıncı sana ödül verdi!', coins: 60, xp: 15, item: 'sicak_pogaca' },
-  { text: 'Eski bir harabede gizli bir oda keşfettin.', coins: 45, xp: 40, item: 'harabe_anahtari' }
+  { text: 'Yol kenarında bir fırın buldun. Fırıncı sana ödül verdi!', coins: 60, xp: 15, item: '🥐 Büyülü Poğaça Kutusu' },
+  { text: 'Eski bir harabede gizli bir oda keşfettin.', coins: 45, xp: 40, item: '💎 Mana Kristali' }
 ];
 
 export default {
