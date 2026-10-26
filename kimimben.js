@@ -75,8 +75,14 @@ async function saveCharacter(guildId, userId, character) {
 
 function createCharacterEmbed(character, user, quantity) {
   const info = rarityInfo[character.rarity] ?? rarityInfo.Nadir;
-  const eliteNames = ['Goku', 'Naruto Uzumaki', 'Monkey D. Luffy', 'Levi Ackerman'];
+  const eliteNames = ['Goku', 'Naruto Uzumaki', 'Monkey D. Luffy', 'Levi Ackerman', 'Satoru Gojo'];
   const elite = eliteNames.includes(character.name);
+  const rarityFrame = {
+    Yaygın: '╭─ ✧ ───────────── ✧ ─╮',
+    Nadir: '╭── ◆ ─────────── ◆ ──╮',
+    Destansı: '╭── ✦ ─────────── ✦ ──╮',
+    Efsanevi: '╭━━ ✧ ━━━━━━━━━ ✧ ━━╮'
+  }[character.rarity] ?? '╭─ ✧ ───────────── ✧ ─╮';
   const embed = new EmbedBuilder()
     .setColor(character.color)
     .setAuthor({
@@ -84,13 +90,11 @@ function createCharacterEmbed(character, user, quantity) {
     })
     .setTitle(`${character.emoji}  ${character.name}  ${character.emoji}`)
     .setDescription(
-      elite
-        ? `**${user.username}**, efsanevi bir karakter keşfettin!\n\n${character.description}`
-        : `**${user.username}**, anime karakterin belli oldu!\n\n${character.description}`
+      `${rarityFrame}\n**${user.username}**, ${elite ? 'özel bir karakter keşfettin!' : 'anime karakterin belli oldu!'}\n\n${character.description}\n\n${rarityFrame}`
     )
     .addFields(
       { name: '🎬  ANİME', value: `**${character.anime}**`, inline: true },
-      { name: '💎  SINIF', value: `**${character.rarity}**\n${info.stars}`, inline: true },
+      { name: `${character.emoji}  SINIF`, value: `**${character.rarity}**\n${info.stars}`, inline: true },
       { name: '📚  KOLEKSİYON', value: `**×${quantity}**`, inline: true },
       { name: '✧  KARAKTER ÖZELLİKLERİ', value: `┏  ${character.traits}\n┗━━━━━━━━━━━━━━━━`, inline: false }
     )
