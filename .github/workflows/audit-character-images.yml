@@ -26,8 +26,11 @@ jobs:
         id: audit
         continue-on-error: true
         run: |
+          set +e
           node scripts/check-character-images.js > image-audit-report.json
+          audit_status=$?
           cat image-audit-report.json
+          exit "$audit_status"
       - name: Upload audit report
         if: always()
         uses: actions/upload-artifact@v4
@@ -39,6 +42,5 @@ jobs:
       - name: Fail if any image URL could not be verified
         if: steps.audit.outcome == 'failure'
         run: |
-          echo "The audit report above lists every URL that could not be verified."
-          echo "A 403/429 may mean the host blocks automated checks; a 404 or non-image response is a stronger sign the URL is wrong."
+          echo "Audit failed; see the JSON report in the previous step."
           exit 1
