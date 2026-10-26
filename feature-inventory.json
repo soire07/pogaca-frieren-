@@ -1,0 +1,354 @@
+{
+  "targetFeatures": 2000,
+  "auditComplete": false,
+  "countingRule": "A feature is a distinct player-visible capability or meaningful interaction, not a file, command alias, UI line, or cosmetic wording change.",
+  "statuses": [
+    "implemented_needs_runtime_test",
+    "in_progress",
+    "planned"
+  ],
+  "features": [
+    {
+      "id": "RPG-001",
+      "name": "RPG profile and stats",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-002",
+      "name": "View another player's profile",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-003",
+      "name": "XP and level progression",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-004",
+      "name": "Level-up stat point rewards",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-005",
+      "name": "Distribute character stat points",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-006",
+      "name": "Restore HP and Mana by resting",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-007",
+      "name": "Rest cooldown",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-008",
+      "name": "Level-scaled exploration regions",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-009",
+      "name": "Random exploration encounters",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-010",
+      "name": "Exploration rewards and item drops",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-011",
+      "name": "Exploration cooldown",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-012",
+      "name": "Solo demon boss battles",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-013",
+      "name": "Boss tiers based on player level",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-014",
+      "name": "Boss-specific attacks",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-015",
+      "name": "Boss loot and permanent bonuses",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-016",
+      "name": "Boss guide and reward estimates",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-017",
+      "name": "Spellbook with multiple spells",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-018",
+      "name": "Learn spells",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-019",
+      "name": "Spell mastery progression",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-020",
+      "name": "Use inventory items",
+      "category": "Inventory",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-021",
+      "name": "Item usage tracking",
+      "category": "Inventory",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-022",
+      "name": "Browse item market",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-023",
+      "name": "Buy equipment",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-024",
+      "name": "Equip and unequip gear by slot",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-025",
+      "name": "Equipment attack and defense bonuses",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-026",
+      "name": "Equipment max HP and Mana bonuses",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-027",
+      "name": "Player inventory listing",
+      "category": "Inventory",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-028",
+      "name": "Daily coin reward",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-029",
+      "name": "Daily reward streak and bonus",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-030",
+      "name": "Daily missions and claimable rewards",
+      "category": "Quests",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-031",
+      "name": "Achievements and claimable rewards",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-032",
+      "name": "Main story with player choices",
+      "category": "Story",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-033",
+      "name": "Choice-dependent story requirements",
+      "category": "Story",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-034",
+      "name": "NPC side quests",
+      "category": "Quests",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-035",
+      "name": "World lore pages",
+      "category": "Lore",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-036",
+      "name": "Anime character collection",
+      "category": "Collection",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-037",
+      "name": "Character draw pity counters",
+      "category": "Collection",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-038",
+      "name": "Character collection upgrades",
+      "category": "Collection",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-039",
+      "name": "Character collection leaderboard",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-040",
+      "name": "Trade offer flow",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-041",
+      "name": "Anime quiz interaction",
+      "category": "Mini-games",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-042",
+      "name": "Mimic-themed interaction",
+      "category": "Mini-games",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-043",
+      "name": "Co-op dungeon invitation and acceptance",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-044",
+      "name": "Co-op dungeon multi-turn battle",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-045",
+      "name": "Co-op dungeon tier scaling",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-046",
+      "name": "Co-op dungeon rare loot",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-047",
+      "name": "Co-op dungeon cooldown",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "MOD-001",
+      "name": "Moderation warning command",
+      "category": "Moderation",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "MOD-002",
+      "name": "Timeout command",
+      "category": "Moderation",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "MOD-003",
+      "name": "Ban command",
+      "category": "Moderation",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "MOD-004",
+      "name": "Moderation case logging",
+      "category": "Moderation",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SRV-001",
+      "name": "Guild welcome message settings",
+      "category": "Server",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SRV-002",
+      "name": "Configurable moderation log channel",
+      "category": "Server",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SRV-003",
+      "name": "Bot/server statistics",
+      "category": "Server",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "FUN-001",
+      "name": "Random luck interaction",
+      "category": "Fun",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "FUN-002",
+      "name": "Virtual hug interaction",
+      "category": "Fun",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "FUN-003",
+      "name": "Character identification interaction",
+      "category": "Fun",
+      "status": "implemented_needs_runtime_test"
+    }
+  ]
+}
