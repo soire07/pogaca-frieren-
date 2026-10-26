@@ -8,6 +8,10 @@ export default {
     .setDescription('Kalıcı eşya envanterini gösterir.'),
 
   async execute(interaction) {
+    if (!interaction.guildId) {
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+    }
+
     await ensureUser(interaction.guildId, interaction.user.id);
 
     const { rows } = await pool.query(
