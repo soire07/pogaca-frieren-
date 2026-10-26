@@ -167,7 +167,7 @@ export default {
         hpDamage ? `**Can kaybı:** −${hpDamage} HP` : '',
         manaCost ? `**Büyü maliyeti:** −${manaCost} Mana` : encounter.manaCost ? 'Mana yetersiz olduğu için büyü kullanmadın.' : '',
         gainedPoints ? `**Seviye atladın!** +${gainedPoints} stat puanı kazandın.` : ''
-      ].filter(Boolean).join('\\n');
+      ].filter(Boolean).join('\n');
 
       const embed = new EmbedBuilder()
         .setColor(newHp === 0 ? 0xc0392b : 0x9b8cff)
