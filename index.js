@@ -62,7 +62,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const balanceResult = await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[interaction.guildId,interaction.user.id]);
         const actualDetail = renderMarketItem(parts[1], balanceResult.rows[0]?.coins ?? 0, interaction.user.id);
         return interaction.update({...actualDetail,content:null});
-      } else if (action === 'market_back') {
+      } else if (action === 'market_back' || action === 'market_open') {
         const panel = await renderMarket(interaction.guildId, interaction.user.id);
         return interaction.update({...panel,content:null});
       } else if (action === 'market_refresh') {
