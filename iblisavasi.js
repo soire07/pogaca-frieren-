@@ -252,7 +252,7 @@ export default {
           return button.update({
             embeds: [renderBattleEmbed({
               player: interaction.user, bossHp: 0, playerHp, bonus: upgradeBonus, won: true,
-              description: `${actionText}\n\n🌟 **Zafer!** İblisi alt ettin.\nÖdülün: **${rewardCoins} altın**, **${rewardXp} XP** ve **💎 Mana Kristali ×1**.${bonusLoot ? `\n🎁 Ek ganimet: **${bonusLoot} ×1** (%35 ihtimal).` : ''}`
+              description: `${actionText}\n\n🌟 **Zafer!** **${boss.name}** yenildi.\nÖdülün: **${rewardCoins} altın**, **${rewardXp} XP** ve **💎 Mana Kristali ×1**.${bonusLoot ? `\n🎁 Ek ganimet: **${bonusLoot} ×1** (%${Math.round(boss.lootChance * 100)} ihtimal).` : ''}`
             })],
             components: []
           });
