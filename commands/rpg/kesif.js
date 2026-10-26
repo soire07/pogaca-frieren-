@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
 import { equipmentItems, equipmentBonus } from '../../equipment-data.js';
+import { levelForXp } from '../../utils.js';
 
 const COOLDOWN_MS = 15 * 60 * 1000;
 const regions = {
@@ -138,7 +139,7 @@ export default {
       const manaCost = currentMana >= encounter.manaCost ? encounter.manaCost : 0;
       const hpDamage = encounter.hpDamage;
       const newXp = Number(player.xp) + rewardXp;
-      const newLevel = Math.floor(Math.sqrt(newXp / 100)) + 1;
+      const newLevel = levelForXp(newXp);
       const newHp = Math.max(0, currentHp - hpDamage);
       const newMana = Math.max(0, currentMana - manaCost);
       const gainedPoints = Math.max(0, newLevel - Number(player.level));
