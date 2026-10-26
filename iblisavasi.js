@@ -100,7 +100,7 @@ export default {
     let playerHp = Math.min(playerMaxHp, Number(stats.hp));
     let playerMana = Math.min(playerMaxMana, Number(stats.mana));
     const gearSummary = equippedItems.length
-      ? equippedItems.map(item => item.name + ' (' + formatEquipmentBonus(item) + ')').join('\\n')
+      ? equippedItems.map(item => item.name + ' (' + formatEquipmentBonus(item) + ')').join('\n')
       : 'Henüz ekipman kuşanılmadı. /market ve /ekipman komutlarını kullan.';
 
     const claimed = await pool.query(
@@ -148,7 +148,7 @@ export default {
       bossHp,
       playerHp,
       bonus: upgradeBonus,
-      description: `Kuzey sınırında tehlikeli bir iblisle karşılaştın, <@${interaction.user.id}>!\n\n**Hamleni seç:** Zoltraak dengeli saldırır; Alev Küresi daha güçlü hasar verir; Buz Mızrağı iblisi dondurup karşı saldırısını durdurabilir. Kalkan hasarı azaltır, Şifa savaşta bir kez can yeniler. Seviye ve boss zaferleriyle Yıldırım Zinciri, Taş Duvar ve Mana Patlaması açılır. Büyü kullandıkça ustalığın yükselir. Her karakter geliştirme seviyesi saldırı gücüne +2 hasar ekler.\\n\\n**Kuşanılan ekipman:**\\n${gearSummary}\\nEkipman bonusları bu savaşta saldırı, savunma, maksimum HP ve Mana değerlerine uygulanır.`
+      description: `Kuzey sınırında tehlikeli bir iblisle karşılaştın, <@${interaction.user.id}>!\n\n**Hamleni seç:** Zoltraak dengeli saldırır; Alev Küresi daha güçlü hasar verir; Buz Mızrağı iblisi dondurup karşı saldırısını durdurabilir. Kalkan hasarı azaltır, Şifa savaşta bir kez can yeniler. Seviye ve boss zaferleriyle Yıldırım Zinciri, Taş Duvar ve Mana Patlaması açılır. Büyü kullandıkça ustalığın yükselir. Her karakter geliştirme seviyesi saldırı gücüne +2 hasar ekler.\n\n**Kuşanılan ekipman:**\n${gearSummary}\\nEkipman bonusları bu savaşta saldırı, savunma, maksimum HP ve Mana değerlerine uygulanır.`
     });
     await interaction.editReply({ embeds: [initial], components: [actionRow(), rareActionRow()] });
     const message = await interaction.fetchReply();
