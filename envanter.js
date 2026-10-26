@@ -26,7 +26,7 @@ export default {
       const name = equippedMap.get(slot.id);
       const item = equipmentItems.find(entry => entry.name === name);
       return slot.label + ': ' + (item ? item.name + ' — ' + formatEquipmentBonus(item) : 'Boş');
-    }).join('\\n');
+    }).join('\n');
 
     const description = rows.length
       ? rows.map(r => `• **${r.item_key}** × ${r.quantity}`).join('\n')
@@ -37,7 +37,7 @@ export default {
     const embed = new EmbedBuilder()
       .setColor(0x9b8cff)
       .setTitle(`🎒 ${interaction.user.username} | Envanter`)
-      .setDescription(description + '\\n\\n**🛡️ Kuşanılan ekipman**\\n' + equipmentDescription)
+      .setDescription(description + '\n\n**🛡️ Kuşanılan ekipman**\n' + equipmentDescription)
       .setImage('attachment://envanter.gif')
       .setFooter({ text: 'Poğaça Frieren • Büyülü Eşya Koleksiyonu' });
 
