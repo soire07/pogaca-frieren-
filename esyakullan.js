@@ -2,6 +2,17 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 
 const usableItems = {
+  frieren_staff: { name: '🪄 Frieren’in Asası', key: '🪄 Frieren’in Asası', description: '120 XP kazandın.', xp: 120, coins: 0 },
+  mana_crystal: { name: '💎 Mana Kristali', key: '💎 Mana Kristali', description: '70 XP kazandın.', xp: 70, coins: 0 },
+  grimoire: { name: '📖 Yasak Büyü Kitabı', key: '📖 Yasak Büyü Kitabı', description: '100 XP kazandın.', xp: 100, coins: 0 },
+  fern_ribbon: { name: '🎀 Fern’in Kurdelası', key: '🎀 Fern’in Kurdelası', description: '35 XP kazandın.', xp: 35, coins: 0 },
+  himmel_flower: { name: '🌼 Himmel’in Mavi Çiçeği', key: '🌼 Himmel’in Mavi Çiçeği', description: '80 XP kazandın.', xp: 80, coins: 0 },
+  goku_orb: { name: '🔴 Dört Yıldızlı Ejder Topu', key: '🔴 Dört Yıldızlı Ejder Topu', description: '90 XP kazandın.', xp: 90, coins: 0 },
+  ninja_scroll: { name: '📜 Gizli Ninja Parşömeni', key: '📜 Gizli Ninja Parşömeni', description: '30 XP kazandın.', xp: 30, coins: 0 },
+  cursed_charm: { name: '🧿 Lanetli Muska', key: '🧿 Lanetli Muska', description: '45 XP ve 15 altın kazandın.', xp: 45, coins: 15 },
+  breathing_mask: { name: '🌊 Su Nefesi Tılsımı', key: '🌊 Su Nefesi Tılsımı', description: '30 XP kazandın.', xp: 30, coins: 0 },
+  survey_badge: { name: '🪽 Keşif Birliği Rozeti', key: '🪽 Keşif Birliği Rozeti', description: '40 XP kazandın.', xp: 40, coins: 0 },
+  lucky_charm: { name: '🍀 Şans Tılsımı', key: '🍀 Şans Tılsımı', description: 'Rastgele altın ödülü kazandın.', xp: 0, coins: 25 },
   frieren_tea: {
     name: '🍵 Frieren Çayı',
     key: '🍵 Frieren Çayı',
@@ -34,6 +45,17 @@ export default {
         .setDescription('Kullanmak istediğin eşya')
         .setRequired(true)
         .addChoices(
+          { name: '🪄 Frieren’in Asası (+120 XP)', value: 'frieren_staff' },
+          { name: '💎 Mana Kristali (+70 XP)', value: 'mana_crystal' },
+          { name: '📖 Yasak Büyü Kitabı (+100 XP)', value: 'grimoire' },
+          { name: '🎀 Fern’in Kurdelası (+35 XP)', value: 'fern_ribbon' },
+          { name: '🌼 Himmel’in Mavi Çiçeği (+80 XP)', value: 'himmel_flower' },
+          { name: '🔴 Dört Yıldızlı Ejder Topu (+90 XP)', value: 'goku_orb' },
+          { name: '📜 Gizli Ninja Parşömeni (+30 XP)', value: 'ninja_scroll' },
+          { name: '🧿 Lanetli Muska (+45 XP, +15 altın)', value: 'cursed_charm' },
+          { name: '🌊 Su Nefesi Tılsımı (+30 XP)', value: 'breathing_mask' },
+          { name: '🪽 Keşif Birliği Rozeti (+40 XP)', value: 'survey_badge' },
+          { name: '🍀 Şans Tılsımı (+25 altın)', value: 'lucky_charm' },
           { name: '🍵 Frieren Çayı (+25 XP)', value: 'frieren_tea' },
           { name: '🥐 Büyülü Poğaça Kutusu (+40 altın)', value: 'poagaca_box' },
           { name: '🌠 Yıldız İksiri (+100 XP)', value: 'star_potion' }
