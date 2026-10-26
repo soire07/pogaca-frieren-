@@ -41,7 +41,7 @@ export const characters = [
   { name: 'Mikasa Ackerman', anime: 'Attack on Titan', rarity: 'Destansı', emoji: '🧣', color: 10181985, description: 'Üstün savaş becerileriyle sevdiklerini koruyan seçkin asker.', traits: 'Sadık • Soğukkanlı • Güçlü', image: 'https://wallpapecat.com/w/full/8/2/3/128823-3840x2160-desktop-4k-mikasa-ackerman-wallpaper.jpg' }
 ];
 
-export function drawCharacter(previousName = null, forceEpicOrHigher = false) {
+export function drawCharacter(previousName = null, forceEpicOrHigher = false, forceLegendary = false) {
   const roll = Math.random() * 100;
   let rarity;
   if (roll < 0.01) rarity = 'Gizemli';
@@ -50,7 +50,8 @@ export function drawCharacter(previousName = null, forceEpicOrHigher = false) {
   else if (roll < 40.11) rarity = 'Nadir';
   else rarity = 'Yaygın';
 
-  if (forceEpicOrHigher && !['Gizemli', 'Efsanevi', 'Destansı'].includes(rarity)) {
+  if (forceLegendary) rarity = 'Efsanevi';
+  else if (forceEpicOrHigher && !['Gizemli', 'Efsanevi', 'Destansı'].includes(rarity)) {
     rarity = 'Destansı';
   }
   let rarityPool = characters.filter(c => c.rarity === rarity && c.name !== previousName);
