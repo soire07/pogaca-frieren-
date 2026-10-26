@@ -60,8 +60,10 @@ export async function initDatabase() {
       guild_id TEXT PRIMARY KEY,
       log_channel_id TEXT,
       welcome_channel_id TEXT,
+      welcome_message TEXT NOT NULL DEFAULT 'Hoş geldin {user}! 🥐 {server} sunucusuna katıldın.',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS welcome_message TEXT NOT NULL DEFAULT 'Hoş geldin {user}! 🥐 {server} sunucusuna katıldın.';
     CREATE TABLE IF NOT EXISTS anime_character_collection (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
