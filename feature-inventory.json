@@ -367,6 +367,12 @@
       "name": "Claim rewards for co-op dungeon milestones",
       "category": "Progression",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-051",
+      "name": "Filter character collection by rarity",
+      "category": "Collection",
+      "status": "implemented_needs_runtime_test"
     }
   ]
 }
