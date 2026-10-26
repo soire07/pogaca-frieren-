@@ -33,11 +33,11 @@ async function claimDrawCooldown(guildId, userId) {
            CASE WHEN (CASE WHEN character_draw_cooldown_until IS NOT NULL
                                 AND character_draw_cooldown_until <= NOW()
                            THEN 1 ELSE character_draw_count + 1 END) >= 5
-                THEN NOW() + INTERVAL '30 minutes'
+                THEN NOW() + INTERVAL '5 minutes'
                 ELSE NULL END
      WHERE guild_id = $1 AND user_id = $2
        AND (character_draw_cooldown_until IS NULL OR character_draw_cooldown_until <= NOW())
-       AND (last_character_draw_at IS NULL OR last_character_draw_at <= NOW() - INTERVAL '15 seconds')
+       AND (last_character_draw_at IS NULL OR last_character_draw_at <= NOW())
        AND ((character_draw_cooldown_until IS NOT NULL AND character_draw_cooldown_until <= NOW())
             OR character_draw_count < 8)
      RETURNING character_draw_count, character_draw_cooldown_until`,
@@ -68,7 +68,7 @@ function cooldownMessage(result) {
     const unix = Math.floor(new Date(result.cooldownUntil).getTime() / 1000);
     return `8 karakter çekme hakkını kullandın. Yeni hakların <t:${unix}:R> hazır olacak.`;
   }
-  return '5 karakter çekme hakkını kullandın. Yeni hakların **5 dakika** sonra yenilenecek.';
+  return '8 karakter çekme hakkını kullandın. Yeni hakların **5 dakika** sonra yenilenecek.';
 }
 
 async function drawForUser(guildId, userId, previousName = null) {
@@ -101,7 +101,7 @@ async function saveCharacter(guildId, userId, character) {
     [guildId, userId, character.name, character.anime, character.rarity, character.emoji, character.color, character.description, character.traits, character.image]
   );
   await pool.query(
-    `UPDATE users SET pity_count = CASE WHEN $3 IN ('Efsanevi', 'Gizemli') THEN 0 ELSE pity_count + 1 END
+    `UPDATE users SET pity_count = CASE WHEN $3 IN ('Destansı', 'Efsanevi', 'Gizemli') THEN 0 ELSE pity_count + 1 END
      WHERE guild_id = $1 AND user_id = $2`,
     [guildId, userId, character.rarity]
   );
