@@ -1,0 +1,66 @@
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { pool, ensureUser } from './database/db.js';
+
+const rarityOrder = { Efsanevi: 0, Destansı: 1, Nadir: 2, Yaygın: 3 };
+
+export default {
+  data: new SlashCommandBuilder()
+    .setName('koleksiyon')
+    .setDescription('Keşfettiğin anime karakterlerini ve koleksiyon ilerlemeni gösterir.')
+    .addUserOption(option =>
+      option.setName('kullanici')
+        .setDescription('Koleksiyonunu görmek istediğin kullanıcı')
+        .setRequired(false)
+    ),
+
+  async execute(interaction) {
+    if (!interaction.guildId) {
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+    }
+
+    await interaction.deferReply();
+    const target = interaction.options.getUser('kullanici') ?? interaction.user;
+
+    try {
+      await ensureUser(interaction.guildId, target.id);
+      const { rows } = await pool.query(
+        `SELECT character_name, anime, rarity, emoji, quantity
+         FROM anime_character_collection
+         WHERE guild_id = $1 AND user_id = $2
+         ORDER BY CASE rarity
+           WHEN 'Efsanevi' THEN 0
+           WHEN 'Destansı' THEN 1
+           WHEN 'Nadir' THEN 2
+           ELSE 3
+         END, character_name`,
+        [interaction.guildId, target.id]
+      );
+
+      const uniqueCount = rows.length;
+      const totalCharacters = 12;
+      const percent = Math.min(100, Math.round((uniqueCount / totalCharacters) * 100));
+      const totalCopies = rows.reduce((sum, row) => sum + Number(row.quantity), 0);
+      const description = rows.length
+        ? rows.map(row => `${row.emoji} **${row.character_name}** — ${row.rarity} · ×${row.quantity}\n└ ${row.anime}`).join('\n')
+        : 'Henüz karakter keşfetmemişsin. **/kimimben** komutunu kullanarak ilk karakterini bul!';
+
+      const embed = new EmbedBuilder()
+        .setColor(0x9b8cff)
+        .setTitle(`📚 ${target.username} | Anime Koleksiyonu`)
+        .setThumbnail(target.displayAvatarURL())
+        .setDescription(description.slice(0, 4000))
+        .addFields(
+          { name: '🧩 Farklı karakter', value: `${uniqueCount}/${totalCharacters}`, inline: true },
+          { name: '📦 Toplam kopya', value: String(totalCopies), inline: true },
+          { name: '📈 Tamamlama', value: `${percent}%`, inline: true }
+        )
+        .setFooter({ text: 'Poğaça Frieren • Koleksiyon kayıtları sunucuya özeldir' })
+        .setTimestamp();
+
+      await interaction.editReply({ embeds: [embed] });
+    } catch (error) {
+      console.error('Koleksiyon komutu hatası:', error);
+      await interaction.editReply('Koleksiyon yüklenirken bir hata oluştu. Lütfen biraz sonra tekrar dene.');
+    }
+  }
+};
