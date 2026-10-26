@@ -14,6 +14,10 @@ export default {
     ),
 
   async execute(interaction) {
+    if (!interaction.guildId) {
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+    }
+
     const target =
       interaction.options.getUser('kullanici') ?? interaction.user;
 
