@@ -69,6 +69,15 @@ export async function initDatabase() {
       PRIMARY KEY (guild_id, user_id, item_key),
       FOREIGN KEY (guild_id, user_id) REFERENCES users(guild_id, user_id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS learned_spells (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      spell_key TEXT NOT NULL,
+      learned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id, user_id, spell_key),
+      FOREIGN KEY (guild_id, user_id) REFERENCES users(guild_id, user_id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_learned_spells_user ON learned_spells(guild_id, user_id);
     CREATE TABLE IF NOT EXISTS moderation_cases (
       id BIGSERIAL PRIMARY KEY,
       guild_id TEXT NOT NULL,
@@ -137,6 +146,11 @@ export async function initDatabase() {
 export async function ensureUser(guildId, userId) {
   await pool.query(
     'INSERT INTO users (guild_id, user_id) VALUES ($1, $2) ON CONFLICT (guild_id, user_id) DO NOTHING',
+    [guildId, userId]
+  );
+  // Zoltraak is the starter spell for every adventurer; existing users receive it too.
+  await pool.query(
+    "INSERT INTO learned_spells (guild_id, user_id, spell_key) VALUES ($1, $2, 'zoltraak') ON CONFLICT DO NOTHING",
     [guildId, userId]
   );
 }
