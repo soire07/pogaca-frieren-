@@ -5,19 +5,6 @@ import { characters } from './character-data.js';
 const PAGE_SIZE = 8;
 const BUTTON_TIMEOUT = 10 * 60 * 1000;
 
-const artworkByCharacter = {
-  Frieren: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g3-723x1024.jpg',
-  Fern: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g6-723x1024.jpg',
-  Stark: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g7-723x1024.jpg',
-  Himmel: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g9-723x1024.jpg',
-  Heiter: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g10-723x1024.jpg',
-  Sein: 'https://frieren-anime.jp/wp-content/uploads/2023/12/g-724x1024.jpg',
-  Kanne: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara02_full1.png',
-  Lawine: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara08_full1.png',
-  Laufen: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara07_full1.png',
-  Richter: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara01_full1.png'
-};
-
 function makeSummaryEmbed(target, rows, totalCharacters, page, pageCount) {
   const uniqueCount = rows.length;
   const percent = Math.min(100, Math.round((uniqueCount / totalCharacters) * 100));
@@ -48,7 +35,7 @@ function makeSummaryEmbed(target, rows, totalCharacters, page, pageCount) {
 }
 
 function makeCharacterEmbed(row) {
-  const image = artworkByCharacter[row.character_name] || row.image || characters.find(c => c.name === row.character_name)?.image;
+  const image = characters.find(c => c.name === row.character_name)?.image || row.image;
   const embed = new EmbedBuilder()
     .setColor(row.color ?? (row.rarity === 'Gizemli' ? 0x30105e : 0x9b8cff))
     .setTitle(`${row.emoji || '🎴'} ${row.character_name}`)
