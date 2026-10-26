@@ -101,7 +101,19 @@ export function renderPurchaseResult(itemId, balance, userId) {
   .setTimestamp();
  const row = new ActionRowBuilder().addComponents(
   new ButtonBuilder().setCustomId('market_back:'+userId).setLabel('Markete dön').setEmoji('🛍️').setStyle(ButtonStyle.Primary),
-  new ButtonBuilder().setCustomId('market_inventory:'+userId).setLabel('Envanter nasıl açılır?').setEmoji('📦').setStyle(ButtonStyle.Secondary)
+  new ButtonBuilder().setCustomId('market_inventory:'+userId).setLabel('Envanterime git').setEmoji('📦').setStyle(ButtonStyle.Secondary)
+ );
+ return {embeds:[embed],components:[row]};
+}
+
+
+export async function renderMarketInventory(guildId, userId) {
+ const result = await pool.query('SELECT item_key, quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 ORDER BY item_key',[guildId,userId]);
+ const embed = new EmbedBuilder().setColor(0xb58cff).setTitle('📦 KOLEKSİYON ÇANTAN')
+  .setDescription(result.rows.length ? result.rows.map(row=>'• **'+row.item_key+'** × '+row.quantity).join('\\n') : 'Çantan şimdilik boş. Marketten ilk eşyanı alabilirsin.')
+  .setFooter({text:'Poğaça Frieren • Envanter özeti'}).setTimestamp();
+ const row = new ActionRowBuilder().addComponents(
+  new ButtonBuilder().setCustomId('market_back:'+userId).setLabel('Markete dön').setEmoji('🛍️').setStyle(ButtonStyle.Primary)
  );
  return {embeds:[embed],components:[row]};
 }
