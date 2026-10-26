@@ -33,7 +33,8 @@ const spells = [
   { name: 'Kilit Açma', type: 'Yardımcı büyü', description: 'Basit kilit mekanizmalarını büyüyle açmaya çalışır.', emoji: '🗝️' },
   { name: 'Kar Tanesi', type: 'Günlük yaşam büyüsü', description: 'Avucunda erimeden duran küçük bir kar tanesi yaratır.', emoji: '❄️' },
   { name: 'Mükemmel Çay', type: 'Günlük yaşam büyüsü', description: 'Çayı ideal sıcaklıkta ve demde hazırlamaya yardım eder.', emoji: '🍵' }
-];;
+
+];
 
 function createEmbed(index) {
   const spell = spells[index];
