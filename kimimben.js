@@ -11,11 +11,11 @@ import { pool, ensureUser } from './database/db.js';
 const BUTTON_TIMEOUT = 10 * 60 * 1000;
 
 const characters = [
-  { name: 'Frieren', anime: 'Frieren: Beyond Journey’s End', rarity: 'Efsanevi', emoji: '🪄', color: 0x9b8cff, description: 'Bin yılı aşan ömrüyle büyülerin peşinden giden elf büyücü.', traits: 'Bilge • Sakin • Güçlü', image: null },
-  { name: 'Fern', anime: 'Frieren: Beyond Journey’s End', rarity: 'Destansı', emoji: '🔮', color: 0x8c7bd9, description: 'Disiplinli, yetenekli ve son derece kontrollü bir büyücü.', traits: 'Disiplinli • Zeki • Soğukkanlı', image: null },
-  { name: 'Stark', anime: 'Frieren: Beyond Journey’s End', rarity: 'Nadir', emoji: '⚔️', color: 0xc47b58, description: 'Korkularına rağmen arkadaşları için savaşan cesur savaşçı.', traits: 'Cesur • Sadık • Güçlü', image: null },
-  { name: 'Himmel', anime: 'Frieren: Beyond Journey’s End', rarity: 'Efsanevi', emoji: '🌟', color: 0x58a6ff, description: 'İnsanlara umut veren, iyiliksever kahraman.', traits: 'Karizmatik • Fedakâr • İdealist', image: null },
-  { name: 'Heiter', anime: 'Frieren: Beyond Journey’s End', rarity: 'Nadir', emoji: '🍃', color: 0x58b98a, description: 'Mizahı ve bilgeliğiyle öne çıkan eski kahraman grubunun rahibi.', traits: 'Bilge • Eğlenceli • Şefkatli', image: null },
+  { name: 'Frieren', anime: 'Frieren: Beyond Journey’s End', rarity: 'Efsanevi', emoji: '🪄', color: 0x9b8cff, description: 'Bin yılı aşan ömrüyle büyülerin peşinden giden elf büyücü.', traits: 'Bilge • Sakin • Güçlü', image: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g3-723x1024.jpg' },
+  { name: 'Fern', anime: 'Frieren: Beyond Journey’s End', rarity: 'Destansı', emoji: '🔮', color: 0x8c7bd9, description: 'Disiplinli, yetenekli ve son derece kontrollü bir büyücü.', traits: 'Disiplinli • Zeki • Soğukkanlı', image: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g6-723x1024.jpg' },
+  { name: 'Stark', anime: 'Frieren: Beyond Journey’s End', rarity: 'Nadir', emoji: '⚔️', color: 0xc47b58, description: 'Korkularına rağmen arkadaşları için savaşan cesur savaşçı.', traits: 'Cesur • Sadık • Güçlü', image: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g7-723x1024.jpg' },
+  { name: 'Himmel', anime: 'Frieren: Beyond Journey’s End', rarity: 'Efsanevi', emoji: '🌟', color: 0x58a6ff, description: 'İnsanlara umut veren, iyiliksever kahraman.', traits: 'Karizmatik • Fedakâr • İdealist', image: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g9-723x1024.jpg' },
+  { name: 'Heiter', anime: 'Frieren: Beyond Journey’s End', rarity: 'Nadir', emoji: '🍃', color: 0x58b98a, description: 'Mizahı ve bilgeliğiyle öne çıkan eski kahraman grubunun rahibi.', traits: 'Bilge • Eğlenceli • Şefkatli', image: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g10-723x1024.jpg' },
   { name: 'Sein', anime: 'Frieren: Beyond Journey’s End', rarity: 'Destansı', emoji: '🌿', color: 0x52a88a, description: 'Arkadaşlarına yardım eden, deneyimli bir rahip.', traits: 'Olgun • Yardımsever • Rahat', image: null },
   { name: 'Goku', anime: 'Dragon Ball', rarity: 'Efsanevi', emoji: '🐉', color: 0xf0a33a, description: 'Sürekli güçlenmek ve daha güçlü rakiplerle karşılaşmak isteyen savaşçı.', traits: 'Neşeli • Azimli • Güçlü', image: null },
   { name: 'Naruto Uzumaki', anime: 'Naruto', rarity: 'Destansı', emoji: '🍥', color: 0xf08c38, description: 'Asla pes etmeyen ve hayallerinin peşinden giden ninja.', traits: 'Kararlı • Enerjik • Sadık', image: null },
@@ -80,7 +80,7 @@ function createCharacterEmbed(character, user, quantity) {
     )
     .setFooter({ text: 'Poğaça Frieren • Karakter Keşfi' })
     .setTimestamp();
-  if (character.image) embed.setThumbnail(character.image);
+  if (character.image) embed.setImage(character.image);
   return embed;
 }
 
