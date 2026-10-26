@@ -12,11 +12,11 @@ const PLAYER_MAX_HP = 100;
 const COOLDOWN_MS = 30 * 60 * 1000;
 
 const bossTiers = [
-  { minLevel: 1, name: '🐺 Schattenwolf', region: 'Merkez Topraklar', maxHp: 120, minDamage: 7, maxDamage: 12, coinMin: 90, coinMax: 130, xpMin: 55, xpMax: 85, lootChance: 0.2 },
-  { minLevel: 10, name: '🗿 Kadim Harabe Muhafızı', region: 'Kadim Harabeler', maxHp: 210, minDamage: 10, maxDamage: 16, coinMin: 150, coinMax: 210, xpMin: 95, xpMax: 140, lootChance: 0.3 },
-  { minLevel: 20, name: '👹 Kuzey İblisi', region: 'Kuzey Toprakları', maxHp: 330, minDamage: 13, maxDamage: 20, coinMin: 230, coinMax: 320, xpMin: 150, xpMax: 210, lootChance: 0.35 },
-  { minLevel: 35, name: '🩸 Büyük İblis Komutanı', region: 'Kuzey Yaylaları', maxHp: 470, minDamage: 16, maxDamage: 24, coinMin: 340, coinMax: 470, xpMin: 220, xpMax: 310, lootChance: 0.45 },
-  { minLevel: 50, name: '👑 Äußerst Sınavının İblis Efendisi', region: 'Äußerst Sınav Rotası', maxHp: 650, minDamage: 20, maxDamage: 29, coinMin: 500, coinMax: 700, xpMin: 330, xpMax: 460, lootChance: 0.55 }
+  { minLevel: 1, name: '🐺 Schattenwolf', region: 'Merkez Topraklar', maxHp: 120, minDamage: 7, maxDamage: 12, coinMin: 90, coinMax: 130, xpMin: 55, xpMax: 85, lootChance: 0.2, loot: ['🐺 Schattenwolfzahn'], special: 'Rudelstoß', specialType: 'heavy' },
+  { minLevel: 10, name: '🗿 Kadim Harabe Muhafızı', region: 'Kadim Harabeler', maxHp: 210, minDamage: 10, maxDamage: 16, coinMin: 150, coinMax: 210, xpMin: 95, xpMax: 140, lootChance: 0.3, loot: ['🗿 Muhafız Rünü'], special: 'Kadim Sarsıntı', specialType: 'heavy' },
+  { minLevel: 20, name: '👹 Kuzey İblisi', region: 'Kuzey Toprakları', maxHp: 330, minDamage: 13, maxDamage: 20, coinMin: 230, coinMax: 320, xpMin: 150, xpMax: 210, lootChance: 0.35, loot: ['🩸 Kuzey İblisinin Kalbi'], special: 'Mana Kemiren Lanet', specialType: 'drain' },
+  { minLevel: 35, name: '🩸 Büyük İblis Komutanı', region: 'Kuzey Yaylaları', maxHp: 470, minDamage: 16, maxDamage: 24, coinMin: 340, coinMax: 470, xpMin: 220, xpMax: 310, lootChance: 0.45, loot: ['🩸 İblis Komutanının Kanı'], special: 'Komutanın Hiddeti', specialType: 'heavy' },
+  { minLevel: 50, name: '👑 Äußerst Sınavının İblis Efendisi', region: 'Äußerst Sınav Rotası', maxHp: 650, minDamage: 20, maxDamage: 29, coinMin: 500, coinMax: 700, xpMin: 330, xpMax: 460, lootChance: 0.55, loot: ['🩸 İblis Komutanının Kanı', '🗿 Muhafız Rünü', '🩸 Kuzey İblisinin Kalbi'], special: 'Äußerst Büyü Patlaması', specialType: 'arcane' }
 ];
 
 function battleEmbed({ player, bossHp, bossMaxHp = 160, bossName = 'İblis', bossRegion = 'Kuzey Sınırı', playerHp, playerMaxHp = PLAYER_MAX_HP, playerMana = 100, playerMaxMana = 100, attack = 10, defense = 5, bonus, description, won = false, lost = false }) {
@@ -99,6 +99,7 @@ export default {
     const playerLevel = Number(stats.level || 1);
     const boss = [...bossTiers].reverse().find(tier => playerLevel >= tier.minLevel) || bossTiers[0];
     let bossHp = boss.maxHp;
+    let turnCount = 0;
     let shield = false;
     let healUsed = false;
     let busy = false;
@@ -215,7 +216,7 @@ export default {
           const rewardCoins = boss.coinMin + Math.floor(Math.random() * (boss.coinMax - boss.coinMin + 1));
           const rewardXp = boss.xpMin + Math.floor(Math.random() * (boss.xpMax - boss.xpMin + 1));
           const bonusLoot = Math.random() < boss.lootChance
-            ? ['🩸 İblis Özü', '✨ Eski Büyü Kalıntısı', '🗝️ Harabe Anahtarı'][Math.floor(Math.random() * 3)]
+            ? boss.loot[Math.floor(Math.random() * boss.loot.length)]
             : null;
           const db = await pool.connect();
           try {
@@ -258,8 +259,19 @@ export default {
           });
         }
 
+        turnCount += 1;
         const rawBossDamage = Math.floor(Math.random() * (boss.maxDamage - boss.minDamage + 1)) + boss.minDamage;
         let bossDamage = Math.max(1, rawBossDamage - Math.floor(defense / 2));
+        if (turnCount % 3 === 0) {
+          const specialDamage = boss.specialType === 'arcane' ? 12 : boss.specialType === 'heavy' ? 8 : 5;
+          bossDamage += specialDamage;
+          actionText += `\\n💥 **${boss.special}**! Boss özel saldırı yaptı ve hasarını **+${specialDamage}** artırdı.`;
+          if (boss.specialType === 'drain') {
+            const drainedMana = Math.min(10, playerMana);
+            playerMana -= drainedMana;
+            actionText += `\\n🔮 Lanet **${drainedMana} Mana** emdi!`;
+          }
+        }
         if (frozenBoss) bossDamage = 0;
         if (shield && bossDamage > 0) {
           bossDamage = Math.ceil(bossDamage / 2);
