@@ -4,6 +4,9 @@ import { pool } from './database/db.js';
 export default {
   data: new SlashCommandBuilder().setName('istatistik').setDescription('Bot ve sunucu istatistiklerini gösterir.'),
   async execute(interaction) {
+    if (!interaction.guildId) {
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+    }
     const result = await pool.query('SELECT COUNT(*)::int AS players, COALESCE(MAX(level), 1)::int AS max_level FROM users WHERE guild_id = $1', [interaction.guildId]);
     const row = result.rows[0];
     const embed = new EmbedBuilder().setColor(0x9b8cff).setTitle('📊 Poğaça Frieren İstatistikleri')
