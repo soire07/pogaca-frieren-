@@ -81,6 +81,18 @@ export default {
         return interaction.editReply({ content: 'Takım oyuncularının verileri alınamadı. Biraz sonra tekrar deneyin.', components: [] });
       }
 
+      // This legacy two-player dungeon holds the user-row locks until its
+      // short, non-interactive fight is saved. Check reservations after those
+      // locks so an existing interactive boss/party fight cannot overlap it.
+      const activeEncounter = await db.query(
+        'SELECT user_id FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND expires_at > NOW()',
+        [interaction.guildId, playerIds]
+      );
+      if (activeEncounter.rowCount) {
+        await db.query('ROLLBACK');
+        return interaction.editReply({ content: '⚔️ Takımdaki bir oyuncunun başka bir karşılaşması sürüyor. Önce o savaşı bitirin.', components: [] });
+      }
+
       const byId = new Map(result.rows.map(player => [player.user_id, player]));
       const players = [byId.get(interaction.user.id), byId.get(teammate.id)];
       const now = Date.now();
