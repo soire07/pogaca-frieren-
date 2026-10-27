@@ -539,3 +539,39 @@ test('quest chain UI previews level-scaled rewards and the material reward for e
   assert.match(quest, /reward\.coins.*reward\.xp.*s\.material/);
   assert.match(quest, /Sıradaki aşama açıldı/);
 });
+
+
+import { getBossArtUrl } from '../boss-art.js';
+
+test('boss artwork resolver accepts HTTPS URLs and ignores missing, malformed or insecure values', () => {
+  const key = 'POGACA_BOSS_ART_SCHATTENWOLF_URL';
+  const previous = process.env[key];
+  try {
+    delete process.env[key];
+    assert.equal(getBossArtUrl('schattenwolf'), null);
+    process.env[key] = 'http://example.com/boss.png';
+    assert.equal(getBossArtUrl('schattenwolf'), null);
+    process.env[key] = 'not-a-url';
+    assert.equal(getBossArtUrl('schattenwolf'), null);
+    process.env[key] = 'https://cdn.example.com/boss.png';
+    assert.equal(getBossArtUrl('schattenwolf'), 'https://cdn.example.com/boss.png');
+    assert.equal(getBossArtUrl('unknown-boss'), null);
+  } finally {
+    if (previous === undefined) delete process.env[key];
+    else process.env[key] = previous;
+  }
+});
+
+test('solo, raid and dungeon boss panels can display their own configured artwork', async () => {
+  const solo = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const raid = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  const envExample = await readFile(new URL('../.env.example', import.meta.url), 'utf8');
+  assert.match(solo, /bossImageUrl: boss\.artUrl/);
+  assert.match(solo, /if \(bossImageUrl\) embed\.setImage\(bossImageUrl\)/);
+  assert.match(raid, /getBossArtUrl\(BOSS\.id/);
+  assert.match(raid, /if \(raidArtUrl\) embed\.setImage\(raidArtUrl\)/);
+  assert.match(dungeon, /getBossArtUrl\('dungeonFinal'\)/);
+  assert.match(envExample, /POGACA_BOSS_ART_SCHATTENWOLF_URL/);
+  assert.match(envExample, /POGACA_DUNGEON_FINAL_BOSS_ART_URL/);
+});
