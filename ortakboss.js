@@ -5,6 +5,13 @@ import { levelForXp } from './utils.js';
 import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
+
+function hpBar(current, maximum, width = 12) {
+  const max = Math.max(1, Number(maximum) || 1);
+  const ratio = Math.max(0, Math.min(1, Number(current) / max));
+  const filled = Math.round(ratio * width);
+  return '█'.repeat(filled) + '░'.repeat(width - filled);
+}
 const ROLES = {
   tank: { label: '🛡️ Muhafız', description: 'Daha çok hasar üzerine çeker ve daha dayanıklıdır.', hp: 1.25, attack: 0.85, defense: 1.45 },
   healer: { label: '💚 Şifacı', description: 'Her tur takıma küçük bir iyileştirme sağlar.', hp: 1, attack: 0.85, defense: 1.05 },
@@ -388,6 +395,7 @@ export default {
           fighters.map((f,i)=>`**<@${f.userId}>** — ${f.roleData.label} · ${f.classProfile.label} · ${f.build.label}\n❤️ ${persistedHpNow[i]}/${f.baseMaxHp} HP · ✨ ${f.mana}/${f.maxMana} mana · ⚔️ ${Math.round(f.attack)} saldırı · 🛡️ ${Math.round(f.defense)} savunma`).join('\n\n')+
           '\n\n**Savaş günlüğü**\n'+log.slice(-15).join('\n'))
         .addFields(
+          {name:'👹 Boss canı ve aşaması',value:`\`${hpBar(bossHp,maxBossHp)}\`\n**${Math.max(0,bossHp)}/${maxBossHp} HP** · ${getBossPhase(bossHp,maxBossHp)===3?'🌑 Son aşama':getBossPhase(bossHp,maxBossHp)===2?'🔥 İkinci aşama':'🌒 İlk aşama'}`,inline:false},
           {name:'🎁 Kişi başı ödül',value:`✨ ${xpReward} XP\n🥐 ${coinReward} altın`,inline:true},
           {name:'🏅 Kalıcı unvanlar',value:milestoneText.slice(0,1024),inline:false},
           {name:'🧭 Boss bilgisi',value:`Zayıflık: **${BOSS.weaknessLabel}**\nÖzel hareket: **${BOSS.special === 'shard-rain' ? 'Kristal Yağmuru (iki turda bir, alan hasarı)' : BOSS.special === 'mana-curse' ? 'Mana Laneti (üç turda bir, mana tüketir)' : 'Mana Yıldız Patlaması (üç turda bir, alan hasarı)'}**`,inline:true},
