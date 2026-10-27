@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, Embe
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus } from './rpg-mechanics.js';
+import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone } from './rpg-mechanics.js';
 
 const FLOORS = 5;
 const COOLDOWN_MS = 30 * 60_000;
@@ -354,6 +354,11 @@ export default {
         );
       }
       await db.query('COMMIT');
+      const milestoneRows = await db.query('SELECT user_id,level,boss_defeats,dungeon_wins FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[interaction.guildId,ids]);
+      const milestoneText = milestoneRows.rows.map(row => {
+        const titles = progressionMilestone(Number(row.level), Number(row.boss_defeats), Number(row.dungeon_wins));
+        return `<@${row.user_id}>: ${titles.length ? titles.join(', ') : 'Henüz unvan açılmadı'}`;
+      }).join('\n');
 
       const embed = new EmbedBuilder()
         .setColor(victory ? 0x55c58a : 0xb86b7d)
@@ -364,6 +369,7 @@ export default {
           '\n\n**Kat günlüğü**\n' + log.slice(-12).join('\n')
         )
         .addFields(
+          { name: '🏅 Kalıcı unvanlar', value: milestoneText.slice(0,1024), inline: false },
           { name: '🎁 Kişi başı ödül', value: `✨ ${totalXp} XP\n🥐 ${totalCoins} altın`, inline: true },
           { name: '💎 Ganimet ve sandıklar', value: [...chestRewards, ...(loot ? [loot] : [])].length ? [...chestRewards, ...(loot ? [loot] : [])].map(item => `• ${item}`).join('\\n') : 'Bu sefer ganimet çıkmadı.', inline: true },
           { name: '⏳ Bekleme', value: '30 dakika', inline: true }
