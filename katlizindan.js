@@ -2,6 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, Embe
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
+import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus } from './rpg-mechanics.js';
 
 const FLOORS = 5;
 const COOLDOWN_MS = 30 * 60_000;
@@ -15,7 +16,8 @@ export default {
     .setDescription('En fazla 4 maceracıyla beş katlı ortak zindana gir.')
     .addUserOption(o => o.setName('takim_arkadasi').setDescription('Birinci takım arkadaşın').setRequired(true))
     .addUserOption(o => o.setName('takim_arkadasi_2').setDescription('İkinci takım arkadaşı (isteğe bağlı)').setRequired(false))
-    .addUserOption(o => o.setName('takim_arkadasi_3').setDescription('Üçüncü takım arkadaşı (isteğe bağlı)').setRequired(false)),
+    .addUserOption(o => o.setName('takim_arkadasi_3').setDescription('Üçüncü takım arkadaşı (isteğe bağlı)').setRequired(false))
+    .addStringOption(o => o.setName('zorluk').setDescription('Zindan zorluğu').setRequired(false).addChoices({name:'Kolay',value:'easy'},{name:'Normal',value:'normal'},{name:'Kâbus',value:'nightmare'})),
 
   async execute(interaction) {
     if (!interaction.guildId || !interaction.channel) {
@@ -154,7 +156,7 @@ export default {
         if (item) gearMap.get(row.user_id).push(item);
       }
       const players = rawPlayers.map((p, i) => {
-        const bonus = equipmentBonus(gearMap.get(p.user_id) || []);
+        const equipped = gearMap.get(p.user_id) || []; const bonus = applyEquipmentSetBonus(equipped, equipmentBonus(equipped));
         const role = PARTY_ROLES[roles[i]];
         const maxHp = Math.round(Math.min(2000, Number(p.max_hp) + bonus.hp) * role.hp);
         return { ...p, level: Number(p.level), xp: Number(p.xp), mana: Number(p.mana), maxMana: Number(p.max_mana), role: roles[i], roleLabel: role.label, maxHp,
@@ -175,9 +177,10 @@ export default {
       const chestRewards = [];
 
       for (let floor = 1; floor <= FLOORS; floor++) {
-        const maxEnemyHp = Math.round((105 + floor * 48) * (1 + avgLevel * 0.045));
+        const enemyStats = dungeonEnemyStats(floor, avgLevel, players.length, interaction.options.getString('zorluk') || 'normal');
+        const maxEnemyHp = enemyStats.hp;
         let enemyHp = maxEnemyHp;
-        const enemyDamage = Math.max(5, Math.round((5 + floor * 3) * (1 + avgLevel * 0.02)));
+        const enemyDamage = enemyStats.damage;
         let turn = 0;
         let bossRageAnnounced = false;
         log.push(`**Kat ${floor}: ${FLOOR_NAMES[floor - 1]}** — ${maxEnemyHp} HP.`);
@@ -188,7 +191,9 @@ export default {
           const suffix = `${interaction.id}:${floor}:${turn}`;
           const actionRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId(`katlizindan:act:attack:${suffix}`).setLabel('⚔️ Saldır').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId(`katlizindan:act:spell:${suffix}`).setLabel('✨ Zoltraak (12 mana)').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId(`katlizindan:act:spell:${suffix}`).setLabel('✨ Zoltraak (12)').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId(`katlizindan:act:heal:${suffix}`).setLabel('💚 Heilen (18)').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`katlizindan:act:shield:${suffix}`).setLabel('🔮 Kalkan (10)').setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId(`katlizindan:act:defend:${suffix}`).setLabel('🛡️ Savun').setStyle(ButtonStyle.Secondary)
           );
           const actionMessage = await interaction.editReply({
@@ -224,9 +229,15 @@ export default {
             if (hpNow[i] <= 0) continue;
             const p = players[i];
             const action = choices.get(p.user_id) || 'defend';
-            if (action === 'defend') {
-              defending.add(i);
-              log.push(`🛡️ <@${p.user_id}> savunma duruşu aldı.`);
+            if (action === 'defend' || action === 'shield') {
+              if (action === 'shield' && p.mana >= 10) { p.mana -= 10; defending.add(i); log.push(`🔮 <@${p.user_id}> Mana Kalkanı açtı (-10 mana).`); }
+              else if (action === 'shield') { defending.add(i); log.push(`🔹 <@${p.user_id}> için mana yetersiz; normal savunma yaptı.`); }
+              else { defending.add(i); log.push(`🛡️ <@${p.user_id}> savunma duruşu aldı.`); }
+              continue;
+            }
+            if (action === 'heal') {
+              if (p.mana >= 18) { p.mana -= 18; const healed = Math.min(p.maxHp, hpNow[i] + 26); log.push(`💚 <@${p.user_id}> Heilen kullandı: +${healed-hpNow[i]} HP (-18 mana).`); hpNow[i] = healed; }
+              else log.push(`🔹 <@${p.user_id}> için mana yetersiz; büyü kullanılamadı.`);
               continue;
             }
             const baseDamage = Math.max(1, Math.round((Number(p.attack) + Math.floor(p.level / 3)) * (0.88 + ((p.level + floor + turn + i) % 4) * 0.09)));
@@ -277,6 +288,32 @@ export default {
         const floorCoins = 20 + floor * 10;
         totalXp += floorXp; totalCoins += floorCoins;
         log.push(`✅ ${floor}. kat temizlendi: +${floorXp} XP, +${floorCoins} altın (kişi başı).`);
+        const pathRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId(`katlizindan:path:secret:${interaction.id}:${floor}`).setLabel('🗝️ Gizli geçit').setStyle(ButtonStyle.Danger),
+          new ButtonBuilder().setCustomId(`katlizindan:path:shrine:${interaction.id}:${floor}`).setLabel('✨ Mana mabedi').setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId(`katlizindan:path:safe:${interaction.id}:${floor}`).setLabel('🧭 Güvenli yol').setStyle(ButtonStyle.Secondary)
+        );
+        const pathMessage = await interaction.editReply({ content: `🧭 **${floor}. kat temizlendi!** Bir sonraki geçidi seç. Gizli geçit daha çok ganimet ama yaralanma riski taşır; mabed iyileştirir; güvenli yol dengelidir.`, embeds: [], components: [pathRow] });
+        let pathChoice = 'safe';
+        await new Promise(resolve => {
+          const pathCollector = pathMessage.createMessageComponentCollector({ time: 15_000, filter: c => c.user.id === interaction.user.id && c.customId.startsWith('katlizindan:path:') && c.customId.endsWith(`:${interaction.id}:${floor}`) });
+          pathCollector.on('collect', async c => { pathChoice = c.customId.split(':')[2]; await c.deferUpdate().catch(()=>{}); pathCollector.stop('chosen'); });
+          pathCollector.once('end', resolve);
+        });
+        const pathOutcome = dungeonChoiceOutcome(pathChoice, floor);
+        totalCoins += pathOutcome.coins;
+        log.push(pathOutcome.log);
+        if (pathOutcome.hp > 0) {
+          for (let i = 0; i < hpNow.length; i++) if (hpNow[i] > 0) hpNow[i] = Math.min(players[i].maxHp, hpNow[i] + pathOutcome.hp);
+        } else if (pathOutcome.hp < 0) {
+          const living = hpNow.map((hp, i) => hp > 1 ? i : -1).filter(i => i >= 0);
+          if (living.length) { const target = living[Math.floor(Math.random() * living.length)]; hpNow[target] = Math.max(1, hpNow[target] + pathOutcome.hp); }
+        }
+        if (Math.random() < pathOutcome.lootChance) {
+          const pathLoot = LOOT[Math.floor(Math.random() * LOOT.length)];
+          chestRewards.push(pathLoot);
+          log.push(`🎁 Yol seçiminin ödülü: ${pathLoot} (her oyuncuya).`);
+        }
         const eventRoll = Math.random();
         if (eventRoll < 0.24) {
           const chestLoot = LOOT[Math.floor(Math.random() * LOOT.length)];
