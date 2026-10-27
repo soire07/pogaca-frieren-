@@ -707,3 +707,9 @@ test('solo boss, cooperative raid and dungeon result panels show visual health o
   assert.match(dungeon, /floorProgressBar\(floorsCleared\)/);
   assert.match(dungeon, /Zindan ilerlemesi/);
 });
+
+
+test('dungeon final boss artwork only appears after the final encounter is cleared', async () => {
+  const dungeon = await read('katlizindan.js');
+  assert.match(dungeon, /if \(dungeonBossArt && victory\) embed\.setImage\(dungeonBossArt\)/);
+});
