@@ -595,3 +595,15 @@ test('equipment salvage preserves equipped items and returns only partial crafti
     assert.ok(equipment.includes(id));
   }
 });
+
+test('equipment salvage progress persists and unlocks recycling achievements', async () => {
+  const schema = await read('database/db.js');
+  const salvage = await read('ekipmanparcala.js');
+  const achievements = await read('basarimlar.js');
+  assert.match(schema, /salvaged_items INTEGER NOT NULL DEFAULT 0/);
+  assert.match(schema, /ALTER TABLE user_crafting_progress ADD COLUMN IF NOT EXISTS salvaged_items/);
+  assert.match(salvage, /salvaged_items=user_crafting_progress\.salvaged_items\+EXCLUDED\.salvaged_items/);
+  assert.match(achievements, /salvage_10/);
+  assert.match(achievements, /salvage_25/);
+  assert.match(achievements, /salvagedItems/);
+});
