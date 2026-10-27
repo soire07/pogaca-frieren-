@@ -23,7 +23,7 @@ const sections = [
   },
   {
     name: '🧙 Gelişim, ekipman ve ekonomi',
-    value: '**/market** — Eşya satın al · **/envanter** — Eşyalarını gör · **/ekipman** — Ekipman kuşan/çıkar\n**/esyakullan** — Kullanılabilir eşya kullan · **/bakiye** — Altınını kontrol et · **/dinlen** — Can ve Mana toparla\n**/yetenekagaci** — Gelişim seçeneklerini incele · **/siralama** ve **/liderlik** — Sıralamaları görüntüle'
+    value: '**/market** — Eşya satın al · **/envanter** — Eşyalarını gör · **/ekipman** — Ekipman kuşan/çıkar\n**/esyakullan** — Kullanılabilir eşya kullan · **/bakiye** — Altınını kontrol et · **/dinlen** — Can ve Mana toparla\n**/gelisim** — Gelişim puanlarını harca · **/karakteryapisi** — Savaş yapını seç\n**/yetenekagaci** — Yetenek geliştirmelerini incele · **/siralama** ve **/liderlik** — Sıralamaları görüntüle'
   },
   {
     name: '🥐 Eğlence ve topluluk',
