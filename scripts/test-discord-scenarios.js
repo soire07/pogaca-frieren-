@@ -504,7 +504,7 @@ test('crafting consumes required materials safely and produces equipment support
   assert.match(command, /await db\.query\('ROLLBACK'\)/);
   assert.match(command, /ON CONFLICT\(guild_id,user_id,item_key\)/);
   assert.match(command, /equipmentItems\.find/);
-  for (const id of ['iron_sword', 'mage_staff', 'traveler_cloak', 'mana_ring', 'fern_robe', 'frieren_robe', 'himmel_sword', 'demon_blade']) {
+  for (const id of ['iron_sword', 'mage_staff', 'traveler_cloak', 'mana_ring', 'fern_robe', 'frieren_robe', 'himmel_sword', 'demon_blade', 'rune_ring', 'hero_ring']) {
     assert.ok(command.includes(id));
     assert.ok(equipment.includes(id));
   }
@@ -521,4 +521,13 @@ test('rare adventure and treasure materials can craft advanced Frieren-themed eq
   assert.match(command, /Himmel’in Efsanevi Yadigârı/);
   assert.match(command, /Ejderha Pulu/);
   assert.match(command, /Frieren’in Kayıp Notları/);
+});
+
+test('crafting catalog lists all available recipes and material requirements without crafting', async () => {
+  const command = await read('zanaat.js');
+  assert.match(command, /setRequired\(false\)\.addChoices/);
+  assert.match(command, /Zanaat Tarif Defteri/);
+  assert.match(command, /recipe\.materials\.map/);
+  assert.match(command, /hero_ring/);
+  assert.match(command, /rune_ring/);
 });
