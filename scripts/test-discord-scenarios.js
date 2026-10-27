@@ -742,3 +742,12 @@ test('player-facing help documents the single character panel command', async ()
     assert.doesNotMatch(source, /\/karakter (?:olustur|panel|sinif|yapi|gelisim)/);
   }
 });
+
+test('character panel and global error replies use MessageFlags for private responses', async () => {
+  const character = await read('karakter.js');
+  const handler = await read('index.js');
+  assert.match(character, /MessageFlags\.Ephemeral/);
+  assert.match(handler, /MessageFlags\.Ephemeral/);
+  assert.doesNotMatch(character, /ephemeral:\s*true/);
+  assert.doesNotMatch(handler, /ephemeral:\s*true/);
+});
