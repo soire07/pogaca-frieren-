@@ -745,6 +745,18 @@
       "name": "Reduce cooperative boss raid damage with player defense choices",
       "category": "Combat",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-105",
+      "name": "Resolve periodic mana-star burst as an area attack against all living raid members",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-106",
+      "name": "Apply a boss mana curse that drains up to eight mana on its fourth-turn cycle",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
     }
   ]
 }
