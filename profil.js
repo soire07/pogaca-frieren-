@@ -3,6 +3,7 @@ import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js
 import { pool, ensureUser } from './database/db.js';
 import { xpForNextLevel } from './utils.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
+import { applyClassDefense, getCharacterBuild } from './rpg-mechanics.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -25,7 +26,7 @@ export default {
     await ensureUser(interaction.guildId, target.id);
 
     const { rows: [u] } = await pool.query(
-      'SELECT xp, level, coins, class_name, hp, max_hp, mana, max_mana, attack, defense, stat_points, daily_streak, best_daily_streak FROM users WHERE guild_id=$1 AND user_id=$2',
+      'SELECT xp, level, coins, class_name, active_build, hp, max_hp, mana, max_mana, attack, defense, stat_points, daily_streak, best_daily_streak FROM users WHERE guild_id=$1 AND user_id=$2',
       [interaction.guildId, target.id]
     );
 
@@ -39,10 +40,11 @@ export default {
     const equippedResult = await pool.query('SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, target.id]);
     const equippedItems = equippedResult.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean);
     const gear = equipmentBonus(equippedItems);
-    const effectiveMaxHp = Math.min(2000, Number(u.max_hp) + gear.hp);
-    const effectiveMaxMana = Math.min(2000, Number(u.max_mana) + gear.mana);
-    const effectiveAttack = Math.min(500, Number(u.attack) + gear.attack);
-    const effectiveDefense = Math.min(250, Number(u.defense) + gear.defense);
+    const build = getCharacterBuild(u.active_build);
+    const effectiveMaxHp = Math.min(2000, Math.round((Number(u.max_hp) + gear.hp) * build.hp));
+    const effectiveMaxMana = Math.min(2000, Math.round((Number(u.max_mana) + gear.mana) * build.mana));
+    const effectiveAttack = Math.min(500, Math.round((Number(u.attack) + gear.attack) * build.attack));
+    const effectiveDefense = Math.min(250, Math.round(applyClassDefense(Number(u.defense) + gear.defense, u.class_name) * build.defense));
 
     const gif = new AttachmentBuilder('./profil.gif');
 
@@ -61,6 +63,7 @@ export default {
         { name: '🔥 Günlük seri', value: `${Number(u.daily_streak || 0)} gün`, inline: true },
         { name: '🏆 En iyi seri', value: `${Number(u.best_daily_streak || 0)} gün`, inline: true },
         { name: 'Sınıf', value: u.class_name ?? 'Gezgin', inline: true },
+        { name: '⚔️ Savaş yapısı', value: build.label, inline: true },
         { name: '❤️ Can', value: `${Math.min(Number(u.hp), effectiveMaxHp)}/${effectiveMaxHp}`, inline: true },
         { name: '✨ Mana', value: `${Math.min(Number(u.mana), effectiveMaxMana)}/${effectiveMaxMana}`, inline: true },
         { name: '⚔️ Saldırı', value: String(effectiveAttack), inline: true },
