@@ -998,6 +998,13 @@
       "category": "Quests",
       "status": "implemented_needs_runtime_test"
     }
+    ,
+    {
+      "id": "RPG-147",
+      "name": "Choose and persist a combat build whose attack, defense, HP and mana modifiers apply across solo and co-op battles",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    }
   ],
-  "count": 165
+  "count": 166
 }
