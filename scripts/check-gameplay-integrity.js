@@ -542,3 +542,26 @@ test('item-use missing inventory message does not assume every item comes from t
   assert.match(source, /Bu eşya envanterinde bulunmuyor/);
   assert.doesNotMatch(source, /Önce \/market üzerinden satın alman gerekiyor/);
 });
+
+
+test('market consumable names stay compatible with item-use inventory keys', async () => {
+  const market = await read('market.js');
+  const use = await read('esyakullan.js');
+  const usableBlock = use.match(/const usableItems = \{([\s\S]*?)\n\};/);
+  assert.ok(usableBlock, 'usable item catalog must exist');
+  const usable = new Map();
+  for (const block of usableBlock[1].split(/(?=^  [a-z_]+:)/m).filter(Boolean)) {
+    const id = block.match(/^\s*([a-z_]+):/);
+    const name = block.match(/name: '([^']+)'/);
+    const key = block.match(/key: '([^']+)'/);
+    if (id && name && key) usable.set(id[1], { name: name[1], key: key[1] });
+  }
+  const marketBlock = market.match(/export const marketItems = \[([\s\S]*?)\n\];/);
+  assert.ok(marketBlock, 'market catalog must exist');
+  for (const block of marketBlock[1].split(/(?=^ \{ id:)/m).filter(Boolean)) {
+    const id = block.match(/id:'([^']+)'/);
+    const name = block.match(/name:'([^']+)'/);
+    if (!id || !name || !usable.has(id[1])) continue;
+    assert.equal(name[1], usable.get(id[1]).key, 'market purchase must create the inventory key expected by item-use: ' + id[1]);
+  }
+});
