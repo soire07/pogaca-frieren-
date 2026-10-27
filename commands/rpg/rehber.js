@@ -3,9 +3,9 @@ import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, But
 const pages = [
   { title: '📖 I. İlk adımlar — Yolculuğa başla', description: 'Frieren’in dünyasında güçlenmek; karakterini seçmek, büyü öğrenmek, ekipman toplamak ve düzenli maceraya çıkmakla mümkün.', fields: [
     { name: '1 • Karakterini keşfet', value: '**/kimimben** ile karakter keşfet. **/karaktercek** günlük ücretsiz çekim içindir; **/koleksiyon** sahip olduklarını gösterir.' },
-    { name: '2 • Sınıfını seç', value: '**/karakter olustur** ile kendi adını ve sınıfını belirle. Sonradan **/karakter sinif** ile sınıfını, **/karakter yapi** ile savaş yapını değiştirebilirsin. **/sinifrehberi** sınıf pasiflerini açıklar.' },
-    { name: '3 • Durumunu kontrol et', value: '**/karakter panel** karakter kartını, XP ilerlemeni, canını, mananı, sınıf pasifini ve sıradaki önerilen adımı tek ekranda gösterir. **/cantam** eşyalarını, **/bakiye** altınını gösterir. **/yardim** komut listesidir; bu komut adım adım oynanış rehberidir.' },
-    { name: '🌱 Başlangıç rotası', value: '**/karakter olustur** → **/karakter panel** → **/gunlukodul** → **/kesif**' }
+    { name: '2 • Sınıfını seç', value: '**/karakter** komutunu kullanıp paneli aç. İsim / Oluştur düğmesiyle karakterini oluştur; sınıfını ve savaş yapını paneldeki açılır menülerden seç. **/sinifrehberi** sınıf pasiflerini açıklar.' },
+    { name: '3 • Durumunu kontrol et', value: '**/karakter** paneli karakter kartını, XP ilerlemeni, canını, mananı ve sıradaki önerilen adımı tek ekranda gösterir. **/cantam** eşyalarını, **/bakiye** altınını gösterir. **/yardim** komut listesidir; bu komut adım adım oynanış rehberidir.' },
+    { name: '🌱 Başlangıç rotası', value: '**/karakter** → panelden karakterini oluştur → **/gunlukodul** → **/kesif**' }
   ]},
   { title: '✨ II. Büyü öğrenme ve ustalaşma', description: 'Büyü repertuvarını kur; büyü öğrenmenin yanında ustalığını da ilerlet.', fields: [
     { name: 'Büyü nasıl öğrenilir?', value: '**/buyuogren** komutunu açıp seçeneklerden büyüyü seç. Büyüler altın ister; bazı ileri büyüler ayrıca seviye ve boss zaferi gerektirir. Satın almadan önce gereksinimleri kontrol et.' },
