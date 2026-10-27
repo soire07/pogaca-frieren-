@@ -242,6 +242,18 @@ test('solo boss victory commits final HP, mana, rewards, mastery and loot in one
   assert.match(source, /if \(spellUsed && bossHp > 0\)/, 'the final killing spell is deferred into the victory transaction');
 });
 
+test('solo demon combat saves non-victory HP, mana and spell mastery within the same transaction', async () => {
+  const source = await read('iblisavasi.js');
+  const turnSave = source.indexOf("Persist each non-victory turn's HP/mana and spell mastery atomically");
+  const begin = source.indexOf("await turnDb.query('BEGIN')", turnSave);
+  const hpMana = source.indexOf('UPDATE users SET hp=$3, mana=$4', begin);
+  const mastery = source.indexOf('INSERT INTO spell_mastery', hpMana);
+  const commit = source.indexOf("await turnDb.query('COMMIT')", mastery);
+  assert.ok(turnSave >= 0 && begin > turnSave && hpMana > begin && mastery > hpMana && commit > mastery,
+    'turn HP/mana and mastery must commit or roll back together');
+  assert.ok(source.includes("await turnDb.query('ROLLBACK')"));
+});
+
 test('health endpoint reports Discord readiness and database failures instead of unconditional success', async () => {
   const source = await read('index.js');
   assert.match(source, /ENABLE_MESSAGE_CONTENT_INTENT === 'true'/);
