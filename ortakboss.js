@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, Embe
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone } from './rpg-mechanics.js';
+import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, getCharacterClass } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
 const ROLES = {
@@ -105,7 +105,7 @@ export default {
       await db.query('BEGIN');
       const ids = team.map(x => x.id).sort();
       const result = await db.query(
-        `SELECT user_id,level,xp,coins,hp,max_hp,mana,max_mana,attack,defense,last_boss_at FROM users
+        `SELECT user_id,level,xp,coins,hp,max_hp,mana,max_mana,attack,defense,class_name,last_boss_at FROM users
          WHERE guild_id=$1 AND user_id=ANY($2::text[]) FOR UPDATE`,
         [interaction.guildId, ids]
       );
@@ -131,12 +131,12 @@ export default {
       const fighters = raw.map(x => {
         const p = x.stats; const equipped = gearMap.get(x.user.id) || []; const gear = applyEquipmentSetBonus(equipped, equipmentBonus(equipped)); const role = ROLES[x.role];
         return {
-          userId:x.user.id, username:x.user.username, role:x.role, roleData:role, baseMaxHp:Number(p.max_hp),
+          userId:x.user.id, username:x.user.username, role:x.role, roleData:role, className:p.class_name, classProfile:getCharacterClass(p.class_name), baseMaxHp:Number(p.max_hp),
           level:Number(p.level), xp:Number(p.xp), coins:Number(p.coins), mana:Math.min(Number(p.mana), Math.min(500, Number(p.max_mana) + gear.mana)), maxMana:Math.min(500, Number(p.max_mana) + gear.mana),
           hp:Math.round(Math.max(0,Math.min(Number(p.hp),Math.min(2000,Number(p.max_hp)+gear.hp))*role.hp)),
           maxHp:Math.round(Math.min(2000,Number(p.max_hp)+gear.hp)*role.hp),
           attack:(Number(p.attack)+gear.attack)*role.attack,
-          defense:(Number(p.defense)+gear.defense)*role.defense
+          defense:applyClassDefense(Number(p.defense)+gear.defense,p.class_name)*role.defense
         };
       });
       if (fighters.some(x => x.hp <= 0)) {
@@ -157,7 +157,8 @@ export default {
         const healer = alive.find(i=>fighters[i].role==='healer');
         if (healer !== undefined) {
           for (const i of alive) {
-            const healed = Math.min(Math.round(fighters[i].maxHp),hpNow[i]+12);
+            const classHeal = applyClassHealing(12, fighters[healer].className);
+            const healed = Math.min(Math.round(fighters[i].maxHp),hpNow[i]+classHeal);
             if (healed > hpNow[i]) { log.push(`💚 <@${fighters[healer].userId}> ${fighters[i].username} oyuncusuna ${healed-hpNow[i]} HP iyileştirdi.`); hpNow[i]=healed; }
           }
         }
@@ -212,6 +213,7 @@ export default {
           if (action === 'spell' && f.mana >= 12) {
             f.mana -= 12;
             damage = Math.round(damage * 1.8);
+            damage = applyClassDamage(damage, f.className);
             log.push(`✨ ${f.username} Zoltraak kullandı (-12 mana).`);
           } else if (action === 'spell') {
             log.push(`🔹 ${f.username} için mana yetersiz; normal saldırı yaptı.`);
@@ -281,7 +283,7 @@ export default {
       const embed=new EmbedBuilder().setColor(win?0x5bc98a:0x9b8cff)
         .setTitle(win?`🏆 ${BOSS.name} yenildi!`:'🌌 Baskın sona erdi')
         .setDescription(`**Boss HP:** ${Math.max(0,bossHp)}/${maxBossHp}\n**Tur:** ${rounds}/12\n\n`+
-          fighters.map((f,i)=>`**<@${f.userId}>** — ${f.roleData.label}\n❤️ ${persistedHpNow[i]}/${f.baseMaxHp} HP · ✨ ${f.mana}/${f.maxMana} mana · ⚔️ ${Math.round(f.attack)} saldırı · 🛡️ ${Math.round(f.defense)} savunma`).join('\n\n')+
+          fighters.map((f,i)=>`**<@${f.userId}>** — ${f.roleData.label} · ${f.classProfile.label}\n❤️ ${persistedHpNow[i]}/${f.baseMaxHp} HP · ✨ ${f.mana}/${f.maxMana} mana · ⚔️ ${Math.round(f.attack)} saldırı · 🛡️ ${Math.round(f.defense)} savunma`).join('\n\n')+
           '\n\n**Savaş günlüğü**\n'+log.slice(-15).join('\n'))
         .addFields(
           {name:'🎁 Kişi başı ödül',value:`✨ ${xpReward} XP\n🥐 ${coinReward} altın`,inline:true},
