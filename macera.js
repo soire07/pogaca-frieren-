@@ -127,6 +127,10 @@ export default {
       );
       const dailyStreak = Number(streakRow.daily_streak);
       const bestAdventureStreak = Number(streakRow.best_streak);
+      const streakMilestoneReward = streakRow.new_day
+        ? ({ 7: { coins: 150, xp: 100 }, 14: { coins: 300, xp: 200 }, 30: { coins: 750, xp: 500 } }[dailyStreak] || { coins: 0, xp: 0 })
+        : { coins: 0, xp: 0 };
+
       const dailyAdventureReward = streakRow.new_day ? { coins: 15, xp: 10 } : { coins: 0, xp: 0 };
       const streakReward = streakRow.new_day && dailyStreak > 0 && dailyStreak % 3 === 0
         ? { coins: 50, xp: 30 }
@@ -178,9 +182,9 @@ export default {
         }
       }
 
-      const newXp = Number(u.xp) + outcome.xp + discoveryXp + routeMasteryReward.xp + streakReward.xp + dailyAdventureReward.xp + treasureReward.xp + classAdventureReward.xp;
+      const newXp = Number(u.xp) + outcome.xp + discoveryXp + routeMasteryReward.xp + streakReward.xp + dailyAdventureReward.xp + treasureReward.xp + classAdventureReward.xp + streakMilestoneReward.xp;
       const newLevel = levelForXp(newXp);
-      const totalCoins = outcome.coins + discoveryCoins + journalCompletionCoins + routeMasteryReward.coins + streakReward.coins + dailyAdventureReward.coins + treasureReward.coins + classAdventureReward.coins;
+      const totalCoins = outcome.coins + discoveryCoins + journalCompletionCoins + routeMasteryReward.coins + streakReward.coins + dailyAdventureReward.coins + treasureReward.coins + classAdventureReward.coins + streakMilestoneReward.coins;
 
       await client.query(
         'UPDATE users SET coins=coins+$3, xp=$4, stat_points=stat_points+GREATEST(0,$5-level), level=$5, last_adventure_at=NOW() WHERE guild_id=$1 AND user_id=$2',
@@ -216,7 +220,7 @@ export default {
         .setColor(0x9b8cff)
         .setTitle('🗺️ Macera Tamamlandı')
         .setDescription(
-          `${outcome.text}\n\nÖdül: **${outcome.coins + discoveryCoins + journalCompletionCoins + routeMasteryReward.coins + streakReward.coins + dailyAdventureReward.coins + treasureReward.coins + classAdventureReward.coins}** altın ve **${outcome.xp + discoveryXp + routeMasteryReward.xp + streakReward.xp + dailyAdventureReward.xp + treasureReward.xp + classAdventureReward.xp} XP**${classAdventureReward.label ? `\n✨ ${classAdventureReward.label}: +${classAdventureReward.coins} altın, +${classAdventureReward.xp} XP.` : ''}${dailyAdventureReward.coins ? `\n☀️ Günün ilk macerası: +${dailyAdventureReward.coins} altın, +${dailyAdventureReward.xp} XP.` : ''}${foundFragment ? `\n🧩 Kadim harita parçası buldun! Parça ilerlemesi: **${fragmentCount}/5**.${treasureOpened ? `\n🗝️ **Hazine haritasını tamamladın!** +${treasureReward.coins} altın, +${treasureReward.xp} XP ve envanterine bir Kadim Hazine Sandığı eklendi.` : ''}` : ''}${streakReward.coins ? `\n🔥 **${dailyStreak} günlük macera serisi!** Seri ödülü: +${streakReward.coins} altın, +${streakReward.xp} XP.` : ''}\n📅 Günlük seri: **${dailyStreak} gün** · Rekor: **${bestAdventureStreak} gün**${routeMasteryReward.coins ? `\n🌟 Rota ustalığı: **3 ziyaretlik eşik** tamamlandı (+${routeMasteryReward.coins} altın, +${routeMasteryReward.xp} XP).` : ''}\n🧭 Bu rotayı **${routeVisits}** kez gezdin · Ustalık seviyesi: **${routeMasteryLevel}**${itemText}\n\n${firstDiscovery ? `🧭 Yeni keşif: **${discoveryMeta?.name}** (+${discoveryCoins} altın, +${discoveryXp} XP)` : `📔 Bu keşfi daha önce kaydetmiştin: **${discoveryMeta?.name}**`}${journalCompletedNow ? `\n\n🏆 **Keşif defterini tamamladın! +${journalCompletionCoins} altın tamamlanma ödülü kazandın.**` : ''}`
+          `${outcome.text}\n\nÖdül: **${outcome.coins + discoveryCoins + journalCompletionCoins + routeMasteryReward.coins + streakReward.coins + dailyAdventureReward.coins + treasureReward.coins + classAdventureReward.coins + streakMilestoneReward.coins}** altın ve **${outcome.xp + discoveryXp + routeMasteryReward.xp + streakReward.xp + dailyAdventureReward.xp + treasureReward.xp + classAdventureReward.xp + streakMilestoneReward.xp} XP**${streakMilestoneReward.coins ? `\n🏅 **${dailyStreak} günlük rekor serisi kilometre taşı!** +${streakMilestoneReward.coins} altın, +${streakMilestoneReward.xp} XP.` : ''}${classAdventureReward.label ? `\n✨ ${classAdventureReward.label}: +${classAdventureReward.coins} altın, +${classAdventureReward.xp} XP.` : ''}${dailyAdventureReward.coins ? `\n☀️ Günün ilk macerası: +${dailyAdventureReward.coins} altın, +${dailyAdventureReward.xp} XP.` : ''}${foundFragment ? `\n🧩 Kadim harita parçası buldun! Parça ilerlemesi: **${fragmentCount}/5**.${treasureOpened ? `\n🗝️ **Hazine haritasını tamamladın!** +${treasureReward.coins} altın, +${treasureReward.xp} XP ve envanterine bir Kadim Hazine Sandığı eklendi.` : ''}` : ''}${streakReward.coins ? `\n🔥 **${dailyStreak} günlük macera serisi!** Seri ödülü: +${streakReward.coins} altın, +${streakReward.xp} XP.` : ''}\n📅 Günlük seri: **${dailyStreak} gün** · Rekor: **${bestAdventureStreak} gün**${routeMasteryReward.coins ? `\n🌟 Rota ustalığı: **3 ziyaretlik eşik** tamamlandı (+${routeMasteryReward.coins} altın, +${routeMasteryReward.xp} XP).` : ''}\n🧭 Bu rotayı **${routeVisits}** kez gezdin · Ustalık seviyesi: **${routeMasteryLevel}**${itemText}\n\n${firstDiscovery ? `🧭 Yeni keşif: **${discoveryMeta?.name}** (+${discoveryCoins} altın, +${discoveryXp} XP)` : `📔 Bu keşfi daha önce kaydetmiştin: **${discoveryMeta?.name}**`}${journalCompletedNow ? `\n\n🏆 **Keşif defterini tamamladın! +${journalCompletionCoins} altın tamamlanma ödülü kazandın.**` : ''}`
         )
         .addFields({
           name: 'Yeni seviye',
