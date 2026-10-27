@@ -47,7 +47,7 @@ export default {
       .addStringOption(o => o.setName('yeni_isim').setDescription('Yeni karakter adı').setRequired(true).setMinLength(2).setMaxLength(24)))
     .addSubcommand(s => s.setName('gelisim').setDescription('Seviye puanlarını karakter özelliklerine yatır.')
       .addStringOption(o => o.setName('ozellik').setDescription('Geliştirilecek özellik').setRequired(true).addChoices(...statChoices))
-      .addIntegerOption(o => o.setName('puan').setDescription('Harcanacak puan').setRequired(true).setMinValue(1).setMaxValue(50))),
+      .addIntegerOption(o => o.setName('puan').setDescription('Harcanacak puan').setRequired(true).setMinValue(1).setMaxValue(50)))
     .addSubcommand(s => s.setName('cek').setDescription('Günlük ücretsiz anime karakterini koleksiyonuna kat.'))
     .addSubcommand(s => s.setName('gelistir').setDescription('Koleksiyonundaki anime karakterini güçlendir.')
       .addStringOption(o => o.setName('karakter').setDescription('Geliştirmek istediğin karakter').setRequired(true).setAutocomplete(true))
