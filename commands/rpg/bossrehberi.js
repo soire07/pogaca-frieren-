@@ -35,7 +35,7 @@ export default {
       .setAuthor({ name: 'POĞAÇA FRIEREN • İBLİS AVCILARI KAYDI' })
       .setTitle('⚔️ Kuzey Seferi — Boss Rehberi')
       .setDescription(
-        'Bir iblise meydan okumadan önce gücünü, ganimetini ve hazırlığını gözden geçir.\n\n' +
+        'Kuzey seferine çıkmadan önce her rakibin seviyesini, dayanıklılığını ve ganimetini incele. Bu kayıt, savaşa hazır olup olmadığına karar vermene yardım eder.\n\n' +
         '**Gezgin seviyesi:** ' + level + '  ·  **Boss zaferi:** ' + defeats + '\n' +
         '**Seviyene göre kademe:** ' + currentBoss.name + '\n' +
         (nextBoss ? '**Sonraki eşik:** ' + nextBoss.name + ' — seviye ' + nextBoss.level : '**Sonraki eşik:** Son boss kademesine ulaştın.')
@@ -51,10 +51,10 @@ export default {
         inline: false
       })))
       .addFields(
-        { name: '🧪 Savaştan önce hazırlık', value: '1. **/dinlen** ile HP ve Mana değerlerini yenile.\n2. **/market** üzerinden bütçene uygun ekipman al.\n3. **/ekipman** ile eşyalarını kuşan.\n4. **/buyular** ve **/buyuustaligi** ile savaş seçeneklerini kontrol et.', inline: false },
-        { name: '⚔️ Meydan oku', value: 'Hazır olduğunda **/iblisavasi** komutunu kullan. Ortak savaş için **/ortakboss**; zindan yolculukları için **/zindan** veya **/katlizindan** komutlarını incele.', inline: false }
+        { name: '🧪 Savaştan önce hazırlık', value: '1. **/dinlen** ile HP ve Mana değerlerini toparla.\n2. **/market** üzerinden bütçene uygun ekipman edin.\n3. **/ekipman** ile ekipmanını kuşan ve bonuslarını kontrol et.\n4. **/buyular** ile öğrendiğin büyülere, **/buyuustaligi** ile ustalık durumuna bak.\n5. **/profil** üzerinden seviyeni ve savaş değerlerini son kez kontrol et.', inline: false },
+        { name: '⚔️ Meydan oku', value: 'Tek başına denemek için **/iblisavasi** komutunu kullan. Takımınla baskın yapmak istiyorsan **/ortakboss**; kat kat ilerlemek istiyorsan **/zindan** veya **/katlizindan** seçeneklerini değerlendir. Boss canı azaldıkça savaş aşaması değişebilir ve saldırıları sertleşebilir.', inline: false }
       )
-      .setFooter({ text: 'Frieren’in kuzey seferi • Kademe seviyeleri rehber niteliğindedir; savaşa girmeden hazırlığını kontrol et.' });
+      .setFooter({ text: 'Frieren’in kuzey seferi • Ödüller ve ganimet ihtimalleri boss kademesine göre değişir.' });
 
     return interaction.reply({ embeds: [embed], ephemeral: true });
   }
