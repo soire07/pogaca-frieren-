@@ -1363,7 +1363,49 @@
       "name": "Display relative encounter times and highlight first-time discoveries in history",
       "category": "Exploration",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-208",
+      "name": "Craft a basic sword from adventure-collected mana crystals and magical pastry supplies",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-209",
+      "name": "Craft a Mage Staff by combining mana crystals with a forbidden grimoire",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-210",
+      "name": "Craft a Traveler Cloak from pastry supplies and a forbidden grimoire",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-211",
+      "name": "Craft a Mana Ring from multiple mana crystals and a forbidden grimoire",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-212",
+      "name": "Craft multiple equipment items in one request with proportional ingredient costs",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-213",
+      "name": "Validate and lock all crafting ingredients before consuming any materials",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-214",
+      "name": "Make crafted equipment compatible with existing inventory and equipment-slot systems",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 226
+  "count": 233
 }
