@@ -97,6 +97,15 @@ export default {
     const db = await pool.connect();
     try {
       await db.query('BEGIN');
+      await db.query('SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [interaction.guildId, interaction.user.id]);
+      const activeEncounter = await db.query(
+        'SELECT encounter_type FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=$2 AND expires_at > NOW()',
+        [interaction.guildId, interaction.user.id]
+      );
+      if (activeEncounter.rowCount) {
+        await db.query('ROLLBACK');
+        return interaction.reply({ content: '⚔️ Savaş sürerken eşya kullanamazsın. Karşılaşma bitince yeniden dene.', ephemeral: true });
+      }
       const found = await db.query(
         'SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3 FOR UPDATE',
         [interaction.guildId, interaction.user.id, item.key]
