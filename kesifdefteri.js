@@ -14,6 +14,12 @@ export default {
       [interaction.guildId, interaction.user.id]
     );
     const discovered = new Set(rows.map(row => row.discovery_key));
+    const { rows: masteryRows } = await pool.query(
+      'SELECT route_key, visits FROM adventure_route_mastery WHERE guild_id=$1 AND user_id=$2',
+      [interaction.guildId, interaction.user.id]
+    );
+    const mastery = new Map(masteryRows.map(row => [row.route_key, Number(row.visits)]));
+
     const { rows: [claim] } = await pool.query(
       'SELECT claimed_at FROM adventure_journal_claims WHERE guild_id=$1 AND user_id=$2',
       [interaction.guildId, interaction.user.id]
@@ -24,7 +30,7 @@ export default {
       .setDescription(`Keşfedilen yerler: **${discovered.size}/${ADVENTURE_DISCOVERIES.length}**\nHer yeni keşif +25 altın ve +15 XP verir. Defteri tamamlamak tek seferlik +${COMPLETE_ADVENTURE_JOURNAL_REWARD.coins} altın kazandırır.`)
       .addFields(ADVENTURE_DISCOVERIES.map(entry => ({
         name: `${discovered.has(entry.key) ? '✅' : '🔒'} ${entry.emoji} ${entry.name}`,
-        value: `${entry.description}\nDurum: **${discovered.has(entry.key) ? 'Keşfedildi' : 'Henüz keşfedilmedi'}**`,
+        value: `${entry.description}\nDurum: **${discovered.has(entry.key) ? 'Keşfedildi' : 'Henüz keşfedilmedi'}**\nRota ziyaretleri: **${mastery.get(entry.key) || 0}** · Ustalık: **${Math.floor((mastery.get(entry.key) || 0) / 3)}** · Sonraki ödül: **${3 - ((mastery.get(entry.key) || 0) % 3)} ziyaret**`,
         inline: true
       })))
       .setFooter({ text: claim ? '🏆 Keşif defteri tamamlandı ve ödül alındı.' : 'Poğaça Frieren • Yeni yerler görmek için /macera kullan.' });
