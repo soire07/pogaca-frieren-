@@ -997,11 +997,34 @@
       "name": "Progress through a three-stage daily quest chain with sequential objective checks and escalating claimable gold rewards",
       "category": "Quests",
       "status": "implemented_needs_runtime_test"
-    }
-    ,
+    },
     {
       "id": "RPG-147",
       "name": "Choose and persist a combat build whose attack, defense, HP and mana modifiers apply across solo and co-op battles",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-148",
+      "name": "Unlock persistent talent ranks using level-earned skill points",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-149",
+      "name": "Apply talent attack bonuses in solo, co-op dungeon and raid combat",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-150",
+      "name": "Apply talent defense bonuses in solo, co-op dungeon and raid combat",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-151",
+      "name": "Apply talent HP and mana capacity bonuses across combat modes",
       "category": "Progression",
       "status": "implemented_needs_runtime_test"
     }
