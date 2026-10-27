@@ -713,3 +713,15 @@ test('dungeon final boss artwork only appears after the final encounter is clear
   const dungeon = await read('katlizindan.js');
   assert.match(dungeon, /if \(dungeonBossArt && victory\) embed\.setImage\(dungeonBossArt\)/);
 });
+
+
+test('character management is a single interactive panel, not slash subcommands', async () => {
+  const command = await read('karakter.js');
+  const handler = await read('index.js');
+  assert.match(command, /setName\('karakter'\)/);
+  assert.doesNotMatch(command, /addSubcommand/);
+  for (const action of ['name', 'stats', 'class', 'build', 'learn', 'practice', 'spells', 'refresh']) {
+    assert.ok(command.includes('charpanel:' + action), 'missing character panel action: ' + action);
+  }
+  assert.match(handler, /handleCharacterPanelInteraction\(interaction\)/);
+});
