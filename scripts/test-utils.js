@@ -489,3 +489,32 @@ test('daily quest rewards scale with level and grant a distinct full-chain compl
   assert.equal(getLevelScaledQuestReward(200, 80, 1000, true).multiplier, 3);
   assert.equal(getLevelScaledQuestReward(-50, -10, 0, false).coins, 0);
 });
+
+
+test('quest chain integrates level-scaled XP, level-ups, stat points and completion bonus', async () => {
+  const quest = await readFile(new URL('../gorevzinciri.js', import.meta.url), 'utf8');
+  const mechanics = await readFile(new URL('../rpg-mechanics.js', import.meta.url), 'utf8');
+  assert.match(quest, /getLevelScaledQuestReward\(step\.reward, step\.xpReward, player\.level, step\.step === 3\)/);
+  assert.match(quest, /levelForXp\(newXp\)/);
+  assert.match(quest, /stat_points=stat_points\+\$6/);
+  assert.match(quest, /reward\.completionBonus/);
+  assert.match(quest, /SELECT xp, level, stat_points FROM users .* FOR UPDATE/);
+  assert.match(mechanics, /export function getLevelScaledQuestReward/);
+});
+
+test('solo boss victories grant recipe materials matched to boss tier', async () => {
+  const combat = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const crafting = await readFile(new URL('../zanaat.js', import.meta.url), 'utf8');
+  for (const material of [
+    '🥐 Büyülü Poğaça Kutusu',
+    '📖 Yasak Büyü Kitabı',
+    '🐉 Ejderha Pulu',
+    '🌙 Efsunlu Elf Yadigârı',
+    '👑 Himmel’in Efsanevi Yadigârı'
+  ]) {
+    assert.ok(combat.includes(material), `boss tiers missing crafting material: ${material}`);
+    assert.ok(crafting.includes(material), `boss crafting material has no recipe: ${material}`);
+  }
+  assert.match(combat, /boss\.craftingMaterial/);
+  assert.match(combat, /INSERT INTO inventory\(guild_id,user_id,item_key,quantity\) VALUES\(\$1,\$2,\$3,1\)/);
+});
