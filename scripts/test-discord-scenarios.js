@@ -312,3 +312,21 @@ test('talent tree persists ranks and modifies all combat modes', async () => {
     assert.match(source, /talent_mana/);
   }
 });
+
+test('adventure discoveries persist, award first-find bonuses, and grant journal completion once', async () => {
+  const schema = await read('database/db.js');
+  const adventure = await read('macera.js');
+  const data = await read('adventure-data.js');
+  const journal = await read('kesifdefteri.js');
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS adventure_discoveries/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS adventure_journal_claims/);
+  assert.match(adventure, /ON CONFLICT DO NOTHING RETURNING discovery_key/);
+  assert.match(adventure, /ADVENTURE_DISCOVERY_REWARD/);
+  assert.match(adventure, /COMPLETE_ADVENTURE_JOURNAL_REWARD/);
+  assert.match(adventure, /await client\.query\('BEGIN'\)/);
+  assert.match(adventure, /await client\.query\('COMMIT'\)/);
+  assert.match(data, /forest-grimoire/);
+  assert.match(data, /ruined-chamber/);
+  assert.match(journal, /setName\('kesifdefteri'\)/);
+  assert.match(journal, /ADVENTURE_DISCOVERIES/);
+});
