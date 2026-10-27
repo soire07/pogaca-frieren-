@@ -26,10 +26,6 @@ const sections = [
     value: '**/market** — Eşya satın al · **/cantam** — Eşyalarını gör · **/ekipman** — Ekipman kuşan/çıkar\n**/esyakullan** — Kullanılabilir eşya kullan · **/bakiye** — Altınını kontrol et · **/dinlen** — Can ve Mana toparla\n**/karakter** — Paneldeki Gelişim düğmesiyle puan harca; sınıf ve savaş yapını açılır menülerden seç\n**/yetenekagaci** — Yetenek geliştirmelerini incele · **/siralama** ve **/liderlik** — Sıralamaları görüntüle'
   },
   {
-    name: '🥐 Eğlence ve topluluk',
-    value: '**/animequiz** — Anime bilgi yarışması · **/pogaca** — Poğaça molası · **/sans** — Şansını dene\n**/saril** — Bir oyuncuya sarıl · **/mimic** — Mimic şakası · **/istatistik** — Bot istatistikleri'
-  },
-  {
     name: '🎉 Eğlence ve bot bilgileri',
     value: '**/istatistik** — Botun genel istatistiklerini görüntüle · **/animequiz** — Anime bilgi yarışması\n**/pogaca** — Poğaça molası · **/sans** — Şansını dene · **/saril** — Bir oyuncuya sarıl · **/mimic** — Mimic şakası'
   }
