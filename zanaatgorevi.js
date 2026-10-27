@@ -17,6 +17,7 @@ export default {
     const db = await pool.connect();
     try {
       await db.query('BEGIN');
+      await db.query('SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [interaction.guildId, interaction.user.id]);
       await db.query(
         'INSERT INTO daily_crafting_progress(guild_id,user_id,mission_date) VALUES($1,$2,CURRENT_DATE) ON CONFLICT DO NOTHING',
         [interaction.guildId, interaction.user.id]
@@ -47,7 +48,7 @@ export default {
         [interaction.guildId, interaction.user.id]
       );
       const { rows: [user] } = await db.query(
-        'SELECT xp, level FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+        'SELECT xp, level FROM users WHERE guild_id=$1 AND user_id=$2',
         [interaction.guildId, interaction.user.id]
       );
       const newXp = Number(user.xp) + REWARD.xp;
