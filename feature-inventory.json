@@ -379,6 +379,48 @@
       "name": "Reserve duplicate character copies for pending trades",
       "category": "Social",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-001",
+      "name": "Guild leaderboard by player level",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-002",
+      "name": "Guild leaderboard by total XP",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-003",
+      "name": "Guild leaderboard by earned coins",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-004",
+      "name": "Guild leaderboard by demon boss victories",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-005",
+      "name": "Guild leaderboard by dungeon victories",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-006",
+      "name": "Guild leaderboard by exploration count",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-007",
+      "name": "Show the invoking player's current rank",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
     }
   ]
 }
