@@ -1111,7 +1111,31 @@
       "name": "Display the current daily adventure streak in the adventure result and journal",
       "category": "Progression",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-166",
+      "name": "View a server-scoped leaderboard of unique adventure discoveries",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-167",
+      "name": "View a server-scoped leaderboard of total adventure route visits",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-168",
+      "name": "View a server-scoped leaderboard of consecutive daily adventure streaks",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-169",
+      "name": "Switch between exploration leaderboard categories through a slash-command option",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 184
+  "count": 188
 }
