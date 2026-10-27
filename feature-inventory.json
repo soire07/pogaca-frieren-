@@ -961,7 +961,31 @@
       "name": "Compare class descriptions and passives with /sinifrehberi",
       "category": "Progression",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-141",
+      "name": "Mage class reduces spell mana costs by ten percent with rounding down",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-142",
+      "name": "Apply class-specific mana cost in solo demon battles",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-143",
+      "name": "Apply Mage mana efficiency in co-op dungeon Zoltraak",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-144",
+      "name": "Apply Mage mana efficiency in co-op raid Zoltraak",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 159
+  "count": 163
 }
