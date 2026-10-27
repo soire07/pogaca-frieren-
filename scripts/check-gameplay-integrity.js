@@ -496,19 +496,24 @@ test('every equipment has a craft recipe and a salvage yield', async () => {
   }
 });
 
-test('dungeon and raid relic drops are usable crafting ingredients', async () => {
+test('rare crafting ingredients are obtainable from existing dungeon, boss or treasure loot', async () => {
   const crafting = await read('zanaat.js');
+  const dungeon = await read('zindan.js');
+  const layeredDungeon = await read('katlizindan.js');
+  const boss = await read('iblisavasi.js');
+  const treasure = await read('hazineac.js');
+  const sources = dungeon + layeredDungeon + boss + treasure;
   const materials = [
     'Orman Kristali',
     'Eski Mahzen Anahtarı',
     'Kadim Rün Parçası',
     'Kuzey Mührü',
-    'İblis Mührü',
-    'Ejderha Camı',
-    'Auranın Mühürlü Asa Parçası',
+    '🩸 İblis Komutanının Kanı',
+    '🐉 Ejderha Pulu',
     '🪄 Frieren’in Kadim Asası'
   ];
   for (const material of materials) {
-    assert.ok(crafting.includes(`item: '${material}'`), 'loot has no crafting use: ' + material);
+    assert.ok(crafting.includes(`item: '${material}'`), 'material has no crafting use: ' + material);
+    assert.ok(sources.includes(material), 'crafting ingredient has no known loot source: ' + material);
   }
 });
