@@ -620,3 +620,10 @@ test('daily crafting mission tracks daily production and safely grants one claim
   assert.match(mission, /await db\.query\('COMMIT'\)/);
   assert.match(mission, /await db\.query\('ROLLBACK'\)/);
 });
+
+test('daily crafting claim follows the same user-before-progress lock order as crafting', async () => {
+  const command = await read('zanaatgorevi.js');
+  const userLock = command.indexOf('SELECT user_id FROM users');
+  const progressLock = command.indexOf('SELECT crafted_items, claimed_at');
+  assert.ok(userLock >= 0 && progressLock > userLock);
+});
