@@ -227,7 +227,7 @@ test('character class passives are applied in both co-op modes and class guide i
   const raid = await read('ortakboss.js');
   const guide = await read('commands/rpg/sinifrehberi.js');
   const mechanics = await read('rpg-mechanics.js');
-  assert.match(dungeon, /class_name, last_dungeon_at/);
+  assert.match(dungeon, /class_name, active_build, last_dungeon_at/);
   assert.match(dungeon, /applyClassDamage\(damage, p\.class_name\)/);
   assert.match(dungeon, /applyClassDefense\(/);
   assert.match(dungeon, /applyClassHealing\(6, players\[healerIndex\]\.class_name\)/);
