@@ -3,6 +3,7 @@ import { pool, ensureUser } from './database/db.js';
 import { CHARACTER_BUILDS, getCharacterBuild } from './rpg-mechanics.js';
 
 export default {
+  internalOnly: true,
   data: new SlashCommandBuilder()
     .setName('karakteryapisi')
     .setDescription('Savaş tarzını seç ve saldırı, savunma, HP ile mana bonuslarını belirle.')
