@@ -1789,7 +1789,13 @@
       "name": "Display the currently active rarity-based equipment set bonus in the player's RPG profile",
       "category": "Equipment",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-279",
+      "name": "Apply persistent Zoltraak mastery damage bonuses and same-encounter mastery thresholds in cooperative dungeon and boss combat",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 297
+  "count": 298
 }
