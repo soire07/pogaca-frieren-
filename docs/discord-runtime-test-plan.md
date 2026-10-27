@@ -50,3 +50,17 @@ Bu plan, `fix-character-images` dalındaki ortak boss ve katlı zindan akışlar
 Her maddeyi **Geçti / Kaldı / Uygulanamadı** olarak işaretle; başarısız adımda komut, tur, kullanıcı rolü ve hata mesajını kaydet. Ekran görüntülerinde token, bağlantı dizesi veya kişisel bilgi bulunmamalı.
 
 **Canlı Discord testi, CI testlerinden farklıdır.** Bu planın varlığı tek başına gerçek Discord akışının test edildiği anlamına gelmez.
+
+
+## Büyü ustalığı — /buyupratik
+
+- **SP-01:** Öğrenilmiş Zoltraak için pratik yap; mana 8 ve altın 25 düşmeli, pratik sayısı bir artmalı.
+- **SP-02:** Öğrenilmemiş bir büyü seç; işlem reddedilmeli, mana ve altın değişmemeli.
+- **SP-03:** Manayı 7 veya altına indir; pratik reddedilmeli ve altın harcanmamalı.
+- **SP-04:** Bakiyeyi mevcut ustalık seviyesinin pratik ücretinin altına indir; işlem reddedilmeli.
+- **SP-05:** Aynı büyüde 9 kayıtlı kullanım/pratikten sonra bir pratik daha yap; ustalık 1/10 olmalı.
+- **SP-06:** Ustalığı 10/10 olan büyüde tekrar pratik yap; işlem reddedilmeli.
+- **SP-07:** İki eşzamanlı pratik isteği gönder; oyuncu satırı kilidi nedeniyle bakiye eksiye düşmemeli ve iki işlem de kaynakları doğru hesaplamalı.
+- **SP-08:** Bir veritabanı hatası simüle edildiğinde işlem geri alınmalı; kısmi mana/altın düşüşü kalmamalı.
+
+Beklenen sonuç: kaynak kontrolleri ve otomatik testler geçse bile bu senaryolar, güvenli bir test sunucusunda gerçek Discord etkileşimleri ve test veritabanıyla ayrıca doğrulanmalı. Canlı sunucuda test etmek için deploy yapılmayacak.
