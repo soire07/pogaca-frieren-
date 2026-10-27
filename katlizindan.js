@@ -5,6 +5,12 @@ import { levelForXp } from './utils.js';
 import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus } from './rpg-mechanics.js';
 
 const FLOORS = 5;
+
+function floorProgressBar(cleared, total = FLOORS, width = 10) {
+  const ratio = Math.max(0, Math.min(1, Number(cleared) / Math.max(1, Number(total))));
+  const filled = Math.round(ratio * width);
+  return '█'.repeat(filled) + '░'.repeat(width - filled);
+}
 const COOLDOWN_MS = 30 * 60_000;
 const LOOT = ['Orman Kristali', 'Kadim Rün Parçası', 'Kuzey Mührü'];
 const FLOOR_NAMES = ['🌲 Köklerin Koridoru', '🗿 Kadim Harabeler', '🌫️ Sisli Geçit', '🔥 Küller Salonu', '👑 Mühürlü İblis Lordu'];
@@ -490,6 +496,7 @@ export default {
           '\n\n**Kat günlüğü**\n' + log.slice(-12).join('\n')
         )
         .addFields(
+          { name: '🗝️ Zindan ilerlemesi', value: `\`${floorProgressBar(floorsCleared)}\`\n**${floorsCleared}/${FLOORS} kat** · ${victory ? '🏆 İblis Lordu yenildi' : floorsCleared >= 3 ? '🔥 Derin katlara ulaşıldı' : '🌲 Yolculuk devam ediyor'}`, inline: false },
           { name: '🏅 Kalıcı unvanlar', value: milestoneText.slice(0,1024), inline: false },
           { name: '🎁 Kişi başı ödül', value: `✨ ${totalXp} XP\n🥐 ${totalCoins} altın`, inline: true },
           { name: '💎 Ganimet ve sandıklar', value: [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])].length ? [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])].map(item => `• ${item}`).join('\\n') : 'Bu sefer ganimet çıkmadı.', inline: true },
