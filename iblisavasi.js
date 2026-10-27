@@ -110,6 +110,40 @@ export default {
     if (Number(stats.hp) <= 0) {
       return interaction.editReply('🌑 Canın tükenmiş. Yeniden savaşa çıkmadan önce **/dinlen** komutuyla HP ve mananı yenilemelisin.');
     }
+
+    // Bir gezgin aynı anda keşif, zindan veya birden fazla boss savaşında HP/Mana durumunu ezmesin.
+    const reservationDb = await pool.connect();
+    let reservationCreated = false;
+    try {
+      await reservationDb.query('BEGIN');
+      await reservationDb.query(
+        'DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=$2 AND expires_at <= NOW()',
+        [interaction.guildId, interaction.user.id]
+      );
+      const reserved = await reservationDb.query(
+        "INSERT INTO active_rpg_encounters (guild_id,user_id,encounter_id,encounter_type,expires_at) VALUES ($1,$2,$3,'boss',NOW()+INTERVAL '30 minutes') ON CONFLICT (guild_id,user_id) DO NOTHING",
+        [interaction.guildId, interaction.user.id, interaction.id]
+      );
+      if (!reserved.rowCount) {
+        await reservationDb.query('ROLLBACK');
+        return interaction.editReply('⚔️ Zaten devam eden bir savaşın veya karşılaşman var. Önce onu bitir ya da süresinin dolmasını bekle.');
+      }
+      await reservationDb.query('COMMIT');
+      reservationCreated = true;
+    } catch (error) {
+      await reservationDb.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      reservationDb.release();
+    }
+    const releaseReservation = async () => {
+      if (!reservationCreated) return;
+      await pool.query(
+        'DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=$2 AND encounter_id=$3',
+        [interaction.guildId, interaction.user.id, interaction.id]
+      ).catch(error => console.error('Boss karşılaşma kilidi kaldırılamadı:', error));
+      reservationCreated = false;
+    };
     const equippedResult = await pool.query(
       'SELECT item_key, slot FROM user_equipment WHERE guild_id=$1 AND user_id=$2',
       [interaction.guildId, interaction.user.id]
@@ -147,6 +181,7 @@ export default {
     if (!claimed.rowCount) {
       const status = await pool.query('SELECT last_boss_at FROM users WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id]);
       const next = new Date(status.rows[0].last_boss_at).getTime() + COOLDOWN_MS;
+      await releaseReservation();
       return interaction.editReply(`⏳ Mana gücünü toparlamalısın. Yeni iblis avına <t:${Math.ceil(next / 1000)}:R> çıkabilirsin.`);
     }
 
@@ -372,7 +407,12 @@ export default {
                ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
               [interaction.guildId, interaction.user.id, boss.craftingMaterial]
             );
+            await db.query(
+              'DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=$2 AND encounter_id=$3',
+              [interaction.guildId, interaction.user.id, interaction.id]
+            );
             await db.query('COMMIT');
+            reservationCreated = false;
           } catch (error) {
             await db.query('ROLLBACK').catch(() => {});
             throw error;
@@ -451,6 +491,13 @@ export default {
             spellMastery.set(spellUsed, Number(masteryUpdate.rows[0].mastery_level));
             actionText += `\n📈 **${spellUsed.replaceAll('_', ' ')} ustalığı:** ${masteryUpdate.rows[0].casts} kullanım · Seviye ${masteryUpdate.rows[0].mastery_level}/10`;
           }
+          if (playerHp <= 0) {
+            await turnDb.query(
+              'DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=$2 AND encounter_id=$3',
+              [interaction.guildId, interaction.user.id, interaction.id]
+            );
+            reservationCreated = false;
+          }
           await turnDb.query('COMMIT');
         } catch (error) {
           await turnDb.query('ROLLBACK').catch(() => {});
@@ -486,6 +533,7 @@ export default {
     collector.on('end', async (_, reason) => {
       if (finished || reason === 'victory' || reason === 'defeat') return;
       finished = true;
+      await releaseReservation();
       await interaction.editReply({
         embeds: [renderBattleEmbed({
           player: interaction.user, bossHp, playerHp, bonus: upgradeBonus, lost: true,
