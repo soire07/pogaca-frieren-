@@ -444,3 +444,11 @@ test('achievement claims include rare exploration, treasure completion, chest an
   assert.match(command, /adventure_route_mastery/);
   assert.match(command, /adventure_treasure_progress/);
 });
+
+test('first adventure of each day grants a daily bonus without repeat farming', async () => {
+  const adventure = await read('macera.js');
+  assert.match(adventure, /dailyAdventureReward = streakRow\.new_day/);
+  assert.match(adventure, /dailyAdventureReward\.coins/);
+  assert.match(adventure, /dailyAdventureReward\.xp/);
+  assert.match(adventure, /last_visit_date=CURRENT_DATE/);
+});
