@@ -44,7 +44,8 @@ export default {
         'SELECT 1 FROM learned_spells WHERE guild_id=$1 AND user_id=$2 AND spell_key=$3',
         [interaction.guildId, interaction.user.id, spellKey]
       );
-      // Zoltraak is granted at the start, even when it has no learned_spells row.\n      if (!learned.rowCount && spellKey !== 'zoltraak') {
+      // Zoltraak is granted at the start, even when it has no learned_spells row.
+      if (!learned.rowCount && spellKey !== 'zoltraak') {
         await db.query('ROLLBACK');
         return interaction.editReply(`🔒 **${spellName}** henüz öğrenilmedi. Önce /buyuogren kullan.`);
       }
