@@ -171,12 +171,3 @@ export function shouldGuaranteeRareDiscovery(totalAdventures, uniqueRareDiscover
   const total = Math.max(0, Math.floor(Number(totalRareDiscoveries) || 0));
   return found < total && visits >= (found + 1) * every - 1;
 }
-
-/** Guarantees a previously undiscovered rare location at each 20-adventure milestone. */
-export function shouldGuaranteeRareDiscovery(totalAdventures, uniqueRareDiscoveries, interval = 20, totalRareDiscoveries = 3) {
-  const visits = Math.max(0, Math.floor(Number(totalAdventures) || 0));
-  const found = Math.max(0, Math.floor(Number(uniqueRareDiscoveries) || 0));
-  const every = Math.max(1, Math.floor(Number(interval) || 20));
-  const total = Math.max(0, Math.floor(Number(totalRareDiscoveries) || 0));
-  return found < total && visits >= (found + 1) * every - 1;
-}
