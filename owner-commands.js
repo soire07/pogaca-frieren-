@@ -20,19 +20,19 @@ export async function handleOwnerMessage(client, message) {
   if (message.guildId || message.author.id !== OWNER_ID) return false;
   if (!message.content?.trim().toLowerCase().startsWith(PREFIX)) return false;
 
-  const parts = message.content.trim().slice(PREFIX.length).trim().toLowerCase().split(/\\s+/).filter(Boolean);
+  const parts = message.content.trim().slice(PREFIX.length).trim().toLowerCase().split(/\s+/).filter(Boolean);
   const subcommand = parts[0] || 'yardım';
 
   if (subcommand === 'yardım' || subcommand === 'yardim' || subcommand === 'help') {
     await message.reply([
       '🥐 **Poğaça Frieren • Sahip Komutları**',
       '',
-      '\\`!sahip yardım\\` — Bu yardım listesini gösterir.',
-      '\\`!sahip durum\\` — Bot bağlantı durumu, gecikme ve çalışma süresi.',
-      '\\`!sahip sunucular\\` — Botun bulunduğu sunucuları ve üye sayılarını özel DM’de listeler.',
+      '!sahip yardım — Bu yardım listesini gösterir.',
+      '!sahip durum — Bot bağlantı durumu, gecikme ve çalışma süresi.',
+      '!sahip sunucular — Botun bulunduğu sunucuları ve üye sayılarını özel DM’de listeler.',
       '',
       '🔒 Bu komutlar yalnızca bot sahibi hesabının DM konuşmasında çalışır.'
-    ].join('\\n'));
+    ].join('\n'));
     return true;
   }
 
@@ -45,23 +45,23 @@ export async function handleOwnerMessage(client, message) {
       'Gecikme: ' + (Number.isFinite(client.ws.ping) ? Math.round(client.ws.ping) + ' ms' : 'Ölçülemiyor'),
       'Çalışma süresi: ' + formatDuration(uptime),
       'Sunucu sayısı: ' + client.guilds.cache.size
-    ].join('\\n'));
+    ].join('\n'));
     return true;
   }
 
   if (subcommand === 'sunucular' || subcommand === 'servers') {
     const guilds = [...client.guilds.cache.values()]
       .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
-      .map((guild, index) => (index + 1) + '. **' + guild.name.replace(/([*_~|])/g, '\\\\$1') + '** — ' +
+      .map((guild, index) => (index + 1) + '. **' + guild.name.replace(/([*_~|])/g, '\\$1') + '** — ' +
         (guild.memberCount ?? 'Bilinmiyor') + ' üye (ID: ' + guild.id + ')');
     const lines = ['🥐 **Botun bulunduğu sunucular: ' + guilds.length + '**', ...(guilds.length ? guilds : ['Bot henüz bir sunucuda değil.'])];
     let chunk = '';
     for (const line of lines) {
-      if ((chunk + '\\n' + line).length > 1800) {
+      if ((chunk + '\n' + line).length > 1800) {
         await message.channel.send(chunk);
         chunk = line;
       } else {
-        chunk = chunk ? chunk + '\\n' + line : line;
+        chunk = chunk ? chunk + '\n' + line : line;
       }
     }
     if (chunk) await message.channel.send(chunk);
