@@ -2,7 +2,7 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
 import { equipmentItems, equipmentBonus } from '../../equipment-data.js';
 import { levelForXp } from '../../utils.js';
-import { applyClassDefense, applyClassManaCost, getCharacterBuild } from '../../rpg-mechanics.js';
+import { applyClassDefense, applyClassManaCost, applyEquipmentSetBonus, getCharacterBuild } from '../../rpg-mechanics.js';
 
 const COOLDOWN_MS = 15 * 60 * 1000;
 const regions = {
@@ -110,7 +110,8 @@ export default {
         'SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2',
         [interaction.guildId, interaction.user.id]
       );
-      const gear = equipmentBonus(equippedResult.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean));
+      const equippedItems = equippedResult.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean);
+      const gear = applyEquipmentSetBonus(equippedItems, equipmentBonus(equippedItems));
       const build = getCharacterBuild(player.active_build);
       const baseMaxHp = Math.max(1, Number(player.max_hp));
       const baseMaxMana = Math.max(1, Number(player.max_mana));
