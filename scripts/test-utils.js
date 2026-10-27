@@ -48,3 +48,25 @@ test('character catalog has entries for each rarity used by collection filters',
     assert.ok(characters.some(character => character.rarity === rarity), `missing catalog entries for ${rarity}`);
   }
 });
+
+
+import { readFile } from 'node:fs/promises';
+
+test('cooperative raid defines player-facing roles and a persistent cooldown', async () => {
+  const source = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /setName\('ortakboss'\)/);
+  for (const role of ['tank', 'healer', 'damage']) assert.ok(source.includes(role), `missing raid role: ${role}`);
+  assert.match(source, /FOR UPDATE/);
+  assert.match(source, /last_boss_at=NOW\(\)/);
+  assert.match(source, /boss_defeats=boss_defeats\+\$8/);
+  assert.match(source, /component\.user\.id/);
+});
+
+test('multi-floor dungeon includes traps, chests and persistent player rewards', async () => {
+  const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  assert.match(source, /setName\('katlizindan'\)/);
+  assert.match(source, /gizli sandık/);
+  assert.match(source, /tuzak/);
+  assert.match(source, /dungeon_runs=dungeon_runs\+1/);
+  assert.match(source, /chestRewards/);
+});
