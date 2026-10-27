@@ -207,10 +207,12 @@ export async function initDatabase() {
       xp INTEGER NOT NULL DEFAULT 0 CHECK (xp >= 0),
       level INTEGER NOT NULL DEFAULT 1 CHECK (level >= 1),
       successful_crafts INTEGER NOT NULL DEFAULT 0 CHECK (successful_crafts >= 0),
+      salvaged_items INTEGER NOT NULL DEFAULT 0 CHECK (salvaged_items >= 0),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY (guild_id,user_id),
       FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
     );
+    ALTER TABLE user_crafting_progress ADD COLUMN IF NOT EXISTS salvaged_items INTEGER NOT NULL DEFAULT 0 CHECK (salvaged_items >= 0);
     CREATE TABLE IF NOT EXISTS adventure_history (
       id BIGSERIAL PRIMARY KEY,
       guild_id TEXT NOT NULL,
