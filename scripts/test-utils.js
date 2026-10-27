@@ -30,6 +30,7 @@ test('levelForXp and xpForNextLevel agree at level boundaries', () => {
 });
 
 import { characters, drawCharacter } from '../character-data.js';
+import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, dungeonChoiceOutcome, dungeonEnemyStats, progressionMilestone } from '../rpg-mechanics.js';
 
  test('drawCharacter forced legendary mode guarantees an Efsanevi character', () => {
   for (let i = 0; i < 100; i += 1) {
@@ -120,9 +121,9 @@ test('cooperative boss raid supports attack, mana spell, defense and mana persis
 
 test('cooperative boss raid includes an area mana-star burst and a mana-draining curse', async () => {
   const source = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
-  assert.match(source, /const starburst = rounds % 3 === 0/);
+  assert.match(source, /const starburst = BOSS\.special === 'mana-star'/);
   assert.match(source, /for \(const i of living\)/);
-  assert.match(source, /const manaCurse = !starburst && rounds % 4 === 0/);
+  assert.match(source, /const manaCurse = \(BOSS\.special === 'mana-curse' \|\| BOSS\.special === 'mana-star'\)/);
   assert.match(source, /Math\.min\(target\.mana,8\)/);
   assert.match(source, /target\.mana-=drained/);
   assert.match(source, /\$\{rounds\}\/12/);
@@ -133,4 +134,88 @@ test('boss raid turn prompt uses actual line breaks instead of literal slash-n t
   const source = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
   assert.match(source, /HP\\n\$\{alive\.map/);
   assert.doesNotMatch(source, /HP\\\\n\$\{alive\.map/);
+});
+
+
+test('raid boss catalog has distinct bosses, signature moves and deterministic selection', () => {
+  assert.equal(RAID_BOSSES.length, 3);
+  assert.equal(chooseRaidBoss(() => 0).id, 'north-general');
+  assert.equal(chooseRaidBoss(() => 0.5).id, 'glass-wyrm');
+  assert.equal(chooseRaidBoss(() => 0.99).id, 'fallen-mage');
+  assert.equal(new Set(RAID_BOSSES.map(b => b.loot)).size, 3);
+});
+
+test('boss weaknesses increase damage only for matching action types', () => {
+  const boss = { weakness: 'spell' };
+  assert.equal(applyRaidWeakness(100, boss, 'spell'), 130);
+  assert.equal(applyRaidWeakness(100, boss, 'attack'), 100);
+});
+
+test('combat action buttons expose healing and mana shield in both cooperative modes', async () => {
+  const boss = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  for (const source of [boss, dungeon]) {
+    assert.match(source, /:act:heal:/);
+    assert.match(source, /:act:shield:/);
+    assert.match(source, /f?\.mana >= 18|p\.mana >= 18/);
+    assert.match(source, /Mana Kalkanı açtı/);
+  }
+});
+
+test('dungeon route choices carry distinct risk and reward outcomes', () => {
+  const secret = dungeonChoiceOutcome('secret', 2);
+  const shrine = dungeonChoiceOutcome('shrine', 2);
+  const safe = dungeonChoiceOutcome('safe', 2);
+  assert.ok(secret.coins > safe.coins);
+  assert.ok(secret.hp < 0);
+  assert.ok(shrine.hp > 0);
+  assert.notEqual(secret.lootChance, safe.lootChance);
+});
+
+test('dungeon difficulty scales enemy health and damage monotonically', () => {
+  const easy = dungeonEnemyStats(3, 10, 4, 'easy');
+  const normal = dungeonEnemyStats(3, 10, 4, 'normal');
+  const nightmare = dungeonEnemyStats(3, 10, 4, 'nightmare');
+  assert.ok(easy.hp < normal.hp && normal.hp < nightmare.hp);
+  assert.ok(easy.damage <= normal.damage && normal.damage < nightmare.damage);
+});
+
+test('equipment set bonuses activate only after collecting enough matching rarity pieces', () => {
+  const plain = { attack: 1, defense: 1, hp: 10, mana: 5 };
+  const one = applyEquipmentSetBonus([{rarity:'Efsanevi'}], plain);
+  const twoLegendary = applyEquipmentSetBonus([{rarity:'Efsanevi'},{rarity:'Efsanevi'}], plain);
+  const twoEpic = applyEquipmentSetBonus([{rarity:'Destansı'},{rarity:'Destansı'}], plain);
+  assert.equal(one.attack, 1);
+  assert.equal(twoLegendary.attack, 5);
+  assert.equal(twoLegendary.hp, 35);
+  assert.equal(twoEpic.defense, 4);
+  assert.equal(twoEpic.mana, 20);
+});
+
+test('progression titles unlock from persistent level and victory milestones', () => {
+  assert.deepEqual(progressionMilestone(1, 0, 0), []);
+  assert.ok(progressionMilestone(10, 0, 0).includes('Kıdemli Maceracı'));
+  assert.ok(progressionMilestone(1, 5, 0).includes('İblis Avcısı'));
+  assert.ok(progressionMilestone(1, 0, 5).includes('Zindan Kaşifi'));
+  assert.ok(progressionMilestone(25, 10, 10).includes('Kuzeyin Efsanesi'));
+});
+
+test('dungeon command offers all three difficulty settings and branch outcomes', async () => {
+  const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  assert.match(source, /value:'easy'/);
+  assert.match(source, /value:'normal'/);
+  assert.match(source, /value:'nightmare'/);
+  assert.match(source, /katlizindan:path:secret/);
+  assert.match(source, /katlizindan:path:shrine/);
+  assert.match(source, /katlizindan:path:safe/);
+});
+
+test('equipment set bonuses and milestone titles are wired into both rewards flows', async () => {
+  const boss = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  for (const source of [boss, dungeon]) {
+    assert.match(source, /applyEquipmentSetBonus/);
+    assert.match(source, /progressionMilestone/);
+    assert.match(source, /Kalıcı unvanlar/);
+  }
 });
