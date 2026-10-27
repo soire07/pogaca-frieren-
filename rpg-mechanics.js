@@ -105,3 +105,16 @@ export function applyClassManaCost(baseCost, className) {
   const profile = getCharacterClass(className);
   return Math.max(1, Math.floor(Number(baseCost) * (profile.manaCostMultiplier ?? 1)));
 }
+
+
+// Persistent player-selected combat archetypes. Bonuses are derived, never written over base stats.
+export const CHARACTER_BUILDS = {
+  dengeli: { label: '⚖️ Dengeli', description: 'Her alanda istikrarlı; dezavantajı yok.', attack: 1, defense: 1, hp: 1, mana: 1 },
+  avci: { label: '⚔️ Avcı', description: 'Yüksek saldırı; daha düşük savunma.', attack: 1.2, defense: 0.9, hp: 1, mana: 1 },
+  muhafiz: { label: '🛡️ Muhafız', description: 'Yüksek dayanıklılık ve savunma; biraz daha düşük saldırı.', attack: 0.9, defense: 1.2, hp: 1.2, mana: 1 },
+  buyucu: { label: '🔮 Büyücü', description: 'Daha fazla mana ve büyü gücü; daha düşük savunma.', attack: 1.1, defense: 0.9, hp: 1, mana: 1.25 }
+};
+
+export function getCharacterBuild(buildKey) {
+  return CHARACTER_BUILDS[String(buildKey || 'dengeli').toLocaleLowerCase('tr-TR')] || CHARACTER_BUILDS.dengeli;
+}
