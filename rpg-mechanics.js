@@ -95,7 +95,8 @@ export function characterClassGuide() {
     bonuses: [
       profile.attackMultiplier > 1 ? `Büyü hasarı +${Math.round((profile.attackMultiplier - 1) * 100)}%` : null,
       profile.defenseMultiplier > 1 ? `Savunma +${Math.round((profile.defenseMultiplier - 1) * 100)}%` : null,
-      profile.healingMultiplier > 1 ? `İyileştirme +${Math.round((profile.healingMultiplier - 1) * 100)}%` : null
+      profile.healingMultiplier > 1 ? `İyileştirme +${Math.round((profile.healingMultiplier - 1) * 100)}%` : null,
+      profile.manaCostMultiplier < 1 ? `Mana maliyeti -${Math.round((1 - profile.manaCostMultiplier) * 100)}%` : null
     ].filter(Boolean)
   }));
 }
