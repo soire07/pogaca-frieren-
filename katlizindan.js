@@ -365,6 +365,10 @@ export default {
         const baseMaxHp = Math.max(1, Number(players[i].max_hp));
         return Math.max(0, Math.min(baseMaxHp, Math.round((hp / combatMaxHp) * baseMaxHp)));
       });
+      const persistedManaNow = players.map(p => Math.max(0, Math.min(
+        Math.max(1, Number(p.max_mana)),
+        Math.round((Number(p.mana) / Math.max(1, Number(p.maxMana))) * Math.max(1, Number(p.max_mana)))
+      )));
       for (let i = 0; i < players.length; i++) {
         const p = players[i];
         const newXp = p.xp + totalXp;
@@ -375,7 +379,7 @@ export default {
              dungeon_runs=dungeon_runs+1, last_dungeon_at=NOW(), mana=$9
            WHERE guild_id=$1 AND user_id=$2`,
           [interaction.guildId, p.user_id, persistedHpNow[i], newXp, newLevel, totalCoins,
-            Math.max(0, newLevel - oldLevels[i]), victory ? 1 : 0, p.mana]
+            Math.max(0, newLevel - oldLevels[i]), victory ? 1 : 0, persistedManaNow[i]]
         );
         for (const itemKey of [...chestRewards, ...(loot ? [loot] : [])]) await db.query(
           `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
