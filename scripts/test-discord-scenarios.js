@@ -231,7 +231,7 @@ test('character class passives are applied in both co-op modes and class guide i
   assert.match(dungeon, /applyClassDamage\(damage, p\.class_name\)/);
   assert.match(dungeon, /applyClassDefense\(/);
   assert.match(dungeon, /applyClassHealing\(6, players\[healerIndex\]\.class_name\)/);
-  assert.match(raid, /class_name,last_boss_at/);
+  assert.match(raid, /class_name,active_build,last_boss_at/);
   assert.match(raid, /applyClassDamage\(damage, f\.className\)/);
   assert.match(raid, /applyClassDefense\(/);
   assert.match(raid, /applyClassHealing\(12, fighters\[healer\]\.className\)/);
