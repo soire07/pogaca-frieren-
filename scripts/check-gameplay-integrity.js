@@ -213,6 +213,20 @@ test('cooperative Zoltraak damage uses saved mastery and can level up during the
 });
 
 
+test('co-op encounter reservations prevent overlapping party runs and expire after abandoned sessions', async () => {
+  const schema = await read('database/db.js');
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS active_rpg_encounters/);
+  assert.match(schema, /PRIMARY KEY \(guild_id, user_id\)/);
+  assert.match(schema, /expires_at TIMESTAMPTZ NOT NULL/);
+  for (const [path, mode] of [['katlizindan.js', 'dungeon'], ['ortakboss.js', 'raid']]) {
+    const source = await read(path);
+    assert.ok(source.includes(`VALUES ($1,$2,$3,'${mode}',NOW()+INTERVAL '15 minutes')`), path + ': reservation must expire if the process dies');
+    assert.ok(source.includes('DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2'), path + ': reservation is released after encounter');
+    assert.ok(source.includes('activeReservations.rowCount !== ids.length'), path + ': all participants must still own the reservation before rewards');
+    assert.ok(source.includes('reservationError.code === \'23505\''), path + ': overlapping encounter is rejected');
+  }
+});
+
 test('co-op combat releases database locks before waiting for player turns and revalidates cooldown on save', async () => {
   for (const [path, cooldown] of [['katlizindan.js', 'last_dungeon_at'], ['ortakboss.js', 'last_boss_at']]) {
     const source = await read(path);
@@ -222,6 +236,8 @@ test('co-op combat releases database locks before waiting for player turns and r
     const lock = source.indexOf('ORDER BY user_id FOR UPDATE', save);
     assert.ok(release >= 0 && wait > release && save > wait && lock > save, path + ': lock/connection must be released during interactive combat and reacquired for persistence');
     assert.ok(source.includes(cooldown), path + ': concurrent-run cooldown is revalidated');
+    assert.ok(source.includes('INSERT INTO active_rpg_encounters'), path + ': participants are reserved before combat starts');
+    assert.ok(source.includes('FOR UPDATE'), path + ': final persistence serializes participant state');
     assert.ok(source.includes("await db.query('ROLLBACK')"), path + ': failed validation rolls back');
     assert.ok(source.includes('if (db) db.release()'), path + ': released clients are not released twice');
     assert.match(source, /SELECT user_id,last_(?:dungeon|boss)_at,xp,level/ , path + ': final save reads current XP/level under lock');
