@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
 import { JOURNAL_COLLECTIONS } from '../../gameplay-depth.js';
+import { getJournalEntries, getClaimedJournalCollections, recordJournalEntry, claimJournalCollection } from '../../gameplay-journal.js';
 
 function progressBar(value, total, width = 12) {
   const ratio = total > 0 ? Math.max(0, Math.min(1, value / total)) : 0;
@@ -72,16 +73,68 @@ export default {
           }
         );
 
-      const collectionText = Object.values(JOURNAL_COLLECTIONS).map(collection => {
-        const total = collection.keys.length;
-        return `**${collection.label}**\n${progressBar(0, total)} 0/${total} kayıtlı`;
+      const { rows: spellRows } = await pool.query(
+        'SELECT spell_key FROM learned_spells WHERE guild_id=$1 AND user_id=$2',
+        [interaction.guildId, interaction.user.id]
+      );
+      for (const row of spellRows) {
+        if (JOURNAL_COLLECTIONS.spells.keys.includes(row.spell_key)) {
+          await recordJournalEntry(pool, interaction.guildId, interaction.user.id, 'spells', row.spell_key);
+        }
+      }
+
+      const relicAliases = new Map([
+        ['🥐 Büyülü Poğaça Kutusu', 'Büyülü Poğaça Kutusu'],
+        ['📖 Yasak Büyü Kitabı', 'Yasak Büyü Kitabı'],
+        ['🐉 Ejderha Pulu', 'Ejderha Pulu'],
+        ['🌙 Efsunlu Elf Yadigârı', 'Efsunlu Elf Yadigârı'],
+        ['👑 Himmel’in Efsanevi Yadigârı', 'Himmel’in Efsanevi Yadigârı']
+      ]);
+      const { rows: inventoryRows } = await pool.query(
+        'SELECT item_key FROM inventory WHERE guild_id=$1 AND user_id=$2 AND quantity>0',
+        [interaction.guildId, interaction.user.id]
+      );
+      for (const row of inventoryRows) {
+        const relicKey = relicAliases.get(row.item_key);
+        if (relicKey && JOURNAL_COLLECTIONS.relics.keys.includes(relicKey)) {
+          await recordJournalEntry(pool, interaction.guildId, interaction.user.id, 'relics', relicKey);
+        }
+      }
+
+      const [journalEntries, claimedCollections] = await Promise.all([
+        getJournalEntries(pool, interaction.guildId, interaction.user.id),
+        getClaimedJournalCollections(pool, interaction.guildId, interaction.user.id)
+      ]);
+      const collected = new Map();
+      for (const entry of journalEntries) {
+        if (!collected.has(entry.collection_key)) collected.set(entry.collection_key, new Set());
+        collected.get(entry.collection_key).add(entry.entry_key);
+      }
+
+      const newlyClaimed = [];
+      for (const [key, collection] of Object.entries(JOURNAL_COLLECTIONS)) {
+        const found = collected.get(key) || new Set();
+        const complete = collection.keys.every(entryKey => found.has(entryKey));
+        if (complete && !claimedCollections.has(key)) {
+          const didClaim = await claimJournalCollection(pool, interaction.guildId, interaction.user.id, key, collection.reward);
+          if (didClaim) newlyClaimed.push(`${collection.label}: +${collection.reward.coins} altın, +${collection.reward.xp} XP`);
+        }
+      }
+
+      const collectionText = Object.entries(JOURNAL_COLLECTIONS).map(([key, collection]) => {
+        const found = collected.get(key) || new Set();
+        const count = collection.keys.filter(entryKey => found.has(entryKey)).length;
+        const claimed = claimedCollections.has(key) || newlyClaimed.some(line => line.startsWith(collection.label + ':'));
+        const state = claimed ? ' · ödül alındı' : count === collection.keys.length ? ' · ödül hazır' : '';
+        return `**${collection.label}**\n${progressBar(count, collection.keys.length)} ${count}/${collection.keys.length} kayıt${state}`;
       }).join('\n\n');
 
       statsEmbed.addFields({
         name: '📚 Koleksiyon hedefleri',
         value: collectionText.slice(0, 1024)
       });
-      statsEmbed.setFooter({ text: 'Poğaça Frieren • Koleksiyon keşif kayıtlarının kalıcı entegrasyonu sonraki aşamada genişletilecek.' });
+      if (newlyClaimed.length) statsEmbed.addFields({ name: '🎁 Koleksiyon ödülleri', value: newlyClaimed.join('\n').slice(0, 1024) });
+      statsEmbed.setFooter({ text: 'Poğaça Frieren • Koleksiyon ilerlemesi kalıcı kaydedilir.' });
 
       return interaction.editReply({ embeds: [statsEmbed] });
     } catch (error) {
