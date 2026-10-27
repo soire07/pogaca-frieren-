@@ -246,6 +246,7 @@ test('Mage class has a mana-cost discount in solo and co-op combat', async () =>
   const dungeon = await read('katlizindan.js');
   const raid = await read('ortakboss.js');
   assert.match(mechanics, /manaCostMultiplier: 0\.9/);
+  assert.match(mechanics, /Mana maliyeti -\$\{Math\.round\(\(1 - profile\.manaCostMultiplier\) \* 100\)\}%/);
   assert.match(mechanics, /export function applyClassManaCost\(baseCost, className\)/);
   assert.match(solo, /applyClassManaCost\(30, stats\.class_name\)/);
   assert.match(dungeon, /applyClassManaCost\(12, p\.class_name\)/);
