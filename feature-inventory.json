@@ -1939,7 +1939,13 @@
       "name": "Solo boss tiers guarantee crafting materials that unlock equipment recipes",
       "category": "Equipment",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-323",
+      "name": "Dungeon progress grants crafting materials and full clear grants a signature relic",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 322
+  "count": 323
 }
