@@ -103,3 +103,16 @@ test('dungeon and boss raid let each accepted player choose their own role', asy
   assert.match(dungeon, /katlizindan:role:tank/);
   assert.match(raid, /raid:role:tank/);
 });
+
+
+test('cooperative boss raid supports attack, mana spell, defense and mana persistence', async () => {
+  const source = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /raid:act:attack/);
+  assert.match(source, /raid:act:spell/);
+  assert.match(source, /raid:act:defend/);
+  assert.match(source, /f\.mana >= 12/);
+  assert.match(source, /f\.mana -= 12/);
+  assert.match(source, /incoming\*0\.45/);
+  assert.match(source, /mana=\$9/);
+  assert.match(source, /ComponentType\.Button/);
+});
