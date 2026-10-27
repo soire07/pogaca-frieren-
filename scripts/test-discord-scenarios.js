@@ -484,3 +484,12 @@ test('adventure history records committed rewards and displays the latest five e
   assert.match(history, /Son 5 macera/);
   assert.match(history, /first_discovery/);
 });
+
+test('treasure chest consumption respects the inventory positive-quantity constraint', async () => {
+  const schema = await read('database/db.js');
+  const opener = await read('hazineac.js');
+  assert.match(schema, /quantity INTEGER NOT NULL DEFAULT 1 CHECK \(quantity > 0\)/);
+  assert.match(opener, /if \(available === amount\)/);
+  assert.match(opener, /DELETE FROM inventory WHERE guild_id=\$1 AND user_id=\$2 AND item_key='🗝️ Kadim Hazine Sandığı'/);
+  assert.match(opener, /UPDATE inventory SET quantity=quantity-\$3/);
+});
