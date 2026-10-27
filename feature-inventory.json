@@ -1207,7 +1207,31 @@
       "name": "Persist chest loot, gold, XP and level-up stat points atomically",
       "category": "Economy",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-182",
+      "name": "View a combined personal adventure progression and reward dashboard",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-183",
+      "name": "View total adventures, highest route visit count and discovered-location progress",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-184",
+      "name": "View daily streak, map fragments, opened treasure count and available chests together",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-185",
+      "name": "View the last adventure timestamp alongside current RPG level, XP and gold",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 200
+  "count": 204
 }
