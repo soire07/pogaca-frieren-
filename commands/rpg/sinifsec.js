@@ -5,6 +5,7 @@ import { CHARACTER_CLASSES } from '../../rpg-mechanics.js';
 const options = Object.entries(CHARACTER_CLASSES).map(([value, profile]) => ({ name: profile.label, value }));
 
 export default {
+  internalOnly: true,
   data: new SlashCommandBuilder()
     .setName('sinifsec')
     .setDescription('Macera tarzına uygun kalıcı karakter sınıfını seç.')
