@@ -330,3 +330,11 @@ test('adventure discoveries persist, award first-find bonuses, and grant journal
   assert.match(journal, /setName\('kesifdefteri'\)/);
   assert.match(journal, /ADVENTURE_DISCOVERIES/);
 });
+
+test('adventure command allows targeted routes while preserving random exploration', async () => {
+  const adventure = await read('macera.js');
+  assert.match(adventure, /setName\('rota'\)/);
+  for (const key of ['forest-grimoire', 'mimic-trail', 'wandering-bakery', 'ruined-chamber']) assert.ok(adventure.includes(key));
+  assert.match(adventure, /const chosenRoute = interaction\.options\.getString\('rota'\)/);
+  assert.match(adventure, /outcomes\[Math\.floor\(Math\.random\(\) \* outcomes\.length\)\]/);
+});
