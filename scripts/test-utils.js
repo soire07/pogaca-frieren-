@@ -89,3 +89,17 @@ test('multi-floor dungeon offers turn-based attack, spell and defense choices', 
   assert.match(source, /incoming \* 0\.45/);
   assert.match(source, /mana=\$9/);
 });
+
+
+test('dungeon and boss raid let each accepted player choose their own role', async () => {
+  const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  const raid = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  for (const source of [dungeon, raid]) {
+    assert.match(source, /roleMessage\.createMessageComponentCollector/);
+    assert.match(source, /chosenRoles\.set\(c\.user\.id, role\)/);
+    assert.match(source, /selected === role && \(role === 'tank' \|\| role === 'healer'\)/);
+    assert.match(source, /c\.customId\.endsWith\(interaction\.id\)/);
+  }
+  assert.match(dungeon, /katlizindan:role:tank/);
+  assert.match(raid, /raid:role:tank/);
+});
