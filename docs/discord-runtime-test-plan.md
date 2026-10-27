@@ -64,3 +64,15 @@ Her maddeyi **Geçti / Kaldı / Uygulanamadı** olarak işaretle; başarısız a
 - **SP-08:** Bir veritabanı hatası simüle edildiğinde işlem geri alınmalı; kısmi mana/altın düşüşü kalmamalı.
 
 Beklenen sonuç: kaynak kontrolleri ve otomatik testler geçse bile bu senaryolar, güvenli bir test sunucusunda gerçek Discord etkileşimleri ve test veritabanıyla ayrıca doğrulanmalı. Canlı sunucuda test etmek için deploy yapılmayacak.
+
+
+## Büyü ustalığı etkileri — /iblisavasi
+
+- **SM-01:** Buz Mızrağı ustalığı 0 iken donma ihtimali %35; ustalık 10 iken %60 olmalı.
+- **SM-02:** Koruyucu Bariyer ustalığı 0 iken saldırı hasarının %50'sini, ustalık 10 iken %80'ini engellemeli.
+- **SM-03:** Şifa Işığı iyileştirme miktarı, ustalık başına 3 HP artmalı; toplam HP oyuncunun savaş maksimumunu aşmamalı.
+- **SM-04:** Taş Duvar ustalık 0 iken %75, ustalık 10 iken %90 hasar azaltmalı.
+- **SM-05:** /buyupratik komutu Discord komut yükleyicisinin taradığı commands/rpg klasöründe görünmeli.
+- **SM-06:** /buyupratik yalnızca öğrenilmiş büyülerde kaynak harcamalı; yetersiz kaynakta veya maksimum ustalıkta veriler değişmemeli.
+
+Bu senaryolar kod tabanlı kontrollerle kapsanır; gerçek etkileşimler yalnızca ayrı bir test sunucusu ve test veritabanında doğrulanmalıdır.
