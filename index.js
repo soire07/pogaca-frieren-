@@ -12,7 +12,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 if (!process.env.DISCORD_TOKEN) throw new Error('DISCORD_TOKEN eksik. Render Environment bölümünü kontrol et.');
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL eksik. Önce Render PostgreSQL oluştur ve bağlantıyı ekle.');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildModeration] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildModeration, ...(process.env.ENABLE_MESSAGE_CONTENT_INTENT === 'true' ? [GatewayIntentBits.MessageContent] : [])] });
 client.commands = new Collection();
 
 
@@ -371,9 +371,22 @@ process.on('SIGTERM', async () => {
 });
 const PORT = process.env.PORT || 3000;
 
-createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('Poğaça Frieren aktif! 🥐');
+createServer(async (req, res) => {
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  if (!client.isReady()) {
+    res.writeHead(503);
+    res.end('Poğaça Frieren hazır değil: Discord bağlantısı bekleniyor.');
+    return;
+  }
+  try {
+    await pool.query('SELECT 1');
+    res.writeHead(200);
+    res.end('Poğaça Frieren aktif! Discord ve veritabanı bağlantısı sağlıklı. 🥐');
+  } catch (error) {
+    console.error('Sağlık kontrolü başarısız:', error);
+    res.writeHead(503);
+    res.end('Poğaça Frieren hazır değil: veritabanı erişilemiyor.');
+  }
 }).listen(PORT, '0.0.0.0', () => {
   console.log(`Web sunucusu ${PORT} portunda çalışıyor.`);
 });
