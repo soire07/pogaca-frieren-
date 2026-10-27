@@ -215,6 +215,7 @@ test('character classes provide bounded passive bonuses and class selection is d
   assert.match(combat, /applyClassDamage\(/);
   assert.match(combat, /applyClassDefense\(/);
   assert.match(combat, /applyClassHealing\(/);
+  assert.match(combat, /applyClassDamage\(Math\.floor\(Math\.random\(\) \* 21\) \+ 65/);
   assert.match(mechanics, /attackMultiplier: 1\.08/);
   assert.match(mechanics, /defenseMultiplier: 1\.12/);
   assert.match(mechanics, /healingMultiplier: 1\.2/);
