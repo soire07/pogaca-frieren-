@@ -11,6 +11,12 @@ const outcomes = [
   { text: 'Eski bir harabede gizli bir oda keşfettin.', coins: 30, xp: 40, item: '💎 Mana Kristali', discovery: 'ruined-chamber' }
 ];
 
+const rareOutcomes = [
+  { text: 'Sislerin ardında gizlenmiş kadim bir elf sığınağı buldun!', coins: 80, xp: 90, item: '🌙 Efsunlu Elf Yadigârı', discovery: 'ancient-elf-sanctuary' },
+  { text: 'Frieren’in unutulmuş notlarının saklandığı gizli bir arşive ulaştın!', coins: 70, xp: 60, item: '📜 Frieren’in Kayıp Notları', discovery: 'forgotten-grimoire' },
+  { text: 'Bir ejderhanın eski yuvasını keşfettin ve geride kalan pulları topladın!', coins: 100, xp: 100, item: '🐉 Ejderha Pulu', discovery: 'dragon-nest' }
+];
+
 export default {
   data: new SlashCommandBuilder()
     .setName('macera')
@@ -32,7 +38,9 @@ export default {
     const chosenRoute = interaction.options.getString('rota');
     const outcome = chosenRoute
       ? outcomes.find(entry => entry.discovery === chosenRoute)
-      : outcomes[Math.floor(Math.random() * outcomes.length)];
+      : Math.random() < 0.05
+        ? rareOutcomes[Math.floor(Math.random() * rareOutcomes.length)]
+        : outcomes[Math.floor(Math.random() * outcomes.length)];
     const client = await pool.connect();
 
     try {
