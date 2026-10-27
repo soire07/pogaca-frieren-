@@ -131,7 +131,7 @@ export default {
       const fighters = raw.map(x => {
         const p = x.stats; const equipped = gearMap.get(x.user.id) || []; const gear = applyEquipmentSetBonus(equipped, equipmentBonus(equipped)); const role = ROLES[x.role];
         return {
-          userId:x.user.id, username:x.user.username, role:x.role, roleData:role,
+          userId:x.user.id, username:x.user.username, role:x.role, roleData:role, baseMaxHp:Number(p.max_hp),
           level:Number(p.level), xp:Number(p.xp), coins:Number(p.coins), mana:Math.min(Number(p.mana), Math.min(500, Number(p.max_mana) + gear.mana)), maxMana:Math.min(500, Number(p.max_mana) + gear.mana),
           hp:Math.round(Math.max(0,Math.min(Number(p.hp),Math.min(2000,Number(p.max_hp)+gear.hp))*role.hp)),
           maxHp:Math.round(Math.min(2000,Number(p.max_hp)+gear.hp)*role.hp),
@@ -254,6 +254,7 @@ export default {
         }
       }
       const win=bossHp<=0;
+      const persistedHpNow=hpNow.map((hp,i)=>Math.min(hp,fighters[i].baseMaxHp));
       const xpReward=win?BOSS.xp:Math.floor(BOSS.xp*0.25);
       const coinReward=win?BOSS.coins:Math.floor(BOSS.coins*0.2);
       const loot=win && Math.random()<0.4 ? BOSS.loot : null;
@@ -263,7 +264,7 @@ export default {
           `UPDATE users SET hp=$3,xp=$4,level=$5,coins=coins+$6,
            stat_points=stat_points+$7,boss_defeats=boss_defeats+$8,last_boss_at=NOW(),mana=$9
            WHERE guild_id=$1 AND user_id=$2`,
-          [interaction.guildId,f.userId,hpNow[i],newXp,newLevel,coinReward,Math.max(0,newLevel-f.level),win?1:0,f.mana]
+          [interaction.guildId,f.userId,persistedHpNow[i],newXp,newLevel,coinReward,Math.max(0,newLevel-f.level),win?1:0,f.mana]
         );
         if (loot) await db.query(
           `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
@@ -280,7 +281,7 @@ export default {
       const embed=new EmbedBuilder().setColor(win?0x5bc98a:0x9b8cff)
         .setTitle(win?`🏆 ${BOSS.name} yenildi!`:'🌌 Baskın sona erdi')
         .setDescription(`**Boss HP:** ${Math.max(0,bossHp)}/${maxBossHp}\n**Tur:** ${rounds}/12\n\n`+
-          fighters.map((f,i)=>`**<@${f.userId}>** — ${f.roleData.label}\n❤️ ${hpNow[i]}/${Math.round(f.maxHp)} HP · ✨ ${f.mana}/${f.maxMana} mana · ⚔️ ${Math.round(f.attack)} saldırı · 🛡️ ${Math.round(f.defense)} savunma`).join('\n\n')+
+          fighters.map((f,i)=>`**<@${f.userId}>** — ${f.roleData.label}\n❤️ ${persistedHpNow[i]}/${f.baseMaxHp} HP · ✨ ${f.mana}/${f.maxMana} mana · ⚔️ ${Math.round(f.attack)} saldırı · 🛡️ ${Math.round(f.defense)} savunma`).join('\n\n')+
           '\n\n**Savaş günlüğü**\n'+log.slice(-15).join('\n'))
         .addFields(
           {name:'🎁 Kişi başı ödül',value:`✨ ${xpReward} XP\n🥐 ${coinReward} altın`,inline:true},
