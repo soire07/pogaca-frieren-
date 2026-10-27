@@ -10,6 +10,11 @@ const LOOT = [
   { name: '🥐 Büyülü Poğaça Kutusu', coins: 140, xp: 120 }
 ];
 
+const RARE_LOOT = [
+  { name: '🪄 Frieren’in Kadim Asası', coins: 500, xp: 350 },
+  { name: '👑 Himmel’in Efsanevi Yadigârı', coins: 800, xp: 500 }
+];
+
 export default {
   data: new SlashCommandBuilder()
     .setName('hazineac')
@@ -45,7 +50,8 @@ export default {
       let xp = 0;
       const found = new Map();
       for (let i = 0; i < amount; i++) {
-        const loot = LOOT[Math.floor(Math.random() * LOOT.length)];
+        const roll = Math.random();
+        const loot = roll < 0.01 ? RARE_LOOT[1] : roll < 0.04 ? RARE_LOOT[0] : LOOT[Math.floor(Math.random() * LOOT.length)];
         coins += loot.coins;
         xp += loot.xp;
         found.set(loot.name, (found.get(loot.name) || 0) + 1);
