@@ -463,3 +463,12 @@ test('adventure outcomes grant class-specific exploration bonuses', async () => 
   assert.match(adventure, /classAdventureReward\.xp/);
   assert.match(adventure, /classAdventureReward\.coins/);
 });
+
+test('treasure chests can roll low-probability legendary Frieren-themed loot', async () => {
+  const command = await read('hazineac.js');
+  assert.match(command, /const RARE_LOOT = \[/);
+  assert.match(command, /roll < 0\.01/);
+  assert.match(command, /roll < 0\.04/);
+  assert.match(command, /Himmel’in Efsanevi Yadigârı/);
+  assert.match(command, /Frieren’in Kadim Asası/);
+});
