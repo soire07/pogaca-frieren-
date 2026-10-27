@@ -636,3 +636,10 @@ test('advanced crafting recipes require their profession level and show the requ
   assert.match(command, /Zanaat seviyesi/);
   assert.match(command, /Mevcut seviyen/);
 });
+
+test('crafting leaderboard also ranks players by equipment dismantling progress', async () => {
+  const command = await read('zanaatustalari.js');
+  assert.match(command, /salvage: \{ title: '♻️ En Çok Ekipman Parçalayanlar', column: 'salvaged_items'/);
+  assert.match(command, /value: 'salvage'/);
+  assert.match(command, /salvaged_items/);
+});
