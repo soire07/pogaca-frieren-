@@ -198,3 +198,15 @@ test('player profile includes persistent talent ranks and equipment rarity set b
   assert.match(source, /Number\(u\.talent_attack\) \* 0\.04/);
   assert.match(source, /Number\(u\.talent_defense\) \* 0\.04/);
 });
+
+
+test('cooperative Zoltraak damage uses saved mastery and can level up during the same encounter', async () => {
+  const dungeon = await read('katlizindan.js');
+  const raid = await read('ortakboss.js');
+  for (const source of [dungeon, raid]) {
+    assert.match(source, /SELECT user_id,casts,mastery_level FROM spell_mastery/);
+    assert.match(source, /\+ \(spellMastery\.get\([^)]*\) \|\| 0\) \* 2/);
+    assert.match(source, /spellMastery\.set\([^,]+, Math\.min\(10, Math\.floor\(/);
+    assert.match(source, /masteryCastTotals\.get\([^)]*\) \|\| 0/);
+  }
+});
