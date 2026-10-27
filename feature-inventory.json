@@ -871,7 +871,37 @@
       "name": "Cap spell mastery at level ten and reject further training at the cap",
       "category": "Magic",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-126",
+      "name": "Register spell-practice as a discoverable RPG slash command",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-127",
+      "name": "Increase Ice Spear freeze chance by up to 25 percentage points through mastery",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-128",
+      "name": "Scale Protective Barrier damage reduction with mastery up to 80 percent",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-129",
+      "name": "Increase Healing Light restoration by three HP per mastery level",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-130",
+      "name": "Scale Stone Wall damage prevention with mastery up to 90 percent",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 144
+  "count": 149
 }
