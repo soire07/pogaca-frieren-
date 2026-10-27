@@ -476,3 +476,37 @@ test('adventure journal completion is awarded only once after the full discovery
   assert.match(adventure, /if \(claim\) \{[\s\S]*?journalCompletionCoins = COMPLETE_ADVENTURE_JOURNAL_REWARD\.coins/);
   assert.match(catalog, /export const COMPLETE_ADVENTURE_JOURNAL_REWARD = \{ coins: 250 \}/);
 });
+
+test('every equipment has a craft recipe and a salvage yield', async () => {
+  const equipment = await read('equipment-data.js');
+  const crafting = await read('zanaat.js');
+  const salvage = await read('ekipmanparcala.js');
+  const equipmentIds = [...equipment.matchAll(/id:\s*'([^']+)'/g)].map(match => match[1]);
+  const recipeBlock = crafting.match(/const RECIPES = \{([\s\S]*?)\n\};/);
+  const salvageBlock = salvage.match(/const SALVAGE_YIELD = \{([\s\S]*?)\n\};/);
+  assert.ok(recipeBlock, 'crafting recipe catalog must exist');
+  assert.ok(salvageBlock, 'equipment salvage catalog must exist');
+  const recipeIds = [...recipeBlock[1].matchAll(/^\s{2}([a-z_]+):/gm)].map(match => match[1]);
+  const salvageIds = [...salvageBlock[1].matchAll(/^\s{2}([a-z_]+):/gm)].map(match => match[1]);
+  for (const id of equipmentIds) {
+    assert.ok(recipeIds.includes(id), 'missing crafting recipe for ' + id);
+    assert.ok(salvageIds.includes(id), 'missing salvage yield for ' + id);
+  }
+});
+
+test('dungeon and raid relic drops are usable crafting ingredients', async () => {
+  const crafting = await read('zanaat.js');
+  const materials = [
+    'Orman Kristali',
+    'Eski Mahzen Anahtarı',
+    'Kadim Rün Parçası',
+    'Kuzey Mührü',
+    'İblis Mührü',
+    'Ejderha Camı',
+    'Auranın Mühürlü Asa Parçası',
+    '🪄 Frieren’in Kadim Asası'
+  ];
+  for (const material of materials) {
+    assert.ok(crafting.includes(`item: '${material}'`), 'loot has no crafting use: ' + material);
+  }
+});
