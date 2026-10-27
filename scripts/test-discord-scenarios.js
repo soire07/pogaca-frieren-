@@ -293,3 +293,22 @@ test('character builds persist and affect all combat modes', async () => {
   assert.match(dungeon, /build\.defense/);
   assert.match(raid, /build\.mana/);
 });
+
+test('talent tree persists ranks and modifies all combat modes', async () => {
+  const schema = await read('database/db.js');
+  const command = await read('yetenekagaci.js');
+  const solo = await read('iblisavasi.js');
+  const dungeon = await read('katlizindan.js');
+  const raid = await read('ortakboss.js');
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS user_talents/);
+  assert.match(schema, /attack_rank INTEGER NOT NULL DEFAULT 0 CHECK \(attack_rank BETWEEN 0 AND 3\)/);
+  assert.match(command, /setName\('yetenekagaci'\)/);
+  assert.match(command, /Math\.floor\(Number\(level\) \/ 3\)/);
+  assert.match(command, /FOR UPDATE/);
+  for (const source of [solo, dungeon, raid]) {
+    assert.match(source, /talent_attack/);
+    assert.match(source, /talent_defense/);
+    assert.match(source, /talent_hp/);
+    assert.match(source, /talent_mana/);
+  }
+});
