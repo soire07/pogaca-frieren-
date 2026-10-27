@@ -481,9 +481,9 @@ test('every equipment has a craft recipe and a salvage yield', async () => {
   const equipment = await read('equipment-data.js');
   const crafting = await read('zanaat.js');
   const salvage = await read('ekipmanparcala.js');
-  const equipmentBlock = equipment.match(/export const equipmentItems = \\[([\\s\\S]*?)\\n\\];/);
+  const equipmentBlock = equipment.match(/export const equipmentItems = \[([\s\S]*?)\n\];/);
   assert.ok(equipmentBlock, 'equipment catalog must exist');
-  const equipmentIds = [...equipmentBlock[1].matchAll(/id:\\s*'([^']+)'/g)].map(match => match[1]);
+  const equipmentIds = [...equipmentBlock[1].matchAll(/id:\s*'([^']+)'/g)].map(match => match[1]);
   const recipeBlock = crafting.match(/const RECIPES = \{([\s\S]*?)\n\};/);
   const salvageBlock = salvage.match(/const SALVAGE_YIELD = \{([\s\S]*?)\n\};/);
   assert.ok(recipeBlock, 'crafting recipe catalog must exist');
