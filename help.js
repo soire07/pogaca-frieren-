@@ -49,7 +49,7 @@ export default {
         '**Yeni oyuncu rotası**\n' +
         '1. **/rehber** — temel sistemleri öğren.\n' +
         '2. **/kimimben** — karakter keşfet ve **/koleksiyon** ile kontrol et.\n' +
-        '3. **/karakter olustur** — adını ve sınıfını seç; **/karakter panel** ile durumunu gör.\n' +
+        '3. **/karakter** — mevcut karakter panelinden sınıfını, yapını ve gelişimini yönet.\n' +
         '4. **/gunlukodul** → **/kesif** — ilk ödülünü alıp yolculuğa çık.\n\n' +
         'Komutun adını yazmaya başladığında Discord’un açtığı seçenekleri ve zorunlu alanları da kontrol et.'
       )
