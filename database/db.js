@@ -85,6 +85,16 @@ export async function initDatabase() {
       PRIMARY KEY (guild_id, user_id, item_key),
       FOREIGN KEY (guild_id, user_id) REFERENCES users(guild_id, user_id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS active_rpg_encounters (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      encounter_id TEXT NOT NULL,
+      encounter_type TEXT NOT NULL CHECK (encounter_type IN ('dungeon','raid')),
+      expires_at TIMESTAMPTZ NOT NULL,
+      PRIMARY KEY (guild_id, user_id),
+      FOREIGN KEY (guild_id, user_id) REFERENCES users(guild_id, user_id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_active_rpg_encounters_expiry ON active_rpg_encounters(expires_at);
     CREATE TABLE IF NOT EXISTS user_equipment (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
