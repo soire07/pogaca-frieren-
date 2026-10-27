@@ -16,43 +16,31 @@ export default {
     .setName('ortakboss')
     .setDescription('En fazla dört oyuncuyla takım rolleri kullanarak ortak boss baskını yap.')
     .addUserOption(o => o.setName('takim_arkadasi').setDescription('Birinci takım arkadaşı').setRequired(true))
-    .addStringOption(o => o.setName('rolun').setDescription('Kendi rolün').setRequired(true).addChoices(
-      { name: 'Muhafız / Tank', value: 'tank' }, { name: 'Şifacı', value: 'healer' }, { name: 'Hasar Ustası', value: 'damage' }))
-    .addStringOption(o => o.setName('arkadas_rolu').setDescription('Birinci arkadaşın rolü').setRequired(true).addChoices(
-      { name: 'Muhafız / Tank', value: 'tank' }, { name: 'Şifacı', value: 'healer' }, { name: 'Hasar Ustası', value: 'damage' }))
     .addUserOption(o => o.setName('takim_arkadasi_2').setDescription('İkinci takım arkadaşı (isteğe bağlı)').setRequired(false))
-    .addStringOption(o => o.setName('arkadas_2_rolu').setDescription('İkinci arkadaşın rolü').setRequired(false).addChoices(
-      { name: 'Muhafız / Tank', value: 'tank' }, { name: 'Şifacı', value: 'healer' }, { name: 'Hasar Ustası', value: 'damage' }))
-    .addUserOption(o => o.setName('takim_arkadasi_3').setDescription('Üçüncü takım arkadaşı (isteğe bağlı)').setRequired(false))
-    .addStringOption(o => o.setName('arkadas_3_rolu').setDescription('Üçüncü arkadaşın rolü').setRequired(false).addChoices(
-      { name: 'Muhafız / Tank', value: 'tank' }, { name: 'Şifacı', value: 'healer' }, { name: 'Hasar Ustası', value: 'damage' })),
+    .addUserOption(o => o.setName('takim_arkadasi_3').setDescription('Üçüncü takım arkadaşı (isteğe bağlı)').setRequired(false)),
 
   async execute(interaction) {
     if (!interaction.guildId || !interaction.channel) return interaction.reply({ content: 'Ortak boss baskını yalnızca sunucularda kullanılabilir.', ephemeral: true });
     const team = [
-      { user: interaction.user, role: interaction.options.getString('rolun', true) },
-      { user: interaction.options.getUser('takim_arkadasi', true), role: interaction.options.getString('arkadas_rolu', true) },
-      { user: interaction.options.getUser('takim_arkadasi_2'), role: interaction.options.getString('arkadas_2_rolu') },
-      { user: interaction.options.getUser('takim_arkadasi_3'), role: interaction.options.getString('arkadas_3_rolu') }
-    ].filter(x => x.user);
-    if (team.some(x => x.user.bot) || new Set(team.map(x => x.user.id)).size !== team.length) {
+      interaction.user,
+      interaction.options.getUser('takim_arkadasi', true),
+      interaction.options.getUser('takim_arkadasi_2'),
+      interaction.options.getUser('takim_arkadasi_3')
+    ].filter(Boolean);
+    if (team.some(x => x.bot) || new Set(team.map(x => x.id)).size !== team.length) {
       return interaction.reply({ content: 'Takımda bot veya tekrar eden oyuncu olamaz.', ephemeral: true });
     }
-    if (team.some(x => !x.role)) return interaction.reply({ content: 'Her takım üyesi için bir rol seçmelisin.', ephemeral: true });
-    if (team.filter(x => x.role === 'healer').length > 1 || team.filter(x => x.role === 'tank').length > 1) {
-      return interaction.reply({ content: 'Takımda en fazla bir Muhafız ve bir Şifacı olabilir. Kalan oyuncular Hasar Ustası seçebilir.', ephemeral: true });
-    }
-    for (const x of team) await ensureUser(interaction.guildId, x.user.id);
+    for (const user of team) await ensureUser(interaction.guildId, user.id);
     const invited = team.slice(1);
     const row = new ActionRowBuilder().addComponents(
-      ...invited.map(x => new ButtonBuilder().setCustomId(`raid:yes:${interaction.id}:${x.user.id}`).setLabel(`Katıl: ${x.user.username}`.slice(0,80)).setStyle(ButtonStyle.Success)),
+      ...invited.map(x => new ButtonBuilder().setCustomId(`raid:yes:${interaction.id}:${x.id}`).setLabel(`Katıl: ${x.username}`.slice(0,80)).setStyle(ButtonStyle.Success)),
       new ButtonBuilder().setCustomId(`raid:no:${interaction.id}`).setLabel('Reddet').setStyle(ButtonStyle.Secondary)
     );
     const msg = await interaction.reply({
       content: `🌌 <@${interaction.user.id}> **${BOSS.name}** baskını için takım kuruyor! ${invited.map(x => `<@${x.user.id}> (${ROLES[x.role].label})`).join(' ')}\nHer davetli 60 saniye içinde katılmalı. Roller: ${team.map(x => `<@${x.user.id}> — ${ROLES[x.role].label}`).join(' · ')}`,
       components: [row], allowedMentions: { users: team.map(x => x.user.id) }, fetchReply: true
     });
-    const inviteIds = new Set(invited.map(x => x.user.id));
+    const inviteIds = new Set(invited.map(x => x.id));
     const accepted = new Set();
     const start = await new Promise(resolve => {
       const collector = msg.createMessageComponentCollector({ time: 60_000, filter: c => inviteIds.has(c.user.id) && (c.customId === `raid:no:${interaction.id}` || c.customId === `raid:yes:${interaction.id}:${c.user.id}`) });
@@ -73,10 +61,48 @@ export default {
     });
     if (!start) return;
 
+    const roleRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`raid:role:tank:${interaction.id}`).setLabel('🛡️ Muhafız').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`raid:role:healer:${interaction.id}`).setLabel('💚 Şifacı').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`raid:role:damage:${interaction.id}`).setLabel('⚔️ Hasar Ustası').setStyle(ButtonStyle.Primary)
+    );
+    const roleMessage = await interaction.editReply({
+      content: `🎭 **Herkes baskın rolünü kendisi seçsin!** ${team.map(u => `<@${u.id}>`).join(' ')}\\nEn fazla bir Muhafız ve bir Şifacı olabilir.`,
+      components: [roleRow],
+      allowedMentions: { users: team.map(u => u.id) }
+    });
+    const chosenRoles = new Map();
+    const rolesReady = await new Promise(resolve => {
+      const collector = roleMessage.createMessageComponentCollector({
+        time: 60_000,
+        filter: c => team.some(u => u.id === c.user.id) && c.customId.startsWith(`raid:role:${interaction.id}`)
+      });
+      collector.on('collect', async c => {
+        const role = c.customId.split(':')[2];
+        const conflict = [...chosenRoles.entries()].some(([userId, selected]) =>
+          userId !== c.user.id && selected === role && (role === 'tank' || role === 'healer')
+        );
+        if (conflict) {
+          await c.reply({ content: role === 'tank' ? 'Muhafız rolü zaten seçildi; başka bir rol seç.' : 'Şifacı rolü zaten seçildi; başka bir rol seç.', ephemeral: true }).catch(() => {});
+          return;
+        }
+        chosenRoles.set(c.user.id, role);
+        await c.reply({ content: `Seçtiğin rol: ${ROLES[role].label}`, ephemeral: true }).catch(() => {});
+        if (chosenRoles.size === team.length) collector.stop('ready');
+      });
+      collector.once('end', (_all, reason) => resolve(reason === 'ready'));
+    });
+    if (!rolesReady) return interaction.editReply({ content: '⌛ Herkes rol seçmediği için baskın başlamadı. Yeniden deneyebilirsin.', components: [] });
+    for (const user of team) user.role = chosenRoles.get(user.id);
+    await interaction.editReply({
+      content: `⚔️ Baskın takımı hazır: ${team.map(u => `<@${u.id}> — ${ROLES[u.role].label}`).join(' · ')}`,
+      components: []
+    });
+
     const db = await pool.connect();
     try {
       await db.query('BEGIN');
-      const ids = team.map(x => x.user.id).sort();
+      const ids = team.map(x => x.id).sort();
       const result = await db.query(
         `SELECT user_id,level,xp,coins,hp,max_hp,attack,defense,last_boss_at FROM users
          WHERE guild_id=$1 AND user_id=ANY($2::text[]) FOR UPDATE`,
@@ -87,7 +113,7 @@ export default {
         return interaction.editReply({ content: 'Takım verileri okunamadı. Yeniden dene.', components: [] });
       }
       const byId = new Map(result.rows.map(x => [x.user_id,x]));
-      const raw = team.map(x => ({ ...x, stats: byId.get(x.user.id) }));
+      const raw = team.map(user => ({ user, role: user.role, stats: byId.get(user.id) }));
       const now = Date.now();
       const cooling = raw.find(x => x.stats.last_boss_at && now - new Date(x.stats.last_boss_at).getTime() < COOLDOWN_MS);
       if (cooling) {
