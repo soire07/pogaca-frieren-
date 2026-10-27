@@ -30,7 +30,7 @@ test('levelForXp and xpForNextLevel agree at level boundaries', () => {
 });
 
 import { characters, drawCharacter } from '../character-data.js';
-import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, dungeonChoiceOutcome, dungeonEnemyStats, progressionMilestone } from '../rpg-mechanics.js';
+import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, dungeonChoiceOutcome, dungeonEnemyStats, progressionMilestone, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus } from '../rpg-mechanics.js';
 
  test('drawCharacter forced legendary mode guarantees an Efsanevi character', () => {
   for (let i = 0; i < 100; i += 1) {
@@ -282,4 +282,26 @@ test('runtime test plan documents safety, timeouts, persistence and failure case
   ]) {
     assert.ok(plan.includes(topic), 'runtime test plan missing: ' + topic);
   }
+});
+
+test('solo boss phase transitions use clear two-thirds and one-third health thresholds', () => {
+  assert.equal(getBossPhase(120, 120), 1);
+  assert.equal(getBossPhase(81, 120), 1);
+  assert.equal(getBossPhase(80, 120), 2);
+  assert.equal(getBossPhase(41, 120), 2);
+  assert.equal(getBossPhase(40, 120), 3);
+  assert.equal(getBossPhase(0, 120), 3);
+  assert.equal(getBossPhase(10, 0), 1);
+  assert.equal(getBossPhase(Number.NaN, 120), 1);
+});
+
+test('boss phase damage scaling respects defense and grows only in later phases', () => {
+  assert.equal(calculateBossIncomingDamage(10, 4, 1), 8);
+  assert.equal(calculateBossIncomingDamage(10, 4, 2), 9);
+  assert.equal(calculateBossIncomingDamage(10, 4, 3), 10);
+  assert.equal(calculateBossIncomingDamage(0, 999, 1), 1);
+  assert.equal(calculateBossIncomingDamage(-10, -5, 1), 1);
+  assert.equal(bossPhaseSpecialBonus(1), 0);
+  assert.equal(bossPhaseSpecialBonus(2), 4);
+  assert.equal(bossPhaseSpecialBonus(3), 8);
 });
