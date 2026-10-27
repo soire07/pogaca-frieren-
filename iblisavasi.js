@@ -271,7 +271,7 @@ export default {
         } else if (button.customId === 'demon_burst') {
           if (playerMana < 30) { busy = false; return button.reply({ content: 'Mana Patlaması için en az **30 Mana** gerekiyor.', ephemeral: true }); }
           playerMana -= 30; spellUsed = 'mana_patlamasi';
-          const damage = Math.floor(Math.random() * 21) + 65 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 3;
+          const damage = applyClassDamage(Math.floor(Math.random() * 21) + 65 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 3, stats.class_name);
           bossHp = Math.max(0, bossHp - damage); actionText = `🌌 **Mana Patlaması** büyük bir enerji dalgası oluşturdu: **${damage} hasar**! (Mana: −30)`;
         }
 
