@@ -275,7 +275,9 @@ test('runtime test plan documents safety, timeouts, persistence and failure case
     'Güvenli yol varsayılanı',
     'transaction rollback',
     'soğuma süresi',
-    'Canlı Discord testi',\n    '/buyupratik',\n    'SP-08'
+    'Canlı Discord testi',
+    '/buyupratik',
+    'SP-08'
   ]) {
     assert.ok(plan.includes(topic), 'runtime test plan missing: ' + topic);
   }
