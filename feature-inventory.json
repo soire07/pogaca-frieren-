@@ -673,6 +673,24 @@
       "name": "Let the healer restore teammate HP during dungeon combat",
       "category": "Combat",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-093",
+      "name": "Final dungeon boss gains an enrage phase below half health",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-094",
+      "name": "Final dungeon boss uses a periodic mana-star burst attack",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-095",
+      "name": "Dungeon trap damage is correctly assigned to the affected party member",
+      "category": "Dungeon",
+      "status": "implemented_needs_runtime_test"
     }
   ]
 }
