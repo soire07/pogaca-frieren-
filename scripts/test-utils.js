@@ -417,3 +417,24 @@ test('daily quest chain requires a successful boss victory, not merely starting 
   assert.match(combat, /boss_defeats=boss_defeats\+1, last_boss_win_at=NOW\(\)/);
   assert.match(database, /ADD COLUMN IF NOT EXISTS last_boss_win_at TIMESTAMPTZ/);
 });
+
+
+import { explorationMasteryReward } from '../rpg-mechanics.js';
+
+test('region mastery pays bonus rewards at each third successful exploration', () => {
+  assert.deepEqual(explorationMasteryReward(0), { level: 0, coins: 0, xp: 0, milestone: false });
+  assert.deepEqual(explorationMasteryReward(1), { level: 0, coins: 0, xp: 0, milestone: false });
+  assert.deepEqual(explorationMasteryReward(2), { level: 0, coins: 0, xp: 0, milestone: false });
+  assert.deepEqual(explorationMasteryReward(3), { level: 1, coins: 40, xp: 30, milestone: true });
+  assert.deepEqual(explorationMasteryReward(6), { level: 2, coins: 40, xp: 30, milestone: true });
+  assert.equal(explorationMasteryReward(-5).level, 0);
+});
+
+test('region mastery persists per selected exploration region and is displayed to players', async () => {
+  const source = await readFile(new URL('../commands/rpg/kesif.js', import.meta.url), 'utf8');
+  const schema = await readFile(new URL('../database/db.js', import.meta.url), 'utf8');
+  assert.match(source, /exploration_region_mastery/);
+  assert.match(source, /explorationMasteryReward\(regionVisits\)/);
+  assert.match(source, /Bölge ustalığı ödülü/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS exploration_region_mastery/);
+});
