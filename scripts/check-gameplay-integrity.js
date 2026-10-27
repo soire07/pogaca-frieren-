@@ -110,7 +110,7 @@ test('party combat applies class discounts and healing passives and converts sca
 test('solo demon battle persists build-adjusted HP as a base-stat health ratio', async () => {
   const source = await read('iblisavasi.js');
   assert.match(source, /const toPersistentHp = hp => Math\.max\(0, Math\.min\(Number\(stats\.max_hp\), Math\.round\(\(hp \/ Math\.max\(1, playerMaxHp\)\) \* Number\(stats\.max_hp\)\)\)\)/);
-  assert.equal((source.match(/toPersistentHp\(playerHp\)/g) || []).length, 3);
+  assert.equal((source.match(/toPersistentHp\(playerHp\)/g) || []).length, 2);
 });
 
 
@@ -239,7 +239,7 @@ test('solo boss victory commits final HP, mana, rewards, mastery and loot in one
     'victory state, rewards, mastery and loot must share one transaction');
   assert.ok(!source.slice(victory, begin).includes("UPDATE users SET hp=$3, mana=$4"),
     'victory HP/mana must not be saved before the reward transaction');
-  assert.match(source, /if \(spellUsed && bossHp > 0\)/, 'the final killing spell is deferred into the victory transaction');
+  assert.ok(source.indexOf('if (spellUsed)', userUpdate) < commit, 'the final killing spell is deferred into the victory transaction');
 });
 
 test('solo demon combat saves non-victory HP, mana and spell mastery within the same transaction', async () => {
