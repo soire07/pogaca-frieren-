@@ -57,9 +57,9 @@ export function progressionMilestone(level, bossWins, dungeonWins) {
 
 // Sınıf pasifleri: tek yerde tanımlanır ve savaşlarda tutarlı biçimde uygulanır.
 export const CHARACTER_CLASSES = {
-  gezgin: { label: 'Gezgin', description: 'Dengeli başlangıç sınıfı.', attackMultiplier: 1, defenseMultiplier: 1, healingMultiplier: 1 },
-  buyucu: { label: 'Büyücü', description: 'Büyü hasarı ve mana disiplininde uzman.', attackMultiplier: 1.08, defenseMultiplier: 1, healingMultiplier: 1 },
-  muhafiz: { label: 'Muhafız', description: 'Savunması daha güçlü, dayanıklı savaşçı.', attackMultiplier: 1, defenseMultiplier: 1.12, healingMultiplier: 1 },
+  gezgin: { label: 'Gezgin', description: 'Dengeli başlangıç sınıfı.', attackMultiplier: 1, defenseMultiplier: 1, healingMultiplier: 1, manaCostMultiplier: 1 },
+  buyucu: { label: 'Büyücü', description: 'Büyü hasarı ve mana disiplininde uzman.', attackMultiplier: 1.08, defenseMultiplier: 1, healingMultiplier: 1, manaCostMultiplier: 0.9 },
+  muhafiz: { label: 'Muhafız', description: 'Savunması daha güçlü, dayanıklı savaşçı.', attackMultiplier: 1, defenseMultiplier: 1.12, healingMultiplier: 1, manaCostMultiplier: 1 },
   sifaci: { label: 'Şifacı', description: 'İyileştirme büyüleri daha etkili.', attackMultiplier: 1, defenseMultiplier: 1, healingMultiplier: 1.2 }
 };
 
@@ -98,4 +98,9 @@ export function characterClassGuide() {
       profile.healingMultiplier > 1 ? `İyileştirme +${Math.round((profile.healingMultiplier - 1) * 100)}%` : null
     ].filter(Boolean)
   }));
+}
+
+export function applyClassManaCost(baseCost, className) {
+  const profile = getCharacterClass(className);
+  return Math.max(1, Math.floor(Number(baseCost) * (profile.manaCostMultiplier ?? 1)));
 }
