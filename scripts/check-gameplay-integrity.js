@@ -92,3 +92,16 @@ test('player profile displays selected combat build and build-adjusted stats', a
   assert.match(source, /applyClassDefense\(Number\(u\.defense\) \+ gear\.defense, u\.class_name\) \* build\.defense/);
   assert.match(source, /Savaş yapısı/);
 });
+
+
+test('party combat applies class discounts and healing passives and converts scaled HP back to persistent base HP', async () => {
+  const dungeon = await read('katlizindan.js');
+  const raid = await read('ortakboss.js');
+  for (const [name, source] of [['dungeon', dungeon], ['raid', raid]]) {
+    assert.match(source, /applyClassManaCost\(10, (?:p|f)\.class_name|applyClassManaCost\(10, f\.className\)/);
+    assert.match(source, /applyClassManaCost\(18, (?:p|f)\.class_name|applyClassManaCost\(18, f\.className\)/);
+    assert.match(source, /applyClassHealing\(26, (?:p|f)\.class_name|applyClassHealing\(26, f\.className\)/);
+    assert.match(source, /hp \/ combatMaxHp/);
+    assert.match(source, /Math\.min\(baseMaxHp, Math\.round\(\(hp \/ combatMaxHp\) \* baseMaxHp\)\)/);
+  }
+});
