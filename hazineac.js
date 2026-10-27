@@ -33,6 +33,14 @@ export default {
         'SELECT xp, level FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
         [interaction.guildId, interaction.user.id]
       );
+      const { rowCount: activeEncounterCount } = await db.query(
+        'SELECT encounter_id FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=$2 AND expires_at > NOW()',
+        [interaction.guildId, interaction.user.id]
+      );
+      if (activeEncounterCount) {
+        await db.query('ROLLBACK');
+        return interaction.editReply('⚔️ Savaşın devam ederken hazine açamazsın. Önce mevcut karşılaşmanı tamamla.');
+      }
       const { rows: [bag] } = await db.query(
         "SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='🗝️ Kadim Hazine Sandığı' FOR UPDATE",
         [interaction.guildId, interaction.user.id]
