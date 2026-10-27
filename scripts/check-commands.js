@@ -40,6 +40,10 @@ for (const filePath of files) {
     if (mod.default?.data && typeof mod.default.data.toJSON === 'function' && typeof mod.default.execute === 'function') {
       const command = mod.default.data.toJSON();
       if (!command.name || !command.description) throw new Error('Komut adı veya açıklaması eksik.');
+      const hasAutocomplete = (options = []) => options.some(option => option.autocomplete === true || hasAutocomplete(option.options || []));
+      if (hasAutocomplete(command.options || []) && typeof mod.default.autocomplete !== 'function') {
+        throw new Error('Otomatik tamamlama seçeneği var ancak autocomplete işleyicisi yok.');
+      }
       names.push(command.name);
     }
   } catch (error) {
