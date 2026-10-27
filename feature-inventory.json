@@ -1279,7 +1279,25 @@
       "name": "Claim a one-time achievement reward after ten total adventure route visits",
       "category": "Progression",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-194",
+      "name": "Grant a daily first-adventure gold bonus only on the first adventure of the calendar day",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-195",
+      "name": "Grant a daily first-adventure XP bonus without allowing repeat visits to farm it",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-196",
+      "name": "Stack the first-adventure daily bonus with the every-third-day streak milestone reward",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 212
+  "count": 215
 }
