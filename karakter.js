@@ -55,7 +55,7 @@ export default {
     if (sub === 'olustur') {
       const name = interaction.options.getString('isim', true).trim();
       const classKey = interaction.options.getString('sinif', true);
-      if (name.length < 2 || /[\\n\\r<>@]/.test(name)) return interaction.reply({ content: 'Karakter adı 2–24 karakter olmalı; satır sonu, etiket veya @ içermemeli.', ephemeral: true });
+      if (name.length < 2 || /[\n\r<>@]/.test(name)) return interaction.reply({ content: 'Karakter adı 2–24 karakter olmalı; satır sonu, etiket veya @ içermemeli.', ephemeral: true });
       const db = await pool.connect();
       try {
         await db.query('BEGIN');
@@ -102,7 +102,7 @@ export default {
           return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x9b8cff).setTitle('⚔️ Savaş yapısı güncellendi').setDescription(`**${player.character_name}** — ${build.label}\n${build.description}\n\nYapı bonusları karakter panelinde ve savaş hesaplarında uygulanır.`).setFooter({ text: 'Poğaça Frieren • İhtiyacına göre yapını değiştir.' })] });
         }
         const name = interaction.options.getString('yeni_isim', true).trim();
-        if (name.length < 2 || /[\\n\\r<>@]/.test(name)) {
+        if (name.length < 2 || /[\n\r<>@]/.test(name)) {
           await db.query('ROLLBACK');
           return interaction.reply({ content: 'Karakter adı 2–24 karakter olmalı; satır sonu, etiket veya @ içermemeli.', ephemeral: true });
         }
