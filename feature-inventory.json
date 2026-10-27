@@ -1489,7 +1489,31 @@
       "name": "Randomly return one recipe ingredient without duplicating crafted equipment rewards",
       "category": "Crafting",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-229",
+      "name": "View the server leaderboard for crafting profession levels",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-230",
+      "name": "View the server leaderboard for total crafting profession XP",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-231",
+      "name": "View the server leaderboard for total equipment items crafted",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-232",
+      "name": "Switch crafting leaderboard metrics through a slash-command category selector",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 247
+  "count": 251
 }
