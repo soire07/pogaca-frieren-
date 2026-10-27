@@ -312,3 +312,14 @@ test('freezing the boss cancels its scheduled special attack and its mana-drain 
   assert.match(source, /else if \(turnCount % 3 === 0 && frozenBoss\)/);
   assert.match(source, /Donma etkisi bossun özel saldırısını da durdurdu/);
 });
+
+
+test('cooperative raid boss phases scale incoming damage and announce transitions', async () => {
+  const source = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /getBossPhase\(bossHp, maxBossHp\)/);
+  assert.match(source, /bossPhaseSpecialBonus\(bossPhase\)/);
+  assert.match(source, /calculateBossIncomingDamage\(rawDamage, Math\.round\(target\.defense \* 0\.56\), bossPhase\)/);
+  assert.match(source, /calculateBossIncomingDamage\(Math\.round\(rawDamage\*specialMultiplier\), Math\.round\(f\.defense\*0\.44\), bossPhase\)/);
+  assert.match(source, /ikinci evreye geçti/);
+  assert.match(source, /son evreye geçti/);
+});
