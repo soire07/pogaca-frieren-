@@ -107,6 +107,8 @@ export default {
     const defense = Math.min(250, Math.round(applyClassDefense(Number(stats.defense) + gearBonus.defense, stats.class_name) * build.defense * (1 + Number(stats.talent_defense) * 0.04)));
     let playerHp = Math.min(playerMaxHp, Math.round(Number(stats.hp) * build.hp));
     let playerMana = Math.min(playerMaxMana, Number(stats.mana));
+    // Combat HP is scaled by build/equipment; persist the same health ratio against the base stat.
+    const toPersistentHp = hp => Math.max(0, Math.min(Number(stats.max_hp), Math.round((hp / Math.max(1, playerMaxHp)) * Number(stats.max_hp))));
     const gearSummary = equippedItems.length
       ? equippedItems.map(item => item.name + ' (' + formatEquipmentBonus(item) + ')').join('\n')
       : 'Henüz ekipman kuşanılmadı. /market ve /ekipman komutlarını kullan.';
@@ -305,7 +307,7 @@ export default {
         }
 
         if (bossHp <= 0) {
-          await pool.query('UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, playerHp, playerMana]);
+          await pool.query('UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, toPersistentHp(playerHp), playerMana]);
           const rewardCoins = boss.coinMin + Math.floor(Math.random() * (boss.coinMax - boss.coinMin + 1));
           const rewardXp = boss.xpMin + Math.floor(Math.random() * (boss.xpMax - boss.xpMin + 1));
           const bonusLoot = Math.random() < boss.lootChance
@@ -382,7 +384,7 @@ export default {
           : '\n❄️ Donduğu için iblis bu tur saldıramadı.';
 
         if (playerHp <= 0) {
-          await pool.query('UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, playerHp, playerMana]);
+          await pool.query('UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, toPersistentHp(playerHp), playerMana]);
           finished = true;
           collector.stop('defeat');
           return button.update({
@@ -394,7 +396,7 @@ export default {
           });
         }
 
-        await pool.query('UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, playerHp, playerMana]);
+        await pool.query('UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, toPersistentHp(playerHp), playerMana]);
         await button.update({
           embeds: [renderBattleEmbed({ player: interaction.user, bossHp, playerHp, bonus: upgradeBonus, description: actionText })],
           components: [actionRow(), rareActionRow()]
