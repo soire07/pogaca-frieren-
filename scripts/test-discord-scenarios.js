@@ -542,3 +542,11 @@ test('crafting profession progress persists XP, level and successful craft total
   assert.match(command, /craftProgress\.level/);
   assert.match(command, /craftProgress\.xp/);
 });
+
+test('crafting mastery unlocks a material refund chance at levels five and ten', async () => {
+  const command = await read('zanaat.js');
+  assert.match(command, /craftProgress\.level >= 10 \? 0\.20 : craftProgress\.level >= 5 \? 0\.10 : 0/);
+  assert.match(command, /refundedMaterial/);
+  assert.match(command, /material\.item/);
+  assert.match(command, /craftProgress\.level >= 5/);
+});
