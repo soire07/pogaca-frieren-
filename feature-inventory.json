@@ -1747,7 +1747,13 @@
       "name": "Apply equipment defense, class-based mana discounts and selected combat-build HP/mana scaling to exploration while persisting base-stat health ratios",
       "category": "Exploration",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-272",
+      "name": "Preserve proportional current HP and mana when party roles, equipment, talents and combat builds scale dungeon and raid stats",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 290
+  "count": 291
 }
