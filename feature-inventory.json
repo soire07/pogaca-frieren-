@@ -1513,7 +1513,31 @@
       "name": "Switch crafting leaderboard metrics through a slash-command category selector",
       "category": "Social",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-233",
+      "name": "Claim a one-time achievement reward for reaching crafting level five",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-234",
+      "name": "Claim a one-time achievement reward for reaching crafting level ten",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-235",
+      "name": "Claim a one-time achievement reward after crafting ten equipment items",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-236",
+      "name": "Claim a one-time achievement reward after crafting fifty equipment items",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 251
+  "count": 255
 }
