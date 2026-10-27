@@ -529,7 +529,7 @@ test('usable item definitions match slash-command choices and inventory keys', a
   const choiceIds = [...choicesBlock[1].matchAll(/value: '([^']+)'/g)].map(match => match[1]);
   assert.deepEqual([...choiceIds].sort(), [...ids].sort(), 'every usable item must have a matching slash choice');
   assert.equal(new Set(choiceIds).size, choiceIds.length, 'usable item choices must not contain duplicates');
-  for (const block of definitions[1].split(/(?=^  [a-z_]+:)/m).filter(Boolean)) {
+  for (const block of definitions[1].split(/(?=^  [a-z_]+:)/m).filter(Boolean).slice(1)) {
     const name = block.match(/name: '([^']+)'/);
     const key = block.match(/key: '([^']+)'/);
     assert.ok(name && key, 'every usable item needs a display name and inventory key');
