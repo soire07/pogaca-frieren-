@@ -3,6 +3,9 @@ import { readFile } from 'node:fs/promises';
 const inventory = JSON.parse(await readFile(new URL('../feature-inventory.json', import.meta.url), 'utf8'));
 const errors = [];
 const ids = inventory.features.map(feature => feature.id);
+if (inventory.count !== inventory.features.length) {
+  errors.push(`count alanı (${inventory.count}) kayıt sayısıyla (${inventory.features.length}) eşleşmeli.`);
+}
 if (!Number.isInteger(inventory.targetFeatures) || inventory.targetFeatures < 1) {
   errors.push('targetFeatures pozitif bir tam sayı olmalı.');
 }
