@@ -2,12 +2,13 @@
 import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { levelForXp } from './utils.js';
+import { ADVENTURE_DISCOVERIES, ADVENTURE_DISCOVERY_REWARD, COMPLETE_ADVENTURE_JOURNAL_REWARD } from './adventure-data.js';
 
 const outcomes = [
-  { text: 'Ormanda kayıp bir büyü kitabı buldun!', coins: 25, xp: 25, item: '📖 Yasak Büyü Kitabı' },
-  { text: 'Bir Mimic seni kovaladı ama kaçmayı başardın.', coins: 10, xp: 20, item: null },
-  { text: 'Yol kenarında bir fırın buldun. Fırıncı sana ödül verdi!', coins: 40, xp: 15, item: '🥐 Büyülü Poğaça Kutusu' },
-  { text: 'Eski bir harabede gizli bir oda keşfettin.', coins: 30, xp: 40, item: '💎 Mana Kristali' }
+  { text: 'Ormanda kayıp bir büyü kitabı buldun!', coins: 25, xp: 25, item: '📖 Yasak Büyü Kitabı', discovery: 'forest-grimoire' },
+  { text: 'Bir Mimic seni kovaladı ama kaçmayı başardın.', coins: 10, xp: 20, item: null, discovery: 'mimic-trail' },
+  { text: 'Yol kenarında bir fırın buldun. Fırıncı sana ödül verdi!', coins: 40, xp: 15, item: '🥐 Büyülü Poğaça Kutusu', discovery: 'wandering-bakery' },
+  { text: 'Eski bir harabede gizli bir oda keşfettin.', coins: 30, xp: 40, item: '💎 Mana Kristali', discovery: 'ruined-chamber' }
 ];
 
 export default {
@@ -40,12 +41,38 @@ export default {
         });
       }
 
-      const newXp = u.xp + outcome.xp;
+      const discoveryMeta = ADVENTURE_DISCOVERIES.find(entry => entry.key === outcome.discovery);
+      const { rows: [newDiscovery] } = await client.query(
+        'INSERT INTO adventure_discoveries(guild_id,user_id,discovery_key) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING discovery_key',
+        [interaction.guildId, interaction.user.id, outcome.discovery]
+      );
+      const firstDiscovery = Boolean(newDiscovery);
+      const discoveryCoins = firstDiscovery ? ADVENTURE_DISCOVERY_REWARD.coins : 0;
+      const discoveryXp = firstDiscovery ? ADVENTURE_DISCOVERY_REWARD.xp : 0;
+      let journalCompletionCoins = 0;
+      let journalCompletedNow = false;
+      const { rows: [discoveryCount] } = await client.query(
+        'SELECT COUNT(*)::int AS count FROM adventure_discoveries WHERE guild_id=$1 AND user_id=$2',
+        [interaction.guildId, interaction.user.id]
+      );
+      if (Number(discoveryCount.count) >= ADVENTURE_DISCOVERIES.length) {
+        const { rows: [claim] } = await client.query(
+          'INSERT INTO adventure_journal_claims(guild_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING user_id',
+          [interaction.guildId, interaction.user.id]
+        );
+        if (claim) {
+          journalCompletionCoins = COMPLETE_ADVENTURE_JOURNAL_REWARD.coins;
+          journalCompletedNow = true;
+        }
+      }
+
+      const newXp = Number(u.xp) + outcome.xp + discoveryXp;
       const newLevel = levelForXp(newXp);
+      const totalCoins = outcome.coins + discoveryCoins + journalCompletionCoins;
 
       await client.query(
         'UPDATE users SET coins=coins+$3, xp=$4, stat_points=stat_points+GREATEST(0,$5-level), level=$5, last_adventure_at=NOW() WHERE guild_id=$1 AND user_id=$2',
-        [interaction.guildId, interaction.user.id, outcome.coins, newXp, newLevel]
+        [interaction.guildId, interaction.user.id, totalCoins, newXp, newLevel]
       );
 
       if (outcome.item) {
@@ -69,7 +96,7 @@ export default {
         .setColor(0x9b8cff)
         .setTitle('🗺️ Macera Tamamlandı')
         .setDescription(
-          `${outcome.text}\n\nÖdül: **${outcome.coins}** altın ve **${outcome.xp} XP**${itemText}`
+          `${outcome.text}\n\nÖdül: **${outcome.coins + discoveryCoins + journalCompletionCoins}** altın ve **${outcome.xp + discoveryXp} XP**${itemText}\n\n${firstDiscovery ? `🧭 Yeni keşif: **${discoveryMeta?.name}** (+${discoveryCoins} altın, +${discoveryXp} XP)` : `📔 Bu keşfi daha önce kaydetmiştin: **${discoveryMeta?.name}**`}${journalCompletedNow ? `\n\n🏆 **Keşif defterini tamamladın! +${journalCompletionCoins} altın tamamlanma ödülü kazandın.**` : ''}`
         )
         .addFields({
           name: 'Yeni seviye',
