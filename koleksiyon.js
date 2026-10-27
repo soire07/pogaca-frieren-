@@ -74,6 +74,7 @@ function makePage(target, rows, page, rarityFilter) {
 }
 
 export default {
+  internalOnly: true,
   data: new SlashCommandBuilder()
     .setName('koleksiyon')
     .setDescription('Keşfettiğin anime karakterlerini ve koleksiyon ilerlemeni gösterir.')
