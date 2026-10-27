@@ -269,11 +269,11 @@ test('runtime test plan documents safety, timeouts, persistence and failure case
   const plan = await readFile(new URL('../docs/discord-runtime-test-plan.md', import.meta.url), 'utf8');
   for (const topic of [
     'Test ortamı ve güvenlik',
-    '60 saniye içinde',
+    '60 saniyelik süre',
     'Mana Kalkanı',
     'Güvenli yol varsayılanı',
     'transaction rollback',
-    'Soğuma süresi',
+    'soğuma süresi',
     'Canlı Discord testi'
   ]) {
     assert.ok(plan.includes(topic), 'runtime test plan missing: ' + topic);
