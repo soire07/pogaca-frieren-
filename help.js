@@ -3,7 +3,7 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 const sections = [
   {
     name: '🧭 Yolculuğa nereden başlamalı?',
-    value: '**/rehber** — Sayfalı, adım adım oynanış kılavuzu\n**/karakter panel** — Kendi maceracının ana ekranı\n**/sinifrehberi** — Sınıf pasiflerini karşılaştır\n**Önerilen sıra:** /rehber → /karakter olustur → /karakter panel → /gunlukodul → /kesif'
+    value: '**/rehber** — Sayfalı, adım adım oynanış kılavuzu\n**/karakter** — Karakterini oluştur ve tüm gelişimini tek panelden yönet\n**/sinifrehberi** — Sınıf pasiflerini karşılaştır\n**Önerilen sıra:** /rehber → /karakter → /gunlukodul → /kesif'
   },
   {
     name: '🪄 Frieren evreni ve büyüler',
@@ -11,7 +11,7 @@ const sections = [
   },
   {
     name: '🎴 Karakter koleksiyonu',
-    value: '**/kimimben** — Karakter keşfet · **/karaktercek** — Günlük karakter çekimi\n**/koleksiyon** — Sahip olduğun karakterler ve filtreler · **/karaktergelistir** — Karakterini geliştir\n**/takasteklif** — Başka oyuncuyla kopya takası · **/parcala** — Fazla kopyaları dönüştür'
+    value: '**/kimimben** — Karakter keşfet · **/karaktercek** — Günlük karakter çekimi\n**/koleksiyon** — Sahip olduğun karakterler ve filtreler · **/karakter** — İsim, sınıf, yapı, özellik puanı ve büyü yönetimi\n**/takasteklif** — Başka oyuncuyla kopya takası · **/parcala** — Fazla kopyaları dönüştür'
   },
   {
     name: '⚔️ Keşif, hikâye ve görevler',
@@ -23,7 +23,7 @@ const sections = [
   },
   {
     name: '🧙 Gelişim, ekipman ve ekonomi',
-    value: '**/market** — Eşya satın al · **/cantam** — Eşyalarını gör · **/ekipman** — Ekipman kuşan/çıkar\n**/esyakullan** — Kullanılabilir eşya kullan · **/bakiye** — Altınını kontrol et · **/dinlen** — Can ve Mana toparla\n**/karakter gelisim** — Gelişim puanlarını harca · **/karakter yapi** — Savaş yapını seç\n**/yetenekagaci** — Yetenek geliştirmelerini incele · **/siralama** ve **/liderlik** — Sıralamaları görüntüle'
+    value: '**/market** — Eşya satın al · **/cantam** — Eşyalarını gör · **/ekipman** — Ekipman kuşan/çıkar\n**/esyakullan** — Kullanılabilir eşya kullan · **/bakiye** — Altınını kontrol et · **/dinlen** — Can ve Mana toparla\n**/karakter** — Paneldeki Gelişim düğmesiyle puan harca; sınıf ve savaş yapını açılır menülerden seç\n**/yetenekagaci** — Yetenek geliştirmelerini incele · **/siralama** ve **/liderlik** — Sıralamaları görüntüle'
   },
   {
     name: '🥐 Eğlence ve topluluk',
