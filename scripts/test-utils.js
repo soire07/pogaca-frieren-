@@ -125,7 +125,7 @@ test('cooperative boss raid includes an area mana-star burst and a mana-draining
   assert.match(source, /const manaCurse = !starburst && rounds % 4 === 0/);
   assert.match(source, /Math\.min\(target\.mana,8\)/);
   assert.match(source, /target\.mana-=drained/);
-  assert.match(source, /rounds\/12/);
+  assert.match(source, /\$\{rounds\}\/12/);
   assert.doesNotMatch(source, /rounds\/10/);
 });
 
