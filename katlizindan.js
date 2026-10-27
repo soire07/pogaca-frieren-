@@ -505,7 +505,7 @@ export default {
         )
         .setFooter({ text: 'Poğaça Frieren • Kat kat ilerleyin, takımınızı koruyun.' });
       const dungeonBossArt = getBossArtUrl('dungeonFinal');
-      if (dungeonBossArt) embed.setImage(dungeonBossArt);
+      if (dungeonBossArt && victory) embed.setImage(dungeonBossArt);
       return interaction.editReply({ content: null, embeds: [embed], components: [] });
     } catch (error) {
       if (db) await db.query('ROLLBACK').catch(() => {});
