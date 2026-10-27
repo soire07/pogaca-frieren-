@@ -189,6 +189,18 @@ export async function initDatabase() {
       PRIMARY KEY (guild_id,user_id,discovery_key),
       FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS treasure_openings (
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      loot_item TEXT NOT NULL,
+      coins INTEGER NOT NULL CHECK (coins >= 0),
+      xp INTEGER NOT NULL CHECK (xp >= 0),
+      opened_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_treasure_openings_user_recent
+      ON treasure_openings(guild_id,user_id,opened_at DESC);
     CREATE TABLE IF NOT EXISTS adventure_treasure_progress (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
