@@ -1735,7 +1735,13 @@
       "name": "Apply selected character-class passives and combat-build modifiers to PvP duel health, damage, defense and healing",
       "category": "Combat",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-270",
+      "name": "Display the selected combat build in player profiles and calculate build-adjusted HP, mana, attack and defense",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 288
+  "count": 289
 }
