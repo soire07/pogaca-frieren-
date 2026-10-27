@@ -85,8 +85,8 @@ test('multi-floor dungeon offers turn-based attack, spell and defense choices', 
   assert.match(source, /katlizindan:act:attack/);
   assert.match(source, /katlizindan:act:spell/);
   assert.match(source, /katlizindan:act:defend/);
-  assert.match(source, /p\.mana >= 12/);
-  assert.match(source, /p\.mana\s*-=\s*12/);
+  assert.match(source, /p\.mana >= spellCost/);
+  assert.match(source, /p\.mana\s*-=\s*spellCost/);
   assert.match(source, /incoming \* 0\.45/);
   assert.match(source, /mana=\$9/);
 });
@@ -111,8 +111,8 @@ test('cooperative boss raid supports attack, mana spell, defense and mana persis
   assert.match(source, /raid:act:attack/);
   assert.match(source, /raid:act:spell/);
   assert.match(source, /raid:act:defend/);
-  assert.match(source, /f\.mana >= 12/);
-  assert.match(source, /f\.mana -= 12/);
+  assert.match(source, /f\.mana >= spellCost/);
+  assert.match(source, /f\.mana -= spellCost/);
   assert.match(source, /incoming\*0\.45/);
   assert.match(source, /mana=\$9/);
   assert.match(source, /ComponentType\.Button/);
