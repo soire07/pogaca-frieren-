@@ -95,7 +95,7 @@ export default {
       const collector = roleMessage.createMessageComponentCollector({
         componentType: ComponentType.Button,
         time: 60_000,
-        filter: c => team.some(u => u.id === c.user.id) && c.customId.startsWith(`katlizindan:role:${interaction.id}`)
+        filter: c => team.some(u => u.id === c.user.id) && c.customId.startsWith('katlizindan:role:') && c.customId.endsWith(interaction.id)
       });
       collector.on('collect', async c => {
         const role = c.customId.split(':')[2];
