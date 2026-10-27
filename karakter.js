@@ -64,8 +64,7 @@ export default {
           { name: 'Destansı', value: 'Destansı' },
           { name: 'Nadir', value: 'Nadir' },
           { name: 'Yaygın', value: 'Yaygın' }
-        )))
-
+        ))),
 
   async autocomplete(interaction) {
     if (interaction.options.getSubcommand() === 'gelistir') return characterUpgrade.autocomplete(interaction);
