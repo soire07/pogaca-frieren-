@@ -1795,7 +1795,13 @@
       "name": "Apply persistent Zoltraak mastery damage bonuses and same-encounter mastery thresholds in cooperative dungeon and boss combat",
       "category": "Magic",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-280",
+      "name": "Show active equipment rarity set bonuses directly in exploration outcome summaries",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 298
+  "count": 299
 }
