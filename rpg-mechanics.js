@@ -31,9 +31,9 @@ export function applyEquipmentSetBonus(items, bonus) {
 }
 
 export function dungeonChoiceOutcome(choice, floor) {
-  if (choice === 'secret') return { label: 'Gizli geçit', coins: 20 + floor * 8, hp: -8, lootChance: 0.45, log: 'Gizli geçit: ek altın bulundu ancak dar geçit yaraladı.' };
-  if (choice === 'shrine') return { label: 'Mana mabedi', coins: 0, hp: 12 + Math.floor(floor / 2), lootChance: 0.08, log: 'Mana mabedi: yaşayan takım üyeleri güçlerini toparladı.' };
-  return { label: 'Güvenli yol', coins: 10 + floor * 4, hp: 0, lootChance: 0.15, log: 'Güvenli yol: takım tuzaklardan kaçınarak erzak buldu.' };
+  if (choice === 'secret') return { label: 'Gizli geçit', coins: 20 + floor * 8, hp: -8, mana: 0, lootChance: 0.45, log: 'Gizli geçit: ek altın bulundu ancak dar geçit yaraladı.' };
+  if (choice === 'shrine') return { label: 'Mana mabedi', coins: 0, hp: 12 + Math.floor(floor / 2), mana: 16 + floor * 2, lootChance: 0.08, log: 'Mana mabedi: yaşayan takım üyeleri HP ve mana yeniledi.' };
+  return { label: 'Güvenli yol', coins: 10 + floor * 4, hp: 0, mana: 0, lootChance: 0.15, log: 'Güvenli yol: takım tuzaklardan kaçınarak erzak buldu.' };
 }
 
 export function dungeonEnemyStats(floor, averageLevel, partySize, difficulty = 'normal') {
