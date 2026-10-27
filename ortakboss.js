@@ -137,7 +137,7 @@ export default {
       try {
         for (const userId of ids) {
           await db.query(
-            "INSERT INTO active_rpg_encounters (guild_id,user_id,encounter_id,encounter_type,expires_at) VALUES ($1,$2,$3,'raid',NOW()+INTERVAL '15 minutes')",
+            "INSERT INTO active_rpg_encounters (guild_id,user_id,encounter_id,encounter_type,expires_at) VALUES ($1,$2,$3,'raid',NOW()+INTERVAL '30 minutes')",
             [interaction.guildId, userId, interaction.id]
           );
         }
