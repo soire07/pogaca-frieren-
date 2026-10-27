@@ -33,11 +33,11 @@
 | D-12 | Aynı oyuncu aynı turda iki düğmeye bassın. | İlk seçim geçerli kalır; ikinci seçim zaten seçimini yaptın yanıtını alır. |
 | D-13 | Takım dışı kullanıcı veya önceki turun düğmesiyle işlem yapmayı dene. | Eylem savaş durumunu değiştirmez. |
 | D-14 | Bir turda oyuncu seçim yapmadan beklesin. | Süre sonunda seçim yapmayan yaşayan oyuncu savunur. |
-| D-15 | Kat temizlenince üç yol seçeneğinden birini seç. | Gizli geçit daha fazla altın ve yaralanma riski; mana mabedi iyileştirme; güvenli yol daha dengeli ödül verir. |
+| D-15 | Kat temizlenince üç yol seçeneğinden birini seç. | Gizli geçit daha fazla altın ve yaralanma riski; mana mabedi yaşayan oyuncuların HP'sini ve manasını yeniler; güvenli yol daha dengeli ödül verir. |
 | D-16 | Yol seçmeden 15 saniye bekle. | Güvenli yol varsayılan olarak uygulanır. |
 | D-17 | Birden fazla kat boyunca ilerle. | HP katlar arasında korunur; sandık veya tuzak olayı oluşabilir; nihai sonuç 5 kat ilerlemesini doğru gösterir. |
 | D-18 | Bir oyuncunun bekleme süresi dolmamışken zindan başlat. | Zindan başlamaz; bekleme mesajı görünür ve işlem veritabanına ödül yazmaz. |
-| D-19 | Zafer veya mağlubiyet sonrası /profil, /envanter, /maceragecmisi, /siralama kontrol et. | XP/altın, HP/mana, zindan denemesi ve zafer sayısı, ganimet ve sıralama tutarlı olur. |
+| D-19 | Zafer veya mağlubiyet sonrası /profil, /envanter, /maceragecmisi, /siralama kontrol et. | XP/altın, HP/mana, zindan denemesi ve zafer sayısı, ganimet ve sıralama tutarlı olur; kaydedilen HP karakterin kalıcı azami HP değerini aşmaz. |
 
 ## 4. /ortakboss — takım baskını
 
@@ -50,8 +50,8 @@
 | B-05 | Her beş savaş eylemini ve düşük mana durumlarını dene. | Hasar, iyileştirme, kalkan ve mana maliyetleri beklenen şekilde uygulanır. |
 | B-06 | Aynı turda iki seçim yap veya yaşayan takım dışı kullanıcıyla düğmeye bas. | Geçersiz/ikinci seçim savaşı değiştirmez. |
 | B-07 | 20 saniye seçim yapmadan bekle. | Seçim yapmayan yaşayan oyuncu savunur. |
-| B-08 | Farklı denemelerde üç boss türünü gözlemle. | Boss adı, zayıflık ve ganimet türü tutarlı görünür; özel saldırı metni doğru boss'a aittir. |
-| B-09 | Boss canı yarıdan azken ve 3./4. turlarda savaşı gözlemle. | Öfke evresi ve boss türüne ait özel saldırı/mana laneti uygun zamanda görünür. |
+| B-08 | Farklı denemelerde üç boss türünü gözlemle. | Boss adı, zayıflık ve ganimet türü tutarlı görünür; Kuzey Generali 3. turda mana yıldız patlaması, Cam Pullar Ejderhası çift turlarda kristal yağmuru, Düşmüş Büyücü Aura 3. turda mana laneti kullanır. |
+| B-09 | Boss canı yarıdan azken ve 2./3. turlarda savaşı gözlemle. | Öfke evresi ve boss türüne ait özel saldırı/mana laneti uygun zamanda görünür. |
 | B-10 | Boss'u yen veya 12 tur sınırına ulaş. | Sonuç ekranı, XP/altın, HP/mana, boss zafer sayısı ve varsa ortak ganimet doğru olur. |
 | B-11 | Bekleme süresi dolmamış oyuncuyla baskın başlat. | Baskın başlamaz; veritabanı değişiklikleri geri alınır. |
 | B-12 | Sonuç sonrası /profil, /envanter, /maceragecmisi, /siralama kontrol et. | Ödüller ve istatistikler sonuç ekranıyla eşleşir. |
