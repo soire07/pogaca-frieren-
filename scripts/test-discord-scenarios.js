@@ -579,3 +579,19 @@ test('adventure history profile includes persistent crafting profession progress
   assert.match(history, /name: '⚒️ Zanaat'/);
   assert.match(history, /successful_crafts/);
 });
+
+test('equipment salvage preserves equipped items and returns only partial crafting materials', async () => {
+  const command = await read('ekipmanparcala.js');
+  const equipment = await read('equipment-data.js');
+  assert.match(command, /setName\('ekipmanparcala'\)/);
+  assert.match(command, /SELECT slot FROM user_equipment/);
+  assert.match(command, /quantity - equipped < amount/);
+  assert.match(command, /await db\.query\('BEGIN'\)/);
+  assert.match(command, /await db\.query\('COMMIT'\)/);
+  assert.match(command, /await db\.query\('ROLLBACK'\)/);
+  assert.match(command, /ON CONFLICT\(guild_id,user_id,item_key\)/);
+  for (const id of ['iron_sword', 'mage_staff', 'traveler_cloak', 'mana_ring', 'fern_robe', 'frieren_robe', 'himmel_sword', 'demon_blade', 'rune_ring', 'hero_ring']) {
+    assert.ok(command.includes(id));
+    assert.ok(equipment.includes(id));
+  }
+});
