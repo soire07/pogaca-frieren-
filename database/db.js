@@ -33,6 +33,7 @@ export async function initDatabase() {
       last_daily_at TIMESTAMPTZ,
       last_adventure_at TIMESTAMPTZ,
       last_boss_at TIMESTAMPTZ,
+      last_boss_win_at TIMESTAMPTZ,
       last_rest_at TIMESTAMPTZ,
       last_exploration_at TIMESTAMPTZ,
       last_item_used_at TIMESTAMPTZ,
@@ -63,6 +64,7 @@ export async function initDatabase() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS stat_points INTEGER NOT NULL DEFAULT 0 CHECK (stat_points >= 0);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS active_build TEXT NOT NULL DEFAULT 'dengeli';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_boss_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_boss_win_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_rest_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_exploration_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_item_used_at TIMESTAMPTZ;
