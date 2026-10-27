@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { initDatabase, pool } from './database/db.js';
 import { renderMarket, renderMarketItem, buyMarketItem, renderPurchaseResult, renderMarketInventory } from './market.js';
 import { levelForXp } from './utils.js';
+import { handleCharacterPanelInteraction } from './karakter.js';
 import { createServer } from 'node:http';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -194,6 +195,7 @@ client.once(Events.ClientReady, async readyClient => {
 });
 
 client.on(Events.InteractionCreate, async interaction => {
+  if (await handleCharacterPanelInteraction(interaction)) return;
   if (interaction.isButton() && interaction.customId.startsWith('market_')) {
     const parts = interaction.customId.split(':');
     const action = parts[0];
