@@ -1825,6 +1825,12 @@
       "name": "Increase boss special-attack bonus damage in later phases",
       "category": "Combat",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-304",
+      "name": "Buz Mızrağı freeze cancels the boss's scheduled special attack and mana-drain side effect",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
     }
   ],
   "count": 299
