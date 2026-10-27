@@ -280,3 +280,15 @@ test('health endpoint reports Discord readiness and database failures instead of
   assert.match(source, /res\.writeHead\(503\)/);
   assert.match(source, /Sağlık kontrolü başarısız/);
 });
+
+test('RPG guide accurately distinguishes server statistics and the two inventory commands', async () => {
+  const guide = await read('commands/rpg/rehber.js');
+  const stats = await read('stats.js');
+  assert.match(stats, /Kayıtlı oyuncu/);
+  assert.match(stats, /En yüksek seviye/);
+  assert.match(stats, /Ping/);
+  assert.match(guide, /kayıtlı RPG oyuncusu sayısını, en yüksek seviyeyi ve bot pingini gösterir/);
+  assert.doesNotMatch(guide, /bot istatistiklerini/);
+  assert.match(guide, /ham eşya miktarlarını/);
+  assert.match(guide, /kuşanılmış ekipman yuvalarıyla birlikte ayrıntılı çantanı/);
+});
