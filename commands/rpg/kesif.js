@@ -154,12 +154,14 @@ export default {
       const masteryReward = explorationMasteryReward(regionVisits);
       // Rewards rise with player level: +10% per 10 levels, capped at 5x.
       const rewardMultiplier = Math.min(5, 1 + Math.floor((Number(player.level) - 1) / 10) * 0.1);
-      const rewardXp = Math.round(encounter.xp * rewardMultiplier) + masteryReward.xp;
-      const rewardCoins = Math.round(encounter.coins * rewardMultiplier) + masteryReward.coins;
+      const rewardXp = Math.round(encounter.xp * rewardMultiplier);
+      const rewardCoins = Math.round(encounter.coins * rewardMultiplier);
+      const totalXpReward = rewardXp + masteryReward.xp;
+      const totalCoinReward = rewardCoins + masteryReward.coins;
       const manaCost = encounter.manaCost > 0 ? applyClassManaCost(encounter.manaCost, player.class_name) : 0;
       const actualManaCost = currentMana >= manaCost ? manaCost : 0;
       const hpDamage = Math.max(0, Math.round(encounter.hpDamage - effectiveDefense * 0.12));
-      const newXp = Number(player.xp) + rewardXp;
+      const newXp = Number(player.xp) + totalXpReward;
       const newLevel = levelForXp(newXp);
       const newHp = Math.max(0, currentHp - hpDamage);
       const newMana = Math.max(0, currentMana - actualManaCost);
@@ -178,7 +180,7 @@ export default {
           last_exploration_at=NOW(),
           exploration_count=exploration_count+1
          WHERE guild_id=$1 AND user_id=$2`,
-        [interaction.guildId, interaction.user.id, newXp, newLevel, rewardCoins, persistedHp, persistedMana, gainedPoints]
+        [interaction.guildId, interaction.user.id, newXp, newLevel, totalCoinReward, persistedHp, persistedMana, gainedPoints]
       );
 
       if (encounter.item) {
