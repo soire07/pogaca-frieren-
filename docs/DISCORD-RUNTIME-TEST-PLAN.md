@@ -1,6 +1,6 @@
 # Poğaça Frieren — Discord oyun akışı test planı
 
-> **Güvenlik sınırı:** Bu plan deploy, merge, slash komutlarını Discord'a yeniden kaydetme veya canlı veritabanını değiştirmez. Otomatik kontroller kodun ve oyun akışının belirli sözleşmelerini doğrular. Gerçek Discord bileşen etkileşimleri ancak botun mevcut test sunucusunda çalıştırılarak doğrulanabilir.
+> **Güvenlik sınırı:** Deploy yapılmayacak; merge, slash komutlarını Discord'a yeniden kaydetme veya canlı veritabanını değiştirme de yapılmayacak. Otomatik kontroller kodun ve oyun akışının belirli sözleşmelerini doğrular. Gerçek Discord bileşen etkileşimleri ancak botun mevcut test sunucusunda çalıştırılarak doğrulanabilir.
 
 ## 1. Hazırlık
 
