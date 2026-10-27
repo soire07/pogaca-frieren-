@@ -75,7 +75,7 @@ function rareActionRow(disabled = false) {
 export default {
   data: new SlashCommandBuilder()
     .setName('iblisavasi')
-    .setDescription('Frieren evreninde bir iblis boss ile savaş ve ödül kazan.'),
+    .setDescription('Hazırlığını kontrol et, büyü hamlelerini seç ve aşamalı bir iblis boss ile tek başına savaş.'),
 
   async execute(interaction) {
     if (!interaction.guildId) {
@@ -186,7 +186,7 @@ export default {
       bossHp,
       playerHp,
       bonus: upgradeBonus,
-      description: `Kuzey sınırında tehlikeli bir iblisle karşılaştın, <@${interaction.user.id}>!\n\n**Hamleni seç:** Zoltraak dengeli saldırır; Alev Küresi daha güçlü hasar verir; Buz Mızrağı iblisi dondurup karşı saldırısını durdurabilir. Kalkan hasarı azaltır, Şifa savaşta bir kez can yeniler. Seviye ve boss zaferleriyle Yıldırım Zinciri, Taş Duvar ve Mana Patlaması açılır. Büyü kullandıkça ustalığın yükselir. Her karakter geliştirme seviyesi saldırı gücüne +2 hasar ekler.\n\n**Kuşanılan ekipman:**\n${gearSummary}\nEkipman bonusları bu savaşta saldırı, savunma, maksimum HP ve Mana değerlerine uygulanır.\n**Sınıf:** ${classProfile.label} — ${classProfile.description}\n**Savaş yapısı:** ${build.label} — ${build.description}`
+      description: `Kuzey sınırında yolunu kesen **${boss.name}** ile karşı karşıyasın, <@${interaction.user.id}>. Hamle yapmak için aşağıdaki büyü düğmelerini kullan; mana bedelini ve öğrenme gereksinimini düğme adından kontrol et.\n\n**Hamle rehberi**\n⚡ **Zoltraak:** temel, dengeli saldırı.\n🔥 **Alev Küresi:** daha yüksek hasar.\n🧊 **Buz Mızrağı:** uygun olduğunda boss’un karşı hamlesini durdurabilir.\n🛡️ **Kalkan / Taş Duvar:** gelen hasarı azaltmaya yardımcı olur.\n💚 **Şifa:** bu savaşta sınırlı kullanım hakkıyla can yeniler.\n🌌 **Mana Patlaması / Yıldırım Zinciri:** açılmış ve öğrenilmişse özel saldırı seçenekleri sunar.\n\n**Savaşa girmeden önce**\n• HP ve Mana düşükse **/dinlen** kullan.\n• **/ekipman**, **/buyular** ve **/profil** ile hazırlığını kontrol et.\n• Boss’un canı azaldıkça yeni aşamalara geçebileceğini unutma; son aşamalar daha tehlikelidir.\n\n**Kuşanılan ekipman**\n${gearSummary}\nEkipman bonusları saldırı, savunma ve maksimum kaynak değerlerine uygulanır.\n**Sınıf:** ${classProfile.label} — ${classProfile.description}\n**Savaş yapısı:** ${build.label} — ${build.description}`
     });
     await interaction.editReply({ embeds: [initial], components: [actionRow(), rareActionRow()] });
     const message = await interaction.fetchReply();
