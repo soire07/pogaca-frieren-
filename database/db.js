@@ -180,6 +180,16 @@ export async function initDatabase() {
       PRIMARY KEY (guild_id,user_id,mission_date,mission_key),
       FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS daily_quest_chains (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      chain_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      current_step INTEGER NOT NULL DEFAULT 1 CHECK (current_step BETWEEN 1 AND 4),
+      completed_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id,user_id,chain_date),
+      FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS anime_character_collection (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
