@@ -10,6 +10,7 @@ test('trade offers are persistent, expiring and single-use', async () => {
   const command = await read('takasteklif.js');
   assert.match(schema, /CREATE TABLE IF NOT EXISTS trade_offers/);
   assert.ok(schema.includes("status IN ('pending','accepted','declined','expired','invalid')"), 'trade status constraint missing');
+  assert.match(schema, /idx_trade_offers_pending_sender ON trade_offers\(guild_id, from_user_id, character_name, expires_at\) WHERE status='pending'/);
   assert.match(command, /setAutocomplete\(true\)/);
   assert.match(command, /FOR UPDATE/);
   assert.match(command, /reservedAmount/);
