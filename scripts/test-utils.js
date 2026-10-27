@@ -28,3 +28,23 @@ test('levelForXp and xpForNextLevel agree at level boundaries', () => {
     assert.equal(levelForXp(xpForNextLevel(level) - 1), level);
   }
 });
+
+import { characters, drawCharacter } from '../character-data.js';
+
+ test('drawCharacter forced legendary mode guarantees an Efsanevi character', () => {
+  for (let i = 0; i < 100; i += 1) {
+    assert.equal(drawCharacter(null, false, true).rarity, 'Efsanevi');
+  }
+});
+
+test('drawCharacter epic-or-higher mode never returns Yaygın or Nadir', () => {
+  for (let i = 0; i < 300; i += 1) {
+    assert.ok(['Gizemli', 'Efsanevi', 'Destansı'].includes(drawCharacter(null, true, false).rarity));
+  }
+});
+
+test('character catalog has entries for each rarity used by collection filters', () => {
+  for (const rarity of ['Gizemli', 'Efsanevi', 'Destansı', 'Nadir', 'Yaygın']) {
+    assert.ok(characters.some(character => character.rarity === rarity), `missing catalog entries for ${rarity}`);
+  }
+});
