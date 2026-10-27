@@ -17,7 +17,6 @@ async function saveCharacter(db, guildId, userId, c) {
   return result.rows[0].quantity;
 }
 export default {
-  internalOnly: true,
   data: new SlashCommandBuilder().setName('karaktercek').setDescription('Her 24 saatte bir ücretsiz anime karakteri keşfet.'),
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',ephemeral:true});
