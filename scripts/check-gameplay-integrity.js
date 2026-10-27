@@ -137,3 +137,17 @@ test('cooperative dungeon and raid scale current HP and mana proportionally with
   assert.match(dungeon, /persistedHpNow/);
   assert.match(raid, /persistedHpNow/);
 });
+
+
+test('profile and all battle modes preserve current HP/mana ratios across temporary gear and build bonuses', async () => {
+  const profile = await read('profil.js');
+  const solo = await read('iblisavasi.js');
+  const dungeon = await read('katlizindan.js');
+  const raid = await read('ortakboss.js');
+  assert.ok(profile.includes('(Number(u.hp) / Math.max(1, Number(u.max_hp))) * effectiveMaxHp'));
+  assert.ok(profile.includes('(Number(u.mana) / Math.max(1, Number(u.max_mana))) * effectiveMaxMana'));
+  assert.ok(solo.includes('toPersistentMana(playerMana)'));
+  assert.ok(dungeon.includes('persistedManaNow[i]'));
+  assert.ok(raid.includes('persistedManaNow[i]'));
+  assert.ok(raid.includes('baseMaxMana:Number(p.max_mana)'));
+});
