@@ -4,7 +4,7 @@ import { pool, ensureUser } from './database/db.js';
 const steps = [
   { step: 1, title: 'Fırının Çağrısı', description: 'Bugün günlük ödülünü al: /gunlukodul', reward: 50, sql: "SELECT (last_daily_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2" },
   { step: 2, title: 'Kuzey Yolculuğu', description: 'Bugün /kesif ile bir keşif tamamla.', reward: 100, sql: "SELECT (last_exploration_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2" },
-  { step: 3, title: 'İblis Avcısının Yemini', description: 'Bugün /iblisavasi ile bir iblisle yüzleş.', reward: 200, sql: "SELECT (last_boss_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2" }
+  { step: 3, title: 'İblis Avcısının Yemini', description: 'Bugün /iblisavasi ile bir iblisi yen.', reward: 200, sql: "SELECT (last_boss_win_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2" }
 ];
 
 export default {
@@ -21,7 +21,7 @@ export default {
         await pool.query("INSERT INTO daily_quest_chains(guild_id,user_id,chain_date) VALUES($1,$2,CURRENT_DATE) ON CONFLICT DO NOTHING", [interaction.guildId, interaction.user.id]);
         const [chainResult, userResult] = await Promise.all([
           pool.query('SELECT current_step FROM daily_quest_chains WHERE guild_id=$1 AND user_id=$2 AND chain_date=CURRENT_DATE', [interaction.guildId, interaction.user.id]),
-          pool.query('SELECT last_daily_at::date=CURRENT_DATE AS daily_done, last_exploration_at::date=CURRENT_DATE AS explore_done, last_boss_at::date=CURRENT_DATE AS boss_done FROM users WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id])
+          pool.query('SELECT last_daily_at::date=CURRENT_DATE AS daily_done, last_exploration_at::date=CURRENT_DATE AS explore_done, last_boss_win_at::date=CURRENT_DATE AS boss_done FROM users WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id])
         ]);
         const currentStep = Number(chainResult.rows[0]?.current_step || 1);
         const p = userResult.rows[0] || {};
