@@ -831,30 +831,6 @@
       "status": "implemented_needs_runtime_test"
     },
     {
-      "id": "RPG-119",
-      "name": "Learn new spells from a level-gated spell catalogue",
-      "category": "Magic",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "RPG-120",
-      "name": "Require the configured minimum level before learning each spell",
-      "category": "Progression",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "RPG-121",
-      "name": "Spend persistent gold to learn a spell with transactional balance checks",
-      "category": "Economy",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "RPG-122",
-      "name": "Prevent learning the same spell more than once",
-      "category": "Magic",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
       "id": "RPG-123",
       "name": "Train learned spells by spending mana and a mastery-scaled gold fee",
       "category": "Magic",
@@ -869,6 +845,30 @@
     {
       "id": "RPG-125",
       "name": "View learned spells, practice counts and mastery progress",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-119",
+      "name": "Practice only a spell already present in the player's learned-spell collection",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-120",
+      "name": "Spend eight persistent mana and a mastery-scaled gold fee per spell-practice session",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-121",
+      "name": "Persist spell practice counts and advance mastery at ten-use thresholds",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-122",
+      "name": "Cap spell mastery at level ten and reject further training at the cap",
       "category": "Magic",
       "status": "implemented_needs_runtime_test"
     }
