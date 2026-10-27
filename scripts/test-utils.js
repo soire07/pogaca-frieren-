@@ -472,3 +472,20 @@ test('daily quest chain awards recipe materials transactionally for all three st
   assert.match(quest, /BEGIN/);
   assert.match(quest, /COMMIT/);
 });
+
+
+import { getLevelScaledQuestReward } from '../rpg-mechanics.js';
+
+test('daily quest rewards scale with level and grant a distinct full-chain completion bonus', () => {
+  assert.deepEqual(getLevelScaledQuestReward(50, 20, 1, false), {
+    multiplier: 1, coins: 50, xp: 20, completionBonus: false
+  });
+  assert.deepEqual(getLevelScaledQuestReward(100, 40, 21, false), {
+    multiplier: 1.2, coins: 120, xp: 48, completionBonus: false
+  });
+  assert.deepEqual(getLevelScaledQuestReward(200, 80, 51, true), {
+    multiplier: 1.5, coins: 450, xp: 270, completionBonus: true
+  });
+  assert.equal(getLevelScaledQuestReward(200, 80, 1000, true).multiplier, 3);
+  assert.equal(getLevelScaledQuestReward(-50, -10, 0, false).coins, 0);
+});
