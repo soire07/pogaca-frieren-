@@ -4,7 +4,7 @@ import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
 
 const COOLDOWN_MS = 45 * 60_000;
-const BOSS = { name: '☄️ Abyssaldrache, Yıldız Yutan', hp: 220, damage: 14, xp: 180, coins: 220, loot: 'Ejderha Kalbi' };
+const BOSS = { name: '🌑 Kuzey Platosu İblis Generali', hp: 220, damage: 14, xp: 180, coins: 220, loot: 'İblis Mührü' };
 const ROLES = {
   tank: { label: '🛡️ Muhafız', description: 'Daha çok hasar üzerine çeker ve daha dayanıklıdır.', hp: 1.25, attack: 0.85, defense: 1.45 },
   healer: { label: '💚 Şifacı', description: 'Her tur takıma küçük bir iyileştirme sağlar.', hp: 1, attack: 0.85, defense: 1.05 },
@@ -175,7 +175,7 @@ export default {
       }
       await db.query('COMMIT');
       const embed=new EmbedBuilder().setColor(win?0x5bc98a:0x9b8cff)
-        .setTitle(win?'🏆 Abyssaldrache yenildi!':'🌌 Baskın sona erdi')
+        .setTitle(win?`🏆 ${BOSS.name} yenildi!`:'🌌 Baskın sona erdi')
         .setDescription(`**Boss HP:** ${Math.max(0,bossHp)}/${maxBossHp}\n**Tur:** ${rounds}/10\n\n`+
           fighters.map((f,i)=>`**<@${f.userId}>** — ${f.roleData.label}\n❤️ ${hpNow[i]}/${Math.round(f.maxHp)} HP · ⚔️ ${Math.round(f.attack)} saldırı · 🛡️ ${Math.round(f.defense)} savunma`).join('\n\n')+
           '\n\n**Savaş günlüğü**\n'+log.slice(-15).join('\n'))
