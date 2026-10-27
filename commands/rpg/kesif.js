@@ -2,7 +2,7 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
 import { equipmentItems, equipmentBonus } from '../../equipment-data.js';
 import { levelForXp } from '../../utils.js';
-import { applyClassDefense, applyClassManaCost, applyEquipmentSetBonus, getCharacterBuild } from '../../rpg-mechanics.js';
+import { applyClassDefense, applyClassManaCost, applyEquipmentSetBonus, explorationMasteryReward, getCharacterBuild } from '../../rpg-mechanics.js';
 
 const COOLDOWN_MS = 15 * 60 * 1000;
 const regions = {
@@ -142,10 +142,20 @@ export default {
       }
 
       const encounter = region.encounters[Math.floor(Math.random() * region.encounters.length)];
+      const { rows: [masteryRow] } = await client.query(
+        `INSERT INTO exploration_region_mastery(guild_id,user_id,region_key,visits)
+         VALUES($1,$2,$3,1)
+         ON CONFLICT(guild_id,user_id,region_key)
+         DO UPDATE SET visits=exploration_region_mastery.visits+1, updated_at=NOW()
+         RETURNING visits`,
+        [interaction.guildId, interaction.user.id, regionKey]
+      );
+      const regionVisits = Number(masteryRow.visits);
+      const masteryReward = explorationMasteryReward(regionVisits);
       // Rewards rise with player level: +10% per 10 levels, capped at 5x.
       const rewardMultiplier = Math.min(5, 1 + Math.floor((Number(player.level) - 1) / 10) * 0.1);
-      const rewardXp = Math.round(encounter.xp * rewardMultiplier);
-      const rewardCoins = Math.round(encounter.coins * rewardMultiplier);
+      const rewardXp = Math.round(encounter.xp * rewardMultiplier) + masteryReward.xp;
+      const rewardCoins = Math.round(encounter.coins * rewardMultiplier) + masteryReward.coins;
       const manaCost = encounter.manaCost > 0 ? applyClassManaCost(encounter.manaCost, player.class_name) : 0;
       const actualManaCost = currentMana >= manaCost ? manaCost : 0;
       const hpDamage = Math.max(0, Math.round(encounter.hpDamage - effectiveDefense * 0.12));
@@ -188,6 +198,8 @@ export default {
         '',
         `**Ödüller:** +${rewardCoins} altın · +${rewardXp} XP`,
         rewardMultiplier > 1 ? `**Seviye bonusu:** x${rewardMultiplier.toFixed(1)}` : '',
+        `**Bölge ustalığı:** ${masteryReward.level} seviye · ${regionVisits}/3 ziyaret`,
+        masteryReward.milestone ? `🏅 **Bölge ustalığı ödülü:** +${masteryReward.coins} altın · +${masteryReward.xp} XP` : '',
         encounter.item ? `**Bulunan eşya:** ${encounter.item}` : '',
         hpDamage ? `**Can kaybı:** −${hpDamage} HP (savunma dahil)` : '',
         actualManaCost ? `**Büyü maliyeti:** −${actualManaCost} Mana` : encounter.manaCost ? 'Mana yetersiz olduğu için büyü kullanmadın.' : '',
