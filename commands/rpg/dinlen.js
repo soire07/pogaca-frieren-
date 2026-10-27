@@ -15,6 +15,17 @@ export default {
     }
 
     await ensureUser(interaction.guildId, interaction.user.id);
+    const activeEncounter = await pool.query(
+      'SELECT encounter_type FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=$2 AND expires_at > NOW()',
+      [interaction.guildId, interaction.user.id]
+    );
+    if (activeEncounter.rowCount) {
+      return interaction.reply({
+        content: '⚔️ Savaşın devam ederken dinlenemezsin. Önce karşılaşmayı tamamla.',
+        ephemeral: true
+      });
+    }
+
     const current = await pool.query(
       'SELECT hp, max_hp, mana, max_mana, last_rest_at FROM users WHERE guild_id=$1 AND user_id=$2',
       [interaction.guildId, interaction.user.id]
