@@ -1057,6 +1057,12 @@
       "name": "Prevent duplicate discovery and completion rewards with transactional uniqueness",
       "category": "Economy",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-157",
+      "name": "Choose a specific adventure route or retain random exploration",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
     }
   ],
   "count": 166
