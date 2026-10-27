@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, Embe
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, getCharacterClass } from './rpg-mechanics.js';
+import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass } from './rpg-mechanics.js';
 
 const FLOORS = 5;
 const COOLDOWN_MS = 30 * 60_000;
@@ -243,11 +243,12 @@ export default {
             }
             const baseDamage = Math.max(1, Math.round((Number(p.attack) + Math.floor(p.level / 3)) * (0.88 + ((p.level + floor + turn + i) % 4) * 0.09)));
             let damage = baseDamage;
-            if (action === 'spell' && p.mana >= 12) {
-              p.mana -= 12;
+            const spellCost = applyClassManaCost(12, p.class_name);
+            if (action === 'spell' && p.mana >= spellCost) {
+              p.mana -= spellCost;
               damage = Math.round(baseDamage * 1.8);
               damage = applyClassDamage(damage, p.class_name);
-              log.push(`✨ <@${p.user_id}> Zoltraak kullandı (-12 mana).`);
+              log.push(`✨ <@${p.user_id}> Zoltraak kullandı (-${spellCost} mana).`);
             } else if (action === 'spell') {
               log.push(`🔹 <@${p.user_id}> için mana yetersiz; normal saldırı yaptı.`);
             }
