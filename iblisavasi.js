@@ -292,7 +292,7 @@ export default {
           bossHp = Math.max(0, bossHp - damage); actionText = `🌌 **Mana Patlaması** büyük bir enerji dalgası oluşturdu: **${damage} hasar**! (Mana: −${spellCost})`;
         }
 
-        if (spellUsed) {
+        if (spellUsed && bossHp > 0) {
           const masteryUpdate = await pool.query(
             `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
              VALUES ($1,$2,$3,1,0,NOW())
@@ -308,7 +308,6 @@ export default {
         }
 
         if (bossHp <= 0) {
-          await pool.query('UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, toPersistentHp(playerHp), toPersistentMana(playerMana)]);
           const rewardCoins = boss.coinMin + Math.floor(Math.random() * (boss.coinMax - boss.coinMin + 1));
           const rewardXp = boss.xpMin + Math.floor(Math.random() * (boss.xpMax - boss.xpMin + 1));
           const bonusLoot = Math.random() < boss.lootChance
@@ -318,12 +317,26 @@ export default {
           try {
             await db.query('BEGIN');
             await db.query(
-              `UPDATE users SET coins=coins+$3, xp=xp+$4, boss_defeats=boss_defeats+1,
-                stat_points=stat_points+GREATEST(0,(FLOOR(SQRT((xp+$4)::numeric / 100))::int + 1)-level),
-                level=FLOOR(SQRT((xp+$4)::numeric / 100))::int + 1
+              `UPDATE users SET hp=$3, mana=$4, coins=coins+$5, xp=xp+$6, boss_defeats=boss_defeats+1,
+                stat_points=stat_points+GREATEST(0,(FLOOR(SQRT((xp+$6)::numeric / 100))::int + 1)-level),
+                level=FLOOR(SQRT((xp+$6)::numeric / 100))::int + 1
                WHERE guild_id=$1 AND user_id=$2`,
-              [interaction.guildId, interaction.user.id, rewardCoins, rewardXp]
+              [interaction.guildId, interaction.user.id, toPersistentHp(playerHp), toPersistentMana(playerMana), rewardCoins, rewardXp]
             );
+            if (spellUsed) {
+              const masteryUpdate = await db.query(
+                `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
+                 VALUES ($1,$2,$3,1,0,NOW())
+                 ON CONFLICT (guild_id,user_id,spell_key) DO UPDATE
+                 SET casts=spell_mastery.casts+1,
+                     mastery_level=LEAST(10,FLOOR((spell_mastery.casts+1)/10.0)::int),
+                     updated_at=NOW()
+                 RETURNING casts,mastery_level`,
+                [interaction.guildId, interaction.user.id, spellUsed]
+              );
+              spellMastery.set(spellUsed, Number(masteryUpdate.rows[0].mastery_level));
+              actionText += `\\n📈 **${spellUsed.replaceAll('_', ' ')} ustalığı:** ${masteryUpdate.rows[0].casts} kullanım · Seviye ${masteryUpdate.rows[0].mastery_level}/10`;
+            }
             await db.query(
               `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'💎 Mana Kristali',1)
                ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
