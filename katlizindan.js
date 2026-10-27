@@ -8,7 +8,6 @@ const COOLDOWN_MS = 30 * 60_000;
 const LOOT = ['Orman Kristali', 'Kadim Rün Parçası', 'Kuzey Mührü'];
 const FLOOR_NAMES = ['🌲 Köklerin Koridoru', '🗿 Kadim Harabeler', '🌫️ Sisli Geçit', '🔥 Küller Salonu', '👑 Mühürlü İblis Lordu'];
 const PARTY_ROLES = { tank: { label: '🛡️ Muhafız', hp: 1.25, attack: 0.85, defense: 1.4 }, healer: { label: '💚 Şifacı', hp: 1, attack: 0.9, defense: 1.05 }, damage: { label: '⚔️ Hasar Ustası', hp: 0.95, attack: 1.3, defense: 0.9 } };
-const roleOption = (name, description, required) => option => option.setName(name).setDescription(description).setRequired(required).addChoices({ name: 'Muhafız / Tank', value: 'tank' }, { name: 'Şifacı', value: 'healer' }, { name: 'Hasar Ustası', value: 'damage' });
 
 export default {
   data: new SlashCommandBuilder()
