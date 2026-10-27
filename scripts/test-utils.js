@@ -269,7 +269,7 @@ test('runtime test plan documents safety, timeouts, persistence and failure case
   const plan = await readFile(new URL('../docs/discord-runtime-test-plan.md', import.meta.url), 'utf8');
   for (const topic of [
     'Test ortamı ve güvenlik',
-    '60 saniyelik süre',
+    '60 saniye içinde',
     'Mana Kalkanı',
     'Güvenli yol varsayılanı',
     'transaction rollback',
