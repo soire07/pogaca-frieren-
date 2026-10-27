@@ -1855,6 +1855,54 @@
       "name": "Final dungeon boss has a final combat phase with stronger signature attacks",
       "category": "Combat",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-309",
+      "name": "Zoltraak mastery-10 awakening adds 8 damage",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-310",
+      "name": "Fireball mastery-10 awakening adds 10 damage",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-311",
+      "name": "Ice Lance mastery-10 awakening adds 10 percentage points of freeze chance",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-312",
+      "name": "Protective Barrier mastery-10 awakening adds 5 percentage points of damage reduction",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-313",
+      "name": "Healing Light mastery-10 awakening adds 10 healing",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-314",
+      "name": "Chain Lightning mastery-10 awakening adds 12 damage",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-315",
+      "name": "Stone Wall mastery-10 awakening adds 5 percentage points of damage reduction",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-316",
+      "name": "Mana Burst mastery-10 awakening adds 15 damage",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
     }
   ],
   "count": 299
