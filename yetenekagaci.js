@@ -17,7 +17,7 @@ function renderTalents(level, ranks) {
     .setTitle('🌿 Yetenek Ağacı • Elf Öğretisi')
     .setDescription(`Seviyen: **${level}** · Kazanılan puan: **${earned}** · Harcanan: **${spent}** · Kullanılabilir: **${Math.max(0, earned - spent)}**\nHer 3 seviyede 1 yetenek puanı kazanırsın. Her yetenek en fazla III. rütbeye yükseltilebilir.`)
     .addFields(Object.entries(TALENTS).map(([key, talent]) => ({
-      name: `${talent.name} · ${'ⅠⅡⅢ'[Math.max(0, Number(ranks[key] || 0) - 1)] || '0'}`,
+      name: `${talent.name} · ${Number(ranks[key] || 0) === 0 ? '0' : 'ⅠⅡⅢ'[Number(ranks[key]) - 1]}`,
       value: `${talent.description}\nMevcut rütbe: **${Number(ranks[key] || 0)}/${talent.maxRank}** · Seçenek: \` ${key} \``,
       inline: true
     })))
