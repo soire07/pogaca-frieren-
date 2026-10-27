@@ -192,10 +192,10 @@ test('spell practice uses existing learned-spell keys and checks ownership befor
 
 test('spell mastery changes ice, barrier, healing and stone-wall effects in boss combat', async () => {
   const combat = await read('iblisavasi.js');
-  assert.match(combat, /Math\.min\(0\.6, 0\.35 \+ \(spellMastery\.get\(spellUsed\) \|\| 0\) \* 0\.025\)/);
-  assert.match(combat, /Math\.min\(0\.8, 0\.5 \+ \(spellMastery\.get\(spellUsed\) \|\| 0\) \* 0\.03\)/);
-  assert.match(combat, /\(spellMastery\.get\(spellUsed\) \|\| 0\) \* 3/);
-  assert.match(combat, /Math\.min\(0\.9, 0\.75 \+ \(spellMastery\.get\(spellUsed\) \|\| 0\) \* 0\.015\)/);
+  assert.match(combat, /Math\.min\(0\.7, 0\.35 \+ \(spellMastery\.get\(spellUsed\) \|\| 0\) \* 0\.025 \+ getSpellMasteryAwakening\(spellUsed, spellMastery\.get\(spellUsed\)\)\.freezeChance\)/);
+  assert.match(combat, /Math\.min\(0\.85, 0\.5 \+ \(spellMastery\.get\(spellUsed\) \|\| 0\) \* 0\.03 \+ getSpellMasteryAwakening\(spellUsed, spellMastery\.get\(spellUsed\)\)\.shieldReduction\)/);
+  assert.match(combat, /\(spellMastery\.get\(spellUsed\) \|\| 0\) \* 3 \+ getSpellMasteryAwakening\(spellUsed, spellMastery\.get\(spellUsed\)\)\.healing/);
+  assert.match(combat, /Math\.min\(0\.95, 0\.75 \+ \(spellMastery\.get\(spellUsed\) \|\| 0\) \* 0\.015 \+ getSpellMasteryAwakening\(spellUsed, spellMastery\.get\(spellUsed\)\)\.wallReduction\)/);
   assert.match(combat, /bossDamage \* \(1 - shieldReduction\)/);
   assert.match(combat, /bossDamage \* \(1 - fortifiedReduction\)/);
 });
