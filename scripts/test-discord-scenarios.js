@@ -175,13 +175,13 @@ test('spell practice uses existing learned-spell keys and checks ownership befor
   for (const key of ['zoltraak','alev_kuresi','buz_mizragi','koruyucu_bariyer','sifa_isigi','yildirim_zinciri','tas_duvar','mana_patlamasi']) {
     assert.ok(source.includes(`value: '${key}'`), 'missing compatible spell key: ' + key);
   }
-  assert.match(source, /SELECT 1 FROM learned_spells/);
-  assert.match(source, /mana=mana-8, coins=coins-\\$3/);
-  assert.match(source, /spell_mastery\\.casts\\+1/);
-  assert.match(source, /mastery_level=GREATEST/);
-  assert.match(source, /await db\\.query\\('BEGIN'\\)/);
-  assert.match(source, /await db\\.query\\('COMMIT'\\)/);
-  assert.match(source, /await db\\.query\\('ROLLBACK'\\)/);
-  assert.match(learn, /setName\\('buyuogren'\\)/);
-  assert.match(mastery, /setName\\('buyuustaligi'\\)/);
+  assert.ok(source.includes('SELECT 1 FROM learned_spells'));
+  assert.ok(source.includes('mana=mana-8, coins=coins-$3'));
+  assert.ok(source.includes('spell_mastery.casts+1'));
+  assert.ok(source.includes('mastery_level=GREATEST'));
+  assert.ok(source.includes("await db.query('BEGIN')"));
+  assert.ok(source.includes("await db.query('COMMIT')"));
+  assert.ok(source.includes("await db.query('ROLLBACK')"));
+  assert.ok(learn.includes("setName('buyuogren')"));
+  assert.ok(mastery.includes("setName('buyuustaligi')"));
 });
