@@ -30,7 +30,7 @@ test('levelForXp and xpForNextLevel agree at level boundaries', () => {
 });
 
 import { characters, drawCharacter } from '../character-data.js';
-import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, dungeonChoiceOutcome, dungeonEnemyStats, progressionMilestone, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus } from '../rpg-mechanics.js';
+import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, dungeonChoiceOutcome, dungeonEnemyStats, progressionMilestone, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening } from '../rpg-mechanics.js';
 
  test('drawCharacter forced legendary mode guarantees an Efsanevi character', () => {
   for (let i = 0; i < 100; i += 1) {
@@ -333,4 +333,28 @@ test('final dungeon boss has three phases and stronger phase-scaled special atta
   assert.match(source, /bossPhaseSpecialBonus\(enemyPhase\)/);
   assert.match(source, /İblis Lordu ikinci evreye geçti/);
   assert.match(source, /İblis Lordu son evreye geçti/);
+});
+
+
+test('mastery-10 awakening grants the correct capstone to each spell', () => {
+  assert.deepEqual(getSpellMasteryAwakening('zoltraak', 9), { damage: 0, freezeChance: 0, shieldReduction: 0, healing: 0, wallReduction: 0 });
+  assert.equal(getSpellMasteryAwakening('zoltraak', 10).damage, 8);
+  assert.equal(getSpellMasteryAwakening('alev_kuresi', 10).damage, 10);
+  assert.equal(getSpellMasteryAwakening('buz_mizragi', 10).freezeChance, 0.1);
+  assert.equal(getSpellMasteryAwakening('koruyucu_bariyer', 10).shieldReduction, 0.05);
+  assert.equal(getSpellMasteryAwakening('sifa_isigi', 10).healing, 10);
+  assert.equal(getSpellMasteryAwakening('yildirim_zinciri', 10).damage, 12);
+  assert.equal(getSpellMasteryAwakening('tas_duvar', 10).wallReduction, 0.05);
+  assert.equal(getSpellMasteryAwakening('mana_patlamasi', 10).damage, 15);
+});
+
+test('solo boss combat applies spell awakening perks and the mastery guide explains them', async () => {
+  const combat = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const guide = await readFile(new URL('../commands/rpg/buyuustaligi.js', import.meta.url), 'utf8');
+  assert.match(combat, /getSpellMasteryAwakening\('zoltraak'/);
+  assert.match(combat, /getSpellMasteryAwakening\(spellUsed, spellMastery\.get\(spellUsed\)\)\.freezeChance/);
+  assert.match(combat, /getSpellMasteryAwakening\(spellUsed, spellMastery\.get\(spellUsed\)\)\.shieldReduction/);
+  assert.match(combat, /getSpellMasteryAwakening\(spellUsed, spellMastery\.get\(spellUsed\)\)\.healing/);
+  assert.match(guide, /Uyanış açıldı/);
+  assert.match(guide, /Seviye 10’da büyüne özel Uyanış açılır/);
 });
