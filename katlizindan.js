@@ -345,6 +345,7 @@ export default {
 
       const victory = floorsCleared === FLOORS;
       const loot = victory && Math.random() < 0.35 ? LOOT[Math.floor(Math.random() * LOOT.length)] : null;
+      const persistedHpNow = hpNow.map((hp, i) => Math.min(hp, Number(players[i].max_hp)));
       for (let i = 0; i < players.length; i++) {
         const p = players[i];
         const newXp = p.xp + totalXp;
@@ -354,7 +355,7 @@ export default {
              stat_points=stat_points+$7, dungeon_wins=dungeon_wins+$8,
              dungeon_runs=dungeon_runs+1, last_dungeon_at=NOW(), mana=$9
            WHERE guild_id=$1 AND user_id=$2`,
-          [interaction.guildId, p.user_id, hpNow[i], newXp, newLevel, totalCoins,
+          [interaction.guildId, p.user_id, persistedHpNow[i], newXp, newLevel, totalCoins,
             Math.max(0, newLevel - oldLevels[i]), victory ? 1 : 0, p.mana]
         );
         for (const itemKey of [...chestRewards, ...(loot ? [loot] : [])]) await db.query(
@@ -375,7 +376,7 @@ export default {
         .setTitle(victory ? '🏆 Beş Kat Tamamlandı!' : `🛡️ ${floorsCleared}/${FLOORS} Kat Geçildi`)
         .setDescription(
           `**Takım:** ${team.map(u => `<@${u.id}>`).join(', ')}\n**İlerleme:** ${floorsCleared}/${FLOORS} kat · **Toplam tur:** ${turns}\n\n` +
-          players.map((p, i) => `**<@${p.user_id}>** — ${p.roleLabel} · Seviye ${p.level}${levelForXp(p.xp + totalXp) > p.level ? ` → ${levelForXp(p.xp + totalXp)} ✨` : ''}\n❤️ HP: ${p.hp} → ${hpNow[i]} · ✨ Mana: ${p.mana}/${p.maxMana} · ⚔️ ${p.attack} · 🛡️ ${p.defense}`).join('\n\n') +
+          players.map((p, i) => `**<@${p.user_id}>** — ${p.roleLabel} · Seviye ${p.level}${levelForXp(p.xp + totalXp) > p.level ? ` → ${levelForXp(p.xp + totalXp)} ✨` : ''}\n❤️ HP: ${p.hp} → ${persistedHpNow[i]} · ✨ Mana: ${p.mana}/${p.maxMana} · ⚔️ ${p.attack} · 🛡️ ${p.defense}`).join('\n\n') +
           '\n\n**Kat günlüğü**\n' + log.slice(-12).join('\n')
         )
         .addFields(
