@@ -1765,7 +1765,13 @@
       "name": "Advance persistent Zoltraak spell mastery from successful cooperative dungeon and boss-raid casts and apply weakness bonuses only when the spell actually succeeds",
       "category": "Magic",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-275",
+      "name": "Apply rarity-based equipment set bonuses to exploration HP, mana and defense calculations",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 293
+  "count": 294
 }
