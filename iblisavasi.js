@@ -100,7 +100,7 @@ export default {
     const classProfile = getCharacterClass(stats.class_name);
     const attack = Math.min(500, Math.round((Number(stats.attack) + gearBonus.attack) * build.attack));
     const defense = Math.min(250, Math.round(applyClassDefense(Number(stats.defense) + gearBonus.defense, stats.class_name) * build.defense));
-    let playerHp = Math.min(playerMaxHp, Number(stats.hp));
+    let playerHp = Math.min(playerMaxHp, Math.round(Number(stats.hp) * build.hp));
     let playerMana = Math.min(playerMaxMana, Number(stats.mana));
     const gearSummary = equippedItems.length
       ? equippedItems.map(item => item.name + ' (' + formatEquipmentBonus(item) + ')').join('\n')
