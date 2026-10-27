@@ -5,7 +5,7 @@ import { equipmentItems, formatEquipmentBonus } from './equipment-data.js';
 const RECIPES = {
   copper_ring: { craftLevel: 1, materials: [{ item: 'Orman Kristali', quantity: 1 }, { item: 'Eski Mahzen Anahtarı', quantity: 1 }] },
   iron_sword: { craftLevel: 1, materials: [{ item: '💎 Mana Kristali', quantity: 1 }, { item: '🥐 Büyülü Poğaça Kutusu', quantity: 1 }] },
-  mage_staff: { craftLevel: 4, materials: [{ item: '💎 Mana Kristali', quantity: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }, { item: 'Auranın Mühürlü Asa Parçası', quantity: 1 }],
+  mage_staff: { craftLevel: 4, materials: [{ item: '💎 Mana Kristali', quantity: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }, { item: 'Auranın Mühürlü Asa Parçası', quantity: 1 }] },
   traveler_cloak: { craftLevel: 1, materials: [{ item: '🥐 Büyülü Poğaça Kutusu', quantity: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }] },
   mana_ring: { craftLevel: 2, materials: [{ item: '💎 Mana Kristali', quantity: 3 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }] },
   fern_robe: { craftLevel: 3, materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 1 }, { item: '📖 Yasak Büyü Kitabı', quantity: 2 }] },
