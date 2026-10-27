@@ -531,3 +531,14 @@ test('crafting catalog lists all available recipes and material requirements wit
   assert.match(command, /hero_ring/);
   assert.match(command, /rune_ring/);
 });
+
+test('crafting profession progress persists XP, level and successful craft totals', async () => {
+  const schema = await read('database/db.js');
+  const command = await read('zanaat.js');
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS user_crafting_progress/);
+  assert.match(command, /const craftXp = amount \*/);
+  assert.match(command, /user_crafting_progress\.xp\+EXCLUDED\.xp/);
+  assert.match(command, /successful_crafts=user_crafting_progress\.successful_crafts\+EXCLUDED\.successful_crafts/);
+  assert.match(command, /craftProgress\.level/);
+  assert.match(command, /craftProgress\.xp/);
+});
