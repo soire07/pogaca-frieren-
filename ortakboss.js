@@ -75,7 +75,7 @@ export default {
     const rolesReady = await new Promise(resolve => {
       const collector = roleMessage.createMessageComponentCollector({
         time: 60_000,
-        filter: c => team.some(u => u.id === c.user.id) && c.customId.startsWith(`raid:role:${interaction.id}`)
+        filter: c => team.some(u => u.id === c.user.id) && c.customId.startsWith('raid:role:') && c.customId.endsWith(interaction.id)
       });
       collector.on('collect', async c => {
         const role = c.customId.split(':')[2];
