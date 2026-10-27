@@ -87,10 +87,10 @@ export default {
         rareOutcomes.length
       );
       const undiscoveredRare = rareOutcomes.filter(entry => !discoveredRare.has(entry.discovery));
-      const outcome = chosenRoute
-        ? outcomes.find(entry => entry.discovery === chosenRoute)
-        : pityReady && undiscoveredRare.length
-          ? undiscoveredRare[0]
+      const outcome = pityReady && undiscoveredRare.length
+        ? undiscoveredRare[0]
+        : chosenRoute
+          ? outcomes.find(entry => entry.discovery === chosenRoute)
           : Math.random() < 0.05
             ? (undiscoveredRare.length ? undiscoveredRare[Math.floor(Math.random() * undiscoveredRare.length)] : rareOutcomes[Math.floor(Math.random() * rareOutcomes.length)])
             : outcomes[Math.floor(Math.random() * outcomes.length)];
