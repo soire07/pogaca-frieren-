@@ -1339,7 +1339,31 @@
       "name": "Award significantly higher gold and XP for rare treasure chest drops",
       "category": "Economy",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-204",
+      "name": "Persist each adventure encounter with route, outcome and discovery status",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-205",
+      "name": "Persist the exact gold, XP and item rewards earned from each adventure",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-206",
+      "name": "Show the five most recent adventure outcomes in the player's adventure history",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-207",
+      "name": "Display relative encounter times and highlight first-time discoveries in history",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 222
+  "count": 226
 }
