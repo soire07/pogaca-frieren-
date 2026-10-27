@@ -4,6 +4,9 @@ import { CHARACTER_CLASSES, CHARACTER_BUILDS, getCharacterBuild } from './rpg-me
 import { xpForNextLevel } from './utils.js';
 import characterDraw from './karaktercek.js';
 import characterUpgrade from './karaktergelistir.js';
+import characterProfile from './profil.js';
+import characterCollection from './koleksiyon.js';
+import characterArchive from './karakterarsivi.js';
 
 const classChoices = [
   { name: '✨ Büyücü', value: 'buyucu' },
@@ -52,6 +55,29 @@ export default {
     .addSubcommand(s => s.setName('gelistir').setDescription('Koleksiyonundaki anime karakterini güçlendir.')
       .addStringOption(o => o.setName('karakter').setDescription('Geliştirmek istediğin karakter').setRequired(true).setAutocomplete(true))
       .addBooleanOption(o => o.setName('yukselt').setDescription('Evet seçersen altın harcayıp yükseltir.').setRequired(false))),
+    .addSubcommand(s => s.setName('profil').setDescription('Maceracı profilini veya başka bir oyuncunun profilini göster.')
+      .addUserOption(o => o.setName('kullanici').setDescription('Profilini görmek istediğin kullanıcı').setRequired(false)))
+    .addSubcommand(s => s.setName('koleksiyon').setDescription('Topladığın anime karakterlerini ve koleksiyon ilerlemeni göster.')
+      .addUserOption(o => o.setName('kullanici').setDescription('Koleksiyonunu görmek istediğin kullanıcı').setRequired(false))
+      .addStringOption(o => o.setName('nadirlik').setDescription('Karakterleri nadirliğe göre filtrele.')
+        .addChoices(
+          { name: 'Hepsi', value: 'Hepsi' },
+          { name: 'Gizemli', value: 'Gizemli' },
+          { name: 'Efsanevi', value: 'Efsanevi' },
+          { name: 'Destansı', value: 'Destansı' },
+          { name: 'Nadir', value: 'Nadir' },
+          { name: 'Yaygın', value: 'Yaygın' }
+        )))
+    .addSubcommand(s => s.setName('arsiv').setDescription('Frieren evreninin hikâye karakterlerini incele.')
+      .addStringOption(o => o.setName('isim').setDescription('Bilgi almak istediğin karakter').setRequired(true)
+        .addChoices(
+          { name: 'Frieren', value: 'frieren' },
+          { name: 'Fern', value: 'fern' },
+          { name: 'Stark', value: 'stark' },
+          { name: 'Himmel', value: 'himmel' },
+          { name: 'Heiter', value: 'heiter' },
+          { name: 'Eisen', value: 'eisen' }
+        ))),
 
   async autocomplete(interaction) {
     if (interaction.options.getSubcommand() === 'gelistir') return characterUpgrade.autocomplete(interaction);
@@ -63,6 +89,9 @@ export default {
     const sub = interaction.options.getSubcommand();
     if (sub === 'cek') return characterDraw.execute(interaction);
     if (sub === 'gelistir') return characterUpgrade.execute(interaction);
+    if (sub === 'profil') return characterProfile.execute(interaction);
+    if (sub === 'koleksiyon') return characterCollection.execute(interaction);
+    if (sub === 'arsiv') return characterArchive.execute(interaction);
     await ensureUser(interaction.guildId, interaction.user.id);
 
     if (sub === 'olustur') {
