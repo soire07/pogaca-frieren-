@@ -1777,7 +1777,13 @@
       "name": "Apply persistent HP, mana and defense talent ranks to exploration effective stats alongside equipment sets, class passives and combat builds",
       "category": "Progression",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-277",
+      "name": "Show profile HP, mana, attack and defense using persistent talent ranks and rarity-based equipment set bonuses",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 295
+  "count": 296
 }
