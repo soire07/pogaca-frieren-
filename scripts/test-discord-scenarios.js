@@ -204,3 +204,18 @@ test('spell practice is registered in the RPG command directory', async () => {
   assert.match(source, /from '\.\.\/\.\.\/database\/db\.js'/);
   assert.match(source, /FOR UPDATE/);
 });
+
+
+test('character classes provide bounded passive bonuses and class selection is discoverable', async () => {
+  const mechanics = await read('rpg-mechanics.js');
+  const command = await read('commands/rpg/sinifsec.js');
+  const combat = await read('iblisavasi.js');
+  assert.match(command, /setName\('sinifsec'\)/);
+  assert.match(command, /FOR UPDATE/);
+  assert.match(combat, /applyClassDamage\(/);
+  assert.match(combat, /applyClassDefense\(/);
+  assert.match(combat, /applyClassHealing\(/);
+  assert.match(mechanics, /attackMultiplier: 1\.08/);
+  assert.match(mechanics, /defenseMultiplier: 1\.12/);
+  assert.match(mechanics, /healingMultiplier: 1\.2/);
+});
