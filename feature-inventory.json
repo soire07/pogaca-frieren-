@@ -1537,7 +1537,25 @@
       "name": "Claim a one-time achievement reward after crafting fifty equipment items",
       "category": "Progression",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-237",
+      "name": "Display crafting profession level inside the player's combined adventure history",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-238",
+      "name": "Display total crafting XP inside the player's combined adventure history",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-239",
+      "name": "Display the total number of crafted equipment items in the combined player profile",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 255
+  "count": 258
 }
