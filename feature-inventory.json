@@ -1915,7 +1915,19 @@
       "name": "Persistent per-region exploration mastery with every-third-visit bonus rewards",
       "category": "Exploration",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-319",
+      "name": "Region-specific exploration crafting material drops used by equipment recipes",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-320",
+      "name": "Daily quest chain stage rewards provide usable equipment crafting materials",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 318
+  "count": 320
 }
