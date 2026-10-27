@@ -7,7 +7,7 @@ const BUTTON_TIMEOUT = 10 * 60 * 1000;
 
 function makeSummaryEmbed(target, rows, totalCharacters, page, pageCount, rarityFilter) {
   const uniqueCount = rows.length;
-  const percent = Math.min(100, Math.round((uniqueCount / totalCharacters) * 100));
+  const percent = totalCharacters > 0 ? Math.min(100, Math.round((uniqueCount / totalCharacters) * 100)) : 0;
   const totalCopies = rows.reduce((sum, row) => sum + Number(row.quantity), 0);
   const rarityCounts = {
     Gizemli: rows.filter(row => row.rarity === 'Gizemli').length,
@@ -69,7 +69,7 @@ function makePage(target, rows, page, rarityFilter) {
   const pageRows = rows.slice(start, start + PAGE_SIZE);
   const embeds = [makeSummaryEmbed(target, rows, matchingCatalogCount, page, pageCount, rarityFilter)];
   if (pageRows.length) embeds.push(...pageRows.map(makeCharacterEmbed));
-  else embeds[0].setDescription('Henüz karakter keşfetmemişsin. **/kimimben** komutunu kullanarak ilk karakterini bul!');
+  else embeds[0].setDescription(rarityFilter === 'Hepsi'\n    ? 'Henüz karakter keşfetmemişsin. **/kimimben** komutunu kullanarak ilk karakterini bul!'\n    : `Koleksiyonunda henüz **${rarityFilter}** nadirliğinde karakter yok. Başka bir nadirlik seçebilir veya **/kimimben** ile yeni karakter keşfedebilirsin.`);
   return { embeds, components: pageCount > 1 ? [makeButtons(page, pageCount)] : [] };
 }
 
