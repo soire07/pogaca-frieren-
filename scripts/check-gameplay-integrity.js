@@ -565,3 +565,17 @@ test('market consumable names stay compatible with item-use inventory keys', asy
     assert.equal(name[1], usable.get(id[1]).key, 'market purchase must create the inventory key expected by item-use: ' + id[1]);
   }
 });
+
+
+test('market catalog stays within the Frieren and Poagaca fantasy theme', async () => {
+  const market = await read('market.js');
+  for (const crossoverId of ['goku_orb', 'ninja_scroll', 'cursed_charm', 'breathing_mask', 'survey_badge']) {
+    assert.doesNotMatch(market.match(/export const marketItems = \[([\s\S]*?)\n\];/)?.[1] || '', new RegExp("id:'" + crossoverId + "'"),
+      'off-theme crossover item must not be purchasable in the market: ' + crossoverId);
+  }
+  const usable = await read('esyakullan.js');
+  for (const legacyId of ['goku_orb', 'ninja_scroll', 'cursed_charm', 'breathing_mask', 'survey_badge']) {
+    assert.match(usable, new RegExp('^  ' + legacyId + ':', 'm'),
+      'legacy inventory items must remain usable after market cleanup: ' + legacyId);
+  }
+});
