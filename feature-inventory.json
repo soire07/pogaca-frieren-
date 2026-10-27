@@ -1471,7 +1471,25 @@
       "name": "Show crafting profession level, XP and successful production count after crafting",
       "category": "Crafting",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-226",
+      "name": "Unlock a ten-percent chance to recover a crafting material at crafting level five",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-227",
+      "name": "Increase the crafting material recovery chance to twenty percent at level ten",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-228",
+      "name": "Randomly return one recipe ingredient without duplicating crafted equipment rewards",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 244
+  "count": 247
 }
