@@ -30,8 +30,8 @@ const sections = [
     value: '**/animequiz** — Anime bilgi yarışması · **/pogaca** — Poğaça molası · **/sans** — Şansını dene\n**/saril** — Bir oyuncuya sarıl · **/mimic** — Mimic şakası · **/istatistik** — Bot istatistikleri'
   },
   {
-    name: '🛡️ Sunucu yönetimi',
-    value: '**/kurulum** — Sunucu karşılama ve log ayarları · **/uyar** — Uyarı ver\n**/timeout** — Geçici iletişim kısıtlaması · **/ban** — Sunucudan uzaklaştır · **/temizle** — Mesajları temizle\nBu komutlar için uygun sunucu izinleri gerekebilir.'
+    name: '🎉 Eğlence ve bot bilgileri',
+    value: '**/istatistik** — Botun genel istatistiklerini görüntüle · **/animequiz** — Anime bilgi yarışması\n**/pogaca** — Poğaça molası · **/sans** — Şansını dene · **/saril** — Bir oyuncuya sarıl · **/mimic** — Mimic şakası'
   }
 ];
 
