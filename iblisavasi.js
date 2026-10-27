@@ -77,7 +77,6 @@ export default {
       [interaction.guildId, interaction.user.id]
     );
     const spellMastery = new Map(masteryResult.rows.map(row => [row.spell_key, Number(row.mastery_level)]));
-    const spellMasteryCasts = new Map(masteryResult.rows.map(row => [row.spell_key, Number(row.casts)]));
 
     const statsResult = await pool.query(
       `SELECT hp, max_hp, mana, max_mana, attack, defense, level, class_name, active_build,
@@ -402,7 +401,6 @@ export default {
                RETURNING casts,mastery_level`,
               [interaction.guildId, interaction.user.id, spellUsed]
             );
-            spellMasteryCasts.set(spellUsed, Number(masteryUpdate.rows[0].casts));
             spellMastery.set(spellUsed, Number(masteryUpdate.rows[0].mastery_level));
             actionText += `\n📈 **${spellUsed.replaceAll('_', ' ')} ustalığı:** ${masteryUpdate.rows[0].casts} kullanım · Seviye ${masteryUpdate.rows[0].mastery_level}/10`;
           }
