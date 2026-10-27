@@ -1135,7 +1135,31 @@
       "name": "Switch between exploration leaderboard categories through a slash-command option",
       "category": "Social",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-170",
+      "name": "Trigger a low-probability rare discovery encounter during random adventures",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-171",
+      "name": "Discover a hidden ancient elf sanctuary with exclusive loot and bonus rewards",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-172",
+      "name": "Discover Frieren's forgotten spell archive with exclusive loot and bonus rewards",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-173",
+      "name": "Discover a deserted dragon nest with exclusive loot and bonus rewards",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 188
+  "count": 192
 }
