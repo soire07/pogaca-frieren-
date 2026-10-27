@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, Embe
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus } from './rpg-mechanics.js';
+import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
 const ROLES = {
@@ -270,6 +270,11 @@ export default {
         );
       }
       await db.query('COMMIT');
+      const milestoneRows = await db.query('SELECT user_id,level,boss_defeats,dungeon_wins FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[interaction.guildId,ids]);
+      const milestoneText = milestoneRows.rows.map(row => {
+        const titles = progressionMilestone(Number(row.level), Number(row.boss_defeats), Number(row.dungeon_wins));
+        return `<@${row.user_id}>: ${titles.length ? titles.join(', ') : 'Henüz unvan açılmadı'}`;
+      }).join('\n');
       const embed=new EmbedBuilder().setColor(win?0x5bc98a:0x9b8cff)
         .setTitle(win?`🏆 ${BOSS.name} yenildi!`:'🌌 Baskın sona erdi')
         .setDescription(`**Boss HP:** ${Math.max(0,bossHp)}/${maxBossHp}\n**Tur:** ${rounds}/12\n\n`+
@@ -277,6 +282,7 @@ export default {
           '\n\n**Savaş günlüğü**\n'+log.slice(-15).join('\n'))
         .addFields(
           {name:'🎁 Kişi başı ödül',value:`✨ ${xpReward} XP\n🥐 ${coinReward} altın`,inline:true},
+          {name:'🏅 Kalıcı unvanlar',value:milestoneText.slice(0,1024),inline:false},
           {name:'🧭 Boss bilgisi',value:`Zayıflık: **${BOSS.weaknessLabel}**\nÖzel hareket: **${BOSS.special === 'shard-rain' ? 'Kristal Yağmuru' : BOSS.special === 'mana-curse' ? 'Mana Laneti' : 'Mana Yıldız Patlaması'}**`,inline:true},
           {name:'💎 Ortak ganimet',value:loot?`Herkes **${loot}** kazandı!`:win?'Bu kez nadir ganimet çıkmadı.':'Boss yenilemediği için nadir ganimet yok.',inline:true},
           {name:'⏳ Bekleme süresi',value:'45 dakika',inline:true}
