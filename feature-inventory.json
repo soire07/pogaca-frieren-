@@ -1087,7 +1087,31 @@
       "name": "Keep route mastery progression and rewards transactional with the adventure result",
       "category": "Economy",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-162",
+      "name": "Track consecutive daily adventure streaks persistently per player and server",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-163",
+      "name": "Advance an adventure streak only once per calendar day and reset it after a missed day",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-164",
+      "name": "Grant gold and XP bonuses every third consecutive adventure day",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-165",
+      "name": "Display the current daily adventure streak in the adventure result and journal",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 180
+  "count": 184
 }
