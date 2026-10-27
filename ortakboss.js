@@ -106,8 +106,8 @@ export default {
         return {
           userId:x.user.id, username:x.user.username, role:x.role, roleData:role,
           level:Number(p.level), xp:Number(p.xp), coins:Number(p.coins),
-          hp:Math.max(0,Math.min(Number(p.hp),Math.min(2000,Number(p.max_hp)+gear.hp))*role.hp),
-          maxHp:Math.min(2000,Number(p.max_hp)+gear.hp)*role.hp,
+          hp:Math.round(Math.max(0,Math.min(Number(p.hp),Math.min(2000,Number(p.max_hp)+gear.hp))*role.hp)),
+          maxHp:Math.round(Math.min(2000,Number(p.max_hp)+gear.hp)*role.hp),
           attack:(Number(p.attack)+gear.attack)*role.attack,
           defense:(Number(p.defense)+gear.defense)*role.defense
         };
