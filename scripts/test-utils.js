@@ -69,4 +69,7 @@ test('multi-floor dungeon includes traps, chests and persistent player rewards',
   assert.match(source, /tuzak/);
   assert.match(source, /dungeon_runs=dungeon_runs\+1/);
   assert.match(source, /chestRewards/);
+  assert.match(source, /PARTY_ROLES/);
+  assert.match(source, /healerIndex/);
+  assert.match(source, /tankIndex/);
 });
