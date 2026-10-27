@@ -1555,7 +1555,31 @@
       "name": "Display the total number of crafted equipment items in the combined player profile",
       "category": "RPG",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-240",
+      "name": "Dismantle owned equipment into partial crafting-material refunds",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-241",
+      "name": "Protect all equipped copies of an item from equipment dismantling",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-242",
+      "name": "Dismantle multiple equipment copies with proportional material returns",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-243",
+      "name": "Keep equipment dismantling and material refunds inside one transaction",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 258
+  "count": 262
 }
