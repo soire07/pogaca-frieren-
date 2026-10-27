@@ -1711,7 +1711,25 @@
       "name": "Grant a thirty-day adventure streak milestone reward of gold and XP",
       "category": "Progression",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-266",
+      "name": "Filter recent adventure history to rare-location discoveries",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-267",
+      "name": "Filter recent adventure history to encounters that found an item",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-268",
+      "name": "Combine adventure-history filters with viewing another player's public profile",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 284
+  "count": 287
 }
