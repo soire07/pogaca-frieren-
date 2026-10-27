@@ -8,7 +8,13 @@ export default {
     .addUserOption(option => option
       .setName('kullanici')
       .setDescription('İstatistiklerini görmek istediğin oyuncu')
-      .setRequired(false)),
+      .setRequired(false))
+    .addStringOption(option => option.setName('filtre').setDescription('Son macera kayıtlarında gösterilecek tür.')
+      .setRequired(false).addChoices(
+        { name: 'Tüm maceralar', value: 'tum' },
+        { name: 'Nadir keşifler', value: 'nadir' },
+        { name: 'Eşya bulunan maceralar', value: 'esya' }
+      )),
 
   async execute(interaction) {
     if (!interaction.guildId) {
@@ -17,6 +23,10 @@ export default {
 
     await interaction.deferReply();
     const target = interaction.options.getUser('kullanici') ?? interaction.user;
+    const filter = interaction.options.getString('filtre') || 'tum';
+    const historyFilter = filter === 'nadir'
+      ? "AND discovery_key IN ('ancient-elf-sanctuary','forgotten-grimoire','dragon-nest')"
+      : filter === 'esya' ? 'AND item_found IS NOT NULL' : '';
 
     try {
       await ensureUser(interaction.guildId, target.id);
@@ -43,7 +53,7 @@ export default {
           [interaction.guildId, target.id]
         ),
         pool.query(
-          'SELECT outcome_text, coins_awarded, xp_awarded, item_found, first_discovery, occurred_at FROM adventure_history WHERE guild_id=$1 AND user_id=$2 ORDER BY occurred_at DESC, id DESC LIMIT 5',
+          `SELECT outcome_text, coins_awarded, xp_awarded, item_found, first_discovery, occurred_at FROM adventure_history WHERE guild_id=$1 AND user_id=$2 ${historyFilter} ORDER BY occurred_at DESC, id DESC LIMIT 5`,
           [interaction.guildId, target.id]
         ),
         pool.query(
