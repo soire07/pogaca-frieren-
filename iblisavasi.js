@@ -14,11 +14,11 @@ const PLAYER_MAX_HP = 100;
 const COOLDOWN_MS = 30 * 60 * 1000;
 
 const bossTiers = [
-  { minLevel: 1, name: '🐺 Schattenwolf', region: 'Merkez Topraklar', maxHp: 120, minDamage: 7, maxDamage: 12, coinMin: 90, coinMax: 130, xpMin: 55, xpMax: 85, lootChance: 0.2, loot: ['🐺 Schattenwolfzahn'], special: 'Rudelstoß', specialType: 'heavy' },
-  { minLevel: 10, name: '🗿 Kadim Harabe Muhafızı', region: 'Kadim Harabeler', maxHp: 210, minDamage: 10, maxDamage: 16, coinMin: 150, coinMax: 210, xpMin: 95, xpMax: 140, lootChance: 0.3, loot: ['🗿 Muhafız Rünü'], special: 'Kadim Sarsıntı', specialType: 'heavy' },
-  { minLevel: 20, name: '👹 Kuzey İblisi', region: 'Kuzey Toprakları', maxHp: 330, minDamage: 13, maxDamage: 20, coinMin: 230, coinMax: 320, xpMin: 150, xpMax: 210, lootChance: 0.35, loot: ['🩸 Kuzey İblisinin Kalbi'], special: 'Mana Kemiren Lanet', specialType: 'drain' },
-  { minLevel: 35, name: '🩸 Büyük İblis Komutanı', region: 'Kuzey Yaylaları', maxHp: 470, minDamage: 16, maxDamage: 24, coinMin: 340, coinMax: 470, xpMin: 220, xpMax: 310, lootChance: 0.45, loot: ['🩸 İblis Komutanının Kanı'], special: 'Komutanın Hiddeti', specialType: 'heavy' },
-  { minLevel: 50, name: '👑 Äußerst Sınavının İblis Efendisi', region: 'Äußerst Sınav Rotası', maxHp: 650, minDamage: 20, maxDamage: 29, coinMin: 500, coinMax: 700, xpMin: 330, xpMax: 460, lootChance: 0.55, loot: ['🩸 İblis Komutanının Kanı', '🗿 Muhafız Rünü', '🩸 Kuzey İblisinin Kalbi'], special: 'Äußerst Büyü Patlaması', specialType: 'arcane' }
+  { minLevel: 1, name: '🐺 Schattenwolf', region: 'Merkez Topraklar', maxHp: 120, minDamage: 7, maxDamage: 12, coinMin: 90, coinMax: 130, xpMin: 55, xpMax: 85, lootChance: 0.2, loot: ['🐺 Schattenwolfzahn'], craftingMaterial: '🥐 Büyülü Poğaça Kutusu', special: 'Rudelstoß', specialType: 'heavy' },
+  { minLevel: 10, name: '🗿 Kadim Harabe Muhafızı', region: 'Kadim Harabeler', maxHp: 210, minDamage: 10, maxDamage: 16, coinMin: 150, coinMax: 210, xpMin: 95, xpMax: 140, lootChance: 0.3, loot: ['🗿 Muhafız Rünü'], craftingMaterial: '📖 Yasak Büyü Kitabı', special: 'Kadim Sarsıntı', specialType: 'heavy' },
+  { minLevel: 20, name: '👹 Kuzey İblisi', region: 'Kuzey Toprakları', maxHp: 330, minDamage: 13, maxDamage: 20, coinMin: 230, coinMax: 320, xpMin: 150, xpMax: 210, lootChance: 0.35, loot: ['🩸 Kuzey İblisinin Kalbi'], craftingMaterial: '🐉 Ejderha Pulu', special: 'Mana Kemiren Lanet', specialType: 'drain' },
+  { minLevel: 35, name: '🩸 Büyük İblis Komutanı', region: 'Kuzey Yaylaları', maxHp: 470, minDamage: 16, maxDamage: 24, coinMin: 340, coinMax: 470, xpMin: 220, xpMax: 310, lootChance: 0.45, loot: ['🩸 İblis Komutanının Kanı'], craftingMaterial: '🌙 Efsunlu Elf Yadigârı', special: 'Komutanın Hiddeti', specialType: 'heavy' },
+  { minLevel: 50, name: '👑 Äußerst Sınavının İblis Efendisi', region: 'Äußerst Sınav Rotası', maxHp: 650, minDamage: 20, maxDamage: 29, coinMin: 500, coinMax: 700, xpMin: 330, xpMax: 460, lootChance: 0.55, loot: ['🩸 İblis Komutanının Kanı', '🗿 Muhafız Rünü', '🩸 Kuzey İblisinin Kalbi'], craftingMaterial: '👑 Himmel’in Efsanevi Yadigârı', special: 'Äußerst Büyü Patlaması', specialType: 'arcane' }
 ];
 
 function battleEmbed({ player, bossHp, bossMaxHp = 160, bossName = 'İblis', bossRegion = 'Kuzey Sınırı', playerHp, playerMaxHp = PLAYER_MAX_HP, playerMana = 100, playerMaxMana = 100, attack = 10, defense = 5, bonus, description, won = false, lost = false }) {
@@ -338,6 +338,11 @@ export default {
                 [interaction.guildId, interaction.user.id, bonusLoot]
               );
             }
+            await db.query(
+              `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
+               ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
+              [interaction.guildId, interaction.user.id, boss.craftingMaterial]
+            );
             await db.query('COMMIT');
           } catch (error) {
             await db.query('ROLLBACK').catch(() => {});
@@ -351,7 +356,7 @@ export default {
           return button.update({
             embeds: [renderBattleEmbed({
               player: interaction.user, bossHp: 0, playerHp, bonus: upgradeBonus, won: true,
-              description: `${actionText}\n\n🌟 **Zafer!** **${boss.name}** yenildi.\nÖdülün: **${rewardCoins} altın**, **${rewardXp} XP** ve **💎 Mana Kristali ×1**.${bonusLoot ? `\n🎁 Ek ganimet: **${bonusLoot} ×1** (%${Math.round(boss.lootChance * 100)} ihtimal).` : ''}`
+              description: `${actionText}\n\n🌟 **Zafer!** **${boss.name}** yenildi.\nÖdülün: **${rewardCoins} altın**, **${rewardXp} XP** ve **💎 Mana Kristali ×1** ve ⚒️ **${boss.craftingMaterial} ×1**.${bonusLoot ? `\n🎁 Ek ganimet: **${bonusLoot} ×1** (%${Math.round(boss.lootChance * 100)} ihtimal).` : ''}`
             })],
             components: []
           });
