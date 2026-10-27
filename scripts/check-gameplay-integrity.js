@@ -80,3 +80,15 @@ test('PvP duels apply persistent class passives and selected combat builds', asy
   assert.match(source, /\* build1\.hp/);
   assert.match(source, /\* build2\.hp/);
 });
+
+
+test('player profile displays selected combat build and build-adjusted stats', async () => {
+  const source = await read('profil.js');
+  assert.match(source, /active_build/);
+  assert.match(source, /getCharacterBuild\(u\.active_build\)/);
+  assert.match(source, /\(Number\(u\.max_hp\) \+ gear\.hp\) \* build\.hp/);
+  assert.match(source, /\(Number\(u\.max_mana\) \+ gear\.mana\) \* build\.mana/);
+  assert.match(source, /\(Number\(u\.attack\) \+ gear\.attack\) \* build\.attack/);
+  assert.match(source, /applyClassDefense\(Number\(u\.defense\) \+ gear\.defense, u\.class_name\) \* build\.defense/);
+  assert.match(source, /Savaş yapısı/);
+});
