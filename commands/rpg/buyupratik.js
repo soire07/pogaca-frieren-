@@ -23,7 +23,7 @@ export function practiceCost(currentMastery) {
 export default {
   data: new SlashCommandBuilder()
     .setName('buyupratik')
-    .setDescription('Öğrendiğin bir savaş büyüsünde ustalık kazan.')
+    .setDescription('Başlangıç büyün veya öğrendiğin bir büyü için ücretli ustalık pratiği yap.')
     .addStringOption(option => option.setName('buyu').setDescription('Pratik yapacağın büyü').setRequired(true).addChoices(...spellChoices)),
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({ content: 'Büyü pratiği yalnızca sunucularda kullanılabilir.', ephemeral: true });
@@ -44,7 +44,7 @@ export default {
         'SELECT 1 FROM learned_spells WHERE guild_id=$1 AND user_id=$2 AND spell_key=$3',
         [interaction.guildId, interaction.user.id, spellKey]
       );
-      if (!learned.rowCount) {
+      // Zoltraak is granted at the start, even when it has no learned_spells row.\n      if (!learned.rowCount && spellKey !== 'zoltraak') {
         await db.query('ROLLBACK');
         return interaction.editReply(`🔒 **${spellName}** henüz öğrenilmedi. Önce /buyuogren kullan.`);
       }
