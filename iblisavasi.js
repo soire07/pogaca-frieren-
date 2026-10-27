@@ -364,7 +364,7 @@ export default {
         turnCount += 1;
         const rawBossDamage = Math.floor(Math.random() * (boss.maxDamage - boss.minDamage + 1)) + boss.minDamage;
         let bossDamage = calculateBossIncomingDamage(rawBossDamage, defense, bossPhase);
-        if (turnCount % 3 === 0) {
+        if (turnCount % 3 === 0 && !frozenBoss) {
           const specialDamage = (boss.specialType === 'arcane' ? 12 : boss.specialType === 'heavy' ? 8 : 5) + bossPhaseSpecialBonus(bossPhase);
           bossDamage += specialDamage;
           actionText += `\n💥 **${boss.special}**! Boss özel saldırı yaptı ve hasarını **+${specialDamage}** artırdı.`;
@@ -373,6 +373,8 @@ export default {
             playerMana -= drainedMana;
             actionText += `\n🔮 Lanet **${drainedMana} Mana** emdi!`;
           }
+        } else if (turnCount % 3 === 0 && frozenBoss) {
+          actionText += '\n❄️ Donma etkisi bossun özel saldırısını da durdurdu!';
         }
         if (frozenBoss) bossDamage = 0;
         if (fortified && bossDamage > 0) {
