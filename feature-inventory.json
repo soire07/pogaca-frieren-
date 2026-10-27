@@ -931,7 +931,37 @@
       "name": "View the selected class and its passive effect in the class-selection response",
       "category": "Progression",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-136",
+      "name": "Apply Mage spell-damage passive in co-op dungeon combat",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-137",
+      "name": "Apply Guardian defense passive in co-op dungeon combat",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-138",
+      "name": "Scale dungeon team healing using the healer character class",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-139",
+      "name": "Apply class passives in co-op raid combat",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-140",
+      "name": "Compare class descriptions and passives with /sinifrehberi",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 154
+  "count": 159
 }
