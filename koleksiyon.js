@@ -69,7 +69,7 @@ function makePage(target, rows, page, rarityFilter) {
   const pageRows = rows.slice(start, start + PAGE_SIZE);
   const embeds = [makeSummaryEmbed(target, rows, matchingCatalogCount, page, pageCount, rarityFilter)];
   if (pageRows.length) embeds.push(...pageRows.map(makeCharacterEmbed));
-  else embeds[0].setDescription(rarityFilter === 'Hepsi'\n    ? 'Henüz karakter keşfetmemişsin. **/kimimben** komutunu kullanarak ilk karakterini bul!'\n    : `Koleksiyonunda henüz **${rarityFilter}** nadirliğinde karakter yok. Başka bir nadirlik seçebilir veya **/kimimben** ile yeni karakter keşfedebilirsin.`);
+  else embeds[0].setDescription(rarityFilter === 'Hepsi' ? 'Henüz karakter keşfetmemişsin. **/kimimben** komutunu kullanarak ilk karakterini bul!' : `Koleksiyonunda henüz **${rarityFilter}** nadirliğinde karakter yok. Başka bir nadirlik seçebilir veya **/kimimben** ile yeni karakter keşfedebilirsin.`);
   return { embeds, components: pageCount > 1 ? [makeButtons(page, pageCount)] : [] };
 }
 
