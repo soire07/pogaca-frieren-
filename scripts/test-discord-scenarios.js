@@ -262,7 +262,8 @@ test('daily quest chain is sequential, persistent, and pays escalating rewards t
   assert.match(command, /setName\('gorevzinciri'\)/);
   assert.match(command, /last_daily_at::date=CURRENT_DATE/);
   assert.match(command, /last_exploration_at::date=CURRENT_DATE/);
-  assert.match(command, /last_boss_at::date=CURRENT_DATE/);
+  assert.match(command, /last_boss_win_at::date=CURRENT_DATE/);
+  assert.match(schema, /ADD COLUMN IF NOT EXISTS last_boss_win_at TIMESTAMPTZ/);
   for (const reward of ['reward: 50', 'reward: 100', 'reward: 200']) assert.ok(command.includes(reward));
   assert.match(command, /current_step/);
   assert.match(command, /FOR UPDATE/);
