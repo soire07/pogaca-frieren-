@@ -518,3 +518,24 @@ test('solo boss victories grant recipe materials matched to boss tier', async ()
   assert.match(combat, /boss\.craftingMaterial/);
   assert.match(combat, /INSERT INTO inventory\(guild_id,user_id,item_key,quantity\) VALUES\(\$1,\$2,\$3,1\)/);
 });
+
+
+test('dungeon depth and final victory award recipe materials to participating players', async () => {
+  const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  const crafting = await readFile(new URL('../zanaat.js', import.meta.url), 'utf8');
+  assert.match(dungeon, /const craftingLoot = floorsCleared >= FLOORS/);
+  assert.match(dungeon, /'👑 Himmel’in Efsanevi Yadigârı'/);
+  assert.match(dungeon, /'🐉 Ejderha Pulu'/);
+  assert.match(dungeon, /'💎 Mana Kristali'/);
+  assert.match(dungeon, /\.\.\.\(craftingLoot \? \[craftingLoot\] : \[\]\)/);
+  for (const material of ['👑 Himmel’in Efsanevi Yadigârı', '🐉 Ejderha Pulu', '💎 Mana Kristali']) {
+    assert.ok(crafting.includes(material), `dungeon material cannot be used in crafting: ${material}`);
+  }
+});
+
+test('quest chain UI previews level-scaled rewards and the material reward for each stage', async () => {
+  const quest = await readFile(new URL('../gorevzinciri.js', import.meta.url), 'utf8');
+  assert.match(quest, /getLevelScaledQuestReward\(s\.reward, s\.xpReward, p\.level, s\.step === 3\)/);
+  assert.match(quest, /reward\.coins.*reward\.xp.*s\.material/);
+  assert.match(quest, /Sıradaki aşama açıldı/);
+});
