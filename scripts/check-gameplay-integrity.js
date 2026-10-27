@@ -189,6 +189,7 @@ test('exploration applies persistent HP, mana and defense talent ranks to effect
 test('player profile includes persistent talent ranks and equipment rarity set bonuses in effective stats', async () => {
   const source = await read('profil.js');
   assert.match(source, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+  assert.match(source, /Ekipman set bonusu/);
   for (const field of ['talent_attack', 'talent_defense', 'talent_hp', 'talent_mana']) {
     assert.ok(source.includes(`AS ${field}`), 'missing profile talent field: ' + field);
   }
