@@ -67,7 +67,7 @@ export default {
       new ButtonBuilder().setCustomId(`raid:role:damage:${interaction.id}`).setLabel('⚔️ Hasar Ustası').setStyle(ButtonStyle.Primary)
     );
     const roleMessage = await interaction.editReply({
-      content: `🎭 **Herkes baskın rolünü kendisi seçsin!** ${team.map(u => `<@${u.id}>`).join(' ')}\\nEn fazla bir Muhafız ve bir Şifacı olabilir.`,
+      content: `🎭 **Herkes baskın rolünü kendisi seçsin!** ${team.map(u => `<@${u.id}>`).join(' ')}\nEn fazla bir Muhafız ve bir Şifacı olabilir.`,
       components: [roleRow],
       allowedMentions: { users: team.map(u => u.id) }
     });
