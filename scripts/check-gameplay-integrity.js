@@ -173,3 +173,14 @@ test('exploration activates the same rarity-based equipment set bonuses as comba
   assert.match(source, /const effectiveMaxHp = Math\.min\(2000, Math\.round\(\(baseMaxHp \+ gear\.hp\) \* build\.hp\)\)/);
   assert.match(source, /const effectiveMaxMana = Math\.min\(2000, Math\.round\(\(baseMaxMana \+ gear\.mana\) \* build\.mana\)\)/);
 });
+
+
+test('exploration applies persistent HP, mana and defense talent ranks to effective stats', async () => {
+  const source = await read('commands/rpg/kesif.js');
+  for (const talent of ['hp_rank', 'mana_rank', 'defense_rank']) {
+    assert.ok(source.includes(`AS talent_${talent.replace('_rank', '')}`) || source.includes(`AS talent_${talent}`), 'missing talent stat: ' + talent);
+  }
+  assert.match(source, /Number\(player\.talent_hp\) \* 0\.05/);
+  assert.match(source, /Number\(player\.talent_mana\) \* 0\.05/);
+  assert.match(source, /Number\(player\.talent_defense\) \* 0\.04/);
+});
