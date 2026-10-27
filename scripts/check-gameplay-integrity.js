@@ -416,3 +416,24 @@ test('daily crafting reward is claimed once and committed with XP and currency',
   assert.ok(claimed >= 0 && reward > claimed && commit > reward,
     'daily crafting claim marker and reward must commit together');
 });
+
+test('adventure, treasure, story and NPC rewards are blocked during active encounters', async () => {
+  const checks = [
+    ['macera.js', /SELECT coins, xp, class_name, last_adventure_at FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/, /SELECT encounter_id FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/, /await client\.query\('ROLLBACK'\)/],
+    ['hazineac.js', /SELECT xp, level FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/, /SELECT encounter_id FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/, /await db\.query\('ROLLBACK'\)/],
+    ['hikaye.js', /SELECT xp, level, coins, exploration_count, items_used_count, boss_defeats FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/, /SELECT encounter_id FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/, /await client\.query\('ROLLBACK'\)/],
+    ['npc.js', /SELECT xp, level, coins, items_used_count, boss_defeats FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/, /SELECT encounter_id FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/, /await client\.query\('ROLLBACK'\)/]
+  ];
+  for (const [path, playerLockPattern, encounterPattern, rollbackPattern] of checks) {
+    const source = await read(path);
+    const playerLock = source.search(playerLockPattern);
+    const encounterCheck = source.search(encounterPattern);
+    assert.ok(playerLock >= 0 && encounterCheck > playerLock, path + ': lock player before checking active encounter');
+    assert.match(source, encounterPattern, path + ': must check active encounter');
+    const guardStart = source.indexOf('if (activeEncounterCount)', encounterCheck);
+    const guardEnd = source.indexOf('}', guardStart);
+    assert.ok(guardStart > encounterCheck && guardEnd > guardStart, path + ': active encounter guard is missing');
+    assert.match(source.slice(guardStart, Math.min(source.length, guardStart + 350)), rollbackPattern,
+      path + ': blocked action must roll back its transaction');
+  }
+});
