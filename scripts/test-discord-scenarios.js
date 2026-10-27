@@ -252,3 +252,23 @@ test('Mage class has a mana-cost discount in solo and co-op combat', async () =>
   assert.match(dungeon, /applyClassManaCost\(12, p\.class_name\)/);
   assert.match(raid, /applyClassManaCost\(12, f\.className\)/);
 });
+
+
+test('daily quest chain is sequential, persistent, and pays escalating rewards transactionally', async () => {
+  const command = await read('gorevzinciri.js');
+  const schema = await read('database/db.js');
+  assert.match(command, /setName\('gorevzinciri'\)/);
+  assert.match(command, /last_daily_at::date=CURRENT_DATE/);
+  assert.match(command, /last_exploration_at::date=CURRENT_DATE/);
+  assert.match(command, /last_boss_at::date=CURRENT_DATE/);
+  for (const reward of ['reward: 50', 'reward: 100', 'reward: 200']) assert.ok(command.includes(reward));
+  assert.match(command, /current_step/);
+  assert.match(command, /FOR UPDATE/);
+  assert.match(command, /await db.query\('BEGIN'\)/);
+  assert.match(command, /await db.query\('COMMIT'\)/);
+  assert.match(command, /await db.query\('ROLLBACK'\)/);
+  assert.match(command, /ON CONFLICT DO NOTHING/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS daily_quest_chains/);
+  assert.match(schema, /PRIMARY KEY \(guild_id,user_id,chain_date\)/);
+  assert.match(schema, /current_step INTEGER NOT NULL DEFAULT 1 CHECK \(current_step BETWEEN 1 AND 4\)/);
+});
