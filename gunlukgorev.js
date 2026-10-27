@@ -21,11 +21,12 @@ export default {
    const claimKey=interaction.options.getString('odul');
    if(claimKey) {
     const mission=missions.find(m=>m.key===claimKey);
-    const progress=await pool.query(mission.sql,[interaction.guildId,interaction.user.id]);
-    if(!progress.rows[0]?.done) return interaction.editReply('Bu görevi henüz tamamlamadın. Önce açıklamadaki işlemi yap.');
     const db=await pool.connect();
     try {
      await db.query('BEGIN');
+     // Keep progress validation and reward insertion in one transaction to avoid midnight rollover claims.
+     const progress=await db.query(mission.sql,[interaction.guildId,interaction.user.id]);
+     if(!progress.rows[0]?.done){await db.query('ROLLBACK');return interaction.editReply('Bu görevi henüz tamamlamadın. Önce açıklamadaki işlemi yap.');}
      const claim=await db.query(`INSERT INTO daily_mission_claims(guild_id,user_id,mission_date,mission_key)
       VALUES($1,$2,CURRENT_DATE,$3) ON CONFLICT DO NOTHING RETURNING mission_key`,[interaction.guildId,interaction.user.id,mission.key]);
      if(!claim.rowCount){await db.query('ROLLBACK');return interaction.editReply('Bu görevin ödülünü bugün zaten aldın.');}
