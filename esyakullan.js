@@ -114,7 +114,7 @@ export default {
       if (!found.rowCount || Number(found.rows[0].quantity) < 1) {
         await db.query('ROLLBACK');
         return interaction.reply({
-          content: 'Bu eşya envanterinde yok. Önce /market üzerinden satın alman gerekiyor.',
+          content: 'Bu eşya envanterinde bulunmuyor. İlgili ganimetin kaynağını kontrol et veya /market kataloğuna bak.',
           ephemeral: true
         });
       }
