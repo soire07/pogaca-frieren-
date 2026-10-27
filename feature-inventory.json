@@ -505,6 +505,66 @@
       "name": "Track learned-spell milestone",
       "category": "Magic",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-065",
+      "name": "Start a five-floor cooperative dungeon run",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-066",
+      "name": "Invite up to three teammates to a dungeon party",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-067",
+      "name": "Require each invited teammate to accept before starting",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-068",
+      "name": "Progress through distinct named dungeon floors",
+      "category": "Dungeon",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-069",
+      "name": "Scale floor enemy health with party level",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-070",
+      "name": "Carry player HP between dungeon floors",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-071",
+      "name": "Award XP and coins for each cleared floor",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-072",
+      "name": "Fight a final-floor demon lord encounter",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-073",
+      "name": "Grant a shared rare loot drop after full dungeon completion",
+      "category": "Loot",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-074",
+      "name": "Stop the dungeon run when the party can no longer fight",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
     }
   ]
 }
