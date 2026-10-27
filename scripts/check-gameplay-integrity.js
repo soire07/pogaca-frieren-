@@ -11,6 +11,9 @@ test('trade offers are persistent, expiring and single-use', async () => {
   assert.match(schema, /CREATE TABLE IF NOT EXISTS trade_offers/);
   assert.ok(schema.includes("status IN ('pending','accepted','declined','expired','invalid')"), 'trade status constraint missing');
   assert.match(command, /setAutocomplete\(true\)/);
+  assert.match(command, /FOR UPDATE/);
+  assert.match(command, /reservedAmount/);
+  assert.match(handler, /reservedForOthers/);
   assert.match(command, /Date\.now\(\)\+5\*60\*1000/);
   assert.match(handler, /SELECT \* FROM trade_offers WHERE offer_id=\$1 AND guild_id=\$2 FOR UPDATE/);
   assert.match(handler, /interaction\.user\.id !== offer\.to_user_id/);
