@@ -336,3 +336,14 @@ test('rest serializes against encounter reservations and rolls back blocked rest
   assert.match(source, /catch \(error\) \{[\s\S]*?await db\.query\('ROLLBACK'\)/);
   assert.match(source, /finally \{\s*db\.release\(\)/);
 });
+
+
+test('legacy two-player dungeon rejects teammates with active interactive encounters', async () => {
+  const source = await read('zindan.js');
+  const lock = source.indexOf('FROM users WHERE guild_id=$1 AND user_id = ANY($2::text[]) FOR UPDATE');
+  const encounterCheck = source.indexOf('SELECT user_id FROM active_rpg_encounters', lock);
+  const byId = source.indexOf('const byId = new Map', encounterCheck);
+  assert.ok(lock >= 0 && encounterCheck > lock && byId > encounterCheck,
+    'legacy dungeon must lock both players then check encounter reservations before combat');
+  assert.match(source, /if \(activeEncounter\.rowCount\) \{\s*await db\.query\('ROLLBACK'\)/);
+});
