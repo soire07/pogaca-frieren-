@@ -22,6 +22,7 @@ export async function initDatabase() {
       level INTEGER NOT NULL DEFAULT 1 CHECK (level >= 1),
       coins INTEGER NOT NULL DEFAULT 0 CHECK (coins >= 0),
       class_name TEXT NOT NULL DEFAULT 'Gezgin',
+      character_name TEXT,
       hp INTEGER NOT NULL DEFAULT 100 CHECK (hp >= 0),
       max_hp INTEGER NOT NULL DEFAULT 100 CHECK (max_hp >= 1),
       mana INTEGER NOT NULL DEFAULT 100 CHECK (mana >= 0),
@@ -63,6 +64,7 @@ export async function initDatabase() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS defense INTEGER NOT NULL DEFAULT 5 CHECK (defense >= 0);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS stat_points INTEGER NOT NULL DEFAULT 0 CHECK (stat_points >= 0);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS active_build TEXT NOT NULL DEFAULT 'dengeli';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS character_name TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_boss_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_boss_win_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_rest_at TIMESTAMPTZ;
