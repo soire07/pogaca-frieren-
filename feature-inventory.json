@@ -1903,7 +1903,13 @@
       "name": "Mana Burst mastery-10 awakening adds 15 damage",
       "category": "Magic",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-317",
+      "name": "Rare discovery pity system guarantees an undiscovered rare location every 20 adventures",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 299
+  "count": 317
 }
