@@ -172,14 +172,21 @@ client.on(Events.MessageBulkDelete, async messages => {
 client.once(Events.ClientReady, async readyClient => {
   try {
     const slashCommands = [...client.commands.values()].map(command => command.data.toJSON());
+
+    // Eski sunucu kapsamlı komutlar global komutlarla aynı adları taşıyıp iki kez görünebilir.
+    // Botun bulunduğu sunuculardaki eski kayıtları temizlemeden yeni kayıtları yayımlama.
+    const guilds = [...readyClient.guilds.cache.values()];
+    for (const guild of guilds) {
+      await guild.commands.set([]);
+    }
+
     if (process.env.GUILD_ID) {
-      // Eski global kayıtları temizle; aksi hâlde aynı komutlar global + sunucu kapsamında çift görünür.
       await readyClient.application.commands.set([]);
       await readyClient.application.commands.set(slashCommands, process.env.GUILD_ID);
-      console.log(`${slashCommands.length} slash komutu hedef sunucuya eşitlendi; eski global komut kayıtları temizlendi.`);
+      console.log(`${slashCommands.length} slash komutu hedef sunucuya eşitlendi; ${guilds.length} sunucudaki eski kayıtlar ve global kayıtlar temizlendi.`);
     } else {
       await readyClient.application.commands.set(slashCommands);
-      console.log(`${slashCommands.length} slash komutu global olarak eşitlendi.`);
+      console.log(`${slashCommands.length} slash komutu global olarak eşitlendi; ${guilds.length} sunucudaki eski kayıtlar temizlendi.`);
     }
   } catch (error) {
     console.error('Slash komutları otomatik eşitlenemedi:', error);
