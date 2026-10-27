@@ -194,10 +194,10 @@ export default {
           [interaction.guildId, p.user_id, hpNow[i], newXp, newLevel, totalCoins,
             Math.max(0, newLevel - oldLevels[i]), victory ? 1 : 0]
         );
-        if (loot) await db.query(
+        for (const itemKey of [...chestRewards, ...(loot ? [loot] : [])]) await db.query(
           `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
            ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
-          [interaction.guildId, p.user_id, loot]
+          [interaction.guildId, p.user_id, itemKey]
         );
       }
       await db.query('COMMIT');
@@ -212,7 +212,7 @@ export default {
         )
         .addFields(
           { name: '🎁 Kişi başı ödül', value: `✨ ${totalXp} XP\n🥐 ${totalCoins} altın`, inline: true },
-          { name: '💎 Nadir ganimet', value: loot ? `Herkes **${loot}** buldu!` : victory ? 'Bu sefer nadir ganimet çıkmadı.' : 'Son kat tamamlanmadığı için nadir ganimet yok.', inline: true },
+          { name: '💎 Ganimet ve sandıklar', value: [...chestRewards, ...(loot ? [loot] : [])].length ? [...chestRewards, ...(loot ? [loot] : [])].map(item => `• ${item}`).join('\\n') : 'Bu sefer ganimet çıkmadı.', inline: true },
           { name: '⏳ Bekleme', value: '30 dakika', inline: true }
         )
         .setFooter({ text: 'Poğaça Frieren • Kat kat ilerleyin, takımınızı koruyun.' });
