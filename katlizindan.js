@@ -123,7 +123,7 @@ export default {
         const bonus = equipmentBonus(gearMap.get(p.user_id) || []);
         const role = PARTY_ROLES[roles[i]];
         const maxHp = Math.round(Math.min(2000, Number(p.max_hp) + bonus.hp) * role.hp);
-        return { ...p, level: Number(p.level), xp: Number(p.xp), role: roles[i], roleLabel: role.label, maxHp,
+        return { ...p, level: Number(p.level), xp: Number(p.xp), mana: Number(p.mana), maxMana: Number(p.max_mana), role: roles[i], roleLabel: role.label, maxHp,
           hp: Math.round(Math.min(Number(p.hp), Math.min(2000, Number(p.max_hp) + bonus.hp)) * role.hp),
           attack: Math.round(Math.min(500, Number(p.attack) + bonus.attack) * role.attack),
           defense: Math.round(Math.min(250, Number(p.defense) + bonus.defense) * role.defense) };
