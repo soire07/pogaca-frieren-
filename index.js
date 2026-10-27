@@ -14,7 +14,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 if (!process.env.DISCORD_TOKEN) throw new Error('DISCORD_TOKEN eksik. Render Environment bölümünü kontrol et.');
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL eksik. Önce Render PostgreSQL oluştur ve bağlantıyı ekle.');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildModeration, ...(process.env.ENABLE_MESSAGE_CONTENT_INTENT === 'true' ? [GatewayIntentBits.MessageContent] : [])], partials: [Partials.Channel] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages, ...(process.env.ENABLE_MESSAGE_CONTENT_INTENT === 'true' ? [GatewayIntentBits.MessageContent] : [])], partials: [Partials.Channel] });
 client.commands = new Collection();
 
 
@@ -68,107 +68,6 @@ async function loadCommands() {
   console.log(`${client.commands.size} komut yüklendi.`);
 }
 
-
-async function sendConfiguredLog(guild, payload) {
-  try {
-    const result = await pool.query('SELECT log_channel_id FROM guild_settings WHERE guild_id=$1', [guild.id]);
-    const channelId = result.rows[0]?.log_channel_id;
-    if (!channelId) return;
-    const channel = await guild.channels.fetch(channelId).catch(() => null);
-    if (channel?.isTextBased() && channel.send) await channel.send({ ...payload, allowedMentions: { parse: [] } });
-  } catch (error) {
-    console.error('Moderasyon log hatası:', error);
-  }
-}
-
-client.on(Events.GuildMemberRemove, async member => {
-  await sendConfiguredLog(member.guild, { content: `📤 **Üye ayrıldı:** ${member.user?.tag ?? member.id} (${member.id})` });
-});
-
-client.on(Events.GuildMemberAdd, async member => {
-  await sendConfiguredLog(member.guild, { content: `📥 **Yeni üye katıldı:** ${member.user?.tag ?? member.id} (${member.id})` });
-  try {
-    const result = await pool.query(
-      'SELECT welcome_channel_id, welcome_message FROM guild_settings WHERE guild_id=$1',
-      [member.guild.id]
-    );
-    const settings = result.rows[0];
-    if (!settings?.welcome_channel_id) return;
-    const channel = await member.guild.channels.fetch(settings.welcome_channel_id).catch(() => null);
-    if (!channel?.isTextBased() || !channel.send) return;
-    const message = String(settings.welcome_message || 'Hoş geldin {user}! 🥐 {server} sunucusuna katıldın.')
-      .replaceAll('{user}', member.toString())
-      .replaceAll('{server}', member.guild.name)
-      .replaceAll('{count}', String(member.guild.memberCount));
-    await channel.send({ content: message.slice(0, 1900) });
-  } catch (error) {
-    console.error('Karşılama mesajı hatası:', error);
-  }
-});
-
-client.on(Events.GuildBanAdd, async ban => {
-  await sendConfiguredLog(ban.guild, { content: `🔨 **Ban uygulandı:** ${ban.user.tag} (${ban.user.id})` });
-});
-client.on(Events.GuildBanRemove, async ban => {
-  await sendConfiguredLog(ban.guild, { content: `🔓 **Ban kaldırıldı:** ${ban.user.tag} (${ban.user.id})` });
-});
-
-client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
-  if (oldMember.nickname !== newMember.nickname) {
-    await sendConfiguredLog(newMember.guild, { content: `✏️ **Takma ad değişti:** ${newMember.user.tag} — ${oldMember.nickname ?? 'Yok'} → ${newMember.nickname ?? 'Yok'}` });
-  }
-
-  const oldRoles = new Set(oldMember.roles.cache.keys());
-  const newRoles = new Set(newMember.roles.cache.keys());
-  const addedRoles = [...newRoles].filter(id => !oldRoles.has(id)).map(id => newMember.guild.roles.cache.get(id)?.name).filter(Boolean);
-  const removedRoles = [...oldRoles].filter(id => !newRoles.has(id)).map(id => oldMember.guild.roles.cache.get(id)?.name).filter(Boolean);
-  if (addedRoles.length || removedRoles.length) {
-    const changes = [];
-    if (addedRoles.length) changes.push('Eklendi: ' + addedRoles.join(', '));
-    if (removedRoles.length) changes.push('Kaldırıldı: ' + removedRoles.join(', '));
-    await sendConfiguredLog(newMember.guild, { content: `🎭 **Rol değişikliği:** ${newMember.user.tag} (${newMember.id})\n${changes.join('\n')}` });
-  }
-
-  if (oldMember.communicationDisabledUntilTimestamp !== newMember.communicationDisabledUntilTimestamp) {
-    const until = newMember.communicationDisabledUntilTimestamp;
-    await sendConfiguredLog(newMember.guild, {
-      content: until
-        ? `🔇 **Timeout uygulandı/değiştirildi:** ${newMember.user.tag} (${newMember.id}) — <t:${Math.floor(until / 1000)}:R> sona erecek.`
-        : `🔊 **Timeout kaldırıldı:** ${newMember.user.tag} (${newMember.id})`
-    });
-  }
-});
-
-client.on(Events.MessageDelete, async message => {
-  if (!message.guild || message.author?.bot) return;
-  const author = message.author ? `${message.author.tag} (${message.author.id})` : 'Yazarı önbellekte olmayan kullanıcı';
-  const content = message.content?.trim()
-    ? message.content.slice(0, 700)
-    : '[Mesaj metni önbellekte yok veya erişilemiyor]';
-  await sendConfiguredLog(message.guild, {
-    content: `🗑️ **Mesaj silindi** • <#${message.channelId}>\nYazar: ${author}\nİçerik: ${content}`
-  });
-});
-
-client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
-  if (!newMessage.guild || newMessage.author?.bot) return;
-  if (oldMessage.partial || newMessage.partial) {
-    await sendConfiguredLog(newMessage.guild, { content: `✏️ **Mesaj düzenlendi** • <#${newMessage.channelId}> — mesaj içeriği önbellekte yok.` });
-    return;
-  }
-  if (oldMessage.content === newMessage.content) return;
-  const before = oldMessage.content?.trim() ? oldMessage.content.slice(0, 350) : '[önceki içerik erişilemiyor]';
-  const after = newMessage.content?.trim() ? newMessage.content.slice(0, 350) : '[yeni içerik erişilemiyor]';
-  await sendConfiguredLog(newMessage.guild, {
-    content: `✏️ **Mesaj düzenlendi** • <#${newMessage.channelId}>\nYazar: ${newMessage.author?.tag ?? newMessage.authorId ?? 'Bilinmiyor'}\nÖnce: ${before}\nSonra: ${after}`
-  });
-});
-
-client.on(Events.MessageBulkDelete, async messages => {
-  const first = messages.first();
-  if (!first?.guild) return;
-  await sendConfiguredLog(first.guild, { content: `🧹 **Toplu mesaj silme:** <#${first.channelId}> kanalında ${messages.size} mesaj silindi.` });
-});
 
 client.once(Events.ClientReady, async readyClient => {
   try {
