@@ -126,6 +126,7 @@ export default {
       const oldLevels = players.map(p => p.level);
       let floorsCleared = 0, totalXp = 0, totalCoins = 0, turns = 0;
       const log = [];
+      const chestRewards = [];
 
       for (let floor = 1; floor <= FLOORS; floor++) {
         const maxEnemyHp = Math.round((105 + floor * 48) * (1 + avgLevel * 0.045));
@@ -160,6 +161,23 @@ export default {
         const floorCoins = 20 + floor * 10;
         totalXp += floorXp; totalCoins += floorCoins;
         log.push(`✅ ${floor}. kat temizlendi: +${floorXp} XP, +${floorCoins} altın (kişi başı).`);
+        const eventRoll = Math.random();
+        if (eventRoll < 0.24) {
+          const chestLoot = LOOT[Math.floor(Math.random() * LOOT.length)];
+          chestRewards.push(chestLoot);
+          totalCoins += 15 + floor * 5;
+          log.push(`🧰 ${floor}. katta gizli sandık bulundu! Her oyuncu ${chestLoot} ve ek ${15 + floor * 5} altın kazanacak.`);
+        } else if (eventRoll < 0.42) {
+          const living = hpNow.map((hp, index) => hp > 0 ? index : -1).filter(index => index >= 0);
+          if (living.length) {
+            const targetIndex = living[Math.floor(Math.random() * living.length)];
+            const trapDamage = 8 + floor * 4;
+            hpNow[targetIndex] = Math.max(1, hpNow[targetIndex] - trapDamage);
+            log.push(`🪤 ${floor}. kattaki tuzak <@${combatants[targetIndex].user_id}> oyuncusuna ${trapDamage} hasar verdi!`);
+          }
+        } else {
+          log.push(`🧭 ${floor}. katta yol güvenliydi; takım bir sonraki kata ilerliyor.`);
+        }
       }
 
       const victory = floorsCleared === FLOORS;
