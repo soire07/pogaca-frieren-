@@ -725,3 +725,20 @@ test('character management is a single interactive panel, not slash subcommands'
   }
   assert.match(handler, /handleCharacterPanelInteraction\(interaction\)/);
 });
+
+
+test('slash command sync clears stale guild-scoped duplicates before registering the current command set', async () => {
+  const handler = await read('index.js');
+  assert.match(handler, /const guilds = \[\.\.\.readyClient\.guilds\.cache\.values\(\)\]/);
+  assert.match(handler, /await guild\.commands\.set\(\[\]\)/);
+  assert.match(handler, /await readyClient\.application\.commands\.set\(slashCommands\)/);
+});
+
+test('player-facing help documents the single character panel command', async () => {
+  const help = await read('help.js');
+  const guide = await read('commands/rpg/rehber.js');
+  for (const source of [help, guide]) {
+    assert.match(source, /\/karakter/);
+    assert.doesNotMatch(source, /\/karakter (?:olustur|panel|sinif|yapi|gelisim)/);
+  }
+});
