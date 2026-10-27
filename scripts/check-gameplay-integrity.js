@@ -451,3 +451,28 @@ test('adventure, treasure, story and NPC rewards are blocked during active encou
       path + ': blocked action must roll back its transaction');
   }
 });
+
+test('adventure discovery catalog matches every normal and rare adventure outcome', async () => {
+  const adventure = await read('macera.js');
+  const catalog = await read('adventure-data.js');
+  const catalogKeys = new Set([...catalog.matchAll(/key:\s*'([^']+)'/g)].map(match => match[1]));
+  const outcomeBlock = adventure.match(/const outcomes = \[([\s\S]*?)\n\];/);
+  const rareBlock = adventure.match(/const rareOutcomes = \[([\s\S]*?)\n\];/);
+  assert.ok(outcomeBlock && rareBlock, 'normal and rare adventure outcome lists must exist');
+  const outcomeKeys = [...outcomeBlock[1].matchAll(/discovery:\s*'([^']+)'/g), ...rareBlock[1].matchAll(/discovery:\s*'([^']+)'/g)].map(match => match[1]);
+  assert.equal(new Set(outcomeKeys).size, outcomeKeys.length, 'each adventure outcome should map to a unique discovery key');
+  for (const key of outcomeKeys) assert.ok(catalogKeys.has(key), 'missing discovery catalog entry for ' + key);
+  for (const key of catalogKeys) assert.ok(outcomeKeys.includes(key), 'catalog entry has no adventure outcome: ' + key);
+  const commandChoices = [...adventure.matchAll(/value:\s*'([^']+)'/g)].map(match => match[1]).filter(value => outcomeKeys.includes(value));
+  for (const key of commandChoices) assert.ok(outcomeKeys.includes(key), 'selectable route must map to an outcome: ' + key);
+});
+
+test('adventure journal completion is awarded only once after the full discovery catalog is found', async () => {
+  const adventure = await read('macera.js');
+  const catalog = await read('adventure-data.js');
+  assert.match(adventure, /COUNT\(\*\)::int AS count FROM adventure_discoveries/);
+  assert.match(adventure, /Number\(discoveryCount\.count\) >= ADVENTURE_DISCOVERIES\.length/);
+  assert.match(adventure, /INSERT INTO adventure_journal_claims\(guild_id,user_id\) VALUES\(\$1,\$2\) ON CONFLICT DO NOTHING RETURNING user_id/);
+  assert.match(adventure, /if \(claim\) \{[\s\S]*?journalCompletionCoins = COMPLETE_ADVENTURE_JOURNAL_REWARD\.coins/);
+  assert.match(catalog, /export const COMPLETE_ADVENTURE_JOURNAL_REWARD = \{ coins: 250 \}/);
+});
