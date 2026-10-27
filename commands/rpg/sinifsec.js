@@ -24,7 +24,7 @@ export default {
       const result = await db.query('UPDATE users SET class_name=$3 WHERE guild_id=$1 AND user_id=$2 RETURNING class_name', [interaction.guildId, interaction.user.id, profile.label]);
       await db.query('COMMIT');
       const details = {
-        buyucu: '✨ Saldırı ve büyü hasarı savaşta %8 artar.',
+        buyucu: '✨ Büyü hasarı %8 artar, büyülerin mana maliyeti %10 azalır.',
         muhafiz: '🛡️ Savunma etkisi savaşta %12 artar.',
         sifaci: '💚 İyileştirme etkisi %20 artar.',
         gezgin: '⚖️ Ek sınıf çarpanı yok; dengeli başlangıç sınıfı.'
