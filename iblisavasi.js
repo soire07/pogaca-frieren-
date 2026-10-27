@@ -202,18 +202,18 @@ export default {
           const spellCost = applyClassManaCost(8, stats.class_name);
           if (playerMana < spellCost) {
             busy = false;
-            return button.reply({ content: 'Zoltraak için en az **8 Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.', ephemeral: true });
+            return button.reply({ content: `Zoltraak için en az **${spellCost} Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.`, ephemeral: true });
           }
           playerMana -= spellCost;
           spellUsed = 'zoltraak';
           const damage = applyClassDamage(Math.floor(Math.random() * 13) + 18 + attack + upgradeBonus + (spellMastery.get('zoltraak') || 0) * 2, stats.class_name);
           bossHp = Math.max(0, bossHp - damage);
-          actionText = `⚡ Zoltraak isabet etti! İblise **${damage} hasar** verdin. (Saldırı: ${attack}, Mana: −8)`;
+          actionText = `⚡ Zoltraak isabet etti! İblise **${damage} hasar** verdin. (Saldırı: ${attack}, Mana: −${spellCost})`;
         } else if (button.customId === 'demon_fire') {
           const spellCost = applyClassManaCost(14, stats.class_name);
           if (playerMana < spellCost) {
             busy = false;
-            return button.reply({ content: 'Alev Küresi için en az **14 Mana** gerekiyor.', ephemeral: true });
+            return button.reply({ content: `Alev Küresi için en az **${spellCost} Mana** gerekiyor.`, ephemeral: true });
           }
           playerMana -= spellCost;
           spellUsed = 'alev_kuresi';
@@ -224,7 +224,7 @@ export default {
           const spellCost = applyClassManaCost(12, stats.class_name);
           if (playerMana < spellCost) {
             busy = false;
-            return button.reply({ content: 'Buz Mızrağı için en az **12 Mana** gerekiyor.', ephemeral: true });
+            return button.reply({ content: `Buz Mızrağı için en az **${spellCost} Mana** gerekiyor.`, ephemeral: true });
           }
           playerMana -= spellCost;
           spellUsed = 'buz_mizragi';
@@ -237,7 +237,7 @@ export default {
           const spellCost = applyClassManaCost(6, stats.class_name);
           if (playerMana < spellCost) {
             busy = false;
-            return button.reply({ content: 'Savunma büyüsü için en az **6 Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.', ephemeral: true });
+            return button.reply({ content: `Savunma büyüsü için en az **${spellCost} Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.`, ephemeral: true });
           }
           playerMana -= spellCost;
           spellUsed = 'koruyucu_bariyer';
@@ -252,7 +252,7 @@ export default {
           const spellCost = applyClassManaCost(20, stats.class_name);
           if (playerMana < spellCost) {
             busy = false;
-            return button.reply({ content: 'İyileşme büyüsü için en az **20 Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.', ephemeral: true });
+            return button.reply({ content: `İyileşme büyüsü için en az **${spellCost} Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.`, ephemeral: true });
           }
           playerMana -= spellCost;
           spellUsed = 'sifa_isigi';
@@ -265,19 +265,19 @@ export default {
 
         if (button.customId === 'demon_chain') {
           const spellCost = applyClassManaCost(22, stats.class_name);
-          if (playerMana < spellCost) { busy = false; return button.reply({ content: 'Yıldırım Zinciri için en az **22 Mana** gerekiyor.', ephemeral: true }); }
+          if (playerMana < spellCost) { busy = false; return button.reply({ content: `Yıldırım Zinciri için en az **${spellCost} Mana** gerekiyor.`, ephemeral: true }); }
           playerMana -= spellCost; spellUsed = 'yildirim_zinciri';
           const damage = applyClassDamage(Math.floor(Math.random() * 16) + 42 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 2, stats.class_name);
           bossHp = Math.max(0, bossHp - damage); actionText = `⚡ **Yıldırım Zinciri** hedefi sardı ve **${damage} hasar** verdi. (Mana: −${spellCost})`;
         } else if (button.customId === 'demon_wall') {
           const spellCost = applyClassManaCost(12, stats.class_name);
-          if (playerMana < spellCost) { busy = false; return button.reply({ content: 'Taş Duvar için en az **12 Mana** gerekiyor.', ephemeral: true }); }
+          if (playerMana < spellCost) { busy = false; return button.reply({ content: `Taş Duvar için en az **${spellCost} Mana** gerekiyor.`, ephemeral: true }); }
           playerMana -= spellCost; spellUsed = 'tas_duvar'; fortified = true;
           fortifiedReduction = Math.min(0.9, 0.75 + (spellMastery.get(spellUsed) || 0) * 0.015);
           actionText = `🪨 **Taş Duvar** yükseldi. Bu tur boss hasarının **%${Math.round(fortifiedReduction * 100)}** kadarını engelleyecek. (Mana: −${spellCost})`;
         } else if (button.customId === 'demon_burst') {
           const spellCost = applyClassManaCost(30, stats.class_name);
-          if (playerMana < spellCost) { busy = false; return button.reply({ content: 'Mana Patlaması için en az **30 Mana** gerekiyor.', ephemeral: true }); }
+          if (playerMana < spellCost) { busy = false; return button.reply({ content: `Mana Patlaması için en az **${spellCost} Mana** gerekiyor.`, ephemeral: true }); }
           playerMana -= spellCost; spellUsed = 'mana_patlamasi';
           const damage = applyClassDamage(Math.floor(Math.random() * 21) + 65 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 3, stats.class_name);
           bossHp = Math.max(0, bossHp - damage); actionText = `🌌 **Mana Patlaması** büyük bir enerji dalgası oluşturdu: **${damage} hasar**! (Mana: −${spellCost})`;
