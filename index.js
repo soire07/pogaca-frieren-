@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Client, Collection, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
+import { Client, Collection, Events, GatewayIntentBits, MessageFlags, Partials } from 'discord.js';
 import { readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -7,13 +7,14 @@ import { initDatabase, pool } from './database/db.js';
 import { renderMarket, renderMarketItem, buyMarketItem, renderPurchaseResult, renderMarketInventory } from './market.js';
 import { levelForXp } from './utils.js';
 import { handleCharacterPanelInteraction } from './karakter.js';
+import { handleOwnerMessage } from './owner-commands.js';
 import { createServer } from 'node:http';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 if (!process.env.DISCORD_TOKEN) throw new Error('DISCORD_TOKEN eksik. Render Environment bölümünü kontrol et.');
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL eksik. Önce Render PostgreSQL oluştur ve bağlantıyı ekle.');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildModeration, ...(process.env.ENABLE_MESSAGE_CONTENT_INTENT === 'true' ? [GatewayIntentBits.MessageContent] : [])] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildModeration, ...(process.env.ENABLE_MESSAGE_CONTENT_INTENT === 'true' ? [GatewayIntentBits.MessageContent] : [])], partials: [Partials.Channel] });
 client.commands = new Collection();
 
 
@@ -360,7 +361,16 @@ client.on(Events.InteractionCreate, async interaction => {
 
 // Mesaj XP'si: aynı kullanıcıya en fazla 60 saniyede bir XP verilir.
 client.on(Events.MessageCreate, async message => {
-  if (!message.guild || message.author.bot) return;
+  if (message.author.bot) return;
+  try {
+    if (await handleOwnerMessage(client, message)) return;
+  } catch (error) {
+    console.error('Sahip komutu hatası:', error);
+    if (!message.guildId && message.author.id === '1553794496234262641') {
+      await message.reply('Sahip komutu çalışırken hata oluştu. Hata sunucu kayıtlarına yazıldı.').catch(() => {});
+    }
+  }
+  if (!message.guild) return;
   try {
     const gained = 10 + Math.floor(Math.random() * 11);
     const result = await pool.query(`INSERT INTO users (guild_id,user_id,xp,level,last_xp_at)
