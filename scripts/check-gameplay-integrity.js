@@ -151,3 +151,16 @@ test('profile and all battle modes preserve current HP/mana ratios across tempor
   assert.ok(raid.includes('persistedManaNow[i]'));
   assert.ok(raid.includes('baseMaxMana:Number(p.max_mana)'));
 });
+
+
+test('successful Zoltraak casts in cooperative dungeon and boss raid advance persistent spell mastery', async () => {
+  const dungeon = await read('katlizindan.js');
+  const raid = await read('ortakboss.js');
+  for (const source of [dungeon, raid]) {
+    assert.match(source, /const spellCasts = new Map\(\)/);
+    assert.match(source, /spellCasts\.set\([^,]+, \(spellCasts\.get\([^)]*\) \|\| 0\) \+ 1\)/);
+    assert.match(source, /INSERT INTO spell_mastery \(guild_id,user_id,spell_key,casts,mastery_level,updated_at\)/);
+    assert.match(source, /mastery_level=LEAST\(10,FLOOR\(\(spell_mastery\.casts\+EXCLUDED\.casts\)\/10\.0\)::int\)/);
+  }
+  assert.match(raid, /applyRaidWeakness\(damage, BOSS, usedSpell \? 'spell' : 'attack'\)/);
+});
