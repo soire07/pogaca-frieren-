@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, Embe
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, getCharacterClass } from './rpg-mechanics.js';
+import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
 const ROLES = {
@@ -210,11 +210,12 @@ export default {
             continue;
           }
           let damage = Math.max(1, Math.round(f.attack * (0.9 + Math.random() * 0.25)));
-          if (action === 'spell' && f.mana >= 12) {
-            f.mana -= 12;
+          const spellCost = applyClassManaCost(12, f.className);
+          if (action === 'spell' && f.mana >= spellCost) {
+            f.mana -= spellCost;
             damage = Math.round(damage * 1.8);
             damage = applyClassDamage(damage, f.className);
-            log.push(`✨ ${f.username} Zoltraak kullandı (-12 mana).`);
+            log.push(`✨ ${f.username} Zoltraak kullandı (-${spellCost} mana).`);
           } else if (action === 'spell') {
             log.push(`🔹 ${f.username} için mana yetersiz; normal saldırı yaptı.`);
           }
