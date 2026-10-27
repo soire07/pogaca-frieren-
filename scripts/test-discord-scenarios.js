@@ -657,3 +657,16 @@ test('combined player history displays crafting salvage progress', async () => {
   assert.match(history, /salvaged_items/);
   assert.match(history, /Parçalanan eşya/);
 });
+
+test('adventure streak retains an all-time best streak after a missed day resets the current streak', async () => {
+  const schema = await read('database/db.js');
+  const adventure = await read('macera.js');
+  const journal = await read('kesifdefteri.js');
+  const stats = await read('maceraistatistik.js');
+  assert.match(schema, /best_streak INTEGER NOT NULL DEFAULT 0/);
+  assert.match(schema, /ALTER TABLE adventure_streaks ADD COLUMN IF NOT EXISTS best_streak/);
+  assert.match(adventure, /best_streak=GREATEST/);
+  assert.match(adventure, /RETURNING daily_streak, best_streak/);
+  assert.match(journal, /best_streak/);
+  assert.match(stats, /best_streak/);
+});
