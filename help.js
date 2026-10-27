@@ -11,7 +11,7 @@ const sections = [
   },
   {
     name: '⚔️ Macera ve RPG',
-    value: '`/profil` • Maceracı profilin\n`/maceragecmisi` • Savaş, keşif ve koleksiyon istatistikleri\n`/hedefler` • RPG gelişim hedefleri\n`/siralama` • Seviye, XP, altın ve savaş sıralamaları\n`/kesif` • Bölge keşfi\n`/dunya` • Bölgeleri incele\n`/hikaye` • Seçimlere dayalı hikâye\n`/npc` • Yol arkadaşları ve yan görevler\n`/buyusavasi` • Büyü düellosu\n`/iblisavasi` • İblis boss savaşı\n`/zindan` • İki kişilik ortak zindan\n`/katlizindan` • Dört kişiye kadar, beş katlı ortak zindan; tuzaklar ve sandıklar\n`/ortakboss` • Tank, şifacı ve hasar rolleriyle ortak boss baskını\n`/bossrehberi` • Bosslar, ganimetler ve ilerleme\n`/gunlukodul` • Günlük altın\n`/gunlukgorev` • Günlük görevler\n`/basarimlar` • Başarımlar\n`/liderlik` • Sunucu sıralaması'
+    value: '`/profil` • Maceracı profilin\n`/maceragecmisi` • Savaş, keşif ve koleksiyon istatistikleri\n`/hedefler` • RPG gelişim hedefleri\n`/siralama` • Seviye, XP, altın ve savaş sıralamaları\n`/kesif` • Bölge keşfi\n`/dunya` • Bölgeleri incele\n`/hikaye` • Seçimlere dayalı hikâye\n`/npc` • Yol arkadaşları ve yan görevler\n`/buyusavasi` • Büyü düellosu\n`/iblisavasi` • İblis boss savaşı\n`/zindan` • İki kişilik ortak zindan\n`/katlizindan` • Dört kişiye kadar, beş katlı ortak zindan; tank/şifacı/hasar rolleri, tuzaklar ve sandıklar\n`/ortakboss` • Tank, şifacı ve hasar rolleriyle ortak boss baskını\n`/bossrehberi` • Bosslar, ganimetler ve ilerleme\n`/gunlukodul` • Günlük altın\n`/gunlukgorev` • Günlük görevler\n`/basarimlar` • Başarımlar\n`/liderlik` • Sunucu sıralaması'
   },
   {
     name: '💰 Ekonomi ve eşyalar',
