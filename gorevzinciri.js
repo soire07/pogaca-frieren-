@@ -54,7 +54,7 @@ export default {
           return interaction.editReply('**' + step.title + '** henüz tamamlanmadı. Önce şu koşulu yerine getir: ' + step.description);
         }
         const nextStep = step.step + 1;
-        await db.query('UPDATE daily_quest_chains SET current_step=$4, completed_at=CASE WHEN $4=4 THEN NOW() ELSE completed_at END, updated_at=NOW() WHERE guild_id=$1 AND user_id=$2 AND chain_date=CURRENT_DATE', [interaction.guildId, interaction.user.id, step.step, nextStep]);
+        await db.query('UPDATE daily_quest_chains SET current_step=$3, completed_at=CASE WHEN $3=4 THEN NOW() ELSE completed_at END, updated_at=NOW() WHERE guild_id=$1 AND user_id=$2 AND chain_date=CURRENT_DATE', [interaction.guildId, interaction.user.id, nextStep]);
         await db.query('UPDATE users SET coins=coins+$3 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, step.reward]);
         await db.query('COMMIT');
         const completion = nextStep > 3 ? '\n🏆 **Görev zinciri tamamlandı!** Yarın yeni bir zincir başlayacak.' : '\n➡️ Sıradaki aşama açıldı: **' + steps[nextStep - 1].title + '**.';
