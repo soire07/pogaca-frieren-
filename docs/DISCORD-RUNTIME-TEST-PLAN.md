@@ -117,3 +117,17 @@ Bu senaryolar otomatik kod kontrollerinin yerine geçmez; gerçek Discord bileş
 - **CQ-07:** Görev koşulunu yerine getirmeden ödül talep et veya aynı ödülü iki kez almaya çalış; ödül verilmemeli.
 
 Otomatik kontroller kaynak sözleşmelerini doğrular; gerçek Discord ve test veritabanı davranışı ayrıca test edilmelidir. Deploy yapılmayacak.
+
+
+## Günlük zincirleme görevler — /gorevzinciri
+
+- **GZ-01:** `/gorevzinciri` çalıştır; üç aşama ve o günkü ilerleme görünmeli.
+- **GZ-02:** Günlük ödülünü almadan 1. aşamanın ödülünü talep et; reddedilmeli ve altın değişmemeli.
+- **GZ-03:** Günlük ödülünü aldıktan sonra 1. aşamayı talep et; 50 altın verilmeli ve 2. aşama açılmalı.
+- **GZ-04:** 1. aşama tamamlanmadan 2. veya 3. aşama ödülünü talep et; sıra atlatılmamalı.
+- **GZ-05:** Günün keşfini tamamladıktan sonra 2. aşamayı talep et; 100 altın verilmeli ve 3. aşama açılmalı.
+- **GZ-06:** Aynı gün iblis savaşı tamamlandıktan sonra 3. aşamayı talep et; 200 altın verilmeli ve zincir tamamlandı görünmeli.
+- **GZ-07:** Aynı aşamanın ödülünü tekrar talep et veya iki eşzamanlı istek gönder; ödül ikinci kez verilmemeli.
+- **GZ-08:** Ertesi gün komutu çalıştır; yeni günlük zincir 1. aşamadan başlamalı, önceki günün kaydı korunmalı.
+
+Otomatik kontroller komut şemasını, kalıcı ilerleme tablosunu ve işlem korumalarını doğrular. Gerçek Discord ve test veritabanı davranışı ayrıca doğrulanmalıdır; merge veya deploy yapılmayacak.
