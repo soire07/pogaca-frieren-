@@ -164,9 +164,15 @@ export default {
             const tankIndex = living.find(i => players[i].role === 'tank');
             const targetIndex = tankIndex !== undefined && Math.random() < 0.7 ? tankIndex : living[(turn + floor) % living.length];
             const target = players[targetIndex];
-            const damage = Math.max(1, Math.round(enemyDamage * (0.9 + ((turn + floor) % 3) * 0.08) - target.defense * 0.3));
+            const finalBoss = floor === FLOORS;
+            const enraged = finalBoss && enemyHp <= maxEnemyHp * 0.5;
+            const specialAttack = finalBoss && turn % 3 === 0;
+            const bossPower = finalBoss ? 1.35 : 1;
+            const damage = Math.max(1, Math.round(enemyDamage * bossPower * (0.9 + ((turn + floor) % 3) * 0.08) + (enraged ? 7 : 0) + (specialAttack ? 6 : 0) - target.defense * 0.3));
             hpNow[targetIndex] = Math.max(0, hpNow[targetIndex] - damage);
-            log.push(`💥 Düşman <@${target.user_id}> oyuncusuna ${damage} hasar verdi.`);
+            if (enraged && turn === 1) log.push('🔥 İblis Lordu öfke evresine girdi; saldırıları güçlendi!');
+            if (specialAttack) log.push('☄️ İblis Lordu yıldız biçimli mana patlaması kullandı!');
+            log.push(`💥 ${finalBoss ? 'İblis Lordu' : 'Düşman'} <@${target.user_id}> oyuncusuna ${damage} hasar verdi.`);
           }
         }
         if (enemyHp > 0) {
@@ -190,7 +196,7 @@ export default {
             const targetIndex = living[Math.floor(Math.random() * living.length)];
             const trapDamage = 8 + floor * 4;
             hpNow[targetIndex] = Math.max(1, hpNow[targetIndex] - trapDamage);
-            log.push(`🪤 ${floor}. kattaki tuzak <@${combatants[targetIndex].user_id}> oyuncusuna ${trapDamage} hasar verdi!`);
+            log.push(`🪤 ${floor}. kattaki tuzak <@${players[targetIndex].user_id}> oyuncusuna ${trapDamage} hasar verdi!`);
           }
         } else {
           log.push(`🧭 ${floor}. katta yol güvenliydi; takım bir sonraki kata ilerliyor.`);
