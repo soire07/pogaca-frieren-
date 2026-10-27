@@ -204,14 +204,21 @@ export default {
           const f = fighters[i];
           const action = choices.get(f.userId) || 'defend';
           if (action === 'defend' || action === 'shield') {
-            if (action === 'shield' && f.mana >= 10) { f.mana -= 10; defending.add(i); log.push(`🔮 ${f.username} Mana Kalkanı açtı (-10 mana).`); }
+            const shieldCost = applyClassManaCost(10, f.className);
+            if (action === 'shield' && f.mana >= shieldCost) { f.mana -= shieldCost; defending.add(i); log.push(`🔮 ${f.username} Mana Kalkanı açtı (-${shieldCost} mana).`); }
             else if (action === 'shield') { defending.add(i); log.push(`🔹 ${f.username} için mana yetersiz; normal savunma yaptı.`); }
             else { defending.add(i); log.push(`🛡️ ${f.username} savunma duruşu aldı.`); }
             continue;
           }
           if (action === 'heal') {
-            if (f.mana >= 18) { f.mana -= 18; const healed = Math.min(f.maxHp, hpNow[i] + 26); log.push(`💚 ${f.username} Heilen kullandı: +${healed-hpNow[i]} HP (-18 mana).`); hpNow[i] = healed; }
-            else log.push(`🔹 ${f.username} için mana yetersiz; büyü kullanılamadı.`);
+            const healCost = applyClassManaCost(18, f.className);
+            if (f.mana >= healCost) {
+              f.mana -= healCost;
+              const healAmount = applyClassHealing(26, f.className);
+              const healed = Math.min(f.maxHp, hpNow[i] + healAmount);
+              log.push(`💚 ${f.username} Heilen kullandı: +${healed-hpNow[i]} HP (-${healCost} mana).`);
+              hpNow[i] = healed;
+            } else log.push(`🔹 ${f.username} için mana yetersiz; büyü kullanılamadı.`);
             continue;
           }
           let damage = Math.max(1, Math.round(f.attack * (0.9 + Math.random() * 0.25)));
@@ -262,7 +269,11 @@ export default {
         }
       }
       const win=bossHp<=0;
-      const persistedHpNow=hpNow.map((hp,i)=>Math.min(hp,fighters[i].baseMaxHp));
+      const persistedHpNow=hpNow.map((hp,i)=> {
+        const combatMaxHp = Math.max(1, Number(fighters[i].maxHp));
+        const baseMaxHp = Math.max(1, Number(fighters[i].baseMaxHp));
+        return Math.max(0, Math.min(baseMaxHp, Math.round((hp / combatMaxHp) * baseMaxHp)));
+      });
       const xpReward=win?BOSS.xp:Math.floor(BOSS.xp*0.25);
       const coinReward=win?BOSS.coins:Math.floor(BOSS.coins*0.2);
       const loot=win && Math.random()<0.4 ? BOSS.loot : null;
