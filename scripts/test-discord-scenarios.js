@@ -472,3 +472,15 @@ test('treasure chests can roll low-probability legendary Frieren-themed loot', a
   assert.match(command, /Himmel’in Efsanevi Yadigârı/);
   assert.match(command, /Frieren’in Kadim Asası/);
 });
+
+test('adventure history records committed rewards and displays the latest five encounters', async () => {
+  const schema = await read('database/db.js');
+  const adventure = await read('macera.js');
+  const history = await read('maceragecmisi.js');
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS adventure_history/);
+  assert.match(adventure, /INSERT INTO adventure_history/);
+  assert.match(adventure, /await client\.query\('COMMIT'\)/);
+  assert.match(history, /ORDER BY occurred_at DESC, id DESC LIMIT 5/);
+  assert.match(history, /Son 5 macera/);
+  assert.match(history, /first_discovery/);
+});
