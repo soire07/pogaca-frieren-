@@ -727,6 +727,24 @@
       "name": "Prevent duplicate tank and healer assignments during party role selection",
       "category": "Combat",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-102",
+      "name": "Choose attack, Zoltraak or defense each boss raid turn",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-103",
+      "name": "Spend persistent mana to amplify cooperative boss raid damage",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-104",
+      "name": "Reduce cooperative boss raid damage with player defense choices",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
     }
   ]
 }
