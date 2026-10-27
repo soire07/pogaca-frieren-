@@ -201,6 +201,16 @@ export async function initDatabase() {
     );
     CREATE INDEX IF NOT EXISTS idx_treasure_openings_user_recent
       ON treasure_openings(guild_id,user_id,opened_at DESC);
+    CREATE TABLE IF NOT EXISTS user_crafting_progress (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      xp INTEGER NOT NULL DEFAULT 0 CHECK (xp >= 0),
+      level INTEGER NOT NULL DEFAULT 1 CHECK (level >= 1),
+      successful_crafts INTEGER NOT NULL DEFAULT 0 CHECK (successful_crafts >= 0),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id,user_id),
+      FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS adventure_history (
       id BIGSERIAL PRIMARY KEY,
       guild_id TEXT NOT NULL,
