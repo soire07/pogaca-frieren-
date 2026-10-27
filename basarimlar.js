@@ -24,7 +24,9 @@ const achievements = [
   { id:'craft_level_5', title:'Çıraklıktan Ustalığa', emoji:'⚒️', description:'5. zanaat seviyesine ulaş', check:s=>s.craftingLevel>=5, reward:300 },
   { id:'craft_level_10', title:'Efsanevi Zanaatkâr', emoji:'🛠️', description:'10. zanaat seviyesine ulaş', check:s=>s.craftingLevel>=10, reward:900 },
   { id:'craft_10', title:'İlk Atölye', emoji:'🔨', description:'10 ekipman üret', check:s=>s.craftedItems>=10, reward:250 },
-  { id:'craft_50', title:'Kuzeyin Demircisi', emoji:'⚒️', description:'50 ekipman üret', check:s=>s.craftedItems>=50, reward:800 }
+  { id:'craft_50', title:'Kuzeyin Demircisi', emoji:'⚒️', description:'50 ekipman üret', check:s=>s.craftedItems>=50, reward:800 },
+  { id:'salvage_10', title:'Geri Dönüşüm Ustası', emoji:'♻️', description:'10 ekipman parçala', check:s=>s.salvagedItems>=10, reward:250 },
+  { id:'salvage_25', title:'Malzeme Simyacısı', emoji:'🧪', description:'25 ekipman parçala', check:s=>s.salvagedItems>=25, reward:600 }
 ];
 
 export default {
@@ -53,7 +55,9 @@ export default {
         {name:'Çıraklıktan Ustalığa',value:'craft_level_5'},
         {name:'Efsanevi Zanaatkâr',value:'craft_level_10'},
         {name:'İlk Atölye',value:'craft_10'},
-        {name:'Kuzeyin Demircisi',value:'craft_50'}
+        {name:'Kuzeyin Demircisi',value:'craft_50'},
+        {name:'Geri Dönüşüm Ustası',value:'salvage_10'},
+        {name:'Malzeme Simyacısı',value:'salvage_25'}
       ).setRequired(false)),
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',ephemeral:true});
@@ -74,10 +78,11 @@ export default {
           (SELECT COALESCE(treasures_opened,0)::int FROM adventure_treasure_progress WHERE guild_id=$1 AND user_id=$2) AS treasures_opened,
           (SELECT COUNT(*)::int FROM treasure_openings WHERE guild_id=$1 AND user_id=$2) AS chests_opened,
           (SELECT COALESCE(level,1)::int FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2) AS crafting_level,
-          (SELECT COALESCE(successful_crafts,0)::int FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2) AS crafted_items`,
+          (SELECT COALESCE(successful_crafts,0)::int FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2) AS crafted_items,
+          (SELECT COALESCE(salvaged_items,0)::int FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2) AS salvaged_items`,
           [interaction.guildId,interaction.user.id])
       ]);
-      const stats={coins:Number(u?.coins||0),level:Number(u?.level||1),xp:Number(u?.xp||0),uniqueCharacters:Number(c?.unique_count||0),totalCopies:Number(c?.total_copies||0),legendary:Number(c?.legendary||0),explorations:Number(u?.exploration_count||0),itemsUsed:Number(u?.items_used_count||0),bestDailyStreak:Number(u?.best_daily_streak||0),dungeonWins:Number(u?.dungeon_wins||0),dungeonRuns:Number(u?.dungeon_runs||0),rareDiscoveries:Number(adventureStats?.rare_discoveries||0),routeVisits:Number(adventureStats?.route_visits||0),treasuresOpened:Number(adventureStats?.treasures_opened||0),chestsOpened:Number(adventureStats?.chests_opened||0),craftingLevel:Number(adventureStats?.crafting_level||1),craftedItems:Number(adventureStats?.crafted_items||0)};
+      const stats={coins:Number(u?.coins||0),level:Number(u?.level||1),xp:Number(u?.xp||0),uniqueCharacters:Number(c?.unique_count||0),totalCopies:Number(c?.total_copies||0),legendary:Number(c?.legendary||0),explorations:Number(u?.exploration_count||0),itemsUsed:Number(u?.items_used_count||0),bestDailyStreak:Number(u?.best_daily_streak||0),dungeonWins:Number(u?.dungeon_wins||0),dungeonRuns:Number(u?.dungeon_runs||0),rareDiscoveries:Number(adventureStats?.rare_discoveries||0),routeVisits:Number(adventureStats?.route_visits||0),treasuresOpened:Number(adventureStats?.treasures_opened||0),chestsOpened:Number(adventureStats?.chests_opened||0),craftingLevel:Number(adventureStats?.crafting_level||1),craftedItems:Number(adventureStats?.crafted_items||0),salvagedItems:Number(adventureStats?.salvaged_items||0)};
       const claimKey=interaction.options.getString('odul');
       if(claimKey){
         const achievement=achievements.find(a=>a.id===claimKey);
