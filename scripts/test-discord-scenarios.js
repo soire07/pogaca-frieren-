@@ -156,7 +156,7 @@ test('manual test plan distinguishes automated checks from live Discord verifica
   assert.ok(guide.includes('SP-08'));
 });
 
-import { masteryLevelForCasts, practiceCost } from '../buyupratik.js';
+import { masteryLevelForCasts, practiceCost } from '../commands/rpg/buyupratik.js';
 
 test('spell practice advances mastery at ten-use thresholds and caps at level ten', () => {
   assert.equal(masteryLevelForCasts(0), 0);
@@ -171,7 +171,7 @@ test('spell practice advances mastery at ten-use thresholds and caps at level te
 });
 
 test('spell practice uses existing learned-spell keys and checks ownership before spending resources', async () => {
-  const source = await read('buyupratik.js');
+  const source = await read('commands/rpg/buyupratik.js');
   const learn = await read('commands/rpg/buyuogren.js');
   const mastery = await read('commands/rpg/buyuustaligi.js');
   for (const key of ['zoltraak','alev_kuresi','buz_mizragi','koruyucu_bariyer','sifa_isigi','yildirim_zinciri','tas_duvar','mana_patlamasi']) {
@@ -186,4 +186,21 @@ test('spell practice uses existing learned-spell keys and checks ownership befor
   assert.ok(source.includes("await db.query('ROLLBACK')"));
   assert.ok(learn.includes("setName('buyuogren')"));
   assert.ok(mastery.includes("setName('buyuustaligi')"));
+});
+
+test('spell mastery changes ice, barrier, healing and stone-wall effects in boss combat', async () => {
+  const combat = await read('iblisavasi.js');
+  assert.match(combat, /Math\.min\(0\.6, 0\.35 \+ \(spellMastery\.get\(spellUsed\) \|\| 0\) \* 0\.025\)/);
+  assert.match(combat, /Math\.min\(0\.8, 0\.5 \+ \(spellMastery\.get\(spellUsed\) \|\| 0\) \* 0\.03\)/);
+  assert.match(combat, /\(spellMastery\.get\(spellUsed\) \|\| 0\) \* 3/);
+  assert.match(combat, /Math\.min\(0\.9, 0\.75 \+ \(spellMastery\.get\(spellUsed\) \|\| 0\) \* 0\.015\)/);
+  assert.match(combat, /bossDamage \* \(1 - shieldReduction\)/);
+  assert.match(combat, /bossDamage \* \(1 - fortifiedReduction\)/);
+});
+
+test('spell practice is registered in the RPG command directory', async () => {
+  const source = await read('commands/rpg/buyupratik.js');
+  assert.match(source, /setName\('buyupratik'\)/);
+  assert.match(source, /from '\.\.\/\.\.\/database\/db\.js'/);
+  assert.match(source, /FOR UPDATE/);
 });
