@@ -105,3 +105,10 @@ test('party combat applies class discounts and healing passives and converts sca
     assert.match(source, /Math\.min\(baseMaxHp, Math\.round\(\(hp \/ combatMaxHp\) \* baseMaxHp\)\)/);
   }
 });
+
+
+test('solo demon battle persists build-adjusted HP as a base-stat health ratio', async () => {
+  const source = await read('iblisavasi.js');
+  assert.match(source, /const toPersistentHp = hp => Math\.max\(0, Math\.min\(Number\(stats\.max_hp\), Math\.round\(\(hp \/ Math\.max\(1, playerMaxHp\)\) \* Number\(stats\.max_hp\)\)\)\)/);
+  assert.equal((source.match(/toPersistentHp\(playerHp\)/g) || []).length, 3);
+});
