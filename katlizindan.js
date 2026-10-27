@@ -236,14 +236,21 @@ export default {
             const p = players[i];
             const action = choices.get(p.user_id) || 'defend';
             if (action === 'defend' || action === 'shield') {
-              if (action === 'shield' && p.mana >= 10) { p.mana -= 10; defending.add(i); log.push(`🔮 <@${p.user_id}> Mana Kalkanı açtı (-10 mana).`); }
+              const shieldCost = applyClassManaCost(10, p.class_name);
+              if (action === 'shield' && p.mana >= shieldCost) { p.mana -= shieldCost; defending.add(i); log.push(`🔮 <@${p.user_id}> Mana Kalkanı açtı (-${shieldCost} mana).`); }
               else if (action === 'shield') { defending.add(i); log.push(`🔹 <@${p.user_id}> için mana yetersiz; normal savunma yaptı.`); }
               else { defending.add(i); log.push(`🛡️ <@${p.user_id}> savunma duruşu aldı.`); }
               continue;
             }
             if (action === 'heal') {
-              if (p.mana >= 18) { p.mana -= 18; const healed = Math.min(p.maxHp, hpNow[i] + 26); log.push(`💚 <@${p.user_id}> Heilen kullandı: +${healed-hpNow[i]} HP (-18 mana).`); hpNow[i] = healed; }
-              else log.push(`🔹 <@${p.user_id}> için mana yetersiz; büyü kullanılamadı.`);
+              const healCost = applyClassManaCost(18, p.class_name);
+              if (p.mana >= healCost) {
+                p.mana -= healCost;
+                const healAmount = applyClassHealing(26, p.class_name);
+                const healed = Math.min(p.maxHp, hpNow[i] + healAmount);
+                log.push(`💚 <@${p.user_id}> Heilen kullandı: +${healed-hpNow[i]} HP (-${healCost} mana).`);
+                hpNow[i] = healed;
+              } else log.push(`🔹 <@${p.user_id}> için mana yetersiz; büyü kullanılamadı.`);
               continue;
             }
             const baseDamage = Math.max(1, Math.round((Number(p.attack) + Math.floor(p.level / 3)) * (0.88 + ((p.level + floor + turn + i) % 4) * 0.09)));
@@ -353,7 +360,11 @@ export default {
 
       const victory = floorsCleared === FLOORS;
       const loot = victory && Math.random() < 0.35 ? LOOT[Math.floor(Math.random() * LOOT.length)] : null;
-      const persistedHpNow = hpNow.map((hp, i) => Math.min(hp, Number(players[i].max_hp)));
+      const persistedHpNow = hpNow.map((hp, i) => {
+        const combatMaxHp = Math.max(1, Number(players[i].maxHp));
+        const baseMaxHp = Math.max(1, Number(players[i].max_hp));
+        return Math.max(0, Math.min(baseMaxHp, Math.round((hp / combatMaxHp) * baseMaxHp)));
+      });
       for (let i = 0; i < players.length; i++) {
         const p = players[i];
         const newXp = p.xp + totalXp;
