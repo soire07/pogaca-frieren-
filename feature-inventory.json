@@ -1579,7 +1579,31 @@
       "name": "Keep equipment dismantling and material refunds inside one transaction",
       "category": "Economy",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-244",
+      "name": "Track the total number of equipment items dismantled by each player",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-245",
+      "name": "Show lifetime dismantling progress after each equipment salvage operation",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-246",
+      "name": "Claim a one-time achievement reward after dismantling ten equipment items",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-247",
+      "name": "Claim a one-time achievement reward after dismantling twenty-five equipment items",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 262
+  "count": 266
 }
