@@ -148,19 +148,76 @@ export default {
         let bossRageAnnounced = false;
         log.push(`**Kat ${floor}: ${FLOOR_NAMES[floor - 1]}** — ${maxEnemyHp} HP.`);
         while (enemyHp > 0 && hpNow.some(hp => hp > 0) && turn < 10) {
-          turn++; turns++;
+          turn++;
+          turns++;
+          const livingAtStart = players.filter((_p, i) => hpNow[i] > 0);
+          const suffix = `${interaction.id}:${floor}:${turn}`;
+          const actionRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`katlizindan:act:attack:${suffix}`).setLabel('⚔️ Saldır').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId(`katlizindan:act:spell:${suffix}`).setLabel('✨ Zoltraak (12 mana)').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId(`katlizindan:act:defend:${suffix}`).setLabel('🛡️ Savun').setStyle(ButtonStyle.Secondary)
+          );
+          const actionMessage = await interaction.editReply({
+            content: `**Kat ${floor}/${FLOORS} · Tur ${turn}**\n🌑 Düşman: ${enemyHp}/${maxEnemyHp} HP\n${livingAtStart.map(p => `<@${p.user_id}> (${p.mana}/${p.maxMana} mana)`).join(' · ')}\n\nHer yaşayan oyuncu **Saldır**, **Zoltraak** (12 mana) veya **Savun** seçeneklerinden birini seçsin. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
+            embeds: [],
+            components: [actionRow]
+          });
+          const choices = new Map();
+          const collector = actionMessage.createMessageComponentCollector({
+            componentType: ComponentType.Button,
+            time: 20_000,
+            filter: c => livingAtStart.some(p => p.user_id === c.user.id) &&
+              c.customId.startsWith('katlizindan:act:') &&
+              c.customId.endsWith(suffix)
+          });
+          const collected = new Promise(resolve => {
+            collector.on('collect', async c => {
+              if (choices.has(c.user.id)) {
+                await c.reply({ content: 'Bu tur için seçimini zaten yaptın.', ephemeral: true }).catch(() => {});
+                return;
+              }
+              const action = c.customId.split(':')[2];
+              choices.set(c.user.id, action);
+              await c.deferUpdate().catch(() => {});
+              if (choices.size >= livingAtStart.length) collector.stop('all-selected');
+            });
+            collector.once('end', resolve);
+          });
+          await collected;
+
+          const defending = new Set();
           for (let i = 0; i < players.length && enemyHp > 0; i++) {
             if (hpNow[i] <= 0) continue;
             const p = players[i];
-            const damage = Math.max(1, Math.round((Number(p.attack) + Math.floor(p.level / 3)) * (0.88 + ((p.level + floor + turn + i) % 4) * 0.09)));
+            const action = choices.get(p.user_id) || 'defend';
+            if (action === 'defend') {
+              defending.add(i);
+              log.push(`🛡️ <@${p.user_id}> savunma duruşu aldı.`);
+              continue;
+            }
+            const baseDamage = Math.max(1, Math.round((Number(p.attack) + Math.floor(p.level / 3)) * (0.88 + ((p.level + floor + turn + i) % 4) * 0.09)));
+            let damage = baseDamage;
+            if (action === 'spell' && p.mana >= 12) {
+              p.mana -= 12;
+              damage = Math.round(baseDamage * 1.8);
+              log.push(`✨ <@${p.user_id}> Zoltraak kullandı (-12 mana).`);
+            } else if (action === 'spell') {
+              log.push(`🔹 <@${p.user_id}> için mana yetersiz; normal saldırı yaptı.`);
+            }
             enemyHp = Math.max(0, enemyHp - damage);
-            if (turn === 1 || enemyHp === 0) log.push(`⚔️ <@${p.user_id}> ${damage} hasar verdi; düşman ${enemyHp}/${maxEnemyHp} HP.`);
+            log.push(`⚔️ <@${p.user_id}> ${damage} hasar verdi; düşman ${enemyHp}/${maxEnemyHp} HP.`);
           }
           if (enemyHp > 0) {
             const living = hpNow.map((hp, i) => hp > 0 ? i : -1).filter(i => i >= 0);
             const healerIndex = living.find(i => players[i].role === 'healer');
             if (healerIndex !== undefined) {
-              for (const i of living) { const healed = Math.min(players[i].maxHp, hpNow[i] + 6); if (healed > hpNow[i]) { log.push(`💚 ${players[healerIndex].roleLabel} <@${players[healerIndex].user_id}> ${healed - hpNow[i]} HP iyileştirdi.`); hpNow[i] = healed; } }
+              for (const i of living) {
+                const healed = Math.min(players[i].maxHp, hpNow[i] + 6);
+                if (healed > hpNow[i]) {
+                  log.push(`💚 ${players[healerIndex].roleLabel} <@${players[healerIndex].user_id}> ${healed - hpNow[i]} HP iyileştirdi.`);
+                  hpNow[i] = healed;
+                }
+              }
             }
             const tankIndex = living.find(i => players[i].role === 'tank');
             const targetIndex = tankIndex !== undefined && Math.random() < 0.7 ? tankIndex : living[(turn + floor) % living.length];
@@ -169,11 +226,12 @@ export default {
             const enraged = finalBoss && enemyHp <= maxEnemyHp * 0.5;
             const specialAttack = finalBoss && turn % 3 === 0;
             const bossPower = finalBoss ? 1.35 : 1;
-            const damage = Math.max(1, Math.round(enemyDamage * bossPower * (0.9 + ((turn + floor) % 3) * 0.08) + (enraged ? 7 : 0) + (specialAttack ? 6 : 0) - target.defense * 0.3));
-            hpNow[targetIndex] = Math.max(0, hpNow[targetIndex] - damage);
+            let incoming = Math.max(1, Math.round(enemyDamage * bossPower * (0.9 + ((turn + floor) % 3) * 0.08) + (enraged ? 7 : 0) + (specialAttack ? 6 : 0) - target.defense * 0.3));
+            if (defending.has(targetIndex)) incoming = Math.max(1, Math.round(incoming * 0.45));
+            hpNow[targetIndex] = Math.max(0, hpNow[targetIndex] - incoming);
             if (enraged && !bossRageAnnounced) { log.push('🔥 İblis Lordu öfke evresine girdi; saldırıları güçlendi!'); bossRageAnnounced = true; }
             if (specialAttack) log.push('☄️ İblis Lordu yıldız biçimli mana patlaması kullandı!');
-            log.push(`💥 ${finalBoss ? 'İblis Lordu' : 'Düşman'} <@${target.user_id}> oyuncusuna ${damage} hasar verdi.`);
+            log.push(`💥 ${finalBoss ? 'İblis Lordu' : 'Düşman'} <@${target.user_id}> oyuncusuna ${incoming} hasar verdi${defending.has(targetIndex) ? ' (savunma azaltımı uygulandı)' : ''}.`);
           }
         }
         if (enemyHp > 0) {
@@ -213,10 +271,10 @@ export default {
         await db.query(
           `UPDATE users SET hp=$3, xp=$4, level=$5, coins=coins+$6,
              stat_points=stat_points+$7, dungeon_wins=dungeon_wins+$8,
-             dungeon_runs=dungeon_runs+1, last_dungeon_at=NOW()
+             dungeon_runs=dungeon_runs+1, last_dungeon_at=NOW(), mana=$9
            WHERE guild_id=$1 AND user_id=$2`,
           [interaction.guildId, p.user_id, hpNow[i], newXp, newLevel, totalCoins,
-            Math.max(0, newLevel - oldLevels[i]), victory ? 1 : 0]
+            Math.max(0, newLevel - oldLevels[i]), victory ? 1 : 0, p.mana]
         );
         for (const itemKey of [...chestRewards, ...(loot ? [loot] : [])]) await db.query(
           `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
@@ -231,7 +289,7 @@ export default {
         .setTitle(victory ? '🏆 Beş Kat Tamamlandı!' : `🛡️ ${floorsCleared}/${FLOORS} Kat Geçildi`)
         .setDescription(
           `**Takım:** ${team.map(u => `<@${u.id}>`).join(', ')}\n**İlerleme:** ${floorsCleared}/${FLOORS} kat · **Toplam tur:** ${turns}\n\n` +
-          players.map((p, i) => `**<@${p.user_id}>** — ${p.roleLabel} · Seviye ${p.level}${levelForXp(p.xp + totalXp) > p.level ? ` → ${levelForXp(p.xp + totalXp)} ✨` : ''}\n❤️ HP: ${p.hp} → ${hpNow[i]} · ⚔️ ${p.attack} · 🛡️ ${p.defense}`).join('\n\n') +
+          players.map((p, i) => `**<@${p.user_id}>** — ${p.roleLabel} · Seviye ${p.level}${levelForXp(p.xp + totalXp) > p.level ? ` → ${levelForXp(p.xp + totalXp)} ✨` : ''}\n❤️ HP: ${p.hp} → ${hpNow[i]} · ✨ Mana: ${p.mana}/${p.maxMana} · ⚔️ ${p.attack} · 🛡️ ${p.defense}`).join('\n\n') +
           '\n\n**Kat günlüğü**\n' + log.slice(-12).join('\n')
         )
         .addFields(
