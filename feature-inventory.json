@@ -1771,7 +1771,13 @@
       "name": "Apply rarity-based equipment set bonuses to exploration HP, mana and defense calculations",
       "category": "Equipment",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-276",
+      "name": "Apply persistent HP, mana and defense talent ranks to exploration effective stats alongside equipment sets, class passives and combat builds",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 294
+  "count": 295
 }
