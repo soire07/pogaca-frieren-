@@ -404,4 +404,5 @@ test('solo boss combat applies the same equipment set bonuses as profile and gro
   const source = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
   assert.match(source, /applyEquipmentSetBonus/);
   assert.match(source, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+  assert.match(source, /gearBonus\.setText/);
 });
