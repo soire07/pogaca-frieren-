@@ -1753,7 +1753,13 @@
       "name": "Preserve proportional current HP and mana when party roles, equipment, talents and combat builds scale dungeon and raid stats",
       "category": "Combat",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-273",
+      "name": "Keep player HP and mana ratios consistent across profile display, solo demon fights, cooperative dungeons and boss raids when temporary equipment/build bonuses apply",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 291
+  "count": 292
 }
