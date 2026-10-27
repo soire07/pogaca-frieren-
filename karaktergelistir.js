@@ -4,6 +4,7 @@ import { characters } from './character-data.js';
 
 const costFor = level => 250 * (level + 1);
 export default {
+  internalOnly: true,
  data:new SlashCommandBuilder().setName('karaktergelistir').setDescription('Koleksiyonundaki karakterin seviyesini yükselt.')
   .addStringOption(o=>o.setName('karakter').setDescription('Geliştirmek istediğin karakterin adı').setRequired(true).setAutocomplete(true))
   .addBooleanOption(o=>o.setName('yukselt').setDescription('Evet seçersen yükseltme işlemini yapar; hayır seçersen bilgiyi gösterir.').setRequired(false)),
