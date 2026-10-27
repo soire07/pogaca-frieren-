@@ -59,7 +59,7 @@ test('cooperative raid defines player-facing roles and a persistent cooldown', a
   assert.match(source, /FOR UPDATE/);
   assert.match(source, /last_boss_at=NOW\(\)/);
   assert.match(source, /boss_defeats=boss_defeats\+\$8/);
-  assert.match(source, /component\.user\.id/);
+  assert.match(source, /c\.user\.id/);
 });
 
 test('multi-floor dungeon includes traps, chests and persistent player rewards', async () => {
