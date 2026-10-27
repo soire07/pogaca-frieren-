@@ -433,3 +433,14 @@ test('treasure opening history records each chest reward and lists the latest te
   assert.match(history, /ORDER BY opened_at DESC, id DESC LIMIT 10/);
   assert.match(history, /loot_item/);
 });
+
+test('achievement claims include rare exploration, treasure completion, chest and route milestones', async () => {
+  const command = await read('basarimlar.js');
+  assert.match(command, /rare_explorer/);
+  assert.match(command, /treasure_map/);
+  assert.match(command, /chest_opener_10/);
+  assert.match(command, /route_master_10/);
+  assert.match(command, /treasure_openings/);
+  assert.match(command, /adventure_route_mastery/);
+  assert.match(command, /adventure_treasure_progress/);
+});
