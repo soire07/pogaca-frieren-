@@ -321,3 +321,18 @@ test('solo boss encounters reserve the player and release the reservation on eve
   assert.match(rest, /SELECT encounter_type FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/);
   assert.match(boss, /collector\.on\('end', async \(_, reason\) => \{[\s\S]*?await releaseReservation\(\)/);
 });
+
+
+test('rest serializes against encounter reservations and rolls back blocked rests', async () => {
+  const source = await read('commands/rpg/dinlen.js');
+  const begin = source.indexOf("await db.query('BEGIN')");
+  const playerLock = source.indexOf('SELECT hp, max_hp, mana, max_mana, last_rest_at FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE');
+  const encounterCheck = source.indexOf('SELECT encounter_type FROM active_rpg_encounters', playerLock);
+  const update = source.indexOf('UPDATE users', encounterCheck);
+  const commit = source.indexOf("await db.query('COMMIT')", update);
+  assert.ok(begin >= 0 && playerLock > begin && encounterCheck > playerLock && update > encounterCheck && commit > update,
+    'rest must lock the player row, check active encounters and save within one transaction');
+  assert.match(source, /if \(activeEncounter\.rowCount\) \{[\s\S]*?await db\.query\('ROLLBACK'\)/);
+  assert.match(source, /catch \(error\) \{[\s\S]*?await db\.query\('ROLLBACK'\)/);
+  assert.match(source, /finally \{\s*db\.release\(\)/);
+});
