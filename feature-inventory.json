@@ -1663,7 +1663,13 @@
       "name": "Switch crafting leaderboards to recycling progress through the category selector",
       "category": "Social",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-258",
+      "name": "Preview all equipment dismantling yields and rarity before selecting an item",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 276
+  "count": 277
 }
