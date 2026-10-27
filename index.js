@@ -172,8 +172,15 @@ client.on(Events.MessageBulkDelete, async messages => {
 client.once(Events.ClientReady, async readyClient => {
   try {
     const slashCommands = [...client.commands.values()].map(command => command.data.toJSON());
-    await readyClient.application.commands.set(slashCommands, process.env.GUILD_ID || undefined);
-    console.log(`${slashCommands.length} slash komutu Discord'a eşitlendi.`);
+    if (process.env.GUILD_ID) {
+      // Eski global kayıtları temizle; aksi hâlde aynı komutlar global + sunucu kapsamında çift görünür.
+      await readyClient.application.commands.set([]);
+      await readyClient.application.commands.set(slashCommands, process.env.GUILD_ID);
+      console.log(`${slashCommands.length} slash komutu hedef sunucuya eşitlendi; eski global komut kayıtları temizlendi.`);
+    } else {
+      await readyClient.application.commands.set(slashCommands);
+      console.log(`${slashCommands.length} slash komutu global olarak eşitlendi.`);
+    }
   } catch (error) {
     console.error('Slash komutları otomatik eşitlenemedi:', error);
   }
