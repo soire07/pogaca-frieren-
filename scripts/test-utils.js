@@ -358,3 +358,24 @@ test('solo boss combat applies spell awakening perks and the mastery guide expla
   assert.match(guide, /Uyanış açıldı/);
   assert.match(guide, /Seviye 10’da büyüne özel Uyanış açılır/);
 });
+
+import { shouldGuaranteeRareDiscovery } from '../rpg-mechanics.js';
+
+test('rare exploration pity guarantees a new rare location at each 20-adventure milestone', () => {
+  assert.equal(shouldGuaranteeRareDiscovery(18, 0), false);
+  assert.equal(shouldGuaranteeRareDiscovery(19, 0), true);
+  assert.equal(shouldGuaranteeRareDiscovery(20, 1), false);
+  assert.equal(shouldGuaranteeRareDiscovery(39, 1), true);
+  assert.equal(shouldGuaranteeRareDiscovery(59, 2), true);
+  assert.equal(shouldGuaranteeRareDiscovery(999, 3), false);
+  assert.equal(shouldGuaranteeRareDiscovery(-10, 0), false);
+  assert.equal(shouldGuaranteeRareDiscovery(100, -1), false);
+});
+
+test('adventure command uses pity to prioritize undiscovered rare locations', async () => {
+  const source = await readFile(new URL('../macera.js', import.meta.url), 'utf8');
+  assert.match(source, /shouldGuaranteeRareDiscovery/);
+  assert.match(source, /rareOutcomes\.find\(entry => !discoveredRare\.has\(entry\.discovery\)\)/);
+  assert.match(source, /total_adventures/);
+  assert.match(source, /rare_discoveries/);
+});
