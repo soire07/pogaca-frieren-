@@ -125,6 +125,7 @@ test('co-op rewards and cooldowns are persisted inside database transactions', a
     assert.ok(source.includes("await db.query('COMMIT')"), name + ': transaction commits');
     assert.ok(source.includes("await db.query('ROLLBACK')"), name + ': failures roll back');
     assert.ok(source.includes('db.release()'), name + ': database connection is released');
+    assert.ok(source.includes('persistedHpNow'), name + ': temporary role HP is clamped before persistence');
   }
 });
 
