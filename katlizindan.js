@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, Embe
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild } from './rpg-mechanics.js';
+import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus } from './rpg-mechanics.js';
 
 const FLOORS = 5;
 const COOLDOWN_MS = 30 * 60_000;
@@ -218,8 +218,17 @@ export default {
         const enemyDamage = enemyStats.damage;
         let turn = 0;
         let bossRageAnnounced = false;
+        const finalBoss = floor === FLOORS;
+        let enemyPhase = 1;
         log.push(`**Kat ${floor}: ${FLOOR_NAMES[floor - 1]}** — ${maxEnemyHp} HP.`);
         while (enemyHp > 0 && hpNow.some(hp => hp > 0) && turn < 10) {
+          const currentPhase = finalBoss ? getBossPhase(enemyHp, maxEnemyHp) : 1;
+          if (currentPhase > enemyPhase) {
+            enemyPhase = currentPhase;
+            log.push(currentPhase === 2
+              ? '🔥 **İblis Lordu ikinci evreye geçti!** Saldırıları %10 güçlendi.'
+              : '🌑 **İblis Lordu son evreye geçti!** Saldırıları %25 güçlendi; özel saldırıları sertleşti.');
+          }
           turn++;
           turns++;
           const livingAtStart = players.filter((_p, i) => hpNow[i] > 0);
@@ -232,7 +241,7 @@ export default {
             new ButtonBuilder().setCustomId(`katlizindan:act:defend:${suffix}`).setLabel('🛡️ Savun').setStyle(ButtonStyle.Secondary)
           );
           const actionMessage = await interaction.editReply({
-            content: `**Kat ${floor}/${FLOORS} · Tur ${turn}**\n🌑 Düşman: ${enemyHp}/${maxEnemyHp} HP\n${livingAtStart.map(p => `<@${p.user_id}> (${p.mana}/${p.maxMana} mana)`).join(' · ')}\n\nHer yaşayan oyuncu Saldır, Zoltraak (12), Heilen (18), Mana Kalkanı (10) veya Savun seçsin. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
+            content: `**Kat ${floor}/${FLOORS} · Tur ${turn}${finalBoss ? ` · Evre ${enemyPhase}/3` : ''}**\n🌑 Düşman: ${enemyHp}/${maxEnemyHp} HP\n${livingAtStart.map(p => `<@${p.user_id}> (${p.mana}/${p.maxMana} mana)`).join(' · ')}\n\nHer yaşayan oyuncu Saldır, Zoltraak (12), Heilen (18), Mana Kalkanı (10) veya Savun seçsin. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
             embeds: [],
             components: [actionRow]
           });
@@ -315,11 +324,13 @@ export default {
             const tankIndex = living.find(i => players[i].role === 'tank');
             const targetIndex = tankIndex !== undefined && Math.random() < 0.7 ? tankIndex : living[(turn + floor) % living.length];
             const target = players[targetIndex];
-            const finalBoss = floor === FLOORS;
             const enraged = finalBoss && enemyHp <= maxEnemyHp * 0.5;
             const specialAttack = finalBoss && turn % 3 === 0;
             const bossPower = finalBoss ? 1.35 : 1;
-            let incoming = Math.max(1, Math.round(enemyDamage * bossPower * (0.9 + ((turn + floor) % 3) * 0.08) + (enraged ? 7 : 0) + (specialAttack ? 6 : 0) - target.defense * 0.3));
+            const rawIncoming = Math.max(1, Math.round(enemyDamage * bossPower * (0.9 + ((turn + floor) % 3) * 0.08) + (enraged ? 7 : 0) + (specialAttack ? 6 + bossPhaseSpecialBonus(enemyPhase) : 0)));
+            let incoming = finalBoss
+              ? calculateBossIncomingDamage(rawIncoming, Math.round(target.defense * 0.6), enemyPhase)
+              : Math.max(1, Math.round(rawIncoming - target.defense * 0.3));
             if (defending.has(targetIndex)) incoming = Math.max(1, Math.round(incoming * 0.45));
             hpNow[targetIndex] = Math.max(0, hpNow[targetIndex] - incoming);
             if (enraged && !bossRageAnnounced) { log.push('🔥 İblis Lordu öfke evresine girdi; saldırıları güçlendi!'); bossRageAnnounced = true; }
