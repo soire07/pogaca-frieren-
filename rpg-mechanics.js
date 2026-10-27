@@ -171,3 +171,16 @@ export function shouldGuaranteeRareDiscovery(totalAdventures, uniqueRareDiscover
   const total = Math.max(0, Math.floor(Number(totalRareDiscoveries) || 0));
   return found < total && visits >= (found + 1) * every - 1;
 }
+
+
+/** Region mastery rewards are paid once at each third successful visit. */
+export function explorationMasteryReward(visits) {
+  const count = Math.max(0, Math.floor(Number(visits) || 0));
+  const milestone = count > 0 && count % 3 === 0;
+  return {
+    level: Math.floor(count / 3),
+    coins: milestone ? 40 : 0,
+    xp: milestone ? 30 : 0,
+    milestone
+  };
+}
