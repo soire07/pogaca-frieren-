@@ -37,7 +37,7 @@ const errors = [];
 for (const filePath of files) {
   try {
     const mod = await import(pathToFileURL(filePath).href);
-    if (mod.default?.data && typeof mod.default.data.toJSON === 'function' && typeof mod.default.execute === 'function') {
+    if (mod.default?.data && typeof mod.default.data.toJSON === 'function' && typeof mod.default.execute === 'function' && !mod.default?.internalOnly) {
       const command = mod.default.data.toJSON();
       if (!command.name || !command.description) throw new Error('Komut adı veya açıklaması eksik.');
       const hasAutocomplete = (options = []) => options.some(option => option.autocomplete === true || hasAutocomplete(option.options || []));

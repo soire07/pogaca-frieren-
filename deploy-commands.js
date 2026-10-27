@@ -46,7 +46,7 @@ const files = [...rootFiles, ...nestedFiles];
 for (const filePath of files) {
   try {
     const mod = await import(pathToFileURL(filePath).href);
-    if (mod.default?.data && typeof mod.default.data.toJSON === 'function') {
+    if (mod.default?.data && typeof mod.default.data.toJSON === 'function' && !mod.default?.internalOnly) {
       commands.push(mod.default.data.toJSON());
     }
   } catch (error) {

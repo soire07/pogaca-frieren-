@@ -50,7 +50,7 @@ async function loadCommands() {
   for (const filePath of files) {
     try {
       const mod = await import(pathToFileURL(filePath).href);
-      if (mod.default?.data && mod.default?.execute) {
+      if (mod.default?.data && mod.default?.execute && !mod.default?.internalOnly) {
         const name = mod.default.data.name;
         if (client.commands.has(name)) {
           throw new Error(`Yinelenen komut adı: /${name}`);
@@ -168,7 +168,14 @@ client.on(Events.MessageBulkDelete, async messages => {
   await sendConfiguredLog(first.guild, { content: `🧹 **Toplu mesaj silme:** <#${first.channelId}> kanalında ${messages.size} mesaj silindi.` });
 });
 
-client.once(Events.ClientReady, readyClient => {
+client.once(Events.ClientReady, async readyClient => {
+  try {
+    const slashCommands = [...client.commands.values()].map(command => command.data.toJSON());
+    await readyClient.application.commands.set(slashCommands, process.env.GUILD_ID || undefined);
+    console.log(`${slashCommands.length} slash komutu Discord'a eşitlendi.`);
+  } catch (error) {
+    console.error('Slash komutları otomatik eşitlenemedi:', error);
+  }
   console.log(`Poğaça Frieren aktif: ${readyClient.user.tag}`);
   const activities = [
     'bin yıllık büyüler öğreniyor ✨',

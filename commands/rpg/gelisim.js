@@ -9,6 +9,7 @@ const statChoices = [
 ];
 
 export default {
+  internalOnly: true,
   data: new SlashCommandBuilder()
     .setName('gelisim')
     .setDescription('Seviye puanlarını karakter özelliklerine yatır.')
