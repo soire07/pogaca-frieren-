@@ -272,3 +272,24 @@ test('daily quest chain is sequential, persistent, and pays escalating rewards t
   assert.match(schema, /PRIMARY KEY \(guild_id,user_id,chain_date\)/);
   assert.match(schema, /current_step INTEGER NOT NULL DEFAULT 1 CHECK \(current_step BETWEEN 1 AND 4\)/);
 });
+
+
+test('character builds persist and affect all combat modes', async () => {
+  const schema = await read('database/db.js');
+  const mechanics = await read('rpg-mechanics.js');
+  const command = await read('karakteryapisi.js');
+  const solo = await read('iblisavasi.js');
+  const dungeon = await read('katlizindan.js');
+  const raid = await read('ortakboss.js');
+  assert.match(schema, /ADD COLUMN IF NOT EXISTS active_build TEXT NOT NULL DEFAULT 'dengeli'/);
+  for (const key of ['dengeli', 'avci', 'muhafiz', 'buyucu']) assert.ok(mechanics.includes(key));
+  assert.match(command, /setName\('karakteryapisi'\)/);
+  assert.match(command, /UPDATE users SET active_build=\$3/);
+  for (const source of [solo, dungeon, raid]) {
+    assert.match(source, /getCharacterBuild/);
+    assert.match(source, /active_build/);
+  }
+  assert.match(solo, /build\.attack/);
+  assert.match(dungeon, /build\.defense/);
+  assert.match(raid, /build\.mana/);
+});
