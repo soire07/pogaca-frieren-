@@ -127,6 +127,8 @@ export default {
     let bossHp = boss.maxHp;
     let turnCount = 0;
     let shield = false;
+    let shieldReduction = 0.5;
+    let fortifiedReduction = 0.75;
     let healUsed = false;
     let busy = false;
     let finished = false;
@@ -223,8 +225,9 @@ export default {
           spellUsed = 'buz_mizragi';
           const damage = Math.floor(Math.random() * 11) + 22 + attack + upgradeBonus + (spellMastery.get('buz_mizragi') || 0) * 2;
           bossHp = Math.max(0, bossHp - damage);
-          frozenBoss = Math.random() < 0.35;
-          actionText = `🧊 Buz Mızrağı isabet etti! İblise **${damage} hasar** verdin. (Mana: −12)${frozenBoss ? '\n❄️ İblis dondu ve bu tur karşı saldırı yapamadı!' : ''}`;
+          const freezeChance = Math.min(0.6, 0.35 + (spellMastery.get(spellUsed) || 0) * 0.025);
+          frozenBoss = Math.random() < freezeChance;
+          actionText = `🧊 Buz Mızrağı isabet etti! İblise **${damage} hasar** verdin. Donma ihtimali: **%${Math.round(freezeChance * 100)}** (Mana: −12)${frozenBoss ? '\n❄️ İblis dondu ve bu tur karşı saldırı yapamadı!' : ''}`;
         } else if (button.customId === 'demon_defend') {
           if (playerMana < 6) {
             busy = false;
@@ -233,7 +236,8 @@ export default {
           playerMana -= 6;
           spellUsed = 'koruyucu_bariyer';
           shield = true;
-          actionText = '🛡️ Koruyucu büyü kurdun. İblisin bir sonraki saldırısı yarı hasar verecek. (Mana: −6)';
+          shieldReduction = Math.min(0.8, 0.5 + (spellMastery.get(spellUsed) || 0) * 0.03);
+          actionText = `🛡️ Koruyucu büyü kurdun. Bir sonraki boss saldırısının **%${Math.round(shieldReduction * 100)}** kadarını engelleyecek. (Mana: −6)`;
         } else if (button.customId === 'demon_heal') {
           if (healUsed) {
             busy = false;
@@ -246,9 +250,10 @@ export default {
           playerMana -= 20;
           spellUsed = 'sifa_isigi';
           const before = playerHp;
-          playerHp = Math.min(playerMaxHp, playerHp + Math.floor(Math.random() * 16) + 20);
+          const healAmount = Math.floor(Math.random() * 16) + 20 + (spellMastery.get(spellUsed) || 0) * 3;
+          playerHp = Math.min(playerMaxHp, playerHp + healAmount);
           healUsed = true;
-          actionText = `💚 İyileşme büyüsüyle **${playerHp - before} HP** geri kazandın. (Mana: −20)`;
+          actionText = `💚 İyileşme büyüsüyle **${playerHp - before} HP** geri kazandın. Ustalık bonusu: **+${(spellMastery.get(spellUsed) || 0) * 3}** iyileştirme. (Mana: −20)`;
         }
 
         if (button.customId === 'demon_chain') {
@@ -259,7 +264,8 @@ export default {
         } else if (button.customId === 'demon_wall') {
           if (playerMana < 12) { busy = false; return button.reply({ content: 'Taş Duvar için en az **12 Mana** gerekiyor.', ephemeral: true }); }
           playerMana -= 12; spellUsed = 'tas_duvar'; fortified = true;
-          actionText = '🪨 **Taş Duvar** yükseldi. Bu tur alacağın boss hasarı %75 azalacak. (Mana: −12)';
+          fortifiedReduction = Math.min(0.9, 0.75 + (spellMastery.get(spellUsed) || 0) * 0.015);
+          actionText = `🪨 **Taş Duvar** yükseldi. Bu tur boss hasarının **%${Math.round(fortifiedReduction * 100)}** kadarını engelleyecek. (Mana: −12)`;
         } else if (button.customId === 'demon_burst') {
           if (playerMana < 30) { busy = false; return button.reply({ content: 'Mana Patlaması için en az **30 Mana** gerekiyor.', ephemeral: true }); }
           playerMana -= 30; spellUsed = 'mana_patlamasi';
@@ -345,14 +351,14 @@ export default {
         }
         if (frozenBoss) bossDamage = 0;
         if (fortified && bossDamage > 0) {
-          bossDamage = Math.ceil(bossDamage * 0.25);
+          bossDamage = Math.ceil(bossDamage * (1 - fortifiedReduction));
           fortified = false;
-          actionText += '\n🪨 Taş Duvar boss saldırısının %75’ini engelledi.';
+          actionText += `\n🪨 Taş Duvar boss saldırısının %${Math.round(fortifiedReduction * 100)} kadarını engelledi.`;
         }
         if (shield && bossDamage > 0) {
-          bossDamage = Math.ceil(bossDamage / 2);
+          bossDamage = Math.ceil(bossDamage * (1 - shieldReduction));
           shield = false;
-          actionText += '\n🛡️ Kalkanın iblisin saldırısını zayıflattı.';
+          actionText += `\n🛡️ Koruyucu Bariyer saldırının %${Math.round(shieldReduction * 100)} kadarını engelledi.`;
         }
         playerHp = Math.max(0, playerHp - bossDamage);
         actionText += bossDamage > 0
