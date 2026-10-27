@@ -289,7 +289,7 @@ export default {
         const starburst = BOSS.special === 'mana-star' && rounds % 3 === 0;
         const shardRain = BOSS.special === 'shard-rain' && rounds % 2 === 0;
         const manaCurse = BOSS.special === 'mana-curse' && rounds % 3 === 0;
-        const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0)+bossPhaseSpecialBonus(bossPhase);
+        const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0)+((starburst || shardRain || manaCurse) ? bossPhaseSpecialBonus(bossPhase) : 0);
         if (enraged && !rageAnnounced) { log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.'); rageAnnounced = true; }
         if (starburst || shardRain) {
           log.push(BOSS.special === 'shard-rain' ? '🐉 Cam Pullar Ejderhası keskin kristal parçalarını tüm takıma yağdırıyor!' : '☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!');
