@@ -155,7 +155,9 @@ export default {
     );
     const upgradeBonus = Number(upgrades.rows[0]?.level || 0) * 2;
     const playerLevel = Number(stats.level || 1);
-    const boss = [...bossTiers].reverse().find(tier => playerLevel >= tier.minLevel) || bossTiers[0];
+    const unlockedBossTiers = bossTiers.filter(tier => playerLevel >= tier.minLevel);
+    // Rotate among unlocked tiers so earlier bosses remain replayable and journal collections can be completed.
+    const boss = unlockedBossTiers[Math.floor(Math.random() * unlockedBossTiers.length)] || bossTiers[0];
     let bossHp = boss.maxHp;
     let bossPhase = 1;
     let turnCount = 0;
