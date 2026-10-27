@@ -4,7 +4,7 @@ import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
 
 const COOLDOWN_MS = 45 * 60_000;
-const BOSS = { name: '☄️ Abyssaldrache, Yıldız Yutan', hp: 950, damage: 26, xp: 180, coins: 220, loot: 'Ejderha Kalbi' };
+const BOSS = { name: '☄️ Abyssaldrache, Yıldız Yutan', hp: 220, damage: 14, xp: 180, coins: 220, loot: 'Ejderha Kalbi' };
 const ROLES = {
   tank: { label: '🛡️ Muhafız', description: 'Daha çok hasar üzerine çeker ve daha dayanıklıdır.', hp: 1.25, attack: 0.85, defense: 1.45 },
   healer: { label: '💚 Şifacı', description: 'Her tur takıma küçük bir iyileştirme sağlar.', hp: 1, attack: 0.85, defense: 1.05 },
@@ -116,12 +116,13 @@ export default {
         await db.query('ROLLBACK');
         return interaction.editReply({ content: '❤️ Her oyuncunun HP değeri sıfırdan yüksek olmalı. Önce /dinlen kullanın.', components: [] });
       }
-      let bossHp = BOSS.hp + Math.max(0,fighters.length-2)*240;
+      const averageLevel = Math.floor(fighters.reduce((sum, fighter) => sum + fighter.level, 0) / fighters.length);
+      let bossHp = BOSS.hp + averageLevel * 18 + Math.max(0,fighters.length-2)*90;
       const maxBossHp = bossHp;
       const hpNow = fighters.map(x => Math.round(x.hp));
       const log = [];
       let rounds = 0;
-      while (bossHp > 0 && hpNow.some(hp=>hp>0) && rounds < 10) {
+      while (bossHp > 0 && hpNow.some(hp=>hp>0) && rounds < 12) {
         rounds++;
         const alive = fighters.map((x,i)=>hpNow[i]>0?i:-1).filter(i=>i>=0);
         if (!alive.length) break;
@@ -144,7 +145,11 @@ export default {
         const tank=living.find(i=>fighters[i].role==='tank');
         const targetIndex=tank !== undefined && Math.random()<0.7 ? tank : living[Math.floor(Math.random()*living.length)];
         const target=fighters[targetIndex];
-        const rawDamage=BOSS.damage+Math.floor(Math.random()*10)+rounds*2;
+        const enraged = bossHp <= maxBossHp * 0.5;
+        const special = rounds % 3 === 0;
+        const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(special?6:0);
+        if (enraged && rounds === 1) log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.');
+        if (special) log.push('💥 Boss özel saldırı hazırladı; bu vuruş daha güçlü.');
         const incoming=Math.max(1,Math.round(rawDamage-target.defense*0.28));
         hpNow[targetIndex]=Math.max(0,hpNow[targetIndex]-incoming);
         log.push(`💥 ${BOSS.name} ${target.username} oyuncusuna ${incoming} hasar verdi.`);
