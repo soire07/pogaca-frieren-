@@ -104,7 +104,7 @@ export default {
       await db.query('BEGIN');
       const ids = team.map(x => x.id).sort();
       const result = await db.query(
-        `SELECT user_id,level,xp,coins,hp,max_hp,attack,defense,last_boss_at FROM users
+        `SELECT user_id,level,xp,coins,hp,max_hp,mana,max_mana,attack,defense,last_boss_at FROM users
          WHERE guild_id=$1 AND user_id=ANY($2::text[]) FOR UPDATE`,
         [interaction.guildId, ids]
       );
@@ -131,7 +131,7 @@ export default {
         const p = x.stats; const gear = equipmentBonus(gearMap.get(x.user.id) || []); const role = ROLES[x.role];
         return {
           userId:x.user.id, username:x.user.username, role:x.role, roleData:role,
-          level:Number(p.level), xp:Number(p.xp), coins:Number(p.coins),
+          level:Number(p.level), xp:Number(p.xp), coins:Number(p.coins), mana:Number(p.mana), maxMana:Number(p.max_mana),
           hp:Math.round(Math.max(0,Math.min(Number(p.hp),Math.min(2000,Number(p.max_hp)+gear.hp))*role.hp)),
           maxHp:Math.round(Math.min(2000,Number(p.max_hp)+gear.hp)*role.hp),
           attack:(Number(p.attack)+gear.attack)*role.attack,
@@ -160,11 +160,54 @@ export default {
             if (healed > hpNow[i]) { log.push(`💚 <@${fighters[healer].userId}> ${fighters[i].username} oyuncusuna ${healed-hpNow[i]} HP iyileştirdi.`); hpNow[i]=healed; }
           }
         }
+        const actionRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId(`raid:act:attack:${interaction.id}:${rounds}`).setLabel('⚔️ Saldır').setStyle(ButtonStyle.Danger),
+          new ButtonBuilder().setCustomId(`raid:act:spell:${interaction.id}:${rounds}`).setLabel('✨ Zoltraak (12 mana)').setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId(`raid:act:defend:${interaction.id}:${rounds}`).setLabel('🛡️ Savun').setStyle(ButtonStyle.Secondary)
+        );
+        const actionMessage = await interaction.editReply({
+          content: `**${BOSS.name} · Tur ${rounds}**\\n❤️ Boss: ${bossHp}/${maxBossHp} HP\\n${alive.map(i => `<@${fighters[i].userId}> (${fighters[i].mana}/${fighters[i].maxMana} mana)`).join(' · ')}\\nHer oyuncu Saldır, Zoltraak veya Savun seçsin. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
+          embeds: [],
+          components: [actionRow]
+        });
+        const choices = new Map();
+        await new Promise(resolve => {
+          const collector = actionMessage.createMessageComponentCollector({
+            componentType: ComponentType.Button,
+            time: 20_000,
+            filter: c => alive.some(i => fighters[i].userId === c.user.id) &&
+              c.customId.startsWith('raid:act:') && c.customId.endsWith(`${interaction.id}:${rounds}`)
+          });
+          collector.on('collect', async c => {
+            if (choices.has(c.user.id)) {
+              await c.reply({ content: 'Bu tur için seçimini zaten yaptın.', ephemeral: true }).catch(() => {});
+              return;
+            }
+            choices.set(c.user.id, c.customId.split(':')[2]);
+            await c.deferUpdate().catch(() => {});
+            if (choices.size >= alive.length) collector.stop('all-selected');
+          });
+          collector.once('end', resolve);
+        });
+        const defending = new Set();
         for (const i of alive) {
           if (bossHp <= 0 || hpNow[i] <= 0) continue;
-          const f=fighters[i];
-          const damage=Math.max(1,Math.round(f.attack*(0.9+Math.random()*0.25)));
-          bossHp=Math.max(0,bossHp-damage);
+          const f = fighters[i];
+          const action = choices.get(f.userId) || 'defend';
+          if (action === 'defend') {
+            defending.add(i);
+            log.push(`🛡️ ${f.username} savunma duruşu aldı.`);
+            continue;
+          }
+          let damage = Math.max(1, Math.round(f.attack * (0.9 + Math.random() * 0.25)));
+          if (action === 'spell' && f.mana >= 12) {
+            f.mana -= 12;
+            damage = Math.round(damage * 1.8);
+            log.push(`✨ ${f.username} Zoltraak kullandı (-12 mana).`);
+          } else if (action === 'spell') {
+            log.push(`🔹 ${f.username} için mana yetersiz; normal saldırı yaptı.`);
+          }
+          bossHp = Math.max(0, bossHp - damage);
           log.push(`⚔️ ${f.username} (${f.roleData.label}) ${damage} hasar verdi.`);
         }
         if (bossHp <= 0) break;
@@ -177,9 +220,10 @@ export default {
         const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(special?6:0);
         if (enraged && !rageAnnounced) { log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.'); rageAnnounced = true; }
         if (special) log.push('💥 Boss özel saldırı hazırladı; bu vuruş daha güçlü.');
-        const incoming=Math.max(1,Math.round(rawDamage-target.defense*0.28));
+        let incoming=Math.max(1,Math.round(rawDamage-target.defense*0.28));
+        if (defending.has(targetIndex)) incoming=Math.max(1,Math.round(incoming*0.45));
         hpNow[targetIndex]=Math.max(0,hpNow[targetIndex]-incoming);
-        log.push(`💥 ${BOSS.name} ${target.username} oyuncusuna ${incoming} hasar verdi.`);
+        log.push(`💥 ${BOSS.name} ${target.username} oyuncusuna ${incoming} hasar verdi${defending.has(targetIndex)?' (savunma azaltımı uygulandı)':''}.`);
       }
       const win=bossHp<=0;
       const xpReward=win?BOSS.xp:Math.floor(BOSS.xp*0.25);
@@ -189,9 +233,9 @@ export default {
         const f=fighters[i]; const newXp=f.xp+xpReward; const newLevel=levelForXp(newXp);
         await db.query(
           `UPDATE users SET hp=$3,xp=$4,level=$5,coins=coins+$6,
-           stat_points=stat_points+$7,boss_defeats=boss_defeats+$8,last_boss_at=NOW()
+           stat_points=stat_points+$7,boss_defeats=boss_defeats+$8,last_boss_at=NOW(),mana=$9
            WHERE guild_id=$1 AND user_id=$2`,
-          [interaction.guildId,f.userId,hpNow[i],newXp,newLevel,coinReward,Math.max(0,newLevel-f.level),win?1:0]
+          [interaction.guildId,f.userId,hpNow[i],newXp,newLevel,coinReward,Math.max(0,newLevel-f.level),win?1:0,f.mana]
         );
         if (loot) await db.query(
           `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
@@ -203,7 +247,7 @@ export default {
       const embed=new EmbedBuilder().setColor(win?0x5bc98a:0x9b8cff)
         .setTitle(win?`🏆 ${BOSS.name} yenildi!`:'🌌 Baskın sona erdi')
         .setDescription(`**Boss HP:** ${Math.max(0,bossHp)}/${maxBossHp}\n**Tur:** ${rounds}/10\n\n`+
-          fighters.map((f,i)=>`**<@${f.userId}>** — ${f.roleData.label}\n❤️ ${hpNow[i]}/${Math.round(f.maxHp)} HP · ⚔️ ${Math.round(f.attack)} saldırı · 🛡️ ${Math.round(f.defense)} savunma`).join('\n\n')+
+          fighters.map((f,i)=>`**<@${f.userId}>** — ${f.roleData.label}\n❤️ ${hpNow[i]}/${Math.round(f.maxHp)} HP · ✨ ${f.mana}/${f.maxMana} mana · ⚔️ ${Math.round(f.attack)} saldırı · 🛡️ ${Math.round(f.defense)} savunma`).join('\n\n')+
           '\n\n**Savaş günlüğü**\n'+log.slice(-15).join('\n'))
         .addFields(
           {name:'🎁 Kişi başı ödül',value:`✨ ${xpReward} XP\n🥐 ${coinReward} altın`,inline:true},
