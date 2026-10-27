@@ -128,7 +128,11 @@ export default {
       await db.query('BEGIN');
       const ids = team.map(u => u.id).sort();
       const result = await db.query(
-        `SELECT user_id, level, xp, coins, hp, max_hp, mana, max_mana, attack, defense, class_name, active_build, last_dungeon_at
+        `SELECT user_id, level, xp, coins, hp, max_hp, mana, max_mana, attack, defense, class_name, active_build, last_dungeon_at,
+         COALESCE((SELECT attack_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_attack,
+         COALESCE((SELECT defense_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_defense,
+         COALESCE((SELECT hp_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_hp,
+         COALESCE((SELECT mana_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_mana
          FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) FOR UPDATE`,
         [interaction.guildId, ids]
       );
@@ -163,8 +167,8 @@ export default {
         const maxMana = Math.min(500, Math.round((Number(p.max_mana) + bonus.mana) * build.mana));
         return { ...p, build, classProfile: getCharacterClass(p.class_name), level: Number(p.level), xp: Number(p.xp), mana: Math.min(Number(p.mana), maxMana), maxMana, role: roles[i], roleLabel: role.label, maxHp,
           hp: Math.round(Math.min(Number(p.hp) * build.hp, baseMaxHp) * role.hp),
-          attack: Math.round(Math.min(500, Number(p.attack) + bonus.attack) * build.attack * role.attack),
-          defense: Math.round(Math.min(250, applyClassDefense(Number(p.defense) + bonus.defense, p.class_name) * build.defense) * role.defense) };
+          attack: Math.round(Math.min(500, Number(p.attack) + bonus.attack) * build.attack * role.attack * (1 + Number(p.talent_attack) * 0.04)),
+          defense: Math.round(Math.min(250, applyClassDefense(Number(p.defense) + bonus.defense, p.class_name) * build.defense * (1 + Number(p.talent_defense) * 0.04)) * role.defense) };
       });
       if (players.some(p => p.hp <= 0)) {
         await db.query('ROLLBACK');
