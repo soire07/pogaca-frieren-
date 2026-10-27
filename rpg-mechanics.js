@@ -118,3 +118,29 @@ export const CHARACTER_BUILDS = {
 export function getCharacterBuild(buildKey) {
   return CHARACTER_BUILDS[String(buildKey || 'dengeli').toLocaleLowerCase('tr-TR')] || CHARACTER_BUILDS.dengeli;
 }
+
+/**
+ * Three clear boss phases based on remaining health.
+ * Phase transitions are deterministic so they can be tested and explained to players.
+ */
+export function getBossPhase(currentHp, maximumHp) {
+  const hp = Number(currentHp);
+  const maxHp = Number(maximumHp);
+  if (!Number.isFinite(hp) || !Number.isFinite(maxHp) || maxHp <= 0) return 1;
+  const ratio = Math.max(0, Math.min(1, hp / maxHp));
+  if (ratio <= 1 / 3) return 3;
+  if (ratio <= 2 / 3) return 2;
+  return 1;
+}
+
+export function calculateBossIncomingDamage(rawDamage, defense, phase = 1) {
+  const raw = Number.isFinite(Number(rawDamage)) ? Math.max(0, Math.floor(Number(rawDamage))) : 0;
+  const guard = Number.isFinite(Number(defense)) ? Math.max(0, Math.floor(Number(defense))) : 0;
+  const mitigated = Math.max(1, raw - Math.floor(guard / 2));
+  const multiplier = phase >= 3 ? 1.25 : phase === 2 ? 1.1 : 1;
+  return Math.max(1, Math.round(mitigated * multiplier));
+}
+
+export function bossPhaseSpecialBonus(phase) {
+  return phase >= 3 ? 8 : phase === 2 ? 4 : 0;
+}
