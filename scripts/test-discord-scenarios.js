@@ -504,8 +504,21 @@ test('crafting consumes required materials safely and produces equipment support
   assert.match(command, /await db\.query\('ROLLBACK'\)/);
   assert.match(command, /ON CONFLICT\(guild_id,user_id,item_key\)/);
   assert.match(command, /equipmentItems\.find/);
-  for (const id of ['iron_sword', 'mage_staff', 'traveler_cloak', 'mana_ring']) {
+  for (const id of ['iron_sword', 'mage_staff', 'traveler_cloak', 'mana_ring', 'fern_robe', 'frieren_robe', 'himmel_sword', 'demon_blade']) {
     assert.ok(command.includes(id));
     assert.ok(equipment.includes(id));
   }
+});
+
+test('rare adventure and treasure materials can craft advanced Frieren-themed equipment', async () => {
+  const command = await read('zanaat.js');
+  const equipment = await read('equipment-data.js');
+  for (const id of ['fern_robe', 'frieren_robe', 'himmel_sword', 'demon_blade']) {
+    assert.ok(command.includes(id));
+    assert.ok(equipment.includes(id));
+  }
+  assert.match(command, /Efsunlu Elf Yadigârı/);
+  assert.match(command, /Himmel’in Efsanevi Yadigârı/);
+  assert.match(command, /Ejderha Pulu/);
+  assert.match(command, /Frieren’in Kayıp Notları/);
 });
