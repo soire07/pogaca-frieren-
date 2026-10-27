@@ -217,10 +217,16 @@ export default {
       }
 
       const discoveryKey = encounter.title.includes('Gezgin Fırın') ? 'wandering-bakery'
-        : encounter.title.includes('Grimoire') ? 'forgotten-grimoire'
-          : encounter.title.includes('Ejderha') ? 'dragon-nest'
-            : encounter.title.includes('Mana İzleri') ? 'forest-grimoire'
-              : encounter.title.includes('Mühürlü Oda') ? 'ruined-chamber' : null;
+        : encounter.title.includes('Unutulmuş Grimoire') ? 'forgotten-grimoire'
+          : encounter.title.includes('Mana İzleri') ? 'forest-grimoire'
+            : encounter.title.includes('Mühürlü Oda') ? 'ruined-chamber'
+              : encounter.title.includes('İblis İzleri') ? 'demon-tracks'
+                : encounter.title.includes('Eski Geçit') ? 'old-passage'
+                  : encounter.title.includes('Kar Fırtınası') ? 'northern-storm'
+                    : encounter.title.includes('Kadim Mana Damarı') ? 'ancient-mana-vein'
+                      : encounter.title.includes('Kuzey Geçidi Çatışması') ? 'north-gate-clash'
+                        : encounter.title.includes('Sınav') ? 'exam-ruins'
+                          : encounter.title.includes('Mühürlü Büyü Arşivi') ? 'sealed-archive' : null;
       if (discoveryKey) await recordJournalEntry(client, interaction.guildId, interaction.user.id, 'discoveries', discoveryKey);
       await client.query('COMMIT');
 

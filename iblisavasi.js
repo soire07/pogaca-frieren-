@@ -335,7 +335,7 @@ export default {
               : boss.name.includes('Harabe Muhafızı') ? 'ruinGuardian'
                 : boss.name.includes('Kuzey İblisi') ? 'northDemon'
                   : boss.name.includes('Komutanı') ? 'demonCommander'
-                    : boss.name.includes('Außerst') || boss.name.includes('Ausserst') ? 'ausserstLord'
+                    : boss.name.includes('Äußerst') || boss.name.includes('Außerst') || boss.name.includes('Ausserst') ? 'ausserstLord'
                       : null;
             if (journalBossKey) await recordJournalEntry(db, interaction.guildId, interaction.user.id, 'bosses', journalBossKey);
             if (spellUsed) {

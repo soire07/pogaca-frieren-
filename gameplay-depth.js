@@ -120,7 +120,7 @@ export function getCraftingProgress(playerLevel, knownMaterials = []) {
 }
 
 export const JOURNAL_COLLECTIONS = {
-  discoveries: { label: 'Keşifler', reward: { coins: 250, xp: 150 }, keys: ['ancient-elf-sanctuary', 'forgotten-grimoire', 'dragon-nest', 'forest-grimoire', 'mimic-trail', 'wandering-bakery', 'ruined-chamber'] },
+  discoveries: { label: 'Keşifler', reward: { coins: 250, xp: 150 }, keys: ['ancient-elf-sanctuary', 'wandering-bakery', 'forest-grimoire', 'ruined-chamber', 'forgotten-grimoire', 'demon-tracks', 'old-passage', 'northern-storm', 'ancient-mana-vein', 'north-gate-clash', 'exam-ruins', 'sealed-archive'] },
   bosses: { label: 'Boss avı', reward: { coins: 400, xp: 250 }, keys: ['schattenwolf', 'ruinGuardian', 'northDemon', 'demonCommander', 'ausserstLord'] },
   spells: { label: 'Büyü arşivi', reward: { coins: 200, xp: 200 }, keys: ['zoltraak', 'alev_kuresi', 'buz_mizragi', 'koruyucu_bariyer', 'sifa_isigi', 'yildirim_zinciri', 'tas_duvar', 'mana_patlamasi'] },
   relics: { label: 'Yadigâr koleksiyonu', reward: { coins: 500, xp: 300 }, keys: ['Büyülü Poğaça Kutusu', 'Yasak Büyü Kitabı', 'Ejderha Pulu', 'Efsunlu Elf Yadigârı', 'Himmel’in Efsanevi Yadigârı'] }
