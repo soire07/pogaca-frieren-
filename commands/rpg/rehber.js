@@ -32,9 +32,9 @@ const pages = [
     { name: '🥐 Mola komutları', value: '**/pogaca**, **/mimic**, **/sans**, **/saril** ve **/animequiz** macera arasında eğlence içindir.' }
   ]},
   { title: '🧰 VI. Ekonomi, ekipman ve diğer komutlar', description: 'Kaynaklarını, eşyalarını ve RPG araçlarını doğru kullan.', fields: [
-    { name: 'Altın ve eşya', value: '**/bakiye** altınını; **/market** alışverişi; **/cantam** eşyaları; **/ekipman** kuşanma/çıkarma; **/esyakullan** kullanılabilir eşyaları yönetir.' },
-    { name: 'İstatistikler', value: '**/istatistik** bot istatistiklerini, **/siralama** RPG sıralamalarını, **/liderlik** sunucu liderliğini gösterir.' },
-    { name: '🎉 Eğlence ve topluluk', value: '**/animequiz** anime bilgi yarışması; **/pogaca** mola; **/sans** şans oyunu; **/saril** arkadaşına sarılma; **/mimic** eğlence komutudur. **/istatistik** sunucudaki RPG oyuncularını ve en yüksek seviyeyi gösterir.' },
+    { name: 'Altın ve eşya', value: '**/bakiye** altınını; **/market** alışverişi; **/cantam** ham eşya miktarlarını; **/envanter** kuşanılmış ekipman yuvalarıyla birlikte ayrıntılı çantanı; **/ekipman** kuşanma/çıkarma; **/esyakullan** kullanılabilir eşyaları yönetir.' },
+    { name: 'İstatistikler', value: '**/istatistik** sunucudaki kayıtlı RPG oyuncusu sayısını, en yüksek seviyeyi ve bot pingini gösterir. **/siralama** RPG sıralamalarını, **/liderlik** sunucu liderliğini gösterir.' },
+    { name: '🎉 Eğlence ve topluluk', value: '**/animequiz** anime bilgi yarışması; **/pogaca** mola; **/sans** şans oyunu; **/saril** arkadaşına sarılma; **/mimic** eğlence komutudur.' },
     { name: '🔎 Daha fazla yardım', value: 'Discord’da / yazıp komut adını seçerek seçeneklerini ve açıklamasını gör. **/yardim** tüm komutları kategori kategori listeler. Bazı özellikler sunucu ayarlarına veya komut gereksinimlerine bağlı olabilir.' }
   ]}
 ];
