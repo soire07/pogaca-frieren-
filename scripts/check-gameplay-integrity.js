@@ -169,6 +169,7 @@ test('successful Zoltraak casts in cooperative dungeon and boss raid advance per
 test('exploration activates the same rarity-based equipment set bonuses as combat', async () => {
   const source = await read('commands/rpg/kesif.js');
   assert.match(source, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+  assert.match(source, /Etkin ekipman seti/);
   assert.match(source, /const effectiveDefense = Math\.min\(250, Math\.round\(applyClassDefense/);
   assert.match(source, /const effectiveMaxHp = Math\.min\(2000, Math\.round\(\(baseMaxHp \+ gear\.hp\) \* build\.hp \* \(1 \+ Number\(player\.talent_hp\) \* 0\.05\)\)\)/);
   assert.match(source, /const effectiveMaxMana = Math\.min\(2000, Math\.round\(\(baseMaxMana \+ gear\.mana\) \* build\.mana \* \(1 \+ Number\(player\.talent_mana\) \* 0\.05\)\)\)/);
