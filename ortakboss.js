@@ -155,6 +155,7 @@ export default {
       const maxBossHp = bossHp;
       const hpNow = fighters.map(x => Math.round(x.hp));
       const log = [];
+      const spellCasts = new Map();
       let rounds = 0;
       let rageAnnounced = false;
       while (bossHp > 0 && hpNow.some(hp=>hp>0) && rounds < 12) {
@@ -224,16 +225,19 @@ export default {
             continue;
           }
           let damage = Math.max(1, Math.round(f.attack * (0.9 + Math.random() * 0.25)));
+          let usedSpell = false;
           const spellCost = applyClassManaCost(12, f.className);
           if (action === 'spell' && f.mana >= spellCost) {
             f.mana -= spellCost;
             damage = Math.round(damage * 1.8);
             damage = applyClassDamage(damage, f.className);
+            usedSpell = true;
+            spellCasts.set(f.userId, (spellCasts.get(f.userId) || 0) + 1);
             log.push(`✨ ${f.username} Zoltraak kullandı (-${spellCost} mana).`);
           } else if (action === 'spell') {
             log.push(`🔹 ${f.username} için mana yetersiz; normal saldırı yaptı.`);
           }
-          damage = applyRaidWeakness(damage, BOSS, action === 'spell' ? 'spell' : 'attack');
+          damage = applyRaidWeakness(damage, BOSS, usedSpell ? 'spell' : 'attack');
           bossHp = Math.max(0, bossHp - damage);
           log.push(`⚔️ ${f.username} (${f.roleData.label}) ${damage} hasar verdi.`);
         }
@@ -280,6 +284,19 @@ export default {
         Math.max(1,Number(f.baseMaxMana)),
         Math.round((Number(f.mana)/Math.max(1,Number(f.maxMana)))*Math.max(1,Number(f.baseMaxMana)))
       )));
+      for (const [userId, casts] of spellCasts) {
+        const mastery = await db.query(
+          `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
+           VALUES ($1,$2,'zoltraak',$3,LEAST(10,FLOOR($3/10.0)::int),NOW())
+           ON CONFLICT (guild_id,user_id,spell_key) DO UPDATE
+           SET casts=spell_mastery.casts+EXCLUDED.casts,
+               mastery_level=LEAST(10,FLOOR((spell_mastery.casts+EXCLUDED.casts)/10.0)::int),
+               updated_at=NOW()
+           RETURNING casts,mastery_level`,
+          [interaction.guildId, userId, casts]
+        );
+        log.push(`📈 <@${userId}> Zoltraak ustalığı: ${mastery.rows[0].casts} kullanım · Seviye ${mastery.rows[0].mastery_level}/10.`);
+      }
       const xpReward=win?BOSS.xp:Math.floor(BOSS.xp*0.25);
       const coinReward=win?BOSS.coins:Math.floor(BOSS.coins*0.2);
       const loot=win && Math.random()<0.4 ? BOSS.loot : null;
