@@ -62,6 +62,15 @@ const regions = {
   }
 };
 
+const craftingMaterials = {
+  merkez: '🥐 Büyülü Poğaça Kutusu',
+  orman: '💎 Mana Kristali',
+  harabeler: '📖 Yasak Büyü Kitabı',
+  kuzey: '🐉 Ejderha Pulu',
+  yayla: '🌙 Efsunlu Elf Yadigârı',
+  aus: '📜 Frieren’in Kayıp Notları'
+};
+
 export default {
   data: new SlashCommandBuilder()
     .setName('kesif')
@@ -193,6 +202,19 @@ export default {
         );
       }
 
+      // Keşifler, /zanaat tariflerinde kullanılan malzemeleri de nadiren buldurur.
+      const craftingMaterial = craftingMaterials[regionKey];
+      const foundCraftingMaterial = Math.random() < 0.4;
+      if (craftingMaterial && foundCraftingMaterial) {
+        await client.query(
+          `INSERT INTO inventory(guild_id,user_id,item_key,quantity)
+           VALUES($1,$2,$3,1)
+           ON CONFLICT(guild_id,user_id,item_key)
+           DO UPDATE SET quantity=inventory.quantity+1`,
+          [interaction.guildId, interaction.user.id, craftingMaterial]
+        );
+      }
+
       await client.query('COMMIT');
 
       const description = [
@@ -203,6 +225,7 @@ export default {
         `**Bölge ustalığı:** ${masteryReward.level} seviye · ${regionVisits % 3 || (regionVisits > 0 ? 3 : 0)}/3 ziyaret`,
         masteryReward.milestone ? `🏅 **Bölge ustalığı ödülü:** +${masteryReward.coins} altın · +${masteryReward.xp} XP` : '',
         encounter.item ? `**Bulunan eşya:** ${encounter.item}` : '',
+        foundCraftingMaterial ? `⚒️ **Zanaat malzemesi:** ${craftingMaterial} (bölgeye özgü malzeme buldun!)` : '',
         hpDamage ? `**Can kaybı:** −${hpDamage} HP (savunma dahil)` : '',
         actualManaCost ? `**Büyü maliyeti:** −${actualManaCost} Mana` : encounter.manaCost ? 'Mana yetersiz olduğu için büyü kullanmadın.' : '',
         `**Sınıf / savaş yapısı:** ${player.class_name || 'Gezgin'} · ${build.label}`,
