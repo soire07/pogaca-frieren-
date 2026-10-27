@@ -1297,7 +1297,31 @@
       "name": "Stack the first-adventure daily bonus with the every-third-day streak milestone reward",
       "category": "Progression",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-197",
+      "name": "Grant Wanderer-class gold and XP bonuses for first-time adventure discoveries",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-198",
+      "name": "Grant Mage-class bonus XP when discovering magical adventure locations",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-199",
+      "name": "Grant Guardian-class bonus gold for dangerous adventure locations",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-200",
+      "name": "Grant Healer-class bonuses for first-time adventure discoveries",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 215
+  "count": 219
 }
