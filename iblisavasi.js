@@ -8,6 +8,7 @@ import {
 } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
+import { applyClassDamage, applyClassDefense, applyClassHealing, getCharacterClass } from './rpg-mechanics.js';
 
 const PLAYER_MAX_HP = 100;
 const COOLDOWN_MS = 30 * 60 * 1000;
@@ -78,7 +79,7 @@ export default {
     const spellMastery = new Map(masteryResult.rows.map(row => [row.spell_key, Number(row.mastery_level)]));
 
     const statsResult = await pool.query(
-      'SELECT hp, max_hp, mana, max_mana, attack, defense, level FROM users WHERE guild_id=$1 AND user_id=$2',
+      'SELECT hp, max_hp, mana, max_mana, attack, defense, level, class_name FROM users WHERE guild_id=$1 AND user_id=$2',
       [interaction.guildId, interaction.user.id]
     );
     const stats = statsResult.rows[0];
@@ -95,8 +96,9 @@ export default {
     const gearBonus = equipmentBonus(equippedItems);
     const playerMaxHp = Math.min(2000, Number(stats.max_hp) + gearBonus.hp);
     const playerMaxMana = Math.min(2000, Number(stats.max_mana) + gearBonus.mana);
+    const classProfile = getCharacterClass(stats.class_name);
     const attack = Math.min(500, Number(stats.attack) + gearBonus.attack);
-    const defense = Math.min(250, Number(stats.defense) + gearBonus.defense);
+    const defense = Math.min(250, applyClassDefense(Number(stats.defense) + gearBonus.defense, stats.class_name));
     let playerHp = Math.min(playerMaxHp, Number(stats.hp));
     let playerMana = Math.min(playerMaxMana, Number(stats.mana));
     const gearSummary = equippedItems.length
@@ -150,7 +152,7 @@ export default {
       bossHp,
       playerHp,
       bonus: upgradeBonus,
-      description: `Kuzey sınırında tehlikeli bir iblisle karşılaştın, <@${interaction.user.id}>!\n\n**Hamleni seç:** Zoltraak dengeli saldırır; Alev Küresi daha güçlü hasar verir; Buz Mızrağı iblisi dondurup karşı saldırısını durdurabilir. Kalkan hasarı azaltır, Şifa savaşta bir kez can yeniler. Seviye ve boss zaferleriyle Yıldırım Zinciri, Taş Duvar ve Mana Patlaması açılır. Büyü kullandıkça ustalığın yükselir. Her karakter geliştirme seviyesi saldırı gücüne +2 hasar ekler.\n\n**Kuşanılan ekipman:**\n${gearSummary}\nEkipman bonusları bu savaşta saldırı, savunma, maksimum HP ve Mana değerlerine uygulanır.`
+      description: `Kuzey sınırında tehlikeli bir iblisle karşılaştın, <@${interaction.user.id}>!\n\n**Hamleni seç:** Zoltraak dengeli saldırır; Alev Küresi daha güçlü hasar verir; Buz Mızrağı iblisi dondurup karşı saldırısını durdurabilir. Kalkan hasarı azaltır, Şifa savaşta bir kez can yeniler. Seviye ve boss zaferleriyle Yıldırım Zinciri, Taş Duvar ve Mana Patlaması açılır. Büyü kullandıkça ustalığın yükselir. Her karakter geliştirme seviyesi saldırı gücüne +2 hasar ekler.\n\n**Kuşanılan ekipman:**\n${gearSummary}\nEkipman bonusları bu savaşta saldırı, savunma, maksimum HP ve Mana değerlerine uygulanır.\n**Sınıf:** ${classProfile.label} — ${classProfile.description}`
     });
     await interaction.editReply({ embeds: [initial], components: [actionRow(), rareActionRow()] });
     const message = await interaction.fetchReply();
@@ -203,7 +205,7 @@ export default {
           }
           playerMana -= 8;
           spellUsed = 'zoltraak';
-          const damage = Math.floor(Math.random() * 13) + 18 + attack + upgradeBonus + (spellMastery.get('zoltraak') || 0) * 2;
+          const damage = applyClassDamage(Math.floor(Math.random() * 13) + 18 + attack + upgradeBonus + (spellMastery.get('zoltraak') || 0) * 2, stats.class_name);
           bossHp = Math.max(0, bossHp - damage);
           actionText = `⚡ Zoltraak isabet etti! İblise **${damage} hasar** verdin. (Saldırı: ${attack}, Mana: −8)`;
         } else if (button.customId === 'demon_fire') {
@@ -213,7 +215,7 @@ export default {
           }
           playerMana -= 14;
           spellUsed = 'alev_kuresi';
-          const damage = Math.floor(Math.random() * 13) + 28 + attack + upgradeBonus + (spellMastery.get('alev_kuresi') || 0) * 2;
+          const damage = applyClassDamage(Math.floor(Math.random() * 13) + 28 + attack + upgradeBonus + (spellMastery.get('alev_kuresi') || 0) * 2, stats.class_name);
           bossHp = Math.max(0, bossHp - damage);
           actionText = `🔥 Alev Küresi patladı! İblise **${damage} hasar** verdin. (Mana: −14)`;
         } else if (button.customId === 'demon_ice') {
@@ -223,7 +225,7 @@ export default {
           }
           playerMana -= 12;
           spellUsed = 'buz_mizragi';
-          const damage = Math.floor(Math.random() * 11) + 22 + attack + upgradeBonus + (spellMastery.get('buz_mizragi') || 0) * 2;
+          const damage = applyClassDamage(Math.floor(Math.random() * 11) + 22 + attack + upgradeBonus + (spellMastery.get('buz_mizragi') || 0) * 2, stats.class_name);
           bossHp = Math.max(0, bossHp - damage);
           const freezeChance = Math.min(0.6, 0.35 + (spellMastery.get(spellUsed) || 0) * 0.025);
           frozenBoss = Math.random() < freezeChance;
@@ -250,7 +252,7 @@ export default {
           playerMana -= 20;
           spellUsed = 'sifa_isigi';
           const before = playerHp;
-          const healAmount = Math.floor(Math.random() * 16) + 20 + (spellMastery.get(spellUsed) || 0) * 3;
+          const healAmount = applyClassHealing(Math.floor(Math.random() * 16) + 20 + (spellMastery.get(spellUsed) || 0) * 3, stats.class_name);
           playerHp = Math.min(playerMaxHp, playerHp + healAmount);
           healUsed = true;
           actionText = `💚 İyileşme büyüsüyle **${playerHp - before} HP** geri kazandın. Ustalık bonusu: **+${(spellMastery.get(spellUsed) || 0) * 3}** iyileştirme. (Mana: −20)`;
@@ -259,7 +261,7 @@ export default {
         if (button.customId === 'demon_chain') {
           if (playerMana < 22) { busy = false; return button.reply({ content: 'Yıldırım Zinciri için en az **22 Mana** gerekiyor.', ephemeral: true }); }
           playerMana -= 22; spellUsed = 'yildirim_zinciri';
-          const damage = Math.floor(Math.random() * 16) + 42 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 2;
+          const damage = applyClassDamage(Math.floor(Math.random() * 16) + 42 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 2, stats.class_name);
           bossHp = Math.max(0, bossHp - damage); actionText = `⚡ **Yıldırım Zinciri** hedefi sardı ve **${damage} hasar** verdi. (Mana: −22)`;
         } else if (button.customId === 'demon_wall') {
           if (playerMana < 12) { busy = false; return button.reply({ content: 'Taş Duvar için en az **12 Mana** gerekiyor.', ephemeral: true }); }
