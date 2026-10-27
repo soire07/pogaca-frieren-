@@ -991,7 +991,13 @@
       "name": "Claim one class-specific daily mission with class-gated progress and a once-per-day reward",
       "category": "Quests",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-146",
+      "name": "Progress through a three-stage daily quest chain with sequential objective checks and escalating claimable gold rewards",
+      "category": "Quests",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 164
+  "count": 165
 }
