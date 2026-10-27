@@ -560,3 +560,14 @@ test('crafting leaderboard supports profession level, XP and successful craft ra
   assert.match(command, /WHERE guild_id=\$1/);
   assert.match(command, /LIMIT 10/);
 });
+
+test('achievements include crafting profession level and production milestones', async () => {
+  const command = await read('basarimlar.js');
+  assert.match(command, /craft_level_5/);
+  assert.match(command, /craft_level_10/);
+  assert.match(command, /craft_10/);
+  assert.match(command, /craft_50/);
+  assert.match(command, /user_crafting_progress/);
+  assert.match(command, /craftingLevel/);
+  assert.match(command, /craftedItems/);
+});
