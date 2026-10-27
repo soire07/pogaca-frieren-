@@ -1159,7 +1159,31 @@
       "name": "Discover a deserted dragon nest with exclusive loot and bonus rewards",
       "category": "Exploration",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-174",
+      "name": "Find persistent ancient map fragments during random adventure encounters",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-175",
+      "name": "Track treasure-map fragment progress and opened treasure count per player",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-176",
+      "name": "Convert every five collected map fragments into a persistent treasure chest",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-177",
+      "name": "Award bonus gold and XP when completing a five-fragment treasure map",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 192
+  "count": 196
 }
