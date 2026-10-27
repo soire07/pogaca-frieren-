@@ -757,6 +757,55 @@
       "name": "Apply a boss mana curse that drains up to eight mana on its fourth-turn cycle",
       "category": "Magic",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-107",
+      "name": "Select one of three distinct cooperative raid bosses with different base stats and signature moves",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-108",
+      "name": "Exploit boss-specific weaknesses for increased matching damage",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-109",
+      "name": "Cast Heilen to spend mana and restore health during cooperative combat",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-110",
+      "name": "Cast Mana Shield to spend mana and reduce incoming damage",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-111",
+      "name": "Choose between secret passage, mana shrine and safe route after each cleared dungeon floor",
+      "category": "Dungeon",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-112",
+      "name": "Apply easy, normal and nightmare dungeon difficulty scaling",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-113",
+      "name": "Apply legendary and epic multi-item equipment set bonuses in combat",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-114",
+      "name": "Unlock persistent titles from level, boss victory and dungeon victory milestones",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
     }
-  ]
+  ],
+  "count": 133
 }
