@@ -3,16 +3,16 @@ import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, formatEquipmentBonus } from './equipment-data.js';
 
 const RECIPES = {
-  iron_sword: { materials: [{ item: '💎 Mana Kristali', quantity: 1, craftLevel: 1 }, { item: '🥐 Büyülü Poğaça Kutusu', quantity: 1 }], craftLevel: 1 },
-  mage_staff: { materials: [{ item: '💎 Mana Kristali', quantity: 2, craftLevel: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }], craftLevel: 2 },
-  traveler_cloak: { materials: [{ item: '🥐 Büyülü Poğaça Kutusu', quantity: 2, craftLevel: 1 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }], craftLevel: 1 },
-  mana_ring: { materials: [{ item: '💎 Mana Kristali', quantity: 3, craftLevel: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }], craftLevel: 2 },
-  fern_robe: { materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 1, craftLevel: 3 }, { item: '📖 Yasak Büyü Kitabı', quantity: 2 }], craftLevel: 3 },
-  frieren_robe: { materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 2, craftLevel: 4 }, { item: '💎 Mana Kristali', quantity: 3 }], craftLevel: 4 },
-  himmel_sword: { materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1, craftLevel: 4 }, { item: '🐉 Ejderha Pulu', quantity: 2 }], craftLevel: 4 },
-  demon_blade: { materials: [{ item: '🐉 Ejderha Pulu', quantity: 3, craftLevel: 5 }, { item: '📜 Frieren’in Kayıp Notları', quantity: 1 }], craftLevel: 5 },
-  rune_ring: { materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 1, craftLevel: 3 }, { item: '💎 Mana Kristali', quantity: 2 }], craftLevel: 3 },
-  hero_ring: { materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1, craftLevel: 5 }, { item: '🌙 Efsunlu Elf Yadigârı', quantity: 2 }], craftLevel: 5 }
+  iron_sword: { craftLevel: 1, materials: [{ item: '💎 Mana Kristali', quantity: 1 }, { item: '🥐 Büyülü Poğaça Kutusu', quantity: 1 }] },
+  mage_staff: { craftLevel: 2, materials: [{ item: '💎 Mana Kristali', quantity: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }] },
+  traveler_cloak: { craftLevel: 1, materials: [{ item: '🥐 Büyülü Poğaça Kutusu', quantity: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }] },
+  mana_ring: { craftLevel: 2, materials: [{ item: '💎 Mana Kristali', quantity: 3 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }] },
+  fern_robe: { craftLevel: 3, materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 1 }, { item: '📖 Yasak Büyü Kitabı', quantity: 2 }] },
+  frieren_robe: { craftLevel: 4, materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 2 }, { item: '💎 Mana Kristali', quantity: 3 }] },
+  himmel_sword: { craftLevel: 4, materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1 }, { item: '🐉 Ejderha Pulu', quantity: 2 }] },
+  demon_blade: { craftLevel: 5, materials: [{ item: '🐉 Ejderha Pulu', quantity: 3 }, { item: '📜 Frieren’in Kayıp Notları', quantity: 1 }] },
+  rune_ring: { craftLevel: 3, materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 1 }, { item: '💎 Mana Kristali', quantity: 2 }] },
+  hero_ring: { craftLevel: 5, materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1 }, { item: '🌙 Efsunlu Elf Yadigârı', quantity: 2 }] }
 };
 
 export default {
