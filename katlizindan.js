@@ -163,7 +163,7 @@ export default {
         return { ...p, classProfile: getCharacterClass(p.class_name), level: Number(p.level), xp: Number(p.xp), mana: Math.min(Number(p.mana), maxMana), maxMana, role: roles[i], roleLabel: role.label, maxHp,
           hp: Math.round(Math.min(Number(p.hp), Math.min(2000, Number(p.max_hp) + bonus.hp)) * role.hp),
           attack: Math.round(Math.min(500, Number(p.attack) + bonus.attack) * role.attack),
-          defense: Math.round(Math.min(250, applyClassDefense(Number(p.defense) + bonus.defense, p.class_name) * role.defense) };
+          defense: Math.round(Math.min(250, applyClassDefense(Number(p.defense) + bonus.defense, p.class_name)) * role.defense) };
       });
       if (players.some(p => p.hp <= 0)) {
         await db.query('ROLLBACK');
