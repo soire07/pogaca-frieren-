@@ -463,6 +463,48 @@
       "name": "Summarize unique characters and total collection copies",
       "category": "Collection",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-058",
+      "name": "View personalized RPG progression goals",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-059",
+      "name": "Track level milestone goal",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-060",
+      "name": "Track demon-slaying milestone goal",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-061",
+      "name": "Track co-op dungeon victory milestone",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-062",
+      "name": "Track exploration milestone",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-063",
+      "name": "Track unique character collection milestone",
+      "category": "Collection",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-064",
+      "name": "Track learned-spell milestone",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
     }
   ]
 }
