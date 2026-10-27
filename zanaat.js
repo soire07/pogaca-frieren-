@@ -100,12 +100,22 @@ export default {
          RETURNING xp, level, successful_crafts`,
         [interaction.guildId, interaction.user.id, craftXp, amount]
       );
+      const refundChance = craftProgress.level >= 10 ? 0.20 : craftProgress.level >= 5 ? 0.10 : 0;
+      let refundedMaterial = null;
+      if (refundChance > 0 && Math.random() < refundChance) {
+        const material = recipe.materials[Math.floor(Math.random() * recipe.materials.length)];
+        await db.query(
+          'INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1) ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1',
+          [interaction.guildId, interaction.user.id, material.item]
+        );
+        refundedMaterial = material.item;
+      }
       await db.query('COMMIT');
       const ingredients = recipe.materials.map(item => `${item.item} × ${item.quantity * amount}`).join('\n');
       const embed = new EmbedBuilder()
         .setColor(0x9b8cff)
         .setTitle('⚒️ Zanaat Başarılı')
-        .setDescription(`Üretilen: **${equipment.name} × ${amount}**\n\n**Harcanan malzemeler**\n${ingredients}\n\n**Ekipman özellikleri**\n${formatEquipmentBonus(equipment)}\n\n**Zanaat ustalığı**\nSeviye: **${craftProgress.level}** · XP: **${craftProgress.xp}** · Başarılı üretim: **${craftProgress.successful_crafts}**\nKazandığın zanaat XP: **+${craftXp}**\n\nÜrettiğin ekipmanı /ekipman komutuyla kuşanabilirsin. Ekipman seviye gereksinimleri geçerlidir.`)
+        .setDescription(`Üretilen: **${equipment.name} × ${amount}**\n\n**Harcanan malzemeler**\n${ingredients}\n\n**Ekipman özellikleri**\n${formatEquipmentBonus(equipment)}\n\n**Zanaat ustalığı**\nSeviye: **${craftProgress.level}** · XP: **${craftProgress.xp}** · Başarılı üretim: **${craftProgress.successful_crafts}**\nKazandığın zanaat XP: **+${craftXp}**${refundedMaterial ? `\n🍀 Ustalık bonusu: **${refundedMaterial}** malzemesinden 1 adet geri kazandın!` : craftProgress.level >= 5 ? `\n🍀 Ustalık seviyesi nedeniyle %${craftProgress.level >= 10 ? 20 : 10} malzeme iade şansın var.` : ''}\n\nÜrettiğin ekipmanı /ekipman komutuyla kuşanabilirsin. Ekipman seviye gereksinimleri geçerlidir.`)
         .setFooter({ text: 'Poğaça Frieren • Malzemeler ve üretim sonucu tek işlemde kaydedildi.' });
       return interaction.editReply({ embeds: [embed] });
     } catch (error) {
