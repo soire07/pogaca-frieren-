@@ -76,7 +76,8 @@ export default {
         { name: '⚔️ Saldırı', value: String(effectiveAttack), inline: true },
         { name: '🛡️ Savunma', value: String(effectiveDefense), inline: true },
         { name: '🌟 Dağıtılabilir puan', value: String(u.stat_points), inline: true },
-        { name: '🧥 Kuşanılan ekipman', value: equippedItems.length ? equippedItems.map(item => item.name).join('\n') : 'Henüz ekipman yok', inline: false }
+        { name: '🧥 Kuşanılan ekipman', value: equippedItems.length ? equippedItems.map(item => item.name).join('\n') : 'Henüz ekipman yok', inline: false },
+        { name: '🧩 Ekipman set bonusu', value: gear.setText || 'Henüz set bonusu etkin değil', inline: false }
       )
       .setImage('attachment://profil.gif')
       .setFooter({ text: 'Poğaça Frieren • Maceracı Kayıtları' });
