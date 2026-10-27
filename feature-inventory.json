@@ -709,6 +709,24 @@
       "name": "Reduce incoming dungeon damage with a timed defense action",
       "category": "Combat",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-099",
+      "name": "Each invited dungeon player chooses their own combat role",
+      "category": "Dungeon",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-100",
+      "name": "Each invited boss raid player chooses their own combat role",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-101",
+      "name": "Prevent duplicate tank and healer assignments during party role selection",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
     }
   ]
 }
