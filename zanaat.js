@@ -3,16 +3,16 @@ import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, formatEquipmentBonus } from './equipment-data.js';
 
 const RECIPES = {
-  iron_sword: { materials: [{ item: '💎 Mana Kristali', quantity: 1 }, { item: '🥐 Büyülü Poğaça Kutusu', quantity: 1 }] },
-  mage_staff: { materials: [{ item: '💎 Mana Kristali', quantity: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }] },
-  traveler_cloak: { materials: [{ item: '🥐 Büyülü Poğaça Kutusu', quantity: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }] },
-  mana_ring: { materials: [{ item: '💎 Mana Kristali', quantity: 3 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }] },
-  fern_robe: { materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 1 }, { item: '📖 Yasak Büyü Kitabı', quantity: 2 }] },
-  frieren_robe: { materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 2 }, { item: '💎 Mana Kristali', quantity: 3 }] },
-  himmel_sword: { materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1 }, { item: '🐉 Ejderha Pulu', quantity: 2 }] },
-  demon_blade: { materials: [{ item: '🐉 Ejderha Pulu', quantity: 3 }, { item: '📜 Frieren’in Kayıp Notları', quantity: 1 }] },
-  rune_ring: { materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 1 }, { item: '💎 Mana Kristali', quantity: 2 }] },
-  hero_ring: { materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1 }, { item: '🌙 Efsunlu Elf Yadigârı', quantity: 2 }] }
+  iron_sword: { materials: [{ item: '💎 Mana Kristali', quantity: 1, craftLevel: 1 }, { item: '🥐 Büyülü Poğaça Kutusu', quantity: 1 }], craftLevel: 1 },
+  mage_staff: { materials: [{ item: '💎 Mana Kristali', quantity: 2, craftLevel: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }], craftLevel: 2 },
+  traveler_cloak: { materials: [{ item: '🥐 Büyülü Poğaça Kutusu', quantity: 2, craftLevel: 1 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }], craftLevel: 1 },
+  mana_ring: { materials: [{ item: '💎 Mana Kristali', quantity: 3, craftLevel: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }], craftLevel: 2 },
+  fern_robe: { materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 1, craftLevel: 3 }, { item: '📖 Yasak Büyü Kitabı', quantity: 2 }], craftLevel: 3 },
+  frieren_robe: { materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 2, craftLevel: 4 }, { item: '💎 Mana Kristali', quantity: 3 }], craftLevel: 4 },
+  himmel_sword: { materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1, craftLevel: 4 }, { item: '🐉 Ejderha Pulu', quantity: 2 }], craftLevel: 4 },
+  demon_blade: { materials: [{ item: '🐉 Ejderha Pulu', quantity: 3, craftLevel: 5 }, { item: '📜 Frieren’in Kayıp Notları', quantity: 1 }], craftLevel: 5 },
+  rune_ring: { materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 1, craftLevel: 3 }, { item: '💎 Mana Kristali', quantity: 2 }], craftLevel: 3 },
+  hero_ring: { materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1, craftLevel: 5 }, { item: '🌙 Efsunlu Elf Yadigârı', quantity: 2 }], craftLevel: 5 }
 };
 
 export default {
@@ -43,7 +43,7 @@ export default {
     if (!recipeId) {
       const lines = Object.entries(RECIPES).map(([id, recipe]) => {
         const item = equipmentItems.find(entry => entry.id === id);
-        return `**${item.name}** · Seviye ${item.levelReq}+\nMalzeme: ${recipe.materials.map(material => `${material.item} × ${material.quantity}`).join(' + ')}\n${formatEquipmentBonus(item)}`;
+        return `**${item.name}** · Oyuncu seviyesi ${item.levelReq}+ · Zanaat seviyesi ${recipe.craftLevel || 1}+\nMalzeme: ${recipe.materials.map(material => `${material.item} × ${material.quantity}`).join(' + ')}\n${formatEquipmentBonus(item)}`;
       });
       const catalog = new EmbedBuilder().setColor(0x9b8cff).setTitle('⚒️ Zanaat Tarif Defteri')
         .setDescription(lines.join('\n\n').slice(0, 4000))
@@ -57,6 +57,15 @@ export default {
     try {
       await db.query('BEGIN');
       await db.query('SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [interaction.guildId, interaction.user.id]);
+      const { rows: [profession] } = await db.query(
+        'SELECT level FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2',
+        [interaction.guildId, interaction.user.id]
+      );
+      const currentCraftLevel = Number(profession?.level || 1);
+      if (currentCraftLevel < (recipe.craftLevel || 1)) {
+        await db.query('ROLLBACK');
+        return interaction.editReply(`Bu tarif için zanaat seviyesi **${recipe.craftLevel}** gerekli. Mevcut seviyen: **${currentCraftLevel}**.`);
+      }
       const shortages = [];
       for (const material of recipe.materials) {
         const { rows: [row] } = await db.query(
