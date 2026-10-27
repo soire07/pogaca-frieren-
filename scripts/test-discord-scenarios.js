@@ -691,3 +691,19 @@ test('adventure history filters recent encounters by rare discovery or found ite
   assert.match(history, /discovery_key IN/);
   assert.match(history, /item_found IS NOT NULL/);
 });
+
+
+test('solo boss, cooperative raid and dungeon result panels show visual health or progress bars', async () => {
+  const solo = await read('iblisavasi.js');
+  const raid = await read('ortakboss.js');
+  const dungeon = await read('katlizindan.js');
+  assert.match(solo, /function hpBar\(current, maximum/);
+  assert.match(solo, /hpBar\(bossHp, bossMaxHp\)/);
+  assert.match(solo, /Son aşama/);
+  assert.match(raid, /function hpBar\(current, maximum/);
+  assert.match(raid, /hpBar\(bossHp,maxBossHp\)/);
+  assert.match(raid, /Boss canı ve aşaması/);
+  assert.match(dungeon, /function floorProgressBar\(cleared/);
+  assert.match(dungeon, /floorProgressBar\(floorsCleared\)/);
+  assert.match(dungeon, /Zindan ilerlemesi/);
+});
