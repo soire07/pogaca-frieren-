@@ -91,3 +91,16 @@ Her manuel test için Geçti / Kaldı / Çalıştırılmadı kaydet. Kaldıysa k
 - **SP-08:** Bir veritabanı hatası simüle edildiğinde işlem geri alınmalı; kısmi mana/altın düşüşü kalmamalı.
 
 Beklenen sonuç: kaynak kontrolleri ve otomatik testler geçse bile bu senaryolar, güvenli bir test sunucusunda gerçek Discord etkileşimleri ve test veritabanıyla ayrıca doğrulanmalı. Canlı sunucuda test etmek için deploy yapılmayacak.
+
+
+## Karakter sınıfları — /sinifsec ve /sinifrehberi
+
+- **CL-01:** `/sinifrehberi` komutunu çalıştır; dört sınıf ve pasifleri görünmeli.
+- **CL-02:** `/sinifsec sinif:Büyücü` seç; sınıf veritabanına kaydolmalı ve savaşta büyü hasarı artmalı.
+- **CL-03:** Büyücü ile solo boss, katlı zindan ve ortak boss savaşında Zoltraak kullan; mana maliyeti indirimli görünmeli.
+- **CL-04:** Muhafız seç; solo ve ortak savaş savunma değerleri sınıf bonusunu yansıtmalı.
+- **CL-05:** Şifacı seç; Şifa Işığı ve takım iyileştirmeleri daha fazla HP kazandırmalı.
+- **CL-06:** Gezgin seç; sınıfa özel çarpan olmadan temel değerler kullanılmalı.
+- **CL-07:** İki takım üyesi farklı sınıflar seçsin; sonuç ekranı her birinin sınıfını ayrı göstermeli.
+
+Bu senaryolar otomatik kod kontrollerinin yerine geçmez; gerçek Discord bileşenleri ve test veritabanında ayrıca doğrulanmalıdır. Deploy yapılmadı.
