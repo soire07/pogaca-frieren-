@@ -1909,7 +1909,13 @@
       "name": "Rare discovery pity system guarantees an undiscovered rare location every 20 adventures",
       "category": "Exploration",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-318",
+      "name": "Persistent per-region exploration mastery with every-third-visit bonus rewards",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 317
+  "count": 318
 }
