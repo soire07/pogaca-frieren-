@@ -106,6 +106,8 @@ test('dungeon difficulty and route choices feed the encounter and reward logic',
   assert.ok(mechanics.includes("difficulty === 'easy'"));
   assert.ok(mechanics.includes("choice === 'secret'"));
   assert.ok(mechanics.includes("choice === 'shrine'"));
+  assert.match(mechanics, /label: 'Mana mabedi'.*mana: 16 \\+ floor \\* 2/);
+  assert.ok(dungeon.includes('pathOutcome.mana > 0'));
 });
 
 test('co-op rewards and cooldowns are persisted inside database transactions', async () => {
@@ -136,6 +138,10 @@ test('raid catalog includes three bosses, action weaknesses and distinct loot id
   assert.ok(mechanics.includes('İblis Mührü'));
   assert.ok(mechanics.includes('Ejderha Camı'));
   assert.ok(mechanics.includes('Auranın Mühürlü Asa Parçası'));
+  const raid = await read('ortakboss.js');
+  assert.ok(raid.includes("BOSS.special === 'mana-star' && rounds % 3 === 0"));
+  assert.ok(raid.includes("BOSS.special === 'shard-rain' && rounds % 2 === 0"));
+  assert.ok(raid.includes("BOSS.special === 'mana-curse' && rounds % 3 === 0"));
 });
 
 test('manual test plan distinguishes automated checks from live Discord verification', async () => {
