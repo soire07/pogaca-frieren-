@@ -387,3 +387,15 @@ test('random adventures can find rare Frieren-themed locations with exclusive re
   assert.match(adventure, /Efsunlu Elf Yadigârı/);
   assert.match(adventure, /Ejderha Pulu/);
 });
+
+test('adventure map fragments persist and complete a five-piece treasure reward', async () => {
+  const schema = await read('database/db.js');
+  const adventure = await read('macera.js');
+  const journal = await read('kesifdefteri.js');
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS adventure_treasure_progress/);
+  assert.match(adventure, /Math\.random\(\) < 0\.20/);
+  assert.match(adventure, /fragmentCount >= 5/);
+  assert.match(adventure, /Kadim Hazine Sandığı/);
+  assert.match(adventure, /treasureReward\.coins/);
+  assert.match(journal, /Hazine haritası/);
+});
