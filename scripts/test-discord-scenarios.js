@@ -607,3 +607,16 @@ test('equipment salvage progress persists and unlocks recycling achievements', a
   assert.match(achievements, /salvage_25/);
   assert.match(achievements, /salvagedItems/);
 });
+
+test('daily crafting mission tracks daily production and safely grants one claimable reward', async () => {
+  const schema = await read('database/db.js');
+  const crafting = await read('zanaat.js');
+  const mission = await read('zanaatgorevi.js');
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS daily_crafting_progress/);
+  assert.match(crafting, /INSERT INTO daily_crafting_progress/);
+  assert.match(mission, /setName\('zanaatgorevi'\)/);
+  assert.match(mission, /crafted_items >=/);
+  assert.match(mission, /claimed_at/);
+  assert.match(mission, /await db\.query\('COMMIT'\)/);
+  assert.match(mission, /await db\.query\('ROLLBACK'\)/);
+});
