@@ -1651,7 +1651,19 @@
       "name": "Display crafting profession level requirements in the recipe catalog",
       "category": "Crafting",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-256",
+      "name": "View a server leaderboard ranked by total equipment items dismantled",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-257",
+      "name": "Switch crafting leaderboards to recycling progress through the category selector",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 274
+  "count": 276
 }
