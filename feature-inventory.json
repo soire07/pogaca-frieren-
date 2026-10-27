@@ -1843,6 +1843,18 @@
       "name": "Cooperative raid boss enters a final phase at one-third HP with stronger special attacks",
       "category": "Combat",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-307",
+      "name": "Final dungeon boss has a second combat phase at two-thirds HP",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-308",
+      "name": "Final dungeon boss has a final combat phase with stronger signature attacks",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
     }
   ],
   "count": 299
