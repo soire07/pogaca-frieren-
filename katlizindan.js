@@ -145,6 +145,7 @@ export default {
         let enemyHp = maxEnemyHp;
         const enemyDamage = Math.max(5, Math.round((5 + floor * 3) * (1 + avgLevel * 0.02)));
         let turn = 0;
+        let bossRageAnnounced = false;
         log.push(`**Kat ${floor}: ${FLOOR_NAMES[floor - 1]}** — ${maxEnemyHp} HP.`);
         while (enemyHp > 0 && hpNow.some(hp => hp > 0) && turn < 10) {
           turn++; turns++;
@@ -170,7 +171,7 @@ export default {
             const bossPower = finalBoss ? 1.35 : 1;
             const damage = Math.max(1, Math.round(enemyDamage * bossPower * (0.9 + ((turn + floor) % 3) * 0.08) + (enraged ? 7 : 0) + (specialAttack ? 6 : 0) - target.defense * 0.3));
             hpNow[targetIndex] = Math.max(0, hpNow[targetIndex] - damage);
-            if (enraged && turn === 1) log.push('🔥 İblis Lordu öfke evresine girdi; saldırıları güçlendi!');
+            if (enraged && !bossRageAnnounced) { log.push('🔥 İblis Lordu öfke evresine girdi; saldırıları güçlendi!'); bossRageAnnounced = true; }
             if (specialAttack) log.push('☄️ İblis Lordu yıldız biçimli mana patlaması kullandı!');
             log.push(`💥 ${finalBoss ? 'İblis Lordu' : 'Düşman'} <@${target.user_id}> oyuncusuna ${damage} hasar verdi.`);
           }
