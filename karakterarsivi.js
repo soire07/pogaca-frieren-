@@ -57,7 +57,6 @@ const characters = {
 };
 
 export default {
-  internalOnly: true,
   data: new SlashCommandBuilder()
     .setName('karakterarsivi')
     .setDescription('Frieren evrenindeki hikâye karakterlerini incele.')

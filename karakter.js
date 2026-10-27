@@ -2,11 +2,9 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { CHARACTER_CLASSES, CHARACTER_BUILDS, getCharacterBuild } from './rpg-mechanics.js';
 import { xpForNextLevel } from './utils.js';
-import characterDraw from './karaktercek.js';
 import characterUpgrade from './karaktergelistir.js';
 import characterProfile from './profil.js';
 import characterCollection from './koleksiyon.js';
-import characterArchive from './karakterarsivi.js';
 
 const classChoices = [
   { name: '✨ Büyücü', value: 'buyucu' },
@@ -51,7 +49,6 @@ export default {
     .addSubcommand(s => s.setName('gelisim').setDescription('Seviye puanlarını karakter özelliklerine yatır.')
       .addStringOption(o => o.setName('ozellik').setDescription('Geliştirilecek özellik').setRequired(true).addChoices(...statChoices))
       .addIntegerOption(o => o.setName('puan').setDescription('Harcanacak puan').setRequired(true).setMinValue(1).setMaxValue(50)))
-    .addSubcommand(s => s.setName('cek').setDescription('Günlük ücretsiz anime karakterini koleksiyonuna kat.'))
     .addSubcommand(s => s.setName('gelistir').setDescription('Koleksiyonundaki anime karakterini güçlendir.')
       .addStringOption(o => o.setName('karakter').setDescription('Geliştirmek istediğin karakter').setRequired(true).setAutocomplete(true))
       .addBooleanOption(o => o.setName('yukselt').setDescription('Evet seçersen altın harcayıp yükseltir.').setRequired(false)))
@@ -67,16 +64,6 @@ export default {
           { name: 'Destansı', value: 'Destansı' },
           { name: 'Nadir', value: 'Nadir' },
           { name: 'Yaygın', value: 'Yaygın' }
-        )))
-    .addSubcommand(s => s.setName('arsiv').setDescription('Frieren evreninin hikâye karakterlerini incele.')
-      .addStringOption(o => o.setName('isim').setDescription('Bilgi almak istediğin karakter').setRequired(true)
-        .addChoices(
-          { name: 'Frieren', value: 'frieren' },
-          { name: 'Fern', value: 'fern' },
-          { name: 'Stark', value: 'stark' },
-          { name: 'Himmel', value: 'himmel' },
-          { name: 'Heiter', value: 'heiter' },
-          { name: 'Eisen', value: 'eisen' }
         ))),
 
   async autocomplete(interaction) {
@@ -87,11 +74,9 @@ export default {
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({ content: 'Karakter ekranı yalnızca sunucularda kullanılabilir.', ephemeral: true });
     const sub = interaction.options.getSubcommand();
-    if (sub === 'cek') return characterDraw.execute(interaction);
     if (sub === 'gelistir') return characterUpgrade.execute(interaction);
     if (sub === 'profil') return characterProfile.execute(interaction);
     if (sub === 'koleksiyon') return characterCollection.execute(interaction);
-    if (sub === 'arsiv') return characterArchive.execute(interaction);
     await ensureUser(interaction.guildId, interaction.user.id);
 
     if (sub === 'olustur') {
