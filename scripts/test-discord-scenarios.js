@@ -493,3 +493,19 @@ test('treasure chest consumption respects the inventory positive-quantity constr
   assert.match(opener, /DELETE FROM inventory WHERE guild_id=\$1 AND user_id=\$2 AND item_key='🗝️ Kadim Hazine Sandığı'/);
   assert.match(opener, /UPDATE inventory SET quantity=quantity-\$3/);
 });
+
+test('crafting consumes required materials safely and produces equipment supported by the equipment system', async () => {
+  const command = await read('zanaat.js');
+  const equipment = await read('equipment-data.js');
+  assert.match(command, /setName\('zanaat'\)/);
+  assert.match(command, /FOR UPDATE/);
+  assert.match(command, /await db\.query\('BEGIN'\)/);
+  assert.match(command, /await db\.query\('COMMIT'\)/);
+  assert.match(command, /await db\.query\('ROLLBACK'\)/);
+  assert.match(command, /ON CONFLICT\(guild_id,user_id,item_key\)/);
+  assert.match(command, /equipmentItems\.find/);
+  for (const id of ['iron_sword', 'mage_staff', 'traveler_cloak', 'mana_ring']) {
+    assert.ok(command.includes(id));
+    assert.ok(equipment.includes(id));
+  }
+});
