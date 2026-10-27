@@ -406,3 +406,14 @@ test('solo boss combat applies the same equipment set bonuses as profile and gro
   assert.match(source, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
   assert.match(source, /gearBonus\.setText/);
 });
+
+
+test('daily quest chain requires a successful boss victory, not merely starting a boss fight', async () => {
+  const quest = await readFile(new URL('../gorevzinciri.js', import.meta.url), 'utf8');
+  const combat = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const database = await readFile(new URL('../database/db.js', import.meta.url), 'utf8');
+  assert.match(quest, /last_boss_win_at::date\s*=\s*CURRENT_DATE/);
+  assert.doesNotMatch(quest, /last_boss_at::date\s*=\s*CURRENT_DATE/);
+  assert.match(combat, /boss_defeats=boss_defeats\+1, last_boss_win_at=NOW\(\)/);
+  assert.match(database, /ADD COLUMN IF NOT EXISTS last_boss_win_at TIMESTAMPTZ/);
+});
