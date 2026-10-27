@@ -77,3 +77,15 @@ test('multi-floor dungeon includes traps, chests and persistent player rewards',
   assert.match(source, /bossRageAnnounced/);
   assert.match(source, /yıldız biçimli mana patlaması/);
 });
+
+
+test('multi-floor dungeon offers turn-based attack, spell and defense choices', async () => {
+  const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  assert.match(source, /katlizindan:act:attack/);
+  assert.match(source, /katlizindan:act:spell/);
+  assert.match(source, /katlizindan:act:defend/);
+  assert.match(source, /p\.mana >= 12/);
+  assert.match(source, /p\.mana\s*-=\s*12/);
+  assert.match(source, /incoming \* 0\.45/);
+  assert.match(source, /mana=\$9/);
+});
