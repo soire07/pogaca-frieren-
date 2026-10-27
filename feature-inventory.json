@@ -1675,7 +1675,25 @@
       "name": "Display the player's lifetime equipment dismantling count in the combined RPG profile",
       "category": "RPG",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-260",
+      "name": "Persist an all-time best consecutive adventure streak separately from the current streak",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-261",
+      "name": "Preserve the best adventure streak when a missed day resets current streak progress",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-262",
+      "name": "Display current and record adventure streaks in the adventure result, journal and stats",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 278
+  "count": 281
 }
