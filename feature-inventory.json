@@ -1603,7 +1603,37 @@
       "name": "Claim a one-time achievement reward after dismantling twenty-five equipment items",
       "category": "Progression",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-248",
+      "name": "Track the number of equipment items crafted toward a daily crafting mission",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-249",
+      "name": "View daily crafting mission progress and the remaining equipment target",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-250",
+      "name": "Claim one daily reward of gold and XP after crafting three equipment items",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-251",
+      "name": "Prevent duplicate daily crafting reward claims with a locked per-day record",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-252",
+      "name": "Apply daily crafting mission XP to level progression and stat-point rewards",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 266
+  "count": 271
 }
