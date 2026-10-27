@@ -144,3 +144,21 @@ export function calculateBossIncomingDamage(rawDamage, defense, phase = 1) {
 export function bossPhaseSpecialBonus(phase) {
   return phase >= 3 ? 8 : phase === 2 ? 4 : 0;
 }
+
+
+/** Mastery-10 awakenings: a distinct capstone perk for every combat spell. */
+export function getSpellMasteryAwakening(spellKey, masteryLevel) {
+  const level = Math.max(0, Math.min(10, Math.floor(Number(masteryLevel) || 0)));
+  if (level < 10) return { damage: 0, freezeChance: 0, shieldReduction: 0, healing: 0, wallReduction: 0 };
+  const perks = {
+    zoltraak: { damage: 8 },
+    alev_kuresi: { damage: 10 },
+    buz_mizragi: { freezeChance: 0.1 },
+    koruyucu_bariyer: { shieldReduction: 0.05 },
+    sifa_isigi: { healing: 10 },
+    yildirim_zinciri: { damage: 12 },
+    tas_duvar: { wallReduction: 0.05 },
+    mana_patlamasi: { damage: 15 }
+  };
+  return { damage: 0, freezeChance: 0, shieldReduction: 0, healing: 0, wallReduction: 0, ...(perks[spellKey] || {}) };
+}
