@@ -239,7 +239,7 @@ export default {
       await client.query(
         'INSERT INTO adventure_history(guild_id,user_id,discovery_key,outcome_text,coins_awarded,xp_awarded,item_found,first_discovery) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
         [interaction.guildId, interaction.user.id, outcome.discovery, outcome.text, totalCoins,
-          outcome.xp + discoveryXp + routeMasteryReward.xp + streakReward.xp + dailyAdventureReward.xp + treasureReward.xp + classAdventureReward.xp,
+          outcome.xp + discoveryXp + routeMasteryReward.xp + streakReward.xp + dailyAdventureReward.xp + treasureReward.xp + classAdventureReward.xp + streakMilestoneReward.xp,
           historyItems, firstDiscovery]
       );
 
