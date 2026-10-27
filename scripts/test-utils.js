@@ -158,7 +158,8 @@ test('combat action buttons expose healing and mana shield in both cooperative m
   for (const source of [boss, dungeon]) {
     assert.match(source, /:act:heal:/);
     assert.match(source, /:act:shield:/);
-    assert.match(source, /applyClassManaCost\(18, (?:f|p)\.className|applyClassManaCost\(18, (?:f|p)\.class_name\)/);\n    assert.match(source, /applyClassHealing\(26, (?:f|p)\.className|applyClassHealing\(26, (?:f|p)\.class_name\)/);
+    assert.match(source, /applyClassManaCost\(18, (?:f|p)\.className|applyClassManaCost\(18, (?:f|p)\.class_name\)/);
+    assert.match(source, /applyClassHealing\(26, (?:f|p)\.className|applyClassHealing\(26, (?:f|p)\.class_name\)/);
     assert.match(source, /Mana Kalkanı açtı/);
   }
 });
