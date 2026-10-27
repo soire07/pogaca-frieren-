@@ -26,7 +26,10 @@ export default {
       'SELECT spell_key, learned_at FROM learned_spells WHERE guild_id=$1 AND user_id=$2 ORDER BY learned_at ASC',
       [interaction.guildId, interaction.user.id]
     );
-    // Zoltraak is granted by default and may not have a row in learned_spells yet.\n    const known = new Set(['zoltraak', ...result.rows.map(row => row.spell_key)]);\n    const lines = [...known].map(spellKey => {\n      const row = { spell_key: spellKey };
+    // Zoltraak is granted by default and may not have a row in learned_spells yet.
+    const known = new Set(['zoltraak', ...result.rows.map(row => row.spell_key)]);
+    const lines = [...known].map(spellKey => {
+      const row = { spell_key: spellKey };
       const spell = spellDetails[row.spell_key];
       return spell ? `• **${spell.name}** — ${spell.effect} _(${spell.cost})_` : `• ${row.spell_key}`;
     });
