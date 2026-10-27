@@ -2,9 +2,9 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 
 const steps = [
-  { step: 1, title: 'Fırının Çağrısı', description: 'Bugün günlük ödülünü al: /gunlukodul', reward: 50, sql: "SELECT (last_daily_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2" },
-  { step: 2, title: 'Kuzey Yolculuğu', description: 'Bugün /kesif ile bir keşif tamamla.', reward: 100, sql: "SELECT (last_exploration_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2" },
-  { step: 3, title: 'İblis Avcısının Yemini', description: 'Bugün /iblisavasi ile bir iblisi yen.', reward: 200, sql: "SELECT (last_boss_win_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2" }
+  { step: 1, title: 'Fırının Çağrısı', description: 'Bugün günlük ödülünü al: /gunlukodul', reward: 50, material: '🥐 Büyülü Poğaça Kutusu', sql: "SELECT (last_daily_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2" },
+  { step: 2, title: 'Kuzey Yolculuğu', description: 'Bugün /kesif ile bir keşif tamamla.', reward: 100, material: '💎 Mana Kristali', sql: "SELECT (last_exploration_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2" },
+  { step: 3, title: 'İblis Avcısının Yemini', description: 'Bugün /iblisavasi ile bir iblisi yen.', reward: 200, material: '🐉 Ejderha Pulu', sql: "SELECT (last_boss_win_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2" }
 ];
 
 export default {
@@ -56,9 +56,16 @@ export default {
         const nextStep = step.step + 1;
         await db.query('UPDATE daily_quest_chains SET current_step=$3, completed_at=CASE WHEN $3=4 THEN NOW() ELSE completed_at END, updated_at=NOW() WHERE guild_id=$1 AND user_id=$2 AND chain_date=CURRENT_DATE', [interaction.guildId, interaction.user.id, nextStep]);
         await db.query('UPDATE users SET coins=coins+$3 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, step.reward]);
+        await db.query(
+          `INSERT INTO inventory(guild_id,user_id,item_key,quantity)
+           VALUES($1,$2,$3,1)
+           ON CONFLICT(guild_id,user_id,item_key)
+           DO UPDATE SET quantity=inventory.quantity+1`,
+          [interaction.guildId, interaction.user.id, step.material]
+        );
         await db.query('COMMIT');
         const completion = nextStep > 3 ? '\n🏆 **Görev zinciri tamamlandı!** Yarın yeni bir zincir başlayacak.' : '\n➡️ Sıradaki aşama açıldı: **' + steps[nextStep - 1].title + '**.';
-        return interaction.editReply('🎉 **' + step.title + '** aşamasını tamamladın ve **' + step.reward + ' altın** kazandın!' + completion);
+        return interaction.editReply('🎉 **' + step.title + '** aşamasını tamamladın! **' + step.reward + ' altın** ve ⚒️ **' + step.material + ' ×1** kazandın. Bu malzemeyi **/zanaat** tariflerinde kullanabilirsin.' + completion);
       } catch (error) { await db.query('ROLLBACK').catch(() => {}); throw error; } finally { db.release(); }
     } catch (error) { console.error('/gorevzinciri hatası:', error); return interaction.editReply('Görev zinciri yüklenemedi. Daha sonra tekrar dene.'); }
   }
