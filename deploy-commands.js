@@ -66,11 +66,13 @@ console.log(`Kaydedilmeye hazır ${commands.length} komut doğrulandı.`);
 const rest = new REST({ version: '10' }).setToken(token);
 
 if (process.env.GUILD_ID) {
+  // Global kayıtları boşalt; sunucu komutlarıyla aynı adların iki kez görünmesini önle.
+  await rest.put(Routes.applicationCommands(clientId), { body: [] });
   await rest.put(
     Routes.applicationGuildCommands(clientId, process.env.GUILD_ID),
     { body: commands }
   );
-  console.log(`${commands.length} komut test sunucusuna kaydedildi.`);
+  console.log(`${commands.length} komut test sunucusuna kaydedildi; eski global komutlar temizlendi.`);
 } else {
   await rest.put(
     Routes.applicationCommands(clientId),
