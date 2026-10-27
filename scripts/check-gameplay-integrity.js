@@ -42,5 +42,5 @@ test('collection rarity filters expose all supported rarities and preserve pagin
   assert.match(source, /rarityFilter\)\);/);
   assert.match(source, /button\.update\(makePage\(target, rows, page, rarityFilter\)\)/);
   assert.match(source, /totalCharacters > 0 \? Math\.min\(100, Math\.round\(\(uniqueCount \/ totalCharacters\) \* 100\)\) : 0/);
-  assert.match(source, /Koleksiyonunda henüz \\\*\$\{rarityFilter\}\\\* nadirliğinde karakter yok/);
+  assert.match(source, /Koleksiyonunda henüz \*\*\$\{rarityFilter\}\*\* nadirliğinde karakter yok/);
 });
