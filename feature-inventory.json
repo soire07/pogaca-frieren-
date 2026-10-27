@@ -637,6 +637,24 @@
       "name": "Include role-specific attack, HP and defense modifiers",
       "category": "Combat",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-087",
+      "name": "Scale cooperative raid boss health with average party level",
+      "category": "Balance",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-088",
+      "name": "Trigger an enrage phase when raid boss health drops below half",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-089",
+      "name": "Use periodic special attacks during cooperative boss raids",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
     }
   ]
 }
