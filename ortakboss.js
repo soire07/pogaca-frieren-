@@ -153,6 +153,9 @@ export default {
       const averageLevel = Math.floor(fighters.reduce((sum, fighter) => sum + fighter.level, 0) / fighters.length);
       let bossHp = BOSS.hp + averageLevel * 18 + Math.max(0,fighters.length-2)*90;
       const maxBossHp = bossHp;
+      const masteryRows = await db.query('SELECT user_id,casts,mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND spell_key=$3',[interaction.guildId,ids,'zoltraak']);
+      const spellMastery = new Map(masteryRows.rows.map(row => [row.user_id, Number(row.mastery_level)]));
+      const masteryCastTotals = new Map(masteryRows.rows.map(row => [row.user_id, Number(row.casts)]));
       const hpNow = fighters.map(x => Math.round(x.hp));
       const log = [];
       const spellCasts = new Map();
@@ -229,10 +232,12 @@ export default {
           const spellCost = applyClassManaCost(12, f.className);
           if (action === 'spell' && f.mana >= spellCost) {
             f.mana -= spellCost;
-            damage = Math.round(damage * 1.8);
+            damage = Math.round(damage * 1.8) + (spellMastery.get(f.userId) || 0) * 2;
             damage = applyClassDamage(damage, f.className);
             usedSpell = true;
-            spellCasts.set(f.userId, (spellCasts.get(f.userId) || 0) + 1);
+            const castCount = (spellCasts.get(f.userId) || 0) + 1;
+            spellCasts.set(f.userId, castCount);
+            spellMastery.set(f.userId, Math.min(10, Math.floor(((masteryCastTotals.get(f.userId) || 0) + castCount) / 10)));
             log.push(`✨ ${f.username} Zoltraak kullandı (-${spellCost} mana).`);
           } else if (action === 'spell') {
             log.push(`🔹 ${f.username} için mana yetersiz; normal saldırı yaptı.`);
