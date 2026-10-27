@@ -374,3 +374,16 @@ test('adventure leaderboards provide discovery, route mastery and daily streak r
   assert.match(command, /ORDER BY score DESC/);
   assert.match(command, /interaction\.guildId/);
 });
+
+test('random adventures can find rare Frieren-themed locations with exclusive rewards', async () => {
+  const adventure = await read('macera.js');
+  const data = await read('adventure-data.js');
+  assert.match(adventure, /const rareOutcomes = \[/);
+  assert.match(adventure, /Math\.random\(\) < 0\.05/);
+  for (const key of ['ancient-elf-sanctuary', 'forgotten-grimoire', 'dragon-nest']) {
+    assert.ok(adventure.includes(key));
+    assert.ok(data.includes(key));
+  }
+  assert.match(adventure, /Efsunlu Elf Yadigârı/);
+  assert.match(adventure, /Ejderha Pulu/);
+});
