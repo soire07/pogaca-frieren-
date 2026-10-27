@@ -135,11 +135,13 @@ export default {
       }
       const fighters = raw.map(x => {
         const p = x.stats; const equipped = gearMap.get(x.user.id) || []; const gear = applyEquipmentSetBonus(equipped, equipmentBonus(equipped)); const role = ROLES[x.role]; const build = getCharacterBuild(p.active_build); const baseMaxHp = Math.min(2000, Number(p.max_hp) + gear.hp) * build.hp * (1 + Number(p.talent_hp) * 0.05);
+        const maxHp = Math.round(baseMaxHp * role.hp);
+        const maxMana = Math.min(500, Math.round((Number(p.max_mana) + gear.mana) * build.mana * (1 + Number(p.talent_mana) * 0.05)));
         return {
           userId:x.user.id, username:x.user.username, role:x.role, roleData:role, className:p.class_name, classProfile:getCharacterClass(p.class_name), build, baseMaxHp:Number(p.max_hp),
-          level:Number(p.level), xp:Number(p.xp), coins:Number(p.coins), mana:Math.min(Number(p.mana), Math.min(500, Math.round((Number(p.max_mana) + gear.mana) * build.mana * (1 + Number(p.talent_mana) * 0.05)))), maxMana:Math.min(500, Math.round((Number(p.max_mana) + gear.mana) * build.mana * (1 + Number(p.talent_mana) * 0.05))),
-          hp:Math.round(Math.max(0,Math.min(Number(p.hp)*build.hp,baseMaxHp)*role.hp)),
-          maxHp:Math.round(baseMaxHp*role.hp),
+          level:Number(p.level), xp:Number(p.xp), coins:Number(p.coins), mana:Math.min(maxMana, Math.round((Number(p.mana) / Math.max(1, Number(p.max_mana))) * maxMana)), maxMana,
+          hp:Math.round((Number(p.hp) / Math.max(1, Number(p.max_hp))) * maxHp),
+          maxHp,
           attack:(Number(p.attack)+gear.attack)*build.attack*role.attack*(1+Number(p.talent_attack)*0.04),
           defense:applyClassDefense(Number(p.defense)+gear.defense,p.class_name)*build.defense*(1+Number(p.talent_defense)*0.04)*role.defense
         };
