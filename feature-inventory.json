@@ -688,8 +688,8 @@
     },
     {
       "id": "RPG-095",
-      "name": "Dungeon trap damage is correctly assigned to the affected party member",
-      "category": "Dungeon",
+      "name": "Final-floor demon lord deals increased damage compared with ordinary floor enemies",
+      "category": "Boss",
       "status": "implemented_needs_runtime_test"
     }
   ]
