@@ -369,3 +369,50 @@ test('resource-changing commands cannot race active encounters', async () => {
   assert.ok(playerLock >= 0 && encounterCheck > playerLock && manaSpend > encounterCheck,
     'spell practice must lock player, check reservation and only then spend resources');
 });
+
+
+test('daily reward uses a single guarded database update to prevent double claims', async () => {
+  const source = await read('gunlukodul.js');
+  assert.match(source, /WITH eligible AS \([\s\S]*?FOR UPDATE[\s\S]*?\), updated AS \([\s\S]*?UPDATE users AS u[\s\S]*?last_daily_at = NOW\(\)/);
+  assert.match(source, /last_daily_at IS NULL OR last_daily_at <= NOW\(\) - INTERVAL '20 hours'/);
+  assert.match(source, /if \(!result\.rowCount\)[\s\S]*?Günlük ödülünü yakın zamanda aldın/);
+});
+
+test('daily mission and achievement rewards use unique claim records and transactions', async () => {
+  const mission = await read('gunlukgorev.js');
+  assert.match(mission, /await db\.query\('BEGIN'\)/);
+  assert.match(mission, /SELECT class_name FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/);
+  assert.match(mission, /INSERT INTO daily_mission_claims[\s\S]*?ON CONFLICT DO NOTHING RETURNING mission_key/);
+  assert.match(mission, /if\(!claim\.rowCount\)[\s\S]*?await db\.query\('ROLLBACK'\)/);
+  assert.match(mission, /UPDATE users SET coins=coins\+\$3[\s\S]*?await db\.query\('COMMIT'\)/);
+
+  const achievements = await read('basarimlar.js');
+  assert.match(achievements, /await db\.query\('BEGIN'\)/);
+  assert.match(achievements, /INSERT INTO achievement_claims\(guild_id,user_id,achievement_key\)[\s\S]*?ON CONFLICT DO NOTHING RETURNING achievement_key/);
+  assert.match(achievements, /if\(!claim\.rowCount\)[\s\S]*?await db\.query\('ROLLBACK'\)/);
+  assert.match(achievements, /UPDATE users SET coins=coins\+\$3[\s\S]*?await db\.query\('COMMIT'\)/);
+});
+
+test('daily quest chain serializes each step and applies rewards atomically', async () => {
+  const source = await read('gorevzinciri.js');
+  const begin = source.indexOf("await db.query('BEGIN')");
+  const playerLock = source.indexOf('SELECT xp, level, stat_points FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE');
+  const chainLock = source.indexOf('SELECT current_step FROM daily_quest_chains WHERE guild_id=$1 AND user_id=$2 AND chain_date=CURRENT_DATE FOR UPDATE');
+  const objective = source.indexOf('const objective = await db.query(step.sql', chainLock);
+  const advance = source.indexOf('UPDATE daily_quest_chains SET current_step=$3', objective);
+  const reward = source.indexOf('UPDATE users SET coins=coins+$3, xp=$4', advance);
+  const commit = source.indexOf("await db.query('COMMIT')", reward);
+  assert.ok(begin >= 0 && playerLock > begin && chainLock > playerLock && objective > chainLock && advance > objective && reward > advance && commit > reward,
+    'quest step, reward and chain advancement must be one ordered transaction');
+});
+
+test('daily crafting reward is claimed once and committed with XP and currency', async () => {
+  const source = await read('zanaatgorevi.js');
+  assert.match(source, /SELECT crafted_items, claimed_at FROM daily_crafting_progress[\s\S]*?FOR UPDATE/);
+  assert.match(source, /if \(progress\.claimed_at\)[\s\S]*?await db\.query\('ROLLBACK'\)/);
+  const claimed = source.indexOf('UPDATE daily_crafting_progress SET claimed_at=NOW()');
+  const reward = source.indexOf('UPDATE users SET coins=coins+$3, xp=$4', claimed);
+  const commit = source.indexOf("await db.query('COMMIT')", reward);
+  assert.ok(claimed >= 0 && reward > claimed && commit > reward,
+    'daily crafting claim marker and reward must commit together');
+});
