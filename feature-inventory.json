@@ -1729,7 +1729,13 @@
       "name": "Combine adventure-history filters with viewing another player's public profile",
       "category": "Social",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-269",
+      "name": "Apply selected character-class passives and combat-build modifiers to PvP duel health, damage, defense and healing",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 287
+  "count": 288
 }
