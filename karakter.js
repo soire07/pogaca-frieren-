@@ -62,7 +62,7 @@ export default {
         const { rows: [player] } = await db.query('SELECT character_name FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [interaction.guildId, interaction.user.id]);
         if (player?.character_name) {
           await db.query('ROLLBACK');
-          return interaction.reply({ content: `Zaten **${player.character_name}** adında bir maceracın var. Adını değiştirmek için `/karakter isim` kullan.`, ephemeral: true });
+          return interaction.reply({ content: `Zaten **${player.character_name}** adında bir maceracın var. Adını değiştirmek için /karakter isim komutunu kullan.`, ephemeral: true });
         }
         await db.query('UPDATE users SET character_name=$3,class_name=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, name, classLabels[classKey]]);
         await db.query('COMMIT');
