@@ -1321,7 +1321,25 @@
       "name": "Grant Healer-class bonuses for first-time adventure discoveries",
       "category": "Progression",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-201",
+      "name": "Roll a three-percent chance for a rare ancient staff from treasure chests",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-202",
+      "name": "Roll a one-percent chance for an extremely rare Himmel-themed treasure reward",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-203",
+      "name": "Award significantly higher gold and XP for rare treasure chest drops",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 219
+  "count": 222
 }
