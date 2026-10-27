@@ -42,10 +42,17 @@ export default {
         await db.query('ROLLBACK');
         return interaction.editReply(`🗝️ Envanterinde **${available}** Kadim Hazine Sandığı var; **${amount}** tane açamazsın.`);
       }
-      await db.query(
-        "UPDATE inventory SET quantity=quantity-$3 WHERE guild_id=$1 AND user_id=$2 AND item_key='🗝️ Kadim Hazine Sandığı'",
-        [interaction.guildId, interaction.user.id, amount]
-      );
+      if (available === amount) {
+        await db.query(
+          "DELETE FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='🗝️ Kadim Hazine Sandığı'",
+          [interaction.guildId, interaction.user.id]
+        );
+      } else {
+        await db.query(
+          "UPDATE inventory SET quantity=quantity-$3 WHERE guild_id=$1 AND user_id=$2 AND item_key='🗝️ Kadim Hazine Sandığı'",
+          [interaction.guildId, interaction.user.id, amount]
+        );
+      }
       let coins = 0;
       let xp = 0;
       const found = new Map();
@@ -69,10 +76,6 @@ export default {
       await db.query(
         'UPDATE users SET coins=coins+$3, xp=$4, stat_points=stat_points+GREATEST(0,$5-level), level=$5 WHERE guild_id=$1 AND user_id=$2',
         [interaction.guildId, interaction.user.id, coins, newXp, newLevel]
-      );
-      await db.query(
-        "DELETE FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='🗝️ Kadim Hazine Sandığı' AND quantity<=0",
-        [interaction.guildId, interaction.user.id]
       );
       await db.query('COMMIT');
       const lootText = [...found.entries()].map(([item, quantity]) => `• ${item} × **${quantity}**`).join('\n');
