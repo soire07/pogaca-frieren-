@@ -363,3 +363,14 @@ test('adventure streak advances once per day and pays every third consecutive da
   assert.match(adventure, /dailyStreak % 3 === 0/);
   assert.match(journal, /Günlük macera serisi/);
 });
+
+test('adventure leaderboards provide discovery, route mastery and daily streak rankings', async () => {
+  const command = await read('kesifliderligi.js');
+  assert.match(command, /setName\('kesifliderligi'\)/);
+  assert.match(command, /adventure_discoveries/);
+  assert.match(command, /adventure_route_mastery/);
+  assert.match(command, /adventure_streaks/);
+  assert.match(command, /setName\('kategori'\)/);
+  assert.match(command, /ORDER BY score DESC/);
+  assert.match(command, /interaction\.guildId/);
+});
