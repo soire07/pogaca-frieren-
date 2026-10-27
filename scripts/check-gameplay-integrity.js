@@ -521,10 +521,10 @@ test('rare crafting ingredients are obtainable from existing dungeon, boss or tr
 
 test('usable item definitions match slash-command choices and inventory keys', async () => {
   const source = await read('esyakullan.js');
-  const definitions = source.match(/const usableItems = \\{([\\s\\S]*?)\\n\\};/);
+  const definitions = source.match(/const usableItems = \{([\s\S]*?)\n\};/);
   assert.ok(definitions, 'usable item catalog must exist');
   const ids = [...definitions[1].matchAll(/^  ([a-z_]+):/gm)].map(match => match[1]);
-  const choicesBlock = source.match(/\\.addChoices\\(([\\s\\S]*?)\\n        \\)\\n    \\),/);
+  const choicesBlock = source.match(/\.addChoices\(([\s\S]*?)\n        \)\n    \),/);
   assert.ok(choicesBlock, 'usable item slash choices must exist');
   const choiceIds = [...choicesBlock[1].matchAll(/value: '([^']+)'/g)].map(match => match[1]);
   assert.deepEqual([...choiceIds].sort(), [...ids].sort(), 'every usable item must have a matching slash choice');
@@ -540,5 +540,5 @@ test('usable item definitions match slash-command choices and inventory keys', a
 test('item-use missing inventory message does not assume every item comes from the market', async () => {
   const source = await read('esyakullan.js');
   assert.match(source, /Bu eşya envanterinde bulunmuyor/);
-  assert.doesNotMatch(source, /Önce \\/market üzerinden satın alman gerekiyor/);
+  assert.doesNotMatch(source, /Önce \/market üzerinden satın alman gerekiyor/);
 });
