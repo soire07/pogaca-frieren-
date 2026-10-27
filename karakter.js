@@ -84,7 +84,7 @@ export default {
       try {
         await db.query('BEGIN');
         const { rows: [player] } = await db.query('SELECT character_name,class_name,active_build FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [interaction.guildId, interaction.user.id]);
-        if (sub !== 'isim' && !player?.character_name) {
+        if (!player?.character_name) {
           await db.query('ROLLBACK');
           return interaction.reply({ content: 'Önce `/karakter olustur` ile maceracını oluştur.', ephemeral: true });
         }
