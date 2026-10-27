@@ -19,7 +19,11 @@ export default {
        WHERE l.guild_id=$1 AND l.user_id=$2 ORDER BY COALESCE(m.mastery_level,0) DESC, COALESCE(m.casts,0) DESC`,
       [interaction.guildId, interaction.user.id]
     );
-    // Zoltraak is the default spell and may not have a learned_spells row yet.\n    const rows = [...result.rows];\n    if (!rows.some(row => row.spell_key === 'zoltraak')) rows.push({ spell_key: 'zoltraak', casts: 0, mastery_level: 0 });\n    rows.sort((a, b) => Number(b.mastery_level) - Number(a.mastery_level) || Number(b.casts) - Number(a.casts));\n    const lines = rows.map(row => {
+    // Zoltraak is the default spell and may not have a learned_spells row yet.
+    const rows = [...result.rows];
+    if (!rows.some(row => row.spell_key === 'zoltraak')) rows.push({ spell_key: 'zoltraak', casts: 0, mastery_level: 0 });
+    rows.sort((a, b) => Number(b.mastery_level) - Number(a.mastery_level) || Number(b.casts) - Number(a.casts));
+    const lines = rows.map(row => {
       const casts = Number(row.casts), level = Number(row.mastery_level);
       const progress = level >= 10 ? '✨ Maksimum ustalık · Uyanış açıldı' : `Sonraki seviye için ${Math.max(0, (level + 1) * 10 - casts)} kullanım`;
       return `${names[row.spell_key] || row.spell_key}\n${'▰'.repeat(level)}${'▱'.repeat(10-level)} **${level}/10** · ${casts} kullanım · ${progress}`;
