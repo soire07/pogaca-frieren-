@@ -198,7 +198,7 @@ export default {
         '',
         `**Ödüller:** +${rewardCoins} altın · +${rewardXp} XP`,
         rewardMultiplier > 1 ? `**Seviye bonusu:** x${rewardMultiplier.toFixed(1)}` : '',
-        `**Bölge ustalığı:** ${masteryReward.level} seviye · ${regionVisits}/3 ziyaret`,
+        `**Bölge ustalığı:** ${masteryReward.level} seviye · ${regionVisits % 3 || (regionVisits > 0 ? 3 : 0)}/3 ziyaret`,
         masteryReward.milestone ? `🏅 **Bölge ustalığı ödülü:** +${masteryReward.coins} altın · +${masteryReward.xp} XP` : '',
         encounter.item ? `**Bulunan eşya:** ${encounter.item}` : '',
         hpDamage ? `**Can kaybı:** −${hpDamage} HP (savunma dahil)` : '',
