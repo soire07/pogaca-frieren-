@@ -211,3 +211,42 @@ test('cooperative Zoltraak damage uses saved mastery and can level up during the
     assert.match(source, /masteryCastTotals\.get\([^)]*\) \|\| 0/);
   }
 });
+
+
+test('co-op combat releases database locks before waiting for player turns and revalidates cooldown on save', async () => {
+  for (const [path, cooldown] of [['katlizindan.js', 'last_dungeon_at'], ['ortakboss.js', 'last_boss_at']]) {
+    const source = await read(path);
+    const release = source.indexOf("await db.query('COMMIT');\\n      db.release();\\n      db = null;");
+    const wait = source.indexOf('while (', release);
+    const save = source.indexOf('Reacquire a short transaction', wait);
+    const lock = source.indexOf('ORDER BY user_id FOR UPDATE', save);
+    assert.ok(release >= 0 && wait > release && save > wait && lock > save, path + ': lock/connection must be released during interactive combat and reacquired for persistence');
+    assert.ok(source.includes(cooldown), path + ': concurrent-run cooldown is revalidated');
+    assert.ok(source.includes("await db.query('ROLLBACK')"), path + ': failed validation rolls back');
+    assert.ok(source.includes('if (db) db.release()'), path + ': released clients are not released twice');
+  }
+});
+
+test('solo boss victory commits final HP, mana, rewards, mastery and loot in one transaction', async () => {
+  const source = await read('iblisavasi.js');
+  const victory = source.indexOf('if (bossHp <= 0)');
+  const begin = source.indexOf("await db.query('BEGIN')", victory);
+  const userUpdate = source.indexOf('UPDATE users SET hp=$3, mana=$4, coins=coins+$5, xp=xp+$6', begin);
+  const mastery = source.indexOf('if (spellUsed)', userUpdate);
+  const loot = source.indexOf("INSERT INTO inventory(guild_id,user_id,item_key,quantity)", mastery);
+  const commit = source.indexOf("await db.query('COMMIT')", loot);
+  assert.ok(victory >= 0 && begin > victory && userUpdate > begin && mastery > userUpdate && loot > mastery && commit > loot,
+    'victory state, rewards, mastery and loot must share one transaction');
+  assert.ok(!source.slice(victory, begin).includes("UPDATE users SET hp=$3, mana=$4"),
+    'victory HP/mana must not be saved before the reward transaction');
+  assert.match(source, /if \(spellUsed && bossHp > 0\)/, 'the final killing spell is deferred into the victory transaction');
+});
+
+test('health endpoint reports Discord readiness and database failures instead of unconditional success', async () => {
+  const source = await read('index.js');
+  assert.match(source, /ENABLE_MESSAGE_CONTENT_INTENT === 'true'/);
+  assert.match(source, /if \(!client\.isReady\(\)\)/);
+  assert.match(source, /await pool\.query\('SELECT 1'\)/);
+  assert.match(source, /res\.writeHead\(503\)/);
+  assert.match(source, /Sağlık kontrolü başarısız/);
+});
