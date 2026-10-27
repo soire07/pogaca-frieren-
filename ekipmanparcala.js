@@ -60,9 +60,18 @@ export default {
         'INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,$4) ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+EXCLUDED.quantity',
         [interaction.guildId, interaction.user.id, salvage.item, returned]
       );
+      const { rows: [salvageProgress] } = await db.query(
+        `INSERT INTO user_crafting_progress(guild_id,user_id,salvaged_items)
+         VALUES($1,$2,$3)
+         ON CONFLICT(guild_id,user_id) DO UPDATE SET
+           salvaged_items=user_crafting_progress.salvaged_items+EXCLUDED.salvaged_items,
+           updated_at=NOW()
+         RETURNING salvaged_items`,
+        [interaction.guildId, interaction.user.id, amount]
+      );
       await db.query('COMMIT');
       const embed = new EmbedBuilder().setColor(0x9b8cff).setTitle('♻️ Ekipman Parçalandı')
-        .setDescription(`Parçalanan: **${item.name} × ${amount}**\nGeri kazanılan malzeme: **${salvage.item} × ${returned}**\n\nKuşanılmış ekipman korunur. Geri kazanım, üretimde harcanandan daha az malzeme verir.`)
+        .setDescription(`Parçalanan: **${item.name} × ${amount}**\nGeri kazanılan malzeme: **${salvage.item} × ${returned}**\nToplam parçalanan ekipman: **${salvageProgress.salvaged_items}**\n\nKuşanılmış ekipman korunur. Geri kazanım, üretimde harcanandan daha az malzeme verir.`)
         .setFooter({ text: 'Poğaça Frieren • Parçalama ve malzeme iadesi tek işlemde kaydedildi.' });
       return interaction.editReply({ embeds: [embed] });
     } catch (error) {
