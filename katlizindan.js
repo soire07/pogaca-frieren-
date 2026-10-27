@@ -162,7 +162,7 @@ export default {
         const maxHp = Math.round(baseMaxHp * build.hp * role.hp);
         const maxMana = Math.min(500, Math.round((Number(p.max_mana) + bonus.mana) * build.mana));
         return { ...p, build, classProfile: getCharacterClass(p.class_name), level: Number(p.level), xp: Number(p.xp), mana: Math.min(Number(p.mana), maxMana), maxMana, role: roles[i], roleLabel: role.label, maxHp,
-          hp: Math.round(Math.min(Number(p.hp), baseMaxHp * build.hp) * role.hp),
+          hp: Math.round(Math.min(Number(p.hp) * build.hp, baseMaxHp) * role.hp),
           attack: Math.round(Math.min(500, Number(p.attack) + bonus.attack) * build.attack * role.attack),
           defense: Math.round(Math.min(250, applyClassDefense(Number(p.defense) + bonus.defense, p.class_name) * build.defense) * role.defense) };
       });
