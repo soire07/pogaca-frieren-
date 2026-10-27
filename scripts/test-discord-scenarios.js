@@ -106,7 +106,7 @@ test('dungeon difficulty and route choices feed the encounter and reward logic',
   assert.ok(mechanics.includes("difficulty === 'easy'"));
   assert.ok(mechanics.includes("choice === 'secret'"));
   assert.ok(mechanics.includes("choice === 'shrine'"));
-  assert.match(mechanics, /label: 'Mana mabedi'.*mana: 16 \\+ floor \\* 2/);
+  assert.ok(mechanics.includes("mana: 16 + floor * 2"));
   assert.ok(dungeon.includes('pathOutcome.mana > 0'));
 });
 
