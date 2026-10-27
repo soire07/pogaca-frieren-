@@ -655,6 +655,24 @@
       "name": "Use periodic special attacks during cooperative boss raids",
       "category": "Boss",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-090",
+      "name": "Choose tank, healer or damage role for each dungeon teammate",
+      "category": "Dungeon",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-091",
+      "name": "Let the tank attract dungeon enemy attacks",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-092",
+      "name": "Let the healer restore teammate HP during dungeon combat",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
     }
   ]
 }
