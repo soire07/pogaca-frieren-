@@ -2,9 +2,9 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, Embe
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
+import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
-const BOSS = { name: '🌑 Kuzey Platosu İblis Generali', hp: 220, damage: 14, xp: 180, coins: 220, loot: 'İblis Mührü' };
 const ROLES = {
   tank: { label: '🛡️ Muhafız', description: 'Daha çok hasar üzerine çeker ve daha dayanıklıdır.', hp: 1.25, attack: 0.85, defense: 1.45 },
   healer: { label: '💚 Şifacı', description: 'Her tur takıma küçük bir iyileştirme sağlar.', hp: 1, attack: 0.85, defense: 1.05 },
@@ -20,6 +20,7 @@ export default {
     .addUserOption(o => o.setName('takim_arkadasi_3').setDescription('Üçüncü takım arkadaşı (isteğe bağlı)').setRequired(false)),
 
   async execute(interaction) {
+    const BOSS = chooseRaidBoss();
     if (!interaction.guildId || !interaction.channel) return interaction.reply({ content: 'Ortak boss baskını yalnızca sunucularda kullanılabilir.', ephemeral: true });
     const team = [
       interaction.user,
@@ -128,7 +129,7 @@ export default {
         if (item) gearMap.get(g.user_id).push(item);
       }
       const fighters = raw.map(x => {
-        const p = x.stats; const gear = equipmentBonus(gearMap.get(x.user.id) || []); const role = ROLES[x.role];
+        const p = x.stats; const equipped = gearMap.get(x.user.id) || []; const gear = applyEquipmentSetBonus(equipped, equipmentBonus(equipped)); const role = ROLES[x.role];
         return {
           userId:x.user.id, username:x.user.username, role:x.role, roleData:role,
           level:Number(p.level), xp:Number(p.xp), coins:Number(p.coins), mana:Number(p.mana), maxMana:Number(p.max_mana),
@@ -162,11 +163,13 @@ export default {
         }
         const actionRow = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId(`raid:act:attack:${interaction.id}:${rounds}`).setLabel('⚔️ Saldır').setStyle(ButtonStyle.Danger),
-          new ButtonBuilder().setCustomId(`raid:act:spell:${interaction.id}:${rounds}`).setLabel('✨ Zoltraak (12 mana)').setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId(`raid:act:spell:${interaction.id}:${rounds}`).setLabel('✨ Zoltraak (12)').setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId(`raid:act:heal:${interaction.id}:${rounds}`).setLabel('💚 Heilen (18)').setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId(`raid:act:shield:${interaction.id}:${rounds}`).setLabel('🔮 Kalkan (10)').setStyle(ButtonStyle.Secondary),
           new ButtonBuilder().setCustomId(`raid:act:defend:${interaction.id}:${rounds}`).setLabel('🛡️ Savun').setStyle(ButtonStyle.Secondary)
         );
         const actionMessage = await interaction.editReply({
-          content: `**${BOSS.name} · Tur ${rounds}**\n❤️ Boss: ${bossHp}/${maxBossHp} HP\n${alive.map(i => `<@${fighters[i].userId}> (${fighters[i].mana}/${fighters[i].maxMana} mana)`).join(' · ')}\nHer oyuncu Saldır, Zoltraak veya Savun seçsin. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
+          content: `**${BOSS.name} · Tur ${rounds}**\n❤️ Boss: ${bossHp}/${maxBossHp} HP\n${alive.map(i => `<@${fighters[i].userId}> (${fighters[i].mana}/${fighters[i].maxMana} mana)`).join(' · ')}\nHer oyuncu Saldır, Zoltraak, Heilen, Mana Kalkanı veya Savun seçsin. Zayıflık: **${BOSS.weaknessLabel}**. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
           embeds: [],
           components: [actionRow]
         });
@@ -194,9 +197,15 @@ export default {
           if (bossHp <= 0 || hpNow[i] <= 0) continue;
           const f = fighters[i];
           const action = choices.get(f.userId) || 'defend';
-          if (action === 'defend') {
-            defending.add(i);
-            log.push(`🛡️ ${f.username} savunma duruşu aldı.`);
+          if (action === 'defend' || action === 'shield') {
+            if (action === 'shield' && f.mana >= 10) { f.mana -= 10; defending.add(i); log.push(`🔮 ${f.username} Mana Kalkanı açtı (-10 mana).`); }
+            else if (action === 'shield') { defending.add(i); log.push(`🔹 ${f.username} için mana yetersiz; normal savunma yaptı.`); }
+            else { defending.add(i); log.push(`🛡️ ${f.username} savunma duruşu aldı.`); }
+            continue;
+          }
+          if (action === 'heal') {
+            if (f.mana >= 18) { f.mana -= 18; const healed = Math.min(f.maxHp, hpNow[i] + 26); log.push(`💚 ${f.username} Heilen kullandı: +${healed-hpNow[i]} HP (-18 mana).`); hpNow[i] = healed; }
+            else log.push(`🔹 ${f.username} için mana yetersiz; büyü kullanılamadı.`);
             continue;
           }
           let damage = Math.max(1, Math.round(f.attack * (0.9 + Math.random() * 0.25)));
@@ -207,6 +216,7 @@ export default {
           } else if (action === 'spell') {
             log.push(`🔹 ${f.username} için mana yetersiz; normal saldırı yaptı.`);
           }
+          damage = applyRaidWeakness(damage, BOSS, action === 'spell' ? 'spell' : 'attack');
           bossHp = Math.max(0, bossHp - damage);
           log.push(`⚔️ ${f.username} (${f.roleData.label}) ${damage} hasar verdi.`);
         }
@@ -216,18 +226,18 @@ export default {
         const targetIndex=tank !== undefined && Math.random()<0.7 ? tank : living[Math.floor(Math.random()*living.length)];
         const target=fighters[targetIndex];
         const enraged = bossHp <= maxBossHp * 0.5;
-        const starburst = rounds % 3 === 0;
-        const manaCurse = !starburst && rounds % 4 === 0;
+        const starburst = BOSS.special === 'mana-star' ? rounds % 3 === 0 : BOSS.special === 'shard-rain' ? rounds % 3 === 0 : false;
+        const manaCurse = (BOSS.special === 'mana-curse' || BOSS.special === 'mana-star') && !starburst && rounds % 4 === 0;
         const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(manaCurse?3:0);
         if (enraged && !rageAnnounced) { log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.'); rageAnnounced = true; }
         if (starburst) {
-          log.push('☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!');
+          log.push(BOSS.special === 'shard-rain' ? '🐉 Cam Pullar Ejderhası keskin kristal parçalarını tüm takıma yağdırıyor!' : '☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!');
           for (const i of living) {
             const f=fighters[i];
             let incoming=Math.max(1,Math.round(rawDamage*0.68-f.defense*0.22));
             if (defending.has(i)) incoming=Math.max(1,Math.round(incoming*0.45));
             hpNow[i]=Math.max(0,hpNow[i]-incoming);
-            log.push(`☄️ ${f.username} mana patlamasından ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
+            log.push(`☄️ ${f.username} ${BOSS.special === 'shard-rain' ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
           }
         } else {
           let incoming=Math.max(1,Math.round(rawDamage-target.defense*0.28));
@@ -267,6 +277,7 @@ export default {
           '\n\n**Savaş günlüğü**\n'+log.slice(-15).join('\n'))
         .addFields(
           {name:'🎁 Kişi başı ödül',value:`✨ ${xpReward} XP\n🥐 ${coinReward} altın`,inline:true},
+          {name:'🧭 Boss bilgisi',value:`Zayıflık: **${BOSS.weaknessLabel}**\nÖzel hareket: **${BOSS.special === 'shard-rain' ? 'Kristal Yağmuru' : BOSS.special === 'mana-curse' ? 'Mana Laneti' : 'Mana Yıldız Patlaması'}**`,inline:true},
           {name:'💎 Ortak ganimet',value:loot?`Herkes **${loot}** kazandı!`:win?'Bu kez nadir ganimet çıkmadı.':'Boss yenilemediği için nadir ganimet yok.',inline:true},
           {name:'⏳ Bekleme süresi',value:'45 dakika',inline:true}
         ).setFooter({text:'Poğaça Frieren • Rollerini seç, takımını koru, birlikte kazan.'});
