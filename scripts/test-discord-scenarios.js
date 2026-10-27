@@ -238,3 +238,16 @@ test('character class passives are applied in both co-op modes and class guide i
   assert.match(guide, /setName\('sinifrehberi'\)/);
   assert.match(mechanics, /export function characterClassGuide\(\)/);
 });
+
+
+test('Mage class has a mana-cost discount in solo and co-op combat', async () => {
+  const mechanics = await read('rpg-mechanics.js');
+  const solo = await read('iblisavasi.js');
+  const dungeon = await read('katlizindan.js');
+  const raid = await read('ortakboss.js');
+  assert.match(mechanics, /manaCostMultiplier: 0\.9/);
+  assert.match(mechanics, /export function applyClassManaCost\(baseCost, className\)/);
+  assert.match(solo, /applyClassManaCost\(30, stats\.class_name\)/);
+  assert.match(dungeon, /applyClassManaCost\(12, p\.class_name\)/);
+  assert.match(raid, /applyClassManaCost\(12, f\.className\)/);
+});
