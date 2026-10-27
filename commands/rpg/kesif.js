@@ -2,6 +2,7 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
 import { equipmentItems, equipmentBonus } from '../../equipment-data.js';
 import { levelForXp } from '../../utils.js';
+import { applyClassDefense, applyClassManaCost, getCharacterBuild } from '../../rpg-mechanics.js';
 
 const COOLDOWN_MS = 15 * 60 * 1000;
 const regions = {
@@ -91,7 +92,7 @@ export default {
     try {
       await client.query('BEGIN');
       const { rows: [player] } = await client.query(
-        'SELECT xp, level, coins, hp, max_hp, mana, max_mana, stat_points, last_exploration_at FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+        'SELECT xp, level, coins, hp, max_hp, mana, max_mana, attack, defense, class_name, active_build, stat_points, last_exploration_at FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
         [interaction.guildId, interaction.user.id]
       );
 
@@ -110,10 +111,14 @@ export default {
         [interaction.guildId, interaction.user.id]
       );
       const gear = equipmentBonus(equippedResult.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean));
-      const effectiveMaxHp = Math.min(2000, Number(player.max_hp) + gear.hp);
-      const effectiveMaxMana = Math.min(2000, Number(player.max_mana) + gear.mana);
-      const currentHp = Math.min(effectiveMaxHp, Number(player.hp));
-      const currentMana = Math.min(effectiveMaxMana, Number(player.mana));
+      const build = getCharacterBuild(player.active_build);
+      const baseMaxHp = Math.max(1, Number(player.max_hp));
+      const baseMaxMana = Math.max(1, Number(player.max_mana));
+      const effectiveMaxHp = Math.min(2000, Math.round((baseMaxHp + gear.hp) * build.hp));
+      const effectiveMaxMana = Math.min(2000, Math.round((baseMaxMana + gear.mana) * build.mana));
+      const effectiveDefense = Math.min(250, Math.round(applyClassDefense(Number(player.defense) + gear.defense, player.class_name) * build.defense));
+      const currentHp = Math.min(effectiveMaxHp, Math.round((Number(player.hp) / baseMaxHp) * effectiveMaxHp));
+      const currentMana = Math.min(effectiveMaxMana, Math.round((Number(player.mana) / baseMaxMana) * effectiveMaxMana));
 
       const regionKey = interaction.options.getString('bolge');
       const region = regions[regionKey];
@@ -136,12 +141,15 @@ export default {
       const rewardMultiplier = Math.min(5, 1 + Math.floor((Number(player.level) - 1) / 10) * 0.1);
       const rewardXp = Math.round(encounter.xp * rewardMultiplier);
       const rewardCoins = Math.round(encounter.coins * rewardMultiplier);
-      const manaCost = currentMana >= encounter.manaCost ? encounter.manaCost : 0;
-      const hpDamage = encounter.hpDamage;
+      const manaCost = applyClassManaCost(encounter.manaCost, player.class_name);
+      const actualManaCost = currentMana >= manaCost ? manaCost : 0;
+      const hpDamage = Math.max(0, Math.round(encounter.hpDamage - effectiveDefense * 0.12));
       const newXp = Number(player.xp) + rewardXp;
       const newLevel = levelForXp(newXp);
       const newHp = Math.max(0, currentHp - hpDamage);
-      const newMana = Math.max(0, currentMana - manaCost);
+      const newMana = Math.max(0, currentMana - actualManaCost);
+      const persistedHp = Math.max(0, Math.min(baseMaxHp, Math.round((newHp / Math.max(1, effectiveMaxHp)) * baseMaxHp)));
+      const persistedMana = Math.max(0, Math.min(baseMaxMana, Math.round((newMana / Math.max(1, effectiveMaxMana)) * baseMaxMana)));
       const gainedPoints = Math.max(0, newLevel - Number(player.level));
 
       await client.query(
@@ -155,7 +163,7 @@ export default {
           last_exploration_at=NOW(),
           exploration_count=exploration_count+1
          WHERE guild_id=$1 AND user_id=$2`,
-        [interaction.guildId, interaction.user.id, newXp, newLevel, rewardCoins, newHp, newMana, gainedPoints]
+        [interaction.guildId, interaction.user.id, newXp, newLevel, rewardCoins, persistedHp, persistedMana, gainedPoints]
       );
 
       if (encounter.item) {
@@ -176,8 +184,10 @@ export default {
         `**Ödüller:** +${rewardCoins} altın · +${rewardXp} XP`,
         rewardMultiplier > 1 ? `**Seviye bonusu:** x${rewardMultiplier.toFixed(1)}` : '',
         encounter.item ? `**Bulunan eşya:** ${encounter.item}` : '',
-        hpDamage ? `**Can kaybı:** −${hpDamage} HP` : '',
-        manaCost ? `**Büyü maliyeti:** −${manaCost} Mana` : encounter.manaCost ? 'Mana yetersiz olduğu için büyü kullanmadın.' : '',
+        hpDamage ? `**Can kaybı:** −${hpDamage} HP (savunma dahil)` : '',
+        actualManaCost ? `**Büyü maliyeti:** −${actualManaCost} Mana` : encounter.manaCost ? 'Mana yetersiz olduğu için büyü kullanmadın.' : '',
+        `**Sınıf / savaş yapısı:** ${player.class_name || 'Gezgin'} · ${build.label}`,
+        effectiveDefense ? `**Savunma etkisi:** ${effectiveDefense} savunma tuzak ve çatışma hasarını azalttı.` : '',
         gainedPoints ? `**Seviye atladın!** +${gainedPoints} stat puanı kazandın.` : ''
       ].filter(Boolean).join('\n');
 
