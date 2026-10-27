@@ -351,3 +351,15 @@ test('adventure route mastery persists visits and grants a reward every third vi
   assert.match(journal, /Rota ziyaretleri/);
   assert.match(journal, /Sonraki ödül/);
 });
+
+test('adventure streak advances once per day and pays every third consecutive day', async () => {
+  const schema = await read('database/db.js');
+  const adventure = await read('macera.js');
+  const journal = await read('kesifdefteri.js');
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS adventure_streaks/);
+  assert.match(adventure, /last_visit_date=CURRENT_DATE/);
+  assert.match(adventure, /last_visit_date=CURRENT_DATE-1/);
+  assert.match(adventure, /streakRow\.new_day/);
+  assert.match(adventure, /dailyStreak % 3 === 0/);
+  assert.match(journal, /Günlük macera serisi/);
+});
