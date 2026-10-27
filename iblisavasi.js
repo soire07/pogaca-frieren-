@@ -8,7 +8,7 @@ import {
 } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
-import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass } from './rpg-mechanics.js';
+import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild } from './rpg-mechanics.js';
 
 const PLAYER_MAX_HP = 100;
 const COOLDOWN_MS = 30 * 60 * 1000;
@@ -79,7 +79,7 @@ export default {
     const spellMastery = new Map(masteryResult.rows.map(row => [row.spell_key, Number(row.mastery_level)]));
 
     const statsResult = await pool.query(
-      'SELECT hp, max_hp, mana, max_mana, attack, defense, level, class_name FROM users WHERE guild_id=$1 AND user_id=$2',
+      'SELECT hp, max_hp, mana, max_mana, attack, defense, level, class_name, active_build FROM users WHERE guild_id=$1 AND user_id=$2',
       [interaction.guildId, interaction.user.id]
     );
     const stats = statsResult.rows[0];
@@ -94,11 +94,12 @@ export default {
       .map(row => equipmentItems.find(item => item.name === row.item_key))
       .filter(Boolean);
     const gearBonus = equipmentBonus(equippedItems);
-    const playerMaxHp = Math.min(2000, Number(stats.max_hp) + gearBonus.hp);
-    const playerMaxMana = Math.min(2000, Number(stats.max_mana) + gearBonus.mana);
+    const build = getCharacterBuild(stats.active_build);
+    const playerMaxHp = Math.min(2000, Math.round((Number(stats.max_hp) + gearBonus.hp) * build.hp));
+    const playerMaxMana = Math.min(2000, Math.round((Number(stats.max_mana) + gearBonus.mana) * build.mana));
     const classProfile = getCharacterClass(stats.class_name);
-    const attack = Math.min(500, Number(stats.attack) + gearBonus.attack);
-    const defense = Math.min(250, applyClassDefense(Number(stats.defense) + gearBonus.defense, stats.class_name));
+    const attack = Math.min(500, Math.round((Number(stats.attack) + gearBonus.attack) * build.attack));
+    const defense = Math.min(250, Math.round(applyClassDefense(Number(stats.defense) + gearBonus.defense, stats.class_name) * build.defense));
     let playerHp = Math.min(playerMaxHp, Number(stats.hp));
     let playerMana = Math.min(playerMaxMana, Number(stats.mana));
     const gearSummary = equippedItems.length
@@ -152,7 +153,7 @@ export default {
       bossHp,
       playerHp,
       bonus: upgradeBonus,
-      description: `Kuzey sınırında tehlikeli bir iblisle karşılaştın, <@${interaction.user.id}>!\n\n**Hamleni seç:** Zoltraak dengeli saldırır; Alev Küresi daha güçlü hasar verir; Buz Mızrağı iblisi dondurup karşı saldırısını durdurabilir. Kalkan hasarı azaltır, Şifa savaşta bir kez can yeniler. Seviye ve boss zaferleriyle Yıldırım Zinciri, Taş Duvar ve Mana Patlaması açılır. Büyü kullandıkça ustalığın yükselir. Her karakter geliştirme seviyesi saldırı gücüne +2 hasar ekler.\n\n**Kuşanılan ekipman:**\n${gearSummary}\nEkipman bonusları bu savaşta saldırı, savunma, maksimum HP ve Mana değerlerine uygulanır.\n**Sınıf:** ${classProfile.label} — ${classProfile.description}`
+      description: `Kuzey sınırında tehlikeli bir iblisle karşılaştın, <@${interaction.user.id}>!\n\n**Hamleni seç:** Zoltraak dengeli saldırır; Alev Küresi daha güçlü hasar verir; Buz Mızrağı iblisi dondurup karşı saldırısını durdurabilir. Kalkan hasarı azaltır, Şifa savaşta bir kez can yeniler. Seviye ve boss zaferleriyle Yıldırım Zinciri, Taş Duvar ve Mana Patlaması açılır. Büyü kullandıkça ustalığın yükselir. Her karakter geliştirme seviyesi saldırı gücüne +2 hasar ekler.\n\n**Kuşanılan ekipman:**\n${gearSummary}\nEkipman bonusları bu savaşta saldırı, savunma, maksimum HP ve Mana değerlerine uygulanır.\n**Sınıf:** ${classProfile.label} — ${classProfile.description}\n**Savaş yapısı:** ${build.label} — ${build.description}`
     });
     await interaction.editReply({ embeds: [initial], components: [actionRow(), rareActionRow()] });
     const message = await interaction.fetchReply();
