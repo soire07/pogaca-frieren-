@@ -1255,7 +1255,31 @@
       "name": "Keep treasure opening history writes in the same transaction as rewards",
       "category": "Economy",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-190",
+      "name": "Claim a one-time achievement reward for discovering all rare adventure locations",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-191",
+      "name": "Claim a one-time achievement reward for completing the first treasure map",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-192",
+      "name": "Claim a one-time achievement reward after opening ten treasure chests",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-193",
+      "name": "Claim a one-time achievement reward after ten total adventure route visits",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 208
+  "count": 212
 }
