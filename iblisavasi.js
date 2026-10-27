@@ -88,7 +88,8 @@ export default {
       'SELECT spell_key FROM learned_spells WHERE guild_id=$1 AND user_id=$2',
       [interaction.guildId, interaction.user.id]
     );
-    // Zoltraak is the player's starting spell; it must remain usable even before any paid spell is learned.\n    const learnedSpells = new Set(['zoltraak', ...knownSpellResult.rows.map(row => row.spell_key)]);
+    // Zoltraak is the player's starting spell; it must remain usable even before any paid spell is learned.
+    const learnedSpells = new Set(['zoltraak', ...knownSpellResult.rows.map(row => row.spell_key)]);
 
     const masteryResult = await pool.query(
       'SELECT spell_key, casts, mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=$2',
