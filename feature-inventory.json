@@ -1741,7 +1741,13 @@
       "name": "Display the selected combat build in player profiles and calculate build-adjusted HP, mana, attack and defense",
       "category": "RPG",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-271",
+      "name": "Apply equipment defense, class-based mana discounts and selected combat-build HP/mana scaling to exploration while persisting base-stat health ratios",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 289
+  "count": 290
 }
