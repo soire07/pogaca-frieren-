@@ -85,3 +85,17 @@ export function applyClassHealing(baseHealing, className) {
   const profile = getCharacterClass(className);
   return Math.floor(Number(baseHealing) * profile.healingMultiplier);
 }
+
+
+export function characterClassGuide() {
+  return Object.entries(CHARACTER_CLASSES).map(([key, profile]) => ({
+    key,
+    label: profile.label,
+    description: profile.description,
+    bonuses: [
+      profile.attackMultiplier > 1 ? `Büyü hasarı +${Math.round((profile.attackMultiplier - 1) * 100)}%` : null,
+      profile.defenseMultiplier > 1 ? `Savunma +${Math.round((profile.defenseMultiplier - 1) * 100)}%` : null,
+      profile.healingMultiplier > 1 ? `İyileştirme +${Math.round((profile.healingMultiplier - 1) * 100)}%` : null
+    ].filter(Boolean)
+  }));
+}
