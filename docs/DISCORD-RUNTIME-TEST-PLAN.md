@@ -104,3 +104,16 @@ Beklenen sonuç: kaynak kontrolleri ve otomatik testler geçse bile bu senaryola
 - **CL-07:** İki takım üyesi farklı sınıflar seçsin; sonuç ekranı her birinin sınıfını ayrı göstermeli.
 
 Bu senaryolar otomatik kod kontrollerinin yerine geçmez; gerçek Discord bileşenleri ve test veritabanında ayrıca doğrulanmalıdır. Deploy yapılmadı.
+
+
+## Sınıfa özel günlük görevler — /gunlukgorev
+
+- **CQ-01:** Büyücü seçip /buyupratik ile bir büyü çalış; “Mana araştırmacısı” görevi tamamlanmalı ve 140 altın ödülü bir kez alınmalı.
+- **CQ-02:** Muhafız seçip /iblisavasi başlat; “Ön safta nöbet” görevi aynı gün tamamlanmalı ve 130 altın alınmalı.
+- **CQ-03:** Şifacı seçip envanter eşyası kullan; “Hazırlıklı şifacı” görevi tamamlanmalı ve 120 altın alınmalı.
+- **CQ-04:** Gezgin seçip /kesif ile keşif tamamla; “Yolun çağrısı” görevi tamamlanmalı ve 110 altın alınmalı.
+- **CQ-05:** Yanlış sınıftayken başka sınıfın görev ödülünü talep et; reddedilmeli, bakiye değişmemeli.
+- **CQ-06:** Aynı gün sınıf görev ödülünü aldıktan sonra sınıf değiştirip diğer sınıfın görevini talep et; ikinci sınıf görevi ödülü reddedilmeli.
+- **CQ-07:** Görev koşulunu yerine getirmeden ödül talep et veya aynı ödülü iki kez almaya çalış; ödül verilmemeli.
+
+Otomatik kontroller kaynak sözleşmelerini doğrular; gerçek Discord ve test veritabanı davranışı ayrıca test edilmelidir. Deploy yapılmayacak.
