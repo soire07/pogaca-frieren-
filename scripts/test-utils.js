@@ -323,3 +323,14 @@ test('cooperative raid boss phases scale incoming damage and announce transition
   assert.match(source, /ikinci evreye geçti/);
   assert.match(source, /son evreye geçti/);
 });
+
+
+test('final dungeon boss has three phases and stronger phase-scaled special attacks', async () => {
+  const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  assert.match(source, /const finalBoss = floor === FLOORS/);
+  assert.match(source, /getBossPhase\(enemyHp, maxEnemyHp\)/);
+  assert.match(source, /calculateBossIncomingDamage\(rawIncoming, Math\.round\(target\.defense \* 0\.6\), enemyPhase\)/);
+  assert.match(source, /bossPhaseSpecialBonus\(enemyPhase\)/);
+  assert.match(source, /İblis Lordu ikinci evreye geçti/);
+  assert.match(source, /İblis Lordu son evreye geçti/);
+});
