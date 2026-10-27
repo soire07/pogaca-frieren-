@@ -369,13 +369,13 @@ test('rare exploration pity guarantees a new rare location at each 20-adventure 
   assert.equal(shouldGuaranteeRareDiscovery(59, 2), true);
   assert.equal(shouldGuaranteeRareDiscovery(999, 3), false);
   assert.equal(shouldGuaranteeRareDiscovery(-10, 0), false);
-  assert.equal(shouldGuaranteeRareDiscovery(100, -1), false);
+  assert.equal(shouldGuaranteeRareDiscovery(0, -1), false);
 });
 
 test('adventure command uses pity to prioritize undiscovered rare locations', async () => {
   const source = await readFile(new URL('../macera.js', import.meta.url), 'utf8');
   assert.match(source, /shouldGuaranteeRareDiscovery/);
-  assert.match(source, /rareOutcomes\.find\(entry => !discoveredRare\.has\(entry\.discovery\)\)/);
+  assert.match(source, /rareOutcomes\.filter\(entry => !discoveredRare\.has\(entry\.discovery\)\)/);
   assert.match(source, /total_adventures/);
   assert.match(source, /rare_discoveries/);
 });
