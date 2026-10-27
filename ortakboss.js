@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder, ComponentType } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
@@ -166,7 +166,7 @@ export default {
           new ButtonBuilder().setCustomId(`raid:act:defend:${interaction.id}:${rounds}`).setLabel('🛡️ Savun').setStyle(ButtonStyle.Secondary)
         );
         const actionMessage = await interaction.editReply({
-          content: `**${BOSS.name} · Tur ${rounds}**\\n❤️ Boss: ${bossHp}/${maxBossHp} HP\\n${alive.map(i => `<@${fighters[i].userId}> (${fighters[i].mana}/${fighters[i].maxMana} mana)`).join(' · ')}\\nHer oyuncu Saldır, Zoltraak veya Savun seçsin. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
+          content: `**${BOSS.name} · Tur ${rounds}**\n❤️ Boss: ${bossHp}/${maxBossHp} HP\\n${alive.map(i => `<@${fighters[i].userId}> (${fighters[i].mana}/${fighters[i].maxMana} mana)`).join(' · ')}\\nHer oyuncu Saldır, Zoltraak veya Savun seçsin. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
           embeds: [],
           components: [actionRow]
         });
