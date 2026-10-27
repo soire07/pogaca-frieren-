@@ -220,3 +220,21 @@ test('character classes provide bounded passive bonuses and class selection is d
   assert.match(mechanics, /defenseMultiplier: 1\.12/);
   assert.match(mechanics, /healingMultiplier: 1\.2/);
 });
+
+
+test('character class passives are applied in both co-op modes and class guide is available', async () => {
+  const dungeon = await read('katlizindan.js');
+  const raid = await read('ortakboss.js');
+  const guide = await read('commands/rpg/sinifrehberi.js');
+  const mechanics = await read('rpg-mechanics.js');
+  assert.match(dungeon, /class_name, last_dungeon_at/);
+  assert.match(dungeon, /applyClassDamage\(damage, p\.class_name\)/);
+  assert.match(dungeon, /applyClassDefense\(/);
+  assert.match(dungeon, /applyClassHealing\(6, players\[healerIndex\]\.class_name\)/);
+  assert.match(raid, /class_name,last_boss_at/);
+  assert.match(raid, /applyClassDamage\(damage, f\.className\)/);
+  assert.match(raid, /applyClassDefense\(/);
+  assert.match(raid, /applyClassHealing\(12, fighters\[healer\]\.className\)/);
+  assert.match(guide, /setName\('sinifrehberi'\)/);
+  assert.match(mechanics, /export function characterClassGuide\(\)/);
+});
