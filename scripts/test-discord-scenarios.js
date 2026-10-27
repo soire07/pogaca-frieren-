@@ -679,3 +679,12 @@ test('adventure streak milestones grant one-time seven, fourteen and thirty day 
   assert.match(adventure, /30: \{ coins: 750, xp: 500 \}/);
   assert.match(adventure, /streakRow\.new_day/);
 });
+
+test('adventure history filters recent encounters by rare discovery or found items', async () => {
+  const history = await read('maceragecmisi.js');
+  assert.match(history, /setName\('filtre'\)/);
+  assert.match(history, /value: 'nadir'/);
+  assert.match(history, /value: 'esya'/);
+  assert.match(history, /discovery_key IN/);
+  assert.match(history, /item_found IS NOT NULL/);
+});
