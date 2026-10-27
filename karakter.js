@@ -201,25 +201,25 @@ export default {
     const embed = new EmbedBuilder().setColor(0x9b8cff)
       .setAuthor({ name: '✦ POĞAÇA FRIEREN  /  MACERACI DOSYASI' })
       .setThumbnail(interaction.user.displayAvatarURL({ size: 256 }))
-      .setTitle(\`🌠 \${u.character_name}\`)
+      .setTitle(`🌠 ${u.character_name}`)
       .setDescription(
-        \`*“Her yolculuk, henüz tanımadığın bir dünyaya atılan ilk adımdır.”*\\n\\n\` +
-        \`**\${classLabelsByName(u.class_name)}**  ·  **Seviye \${u.level}**\\n\` +
-        \`\${build.label} — \${build.description}\\n\\n\` +
-        \`\${classBonus}\`
+        `*“Her yolculuk, henüz tanımadığın bir dünyaya atılan ilk adımdır.”*\n\n` +
+        `**${classLabelsByName(u.class_name)}**  ·  **Seviye ${u.level}**\n` +
+        `${build.label} — ${build.description}\n\n` +
+        `${classBonus}`
       )
       .addFields(
-        { name: '❤️ CAN DURUMU', value: \`\${hpBar}\\n**\${u.hp} / \${u.max_hp}**\`, inline: true },
-        { name: '🔮 MANA AKIŞI', value: \`\${manaBar}\\n**\${u.mana} / \${u.max_mana}**\`, inline: true },
-        { name: '✨ SEVİYE YOLCULUĞU', value: \`\${xpBar}\\n**\${u.xp} XP** · Sonraki seviye için **\${nextLevel} XP**\`, inline: false },
-        { name: '⚔️ SALDIRI', value: \`**\${u.attack}**\\nTemel saldırı gücü\`, inline: true },
-        { name: '🛡️ SAVUNMA', value: \`**\${u.defense}**\\nDarbeleri azaltır\`, inline: true },
-        { name: '🌟 GELİŞİM PUANI', value: \`**\${u.stat_points}**\\nDağıtılmayı bekliyor\`, inline: true },
-        { name: '🪙 HAZİNE', value: \`**\${Number(u.coins).toLocaleString('tr-TR')}** altın\`, inline: true },
-        { name: '👹 BOSS ZAFERLERİ', value: \`**\${u.boss_defeats}**\\nYenilen güçlü düşman\`, inline: true },
-        { name: '🗺️ KEŞİF KAYDI', value: \`**\${u.exploration_count}**\\nTamamlanan keşif\`, inline: true },
+        { name: '❤️ CAN DURUMU', value: `${hpBar}\n**${u.hp} / ${u.max_hp}**`, inline: true },
+        { name: '🔮 MANA AKIŞI', value: `${manaBar}\n**${u.mana} / ${u.max_mana}**`, inline: true },
+        { name: '✨ SEVİYE YOLCULUĞU', value: `${xpBar}\n**${u.xp} XP** · Sonraki seviye için **${nextLevel} XP**`, inline: false },
+        { name: '⚔️ SALDIRI', value: `**${u.attack}**\nTemel saldırı gücü`, inline: true },
+        { name: '🛡️ SAVUNMA', value: `**${u.defense}**\nDarbeleri azaltır`, inline: true },
+        { name: '🌟 GELİŞİM PUANI', value: `**${u.stat_points}**\nDağıtılmayı bekliyor`, inline: true },
+        { name: '🪙 HAZİNE', value: `**${Number(u.coins).toLocaleString('tr-TR')}** altın`, inline: true },
+        { name: '👹 BOSS ZAFERLERİ', value: `**${u.boss_defeats}**\nYenilen güçlü düşman`, inline: true },
+        { name: '🗺️ KEŞİF KAYDI', value: `**${u.exploration_count}**\nTamamlanan keşif`, inline: true },
         { name: '📜 SIRADAKİ ADIMIN', value: nextAction, inline: false },
-        { name: '🎮 KARAKTERİNİ YÖNET', value: '\`/karakter isim\` · \`/karakter sinif\` · \`/karakter yapi\` · \`/karakter gelisim\`', inline: false }
+        { name: '🎮 KARAKTERİNİ YÖNET', value: '`/karakter isim` · `/karakter sinif` · `/karakter yapi` · `/karakter gelisim`', inline: false }
       )
       .setFooter({ text: 'Poğaça Frieren • Bu dosya senin yolculuğunu anlatır.' });
     return interaction.reply({ embeds: [embed] });
