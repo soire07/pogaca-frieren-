@@ -36,12 +36,12 @@ function battleEmbed({ player, bossHp, bossMaxHp = 160, bossName = 'İblis', bos
     .addFields(
       {
         name: '🧙 Gezgin',
-        value: `❤️ \`${hpBar(playerHp, playerMaxHp)}\` **${Math.max(0, playerHp)}/${playerMaxHp} HP** · 🔮 **${playerMana}/${playerMaxMana} Mana**\\n⚔️ Saldırı: **${attack}** · 🛡️ Savunma: **${defense}**\\n✨ Karakter bonusu: +${bonus} hasar`,
+        value: `❤️ \`${hpBar(playerHp, playerMaxHp)}\` **${Math.max(0, playerHp)}/${playerMaxHp} HP** · 🔮 **${playerMana}/${playerMaxMana} Mana**\n⚔️ Saldırı: **${attack}** · 🛡️ Savunma: **${defense}**\n✨ Karakter bonusu: +${bonus} hasar`,
         inline: true
       },
       {
         name: `👹 ${bossName}`,
-        value: `🩸 \`${hpBar(bossHp, bossMaxHp)}\` **${Math.max(0, bossHp)}/${bossMaxHp} HP**\\n${getBossPhase(bossHp, bossMaxHp) === 3 ? '🌑 Son aşama' : getBossPhase(bossHp, bossMaxHp) === 2 ? '🔥 İkinci aşama' : '🌒 İlk aşama'}`,
+        value: `🩸 \`${hpBar(bossHp, bossMaxHp)}\` **${Math.max(0, bossHp)}/${bossMaxHp} HP**\n${getBossPhase(bossHp, bossMaxHp) === 3 ? '🌑 Son aşama' : getBossPhase(bossHp, bossMaxHp) === 2 ? '🔥 İkinci aşama' : '🌒 İlk aşama'}`,
         inline: true
       }
     )
