@@ -615,7 +615,8 @@ test('daily crafting mission tracks daily production and safely grants one claim
   assert.match(schema, /CREATE TABLE IF NOT EXISTS daily_crafting_progress/);
   assert.match(crafting, /INSERT INTO daily_crafting_progress/);
   assert.match(mission, /setName\('zanaatgorevi'\)/);
-  assert.match(mission, /crafted_items >=/);
+  assert.match(mission, /count < TARGET/);
+  assert.match(mission, /const TARGET = 3/);
   assert.match(mission, /claimed_at/);
   assert.match(mission, /await db\.query\('COMMIT'\)/);
   assert.match(mission, /await db\.query\('ROLLBACK'\)/);
