@@ -184,7 +184,6 @@ export default {
       db = null;
       const avgLevel = Math.floor(players.reduce((n, p) => n + p.level, 0) / players.length);
       const hpNow = players.map(p => p.hp);
-      const oldLevels = players.map(p => p.level);
       let floorsCleared = 0, totalXp = 0, totalCoins = 0, turns = 0;
       const log = [];
       const spellCasts = new Map();
@@ -373,7 +372,7 @@ export default {
       db = await pool.connect();
       await db.query('BEGIN');
       const lockedRows = await db.query(
-        'SELECT user_id,last_dungeon_at FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE',
+        'SELECT user_id,last_dungeon_at,xp,level FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE',
         [interaction.guildId, ids]
       );
       const concurrentRun = lockedRows.rows.find(p => p.last_dungeon_at && Date.now() - new Date(p.last_dungeon_at).getTime() < COOLDOWN_MS);
@@ -406,9 +405,11 @@ export default {
         );
         log.push(`📈 <@${userId}> Zoltraak ustalığı: ${mastery.rows[0].casts} kullanım · Seviye ${mastery.rows[0].mastery_level}/10.`);
       }
+      const currentProgress = new Map(lockedRows.rows.map(row => [row.user_id, row]));
       for (let i = 0; i < players.length; i++) {
         const p = players[i];
-        const newXp = p.xp + totalXp;
+        const current = currentProgress.get(p.user_id);
+        const newXp = Number(current.xp) + totalXp;
         const newLevel = levelForXp(newXp);
         await db.query(
           `UPDATE users SET hp=$3, xp=$4, level=$5, coins=coins+$6,
@@ -416,7 +417,7 @@ export default {
              dungeon_runs=dungeon_runs+1, last_dungeon_at=NOW(), mana=$9
            WHERE guild_id=$1 AND user_id=$2`,
           [interaction.guildId, p.user_id, persistedHpNow[i], newXp, newLevel, totalCoins,
-            Math.max(0, newLevel - oldLevels[i]), victory ? 1 : 0, persistedManaNow[i]]
+            Math.max(0, newLevel - Number(current.level)), victory ? 1 : 0, persistedManaNow[i]]
         );
         for (const itemKey of [...chestRewards, ...(loot ? [loot] : [])]) await db.query(
           `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
