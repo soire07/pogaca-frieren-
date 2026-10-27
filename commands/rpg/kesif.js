@@ -141,7 +141,7 @@ export default {
       const rewardMultiplier = Math.min(5, 1 + Math.floor((Number(player.level) - 1) / 10) * 0.1);
       const rewardXp = Math.round(encounter.xp * rewardMultiplier);
       const rewardCoins = Math.round(encounter.coins * rewardMultiplier);
-      const manaCost = applyClassManaCost(encounter.manaCost, player.class_name);
+      const manaCost = encounter.manaCost > 0 ? applyClassManaCost(encounter.manaCost, player.class_name) : 0;
       const actualManaCost = currentMana >= manaCost ? manaCost : 0;
       const hpDamage = Math.max(0, Math.round(encounter.hpDamage - effectiveDefense * 0.12));
       const newXp = Number(player.xp) + rewardXp;
