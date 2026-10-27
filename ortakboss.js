@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, Embe
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass } from './rpg-mechanics.js';
+import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
 const ROLES = {
@@ -105,7 +105,7 @@ export default {
       await db.query('BEGIN');
       const ids = team.map(x => x.id).sort();
       const result = await db.query(
-        `SELECT user_id,level,xp,coins,hp,max_hp,mana,max_mana,attack,defense,class_name,last_boss_at FROM users
+        `SELECT user_id,level,xp,coins,hp,max_hp,mana,max_mana,attack,defense,class_name,active_build,last_boss_at FROM users
          WHERE guild_id=$1 AND user_id=ANY($2::text[]) FOR UPDATE`,
         [interaction.guildId, ids]
       );
@@ -129,14 +129,14 @@ export default {
         if (item) gearMap.get(g.user_id).push(item);
       }
       const fighters = raw.map(x => {
-        const p = x.stats; const equipped = gearMap.get(x.user.id) || []; const gear = applyEquipmentSetBonus(equipped, equipmentBonus(equipped)); const role = ROLES[x.role];
+        const p = x.stats; const equipped = gearMap.get(x.user.id) || []; const gear = applyEquipmentSetBonus(equipped, equipmentBonus(equipped)); const role = ROLES[x.role]; const build = getCharacterBuild(p.active_build); const baseMaxHp = Math.min(2000, Number(p.max_hp) + gear.hp) * build.hp;
         return {
-          userId:x.user.id, username:x.user.username, role:x.role, roleData:role, className:p.class_name, classProfile:getCharacterClass(p.class_name), baseMaxHp:Number(p.max_hp),
-          level:Number(p.level), xp:Number(p.xp), coins:Number(p.coins), mana:Math.min(Number(p.mana), Math.min(500, Number(p.max_mana) + gear.mana)), maxMana:Math.min(500, Number(p.max_mana) + gear.mana),
-          hp:Math.round(Math.max(0,Math.min(Number(p.hp),Math.min(2000,Number(p.max_hp)+gear.hp))*role.hp)),
-          maxHp:Math.round(Math.min(2000,Number(p.max_hp)+gear.hp)*role.hp),
-          attack:(Number(p.attack)+gear.attack)*role.attack,
-          defense:applyClassDefense(Number(p.defense)+gear.defense,p.class_name)*role.defense
+          userId:x.user.id, username:x.user.username, role:x.role, roleData:role, className:p.class_name, classProfile:getCharacterClass(p.class_name), build, baseMaxHp:Number(p.max_hp),
+          level:Number(p.level), xp:Number(p.xp), coins:Number(p.coins), mana:Math.min(Number(p.mana), Math.min(500, Math.round((Number(p.max_mana) + gear.mana) * build.mana))), maxMana:Math.min(500, Math.round((Number(p.max_mana) + gear.mana) * build.mana)),
+          hp:Math.round(Math.max(0,Math.min(Number(p.hp),baseMaxHp)*role.hp)),
+          maxHp:Math.round(baseMaxHp*role.hp),
+          attack:(Number(p.attack)+gear.attack)*build.attack*role.attack,
+          defense:applyClassDefense(Number(p.defense)+gear.defense,p.class_name)*build.defense*role.defense
         };
       });
       if (fighters.some(x => x.hp <= 0)) {
@@ -284,7 +284,7 @@ export default {
       const embed=new EmbedBuilder().setColor(win?0x5bc98a:0x9b8cff)
         .setTitle(win?`🏆 ${BOSS.name} yenildi!`:'🌌 Baskın sona erdi')
         .setDescription(`**Boss HP:** ${Math.max(0,bossHp)}/${maxBossHp}\n**Tur:** ${rounds}/12\n\n`+
-          fighters.map((f,i)=>`**<@${f.userId}>** — ${f.roleData.label} · ${f.classProfile.label}\n❤️ ${persistedHpNow[i]}/${f.baseMaxHp} HP · ✨ ${f.mana}/${f.maxMana} mana · ⚔️ ${Math.round(f.attack)} saldırı · 🛡️ ${Math.round(f.defense)} savunma`).join('\n\n')+
+          fighters.map((f,i)=>`**<@${f.userId}>** — ${f.roleData.label} · ${f.classProfile.label} · ${f.build.label}\n❤️ ${persistedHpNow[i]}/${f.baseMaxHp} HP · ✨ ${f.mana}/${f.maxMana} mana · ⚔️ ${Math.round(f.attack)} saldırı · 🛡️ ${Math.round(f.defense)} savunma`).join('\n\n')+
           '\n\n**Savaş günlüğü**\n'+log.slice(-15).join('\n'))
         .addFields(
           {name:'🎁 Kişi başı ödül',value:`✨ ${xpReward} XP\n🥐 ${coinReward} altın`,inline:true},
