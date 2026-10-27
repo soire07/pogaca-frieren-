@@ -13,7 +13,7 @@ export default {
       [interaction.guildId, interaction.user.id]
     );
     const description = rows.length
-      ? rows.map((row, index) => `**${index + 1}.** ${row.loot_item} — +${row.coins} altın · +${row.xp} XP\n< t:${Math.floor(new Date(row.opened_at).getTime() / 1000)}:R>`).join('\n')
+      ? rows.map((row, index) => `**${index + 1}.** ${row.loot_item} — +${row.coins} altın · +${row.xp} XP\n<t:${Math.floor(new Date(row.opened_at).getTime() / 1000)}:R>`).join('\n')
       : 'Henüz hazine açmadın. Harita parçalarını toplayıp /hazineac ile sandıklarını açabilirsin.';
     const embed = new EmbedBuilder()
       .setColor(0x9b8cff)
