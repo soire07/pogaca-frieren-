@@ -201,6 +201,21 @@ export async function initDatabase() {
     );
     CREATE INDEX IF NOT EXISTS idx_treasure_openings_user_recent
       ON treasure_openings(guild_id,user_id,opened_at DESC);
+    CREATE TABLE IF NOT EXISTS adventure_history (
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      discovery_key TEXT NOT NULL,
+      outcome_text TEXT NOT NULL,
+      coins_awarded INTEGER NOT NULL DEFAULT 0 CHECK (coins_awarded >= 0),
+      xp_awarded INTEGER NOT NULL DEFAULT 0 CHECK (xp_awarded >= 0),
+      item_found TEXT,
+      first_discovery BOOLEAN NOT NULL DEFAULT FALSE,
+      occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_adventure_history_user_recent
+      ON adventure_history(guild_id,user_id,occurred_at DESC);
     CREATE TABLE IF NOT EXISTS adventure_treasure_progress (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
