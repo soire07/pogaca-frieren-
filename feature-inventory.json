@@ -1927,7 +1927,19 @@
       "name": "Daily quest chain stage rewards provide usable equipment crafting materials",
       "category": "Progression",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-321",
+      "name": "Daily quest chain rewards scale by player level and grant XP with level-up stat points",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-322",
+      "name": "Solo boss tiers guarantee crafting materials that unlock equipment recipes",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 320
+  "count": 322
 }
