@@ -100,6 +100,14 @@ export default {
          RETURNING xp, level, successful_crafts`,
         [interaction.guildId, interaction.user.id, craftXp, amount]
       );
+      await db.query(
+        `INSERT INTO daily_crafting_progress(guild_id,user_id,mission_date,crafted_items)
+         VALUES($1,$2,CURRENT_DATE,$3)
+         ON CONFLICT(guild_id,user_id,mission_date) DO UPDATE SET
+           crafted_items=daily_crafting_progress.crafted_items+EXCLUDED.crafted_items,
+           updated_at=NOW()`,
+        [interaction.guildId, interaction.user.id, amount]
+      );
       const refundChance = craftProgress.level >= 10 ? 0.20 : craftProgress.level >= 5 ? 0.10 : 0;
       let refundedMaterial = null;
       if (refundChance > 0 && Math.random() < refundChance) {
