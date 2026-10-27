@@ -116,3 +116,21 @@ test('cooperative boss raid supports attack, mana spell, defense and mana persis
   assert.match(source, /mana=\$9/);
   assert.match(source, /ComponentType\.Button/);
 });
+
+
+test('cooperative boss raid includes an area mana-star burst and a mana-draining curse', async () => {
+  const source = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /const starburst = rounds % 3 === 0/);
+  assert.match(source, /for \(const i of living\)/);
+  assert.match(source, /const manaCurse = !starburst && rounds % 4 === 0/);
+  assert.match(source, /Math\.min\(target\.mana,8\)/);
+  assert.match(source, /target\.mana-=drained/);
+  assert.match(source, /rounds\/12/);
+  assert.doesNotMatch(source, /rounds\/10/);
+});
+
+test('boss raid turn prompt uses actual line breaks instead of literal slash-n text', async () => {
+  const source = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /HP\\n\$\{alive\.map/);
+  assert.doesNotMatch(source, /HP\\\\n\$\{alive\.map/);
+});
