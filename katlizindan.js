@@ -138,7 +138,7 @@ export default {
           for (let i = 0; i < players.length && enemyHp > 0; i++) {
             if (hpNow[i] <= 0) continue;
             const p = players[i];
-            const damage = Math.max(1, Math.round((Number(p.attack) + Math.floor(p.level / 3)) * (0.88 + ((p.level + floor + turn + i) % 4) * 0.09));
+            const damage = Math.max(1, Math.round((Number(p.attack) + Math.floor(p.level / 3)) * (0.88 + ((p.level + floor + turn + i) % 4) * 0.09)));
             enemyHp = Math.max(0, enemyHp - damage);
             if (turn === 1 || enemyHp === 0) log.push(`⚔️ <@${p.user_id}> ${damage} hasar verdi; düşman ${enemyHp}/${maxEnemyHp} HP.`);
           }
