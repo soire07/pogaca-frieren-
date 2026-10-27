@@ -691,6 +691,24 @@
       "name": "Final-floor demon lord deals increased damage compared with ordinary floor enemies",
       "category": "Boss",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-096",
+      "name": "Choose attack, spell or defense each dungeon combat turn",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-097",
+      "name": "Cast Zoltraak in dungeons by spending mana for increased damage",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-098",
+      "name": "Reduce incoming dungeon damage with a timed defense action",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
     }
   ]
 }
