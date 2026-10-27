@@ -184,3 +184,20 @@ export function explorationMasteryReward(visits) {
     milestone
   };
 }
+
+
+/** Level-scaled daily quest rewards; finishing the full chain grants a one-time stage bonus. */
+export function getLevelScaledQuestReward(baseCoins, baseXp, playerLevel, completesChain = false) {
+  const level = Math.max(1, Math.floor(Number(playerLevel) || 1));
+  const coins = Math.max(0, Math.floor(Number(baseCoins) || 0));
+  const xp = Math.max(0, Math.floor(Number(baseXp) || 0));
+  const multiplier = Math.min(3, 1 + Math.floor((level - 1) / 10) * 0.1);
+  const completionCoins = completesChain ? 100 : 0;
+  const completionXp = completesChain ? 100 : 0;
+  return {
+    multiplier,
+    coins: Math.round((coins + completionCoins) * multiplier),
+    xp: Math.round((xp + completionXp) * multiplier),
+    completionBonus: completesChain
+  };
+}
