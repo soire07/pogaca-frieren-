@@ -628,3 +628,11 @@ test('daily crafting claim follows the same user-before-progress lock order as c
   const progressLock = command.indexOf('SELECT crafted_items, claimed_at');
   assert.ok(userLock >= 0 && progressLock > userLock);
 });
+
+test('advanced crafting recipes require their profession level and show the requirement in the catalog', async () => {
+  const command = await read('zanaat.js');
+  assert.match(command, /craftLevel: 5/);
+  assert.match(command, /currentCraftLevel < \(recipe\.craftLevel/);
+  assert.match(command, /Zanaat seviyesi/);
+  assert.match(command, /Mevcut seviyen/);
+});
