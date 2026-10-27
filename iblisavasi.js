@@ -79,12 +79,12 @@ export default {
     const spellMastery = new Map(masteryResult.rows.map(row => [row.spell_key, Number(row.mastery_level)]));
 
     const statsResult = await pool.query(
-      'SELECT hp, max_hp, mana, max_mana, attack, defense, level, class_name, active_build,
+      `SELECT hp, max_hp, mana, max_mana, attack, defense, level, class_name, active_build,
         COALESCE((SELECT attack_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_attack,
         COALESCE((SELECT defense_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_defense,
         COALESCE((SELECT hp_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_hp,
         COALESCE((SELECT mana_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_mana
-        FROM users WHERE guild_id=$1 AND user_id=$2',
+        FROM users WHERE guild_id=$1 AND user_id=$2`,
       [interaction.guildId, interaction.user.id]
     );
     const stats = statsResult.rows[0];
