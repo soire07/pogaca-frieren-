@@ -180,6 +180,7 @@ export default {
       const oldLevels = players.map(p => p.level);
       let floorsCleared = 0, totalXp = 0, totalCoins = 0, turns = 0;
       const log = [];
+      const spellCasts = new Map();
       const chestRewards = [];
 
       for (let floor = 1; floor <= FLOORS; floor++) {
@@ -260,6 +261,7 @@ export default {
               p.mana -= spellCost;
               damage = Math.round(baseDamage * 1.8);
               damage = applyClassDamage(damage, p.class_name);
+              spellCasts.set(p.user_id, (spellCasts.get(p.user_id) || 0) + 1);
               log.push(`✨ <@${p.user_id}> Zoltraak kullandı (-${spellCost} mana).`);
             } else if (action === 'spell') {
               log.push(`🔹 <@${p.user_id}> için mana yetersiz; normal saldırı yaptı.`);
@@ -369,6 +371,19 @@ export default {
         Math.max(1, Number(p.max_mana)),
         Math.round((Number(p.mana) / Math.max(1, Number(p.maxMana))) * Math.max(1, Number(p.max_mana)))
       )));
+      for (const [userId, casts] of spellCasts) {
+        const mastery = await db.query(
+          `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
+           VALUES ($1,$2,'zoltraak',$3,LEAST(10,FLOOR($3/10.0)::int),NOW())
+           ON CONFLICT (guild_id,user_id,spell_key) DO UPDATE
+           SET casts=spell_mastery.casts+EXCLUDED.casts,
+               mastery_level=LEAST(10,FLOOR((spell_mastery.casts+EXCLUDED.casts)/10.0)::int),
+               updated_at=NOW()
+           RETURNING casts,mastery_level`,
+          [interaction.guildId, userId, casts]
+        );
+        log.push(`📈 <@${userId}> Zoltraak ustalığı: ${mastery.rows[0].casts} kullanım · Seviye ${mastery.rows[0].mastery_level}/10.`);
+      }
       for (let i = 0; i < players.length; i++) {
         const p = players[i];
         const newXp = p.xp + totalXp;
