@@ -105,7 +105,12 @@ export default {
       await db.query('BEGIN');
       const ids = team.map(x => x.id).sort();
       const result = await db.query(
-        `SELECT user_id,level,xp,coins,hp,max_hp,mana,max_mana,attack,defense,class_name,active_build,last_boss_at FROM users
+        `SELECT user_id,level,xp,coins,hp,max_hp,mana,max_mana,attack,defense,class_name,active_build,last_boss_at,
+         COALESCE((SELECT attack_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_attack,
+         COALESCE((SELECT defense_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_defense,
+         COALESCE((SELECT hp_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_hp,
+         COALESCE((SELECT mana_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_mana
+         FROM users
          WHERE guild_id=$1 AND user_id=ANY($2::text[]) FOR UPDATE`,
         [interaction.guildId, ids]
       );
@@ -129,14 +134,14 @@ export default {
         if (item) gearMap.get(g.user_id).push(item);
       }
       const fighters = raw.map(x => {
-        const p = x.stats; const equipped = gearMap.get(x.user.id) || []; const gear = applyEquipmentSetBonus(equipped, equipmentBonus(equipped)); const role = ROLES[x.role]; const build = getCharacterBuild(p.active_build); const baseMaxHp = Math.min(2000, Number(p.max_hp) + gear.hp) * build.hp;
+        const p = x.stats; const equipped = gearMap.get(x.user.id) || []; const gear = applyEquipmentSetBonus(equipped, equipmentBonus(equipped)); const role = ROLES[x.role]; const build = getCharacterBuild(p.active_build); const baseMaxHp = Math.min(2000, Number(p.max_hp) + gear.hp) * build.hp * (1 + Number(p.talent_hp) * 0.05);
         return {
           userId:x.user.id, username:x.user.username, role:x.role, roleData:role, className:p.class_name, classProfile:getCharacterClass(p.class_name), build, baseMaxHp:Number(p.max_hp),
           level:Number(p.level), xp:Number(p.xp), coins:Number(p.coins), mana:Math.min(Number(p.mana), Math.min(500, Math.round((Number(p.max_mana) + gear.mana) * build.mana))), maxMana:Math.min(500, Math.round((Number(p.max_mana) + gear.mana) * build.mana)),
           hp:Math.round(Math.max(0,Math.min(Number(p.hp)*build.hp,baseMaxHp)*role.hp)),
           maxHp:Math.round(baseMaxHp*role.hp),
-          attack:(Number(p.attack)+gear.attack)*build.attack*role.attack,
-          defense:applyClassDefense(Number(p.defense)+gear.defense,p.class_name)*build.defense*role.defense
+          attack:(Number(p.attack)+gear.attack)*build.attack*role.attack*(1+Number(p.talent_attack)*0.04),
+          defense:applyClassDefense(Number(p.defense)+gear.defense,p.class_name)*build.defense*(1+Number(p.talent_defense)*0.04)*role.defense
         };
       });
       if (fighters.some(x => x.hp <= 0)) {
