@@ -1633,7 +1633,25 @@
       "name": "Apply daily crafting mission XP to level progression and stat-point rewards",
       "category": "Progression",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-253",
+      "name": "Gate advanced crafting recipes behind persistent crafting profession levels",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-254",
+      "name": "Require higher crafting levels for rare and legendary equipment recipes",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-255",
+      "name": "Display crafting profession level requirements in the recipe catalog",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 271
+  "count": 274
 }
