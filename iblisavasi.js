@@ -21,14 +21,29 @@ const bossTiers = [
   { minLevel: 50, name: '👑 Äußerst Sınavının İblis Efendisi', region: 'Äußerst Sınav Rotası', maxHp: 650, minDamage: 20, maxDamage: 29, coinMin: 500, coinMax: 700, xpMin: 330, xpMax: 460, lootChance: 0.55, loot: ['🩸 İblis Komutanının Kanı', '🗿 Muhafız Rünü', '🩸 Kuzey İblisinin Kalbi'], craftingMaterial: '👑 Himmel’in Efsanevi Yadigârı', special: 'Äußerst Büyü Patlaması', specialType: 'arcane' }
 ];
 
+function hpBar(current, maximum, width = 10) {
+  const max = Math.max(1, Number(maximum) || 1);
+  const ratio = Math.max(0, Math.min(1, Number(current) / max));
+  const filled = Math.round(ratio * width);
+  return '█'.repeat(filled) + '░'.repeat(width - filled);
+}
+
 function battleEmbed({ player, bossHp, bossMaxHp = 160, bossName = 'İblis', bossRegion = 'Kuzey Sınırı', playerHp, playerMaxHp = PLAYER_MAX_HP, playerMana = 100, playerMaxMana = 100, attack = 10, defense = 5, bonus, description, won = false, lost = false }) {
   const embed = new EmbedBuilder()
     .setColor(won ? 0x65d6a6 : lost ? 0xe06c75 : 0x9b8cff)
     .setTitle(won ? `🏆 ${bossName} yenildi!` : lost ? '🌑 Büyücü düştü...' : `⚔️ ${bossName} • ${bossRegion}`)
     .setDescription(description)
     .addFields(
-      { name: '🧙 Gezgin', value: `❤️ **${Math.max(0, playerHp)}/${playerMaxHp} HP** · 🔮 **${playerMana}/${playerMaxMana} Mana**\n⚔️ Saldırı: **${attack}** · 🛡️ Savunma: **${defense}**\n✨ Karakter bonusu: +${bonus} hasar`, inline: true },
-      { name: bossName, value: `🩸 **${Math.max(0, bossHp)}/${bossMaxHp} HP**`, inline: true }
+      {
+        name: '🧙 Gezgin',
+        value: \`❤️ \\\`\${hpBar(playerHp, playerMaxHp)}\\\` **\${Math.max(0, playerHp)}/\${playerMaxHp} HP** · 🔮 **\${playerMana}/\${playerMaxMana} Mana**\\n⚔️ Saldırı: **\${attack}** · 🛡️ Savunma: **\${defense}**\\n✨ Karakter bonusu: +\${bonus} hasar\`,
+        inline: true
+      },
+      {
+        name: \`👹 \${bossName}\`,
+        value: \`🩸 \\\`\${hpBar(bossHp, bossMaxHp)}\\\` **\${Math.max(0, bossHp)}/\${bossMaxHp} HP**\\n\${getBossPhase(bossHp, bossMaxHp) === 3 ? '🌑 Son aşama' : getBossPhase(bossHp, bossMaxHp) === 2 ? '🔥 İkinci aşama' : '🌒 İlk aşama'}\`,
+        inline: true
+      }
     )
     .setFooter({ text: 'Poğaça Frieren • Kuzey sınırında her büyü önemlidir.' })
     .setTimestamp();
