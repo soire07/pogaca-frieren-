@@ -117,6 +117,14 @@ export default {
           [guildId, userId]
         );
         const user = userResult.rows[0];
+        const { rowCount: activeEncounterCount } = await client.query(
+          'SELECT encounter_id FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=$2 AND expires_at > NOW()',
+          [guildId, userId]
+        );
+        if (activeEncounterCount) {
+          await client.query('ROLLBACK');
+          return interaction.editReply('⚔️ Savaşın devam ederken ana hikâyeyi ilerletemezsin. Önce mevcut karşılaşmanı tamamla.');
+        }
         const progressResult = await client.query(
           'SELECT current_chapter, choices FROM story_progress WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
           [guildId, userId]
