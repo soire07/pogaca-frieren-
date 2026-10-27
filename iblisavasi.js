@@ -110,9 +110,12 @@ export default {
     // Combat HP and mana are scaled by gear/build; persist each value as a base-stat ratio.
     const toPersistentHp = hp => Math.max(0, Math.min(Number(stats.max_hp), Math.round((hp / Math.max(1, playerMaxHp)) * Number(stats.max_hp))));
     const toPersistentMana = mana => Math.max(0, Math.min(Number(stats.max_mana), Math.round((mana / Math.max(1, playerMaxMana)) * Number(stats.max_mana))));
-    const gearSummary = equippedItems.length
-      ? equippedItems.map(item => item.name + ' (' + formatEquipmentBonus(item) + ')').join('\n')
-      : 'Henüz ekipman kuşanılmadı. /market ve /ekipman komutlarını kullan.';
+    const gearSummary = [
+      equippedItems.length
+        ? equippedItems.map(item => item.name + ' (' + formatEquipmentBonus(item) + ')').join('\n')
+        : 'Henüz ekipman kuşanılmadı. /market ve /ekipman komutlarını kullan.',
+      gearBonus.setText ? '✨ **' + gearBonus.setText + '**' : null
+    ].filter(Boolean).join('\n');
 
     const claimed = await pool.query(
       `UPDATE users SET last_boss_at = NOW()
