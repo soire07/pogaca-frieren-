@@ -417,6 +417,11 @@ test('daily crafting reward is claimed once and committed with XP and currency',
     'daily crafting claim marker and reward must commit together');
 });
 
+test('adventure history records the full XP reward including streak milestones', async () => {
+  const source = await read('macera.js');
+  assert.match(source, /xp_awarded,item_found,first_discovery\)[\s\S]*?outcome\.xp \+ discoveryXp \+ routeMasteryReward\.xp \+ streakReward\.xp \+ dailyAdventureReward\.xp \+ treasureReward\.xp \+ classAdventureReward\.xp \+ streakMilestoneReward\.xp/);
+});
+
 test('adventure, treasure, story and NPC rewards are blocked during active encounters', async () => {
   const checks = [
     ['macera.js', /SELECT coins, xp, class_name, last_adventure_at FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/, /SELECT encounter_id FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/, /await client\.query\('ROLLBACK'\)/],
