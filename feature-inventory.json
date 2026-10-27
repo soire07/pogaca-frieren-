@@ -373,6 +373,12 @@
       "name": "Filter character collection by rarity",
       "category": "Collection",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-052",
+      "name": "Reserve duplicate character copies for pending trades",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
     }
   ]
 }
