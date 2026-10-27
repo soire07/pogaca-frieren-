@@ -52,10 +52,10 @@ export default {
       if (!u) return interaction.editReply('Oyuncu istatistikleri bulunamadı.');
 
       const c = collectionResult.rows[0];
-      const recentAdventures = adventureResult.rows.length
-        ? adventureResult.rows.map((row, index) => `**${index + 1}.** ${row.outcome_text} · +${n(row.coins_awarded)} altın / +${n(row.xp_awarded)} XP${row.first_discovery ? ' · 🧭 Yeni keşif' : ''}${row.item_found ? ` · ${row.item_found}` : ''}\n<t:${Math.floor(new Date(row.occurred_at).getTime() / 1000)}:R>`).join('\n')
-        : 'Henüz kaydedilmiş bir macera yok. /macera ile ilk keşfine çık.';
       const n = value => Number(value ?? 0).toLocaleString('tr-TR');
+      const recentAdventures = adventureResult.rows.length
+        ? adventureResult.rows.map((row, index) => `**${index + 1}.** ${row.outcome_text.slice(0, 70)} · +${n(row.coins_awarded)} altın / +${n(row.xp_awarded)} XP${row.first_discovery ? ' · 🧭 Yeni keşif' : ''}${row.item_found ? ` · ${row.item_found}` : ''}\n<t:${Math.floor(new Date(row.occurred_at).getTime() / 1000)}:R>`).join('\n')
+        : 'Henüz kaydedilmiş bir macera yok. /macera ile ilk keşfine çık.';
       const embed = new EmbedBuilder()
         .setColor(0xb58cff)
         .setTitle(`📖 ${target.username} · Macera Geçmişi`)
