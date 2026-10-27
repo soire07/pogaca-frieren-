@@ -15,12 +15,8 @@ export default {
     .setName('katlizindan')
     .setDescription('En fazla 4 maceracıyla beş katlı ortak zindana gir.')
     .addUserOption(o => o.setName('takim_arkadasi').setDescription('Birinci takım arkadaşın').setRequired(true))
-    .addStringOption(roleOption('rolun', 'Kendi rolün', true))
-    .addStringOption(roleOption('arkadas_rolu', 'Birinci arkadaşının rolü', true))
     .addUserOption(o => o.setName('takim_arkadasi_2').setDescription('İkinci takım arkadaşı (isteğe bağlı)').setRequired(false))
-    .addStringOption(roleOption('arkadas_2_rolu', 'İkinci arkadaşının rolü', false))
-    .addUserOption(o => o.setName('takim_arkadasi_3').setDescription('Üçüncü takım arkadaşı (isteğe bağlı)').setRequired(false))
-    .addStringOption(roleOption('arkadas_3_rolu', 'Üçüncü arkadaşının rolü', false)),
+    .addUserOption(o => o.setName('takim_arkadasi_3').setDescription('Üçüncü takım arkadaşı (isteğe bağlı)').setRequired(false)),
 
   async execute(interaction) {
     if (!interaction.guildId || !interaction.channel) {
@@ -38,9 +34,6 @@ export default {
     if (new Set(team.map(u => u.id)).size !== team.length || team.some((u, i) => i > 0 && u.bot)) {
       return interaction.reply({ content: 'Takımda bot veya tekrar eden oyuncu olamaz.', ephemeral: true });
     }
-    const roles = [interaction.options.getString('rolun', true), interaction.options.getString('arkadas_rolu', true), interaction.options.getString('arkadas_2_rolu'), interaction.options.getString('arkadas_3_rolu')].slice(0, team.length);
-    if (team.some((_user, i) => !roles[i])) return interaction.reply({ content: 'Takımdaki her oyuncu için rol seçmelisin.', ephemeral: true });
-    if (roles.filter(role => role === 'tank').length > 1 || roles.filter(role => role === 'healer').length > 1) return interaction.reply({ content: 'Takımda en fazla bir Muhafız ve bir Şifacı olabilir.', ephemeral: true });
     for (const user of team) await ensureUser(interaction.guildId, user.id);
 
     const invited = team.slice(1);
@@ -52,7 +45,7 @@ export default {
       new ButtonBuilder().setCustomId(`katlizindan:decline:${interaction.id}`).setLabel('Reddet').setStyle(ButtonStyle.Secondary)
     );
     const message = await interaction.reply({
-      content: `🧭 ${invited.map((u, i) => `<@${u.id}> (${PARTY_ROLES[roles[i + 1]].label})`).join(' ')} — <@${interaction.user.id}> seni **5 katlı ortak zindana** davet ediyor. Her davetli 60 saniye içinde kendi düğmesine basmalı. Roller: ${team.map((u, i) => `<@${u.id}> ${PARTY_ROLES[roles[i]].label}`).join(' · ')}`,
+      content: `🧭 ${invited.map(u => `<@${u.id}>`).join(' ')} — <@${interaction.user.id}> seni **5 katlı ortak zindana** davet ediyor. Her davetli 60 saniye içinde kendi düğmesine basmalı. Davet kabul edilince herkes kendi rolünü seçecek.`,
       components: [row], allowedMentions: { users: team.map(u => u.id) }, fetchReply: true
     });
 
@@ -86,6 +79,48 @@ export default {
       });
     });
     if (!started) return;
+
+    const roleRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`katlizindan:role:tank:${interaction.id}`).setLabel('🛡️ Muhafız').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`katlizindan:role:healer:${interaction.id}`).setLabel('💚 Şifacı').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`katlizindan:role:damage:${interaction.id}`).setLabel('⚔️ Hasar Ustası').setStyle(ButtonStyle.Primary)
+    );
+    const roleMessage = await interaction.editReply({
+      content: `🎭 **Herkes kendi rolünü seçsin!** ${team.map(u => `<@${u.id}>`).join(' ')}\nEn fazla bir Muhafız ve bir Şifacı olabilir. Her oyuncu rol düğmelerinden birine bassın.`,
+      components: [roleRow],
+      allowedMentions: { users: team.map(u => u.id) }
+    });
+    const chosenRoles = new Map();
+    const roleResult = await new Promise(resolve => {
+      const collector = roleMessage.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        time: 60_000,
+        filter: c => team.some(u => u.id === c.user.id) && c.customId.startsWith(`katlizindan:role:${interaction.id}`)
+      });
+      collector.on('collect', async c => {
+        const role = c.customId.split(':')[2];
+        const previous = chosenRoles.get(c.user.id);
+        const conflict = [...chosenRoles.entries()].some(([userId, selected]) =>
+          userId !== c.user.id && selected === role && (role === 'tank' || role === 'healer')
+        );
+        if (conflict) {
+          await c.reply({ content: role === 'tank' ? 'Bu takımda Muhafız rolü zaten seçildi. Şifacı veya Hasar Ustası seç.' : 'Bu takımda Şifacı rolü zaten seçildi. Muhafız veya Hasar Ustası seç.', ephemeral: true }).catch(() => {});
+          return;
+        }
+        chosenRoles.set(c.user.id, role);
+        await c.reply({ content: `Rolün: ${PARTY_ROLES[role].label}`, ephemeral: true }).catch(() => {});
+        if (chosenRoles.size === team.length) collector.stop('roles-ready');
+      });
+      collector.once('end', (_all, reason) => resolve(reason === 'roles-ready'));
+    });
+    if (!roleResult) {
+      return interaction.editReply({ content: '⌛ Herkes rol seçmediği için zindan başlamadı. Yeniden davet oluşturabilirsin.', components: [] });
+    }
+    const roles = team.map(user => chosenRoles.get(user.id));
+    await interaction.editReply({
+      content: `⚔️ Takım hazır: ${team.map((u, i) => `<@${u.id}> — ${PARTY_ROLES[roles[i]].label}`).join(' · ')}\nZindan kapıları açılıyor…`,
+      components: []
+    });
 
     const db = await pool.connect();
     try {
