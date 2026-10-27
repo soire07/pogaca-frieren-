@@ -27,7 +27,7 @@ const pages = [
   ]},
   { title: '🗺️ V. Keşif, hikâye ve koleksiyon', description: 'Frieren’in yolculuğu yalnızca savaşlardan ibaret değil. Dünyayı keşfet, karakterleri tanı ve hikâyedeki izleri takip et.', fields: [
     { name: 'Dünyayı keşfet', value: '**/dunya** bölgeleri tanıtır; **/kesif** bölge keşfini başlatır. Farklı bölgelerde ilerleyerek karşılaşmalar ve keşif kayıtları bulabilirsin.' },
-    { name: 'Hikâye ve yol arkadaşları', value: '**/hikaye** seçimlere dayalı anlatıyı; **/npc** yol arkadaşları ve yan görevleri; **/frieren** ve **/evren** Frieren dünyasına ilişkin içerikleri sunar.' },
+    { name: 'Hikâye ve yol arkadaşları', value: '**/hikaye** seçimlere dayalı anlatıyı; **/npc** mevcut yol arkadaşları ve yan içerikleri; **/frieren** ve **/evren** Frieren dünyasına ilişkin içerikleri sunar.' },
     { name: 'Koleksiyon ve günlük', value: '**/koleksiyon** karakter koleksiyonunu, **/gunluk** keşif/boss/büyü/yadigâr koleksiyonlarını gösterir. Koleksiyon tamamlandığında günlükte ödül talebi çıkabilir; aynı koleksiyon ödülü bir kez alınır.' },
     { name: '🥐 Mola komutları', value: '**/pogaca**, **/mimic**, **/sans**, **/saril** ve **/animequiz** macera arasında eğlence içindir.' }
   ]},
