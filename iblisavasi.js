@@ -7,6 +7,7 @@ import {
   ComponentType
 } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
+import { getBossArtUrl } from './boss-art.js';
 import { equipmentItems, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
 import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, applyEquipmentSetBonus, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening } from './rpg-mechanics.js';
 
@@ -14,11 +15,11 @@ const PLAYER_MAX_HP = 100;
 const COOLDOWN_MS = 30 * 60 * 1000;
 
 const bossTiers = [
-  { minLevel: 1, name: '🐺 Schattenwolf', region: 'Merkez Topraklar', maxHp: 120, minDamage: 7, maxDamage: 12, coinMin: 90, coinMax: 130, xpMin: 55, xpMax: 85, lootChance: 0.2, loot: ['🐺 Schattenwolfzahn'], craftingMaterial: '🥐 Büyülü Poğaça Kutusu', special: 'Rudelstoß', specialType: 'heavy' },
-  { minLevel: 10, name: '🗿 Kadim Harabe Muhafızı', region: 'Kadim Harabeler', maxHp: 210, minDamage: 10, maxDamage: 16, coinMin: 150, coinMax: 210, xpMin: 95, xpMax: 140, lootChance: 0.3, loot: ['🗿 Muhafız Rünü'], craftingMaterial: '📖 Yasak Büyü Kitabı', special: 'Kadim Sarsıntı', specialType: 'heavy' },
-  { minLevel: 20, name: '👹 Kuzey İblisi', region: 'Kuzey Toprakları', maxHp: 330, minDamage: 13, maxDamage: 20, coinMin: 230, coinMax: 320, xpMin: 150, xpMax: 210, lootChance: 0.35, loot: ['🩸 Kuzey İblisinin Kalbi'], craftingMaterial: '🐉 Ejderha Pulu', special: 'Mana Kemiren Lanet', specialType: 'drain' },
-  { minLevel: 35, name: '🩸 Büyük İblis Komutanı', region: 'Kuzey Yaylaları', maxHp: 470, minDamage: 16, maxDamage: 24, coinMin: 340, coinMax: 470, xpMin: 220, xpMax: 310, lootChance: 0.45, loot: ['🩸 İblis Komutanının Kanı'], craftingMaterial: '🌙 Efsunlu Elf Yadigârı', special: 'Komutanın Hiddeti', specialType: 'heavy' },
-  { minLevel: 50, name: '👑 Äußerst Sınavının İblis Efendisi', region: 'Äußerst Sınav Rotası', maxHp: 650, minDamage: 20, maxDamage: 29, coinMin: 500, coinMax: 700, xpMin: 330, xpMax: 460, lootChance: 0.55, loot: ['🩸 İblis Komutanının Kanı', '🗿 Muhafız Rünü', '🩸 Kuzey İblisinin Kalbi'], craftingMaterial: '👑 Himmel’in Efsanevi Yadigârı', special: 'Äußerst Büyü Patlaması', specialType: 'arcane' }
+  { minLevel: 1, name: '🐺 Schattenwolf', region: 'Merkez Topraklar', maxHp: 120, minDamage: 7, maxDamage: 12, coinMin: 90, coinMax: 130, xpMin: 55, xpMax: 85, lootChance: 0.2, loot: ['🐺 Schattenwolfzahn'], craftingMaterial: '🥐 Büyülü Poğaça Kutusu', artUrl: getBossArtUrl('schattenwolf'), special: 'Rudelstoß', specialType: 'heavy' },
+  { minLevel: 10, name: '🗿 Kadim Harabe Muhafızı', region: 'Kadim Harabeler', maxHp: 210, minDamage: 10, maxDamage: 16, coinMin: 150, coinMax: 210, xpMin: 95, xpMax: 140, lootChance: 0.3, loot: ['🗿 Muhafız Rünü'], craftingMaterial: '📖 Yasak Büyü Kitabı', artUrl: getBossArtUrl('ruinGuardian'), special: 'Kadim Sarsıntı', specialType: 'heavy' },
+  { minLevel: 20, name: '👹 Kuzey İblisi', region: 'Kuzey Toprakları', maxHp: 330, minDamage: 13, maxDamage: 20, coinMin: 230, coinMax: 320, xpMin: 150, xpMax: 210, lootChance: 0.35, loot: ['🩸 Kuzey İblisinin Kalbi'], craftingMaterial: '🐉 Ejderha Pulu', artUrl: getBossArtUrl('northDemon'), special: 'Mana Kemiren Lanet', specialType: 'drain' },
+  { minLevel: 35, name: '🩸 Büyük İblis Komutanı', region: 'Kuzey Yaylaları', maxHp: 470, minDamage: 16, maxDamage: 24, coinMin: 340, coinMax: 470, xpMin: 220, xpMax: 310, lootChance: 0.45, loot: ['🩸 İblis Komutanının Kanı'], craftingMaterial: '🌙 Efsunlu Elf Yadigârı', artUrl: getBossArtUrl('demonCommander'), special: 'Komutanın Hiddeti', specialType: 'heavy' },
+  { minLevel: 50, name: '👑 Äußerst Sınavının İblis Efendisi', region: 'Äußerst Sınav Rotası', maxHp: 650, minDamage: 20, maxDamage: 29, coinMin: 500, coinMax: 700, xpMin: 330, xpMax: 460, lootChance: 0.55, loot: ['🩸 İblis Komutanının Kanı', '🗿 Muhafız Rünü', '🩸 Kuzey İblisinin Kalbi'], craftingMaterial: '👑 Himmel’in Efsanevi Yadigârı', artUrl: getBossArtUrl('ausserstLord'), special: 'Äußerst Büyü Patlaması', specialType: 'arcane' }
 ];
 
 function hpBar(current, maximum, width = 10) {
@@ -28,7 +29,7 @@ function hpBar(current, maximum, width = 10) {
   return '█'.repeat(filled) + '░'.repeat(width - filled);
 }
 
-function battleEmbed({ player, bossHp, bossMaxHp = 160, bossName = 'İblis', bossRegion = 'Kuzey Sınırı', playerHp, playerMaxHp = PLAYER_MAX_HP, playerMana = 100, playerMaxMana = 100, attack = 10, defense = 5, bonus, description, won = false, lost = false }) {
+function battleEmbed({ player, bossHp, bossMaxHp = 160, bossName = 'İblis', bossRegion = 'Kuzey Sınırı', playerHp, playerMaxHp = PLAYER_MAX_HP, playerMana = 100, playerMaxMana = 100, attack = 10, defense = 5, bonus, description, bossImageUrl = null, won = false, lost = false }) {
   const embed = new EmbedBuilder()
     .setColor(won ? 0x65d6a6 : lost ? 0xe06c75 : 0x9b8cff)
     .setTitle(won ? `🏆 ${bossName} yenildi!` : lost ? '🌑 Büyücü düştü...' : `⚔️ ${bossName} • ${bossRegion}`)
@@ -48,6 +49,7 @@ function battleEmbed({ player, bossHp, bossMaxHp = 160, bossName = 'İblis', bos
     .setFooter({ text: 'Poğaça Frieren • Kuzey sınırında her büyü önemlidir.' })
     .setTimestamp();
   if (player?.displayAvatarURL) embed.setThumbnail(player.displayAvatarURL());
+  if (bossImageUrl) embed.setImage(bossImageUrl);
   return embed;
 }
 
@@ -168,6 +170,7 @@ export default {
       bossMaxHp: boss.maxHp,
       bossName: boss.name,
       bossRegion: boss.region,
+      bossImageUrl: boss.artUrl,
       playerMaxHp,
       playerMana,
       playerMaxMana,
