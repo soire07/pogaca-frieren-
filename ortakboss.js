@@ -132,7 +132,7 @@ export default {
         const p = x.stats; const equipped = gearMap.get(x.user.id) || []; const gear = applyEquipmentSetBonus(equipped, equipmentBonus(equipped)); const role = ROLES[x.role];
         return {
           userId:x.user.id, username:x.user.username, role:x.role, roleData:role,
-          level:Number(p.level), xp:Number(p.xp), coins:Number(p.coins), mana:Number(p.mana), maxMana:Number(p.max_mana),
+          level:Number(p.level), xp:Number(p.xp), coins:Number(p.coins), mana:Math.min(Number(p.mana), Math.min(500, Number(p.max_mana) + gear.mana)), maxMana:Math.min(500, Number(p.max_mana) + gear.mana),
           hp:Math.round(Math.max(0,Math.min(Number(p.hp),Math.min(2000,Number(p.max_hp)+gear.hp))*role.hp)),
           maxHp:Math.round(Math.min(2000,Number(p.max_hp)+gear.hp)*role.hp),
           attack:(Number(p.attack)+gear.attack)*role.attack,
@@ -226,18 +226,20 @@ export default {
         const targetIndex=tank !== undefined && Math.random()<0.7 ? tank : living[Math.floor(Math.random()*living.length)];
         const target=fighters[targetIndex];
         const enraged = bossHp <= maxBossHp * 0.5;
-        const starburst = BOSS.special === 'mana-star' ? rounds % 3 === 0 : BOSS.special === 'shard-rain' ? rounds % 3 === 0 : false;
-        const manaCurse = (BOSS.special === 'mana-curse' || BOSS.special === 'mana-star') && !starburst && rounds % 4 === 0;
-        const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(manaCurse?3:0);
+        const starburst = BOSS.special === 'mana-star' && rounds % 3 === 0;
+        const shardRain = BOSS.special === 'shard-rain' && rounds % 2 === 0;
+        const manaCurse = BOSS.special === 'mana-curse' && rounds % 3 === 0;
+        const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0);
         if (enraged && !rageAnnounced) { log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.'); rageAnnounced = true; }
-        if (starburst) {
+        if (starburst || shardRain) {
           log.push(BOSS.special === 'shard-rain' ? '🐉 Cam Pullar Ejderhası keskin kristal parçalarını tüm takıma yağdırıyor!' : '☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!');
           for (const i of living) {
             const f=fighters[i];
-            let incoming=Math.max(1,Math.round(rawDamage*0.68-f.defense*0.22));
+            const specialMultiplier = shardRain ? 0.5 : 0.68;
+            let incoming=Math.max(1,Math.round(rawDamage*specialMultiplier-f.defense*0.22));
             if (defending.has(i)) incoming=Math.max(1,Math.round(incoming*0.45));
             hpNow[i]=Math.max(0,hpNow[i]-incoming);
-            log.push(`☄️ ${f.username} ${BOSS.special === 'shard-rain' ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
+            log.push(`☄️ ${f.username} ${shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
           }
         } else {
           let incoming=Math.max(1,Math.round(rawDamage-target.defense*0.28));
@@ -283,7 +285,7 @@ export default {
         .addFields(
           {name:'🎁 Kişi başı ödül',value:`✨ ${xpReward} XP\n🥐 ${coinReward} altın`,inline:true},
           {name:'🏅 Kalıcı unvanlar',value:milestoneText.slice(0,1024),inline:false},
-          {name:'🧭 Boss bilgisi',value:`Zayıflık: **${BOSS.weaknessLabel}**\nÖzel hareket: **${BOSS.special === 'shard-rain' ? 'Kristal Yağmuru' : BOSS.special === 'mana-curse' ? 'Mana Laneti' : 'Mana Yıldız Patlaması'}**`,inline:true},
+          {name:'🧭 Boss bilgisi',value:`Zayıflık: **${BOSS.weaknessLabel}**\nÖzel hareket: **${BOSS.special === 'shard-rain' ? 'Kristal Yağmuru (iki turda bir, alan hasarı)' : BOSS.special === 'mana-curse' ? 'Mana Laneti (üç turda bir, mana tüketir)' : 'Mana Yıldız Patlaması (üç turda bir, alan hasarı)'}**`,inline:true},
           {name:'💎 Ortak ganimet',value:loot?`Herkes **${loot}** kazandı!`:win?'Bu kez nadir ganimet çıkmadı.':'Boss yenilemediği için nadir ganimet yok.',inline:true},
           {name:'⏳ Bekleme süresi',value:'45 dakika',inline:true}
         ).setFooter({text:'Poğaça Frieren • Rollerini seç, takımını koru, birlikte kazan.'});
