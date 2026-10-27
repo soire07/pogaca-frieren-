@@ -4,7 +4,8 @@ import { pool } from './database/db.js';
 const BOARDS = {
   level: { title: '⚒️ En Yüksek Zanaat Seviyesi', column: 'level', label: 'seviye' },
   xp: { title: '✨ En Çok Zanaat XP', column: 'xp', label: 'XP' },
-  crafts: { title: '🛠️ En Çok Üretim Yapanlar', column: 'successful_crafts', label: 'üretim' }
+  crafts: { title: '🛠️ En Çok Üretim Yapanlar', column: 'successful_crafts', label: 'üretim' },
+  salvage: { title: '♻️ En Çok Ekipman Parçalayanlar', column: 'salvaged_items', label: 'parçalanan eşya' }
 };
 
 export default {
@@ -15,7 +16,8 @@ export default {
       .setRequired(false).addChoices(
         { name: '⚒️ Zanaat seviyesi', value: 'level' },
         { name: '✨ Toplam zanaat XP', value: 'xp' },
-        { name: '🛠️ Üretilen eşya sayısı', value: 'crafts' }
+        { name: '🛠️ Üretilen eşya sayısı', value: 'crafts' },
+        { name: '♻️ Parçalanan ekipman', value: 'salvage' }
       )),
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
