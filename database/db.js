@@ -127,6 +127,7 @@ export async function initDatabase() {
       CHECK (from_user_id <> to_user_id)
     );
     CREATE INDEX IF NOT EXISTS idx_trade_offers_pending ON trade_offers(guild_id, to_user_id, expires_at) WHERE status='pending';
+    CREATE INDEX IF NOT EXISTS idx_trade_offers_pending_sender ON trade_offers(guild_id, from_user_id, character_name, expires_at) WHERE status='pending';
     CREATE TABLE IF NOT EXISTS moderation_cases (
       id BIGSERIAL PRIMARY KEY,
       guild_id TEXT NOT NULL,
