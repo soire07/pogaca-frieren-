@@ -50,7 +50,7 @@ async function loadCommands() {
   for (const filePath of files) {
     try {
       const mod = await import(pathToFileURL(filePath).href);
-      if (mod.default?.data && mod.default?.execute) {
+      if (mod.default?.data && mod.default?.execute && !mod.default?.internalOnly) {
         const name = mod.default.data.name;
         if (client.commands.has(name)) {
           throw new Error(`Yinelenen komut adı: /${name}`);
