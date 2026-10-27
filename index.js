@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
+import { Client, Collection, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
 import { readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -215,7 +215,7 @@ client.on(Events.InteractionCreate, async interaction => {
     const action = parts[0];
     const ownerId = parts[parts.length - 1];
     if (interaction.user.id !== ownerId) {
-      return interaction.reply({ content: 'Bu market paneli başka bir kullanıcıya ait. Kendi panelin için /market yaz.', ephemeral: true });
+      return interaction.reply({ content: 'Bu market paneli başka bir kullanıcıya ait. Kendi panelin için /market yaz.', flags: MessageFlags.Ephemeral });
     }
     try {
       let page = 0;
@@ -223,7 +223,7 @@ client.on(Events.InteractionCreate, async interaction => {
       let notice = null;
       if (action === 'market_detail') {
         const detail = renderMarketItem(parts[1], 0, interaction.user.id);
-        if (!detail) return interaction.reply({content:'Bu eşya bulunamadı.',ephemeral:true});
+        if (!detail) return interaction.reply({content:'Bu eşya bulunamadı.',flags: MessageFlags.Ephemeral});
         const balanceResult = await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[interaction.guildId,interaction.user.id]);
         const actualDetail = renderMarketItem(parts[1], balanceResult.rows[0]?.coins ?? 0, interaction.user.id);
         return interaction.update({...actualDetail,content:null,attachments:[]});
@@ -255,13 +255,13 @@ client.on(Events.InteractionCreate, async interaction => {
       return interaction.update({ ...panel, content: notice, attachments:[] });
     } catch (error) {
       console.error('Market paneli hatası:', error);
-      return interaction.reply({ content: 'Market panelinde bir sorun oluştu. Biraz sonra tekrar dene.', ephemeral: true }).catch(() => {});
+      return interaction.reply({ content: 'Market panelinde bir sorun oluştu. Biraz sonra tekrar dene.', flags: MessageFlags.Ephemeral }).catch(() => {});
     }
   }
   if (interaction.isButton() && (interaction.customId.startsWith('trade_accept:') || interaction.customId.startsWith('trade_decline:'))) {
     const [action, offerId] = interaction.customId.split(':');
     if (!interaction.guildId || !offerId) {
-      return interaction.reply({ content: 'Bu takas teklifi geçersiz.', ephemeral: true });
+      return interaction.reply({ content: 'Bu takas teklifi geçersiz.', flags: MessageFlags.Ephemeral });
     }
     const db = await pool.connect();
     try {
@@ -273,11 +273,11 @@ client.on(Events.InteractionCreate, async interaction => {
       const offer = offerResult.rows[0];
       if (!offer) {
         await db.query('ROLLBACK');
-        return interaction.reply({ content: 'Bu takas teklifi bulunamadı veya artık geçerli değil.', ephemeral: true });
+        return interaction.reply({ content: 'Bu takas teklifi bulunamadı veya artık geçerli değil.', flags: MessageFlags.Ephemeral });
       }
       if (interaction.user.id !== offer.to_user_id) {
         await db.query('ROLLBACK');
-        return interaction.reply({ content: 'Bu teklife yalnızca teklif gönderilen kullanıcı yanıt verebilir.', ephemeral: true });
+        return interaction.reply({ content: 'Bu teklife yalnızca teklif gönderilen kullanıcı yanıt verebilir.', flags: MessageFlags.Ephemeral });
       }
       if (offer.status !== 'pending') {
         await db.query('ROLLBACK');
@@ -335,7 +335,7 @@ client.on(Events.InteractionCreate, async interaction => {
     } catch (error) {
       await db.query('ROLLBACK').catch(() => {});
       console.error('Takas kabul hatası:', error);
-      return interaction.reply({ content: 'Takas sırasında hata oluştu. Daha sonra tekrar dene.', ephemeral: true }).catch(() => {});
+      return interaction.reply({ content: 'Takas sırasında hata oluştu. Daha sonra tekrar dene.', flags: MessageFlags.Ephemeral }).catch(() => {});
     } finally { db.release(); }
   }
   if (interaction.isAutocomplete()) {
@@ -352,7 +352,7 @@ client.on(Events.InteractionCreate, async interaction => {
     await command.execute(interaction);
   } catch (error) {
     console.error(`/${interaction.commandName} hatası:`, error);
-    const message = { content: 'Bu komut çalışırken bir hata oluştu. Hata kaydedildi; daha sonra tekrar dene.', ephemeral: true };
+    const message = { content: 'Bu komut çalışırken bir hata oluştu. Hata kaydedildi; daha sonra tekrar dene.', flags: MessageFlags.Ephemeral };
     if (interaction.replied || interaction.deferred) await interaction.followUp(message).catch(() => {});
     else await interaction.reply(message).catch(() => {});
   }
