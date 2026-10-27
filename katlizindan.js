@@ -424,6 +424,13 @@ export default {
       }
       const victory = floorsCleared === FLOORS;
       const loot = victory && Math.random() < 0.35 ? LOOT[Math.floor(Math.random() * LOOT.length)] : null;
+      const craftingLoot = floorsCleared >= FLOORS
+        ? '👑 Himmel’in Efsanevi Yadigârı'
+        : floorsCleared >= 3
+          ? '🐉 Ejderha Pulu'
+          : floorsCleared >= 1
+            ? '💎 Mana Kristali'
+            : null;
       const persistedHpNow = hpNow.map((hp, i) => {
         const combatMaxHp = Math.max(1, Number(players[i].maxHp));
         const baseMaxHp = Math.max(1, Number(players[i].max_hp));
@@ -460,7 +467,7 @@ export default {
           [interaction.guildId, p.user_id, persistedHpNow[i], newXp, newLevel, totalCoins,
             Math.max(0, newLevel - Number(current.level)), victory ? 1 : 0, persistedManaNow[i]]
         );
-        for (const itemKey of [...chestRewards, ...(loot ? [loot] : [])]) await db.query(
+        for (const itemKey of [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])]) await db.query(
           `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
            ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
           [interaction.guildId, p.user_id, itemKey]
@@ -485,7 +492,7 @@ export default {
         .addFields(
           { name: '🏅 Kalıcı unvanlar', value: milestoneText.slice(0,1024), inline: false },
           { name: '🎁 Kişi başı ödül', value: `✨ ${totalXp} XP\n🥐 ${totalCoins} altın`, inline: true },
-          { name: '💎 Ganimet ve sandıklar', value: [...chestRewards, ...(loot ? [loot] : [])].length ? [...chestRewards, ...(loot ? [loot] : [])].map(item => `• ${item}`).join('\\n') : 'Bu sefer ganimet çıkmadı.', inline: true },
+          { name: '💎 Ganimet ve sandıklar', value: [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])].length ? [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])].map(item => `• ${item}`).join('\\n') : 'Bu sefer ganimet çıkmadı.', inline: true },
           { name: '⏳ Bekleme', value: '30 dakika', inline: true }
         )
         .setFooter({ text: 'Poğaça Frieren • Kat kat ilerleyin, takımınızı koruyun.' });
