@@ -100,7 +100,7 @@ export default {
       components: []
     });
 
-    const db = await pool.connect();
+    let db = await pool.connect();
     try {
       await db.query('BEGIN');
       const ids = team.map(x => x.id).sort();
@@ -156,6 +156,10 @@ export default {
       const masteryRows = await db.query('SELECT user_id,casts,mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND spell_key=$3',[interaction.guildId,ids,'zoltraak']);
       const spellMastery = new Map(masteryRows.rows.map(row => [row.user_id, Number(row.mastery_level)]));
       const masteryCastTotals = new Map(masteryRows.rows.map(row => [row.user_id, Number(row.casts)]));
+      // Release row locks and the pooled connection before waiting for player actions.
+      await db.query('COMMIT');
+      db.release();
+      db = null;
       const hpNow = fighters.map(x => Math.round(x.hp));
       const log = [];
       const spellCasts = new Map();
@@ -279,6 +283,19 @@ export default {
           log.push(`💥 ${BOSS.name} ${target.username} oyuncusuna ${incoming} hasar verdi${defending.has(targetIndex)?' (savunma azaltımı uygulandı)':''}.`);
         }
       }
+      // Reacquire a short transaction for persistence; validate cooldowns against concurrent raids.
+      db = await pool.connect();
+      await db.query('BEGIN');
+      const lockedRows = await db.query(
+        'SELECT user_id,last_boss_at FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE',
+        [interaction.guildId, ids]
+      );
+      const concurrentRun = lockedRows.rows.find(p => p.last_boss_at && Date.now() - new Date(p.last_boss_at).getTime() < COOLDOWN_MS);
+      if (concurrentRun) {
+        const remaining = Math.ceil((COOLDOWN_MS - (Date.now() - new Date(concurrentRun.last_boss_at).getTime())) / 60_000);
+        await db.query('ROLLBACK');
+        return interaction.editReply({ content: `⏳ <@${concurrentRun.user_id}> başka bir baskın nedeniyle bekleme süresine girdi; yaklaşık ${remaining} dakika sonra yeniden deneyin. Bu baskının ödülleri kaydedilmedi.`, components: [] });
+      }
       const win=bossHp<=0;
       const persistedHpNow=hpNow.map((hp,i)=> {
         const combatMaxHp = Math.max(1, Number(fighters[i].maxHp));
@@ -339,9 +356,9 @@ export default {
         ).setFooter({text:'Poğaça Frieren • Rollerini seç, takımını koru, birlikte kazan.'});
       return interaction.editReply({embeds:[embed],components:[]});
     } catch(error) {
-      await db.query('ROLLBACK').catch(()=>{});
+      if (db) await db.query('ROLLBACK').catch(()=>{});
       console.error('/ortakboss hatası:',error);
       return interaction.editReply({content:'Ortak boss baskınında hata oluştu. Daha sonra yeniden dene.',components:[]}).catch(()=>{});
-    } finally { db.release(); }
+    } finally { if (db) db.release(); }
   }
 };
