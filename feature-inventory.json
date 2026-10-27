@@ -985,7 +985,13 @@
       "name": "Apply Mage mana efficiency in co-op raid Zoltraak",
       "category": "Combat",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-145",
+      "name": "Claim one class-specific daily mission with class-gated progress and a once-per-day reward",
+      "category": "Quests",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 163
+  "count": 164
 }
