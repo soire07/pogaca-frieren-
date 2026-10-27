@@ -138,7 +138,7 @@ export default {
         const maxHp = Math.round(baseMaxHp * role.hp);
         const maxMana = Math.min(500, Math.round((Number(p.max_mana) + gear.mana) * build.mana * (1 + Number(p.talent_mana) * 0.05)));
         return {
-          userId:x.user.id, username:x.user.username, role:x.role, roleData:role, className:p.class_name, classProfile:getCharacterClass(p.class_name), build, baseMaxHp:Number(p.max_hp),
+          userId:x.user.id, username:x.user.username, role:x.role, roleData:role, className:p.class_name, classProfile:getCharacterClass(p.class_name), build, baseMaxHp:Number(p.max_hp), baseMaxMana:Number(p.max_mana),
           level:Number(p.level), xp:Number(p.xp), coins:Number(p.coins), mana:Math.min(maxMana, Math.round((Number(p.mana) / Math.max(1, Number(p.max_mana))) * maxMana)), maxMana,
           hp:Math.round((Number(p.hp) / Math.max(1, Number(p.max_hp))) * maxHp),
           maxHp,
@@ -276,6 +276,10 @@ export default {
         const baseMaxHp = Math.max(1, Number(fighters[i].baseMaxHp));
         return Math.max(0, Math.min(baseMaxHp, Math.round((hp / combatMaxHp) * baseMaxHp)));
       });
+      const persistedManaNow=fighters.map(f=>Math.max(0,Math.min(
+        Math.max(1,Number(f.baseMaxMana)),
+        Math.round((Number(f.mana)/Math.max(1,Number(f.maxMana)))*Math.max(1,Number(f.baseMaxMana)))
+      )));
       const xpReward=win?BOSS.xp:Math.floor(BOSS.xp*0.25);
       const coinReward=win?BOSS.coins:Math.floor(BOSS.coins*0.2);
       const loot=win && Math.random()<0.4 ? BOSS.loot : null;
@@ -285,7 +289,7 @@ export default {
           `UPDATE users SET hp=$3,xp=$4,level=$5,coins=coins+$6,
            stat_points=stat_points+$7,boss_defeats=boss_defeats+$8,last_boss_at=NOW(),mana=$9
            WHERE guild_id=$1 AND user_id=$2`,
-          [interaction.guildId,f.userId,persistedHpNow[i],newXp,newLevel,coinReward,Math.max(0,newLevel-f.level),win?1:0,f.mana]
+          [interaction.guildId,f.userId,persistedHpNow[i],newXp,newLevel,coinReward,Math.max(0,newLevel-f.level),win?1:0,persistedManaNow[i]]
         );
         if (loot) await db.query(
           `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
