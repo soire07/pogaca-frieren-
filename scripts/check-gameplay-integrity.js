@@ -347,3 +347,25 @@ test('legacy two-player dungeon rejects teammates with active interactive encoun
     'legacy dungeon must lock both players then check encounter reservations before combat');
   assert.match(source, /if \(activeEncounter\.rowCount\) \{\s*await db\.query\('ROLLBACK'\)/);
 });
+
+
+test('resource-changing commands cannot race active encounters', async () => {
+  const files = [
+    ['ekipman.js', /SELECT user_id FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/, 2],
+    ['esyakullan.js', /SELECT user_id FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/, 1],
+    ['commands/rpg/buyupratik.js', /SELECT encounter_type FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/, 1],
+    ['commands/rpg/gelisim.js', /SELECT encounter_type FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/, 1]
+  ];
+  for (const [path, pattern, minimum] of files) {
+    const source = await read(path);
+    assert.ok((source.match(new RegExp(pattern.source, 'g')) || []).length >= minimum, path + ': active encounter guard missing');
+    assert.match(source, /activeEncounter\.rowCount/ , path + ': active encounter must block the operation');
+    assert.match(source, /await (?:db|client)\.query\('ROLLBACK'\)/, path + ': blocked operation must roll back');
+  }
+  const practice = await read('commands/rpg/buyupratik.js');
+  const playerLock = practice.indexOf('SELECT mana, coins FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE');
+  const encounterCheck = practice.indexOf('SELECT encounter_type FROM active_rpg_encounters', playerLock);
+  const manaSpend = practice.indexOf('UPDATE users SET mana=mana-8', encounterCheck);
+  assert.ok(playerLock >= 0 && encounterCheck > playerLock && manaSpend > encounterCheck,
+    'spell practice must lock player, check reservation and only then spend resources');
+});
