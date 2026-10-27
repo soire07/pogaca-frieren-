@@ -8,7 +8,7 @@ import {
 } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
-import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild } from './rpg-mechanics.js';
+import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus } from './rpg-mechanics.js';
 
 const PLAYER_MAX_HP = 100;
 const COOLDOWN_MS = 30 * 60 * 1000;
@@ -136,6 +136,7 @@ export default {
     const playerLevel = Number(stats.level || 1);
     const boss = [...bossTiers].reverse().find(tier => playerLevel >= tier.minLevel) || bossTiers[0];
     let bossHp = boss.maxHp;
+    let bossPhase = 1;
     let turnCount = 0;
     let shield = false;
     let shieldReduction = 0.5;
@@ -353,11 +354,18 @@ export default {
           });
         }
 
+        const nextBossPhase = getBossPhase(bossHp, boss.maxHp);
+        if (nextBossPhase > bossPhase) {
+          bossPhase = nextBossPhase;
+          actionText += bossPhase === 2
+            ? `\n🔥 **${boss.name} ikinci aşamaya girdi!** Saldırıları artık %10 daha güçlü.`
+            : `\n🌑 **${boss.name} son aşamasına geçti!** Saldırıları artık %25 daha güçlü ve özel hamleleri sertleşti.`;
+        }
         turnCount += 1;
         const rawBossDamage = Math.floor(Math.random() * (boss.maxDamage - boss.minDamage + 1)) + boss.minDamage;
-        let bossDamage = Math.max(1, rawBossDamage - Math.floor(defense / 2));
+        let bossDamage = calculateBossIncomingDamage(rawBossDamage, defense, bossPhase);
         if (turnCount % 3 === 0) {
-          const specialDamage = boss.specialType === 'arcane' ? 12 : boss.specialType === 'heavy' ? 8 : 5;
+          const specialDamage = (boss.specialType === 'arcane' ? 12 : boss.specialType === 'heavy' ? 8 : 5) + bossPhaseSpecialBonus(bossPhase);
           bossDamage += specialDamage;
           actionText += `\n💥 **${boss.special}**! Boss özel saldırı yaptı ve hasarını **+${specialDamage}** artırdı.`;
           if (boss.specialType === 'drain') {
