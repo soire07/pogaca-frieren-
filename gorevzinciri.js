@@ -4,7 +4,7 @@ import { levelForXp } from './utils.js';
 import { getLevelScaledQuestReward } from './rpg-mechanics.js';
 
 const steps = [
-  { step: 1, title: 'Fırının Çağrısı', description: 'Bugün günlük ödülünü al: /gunlukodul', reward: 50, xpReward: 20, material: '🥐 Büyülü Poğaча Kutusu', sql: "SELECT (last_daily_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2" },
+  { step: 1, title: 'Fırının Çağrısı', description: 'Bugün günlük ödülünü al: /gunlukodul', reward: 50, xpReward: 20, material: '🥐 Büyülü Poğaça Kutusu', sql: "SELECT (last_daily_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2" },
   { step: 2, title: 'Kuzey Yolculuğu', description: 'Bugün /kesif ile bir keşif tamamla.', reward: 100, xpReward: 40, material: '💎 Mana Kristali', sql: "SELECT (last_exploration_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2" },
   { step: 3, title: 'İblis Avcısının Yemini', description: 'Bugün /iblisavasi ile bir iblisi yen.', reward: 200, xpReward: 80, material: '🐉 Ejderha Pulu', sql: "SELECT (last_boss_win_at::date = CURRENT_DATE) AS done FROM users WHERE guild_id=$1 AND user_id=$2" }
 ];
@@ -12,7 +12,7 @@ const steps = [
 export default {
   data: new SlashCommandBuilder().setName('gorevzinciri').setDescription('Üç aşamalı günlük görev zincirini ve aşamalı ödüllerini takip et.')
     .addStringOption(option => option.setName('odul').setDescription('Sıradaki tamamlanmış aşamanın ödülünü almak için seç.')
-      .addChoices({ name: '1. Aşama — 50 altın', value: '1' }, { name: '2. Aşama — 100 altın', value: '2' }, { name: '3. Aşama — 200 altın', value: '3' }).setRequired(false)),
+      .addChoices({ name: '1. Aşama ödülünü al', value: '1' }, { name: '2. Aşama ödülünü al', value: '2' }, { name: '3. Aşama ödülünü al', value: '3' }).setRequired(false)),
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
     await interaction.deferReply({ ephemeral: true });
@@ -73,7 +73,7 @@ export default {
         );
         await db.query('COMMIT');
         const completion = nextStep > 3 ? '\n🏆 **Görev zinciri tamamlandı!** Yarın yeni bir zincir başlayacak.' : '\n➡️ Sıradaki aşama açıldı: **' + steps[nextStep - 1].title + '**.';
-        return interaction.editReply('🎉 **' + step.title + '** aşamasını tamamladın! **' + reward.coins + ' altın**, **' + reward.xp + ' XP** ve ⚒️ **' + step.material + ' ×1** kazandın.' + (reward.completionBonus ? '\\n🏆 Tam zincir bonusu: +100 altın ve +100 XP (seviye çarpanı uygulanır).' : '') + (gainedStatPoints ? '\\n✨ Seviye atladın: +' + gainedStatPoints + ' stat puanı.' : '') + ' Malzemeyi **/zanaat** tariflerinde kullanabilirsin.' + completion);
+        return interaction.editReply('🎉 **' + step.title + '** aşamasını tamamladın! **' + reward.coins + ' altın**, **' + reward.xp + ' XP** ve ⚒️ **' + step.material + ' ×1** kazandın.' + (reward.completionBonus ? '\n🏆 Tam zincir bonusu: +100 altın ve +100 XP (seviye çarpanı uygulanır).' : '') + (gainedStatPoints ? '\n✨ Seviye atladın: +' + gainedStatPoints + ' stat puanı.' : '') + ' Malzemeyi **/zanaat** tariflerinde kullanabilirsin.' + completion);
       } catch (error) { await db.query('ROLLBACK').catch(() => {}); throw error; } finally { db.release(); }
     } catch (error) { console.error('/gorevzinciri hatası:', error); return interaction.editReply('Görev zinciri yüklenemedi. Daha sonra tekrar dene.'); }
   }
