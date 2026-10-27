@@ -1,5 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder, ComponentType } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
+import { getBossArtUrl } from './boss-art.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
 import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus } from './rpg-mechanics.js';
@@ -402,6 +403,8 @@ export default {
           {name:'💎 Ortak ganimet',value:loot?`Herkes **${loot}** kazandı!`:win?'Bu kez nadir ganimet çıkmadı.':'Boss yenilemediği için nadir ganimet yok.',inline:true},
           {name:'⏳ Bekleme süresi',value:'45 dakika',inline:true}
         ).setFooter({text:'Poğaça Frieren • Rollerini seç, takımını koru, birlikte kazan.'});
+      const raidArtUrl = getBossArtUrl(BOSS.id === 'north-general' ? 'northGeneral' : BOSS.id === 'glass-wyrm' ? 'glassWyrm' : 'fallenMage');
+      if (raidArtUrl) embed.setImage(raidArtUrl);
       return interaction.editReply({embeds:[embed],components:[]});
     } catch(error) {
       if (db) await db.query('ROLLBACK').catch(()=>{});
