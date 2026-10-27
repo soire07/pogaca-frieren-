@@ -14,6 +14,10 @@ export default {
       [interaction.guildId, interaction.user.id]
     );
     const discovered = new Set(rows.map(row => row.discovery_key));
+    const { rows: [streakRow] } = await pool.query(
+      'SELECT daily_streak, last_visit_date FROM adventure_streaks WHERE guild_id=$1 AND user_id=$2',
+      [interaction.guildId, interaction.user.id]
+    );
     const { rows: masteryRows } = await pool.query(
       'SELECT route_key, visits FROM adventure_route_mastery WHERE guild_id=$1 AND user_id=$2',
       [interaction.guildId, interaction.user.id]
