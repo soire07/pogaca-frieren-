@@ -44,3 +44,25 @@ test('collection rarity filters expose all supported rarities and preserve pagin
   assert.match(source, /totalCharacters > 0 \? Math\.min\(100, Math\.round\(\(uniqueCount \/ totalCharacters\) \* 100\)\) : 0/);
   assert.match(source, /Koleksiyonunda henüz \*\*\$\{rarityFilter\}\*\* nadirliğinde karakter yok/);
 });
+
+
+test('class-specific daily quests require the selected class, validate progress transactionally and allow only one class reward per day', async () => {
+  const source = await read('gunlukgorev.js');
+  for (const [key, label] of [['class_buyucu','Büyücü'], ['class_muhafiz','Muhafız'], ['class_sifaci','Şifacı'], ['class_gezgin','Gezgin']]) {
+    assert.ok(source.includes(key), 'missing class mission: ' + key);
+    assert.ok(source.includes("className:'" + label + "'"), 'missing class gate: ' + label);
+  }
+  assert.ok(source.includes("SELECT class_name FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE"));
+  assert.ok(source.includes("mission_key LIKE 'class_%'"));
+  assert.ok(source.includes("sm.updated_at::date=CURRENT_DATE"));
+  assert.ok(source.includes("u.last_boss_at::date=CURRENT_DATE"));
+  assert.ok(source.includes("u.last_item_used_at::date=CURRENT_DATE"));
+  assert.ok(source.includes("u.last_exploration_at::date=CURRENT_DATE"));
+  const begin = source.indexOf("await db.query('BEGIN')");
+  const classLock = source.indexOf("SELECT class_name FROM users", begin);
+  const progress = source.indexOf('const progress=await db.query(mission.sql', begin);
+  const claim = source.indexOf('INSERT INTO daily_mission_claims', begin);
+  const commit = source.indexOf("await db.query('COMMIT')", claim);
+  assert.ok(begin >= 0 && classLock > begin && progress > classLock && claim > progress && commit > claim,
+    'class, progress and daily claim must be validated in one transaction');
+});
