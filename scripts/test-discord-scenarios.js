@@ -411,3 +411,14 @@ test('treasure chests are consumed transactionally and grant persistent randomiz
   assert.match(command, /ON CONFLICT\(guild_id,user_id,item_key\)/);
   assert.match(command, /setMaxValue\(5\)/);
 });
+
+test('adventure statistics aggregate progress, discoveries, streak and treasure inventory', async () => {
+  const command = await read('maceraistatistik.js');
+  assert.match(command, /setName\('maceraistatistik'\)/);
+  assert.match(command, /adventure_discoveries/);
+  assert.match(command, /adventure_route_mastery/);
+  assert.match(command, /adventure_streaks/);
+  assert.match(command, /adventure_treasure_progress/);
+  assert.match(command, /Kadim Hazine Sandığı/);
+  assert.match(command, /ADVENTURE_DISCOVERIES\.length/);
+});
