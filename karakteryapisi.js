@@ -30,7 +30,7 @@ export default {
     const embed = new EmbedBuilder()
       .setColor(0x9b8cff)
       .setTitle('🧭 Karakter Savaş Yapın')
-      .setDescription(selected ? `Savaş yapın **${active.label}** olarak kaydedildi. Bonuslar solo iblis savaşında, ortak boss baskınında ve katlı zindanda uygulanır.` : `Aktif savaş yapın: **${active.label}**\n${active.description}\n\nYeni bir yapı seçmek için komutu `yapi` seçeneğiyle yeniden kullan.`)
+      .setDescription(selected ? `Savaş yapın **${active.label}** olarak kaydedildi. Bonuslar solo iblis savaşında, ortak boss baskınında ve katlı zindanda uygulanır.` : `Aktif savaş yapın: **${active.label}**\n${active.description}\n\nYeni bir yapı seçmek için komutu **yapi** seçeneğiyle yeniden kullan.`)
       .addFields(
         ...Object.entries(CHARACTER_BUILDS).map(([value, build]) => ({
           name: `${build.label} ${value === key ? '• AKTİF' : ''}`,
