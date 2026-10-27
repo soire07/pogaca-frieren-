@@ -10,7 +10,9 @@ const RECIPES = {
   fern_robe: { materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 1 }, { item: '📖 Yasak Büyü Kitabı', quantity: 2 }] },
   frieren_robe: { materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 2 }, { item: '💎 Mana Kristali', quantity: 3 }] },
   himmel_sword: { materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1 }, { item: '🐉 Ejderha Pulu', quantity: 2 }] },
-  demon_blade: { materials: [{ item: '🐉 Ejderha Pulu', quantity: 3 }, { item: '📜 Frieren’in Kayıp Notları', quantity: 1 }] }
+  demon_blade: { materials: [{ item: '🐉 Ejderha Pulu', quantity: 3 }, { item: '📜 Frieren’in Kayıp Notları', quantity: 1 }] },
+  rune_ring: { materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 1 }, { item: '💎 Mana Kristali', quantity: 2 }] },
+  hero_ring: { materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1 }, { item: '🌙 Efsunlu Elf Yadigârı', quantity: 2 }] }
 };
 
 export default {
@@ -18,7 +20,7 @@ export default {
     .setName('zanaat')
     .setDescription('Maceralarda bulduğun malzemelerle ekipman üret.')
     .addStringOption(option => option.setName('tarif').setDescription('Üretilecek ekipman tarifi.')
-      .setRequired(true).addChoices(
+      .setRequired(false).addChoices(
         { name: '⚔️ Gezginin Demir Kılıcı', value: 'iron_sword' },
         { name: '🪄 Büyücü Asası', value: 'mage_staff' },
         { name: '🧥 Gezgin Pelerini', value: 'traveler_cloak' },
@@ -26,7 +28,9 @@ export default {
         { name: '🟣 Fern’in Büyücü Cübbesi', value: 'fern_robe' },
         { name: '✨ Frieren’in Kadim Cübbesi', value: 'frieren_robe' },
         { name: '🌟 Himmel’in Kahraman Kılıcı', value: 'himmel_sword' },
-        { name: '🩸 Kuzey İblisi Keseni', value: 'demon_blade' }
+        { name: '🩸 Kuzey İblisi Keseni', value: 'demon_blade' },
+        { name: '🗿 Kadim Rün Yüzüğü', value: 'rune_ring' },
+        { name: '🌠 Kahramanların Efsanevi Yüzüğü', value: 'hero_ring' }
       ))
     .addIntegerOption(option => option.setName('adet').setDescription('Üretilecek adet (1–5).')
       .setRequired(false).setMinValue(1).setMaxValue(5)),
@@ -34,8 +38,18 @@ export default {
     if (!interaction.guildId) return interaction.reply({ content: 'Zanaat yalnızca sunucularda kullanılabilir.', ephemeral: true });
     await ensureUser(interaction.guildId, interaction.user.id);
     await interaction.deferReply({ ephemeral: true });
-    const recipeId = interaction.options.getString('tarif', true);
+    const recipeId = interaction.options.getString('tarif');
     const amount = interaction.options.getInteger('adet') || 1;
+    if (!recipeId) {
+      const lines = Object.entries(RECIPES).map(([id, recipe]) => {
+        const item = equipmentItems.find(entry => entry.id === id);
+        return `**${item.name}** · Seviye ${item.levelReq}+\nMalzeme: ${recipe.materials.map(material => `${material.item} × ${material.quantity}`).join(' + ')}\n${formatEquipmentBonus(item)}`;
+      });
+      const catalog = new EmbedBuilder().setColor(0x9b8cff).setTitle('⚒️ Zanaat Tarif Defteri')
+        .setDescription(lines.join('\n\n').slice(0, 4000))
+        .setFooter({ text: 'Nadir tarifler için nadir macera ve hazine ganimetleri gerekir.' });
+      return interaction.editReply({ embeds: [catalog] });
+    }
     const equipment = equipmentItems.find(item => item.id === recipeId);
     const recipe = RECIPES[recipeId];
     if (!equipment || !recipe) return interaction.editReply('Bu zanaat tarifi bulunamadı.');
