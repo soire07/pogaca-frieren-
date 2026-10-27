@@ -192,6 +192,7 @@ export default {
         hpDamage ? `**Can kaybı:** −${hpDamage} HP (savunma dahil)` : '',
         actualManaCost ? `**Büyü maliyeti:** −${actualManaCost} Mana` : encounter.manaCost ? 'Mana yetersiz olduğu için büyü kullanmadın.' : '',
         `**Sınıf / savaş yapısı:** ${player.class_name || 'Gezgin'} · ${build.label}`,
+        gear.setText ? `**Etkin ekipman seti:** ${gear.setText}` : '',
         effectiveDefense ? `**Savunma etkisi:** ${effectiveDefense} savunma tuzak ve çatışma hasarını azalttı.` : '',
         gainedPoints ? `**Seviye atladın!** +${gainedPoints} stat puanı kazandın.` : ''
       ].filter(Boolean).join('\n');
