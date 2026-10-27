@@ -1405,7 +1405,31 @@
       "name": "Make crafted equipment compatible with existing inventory and equipment-slot systems",
       "category": "Crafting",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-215",
+      "name": "Craft Fern's Mage Robe using a rare elf relic and forbidden grimoires",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-216",
+      "name": "Craft Frieren's Ancient Robe using multiple rare elf relics and mana crystals",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-217",
+      "name": "Craft Himmel's Hero Sword using a legendary keepsake and dragon scales",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-218",
+      "name": "Craft the Northern Demon Cutter using dragon scales and Frieren's lost notes",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 233
+  "count": 237
 }
