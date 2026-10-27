@@ -14,7 +14,14 @@ const outcomes = [
 export default {
   data: new SlashCommandBuilder()
     .setName('macera')
-    .setDescription('Küçük bir maceraya çık ve ödül kazan.'),
+    .setDescription('Maceraya çık; istersen keşif rotanı kendin seç.')
+    .addStringOption(option => option.setName('rota').setDescription('İstersen belirli bir yeri hedefle; boş bırakınca rastgele rota seçilir.')
+      .setRequired(false).addChoices(
+        { name: '🌲 Kuzey Ormanı', value: 'forest-grimoire' },
+        { name: '👣 Mimic İzleri', value: 'mimic-trail' },
+        { name: '🥐 Yol Kenarı Fırını', value: 'wandering-bakery' },
+        { name: '🏛️ Kadim Harabe', value: 'ruined-chamber' }
+      )),
 
   async execute(interaction) {
     if (!interaction.guildId) {
@@ -22,7 +29,10 @@ export default {
     }
     await ensureUser(interaction.guildId, interaction.user.id);
 
-    const outcome = outcomes[Math.floor(Math.random() * outcomes.length)];
+    const chosenRoute = interaction.options.getString('rota');
+    const outcome = chosenRoute
+      ? outcomes.find(entry => entry.discovery === chosenRoute)
+      : outcomes[Math.floor(Math.random() * outcomes.length)];
     const client = await pool.connect();
 
     try {
