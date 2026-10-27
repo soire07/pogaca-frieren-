@@ -53,6 +53,15 @@ export default {
       const db = await pool.connect();
       try {
         await db.query('BEGIN');
+        await db.query('SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [interaction.guildId, interaction.user.id]);
+        const activeEncounter = await db.query(
+          'SELECT encounter_type FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=$2 AND expires_at > NOW()',
+          [interaction.guildId, interaction.user.id]
+        );
+        if (activeEncounter.rowCount) {
+          await db.query('ROLLBACK');
+          return interaction.reply({ content: '⚔️ Savaş sürerken ekipman değiştiremezsin. Karşılaşma bitince yeniden dene.', ephemeral: true });
+        }
         const removed = await db.query('DELETE FROM user_equipment WHERE guild_id=$1 AND user_id=$2 AND slot=$3 RETURNING item_key', [interaction.guildId, interaction.user.id, requestedSlot]);
         if (!removed.rowCount) {
           await db.query('ROLLBACK');
@@ -97,6 +106,15 @@ export default {
     const db = await pool.connect();
     try {
       await db.query('BEGIN');
+        await db.query('SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [interaction.guildId, interaction.user.id]);
+        const activeEncounter = await db.query(
+          'SELECT encounter_type FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=$2 AND expires_at > NOW()',
+          [interaction.guildId, interaction.user.id]
+        );
+        if (activeEncounter.rowCount) {
+          await db.query('ROLLBACK');
+          return interaction.reply({ content: '⚔️ Savaş sürerken ekipman değiştiremezsin. Karşılaşma bitince yeniden dene.', ephemeral: true });
+        }
       const owned = await db.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3 FOR UPDATE', [interaction.guildId, interaction.user.id, item.name]);
       const equipped = await db.query('SELECT slot FROM user_equipment WHERE guild_id=$1 AND user_id=$2 AND item_key=$3', [interaction.guildId, interaction.user.id, item.name]);
       const sameItemInTarget = equipped.rows.some(row => row.slot === slot);
