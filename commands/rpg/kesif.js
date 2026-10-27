@@ -2,6 +2,7 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
 import { equipmentItems, equipmentBonus } from '../../equipment-data.js';
 import { levelForXp } from '../../utils.js';
+import { recordJournalEntry } from '../../gameplay-journal.js';
 import { applyClassDefense, applyClassManaCost, applyEquipmentSetBonus, explorationMasteryReward, getCharacterBuild } from '../../rpg-mechanics.js';
 
 const COOLDOWN_MS = 15 * 60 * 1000;
@@ -215,6 +216,12 @@ export default {
         );
       }
 
+      const discoveryKey = encounter.title.includes('Gezgin Fırın') ? 'wandering-bakery'
+        : encounter.title.includes('Grimoire') ? 'forgotten-grimoire'
+          : encounter.title.includes('Ejderha') ? 'dragon-nest'
+            : encounter.title.includes('Mana İzleri') ? 'forest-grimoire'
+              : encounter.title.includes('Mühürlü Oda') ? 'ruined-chamber' : null;
+      if (discoveryKey) await recordJournalEntry(client, interaction.guildId, interaction.user.id, 'discoveries', discoveryKey);
       await client.query('COMMIT');
 
       const description = [

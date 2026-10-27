@@ -8,6 +8,7 @@ import {
 } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { getBossArtUrl } from './boss-art.js';
+import { recordJournalEntry } from './gameplay-journal.js';
 import { equipmentItems, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
 import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, applyEquipmentSetBonus, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening } from './rpg-mechanics.js';
 

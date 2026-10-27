@@ -288,6 +288,20 @@ export async function initDatabase() {
       PRIMARY KEY (guild_id,user_id,route_key),
       FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS adventure_journal_entries (
+      guild_id TEXT NOT NULL, user_id TEXT NOT NULL, collection_key TEXT NOT NULL,
+      entry_key TEXT NOT NULL, discovered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id,user_id,collection_key,entry_key),
+      FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_adventure_journal_entries_user
+      ON adventure_journal_entries(guild_id,user_id,collection_key);
+    CREATE TABLE IF NOT EXISTS adventure_journal_collection_claims (
+      guild_id TEXT NOT NULL, user_id TEXT NOT NULL, collection_key TEXT NOT NULL,
+      claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id,user_id,collection_key),
+      FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS adventure_journal_claims (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
