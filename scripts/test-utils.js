@@ -379,3 +379,29 @@ test('adventure command uses pity to prioritize undiscovered rare locations', as
   assert.match(source, /total_adventures/);
   assert.match(source, /rare_discoveries/);
 });
+
+
+test('equipment set bonuses activate for two legendary or two epic pieces', () => {
+  const base = { attack: 10, defense: 8, hp: 100, mana: 60 };
+  const legendary = applyEquipmentSetBonus([
+    { rarity: 'Efsanevi' }, { rarity: 'Efsanevi' }
+  ], base);
+  assert.deepEqual(legendary, {
+    attack: 14, defense: 8, hp: 125, mana: 60,
+    setText: 'Efsanevi set: +4 saldırı, +25 HP'
+  });
+  const epic = applyEquipmentSetBonus([
+    { rarity: 'Destansı' }, { rarity: 'Destansı' }
+  ], base);
+  assert.deepEqual(epic, {
+    attack: 10, defense: 11, hp: 100, mana: 75,
+    setText: 'Destansı set: +3 savunma, +15 mana'
+  });
+  assert.equal(applyEquipmentSetBonus([{ rarity: 'Efsanevi' }], base).setText, null);
+});
+
+test('solo boss combat applies the same equipment set bonuses as profile and group combat', async () => {
+  const source = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  assert.match(source, /applyEquipmentSetBonus/);
+  assert.match(source, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+});
