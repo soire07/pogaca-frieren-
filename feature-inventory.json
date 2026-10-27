@@ -421,6 +421,48 @@
       "name": "Show the invoking player's current rank",
       "category": "Social",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-008",
+      "name": "View personal RPG adventure history",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-009",
+      "name": "View another player's RPG adventure history",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-053",
+      "name": "Summarize demon boss victory statistics",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-054",
+      "name": "Summarize co-op dungeon attempt and victory statistics",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-055",
+      "name": "Summarize exploration, item-use and character-draw statistics",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-056",
+      "name": "Summarize learned spells and equipped gear",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-057",
+      "name": "Summarize unique characters and total collection copies",
+      "category": "Collection",
+      "status": "implemented_needs_runtime_test"
     }
   ]
 }
