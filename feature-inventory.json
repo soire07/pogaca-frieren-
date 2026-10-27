@@ -1693,7 +1693,25 @@
       "name": "Display current and record adventure streaks in the adventure result, journal and stats",
       "category": "Progression",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-263",
+      "name": "Grant a seven-day adventure streak milestone reward of gold and XP",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-264",
+      "name": "Grant a fourteen-day adventure streak milestone reward of gold and XP",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-265",
+      "name": "Grant a thirty-day adventure streak milestone reward of gold and XP",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 281
+  "count": 284
 }
