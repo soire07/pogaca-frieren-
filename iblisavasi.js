@@ -331,6 +331,13 @@ export default {
                WHERE guild_id=$1 AND user_id=$2`,
               [interaction.guildId, interaction.user.id, toPersistentHp(playerHp), toPersistentMana(playerMana), rewardCoins, rewardXp]
             );
+            const journalBossKey = boss.name.includes('Schattenwolf') ? 'schattenwolf'
+              : boss.name.includes('Harabe Muhafızı') ? 'ruinGuardian'
+                : boss.name.includes('Kuzey İblisi') ? 'northDemon'
+                  : boss.name.includes('Komutanı') ? 'demonCommander'
+                    : boss.name.includes('Außerst') || boss.name.includes('Ausserst') ? 'ausserstLord'
+                      : null;
+            if (journalBossKey) await recordJournalEntry(db, interaction.guildId, interaction.user.id, 'bosses', journalBossKey);
             if (spellUsed) {
               const masteryUpdate = await db.query(
                 `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)

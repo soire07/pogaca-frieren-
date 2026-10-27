@@ -431,6 +431,7 @@ export default {
         return interaction.editReply({ content: `⏳ <@${concurrentRun.user_id}> başka bir macerada bekleme süresine girdi; yaklaşık **${mins} dakika** sonra yeniden deneyin. Bu koşunun ödülleri kaydedilmedi.`, components: [] });
       }
       const victory = floorsCleared === FLOORS;
+      if (victory) await recordJournalEntry(db, interaction.guildId, interaction.user.id, 'discoveries', 'ancient-elf-sanctuary');
       const loot = victory && Math.random() < 0.35 ? LOOT[Math.floor(Math.random() * LOOT.length)] : null;
       const craftingLoot = floorsCleared >= FLOORS
         ? '👑 Himmel’in Efsanevi Yadigârı'
