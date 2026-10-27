@@ -338,3 +338,16 @@ test('adventure command allows targeted routes while preserving random explorati
   assert.match(adventure, /const chosenRoute = interaction\.options\.getString\('rota'\)/);
   assert.match(adventure, /outcomes\[Math\.floor\(Math\.random\(\) \* outcomes\.length\)\]/);
 });
+
+test('adventure route mastery persists visits and grants a reward every third visit', async () => {
+  const schema = await read('database/db.js');
+  const adventure = await read('macera.js');
+  const journal = await read('kesifdefteri.js');
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS adventure_route_mastery/);
+  assert.match(adventure, /ON CONFLICT\(guild_id,user_id,route_key\)/);
+  assert.match(adventure, /routeVisits % 3 === 0/);
+  assert.match(adventure, /routeMasteryReward\.coins/);
+  assert.match(adventure, /routeMasteryReward\.xp/);
+  assert.match(journal, /Rota ziyaretleri/);
+  assert.match(journal, /Sonraki ödül/);
+});
