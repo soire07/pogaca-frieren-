@@ -276,10 +276,17 @@ client.on(Events.InteractionCreate, async interaction => {
          WHERE guild_id=$1 AND user_id=$2 AND character_name=$3 FOR UPDATE`,
         [interaction.guildId, offer.from_user_id, offer.character_name]
       );
-      if (!found.rowCount || Number(found.rows[0].quantity) <= Number(offer.amount)) {
+      const reservedResult = await db.query(
+        `SELECT COALESCE(SUM(amount),0)::int AS amount FROM trade_offers
+         WHERE guild_id=$1 AND from_user_id=$2 AND character_name=$3 AND status='pending'
+           AND expires_at>NOW() AND offer_id<>$4`,
+        [interaction.guildId, offer.from_user_id, found.rows[0]?.character_name ?? offer.character_name, offerId]
+      );
+      const reservedForOthers = Number(reservedResult.rows[0].amount);
+      if (!found.rowCount || Number(found.rows[0].quantity) - Number(offer.amount) < reservedForOthers + 1) {
         await db.query("UPDATE trade_offers SET status='invalid',resolved_at=NOW() WHERE offer_id=$1",[offerId]);
         await db.query('COMMIT');
-        return interaction.update({ content: 'Takas yapılamadı: gönderenin yeterli kopyası kalmamış. Son kopya korunur.', embeds: [], components: [] });
+        return interaction.update({ content: 'Takas yapılamadı: kopyalar artık bu teklif ve diğer bekleyen teklifler için yeterli değil. Son kopya korunur.', embeds: [], components: [] });
       }
       const character = await db.query(
         `SELECT anime, rarity, emoji, color, description, traits, image
