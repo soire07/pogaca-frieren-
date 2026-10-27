@@ -651,3 +651,9 @@ test('equipment salvage command previews every equipment item and its material r
   assert.match(command, /SALVAGE_YIELD\[item\.id\]/);
   assert.match(command, /Kuşanılmış eşyalar parçalanmaz/);
 });
+
+test('combined player history displays crafting salvage progress', async () => {
+  const history = await read('maceragecmisi.js');
+  assert.match(history, /salvaged_items/);
+  assert.match(history, /Parçalanan eşya/);
+});
