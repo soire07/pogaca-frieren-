@@ -31,7 +31,7 @@ export default {
     const embed = new EmbedBuilder()
       .setColor(0x9b8cff)
       .setTitle('📔 Macera Keşif Defteri')
-      .setDescription(`Keşfedilen yerler: **${discovered.size}/${ADVENTURE_DISCOVERIES.length}**\nHer yeni keşif +25 altın ve +15 XP verir. Defteri tamamlamak tek seferlik +${COMPLETE_ADVENTURE_JOURNAL_REWARD.coins} altın kazandırır.`)
+      .setDescription(`Günlük macera serisi: **${Number(streakRow?.daily_streak || 0)} gün**\nKeşfedilen yerler: **${discovered.size}/${ADVENTURE_DISCOVERIES.length}**\nHer yeni keşif +25 altın ve +15 XP verir. Defteri tamamlamak tek seferlik +${COMPLETE_ADVENTURE_JOURNAL_REWARD.coins} altın kazandırır.`)
       .addFields(ADVENTURE_DISCOVERIES.map(entry => ({
         name: `${discovered.has(entry.key) ? '✅' : '🔒'} ${entry.emoji} ${entry.name}`,
         value: `${entry.description}\nDurum: **${discovered.has(entry.key) ? 'Keşfedildi' : 'Henüz keşfedilmedi'}**\nRota ziyaretleri: **${mastery.get(entry.key) || 0}** · Ustalık: **${Math.floor((mastery.get(entry.key) || 0) / 3)}** · Sonraki ödül: **${3 - ((mastery.get(entry.key) || 0) % 3)} ziyaret**`,
