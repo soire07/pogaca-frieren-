@@ -181,6 +181,17 @@ export async function initDatabase() {
       PRIMARY KEY (guild_id,user_id,mission_date,mission_key),
       FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS user_talents (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      attack_rank INTEGER NOT NULL DEFAULT 0 CHECK (attack_rank BETWEEN 0 AND 3),
+      defense_rank INTEGER NOT NULL DEFAULT 0 CHECK (defense_rank BETWEEN 0 AND 3),
+      hp_rank INTEGER NOT NULL DEFAULT 0 CHECK (hp_rank BETWEEN 0 AND 3),
+      mana_rank INTEGER NOT NULL DEFAULT 0 CHECK (mana_rank BETWEEN 0 AND 3),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id,user_id),
+      FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS daily_quest_chains (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
@@ -225,6 +236,10 @@ export async function initDatabase() {
 export async function ensureUser(guildId, userId) {
   await pool.query(
     'INSERT INTO users (guild_id, user_id) VALUES ($1, $2) ON CONFLICT (guild_id, user_id) DO NOTHING',
+    [guildId, userId]
+  );
+  await pool.query(
+    'INSERT INTO user_talents (guild_id,user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
     [guildId, userId]
   );
   // Zoltraak is the starter spell for every adventurer; existing users receive it too.
