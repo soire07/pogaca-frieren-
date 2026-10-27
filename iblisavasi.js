@@ -8,7 +8,7 @@ import {
 } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
-import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus } from './rpg-mechanics.js';
+import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening } from './rpg-mechanics.js';
 
 const PLAYER_MAX_HP = 100;
 const COOLDOWN_MS = 30 * 60 * 1000;
@@ -216,7 +216,7 @@ export default {
           }
           playerMana -= spellCost;
           spellUsed = 'zoltraak';
-          const damage = applyClassDamage(Math.floor(Math.random() * 13) + 18 + attack + upgradeBonus + (spellMastery.get('zoltraak') || 0) * 2, stats.class_name);
+          const damage = applyClassDamage(Math.floor(Math.random() * 13) + 18 + attack + upgradeBonus + (spellMastery.get('zoltraak') || 0) * 2 + getSpellMasteryAwakening('zoltraak', spellMastery.get('zoltraak')).damage, stats.class_name);
           bossHp = Math.max(0, bossHp - damage);
           actionText = `⚡ Zoltraak isabet etti! İblise **${damage} hasar** verdin. (Saldırı: ${attack}, Mana: −${spellCost})`;
         } else if (button.customId === 'demon_fire') {
@@ -227,7 +227,7 @@ export default {
           }
           playerMana -= spellCost;
           spellUsed = 'alev_kuresi';
-          const damage = applyClassDamage(Math.floor(Math.random() * 13) + 28 + attack + upgradeBonus + (spellMastery.get('alev_kuresi') || 0) * 2, stats.class_name);
+          const damage = applyClassDamage(Math.floor(Math.random() * 13) + 28 + attack + upgradeBonus + (spellMastery.get('alev_kuresi') || 0) * 2 + getSpellMasteryAwakening('alev_kuresi', spellMastery.get('alev_kuresi')).damage, stats.class_name);
           bossHp = Math.max(0, bossHp - damage);
           actionText = `🔥 Alev Küresi patladı! İblise **${damage} hasar** verdin. (Mana: −${spellCost})`;
         } else if (button.customId === 'demon_ice') {
@@ -238,9 +238,9 @@ export default {
           }
           playerMana -= spellCost;
           spellUsed = 'buz_mizragi';
-          const damage = applyClassDamage(Math.floor(Math.random() * 11) + 22 + attack + upgradeBonus + (spellMastery.get('buz_mizragi') || 0) * 2, stats.class_name);
+          const damage = applyClassDamage(Math.floor(Math.random() * 11) + 22 + attack + upgradeBonus + (spellMastery.get('buz_mizragi') || 0) * 2 + getSpellMasteryAwakening('buz_mizragi', spellMastery.get('buz_mizragi')).damage, stats.class_name);
           bossHp = Math.max(0, bossHp - damage);
-          const freezeChance = Math.min(0.6, 0.35 + (spellMastery.get(spellUsed) || 0) * 0.025);
+          const freezeChance = Math.min(0.7, 0.35 + (spellMastery.get(spellUsed) || 0) * 0.025 + getSpellMasteryAwakening(spellUsed, spellMastery.get(spellUsed)).freezeChance);
           frozenBoss = Math.random() < freezeChance;
           actionText = `🧊 Buz Mızrağı isabet etti! İblise **${damage} hasar** verdin. Donma ihtimali: **%${Math.round(freezeChance * 100)}** (Mana: −${spellCost})${frozenBoss ? '\n❄️ İblis dondu ve bu tur karşı saldırı yapamadı!' : ''}`;
         } else if (button.customId === 'demon_defend') {
@@ -252,7 +252,7 @@ export default {
           playerMana -= spellCost;
           spellUsed = 'koruyucu_bariyer';
           shield = true;
-          shieldReduction = Math.min(0.8, 0.5 + (spellMastery.get(spellUsed) || 0) * 0.03);
+          shieldReduction = Math.min(0.85, 0.5 + (spellMastery.get(spellUsed) || 0) * 0.03 + getSpellMasteryAwakening(spellUsed, spellMastery.get(spellUsed)).shieldReduction);
           actionText = `🛡️ Koruyucu büyü kurdun. Bir sonraki boss saldırısının **%${Math.round(shieldReduction * 100)}** kadarını engelleyecek. (Mana: −${spellCost})`;
         } else if (button.customId === 'demon_heal') {
           if (healUsed) {
@@ -267,7 +267,7 @@ export default {
           playerMana -= spellCost;
           spellUsed = 'sifa_isigi';
           const before = playerHp;
-          const healAmount = applyClassHealing(Math.floor(Math.random() * 16) + 20 + (spellMastery.get(spellUsed) || 0) * 3, stats.class_name);
+          const healAmount = applyClassHealing(Math.floor(Math.random() * 16) + 20 + (spellMastery.get(spellUsed) || 0) * 3 + getSpellMasteryAwakening(spellUsed, spellMastery.get(spellUsed)).healing, stats.class_name);
           playerHp = Math.min(playerMaxHp, playerHp + healAmount);
           healUsed = true;
           actionText = `💚 İyileşme büyüsüyle **${playerHp - before} HP** geri kazandın. Ustalık bonusu: **+${(spellMastery.get(spellUsed) || 0) * 3}** iyileştirme. (Mana: −${spellCost})`;
@@ -277,19 +277,19 @@ export default {
           const spellCost = applyClassManaCost(22, stats.class_name);
           if (playerMana < spellCost) { busy = false; return button.reply({ content: `Yıldırım Zinciri için en az **${spellCost} Mana** gerekiyor.`, ephemeral: true }); }
           playerMana -= spellCost; spellUsed = 'yildirim_zinciri';
-          const damage = applyClassDamage(Math.floor(Math.random() * 16) + 42 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 2, stats.class_name);
+          const damage = applyClassDamage(Math.floor(Math.random() * 16) + 42 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 2 + getSpellMasteryAwakening(spellUsed, spellMastery.get(spellUsed)).damage, stats.class_name);
           bossHp = Math.max(0, bossHp - damage); actionText = `⚡ **Yıldırım Zinciri** hedefi sardı ve **${damage} hasar** verdi. (Mana: −${spellCost})`;
         } else if (button.customId === 'demon_wall') {
           const spellCost = applyClassManaCost(12, stats.class_name);
           if (playerMana < spellCost) { busy = false; return button.reply({ content: `Taş Duvar için en az **${spellCost} Mana** gerekiyor.`, ephemeral: true }); }
           playerMana -= spellCost; spellUsed = 'tas_duvar'; fortified = true;
-          fortifiedReduction = Math.min(0.9, 0.75 + (spellMastery.get(spellUsed) || 0) * 0.015);
+          fortifiedReduction = Math.min(0.95, 0.75 + (spellMastery.get(spellUsed) || 0) * 0.015 + getSpellMasteryAwakening(spellUsed, spellMastery.get(spellUsed)).wallReduction);
           actionText = `🪨 **Taş Duvar** yükseldi. Bu tur boss hasarının **%${Math.round(fortifiedReduction * 100)}** kadarını engelleyecek. (Mana: −${spellCost})`;
         } else if (button.customId === 'demon_burst') {
           const spellCost = applyClassManaCost(30, stats.class_name);
           if (playerMana < spellCost) { busy = false; return button.reply({ content: `Mana Patlaması için en az **${spellCost} Mana** gerekiyor.`, ephemeral: true }); }
           playerMana -= spellCost; spellUsed = 'mana_patlamasi';
-          const damage = applyClassDamage(Math.floor(Math.random() * 21) + 65 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 3, stats.class_name);
+          const damage = applyClassDamage(Math.floor(Math.random() * 21) + 65 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 3 + getSpellMasteryAwakening(spellUsed, spellMastery.get(spellUsed)).damage, stats.class_name);
           bossHp = Math.max(0, bossHp - damage); actionText = `🌌 **Mana Patlaması** büyük bir enerji dalgası oluşturdu: **${damage} hasar**! (Mana: −${spellCost})`;
         }
 
