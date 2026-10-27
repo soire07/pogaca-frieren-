@@ -54,7 +54,7 @@ export default {
     .addSubcommand(s => s.setName('cek').setDescription('Günlük ücretsiz anime karakterini koleksiyonuna kat.'))
     .addSubcommand(s => s.setName('gelistir').setDescription('Koleksiyonundaki anime karakterini güçlendir.')
       .addStringOption(o => o.setName('karakter').setDescription('Geliştirmek istediğin karakter').setRequired(true).setAutocomplete(true))
-      .addBooleanOption(o => o.setName('yukselt').setDescription('Evet seçersen altın harcayıp yükseltir.').setRequired(false))),
+      .addBooleanOption(o => o.setName('yukselt').setDescription('Evet seçersen altın harcayıp yükseltir.').setRequired(false)))
     .addSubcommand(s => s.setName('profil').setDescription('Maceracı profilini veya başka bir oyuncunun profilini göster.')
       .addUserOption(o => o.setName('kullanici').setDescription('Profilini görmek istediğin kullanıcı').setRequired(false)))
     .addSubcommand(s => s.setName('koleksiyon').setDescription('Topladığın anime karakterlerini ve koleksiyon ilerlemeni göster.')
