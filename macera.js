@@ -121,6 +121,7 @@ export default {
         [interaction.guildId, interaction.user.id]
       );
       const dailyStreak = Number(streakRow.daily_streak);
+      const dailyAdventureReward = streakRow.new_day ? { coins: 15, xp: 10 } : { coins: 0, xp: 0 };
       const streakReward = streakRow.new_day && dailyStreak > 0 && dailyStreak % 3 === 0
         ? { coins: 50, xp: 30 }
         : { coins: 0, xp: 0 };
@@ -161,9 +162,9 @@ export default {
         }
       }
 
-      const newXp = Number(u.xp) + outcome.xp + discoveryXp + routeMasteryReward.xp + streakReward.xp + treasureReward.xp;
+      const newXp = Number(u.xp) + outcome.xp + discoveryXp + routeMasteryReward.xp + streakReward.xp + dailyAdventureReward.xp + treasureReward.xp;
       const newLevel = levelForXp(newXp);
-      const totalCoins = outcome.coins + discoveryCoins + journalCompletionCoins + routeMasteryReward.coins + streakReward.coins + treasureReward.coins;
+      const totalCoins = outcome.coins + discoveryCoins + journalCompletionCoins + routeMasteryReward.coins + streakReward.coins + dailyAdventureReward.coins + treasureReward.coins;
 
       await client.query(
         'UPDATE users SET coins=coins+$3, xp=$4, stat_points=stat_points+GREATEST(0,$5-level), level=$5, last_adventure_at=NOW() WHERE guild_id=$1 AND user_id=$2',
@@ -191,7 +192,7 @@ export default {
         .setColor(0x9b8cff)
         .setTitle('🗺️ Macera Tamamlandı')
         .setDescription(
-          `${outcome.text}\n\nÖdül: **${outcome.coins + discoveryCoins + journalCompletionCoins + routeMasteryReward.coins + streakReward.coins + treasureReward.coins}** altın ve **${outcome.xp + discoveryXp + routeMasteryReward.xp + streakReward.xp + treasureReward.xp} XP**${foundFragment ? `\n🧩 Kadim harita parçası buldun! Parça ilerlemesi: **${fragmentCount}/5**.${treasureOpened ? `\n🗝️ **Hazine haritasını tamamladın!** +${treasureReward.coins} altın, +${treasureReward.xp} XP ve envanterine bir Kadim Hazine Sandığı eklendi.` : ''}` : ''}${streakReward.coins ? `\n🔥 **${dailyStreak} günlük macera serisi!** Seri ödülü: +${streakReward.coins} altın, +${streakReward.xp} XP.` : ''}\n📅 Günlük seri: **${dailyStreak} gün**${routeMasteryReward.coins ? `\n🌟 Rota ustalığı: **3 ziyaretlik eşik** tamamlandı (+${routeMasteryReward.coins} altın, +${routeMasteryReward.xp} XP).` : ''}\n🧭 Bu rotayı **${routeVisits}** kez gezdin · Ustalık seviyesi: **${routeMasteryLevel}**${itemText}\n\n${firstDiscovery ? `🧭 Yeni keşif: **${discoveryMeta?.name}** (+${discoveryCoins} altın, +${discoveryXp} XP)` : `📔 Bu keşfi daha önce kaydetmiştin: **${discoveryMeta?.name}**`}${journalCompletedNow ? `\n\n🏆 **Keşif defterini tamamladın! +${journalCompletionCoins} altın tamamlanma ödülü kazandın.**` : ''}`
+          `${outcome.text}\n\nÖdül: **${outcome.coins + discoveryCoins + journalCompletionCoins + routeMasteryReward.coins + streakReward.coins + dailyAdventureReward.coins + treasureReward.coins}** altın ve **${outcome.xp + discoveryXp + routeMasteryReward.xp + streakReward.xp + dailyAdventureReward.xp + treasureReward.xp} XP**${dailyAdventureReward.coins ? `\n☀️ Günün ilk macerası: +${dailyAdventureReward.coins} altın, +${dailyAdventureReward.xp} XP.` : ''}${foundFragment ? `\n🧩 Kadim harita parçası buldun! Parça ilerlemesi: **${fragmentCount}/5**.${treasureOpened ? `\n🗝️ **Hazine haritasını tamamladın!** +${treasureReward.coins} altın, +${treasureReward.xp} XP ve envanterine bir Kadim Hazine Sandığı eklendi.` : ''}` : ''}${streakReward.coins ? `\n🔥 **${dailyStreak} günlük macera serisi!** Seri ödülü: +${streakReward.coins} altın, +${streakReward.xp} XP.` : ''}\n📅 Günlük seri: **${dailyStreak} gün**${routeMasteryReward.coins ? `\n🌟 Rota ustalığı: **3 ziyaretlik eşik** tamamlandı (+${routeMasteryReward.coins} altın, +${routeMasteryReward.xp} XP).` : ''}\n🧭 Bu rotayı **${routeVisits}** kez gezdin · Ustalık seviyesi: **${routeMasteryLevel}**${itemText}\n\n${firstDiscovery ? `🧭 Yeni keşif: **${discoveryMeta?.name}** (+${discoveryCoins} altın, +${discoveryXp} XP)` : `📔 Bu keşfi daha önce kaydetmiştin: **${discoveryMeta?.name}**`}${journalCompletedNow ? `\n\n🏆 **Keşif defterini tamamladın! +${journalCompletionCoins} altın tamamlanma ödülü kazandın.**` : ''}`
         )
         .addFields({
           name: 'Yeni seviye',
