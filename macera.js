@@ -60,6 +60,45 @@ export default {
       }
 
       const discoveryMeta = ADVENTURE_DISCOVERIES.find(entry => entry.key === outcome.discovery);
+      const foundFragment = Math.random() < 0.20;
+      let fragmentCount = 0;
+      let treasureOpened = false;
+      let treasureCount = 0;
+      if (foundFragment) {
+        await client.query(
+          'INSERT INTO adventure_treasure_progress(guild_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING',
+          [interaction.guildId, interaction.user.id]
+        );
+        const { rows: [treasure] } = await client.query(
+          'SELECT fragments, treasures_opened FROM adventure_treasure_progress WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+          [interaction.guildId, interaction.user.id]
+        );
+        fragmentCount = Number(treasure.fragments) + 1;
+        treasureCount = Number(treasure.treasures_opened);
+        if (fragmentCount >= 5) {
+          fragmentCount = 0;
+          treasureOpened = true;
+          treasureCount += 1;
+        }
+        await client.query(
+          'UPDATE adventure_treasure_progress SET fragments=$3, treasures_opened=$4, updated_at=NOW() WHERE guild_id=$1 AND user_id=$2',
+          [interaction.guildId, interaction.user.id, fragmentCount, treasureCount]
+        );
+        await client.query(
+          `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'🧩 Kadim Harita Parçası',1)
+           ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
+          [interaction.guildId, interaction.user.id]
+        );
+        if (treasureOpened) {
+          await client.query(
+            `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'🗝️ Kadim Hazine Sandığı',1)
+             ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
+            [interaction.guildId, interaction.user.id]
+          );
+        }
+      }
+      const treasureReward = treasureOpened ? { coins: 100, xp: 80 } : { coins: 0, xp: 0 };
+
       const { rows: [streakRow] } = await client.query(
         `WITH previous AS (
            SELECT last_visit_date FROM adventure_streaks WHERE guild_id=$1 AND user_id=$2
@@ -122,9 +161,9 @@ export default {
         }
       }
 
-      const newXp = Number(u.xp) + outcome.xp + discoveryXp + routeMasteryReward.xp + streakReward.xp;
+      const newXp = Number(u.xp) + outcome.xp + discoveryXp + routeMasteryReward.xp + streakReward.xp + treasureReward.xp;
       const newLevel = levelForXp(newXp);
-      const totalCoins = outcome.coins + discoveryCoins + journalCompletionCoins + routeMasteryReward.coins + streakReward.coins;
+      const totalCoins = outcome.coins + discoveryCoins + journalCompletionCoins + routeMasteryReward.coins + streakReward.coins + treasureReward.coins;
 
       await client.query(
         'UPDATE users SET coins=coins+$3, xp=$4, stat_points=stat_points+GREATEST(0,$5-level), level=$5, last_adventure_at=NOW() WHERE guild_id=$1 AND user_id=$2',
@@ -152,7 +191,7 @@ export default {
         .setColor(0x9b8cff)
         .setTitle('🗺️ Macera Tamamlandı')
         .setDescription(
-          `${outcome.text}\n\nÖdül: **${outcome.coins + discoveryCoins + journalCompletionCoins + routeMasteryReward.coins + streakReward.coins}** altın ve **${outcome.xp + discoveryXp + routeMasteryReward.xp + streakReward.xp} XP**${streakReward.coins ? `\n🔥 **${dailyStreak} günlük macera serisi!** Seri ödülü: +${streakReward.coins} altın, +${streakReward.xp} XP.` : ''}\n📅 Günlük seri: **${dailyStreak} gün**${routeMasteryReward.coins ? `\n🌟 Rota ustalığı: **3 ziyaretlik eşik** tamamlandı (+${routeMasteryReward.coins} altın, +${routeMasteryReward.xp} XP).` : ''}\n🧭 Bu rotayı **${routeVisits}** kez gezdin · Ustalık seviyesi: **${routeMasteryLevel}**${itemText}\n\n${firstDiscovery ? `🧭 Yeni keşif: **${discoveryMeta?.name}** (+${discoveryCoins} altın, +${discoveryXp} XP)` : `📔 Bu keşfi daha önce kaydetmiştin: **${discoveryMeta?.name}**`}${journalCompletedNow ? `\n\n🏆 **Keşif defterini tamamladın! +${journalCompletionCoins} altın tamamlanma ödülü kazandın.**` : ''}`
+          `${outcome.text}\n\nÖdül: **${outcome.coins + discoveryCoins + journalCompletionCoins + routeMasteryReward.coins + streakReward.coins + treasureReward.coins}** altın ve **${outcome.xp + discoveryXp + routeMasteryReward.xp + streakReward.xp + treasureReward.xp} XP**${foundFragment ? `\n🧩 Kadim harita parçası buldun! Parça ilerlemesi: **${fragmentCount}/5**.${treasureOpened ? `\n🗝️ **Hazine haritasını tamamladın!** +${treasureReward.coins} altın, +${treasureReward.xp} XP ve envanterine bir Kadim Hazine Sandığı eklendi.` : ''}` : ''}${streakReward.coins ? `\n🔥 **${dailyStreak} günlük macera serisi!** Seri ödülü: +${streakReward.coins} altın, +${streakReward.xp} XP.` : ''}\n📅 Günlük seri: **${dailyStreak} gün**${routeMasteryReward.coins ? `\n🌟 Rota ustalığı: **3 ziyaretlik eşik** tamamlandı (+${routeMasteryReward.coins} altın, +${routeMasteryReward.xp} XP).` : ''}\n🧭 Bu rotayı **${routeVisits}** kez gezdin · Ustalık seviyesi: **${routeMasteryLevel}**${itemText}\n\n${firstDiscovery ? `🧭 Yeni keşif: **${discoveryMeta?.name}** (+${discoveryCoins} altın, +${discoveryXp} XP)` : `📔 Bu keşfi daha önce kaydetmiştin: **${discoveryMeta?.name}**`}${journalCompletedNow ? `\n\n🏆 **Keşif defterini tamamladın! +${journalCompletionCoins} altın tamamlanma ödülü kazandın.**` : ''}`
         )
         .addFields({
           name: 'Yeni seviye',
