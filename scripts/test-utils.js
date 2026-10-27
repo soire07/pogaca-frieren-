@@ -123,7 +123,8 @@ test('cooperative boss raid includes an area mana-star burst and a mana-draining
   const source = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
   assert.match(source, /const starburst = BOSS\.special === 'mana-star'/);
   assert.match(source, /for \(const i of living\)/);
-  assert.match(source, /const manaCurse = \(BOSS\.special === 'mana-curse' \|\| BOSS\.special === 'mana-star'\)/);
+  assert.match(source, /const shardRain = BOSS\.special === 'shard-rain' && rounds % 2 === 0/);
+  assert.match(source, /const manaCurse = BOSS\.special === 'mana-curse' && rounds % 3 === 0/);
   assert.match(source, /Math\.min\(target\.mana,8\)/);
   assert.match(source, /target\.mana-=drained/);
   assert.match(source, /\$\{rounds\}\/12/);
