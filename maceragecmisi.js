@@ -20,7 +20,7 @@ export default {
 
     try {
       await ensureUser(interaction.guildId, target.id);
-      const [userResult, collectionResult, equipmentResult, spellResult, adventureResult] = await Promise.all([
+      const [userResult, collectionResult, equipmentResult, spellResult, adventureResult, craftingResult] = await Promise.all([
         pool.query(
           `SELECT level, xp, coins, daily_streak, best_daily_streak,
                   exploration_count, items_used_count, boss_defeats,
@@ -45,6 +45,10 @@ export default {
         pool.query(
           'SELECT outcome_text, coins_awarded, xp_awarded, item_found, first_discovery, occurred_at FROM adventure_history WHERE guild_id=$1 AND user_id=$2 ORDER BY occurred_at DESC, id DESC LIMIT 5',
           [interaction.guildId, target.id]
+        ),
+        pool.query(
+          'SELECT level, xp, successful_crafts FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2',
+          [interaction.guildId, target.id]
         )
       ]);
 
@@ -52,6 +56,7 @@ export default {
       if (!u) return interaction.editReply('Oyuncu istatistikleri bulunamadı.');
 
       const c = collectionResult.rows[0];
+      const craft = craftingResult.rows[0] || { level: 1, xp: 0, successful_crafts: 0 };
       const n = value => Number(value ?? 0).toLocaleString('tr-TR');
       const recentAdventures = adventureResult.rows.length
         ? adventureResult.rows.map((row, index) => `**${index + 1}.** ${row.outcome_text.slice(0, 70)} · +${n(row.coins_awarded)} altın / +${n(row.xp_awarded)} XP${row.first_discovery ? ' · 🧭 Yeni keşif' : ''}${row.item_found ? ` · ${row.item_found}` : ''}\n<t:${Math.floor(new Date(row.occurred_at).getTime() / 1000)}:R>`).join('\n')
@@ -68,7 +73,8 @@ export default {
           { name: '🎴 Koleksiyon', value: `Farklı karakter: **${n(c.unique_characters)}**\nToplam kopya: **${n(c.total_copies)}**`, inline: true },
           { name: '🔮 Hazırlık', value: `Öğrenilen büyü: **${n(spellResult.rows[0].learned)}**\nKuşanılan ekipman: **${n(equipmentResult.rows[0].equipped)}**`, inline: true },
           { name: '🔥 Günlük seri', value: `Mevcut: **${n(u.daily_streak)} gün**\nEn iyi: **${n(u.best_daily_streak)} gün**`, inline: true },
-          { name: '🗺️ Son 5 macera', value: recentAdventures.slice(0, 1024), inline: false }
+          { name: '🗺️ Son 5 macera', value: recentAdventures.slice(0, 1024), inline: false },
+          { name: '⚒️ Zanaat', value: `Seviye: **${n(craft.level)}**\nZanaat XP: **${n(craft.xp)}**\nÜretilen eşya: **${n(craft.successful_crafts)}**`, inline: true }
         )
         .setFooter({ text: 'Poğaça Frieren • Macera kayıtları yalnızca bu sunucuya aittir.' })
         .setTimestamp();
