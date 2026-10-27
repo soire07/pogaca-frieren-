@@ -224,6 +224,8 @@ test('co-op combat releases database locks before waiting for player turns and r
     assert.ok(source.includes(cooldown), path + ': concurrent-run cooldown is revalidated');
     assert.ok(source.includes("await db.query('ROLLBACK')"), path + ': failed validation rolls back');
     assert.ok(source.includes('if (db) db.release()'), path + ': released clients are not released twice');
+    assert.match(source, /SELECT user_id,last_(?:dungeon|boss)_at,xp,level/ , path + ': final save reads current XP/level under lock');
+    assert.ok(source.includes('currentProgress.get('), path + ': reward calculation uses locked current progression');
   }
 });
 
