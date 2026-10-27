@@ -76,8 +76,8 @@ test('both combat modes expose attack, Zoltraak, Heilen, mana shield and defend 
   }
   assert.ok(dungeon.includes('p.mana >= 18'));
   assert.ok(raid.includes('f.mana >= 18'));
-  assert.ok(dungeon.includes('p.mana >= 12'));
-  assert.ok(raid.includes('f.mana >= 12'));
+  assert.ok(dungeon.includes('p.mana >= spellCost'));
+  assert.ok(raid.includes('f.mana >= spellCost'));
   assert.ok(dungeon.includes('p.mana >= 10'));
   assert.ok(raid.includes('f.mana >= 10'));
 });
