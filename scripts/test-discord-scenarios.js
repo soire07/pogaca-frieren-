@@ -452,3 +452,14 @@ test('first adventure of each day grants a daily bonus without repeat farming', 
   assert.match(adventure, /dailyAdventureReward\.xp/);
   assert.match(adventure, /last_visit_date=CURRENT_DATE/);
 });
+
+test('adventure outcomes grant class-specific exploration bonuses', async () => {
+  const adventure = await read('macera.js');
+  assert.match(adventure, /SELECT coins, xp, class_name, last_adventure_at/);
+  assert.match(adventure, /u\.class_name === 'Gezgin'/);
+  assert.match(adventure, /u\.class_name === 'Büyücü'/);
+  assert.match(adventure, /u\.class_name === 'Muhafız'/);
+  assert.match(adventure, /u\.class_name === 'Şifacı'/);
+  assert.match(adventure, /classAdventureReward\.xp/);
+  assert.match(adventure, /classAdventureReward\.coins/);
+});
