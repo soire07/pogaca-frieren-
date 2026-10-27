@@ -72,4 +72,8 @@ test('multi-floor dungeon includes traps, chests and persistent player rewards',
   assert.match(source, /PARTY_ROLES/);
   assert.match(source, /healerIndex/);
   assert.match(source, /tankIndex/);
+  assert.match(source, /players\[targetIndex\]\.user_id/);
+  assert.doesNotMatch(source, /combatants\[targetIndex\]/);
+  assert.match(source, /bossRageAnnounced/);
+  assert.match(source, /yıldız biçimli mana patlaması/);
 });
