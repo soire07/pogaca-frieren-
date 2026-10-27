@@ -571,3 +571,11 @@ test('achievements include crafting profession level and production milestones',
   assert.match(command, /craftingLevel/);
   assert.match(command, /craftedItems/);
 });
+
+test('adventure history profile includes persistent crafting profession progression', async () => {
+  const history = await read('maceragecmisi.js');
+  assert.match(history, /user_crafting_progress/);
+  assert.match(history, /craftingResult/);
+  assert.match(history, /name: '⚒️ Zanaat'/);
+  assert.match(history, /successful_crafts/);
+});
