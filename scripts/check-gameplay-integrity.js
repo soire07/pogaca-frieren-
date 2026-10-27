@@ -304,3 +304,20 @@ test('learning a spell through the character panel also records it in the gamepl
     'panel spell purchase must write the journal entry in the same transaction');
   assert.match(standalone, /recordJournalEntry\(db, interaction\.guildId, interaction\.user\.id, 'spells', spellKey\)/);
 });
+
+test('solo boss encounters reserve the player and release the reservation on every normal exit', async () => {
+  const schema = await read('database/db.js');
+  const boss = await read('iblisavasi.js');
+  const exploration = await read('commands/rpg/kesif.js');
+  const rest = await read('commands/rpg/dinlen.js');
+  assert.match(schema, /encounter_type IN \('dungeon','raid','boss'\)/);
+  const reserve = boss.indexOf("INSERT INTO active_rpg_encounters");
+  const stats = boss.indexOf("FROM users WHERE guild_id=$1 AND user_id=$2");
+  assert.ok(reserve >= 0 && stats > reserve, 'boss reservation must exist before reading combat stats');
+  assert.match(boss, /SELECT user_id FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/);
+  assert.match(boss, /DELETE FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND encounter_id=\$3/);
+  assert.match(boss, /reservationCreated = false/);
+  assert.match(exploration, /SELECT encounter_type FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/);
+  assert.match(rest, /SELECT encounter_type FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/);
+  assert.match(boss, /collector\.on\('end', async \(_, reason\) => \{[\s\S]*?await releaseReservation\(\)/);
+});
