@@ -34,7 +34,7 @@ const pages = [
   { title: '🧰 VI. Ekonomi, ekipman ve diğer komutlar', description: 'Kaynaklarını, eşyalarını ve sunucu araçlarını doğru kullan.', fields: [
     { name: 'Altın ve eşya', value: '**/bakiye** altınını; **/market** alışverişi; **/cantam** eşyaları; **/ekipman** kuşanma/çıkarma; **/esyakullan** kullanılabilir eşyaları yönetir.' },
     { name: 'İstatistikler', value: '**/istatistik** bot istatistiklerini, **/siralama** RPG sıralamalarını, **/liderlik** sunucu liderliğini gösterir.' },
-    { name: 'Sunucu yönetimi', value: 'Yetkiliysen **/kurulum** ile karşılama/log ayarlarını düzenleyebilir; **/uyar**, **/timeout**, **/ban** ve **/temizle** moderasyon komutlarını kullanabilirsin.' },
+    { name: '🎉 Eğlence ve topluluk', value: '**/animequiz** anime bilgi yarışması; **/pogaca** mola; **/sans** şans oyunu; **/saril** arkadaşına sarılma; **/mimic** eğlence komutudur. **/istatistik** sunucudaki RPG oyuncularını ve en yüksek seviyeyi gösterir.' },
     { name: '🔎 Daha fazla yardım', value: 'Discord’da / yazıp komut adını seçerek seçeneklerini ve açıklamasını gör. **/yardim** tüm komutları kategori kategori listeler. Bazı özellikler sunucu ayarlarına veya komut gereksinimlerine bağlı olabilir.' }
   ]}
 ];
