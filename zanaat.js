@@ -6,7 +6,11 @@ const RECIPES = {
   iron_sword: { materials: [{ item: '💎 Mana Kristali', quantity: 1 }, { item: '🥐 Büyülü Poğaça Kutusu', quantity: 1 }] },
   mage_staff: { materials: [{ item: '💎 Mana Kristali', quantity: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }] },
   traveler_cloak: { materials: [{ item: '🥐 Büyülü Poğaça Kutusu', quantity: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }] },
-  mana_ring: { materials: [{ item: '💎 Mana Kristali', quantity: 3 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }] }
+  mana_ring: { materials: [{ item: '💎 Mana Kristali', quantity: 3 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }] },
+  fern_robe: { materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 1 }, { item: '📖 Yasak Büyü Kitabı', quantity: 2 }] },
+  frieren_robe: { materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 2 }, { item: '💎 Mana Kristali', quantity: 3 }] },
+  himmel_sword: { materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1 }, { item: '🐉 Ejderha Pulu', quantity: 2 }] },
+  demon_blade: { materials: [{ item: '🐉 Ejderha Pulu', quantity: 3 }, { item: '📜 Frieren’in Kayıp Notları', quantity: 1 }] }
 };
 
 export default {
@@ -18,7 +22,11 @@ export default {
         { name: '⚔️ Gezginin Demir Kılıcı', value: 'iron_sword' },
         { name: '🪄 Büyücü Asası', value: 'mage_staff' },
         { name: '🧥 Gezgin Pelerini', value: 'traveler_cloak' },
-        { name: '🔮 Mana Dairesi Yüzüğü', value: 'mana_ring' }
+        { name: '🔮 Mana Dairesi Yüzüğü', value: 'mana_ring' },
+        { name: '🟣 Fern’in Büyücü Cübbesi', value: 'fern_robe' },
+        { name: '✨ Frieren’in Kadim Cübbesi', value: 'frieren_robe' },
+        { name: '🌟 Himmel’in Kahraman Kılıcı', value: 'himmel_sword' },
+        { name: '🩸 Kuzey İblisi Keseni', value: 'demon_blade' }
       ))
     .addIntegerOption(option => option.setName('adet').setDescription('Üretilecek adet (1–5).')
       .setRequired(false).setMinValue(1).setMaxValue(5)),
