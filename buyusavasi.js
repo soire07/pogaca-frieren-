@@ -12,6 +12,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
+import { applyClassDamage, applyClassDefense, applyClassHealing, getCharacterBuild } from './rpg-mechanics.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -177,8 +178,8 @@ export default {
         ensureUser(interaction.guildId, opponent.id)
       ]);
       const [stats1Result, stats2Result, gear1Result, gear2Result] = await Promise.all([
-        pool.query('SELECT max_hp, attack, defense FROM users WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, challenger.id]),
-        pool.query('SELECT max_hp, attack, defense FROM users WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, opponent.id]),
+        pool.query('SELECT max_hp, attack, defense, class_name, active_build FROM users WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, challenger.id]),
+        pool.query('SELECT max_hp, attack, defense, class_name, active_build FROM users WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, opponent.id]),
         pool.query('SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, challenger.id]),
         pool.query('SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, opponent.id])
       ]);
@@ -186,12 +187,14 @@ export default {
       const stats2 = stats2Result.rows[0];
       const gear1 = equipmentBonus(gear1Result.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean));
       const gear2 = equipmentBonus(gear2Result.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean));
-      const maxHp1 = Math.min(2000, Number(stats1.max_hp) + gear1.hp);
-      const maxHp2 = Math.min(2000, Number(stats2.max_hp) + gear2.hp);
-      const attack1 = Math.min(500, Number(stats1.attack) + gear1.attack);
-      const attack2 = Math.min(500, Number(stats2.attack) + gear2.attack);
-      const defense1 = Math.min(250, Number(stats1.defense) + gear1.defense);
-      const defense2 = Math.min(250, Number(stats2.defense) + gear2.defense);
+      const build1 = getCharacterBuild(stats1.active_build);
+      const build2 = getCharacterBuild(stats2.active_build);
+      const maxHp1 = Math.min(2000, Math.round((Number(stats1.max_hp) + gear1.hp) * build1.hp));
+      const maxHp2 = Math.min(2000, Math.round((Number(stats2.max_hp) + gear2.hp) * build2.hp));
+      const attack1 = Math.min(500, Math.round((Number(stats1.attack) + gear1.attack) * build1.attack));
+      const attack2 = Math.min(500, Math.round((Number(stats2.attack) + gear2.attack) * build2.attack));
+      const defense1 = Math.min(250, Math.round(applyClassDefense(Number(stats1.defense) + gear1.defense, stats1.class_name) * build1.defense));
+      const defense2 = Math.min(250, Math.round(applyClassDefense(Number(stats2.defense) + gear2.defense, stats2.class_name) * build2.defense));
 
       const [upgrade1, upgrade2] = await Promise.all([
         pool.query('SELECT COALESCE(MAX(upgrade_level),0)::int AS level FROM character_upgrades WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, challenger.id]),
@@ -300,7 +303,7 @@ export default {
 
         if (move.customId === 'duel_attack') {
           const rawDamage = Math.floor(Math.random() * 16) + 15 + (isPlayer1 ? attack1 : attack2) + (isPlayer1 ? bonus1 : bonus2);
-          let damage = Math.max(1, rawDamage - Math.floor((isPlayer1 ? defense2 : defense1) / 2));
+          let damage = Math.max(1, applyClassDamage(rawDamage, isPlayer1 ? stats1.class_name : stats2.class_name) - Math.floor((isPlayer1 ? defense2 : defense1) / 2));
 
           if (isPlayer1 && shield2) {
             damage = Math.ceil(damage * 0.5);
@@ -338,7 +341,8 @@ export default {
             });
           }
 
-          const healing = Math.floor(Math.random() * 11) + 10;
+          const baseHealing = Math.floor(Math.random() * 11) + 10;
+          const healing = applyClassHealing(baseHealing, isPlayer1 ? stats1.class_name : stats2.class_name);
 
           if (isPlayer1) {
             const before = hp1;
