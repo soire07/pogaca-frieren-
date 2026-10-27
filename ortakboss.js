@@ -166,7 +166,7 @@ export default {
           new ButtonBuilder().setCustomId(`raid:act:defend:${interaction.id}:${rounds}`).setLabel('🛡️ Savun').setStyle(ButtonStyle.Secondary)
         );
         const actionMessage = await interaction.editReply({
-          content: `**${BOSS.name} · Tur ${rounds}**\n❤️ Boss: ${bossHp}/${maxBossHp} HP\\n${alive.map(i => `<@${fighters[i].userId}> (${fighters[i].mana}/${fighters[i].maxMana} mana)`).join(' · ')}\\nHer oyuncu Saldır, Zoltraak veya Savun seçsin. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
+          content: `**${BOSS.name} · Tur ${rounds}**\n❤️ Boss: ${bossHp}/${maxBossHp} HP\n${alive.map(i => `<@${fighters[i].userId}> (${fighters[i].mana}/${fighters[i].maxMana} mana)`).join(' · ')}\nHer oyuncu Saldır, Zoltraak veya Savun seçsin. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
           embeds: [],
           components: [actionRow]
         });
@@ -216,14 +216,30 @@ export default {
         const targetIndex=tank !== undefined && Math.random()<0.7 ? tank : living[Math.floor(Math.random()*living.length)];
         const target=fighters[targetIndex];
         const enraged = bossHp <= maxBossHp * 0.5;
-        const special = rounds % 3 === 0;
-        const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(special?6:0);
+        const starburst = rounds % 3 === 0;
+        const manaCurse = !starburst && rounds % 4 === 0;
+        const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(manaCurse?3:0);
         if (enraged && !rageAnnounced) { log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.'); rageAnnounced = true; }
-        if (special) log.push('💥 Boss özel saldırı hazırladı; bu vuruş daha güçlü.');
-        let incoming=Math.max(1,Math.round(rawDamage-target.defense*0.28));
-        if (defending.has(targetIndex)) incoming=Math.max(1,Math.round(incoming*0.45));
-        hpNow[targetIndex]=Math.max(0,hpNow[targetIndex]-incoming);
-        log.push(`💥 ${BOSS.name} ${target.username} oyuncusuna ${incoming} hasar verdi${defending.has(targetIndex)?' (savunma azaltımı uygulandı)':''}.`);
+        if (starburst) {
+          log.push('☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!');
+          for (const i of living) {
+            const f=fighters[i];
+            let incoming=Math.max(1,Math.round(rawDamage*0.68-f.defense*0.22));
+            if (defending.has(i)) incoming=Math.max(1,Math.round(incoming*0.45));
+            hpNow[i]=Math.max(0,hpNow[i]-incoming);
+            log.push(`☄️ ${f.username} mana patlamasından ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
+          }
+        } else {
+          let incoming=Math.max(1,Math.round(rawDamage-target.defense*0.28));
+          if (defending.has(targetIndex)) incoming=Math.max(1,Math.round(incoming*0.45));
+          hpNow[targetIndex]=Math.max(0,hpNow[targetIndex]-incoming);
+          if (manaCurse) {
+            const drained=Math.min(target.mana,8);
+            target.mana-=drained;
+            log.push(`🕯️ Boss ${target.username} oyuncusuna mana laneti uyguladı (-${drained} mana).`);
+          }
+          log.push(`💥 ${BOSS.name} ${target.username} oyuncusuna ${incoming} hasar verdi${defending.has(targetIndex)?' (savunma azaltımı uygulandı)':''}.`);
+        }
       }
       const win=bossHp<=0;
       const xpReward=win?BOSS.xp:Math.floor(BOSS.xp*0.25);
@@ -246,7 +262,7 @@ export default {
       await db.query('COMMIT');
       const embed=new EmbedBuilder().setColor(win?0x5bc98a:0x9b8cff)
         .setTitle(win?`🏆 ${BOSS.name} yenildi!`:'🌌 Baskın sona erdi')
-        .setDescription(`**Boss HP:** ${Math.max(0,bossHp)}/${maxBossHp}\n**Tur:** ${rounds}/10\n\n`+
+        .setDescription(`**Boss HP:** ${Math.max(0,bossHp)}/${maxBossHp}\n**Tur:** ${rounds}/12\n\n`+
           fighters.map((f,i)=>`**<@${f.userId}>** — ${f.roleData.label}\n❤️ ${hpNow[i]}/${Math.round(f.maxHp)} HP · ✨ ${f.mana}/${f.maxMana} mana · ⚔️ ${Math.round(f.attack)} saldırı · 🛡️ ${Math.round(f.defense)} savunma`).join('\n\n')+
           '\n\n**Savaş günlüğü**\n'+log.slice(-15).join('\n'))
         .addFields(
