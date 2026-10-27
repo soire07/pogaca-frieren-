@@ -1783,7 +1783,13 @@
       "name": "Show profile HP, mana, attack and defense using persistent talent ranks and rarity-based equipment set bonuses",
       "category": "RPG",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-278",
+      "name": "Display the currently active rarity-based equipment set bonus in the player's RPG profile",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 296
+  "count": 297
 }
