@@ -565,6 +565,78 @@
       "name": "Stop the dungeon run when the party can no longer fight",
       "category": "Combat",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-075",
+      "name": "Launch a role-based cooperative boss raid",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-076",
+      "name": "Invite up to three teammates to a boss raid",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-077",
+      "name": "Require every invited raid member to accept",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-078",
+      "name": "Assign tank, healer and damage roles to raid members",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-079",
+      "name": "Increase raid boss health based on party size",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-080",
+      "name": "Let the tank attract most boss attacks",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-081",
+      "name": "Let the healer restore party HP each round",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-082",
+      "name": "Reward raid victories with XP, coins and rare loot",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-083",
+      "name": "Trigger hidden treasure chests between dungeon floors",
+      "category": "Dungeon",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-084",
+      "name": "Trigger floor traps that damage a party member",
+      "category": "Dungeon",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-085",
+      "name": "Grant each party member loot from discovered chests",
+      "category": "Loot",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-086",
+      "name": "Include role-specific attack, HP and defense modifiers",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
     }
   ]
 }
