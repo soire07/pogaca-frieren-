@@ -21,12 +21,12 @@ export default {
     );
     const lines = result.rows.map(row => {
       const casts = Number(row.casts), level = Number(row.mastery_level);
-      const progress = level >= 10 ? '✨ Maksimum ustalık' : `Sonraki seviye için ${Math.max(0, (level + 1) * 10 - casts)} kullanım`;
+      const progress = level >= 10 ? '✨ Maksimum ustalık · Uyanış açıldı' : `Sonraki seviye için ${Math.max(0, (level + 1) * 10 - casts)} kullanım`;
       return `${names[row.spell_key] || row.spell_key}\n${'▰'.repeat(level)}${'▱'.repeat(10-level)} **${level}/10** · ${casts} kullanım · ${progress}`;
     });
     const embed = new EmbedBuilder().setColor(0x9b8cff).setTitle('📚 Büyü Ustalığı')
       .setDescription(lines.length ? lines.join('\n\n') : 'Henüz savaş büyüsü öğrenmedin. /buyuogren komutunu kullan.')
-      .addFields({ name: '✨ Nasıl gelişir?', value: 'Her 10 kullanımda bir ustalık seviyesi kazanırsın. Saldırı büyülerinin hasarı ustalık seviyesi başına artar.' })
+      .addFields({ name: '✨ Nasıl gelişir?', value: 'Her 10 kullanımda bir ustalık seviyesi kazanırsın. Seviye 10’da büyüne özel Uyanış açılır: Zoltraak +8 hasar, Alev Küresi +10, Buz Mızrağı +10 puan donma ihtimali, Koruyucu Bariyer +5 puan engelleme, Şifa Işığı +10 iyileştirme, Yıldırım Zinciri +12 hasar, Taş Duvar +5 puan engelleme, Mana Patlaması +15 hasar.' })
       .setFooter({ text: 'Poğaça Frieren • /iblisavasi' });
     return interaction.reply({ embeds: [embed], ephemeral: true });
   }
