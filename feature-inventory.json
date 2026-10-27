@@ -1063,7 +1063,31 @@
       "name": "Choose a specific adventure route or retain random exploration",
       "category": "Exploration",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-158",
+      "name": "Track persistent visit counts and mastery levels for each adventure route",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-159",
+      "name": "Grant repeatable route mastery rewards after every third visit to a route",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-160",
+      "name": "Display per-route visit counts, mastery levels, and distance to the next reward in the journal",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-161",
+      "name": "Keep route mastery progression and rewards transactional with the adventure result",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 176
+  "count": 180
 }
