@@ -9,7 +9,7 @@ test('trade offers are persistent, expiring and single-use', async () => {
   const handler = await read('index.js');
   const command = await read('takasteklif.js');
   assert.match(schema, /CREATE TABLE IF NOT EXISTS trade_offers/);
-  assert.match(schema, /status IN \\(\x27pending\x27,\x27accepted\x27,\x27declined\x27,\x27expired\x27,\x27invalid\x27\\)/);
+  assert.ok(schema.includes("status IN ('pending','accepted','declined','expired','invalid')"), 'trade status constraint missing');
   assert.match(command, /setAutocomplete\(true\)/);
   assert.match(command, /Date\.now\(\)\+5\*60\*1000/);
   assert.match(handler, /SELECT \* FROM trade_offers WHERE offer_id=\$1 AND guild_id=\$2 FOR UPDATE/);
