@@ -670,3 +670,12 @@ test('adventure streak retains an all-time best streak after a missed day resets
   assert.match(journal, /best_streak/);
   assert.match(stats, /best_streak/);
 });
+
+test('adventure streak milestones grant one-time seven, fourteen and thirty day bonuses', async () => {
+  const adventure = await read('macera.js');
+  assert.match(adventure, /streakMilestoneReward/);
+  assert.match(adventure, /7: \{ coins: 150, xp: 100 \}/);
+  assert.match(adventure, /14: \{ coins: 300, xp: 200 \}/);
+  assert.match(adventure, /30: \{ coins: 750, xp: 500 \}/);
+  assert.match(adventure, /streakRow\.new_day/);
+});
