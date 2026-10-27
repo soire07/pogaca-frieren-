@@ -219,3 +219,63 @@ test('equipment set bonuses and milestone titles are wired into both rewards flo
     assert.match(source, /Kalıcı unvanlar/);
   }
 });
+
+
+test('runtime guardrails: raid invitations and role choices are limited to the invited party', async () => {
+  const source = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /inviteIds\.has\(c\.user\.id\)/);
+  assert.match(source, /raid:yes:/);
+  assert.match(source, /team\.some\(u => u\.id === c\.user\.id\)/);
+  assert.match(source, /time: 60_000/);
+});
+
+test('runtime guardrails: dungeon invitations and role choices reject unrelated users', async () => {
+  const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  assert.match(source, /katlizindan:accept:/);
+  assert.match(source, /team\.some\(u => u\.id === c\.user\.id\)/);
+  assert.match(source, /time: 60_000/);
+});
+
+test('runtime guardrails: combat buttons are scoped to the current battle and turn', async () => {
+  const boss = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  assert.match(boss, /c\.customId\.startsWith\('raid:act:'\)/);
+  assert.match(boss, /c\.customId\.endsWith/);
+  assert.match(dungeon, /c\.customId\.startsWith\('katlizindan:act:'\)/);
+  assert.match(dungeon, /c\.customId\.endsWith\(suffix\)/);
+  assert.match(boss, /rounds < 12/);
+});
+
+test('runtime guardrails: combat results are committed atomically and errors roll back', async () => {
+  const boss = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  for (const [name, source] of [['raid', boss], ['dungeon', dungeon]]) {
+    assert.match(source, /await db\.query\('BEGIN'\)/, name + ' should open a transaction');
+    assert.match(source, /await db\.query\('COMMIT'\)/, name + ' should commit successful results');
+    assert.match(source, /await db\.query\('ROLLBACK'\)/, name + ' should roll back rejected/error results');
+    assert.match(source, /FOR UPDATE/, name + ' should lock player rows during combat');
+  }
+});
+
+test('runtime guardrails: dungeon route choice is leader-only and safely defaults on timeout', async () => {
+  const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  assert.match(source, /let pathChoice = 'safe'/);
+  assert.match(source, /c\.user\.id === interaction\.user\.id/);
+  assert.match(source, /time: 15_000/);
+  assert.match(source, /dungeonChoiceOutcome\(pathChoice, floor\)/);
+});
+
+test('runtime test plan documents safety, timeouts, persistence and failure cases', async () => {
+  const plan = await readFile(new URL('../docs/discord-runtime-test-plan.md', import.meta.url), 'utf8');
+  for (const topic of [
+    'Test ortamı ve güvenlik',
+    '60 saniyelik süre',
+    'Mana Kalkanı',
+    'Güvenli yol varsayılanı',
+    'transaction rollback',
+    'Soğuma süresi',
+    'Canlı Discord testi'
+  ]) {
+    assert.ok(plan.includes(topic), 'runtime test plan missing: ' + topic);
+  }
+});
