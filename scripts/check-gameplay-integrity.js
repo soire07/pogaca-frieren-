@@ -158,7 +158,7 @@ test('successful Zoltraak casts in cooperative dungeon and boss raid advance per
   const raid = await read('ortakboss.js');
   for (const source of [dungeon, raid]) {
     assert.match(source, /const spellCasts = new Map\(\)/);
-    assert.match(source, /spellCasts\.set\([^,]+, \(spellCasts\.get\([^)]*\) \|\| 0\) \+ 1\)/);
+    assert.match(source, /const castCount = \(spellCasts\.get\([^)]*\) \|\| 0\) \+ 1/);
     assert.match(source, /INSERT INTO spell_mastery \(guild_id,user_id,spell_key,casts,mastery_level,updated_at\)/);
     assert.match(source, /mastery_level=LEAST\(10,FLOOR\(\(spell_mastery\.casts\+EXCLUDED\.casts\)\/10\.0\)::int\)/);
   }
