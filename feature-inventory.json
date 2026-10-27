@@ -1027,6 +1027,36 @@
       "name": "Apply talent HP and mana capacity bonuses across combat modes",
       "category": "Progression",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-152",
+      "name": "Record persistent unique discoveries from adventure encounters",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-153",
+      "name": "Award one-time gold and XP bonuses for first-time discoveries",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-154",
+      "name": "Grant a one-time completion reward for discovering every journal location",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-155",
+      "name": "View the persistent adventure discovery journal and collection progress",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-156",
+      "name": "Prevent duplicate discovery and completion rewards with transactional uniqueness",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
     }
   ],
   "count": 166
