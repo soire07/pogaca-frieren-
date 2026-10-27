@@ -14,9 +14,8 @@ new ButtonBuilder().setCustomId('charpanel:name:'+id).setLabel('İsim / Oluştur
 new ButtonBuilder().setCustomId('charpanel:stats:'+id).setLabel('Gelişim').setEmoji('✨').setStyle(ButtonStyle.Success),
 new ButtonBuilder().setCustomId('charpanel:spells:'+id).setLabel('Büyü kitabım').setEmoji('🔮').setStyle(ButtonStyle.Secondary),
 new ButtonBuilder().setCustomId('charpanel:refresh:'+id).setLabel('Yenile').setEmoji('🔄').setStyle(ButtonStyle.Secondary)),
-new ActionRowBuilder().addComponents(
-new StringSelectMenuBuilder().setCustomId('charpanel:class:'+id).setPlaceholder('🧭 Sınıfını seç').addOptions(classes),
-new StringSelectMenuBuilder().setCustomId('charpanel:build:'+id).setPlaceholder('⚔️ Savaş yapını seç').addOptions(builds))];}
+new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('charpanel:class:'+id).setPlaceholder('🧭 Sınıfını seç').addOptions(classes)),
+new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('charpanel:build:'+id).setPlaceholder('⚔️ Savaş yapını seç').addOptions(builds))];}
 export async function renderCharacterPanel(guildId,user){
 await ensureUser(guildId,user.id);
 const {rows:[u]}=await pool.query('SELECT character_name,xp,level,coins,class_name,active_build,hp,max_hp,mana,max_mana,attack,defense,stat_points,boss_defeats,exploration_count FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,user.id]);
@@ -31,7 +30,7 @@ e.addFields(
 {name:'🪙 ALTIN',value:Number(u.coins).toLocaleString('tr-TR'),inline:true},{name:'👹 BOSS ZAFERİ',value:String(u.boss_defeats),inline:true},{name:'🗺️ KEŞİF',value:String(u.exploration_count),inline:true},
 {name:'📜 SIRADAKİ ADIM',value:Number(u.stat_points)>0?'Dağıtılmayı bekleyen '+u.stat_points+' gelişim puanın var. Gelişim düğmesini kullan.':Number(u.exploration_count)===0?'İlk bölgen için /kesif komutunu kullan.':'/iblisavasi ile gücünü sına veya /kesif ile ilerle.'});
 return{embeds:[e],components:controls(user.id)};}
-function makeModal(id,mode,old=''){const m=new ModalBuilder().setCustomId('charpanel:save-'+mode+':'+id).setTitle(mode==='name'?(old?'İsmini değiştir':'Karakter oluştur'):'Gelişim puanlarını dağı');if(mode==='name')m.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Karakter adı').setStyle(TextInputStyle.Short).setMinLength(2).setMaxLength(24).setRequired(true).setValue(old)));else m.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('stat').setLabel('Özellik: hp / mana / attack / defense').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('attack')),new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('points').setLabel('Harcanacak puan (1–50)').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('3')));return m;}
+function makeModal(id,mode,old=''){const m=new ModalBuilder().setCustomId('charpanel:save-'+mode+':'+id).setTitle(mode==='name'?(old?'İsmini değiştir':'Karakter oluştur'):'Gelişim puanlarını dağı');if(mode==='name')m.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Karakter adı').setStyle(TextInputStyle.Short).setMinLength(2).setMaxLength(24).setRequired(true).setPlaceholder('Örn. Himmel').setValue(old || 'Maceracı')));else m.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('stat').setLabel('Özellik: hp / mana / attack / defense').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('attack')),new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('points').setLabel('Harcanacak puan (1–50)').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('3')));return m;}
 export async function handleCharacterPanelInteraction(i){
 if(!(i.isButton?.()||i.isStringSelectMenu?.()||i.isModalSubmit?.())||!i.customId?.startsWith('charpanel:'))return false;
 const p=i.customId.split(':'),action=p[1],owner=p[p.length-1];
