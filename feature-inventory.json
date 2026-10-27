@@ -1669,7 +1669,13 @@
       "name": "Preview all equipment dismantling yields and rarity before selecting an item",
       "category": "Crafting",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-259",
+      "name": "Display the player's lifetime equipment dismantling count in the combined RPG profile",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 277
+  "count": 278
 }
