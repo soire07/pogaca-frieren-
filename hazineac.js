@@ -49,6 +49,7 @@ export default {
         coins += loot.coins;
         xp += loot.xp;
         found.set(loot.name, (found.get(loot.name) || 0) + 1);
+        await db.query('INSERT INTO treasure_openings(guild_id,user_id,loot_item,coins,xp) VALUES($1,$2,$3,$4,$5)', [interaction.guildId, interaction.user.id, loot.name, loot.coins, loot.xp]);
       }
       for (const [item, quantity] of found) {
         await db.query(
