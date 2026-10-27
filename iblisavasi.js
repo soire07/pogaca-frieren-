@@ -7,32 +7,50 @@ import {
   ComponentType
 } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
+import { getBossArtUrl } from './boss-art.js';
+import { recordJournalEntry } from './gameplay-journal.js';
 import { equipmentItems, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
-import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild } from './rpg-mechanics.js';
+import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, applyEquipmentSetBonus, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening } from './rpg-mechanics.js';
 
 const PLAYER_MAX_HP = 100;
 const COOLDOWN_MS = 30 * 60 * 1000;
 
 const bossTiers = [
-  { minLevel: 1, name: '🐺 Schattenwolf', region: 'Merkez Topraklar', maxHp: 120, minDamage: 7, maxDamage: 12, coinMin: 90, coinMax: 130, xpMin: 55, xpMax: 85, lootChance: 0.2, loot: ['🐺 Schattenwolfzahn'], special: 'Rudelstoß', specialType: 'heavy' },
-  { minLevel: 10, name: '🗿 Kadim Harabe Muhafızı', region: 'Kadim Harabeler', maxHp: 210, minDamage: 10, maxDamage: 16, coinMin: 150, coinMax: 210, xpMin: 95, xpMax: 140, lootChance: 0.3, loot: ['🗿 Muhafız Rünü'], special: 'Kadim Sarsıntı', specialType: 'heavy' },
-  { minLevel: 20, name: '👹 Kuzey İblisi', region: 'Kuzey Toprakları', maxHp: 330, minDamage: 13, maxDamage: 20, coinMin: 230, coinMax: 320, xpMin: 150, xpMax: 210, lootChance: 0.35, loot: ['🩸 Kuzey İblisinin Kalbi'], special: 'Mana Kemiren Lanet', specialType: 'drain' },
-  { minLevel: 35, name: '🩸 Büyük İblis Komutanı', region: 'Kuzey Yaylaları', maxHp: 470, minDamage: 16, maxDamage: 24, coinMin: 340, coinMax: 470, xpMin: 220, xpMax: 310, lootChance: 0.45, loot: ['🩸 İblis Komutanının Kanı'], special: 'Komutanın Hiddeti', specialType: 'heavy' },
-  { minLevel: 50, name: '👑 Äußerst Sınavının İblis Efendisi', region: 'Äußerst Sınav Rotası', maxHp: 650, minDamage: 20, maxDamage: 29, coinMin: 500, coinMax: 700, xpMin: 330, xpMax: 460, lootChance: 0.55, loot: ['🩸 İblis Komutanının Kanı', '🗿 Muhafız Rünü', '🩸 Kuzey İblisinin Kalbi'], special: 'Äußerst Büyü Patlaması', specialType: 'arcane' }
+  { minLevel: 1, name: '🐺 Schattenwolf', region: 'Merkez Topraklar', maxHp: 120, minDamage: 7, maxDamage: 12, coinMin: 90, coinMax: 130, xpMin: 55, xpMax: 85, lootChance: 0.2, loot: ['🐺 Schattenwolfzahn'], craftingMaterial: '🥐 Büyülü Poğaça Kutusu', artUrl: getBossArtUrl('schattenwolf'), special: 'Rudelstoß', specialType: 'heavy' },
+  { minLevel: 10, name: '🗿 Kadim Harabe Muhafızı', region: 'Kadim Harabeler', maxHp: 210, minDamage: 10, maxDamage: 16, coinMin: 150, coinMax: 210, xpMin: 95, xpMax: 140, lootChance: 0.3, loot: ['🗿 Muhafız Rünü'], craftingMaterial: '📖 Yasak Büyü Kitabı', artUrl: getBossArtUrl('ruinGuardian'), special: 'Kadim Sarsıntı', specialType: 'heavy' },
+  { minLevel: 20, name: '👹 Kuzey İblisi', region: 'Kuzey Toprakları', maxHp: 330, minDamage: 13, maxDamage: 20, coinMin: 230, coinMax: 320, xpMin: 150, xpMax: 210, lootChance: 0.35, loot: ['🩸 Kuzey İblisinin Kalbi'], craftingMaterial: '🐉 Ejderha Pulu', artUrl: getBossArtUrl('northDemon'), special: 'Mana Kemiren Lanet', specialType: 'drain' },
+  { minLevel: 35, name: '🩸 Büyük İblis Komutanı', region: 'Kuzey Yaylaları', maxHp: 470, minDamage: 16, maxDamage: 24, coinMin: 340, coinMax: 470, xpMin: 220, xpMax: 310, lootChance: 0.45, loot: ['🩸 İblis Komutanının Kanı'], craftingMaterial: '🌙 Efsunlu Elf Yadigârı', artUrl: getBossArtUrl('demonCommander'), special: 'Komutanın Hiddeti', specialType: 'heavy' },
+  { minLevel: 50, name: '👑 Äußerst Sınavının İblis Efendisi', region: 'Äußerst Sınav Rotası', maxHp: 650, minDamage: 20, maxDamage: 29, coinMin: 500, coinMax: 700, xpMin: 330, xpMax: 460, lootChance: 0.55, loot: ['🩸 İblis Komutanının Kanı', '🗿 Muhafız Rünü', '🩸 Kuzey İblisinin Kalbi'], craftingMaterial: '👑 Himmel’in Efsanevi Yadigârı', artUrl: getBossArtUrl('ausserstLord'), special: 'Äußerst Büyü Patlaması', specialType: 'arcane' }
 ];
 
-function battleEmbed({ player, bossHp, bossMaxHp = 160, bossName = 'İblis', bossRegion = 'Kuzey Sınırı', playerHp, playerMaxHp = PLAYER_MAX_HP, playerMana = 100, playerMaxMana = 100, attack = 10, defense = 5, bonus, description, won = false, lost = false }) {
+function hpBar(current, maximum, width = 10) {
+  const max = Math.max(1, Number(maximum) || 1);
+  const ratio = Math.max(0, Math.min(1, Number(current) / max));
+  const filled = Math.round(ratio * width);
+  return '█'.repeat(filled) + '░'.repeat(width - filled);
+}
+
+function battleEmbed({ player, bossHp, bossMaxHp = 160, bossName = 'İblis', bossRegion = 'Kuzey Sınırı', playerHp, playerMaxHp = PLAYER_MAX_HP, playerMana = 100, playerMaxMana = 100, attack = 10, defense = 5, bonus, description, bossImageUrl = null, won = false, lost = false }) {
   const embed = new EmbedBuilder()
     .setColor(won ? 0x65d6a6 : lost ? 0xe06c75 : 0x9b8cff)
     .setTitle(won ? `🏆 ${bossName} yenildi!` : lost ? '🌑 Büyücü düştü...' : `⚔️ ${bossName} • ${bossRegion}`)
     .setDescription(description)
     .addFields(
-      { name: '🧙 Gezgin', value: `❤️ **${Math.max(0, playerHp)}/${playerMaxHp} HP** · 🔮 **${playerMana}/${playerMaxMana} Mana**\n⚔️ Saldırı: **${attack}** · 🛡️ Savunma: **${defense}**\n✨ Karakter bonusu: +${bonus} hasar`, inline: true },
-      { name: bossName, value: `🩸 **${Math.max(0, bossHp)}/${bossMaxHp} HP**`, inline: true }
+      {
+        name: '🧙 Gezgin',
+        value: `❤️ \`${hpBar(playerHp, playerMaxHp)}\` **${Math.max(0, playerHp)}/${playerMaxHp} HP** · 🔮 **${playerMana}/${playerMaxMana} Mana**\n⚔️ Saldırı: **${attack}** · 🛡️ Savunma: **${defense}**\n✨ Karakter bonusu: +${bonus} hasar`,
+        inline: true
+      },
+      {
+        name: `👹 ${bossName}`,
+        value: `🩸 \`${hpBar(bossHp, bossMaxHp)}\` **${Math.max(0, bossHp)}/${bossMaxHp} HP**\n${getBossPhase(bossHp, bossMaxHp) === 3 ? '🌑 Son aşama' : getBossPhase(bossHp, bossMaxHp) === 2 ? '🔥 İkinci aşama' : '🌒 İlk aşama'}`,
+        inline: true
+      }
     )
     .setFooter({ text: 'Poğaça Frieren • Kuzey sınırında her büyü önemlidir.' })
     .setTimestamp();
   if (player?.displayAvatarURL) embed.setThumbnail(player.displayAvatarURL());
+  if (bossImageUrl) embed.setImage(bossImageUrl);
   return embed;
 }
 
@@ -57,7 +75,7 @@ function rareActionRow(disabled = false) {
 export default {
   data: new SlashCommandBuilder()
     .setName('iblisavasi')
-    .setDescription('Frieren evreninde bir iblis boss ile savaş ve ödül kazan.'),
+    .setDescription('Hazırlığını kontrol et, büyü hamlelerini seç ve aşamalı bir iblis boss ile tek başına savaş.'),
 
   async execute(interaction) {
     if (!interaction.guildId) {
@@ -70,7 +88,8 @@ export default {
       'SELECT spell_key FROM learned_spells WHERE guild_id=$1 AND user_id=$2',
       [interaction.guildId, interaction.user.id]
     );
-    const learnedSpells = new Set(knownSpellResult.rows.map(row => row.spell_key));
+    // Zoltraak is the player's starting spell; it must remain usable even before any paid spell is learned.
+    const learnedSpells = new Set(['zoltraak', ...knownSpellResult.rows.map(row => row.spell_key)]);
 
     const masteryResult = await pool.query(
       'SELECT spell_key, casts, mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=$2',
@@ -98,7 +117,7 @@ export default {
     const equippedItems = equippedResult.rows
       .map(row => equipmentItems.find(item => item.name === row.item_key))
       .filter(Boolean);
-    const gearBonus = equipmentBonus(equippedItems);
+    const gearBonus = applyEquipmentSetBonus(equippedItems, equipmentBonus(equippedItems));
     const build = getCharacterBuild(stats.active_build);
     const playerMaxHp = Math.min(2000, Math.round((Number(stats.max_hp) + gearBonus.hp) * build.hp * (1 + Number(stats.talent_hp) * 0.05)));
     const playerMaxMana = Math.min(2000, Math.round((Number(stats.max_mana) + gearBonus.mana) * build.mana * (1 + Number(stats.talent_mana) * 0.05)));
@@ -110,9 +129,12 @@ export default {
     // Combat HP and mana are scaled by gear/build; persist each value as a base-stat ratio.
     const toPersistentHp = hp => Math.max(0, Math.min(Number(stats.max_hp), Math.round((hp / Math.max(1, playerMaxHp)) * Number(stats.max_hp))));
     const toPersistentMana = mana => Math.max(0, Math.min(Number(stats.max_mana), Math.round((mana / Math.max(1, playerMaxMana)) * Number(stats.max_mana))));
-    const gearSummary = equippedItems.length
-      ? equippedItems.map(item => item.name + ' (' + formatEquipmentBonus(item) + ')').join('\n')
-      : 'Henüz ekipman kuşanılmadı. /market ve /ekipman komutlarını kullan.';
+    const gearSummary = [
+      equippedItems.length
+        ? equippedItems.map(item => item.name + ' (' + formatEquipmentBonus(item) + ')').join('\n')
+        : 'Henüz ekipman kuşanılmadı. /market ve /ekipman komutlarını kullan.',
+      gearBonus.setText ? '✨ **' + gearBonus.setText + '**' : null
+    ].filter(Boolean).join('\n');
 
     const claimed = await pool.query(
       `UPDATE users SET last_boss_at = NOW()
@@ -134,8 +156,11 @@ export default {
     );
     const upgradeBonus = Number(upgrades.rows[0]?.level || 0) * 2;
     const playerLevel = Number(stats.level || 1);
-    const boss = [...bossTiers].reverse().find(tier => playerLevel >= tier.minLevel) || bossTiers[0];
+    const unlockedBossTiers = bossTiers.filter(tier => playerLevel >= tier.minLevel);
+    // Rotate among unlocked tiers so earlier bosses remain replayable and journal collections can be completed.
+    const boss = unlockedBossTiers[Math.floor(Math.random() * unlockedBossTiers.length)] || bossTiers[0];
     let bossHp = boss.maxHp;
+    let bossPhase = 1;
     let turnCount = 0;
     let shield = false;
     let shieldReduction = 0.5;
@@ -149,6 +174,7 @@ export default {
       bossMaxHp: boss.maxHp,
       bossName: boss.name,
       bossRegion: boss.region,
+      bossImageUrl: boss.artUrl,
       playerMaxHp,
       playerMana,
       playerMaxMana,
@@ -161,7 +187,7 @@ export default {
       bossHp,
       playerHp,
       bonus: upgradeBonus,
-      description: `Kuzey sınırında tehlikeli bir iblisle karşılaştın, <@${interaction.user.id}>!\n\n**Hamleni seç:** Zoltraak dengeli saldırır; Alev Küresi daha güçlü hasar verir; Buz Mızrağı iblisi dondurup karşı saldırısını durdurabilir. Kalkan hasarı azaltır, Şifa savaşta bir kez can yeniler. Seviye ve boss zaferleriyle Yıldırım Zinciri, Taş Duvar ve Mana Patlaması açılır. Büyü kullandıkça ustalığın yükselir. Her karakter geliştirme seviyesi saldırı gücüne +2 hasar ekler.\n\n**Kuşanılan ekipman:**\n${gearSummary}\nEkipman bonusları bu savaşta saldırı, savunma, maksimum HP ve Mana değerlerine uygulanır.\n**Sınıf:** ${classProfile.label} — ${classProfile.description}\n**Savaş yapısı:** ${build.label} — ${build.description}`
+      description: `Kuzey sınırında yolunu kesen **${boss.name}** ile karşı karşıyasın, <@${interaction.user.id}>. Hamle yapmak için aşağıdaki büyü düğmelerini kullan; mana bedelini ve öğrenme gereksinimini düğme adından kontrol et.\n\n**Hamle rehberi**\n⚡ **Zoltraak:** temel, dengeli saldırı.\n🔥 **Alev Küresi:** daha yüksek hasar.\n🧊 **Buz Mızrağı:** uygun olduğunda boss’un karşı hamlesini durdurabilir.\n🛡️ **Kalkan / Taş Duvar:** gelen hasarı azaltmaya yardımcı olur.\n💚 **Şifa:** bu savaşta sınırlı kullanım hakkıyla can yeniler.\n🌌 **Mana Patlaması / Yıldırım Zinciri:** açılmış ve öğrenilmişse özel saldırı seçenekleri sunar.\n\n**Savaşa girmeden önce**\n• HP ve Mana düşükse **/dinlen** kullan.\n• **/ekipman**, **/buyular** ve **/profil** ile hazırlığını kontrol et.\n• Boss’un canı azaldıkça yeni aşamalara geçebileceğini unutma; son aşamalar daha tehlikelidir.\n\n**Kuşanılan ekipman**\n${gearSummary}\nEkipman bonusları saldırı, savunma ve maksimum kaynak değerlerine uygulanır.\n**Sınıf:** ${classProfile.label} — ${classProfile.description}\n**Savaş yapısı:** ${build.label} — ${build.description}`
     });
     await interaction.editReply({ embeds: [initial], components: [actionRow(), rareActionRow()] });
     const message = await interaction.fetchReply();
@@ -215,7 +241,7 @@ export default {
           }
           playerMana -= spellCost;
           spellUsed = 'zoltraak';
-          const damage = applyClassDamage(Math.floor(Math.random() * 13) + 18 + attack + upgradeBonus + (spellMastery.get('zoltraak') || 0) * 2, stats.class_name);
+          const damage = applyClassDamage(Math.floor(Math.random() * 13) + 18 + attack + upgradeBonus + (spellMastery.get('zoltraak') || 0) * 2 + getSpellMasteryAwakening('zoltraak', spellMastery.get('zoltraak')).damage, stats.class_name);
           bossHp = Math.max(0, bossHp - damage);
           actionText = `⚡ Zoltraak isabet etti! İblise **${damage} hasar** verdin. (Saldırı: ${attack}, Mana: −${spellCost})`;
         } else if (button.customId === 'demon_fire') {
@@ -226,7 +252,7 @@ export default {
           }
           playerMana -= spellCost;
           spellUsed = 'alev_kuresi';
-          const damage = applyClassDamage(Math.floor(Math.random() * 13) + 28 + attack + upgradeBonus + (spellMastery.get('alev_kuresi') || 0) * 2, stats.class_name);
+          const damage = applyClassDamage(Math.floor(Math.random() * 13) + 28 + attack + upgradeBonus + (spellMastery.get('alev_kuresi') || 0) * 2 + getSpellMasteryAwakening('alev_kuresi', spellMastery.get('alev_kuresi')).damage, stats.class_name);
           bossHp = Math.max(0, bossHp - damage);
           actionText = `🔥 Alev Küresi patladı! İblise **${damage} hasar** verdin. (Mana: −${spellCost})`;
         } else if (button.customId === 'demon_ice') {
@@ -237,9 +263,9 @@ export default {
           }
           playerMana -= spellCost;
           spellUsed = 'buz_mizragi';
-          const damage = applyClassDamage(Math.floor(Math.random() * 11) + 22 + attack + upgradeBonus + (spellMastery.get('buz_mizragi') || 0) * 2, stats.class_name);
+          const damage = applyClassDamage(Math.floor(Math.random() * 11) + 22 + attack + upgradeBonus + (spellMastery.get('buz_mizragi') || 0) * 2 + getSpellMasteryAwakening('buz_mizragi', spellMastery.get('buz_mizragi')).damage, stats.class_name);
           bossHp = Math.max(0, bossHp - damage);
-          const freezeChance = Math.min(0.6, 0.35 + (spellMastery.get(spellUsed) || 0) * 0.025);
+          const freezeChance = Math.min(0.7, 0.35 + (spellMastery.get(spellUsed) || 0) * 0.025 + getSpellMasteryAwakening(spellUsed, spellMastery.get(spellUsed)).freezeChance);
           frozenBoss = Math.random() < freezeChance;
           actionText = `🧊 Buz Mızrağı isabet etti! İblise **${damage} hasar** verdin. Donma ihtimali: **%${Math.round(freezeChance * 100)}** (Mana: −${spellCost})${frozenBoss ? '\n❄️ İblis dondu ve bu tur karşı saldırı yapamadı!' : ''}`;
         } else if (button.customId === 'demon_defend') {
@@ -251,7 +277,7 @@ export default {
           playerMana -= spellCost;
           spellUsed = 'koruyucu_bariyer';
           shield = true;
-          shieldReduction = Math.min(0.8, 0.5 + (spellMastery.get(spellUsed) || 0) * 0.03);
+          shieldReduction = Math.min(0.85, 0.5 + (spellMastery.get(spellUsed) || 0) * 0.03 + getSpellMasteryAwakening(spellUsed, spellMastery.get(spellUsed)).shieldReduction);
           actionText = `🛡️ Koruyucu büyü kurdun. Bir sonraki boss saldırısının **%${Math.round(shieldReduction * 100)}** kadarını engelleyecek. (Mana: −${spellCost})`;
         } else if (button.customId === 'demon_heal') {
           if (healUsed) {
@@ -266,7 +292,7 @@ export default {
           playerMana -= spellCost;
           spellUsed = 'sifa_isigi';
           const before = playerHp;
-          const healAmount = applyClassHealing(Math.floor(Math.random() * 16) + 20 + (spellMastery.get(spellUsed) || 0) * 3, stats.class_name);
+          const healAmount = applyClassHealing(Math.floor(Math.random() * 16) + 20 + (spellMastery.get(spellUsed) || 0) * 3 + getSpellMasteryAwakening(spellUsed, spellMastery.get(spellUsed)).healing, stats.class_name);
           playerHp = Math.min(playerMaxHp, playerHp + healAmount);
           healUsed = true;
           actionText = `💚 İyileşme büyüsüyle **${playerHp - before} HP** geri kazandın. Ustalık bonusu: **+${(spellMastery.get(spellUsed) || 0) * 3}** iyileştirme. (Mana: −${spellCost})`;
@@ -276,19 +302,19 @@ export default {
           const spellCost = applyClassManaCost(22, stats.class_name);
           if (playerMana < spellCost) { busy = false; return button.reply({ content: `Yıldırım Zinciri için en az **${spellCost} Mana** gerekiyor.`, ephemeral: true }); }
           playerMana -= spellCost; spellUsed = 'yildirim_zinciri';
-          const damage = applyClassDamage(Math.floor(Math.random() * 16) + 42 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 2, stats.class_name);
+          const damage = applyClassDamage(Math.floor(Math.random() * 16) + 42 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 2 + getSpellMasteryAwakening(spellUsed, spellMastery.get(spellUsed)).damage, stats.class_name);
           bossHp = Math.max(0, bossHp - damage); actionText = `⚡ **Yıldırım Zinciri** hedefi sardı ve **${damage} hasar** verdi. (Mana: −${spellCost})`;
         } else if (button.customId === 'demon_wall') {
           const spellCost = applyClassManaCost(12, stats.class_name);
           if (playerMana < spellCost) { busy = false; return button.reply({ content: `Taş Duvar için en az **${spellCost} Mana** gerekiyor.`, ephemeral: true }); }
           playerMana -= spellCost; spellUsed = 'tas_duvar'; fortified = true;
-          fortifiedReduction = Math.min(0.9, 0.75 + (spellMastery.get(spellUsed) || 0) * 0.015);
+          fortifiedReduction = Math.min(0.95, 0.75 + (spellMastery.get(spellUsed) || 0) * 0.015 + getSpellMasteryAwakening(spellUsed, spellMastery.get(spellUsed)).wallReduction);
           actionText = `🪨 **Taş Duvar** yükseldi. Bu tur boss hasarının **%${Math.round(fortifiedReduction * 100)}** kadarını engelleyecek. (Mana: −${spellCost})`;
         } else if (button.customId === 'demon_burst') {
           const spellCost = applyClassManaCost(30, stats.class_name);
           if (playerMana < spellCost) { busy = false; return button.reply({ content: `Mana Patlaması için en az **${spellCost} Mana** gerekiyor.`, ephemeral: true }); }
           playerMana -= spellCost; spellUsed = 'mana_patlamasi';
-          const damage = applyClassDamage(Math.floor(Math.random() * 21) + 65 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 3, stats.class_name);
+          const damage = applyClassDamage(Math.floor(Math.random() * 21) + 65 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 3 + getSpellMasteryAwakening(spellUsed, spellMastery.get(spellUsed)).damage, stats.class_name);
           bossHp = Math.max(0, bossHp - damage); actionText = `🌌 **Mana Patlaması** büyük bir enerji dalgası oluşturdu: **${damage} hasar**! (Mana: −${spellCost})`;
         }
 
@@ -302,12 +328,19 @@ export default {
           try {
             await db.query('BEGIN');
             await db.query(
-              `UPDATE users SET hp=$3, mana=$4, coins=coins+$5, xp=xp+$6, boss_defeats=boss_defeats+1,
+              `UPDATE users SET hp=$3, mana=$4, coins=coins+$5, xp=xp+$6, boss_defeats=boss_defeats+1, last_boss_win_at=NOW(),
                 stat_points=stat_points+GREATEST(0,(FLOOR(SQRT((xp+$6)::numeric / 100))::int + 1)-level),
                 level=FLOOR(SQRT((xp+$6)::numeric / 100))::int + 1
                WHERE guild_id=$1 AND user_id=$2`,
               [interaction.guildId, interaction.user.id, toPersistentHp(playerHp), toPersistentMana(playerMana), rewardCoins, rewardXp]
             );
+            const journalBossKey = boss.name.includes('Schattenwolf') ? 'schattenwolf'
+              : boss.name.includes('Harabe Muhafızı') ? 'ruinGuardian'
+                : boss.name.includes('Kuzey İblisi') ? 'northDemon'
+                  : boss.name.includes('Komutanı') ? 'demonCommander'
+                    : boss.name.includes('Äußerst') || boss.name.includes('Außerst') || boss.name.includes('Ausserst') ? 'ausserstLord'
+                      : null;
+            if (journalBossKey) await recordJournalEntry(db, interaction.guildId, interaction.user.id, 'bosses', journalBossKey);
             if (spellUsed) {
               const masteryUpdate = await db.query(
                 `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
@@ -334,6 +367,11 @@ export default {
                 [interaction.guildId, interaction.user.id, bonusLoot]
               );
             }
+            await db.query(
+              `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
+               ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
+              [interaction.guildId, interaction.user.id, boss.craftingMaterial]
+            );
             await db.query('COMMIT');
           } catch (error) {
             await db.query('ROLLBACK').catch(() => {});
@@ -347,17 +385,24 @@ export default {
           return button.update({
             embeds: [renderBattleEmbed({
               player: interaction.user, bossHp: 0, playerHp, bonus: upgradeBonus, won: true,
-              description: `${actionText}\n\n🌟 **Zafer!** **${boss.name}** yenildi.\nÖdülün: **${rewardCoins} altın**, **${rewardXp} XP** ve **💎 Mana Kristali ×1**.${bonusLoot ? `\n🎁 Ek ganimet: **${bonusLoot} ×1** (%${Math.round(boss.lootChance * 100)} ihtimal).` : ''}`
+              description: `${actionText}\n\n🌟 **Zafer!** **${boss.name}** yenildi.\nÖdülün: **${rewardCoins} altın**, **${rewardXp} XP** ve **💎 Mana Kristali ×1** ve ⚒️ **${boss.craftingMaterial} ×1**.${bonusLoot ? `\n🎁 Ek ganimet: **${bonusLoot} ×1** (%${Math.round(boss.lootChance * 100)} ihtimal).` : ''}`
             })],
             components: []
           });
         }
 
+        const nextBossPhase = getBossPhase(bossHp, boss.maxHp);
+        if (nextBossPhase > bossPhase) {
+          bossPhase = nextBossPhase;
+          actionText += bossPhase === 2
+            ? `\n🔥 **${boss.name} ikinci aşamaya girdi!** Saldırıları artık %10 daha güçlü.`
+            : `\n🌑 **${boss.name} son aşamasına geçti!** Saldırıları artık %25 daha güçlü ve özel hamleleri sertleşti.`;
+        }
         turnCount += 1;
         const rawBossDamage = Math.floor(Math.random() * (boss.maxDamage - boss.minDamage + 1)) + boss.minDamage;
-        let bossDamage = Math.max(1, rawBossDamage - Math.floor(defense / 2));
-        if (turnCount % 3 === 0) {
-          const specialDamage = boss.specialType === 'arcane' ? 12 : boss.specialType === 'heavy' ? 8 : 5;
+        let bossDamage = calculateBossIncomingDamage(rawBossDamage, defense, bossPhase);
+        if (turnCount % 3 === 0 && !frozenBoss) {
+          const specialDamage = (boss.specialType === 'arcane' ? 12 : boss.specialType === 'heavy' ? 8 : 5) + bossPhaseSpecialBonus(bossPhase);
           bossDamage += specialDamage;
           actionText += `\n💥 **${boss.special}**! Boss özel saldırı yaptı ve hasarını **+${specialDamage}** artırdı.`;
           if (boss.specialType === 'drain') {
@@ -365,6 +410,8 @@ export default {
             playerMana -= drainedMana;
             actionText += `\n🔮 Lanet **${drainedMana} Mana** emdi!`;
           }
+        } else if (turnCount % 3 === 0 && frozenBoss) {
+          actionText += '\n❄️ Donma etkisi bossun özel saldırısını da durdurdu!';
         }
         if (frozenBoss) bossDamage = 0;
         if (fortified && bossDamage > 0) {

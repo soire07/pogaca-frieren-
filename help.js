@@ -1,46 +1,61 @@
-import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 const sections = [
   {
-    name: '🪄 Frieren evreni',
-    value: '`/frieren` • Frieren günlüğü\n`/evren` • Evren ve karakter rehberi\n`/buyu` • Rastgele büyü\n`/buyukitabi` • Büyü arşivi\n`/buyuogren` • Savaş büyüsü öğren\n`/buyular` • Öğrenilen büyüler\n`/buyuustaligi` • Büyü ustalığı\n`/karakter` • Karakter rehberi\n`/mimic` • Mimic şakası'
+    name: '🧭 Yolculuğa nereden başlamalı?',
+    value: '**/rehber** — Sayfalı, adım adım oynanış kılavuzu\n**/karakter panel** — Kendi maceracının ana ekranı\n**/sinifrehberi** — Sınıf pasiflerini karşılaştır\n**Önerilen sıra:** /rehber → /karakter olustur → /karakter panel → /gunlukodul → /kesif'
+  },
+  {
+    name: '🪄 Frieren evreni ve büyüler',
+    value: '**/frieren** — Frieren günlüğü · **/evren** — Evren bilgileri · **/karakter** — Kendi RPG karakterin ve gelişim menün\n**/buyu** — Büyü keşfi · **/buyukitabi** — Büyü arşivi · **/buyuogren** — Yeni savaş büyüsü öğren\n**/buyular** — Öğrendiğin büyüler · **/buyuustaligi** — Ustalık seviyeleri · **/buyupratik** — Öğrendiğin büyülerde pratik yap'
   },
   {
     name: '🎴 Karakter koleksiyonu',
-    value: '`/kimimben` • Karakter keşfet\n`/karaktercek` • Günlük ücretsiz çekim\n`/koleksiyon` • Koleksiyonunu gör\n`/karaktergelistir` • Karakterini güçlendir\n`/takasteklif` • Kopya takas et\n`/parcala` • Fazla kopyayı altına çevir'
+    value: '**/kimimben** — Karakter keşfet · **/karaktercek** — Günlük karakter çekimi\n**/koleksiyon** — Sahip olduğun karakterler ve filtreler · **/karaktergelistir** — Karakterini geliştir\n**/takasteklif** — Başka oyuncuyla kopya takası · **/parcala** — Fazla kopyaları dönüştür'
   },
   {
-    name: '⚔️ Macera ve RPG',
-    value: '`/profil` • Maceracı profilin\n`/maceragecmisi` • Savaş, keşif ve koleksiyon istatistikleri\n`/hedefler` • RPG gelişim hedefleri\n`/siralama` • Seviye, XP, altın ve savaş sıralamaları\n`/kesif` • Bölge keşfi\n`/dunya` • Bölgeleri incele\n`/hikaye` • Seçimlere dayalı hikâye\n`/npc` • Yol arkadaşları ve yan görevler\n`/buyusavasi` • Büyü düellosu\n`/iblisavasi` • İblis boss savaşı\n`/zindan` • İki kişilik ortak zindan\n`/katlizindan` • Dört kişiye kadar, beş katlı ortak zindan; tank/şifacı/hasar rolleri, tuzaklar ve sandıklar\n`/ortakboss` • Tank, şifacı ve hasar rolleriyle ortak boss baskını\n`/bossrehberi` • Bosslar, ganimetler ve ilerleme\n`/gunlukodul` • Günlük altın\n`/gunlukgorev` • Günlük görevler\n`/basarimlar` • Başarımlar\n`/liderlik` • Sunucu sıralaması'
+    name: '⚔️ Keşif, hikâye ve görevler',
+    value: '**/kesif** — Bölge keşfi ve karşılaşmalar · **/dunya** — Bölgeleri tanı · **/hikaye** — Hikâye seçimleri\n**/npc** — Yol arkadaşları ve yan içerikler · **/hedefler** — İlerleme hedefleri · **/maceragecmisi** — Macera kayıtları\n**/gunlukodul** — Günlük ödül · **/gunlukgorev** — Günlük görevler · **/basarimlar** — Tamamlanan başarılar · **/gunluk** — Koleksiyon kayıtları'
   },
   {
-    name: '💰 Ekonomi ve eşyalar',
-    value: '`/bakiye` • Altın bakiyesi\n`/market` • Ekipman ve büyülü market\n`/envanter` • Eşyalarını ve kuşanılanları gör\n`/ekipman` • Silah, zırh ve yüzük kuşan/çıkar\n`/esyakullan` • Kullanılabilir eşya kullan'
+    name: '👹 Savaş ve zindanlar',
+    value: '**/bossrehberi** — Boss kademeleri, saldırıları ve ganimetleri\n**/iblisavasi** — Tek başına boss savaşı · **/ortakboss** — Takım baskını\n**/zindan** — Ortak zindan · **/katlizindan** — Beş katlı takım seferi · **/buyusavasi** — Oyuncular arası büyü düellosu\n**İpucu:** Savaştan önce /dinlen, /ekipman ve /buyular ile hazırlığını kontrol et.'
   },
   {
-    name: '🎲 Eğlence ve topluluk',
-    value: '`/animequiz` • Anime bilgi yarışması\n`/pogaca` • Poğaça molası\n`/sans` • Şansını dene\n`/saril` • Birine sarıl\n`/istatistik` • Bot istatistikleri'
+    name: '🧙 Gelişim, ekipman ve ekonomi',
+    value: '**/market** — Eşya satın al · **/cantam** — Eşyalarını gör · **/ekipman** — Ekipman kuşan/çıkar\n**/esyakullan** — Kullanılabilir eşya kullan · **/bakiye** — Altınını kontrol et · **/dinlen** — Can ve Mana toparla\n**/karakter gelisim** — Gelişim puanlarını harca · **/karakter yapi** — Savaş yapını seç\n**/yetenekagaci** — Yetenek geliştirmelerini incele · **/siralama** ve **/liderlik** — Sıralamaları görüntüle'
+  },
+  {
+    name: '🥐 Eğlence ve topluluk',
+    value: '**/animequiz** — Anime bilgi yarışması · **/pogaca** — Poğaça molası · **/sans** — Şansını dene\n**/saril** — Bir oyuncuya sarıl · **/mimic** — Mimic şakası · **/istatistik** — Bot istatistikleri'
   },
   {
     name: '🛡️ Sunucu yönetimi',
-    value: '`/kurulum` • Karşılama ve log ayarları\n`/uyar` • Uyarı kaydı\n`/timeout` • Üyeyi sustur\n`/ban` • Üyeyi yasakla\n`/temizle` • Mesajları temizle'
+    value: '**/kurulum** — Sunucu karşılama ve log ayarları · **/uyar** — Uyarı ver\n**/timeout** — Geçici iletişim kısıtlaması · **/ban** — Sunucudan uzaklaştır · **/temizle** — Mesajları temizle\nBu komutlar için uygun sunucu izinleri gerekebilir.'
   }
 ];
 
 export default {
   data: new SlashCommandBuilder()
     .setName('yardim')
-    .setDescription('Poğaça Frieren komutlarını kategorilerle göster.'),
-
+    .setDescription('Komutları kategorilere ayırır ve doğru başlangıç yolunu gösterir.'),
   async execute(interaction) {
-    const gif = new AttachmentBuilder('./yardim.gif');
     const embed = new EmbedBuilder()
       .setColor(0x9b8cff)
-      .setTitle('🥐 Poğaça Frieren • Büyücü Rehberi')
-      .setDescription('Selam gezgin! Frieren’in büyü arşivini keşfet, yol arkadaşları topla, iblislerle savaş ve poğaça altınını biriktir.\n\n**Başlangıç önerisi:** `/kimimben` → `/profil` → `/macera`')
+      .setAuthor({ name: 'POĞAÇA FRIEREN • MACERACI EL KİTABI' })
+      .setTitle('🥐 Gezginin Komut Rehberi')
+      .setDescription(
+        'Frieren’in dünyasında her yolculuk küçük bir adımla başlar. Bu sayfa komutları bulmana yardım eder; ayrıntılı oynanış, gelişim ve savaş açıklamaları için **/rehber** komutunu aç.\n\n' +
+        '**Yeni oyuncu rotası**\n' +
+        '1. **/rehber** — temel sistemleri öğren.\n' +
+        '2. **/kimimben** — karakter keşfet ve **/koleksiyon** ile kontrol et.\n' +
+        '3. **/karakter olustur** — adını ve sınıfını seç; **/karakter panel** ile durumunu gör.\n' +
+        '4. **/gunlukodul** → **/kesif** — ilk ödülünü alıp yolculuğa çık.\n\n' +
+        'Komutun adını yazmaya başladığında Discord’un açtığı seçenekleri ve zorunlu alanları da kontrol et.'
+      )
       .addFields(sections)
-      .setImage('attachment://yardim.gif')
-      .setFooter({ text: 'Bütün altınlar, karakterler ve ilerleme sunucu bazında saklanır.' });
-    await interaction.reply({ embeds: [embed], files: [gif], ephemeral: true });
+      .setFooter({ text: 'Poğaça Frieren • Acele etme, hazırlan, keşfet ve yolculuğuna kendi izini bırak.' });
+
+    return interaction.reply({ embeds: [embed], ephemeral: true });
   }
 };

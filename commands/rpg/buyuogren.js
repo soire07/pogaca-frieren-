@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
+import { recordJournalEntry } from '../../gameplay-journal.js';
 
 const spells = {
   alev_kuresi: { name: '🔥 Alev Küresi', cost: 180, description: 'Yüksek hasarlı ateş saldırısı.' },
@@ -79,6 +80,9 @@ export default {
         'INSERT INTO learned_spells (guild_id,user_id,spell_key) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
         [interaction.guildId, interaction.user.id, spellKey]
       );
+      if (spellKey !== 'zoltraak') {
+        await recordJournalEntry(db, interaction.guildId, interaction.user.id, 'spells', spellKey);
+      }
       await db.query('COMMIT');
 
       const embed = new EmbedBuilder()

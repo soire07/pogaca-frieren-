@@ -2,7 +2,8 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
 import { equipmentItems, equipmentBonus } from '../../equipment-data.js';
 import { levelForXp } from '../../utils.js';
-import { applyClassDefense, applyClassManaCost, applyEquipmentSetBonus, getCharacterBuild } from '../../rpg-mechanics.js';
+import { recordJournalEntry } from '../../gameplay-journal.js';
+import { applyClassDefense, applyClassManaCost, applyEquipmentSetBonus, explorationMasteryReward, getCharacterBuild } from '../../rpg-mechanics.js';
 
 const COOLDOWN_MS = 15 * 60 * 1000;
 const regions = {
@@ -60,6 +61,15 @@ const regions = {
       { title: '📜 Mühürlü Büyü Arşivi', text: 'Zorlu bir büyü bilmecesini çözüp eski bir arşive ulaştın.', xp: 245, coins: 290, manaCost: 18, hpDamage: 0, item: '🗝️ Harabe Anahtarı' }
     ]
   }
+};
+
+const craftingMaterials = {
+  merkez: '🥐 Büyülü Poğaça Kutusu',
+  orman: '💎 Mana Kristali',
+  harabeler: '📖 Yasak Büyü Kitabı',
+  kuzey: '🐉 Ejderha Pulu',
+  yayla: '🌙 Efsunlu Elf Yadigârı',
+  aus: '📜 Frieren’in Kayıp Notları'
 };
 
 export default {
@@ -142,14 +152,26 @@ export default {
       }
 
       const encounter = region.encounters[Math.floor(Math.random() * region.encounters.length)];
+      const { rows: [masteryRow] } = await client.query(
+        `INSERT INTO exploration_region_mastery(guild_id,user_id,region_key,visits)
+         VALUES($1,$2,$3,1)
+         ON CONFLICT(guild_id,user_id,region_key)
+         DO UPDATE SET visits=exploration_region_mastery.visits+1, updated_at=NOW()
+         RETURNING visits`,
+        [interaction.guildId, interaction.user.id, regionKey]
+      );
+      const regionVisits = Number(masteryRow.visits);
+      const masteryReward = explorationMasteryReward(regionVisits);
       // Rewards rise with player level: +10% per 10 levels, capped at 5x.
       const rewardMultiplier = Math.min(5, 1 + Math.floor((Number(player.level) - 1) / 10) * 0.1);
       const rewardXp = Math.round(encounter.xp * rewardMultiplier);
       const rewardCoins = Math.round(encounter.coins * rewardMultiplier);
+      const totalXpReward = rewardXp + masteryReward.xp;
+      const totalCoinReward = rewardCoins + masteryReward.coins;
       const manaCost = encounter.manaCost > 0 ? applyClassManaCost(encounter.manaCost, player.class_name) : 0;
       const actualManaCost = currentMana >= manaCost ? manaCost : 0;
       const hpDamage = Math.max(0, Math.round(encounter.hpDamage - effectiveDefense * 0.12));
-      const newXp = Number(player.xp) + rewardXp;
+      const newXp = Number(player.xp) + totalXpReward;
       const newLevel = levelForXp(newXp);
       const newHp = Math.max(0, currentHp - hpDamage);
       const newMana = Math.max(0, currentMana - actualManaCost);
@@ -168,7 +190,7 @@ export default {
           last_exploration_at=NOW(),
           exploration_count=exploration_count+1
          WHERE guild_id=$1 AND user_id=$2`,
-        [interaction.guildId, interaction.user.id, newXp, newLevel, rewardCoins, persistedHp, persistedMana, gainedPoints]
+        [interaction.guildId, interaction.user.id, newXp, newLevel, totalCoinReward, persistedHp, persistedMana, gainedPoints]
       );
 
       if (encounter.item) {
@@ -181,6 +203,31 @@ export default {
         );
       }
 
+      // Keşifler, /zanaat tariflerinde kullanılan malzemeleri de nadiren buldurur.
+      const craftingMaterial = craftingMaterials[regionKey];
+      const foundCraftingMaterial = Math.random() < 0.4;
+      if (craftingMaterial && foundCraftingMaterial) {
+        await client.query(
+          `INSERT INTO inventory(guild_id,user_id,item_key,quantity)
+           VALUES($1,$2,$3,1)
+           ON CONFLICT(guild_id,user_id,item_key)
+           DO UPDATE SET quantity=inventory.quantity+1`,
+          [interaction.guildId, interaction.user.id, craftingMaterial]
+        );
+      }
+
+      const discoveryKey = encounter.title.includes('Gezgin Fırın') ? 'wandering-bakery'
+        : encounter.title.includes('Unutulmuş Grimoire') ? 'forgotten-grimoire'
+          : encounter.title.includes('Mana İzleri') ? 'forest-grimoire'
+            : encounter.title.includes('Mühürlü Oda') ? 'ruined-chamber'
+              : encounter.title.includes('İblis İzleri') ? 'demon-tracks'
+                : encounter.title.includes('Eski Geçit') ? 'old-passage'
+                  : encounter.title.includes('Kar Fırtınası') ? 'northern-storm'
+                    : encounter.title.includes('Kadim Mana Damarı') ? 'ancient-mana-vein'
+                      : encounter.title.includes('Kuzey Geçidi Çatışması') ? 'north-gate-clash'
+                        : encounter.title.includes('Sınav') ? 'exam-ruins'
+                          : encounter.title.includes('Mühürlü Büyü Arşivi') ? 'sealed-archive' : null;
+      if (discoveryKey) await recordJournalEntry(client, interaction.guildId, interaction.user.id, 'discoveries', discoveryKey);
       await client.query('COMMIT');
 
       const description = [
@@ -188,7 +235,10 @@ export default {
         '',
         `**Ödüller:** +${rewardCoins} altın · +${rewardXp} XP`,
         rewardMultiplier > 1 ? `**Seviye bonusu:** x${rewardMultiplier.toFixed(1)}` : '',
+        `**Bölge ustalığı:** ${masteryReward.level} seviye · ${regionVisits % 3 || (regionVisits > 0 ? 3 : 0)}/3 ziyaret`,
+        masteryReward.milestone ? `🏅 **Bölge ustalığı ödülü:** +${masteryReward.coins} altın · +${masteryReward.xp} XP` : '',
         encounter.item ? `**Bulunan eşya:** ${encounter.item}` : '',
+        foundCraftingMaterial ? `⚒️ **Zanaat malzemesi:** ${craftingMaterial} (bölgeye özgü malzeme buldun!)` : '',
         hpDamage ? `**Can kaybı:** −${hpDamage} HP (savunma dahil)` : '',
         actualManaCost ? `**Büyü maliyeti:** −${actualManaCost} Mana` : encounter.manaCost ? 'Mana yetersiz olduğu için büyü kullanmadın.' : '',
         `**Sınıf / savaş yapısı:** ${player.class_name || 'Gezgin'} · ${build.label}`,

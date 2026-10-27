@@ -1,10 +1,18 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder, ComponentType } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
+import { getBossArtUrl } from './boss-art.js';
+import { recordJournalEntry } from './gameplay-journal.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild } from './rpg-mechanics.js';
+import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus } from './rpg-mechanics.js';
 
 const FLOORS = 5;
+
+function floorProgressBar(cleared, total = FLOORS, width = 10) {
+  const ratio = Math.max(0, Math.min(1, Number(cleared) / Math.max(1, Number(total))));
+  const filled = Math.round(ratio * width);
+  return '█'.repeat(filled) + '░'.repeat(width - filled);
+}
 const COOLDOWN_MS = 30 * 60_000;
 const LOOT = ['Orman Kristali', 'Kadim Rün Parçası', 'Kuzey Mührü'];
 const FLOOR_NAMES = ['🌲 Köklerin Koridoru', '🗿 Kadim Harabeler', '🌫️ Sisli Geçit', '🔥 Küller Salonu', '👑 Mühürlü İblis Lordu'];
@@ -218,8 +226,17 @@ export default {
         const enemyDamage = enemyStats.damage;
         let turn = 0;
         let bossRageAnnounced = false;
+        const finalBoss = floor === FLOORS;
+        let enemyPhase = 1;
         log.push(`**Kat ${floor}: ${FLOOR_NAMES[floor - 1]}** — ${maxEnemyHp} HP.`);
         while (enemyHp > 0 && hpNow.some(hp => hp > 0) && turn < 10) {
+          const currentPhase = finalBoss ? getBossPhase(enemyHp, maxEnemyHp) : 1;
+          if (currentPhase > enemyPhase) {
+            enemyPhase = currentPhase;
+            log.push(currentPhase === 2
+              ? '🔥 **İblis Lordu ikinci evreye geçti!** Saldırıları %10 güçlendi.'
+              : '🌑 **İblis Lordu son evreye geçti!** Saldırıları %25 güçlendi; özel saldırıları sertleşti.');
+          }
           turn++;
           turns++;
           const livingAtStart = players.filter((_p, i) => hpNow[i] > 0);
@@ -232,7 +249,7 @@ export default {
             new ButtonBuilder().setCustomId(`katlizindan:act:defend:${suffix}`).setLabel('🛡️ Savun').setStyle(ButtonStyle.Secondary)
           );
           const actionMessage = await interaction.editReply({
-            content: `**Kat ${floor}/${FLOORS} · Tur ${turn}**\n🌑 Düşman: ${enemyHp}/${maxEnemyHp} HP\n${livingAtStart.map(p => `<@${p.user_id}> (${p.mana}/${p.maxMana} mana)`).join(' · ')}\n\nHer yaşayan oyuncu Saldır, Zoltraak (12), Heilen (18), Mana Kalkanı (10) veya Savun seçsin. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
+            content: `**Kat ${floor}/${FLOORS} · Tur ${turn}${finalBoss ? ` · Evre ${enemyPhase}/3` : ''}**\n🌑 Düşman: ${enemyHp}/${maxEnemyHp} HP\n${livingAtStart.map(p => `<@${p.user_id}> (${p.mana}/${p.maxMana} mana)`).join(' · ')}\n\nHer yaşayan oyuncu Saldır, Zoltraak (12), Heilen (18), Mana Kalkanı (10) veya Savun seçsin. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
             embeds: [],
             components: [actionRow]
           });
@@ -315,11 +332,13 @@ export default {
             const tankIndex = living.find(i => players[i].role === 'tank');
             const targetIndex = tankIndex !== undefined && Math.random() < 0.7 ? tankIndex : living[(turn + floor) % living.length];
             const target = players[targetIndex];
-            const finalBoss = floor === FLOORS;
             const enraged = finalBoss && enemyHp <= maxEnemyHp * 0.5;
             const specialAttack = finalBoss && turn % 3 === 0;
             const bossPower = finalBoss ? 1.35 : 1;
-            let incoming = Math.max(1, Math.round(enemyDamage * bossPower * (0.9 + ((turn + floor) % 3) * 0.08) + (enraged ? 7 : 0) + (specialAttack ? 6 : 0) - target.defense * 0.3));
+            const rawIncoming = Math.max(1, Math.round(enemyDamage * bossPower * (0.9 + ((turn + floor) % 3) * 0.08) + (enraged ? 7 : 0) + (specialAttack ? 6 + bossPhaseSpecialBonus(enemyPhase) : 0)));
+            let incoming = finalBoss
+              ? calculateBossIncomingDamage(rawIncoming, Math.round(target.defense * 0.6), enemyPhase)
+              : Math.max(1, Math.round(rawIncoming - target.defense * 0.3));
             if (defending.has(targetIndex)) incoming = Math.max(1, Math.round(incoming * 0.45));
             hpNow[targetIndex] = Math.max(0, hpNow[targetIndex] - incoming);
             if (enraged && !bossRageAnnounced) { log.push('🔥 İblis Lordu öfke evresine girdi; saldırıları güçlendi!'); bossRageAnnounced = true; }
@@ -412,7 +431,15 @@ export default {
         return interaction.editReply({ content: `⏳ <@${concurrentRun.user_id}> başka bir macerada bekleme süresine girdi; yaklaşık **${mins} dakika** sonra yeniden deneyin. Bu koşunun ödülleri kaydedilmedi.`, components: [] });
       }
       const victory = floorsCleared === FLOORS;
+      if (victory) await recordJournalEntry(db, interaction.guildId, interaction.user.id, 'discoveries', 'ancient-elf-sanctuary');
       const loot = victory && Math.random() < 0.35 ? LOOT[Math.floor(Math.random() * LOOT.length)] : null;
+      const craftingLoot = floorsCleared >= FLOORS
+        ? '👑 Himmel’in Efsanevi Yadigârı'
+        : floorsCleared >= 3
+          ? '🐉 Ejderha Pulu'
+          : floorsCleared >= 1
+            ? '💎 Mana Kristali'
+            : null;
       const persistedHpNow = hpNow.map((hp, i) => {
         const combatMaxHp = Math.max(1, Number(players[i].maxHp));
         const baseMaxHp = Math.max(1, Number(players[i].max_hp));
@@ -449,7 +476,7 @@ export default {
           [interaction.guildId, p.user_id, persistedHpNow[i], newXp, newLevel, totalCoins,
             Math.max(0, newLevel - Number(current.level)), victory ? 1 : 0, persistedManaNow[i]]
         );
-        for (const itemKey of [...chestRewards, ...(loot ? [loot] : [])]) await db.query(
+        for (const itemKey of [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])]) await db.query(
           `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
            ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
           [interaction.guildId, p.user_id, itemKey]
@@ -472,12 +499,15 @@ export default {
           '\n\n**Kat günlüğü**\n' + log.slice(-12).join('\n')
         )
         .addFields(
+          { name: '🗝️ Zindan ilerlemesi', value: `\`${floorProgressBar(floorsCleared)}\`\n**${floorsCleared}/${FLOORS} kat** · ${victory ? '🏆 İblis Lordu yenildi' : floorsCleared >= 3 ? '🔥 Derin katlara ulaşıldı' : '🌲 Yolculuk devam ediyor'}`, inline: false },
           { name: '🏅 Kalıcı unvanlar', value: milestoneText.slice(0,1024), inline: false },
           { name: '🎁 Kişi başı ödül', value: `✨ ${totalXp} XP\n🥐 ${totalCoins} altın`, inline: true },
-          { name: '💎 Ganimet ve sandıklar', value: [...chestRewards, ...(loot ? [loot] : [])].length ? [...chestRewards, ...(loot ? [loot] : [])].map(item => `• ${item}`).join('\\n') : 'Bu sefer ganimet çıkmadı.', inline: true },
+          { name: '💎 Ganimet ve sandıklar', value: [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])].length ? [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])].map(item => `• ${item}`).join('\\n') : 'Bu sefer ganimet çıkmadı.', inline: true },
           { name: '⏳ Bekleme', value: '30 dakika', inline: true }
         )
         .setFooter({ text: 'Poğaça Frieren • Kat kat ilerleyin, takımınızı koruyun.' });
+      const dungeonBossArt = getBossArtUrl('dungeonFinal');
+      if (dungeonBossArt && victory) embed.setImage(dungeonBossArt);
       return interaction.editReply({ content: null, embeds: [embed], components: [] });
     } catch (error) {
       if (db) await db.query('ROLLBACK').catch(() => {});

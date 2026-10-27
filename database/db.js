@@ -22,6 +22,7 @@ export async function initDatabase() {
       level INTEGER NOT NULL DEFAULT 1 CHECK (level >= 1),
       coins INTEGER NOT NULL DEFAULT 0 CHECK (coins >= 0),
       class_name TEXT NOT NULL DEFAULT 'Gezgin',
+      character_name TEXT,
       hp INTEGER NOT NULL DEFAULT 100 CHECK (hp >= 0),
       max_hp INTEGER NOT NULL DEFAULT 100 CHECK (max_hp >= 1),
       mana INTEGER NOT NULL DEFAULT 100 CHECK (mana >= 0),
@@ -33,6 +34,7 @@ export async function initDatabase() {
       last_daily_at TIMESTAMPTZ,
       last_adventure_at TIMESTAMPTZ,
       last_boss_at TIMESTAMPTZ,
+      last_boss_win_at TIMESTAMPTZ,
       last_rest_at TIMESTAMPTZ,
       last_exploration_at TIMESTAMPTZ,
       last_item_used_at TIMESTAMPTZ,
@@ -62,7 +64,9 @@ export async function initDatabase() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS defense INTEGER NOT NULL DEFAULT 5 CHECK (defense >= 0);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS stat_points INTEGER NOT NULL DEFAULT 0 CHECK (stat_points >= 0);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS active_build TEXT NOT NULL DEFAULT 'dengeli';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS character_name TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_boss_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_boss_win_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_rest_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_exploration_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_item_used_at TIMESTAMPTZ;
@@ -268,6 +272,15 @@ export async function initDatabase() {
       FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
     );
     ALTER TABLE adventure_streaks ADD COLUMN IF NOT EXISTS best_streak INTEGER NOT NULL DEFAULT 0 CHECK (best_streak >= 0);
+    CREATE TABLE IF NOT EXISTS exploration_region_mastery (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      region_key TEXT NOT NULL,
+      visits INTEGER NOT NULL DEFAULT 0 CHECK (visits >= 0),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id,user_id,region_key),
+      FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS adventure_route_mastery (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
@@ -275,6 +288,20 @@ export async function initDatabase() {
       visits INTEGER NOT NULL DEFAULT 0 CHECK (visits >= 0),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY (guild_id,user_id,route_key),
+      FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS adventure_journal_entries (
+      guild_id TEXT NOT NULL, user_id TEXT NOT NULL, collection_key TEXT NOT NULL,
+      entry_key TEXT NOT NULL, discovered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id,user_id,collection_key,entry_key),
+      FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_adventure_journal_entries_user
+      ON adventure_journal_entries(guild_id,user_id,collection_key);
+    CREATE TABLE IF NOT EXISTS adventure_journal_collection_claims (
+      guild_id TEXT NOT NULL, user_id TEXT NOT NULL, collection_key TEXT NOT NULL,
+      claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id,user_id,collection_key),
       FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
     );
     CREATE TABLE IF NOT EXISTS adventure_journal_claims (

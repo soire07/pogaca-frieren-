@@ -116,7 +116,7 @@ test('solo demon battle persists build-adjusted HP as a base-stat health ratio',
 
 test('exploration uses equipment, class and combat-build passives while preserving base-stat HP and mana ratios', async () => {
   const source = await read('commands/rpg/kesif.js');
-  assert.match(source, /applyClassDefense, applyClassManaCost, applyEquipmentSetBonus, getCharacterBuild/);
+  assert.match(source, /applyClassDefense, applyClassManaCost, applyEquipmentSetBonus, explorationMasteryReward, getCharacterBuild/);
   assert.match(source, /getCharacterBuild\(player\.active_build\)/);
   assert.match(source, /applyClassDefense\(Number\(player\.defense\) \+ gear\.defense, player\.class_name\)/);
   assert.match(source, /applyClassManaCost\(encounter\.manaCost, player\.class_name\)/);

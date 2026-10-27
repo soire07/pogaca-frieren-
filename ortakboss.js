@@ -1,10 +1,18 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder, ComponentType } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
+import { getBossArtUrl } from './boss-art.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild } from './rpg-mechanics.js';
+import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
+
+function hpBar(current, maximum, width = 12) {
+  const max = Math.max(1, Number(maximum) || 1);
+  const ratio = Math.max(0, Math.min(1, Number(current) / max));
+  const filled = Math.round(ratio * width);
+  return '█'.repeat(filled) + '░'.repeat(width - filled);
+}
 const ROLES = {
   tank: { label: '🛡️ Muhafız', description: 'Daha çok hasar üzerine çeker ve daha dayanıklıdır.', hp: 1.25, attack: 0.85, defense: 1.45 },
   healer: { label: '💚 Şifacı', description: 'Her tur takıma küçük bir iyileştirme sağlar.', hp: 1, attack: 0.85, defense: 1.05 },
@@ -187,8 +195,16 @@ export default {
       const spellCasts = new Map();
       let rounds = 0;
       let rageAnnounced = false;
+      let bossPhase = 1;
       while (bossHp > 0 && hpNow.some(hp=>hp>0) && rounds < 12) {
         rounds++;
+        const currentPhase = getBossPhase(bossHp, maxBossHp);
+        if (currentPhase > bossPhase) {
+          bossPhase = currentPhase;
+          log.push(currentPhase === 2
+            ? `🔥 **${BOSS.name} ikinci evreye geçti!** Saldırıları %10 güçlendi.`
+            : `🌑 **${BOSS.name} son evreye geçti!** Saldırıları %25 güçlendi; özel hamleleri de sertleşti.`);
+        }
         const alive = fighters.map((x,i)=>hpNow[i]>0?i:-1).filter(i=>i>=0);
         if (!alive.length) break;
         const healer = alive.find(i=>fighters[i].role==='healer');
@@ -207,7 +223,7 @@ export default {
           new ButtonBuilder().setCustomId(`raid:act:defend:${interaction.id}:${rounds}`).setLabel('🛡️ Savun').setStyle(ButtonStyle.Secondary)
         );
         const actionMessage = await interaction.editReply({
-          content: `**${BOSS.name} · Tur ${rounds}**\n❤️ Boss: ${bossHp}/${maxBossHp} HP\n${alive.map(i => `<@${fighters[i].userId}> (${fighters[i].mana}/${fighters[i].maxMana} mana)`).join(' · ')}\nHer oyuncu Saldır, Zoltraak, Heilen, Mana Kalkanı veya Savun seçsin. Zayıflık: **${BOSS.weaknessLabel}**. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
+          content: `**${BOSS.name} · Tur ${rounds} · Evre ${bossPhase}/3**\n❤️ Boss: ${bossHp}/${maxBossHp} HP\n${alive.map(i => `<@${fighters[i].userId}> (${fighters[i].mana}/${fighters[i].maxMana} mana)`).join(' · ')}\nHer oyuncu Saldır, Zoltraak, Heilen, Mana Kalkanı veya Savun seçsin. Zayıflık: **${BOSS.weaknessLabel}**. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
           embeds: [],
           components: [actionRow]
         });
@@ -281,20 +297,20 @@ export default {
         const starburst = BOSS.special === 'mana-star' && rounds % 3 === 0;
         const shardRain = BOSS.special === 'shard-rain' && rounds % 2 === 0;
         const manaCurse = BOSS.special === 'mana-curse' && rounds % 3 === 0;
-        const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0);
+        const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0)+((starburst || shardRain || manaCurse) ? bossPhaseSpecialBonus(bossPhase) : 0);
         if (enraged && !rageAnnounced) { log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.'); rageAnnounced = true; }
         if (starburst || shardRain) {
           log.push(BOSS.special === 'shard-rain' ? '🐉 Cam Pullar Ejderhası keskin kristal parçalarını tüm takıma yağdırıyor!' : '☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!');
           for (const i of living) {
             const f=fighters[i];
             const specialMultiplier = shardRain ? 0.5 : 0.68;
-            let incoming=Math.max(1,Math.round(rawDamage*specialMultiplier-f.defense*0.22));
+            let incoming=calculateBossIncomingDamage(Math.round(rawDamage*specialMultiplier), Math.round(f.defense*0.44), bossPhase);
             if (defending.has(i)) incoming=Math.max(1,Math.round(incoming*0.45));
             hpNow[i]=Math.max(0,hpNow[i]-incoming);
             log.push(`☄️ ${f.username} ${shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
           }
         } else {
-          let incoming=Math.max(1,Math.round(rawDamage-target.defense*0.28));
+          let incoming=calculateBossIncomingDamage(rawDamage, Math.round(target.defense*0.56), bossPhase);
           if (defending.has(targetIndex)) incoming=Math.max(1,Math.round(incoming*0.45));
           hpNow[targetIndex]=Math.max(0,hpNow[targetIndex]-incoming);
           if (manaCurse) {
@@ -380,12 +396,15 @@ export default {
           fighters.map((f,i)=>`**<@${f.userId}>** — ${f.roleData.label} · ${f.classProfile.label} · ${f.build.label}\n❤️ ${persistedHpNow[i]}/${f.baseMaxHp} HP · ✨ ${f.mana}/${f.maxMana} mana · ⚔️ ${Math.round(f.attack)} saldırı · 🛡️ ${Math.round(f.defense)} savunma`).join('\n\n')+
           '\n\n**Savaş günlüğü**\n'+log.slice(-15).join('\n'))
         .addFields(
+          {name:'👹 Boss canı ve aşaması',value:`\`${hpBar(bossHp,maxBossHp)}\`\n**${Math.max(0,bossHp)}/${maxBossHp} HP** · ${getBossPhase(bossHp,maxBossHp)===3?'🌑 Son aşama':getBossPhase(bossHp,maxBossHp)===2?'🔥 İkinci aşama':'🌒 İlk aşama'}`,inline:false},
           {name:'🎁 Kişi başı ödül',value:`✨ ${xpReward} XP\n🥐 ${coinReward} altın`,inline:true},
           {name:'🏅 Kalıcı unvanlar',value:milestoneText.slice(0,1024),inline:false},
           {name:'🧭 Boss bilgisi',value:`Zayıflık: **${BOSS.weaknessLabel}**\nÖzel hareket: **${BOSS.special === 'shard-rain' ? 'Kristal Yağmuru (iki turda bir, alan hasarı)' : BOSS.special === 'mana-curse' ? 'Mana Laneti (üç turda bir, mana tüketir)' : 'Mana Yıldız Patlaması (üç turda bir, alan hasarı)'}**`,inline:true},
           {name:'💎 Ortak ganimet',value:loot?`Herkes **${loot}** kazandı!`:win?'Bu kez nadir ganimet çıkmadı.':'Boss yenilemediği için nadir ganimet yok.',inline:true},
           {name:'⏳ Bekleme süresi',value:'45 dakika',inline:true}
         ).setFooter({text:'Poğaça Frieren • Rollerini seç, takımını koru, birlikte kazan.'});
+      const raidArtUrl = getBossArtUrl(BOSS.id === 'north-general' ? 'northGeneral' : BOSS.id === 'glass-wyrm' ? 'glassWyrm' : 'fallenMage');
+      if (raidArtUrl) embed.setImage(raidArtUrl);
       return interaction.editReply({embeds:[embed],components:[]});
     } catch(error) {
       if (db) await db.query('ROLLBACK').catch(()=>{});

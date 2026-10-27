@@ -118,3 +118,86 @@ export const CHARACTER_BUILDS = {
 export function getCharacterBuild(buildKey) {
   return CHARACTER_BUILDS[String(buildKey || 'dengeli').toLocaleLowerCase('tr-TR')] || CHARACTER_BUILDS.dengeli;
 }
+
+/**
+ * Three clear boss phases based on remaining health.
+ * Phase transitions are deterministic so they can be tested and explained to players.
+ */
+export function getBossPhase(currentHp, maximumHp) {
+  const hp = Number(currentHp);
+  const maxHp = Number(maximumHp);
+  if (!Number.isFinite(hp) || !Number.isFinite(maxHp) || maxHp <= 0) return 1;
+  const ratio = Math.max(0, Math.min(1, hp / maxHp));
+  if (ratio <= 1 / 3) return 3;
+  if (ratio <= 2 / 3) return 2;
+  return 1;
+}
+
+export function calculateBossIncomingDamage(rawDamage, defense, phase = 1) {
+  const raw = Number.isFinite(Number(rawDamage)) ? Math.max(0, Math.floor(Number(rawDamage))) : 0;
+  const guard = Number.isFinite(Number(defense)) ? Math.max(0, Math.floor(Number(defense))) : 0;
+  const mitigated = Math.max(1, raw - Math.floor(guard / 2));
+  const multiplier = phase >= 3 ? 1.25 : phase === 2 ? 1.1 : 1;
+  return Math.max(1, Math.round(mitigated * multiplier));
+}
+
+export function bossPhaseSpecialBonus(phase) {
+  return phase >= 3 ? 8 : phase === 2 ? 4 : 0;
+}
+
+
+/** Mastery-10 awakenings: a distinct capstone perk for every combat spell. */
+export function getSpellMasteryAwakening(spellKey, masteryLevel) {
+  const level = Math.max(0, Math.min(10, Math.floor(Number(masteryLevel) || 0)));
+  if (level < 10) return { damage: 0, freezeChance: 0, shieldReduction: 0, healing: 0, wallReduction: 0 };
+  const perks = {
+    zoltraak: { damage: 8 },
+    alev_kuresi: { damage: 10 },
+    buz_mizragi: { freezeChance: 0.1 },
+    koruyucu_bariyer: { shieldReduction: 0.05 },
+    sifa_isigi: { healing: 10 },
+    yildirim_zinciri: { damage: 12 },
+    tas_duvar: { wallReduction: 0.05 },
+    mana_patlamasi: { damage: 15 }
+  };
+  return { damage: 0, freezeChance: 0, shieldReduction: 0, healing: 0, wallReduction: 0, ...(perks[spellKey] || {}) };
+}
+
+/** Guarantees a previously undiscovered rare location at each 20-adventure milestone. */
+export function shouldGuaranteeRareDiscovery(totalAdventures, uniqueRareDiscoveries, interval = 20, totalRareDiscoveries = 3) {
+  const visits = Math.max(0, Math.floor(Number(totalAdventures) || 0));
+  const found = Math.max(0, Math.floor(Number(uniqueRareDiscoveries) || 0));
+  const every = Math.max(1, Math.floor(Number(interval) || 20));
+  const total = Math.max(0, Math.floor(Number(totalRareDiscoveries) || 0));
+  return found < total && visits >= (found + 1) * every - 1;
+}
+
+
+/** Region mastery rewards are paid once at each third successful visit. */
+export function explorationMasteryReward(visits) {
+  const count = Math.max(0, Math.floor(Number(visits) || 0));
+  const milestone = count > 0 && count % 3 === 0;
+  return {
+    level: Math.floor(count / 3),
+    coins: milestone ? 40 : 0,
+    xp: milestone ? 30 : 0,
+    milestone
+  };
+}
+
+
+/** Level-scaled daily quest rewards; finishing the full chain grants a one-time stage bonus. */
+export function getLevelScaledQuestReward(baseCoins, baseXp, playerLevel, completesChain = false) {
+  const level = Math.max(1, Math.floor(Number(playerLevel) || 1));
+  const coins = Math.max(0, Math.floor(Number(baseCoins) || 0));
+  const xp = Math.max(0, Math.floor(Number(baseXp) || 0));
+  const multiplier = Math.min(3, 1 + Math.floor((level - 1) / 10) * 0.1);
+  const completionCoins = completesChain ? 100 : 0;
+  const completionXp = completesChain ? 100 : 0;
+  return {
+    multiplier,
+    coins: Math.round((coins + completionCoins) * multiplier),
+    xp: Math.round((xp + completionXp) * multiplier),
+    completionBonus: completesChain
+  };
+}

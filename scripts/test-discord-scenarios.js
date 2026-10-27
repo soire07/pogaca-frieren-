@@ -192,10 +192,10 @@ test('spell practice uses existing learned-spell keys and checks ownership befor
 
 test('spell mastery changes ice, barrier, healing and stone-wall effects in boss combat', async () => {
   const combat = await read('iblisavasi.js');
-  assert.match(combat, /Math\.min\(0\.6, 0\.35 \+ \(spellMastery\.get\(spellUsed\) \|\| 0\) \* 0\.025\)/);
-  assert.match(combat, /Math\.min\(0\.8, 0\.5 \+ \(spellMastery\.get\(spellUsed\) \|\| 0\) \* 0\.03\)/);
-  assert.match(combat, /\(spellMastery\.get\(spellUsed\) \|\| 0\) \* 3/);
-  assert.match(combat, /Math\.min\(0\.9, 0\.75 \+ \(spellMastery\.get\(spellUsed\) \|\| 0\) \* 0\.015\)/);
+  assert.match(combat, /Math\.min\(0\.7, 0\.35 \+ \(spellMastery\.get\(spellUsed\) \|\| 0\) \* 0\.025 \+ getSpellMasteryAwakening\(spellUsed, spellMastery\.get\(spellUsed\)\)\.freezeChance\)/);
+  assert.match(combat, /Math\.min\(0\.85, 0\.5 \+ \(spellMastery\.get\(spellUsed\) \|\| 0\) \* 0\.03 \+ getSpellMasteryAwakening\(spellUsed, spellMastery\.get\(spellUsed\)\)\.shieldReduction\)/);
+  assert.match(combat, /\(spellMastery\.get\(spellUsed\) \|\| 0\) \* 3 \+ getSpellMasteryAwakening\(spellUsed, spellMastery\.get\(spellUsed\)\)\.healing/);
+  assert.match(combat, /Math\.min\(0\.95, 0\.75 \+ \(spellMastery\.get\(spellUsed\) \|\| 0\) \* 0\.015 \+ getSpellMasteryAwakening\(spellUsed, spellMastery\.get\(spellUsed\)\)\.wallReduction\)/);
   assert.match(combat, /bossDamage \* \(1 - shieldReduction\)/);
   assert.match(combat, /bossDamage \* \(1 - fortifiedReduction\)/);
 });
@@ -262,7 +262,8 @@ test('daily quest chain is sequential, persistent, and pays escalating rewards t
   assert.match(command, /setName\('gorevzinciri'\)/);
   assert.match(command, /last_daily_at::date=CURRENT_DATE/);
   assert.match(command, /last_exploration_at::date=CURRENT_DATE/);
-  assert.match(command, /last_boss_at::date=CURRENT_DATE/);
+  assert.match(command, /last_boss_win_at::date=CURRENT_DATE/);
+  assert.match(schema, /ADD COLUMN IF NOT EXISTS last_boss_win_at TIMESTAMPTZ/);
   for (const reward of ['reward: 50', 'reward: 100', 'reward: 200']) assert.ok(command.includes(reward));
   assert.match(command, /current_step/);
   assert.match(command, /FOR UPDATE/);
@@ -689,4 +690,26 @@ test('adventure history filters recent encounters by rare discovery or found ite
   assert.match(history, /value: 'esya'/);
   assert.match(history, /discovery_key IN/);
   assert.match(history, /item_found IS NOT NULL/);
+});
+
+
+test('solo boss, cooperative raid and dungeon result panels show visual health or progress bars', async () => {
+  const solo = await read('iblisavasi.js');
+  const raid = await read('ortakboss.js');
+  const dungeon = await read('katlizindan.js');
+  assert.match(solo, /function hpBar\(current, maximum/);
+  assert.match(solo, /hpBar\(bossHp, bossMaxHp\)/);
+  assert.match(solo, /Son aşama/);
+  assert.match(raid, /function hpBar\(current, maximum/);
+  assert.match(raid, /hpBar\(bossHp,maxBossHp\)/);
+  assert.match(raid, /Boss canı ve aşaması/);
+  assert.match(dungeon, /function floorProgressBar\(cleared/);
+  assert.match(dungeon, /floorProgressBar\(floorsCleared\)/);
+  assert.match(dungeon, /Zindan ilerlemesi/);
+});
+
+
+test('dungeon final boss artwork only appears after the final encounter is cleared', async () => {
+  const dungeon = await read('katlizindan.js');
+  assert.match(dungeon, /if \(dungeonBossArt && victory\) embed\.setImage\(dungeonBossArt\)/);
 });

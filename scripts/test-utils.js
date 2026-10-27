@@ -30,7 +30,7 @@ test('levelForXp and xpForNextLevel agree at level boundaries', () => {
 });
 
 import { characters, drawCharacter } from '../character-data.js';
-import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, dungeonChoiceOutcome, dungeonEnemyStats, progressionMilestone } from '../rpg-mechanics.js';
+import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, dungeonChoiceOutcome, dungeonEnemyStats, progressionMilestone, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening } from '../rpg-mechanics.js';
 
  test('drawCharacter forced legendary mode guarantees an Efsanevi character', () => {
   for (let i = 0; i < 100; i += 1) {
@@ -282,4 +282,296 @@ test('runtime test plan documents safety, timeouts, persistence and failure case
   ]) {
     assert.ok(plan.includes(topic), 'runtime test plan missing: ' + topic);
   }
+});
+
+test('solo boss phase transitions use clear two-thirds and one-third health thresholds', () => {
+  assert.equal(getBossPhase(120, 120), 1);
+  assert.equal(getBossPhase(81, 120), 1);
+  assert.equal(getBossPhase(80, 120), 2);
+  assert.equal(getBossPhase(41, 120), 2);
+  assert.equal(getBossPhase(40, 120), 3);
+  assert.equal(getBossPhase(0, 120), 3);
+  assert.equal(getBossPhase(10, 0), 1);
+  assert.equal(getBossPhase(Number.NaN, 120), 1);
+});
+
+test('boss phase damage scaling respects defense and grows only in later phases', () => {
+  assert.equal(calculateBossIncomingDamage(10, 4, 1), 8);
+  assert.equal(calculateBossIncomingDamage(10, 4, 2), 9);
+  assert.equal(calculateBossIncomingDamage(10, 4, 3), 10);
+  assert.equal(calculateBossIncomingDamage(0, 999, 1), 1);
+  assert.equal(calculateBossIncomingDamage(-10, -5, 1), 1);
+  assert.equal(bossPhaseSpecialBonus(1), 0);
+  assert.equal(bossPhaseSpecialBonus(2), 4);
+  assert.equal(bossPhaseSpecialBonus(3), 8);
+});
+
+test('freezing the boss cancels its scheduled special attack and its mana-drain side effect', async () => {
+  const source = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  assert.match(source, /if \(turnCount % 3 === 0 && !frozenBoss\)/);
+  assert.match(source, /else if \(turnCount % 3 === 0 && frozenBoss\)/);
+  assert.match(source, /Donma etkisi bossun özel saldırısını da durdurdu/);
+});
+
+
+test('cooperative raid boss phases scale incoming damage and announce transitions', async () => {
+  const source = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /getBossPhase\(bossHp, maxBossHp\)/);
+  assert.match(source, /bossPhaseSpecialBonus\(bossPhase\)/);
+  assert.ok(source.includes('calculateBossIncomingDamage(rawDamage, Math.round(target.defense*0.56), bossPhase)'));
+  assert.ok(source.includes('calculateBossIncomingDamage(Math.round(rawDamage*specialMultiplier), Math.round(f.defense*0.44), bossPhase)'));
+  assert.match(source, /ikinci evreye geçti/);
+  assert.match(source, /son evreye geçti/);
+});
+
+
+test('final dungeon boss has three phases and stronger phase-scaled special attacks', async () => {
+  const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  assert.match(source, /const finalBoss = floor === FLOORS/);
+  assert.match(source, /getBossPhase\(enemyHp, maxEnemyHp\)/);
+  assert.match(source, /calculateBossIncomingDamage\(rawIncoming, Math\.round\(target\.defense \* 0\.6\), enemyPhase\)/);
+  assert.match(source, /bossPhaseSpecialBonus\(enemyPhase\)/);
+  assert.match(source, /İblis Lordu ikinci evreye geçti/);
+  assert.match(source, /İblis Lordu son evreye geçti/);
+});
+
+
+test('mastery-10 awakening grants the correct capstone to each spell', () => {
+  assert.deepEqual(getSpellMasteryAwakening('zoltraak', 9), { damage: 0, freezeChance: 0, shieldReduction: 0, healing: 0, wallReduction: 0 });
+  assert.equal(getSpellMasteryAwakening('zoltraak', 10).damage, 8);
+  assert.equal(getSpellMasteryAwakening('alev_kuresi', 10).damage, 10);
+  assert.equal(getSpellMasteryAwakening('buz_mizragi', 10).freezeChance, 0.1);
+  assert.equal(getSpellMasteryAwakening('koruyucu_bariyer', 10).shieldReduction, 0.05);
+  assert.equal(getSpellMasteryAwakening('sifa_isigi', 10).healing, 10);
+  assert.equal(getSpellMasteryAwakening('yildirim_zinciri', 10).damage, 12);
+  assert.equal(getSpellMasteryAwakening('tas_duvar', 10).wallReduction, 0.05);
+  assert.equal(getSpellMasteryAwakening('mana_patlamasi', 10).damage, 15);
+});
+
+test('solo boss combat applies spell awakening perks and the mastery guide explains them', async () => {
+  const combat = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const guide = await readFile(new URL('../commands/rpg/buyuustaligi.js', import.meta.url), 'utf8');
+  assert.match(combat, /getSpellMasteryAwakening\('zoltraak'/);
+  assert.match(combat, /getSpellMasteryAwakening\(spellUsed, spellMastery\.get\(spellUsed\)\)\.freezeChance/);
+  assert.match(combat, /getSpellMasteryAwakening\(spellUsed, spellMastery\.get\(spellUsed\)\)\.shieldReduction/);
+  assert.match(combat, /getSpellMasteryAwakening\(spellUsed, spellMastery\.get\(spellUsed\)\)\.healing/);
+  assert.match(guide, /Uyanış açıldı/);
+  assert.match(guide, /Seviye 10’da büyüne özel Uyanış açılır/);
+});
+
+import { shouldGuaranteeRareDiscovery } from '../rpg-mechanics.js';
+
+test('rare exploration pity guarantees a new rare location at each 20-adventure milestone', () => {
+  assert.equal(shouldGuaranteeRareDiscovery(18, 0), false);
+  assert.equal(shouldGuaranteeRareDiscovery(19, 0), true);
+  assert.equal(shouldGuaranteeRareDiscovery(20, 1), false);
+  assert.equal(shouldGuaranteeRareDiscovery(39, 1), true);
+  assert.equal(shouldGuaranteeRareDiscovery(59, 2), true);
+  assert.equal(shouldGuaranteeRareDiscovery(999, 3), false);
+  assert.equal(shouldGuaranteeRareDiscovery(-10, 0), false);
+  assert.equal(shouldGuaranteeRareDiscovery(0, -1), false);
+});
+
+test('adventure command uses pity to prioritize undiscovered rare locations', async () => {
+  const source = await readFile(new URL('../macera.js', import.meta.url), 'utf8');
+  assert.match(source, /shouldGuaranteeRareDiscovery/);
+  assert.match(source, /rareOutcomes\.filter\(entry => !discoveredRare\.has\(entry\.discovery\)\)/);
+  assert.match(source, /total_adventures/);
+  assert.match(source, /rare_discoveries/);
+});
+
+
+test('equipment set bonuses activate for two legendary or two epic pieces', () => {
+  const base = { attack: 10, defense: 8, hp: 100, mana: 60 };
+  const legendary = applyEquipmentSetBonus([
+    { rarity: 'Efsanevi' }, { rarity: 'Efsanevi' }
+  ], base);
+  assert.deepEqual(legendary, {
+    attack: 14, defense: 8, hp: 125, mana: 60,
+    setText: 'Efsanevi set: +4 saldırı, +25 HP'
+  });
+  const epic = applyEquipmentSetBonus([
+    { rarity: 'Destansı' }, { rarity: 'Destansı' }
+  ], base);
+  assert.deepEqual(epic, {
+    attack: 10, defense: 11, hp: 100, mana: 75,
+    setText: 'Destansı set: +3 savunma, +15 mana'
+  });
+  assert.equal(applyEquipmentSetBonus([{ rarity: 'Efsanevi' }], base).setText, null);
+});
+
+test('solo boss combat applies the same equipment set bonuses as profile and group combat', async () => {
+  const source = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  assert.match(source, /applyEquipmentSetBonus/);
+  assert.match(source, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+  assert.match(source, /gearBonus\.setText/);
+});
+
+
+test('daily quest chain requires a successful boss victory, not merely starting a boss fight', async () => {
+  const quest = await readFile(new URL('../gorevzinciri.js', import.meta.url), 'utf8');
+  const combat = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const database = await readFile(new URL('../database/db.js', import.meta.url), 'utf8');
+  assert.match(quest, /last_boss_win_at::date\s*=\s*CURRENT_DATE/);
+  assert.doesNotMatch(quest, /last_boss_at::date\s*=\s*CURRENT_DATE/);
+  assert.match(combat, /boss_defeats=boss_defeats\+1, last_boss_win_at=NOW\(\)/);
+  assert.match(database, /ADD COLUMN IF NOT EXISTS last_boss_win_at TIMESTAMPTZ/);
+});
+
+
+import { explorationMasteryReward } from '../rpg-mechanics.js';
+
+test('region mastery pays bonus rewards at each third successful exploration', () => {
+  assert.deepEqual(explorationMasteryReward(0), { level: 0, coins: 0, xp: 0, milestone: false });
+  assert.deepEqual(explorationMasteryReward(1), { level: 0, coins: 0, xp: 0, milestone: false });
+  assert.deepEqual(explorationMasteryReward(2), { level: 0, coins: 0, xp: 0, milestone: false });
+  assert.deepEqual(explorationMasteryReward(3), { level: 1, coins: 40, xp: 30, milestone: true });
+  assert.deepEqual(explorationMasteryReward(6), { level: 2, coins: 40, xp: 30, milestone: true });
+  assert.equal(explorationMasteryReward(-5).level, 0);
+});
+
+test('region mastery persists per selected exploration region and is displayed to players', async () => {
+  const source = await readFile(new URL('../commands/rpg/kesif.js', import.meta.url), 'utf8');
+  const schema = await readFile(new URL('../database/db.js', import.meta.url), 'utf8');
+  assert.match(source, /exploration_region_mastery/);
+  assert.match(source, /explorationMasteryReward\(regionVisits\)/);
+  assert.match(source, /Bölge ustalığı ödülü/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS exploration_region_mastery/);
+});
+
+
+test('exploration can find region-specific materials used by equipment crafting recipes', async () => {
+  const exploration = await readFile(new URL('../commands/rpg/kesif.js', import.meta.url), 'utf8');
+  const crafting = await readFile(new URL('../zanaat.js', import.meta.url), 'utf8');
+  const materials = [
+    '🥐 Büyülü Poğaça Kutusu',
+    '💎 Mana Kristali',
+    '📖 Yasak Büyü Kitabı',
+    '🐉 Ejderha Pulu',
+    '🌙 Efsunlu Elf Yadigârı',
+    '📜 Frieren’in Kayıp Notları'
+  ];
+  assert.match(exploration, /const craftingMaterials = \{/);
+  assert.match(exploration, /Math\.random\(\) < 0\.4/);
+  for (const material of materials) {
+    assert.ok(exploration.includes(material), `exploration missing crafting material: ${material}`);
+    assert.ok(crafting.includes(material), `no crafting recipe consumes exploration material: ${material}`);
+  }
+  assert.match(exploration, /foundCraftingMaterial \? .*Zanaat malzemesi/);
+});
+
+test('daily quest chain awards recipe materials transactionally for all three stages', async () => {
+  const quest = await readFile(new URL('../gorevzinciri.js', import.meta.url), 'utf8');
+  const crafting = await readFile(new URL('../zanaat.js', import.meta.url), 'utf8');
+  for (const material of ['🥐 Büyülü Poğaça Kutusu', '💎 Mana Kristali', '🐉 Ejderha Pulu']) {
+    assert.ok(quest.includes(material), `quest chain missing crafting material: ${material}`);
+    assert.ok(crafting.includes(material), `quest material cannot be used in crafting: ${material}`);
+  }
+  assert.match(quest, /INSERT INTO inventory/);
+  assert.match(quest, /step\.material/);
+  assert.match(quest, /BEGIN/);
+  assert.match(quest, /COMMIT/);
+});
+
+
+import { getLevelScaledQuestReward } from '../rpg-mechanics.js';
+
+test('daily quest rewards scale with level and grant a distinct full-chain completion bonus', () => {
+  assert.deepEqual(getLevelScaledQuestReward(50, 20, 1, false), {
+    multiplier: 1, coins: 50, xp: 20, completionBonus: false
+  });
+  assert.deepEqual(getLevelScaledQuestReward(100, 40, 21, false), {
+    multiplier: 1.2, coins: 120, xp: 48, completionBonus: false
+  });
+  assert.deepEqual(getLevelScaledQuestReward(200, 80, 51, true), {
+    multiplier: 1.5, coins: 450, xp: 270, completionBonus: true
+  });
+  assert.equal(getLevelScaledQuestReward(200, 80, 1000, true).multiplier, 3);
+  assert.equal(getLevelScaledQuestReward(-50, -10, 0, false).coins, 0);
+});
+
+
+test('quest chain integrates level-scaled XP, level-ups, stat points and completion bonus', async () => {
+  const quest = await readFile(new URL('../gorevzinciri.js', import.meta.url), 'utf8');
+  const mechanics = await readFile(new URL('../rpg-mechanics.js', import.meta.url), 'utf8');
+  assert.match(quest, /getLevelScaledQuestReward\(step\.reward, step\.xpReward, player\.level, step\.step === 3\)/);
+  assert.match(quest, /levelForXp\(newXp\)/);
+  assert.match(quest, /stat_points=stat_points\+\$6/);
+  assert.match(quest, /reward\.completionBonus/);
+  assert.match(quest, /SELECT xp, level, stat_points FROM users .* FOR UPDATE/);
+  assert.match(mechanics, /export function getLevelScaledQuestReward/);
+});
+
+test('solo boss victories grant recipe materials matched to boss tier', async () => {
+  const combat = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const crafting = await readFile(new URL('../zanaat.js', import.meta.url), 'utf8');
+  for (const material of [
+    '🥐 Büyülü Poğaça Kutusu',
+    '📖 Yasak Büyü Kitabı',
+    '🐉 Ejderha Pulu',
+    '🌙 Efsunlu Elf Yadigârı',
+    '👑 Himmel’in Efsanevi Yadigârı'
+  ]) {
+    assert.ok(combat.includes(material), `boss tiers missing crafting material: ${material}`);
+    assert.ok(crafting.includes(material), `boss crafting material has no recipe: ${material}`);
+  }
+  assert.match(combat, /boss\.craftingMaterial/);
+  assert.match(combat, /INSERT INTO inventory\(guild_id,user_id,item_key,quantity\) VALUES\(\$1,\$2,\$3,1\)/);
+});
+
+
+test('dungeon depth and final victory award recipe materials to participating players', async () => {
+  const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  const crafting = await readFile(new URL('../zanaat.js', import.meta.url), 'utf8');
+  assert.match(dungeon, /const craftingLoot = floorsCleared >= FLOORS/);
+  assert.match(dungeon, /'👑 Himmel’in Efsanevi Yadigârı'/);
+  assert.match(dungeon, /'🐉 Ejderha Pulu'/);
+  assert.match(dungeon, /'💎 Mana Kristali'/);
+  assert.match(dungeon, /\.\.\.\(craftingLoot \? \[craftingLoot\] : \[\]\)/);
+  for (const material of ['👑 Himmel’in Efsanevi Yadigârı', '🐉 Ejderha Pulu', '💎 Mana Kristali']) {
+    assert.ok(crafting.includes(material), `dungeon material cannot be used in crafting: ${material}`);
+  }
+});
+
+test('quest chain UI previews level-scaled rewards and the material reward for each stage', async () => {
+  const quest = await readFile(new URL('../gorevzinciri.js', import.meta.url), 'utf8');
+  assert.match(quest, /getLevelScaledQuestReward\(s\.reward, s\.xpReward, p\.level, s\.step === 3\)/);
+  assert.match(quest, /reward\.coins.*reward\.xp.*s\.material/);
+  assert.match(quest, /Sıradaki aşama açıldı/);
+});
+
+
+import { getBossArtUrl } from '../boss-art.js';
+
+test('boss artwork resolver accepts HTTPS URLs and ignores missing, malformed or insecure values', () => {
+  const key = 'POGACA_BOSS_ART_SCHATTENWOLF_URL';
+  const previous = process.env[key];
+  try {
+    delete process.env[key];
+    assert.equal(getBossArtUrl('schattenwolf'), null);
+    process.env[key] = 'http://example.com/boss.png';
+    assert.equal(getBossArtUrl('schattenwolf'), null);
+    process.env[key] = 'not-a-url';
+    assert.equal(getBossArtUrl('schattenwolf'), null);
+    process.env[key] = 'https://cdn.example.com/boss.png';
+    assert.equal(getBossArtUrl('schattenwolf'), 'https://cdn.example.com/boss.png');
+    assert.equal(getBossArtUrl('unknown-boss'), null);
+  } finally {
+    if (previous === undefined) delete process.env[key];
+    else process.env[key] = previous;
+  }
+});
+
+test('solo, raid and dungeon boss panels can display their own configured artwork', async () => {
+  const solo = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const raid = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  const envExample = await readFile(new URL('../.env.example', import.meta.url), 'utf8');
+  assert.match(solo, /bossImageUrl: boss\.artUrl/);
+  assert.match(solo, /if \(bossImageUrl\) embed\.setImage\(bossImageUrl\)/);
+  assert.match(raid, /getBossArtUrl\(BOSS\.id/);
+  assert.match(raid, /if \(raidArtUrl\) embed\.setImage\(raidArtUrl\)/);
+  assert.match(dungeon, /getBossArtUrl\('dungeonFinal'\)/);
+  assert.match(envExample, /POGACA_BOSS_ART_SCHATTENWOLF_URL/);
+  assert.match(envExample, /POGACA_DUNGEON_FINAL_BOSS_ART_URL/);
 });

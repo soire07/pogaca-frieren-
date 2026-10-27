@@ -3,6 +3,7 @@ import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js
 import { pool, ensureUser } from './database/db.js';
 import { levelForXp } from './utils.js';
 import { ADVENTURE_DISCOVERIES, ADVENTURE_DISCOVERY_REWARD, COMPLETE_ADVENTURE_JOURNAL_REWARD } from './adventure-data.js';
+import { shouldGuaranteeRareDiscovery } from './rpg-mechanics.js';
 
 const outcomes = [
   { text: 'Ormanda kayıp bir büyü kitabı buldun!', coins: 25, xp: 25, item: '📖 Yasak Büyü Kitabı', discovery: 'forest-grimoire' },
@@ -36,11 +37,6 @@ export default {
     await ensureUser(interaction.guildId, interaction.user.id);
 
     const chosenRoute = interaction.options.getString('rota');
-    const outcome = chosenRoute
-      ? outcomes.find(entry => entry.discovery === chosenRoute)
-      : Math.random() < 0.05
-        ? rareOutcomes[Math.floor(Math.random() * rareOutcomes.length)]
-        : outcomes[Math.floor(Math.random() * outcomes.length)];
     const client = await pool.connect();
 
     try {
@@ -59,6 +55,33 @@ export default {
         });
       }
 
+      const { rows: [explorationProgress] } = await client.query(
+        `SELECT
+          COALESCE((SELECT SUM(visits)::int FROM adventure_route_mastery WHERE guild_id=$1 AND user_id=$2),0) AS total_adventures,
+          COALESCE((SELECT COUNT(*)::int FROM adventure_discoveries WHERE guild_id=$1 AND user_id=$2 AND discovery_key IN ('ancient-elf-sanctuary','forgotten-grimoire','dragon-nest')),0) AS rare_discoveries`,
+        [interaction.guildId, interaction.user.id]
+      );
+      const { rows: discoveredRareRows } = await client.query(
+        `SELECT discovery_key FROM adventure_discoveries
+         WHERE guild_id=$1 AND user_id=$2
+         AND discovery_key IN ('ancient-elf-sanctuary','forgotten-grimoire','dragon-nest')`,
+        [interaction.guildId, interaction.user.id]
+      );
+      const discoveredRare = new Set(discoveredRareRows.map(row => row.discovery_key));
+      const pityReady = shouldGuaranteeRareDiscovery(
+        Number(explorationProgress.total_adventures),
+        Number(explorationProgress.rare_discoveries),
+        20,
+        rareOutcomes.length
+      );
+      const undiscoveredRare = rareOutcomes.filter(entry => !discoveredRare.has(entry.discovery));
+      const outcome = chosenRoute
+        ? outcomes.find(entry => entry.discovery === chosenRoute)
+        : pityReady && undiscoveredRare.length
+          ? undiscoveredRare[0]
+          : Math.random() < 0.05
+            ? (undiscoveredRare.length ? undiscoveredRare[Math.floor(Math.random() * undiscoveredRare.length)] : rareOutcomes[Math.floor(Math.random() * rareOutcomes.length)])
+            : outcomes[Math.floor(Math.random() * outcomes.length)];
       const discoveryMeta = ADVENTURE_DISCOVERIES.find(entry => entry.key === outcome.discovery);
       const foundFragment = Math.random() < 0.20;
       let fragmentCount = 0;
