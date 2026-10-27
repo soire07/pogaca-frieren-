@@ -422,3 +422,14 @@ test('adventure statistics aggregate progress, discoveries, streak and treasure 
   assert.match(command, /Kadim Hazine Sandığı/);
   assert.match(command, /ADVENTURE_DISCOVERIES\.length/);
 });
+
+test('treasure opening history records each chest reward and lists the latest ten', async () => {
+  const schema = await read('database/db.js');
+  const opener = await read('hazineac.js');
+  const history = await read('hazinegecmisi.js');
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS treasure_openings/);
+  assert.match(opener, /INSERT INTO treasure_openings/);
+  assert.match(history, /setName\('hazinegecmisi'\)/);
+  assert.match(history, /ORDER BY opened_at DESC, id DESC LIMIT 10/);
+  assert.match(history, /loot_item/);
+});
