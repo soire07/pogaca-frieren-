@@ -312,7 +312,7 @@ test('solo boss encounters reserve the player and release the reservation on eve
   const rest = await read('commands/rpg/dinlen.js');
   assert.match(schema, /encounter_type IN \('dungeon','raid','boss'\)/);
   const reserve = boss.indexOf("INSERT INTO active_rpg_encounters");
-  const stats = boss.indexOf("FROM users WHERE guild_id=$1 AND user_id=$2");
+  const stats = boss.indexOf('SELECT hp, max_hp, mana, max_mana');
   assert.ok(reserve >= 0 && stats > reserve, 'boss reservation must exist before reading combat stats');
   assert.match(boss, /SELECT user_id FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/);
   assert.match(boss, /DELETE FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND encounter_id=\$3/);
