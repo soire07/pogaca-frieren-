@@ -550,3 +550,13 @@ test('crafting mastery unlocks a material refund chance at levels five and ten',
   assert.match(command, /material\.item/);
   assert.match(command, /craftProgress\.level >= 5/);
 });
+
+test('crafting leaderboard supports profession level, XP and successful craft rankings', async () => {
+  const command = await read('zanaatustalari.js');
+  assert.match(command, /setName\('zanaatustalari'\)/);
+  assert.match(command, /user_crafting_progress/);
+  assert.match(command, /successful_crafts/);
+  assert.match(command, /setName\('kategori'\)/);
+  assert.match(command, /WHERE guild_id=\$1/);
+  assert.match(command, /LIMIT 10/);
+});
