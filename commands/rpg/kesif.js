@@ -92,7 +92,11 @@ export default {
     try {
       await client.query('BEGIN');
       const { rows: [player] } = await client.query(
-        'SELECT xp, level, coins, hp, max_hp, mana, max_mana, attack, defense, class_name, active_build, stat_points, last_exploration_at FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+         `SELECT xp, level, coins, hp, max_hp, mana, max_mana, attack, defense, class_name, active_build, stat_points, last_exploration_at,
+          COALESCE((SELECT hp_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_hp,
+          COALESCE((SELECT defense_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_defense,
+          COALESCE((SELECT mana_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_mana
+         FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE`,
         [interaction.guildId, interaction.user.id]
       );
 
@@ -115,9 +119,9 @@ export default {
       const build = getCharacterBuild(player.active_build);
       const baseMaxHp = Math.max(1, Number(player.max_hp));
       const baseMaxMana = Math.max(1, Number(player.max_mana));
-      const effectiveMaxHp = Math.min(2000, Math.round((baseMaxHp + gear.hp) * build.hp));
-      const effectiveMaxMana = Math.min(2000, Math.round((baseMaxMana + gear.mana) * build.mana));
-      const effectiveDefense = Math.min(250, Math.round(applyClassDefense(Number(player.defense) + gear.defense, player.class_name) * build.defense));
+      const effectiveMaxHp = Math.min(2000, Math.round((baseMaxHp + gear.hp) * build.hp * (1 + Number(player.talent_hp) * 0.05)));
+      const effectiveMaxMana = Math.min(2000, Math.round((baseMaxMana + gear.mana) * build.mana * (1 + Number(player.talent_mana) * 0.05)));
+      const effectiveDefense = Math.min(250, Math.round(applyClassDefense(Number(player.defense) + gear.defense, player.class_name) * build.defense * (1 + Number(player.talent_defense) * 0.04)));
       const currentHp = Math.min(effectiveMaxHp, Math.round((Number(player.hp) / baseMaxHp) * effectiveMaxHp));
       const currentMana = Math.min(effectiveMaxMana, Math.round((Number(player.mana) / baseMaxMana) * effectiveMaxMana));
 
