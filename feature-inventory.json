@@ -754,7 +754,7 @@
     },
     {
       "id": "RPG-106",
-      "name": "Apply a boss mana curse that drains up to eight mana on its fourth-turn cycle",
+      "name": "Apply a boss mana curse that drains up to eight mana on its third-turn cycle",
       "category": "Magic",
       "status": "implemented_needs_runtime_test"
     },
@@ -804,6 +804,30 @@
       "id": "RPG-114",
       "name": "Unlock persistent titles from level, boss victory and dungeon victory milestones",
       "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-115",
+      "name": "Restore HP and floor-scaled mana through the mana shrine route",
+      "category": "Dungeon",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-116",
+      "name": "Trigger the North Plateau Demon General's periodic area mana-star burst",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-117",
+      "name": "Trigger the Glass Scales Dragon's every-other-turn shard rain with reduced area damage",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-118",
+      "name": "Trigger Fallen Mage Aura's periodic mana-draining curse",
+      "category": "Boss",
       "status": "implemented_needs_runtime_test"
     }
   ],
