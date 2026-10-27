@@ -151,7 +151,7 @@ test('manual test plan distinguishes automated checks from live Discord verifica
   assert.match(guide, /gerçek Discord bileşen etkileşimleri/i);
   assert.match(guide, /Beklenen sonuç/i);
   assert.ok(guide.includes('/katlizindan'));
-  assert.ok(guide.includes('/ortakboss'));
+  assert.ok(guide.includes('/ortakboss'));\n  assert.ok(guide.includes('/buyupratik'));\n  assert.ok(guide.includes('SP-08'));
 });
 
 import { masteryLevelForCasts, practiceCost } from '../buyupratik.js';
