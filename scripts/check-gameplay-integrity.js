@@ -112,3 +112,16 @@ test('solo demon battle persists build-adjusted HP as a base-stat health ratio',
   assert.match(source, /const toPersistentHp = hp => Math\.max\(0, Math\.min\(Number\(stats\.max_hp\), Math\.round\(\(hp \/ Math\.max\(1, playerMaxHp\)\) \* Number\(stats\.max_hp\)\)\)\)/);
   assert.equal((source.match(/toPersistentHp\(playerHp\)/g) || []).length, 3);
 });
+
+
+test('exploration uses equipment, class and combat-build passives while preserving base-stat HP and mana ratios', async () => {
+  const source = await read('commands/rpg/kesif.js');
+  assert.match(source, /applyClassDefense, applyClassManaCost, getCharacterBuild/);
+  assert.match(source, /getCharacterBuild\(player\.active_build\)/);
+  assert.match(source, /applyClassDefense\(Number\(player\.defense\) \+ gear\.defense, player\.class_name\)/);
+  assert.match(source, /applyClassManaCost\(encounter\.manaCost, player\.class_name\)/);
+  assert.match(source, /\(Number\(player\.hp\) \/ baseMaxHp\) \* effectiveMaxHp/);
+  assert.match(source, /\(Number\(player\.mana\) \/ baseMaxMana\) \* effectiveMaxMana/);
+  assert.match(source, /persistedHp, persistedMana/);
+  assert.match(source, /savunma dahil/);
+});
