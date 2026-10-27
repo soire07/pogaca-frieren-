@@ -37,8 +37,8 @@ export default {
       new ButtonBuilder().setCustomId(`raid:no:${interaction.id}`).setLabel('Reddet').setStyle(ButtonStyle.Secondary)
     );
     const msg = await interaction.reply({
-      content: `🌌 <@${interaction.user.id}> **${BOSS.name}** baskını için takım kuruyor! ${invited.map(x => `<@${x.user.id}> (${ROLES[x.role].label})`).join(' ')}\nHer davetli 60 saniye içinde katılmalı. Roller: ${team.map(x => `<@${x.user.id}> — ${ROLES[x.role].label}`).join(' · ')}`,
-      components: [row], allowedMentions: { users: team.map(x => x.user.id) }, fetchReply: true
+      content: `🌌 <@${interaction.user.id}> **${BOSS.name}** baskını için takım kuruyor! ${invited.map(x => `<@${x.id}>`).join(' ')}\nHer davetli 60 saniye içinde katılmalı. Kabulden sonra herkes kendi rolünü seçecek.`,
+      components: [row], allowedMentions: { users: team.map(x => x.id) }, fetchReply: true
     });
     const inviteIds = new Set(invited.map(x => x.id));
     const accepted = new Set();
