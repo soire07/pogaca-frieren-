@@ -133,7 +133,7 @@ export default {
         return {
           userId:x.user.id, username:x.user.username, role:x.role, roleData:role, className:p.class_name, classProfile:getCharacterClass(p.class_name), build, baseMaxHp:Number(p.max_hp),
           level:Number(p.level), xp:Number(p.xp), coins:Number(p.coins), mana:Math.min(Number(p.mana), Math.min(500, Math.round((Number(p.max_mana) + gear.mana) * build.mana))), maxMana:Math.min(500, Math.round((Number(p.max_mana) + gear.mana) * build.mana)),
-          hp:Math.round(Math.max(0,Math.min(Number(p.hp),baseMaxHp)*role.hp)),
+          hp:Math.round(Math.max(0,Math.min(Number(p.hp)*build.hp,baseMaxHp)*role.hp)),
           maxHp:Math.round(baseMaxHp*role.hp),
           attack:(Number(p.attack)+gear.attack)*build.attack*role.attack,
           defense:applyClassDefense(Number(p.defense)+gear.defense,p.class_name)*build.defense*role.defense
