@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, Embe
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone } from './rpg-mechanics.js';
+import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, getCharacterClass } from './rpg-mechanics.js';
 
 const FLOORS = 5;
 const COOLDOWN_MS = 30 * 60_000;
@@ -128,7 +128,7 @@ export default {
       await db.query('BEGIN');
       const ids = team.map(u => u.id).sort();
       const result = await db.query(
-        `SELECT user_id, level, xp, coins, hp, max_hp, mana, max_mana, attack, defense, last_dungeon_at
+        `SELECT user_id, level, xp, coins, hp, max_hp, mana, max_mana, attack, defense, class_name, last_dungeon_at
          FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) FOR UPDATE`,
         [interaction.guildId, ids]
       );
@@ -160,10 +160,10 @@ export default {
         const role = PARTY_ROLES[roles[i]];
         const maxHp = Math.round(Math.min(2000, Number(p.max_hp) + bonus.hp) * role.hp);
         const maxMana = Math.min(500, Number(p.max_mana) + bonus.mana);
-        return { ...p, level: Number(p.level), xp: Number(p.xp), mana: Math.min(Number(p.mana), maxMana), maxMana, role: roles[i], roleLabel: role.label, maxHp,
+        return { ...p, classProfile: getCharacterClass(p.class_name), level: Number(p.level), xp: Number(p.xp), mana: Math.min(Number(p.mana), maxMana), maxMana, role: roles[i], roleLabel: role.label, maxHp,
           hp: Math.round(Math.min(Number(p.hp), Math.min(2000, Number(p.max_hp) + bonus.hp)) * role.hp),
           attack: Math.round(Math.min(500, Number(p.attack) + bonus.attack) * role.attack),
-          defense: Math.round(Math.min(250, Number(p.defense) + bonus.defense) * role.defense) };
+          defense: Math.round(Math.min(250, applyClassDefense(Number(p.defense) + bonus.defense, p.class_name) * role.defense) };
       });
       if (players.some(p => p.hp <= 0)) {
         await db.query('ROLLBACK');
@@ -246,6 +246,7 @@ export default {
             if (action === 'spell' && p.mana >= 12) {
               p.mana -= 12;
               damage = Math.round(baseDamage * 1.8);
+              damage = applyClassDamage(damage, p.class_name);
               log.push(`✨ <@${p.user_id}> Zoltraak kullandı (-12 mana).`);
             } else if (action === 'spell') {
               log.push(`🔹 <@${p.user_id}> için mana yetersiz; normal saldırı yaptı.`);
@@ -258,7 +259,8 @@ export default {
             const healerIndex = living.find(i => players[i].role === 'healer');
             if (healerIndex !== undefined) {
               for (const i of living) {
-                const healed = Math.min(players[i].maxHp, hpNow[i] + 6);
+                const classHeal = applyClassHealing(6, players[healerIndex].class_name);
+                const healed = Math.min(players[i].maxHp, hpNow[i] + classHeal);
                 if (healed > hpNow[i]) {
                   log.push(`💚 ${players[healerIndex].roleLabel} <@${players[healerIndex].user_id}> ${healed - hpNow[i]} HP iyileştirdi.`);
                   hpNow[i] = healed;
@@ -376,7 +378,7 @@ export default {
         .setTitle(victory ? '🏆 Beş Kat Tamamlandı!' : `🛡️ ${floorsCleared}/${FLOORS} Kat Geçildi`)
         .setDescription(
           `**Takım:** ${team.map(u => `<@${u.id}>`).join(', ')}\n**İlerleme:** ${floorsCleared}/${FLOORS} kat · **Toplam tur:** ${turns}\n\n` +
-          players.map((p, i) => `**<@${p.user_id}>** — ${p.roleLabel} · Seviye ${p.level}${levelForXp(p.xp + totalXp) > p.level ? ` → ${levelForXp(p.xp + totalXp)} ✨` : ''}\n❤️ HP: ${p.hp} → ${persistedHpNow[i]} · ✨ Mana: ${p.mana}/${p.maxMana} · ⚔️ ${p.attack} · 🛡️ ${p.defense}`).join('\n\n') +
+          players.map((p, i) => `**<@${p.user_id}>** — ${p.roleLabel} · ${p.classProfile.label} · Seviye ${p.level}${levelForXp(p.xp + totalXp) > p.level ? ` → ${levelForXp(p.xp + totalXp)} ✨` : ''}\n❤️ HP: ${p.hp} → ${persistedHpNow[i]} · ✨ Mana: ${p.mana}/${p.maxMana} · ⚔️ ${p.attack} · 🛡️ ${p.defense}`).join('\n\n') +
           '\n\n**Kat günlüğü**\n' + log.slice(-12).join('\n')
         )
         .addFields(
