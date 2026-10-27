@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder, ComponentType } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
@@ -92,7 +92,7 @@ export default {
       await db.query('BEGIN');
       const ids = team.map(u => u.id).sort();
       const result = await db.query(
-        `SELECT user_id, level, xp, coins, hp, max_hp, attack, defense, last_dungeon_at
+        `SELECT user_id, level, xp, coins, hp, max_hp, mana, max_mana, attack, defense, last_dungeon_at
          FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) FOR UPDATE`,
         [interaction.guildId, ids]
       );
