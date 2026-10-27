@@ -20,15 +20,22 @@ export default {
     .setName('ekipmanparcala')
     .setDescription('Kullanmadığın ekipmanı malzemeye dönüştür; kuşanılan ekipman korunur.')
     .addStringOption(option => option.setName('esya').setDescription('Parçalanacak ekipman.')
-      .setRequired(true).addChoices(...equipmentItems.map(item => ({ name: item.name.slice(0, 100), value: item.id }))))
+      .setRequired(false).addChoices(...equipmentItems.map(item => ({ name: item.name.slice(0, 100), value: item.id }))))
     .addIntegerOption(option => option.setName('adet').setDescription('Parçalanacak adet (1–5).')
       .setRequired(false).setMinValue(1).setMaxValue(5)),
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
     await ensureUser(interaction.guildId, interaction.user.id);
     await interaction.deferReply({ ephemeral: true });
-    const itemId = interaction.options.getString('esya', true);
+    const itemId = interaction.options.getString('esya');
     const amount = interaction.options.getInteger('adet') || 1;
+    if (!itemId) {
+      const lines = equipmentItems.map(item => `**${item.name}** · ${item.rarity}\nGeri kazanım: ${SALVAGE_YIELD[item.id].item} × ${SALVAGE_YIELD[item.id].quantity}`);
+      const embed = new EmbedBuilder().setColor(0x9b8cff).setTitle('♻️ Ekipman Parçalama Rehberi')
+        .setDescription(lines.join('\n\n').slice(0, 4000))
+        .setFooter({ text: 'Kuşanılmış eşyalar parçalanmaz. Geri kazanım, üretim maliyetinden düşüktür.' });
+      return interaction.editReply({ embeds: [embed] });
+    }
     const item = equipmentItems.find(entry => entry.id === itemId);
     const salvage = SALVAGE_YIELD[itemId];
     if (!item || !salvage) return interaction.editReply('Bu ekipmanı parçalama tarifi bulunamadı.');
