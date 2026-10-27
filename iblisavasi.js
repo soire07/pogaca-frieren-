@@ -79,7 +79,12 @@ export default {
     const spellMastery = new Map(masteryResult.rows.map(row => [row.spell_key, Number(row.mastery_level)]));
 
     const statsResult = await pool.query(
-      'SELECT hp, max_hp, mana, max_mana, attack, defense, level, class_name, active_build FROM users WHERE guild_id=$1 AND user_id=$2',
+      'SELECT hp, max_hp, mana, max_mana, attack, defense, level, class_name, active_build,
+        COALESCE((SELECT attack_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_attack,
+        COALESCE((SELECT defense_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_defense,
+        COALESCE((SELECT hp_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_hp,
+        COALESCE((SELECT mana_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_mana
+        FROM users WHERE guild_id=$1 AND user_id=$2',
       [interaction.guildId, interaction.user.id]
     );
     const stats = statsResult.rows[0];
@@ -95,11 +100,11 @@ export default {
       .filter(Boolean);
     const gearBonus = equipmentBonus(equippedItems);
     const build = getCharacterBuild(stats.active_build);
-    const playerMaxHp = Math.min(2000, Math.round((Number(stats.max_hp) + gearBonus.hp) * build.hp));
-    const playerMaxMana = Math.min(2000, Math.round((Number(stats.max_mana) + gearBonus.mana) * build.mana));
+    const playerMaxHp = Math.min(2000, Math.round((Number(stats.max_hp) + gearBonus.hp) * build.hp * (1 + Number(stats.talent_hp) * 0.05)));
+    const playerMaxMana = Math.min(2000, Math.round((Number(stats.max_mana) + gearBonus.mana) * build.mana * (1 + Number(stats.talent_mana) * 0.05)));
     const classProfile = getCharacterClass(stats.class_name);
-    const attack = Math.min(500, Math.round((Number(stats.attack) + gearBonus.attack) * build.attack));
-    const defense = Math.min(250, Math.round(applyClassDefense(Number(stats.defense) + gearBonus.defense, stats.class_name) * build.defense));
+    const attack = Math.min(500, Math.round((Number(stats.attack) + gearBonus.attack) * build.attack * (1 + Number(stats.talent_attack) * 0.04)));
+    const defense = Math.min(250, Math.round(applyClassDefense(Number(stats.defense) + gearBonus.defense, stats.class_name) * build.defense * (1 + Number(stats.talent_defense) * 0.04)));
     let playerHp = Math.min(playerMaxHp, Math.round(Number(stats.hp) * build.hp));
     let playerMana = Math.min(playerMaxMana, Number(stats.mana));
     const gearSummary = equippedItems.length
