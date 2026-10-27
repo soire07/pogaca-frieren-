@@ -77,6 +77,7 @@ export default {
       [interaction.guildId, interaction.user.id]
     );
     const spellMastery = new Map(masteryResult.rows.map(row => [row.spell_key, Number(row.mastery_level)]));
+    const spellMasteryCasts = new Map(masteryResult.rows.map(row => [row.spell_key, Number(row.casts)]));
 
     const statsResult = await pool.query(
       `SELECT hp, max_hp, mana, max_mana, attack, defense, level, class_name, active_build,
@@ -292,21 +293,6 @@ export default {
           bossHp = Math.max(0, bossHp - damage); actionText = `🌌 **Mana Patlaması** büyük bir enerji dalgası oluşturdu: **${damage} hasar**! (Mana: −${spellCost})`;
         }
 
-        if (spellUsed && bossHp > 0) {
-          const masteryUpdate = await pool.query(
-            `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
-             VALUES ($1,$2,$3,1,0,NOW())
-             ON CONFLICT (guild_id,user_id,spell_key) DO UPDATE
-             SET casts=spell_mastery.casts+1,
-                 mastery_level=LEAST(10,FLOOR((spell_mastery.casts+1)/10.0)::int),
-                 updated_at=NOW()
-             RETURNING casts, mastery_level`,
-            [interaction.guildId, interaction.user.id, spellUsed]
-          );
-          spellMastery.set(spellUsed, Number(masteryUpdate.rows[0].mastery_level));
-          actionText += `\n📈 **${spellUsed.replaceAll('_', ' ')} ustalığı:** ${masteryUpdate.rows[0].casts} kullanım · Seviye ${masteryUpdate.rows[0].mastery_level}/10`;
-        }
-
         if (bossHp <= 0) {
           const rewardCoins = boss.coinMin + Math.floor(Math.random() * (boss.coinMax - boss.coinMin + 1));
           const rewardXp = boss.xpMin + Math.floor(Math.random() * (boss.xpMax - boss.xpMin + 1));
@@ -397,8 +383,38 @@ export default {
           ? `\n👹 İblis karşılık verdi: **${bossDamage} hasar** aldın.`
           : '\n❄️ Donduğu için iblis bu tur saldıramadı.';
 
+        // Persist each non-victory turn's HP/mana and spell mastery atomically.
+        const turnDb = await pool.connect();
+        try {
+          await turnDb.query('BEGIN');
+          await turnDb.query(
+            'UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2',
+            [interaction.guildId, interaction.user.id, toPersistentHp(playerHp), toPersistentMana(playerMana)]
+          );
+          if (spellUsed) {
+            const masteryUpdate = await turnDb.query(
+              `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
+               VALUES ($1,$2,$3,1,0,NOW())
+               ON CONFLICT (guild_id,user_id,spell_key) DO UPDATE
+               SET casts=spell_mastery.casts+1,
+                   mastery_level=LEAST(10,FLOOR((spell_mastery.casts+1)/10.0)::int),
+                   updated_at=NOW()
+               RETURNING casts,mastery_level`,
+              [interaction.guildId, interaction.user.id, spellUsed]
+            );
+            spellMasteryCasts.set(spellUsed, Number(masteryUpdate.rows[0].casts));
+            spellMastery.set(spellUsed, Number(masteryUpdate.rows[0].mastery_level));
+            actionText += `\n📈 **${spellUsed.replaceAll('_', ' ')} ustalığı:** ${masteryUpdate.rows[0].casts} kullanım · Seviye ${masteryUpdate.rows[0].mastery_level}/10`;
+          }
+          await turnDb.query('COMMIT');
+        } catch (error) {
+          await turnDb.query('ROLLBACK').catch(() => {});
+          throw error;
+        } finally {
+          turnDb.release();
+        }
+
         if (playerHp <= 0) {
-          await pool.query('UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, toPersistentHp(playerHp), toPersistentMana(playerMana)]);
           finished = true;
           collector.stop('defeat');
           return button.update({
@@ -410,7 +426,6 @@ export default {
           });
         }
 
-        await pool.query('UPDATE users SET hp=$3, mana=$4 WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id, toPersistentHp(playerHp), toPersistentMana(playerMana)]);
         await button.update({
           embeds: [renderBattleEmbed({ player: interaction.user, bossHp, playerHp, bonus: upgradeBonus, description: actionText })],
           components: [actionRow(), rareActionRow()]
