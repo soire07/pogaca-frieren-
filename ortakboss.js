@@ -122,6 +122,7 @@ export default {
       const hpNow = fighters.map(x => Math.round(x.hp));
       const log = [];
       let rounds = 0;
+      let rageAnnounced = false;
       while (bossHp > 0 && hpNow.some(hp=>hp>0) && rounds < 12) {
         rounds++;
         const alive = fighters.map((x,i)=>hpNow[i]>0?i:-1).filter(i=>i>=0);
@@ -148,7 +149,7 @@ export default {
         const enraged = bossHp <= maxBossHp * 0.5;
         const special = rounds % 3 === 0;
         const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(special?6:0);
-        if (enraged && rounds === 1) log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.');
+        if (enraged && !rageAnnounced) { log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.'); rageAnnounced = true; }
         if (special) log.push('💥 Boss özel saldırı hazırladı; bu vuruş daha güçlü.');
         const incoming=Math.max(1,Math.round(rawDamage-target.defense*0.28));
         hpNow[targetIndex]=Math.max(0,hpNow[targetIndex]-incoming);
