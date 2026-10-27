@@ -292,3 +292,15 @@ test('RPG guide accurately distinguishes server statistics and the two inventory
   assert.match(guide, /ham eşya miktarlarını/);
   assert.match(guide, /kuşanılmış ekipman yuvalarıyla birlikte ayrıntılı çantanı/);
 });
+
+test('learning a spell through the character panel also records it in the gameplay journal', async () => {
+  const character = await read('karakter.js');
+  const standalone = await read('commands/rpg/buyuogren.js');
+  assert.match(character, /import \{ recordJournalEntry \} from '\.\/gameplay-journal\.js'/);
+  const panelLearn = character.indexOf("await db.query('INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[i.guildId,i.user.id,value]);");
+  const journalWrite = character.indexOf("await recordJournalEntry(db,i.guildId,i.user.id,'spells',value);", panelLearn);
+  const commit = character.indexOf("await db.query('COMMIT');", panelLearn);
+  assert.ok(panelLearn >= 0 && journalWrite > panelLearn && commit > journalWrite,
+    'panel spell purchase must write the journal entry in the same transaction');
+  assert.match(standalone, /recordJournalEntry\(db, interaction\.guildId, interaction\.user\.id, 'spells', spellKey\)/);
+});
