@@ -49,7 +49,7 @@ function panelEmbed(page, category, balance, user) {
  const shown = filtered.slice(safePage * 4, safePage * 4 + 4);
  const embed = new EmbedBuilder().setColor(0x9b8cff)
   .setTitle('✨ POĞAÇA FRIEREN • BÜYÜLÜ MARKET')
-  .setDescription('Anime evrenlerinden ilham alan özel koleksiyon eşyaları!\nAltındaki butonlarla kategori değiştir, eşyaları incele ve satın al.')
+  .setDescription('Frieren’in yolculuğundan, kadim büyülerden ve uzak diyarlardaki ganimetlerden ilham alan eşyalar.\nKategoriler arasında gez, eşyaları incele ve yolculuğun için satın al.')
   .addFields({name:'💰 Cüzdanın',value:'**'+Number(balance).toLocaleString('tr-TR')+'** poğaça altını',inline:true},
    {name:'🗂️ Kategori',value:'**'+category+'**',inline:true},
    ...shown.map(item=>({name:item.name+'  •  '+item.price.toLocaleString('tr-TR')+' altın',value:rarityEmoji[item.rarity]+' **'+item.rarity+'**\n'+item.description,inline:false})))
