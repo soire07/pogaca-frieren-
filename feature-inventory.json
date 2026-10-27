@@ -1801,6 +1801,30 @@
       "name": "Show active equipment rarity set bonuses directly in exploration outcome summaries",
       "category": "Exploration",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-300",
+      "name": "Solo boss enters a second phase at two-thirds health and announces the transition",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-301",
+      "name": "Solo boss enters an enrage phase at one-third health with stronger incoming attacks",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-302",
+      "name": "Scale solo boss damage by phase while preserving player defense mitigation",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-303",
+      "name": "Increase boss special-attack bonus damage in later phases",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
     }
   ],
   "count": 299
