@@ -335,7 +335,7 @@ export default {
                 [interaction.guildId, interaction.user.id, spellUsed]
               );
               spellMastery.set(spellUsed, Number(masteryUpdate.rows[0].mastery_level));
-              actionText += `\\n📈 **${spellUsed.replaceAll('_', ' ')} ustalığı:** ${masteryUpdate.rows[0].casts} kullanım · Seviye ${masteryUpdate.rows[0].mastery_level}/10`;
+              actionText += `\n📈 **${spellUsed.replaceAll('_', ' ')} ustalığı:** ${masteryUpdate.rows[0].casts} kullanım · Seviye ${masteryUpdate.rows[0].mastery_level}/10`;
             }
             await db.query(
               `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'💎 Mana Kristali',1)
