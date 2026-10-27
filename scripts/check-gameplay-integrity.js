@@ -220,7 +220,7 @@ test('co-op encounter reservations prevent overlapping party runs and expire aft
   assert.match(schema, /expires_at TIMESTAMPTZ NOT NULL/);
   for (const [path, mode] of [['katlizindan.js', 'dungeon'], ['ortakboss.js', 'raid']]) {
     const source = await read(path);
-    assert.ok(source.includes(`VALUES ($1,$2,$3,'${mode}',NOW()+INTERVAL '15 minutes')`), path + ': reservation must expire if the process dies');
+    assert.ok(source.includes(`VALUES ($1,$2,$3,'${mode}',NOW()+INTERVAL '30 minutes')`), path + ': reservation must expire if the process dies');
     assert.ok(source.includes('DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2'), path + ': reservation is released after encounter');
     assert.ok(source.includes('activeReservations.rowCount !== ids.length'), path + ': all participants must still own the reservation before rewards');
     assert.ok(source.includes('reservationError.code === \'23505\''), path + ': overlapping encounter is rejected');
