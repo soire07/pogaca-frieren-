@@ -1447,7 +1447,31 @@
       "name": "View a full crafting recipe catalog with ingredient counts, level requirements and equipment bonuses",
       "category": "Crafting",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-222",
+      "name": "Track persistent crafting profession XP and level per player and server",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-223",
+      "name": "Award more crafting XP for higher-rarity equipment recipes",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-224",
+      "name": "Track the total number of equipment items successfully crafted",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-225",
+      "name": "Show crafting profession level, XP and successful production count after crafting",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 240
+  "count": 244
 }
