@@ -162,9 +162,9 @@ export default {
       const players = rawPlayers.map((p, i) => {
         const equipped = gearMap.get(p.user_id) || []; const bonus = applyEquipmentSetBonus(equipped, equipmentBonus(equipped));
         const role = PARTY_ROLES[roles[i]]; const build = getCharacterBuild(p.active_build);
-        const baseMaxHp = Math.min(2000, Number(p.max_hp) + bonus.hp);
+        const baseMaxHp = Math.min(2000, Number(p.max_hp) + bonus.hp) * (1 + Number(p.talent_hp) * 0.05);
         const maxHp = Math.round(baseMaxHp * build.hp * role.hp);
-        const maxMana = Math.min(500, Math.round((Number(p.max_mana) + bonus.mana) * build.mana));
+        const maxMana = Math.min(500, Math.round((Number(p.max_mana) + bonus.mana) * build.mana * (1 + Number(p.talent_mana) * 0.05)));
         return { ...p, build, classProfile: getCharacterClass(p.class_name), level: Number(p.level), xp: Number(p.xp), mana: Math.min(Number(p.mana), maxMana), maxMana, role: roles[i], roleLabel: role.label, maxHp,
           hp: Math.round(Math.min(Number(p.hp) * build.hp, baseMaxHp) * role.hp),
           attack: Math.round(Math.min(500, Number(p.attack) + bonus.attack) * build.attack * role.attack * (1 + Number(p.talent_attack) * 0.04)),
