@@ -1429,7 +1429,25 @@
       "name": "Craft the Northern Demon Cutter using dragon scales and Frieren's lost notes",
       "category": "Crafting",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-219",
+      "name": "Craft the Ancient Rune Ring using a rare elf relic and mana crystals",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-220",
+      "name": "Craft the Legendary Heroes' Ring using Himmel's keepsake and elf relics",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-221",
+      "name": "View a full crafting recipe catalog with ingredient counts, level requirements and equipment bonuses",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 237
+  "count": 240
 }
