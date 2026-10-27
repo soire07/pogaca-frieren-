@@ -100,6 +100,7 @@ export default {
       components: []
     });
 
+    let reservationCreated = false;
     let db = await pool.connect();
     try {
       await db.query('BEGIN');
@@ -127,6 +128,27 @@ export default {
         await db.query('ROLLBACK');
         return interaction.editReply({ content: `⏳ <@${cooling.user.id}> yaklaşık ${remaining} dakika daha beklemeli.`, components: [] });
       }
+      // Reserve every teammate in a short transaction so overlapping raids cannot start.
+      await db.query(
+        'DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND expires_at <= NOW()',
+        [interaction.guildId, ids]
+      );
+      reservationCreated = true;
+      try {
+        for (const userId of ids) {
+          await db.query(
+            "INSERT INTO active_rpg_encounters (guild_id,user_id,encounter_id,encounter_type,expires_at) VALUES ($1,$2,$3,'raid',NOW()+INTERVAL '15 minutes')",
+            [interaction.guildId, userId, interaction.id]
+          );
+        }
+      } catch (reservationError) {
+        await db.query('ROLLBACK');
+        if (reservationError.code === '23505') {
+          return interaction.editReply({ content: '⚔️ Takımdaki bir oyuncu başka bir ortak savaşta. Önce o karşılaşma bitsin.', components: [] });
+        }
+        throw reservationError;
+      }
+
       const gearRows = await db.query('SELECT user_id,item_key FROM user_equipment WHERE guild_id=$1 AND user_id=ANY($2::text[])',[interaction.guildId,ids]);
       const gearMap = new Map(raw.map(x => [x.user.id,[]]));
       for (const g of gearRows.rows) {
@@ -290,6 +312,14 @@ export default {
         'SELECT user_id,last_boss_at,xp,level FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE',
         [interaction.guildId, ids]
       );
+      const activeReservations = await db.query(
+        "SELECT user_id FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND encounter_id=$3 AND encounter_type='raid' AND expires_at > NOW() FOR UPDATE",
+        [interaction.guildId, ids, interaction.id]
+      );
+      if (activeReservations.rowCount !== ids.length) {
+        await db.query('ROLLBACK');
+        return interaction.editReply({ content: '⌛ Baskın oturumunun süresi doldu veya takım kilidi kayboldu; ödüller kaydedilmedi. Yeniden deneyebilirsin.', components: [] });
+      }
       const concurrentRun = lockedRows.rows.find(p => p.last_boss_at && Date.now() - new Date(p.last_boss_at).getTime() < COOLDOWN_MS);
       if (concurrentRun) {
         const remaining = Math.ceil((COOLDOWN_MS - (Date.now() - new Date(concurrentRun.last_boss_at).getTime())) / 60_000);
@@ -337,6 +367,7 @@ export default {
           [interaction.guildId,f.userId,loot]
         );
       }
+      await db.query('DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2', [interaction.guildId, interaction.id]);
       await db.query('COMMIT');
       const milestoneRows = await db.query('SELECT user_id,level,boss_defeats,dungeon_wins FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[interaction.guildId,ids]);
       const milestoneText = milestoneRows.rows.map(row => {
@@ -360,6 +391,11 @@ export default {
       if (db) await db.query('ROLLBACK').catch(()=>{});
       console.error('/ortakboss hatası:',error);
       return interaction.editReply({content:'Ortak boss baskınında hata oluştu. Daha sonra yeniden dene.',components:[]}).catch(()=>{});
-    } finally { if (db) db.release(); }
+    } finally {
+      if (db) db.release();
+      if (reservationCreated) {
+        await pool.query('DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2', [interaction.guildId, interaction.id]).catch(() => {});
+      }
+    }
   }
 };
