@@ -720,7 +720,7 @@ test('character management is a single interactive panel, not slash subcommands'
   const handler = await read('index.js');
   assert.match(command, /setName\('karakter'\)/);
   assert.doesNotMatch(command, /addSubcommand/);
-  for (const action of ['name', 'stats', 'class', 'build', 'learn', 'practice', 'spells', 'refresh']) {
+  for (const action of ['name', 'stats', 'class', 'build', 'learn', 'practice', 'spells', 'upgrade', 'upgrade-select', 'refresh']) {
     assert.ok(command.includes('charpanel:' + action), 'missing character panel action: ' + action);
   }
   assert.match(handler, /handleCharacterPanelInteraction\(interaction\)/);
