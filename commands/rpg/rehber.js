@@ -4,7 +4,7 @@ const pages = [
   { title: '📖 I. İlk adımlar — Yolculuğa başla', description: 'Frieren’in dünyasında güçlenmek; karakterini seçmek, büyü öğrenmek, ekipman toplamak ve düzenli maceraya çıkmakla mümkün.', fields: [
     { name: '1 • Karakterini keşfet', value: '**/kimimben** ile karakter keşfet. **/karaktercek** günlük ücretsiz çekim içindir; **/koleksiyon** sahip olduklarını gösterir.' },
     { name: '2 • Sınıfını seç', value: '**/sinifrehberi** sınıfları ve pasiflerini açıklar. Ardından **/sinifsec** ile Büyücü, Muhafız, Şifacı veya Gezgin sınıfını seç. Sınıfın savaş tarzını etkiler.' },
-    { name: '3 • Durumunu kontrol et', value: '**/profil** seviyeni, **/envanter** eşyalarını, **/bakiye** altınını gösterir. **/yardim** komut listesidir; bu komut adım adım oynanış rehberidir.' },
+    { name: '3 • Durumunu kontrol et', value: '**/profil** seviyeni, **/cantam** eşyalarını, **/bakiye** altınını gösterir. **/yardim** komut listesidir; bu komut adım adım oynanış rehberidir.' },
     { name: '🌱 Başlangıç rotası', value: '**/kimimben** → **/sinifrehberi** → **/sinifsec** → **/profil** → **/gunlukodul** → **/kesif**' }
   ]},
   { title: '✨ II. Büyü öğrenme ve ustalaşma', description: 'Büyü repertuvarını kur; büyü öğrenmenin yanında ustalığını da ilerlet.', fields: [
@@ -17,7 +17,7 @@ const pages = [
     { name: 'Savaştan önce', value: '1. **/dinlen** ile can ve mananı toparla.\n2. **/market** üzerinden ekipman al.\n3. **/ekipman** ile silah, zırh ve yüzüklerini kuşan.\n4. **/buyular** ile büyülerini kontrol et.' },
     { name: 'Boss ile nasıl savaşılır?', value: '**/bossrehberi** boss kademelerini, güçlerini ve ganimetlerini açıklar. Hazır olduğunda **/iblisavasi** kullan. Savaş ekranındaki seçenekleri oku; özel saldırı/evre uyarılarına göre savunma ve hasar tercihlerini yap.' },
     { name: 'Takım savaşları', value: '**/ortakboss** takım baskınıdır; tank, şifacı ve hasar rolleri birlikte çalışmalı. **/zindan** iki kişilik, **/katlizindan** çok katlı ortak keşiftir. Başlamadan önce arkadaşlarınla rol paylaş.' },
-    { name: '🎁 Zaferden sonra', value: 'Ödül ve ganimet için **/profil**, **/envanter**, **/maceragecmisi** ve **/gunluk** komutlarını kontrol et. Boss zaferleri bazı ileri büyülerin gereksinimlerindendir.' }
+    { name: '🎁 Zaferden sonra', value: 'Ödül ve ganimet için **/profil**, **/cantam**, **/maceragecmisi** ve **/gunluk** komutlarını kontrol et. Boss zaferleri bazı ileri büyülerin gereksinimlerindendir.' }
   ]},
   { title: '📈 IV. Hızlı ve akıllı güçlenme', description: 'İyi ilerleme, günlük ödülleri kaçırmamak ve altın/XP harcamasını planlamakla gelir.', fields: [
     { name: 'Her gün yapılacaklar', value: '**/gunlukodul** ile günlük ödülünü al; **/gunlukgorev** görevlerini tamamla; sonra **/kesif** ile maceraya çık. Görevler ve keşifler kaynak/deneyim kazanmanın temel yollarıdır.' },
@@ -32,7 +32,7 @@ const pages = [
     { name: '🥐 Mola komutları', value: '**/pogaca**, **/mimic**, **/sans**, **/saril** ve **/animequiz** macera arasında eğlence içindir.' }
   ]},
   { title: '🧰 VI. Ekonomi, ekipman ve diğer komutlar', description: 'Kaynaklarını, eşyalarını ve sunucu araçlarını doğru kullan.', fields: [
-    { name: 'Altın ve eşya', value: '**/bakiye** altınını; **/market** alışverişi; **/envanter** eşyaları; **/ekipman** kuşanma/çıkarma; **/esyakullan** kullanılabilir eşyaları yönetir.' },
+    { name: 'Altın ve eşya', value: '**/bakiye** altınını; **/market** alışverişi; **/cantam** eşyaları; **/ekipman** kuşanma/çıkarma; **/esyakullan** kullanılabilir eşyaları yönetir.' },
     { name: 'İstatistikler', value: '**/istatistik** bot istatistiklerini, **/siralama** RPG sıralamalarını, **/liderlik** sunucu liderliğini gösterir.' },
     { name: 'Sunucu yönetimi', value: 'Yetkiliysen **/kurulum** ile karşılama/log ayarlarını düzenleyebilir; **/uyar**, **/timeout**, **/ban** ve **/temizle** moderasyon komutlarını kullanabilirsin.' },
     { name: '🔎 Daha fazla yardım', value: 'Discord’da / yazıp komut adını seçerek seçeneklerini ve açıklamasını gör. **/yardim** tüm komutları kategori kategori listeler. Bazı özellikler sunucu ayarlarına veya komut gereksinimlerine bağlı olabilir.' }
