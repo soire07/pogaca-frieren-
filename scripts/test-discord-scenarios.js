@@ -153,3 +153,50 @@ test('manual test plan distinguishes automated checks from live Discord verifica
   assert.ok(guide.includes('/katlizindan'));
   assert.ok(guide.includes('/ortakboss'));
 });
+
+import { masteryLevelForCasts, practiceCost } from '../buyupratik.js';
+
+test('spell learning command exposes a unique catalogue with level and gold requirements', async () => {
+  const source = await read('buyuogren.js');
+  const module = await import('../buyuogren.js');
+  assert.equal(module.learnableSpells.length, 8);
+  assert.equal(new Set(module.learnableSpells.map(spell => spell.key)).size, module.learnableSpells.length);
+  assert.ok(module.learnableSpells.every(spell => spell.level >= 1 && spell.price > 0));
+  assert.match(source, /FOR UPDATE/);
+  assert.match(source, /INSERT INTO learned_spells/);
+  assert.match(source, /ON CONFLICT DO NOTHING/);
+  assert.match(source, /await db\.query\('COMMIT'\)/);
+  assert.match(source, /await db\.query\('ROLLBACK'\)/);
+});
+
+test('spell mastery advances at three-practice thresholds and caps at ten', () => {
+  assert.equal(masteryLevelForCasts(0), 0);
+  assert.equal(masteryLevelForCasts(2), 0);
+  assert.equal(masteryLevelForCasts(3), 1);
+  assert.equal(masteryLevelForCasts(29), 9);
+  assert.equal(masteryLevelForCasts(30), 10);
+  assert.equal(masteryLevelForCasts(100), 10);
+  assert.equal(practiceCost(0), 25);
+  assert.equal(practiceCost(1), 60);
+  assert.equal(practiceCost(10), 375);
+});
+
+test('spell practice verifies ownership and spends mana and gold inside a transaction', async () => {
+  const source = await read('buyupratik.js');
+  assert.match(source, /SELECT 1 FROM learned_spells/);
+  assert.match(source, /SELECT casts, mastery_level FROM spell_mastery/);
+  assert.match(source, /mana=mana-8, coins=coins-\$3/);
+  assert.match(source, /spell_mastery\.casts\+1/);
+  assert.match(source, /mastery_level=GREATEST/);
+  assert.match(source, /await db\.query\('BEGIN'\)/);
+  assert.match(source, /await db\.query\('COMMIT'\)/);
+  assert.match(source, /await db\.query\('ROLLBACK'\)/);
+});
+
+test('spell mastery overview reads learned spells and persisted mastery progress', async () => {
+  const source = await read('buyuustaligi.js');
+  assert.match(source, /LEFT JOIN spell_mastery/);
+  assert.match(source, /COALESCE\(m\.casts,0\)/);
+  assert.match(source, /COALESCE\(m\.mastery_level,0\)/);
+  assert.match(source, /setName\('buyuustaligi'\)/);
+});
