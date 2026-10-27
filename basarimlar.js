@@ -7,7 +7,26 @@ const achievements = [
   { id:'collector_25', title:'Arşiv Ustası', emoji:'🗃️', description:'25 farklı karakter topla', check:s=>s.uniqueCharacters>=25, reward:350 },
   { id:'rich_1000', title:'Poğaça Zengini', emoji:'🥐', description:'Cüzdanında 1.000 altın bulundur', check:s=>s.coins>=1000, reward:100 },
   { id:'level_5', title:'Yolun Başında', emoji:'🧙', description:'5. seviyeye ulaş', check:s=>s.level>=5, reward:200 },
-  { id:'legendary', title:'Efsane Avcısı', emoji:'🌟', description:'En az bir Efsanevi karakter bulundur', check:s=>s.legendary>=1, reward:500 }
+  { id:'legendary', title:'Efsane Avcısı', emoji:'🌟', description:'En az bir Efsanevi karakter bulundur', check:s=>s.legendary>=1, reward:500 },
+  { id:'first_exploration', title:'İlk Adım', emoji:'🧭', description:'İlk keşfini tamamla', check:s=>s.explorations>=1, reward:75 },
+  { id:'explorer_10', title:'Yolun Tozunu Yutan', emoji:'🌲', description:'10 keşif tamamla', check:s=>s.explorations>=10, reward:250 },
+  { id:'item_user_10', title:'Hazırlıklı Büyücü', emoji:'🧪', description:'10 eşya kullan', check:s=>s.itemsUsed>=10, reward:200 },
+  { id:'streak_3', title:'Fırına Alışan', emoji:'🔥', description:'3 günlük ödül serisine ulaş', check:s=>s.bestDailyStreak>=3, reward:150 },
+  { id:'streak_7', title:'Haftalık Müdavim', emoji:'🥐', description:'7 günlük ödül serisine ulaş', check:s=>s.bestDailyStreak>=7, reward:350 },
+  { id:'streak_14', title:'Fırının Efsanesi', emoji:'🌟', description:'14 günlük ödül serisine ulaş', check:s=>s.bestDailyStreak>=14, reward:800 },
+  { id:'first_dungeon', title:'Mahzenin Eşiğinde', emoji:'🗝️', description:'İlk ortak zindan zaferini kazan', check:s=>s.dungeonWins>=1, reward:125 },
+  { id:'dungeon_10', title:'Zindan Fatihi', emoji:'⚔️', description:'10 ortak zindan zaferi kazan', check:s=>s.dungeonWins>=10, reward:400 },
+  { id:'dungeon_25', title:'Kuzeyin Efsaneleri', emoji:'🌑', description:'25 ortak zindan zaferi kazan', check:s=>s.dungeonWins>=25, reward:900 },
+  { id:'rare_explorer', title:'Elflerin Sırrı', emoji:'🌙', description:'Üç nadir macera bölgesinin tamamını keşfet', check:s=>s.rareDiscoveries>=3, reward:600 },
+  { id:'treasure_map', title:'Harita Avcısı', emoji:'🧩', description:'İlk Kadim Hazine haritanı tamamla', check:s=>s.treasuresOpened>=1, reward:300 },
+  { id:'chest_opener_10', title:'Kadim Ganimetçi', emoji:'🗝️', description:'10 hazine sandığı aç', check:s=>s.chestsOpened>=10, reward:700 },
+  { id:'route_master_10', title:'Yol Ustası', emoji:'🗺️', description:'Toplam 10 macera rotası ziyareti yap', check:s=>s.routeVisits>=10, reward:350 },
+  { id:'craft_level_5', title:'Çıraklıktan Ustalığa', emoji:'⚒️', description:'5. zanaat seviyesine ulaş', check:s=>s.craftingLevel>=5, reward:300 },
+  { id:'craft_level_10', title:'Efsanevi Zanaatkâr', emoji:'🛠️', description:'10. zanaat seviyesine ulaş', check:s=>s.craftingLevel>=10, reward:900 },
+  { id:'craft_10', title:'İlk Atölye', emoji:'🔨', description:'10 ekipman üret', check:s=>s.craftedItems>=10, reward:250 },
+  { id:'craft_50', title:'Kuzeyin Demircisi', emoji:'⚒️', description:'50 ekipman üret', check:s=>s.craftedItems>=50, reward:800 },
+  { id:'salvage_10', title:'Geri Dönüşüm Ustası', emoji:'♻️', description:'10 ekipman parçala', check:s=>s.salvagedItems>=10, reward:250 },
+  { id:'salvage_25', title:'Malzeme Simyacısı', emoji:'🧪', description:'25 ekipman parçala', check:s=>s.salvagedItems>=25, reward:600 }
 ];
 
 export default {
@@ -19,7 +38,26 @@ export default {
         {name:'Arşiv Ustası',value:'collector_25'},
         {name:'Poğaça Zengini',value:'rich_1000'},
         {name:'Yolun Başında',value:'level_5'},
-        {name:'Efsane Avcısı',value:'legendary'}
+        {name:'Efsane Avcısı',value:'legendary'},
+        {name:'İlk Adım',value:'first_exploration'},
+        {name:'Yolun Tozunu Yutan',value:'explorer_10'},
+        {name:'Hazırlıklı Büyücü',value:'item_user_10'},
+        {name:'Fırına Alışan',value:'streak_3'},
+        {name:'Haftalık Müdavim',value:'streak_7'},
+        {name:'Fırının Efsanesi',value:'streak_14'},
+        {name:'Mahzenin Eşiğinde',value:'first_dungeon'},
+        {name:'Zindan Fatihi',value:'dungeon_10'},
+        {name:'Kuzeyin Efsaneleri',value:'dungeon_25'},
+        {name:'Elflerin Sırrı',value:'rare_explorer'},
+        {name:'Harita Avcısı',value:'treasure_map'},
+        {name:'Kadim Ganimetçi',value:'chest_opener_10'},
+        {name:'Yol Ustası',value:'route_master_10'},
+        {name:'Çıraklıktan Ustalığa',value:'craft_level_5'},
+        {name:'Efsanevi Zanaatkâr',value:'craft_level_10'},
+        {name:'İlk Atölye',value:'craft_10'},
+        {name:'Kuzeyin Demircisi',value:'craft_50'},
+        {name:'Geri Dönüşüm Ustası',value:'salvage_10'},
+        {name:'Malzeme Simyacısı',value:'salvage_25'}
       ).setRequired(false)),
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',ephemeral:true});
@@ -27,13 +65,24 @@ export default {
     try {
       await ensureUser(interaction.guildId,interaction.user.id);
       const [{rows:[u]}, {rows:[c]}] = await Promise.all([
-        pool.query('SELECT coins,level,xp FROM users WHERE guild_id=$1 AND user_id=$2',[interaction.guildId,interaction.user.id]),
+        pool.query('SELECT coins,level,xp,exploration_count,items_used_count,best_daily_streak,dungeon_wins,dungeon_runs FROM users WHERE guild_id=$1 AND user_id=$2',[interaction.guildId,interaction.user.id]),
         pool.query(`SELECT COUNT(*)::int AS unique_count,
           COALESCE(SUM(quantity),0)::int AS total_copies,
           COUNT(*) FILTER (WHERE rarity='Efsanevi')::int AS legendary
           FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2`,[interaction.guildId,interaction.user.id])
       ]);
-      const stats={coins:Number(u?.coins||0),level:Number(u?.level||1),xp:Number(u?.xp||0),uniqueCharacters:Number(c?.unique_count||0),totalCopies:Number(c?.total_copies||0),legendary:Number(c?.legendary||0)};
+      const [{rows:[adventureStats]}] = await Promise.all([
+        pool.query(`SELECT
+          (SELECT COUNT(*)::int FROM adventure_discoveries WHERE guild_id=$1 AND user_id=$2 AND discovery_key IN ('ancient-elf-sanctuary','forgotten-grimoire','dragon-nest')) AS rare_discoveries,
+          (SELECT COALESCE(SUM(visits),0)::int FROM adventure_route_mastery WHERE guild_id=$1 AND user_id=$2) AS route_visits,
+          (SELECT COALESCE(treasures_opened,0)::int FROM adventure_treasure_progress WHERE guild_id=$1 AND user_id=$2) AS treasures_opened,
+          (SELECT COUNT(*)::int FROM treasure_openings WHERE guild_id=$1 AND user_id=$2) AS chests_opened,
+          (SELECT COALESCE(level,1)::int FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2) AS crafting_level,
+          (SELECT COALESCE(successful_crafts,0)::int FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2) AS crafted_items,
+          (SELECT COALESCE(salvaged_items,0)::int FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2) AS salvaged_items`,
+          [interaction.guildId,interaction.user.id])
+      ]);
+      const stats={coins:Number(u?.coins||0),level:Number(u?.level||1),xp:Number(u?.xp||0),uniqueCharacters:Number(c?.unique_count||0),totalCopies:Number(c?.total_copies||0),legendary:Number(c?.legendary||0),explorations:Number(u?.exploration_count||0),itemsUsed:Number(u?.items_used_count||0),bestDailyStreak:Number(u?.best_daily_streak||0),dungeonWins:Number(u?.dungeon_wins||0),dungeonRuns:Number(u?.dungeon_runs||0),rareDiscoveries:Number(adventureStats?.rare_discoveries||0),routeVisits:Number(adventureStats?.route_visits||0),treasuresOpened:Number(adventureStats?.treasures_opened||0),chestsOpened:Number(adventureStats?.chests_opened||0),craftingLevel:Number(adventureStats?.crafting_level||1),craftedItems:Number(adventureStats?.crafted_items||0),salvagedItems:Number(adventureStats?.salvaged_items||0)};
       const claimKey=interaction.options.getString('odul');
       if(claimKey){
         const achievement=achievements.find(a=>a.id===claimKey);
@@ -58,7 +107,7 @@ export default {
       const completed=achievements.filter(a=>a.check(stats)).length;
       const embed=new EmbedBuilder().setColor(0xb58cff).setTitle('🏅 Başarımlar • '+interaction.user.username)
         .setDescription(lines.join('\n\n'))
-        .addFields({name:'İlerleme',value:`${completed}/${achievements.length} başarı`,inline:true},{name:'Farklı karakter',value:String(stats.uniqueCharacters),inline:true},{name:'Toplam kopya',value:String(stats.totalCopies),inline:true})
+        .addFields({name:'İlerleme',value:`${completed}/${achievements.length} başarı`,inline:true},{name:'Farklı karakter',value:String(stats.uniqueCharacters),inline:true},{name:'Toplam kopya',value:String(stats.totalCopies),inline:true},{name:'🧭 Keşif',value:String(stats.explorations),inline:true},{name:'🧪 Kullanılan eşya',value:String(stats.itemsUsed),inline:true},{name:'🗝️ Zindan zaferi',value:String(stats.dungeonWins),inline:true})
         .setFooter({text:'Ödül almak için /basarimlar odul:<başarım kodu> kullan.'}).setTimestamp();
       return interaction.editReply({embeds:[embed]});
     } catch(error) {

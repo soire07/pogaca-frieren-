@@ -1,9 +1,10 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
+import { equipmentItems, equipmentBonus } from './equipment-data.js';
 
 const usableItems = {
   frieren_staff: { name: '🪄 Frieren’in Asası', key: '🪄 Frieren’in Asası', description: '120 XP kazandın.', xp: 120, coins: 0 },
-  mana_crystal: { name: '💎 Mana Kristali', key: '💎 Mana Kristali', description: '70 XP kazandın.', xp: 70, coins: 0 },
+  mana_crystal: { name: '💎 Mana Kristali', key: '💎 Mana Kristali', description: '50 Mana yeniledin.', xp: 0, coins: 0, mana: 50 },
   grimoire: { name: '📖 Yasak Büyü Kitabı', key: '📖 Yasak Büyü Kitabı', description: '100 XP kazandın.', xp: 100, coins: 0 },
   mimic_chest: { name: '📦 Mimic Sandığı', key: '📦 Mimic Sandığı', description: 'Sandıktan 60 altın çıktı!', xp: 0, coins: 60 },
   fern_ribbon: { name: '🎀 Fern’in Kurdelası', key: '🎀 Fern’in Kurdelası', description: '35 XP kazandın.', xp: 35, coins: 0 },
@@ -34,7 +35,17 @@ const usableItems = {
     description: 'Yıldız büyüsü sana 100 XP kazandırdı.',
     xp: 100,
     coins: 0
-  }
+  },
+  old_magic_relic: { name: '✨ Eski Büyü Kalıntısı', key: '✨ Eski Büyü Kalıntısı', description: 'Kalıntıdan 35 XP ve 15 Mana kazandın.', xp: 35, coins: 0, mana: 15 },
+  ruin_key: { name: '🗝️ Harabe Anahtarı', key: '🗝️ Harabe Anahtarı', description: 'Anahtarı gezgin koleksiyonculara sattın; 45 altın kazandın.', xp: 0, coins: 45 },
+  demon_essence: { name: '🩸 İblis Özü', key: '🩸 İblis Özü', description: 'İblis özü bedenini güçlendirdi; 35 HP ve 20 Mana yeniledin.', xp: 0, coins: 0, hp: 35, mana: 20 },
+  dried_flower: { name: '🌼 Kurutulmuş Çiçek', key: '🌼 Kurutulmuş Çiçek', description: 'Çiçeğin sakinleştirici büyüsü 25 HP yeniledi.', xp: 0, coins: 0, hp: 25 },
+  magic_poagaca: { name: '🥐 Büyülü Poğaça', key: '🥐 Büyülü Poğaça', description: 'Büyülü poğaça 20 HP ve 10 Mana yeniledi.', xp: 0, coins: 0, hp: 20, mana: 10 },
+  healing_potion: { name: '🧪 Şifa İksiri', key: '🧪 Şifa İksiri', description: 'İksir 60 HP ve 25 Mana yeniledi.', xp: 0, coins: 0, hp: 60, mana: 25 },
+  shadowfang: { name: '🐺 Schattenwolfzahn', key: '🐺 Schattenwolfzahn', description: 'Schattenwolf dişi deneyim kazandırdı: 65 XP ve 25 altın. Dişin keskinliği saldırını kalıcı olarak +1 artırdı.', xp: 65, coins: 25, attack: 1 },
+  guardian_rune: { name: '🗿 Muhafız Rünü', key: '🗿 Muhafız Rünü', description: 'Kadim rün 45 Mana yeniledi ve savunmanı kalıcı olarak +1 artırdı.', xp: 0, coins: 0, mana: 45, defense: 1 },
+  northern_demon_heart: { name: '🩸 Kuzey İblisinin Kalbi', key: '🩸 Kuzey İblisinin Kalbi', description: 'İblis kalbi 45 HP ve 35 Mana yeniledi; maksimum canın kalıcı olarak +10 arttı.', xp: 0, coins: 0, hp: 45, mana: 35, maxHp: 10 },
+  commander_blood: { name: '🩸 İblis Komutanının Kanı', key: '🩸 İblis Komutanının Kanı', description: 'Komutanın özü 150 XP ve 100 altın kazandırdı; saldırını kalıcı +2 ve maksimum Mananı +10 artırdı.', xp: 150, coins: 100, attack: 2, maxMana: 10 }
 };
 
 export default {
@@ -47,7 +58,7 @@ export default {
         .setRequired(true)
         .addChoices(
           { name: '🪄 Frieren’in Asası (+120 XP)', value: 'frieren_staff' },
-          { name: '💎 Mana Kristali (+70 XP)', value: 'mana_crystal' },
+          { name: '💎 Mana Kristali (+50 Mana)', value: 'mana_crystal' },
           { name: '📖 Yasak Büyü Kitabı (+100 XP)', value: 'grimoire' },
           { name: '📦 Mimic Sandığı (+60 altın)', value: 'mimic_chest' },
           { name: '🎀 Fern’in Kurdelası (+35 XP)', value: 'fern_ribbon' },
@@ -60,7 +71,17 @@ export default {
           { name: '🍀 Şans Tılsımı (+25 altın)', value: 'lucky_charm' },
           { name: '🍵 Frieren Çayı (+25 XP)', value: 'frieren_tea' },
           { name: '🥐 Büyülü Poğaça Kutusu (+40 altın)', value: 'poagaca_box' },
-          { name: '🌠 Yıldız İksiri (+100 XP)', value: 'star_potion' }
+          { name: '🌠 Yıldız İksiri (+100 XP)', value: 'star_potion' },
+          { name: '✨ Eski Büyü Kalıntısı (+35 XP, +15 Mana)', value: 'old_magic_relic' },
+          { name: '🗝️ Harabe Anahtarı (+45 altın)', value: 'ruin_key' },
+          { name: '🩸 İblis Özü (+35 HP, +20 Mana)', value: 'demon_essence' },
+          { name: '🌼 Kurutulmuş Çiçek (+25 HP)', value: 'dried_flower' },
+          { name: '🥐 Büyülü Poğaça (+20 HP, +10 Mana)', value: 'magic_poagaca' },
+          { name: '🧪 Şifa İksiri (+60 HP, +25 Mana)', value: 'healing_potion' },
+          { name: '🐺 Schattenwolfzahn (+65 XP, +25 altın)', value: 'shadowfang' },
+          { name: '🗿 Muhafız Rünü (+45 Mana)', value: 'guardian_rune' },
+          { name: '🩸 Kuzey İblisinin Kalbi (+45 HP, +35 Mana)', value: 'northern_demon_heart' },
+          { name: '🩸 İblis Komutanının Kanı (+150 XP, +100 altın)', value: 'commander_blood' }
         )
     ),
 
@@ -101,14 +122,29 @@ export default {
         );
       }
 
+      const equippedResult = await db.query(
+        'SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2',
+        [interaction.guildId, interaction.user.id]
+      );
+      const gear = equipmentBonus(equippedResult.rows.map(row => equipmentItems.find(entry => entry.name === row.item_key)).filter(Boolean));
+
       const updated = await db.query(
         `UPDATE users SET
           xp = xp + $3,
           coins = coins + $4,
+          last_item_used_at = NOW(),
+          items_used_count = items_used_count + 1,
+          max_hp = LEAST(2000, max_hp + $7),
+          max_mana = LEAST(2000, max_mana + $8),
+          attack = LEAST(500, attack + $9),
+          defense = LEAST(250, defense + $10),
+          mana = LEAST(LEAST(2000, max_mana + $8 + $12), mana + $5),
+          hp = LEAST(LEAST(2000, max_hp + $7 + $11), hp + $6),
+          stat_points = stat_points + GREATEST(0, (FLOOR(SQRT((xp + $3)::numeric / 100))::int + 1) - level),
           level = FLOOR(SQRT((xp + $3)::numeric / 100))::int + 1
          WHERE guild_id=$1 AND user_id=$2
-         RETURNING xp, coins, level`,
-        [interaction.guildId, interaction.user.id, item.xp, item.coins]
+         RETURNING xp, coins, level, hp, max_hp, mana, max_mana, attack, defense, stat_points`,
+        [interaction.guildId, interaction.user.id, item.xp, item.coins, item.mana || 0, item.hp || 0, item.maxHp || 0, item.maxMana || 0, item.attack || 0, item.defense || 0, gear.hp, gear.mana]
       );
 
       await db.query('COMMIT');
@@ -116,11 +152,22 @@ export default {
       const embed = new EmbedBuilder()
         .setColor(0x9b8cff)
         .setTitle('✨ Eşya kullanıldı!')
-        .setDescription(item.description)
+        .setDescription([
+          item.description,
+          item.hp ? `Şu anki HP: **${user.hp}/${Math.min(2000, Number(user.max_hp) + gear.hp)}**.` : '',
+          item.mana ? `Şu anki Mana: **${user.mana}/${Math.min(2000, Number(user.max_mana) + gear.mana)}**.` : '',
+          item.attack ? `Kalıcı saldırı bonusu: **+${item.attack}**.` : '',
+          item.defense ? `Kalıcı savunma bonusu: **+${item.defense}**.` : '',
+          item.maxHp ? `Maksimum can bonusu: **+${item.maxHp}**.` : '',
+          item.maxMana ? `Maksimum Mana bonusu: **+${item.maxMana}**.` : ''
+        ].filter(Boolean).join(' '))
         .addFields(
           { name: '⭐ Toplam XP', value: Number(user.xp).toLocaleString('tr-TR'), inline: true },
           { name: '🪙 Altın', value: Number(user.coins).toLocaleString('tr-TR'), inline: true },
-          { name: '🧭 Seviye', value: String(user.level), inline: true }
+          { name: '🧭 Seviye', value: String(user.level), inline: true },
+          { name: '⚔️ Saldırı', value: String(user.attack), inline: true },
+          { name: '🛡️ Savunma', value: String(user.defense), inline: true },
+          { name: '✨ Harcanabilir stat puanı', value: String(user.stat_points), inline: true }
         )
         .setFooter({ text: 'Poğaça Frieren • Eşyalar kalıcı envanterinden düşülür' })
         .setTimestamp();

@@ -12,22 +12,45 @@ if (!token || !clientId) {
   throw new Error('DISCORD_TOKEN ve CLIENT_ID Render Environment içinde olmalı.');
 }
 
+
+async function findCommandFiles(directory) {
+  let entries;
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+
+  const files = [];
+  for (const entry of entries) {
+    const fullPath = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await findCommandFiles(fullPath));
+    } else if (entry.isFile() && entry.name.endsWith('.js')) {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
+
 const commands = [];
 const root = __dirname;
-const files = await readdir(root);
+const rootFiles = (await readdir(root, { withFileTypes: true }))
+  .filter(entry => entry.isFile() && entry.name.endsWith('.js'))
+  .map(entry => join(root, entry.name))
+  .filter(file => !['index.js', 'deploy-commands.js'].includes(file.split(/[\\/]/).pop()));
+const nestedFiles = await findCommandFiles(join(root, 'commands'));
+const files = [...rootFiles, ...nestedFiles];
 
-for (const file of files) {
-  if (!file.endsWith('.js')) continue;
-  if (file === 'index.js' || file === 'deploy-commands.js') continue;
-
+for (const filePath of files) {
   try {
-    const mod = await import(pathToFileURL(join(root, file)).href);
-
+    const mod = await import(pathToFileURL(filePath).href);
     if (mod.default?.data && typeof mod.default.data.toJSON === 'function') {
       commands.push(mod.default.data.toJSON());
     }
   } catch (error) {
-    console.error(`${file} yüklenemedi; komut kaydı durduruldu:`, error);
+    console.error(`${filePath} yüklenemedi; komut kaydı durduruldu:`, error);
     process.exitCode = 1;
     throw error;
   }

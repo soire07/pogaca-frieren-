@@ -1,0 +1,1807 @@
+{
+  "targetFeatures": 2000,
+  "auditComplete": false,
+  "countingRule": "A feature is a distinct player-visible capability or meaningful interaction, not a file, command alias, UI line, or cosmetic wording change.",
+  "statuses": [
+    "implemented_needs_runtime_test",
+    "in_progress",
+    "planned"
+  ],
+  "features": [
+    {
+      "id": "RPG-001",
+      "name": "RPG profile and stats",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-002",
+      "name": "View another player's profile",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-003",
+      "name": "XP and level progression",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-004",
+      "name": "Level-up stat point rewards",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-005",
+      "name": "Distribute character stat points",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-006",
+      "name": "Restore HP and Mana by resting",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-007",
+      "name": "Rest cooldown",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-008",
+      "name": "Level-scaled exploration regions",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-009",
+      "name": "Random exploration encounters",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-010",
+      "name": "Exploration rewards and item drops",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-011",
+      "name": "Exploration cooldown",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-012",
+      "name": "Solo demon boss battles",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-013",
+      "name": "Boss tiers based on player level",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-014",
+      "name": "Boss-specific attacks",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-015",
+      "name": "Boss loot and permanent bonuses",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-016",
+      "name": "Boss guide and reward estimates",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-017",
+      "name": "Spellbook with multiple spells",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-018",
+      "name": "Learn spells",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-019",
+      "name": "Spell mastery progression",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-020",
+      "name": "Use inventory items",
+      "category": "Inventory",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-021",
+      "name": "Item usage tracking",
+      "category": "Inventory",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-022",
+      "name": "Browse item market",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-023",
+      "name": "Buy equipment",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-024",
+      "name": "Equip and unequip gear by slot",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-025",
+      "name": "Equipment attack and defense bonuses",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-026",
+      "name": "Equipment max HP and Mana bonuses",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-027",
+      "name": "Player inventory listing",
+      "category": "Inventory",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-028",
+      "name": "Daily coin reward",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-029",
+      "name": "Daily reward streak and bonus",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-030",
+      "name": "Daily missions and claimable rewards",
+      "category": "Quests",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-031",
+      "name": "Achievements and claimable rewards",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-032",
+      "name": "Main story with player choices",
+      "category": "Story",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-033",
+      "name": "Choice-dependent story requirements",
+      "category": "Story",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-034",
+      "name": "NPC side quests",
+      "category": "Quests",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-035",
+      "name": "World lore pages",
+      "category": "Lore",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-036",
+      "name": "Anime character collection",
+      "category": "Collection",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-037",
+      "name": "Character draw pity counters",
+      "category": "Collection",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-038",
+      "name": "Character collection upgrades",
+      "category": "Collection",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-039",
+      "name": "Character collection leaderboard",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-040",
+      "name": "Trade offer flow",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-041",
+      "name": "Anime quiz interaction",
+      "category": "Mini-games",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-042",
+      "name": "Mimic-themed interaction",
+      "category": "Mini-games",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-043",
+      "name": "Co-op dungeon invitation and acceptance",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-044",
+      "name": "Co-op dungeon multi-turn battle",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-045",
+      "name": "Co-op dungeon tier scaling",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-046",
+      "name": "Co-op dungeon rare loot",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-047",
+      "name": "Co-op dungeon cooldown",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "MOD-001",
+      "name": "Moderation warning command",
+      "category": "Moderation",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "MOD-002",
+      "name": "Timeout command",
+      "category": "Moderation",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "MOD-003",
+      "name": "Ban command",
+      "category": "Moderation",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "MOD-004",
+      "name": "Moderation case logging",
+      "category": "Moderation",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SRV-001",
+      "name": "Guild welcome message settings",
+      "category": "Server",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SRV-002",
+      "name": "Configurable moderation log channel",
+      "category": "Server",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SRV-003",
+      "name": "Bot/server statistics",
+      "category": "Server",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "FUN-001",
+      "name": "Random luck interaction",
+      "category": "Fun",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "FUN-002",
+      "name": "Virtual hug interaction",
+      "category": "Fun",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "FUN-003",
+      "name": "Character identification interaction",
+      "category": "Fun",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-048",
+      "name": "Track co-op dungeon attempts",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-049",
+      "name": "Track successful co-op dungeon clears",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-050",
+      "name": "Claim rewards for co-op dungeon milestones",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-051",
+      "name": "Filter character collection by rarity",
+      "category": "Collection",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-052",
+      "name": "Reserve duplicate character copies for pending trades",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-001",
+      "name": "Guild leaderboard by player level",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-002",
+      "name": "Guild leaderboard by total XP",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-003",
+      "name": "Guild leaderboard by earned coins",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-004",
+      "name": "Guild leaderboard by demon boss victories",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-005",
+      "name": "Guild leaderboard by dungeon victories",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-006",
+      "name": "Guild leaderboard by exploration count",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-007",
+      "name": "Show the invoking player's current rank",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-008",
+      "name": "View personal RPG adventure history",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-009",
+      "name": "View another player's RPG adventure history",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-053",
+      "name": "Summarize demon boss victory statistics",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-054",
+      "name": "Summarize co-op dungeon attempt and victory statistics",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-055",
+      "name": "Summarize exploration, item-use and character-draw statistics",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-056",
+      "name": "Summarize learned spells and equipped gear",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-057",
+      "name": "Summarize unique characters and total collection copies",
+      "category": "Collection",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-058",
+      "name": "View personalized RPG progression goals",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-059",
+      "name": "Track level milestone goal",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-060",
+      "name": "Track demon-slaying milestone goal",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-061",
+      "name": "Track co-op dungeon victory milestone",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-062",
+      "name": "Track exploration milestone",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-063",
+      "name": "Track unique character collection milestone",
+      "category": "Collection",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-064",
+      "name": "Track learned-spell milestone",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-065",
+      "name": "Start a five-floor cooperative dungeon run",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-066",
+      "name": "Invite up to three teammates to a dungeon party",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-067",
+      "name": "Require each invited teammate to accept before starting",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-068",
+      "name": "Progress through distinct named dungeon floors",
+      "category": "Dungeon",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-069",
+      "name": "Scale floor enemy health with party level",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-070",
+      "name": "Carry player HP between dungeon floors",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-071",
+      "name": "Award XP and coins for each cleared floor",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-072",
+      "name": "Fight a final-floor demon lord encounter",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-073",
+      "name": "Grant a shared rare loot drop after full dungeon completion",
+      "category": "Loot",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-074",
+      "name": "Stop the dungeon run when the party can no longer fight",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-075",
+      "name": "Launch a role-based cooperative boss raid",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-076",
+      "name": "Invite up to three teammates to a boss raid",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-077",
+      "name": "Require every invited raid member to accept",
+      "category": "Co-op",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-078",
+      "name": "Assign tank, healer and damage roles to raid members",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-079",
+      "name": "Increase raid boss health based on party size",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-080",
+      "name": "Let the tank attract most boss attacks",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-081",
+      "name": "Let the healer restore party HP each round",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-082",
+      "name": "Reward raid victories with XP, coins and rare loot",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-083",
+      "name": "Trigger hidden treasure chests between dungeon floors",
+      "category": "Dungeon",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-084",
+      "name": "Trigger floor traps that damage a party member",
+      "category": "Dungeon",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-085",
+      "name": "Grant each party member loot from discovered chests",
+      "category": "Loot",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-086",
+      "name": "Include role-specific attack, HP and defense modifiers",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-087",
+      "name": "Scale cooperative raid boss health with average party level",
+      "category": "Balance",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-088",
+      "name": "Trigger an enrage phase when raid boss health drops below half",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-089",
+      "name": "Use periodic special attacks during cooperative boss raids",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-090",
+      "name": "Choose tank, healer or damage role for each dungeon teammate",
+      "category": "Dungeon",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-091",
+      "name": "Let the tank attract dungeon enemy attacks",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-092",
+      "name": "Let the healer restore teammate HP during dungeon combat",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-093",
+      "name": "Final dungeon boss gains an enrage phase below half health",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-094",
+      "name": "Final dungeon boss uses a periodic mana-star burst attack",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-095",
+      "name": "Final-floor demon lord deals increased damage compared with ordinary floor enemies",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-096",
+      "name": "Choose attack, spell or defense each dungeon combat turn",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-097",
+      "name": "Cast Zoltraak in dungeons by spending mana for increased damage",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-098",
+      "name": "Reduce incoming dungeon damage with a timed defense action",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-099",
+      "name": "Each invited dungeon player chooses their own combat role",
+      "category": "Dungeon",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-100",
+      "name": "Each invited boss raid player chooses their own combat role",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-101",
+      "name": "Prevent duplicate tank and healer assignments during party role selection",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-102",
+      "name": "Choose attack, Zoltraak or defense each boss raid turn",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-103",
+      "name": "Spend persistent mana to amplify cooperative boss raid damage",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-104",
+      "name": "Reduce cooperative boss raid damage with player defense choices",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-105",
+      "name": "Resolve periodic mana-star burst as an area attack against all living raid members",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-106",
+      "name": "Apply a boss mana curse that drains up to eight mana on its third-turn cycle",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-107",
+      "name": "Select one of three distinct cooperative raid bosses with different base stats and signature moves",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-108",
+      "name": "Exploit boss-specific weaknesses for increased matching damage",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-109",
+      "name": "Cast Heilen to spend mana and restore health during cooperative combat",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-110",
+      "name": "Cast Mana Shield to spend mana and reduce incoming damage",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-111",
+      "name": "Choose between secret passage, mana shrine and safe route after each cleared dungeon floor",
+      "category": "Dungeon",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-112",
+      "name": "Apply easy, normal and nightmare dungeon difficulty scaling",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-113",
+      "name": "Apply legendary and epic multi-item equipment set bonuses in combat",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-114",
+      "name": "Unlock persistent titles from level, boss victory and dungeon victory milestones",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-115",
+      "name": "Restore HP and floor-scaled mana through the mana shrine route",
+      "category": "Dungeon",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-116",
+      "name": "Trigger the North Plateau Demon General's periodic area mana-star burst",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-117",
+      "name": "Trigger the Glass Scales Dragon's every-other-turn shard rain with reduced area damage",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-118",
+      "name": "Trigger Fallen Mage Aura's periodic mana-draining curse",
+      "category": "Boss",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-123",
+      "name": "Train learned spells by spending mana and a mastery-scaled gold fee",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-124",
+      "name": "Progress spell mastery through persisted practice counts up to level ten",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-125",
+      "name": "View learned spells, practice counts and mastery progress",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-119",
+      "name": "Practice only a spell already present in the player's learned-spell collection",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-120",
+      "name": "Spend eight persistent mana and a mastery-scaled gold fee per spell-practice session",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-121",
+      "name": "Persist spell practice counts and advance mastery at ten-use thresholds",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-122",
+      "name": "Cap spell mastery at level ten and reject further training at the cap",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-126",
+      "name": "Register spell-practice as a discoverable RPG slash command",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-127",
+      "name": "Increase Ice Spear freeze chance by up to 25 percentage points through mastery",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-128",
+      "name": "Scale Protective Barrier damage reduction with mastery up to 80 percent",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-129",
+      "name": "Increase Healing Light restoration by three HP per mastery level",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-130",
+      "name": "Scale Stone Wall damage prevention with mastery up to 90 percent",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-131",
+      "name": "Choose a persistent character class with /sinifsec",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-132",
+      "name": "Apply the Mage class damage multiplier to eligible offensive spells",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-133",
+      "name": "Apply the Guardian class defense multiplier in solo boss combat",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-134",
+      "name": "Apply the Healer class healing multiplier to Healing Light",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-135",
+      "name": "View the selected class and its passive effect in the class-selection response",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-136",
+      "name": "Apply Mage spell-damage passive in co-op dungeon combat",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-137",
+      "name": "Apply Guardian defense passive in co-op dungeon combat",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-138",
+      "name": "Scale dungeon team healing using the healer character class",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-139",
+      "name": "Apply class passives in co-op raid combat",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-140",
+      "name": "Compare class descriptions and passives with /sinifrehberi",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-141",
+      "name": "Mage class reduces spell mana costs by ten percent with rounding down",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-142",
+      "name": "Apply class-specific mana cost in solo demon battles",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-143",
+      "name": "Apply Mage mana efficiency in co-op dungeon Zoltraak",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-144",
+      "name": "Apply Mage mana efficiency in co-op raid Zoltraak",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-145",
+      "name": "Claim one class-specific daily mission with class-gated progress and a once-per-day reward",
+      "category": "Quests",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-146",
+      "name": "Progress through a three-stage daily quest chain with sequential objective checks and escalating claimable gold rewards",
+      "category": "Quests",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-147",
+      "name": "Choose and persist a combat build whose attack, defense, HP and mana modifiers apply across solo and co-op battles",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-148",
+      "name": "Unlock persistent talent ranks using level-earned skill points",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-149",
+      "name": "Apply talent attack bonuses in solo, co-op dungeon and raid combat",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-150",
+      "name": "Apply talent defense bonuses in solo, co-op dungeon and raid combat",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-151",
+      "name": "Apply talent HP and mana capacity bonuses across combat modes",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-152",
+      "name": "Record persistent unique discoveries from adventure encounters",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-153",
+      "name": "Award one-time gold and XP bonuses for first-time discoveries",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-154",
+      "name": "Grant a one-time completion reward for discovering every journal location",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-155",
+      "name": "View the persistent adventure discovery journal and collection progress",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-156",
+      "name": "Prevent duplicate discovery and completion rewards with transactional uniqueness",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-157",
+      "name": "Choose a specific adventure route or retain random exploration",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-158",
+      "name": "Track persistent visit counts and mastery levels for each adventure route",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-159",
+      "name": "Grant repeatable route mastery rewards after every third visit to a route",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-160",
+      "name": "Display per-route visit counts, mastery levels, and distance to the next reward in the journal",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-161",
+      "name": "Keep route mastery progression and rewards transactional with the adventure result",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-162",
+      "name": "Track consecutive daily adventure streaks persistently per player and server",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-163",
+      "name": "Advance an adventure streak only once per calendar day and reset it after a missed day",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-164",
+      "name": "Grant gold and XP bonuses every third consecutive adventure day",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-165",
+      "name": "Display the current daily adventure streak in the adventure result and journal",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-166",
+      "name": "View a server-scoped leaderboard of unique adventure discoveries",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-167",
+      "name": "View a server-scoped leaderboard of total adventure route visits",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-168",
+      "name": "View a server-scoped leaderboard of consecutive daily adventure streaks",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-169",
+      "name": "Switch between exploration leaderboard categories through a slash-command option",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-170",
+      "name": "Trigger a low-probability rare discovery encounter during random adventures",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-171",
+      "name": "Discover a hidden ancient elf sanctuary with exclusive loot and bonus rewards",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-172",
+      "name": "Discover Frieren's forgotten spell archive with exclusive loot and bonus rewards",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-173",
+      "name": "Discover a deserted dragon nest with exclusive loot and bonus rewards",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-174",
+      "name": "Find persistent ancient map fragments during random adventure encounters",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-175",
+      "name": "Track treasure-map fragment progress and opened treasure count per player",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-176",
+      "name": "Convert every five collected map fragments into a persistent treasure chest",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-177",
+      "name": "Award bonus gold and XP when completing a five-fragment treasure map",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-178",
+      "name": "Open one or multiple ancient treasure chests from the inventory",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-179",
+      "name": "Validate chest ownership and quantity before consuming treasure items",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-180",
+      "name": "Roll randomized treasure loot from a curated Frieren-themed reward pool",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-181",
+      "name": "Persist chest loot, gold, XP and level-up stat points atomically",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-182",
+      "name": "View a combined personal adventure progression and reward dashboard",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-183",
+      "name": "View total adventures, highest route visit count and discovered-location progress",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-184",
+      "name": "View daily streak, map fragments, opened treasure count and available chests together",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-185",
+      "name": "View the last adventure timestamp alongside current RPG level, XP and gold",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-186",
+      "name": "Persist each opened chest's individual loot, gold and XP result",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-187",
+      "name": "View a private history of the ten most recent treasure chest openings",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-188",
+      "name": "Order treasure history by timestamp and stable record ID for consistent results",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-189",
+      "name": "Keep treasure opening history writes in the same transaction as rewards",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-190",
+      "name": "Claim a one-time achievement reward for discovering all rare adventure locations",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-191",
+      "name": "Claim a one-time achievement reward for completing the first treasure map",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-192",
+      "name": "Claim a one-time achievement reward after opening ten treasure chests",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-193",
+      "name": "Claim a one-time achievement reward after ten total adventure route visits",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-194",
+      "name": "Grant a daily first-adventure gold bonus only on the first adventure of the calendar day",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-195",
+      "name": "Grant a daily first-adventure XP bonus without allowing repeat visits to farm it",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-196",
+      "name": "Stack the first-adventure daily bonus with the every-third-day streak milestone reward",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-197",
+      "name": "Grant Wanderer-class gold and XP bonuses for first-time adventure discoveries",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-198",
+      "name": "Grant Mage-class bonus XP when discovering magical adventure locations",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-199",
+      "name": "Grant Guardian-class bonus gold for dangerous adventure locations",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-200",
+      "name": "Grant Healer-class bonuses for first-time adventure discoveries",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-201",
+      "name": "Roll a three-percent chance for a rare ancient staff from treasure chests",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-202",
+      "name": "Roll a one-percent chance for an extremely rare Himmel-themed treasure reward",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-203",
+      "name": "Award significantly higher gold and XP for rare treasure chest drops",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-204",
+      "name": "Persist each adventure encounter with route, outcome and discovery status",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-205",
+      "name": "Persist the exact gold, XP and item rewards earned from each adventure",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-206",
+      "name": "Show the five most recent adventure outcomes in the player's adventure history",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-207",
+      "name": "Display relative encounter times and highlight first-time discoveries in history",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-208",
+      "name": "Craft a basic sword from adventure-collected mana crystals and magical pastry supplies",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-209",
+      "name": "Craft a Mage Staff by combining mana crystals with a forbidden grimoire",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-210",
+      "name": "Craft a Traveler Cloak from pastry supplies and a forbidden grimoire",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-211",
+      "name": "Craft a Mana Ring from multiple mana crystals and a forbidden grimoire",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-212",
+      "name": "Craft multiple equipment items in one request with proportional ingredient costs",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-213",
+      "name": "Validate and lock all crafting ingredients before consuming any materials",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-214",
+      "name": "Make crafted equipment compatible with existing inventory and equipment-slot systems",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-215",
+      "name": "Craft Fern's Mage Robe using a rare elf relic and forbidden grimoires",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-216",
+      "name": "Craft Frieren's Ancient Robe using multiple rare elf relics and mana crystals",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-217",
+      "name": "Craft Himmel's Hero Sword using a legendary keepsake and dragon scales",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-218",
+      "name": "Craft the Northern Demon Cutter using dragon scales and Frieren's lost notes",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-219",
+      "name": "Craft the Ancient Rune Ring using a rare elf relic and mana crystals",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-220",
+      "name": "Craft the Legendary Heroes' Ring using Himmel's keepsake and elf relics",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-221",
+      "name": "View a full crafting recipe catalog with ingredient counts, level requirements and equipment bonuses",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-222",
+      "name": "Track persistent crafting profession XP and level per player and server",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-223",
+      "name": "Award more crafting XP for higher-rarity equipment recipes",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-224",
+      "name": "Track the total number of equipment items successfully crafted",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-225",
+      "name": "Show crafting profession level, XP and successful production count after crafting",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-226",
+      "name": "Unlock a ten-percent chance to recover a crafting material at crafting level five",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-227",
+      "name": "Increase the crafting material recovery chance to twenty percent at level ten",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-228",
+      "name": "Randomly return one recipe ingredient without duplicating crafted equipment rewards",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-229",
+      "name": "View the server leaderboard for crafting profession levels",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-230",
+      "name": "View the server leaderboard for total crafting profession XP",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-231",
+      "name": "View the server leaderboard for total equipment items crafted",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-232",
+      "name": "Switch crafting leaderboard metrics through a slash-command category selector",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-233",
+      "name": "Claim a one-time achievement reward for reaching crafting level five",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-234",
+      "name": "Claim a one-time achievement reward for reaching crafting level ten",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-235",
+      "name": "Claim a one-time achievement reward after crafting ten equipment items",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-236",
+      "name": "Claim a one-time achievement reward after crafting fifty equipment items",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-237",
+      "name": "Display crafting profession level inside the player's combined adventure history",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-238",
+      "name": "Display total crafting XP inside the player's combined adventure history",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-239",
+      "name": "Display the total number of crafted equipment items in the combined player profile",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-240",
+      "name": "Dismantle owned equipment into partial crafting-material refunds",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-241",
+      "name": "Protect all equipped copies of an item from equipment dismantling",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-242",
+      "name": "Dismantle multiple equipment copies with proportional material returns",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-243",
+      "name": "Keep equipment dismantling and material refunds inside one transaction",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-244",
+      "name": "Track the total number of equipment items dismantled by each player",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-245",
+      "name": "Show lifetime dismantling progress after each equipment salvage operation",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-246",
+      "name": "Claim a one-time achievement reward after dismantling ten equipment items",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-247",
+      "name": "Claim a one-time achievement reward after dismantling twenty-five equipment items",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-248",
+      "name": "Track the number of equipment items crafted toward a daily crafting mission",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-249",
+      "name": "View daily crafting mission progress and the remaining equipment target",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-250",
+      "name": "Claim one daily reward of gold and XP after crafting three equipment items",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-251",
+      "name": "Prevent duplicate daily crafting reward claims with a locked per-day record",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-252",
+      "name": "Apply daily crafting mission XP to level progression and stat-point rewards",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-253",
+      "name": "Gate advanced crafting recipes behind persistent crafting profession levels",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-254",
+      "name": "Require higher crafting levels for rare and legendary equipment recipes",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-255",
+      "name": "Display crafting profession level requirements in the recipe catalog",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-256",
+      "name": "View a server leaderboard ranked by total equipment items dismantled",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-257",
+      "name": "Switch crafting leaderboards to recycling progress through the category selector",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-258",
+      "name": "Preview all equipment dismantling yields and rarity before selecting an item",
+      "category": "Crafting",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-259",
+      "name": "Display the player's lifetime equipment dismantling count in the combined RPG profile",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-260",
+      "name": "Persist an all-time best consecutive adventure streak separately from the current streak",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-261",
+      "name": "Preserve the best adventure streak when a missed day resets current streak progress",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-262",
+      "name": "Display current and record adventure streaks in the adventure result, journal and stats",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-263",
+      "name": "Grant a seven-day adventure streak milestone reward of gold and XP",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-264",
+      "name": "Grant a fourteen-day adventure streak milestone reward of gold and XP",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-265",
+      "name": "Grant a thirty-day adventure streak milestone reward of gold and XP",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-266",
+      "name": "Filter recent adventure history to rare-location discoveries",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-267",
+      "name": "Filter recent adventure history to encounters that found an item",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-268",
+      "name": "Combine adventure-history filters with viewing another player's public profile",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-269",
+      "name": "Apply selected character-class passives and combat-build modifiers to PvP duel health, damage, defense and healing",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-270",
+      "name": "Display the selected combat build in player profiles and calculate build-adjusted HP, mana, attack and defense",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-271",
+      "name": "Apply equipment defense, class-based mana discounts and selected combat-build HP/mana scaling to exploration while persisting base-stat health ratios",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-272",
+      "name": "Preserve proportional current HP and mana when party roles, equipment, talents and combat builds scale dungeon and raid stats",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-273",
+      "name": "Keep player HP and mana ratios consistent across profile display, solo demon fights, cooperative dungeons and boss raids when temporary equipment/build bonuses apply",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-274",
+      "name": "Advance persistent Zoltraak spell mastery from successful cooperative dungeon and boss-raid casts and apply weakness bonuses only when the spell actually succeeds",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-275",
+      "name": "Apply rarity-based equipment set bonuses to exploration HP, mana and defense calculations",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-276",
+      "name": "Apply persistent HP, mana and defense talent ranks to exploration effective stats alongside equipment sets, class passives and combat builds",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-277",
+      "name": "Show profile HP, mana, attack and defense using persistent talent ranks and rarity-based equipment set bonuses",
+      "category": "RPG",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-278",
+      "name": "Display the currently active rarity-based equipment set bonus in the player's RPG profile",
+      "category": "Equipment",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-279",
+      "name": "Apply persistent Zoltraak mastery damage bonuses and same-encounter mastery thresholds in cooperative dungeon and boss combat",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-280",
+      "name": "Show active equipment rarity set bonuses directly in exploration outcome summaries",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    }
+  ],
+  "count": 299
+}

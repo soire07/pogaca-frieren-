@@ -28,7 +28,7 @@ export default {
       try {
       await db.query('BEGIN');
       const userState = await db.query(
-        'SELECT last_free_character_at, pity_count FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+        'SELECT last_free_character_at, free_character_pity_count FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
         [guildId,user.id]
       );
       const state = userState.rows[0];
@@ -37,7 +37,7 @@ export default {
         await db.query('ROLLBACK');
         return interaction.editReply('⏳ Ücretsiz karakter hakkın yenilenmedi. Yaklaşık **'+Math.floor(secs/3600)+' sa. '+Math.ceil((secs%3600)/60)+' dk.** sonra tekrar dene.');
       }
-      const previousPity = Number(state.pity_count || 0);
+      const previousPity = Number(state.free_character_pity_count || 0);
       await db.query(
         'UPDATE users SET last_free_character_at=NOW() WHERE guild_id=$1 AND user_id=$2',
         [guildId,user.id]
@@ -45,9 +45,9 @@ export default {
       const guaranteed = previousPity >= 9;
       const character=drawCharacter(null,false,guaranteed);
       const saved=await saveCharacter(db,guildId,user.id,character);
-      await db.query('UPDATE users SET pity_count=$3 WHERE guild_id=$1 AND user_id=$2',[guildId,user.id,character.rarity==='Efsanevi'?0:previousPity+1]);
+      await db.query('UPDATE users SET free_character_pity_count=$3 WHERE guild_id=$1 AND user_id=$2',[guildId,user.id,character.rarity==='Efsanevi'?0:previousPity+1]);
       await db.query('COMMIT');
-      const stars={Yaygın:'⭐',Nadir:'⭐⭐',Destansı:'⭐⭐⭐',Efsanevi:'🌟🌟🌟🌟'};
+      const stars={Yaygın:'⭐',Nadir:'⭐⭐',Destansı:'⭐⭐⭐',Efsanevi:'🌟🌟🌟🌟',Gizemli:'🌌✨🌌✨🌌'};
       const embed=new EmbedBuilder().setColor(character.color)
         .setAuthor({name:'✧ '+character.rarity.toLocaleUpperCase('tr-TR')+' ✧'})
         .setTitle(character.emoji+' '+character.name+' '+character.emoji)

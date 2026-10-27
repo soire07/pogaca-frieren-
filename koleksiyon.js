@@ -5,22 +5,9 @@ import { characters } from './character-data.js';
 const PAGE_SIZE = 8;
 const BUTTON_TIMEOUT = 10 * 60 * 1000;
 
-const artworkByCharacter = {
-  Frieren: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g3-723x1024.jpg',
-  Fern: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g6-723x1024.jpg',
-  Stark: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g7-723x1024.jpg',
-  Himmel: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g9-723x1024.jpg',
-  Heiter: 'https://frieren-anime.jp/wp-content/uploads/2023/08/g10-723x1024.jpg',
-  Sein: 'https://frieren-anime.jp/wp-content/uploads/2023/12/g-724x1024.jpg',
-  Kanne: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara02_full1.png',
-  Lawine: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara08_full1.png',
-  Laufen: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara07_full1.png',
-  Richter: 'https://frieren-anime.jp/wp-content/uploads/2024/01/chara01_full1.png'
-};
-
-function makeSummaryEmbed(target, rows, totalCharacters, page, pageCount) {
+function makeSummaryEmbed(target, rows, totalCharacters, page, pageCount, rarityFilter) {
   const uniqueCount = rows.length;
-  const percent = Math.min(100, Math.round((uniqueCount / totalCharacters) * 100));
+  const percent = totalCharacters > 0 ? Math.min(100, Math.round((uniqueCount / totalCharacters) * 100)) : 0;
   const totalCopies = rows.reduce((sum, row) => sum + Number(row.quantity), 0);
   const rarityCounts = {
     Gizemli: rows.filter(row => row.rarity === 'Gizemli').length,
@@ -34,7 +21,7 @@ function makeSummaryEmbed(target, rows, totalCharacters, page, pageCount) {
 
   return new EmbedBuilder()
     .setColor(0x9b8cff)
-    .setTitle(`📚 ${target.username} | Anime Koleksiyonu`)
+     .setTitle(`📚 ${target.username} | Anime Koleksiyonu${rarityFilter === 'Hepsi' ? '' : ' · ' + rarityFilter}`)
     .setDescription(
       `**Koleksiyon ilerlemesi**\n${progressBar} **${percent}%**\n\n🌌 ${rarityCounts.Gizemli} Gizemli · 🌟 ${rarityCounts.Efsanevi} Efsanevi · ✦ ${rarityCounts.Destansı} Destansı · ◆ ${rarityCounts.Nadir} Nadir · ⭐ ${rarityCounts.Yaygın} Yaygın\n\n📖 Sayfa ${page + 1}/${pageCount}`
     )
@@ -48,7 +35,7 @@ function makeSummaryEmbed(target, rows, totalCharacters, page, pageCount) {
 }
 
 function makeCharacterEmbed(row) {
-  const image = artworkByCharacter[row.character_name] || row.image || characters.find(c => c.name === row.character_name)?.image;
+  const image = characters.find(c => c.name === row.character_name)?.image || row.image;
   const embed = new EmbedBuilder()
     .setColor(row.color ?? (row.rarity === 'Gizemli' ? 0x30105e : 0x9b8cff))
     .setTitle(`${row.emoji || '🎴'} ${row.character_name}`)
@@ -75,13 +62,14 @@ function makeButtons(page, pageCount, disabled = false) {
   );
 }
 
-function makePage(target, rows, page) {
+function makePage(target, rows, page, rarityFilter) {
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const matchingCatalogCount = rarityFilter === 'Hepsi' ? characters.length : characters.filter(character => character.rarity === rarityFilter).length;
   const start = page * PAGE_SIZE;
   const pageRows = rows.slice(start, start + PAGE_SIZE);
-  const embeds = [makeSummaryEmbed(target, rows, characters.length, page, pageCount)];
+  const embeds = [makeSummaryEmbed(target, rows, matchingCatalogCount, page, pageCount, rarityFilter)];
   if (pageRows.length) embeds.push(...pageRows.map(makeCharacterEmbed));
-  else embeds[0].setDescription('Henüz karakter keşfetmemişsin. **/kimimben** komutunu kullanarak ilk karakterini bul!');
+  else embeds[0].setDescription(rarityFilter === 'Hepsi' ? 'Henüz karakter keşfetmemişsin. **/kimimben** komutunu kullanarak ilk karakterini bul!' : `Koleksiyonunda henüz **${rarityFilter}** nadirliğinde karakter yok. Başka bir nadirlik seçebilir veya **/kimimben** ile yeni karakter keşfedebilirsin.`);
   return { embeds, components: pageCount > 1 ? [makeButtons(page, pageCount)] : [] };
 }
 
@@ -93,7 +81,17 @@ export default {
       option.setName('kullanici')
         .setDescription('Koleksiyonunu görmek istediğin kullanıcı')
         .setRequired(false)
-    ),
+    )
+    .addStringOption(option => option.setName('nadirlik').setDescription('Yalnızca seçtiğin nadirlikteki karakterleri göster.')
+      .addChoices(
+        { name: 'Hepsi', value: 'Hepsi' },
+        { name: 'Gizemli', value: 'Gizemli' },
+        { name: 'Efsanevi', value: 'Efsanevi' },
+        { name: 'Destansı', value: 'Destansı' },
+        { name: 'Nadir', value: 'Nadir' },
+        { name: 'Yaygın', value: 'Yaygın' }
+      )
+      .setRequired(false)),
 
   async execute(interaction) {
     if (!interaction.guildId) {
@@ -102,13 +100,14 @@ export default {
 
     await interaction.deferReply();
     const target = interaction.options.getUser('kullanici') ?? interaction.user;
+    const rarityFilter = interaction.options.getString('nadirlik') ?? 'Hepsi';
 
     try {
       await ensureUser(interaction.guildId, target.id);
       const { rows } = await pool.query(
         `SELECT character_name, anime, rarity, emoji, quantity, image, color
          FROM anime_character_collection
-         WHERE guild_id = $1 AND user_id = $2
+         WHERE guild_id = $1 AND user_id = $2 AND ($3 = 'Hepsi' OR rarity = $3)
          ORDER BY CASE rarity
            WHEN 'Gizemli' THEN 0
            WHEN 'Efsanevi' THEN 1
@@ -116,12 +115,12 @@ export default {
            WHEN 'Nadir' THEN 3
            ELSE 4
          END, character_name`,
-        [interaction.guildId, target.id]
+        [interaction.guildId, target.id, rarityFilter]
       );
 
       let page = 0;
       const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-      await interaction.editReply(makePage(target, rows, page));
+      await interaction.editReply(makePage(target, rows, page, rarityFilter));
       if (pageCount <= 1) return;
 
       const response = await interaction.fetchReply();
@@ -140,7 +139,7 @@ export default {
         page = button.customId === 'collection_next'
           ? Math.min(page + 1, pageCount - 1)
           : Math.max(page - 1, 0);
-        await button.update(makePage(target, rows, page)).catch(() => {});
+        await button.update(makePage(target, rows, page, rarityFilter)).catch(() => {});
       });
 
       collector.on('end', async () => {

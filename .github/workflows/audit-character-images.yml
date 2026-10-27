@@ -24,7 +24,6 @@ jobs:
           node-version: "24"
       - name: Check all character image URLs
         id: audit
-        continue-on-error: true
         run: |
           set +e
           node scripts/check-character-images.js > image-audit-report.json

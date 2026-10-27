@@ -122,6 +122,10 @@ const report = {
 };
 console.log(JSON.stringify(report, null, 2));
 
-// This is an informational audit only. Never fail the workflow:
-// the bot can continue deploying while inaccessible hosts are reviewed separately.
+// Fail only for definite breakage (for example, HTTP 404 or a non-image response).
+// Temporary host blocks and network failures remain classified separately for manual review.
+if (report.definitelyBroken > 0) {
+  console.error(`Image audit found ${report.definitelyBroken} definitely broken character image URL(s).`);
+  process.exitCode = 1;
+}
 

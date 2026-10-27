@@ -3,6 +3,8 @@ name: Register Discord Commands
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     paths:
     - '*.js'
     - 'database/**'
