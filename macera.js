@@ -52,6 +52,18 @@ export default {
       }
 
       const discoveryMeta = ADVENTURE_DISCOVERIES.find(entry => entry.key === outcome.discovery);
+      const { rows: [masteryRow] } = await client.query(
+        `INSERT INTO adventure_route_mastery(guild_id,user_id,route_key,visits)
+         VALUES($1,$2,$3,1)
+         ON CONFLICT(guild_id,user_id,route_key)
+         DO UPDATE SET visits=adventure_route_mastery.visits+1, updated_at=NOW()
+         RETURNING visits`,
+        [interaction.guildId, interaction.user.id, outcome.discovery]
+      );
+      const routeVisits = Number(masteryRow.visits);
+      const routeMasteryLevel = Math.floor(routeVisits / 3);
+      const routeMasteryReward = routeVisits % 3 === 0 ? { coins: 30, xp: 20 } : { coins: 0, xp: 0 };
+
       const { rows: [newDiscovery] } = await client.query(
         'INSERT INTO adventure_discoveries(guild_id,user_id,discovery_key) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING discovery_key',
         [interaction.guildId, interaction.user.id, outcome.discovery]
@@ -76,9 +88,9 @@ export default {
         }
       }
 
-      const newXp = Number(u.xp) + outcome.xp + discoveryXp;
+      const newXp = Number(u.xp) + outcome.xp + discoveryXp + routeMasteryReward.xp;
       const newLevel = levelForXp(newXp);
-      const totalCoins = outcome.coins + discoveryCoins + journalCompletionCoins;
+      const totalCoins = outcome.coins + discoveryCoins + journalCompletionCoins + routeMasteryReward.coins;
 
       await client.query(
         'UPDATE users SET coins=coins+$3, xp=$4, stat_points=stat_points+GREATEST(0,$5-level), level=$5, last_adventure_at=NOW() WHERE guild_id=$1 AND user_id=$2',
@@ -106,7 +118,7 @@ export default {
         .setColor(0x9b8cff)
         .setTitle('🗺️ Macera Tamamlandı')
         .setDescription(
-          `${outcome.text}\n\nÖdül: **${outcome.coins + discoveryCoins + journalCompletionCoins}** altın ve **${outcome.xp + discoveryXp} XP**${itemText}\n\n${firstDiscovery ? `🧭 Yeni keşif: **${discoveryMeta?.name}** (+${discoveryCoins} altın, +${discoveryXp} XP)` : `📔 Bu keşfi daha önce kaydetmiştin: **${discoveryMeta?.name}**`}${journalCompletedNow ? `\n\n🏆 **Keşif defterini tamamladın! +${journalCompletionCoins} altın tamamlanma ödülü kazandın.**` : ''}`
+          `${outcome.text}\n\nÖdül: **${outcome.coins + discoveryCoins + journalCompletionCoins + routeMasteryReward.coins}** altın ve **${outcome.xp + discoveryXp + routeMasteryReward.xp} XP**${routeMasteryReward.coins ? `\n🌟 Rota ustalığı: **3 ziyaretlik eşik** tamamlandı (+${routeMasteryReward.coins} altın, +${routeMasteryReward.xp} XP).` : ''}\n🧭 Bu rotayı **${routeVisits}** kez gezdin · Ustalık seviyesi: **${routeMasteryLevel}**${itemText}\n\n${firstDiscovery ? `🧭 Yeni keşif: **${discoveryMeta?.name}** (+${discoveryCoins} altın, +${discoveryXp} XP)` : `📔 Bu keşfi daha önce kaydetmiştin: **${discoveryMeta?.name}**`}${journalCompletedNow ? `\n\n🏆 **Keşif defterini tamamladın! +${journalCompletionCoins} altın tamamlanma ödülü kazandın.**` : ''}`
         )
         .addFields({
           name: 'Yeni seviye',
