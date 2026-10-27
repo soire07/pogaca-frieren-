@@ -84,38 +84,15 @@ export default {
 
     await interaction.deferReply();
     await ensureUser(interaction.guildId, interaction.user.id);
-    const knownSpellResult = await pool.query(
-      'SELECT spell_key FROM learned_spells WHERE guild_id=$1 AND user_id=$2',
-      [interaction.guildId, interaction.user.id]
-    );
-    // Zoltraak is the player's starting spell; it must remain usable even before any paid spell is learned.
-    const learnedSpells = new Set(['zoltraak', ...knownSpellResult.rows.map(row => row.spell_key)]);
-
-    const masteryResult = await pool.query(
-      'SELECT spell_key, casts, mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=$2',
-      [interaction.guildId, interaction.user.id]
-    );
-    const spellMastery = new Map(masteryResult.rows.map(row => [row.spell_key, Number(row.mastery_level)]));
-
-    const statsResult = await pool.query(
-      `SELECT hp, max_hp, mana, max_mana, attack, defense, level, class_name, active_build,
-        COALESCE((SELECT attack_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_attack,
-        COALESCE((SELECT defense_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_defense,
-        COALESCE((SELECT hp_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_hp,
-        COALESCE((SELECT mana_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_mana
-        FROM users WHERE guild_id=$1 AND user_id=$2`,
-      [interaction.guildId, interaction.user.id]
-    );
-    const stats = statsResult.rows[0];
-    if (Number(stats.hp) <= 0) {
-      return interaction.editReply('🌑 Canın tükenmiş. Yeniden savaşa çıkmadan önce **/dinlen** komutuyla HP ve mananı yenilemelisin.');
-    }
-
     // Bir gezgin aynı anda keşif, zindan veya birden fazla boss savaşında HP/Mana durumunu ezmesin.
     const reservationDb = await pool.connect();
     let reservationCreated = false;
     try {
       await reservationDb.query('BEGIN');
+      await reservationDb.query(
+        'SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+        [interaction.guildId, interaction.user.id]
+      );
       await reservationDb.query(
         'DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=$2 AND expires_at <= NOW()',
         [interaction.guildId, interaction.user.id]
@@ -144,6 +121,34 @@ export default {
       ).catch(error => console.error('Boss karşılaşma kilidi kaldırılamadı:', error));
       reservationCreated = false;
     };
+    const knownSpellResult = await pool.query(
+      'SELECT spell_key FROM learned_spells WHERE guild_id=$1 AND user_id=$2',
+      [interaction.guildId, interaction.user.id]
+    );
+    // Zoltraak is the player's starting spell; it must remain usable even before any paid spell is learned.
+    const learnedSpells = new Set(['zoltraak', ...knownSpellResult.rows.map(row => row.spell_key)]);
+
+    const masteryResult = await pool.query(
+      'SELECT spell_key, casts, mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=$2',
+      [interaction.guildId, interaction.user.id]
+    );
+    const spellMastery = new Map(masteryResult.rows.map(row => [row.spell_key, Number(row.mastery_level)]));
+
+    const statsResult = await pool.query(
+      `SELECT hp, max_hp, mana, max_mana, attack, defense, level, class_name, active_build,
+        COALESCE((SELECT attack_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_attack,
+        COALESCE((SELECT defense_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_defense,
+        COALESCE((SELECT hp_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_hp,
+        COALESCE((SELECT mana_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_mana
+        FROM users WHERE guild_id=$1 AND user_id=$2`,
+      [interaction.guildId, interaction.user.id]
+    );
+    const stats = statsResult.rows[0];
+    if (Number(stats.hp) <= 0) {
+      await releaseReservation();
+      return interaction.editReply('🌑 Canın tükenmiş. Yeniden savaşa çıkmadan önce **/dinlen** komutuyla HP ve mananı yenilemelisin.');
+    }
+
     const equippedResult = await pool.query(
       'SELECT item_key, slot FROM user_equipment WHERE guild_id=$1 AND user_id=$2',
       [interaction.guildId, interaction.user.id]
