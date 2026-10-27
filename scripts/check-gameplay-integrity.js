@@ -125,3 +125,15 @@ test('exploration uses equipment, class and combat-build passives while preservi
   assert.match(source, /persistedHp, persistedMana/);
   assert.match(source, /savunma dahil/);
 });
+
+
+test('cooperative dungeon and raid scale current HP and mana proportionally with gear, talents, builds and roles', async () => {
+  const dungeon = await read('katlizindan.js');
+  const raid = await read('ortakboss.js');
+  assert.match(dungeon, /Number\(p\.hp\) \/ Math\.max\(1, Number\(p\.max_hp\)\)\) \* maxHp/);
+  assert.match(dungeon, /Number\(p\.mana\) \/ Math\.max\(1, Number\(p\.max_mana\)\)\) \* maxMana/);
+  assert.match(raid, /Number\(p\.hp\) \/ Math\.max\(1, Number\(p\.max_hp\)\)\) \* maxHp/);
+  assert.match(raid, /Number\(p\.mana\) \/ Math\.max\(1, Number\(p\.max_mana\)\)\) \* maxMana/);
+  assert.match(dungeon, /persistedHpNow/);
+  assert.match(raid, /persistedHpNow/);
+});
