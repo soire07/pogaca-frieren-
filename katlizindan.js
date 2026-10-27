@@ -123,7 +123,7 @@ export default {
       components: []
     });
 
-    const db = await pool.connect();
+    let db = await pool.connect();
     try {
       await db.query('BEGIN');
       const ids = team.map(u => u.id).sort();
@@ -178,6 +178,10 @@ export default {
       const masteryRows = await db.query('SELECT user_id,casts,mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND spell_key=$3',[interaction.guildId,ids,'zoltraak']);
       const spellMastery = new Map(masteryRows.rows.map(row => [row.user_id, Number(row.mastery_level)]));
       const masteryCastTotals = new Map(masteryRows.rows.map(row => [row.user_id, Number(row.casts)]));
+      // Release row locks and the pooled connection before waiting for player actions.
+      await db.query('COMMIT');
+      db.release();
+      db = null;
       const avgLevel = Math.floor(players.reduce((n, p) => n + p.level, 0) / players.length);
       const hpNow = players.map(p => p.hp);
       const oldLevels = players.map(p => p.level);
@@ -365,6 +369,19 @@ export default {
         }
       }
 
+      // Reacquire a short transaction only for the final save; never hold locks during combat collectors.
+      db = await pool.connect();
+      await db.query('BEGIN');
+      const lockedRows = await db.query(
+        'SELECT user_id,last_dungeon_at FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE',
+        [interaction.guildId, ids]
+      );
+      const concurrentRun = lockedRows.rows.find(p => p.last_dungeon_at && Date.now() - new Date(p.last_dungeon_at).getTime() < COOLDOWN_MS);
+      if (concurrentRun) {
+        const mins = Math.ceil((COOLDOWN_MS - (Date.now() - new Date(concurrentRun.last_dungeon_at).getTime())) / 60_000);
+        await db.query('ROLLBACK');
+        return interaction.editReply({ content: `⏳ <@${concurrentRun.user_id}> başka bir macerada bekleme süresine girdi; yaklaşık **${mins} dakika** sonra yeniden deneyin. Bu koşunun ödülleri kaydedilmedi.`, components: [] });
+      }
       const victory = floorsCleared === FLOORS;
       const loot = victory && Math.random() < 0.35 ? LOOT[Math.floor(Math.random() * LOOT.length)] : null;
       const persistedHpNow = hpNow.map((hp, i) => {
@@ -431,11 +448,11 @@ export default {
         .setFooter({ text: 'Poğaça Frieren • Kat kat ilerleyin, takımınızı koruyun.' });
       return interaction.editReply({ content: null, embeds: [embed], components: [] });
     } catch (error) {
-      await db.query('ROLLBACK').catch(() => {});
+      if (db) await db.query('ROLLBACK').catch(() => {});
       console.error('/katlizindan hatası:', error);
       return interaction.editReply({ content: 'Katlı zindan sırasında hata oluştu. Daha sonra yeniden dene.', components: [] }).catch(() => {});
     } finally {
-      db.release();
+      if (db) db.release();
     }
   }
 };
