@@ -643,3 +643,11 @@ test('crafting leaderboard also ranks players by equipment dismantling progress'
   assert.match(command, /value: 'salvage'/);
   assert.match(command, /salvaged_items/);
 });
+
+test('equipment salvage command previews every equipment item and its material return', async () => {
+  const command = await read('ekipmanparcala.js');
+  assert.match(command, /setRequired\(false\)\.addChoices/);
+  assert.match(command, /Ekipman Parçalama Rehberi/);
+  assert.match(command, /SALVAGE_YIELD\[item\.id\]/);
+  assert.match(command, /Kuşanılmış eşyalar parçalanmaz/);
+});
