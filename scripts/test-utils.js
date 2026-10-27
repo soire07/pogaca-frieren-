@@ -305,3 +305,10 @@ test('boss phase damage scaling respects defense and grows only in later phases'
   assert.equal(bossPhaseSpecialBonus(2), 4);
   assert.equal(bossPhaseSpecialBonus(3), 8);
 });
+
+test('freezing the boss cancels its scheduled special attack and its mana-drain side effect', async () => {
+  const source = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  assert.match(source, /if \(turnCount % 3 === 0 && !frozenBoss\)/);
+  assert.match(source, /else if \(turnCount % 3 === 0 && frozenBoss\)/);
+  assert.match(source, /Donma etkisi bossun özel saldırısını da durdurdu/);
+});
