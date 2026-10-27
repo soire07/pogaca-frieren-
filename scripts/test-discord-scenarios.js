@@ -74,12 +74,12 @@ test('both combat modes expose attack, Zoltraak, Heilen, mana shield and defend 
     assert.ok(source.includes('mana yetersiz'));
     assert.ok(source.includes('Mana Kalkanı açtı'));
   }
-  assert.ok(dungeon.includes('p.mana >= 18'));
-  assert.ok(raid.includes('f.mana >= 18'));
+  assert.ok(dungeon.includes('applyClassManaCost(18, p.class_name)'));\n  assert.ok(dungeon.includes('applyClassHealing(26, p.class_name'));
+  assert.ok(raid.includes('applyClassManaCost(18, f.className)'));\n  assert.ok(raid.includes('applyClassHealing(26, f.className'));
   assert.ok(dungeon.includes('p.mana >= spellCost'));
   assert.ok(raid.includes('f.mana >= spellCost'));
-  assert.ok(dungeon.includes('p.mana >= 10'));
-  assert.ok(raid.includes('f.mana >= 10'));
+  assert.ok(dungeon.includes('applyClassManaCost(10, p.class_name)'));
+  assert.ok(raid.includes('applyClassManaCost(10, f.className'));
 });
 
 test('dungeon has five floors, route choices, safe timeout default and random floor events', async () => {
