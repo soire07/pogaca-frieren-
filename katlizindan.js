@@ -26,6 +26,9 @@ export default {
     if (!interaction.guildId || !interaction.channel) {
       return interaction.reply({ content: 'Katlı zindan yalnızca sunucularda kullanılabilir.', ephemeral: true });
     }
+    if (interaction.options.getUser('takim_arkadasi_3') && !interaction.options.getUser('takim_arkadasi_2')) {
+      return interaction.reply({ content: 'Üçüncü takım arkadaşını eklemek için ikinci takım arkadaşını da seçmelisin.', ephemeral: true });
+    }
     const team = [
       interaction.user,
       interaction.options.getUser('takim_arkadasi', true),
