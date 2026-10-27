@@ -159,7 +159,8 @@ export default {
         const equipped = gearMap.get(p.user_id) || []; const bonus = applyEquipmentSetBonus(equipped, equipmentBonus(equipped));
         const role = PARTY_ROLES[roles[i]];
         const maxHp = Math.round(Math.min(2000, Number(p.max_hp) + bonus.hp) * role.hp);
-        return { ...p, level: Number(p.level), xp: Number(p.xp), mana: Number(p.mana), maxMana: Number(p.max_mana), role: roles[i], roleLabel: role.label, maxHp,
+        const maxMana = Math.min(500, Number(p.max_mana) + bonus.mana);
+        return { ...p, level: Number(p.level), xp: Number(p.xp), mana: Math.min(Number(p.mana), maxMana), maxMana, role: roles[i], roleLabel: role.label, maxHp,
           hp: Math.round(Math.min(Number(p.hp), Math.min(2000, Number(p.max_hp) + bonus.hp)) * role.hp),
           attack: Math.round(Math.min(500, Number(p.attack) + bonus.attack) * role.attack),
           defense: Math.round(Math.min(250, Number(p.defense) + bonus.defense) * role.defense) };
@@ -197,7 +198,7 @@ export default {
             new ButtonBuilder().setCustomId(`katlizindan:act:defend:${suffix}`).setLabel('🛡️ Savun').setStyle(ButtonStyle.Secondary)
           );
           const actionMessage = await interaction.editReply({
-            content: `**Kat ${floor}/${FLOORS} · Tur ${turn}**\n🌑 Düşman: ${enemyHp}/${maxEnemyHp} HP\n${livingAtStart.map(p => `<@${p.user_id}> (${p.mana}/${p.maxMana} mana)`).join(' · ')}\n\nHer yaşayan oyuncu **Saldır**, **Zoltraak** (12 mana) veya **Savun** seçeneklerinden birini seçsin. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
+            content: `**Kat ${floor}/${FLOORS} · Tur ${turn}**\n🌑 Düşman: ${enemyHp}/${maxEnemyHp} HP\n${livingAtStart.map(p => `<@${p.user_id}> (${p.mana}/${p.maxMana} mana)`).join(' · ')}\n\nHer yaşayan oyuncu Saldır, Zoltraak (12), Heilen (18), Mana Kalkanı (10) veya Savun seçsin. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
             embeds: [],
             components: [actionRow]
           });
@@ -308,6 +309,15 @@ export default {
         } else if (pathOutcome.hp < 0) {
           const living = hpNow.map((hp, i) => hp > 1 ? i : -1).filter(i => i >= 0);
           if (living.length) { const target = living[Math.floor(Math.random() * living.length)]; hpNow[target] = Math.max(1, hpNow[target] + pathOutcome.hp); }
+        }
+        if (pathOutcome.mana > 0) {
+          for (let i = 0; i < players.length; i++) {
+            if (hpNow[i] > 0) {
+              const restored = Math.min(players[i].maxMana, players[i].mana + pathOutcome.mana);
+              if (restored > players[i].mana) log.push(`✨ <@${players[i].user_id}> Mana Mabedi'nden ${restored - players[i].mana} mana kazandı.`);
+              players[i].mana = restored;
+            }
+          }
         }
         if (Math.random() < pathOutcome.lootChance) {
           const pathLoot = LOOT[Math.floor(Math.random() * LOOT.length)];
