@@ -1231,7 +1231,31 @@
       "name": "View the last adventure timestamp alongside current RPG level, XP and gold",
       "category": "RPG",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-186",
+      "name": "Persist each opened chest's individual loot, gold and XP result",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-187",
+      "name": "View a private history of the ten most recent treasure chest openings",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-188",
+      "name": "Order treasure history by timestamp and stable record ID for consistent results",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-189",
+      "name": "Keep treasure opening history writes in the same transaction as rewards",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 204
+  "count": 208
 }
