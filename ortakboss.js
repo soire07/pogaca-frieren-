@@ -287,7 +287,7 @@ export default {
       db = await pool.connect();
       await db.query('BEGIN');
       const lockedRows = await db.query(
-        'SELECT user_id,last_boss_at FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE',
+        'SELECT user_id,last_boss_at,xp,level FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE',
         [interaction.guildId, ids]
       );
       const concurrentRun = lockedRows.rows.find(p => p.last_boss_at && Date.now() - new Date(p.last_boss_at).getTime() < COOLDOWN_MS);
@@ -322,13 +322,14 @@ export default {
       const xpReward=win?BOSS.xp:Math.floor(BOSS.xp*0.25);
       const coinReward=win?BOSS.coins:Math.floor(BOSS.coins*0.2);
       const loot=win && Math.random()<0.4 ? BOSS.loot : null;
+      const currentProgress = new Map(lockedRows.rows.map(row => [row.user_id, row]));
       for (let i=0;i<fighters.length;i++) {
-        const f=fighters[i]; const newXp=f.xp+xpReward; const newLevel=levelForXp(newXp);
+        const f=fighters[i]; const current=currentProgress.get(f.userId); const newXp=Number(current.xp)+xpReward; const newLevel=levelForXp(newXp);
         await db.query(
           `UPDATE users SET hp=$3,xp=$4,level=$5,coins=coins+$6,
            stat_points=stat_points+$7,boss_defeats=boss_defeats+$8,last_boss_at=NOW(),mana=$9
            WHERE guild_id=$1 AND user_id=$2`,
-          [interaction.guildId,f.userId,persistedHpNow[i],newXp,newLevel,coinReward,Math.max(0,newLevel-f.level),win?1:0,persistedManaNow[i]]
+          [interaction.guildId,f.userId,persistedHpNow[i],newXp,newLevel,coinReward,Math.max(0,newLevel-Number(current.level)),win?1:0,persistedManaNow[i]]
         );
         if (loot) await db.query(
           `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
