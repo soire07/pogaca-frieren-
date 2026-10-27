@@ -31,7 +31,7 @@ export default {
           const done = s.step === 1 ? p.daily_done : s.step === 2 ? p.explore_done : p.boss_done;
           const status = currentStep > s.step ? '✅ Ödül alındı' : currentStep === s.step ? (done ? '🟢 Hazır — ödülünü alabilirsin' : '🔒 Devam ediyor') : '⏳ Önceki aşama bekleniyor';
           const reward = getLevelScaledQuestReward(s.reward, s.xpReward, p.level, s.step === 3);
-          return status + ' **' + s.step + '. ' + s.title + '**\\n' + s.description + '\\nÖdül: **' + reward.coins + ' altın** · **' + reward.xp + ' XP** + ⚒️ ' + s.material;
+          return status + ' **' + s.step + '. ' + s.title + '**\n' + s.description + '\nÖdül: **' + reward.coins + ' altın** · **' + reward.xp + ' XP** + ⚒️ ' + s.material;
         });
         const description = currentStep > 3 ? '🎉 Günlük görev zincirinin tüm aşamalarını tamamladın! Yeni zincir yarın açılacak.' : lines.join('\n\n');
         const embed = new EmbedBuilder().setColor(0xb58cff).setTitle('🧭 Günlük Görev Zinciri').setDescription(description).setFooter({ text: 'Aşamalar sırayla açılır. Her ödül aynı gün yalnızca bir kez alınabilir.' });
