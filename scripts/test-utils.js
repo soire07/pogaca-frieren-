@@ -438,3 +438,37 @@ test('region mastery persists per selected exploration region and is displayed t
   assert.match(source, /Bölge ustalığı ödülü/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS exploration_region_mastery/);
 });
+
+
+test('exploration can find region-specific materials used by equipment crafting recipes', async () => {
+  const exploration = await readFile(new URL('../commands/rpg/kesif.js', import.meta.url), 'utf8');
+  const crafting = await readFile(new URL('../zanaat.js', import.meta.url), 'utf8');
+  const materials = [
+    '🥐 Büyülü Poğaça Kutusu',
+    '💎 Mana Kristali',
+    '📖 Yasak Büyü Kitabı',
+    '🐉 Ejderha Pulu',
+    '🌙 Efsunlu Elf Yadigârı',
+    '📜 Frieren’in Kayıp Notları'
+  ];
+  assert.match(exploration, /const craftingMaterials = \{/);
+  assert.match(exploration, /Math\.random\(\) < 0\.4/);
+  for (const material of materials) {
+    assert.ok(exploration.includes(material), `exploration missing crafting material: ${material}`);
+    assert.ok(crafting.includes(material), `no crafting recipe consumes exploration material: ${material}`);
+  }
+  assert.match(exploration, /foundCraftingMaterial \? .*Zanaat malzemesi/);
+});
+
+test('daily quest chain awards recipe materials transactionally for all three stages', async () => {
+  const quest = await readFile(new URL('../gorevzinciri.js', import.meta.url), 'utf8');
+  const crafting = await readFile(new URL('../zanaat.js', import.meta.url), 'utf8');
+  for (const material of ['🥐 Büyülü Poğaça Kutusu', '💎 Mana Kristali', '🐉 Ejderha Pulu']) {
+    assert.ok(quest.includes(material), `quest chain missing crafting material: ${material}`);
+    assert.ok(crafting.includes(material), `quest material cannot be used in crafting: ${material}`);
+  }
+  assert.match(quest, /INSERT INTO inventory/);
+  assert.match(quest, /step\.material/);
+  assert.match(quest, /BEGIN/);
+  assert.match(quest, /COMMIT/);
+});
