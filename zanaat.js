@@ -88,12 +88,24 @@ export default {
         'INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,$4) ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+EXCLUDED.quantity',
         [interaction.guildId, interaction.user.id, equipment.name, amount]
       );
+      const craftXp = amount * ({ Yaygın: 10, Nadir: 20, Destansı: 35, Efsanevi: 50 }[equipment.rarity] || 10);
+      const { rows: [craftProgress] } = await db.query(
+        `INSERT INTO user_crafting_progress(guild_id,user_id,xp,level,successful_crafts)
+         VALUES($1,$2,$3,GREATEST(1,FLOOR($3/100.0)::int+1),$4)
+         ON CONFLICT(guild_id,user_id) DO UPDATE SET
+           xp=user_crafting_progress.xp+EXCLUDED.xp,
+           level=GREATEST(1,FLOOR((user_crafting_progress.xp+EXCLUDED.xp)/100.0)::int+1),
+           successful_crafts=user_crafting_progress.successful_crafts+EXCLUDED.successful_crafts,
+           updated_at=NOW()
+         RETURNING xp, level, successful_crafts`,
+        [interaction.guildId, interaction.user.id, craftXp, amount]
+      );
       await db.query('COMMIT');
       const ingredients = recipe.materials.map(item => `${item.item} × ${item.quantity * amount}`).join('\n');
       const embed = new EmbedBuilder()
         .setColor(0x9b8cff)
         .setTitle('⚒️ Zanaat Başarılı')
-        .setDescription(`Üretilen: **${equipment.name} × ${amount}**\n\n**Harcanan malzemeler**\n${ingredients}\n\n**Ekipman özellikleri**\n${formatEquipmentBonus(equipment)}\n\nÜrettiğin ekipmanı /ekipman komutuyla kuşanabilirsin. Ekipman seviye gereksinimleri geçerlidir.`)
+        .setDescription(`Üretilen: **${equipment.name} × ${amount}**\n\n**Harcanan malzemeler**\n${ingredients}\n\n**Ekipman özellikleri**\n${formatEquipmentBonus(equipment)}\n\n**Zanaat ustalığı**\nSeviye: **${craftProgress.level}** · XP: **${craftProgress.xp}** · Başarılı üretim: **${craftProgress.successful_crafts}**\nKazandığın zanaat XP: **+${craftXp}**\n\nÜrettiğin ekipmanı /ekipman komutuyla kuşanabilirsin. Ekipman seviye gereksinimleri geçerlidir.`)
         .setFooter({ text: 'Poğaça Frieren • Malzemeler ve üretim sonucu tek işlemde kaydedildi.' });
       return interaction.editReply({ embeds: [embed] });
     } catch (error) {
