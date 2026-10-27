@@ -422,6 +422,15 @@ test('adventure history records the full XP reward including streak milestones',
   assert.match(source, /xp_awarded,item_found,first_discovery\)[\s\S]*?outcome\.xp \+ discoveryXp \+ routeMasteryReward\.xp \+ streakReward\.xp \+ dailyAdventureReward\.xp \+ treasureReward\.xp \+ classAdventureReward\.xp \+ streakMilestoneReward\.xp/);
 });
 
+test('rare discovery pity takes priority over a manually selected common route', async () => {
+  const source = await read('macera.js');
+  const outcomeSelection = source.indexOf('const outcome =');
+  const pity = source.indexOf('pityReady && undiscoveredRare.length', outcomeSelection);
+  const chosenRoute = source.indexOf('chosenRoute', outcomeSelection);
+  assert.ok(outcomeSelection >= 0 && pity > outcomeSelection && chosenRoute > pity,
+    'the guaranteed undiscovered rare location must be selected before honoring a common route');
+});
+
 test('adventure, treasure, story and NPC rewards are blocked during active encounters', async () => {
   const checks = [
     ['macera.js', /SELECT coins, xp, class_name, last_adventure_at FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/, /SELECT encounter_id FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/, /await client\.query\('ROLLBACK'\)/],
