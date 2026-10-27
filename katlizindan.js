@@ -175,6 +175,9 @@ export default {
         return interaction.editReply({ content: '❤️ Takımdaki herkesin HP değeri sıfırdan yüksek olmalı. Önce **/dinlen** kullanın.', components: [] });
       }
 
+      const masteryRows = await db.query('SELECT user_id,casts,mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND spell_key=$3',[interaction.guildId,ids,'zoltraak']);
+      const spellMastery = new Map(masteryRows.rows.map(row => [row.user_id, Number(row.mastery_level)]));
+      const masteryCastTotals = new Map(masteryRows.rows.map(row => [row.user_id, Number(row.casts)]));
       const avgLevel = Math.floor(players.reduce((n, p) => n + p.level, 0) / players.length);
       const hpNow = players.map(p => p.hp);
       const oldLevels = players.map(p => p.level);
@@ -259,9 +262,11 @@ export default {
             const spellCost = applyClassManaCost(12, p.class_name);
             if (action === 'spell' && p.mana >= spellCost) {
               p.mana -= spellCost;
-              damage = Math.round(baseDamage * 1.8);
+              damage = Math.round(baseDamage * 1.8) + (spellMastery.get(p.user_id) || 0) * 2;
               damage = applyClassDamage(damage, p.class_name);
-              spellCasts.set(p.user_id, (spellCasts.get(p.user_id) || 0) + 1);
+              const castCount = (spellCasts.get(p.user_id) || 0) + 1;
+              spellCasts.set(p.user_id, castCount);
+              spellMastery.set(p.user_id, Math.min(10, Math.floor(((masteryCastTotals.get(p.user_id) || 0) + castCount) / 10)));
               log.push(`✨ <@${p.user_id}> Zoltraak kullandı (-${spellCost} mana).`);
             } else if (action === 'spell') {
               log.push(`🔹 <@${p.user_id}> için mana yetersiz; normal saldırı yaptı.`);
