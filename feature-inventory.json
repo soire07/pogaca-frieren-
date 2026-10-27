@@ -1831,6 +1831,18 @@
       "name": "Buz Mızrağı freeze cancels the boss's scheduled special attack and mana-drain side effect",
       "category": "Magic",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-305",
+      "name": "Cooperative raid boss enters a second phase at two-thirds HP",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-306",
+      "name": "Cooperative raid boss enters a final phase at one-third HP with stronger special attacks",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
     }
   ],
   "count": 299
