@@ -1183,7 +1183,31 @@
       "name": "Award bonus gold and XP when completing a five-fragment treasure map",
       "category": "Economy",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-178",
+      "name": "Open one or multiple ancient treasure chests from the inventory",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-179",
+      "name": "Validate chest ownership and quantity before consuming treasure items",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-180",
+      "name": "Roll randomized treasure loot from a curated Frieren-themed reward pool",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-181",
+      "name": "Persist chest loot, gold, XP and level-up stat points atomically",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 196
+  "count": 200
 }
