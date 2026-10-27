@@ -133,7 +133,9 @@ test('raid catalog includes three bosses, action weaknesses and distinct loot id
   assert.ok(mechanics.includes("weakness: 'spell'"));
   assert.ok(mechanics.includes("weakness: 'attack'"));
   assert.ok(mechanics.includes('applyRaidWeakness'));
-  assert.ok(mechanics.includes('new Set(RAID_BOSSES.map(b => b.loot)).size'));
+  assert.ok(mechanics.includes('İblis Mührü'));
+  assert.ok(mechanics.includes('Ejderha Camı'));
+  assert.ok(mechanics.includes('Auranın Mühürlü Asa Parçası'));
 });
 
 test('manual test plan distinguishes automated checks from live Discord verification', async () => {
