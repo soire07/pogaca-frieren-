@@ -2,6 +2,8 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { CHARACTER_CLASSES, CHARACTER_BUILDS, getCharacterBuild } from './rpg-mechanics.js';
 import { xpForNextLevel } from './utils.js';
+import characterDraw from './karaktercek.js';
+import characterUpgrade from './karaktergelistir.js';
 
 const classChoices = [
   { name: '✨ Büyücü', value: 'buyucu' },
@@ -46,10 +48,21 @@ export default {
     .addSubcommand(s => s.setName('gelisim').setDescription('Seviye puanlarını karakter özelliklerine yatır.')
       .addStringOption(o => o.setName('ozellik').setDescription('Geliştirilecek özellik').setRequired(true).addChoices(...statChoices))
       .addIntegerOption(o => o.setName('puan').setDescription('Harcanacak puan').setRequired(true).setMinValue(1).setMaxValue(50))),
+    .addSubcommand(s => s.setName('cek').setDescription('Günlük ücretsiz anime karakterini koleksiyonuna kat.'))
+    .addSubcommand(s => s.setName('gelistir').setDescription('Koleksiyonundaki anime karakterini güçlendir.')
+      .addStringOption(o => o.setName('karakter').setDescription('Geliştirmek istediğin karakter').setRequired(true).setAutocomplete(true))
+      .addBooleanOption(o => o.setName('yukselt').setDescription('Evet seçersen altın harcayıp yükseltir.').setRequired(false))),
+
+  async autocomplete(interaction) {
+    if (interaction.options.getSubcommand() === 'gelistir') return characterUpgrade.autocomplete(interaction);
+    return interaction.respond([]);
+  },
 
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({ content: 'Karakter ekranı yalnızca sunucularda kullanılabilir.', ephemeral: true });
     const sub = interaction.options.getSubcommand();
+    if (sub === 'cek') return characterDraw.execute(interaction);
+    if (sub === 'gelistir') return characterUpgrade.execute(interaction);
     await ensureUser(interaction.guildId, interaction.user.id);
 
     if (sub === 'olustur') {
