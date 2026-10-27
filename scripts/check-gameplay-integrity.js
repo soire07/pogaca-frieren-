@@ -66,3 +66,17 @@ test('class-specific daily quests require the selected class, validate progress 
   assert.ok(begin >= 0 && classLock > begin && progress > classLock && claim > progress && commit > claim,
     'class, progress and daily claim must be validated in one transaction');
 });
+
+
+test('PvP duels apply persistent class passives and selected combat builds', async () => {
+  const source = await read('buyusavasi.js');
+  assert.match(source, /SELECT max_hp, attack, defense, class_name, active_build FROM users/);
+  assert.match(source, /getCharacterBuild\(stats1\.active_build\)/);
+  assert.match(source, /getCharacterBuild\(stats2\.active_build\)/);
+  assert.match(source, /applyClassDefense\(Number\(stats1\.defense\) \+ gear1\.defense, stats1\.class_name\)/);
+  assert.match(source, /applyClassDefense\(Number\(stats2\.defense\) \+ gear2\.defense, stats2\.class_name\)/);
+  assert.match(source, /applyClassDamage\(rawDamage, isPlayer1 \? stats1\.class_name : stats2\.class_name\)/);
+  assert.match(source, /applyClassHealing\(baseHealing, isPlayer1 \? stats1\.class_name : stats2\.class_name\)/);
+  assert.match(source, /\* build1\.hp/);
+  assert.match(source, /\* build2\.hp/);
+});
