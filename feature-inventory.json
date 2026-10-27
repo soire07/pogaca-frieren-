@@ -901,7 +901,37 @@
       "name": "Scale Stone Wall damage prevention with mastery up to 90 percent",
       "category": "Combat",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-131",
+      "name": "Choose a persistent character class with /sinifsec",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-132",
+      "name": "Apply the Mage class damage multiplier to eligible offensive spells",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-133",
+      "name": "Apply the Guardian class defense multiplier in solo boss combat",
+      "category": "Combat",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-134",
+      "name": "Apply the Healer class healing multiplier to Healing Light",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-135",
+      "name": "View the selected class and its passive effect in the class-selection response",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 149
+  "count": 154
 }
