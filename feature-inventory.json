@@ -829,7 +829,49 @@
       "name": "Trigger Fallen Mage Aura's periodic mana-draining curse",
       "category": "Boss",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-119",
+      "name": "Learn new spells from a level-gated spell catalogue",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-120",
+      "name": "Require the configured minimum level before learning each spell",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-121",
+      "name": "Spend persistent gold to learn a spell with transactional balance checks",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-122",
+      "name": "Prevent learning the same spell more than once",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-123",
+      "name": "Train learned spells by spending mana and a mastery-scaled gold fee",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-124",
+      "name": "Progress spell mastery through persisted practice counts up to level ten",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-125",
+      "name": "View learned spells, practice counts and mastery progress",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 133
+  "count": 144
 }
