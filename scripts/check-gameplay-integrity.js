@@ -216,7 +216,7 @@ test('cooperative Zoltraak damage uses saved mastery and can level up during the
 test('co-op combat releases database locks before waiting for player turns and revalidates cooldown on save', async () => {
   for (const [path, cooldown] of [['katlizindan.js', 'last_dungeon_at'], ['ortakboss.js', 'last_boss_at']]) {
     const source = await read(path);
-    const release = source.indexOf("await db.query('COMMIT');\\n      db.release();\\n      db = null;");
+    const release = source.indexOf('db = null;');
     const wait = source.indexOf('while (', release);
     const save = source.indexOf('Reacquire a short transaction', wait);
     const lock = source.indexOf('ORDER BY user_id FOR UPDATE', save);
