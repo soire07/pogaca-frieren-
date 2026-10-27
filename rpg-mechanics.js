@@ -53,3 +53,35 @@ export function progressionMilestone(level, bossWins, dungeonWins) {
   if (bossWins >= 10 && dungeonWins >= 10) rewards.push('Kuzeyin Efsanesi');
   return [...new Set(rewards)];
 }
+
+
+// Sınıf pasifleri: tek yerde tanımlanır ve savaşlarda tutarlı biçimde uygulanır.
+export const CHARACTER_CLASSES = {
+  gezgin: { label: 'Gezgin', description: 'Dengeli başlangıç sınıfı.', attackMultiplier: 1, defenseMultiplier: 1, healingMultiplier: 1 },
+  buyucu: { label: 'Büyücü', description: 'Büyü hasarı ve mana disiplininde uzman.', attackMultiplier: 1.08, defenseMultiplier: 1, healingMultiplier: 1 },
+  muhafiz: { label: 'Muhafız', description: 'Savunması daha güçlü, dayanıklı savaşçı.', attackMultiplier: 1, defenseMultiplier: 1.12, healingMultiplier: 1 },
+  sifaci: { label: 'Şifacı', description: 'İyileştirme büyüleri daha etkili.', attackMultiplier: 1, defenseMultiplier: 1, healingMultiplier: 1.2 }
+};
+
+export function getCharacterClass(className) {
+  const normalized = String(className || 'Gezgin').normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase('tr-TR');
+  if (normalized.includes('buyucu')) return CHARACTER_CLASSES.buyucu;
+  if (normalized.includes('muhafiz')) return CHARACTER_CLASSES.muhafiz;
+  if (normalized.includes('sifaci')) return CHARACTER_CLASSES.sifaci;
+  return CHARACTER_CLASSES.gezgin;
+}
+
+export function applyClassDamage(baseDamage, className) {
+  const profile = getCharacterClass(className);
+  return Math.floor(Number(baseDamage) * profile.attackMultiplier);
+}
+
+export function applyClassDefense(baseDefense, className) {
+  const profile = getCharacterClass(className);
+  return Math.floor(Number(baseDefense) * profile.defenseMultiplier);
+}
+
+export function applyClassHealing(baseHealing, className) {
+  const profile = getCharacterClass(className);
+  return Math.floor(Number(baseHealing) * profile.healingMultiplier);
+}
