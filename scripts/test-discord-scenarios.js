@@ -399,3 +399,15 @@ test('adventure map fragments persist and complete a five-piece treasure reward'
   assert.match(adventure, /treasureReward\.coins/);
   assert.match(journal, /Hazine haritası/);
 });
+
+test('treasure chests are consumed transactionally and grant persistent randomized loot', async () => {
+  const command = await read('hazineac.js');
+  assert.match(command, /setName\('hazineac'\)/);
+  assert.match(command, /FOR UPDATE/);
+  assert.match(command, /Kadim Hazine Sandığı/);
+  assert.match(command, /await db\.query\('BEGIN'\)/);
+  assert.match(command, /await db\.query\('COMMIT'\)/);
+  assert.match(command, /await db\.query\('ROLLBACK'\)/);
+  assert.match(command, /ON CONFLICT\(guild_id,user_id,item_key\)/);
+  assert.match(command, /setMaxValue\(5\)/);
+});
