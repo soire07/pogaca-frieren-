@@ -45,6 +45,8 @@ export default {
     const effectiveMaxMana = Math.min(2000, Math.round((Number(u.max_mana) + gear.mana) * build.mana));
     const effectiveAttack = Math.min(500, Math.round((Number(u.attack) + gear.attack) * build.attack));
     const effectiveDefense = Math.min(250, Math.round(applyClassDefense(Number(u.defense) + gear.defense, u.class_name) * build.defense));
+    const currentHp = Math.max(0, Math.min(effectiveMaxHp, Math.round((Number(u.hp) / Math.max(1, Number(u.max_hp))) * effectiveMaxHp)));
+    const currentMana = Math.max(0, Math.min(effectiveMaxMana, Math.round((Number(u.mana) / Math.max(1, Number(u.max_mana))) * effectiveMaxMana)));
 
     const gif = new AttachmentBuilder('./profil.gif');
 
@@ -64,8 +66,8 @@ export default {
         { name: '🏆 En iyi seri', value: `${Number(u.best_daily_streak || 0)} gün`, inline: true },
         { name: 'Sınıf', value: u.class_name ?? 'Gezgin', inline: true },
         { name: '⚔️ Savaş yapısı', value: build.label, inline: true },
-        { name: '❤️ Can', value: `${Math.min(Number(u.hp), effectiveMaxHp)}/${effectiveMaxHp}`, inline: true },
-        { name: '✨ Mana', value: `${Math.min(Number(u.mana), effectiveMaxMana)}/${effectiveMaxMana}`, inline: true },
+        { name: '❤️ Can', value: `${currentHp}/${effectiveMaxHp}`, inline: true },
+        { name: '✨ Mana', value: `${currentMana}/${effectiveMaxMana}`, inline: true },
         { name: '⚔️ Saldırı', value: String(effectiveAttack), inline: true },
         { name: '🛡️ Savunma', value: String(effectiveDefense), inline: true },
         { name: '🌟 Dağıtılabilir puan', value: String(u.stat_points), inline: true },
