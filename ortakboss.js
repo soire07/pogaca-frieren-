@@ -93,9 +93,9 @@ export default {
       collector.once('end', (_all, reason) => resolve(reason === 'ready'));
     });
     if (!rolesReady) return interaction.editReply({ content: '⌛ Herkes rol seçmediği için baskın başlamadı. Yeniden deneyebilirsin.', components: [] });
-    for (const user of team) user.role = chosenRoles.get(user.id);
+    const teamRoles = new Map(team.map(user => [user.id, chosenRoles.get(user.id)]));
     await interaction.editReply({
-      content: `⚔️ Baskın takımı hazır: ${team.map(u => `<@${u.id}> — ${ROLES[u.role].label}`).join(' · ')}`,
+      content: `⚔️ Baskın takımı hazır: ${team.map(u => `<@${u.id}> — ${ROLES[teamRoles.get(u.id)].label}`).join(' · ')}`,
       components: []
     });
 
@@ -113,7 +113,7 @@ export default {
         return interaction.editReply({ content: 'Takım verileri okunamadı. Yeniden dene.', components: [] });
       }
       const byId = new Map(result.rows.map(x => [x.user_id,x]));
-      const raw = team.map(user => ({ user, role: user.role, stats: byId.get(user.id) }));
+      const raw = team.map(user => ({ user, role: teamRoles.get(user.id), stats: byId.get(user.id) }));
       const now = Date.now();
       const cooling = raw.find(x => x.stats.last_boss_at && now - new Date(x.stats.last_boss_at).getTime() < COOLDOWN_MS);
       if (cooling) {
