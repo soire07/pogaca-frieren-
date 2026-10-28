@@ -336,20 +336,44 @@ client.on(Events.InteractionCreate, async interaction => {
       const testsPassed = result.code === 0 && !result.timedOut;
       const status = auditPassed && testsPassed && syntaxPassed ? 'TÜM OTOMATİK DENETİMLER BAŞARILI' : result.timedOut ? 'TEST ZAMAN AŞIMI' : 'DENETİM BAŞARISIZ';
       const summary = buildLocalTestSummary(result);
-      const targetedOutput = (targeted.stdout || '') + '\\n' + (targeted.stderr || '');
+      const targetedOutput = (targeted.stdout || '') + '\n' + (targeted.stderr || '');
       const targetedHasTests = /SEÇİLEN TEST DOSYALARI:/.test(targetedOutput);
       const targetedSummary = targeted.applicable
         ? (!targetedHasTests
           ? 'Hedefe özel test kapsamı: BULUNAMADI. İstekle eşleşen test dosyası seçilmedi; bu hedef için başarı iddiası verilmiyor.'
           : targeted.code === 0
-            ? 'Hedefe özel testler: BAŞARILI. ' + (targetedOutput.match(/SEÇİLEN TEST DOSYALARI: ([^\\n]+)/)?.[1] || 'Seçilen testler geçti.')
+            ? 'Hedefe özel testler: BAŞARILI. ' + (targetedOutput.match(/SEÇİLEN TEST DOSYALARI: ([^\n]+)/)?.[1] || 'Seçilen testler geçti.')
             : 'Hedefe özel testler: BAŞARISIZ (çıkış kodu: ' + (targeted.code ?? 'yok') + '). ' + targetedOutput.slice(-300))
         : 'Hedefe özel test kapsamı: EKSİK. ' + targeted.note;
       const syntaxSummary = syntaxPassed ? 'AI servis sözdizimi: başarılı.' : 'AI servis sözdizimi BAŞARISIZ: ' + agentSyntax.stderr.slice(-250);
       const auditSummary = auditPassed
         ? 'Komut sözleşme denetimi: ' + commandCount[1] + ' komut keşfedildi; ' + commandCount[2] + ' PASS, ' + commandCount[3] + ' FAIL. Her komut için ayrı sonuç üretildi.'
         : 'Komut sözleşme denetimi BAŞARISIZ. Ayrıntılar test çıktısında.';
-      const rawOutput = (auditOutput + '\n' + result.stdout + '\n' + result.stderr).trim().slice(-650) || '(Test çıktısı boş.)';
+      const rawOutput = [
+        'FRIEREN OTOMATİK DENETİM RAPORU',
+        'Hedef: ' + target,
+        'Alan: ' + targetGroups.join(' • '),
+        'Zaman: ' + new Date().toISOString(),
+        '',
+        '=== AI SERVİS SÖZDİZİMİ ===',
+        agentSyntax.stdout || '',
+        agentSyntax.stderr || '',
+        'Durum: ' + (syntaxPassed ? 'PASS' : 'FAIL'),
+        '',
+        '=== KOMUT SÖZLEŞME DENETİMİ ===',
+        auditOutput,
+        '',
+        '=== GENEL TEST PAKETİ ===',
+        result.stdout || '',
+        result.stderr || '',
+        'Çıkış kodu: ' + (result.code ?? 'yok'),
+        '',
+        '=== HEDEFE ÖZEL TESTLER ===',
+        targetedOutput,
+        'Çıkış kodu: ' + (targeted.code ?? 'yok'),
+        '',
+        'NOT: PASS yalnızca ilgili otomatik kontrolün geçtiğini belirtir. Canlı Discord kullanıcı akışları ve üretim veritabanı etkileri bu raporla otomatik olarak kanıtlanmış sayılmaz.'
+      ].join('\n').trim();
       const body = '**' + status + '**\n\n**İstenen test:** ' + target.slice(0, 500)
         + '\n**İlgili alan:** ' + targetGroups.join(' • ')
         + '\n\n' + auditSummary + '\n' + summary
