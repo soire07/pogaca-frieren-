@@ -53,24 +53,24 @@ test('command interaction coverage: every discoverable slash command exposes a v
 
   // Static interaction-safety signals: these are evidence for review, not proof of live behavior.
   const responseSignals = [
-    /\\.reply\\s*\\(/,
-    /\\.deferReply\\s*\\(/,
-    /\\.editReply\\s*\\(/,
-    /\\.followUp\\s*\\(/,
-    /\\.showModal\\s*\\(/,
-    /\\.respond\\s*\\(/,
-    /\\.update\\s*\\(/,
-    /\\.deferUpdate\\s*\\(/,
+    /\.reply\s*\(/,
+    /\.deferReply\s*\(/,
+    /\.editReply\s*\(/,
+    /\.followUp\s*\(/,
+    /\.showModal\s*\(/,
+    /\.respond\s*\(/,
+    /\.update\s*\(/,
+    /\.deferUpdate\s*\(/,
   ];
   const interactionSafetySignals = [
-    /\\.isChatInputCommand\\s*\\(/,
-    /\\.isButton\\s*\\(/,
-    /\\.isStringSelectMenu\\s*\\(/,
-    /\\.isModalSubmit\\s*\\(/,
-    /\\.user\\.id/,
-    /\\.memberPermissions/,
-    /\\.guildId/,
-    /\\.deferReply\\s*\\(/,
+    /\.isChatInputCommand\s*\(/,
+    /\.isButton\s*\(/,
+    /\.isStringSelectMenu\s*\(/,
+    /\.isModalSubmit\s*\(/,
+    /\.user\.id/,
+    /\.memberPermissions/,
+    /\.guildId/,
+    /\.deferReply\s*\(/,
   ];
   const sourceByFile = new Map();
   for (const { file } of commands) {
