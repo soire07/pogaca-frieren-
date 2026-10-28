@@ -62,6 +62,10 @@ const commands = [
     .addStringOption(option => option.setName('soru').setDescription('Sorunu veya inceleme isteğini yaz.').setRequired(true).setMaxLength(1500))
     .toJSON(),
   new SlashCommandBuilder()
+    .setName('frieren-ai-temizle')
+    .setDescription('Frieren AI ile geçici konuşma bağlamını siler.')
+    .toJSON(),
+  new SlashCommandBuilder()
     .setName('status')
     .setDescription('Frieren AI servisinin canlı çalışma durumunu gösterir.')
     .toJSON(),
@@ -419,6 +423,17 @@ client.on(Events.InteractionCreate, async interaction => {
 
   if (!admins.has(interaction.user.id)) {
     await interaction.reply({ content: 'Bu komut yalnızca yetkili geliştiriciler tarafından kullanılabilir.', flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  if (interaction.commandName === 'frieren-ai-temizle') {
+    const cleared = conversationMemory.clear(interaction.user.id);
+    await interaction.reply({
+      content: cleared
+        ? 'Geçici Frieren AI konuşma bağlamın silindi.'
+        : 'Silinecek kayıtlı geçici konuşma bağlamın yok.',
+      flags: MessageFlags.Ephemeral,
+    });
     return;
   }
 
