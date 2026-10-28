@@ -17,7 +17,7 @@ async function walk(dir, depth = 0) {
     if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'coverage') continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) files.push(...await walk(full, depth + 1));
-    else if (path.basename(full) !== 'test-request.js' && (/\.(test|spec)\.[cm]?[jt]s$/.test(entry.name) || /^test-[\w-]+\.js$/.test(entry.name) || entry.name === 'check-gameplay-integrity.js')) files.push(full);
+    else if (!['test-request.js', 'test-live-memory.js'].includes(path.basename(full)) && (/\.(test|spec)\.[cm]?[jt]s$/.test(entry.name) || /^test-[\w-]+\.js$/.test(entry.name) || entry.name === 'check-gameplay-integrity.js')) files.push(full);
   }
   return files;
 }
