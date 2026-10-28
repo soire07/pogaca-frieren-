@@ -220,12 +220,33 @@ function runTargetedTests(target) {
     const isCommandInteractionCoverage = normalizedTarget.includes('command interaction coverage')
       || normalizedTarget.includes('interaction command coverage')
       || normalizedTarget.includes('komut etkilesim kapsam');
-    const testArgs = isCommandInteractionCoverage
-      ? ['--test', 'scripts/test-command-interaction-coverage.js']
-      : ['scripts/test-request.js', target];
-    console.log('HEDEFLİ TEST ÇALIŞTIRMA: ' + (isCommandInteractionCoverage
-      ? 'Doğrudan scripts/test-command-interaction-coverage.js'
-      : 'İstek eşleştirici üzerinden'));
+    // Broad multi-domain RPG requests must not depend on fuzzy keyword matching.
+    // Select existing suites directly so the report cannot falsely say no tests matched.
+    const broadGroups = [
+      /sava[sş]|combat|boss|hasar|damage|savunma|defense|rpg|karakter|character|ekipman|equipment|kesif|explor/,
+      /gorev|quest|odul|reward|ilerleme|progress|seviye|level|tecrube|experience|xp/,
+      /discord|komut|command|etkilesim|interaction|slash|buton|button|izin|permission/
+    ];
+    const isBroadRegression = broadGroups.filter(pattern => pattern.test(normalizedTarget)).length >= 2;
+    const broadTestFiles = [
+      'scripts/test-boss-combat.js',
+      'scripts/check-gameplay-integrity.js',
+      'scripts/test-discord-scenarios.js',
+      'scripts/test-command-interaction-coverage.js'
+    ];
+    const testArgs = isBroadRegression
+      ? ['--test', ...broadTestFiles]
+      : isCommandInteractionCoverage
+        ? ['--test', 'scripts/test-command-interaction-coverage.js']
+        : ['scripts/test-request.js', target];
+    const directSuiteNotice = isBroadRegression
+      ? 'SEÇİLEN TEST DOSYALARI: ' + broadTestFiles.join('; ') + ' (mevcut testler; doğrudan çok alanlı paket)'
+      : '';
+    console.log('HEDEFLİ TEST ÇALIŞTIRMA: ' + (isBroadRegression
+      ? 'Doğrudan çok alanlı RPG regresyon paketi'
+      : isCommandInteractionCoverage
+        ? 'Doğrudan scripts/test-command-interaction-coverage.js'
+        : 'İstek eşleştirici üzerinden'));
     const child = spawn(process.execPath, testArgs, {
       cwd: rootDir, shell: false, windowsHide: true,
       env: { ...process.env, CI: 'true' }, stdio: ['ignore', 'pipe', 'pipe'],
@@ -239,9 +260,11 @@ function runTargetedTests(target) {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      const directNotice = isCommandInteractionCoverage
-        ? 'SEÇİLEN TEST DOSYALARI: scripts/test-command-interaction-coverage.js (doğrudan çalıştırıldı)\\n'
-        : '';
+      const directNotice = directSuiteNotice
+        ? directSuiteNotice + '\\n'
+        : isCommandInteractionCoverage
+          ? 'SEÇİLEN TEST DOSYALARI: scripts/test-command-interaction-coverage.js (doğrudan çalıştırıldı)\\n'
+          : '';
       const safeStdout = redactSecrets(stdout);
       const safeStderr = redactSecrets(stderr + error);
       // Keep the selection header even when verbose test output pushes it out of the retained output tail.
