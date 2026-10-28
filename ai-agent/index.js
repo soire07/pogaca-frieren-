@@ -2,6 +2,7 @@ import 'dotenv/config';
 import OpenAI from 'openai';
 import { resolveAiModel } from './config.js';
 import { createMemoryStore } from './memory-store.js';
+import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget } from './test-report-guards.js';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createServer } from 'node:http';
@@ -518,15 +519,19 @@ client.on(Events.InteractionCreate, async interaction => {
       const testsPassed = result.code === 0 && !result.timedOut;
       const targetedOutput = (targeted.stdout || '') + '\n' + (targeted.stderr || '');
       const targetedHasTests = /SEÇİLEN TEST DOSYALARI:/.test(targetedOutput);
-      const targetedPassed = targeted.code === 0 && targetedHasTests;
-      const status = result.timedOut ? 'TEST ZAMAN AŞIMI' : !auditPassed || !testsPassed || !syntaxPassed || (targetedHasTests && !targetedPassed) ? 'DENETİM BAŞARISIZ' : !targetedHasTests ? 'HEDEFE ÖZEL KAPSAM EKSİK' : 'TÜM OTOMATİK DENETİMLER BAŞARILI';
+      const memoryPrivacyTarget = isMemoryPrivacyTarget(target);
+      const liveMemoryProofPassed = hasLiveMemoryPrivacyProof(target, targetedOutput);
+      const targetedPassed = targeted.code === 0 && targetedHasTests && liveMemoryProofPassed;
+      const status = result.timedOut ? 'TEST ZAMAN AŞIMI' : !auditPassed || !testsPassed || !syntaxPassed || (targetedHasTests && !targetedPassed) || (memoryPrivacyTarget && !liveMemoryProofPassed) ? 'DENETİM BAŞARISIZ' : !targetedHasTests ? 'HEDEFE ÖZEL KAPSAM EKSİK' : 'TÜM OTOMATİK DENETİMLER BAŞARILI';
       const summary = buildLocalTestSummary(result);
       const targetedSummary = targeted.applicable
-        ? (!targetedHasTests
-          ? 'Hedefe özel test kapsamı: BULUNAMADI. İstekle eşleşen test dosyası seçilmedi; bu hedef için başarı iddiası verilmiyor.'
-          : targeted.code === 0
-            ? 'Hedefe özel testler: BAŞARILI. ' + (targetedOutput.match(/SEÇİLEN TEST DOSYALARI: ([^\n]+)/)?.[1] || 'Seçilen testler geçti.')
-            : 'Hedefe özel testler: BAŞARISIZ (çıkış kodu: ' + (targeted.code ?? 'yok') + '). ' + targetedOutput.slice(-300))
+        ? (memoryPrivacyTarget && !liveMemoryProofPassed
+          ? 'Hedefe özel testler: BAŞARISIZ. Canlı PostgreSQL bellek gizliliği testi raporda başarıyla doğrulanmadı; yalnızca birim testlerinin geçmesi yeterli değildir.'
+          : !targetedHasTests
+            ? 'Hedefe özel test kapsamı: BULUNAMADI. İstekle eşleşen test dosyası seçilmedi; bu hedef için başarı iddiası verilmiyor.'
+            : targeted.code === 0
+              ? 'Hedefe özel testler: BAŞARILI. ' + (targetedOutput.match(/SEÇİLEN TEST DOSYALARI: ([^\n]+)/)?.[1] || 'Seçilen testler geçti.')
+              : 'Hedefe özel testler: BAŞARISIZ (çıkış kodu: ' + (targeted.code ?? 'yok') + '). ' + targetedOutput.slice(-300))
         : 'Hedefe özel test kapsamı: EKSİK. ' + targeted.note;
       const readDiagnostic = pattern => targetedOutput.match(pattern)?.[1]?.trim() || '';
       const responseSignal = readDiagnostic(/Command response-path source signal:\s*(.+)/);
@@ -561,6 +566,11 @@ client.on(Events.InteractionCreate, async interaction => {
         result.stdout || '',
         result.stderr || '',
         'Çıkış kodu: ' + (result.code ?? 'yok'),
+        '',
+        '=== CANLI BELLEK GİZLİLİĞİ KANITI ===',
+        memoryPrivacyTarget
+          ? (liveMemoryProofPassed ? 'CANLI POSTGRESQL BELLEK GİZLİLİĞİ TESTİ: PASS' : 'CANLI POSTGRESQL BELLEK GİZLİLİĞİ TESTİ: FAIL — canlı test başarı çıktısı doğrulanamadı.')
+          : 'Bu rapor bellek gizliliği hedefli değil.',
         '',
         '=== HEDEFE ÖZEL TESTLER ===',
         targetedOutput,
