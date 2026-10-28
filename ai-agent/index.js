@@ -215,7 +215,17 @@ function runCommandAudit() {
 
 function runTargetedTests(target) {
   return new Promise(resolve => {
-    const child = spawn(process.execPath, ['scripts/test-request.js', target], {
+    const normalizedTarget = target.normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase('tr-TR');
+    const isCommandInteractionCoverage = normalizedTarget.includes('command interaction coverage')
+      || normalizedTarget.includes('interaction command coverage')
+      || normalizedTarget.includes('komut etkilesim kapsam');
+    const testArgs = isCommandInteractionCoverage
+      ? ['--test', 'scripts/test-command-interaction-coverage.js']
+      : ['scripts/test-request.js', target];
+    console.log('HEDEFLİ TEST ÇALIŞTIRMA: ' + (isCommandInteractionCoverage
+      ? 'Doğrudan scripts/test-command-interaction-coverage.js'
+      : 'İstek eşleştirici üzerinden'));
+    const child = spawn(process.execPath, testArgs, {
       cwd: rootDir, shell: false, windowsHide: true,
       env: { ...process.env, CI: 'true' }, stdio: ['ignore', 'pipe', 'pipe'],
     });
