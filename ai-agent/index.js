@@ -23,8 +23,8 @@ if (missing.length) {
 const admins = new Set(process.env.FRIEREN_ADMIN_IDS.split(',').map(value => value.trim()).filter(Boolean));
 const rootDir = fileURLToPath(new URL('../', import.meta.url));
 const timeoutMs = Math.max(30_000, Math.min(Number(process.env.FRIEREN_TEST_TIMEOUT_MS) || 180_000, 300_000));
-const model = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
-const openaiApiKey = process.env.OPENAI_API_KEY?.trim() || '';
+const model = process.env.OPENROUTER_MODEL || 'openrouter/free';
+const aiApiKey = process.env.OPENROUTER_API_KEY?.trim() || '';
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 // Render Web Services require an HTTP port. This lightweight endpoint does not expose bot controls.
@@ -161,8 +161,8 @@ async function collectProjectContext() {
 }
 
 async function askAI(question, testReport = '') {
-  if (!openaiApiKey) {
-    throw new Error('OPENAI_API_KEY is not configured; set it in the Render service environment.');
+  if (!aiApiKey) {
+    throw new Error('OPENROUTER_API_KEY is not configured; create a free key at openrouter.ai and add it to the Render service environment.');
   }
 
   const instructions = [
@@ -198,11 +198,13 @@ async function askAI(question, testReport = '') {
   let payload = {};
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      response = await fetch('https://api.openai.com/v1/chat/completions', {
+      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          authorization: 'Bearer ' + openaiApiKey,
+          authorization: 'Bearer ' + aiApiKey,
+          'HTTP-Referer': 'https://frieren-ai-agent.onrender.com',
+          'X-Title': 'Frieren AI Agent',
         },
         body: requestBody,
         signal: AbortSignal.timeout(45_000),
@@ -213,17 +215,17 @@ async function askAI(question, testReport = '') {
       const retryable = [408, 429, 500, 502, 503, 504].includes(response.status);
       if (!retryable || attempt === 2) {
         const providerMessage = payload?.error?.message || ('HTTP ' + response.status);
-        throw new Error('AI API request failed (' + response.status + '): ' + providerMessage);
+        throw new Error('OpenRouter API request failed (' + response.status + '): ' + providerMessage);
       }
-      console.warn('Transient OpenAI API response (' + response.status + '); retry ' + (attempt + 1) + '/2.');
+      console.warn('Transient OpenRouter API response (' + response.status + '); retry ' + (attempt + 1) + '/2.');
     } catch (error) {
       const transientNetworkError = error?.name === 'TimeoutError'
         || error?.name === 'AbortError'
         || error?.name === 'TypeError';
       if (!transientNetworkError || attempt === 2) {
-        throw new Error('AI API request failed: ' + (error?.message || 'Unknown network error'));
+        throw new Error('OpenRouter API request failed: ' + (error?.message || 'Unknown network error'));
       }
-      console.warn('Transient AI network/timeout error; retry ' + (attempt + 1) + '/2.');
+      console.warn('Transient OpenRouter network/timeout error; retry ' + (attempt + 1) + '/2.');
     }
     await new Promise(resolve => setTimeout(resolve, 1000 * (2 ** attempt)));
   }
@@ -285,7 +287,7 @@ client.on(Events.InteractionCreate, async interaction => {
       await interaction.editReply(answer.slice(0, 1950));
     } catch (error) {
       console.error('AI request failed:', error.message);
-      await interaction.editReply('Yapay zekâ isteği başarısız oldu. Render ortamında OPENAI_API_KEY ayarını ve OpenAI API kota/faturalandırma durumunu kontrol et. API anahtarını Discord mesajlarında veya kodda paylaşma.');
+      await interaction.editReply('Yapay zekâ isteği başarısız oldu. Render ortamında OPENROUTER_API_KEY ayarını ve OpenRouter ücretsiz model kotasını kontrol et. API anahtarını Discord mesajlarında veya kodda paylaşma.');
     }
   }
 });
