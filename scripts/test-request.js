@@ -57,9 +57,13 @@ if (!rawTarget) {
 const words = tokens(rawTarget);
 const testFiles = await walk(root);
 const normalizedTarget = normalize(rawTarget);
-const forcedFiles = /command\s+interaction\s+coverage|interaction\s+command\s+coverage|komut\s+etkilesim\s+kapsam/i.test(normalizedTarget)
+const isCommandInteractionCoverage = normalizedTarget.includes('command interaction coverage')
+  || normalizedTarget.includes('interaction command coverage')
+  || normalizedTarget.includes('komut etkilesim kapsam');
+const forcedFiles = isCommandInteractionCoverage
   ? ['scripts/test-command-interaction-coverage.js']
   : [];
+console.log('HEDEF EŞLEŞTİRME: ' + (isCommandInteractionCoverage ? 'command interaction coverage -> scripts/test-command-interaction-coverage.js' : 'özel eşleşme yok'));
 const ranked = [];
 for (const file of testFiles) {
   const source = await readFile(file, 'utf8').catch(() => '');
