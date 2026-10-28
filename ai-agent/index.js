@@ -208,6 +208,33 @@ async function askAI(question, testReport = '') {
         || error?.name === 'AbortError'
         || error?.name === 'TypeError';
       if (!transientNetworkError || attempt === 2) {
+        if (transientNetworkError && attempt === 2 && model !== 'gemini-3.6-flash') {
+          // A timeout can occur instead of a 503 response; try the alternate model once here too.
+          console.warn('Gemini request timed out after retries; trying gemini-3.6-flash fallback.');
+          try {
+            const fallbackResponse = await fetch(
+              'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
+              {
+                method: 'POST',
+                headers: {
+                  'content-type': 'application/json',
+                  'x-goog-api-key': geminiApiKey,
+                },
+                body: requestBody,
+                signal: AbortSignal.timeout(25_000),
+              },
+            );
+            const fallbackPayload = await fallbackResponse.json().catch(() => ({}));
+            if (fallbackResponse.ok) {
+              payload = fallbackPayload;
+              break;
+            }
+            const fallbackMessage = fallbackPayload?.error?.message || ('HTTP ' + fallbackResponse.status);
+            throw new Error('Fallback failed (' + fallbackResponse.status + '): ' + fallbackMessage);
+          } catch (fallbackError) {
+            throw new Error('Gemini primary request timed out and fallback failed: ' + (fallbackError?.message || 'Unknown error'));
+          }
+        }
         throw new Error('Gemini API request failed: ' + (error?.message || 'Unknown network error'));
       }
       console.warn('Transient Gemini network/timeout error; retry ' + (attempt + 1) + '/2.');
