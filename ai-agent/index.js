@@ -98,7 +98,7 @@ async function collectCodeContext(question) {
     if (budget <= 0) break;
     const source = await readFile(path.join(rootDir, relative), 'utf8').catch(() => '');
     if (!source) continue;
-    const safe = source.replace(/(DISCORD_TOKEN|OPENAI_API_KEY|DATABASE_URL|PASSWORD|SECRET)\s*[:=]\s*['"`]?[^\s,'"`]+/gi, '$1=[REDACTED]');
+    const safe = source.replace(/(DISCORD_TOKEN|GROQ_API_KEY|OPENAI_API_KEY|DATABASE_URL|PASSWORD|SECRET)\s*[:=]\s*['"`]?[^\s,'"`]+/gi, '$1=[REDACTED]');
     const excerpt = safe.slice(0, Math.min(safe.length, budget - relative.length - 20));
     if (excerpt) snippets.push('FILE: ' + relative + '\n' + excerpt);
     budget -= excerpt.length + relative.length + 20;
