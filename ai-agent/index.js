@@ -156,6 +156,33 @@ function runCommandAudit() {
   });
 }
 
+function runTargetedTests(target) {
+  const normalized = target.normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase('tr-TR');
+  if (!/boss|iblis|hasar|savunma|kritik|sinir deger|sinirlar|savas/.test(normalized)) {
+    return Promise.resolve({ applicable: false, code: null, stdout: '', stderr: '', note: 'Bu hedef için henüz özel bir hedefli test paketi tanımlı değil.' });
+  }
+  return new Promise(resolve => {
+    const child = spawn('node', ['--test', 'scripts/test-boss-combat.js'], {
+      cwd: rootDir, shell: false, windowsHide: true,
+      env: { ...process.env, CI: 'true' }, stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    let settled = false;
+    const finish = (code, error = '') => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ applicable: true, code, stdout: redactSecrets(stdout), stderr: redactSecrets(stderr + error), note: '' });
+    };
+    child.stdout.on('data', chunk => { stdout = (stdout + chunk.toString()).slice(-8000); });
+    child.stderr.on('data', chunk => { stderr = (stderr + chunk.toString()).slice(-8000); });
+    child.on('error', error => finish(null, error.message));
+    child.on('close', code => finish(code));
+    const timer = setTimeout(() => { child.kill('SIGTERM'); finish(null, 'Hedefli test zaman aşımına uğradı.'); }, timeoutMs);
+  });
+}
+
 function classifyTestTarget(target) {
   const groups = [
     { label: 'Savaş ve RPG mekanikleri', pattern: /sava[sş]|boss|iblis|hasar|savunma|sınıf|sinif|büyü|buyu|mana|şifa|sifa|zindan|ekipman|set bonus|karakter/i },
@@ -231,10 +258,11 @@ client.on(Events.InteractionCreate, async interaction => {
     runningGuilds.add(lockKey);
     await interaction.deferReply({ ephemeral: true });
     try {
-      const [agentSyntax, audit, result] = await Promise.all([
+      const [agentSyntax, audit, result, targeted] = await Promise.all([
         runSyntaxChecks(),
         runCommandAudit(),
         runTests(),
+        runTargetedTests(target),
       ]);
       const auditOutput = audit.stdout + '\n' + audit.stderr;
       const commandCount = auditOutput.match(/Komut denetimi başarılı: (\d+) slash komutu/);
@@ -244,6 +272,11 @@ client.on(Events.InteractionCreate, async interaction => {
       const testsPassed = result.code === 0 && !result.timedOut;
       const status = auditPassed && testsPassed && syntaxPassed ? 'TÜM OTOMATİK DENETİMLER BAŞARILI' : result.timedOut ? 'TEST ZAMAN AŞIMI' : 'DENETİM BAŞARISIZ';
       const summary = buildLocalTestSummary(result);
+      const targetedSummary = targeted.applicable
+        ? (targeted.code === 0
+          ? 'Hedefe özel boss/savaş testleri: BAŞARILI. Sınır hasarı, faz eşikleri, faz çarpanları, boss zayıflıkları ve sınıf bonusları kontrol edildi.'
+          : 'Hedefe özel boss/savaş testleri: BAŞARISIZ (çıkış kodu: ' + (targeted.code ?? 'yok') + '). ' + (targeted.stderr || targeted.stdout).slice(-250))
+        : 'Hedefe özel test kapsamı: EKSİK. ' + targeted.note;
       const syntaxSummary = syntaxPassed ? 'AI servis sözdizimi: başarılı.' : 'AI servis sözdizimi BAŞARISIZ: ' + agentSyntax.stderr.slice(-250);
       const auditSummary = auditPassed
         ? 'Komut dosyası/şema denetimi: ' + commandCount[1] + ' komut yüklendi; ad, açıklama, otomatik tamamlama ve yinelenen ad kontrolleri geçti.'
@@ -252,7 +285,8 @@ client.on(Events.InteractionCreate, async interaction => {
       const body = '**' + status + '**\n\n**İstenen test:** ' + target.slice(0, 500)
         + '\n**İlgili alan:** ' + targetGroups.join(' • ')
         + '\n\n' + auditSummary + '\n' + summary
-        + '\n\nKapsam notu: Bu komut mevcut otomatik kontrol paketini çalıştırır. İstenen senaryo için özel bir test bulunmuyorsa bu sonuç o senaryonun tek başına doğrulandığı anlamına gelmez; rapor bunu otomatik test kapsamıyla sınırlı tutar.'
+        + '\n' + targetedSummary
+        + '\n\nKapsam notu: Genel paket ile hedefli testler ayrı raporlanır. Hedefli paket yalnızca kapsadığı senaryoları doğrular; canlı Discord etkileşimlerini tek başına kanıtlamaz.'
         + '\nDiscord üzerinde her komutun canlı etkileşimini bu paket tek başına kanıtlamaz.'
         + '\n\nKomutlar: ' + (commandList || 'Ayrıntılı liste test çıktısında yok.')
         + '\nTest çıkış kodu: ' + (testsPassed ? 0 : (result.code ?? 'yok'))
