@@ -375,10 +375,10 @@ client.on(Events.InteractionCreate, async interaction => {
             : 'Hedefe özel testler: BAŞARISIZ (çıkış kodu: ' + (targeted.code ?? 'yok') + '). ' + targetedOutput.slice(-300))
         : 'Hedefe özel test kapsamı: EKSİK. ' + targeted.note;
       const readDiagnostic = pattern => targetedOutput.match(pattern)?.[1]?.trim() || '';
-      const responseSignal = readDiagnostic(/Command response-path source signal:\\s*(.+)/);
-      const responseReview = readDiagnostic(/Commands needing response-path review:\\s*(.+)/);
-      const safetySignal = readDiagnostic(/Interaction.*permission source signal:\\s*(.+)/);
-      const safetyReview = readDiagnostic(/Commands needing interaction.*permission review:\\s*(.+)/);
+      const responseSignal = readDiagnostic(/Command response-path source signal:\s*(.+)/);
+      const responseReview = readDiagnostic(/Commands needing response-path review:\s*(.+)/);
+      const safetySignal = readDiagnostic(/Interaction.*permission source signal:\s*(.+)/);
+      const safetyReview = readDiagnostic(/Commands needing interaction.*permission review:\s*(.+)/);
       const diagnosticSummary = [
         responseSignal ? 'Yanıt yolu sinyali: ' + responseSignal : '',
         responseReview ? 'Yanıt yolu incelemesi: ' + responseReview.slice(0, 300) : '',
