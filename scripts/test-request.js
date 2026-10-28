@@ -89,7 +89,7 @@ for (const file of testFiles) {
 ranked.sort((a, b) => b.score - a.score || a.file.localeCompare(b.file));
 const selectedMap = new Map();
 for (const file of forcedFiles) {
-  selectedMap.set(file, { file: path.join(root, file), hits: words, score: words.length, forced: true });
+  selectedMap.set(file, { file, hits: words, score: words.length, forced: true });
 }
 for (const item of ranked.filter(item => item.score >= 1).slice(0, 8)) {
   const key = path.relative(root, item.file).split(path.sep).join('/');
