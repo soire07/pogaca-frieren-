@@ -21,7 +21,7 @@ let budget = 48_000;
 for (const file of tracked) {
   if (budget <= 0) break;
   let content = await readFile(file, 'utf8');
-  content = content.replace(/(DISCORD_TOKEN|OPENAI_API_KEY|DATABASE_URL|PASSWORD|SECRET)\s*[:=]\s*['"`]?[^\s,'"`]+/gi, '$1=[REDACTED]');
+  content = content.replace(/(DISCORD_TOKEN|FRIEREN_AI_API_KEY|OPENAI_API_KEY|DATABASE_URL|PASSWORD|SECRET)\s*[:=]\s*['"`]?[^\s,'"`]+/gi, '$1=[REDACTED]');
   const required = content.length + file.length + 40;
   // Never provide a truncated file that the model could accidentally write back as a full replacement.
   if (required > budget) continue;
@@ -46,13 +46,12 @@ const response = await fetch(`${baseURL}/chat/completions`, {
       ].join(' ') },
       { role: 'user', content: JSON.stringify({ task, repositoryFiles: files }) }
     ],
-    response_format: { type: 'json_object' },
     max_tokens: 9000
   })
 });
 if (!response.ok) {
   const detail = (await response.text()).slice(0, 1200);
-  throw new Error(`OpenAI API failed (${response.status}): ${detail}`);
+  throw new Error(`Free AI provider request failed (${response.status}): ${detail}`);
 }
 const payload = await response.json();
 const raw = payload.choices?.[0]?.message?.content;
