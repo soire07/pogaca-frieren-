@@ -240,7 +240,19 @@ function runTargetedTests(target) {
       const selectionNotice = isCommandInteractionCoverage
         ? 'SEÇİLEN TEST DOSYALARI: scripts/test-command-interaction-coverage.js (doğrudan çalıştırıldı)\\n'
         : '';
-      resolve({ applicable: true, code, stdout: selectionNotice + redactSecrets(stdout), stderr: redactSecrets(stderr + error), note: '' });
+      const safeStdout = redactSecrets(stdout);
+      const safeStderr = redactSecrets(stderr + error);
+      // Node's test runner writes t.diagnostic() to stderr; include it in the visible targeted-test report.
+      const diagnosticOutput = isCommandInteractionCoverage && safeStderr.trim()
+        ? '\\n=== HEDEFLİ TEST TANILAMALARI ===\\n' + safeStderr.trim()
+        : '';
+      resolve({
+        applicable: true,
+        code,
+        stdout: selectionNotice + safeStdout + diagnosticOutput,
+        stderr: isCommandInteractionCoverage ? '' : safeStderr,
+        note: '',
+      });
     };
     child.stdout.on('data', chunk => { stdout = (stdout + chunk.toString()).slice(-10000); });
     child.stderr.on('data', chunk => { stderr = (stderr + chunk.toString()).slice(-4000); });
