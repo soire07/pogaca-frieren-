@@ -51,6 +51,16 @@ export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
 
   return {
     async save(userId, key, value) {
+      const normalizedUserId = String(userId ?? '').trim();
+      const normalizedKey = String(key ?? '').trim();
+      const normalizedValue = String(value ?? '').trim();
+
+      if (!normalizedUserId) throw new TypeError('Memory user ID is required.');
+      if (!normalizedKey) throw new TypeError('Memory key must not be empty.');
+      if (normalizedKey.length > 60) throw new RangeError('Memory key must be at most 60 characters.');
+      if (!normalizedValue) throw new TypeError('Memory value must not be empty.');
+      if (normalizedValue.length > 500) throw new RangeError('Memory value must be at most 500 characters.');
+
       await ensureSchema();
       const result = await pool.query(
         `INSERT INTO frieren_ai_memories (user_id, memory_key, memory_value)
@@ -58,7 +68,7 @@ export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
          ON CONFLICT (user_id, memory_key)
          DO UPDATE SET memory_value = EXCLUDED.memory_value, updated_at = NOW()
          RETURNING memory_key, memory_value, updated_at`,
-        [String(userId), String(key).trim(), String(value).trim()]
+        [normalizedUserId, normalizedKey, normalizedValue]
       );
       return result.rows[0];
     },
