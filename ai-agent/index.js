@@ -24,6 +24,7 @@ if (missing.length) {
 }
 
 const admins = new Set(process.env.FRIEREN_ADMIN_IDS.split(',').map(value => value.trim()).filter(Boolean));
+// The test runner resolves command modules relative to the repository root. Keep this path explicit for coverage diagnostics.
 const rootDir = fileURLToPath(new URL('../', import.meta.url));
 const timeoutMs = Math.max(30_000, Math.min(Number(process.env.FRIEREN_TEST_TIMEOUT_MS) || 180_000, 300_000));
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
