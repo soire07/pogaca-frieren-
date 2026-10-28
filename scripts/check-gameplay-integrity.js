@@ -1,8 +1,31 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { applyEquipmentSetBonus } from '../rpg-mechanics.js';
 
 const read = path => readFile(new URL('../' + path, import.meta.url), 'utf8');
+
+
+test('equipment set summary reports every active rarity bonus', () => {
+  const items = [
+    { rarity: 'Efsanevi' },
+    { rarity: 'Efsanevi' },
+    { rarity: 'Destansı' },
+    { rarity: 'Destansı' }
+  ];
+  const result = applyEquipmentSetBonus(items, { attack: 10, defense: 5, hp: 100, mana: 20 });
+  assert.equal(result.attack, 14);
+  assert.equal(result.defense, 8);
+  assert.equal(result.hp, 125);
+  assert.equal(result.mana, 35);
+  assert.equal(result.setText, 'Efsanevi set: +4 saldırı, +25 HP · Destansı set: +3 savunma, +15 mana');
+});
+
+test('equipment set summary is null when no rarity set is active', () => {
+  const result = applyEquipmentSetBonus([{ rarity: 'Yaygın' }, { rarity: 'Nadir' }], { attack: 1, defense: 2, hp: 3, mana: 4 });
+  assert.equal(result.setText, null);
+});
+
 
 test('trade offers are persistent, expiring and single-use', async () => {
   const schema = await read('database/db.js');
