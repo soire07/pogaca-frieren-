@@ -12,7 +12,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
-import { applyClassDamage, applyClassDefense, applyClassHealing, getCharacterBuild } from './rpg-mechanics.js';
+import { applyClassDamage, applyClassDefense, applyClassHealing, applyEquipmentSetBonus, getCharacterBuild } from './rpg-mechanics.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -185,8 +185,10 @@ export default {
       ]);
       const stats1 = stats1Result.rows[0];
       const stats2 = stats2Result.rows[0];
-      const gear1 = equipmentBonus(gear1Result.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean));
-      const gear2 = equipmentBonus(gear2Result.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean));
+      const equipped1 = gear1Result.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean);
+      const equipped2 = gear2Result.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean);
+      const gear1 = applyEquipmentSetBonus(equipped1, equipmentBonus(equipped1));
+      const gear2 = applyEquipmentSetBonus(equipped2, equipmentBonus(equipped2));
       const build1 = getCharacterBuild(stats1.active_build);
       const build2 = getCharacterBuild(stats2.active_build);
       const maxHp1 = Math.min(2000, Math.round((Number(stats1.max_hp) + gear1.hp) * build1.hp));
