@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   AttachmentBuilder,
+  EmbedBuilder,
   Client,
   Events,
   GatewayIntentBits,
@@ -57,6 +58,10 @@ const commands = [
     .setName('frieren-ai')
     .setDescription('Frieren botunun kodu ve test sistemi hakkında yapay zekâya soru sorar.')
     .addStringOption(option => option.setName('soru').setDescription('Sorunu veya inceleme isteğini yaz.').setRequired(true).setMaxLength(1500))
+    .toJSON(),
+  new SlashCommandBuilder()
+    .setName('status')
+    .setDescription('Frieren AI servisinin canlı çalışma durumunu gösterir.')
     .toJSON(),
 ];
 
@@ -378,6 +383,33 @@ client.once(Events.ClientReady, readyClient => {
 
 client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === 'status') {
+    const ready = client.isReady();
+    const ping = client.ws.ping;
+    const uptimeSeconds = Math.floor(process.uptime());
+    const days = Math.floor(uptimeSeconds / 86400);
+    const hours = Math.floor((uptimeSeconds % 86400) / 3600);
+    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+    const seconds = uptimeSeconds % 60;
+    const uptime = [days ? days + 'g' : '', hours ? hours + 'sa' : '', minutes ? minutes + 'dk' : '', seconds + 'sn'].filter(Boolean).join(' ');
+    const embed = new EmbedBuilder()
+      .setColor(ready ? 0x57F287 : 0xED4245)
+      .setTitle('✨ Frieren AI • Servis Durumu')
+      .setDescription(ready ? 'Discord bot bağlantısı hazır; HTTP sağlık sunucusu çalışıyor.' : 'Discord botu henüz hazır değil.')
+      .addFields(
+        { name: 'Discord bağlantısı', value: ready ? '🟢 Çevrimiçi' : '🔴 Hazır değil', inline: true },
+        { name: 'WebSocket gecikmesi', value: Number.isFinite(ping) && ping >= 0 ? Math.round(ping) + ' ms' : 'Ölçülemiyor', inline: true },
+        { name: 'Çalışma süresi', value: uptime, inline: true },
+        { name: 'AI sağlayıcısı', value: groq ? 'Groq yapılandırılmış' : 'Yapılandırılmamış', inline: true },
+        { name: 'Model', value: resolveAiModel(process.env).slice(0, 100), inline: true },
+        { name: 'Bellek kullanımı', value: Math.round(process.memoryUsage().rss / 1024 / 1024) + ' MB', inline: true },
+      )
+      .setFooter({ text: 'Sağlayıcı yapılandırması, API isteğinin başarıyla tamamlandığını garanti etmez.' })
+      .setTimestamp();
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+    return;
+  }
 
   if (!admins.has(interaction.user.id)) {
     await interaction.reply({ content: 'Bu komut yalnızca yetkili geliştiriciler tarafından kullanılabilir.', flags: MessageFlags.Ephemeral });
