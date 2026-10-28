@@ -51,6 +51,32 @@ test('command interaction coverage: every discoverable slash command exposes a v
   assert.deepEqual(loadErrors, [], 'All command modules should import without throwing');
   assert.ok(commands.length > 0, 'At least one slash command should be discovered');
 
+  // Static interaction-safety signals: these are evidence for review, not proof of live behavior.
+  const responseSignals = [
+    /\\.reply\\s*\\(/,
+    /\\.deferReply\\s*\\(/,
+    /\\.editReply\\s*\\(/,
+    /\\.followUp\\s*\\(/,
+    /\\.showModal\\s*\\(/,
+    /\\.respond\\s*\\(/,
+    /\\.update\\s*\\(/,
+    /\\.deferUpdate\\s*\\(/,
+  ];
+  const interactionSafetySignals = [
+    /\\.isChatInputCommand\\s*\\(/,
+    /\\.isButton\\s*\\(/,
+    /\\.isStringSelectMenu\\s*\\(/,
+    /\\.isModalSubmit\\s*\\(/,
+    /\\.user\\.id/,
+    /\\.memberPermissions/,
+    /\\.guildId/,
+    /\\.deferReply\\s*\\(/,
+  ];
+  const sourceByFile = new Map();
+  for (const { file } of commands) {
+    sourceByFile.set(file, await (await import('node:fs/promises')).readFile(path.join(root, file), 'utf8'));
+  }
+
   const seenNames = new Set();
   const failures = [];
 
@@ -73,6 +99,23 @@ test('command interaction coverage: every discoverable slash command exposes a v
   }
 
   assert.deepEqual(failures, [], failures.join('\n'));
+  const responseCovered = [];
+  const responseUnclear = [];
+  const safetySignalCovered = [];
+  const safetySignalUnclear = [];
+  for (const { file, schema } of commands) {
+    const source = sourceByFile.get(file) || '';
+    const hasResponsePath = responseSignals.some(pattern => pattern.test(source));
+    const hasSafetySignal = interactionSafetySignals.some(pattern => pattern.test(source));
+    (hasResponsePath ? responseCovered : responseUnclear).push('/' + schema.name);
+    (hasSafetySignal ? safetySignalCovered : safetySignalUnclear).push('/' + schema.name);
+  }
+
+  assert.deepEqual(failures, [], failures.join('\\n'));
   console.log('Structural interaction coverage checked ' + commands.length + ' slash commands.');
-  console.log('Scope: command modules, slash-command schemas, option contracts and handler presence; no live Discord API call is performed.');
+  console.log('Command response-path source signal: ' + responseCovered.length + '/' + commands.length + ' commands.');
+  console.log('Commands needing response-path review: ' + (responseUnclear.join(', ') || 'none'));
+  console.log('Interaction/permission source signal: ' + safetySignalCovered.length + '/' + commands.length + ' commands.');
+  console.log('Commands needing interaction/permission review: ' + (safetySignalUnclear.join(', ') || 'none'));
+  console.log('Scope: static source signals only; signals do not prove that paths execute correctly. No live Discord API call is performed.');
 });
