@@ -3,7 +3,7 @@ import OpenAI from 'openai';
 import { resolveAiModel } from './config.js';
 import { createMemoryStore } from './memory-store.js';
 import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
-import { getTestLockKey, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
+import { getTestLockKey, getPublicHealthPayload, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createServer } from 'node:http';
@@ -43,7 +43,7 @@ const port = Number(process.env.PORT) || 10000;
 const healthServer = createServer((req, res) => {
   if (req.url === '/health') {
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ status: 'ok', discordReady: client.isReady(), persistentMemoryConfigured: Boolean(memoryStore) }));
+    res.end(JSON.stringify(getPublicHealthPayload()));
     return;
   }
   res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });

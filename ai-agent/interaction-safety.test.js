@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getTestLockKey, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
+import { getTestLockKey, getPublicHealthPayload, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
 
 test('authorization accepts only exact non-empty IDs in the trusted allowlist', () => {
   const admins = new Set(['123', '456']);
@@ -50,4 +50,12 @@ test('failed error replies are swallowed and reported without causing another un
   };
   assert.equal(await sendPrivateError(interaction, 'safe error', error => reported.push(error.message)), false);
   assert.deepEqual(reported, ['interaction expired']);
+});
+
+
+test('public health payload exposes liveness without disclosing internal configuration', () => {
+  const payload = getPublicHealthPayload();
+  assert.deepEqual(payload, { status: 'ok' });
+  assert.equal('discordReady' in payload, false);
+  assert.equal('persistentMemoryConfigured' in payload, false);
 });

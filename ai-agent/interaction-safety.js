@@ -24,3 +24,8 @@ export async function sendPrivateError(interaction, content, onError = () => {})
     return false;
   }
 }
+
+export function getPublicHealthPayload() {
+  // Public uptime probes need liveness only; internal configuration stays private.
+  return { status: 'ok' };
+}
