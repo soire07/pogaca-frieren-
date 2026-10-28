@@ -5,7 +5,6 @@ A separate, restricted Discord bot for AI-assisted diagnostics of the Frieren ga
 ## Commands
 - `/frieren-test`: runs the repository's allowlisted `npm run check` command and returns the test report.
 - `/frieren-ai soru:`: asks the coding assistant for read-only code and test-system guidance.
-- `/frieren-ai-temizle`: clears the invoking authorized user's temporary AI conversation context.
 
 Only Discord user IDs listed in `FRIEREN_ADMIN_IDS` can run either command. No arbitrary shell commands, file writes, GitHub mutations, or deployments are exposed by the bot.
 
@@ -55,7 +54,3 @@ The GitHub Actions workflow `.github/workflows/frieren-ai-health.yml` checks the
 
 This is a best-effort free-tier workaround, not an uptime guarantee: GitHub scheduled jobs can be delayed, and Render can still restart or suspend free services.
 
-
-## Short conversation context
-
-The `/frieren-ai` coding assistant keeps the last four question/answer exchanges separately for each authorized Discord user, for up to 30 minutes of inactivity. The buffer is memory-only, limited to 100 users, and automatically expires; it resets when the service restarts or redeploys. It is used only to keep follow-up coding questions coherent and is not permanent memory. You can clear your own buffer earlier with `/frieren-ai-temizle`.
