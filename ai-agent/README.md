@@ -46,3 +46,10 @@ The optional GitHub Actions workflow `.github/workflows/frieren-ai-self-repair.y
 4. The workflow proposes changes, runs `npm run check`, and opens a pull request only if checks pass. It does not merge or deploy the proposed repair automatically.
 
 The key is not stored in the repository. Groq free-tier limits apply; quota errors stop the run rather than falling back to a paid provider.
+
+
+## Free scheduled health check
+
+The GitHub Actions workflow `.github/workflows/frieren-ai-health.yml` checks the Render `/health` endpoint every 10 minutes and retries briefly if Render is waking the service. It fails if the HTTP health response or Discord gateway readiness is not healthy. You can also run it manually from the Actions tab.
+
+This is a best-effort free-tier workaround, not an uptime guarantee: GitHub scheduled jobs can be delayed, and Render can still restart or suspend free services.
