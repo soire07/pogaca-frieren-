@@ -157,12 +157,8 @@ function runCommandAudit() {
 }
 
 function runTargetedTests(target) {
-  const normalized = target.normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase('tr-TR');
-  if (!/boss|iblis|hasar|savunma|kritik|sinir deger|sinirlar|savas/.test(normalized)) {
-    return Promise.resolve({ applicable: false, code: null, stdout: '', stderr: '', note: 'Bu hedef için henüz özel bir hedefli test paketi tanımlı değil.' });
-  }
   return new Promise(resolve => {
-    const child = spawn('node', ['--test', 'scripts/test-boss-combat.js'], {
+    const child = spawn(process.execPath, ['scripts/test-request.js', target], {
       cwd: rootDir, shell: false, windowsHide: true,
       env: { ...process.env, CI: 'true' }, stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -175,11 +171,11 @@ function runTargetedTests(target) {
       clearTimeout(timer);
       resolve({ applicable: true, code, stdout: redactSecrets(stdout), stderr: redactSecrets(stderr + error), note: '' });
     };
-    child.stdout.on('data', chunk => { stdout = (stdout + chunk.toString()).slice(-8000); });
-    child.stderr.on('data', chunk => { stderr = (stderr + chunk.toString()).slice(-8000); });
+    child.stdout.on('data', chunk => { stdout = (stdout + chunk.toString()).slice(-10000); });
+    child.stderr.on('data', chunk => { stderr = (stderr + chunk.toString()).slice(-4000); });
     child.on('error', error => finish(null, error.message));
     child.on('close', code => finish(code));
-    const timer = setTimeout(() => { child.kill('SIGTERM'); finish(null, 'Hedefli test zaman aşımına uğradı.'); }, timeoutMs);
+    const timer = setTimeout(() => { child.kill('SIGTERM'); finish(null, 'İstek bazlı test zaman aşımına uğradı.'); }, timeoutMs);
   });
 }
 
