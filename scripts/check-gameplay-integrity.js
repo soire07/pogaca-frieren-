@@ -647,3 +647,14 @@ test('party dungeon and magic duel both apply equipment set bonuses', async () =
   assert.match(duel, /applyEquipmentSetBonus\(equipped2, equipmentBonus\(equipped2\)\)/,
     'opponent set bonuses should affect duel stats');
 });
+
+
+test('equipment panel displays set bonuses and lists every supported combat mode', async () => {
+  const source = await read('ekipman.js');
+  assert.match(source, /import \{ applyEquipmentSetBonus \} from '\.\/rpg-mechanics\.js';/);
+  assert.match(source, /const effectiveTotals = applyEquipmentSetBonus\(total, totals\)/);
+  assert.match(source, /🌟 Set bonusu \(savaşlarda etkin\)/);
+  for (const command of ['/zindan', '/katlizindan', '/iblisavasi', '/buyusavasi']) {
+    assert.ok(source.includes(command), 'equipment panel should explain set bonus support for ' + command);
+  }
+});
