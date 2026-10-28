@@ -48,7 +48,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName('frieren-test')
     .setDescription('Yazdığın hedefi dikkate alarak Frieren otomatik test ve tanılama paketini çalıştırır.')
-    .addStringOption(option => option.setName('hedef').setDescription('Neyi test etmemi istiyorsun? Örn. boss hasarı, görev ödülleri, envanter.') .setRequired(true).setMaxLength(500))
+    .addStringOption(option => option.setName('hedef').setDescription('Neyi test etmemi istiyorsun? Örn. boss hasarı, görev ödülleri, envanter.') .setRequired(true).setMaxLength(4000))
     .toJSON(),
   new SlashCommandBuilder()
     .setName('frieren-ai')
