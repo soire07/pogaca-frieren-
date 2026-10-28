@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { resolveAiModel } from './config.js';
 import { createMemoryStore } from './memory-store.js';
 import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
+import { getTestLockKey, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createServer } from 'node:http';
@@ -435,12 +436,18 @@ client.on(Events.InteractionCreate, async interaction => {
       )
       .setFooter({ text: 'Sağlayıcı yapılandırması, API isteğinin başarıyla tamamlandığını garanti etmez.' })
       .setTimestamp();
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    try {
+      await interaction.reply({ embeds: [embed], ephemeral: true });
+    } catch (error) {
+      console.error('Status interaction reply failed:', redactSecrets(error.message || 'unknown error'));
+    }
     return;
   }
 
-  if (!admins.has(interaction.user.id)) {
-    await interaction.reply({ content: 'Bu komut yalnızca yetkili geliştiriciler tarafından kullanılabilir.', flags: MessageFlags.Ephemeral });
+  if (!isAuthorizedAdmin(interaction.user.id, admins)) {
+    await sendPrivateError(interaction, 'Bu komut yalnızca yetkili geliştiriciler tarafından kullanılabilir.', error => {
+      console.error('Authorization denial reply failed:', redactSecrets(error.message || 'unknown error'));
+    });
     return;
   }
 
@@ -449,8 +456,8 @@ client.on(Events.InteractionCreate, async interaction => {
       await interaction.reply({ content: 'Kalıcı bellek henüz yapılandırılmadı. Render ortam değişkenlerine DATABASE_URL eklenmeli.', flags: MessageFlags.Ephemeral });
       return;
     }
-    await interaction.deferReply({ ephemeral: true });
     try {
+      await interaction.deferReply({ ephemeral: true });
       const action = interaction.options.getSubcommand();
       if (action === 'kaydet') {
         const key = interaction.options.getString('anahtar', true).trim();
@@ -475,20 +482,24 @@ client.on(Events.InteractionCreate, async interaction => {
       }
     } catch (error) {
       console.error('Persistent memory command failed:', redactSecrets(error.message || 'unknown error'));
-      await interaction.editReply('Kalıcı bellek işlemi tamamlanamadı. DATABASE_URL ve veritabanı bağlantısını kontrol etmek gerekiyor.');
+      await sendPrivateError(interaction, 'Kalıcı bellek işlemi tamamlanamadı. DATABASE_URL ve veritabanı bağlantısını kontrol etmek gerekiyor.', replyError => {
+        console.error('Persistent memory error reply failed:', redactSecrets(replyError.message || 'unknown error'));
+      });
     }
     return;
   }
 
   if (interaction.commandName === 'frieren-ai') {
-    await interaction.deferReply({ ephemeral: true });
     try {
+      await interaction.deferReply({ ephemeral: true });
       const question = interaction.options.getString('soru', true).trim();
       const answer = await answerCodeQuestion(question, interaction.user.id);
       await interaction.editReply(answer.message.slice(0, 1950));
     } catch (error) {
       console.error('Frieren AI analysis failed:', redactSecrets(error.message || 'unknown error'));
-      await interaction.editReply('Kod analizi tamamlanamadı. Servis günlüklerinde hata ayrıntısı var; sırlar yanıta yazdırılmaz.');
+      await sendPrivateError(interaction, 'Kod analizi tamamlanamadı. Servis günlüklerinde hata ayrıntısı var; sırlar yanıta yazdırılmaz.', replyError => {
+        console.error('Frieren AI error reply failed:', redactSecrets(replyError.message || 'unknown error'));
+      });
     }
     return;
   }
@@ -496,15 +507,15 @@ client.on(Events.InteractionCreate, async interaction => {
   if (interaction.commandName === 'frieren-test') {
     const target = interaction.options.getString('hedef', true).trim();
     const targetGroups = classifyTestTarget(target);
-    const lockKey = interaction.guildId || interaction.user.id;
+    const lockKey = getTestLockKey(interaction.guildId, interaction.user.id);
     if (runningGuilds.has(lockKey)) {
       await interaction.reply({ content: 'Bu ortamda bir test zaten çalışıyor. Lütfen bitmesini bekle.', ephemeral: true });
       return;
     }
 
     runningGuilds.add(lockKey);
-    await interaction.deferReply({ ephemeral: true });
     try {
+      await interaction.deferReply({ ephemeral: true });
       const [agentSyntax, audit, result, targeted] = await Promise.all([
         runSyntaxChecks(),
         runCommandAudit(),
@@ -595,8 +606,10 @@ client.on(Events.InteractionCreate, async interaction => {
         files: [new AttachmentBuilder(Buffer.from(rawOutput, 'utf8'), { name: 'frieren-test-report.txt' })],
       });
     } catch (error) {
-      console.error('Test command failed:', error.message);
-      await interaction.editReply('Test çalıştırılırken hata oluştu. Ayrıntılar servis günlüklerine yazıldı.');
+      console.error('Test command failed:', redactSecrets(error.message || 'unknown error'));
+      await sendPrivateError(interaction, 'Test çalıştırılırken hata oluştu. Ayrıntılar servis günlüklerine yazıldı.', replyError => {
+        console.error('Test error reply failed:', redactSecrets(replyError.message || 'unknown error'));
+      });
     } finally {
       runningGuilds.delete(lockKey);
     }
