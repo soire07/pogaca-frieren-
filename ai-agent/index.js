@@ -2,7 +2,7 @@ import 'dotenv/config';
 import OpenAI from 'openai';
 import { resolveAiModel } from './config.js';
 import { createMemoryStore } from './memory-store.js';
-import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget } from './test-report-guards.js';
+import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createServer } from 'node:http';
@@ -531,7 +531,7 @@ client.on(Events.InteractionCreate, async interaction => {
             ? 'Hedefe özel test kapsamı: BULUNAMADI. İstekle eşleşen test dosyası seçilmedi; bu hedef için başarı iddiası verilmiyor.'
             : targeted.code === 0
               ? 'Hedefe özel testler: BAŞARILI. ' + (targetedOutput.match(/SEÇİLEN TEST DOSYALARI: ([^\n]+)/)?.[1] || 'Seçilen testler geçti.')
-                + (memoryPrivacyTarget ? '\\nCanlı PostgreSQL bellek gizliliği: BAŞARILI — scripts/test-live-memory.js çıktısı doğrulandı.' : '')
+                + liveMemoryPrivacySummarySuffix(memoryPrivacyTarget)
               : 'Hedefe özel testler: BAŞARISIZ (çıkış kodu: ' + (targeted.code ?? 'yok') + '). ' + targetedOutput.slice(-300))
         : 'Hedefe özel test kapsamı: EKSİK. ' + targeted.note;
       const readDiagnostic = pattern => targetedOutput.match(pattern)?.[1]?.trim() || '';

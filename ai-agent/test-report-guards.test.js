@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget } from './test-report-guards.js';
+import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
 
 test('recognizes Turkish and English memory privacy targets', () => {
   assert.equal(isMemoryPrivacyTarget('memory privacy'), true);
@@ -25,4 +25,15 @@ test('accepts only explicit successful live PostgreSQL test output', () => {
 
 test('does not require live memory proof for unrelated targets', () => {
   assert.equal(hasLiveMemoryPrivacyProof('boss damage', 'only combat tests'), true);
+});
+
+test('formats live memory proof as a real new line, not a literal backslash-n', () => {
+  const suffix = liveMemoryPrivacySummarySuffix(true);
+  assert.equal(suffix.startsWith('\n'), true);
+  assert.equal(suffix.includes('\\n'), false);
+  assert.match(suffix, /Canlı PostgreSQL bellek gizliliği: BAŞARILI/);
+});
+
+test('omits the live memory suffix for unrelated test targets', () => {
+  assert.equal(liveMemoryPrivacySummarySuffix(false), '');
 });
