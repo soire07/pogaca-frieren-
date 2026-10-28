@@ -58,7 +58,7 @@ test('list, delete and clear are always scoped to the supplied user id', async (
   assert.equal((await store.list('user-b')).length, 0);
 });
 
-test('relevant memories rank matching keywords and fall back to recent entries', async () => {
+test('relevant memories rank matching keywords and return no unrelated entries', async () => {
   const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
   await store.save('user-a', 'project', 'Frieren RPG game');
   await store.save('user-a', 'style', 'Prefer short Turkish answers');
@@ -68,8 +68,7 @@ test('relevant memories rank matching keywords and fall back to recent entries',
   assert.deepEqual(fallback, []);
 });
 
-
-test('saving the same key updates only that user\'s existing memory', async () => {
+test('saving the same key updates only that user’s existing memory', async () => {
   const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
   await store.save('user-a', 'preference', 'short answers');
   await store.save('user-b', 'preference', 'long answers');
@@ -78,7 +77,7 @@ test('saving the same key updates only that user\'s existing memory', async () =
   assert.deepEqual((await store.list('user-b')).map(row => row.memory_value), ['long answers']);
 });
 
-test('deleting a key owned by another user cannot delete that user\'s memory', async () => {
+test('deleting a key owned by another user cannot delete that user’s memory', async () => {
   const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
   await store.save('user-a', 'private', 'A secret test phrase');
   await store.save('user-b', 'private', 'B private phrase');
@@ -96,4 +95,19 @@ test('database errors are propagated to the caller rather than converted into su
   }
   const store = createMemoryStore('postgres://test', { PoolClass: FailingPool });
   await assert.rejects(store.save('user-a', 'project', 'test'), /synthetic database failure/);
+});
+
+test('save trims input and rejects empty user IDs, keys and values before database writes', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  await assert.rejects(store.save('   ', 'project', 'value'), /user ID is required/i);
+  await assert.rejects(store.save('user-a', '   ', 'value'), /key must not be empty/i);
+  await assert.rejects(store.save('user-a', 'project', '   '), /value must not be empty/i);
+  assert.equal(FakePool.instance.calls.some(call => call.sql.includes('INSERT INTO')), false);
+});
+
+test('save rejects keys and values beyond the documented schema limits', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  await assert.rejects(store.save('user-a', 'k'.repeat(61), 'value'), /key must be at most 60 characters/i);
+  await assert.rejects(store.save('user-a', 'key', 'v'.repeat(501)), /value must be at most 500 characters/i);
+  assert.equal(FakePool.instance.calls.some(call => call.sql.includes('INSERT INTO')), false);
 });
