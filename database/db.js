@@ -360,6 +360,8 @@ export async function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_moderation_target ON moderation_cases(guild_id, target_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_anime_collection_user ON anime_character_collection(guild_id, user_id);
   `);
+  const connectionCheck = await pool.query('SELECT current_database() AS database_name');
+  console.log('PostgreSQL bağlantısı doğrulandı; veritabanı:', connectionCheck.rows[0]?.database_name ?? 'bilinmiyor');
   console.log('PostgreSQL tabloları hazır.');
 }
 
