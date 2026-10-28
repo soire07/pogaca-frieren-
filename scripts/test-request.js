@@ -127,7 +127,15 @@ for (const item of selected) results.push(await run(path.join(root, item.file)))
 
 if (isMemorySecurityCoverage) {
   if (!process.env.DATABASE_URL?.trim()) {
-    console.log('\\nCANLI POSTGRESQL TESTİ: ATLANDI (DATABASE_URL bu çalışma ortamında yok).');
+    const missingDatabase = {
+      file: 'scripts/test-live-memory.js',
+      code: 2,
+      stdout: 'CANLI POSTGRESQL TESTİ: BAŞARISIZ — DATABASE_URL bu çalışma ortamında tanımlı değil. Bellek gizliliği denetimi tam başarılı sayılamaz.',
+      stderr: ''
+    };
+    console.log('\\n--- scripts/test-live-memory.js | BAŞARISIZ ---');
+    console.log(missingDatabase.stdout);
+    results.push(missingDatabase);
   } else {
     const live = await new Promise(resolve => {
       const child = spawn(process.execPath, ['scripts/test-live-memory.js'], {
