@@ -61,7 +61,7 @@ async function collectCodeContext(question) {
   const roots = ['index.js', 'rpg-mechanics.js', 'package.json', 'scripts/check-commands.js',
     'scripts/audit-command-contracts.js', 'scripts/test-request.js', 'scripts/test-boss-combat.js',
     'scripts/test-discord-scenarios.js', 'scripts/test-utils.js', 'database/db.js'];
-  const terms = question.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').split(/[^a-z0-9]+/).filter(word => word.length >= 3);
+  const terms = question.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').split(/[^a-z0-9]+/).filter(word => word.length >= 3);
   const candidates = new Set(roots);
   async function addCommandFiles(dir, depth = 0) {
     if (depth > 3 || candidates.size > 45) return;
@@ -70,7 +70,7 @@ async function collectCodeContext(question) {
       const relative = path.join(dir, entry.name);
       if (entry.isDirectory()) await addCommandFiles(relative, depth + 1);
       else if (entry.isFile() && entry.name.endsWith('.js')) {
-        const normalized = relative.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '');
+        const normalized = relative.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
         if (terms.some(term => normalized.includes(term))) candidates.add(relative);
       }
     }
@@ -82,12 +82,12 @@ async function collectCodeContext(question) {
     if (budget <= 0) break;
     const source = await readFile(path.join(rootDir, relative), 'utf8').catch(() => '');
     if (!source) continue;
-    const safe = source.replace(/(DISCORD_TOKEN|OPENAI_API_KEY|DATABASE_URL|PASSWORD|SECRET)\\s*[:=]\\s*['"`]?[^\\s,'"`]+/gi, '$1=[REDACTED]');
+    const safe = source.replace(/(DISCORD_TOKEN|OPENAI_API_KEY|DATABASE_URL|PASSWORD|SECRET)\s*[:=]\s*['"`]?[^\s,'"`]+/gi, '$1=[REDACTED]');
     const excerpt = safe.slice(0, Math.min(safe.length, budget - relative.length - 20));
-    if (excerpt) snippets.push('FILE: ' + relative + '\\n' + excerpt);
+    if (excerpt) snippets.push('FILE: ' + relative + '\n' + excerpt);
     budget -= excerpt.length + relative.length + 20;
   }
-  return snippets.join('\\n\\n');
+  return snippets.join('\n\n');
 }
 
 async function answerCodeQuestion(question) {
