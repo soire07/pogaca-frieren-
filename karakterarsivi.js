@@ -4,6 +4,10 @@ import {
   EmbedBuilder,
   AttachmentBuilder
 } from 'discord.js';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const characters = {
   frieren: {
@@ -80,7 +84,7 @@ export default {
       interaction.options.getString('isim', true)
     ];
 
-    const gif = new AttachmentBuilder(`./${character.gif}`);
+    const gif = new AttachmentBuilder(join(__dirname, character.gif));
 
     const embed = new EmbedBuilder()
       .setColor(character.color)
