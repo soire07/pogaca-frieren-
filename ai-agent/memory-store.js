@@ -108,7 +108,7 @@ export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
         .sort((a, b) => b.score - a.score)
         .slice(0, 8)
         .map(item => item.memory);
-      return matched.length ? matched : memories.slice(0, 3);
+      return matched;
     },
 
     async close() {
