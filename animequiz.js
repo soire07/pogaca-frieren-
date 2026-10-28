@@ -154,7 +154,7 @@ export default {
           '✅ Doğru Cevap!',
           `Tebrikler ${message.author}!\n\n` +
           `Doğru cevap: **${question.answer}**\n` +
-          '✨ Bu turda **10 puan** kazandın!',
+          '✨ Bu turun doğru cevabını buldun!',
           0x57f287,
           successGif
         );
