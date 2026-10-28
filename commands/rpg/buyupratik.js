@@ -40,6 +40,14 @@ export default {
         [interaction.guildId, interaction.user.id]
       );
       const user = userResult.rows[0];
+      const activeEncounter = await db.query(
+        'SELECT encounter_type FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=$2 AND expires_at > NOW()',
+        [interaction.guildId, interaction.user.id]
+      );
+      if (activeEncounter.rowCount) {
+        await db.query('ROLLBACK');
+        return interaction.editReply('⚔️ Savaş sürerken büyü pratiği yapamazsın. Karşılaşma bitince yeniden dene.');
+      }
       const learned = await db.query(
         'SELECT 1 FROM learned_spells WHERE guild_id=$1 AND user_id=$2 AND spell_key=$3',
         [interaction.guildId, interaction.user.id, spellKey]

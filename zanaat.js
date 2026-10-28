@@ -3,16 +3,18 @@ import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, formatEquipmentBonus } from './equipment-data.js';
 
 const RECIPES = {
+  copper_ring: { craftLevel: 1, materials: [{ item: 'Orman Kristali', quantity: 1 }, { item: 'Eski Mahzen Anahtarı', quantity: 1 }] },
   iron_sword: { craftLevel: 1, materials: [{ item: '💎 Mana Kristali', quantity: 1 }, { item: '🥐 Büyülü Poğaça Kutusu', quantity: 1 }] },
-  mage_staff: { craftLevel: 2, materials: [{ item: '💎 Mana Kristali', quantity: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }] },
+  mage_staff: { craftLevel: 4, materials: [{ item: '💎 Mana Kristali', quantity: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }, { item: 'Kadim Rün Parçası', quantity: 1 }] },
   traveler_cloak: { craftLevel: 1, materials: [{ item: '🥐 Büyülü Poğaça Kutusu', quantity: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }] },
   mana_ring: { craftLevel: 2, materials: [{ item: '💎 Mana Kristali', quantity: 3 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }] },
   fern_robe: { craftLevel: 3, materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 1 }, { item: '📖 Yasak Büyü Kitabı', quantity: 2 }] },
   frieren_robe: { craftLevel: 4, materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 2 }, { item: '💎 Mana Kristali', quantity: 3 }] },
   himmel_sword: { craftLevel: 4, materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1 }, { item: '🐉 Ejderha Pulu', quantity: 2 }] },
   demon_blade: { craftLevel: 5, materials: [{ item: '🐉 Ejderha Pulu', quantity: 3 }, { item: '📜 Frieren’in Kayıp Notları', quantity: 1 }] },
-  rune_ring: { craftLevel: 3, materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 1 }, { item: '💎 Mana Kristali', quantity: 2 }] },
-  hero_ring: { craftLevel: 5, materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1 }, { item: '🌙 Efsunlu Elf Yadigârı', quantity: 2 }] }
+  rune_ring: { craftLevel: 3, materials: [{ item: '🌙 Efsunlu Elf Yadigârı', quantity: 1 }, { item: 'Kadim Rün Parçası', quantity: 1 }, { item: '💎 Mana Kristali', quantity: 1 }] },
+  demon_armor: { craftLevel: 5, materials: [{ item: 'Kuzey Mührü', quantity: 1 }, { item: '🩸 İblis Komutanının Kanı', quantity: 1 }, { item: '🐉 Ejderha Pulu', quantity: 1 }] },
+  hero_ring: { craftLevel: 5, materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1 }, { item: '🌙 Efsunlu Elf Yadigârı', quantity: 2 }, { item: '🪄 Frieren’in Kadim Asası', quantity: 1 }] }
 };
 
 export default {
@@ -21,6 +23,7 @@ export default {
     .setDescription('Maceralarda bulduğun malzemelerle ekipman üret.')
     .addStringOption(option => option.setName('tarif').setDescription('Üretilecek ekipman tarifi.')
       .setRequired(false).addChoices(
+        { name: '💍 Bakır Gezgin Yüzüğü', value: 'copper_ring' },
         { name: '⚔️ Gezginin Demir Kılıcı', value: 'iron_sword' },
         { name: '🪄 Büyücü Asası', value: 'mage_staff' },
         { name: '🧥 Gezgin Pelerini', value: 'traveler_cloak' },
@@ -29,6 +32,7 @@ export default {
         { name: '✨ Frieren’in Kadim Cübbesi', value: 'frieren_robe' },
         { name: '🌟 Himmel’in Kahraman Kılıcı', value: 'himmel_sword' },
         { name: '🩸 Kuzey İblisi Keseni', value: 'demon_blade' },
+        { name: '👑 Kuzey İblisi Zırhı', value: 'demon_armor' },
         { name: '🗿 Kadim Rün Yüzüğü', value: 'rune_ring' },
         { name: '🌠 Kahramanların Efsanevi Yüzüğü', value: 'hero_ring' }
       ))

@@ -115,6 +115,15 @@ export default {
         return interaction.editReply('Maceracı kaydın bulunamadı. Lütfen komutu yeniden dene.');
       }
 
+      const activeEncounter = await client.query(
+        'SELECT encounter_type FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=$2 AND expires_at > NOW()',
+        [interaction.guildId, interaction.user.id]
+      );
+      if (activeEncounter.rowCount) {
+        await client.query('ROLLBACK');
+        return interaction.editReply('⚔️ Devam eden bir savaşın veya karşılaşman var. Keşfe çıkmadan önce onu bitir.');
+      }
+
       if (Number(player.hp) <= 0) {
         await client.query('ROLLBACK');
         return interaction.editReply('❤️ Canın tükenmiş. Keşfe çıkmadan önce **/dinlen** komutuyla HP ve Mana değerlerini yenile.');

@@ -1,8 +1,31 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { applyEquipmentSetBonus } from '../rpg-mechanics.js';
 
 const read = path => readFile(new URL('../' + path, import.meta.url), 'utf8');
+
+
+test('equipment set summary reports every active rarity bonus', () => {
+  const items = [
+    { rarity: 'Efsanevi' },
+    { rarity: 'Efsanevi' },
+    { rarity: 'Destansı' },
+    { rarity: 'Destansı' }
+  ];
+  const result = applyEquipmentSetBonus(items, { attack: 10, defense: 5, hp: 100, mana: 20 });
+  assert.equal(result.attack, 14);
+  assert.equal(result.defense, 8);
+  assert.equal(result.hp, 125);
+  assert.equal(result.mana, 35);
+  assert.equal(result.setText, 'Efsanevi set: +4 saldırı, +25 HP · Destansı set: +3 savunma, +15 mana');
+});
+
+test('equipment set summary is null when no rarity set is active', () => {
+  const result = applyEquipmentSetBonus([{ rarity: 'Yaygın' }, { rarity: 'Nadir' }], { attack: 1, defense: 2, hp: 3, mana: 4 });
+  assert.equal(result.setText, null);
+});
+
 
 test('trade offers are persistent, expiring and single-use', async () => {
   const schema = await read('database/db.js');
@@ -70,7 +93,8 @@ test('class-specific daily quests require the selected class, validate progress 
 
 test('PvP duels apply persistent class passives and selected combat builds', async () => {
   const source = await read('buyusavasi.js');
-  assert.match(source, /SELECT max_hp, attack, defense, class_name, active_build FROM users/);
+  assert.match(source, /SELECT max_hp, attack, defense, class_name, active_build,/,
+    'both duel stat queries should include the base combat fields before talent ranks');
   assert.match(source, /getCharacterBuild\(stats1\.active_build\)/);
   assert.match(source, /getCharacterBuild\(stats2\.active_build\)/);
   assert.match(source, /applyClassDefense\(Number\(stats1\.defense\) \+ gear1\.defense, stats1\.class_name\)/);
@@ -279,4 +303,407 @@ test('health endpoint reports Discord readiness and database failures instead of
   assert.match(source, /await pool\.query\('SELECT 1'\)/);
   assert.match(source, /res\.writeHead\(503\)/);
   assert.match(source, /Sağlık kontrolü başarısız/);
+});
+
+test('RPG guide accurately distinguishes server statistics and the two inventory commands', async () => {
+  const guide = await read('commands/rpg/rehber.js');
+  const stats = await read('stats.js');
+  assert.match(stats, /Kayıtlı oyuncu/);
+  assert.match(stats, /En yüksek seviye/);
+  assert.match(stats, /Ping/);
+  assert.match(guide, /kayıtlı RPG oyuncusu sayısını, en yüksek seviyeyi ve bot pingini gösterir/);
+  assert.doesNotMatch(guide, /bot istatistiklerini/);
+  assert.match(guide, /ham eşya miktarlarını/);
+  assert.match(guide, /kuşanılmış ekipman yuvalarıyla birlikte ayrıntılı çantanı/);
+});
+
+test('learning a spell through the character panel also records it in the gameplay journal', async () => {
+  const character = await read('karakter.js');
+  const standalone = await read('commands/rpg/buyuogren.js');
+  assert.match(character, /import \{ recordJournalEntry \} from '\.\/gameplay-journal\.js'/);
+  const panelLearn = character.indexOf("await db.query('INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[i.guildId,i.user.id,value]);");
+  const journalWrite = character.indexOf("await recordJournalEntry(db,i.guildId,i.user.id,'spells',value);", panelLearn);
+  const commit = character.indexOf("await db.query('COMMIT');", panelLearn);
+  assert.ok(panelLearn >= 0 && journalWrite > panelLearn && commit > journalWrite,
+    'panel spell purchase must write the journal entry in the same transaction');
+  assert.match(standalone, /recordJournalEntry\(db, interaction\.guildId, interaction\.user\.id, 'spells', spellKey\)/);
+});
+
+test('solo boss encounters reserve the player and release the reservation on every normal exit', async () => {
+  const schema = await read('database/db.js');
+  const boss = await read('iblisavasi.js');
+  const exploration = await read('commands/rpg/kesif.js');
+  const rest = await read('commands/rpg/dinlen.js');
+  assert.match(schema, /encounter_type IN \('dungeon','raid','boss'\)/);
+  const reserve = boss.indexOf("INSERT INTO active_rpg_encounters");
+  const stats = boss.indexOf('SELECT hp, max_hp, mana, max_mana');
+  assert.ok(reserve >= 0 && stats > reserve, 'boss reservation must exist before reading combat stats');
+  assert.match(boss, /SELECT user_id FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/);
+  assert.match(boss, /DELETE FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND encounter_id=\$3/);
+  assert.match(boss, /reservationCreated = false/);
+  assert.match(exploration, /SELECT encounter_type FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/);
+  assert.match(rest, /SELECT encounter_type FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/);
+  assert.match(boss, /collector\.on\('end', async \(_, reason\) => \{[\s\S]*?await releaseReservation\(\)/);
+});
+
+
+test('rest serializes against encounter reservations and rolls back blocked rests', async () => {
+  const source = await read('commands/rpg/dinlen.js');
+  const begin = source.indexOf("await db.query('BEGIN')");
+  const playerLock = source.indexOf('SELECT hp, max_hp, mana, max_mana, last_rest_at FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE');
+  const encounterCheck = source.indexOf('SELECT encounter_type FROM active_rpg_encounters', playerLock);
+  const update = source.indexOf('UPDATE users', encounterCheck);
+  const commit = source.indexOf("await db.query('COMMIT')", update);
+  assert.ok(begin >= 0 && playerLock > begin && encounterCheck > playerLock && update > encounterCheck && commit > update,
+    'rest must lock the player row, check active encounters and save within one transaction');
+  assert.match(source, /if \(activeEncounter\.rowCount\) \{[\s\S]*?await db\.query\('ROLLBACK'\)/);
+  assert.match(source, /catch \(error\) \{[\s\S]*?await db\.query\('ROLLBACK'\)/);
+  assert.match(source, /finally \{\s*db\.release\(\)/);
+});
+
+
+test('legacy two-player dungeon rejects teammates with active interactive encounters', async () => {
+  const source = await read('zindan.js');
+  const lock = source.indexOf('FROM users WHERE guild_id=$1 AND user_id = ANY($2::text[]) FOR UPDATE');
+  const encounterCheck = source.indexOf('SELECT user_id FROM active_rpg_encounters', lock);
+  const byId = source.indexOf('const byId = new Map', encounterCheck);
+  assert.ok(lock >= 0 && encounterCheck > lock && byId > encounterCheck,
+    'legacy dungeon must lock both players then check encounter reservations before combat');
+  assert.match(source, /if \(activeEncounter\.rowCount\) \{\s*await db\.query\('ROLLBACK'\)/);
+});
+
+
+test('resource-changing commands cannot race active encounters', async () => {
+  const files = [
+    ['ekipman.js', /SELECT user_id FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/, 2],
+    ['esyakullan.js', /SELECT user_id FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/, 1],
+    ['commands/rpg/buyupratik.js', /SELECT encounter_type FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/, 1],
+    ['commands/rpg/gelisim.js', /SELECT encounter_type FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/, 1]
+  ];
+  for (const [path, pattern, minimum] of files) {
+    const source = await read(path);
+    assert.ok((source.match(new RegExp(pattern.source, 'g')) || []).length >= minimum, path + ': active encounter guard missing');
+    assert.match(source, /activeEncounter\.rowCount/ , path + ': active encounter must block the operation');
+    assert.match(source, /await (?:db|client)\.query\('ROLLBACK'\)/, path + ': blocked operation must roll back');
+  }
+  const practice = await read('commands/rpg/buyupratik.js');
+  const playerLock = practice.indexOf('SELECT mana, coins FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE');
+  const encounterCheck = practice.indexOf('SELECT encounter_type FROM active_rpg_encounters', playerLock);
+  const manaSpend = practice.indexOf('UPDATE users SET mana=mana-8', encounterCheck);
+  assert.ok(playerLock >= 0 && encounterCheck > playerLock && manaSpend > encounterCheck,
+    'spell practice must lock player, check reservation and only then spend resources');
+});
+
+
+test('daily reward uses a single guarded database update to prevent double claims', async () => {
+  const source = await read('gunlukodul.js');
+  assert.match(source, /WITH eligible AS \([\s\S]*?FOR UPDATE[\s\S]*?\), updated AS \([\s\S]*?UPDATE users AS u[\s\S]*?last_daily_at = NOW\(\)/);
+  assert.match(source, /last_daily_at IS NULL OR last_daily_at <= NOW\(\) - INTERVAL '20 hours'/);
+  assert.match(source, /if \(!result\.rowCount\)[\s\S]*?Günlük ödülünü yakın zamanda aldın/);
+});
+
+test('daily mission and achievement rewards use unique claim records and transactions', async () => {
+  const mission = await read('gunlukgorev.js');
+  assert.match(mission, /await db\.query\('BEGIN'\)/);
+  assert.match(mission, /SELECT class_name FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/);
+  assert.match(mission, /INSERT INTO daily_mission_claims[\s\S]*?ON CONFLICT DO NOTHING RETURNING mission_key/);
+  assert.match(mission, /if\(!claim\.rowCount\)[\s\S]*?await db\.query\('ROLLBACK'\)/);
+  assert.match(mission, /UPDATE users SET coins=coins\+\$3[\s\S]*?await db\.query\('COMMIT'\)/);
+
+  const achievements = await read('basarimlar.js');
+  assert.match(achievements, /await db\.query\('BEGIN'\)/);
+  assert.match(achievements, /INSERT INTO achievement_claims\(guild_id,user_id,achievement_key\)[\s\S]*?ON CONFLICT DO NOTHING RETURNING achievement_key/);
+  assert.match(achievements, /if\(!claim\.rowCount\)[\s\S]*?await db\.query\('ROLLBACK'\)/);
+  assert.match(achievements, /UPDATE users SET coins=coins\+\$3[\s\S]*?await db\.query\('COMMIT'\)/);
+});
+
+test('daily quest chain serializes each step and applies rewards atomically', async () => {
+  const source = await read('gorevzinciri.js');
+  const begin = source.indexOf("await db.query('BEGIN')");
+  const playerLock = source.indexOf('SELECT xp, level, stat_points FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE');
+  const chainLock = source.indexOf('SELECT current_step FROM daily_quest_chains WHERE guild_id=$1 AND user_id=$2 AND chain_date=CURRENT_DATE FOR UPDATE');
+  const objective = source.indexOf('const objective = await db.query(step.sql', chainLock);
+  const advance = source.indexOf('UPDATE daily_quest_chains SET current_step=$3', objective);
+  const reward = source.indexOf('UPDATE users SET coins=coins+$3, xp=$4', advance);
+  const commit = source.indexOf("await db.query('COMMIT')", reward);
+  assert.ok(begin >= 0 && playerLock > begin && chainLock > playerLock && objective > chainLock && advance > objective && reward > advance && commit > reward,
+    'quest step, reward and chain advancement must be one ordered transaction');
+});
+
+test('daily crafting reward is claimed once and committed with XP and currency', async () => {
+  const source = await read('zanaatgorevi.js');
+  assert.match(source, /SELECT crafted_items, claimed_at FROM daily_crafting_progress[\s\S]*?FOR UPDATE/);
+  assert.match(source, /if \(progress\.claimed_at\)[\s\S]*?await db\.query\('ROLLBACK'\)/);
+  const claimed = source.indexOf('UPDATE daily_crafting_progress SET claimed_at=NOW()');
+  const reward = source.indexOf('UPDATE users SET coins=coins+$3, xp=$4', claimed);
+  const commit = source.indexOf("await db.query('COMMIT')", reward);
+  assert.ok(claimed >= 0 && reward > claimed && commit > reward,
+    'daily crafting claim marker and reward must commit together');
+});
+
+test('adventure history records the full XP reward including streak milestones', async () => {
+  const source = await read('macera.js');
+  assert.match(source, /xp_awarded,item_found,first_discovery\)[\s\S]*?outcome\.xp \+ discoveryXp \+ routeMasteryReward\.xp \+ streakReward\.xp \+ dailyAdventureReward\.xp \+ treasureReward\.xp \+ classAdventureReward\.xp \+ streakMilestoneReward\.xp/);
+});
+
+test('rare discovery pity takes priority over a manually selected common route', async () => {
+  const source = await read('macera.js');
+  const outcomeSelection = source.indexOf('const outcome =');
+  const pity = source.indexOf('pityReady && undiscoveredRare.length', outcomeSelection);
+  const chosenRoute = source.indexOf('chosenRoute', outcomeSelection);
+  assert.ok(outcomeSelection >= 0 && pity > outcomeSelection && chosenRoute > pity,
+    'the guaranteed undiscovered rare location must be selected before honoring a common route');
+});
+
+test('adventure, treasure, story and NPC rewards are blocked during active encounters', async () => {
+  const checks = [
+    ['macera.js', /SELECT coins, xp, class_name, last_adventure_at FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/, /SELECT encounter_id FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/, /await client\.query\('ROLLBACK'\)/],
+    ['hazineac.js', /SELECT xp, level FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/, /SELECT encounter_id FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/, /await db\.query\('ROLLBACK'\)/],
+    ['hikaye.js', /SELECT xp, level, coins, exploration_count, items_used_count, boss_defeats FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/, /SELECT encounter_id FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/, /await client\.query\('ROLLBACK'\)/],
+    ['npc.js', /SELECT xp, level, coins, items_used_count, boss_defeats FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/, /SELECT encounter_id FROM active_rpg_encounters WHERE guild_id=\$1 AND user_id=\$2 AND expires_at > NOW\(\)/, /await client\.query\('ROLLBACK'\)/]
+  ];
+  for (const [path, playerLockPattern, encounterPattern, rollbackPattern] of checks) {
+    const source = await read(path);
+    const playerLock = source.search(playerLockPattern);
+    const encounterCheck = source.search(encounterPattern);
+    assert.ok(playerLock >= 0 && encounterCheck > playerLock, path + ': lock player before checking active encounter');
+    assert.match(source, encounterPattern, path + ': must check active encounter');
+    const guardStart = source.indexOf('if (activeEncounterCount)', encounterCheck);
+    const guardEnd = source.indexOf('}', guardStart);
+    assert.ok(guardStart > encounterCheck && guardEnd > guardStart, path + ': active encounter guard is missing');
+    assert.match(source.slice(guardStart, Math.min(source.length, guardStart + 350)), rollbackPattern,
+      path + ': blocked action must roll back its transaction');
+  }
+});
+
+test('adventure discovery catalog matches every normal and rare adventure outcome', async () => {
+  const adventure = await read('macera.js');
+  const catalog = await read('adventure-data.js');
+  const catalogKeys = new Set([...catalog.matchAll(/key:\s*'([^']+)'/g)].map(match => match[1]));
+  const outcomeBlock = adventure.match(/const outcomes = \[([\s\S]*?)\n\];/);
+  const rareBlock = adventure.match(/const rareOutcomes = \[([\s\S]*?)\n\];/);
+  assert.ok(outcomeBlock && rareBlock, 'normal and rare adventure outcome lists must exist');
+  const outcomeKeys = [...outcomeBlock[1].matchAll(/discovery:\s*'([^']+)'/g), ...rareBlock[1].matchAll(/discovery:\s*'([^']+)'/g)].map(match => match[1]);
+  assert.equal(new Set(outcomeKeys).size, outcomeKeys.length, 'each adventure outcome should map to a unique discovery key');
+  for (const key of outcomeKeys) assert.ok(catalogKeys.has(key), 'missing discovery catalog entry for ' + key);
+  for (const key of catalogKeys) assert.ok(outcomeKeys.includes(key), 'catalog entry has no adventure outcome: ' + key);
+  const commandChoices = [...adventure.matchAll(/value:\s*'([^']+)'/g)].map(match => match[1]).filter(value => outcomeKeys.includes(value));
+  for (const key of commandChoices) assert.ok(outcomeKeys.includes(key), 'selectable route must map to an outcome: ' + key);
+});
+
+test('adventure journal completion is awarded only once after the full discovery catalog is found', async () => {
+  const adventure = await read('macera.js');
+  const catalog = await read('adventure-data.js');
+  assert.match(adventure, /COUNT\(\*\)::int AS count FROM adventure_discoveries/);
+  assert.match(adventure, /Number\(discoveryCount\.count\) >= ADVENTURE_DISCOVERIES\.length/);
+  assert.match(adventure, /INSERT INTO adventure_journal_claims\(guild_id,user_id\) VALUES\(\$1,\$2\) ON CONFLICT DO NOTHING RETURNING user_id/);
+  assert.match(adventure, /if \(claim\) \{[\s\S]*?journalCompletionCoins = COMPLETE_ADVENTURE_JOURNAL_REWARD\.coins/);
+  assert.match(catalog, /export const COMPLETE_ADVENTURE_JOURNAL_REWARD = \{ coins: 250 \}/);
+});
+
+test('every equipment has a craft recipe and a salvage yield', async () => {
+  const equipment = await read('equipment-data.js');
+  const crafting = await read('zanaat.js');
+  const salvage = await read('ekipmanparcala.js');
+  const equipmentBlock = equipment.match(/export const equipmentItems = \[([\s\S]*?)\n\];/);
+  assert.ok(equipmentBlock, 'equipment catalog must exist');
+  const equipmentIds = [...equipmentBlock[1].matchAll(/id:\s*'([^']+)'/g)].map(match => match[1]);
+  const recipeBlock = crafting.match(/const RECIPES = \{([\s\S]*?)\n\};/);
+  const salvageBlock = salvage.match(/const SALVAGE_YIELD = \{([\s\S]*?)\n\};/);
+  assert.ok(recipeBlock, 'crafting recipe catalog must exist');
+  assert.ok(salvageBlock, 'equipment salvage catalog must exist');
+  const recipeIds = [...recipeBlock[1].matchAll(/^\s{2}([a-z_]+):/gm)].map(match => match[1]);
+  const salvageIds = [...salvageBlock[1].matchAll(/^\s{2}([a-z_]+):/gm)].map(match => match[1]);
+  for (const id of equipmentIds) {
+    assert.ok(recipeIds.includes(id), 'missing crafting recipe for ' + id);
+    assert.ok(salvageIds.includes(id), 'missing salvage yield for ' + id);
+  }
+});
+
+test('rare crafting ingredients are obtainable from existing dungeon, boss or treasure loot', async () => {
+  const crafting = await read('zanaat.js');
+  const dungeon = await read('zindan.js');
+  const layeredDungeon = await read('katlizindan.js');
+  const boss = await read('iblisavasi.js');
+  const treasure = await read('hazineac.js');
+  const sources = dungeon + layeredDungeon + boss + treasure;
+  const materials = [
+    'Orman Kristali',
+    'Eski Mahzen Anahtarı',
+    'Kadim Rün Parçası',
+    'Kuzey Mührü',
+    '🩸 İblis Komutanının Kanı',
+    '🐉 Ejderha Pulu',
+    '🪄 Frieren’in Kadim Asası'
+  ];
+  for (const material of materials) {
+    assert.ok(crafting.includes(`item: '${material}'`), 'material has no crafting use: ' + material);
+    assert.ok(sources.includes(material), 'crafting ingredient has no known loot source: ' + material);
+  }
+});
+
+
+test('usable item definitions match slash-command choices and inventory keys', async () => {
+  const source = await read('esyakullan.js');
+  const definitions = source.match(/const usableItems = \{([\s\S]*?)\n\};/);
+  assert.ok(definitions, 'usable item catalog must exist');
+  const ids = [...definitions[1].matchAll(/^  ([a-z_]+):/gm)].map(match => match[1]);
+  const choicesBlock = source.match(/\.addChoices\(([\s\S]*?)\n        \)\n    \),/);
+  assert.ok(choicesBlock, 'usable item slash choices must exist');
+  const choiceIds = [...choicesBlock[1].matchAll(/value: '([^']+)'/g)].map(match => match[1]);
+  assert.deepEqual([...choiceIds].sort(), [...ids].sort(), 'every usable item must have a matching slash choice');
+  assert.equal(new Set(choiceIds).size, choiceIds.length, 'usable item choices must not contain duplicates');
+  for (const block of definitions[1].split(/(?=^  [a-z_]+:)/m).filter(Boolean).slice(1)) {
+    const name = block.match(/name: '([^']+)'/);
+    const key = block.match(/key: '([^']+)'/);
+    assert.ok(name && key, 'every usable item needs a display name and inventory key');
+    assert.equal(key[1], name[1], 'inventory key must match display name: ' + name[1]);
+  }
+});
+
+test('item-use missing inventory message does not assume every item comes from the market', async () => {
+  const source = await read('esyakullan.js');
+  assert.match(source, /Bu eşya envanterinde bulunmuyor/);
+  assert.doesNotMatch(source, /Önce \/market üzerinden satın alman gerekiyor/);
+});
+
+
+test('market consumable names stay compatible with item-use inventory keys', async () => {
+  const market = await read('market.js');
+  const use = await read('esyakullan.js');
+  const usableBlock = use.match(/const usableItems = \{([\s\S]*?)\n\};/);
+  assert.ok(usableBlock, 'usable item catalog must exist');
+  const usable = new Map();
+  for (const block of usableBlock[1].split(/(?=^  [a-z_]+:)/m).filter(Boolean)) {
+    const id = block.match(/^\s*([a-z_]+):/);
+    const name = block.match(/name: '([^']+)'/);
+    const key = block.match(/key: '([^']+)'/);
+    if (id && name && key) usable.set(id[1], { name: name[1], key: key[1] });
+  }
+  const marketBlock = market.match(/export const marketItems = \[([\s\S]*?)\n\];/);
+  assert.ok(marketBlock, 'market catalog must exist');
+  for (const block of marketBlock[1].split(/(?=^ \{ id:)/m).filter(Boolean)) {
+    const id = block.match(/id:'([^']+)'/);
+    const name = block.match(/name:'([^']+)'/);
+    if (!id || !name || !usable.has(id[1])) continue;
+    assert.equal(name[1], usable.get(id[1]).key, 'market purchase must create the inventory key expected by item-use: ' + id[1]);
+  }
+});
+
+
+test('market catalog stays within the Frieren and Poagaca fantasy theme', async () => {
+  const market = await read('market.js');
+  for (const crossoverId of ['goku_orb', 'ninja_scroll', 'cursed_charm', 'breathing_mask', 'survey_badge']) {
+    assert.doesNotMatch(market.match(/export const marketItems = \[([\s\S]*?)\n\];/)?.[1] || '', new RegExp("id:'" + crossoverId + "'"),
+      'off-theme crossover item must not be purchasable in the market: ' + crossoverId);
+  }
+  const usable = await read('esyakullan.js');
+  for (const legacyId of ['goku_orb', 'ninja_scroll', 'cursed_charm', 'breathing_mask', 'survey_badge']) {
+    assert.match(usable, new RegExp('^  ' + legacyId + ':', 'm'),
+      'legacy inventory items must remain usable after market cleanup: ' + legacyId);
+  }
+});
+
+
+test('legacy Frieren-themed consumables remain obtainable without renaming stored inventory keys', async () => {
+  const treasure = await read('hazineac.js');
+  const usable = await read('esyakullan.js');
+  const supplementalLoot = treasure.match(/const UTILITY_LOOT = \[([\s\S]*?)\n\];/);
+  assert.ok(supplementalLoot, 'supplemental treasure loot must exist');
+  for (const item of [
+    '✨ Eski Büyü Kalıntısı',
+    '🗝️ Harabe Anahtarı',
+    '🩸 İblis Özü',
+    '🌼 Kurutulmuş Çiçek',
+    '🥐 Büyülü Poğaça'
+  ]) {
+    assert.ok(supplementalLoot[1].includes(item), 'legacy themed item needs an obtainable source: ' + item);
+    assert.ok(usable.includes("key: '" + item + "'"), 'item-use must keep the exact legacy inventory key: ' + item);
+  }
+  assert.match(treasure, /roll < 0\.10[\s\S]*?UTILITY_LOOT/);
+  assert.match(treasure, /roll < 0\.04[\s\S]*?RARE_LOOT\[0\]/);
+  assert.match(treasure, /roll < 0\.01[\s\S]*?RARE_LOOT\[1\]/);
+});
+
+
+test('party dungeon applies equipment HP bonuses proportionally to current HP', async () => {
+  const source = await read('zindan.js');
+  assert.match(source, /const maxHp = Math\.min\(2000, Math\.round\([\s\S]*?Number\(player\.max_hp\) \+ gear\.hp\)[\s\S]*?build\.hp \* \(1 \+ Number\(player\.talent_hp\) \* 0\.05\)/,
+    'dungeon max HP should include equipment, build and talent bonuses');
+  assert.match(source, /hp:\s*Math\.min\(maxHp, Math\.round\(\(Number\(player\.hp\) \/ Math\.max\(1, Number\(player\.max_hp\)\)\) \* maxHp\)\)/,
+    'dungeon current HP should scale proportionally to the full adjusted max HP');
+});
+
+test('party dungeon persists gear-scaled HP as a bounded base-stat ratio', async () => {
+  const source = await read('zindan.js');
+  assert.match(source, /const persistedHp = Math\.max\([\s\S]*?Math\.min\(\s*Number\(player\.max_hp\),\s*Math\.round\(\(hpNow\[i\] \/ Math\.max\(1, Number\(player\.maxHp\)\)\) \* Number\(player\.max_hp\)\)\s*\)\s*\);/,
+    'combat HP should be converted back to the base max-HP scale before persistence');
+  assert.match(source, /player\.user_id, persistedHp, newXp/,
+    'the database update should persist the scaled, bounded HP value rather than gear-inflated combat HP');
+});
+
+test('party dungeon and magic duel both apply equipment set bonuses', async () => {
+  const dungeon = await read('zindan.js');
+  const duel = await read('buyusavasi.js');
+  assert.match(dungeon, /import \{[^}]*applyEquipmentSetBonus[^}]*\} from '\.\/rpg-mechanics\.js';/,
+    'party dungeon should use the shared equipment set bonus rules');
+  assert.match(dungeon, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/,
+    'party dungeon should include set bonuses in its combat stats');
+  assert.match(duel, /applyClassDamage, applyClassDefense, applyClassHealing, applyEquipmentSetBonus, getCharacterBuild/,
+    'magic duel should import the shared equipment set bonus rules');
+  assert.match(duel, /applyEquipmentSetBonus\(equipped1, equipmentBonus\(equipped1\)\)/,
+    'challenger set bonuses should affect duel stats');
+  assert.match(duel, /applyEquipmentSetBonus\(equipped2, equipmentBonus\(equipped2\)\)/,
+    'opponent set bonuses should affect duel stats');
+});
+
+
+test('equipment panel displays set bonuses and lists every supported combat mode', async () => {
+  const source = await read('ekipman.js');
+  assert.match(source, /import \{ applyEquipmentSetBonus \} from '\.\/rpg-mechanics\.js';/);
+  assert.match(source, /const effectiveTotals = applyEquipmentSetBonus\(total, totals\)/);
+  assert.match(source, /🌟 Set bonusu \(savaşlarda etkin\)/);
+  for (const command of ['/zindan', '/katlizindan', '/iblisavasi', '/buyusavasi']) {
+    assert.ok(source.includes(command), 'equipment panel should explain set bonus support for ' + command);
+  }
+});
+
+
+test('legacy party dungeon applies character builds, defensive class passive and talent ranks', async () => {
+  const source = await read('zindan.js');
+  assert.match(source, /class_name, active_build, last_dungeon_at/);
+  assert.match(source, /AS talent_attack/);
+  assert.match(source, /AS talent_defense/);
+  assert.match(source, /AS talent_hp/);
+  assert.match(source, /const build = getCharacterBuild\(player\.active_build\)/);
+  assert.match(source, /applyClassDefense\(Number\(player\.defense\) \+ gear\.defense, player\.class_name\)/);
+  assert.match(source, /build\.attack \* \(1 \+ Number\(player\.talent_attack\) \* 0\.04\)/);
+  assert.match(source, /build\.defense \* \(1 \+ Number\(player\.talent_defense\) \* 0\.04\)/);
+  assert.match(source, /build\.hp \* \(1 \+ Number\(player\.talent_hp\) \* 0\.05\)/);
+});
+
+
+test('magic duel applies both players talent bonuses to HP, attack and defense', async () => {
+  const source = await read('buyusavasi.js');
+  assert.equal((source.match(/AS talent_attack/g) || []).length, 2, 'both duel participants need attack talent ranks');
+  assert.equal((source.match(/AS talent_defense/g) || []).length, 2, 'both duel participants need defense talent ranks');
+  assert.equal((source.match(/AS talent_hp/g) || []).length, 2, 'both duel participants need HP talent ranks');
+  for (const player of ['stats1', 'stats2']) {
+    assert.match(source, new RegExp('Number\\(' + player + '\\.talent_hp\\) \\* 0\\.05'));
+    assert.match(source, new RegExp('Number\\(' + player + '\\.talent_attack\\) \\* 0\\.04'));
+    assert.match(source, new RegExp('Number\\(' + player + '\\.talent_defense\\) \\* 0\\.04'));
+  }
+});
+
+
+test('layered dungeon enforces HP, attack and defense caps after all multipliers', async () => {
+  const source = await read('katlizindan.js');
+  assert.match(source, /const maxHp = Math\.min\(2000, Math\.round\(baseMaxHp \* build\.hp \* role\.hp \* \(1 \+ Number\(p\.talent_hp\) \* 0\.05\)\)\)/,
+    'final HP must remain capped after build, role and talent multipliers');
+  assert.match(source, /hp: Math\.min\(maxHp, Math\.round\(\(Number\(p\.hp\) \/ Math\.max\(1, Number\(p\.max_hp\)\)\) \* maxHp\)\)/,
+    'current HP must not exceed adjusted max HP even when stored HP includes gear bonuses');
+  assert.match(source, /attack: Math\.min\(500, Math\.round\(Math\.min\(500, Number\(p\.attack\) \+ bonus\.attack\) \* build\.attack \* role\.attack \* \(1 \+ Number\(p\.talent_attack\) \* 0\.04\)\)\)/,
+    'final attack must remain capped after build, role and talent multipliers');
+  assert.match(source, /defense: Math\.min\(250, Math\.round\(Math\.min\(250, applyClassDefense\([\s\S]*?\) \* build\.defense \* \(1 \+ Number\(p\.talent_defense\) \* 0\.04\)\) \* role\.defense\)\)/,
+    'final defense must remain capped after build, class and talent multipliers');
 });

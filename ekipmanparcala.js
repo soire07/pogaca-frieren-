@@ -3,6 +3,7 @@ import { pool, ensureUser } from './database/db.js';
 import { equipmentItems } from './equipment-data.js';
 
 const SALVAGE_YIELD = {
+  copper_ring: { item: 'Orman Kristali', quantity: 1 },
   iron_sword: { item: '🥐 Büyülü Poğaça Kutusu', quantity: 1 },
   mage_staff: { item: '📖 Yasak Büyü Kitabı', quantity: 1 },
   traveler_cloak: { item: '🥐 Büyülü Poğaça Kutusu', quantity: 1 },
@@ -11,6 +12,7 @@ const SALVAGE_YIELD = {
   frieren_robe: { item: '💎 Mana Kristali', quantity: 1 },
   himmel_sword: { item: '🐉 Ejderha Pulu', quantity: 1 },
   demon_blade: { item: '🐉 Ejderha Pulu', quantity: 2 },
+  demon_armor: { item: 'Kuzey Mührü', quantity: 1 },
   rune_ring: { item: '💎 Mana Kristali', quantity: 1 },
   hero_ring: { item: '🌙 Efsunlu Elf Yadigârı', quantity: 1 }
 };

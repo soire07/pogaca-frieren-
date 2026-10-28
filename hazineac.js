@@ -15,6 +15,16 @@ const RARE_LOOT = [
   { name: '👑 Himmel’in Efsanevi Yadigârı', coins: 800, xp: 500 }
 ];
 
+// Eski sürümlerdeki tematik tüketilebilir eşyalar, envanter uyumluluğu korunarak
+// düşük ihtimalle hazine ganimeti olarak da bulunabilir.
+const UTILITY_LOOT = [
+  { name: '✨ Eski Büyü Kalıntısı', coins: 35, xp: 25 },
+  { name: '🗝️ Harabe Anahtarı', coins: 45, xp: 20 },
+  { name: '🩸 İblis Özü', coins: 45, xp: 30 },
+  { name: '🌼 Kurutulmuş Çiçek', coins: 25, xp: 15 },
+  { name: '🥐 Büyülü Poğaça', coins: 20, xp: 10 }
+];
+
 export default {
   data: new SlashCommandBuilder()
     .setName('hazineac')
@@ -33,6 +43,14 @@ export default {
         'SELECT xp, level FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
         [interaction.guildId, interaction.user.id]
       );
+      const { rowCount: activeEncounterCount } = await db.query(
+        'SELECT encounter_id FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=$2 AND expires_at > NOW()',
+        [interaction.guildId, interaction.user.id]
+      );
+      if (activeEncounterCount) {
+        await db.query('ROLLBACK');
+        return interaction.editReply('⚔️ Savaşın devam ederken hazine açamazsın. Önce mevcut karşılaşmanı tamamla.');
+      }
       const { rows: [bag] } = await db.query(
         "SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='🗝️ Kadim Hazine Sandığı' FOR UPDATE",
         [interaction.guildId, interaction.user.id]
@@ -58,7 +76,13 @@ export default {
       const found = new Map();
       for (let i = 0; i < amount; i++) {
         const roll = Math.random();
-        const loot = roll < 0.01 ? RARE_LOOT[1] : roll < 0.04 ? RARE_LOOT[0] : LOOT[Math.floor(Math.random() * LOOT.length)];
+        const loot = roll < 0.01
+          ? RARE_LOOT[1]
+          : roll < 0.04
+            ? RARE_LOOT[0]
+            : roll < 0.10
+              ? UTILITY_LOOT[Math.floor(Math.random() * UTILITY_LOOT.length)]
+              : LOOT[Math.floor(Math.random() * LOOT.length)];
         coins += loot.coins;
         xp += loot.xp;
         found.set(loot.name, (found.get(loot.name) || 0) + 1);

@@ -27,14 +27,14 @@ const pages = [
   ]},
   { title: '🗺️ V. Keşif, hikâye ve koleksiyon', description: 'Frieren’in yolculuğu yalnızca savaşlardan ibaret değil. Dünyayı keşfet, karakterleri tanı ve hikâyedeki izleri takip et.', fields: [
     { name: 'Dünyayı keşfet', value: '**/dunya** bölgeleri tanıtır; **/kesif** bölge keşfini başlatır. Farklı bölgelerde ilerleyerek karşılaşmalar ve keşif kayıtları bulabilirsin.' },
-    { name: 'Hikâye ve yol arkadaşları', value: '**/hikaye** seçimlere dayalı anlatıyı; **/npc** yol arkadaşları ve yan görevleri; **/frieren** ve **/evren** Frieren dünyasına ilişkin içerikleri sunar.' },
+    { name: 'Hikâye ve yol arkadaşları', value: '**/hikaye** seçimlere dayalı anlatıyı; **/npc** mevcut yol arkadaşları ve yan içerikleri; **/frieren** ve **/evren** Frieren dünyasına ilişkin içerikleri sunar.' },
     { name: 'Koleksiyon ve günlük', value: '**/koleksiyon** karakter koleksiyonunu, **/gunluk** keşif/boss/büyü/yadigâr koleksiyonlarını gösterir. Koleksiyon tamamlandığında günlükte ödül talebi çıkabilir; aynı koleksiyon ödülü bir kez alınır.' },
     { name: '🥐 Mola komutları', value: '**/pogaca**, **/mimic**, **/sans**, **/saril** ve **/animequiz** macera arasında eğlence içindir.' }
   ]},
-  { title: '🧰 VI. Ekonomi, ekipman ve diğer komutlar', description: 'Kaynaklarını, eşyalarını ve sunucu araçlarını doğru kullan.', fields: [
-    { name: 'Altın ve eşya', value: '**/bakiye** altınını; **/market** alışverişi; **/cantam** eşyaları; **/ekipman** kuşanma/çıkarma; **/esyakullan** kullanılabilir eşyaları yönetir.' },
-    { name: 'İstatistikler', value: '**/istatistik** bot istatistiklerini, **/siralama** RPG sıralamalarını, **/liderlik** sunucu liderliğini gösterir.' },
-    { name: 'Sunucu yönetimi', value: 'Yetkiliysen **/kurulum** ile karşılama/log ayarlarını düzenleyebilir; **/uyar**, **/timeout**, **/ban** ve **/temizle** moderasyon komutlarını kullanabilirsin.' },
+  { title: '🧰 VI. Ekonomi, ekipman ve diğer komutlar', description: 'Kaynaklarını, eşyalarını ve RPG araçlarını doğru kullan.', fields: [
+    { name: 'Altın ve eşya', value: '**/bakiye** altınını; **/market** alışverişi; **/cantam** ham eşya miktarlarını; **/envanter** kuşanılmış ekipman yuvalarıyla birlikte ayrıntılı çantanı; **/ekipman** kuşanma/çıkarma; **/esyakullan** kullanılabilir eşyaları yönetir.' },
+    { name: 'İstatistikler', value: '**/istatistik** sunucudaki kayıtlı RPG oyuncusu sayısını, en yüksek seviyeyi ve bot pingini gösterir. **/siralama** RPG sıralamalarını, **/liderlik** sunucu liderliğini gösterir.' },
+    { name: '🎉 Eğlence ve topluluk', value: '**/animequiz** anime bilgi yarışması; **/pogaca** mola; **/sans** şans oyunu; **/saril** arkadaşına sarılma; **/mimic** eğlence komutudur.' },
     { name: '🔎 Daha fazla yardım', value: 'Discord’da / yazıp komut adını seçerek seçeneklerini ve açıklamasını gör. **/yardim** tüm komutları kategori kategori listeler. Bazı özellikler sunucu ayarlarına veya komut gereksinimlerine bağlı olabilir.' }
   ]}
 ];

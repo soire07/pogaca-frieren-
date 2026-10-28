@@ -9,11 +9,6 @@ export const marketItems = [
  { id:'mimic_chest', name:'📦 Mimic Sandığı', price:350, category:'Büyülü Eşyalar', rarity:'Nadir', description:'İçinden ne çıkacağı belli olmayan şüpheli sandık.', emoji:'📦' },
  { id:'fern_ribbon', name:'🎀 Fern’in Kurdelası', price:420, category:'Anime Hatıraları', rarity:'Destansı', description:'Fern’den ilham alan zarif bir hatıra eşyası.', emoji:'🎀' },
  { id:'himmel_flower', name:'🌼 Himmel’in Mavi Çiçeği', price:600, category:'Anime Hatıraları', rarity:'Efsanevi', description:'Kahraman Himmel’i hatırlatan özel bir çiçek.', emoji:'🌼' },
- { id:'goku_orb', name:'🔴 Dört Yıldızlı Ejder Topu', price:650, category:'Anime Hatıraları', rarity:'Efsanevi', description:'Ejderha efsanesinden esinlenen parlak bir hatıra.', emoji:'🔴' },
- { id:'ninja_scroll', name:'📜 Gizli Ninja Parşömeni', price:280, category:'Anime Hatıraları', rarity:'Nadir', description:'Azim ve ninja ruhunu simgeleyen parşömen.', emoji:'📜' },
- { id:'cursed_charm', name:'🧿 Lanetli Muska', price:380, category:'Koleksiyon Eşyaları', rarity:'Destansı', description:'Jujutsu dünyasından esinlenen gizemli muska.', emoji:'🧿' },
- { id:'breathing_mask', name:'🌊 Su Nefesi Tılsımı', price:320, category:'Koleksiyon Eşyaları', rarity:'Nadir', description:'Sakinlik ve odaklanmayı simgeleyen tılsım.', emoji:'🌊' },
- { id:'survey_badge', name:'🪽 Keşif Birliği Rozeti', price:450, category:'Anime Hatıraları', rarity:'Destansı', description:'Cesur keşif askerlerine adanmış rozet.', emoji:'🪽' },
  { id:'lucky_charm', name:'🍀 Şans Tılsımı', price:250, category:'Büyülü Eşyalar', rarity:'Nadir', description:'Koleksiyonunda saklayabileceğin şanslı tılsım.', emoji:'🍀' },
  { id:'frieren_tea', name:'🍵 Frieren Çayı', price:120, category:'Koleksiyon Eşyaları', rarity:'Yaygın', description:'Uzun yolculuklar için sıcak, huzurlu bir çay.', emoji:'🍵' },
  { id:'poagaca_box', name:'🥐 Büyülü Poğaça Kutusu', price:180, category:'Koleksiyon Eşyaları', rarity:'Yaygın', description:'Poğaça Frieren marketinin imza kutusu.', emoji:'🥐' },
@@ -54,7 +49,7 @@ function panelEmbed(page, category, balance, user) {
  const shown = filtered.slice(safePage * 4, safePage * 4 + 4);
  const embed = new EmbedBuilder().setColor(0x9b8cff)
   .setTitle('✨ POĞAÇA FRIEREN • BÜYÜLÜ MARKET')
-  .setDescription('Anime evrenlerinden ilham alan özel koleksiyon eşyaları!\nAltındaki butonlarla kategori değiştir, eşyaları incele ve satın al.')
+  .setDescription('Frieren’in yolculuğundan, kadim büyülerden ve uzak diyarlardaki ganimetlerden ilham alan eşyalar.\nKategoriler arasında gez, eşyaları incele ve yolculuğun için satın al.')
   .addFields({name:'💰 Cüzdanın',value:'**'+Number(balance).toLocaleString('tr-TR')+'** poğaça altını',inline:true},
    {name:'🗂️ Kategori',value:'**'+category+'**',inline:true},
    ...shown.map(item=>({name:item.name+'  •  '+item.price.toLocaleString('tr-TR')+' altın',value:rarityEmoji[item.rarity]+' **'+item.rarity+'**\n'+item.description,inline:false})))

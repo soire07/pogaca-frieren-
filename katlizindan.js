@@ -192,13 +192,13 @@ export default {
       const players = rawPlayers.map((p, i) => {
         const equipped = gearMap.get(p.user_id) || []; const bonus = applyEquipmentSetBonus(equipped, equipmentBonus(equipped));
         const role = PARTY_ROLES[roles[i]]; const build = getCharacterBuild(p.active_build);
-        const baseMaxHp = Math.min(2000, Number(p.max_hp) + bonus.hp) * (1 + Number(p.talent_hp) * 0.05);
-        const maxHp = Math.round(baseMaxHp * build.hp * role.hp);
+        const baseMaxHp = Math.min(2000, Number(p.max_hp) + bonus.hp);
+        const maxHp = Math.min(2000, Math.round(baseMaxHp * build.hp * role.hp * (1 + Number(p.talent_hp) * 0.05)));
         const maxMana = Math.min(500, Math.round((Number(p.max_mana) + bonus.mana) * build.mana * (1 + Number(p.talent_mana) * 0.05)));
         return { ...p, build, classProfile: getCharacterClass(p.class_name), level: Number(p.level), xp: Number(p.xp), mana: Math.min(maxMana, Math.round((Number(p.mana) / Math.max(1, Number(p.max_mana))) * maxMana)), maxMana, role: roles[i], roleLabel: role.label, maxHp,
-          hp: Math.round((Number(p.hp) / Math.max(1, Number(p.max_hp))) * maxHp),
-          attack: Math.round(Math.min(500, Number(p.attack) + bonus.attack) * build.attack * role.attack * (1 + Number(p.talent_attack) * 0.04)),
-          defense: Math.round(Math.min(250, applyClassDefense(Number(p.defense) + bonus.defense, p.class_name) * build.defense * (1 + Number(p.talent_defense) * 0.04)) * role.defense) };
+          hp: Math.min(maxHp, Math.round((Number(p.hp) / Math.max(1, Number(p.max_hp))) * maxHp)),
+          attack: Math.min(500, Math.round(Math.min(500, Number(p.attack) + bonus.attack) * build.attack * role.attack * (1 + Number(p.talent_attack) * 0.04))),
+          defense: Math.min(250, Math.round(Math.min(250, applyClassDefense(Number(p.defense) + bonus.defense, p.class_name) * build.defense * (1 + Number(p.talent_defense) * 0.04)) * role.defense)) };
       });
       if (players.some(p => p.hp <= 0)) {
         await db.query('ROLLBACK');

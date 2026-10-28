@@ -1,6 +1,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
+import { applyEquipmentSetBonus, applyClassDefense, getCharacterBuild } from './rpg-mechanics.js';
 import { levelForXp } from './utils.js';
 
 const COOLDOWN_MINUTES = 30;
@@ -71,7 +72,10 @@ export default {
       await db.query('BEGIN');
       const playerIds = [interaction.user.id, teammate.id].sort();
       const result = await db.query(
-        `SELECT user_id, level, xp, coins, hp, max_hp, mana, max_mana, attack, defense, last_dungeon_at
+        `SELECT user_id, level, xp, coins, hp, max_hp, mana, max_mana, attack, defense, class_name, active_build, last_dungeon_at,
+          COALESCE((SELECT attack_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_attack,
+          COALESCE((SELECT defense_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_defense,
+          COALESCE((SELECT hp_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_hp
          FROM users WHERE guild_id=$1 AND user_id = ANY($2::text[]) FOR UPDATE`,
         [interaction.guildId, playerIds]
       );
@@ -79,6 +83,18 @@ export default {
       if (result.rowCount !== 2) {
         await db.query('ROLLBACK');
         return interaction.editReply({ content: 'Takım oyuncularının verileri alınamadı. Biraz sonra tekrar deneyin.', components: [] });
+      }
+
+      // This legacy two-player dungeon holds the user-row locks until its
+      // short, non-interactive fight is saved. Check reservations after those
+      // locks so an existing interactive boss/party fight cannot overlap it.
+      const activeEncounter = await db.query(
+        'SELECT user_id FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND expires_at > NOW()',
+        [interaction.guildId, playerIds]
+      );
+      if (activeEncounter.rowCount) {
+        await db.query('ROLLBACK');
+        return interaction.editReply({ content: '⚔️ Takımdaki bir oyuncunun başka bir karşılaşması sürüyor. Önce o savaşı bitirin.', components: [] });
       }
 
       const byId = new Map(result.rows.map(player => [player.user_id, player]));
@@ -107,14 +123,25 @@ export default {
       }
 
       const combatants = players.map(player => {
-        const gear = equipmentBonus(gearByUser.get(player.user_id) || []);
+        const equippedItems = gearByUser.get(player.user_id) || [];
+        const gear = applyEquipmentSetBonus(equippedItems, equipmentBonus(equippedItems));
+        const build = getCharacterBuild(player.active_build);
+        const maxHp = Math.min(2000, Math.round(
+          (Number(player.max_hp) + gear.hp) * build.hp * (1 + Number(player.talent_hp) * 0.05)
+        ));
         return {
           ...player,
           level: Number(player.level),
-          hp: Math.min(Number(player.hp), Math.min(2000, Number(player.max_hp) + gear.hp)),
-          maxHp: Math.min(2000, Number(player.max_hp) + gear.hp),
-          attack: Math.min(500, Number(player.attack) + gear.attack),
-          defense: Math.min(250, Number(player.defense) + gear.defense)
+          build,
+          hp: Math.min(maxHp, Math.round((Number(player.hp) / Math.max(1, Number(player.max_hp))) * maxHp)),
+          maxHp,
+          attack: Math.min(500, Math.round(
+            (Number(player.attack) + gear.attack) * build.attack * (1 + Number(player.talent_attack) * 0.04)
+          )),
+          defense: Math.min(250, Math.round(
+            applyClassDefense(Number(player.defense) + gear.defense, player.class_name) *
+            build.defense * (1 + Number(player.talent_defense) * 0.04)
+          ))
         };
       });
 
@@ -164,6 +191,14 @@ export default {
         const newXp = Number(player.xp) + xpReward;
         const newLevel = levelForXp(newXp);
         const gainedPoints = Math.max(0, newLevel - Number(player.level));
+        // Gear can raise combat max HP, but only the base-stat proportion is persisted.
+        const persistedHp = Math.max(
+          0,
+          Math.min(
+            Number(player.max_hp),
+            Math.round((hpNow[i] / Math.max(1, Number(player.maxHp))) * Number(player.max_hp))
+          )
+        );
         await db.query(
           `UPDATE users SET
             hp=$3,
@@ -175,7 +210,7 @@ export default {
             dungeon_runs=dungeon_runs+1,
             last_dungeon_at=NOW()
            WHERE guild_id=$1 AND user_id=$2`,
-          [interaction.guildId, player.user_id, hpNow[i], newXp, newLevel, coinReward, gainedPoints, win ? 1 : 0]
+          [interaction.guildId, player.user_id, persistedHp, newXp, newLevel, coinReward, gainedPoints, win ? 1 : 0]
         );
         if (lootItem) {
           await db.query(
@@ -194,7 +229,7 @@ export default {
           `**${dungeon.name}**\n` +
           `Tur sayısı: **${turn}** · Kalan düşman HP: **${dungeonHp}/${dungeon.hp}**\n\n` +
           combatants.map((player, i) =>
-            `**<@${player.user_id}>** · Seviye ${player.level}${levelForXp(Number(player.xp) + xpReward) > player.level ? ` → ${levelForXp(Number(player.xp) + xpReward)} ✨` : ''}\n❤️ HP: ${player.hp} → ${hpNow[i]} · ⚔️ Saldırı: ${player.attack} · 🛡️ Savunma: ${player.defense}`
+            `**<@${player.user_id}>** · Seviye ${player.level}${levelForXp(Number(player.xp) + xpReward) > player.level ? ` → ${levelForXp(Number(player.xp) + xpReward)} ✨` : ''} · ${player.build.label}\n❤️ HP: ${player.hp} → ${hpNow[i]} · ⚔️ Saldırı: ${player.attack} · 🛡️ Savunma: ${player.defense}`
           ).join('\n\n') +
           (log.length ? '\n\n**⚔️ Savaş günlüğü**\n' + log.slice(-6).join('\n') : '')
         )

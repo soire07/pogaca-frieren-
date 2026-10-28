@@ -26,12 +26,8 @@ const sections = [
     value: '**/market** — Eşya satın al · **/cantam** — Eşyalarını gör · **/ekipman** — Ekipman kuşan/çıkar\n**/esyakullan** — Kullanılabilir eşya kullan · **/bakiye** — Altınını kontrol et · **/dinlen** — Can ve Mana toparla\n**/karakter** — Paneldeki Gelişim düğmesiyle puan harca; sınıf ve savaş yapını açılır menülerden seç\n**/yetenekagaci** — Yetenek geliştirmelerini incele · **/siralama** ve **/liderlik** — Sıralamaları görüntüle'
   },
   {
-    name: '🥐 Eğlence ve topluluk',
-    value: '**/animequiz** — Anime bilgi yarışması · **/pogaca** — Poğaça molası · **/sans** — Şansını dene\n**/saril** — Bir oyuncuya sarıl · **/mimic** — Mimic şakası · **/istatistik** — Bot istatistikleri'
-  },
-  {
-    name: '🛡️ Sunucu yönetimi',
-    value: '**/kurulum** — Sunucu karşılama ve log ayarları · **/uyar** — Uyarı ver\n**/timeout** — Geçici iletişim kısıtlaması · **/ban** — Sunucudan uzaklaştır · **/temizle** — Mesajları temizle\nBu komutlar için uygun sunucu izinleri gerekebilir.'
+    name: '🎉 Eğlence ve bot bilgileri',
+    value: '**/istatistik** — Botun genel istatistiklerini görüntüle · **/animequiz** — Anime bilgi yarışması\n**/pogaca** — Poğaça molası · **/sans** — Şansını dene · **/saril** — Bir oyuncuya sarıl · **/mimic** — Mimic şakası'
   }
 ];
 
@@ -49,7 +45,7 @@ export default {
         '**Yeni oyuncu rotası**\n' +
         '1. **/rehber** — temel sistemleri öğren.\n' +
         '2. **/kimimben** — karakter keşfet ve **/koleksiyon** ile kontrol et.\n' +
-        '3. **/karakter olustur** — adını ve sınıfını seç; **/karakter panel** ile durumunu gör.\n' +
+        '3. **/karakter** — mevcut karakter panelinden sınıfını, yapını ve gelişimini yönet.\n' +
         '4. **/gunlukodul** → **/kesif** — ilk ödülünü alıp yolculuğa çık.\n\n' +
         'Komutun adını yazmaya başladığında Discord’un açtığı seçenekleri ve zorunlu alanları da kontrol et.'
       )

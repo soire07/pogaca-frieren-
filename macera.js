@@ -47,6 +47,18 @@ export default {
         [interaction.guildId, interaction.user.id]
       );
 
+      const { rowCount: activeEncounterCount } = await client.query(
+        'SELECT encounter_id FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=$2 AND expires_at > NOW()',
+        [interaction.guildId, interaction.user.id]
+      );
+      if (activeEncounterCount) {
+        await client.query('ROLLBACK');
+        return interaction.reply({
+          content: '⚔️ Savaşın devam ederken yeni bir maceraya çıkamazsın. Önce mevcut karşılaşmanı tamamla.',
+          ephemeral: true
+        });
+      }
+
       if (u.last_adventure_at && Date.now() - new Date(u.last_adventure_at).getTime() < 600_000) {
         await client.query('ROLLBACK');
         return interaction.reply({
@@ -75,10 +87,10 @@ export default {
         rareOutcomes.length
       );
       const undiscoveredRare = rareOutcomes.filter(entry => !discoveredRare.has(entry.discovery));
-      const outcome = chosenRoute
-        ? outcomes.find(entry => entry.discovery === chosenRoute)
-        : pityReady && undiscoveredRare.length
-          ? undiscoveredRare[0]
+      const outcome = pityReady && undiscoveredRare.length
+        ? undiscoveredRare[0]
+        : chosenRoute
+          ? outcomes.find(entry => entry.discovery === chosenRoute)
           : Math.random() < 0.05
             ? (undiscoveredRare.length ? undiscoveredRare[Math.floor(Math.random() * undiscoveredRare.length)] : rareOutcomes[Math.floor(Math.random() * rareOutcomes.length)])
             : outcomes[Math.floor(Math.random() * outcomes.length)];
@@ -227,7 +239,7 @@ export default {
       await client.query(
         'INSERT INTO adventure_history(guild_id,user_id,discovery_key,outcome_text,coins_awarded,xp_awarded,item_found,first_discovery) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
         [interaction.guildId, interaction.user.id, outcome.discovery, outcome.text, totalCoins,
-          outcome.xp + discoveryXp + routeMasteryReward.xp + streakReward.xp + dailyAdventureReward.xp + treasureReward.xp + classAdventureReward.xp,
+          outcome.xp + discoveryXp + routeMasteryReward.xp + streakReward.xp + dailyAdventureReward.xp + treasureReward.xp + classAdventureReward.xp + streakMilestoneReward.xp,
           historyItems, firstDiscovery]
       );
 
