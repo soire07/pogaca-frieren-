@@ -60,10 +60,25 @@ const normalizedTarget = normalize(rawTarget);
 const isCommandInteractionCoverage = normalizedTarget.includes('command interaction coverage')
   || normalizedTarget.includes('interaction command coverage')
   || normalizedTarget.includes('komut etkilesim kapsam');
-const forcedFiles = isCommandInteractionCoverage
-  ? ['scripts/test-command-interaction-coverage.js']
-  : [];
-console.log('HEDEF EŞLEŞTİRME: ' + (isCommandInteractionCoverage ? 'command interaction coverage -> scripts/test-command-interaction-coverage.js' : 'özel eşleşme yok'));
+const asksBroadRegression = [
+  /savas|combat|boss|hasar|damage|savunma|defense|rpg|karakter|character|ekipman|equipment|kesif|explor/,
+  /gorev|quest|odul|reward|ilerleme|progress|seviye|level|tecrube|experience|xp/,
+  /discord|komut|command|etkilesim|interaction|slash|buton|button|izin|permission/
+].filter(pattern => pattern.test(normalizedTarget)).length >= 2;
+const forcedFiles = asksBroadRegression
+  ? [
+      'scripts/test-boss-combat.js',
+      'scripts/test-discord-scenarios.js',
+      'scripts/test-command-interaction-coverage.js'
+    ]
+  : isCommandInteractionCoverage
+    ? ['scripts/test-command-interaction-coverage.js']
+    : [];
+console.log('HEDEF EŞLEŞTİRME: ' + (asksBroadRegression
+  ? 'çok alanlı regresyon paketi -> savaş/RPG, Discord senaryoları, komut-etkileşim kapsamı'
+  : isCommandInteractionCoverage
+    ? 'command interaction coverage -> scripts/test-command-interaction-coverage.js'
+    : 'anahtar kavram eşleştirmesi'));
 const ranked = [];
 for (const file of testFiles) {
   const source = await readFile(file, 'utf8').catch(() => '');
@@ -75,11 +90,11 @@ const selectedMap = new Map();
 for (const file of forcedFiles) {
   selectedMap.set(file, { file: path.join(root, file), hits: words, score: words.length, forced: true });
 }
-for (const item of ranked.filter(item => item.score >= Math.min(2, Math.max(1, words.length))).slice(0, 5)) {
+for (const item of ranked.filter(item => item.score >= 1).slice(0, 8)) {
   const key = path.relative(root, item.file).split(path.sep).join('/');
   if (!selectedMap.has(key)) selectedMap.set(key, item);
 }
-const selected = [...selectedMap.values()].slice(0, 5);
+const selected = [...selectedMap.values()].slice(0, asksBroadRegression ? 8 : 5);
 
 console.log('İSTENEN SENARYO: ' + rawTarget);
 console.log('ANAHTAR KAVRAMLAR: ' + (words.join(', ') || 'Belirlenemedi'));
@@ -101,4 +116,7 @@ for (const result of results) {
 const failed = results.filter(result => result.code !== 0);
 console.log('\nHEDEFE ÖZEL SONUÇ: ' + (failed.length ? 'BAŞARISIZ' : 'SEÇİLEN TESTLER BAŞARILI'));
 console.log('KAPSAM SINIRI: Bu motor mevcut testleri isteğe göre eşleştirir; kendi başına yeni test kodu üretmez ve eşleşen testler isteğin her ayrıntısını kanıtlamayabilir.');
+if (asksBroadRegression) {
+  console.log('EKSİK KAPSAM: Bu paket savaş/boss, Discord senaryo ve komut-etkileşim testlerini içerir. Görev, ödül, karakter gelişimi, ekipman ve keşif için ayrı, doğrudan hedeflenmiş test dosyaları bu paket içinde bulunmuyorsa bunlar ayrıca eksik olarak değerlendirilmelidir; genel senaryo testleri bu alanların tamamını tek tek kanıtlamaz.');
+}
 process.exit(failed.length ? 1 : 0);
