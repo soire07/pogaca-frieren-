@@ -84,7 +84,7 @@ async function collectCodeContext(question) {
           const source = await readFile(path.join(rootDir, relative), 'utf8').catch(() => '');
           const lowerSource = source.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
           const matchingTerms = terms.reduce((count, term) => count + (lowerSource.includes(term) ? 1 : 0), 0);
-          if (matchingTerms >= Math.min(2, terms.length)) candidates.add(relative);
+          if (terms.length > 0 && matchingTerms >= Math.min(2, terms.length)) candidates.add(relative);
         }
       }
     }
