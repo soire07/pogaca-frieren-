@@ -123,7 +123,10 @@ export default {
         return {
           ...player,
           level: Number(player.level),
-          hp: Math.min(Number(player.hp), Math.min(2000, Number(player.max_hp) + gear.hp)),
+          hp: Math.min(
+            Math.min(2000, Number(player.max_hp) + gear.hp),
+            Math.round((Number(player.hp) / Math.max(1, Number(player.max_hp))) * Math.min(2000, Number(player.max_hp) + gear.hp))
+          ),
           maxHp: Math.min(2000, Number(player.max_hp) + gear.hp),
           attack: Math.min(500, Number(player.attack) + gear.attack),
           defense: Math.min(250, Number(player.defense) + gear.defense)
