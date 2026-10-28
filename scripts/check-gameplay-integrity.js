@@ -627,10 +627,10 @@ test('legacy Frieren-themed consumables remain obtainable without renaming store
 
 test('party dungeon applies equipment HP bonuses proportionally to current HP', async () => {
   const source = await read('zindan.js');
-  assert.match(source, /hp:\s*Math\.min\([\s\S]*?Math\.round\(\(Number\(player\.hp\)\s*\/\s*Math\.max\(1, Number\(player\.max_hp\)\)\)\s*\*\s*Math\.min\(2000, Number\(player\.max_hp\) \+ gear\.hp\)\)/,
-    'dungeon current HP should scale with equipment-adjusted max HP');
-  assert.match(source, /maxHp:\s*Math\.min\(2000, Number\(player\.max_hp\) \+ gear\.hp\)/,
-    'dungeon max HP should include equipment HP bonuses');
+  assert.match(source, /const maxHp = Math\.min\(2000, Math\.round\([\s\S]*?Number\(player\.max_hp\) \+ gear\.hp\)[\s\S]*?build\.hp \* \(1 \+ Number\(player\.talent_hp\) \* 0\.05\)/,
+    'dungeon max HP should include equipment, build and talent bonuses');
+  assert.match(source, /hp:\s*Math\.min\(maxHp, Math\.round\(\(Number\(player\.hp\) \/ Math\.max\(1, Number\(player\.max_hp\)\)\) \* maxHp\)\)/,
+    'dungeon current HP should scale proportionally to the full adjusted max HP');
 });
 
 test('party dungeon persists gear-scaled HP as a bounded base-stat ratio', async () => {
@@ -644,7 +644,7 @@ test('party dungeon persists gear-scaled HP as a bounded base-stat ratio', async
 test('party dungeon and magic duel both apply equipment set bonuses', async () => {
   const dungeon = await read('zindan.js');
   const duel = await read('buyusavasi.js');
-  assert.match(dungeon, /import \{ applyEquipmentSetBonus \} from '\.\/rpg-mechanics\.js';/,
+  assert.match(dungeon, /import \{[^}]*applyEquipmentSetBonus[^}]*\} from '\.\/rpg-mechanics\.js';/,
     'party dungeon should use the shared equipment set bonus rules');
   assert.match(dungeon, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/,
     'party dungeon should include set bonuses in its combat stats');
