@@ -18,6 +18,10 @@ const commands = [
     .setDescription('Frieren botunun kodu ve test sistemi hakkında yapay zekâya soru sorar.')
     .addStringOption(option => option.setName('soru').setDescription('Sorunu veya inceleme isteğini yaz.').setRequired(true).setMaxLength(1500))
     .toJSON(),
+  new SlashCommandBuilder()
+    .setName('status')
+    .setDescription('Frieren AI servisinin canlı çalışma durumunu gösterir.')
+    .toJSON(),
 ];
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
