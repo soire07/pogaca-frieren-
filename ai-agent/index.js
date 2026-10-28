@@ -216,7 +216,7 @@ function runCommandAudit() {
 
 function runTargetedTests(target) {
   return new Promise(resolve => {
-    const normalizedTarget = target.normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase('tr-TR');
+    const normalizedTarget = target.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('tr-TR');
     const isCommandInteractionCoverage = normalizedTarget.includes('command interaction coverage')
       || normalizedTarget.includes('interaction command coverage')
       || normalizedTarget.includes('komut etkilesim kapsam');
