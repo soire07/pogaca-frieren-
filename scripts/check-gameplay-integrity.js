@@ -633,6 +633,14 @@ test('party dungeon applies equipment HP bonuses proportionally to current HP', 
     'dungeon max HP should include equipment HP bonuses');
 });
 
+test('party dungeon persists gear-scaled HP as a bounded base-stat ratio', async () => {
+  const source = await read('zindan.js');
+  assert.match(source, /const persistedHp = Math\.max\([\s\S]*?Math\.min\(\s*Number\(player\.max_hp\),\s*Math\.round\(\(hpNow\[i\] \/ Math\.max\(1, Number\(player\.maxHp\)\)\) \* Number\(player\.max_hp\)\)\s*\)\s*\);/,
+    'combat HP should be converted back to the base max-HP scale before persistence');
+  assert.match(source, /player\.user_id, persistedHp, newXp/,
+    'the database update should persist the scaled, bounded HP value rather than gear-inflated combat HP');
+});
+
 test('party dungeon and magic duel both apply equipment set bonuses', async () => {
   const dungeon = await read('zindan.js');
   const duel = await read('buyusavasi.js');
