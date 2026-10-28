@@ -377,13 +377,13 @@ client.on(Events.InteractionCreate, async interaction => {
       const readDiagnostic = pattern => targetedOutput.match(pattern)?.[1]?.trim() || '';
       const responseSignal = readDiagnostic(/Command response-path source signal:\s*(.+)/);
       const responseReview = readDiagnostic(/Commands needing response-path review:\s*(.+)/);
-      const safetySignal = readDiagnostic(/Interaction.*permission source signal:\s*(.+)/);
-      const safetyReview = readDiagnostic(/Commands needing interaction.*permission review:\s*(.+)/);
+      const safetySignal = readDiagnostic(/Permission-sensitive interaction signal:\s*(.+)/);
+      const safetyReview = readDiagnostic(/Permission-sensitive commands needing review:\s*(.+)/);
       const diagnosticSummary = [
         responseSignal ? 'Yanıt yolu sinyali: ' + responseSignal : '',
         responseReview ? 'Yanıt yolu incelemesi: ' + responseReview.slice(0, 300) : '',
-        safetySignal ? 'Etkileşim/izin sinyali: ' + safetySignal : '',
-        safetyReview ? 'Etkileşim/izin incelemesi: ' + safetyReview.slice(0, 300) : '',
+        safetySignal ? 'İzin gerektiren komutlarda etkileşim sinyali: ' + safetySignal : '',
+        safetyReview ? 'İzin gerektiren komutlarda inceleme: ' + safetyReview.slice(0, 300) : '',
       ].filter(Boolean).join('\n');
       const syntaxSummary = syntaxPassed ? 'AI servis sözdizimi: başarılı.' : 'AI servis sözdizimi BAŞARISIZ: ' + agentSyntax.stderr.slice(-250);
       const auditSummary = auditPassed
