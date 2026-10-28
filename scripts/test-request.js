@@ -57,7 +57,7 @@ if (!rawTarget) {
 const words = tokens(rawTarget);
 const testFiles = await walk(root);
 const normalizedTarget = normalize(rawTarget);
-const forcedFiles = /command\\s+interaction\\s+coverage|interaction\\s+command\\s+coverage|komut\\s+etkilesim\\s+kapsam/i.test(normalizedTarget)
+const forcedFiles = /command\s+interaction\s+coverage|interaction\s+command\s+coverage|komut\s+etkilesim\s+kapsam/i.test(normalizedTarget)
   ? ['scripts/test-command-interaction-coverage.js']
   : [];
 const ranked = [];
