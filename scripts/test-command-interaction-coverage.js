@@ -101,21 +101,42 @@ test('command interaction coverage: every discoverable slash command exposes a v
   assert.deepEqual(failures, [], failures.join('\n'));
   const responseCovered = [];
   const responseUnclear = [];
-  const safetySignalCovered = [];
-  const safetySignalUnclear = [];
+  const permissionSensitive = [];
+  const permissionSignalCovered = [];
+  const permissionSignalUnclear = [];
+  const permissionSensitiveSource = [
+    /setDefaultMemberPermissions\\s*\\(/,
+    /PermissionFlagsBits/,
+    /memberPermissions\\s*\\??\\.has\\s*\\(/,
+    /\\.ban\\s*\\(/,
+    /\\.timeout\\s*\\(/,
+    /bulkDelete\\s*\\(/,
+    /\\.kick\\s*\\(/,
+    /\\.setNickname\\s*\\(/,
+    /\\.setRoles?\\s*\\(/,
+  ];
   for (const { file, schema } of commands) {
     const source = sourceByFile.get(file) || '';
     const hasResponsePath = responseSignals.some(pattern => pattern.test(source));
-    const hasSafetySignal = interactionSafetySignals.some(pattern => pattern.test(source));
     (hasResponsePath ? responseCovered : responseUnclear).push('/' + schema.name);
-    (hasSafetySignal ? safetySignalCovered : safetySignalUnclear).push('/' + schema.name);
+
+    // Generic entertainment/info commands do not need permission checks. Review the
+    // interaction/permission signal only for commands that declare or implement
+    // privileged or destructive behavior.
+    const needsPermissionReview = permissionSensitiveSource.some(pattern => pattern.test(source));
+    if (needsPermissionReview) {
+      permissionSensitive.push('/' + schema.name);
+      const hasSafetySignal = interactionSafetySignals.some(pattern => pattern.test(source));
+      (hasSafetySignal ? permissionSignalCovered : permissionSignalUnclear).push('/' + schema.name);
+    }
   }
 
   assert.deepEqual(failures, [], failures.join('\\n'));
   t.diagnostic('Structural interaction coverage checked ' + commands.length + ' slash commands.');
   t.diagnostic('Command response-path source signal: ' + responseCovered.length + '/' + commands.length + ' commands.');
   t.diagnostic('Commands needing response-path review: ' + (responseUnclear.join(', ') || 'none'));
-  t.diagnostic('Interaction/permission source signal: ' + safetySignalCovered.length + '/' + commands.length + ' commands.');
-  t.diagnostic('Commands needing interaction/permission review: ' + (safetySignalUnclear.join(', ') || 'none'));
+  t.diagnostic('Permission-sensitive commands: ' + permissionSensitive.length + '/' + commands.length + '.');
+  t.diagnostic('Permission-sensitive interaction signal: ' + permissionSignalCovered.length + '/' + permissionSensitive.length + ' commands.');
+  t.diagnostic('Permission-sensitive commands needing review: ' + (permissionSignalUnclear.join(', ') || 'none'));
   t.diagnostic('Scope: static source signals only; signals do not prove that paths execute correctly. No live Discord API call is performed.');
 });
