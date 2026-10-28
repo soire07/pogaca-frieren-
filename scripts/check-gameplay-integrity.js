@@ -93,7 +93,8 @@ test('class-specific daily quests require the selected class, validate progress 
 
 test('PvP duels apply persistent class passives and selected combat builds', async () => {
   const source = await read('buyusavasi.js');
-  assert.match(source, /SELECT max_hp, attack, defense, class_name, active_build FROM users/);
+  assert.match(source, /SELECT max_hp, attack, defense, class_name, active_build,/,
+    'both duel stat queries should include the base combat fields before talent ranks');
   assert.match(source, /getCharacterBuild\(stats1\.active_build\)/);
   assert.match(source, /getCharacterBuild\(stats2\.active_build\)/);
   assert.match(source, /applyClassDefense\(Number\(stats1\.defense\) \+ gear1\.defense, stats1\.class_name\)/);
