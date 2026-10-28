@@ -1,27 +1,41 @@
-# Frieren Local AI Core
+# Frieren AI inference setup
 
-Frieren's AI analysis now uses an Ollama-compatible model endpoint instead of the OpenAI SDK or a paid API key.
+The code agent supports two inference modes. Neither mode automatically switches to a paid provider.
 
-## Environment variables
+## Recommended for Render without a personal computer: Groq free tier
 
-- `FRIEREN_MODEL_URL`: base URL reachable **from the Frieren process**, e.g. `http://127.0.0.1:11434` when Frieren and Ollama run on the same machine.
-- `FRIEREN_LOCAL_MODEL`: installed Ollama model name; default `qwen2.5:3b`.
-- `FRIEREN_MODEL_TIMEOUT_MS`: request timeout, default 90000 ms, clamped to 5–180 seconds.
+Groq provides a hosted OpenAI-compatible API with published free-tier rate limits. It is not unlimited or guaranteed always-available, but it avoids hosting model weights yourself. If the free-tier quota is exhausted, the agent returns a clear error and does not silently bill or switch providers.
 
-The client calls `POST /api/chat` with `stream: false`, validates the response, and returns readable errors for HTTP failures, empty responses, and timeouts. No API key is sent.
+1. Create an account and an API key at https://console.groq.com/keys.
+2. In the Render service for the **Frieren AI coding agent**, open Environment and add:
+   - `FRIEREN_MODEL_PROVIDER=groq`
+   - `GROQ_API_KEY` = your secret key (keep it private; never commit it to GitHub)
+   - `FRIEREN_MODEL=openai/gpt-oss-20b` (default model)
+   - `FRIEREN_MODEL_TIMEOUT_MS=90000`
+3. Save the environment variables and let Render redeploy.
+4. Run `/frieren-ai` in Discord and inspect Render logs if the provider returns a quota, authentication, or timeout error.
 
-## Important Render limitation
+The Groq API has free-tier quotas/rate limits that may change. Check the current limits at https://console.groq.com/docs/rate-limits. Do not enable a paid Developer tier or add billing if you want to keep this at $0. A free API tier is not the same as unlimited free compute.
 
-Render cannot reach `127.0.0.1` on your personal computer. To keep the existing Render deployment, you must either:
-1. run an Ollama-compatible model on a separate always-on machine/server and set `FRIEREN_MODEL_URL` to a private, authenticated endpoint reachable from Render, or
-2. run Frieren and Ollama together on a computer that stays online (this changes where the AI service runs, not the main Discord bot).
+## Alternative: self-hosted Ollama
 
-Do not expose an unauthenticated Ollama port directly to the public internet. A small local model such as `qwen2.5:3b` can be slower or less capable than hosted models, and the host needs enough RAM. The repo change alone does not provision a model host.
+Use this only if an always-on machine/server is available:
+- `FRIEREN_MODEL_PROVIDER=ollama` (default)
+- `FRIEREN_MODEL_URL`: reachable base URL; defaults to `http://127.0.0.1:11434`
+- `FRIEREN_LOCAL_MODEL`: installed model name; defaults to `qwen2.5:3b`
 
-## Memory
+Render cannot reach localhost on a personal computer. Do not expose an unauthenticated Ollama port directly to the public internet.
 
-The current change adds short conversation context in process memory, limited to the last four user/assistant exchanges per Discord user. It resets when the service restarts or redeploys. Durable memory is a separate next step and should use a persistent database or disk; do not treat this session buffer as permanent memory.
+## Timeout and errors
+
+- `FRIEREN_MODEL_TIMEOUT_MS`: default 90000 ms, clamped to 5–180 seconds.
+- HTTP failures and empty responses produce readable errors.
+- HTTP 429 from Groq indicates a possible free-tier rate limit; wait for reset rather than upgrading to paid.
+
+## Scope and memory
+
+This setup applies to the separate Frieren AI coding/test agent. It does not yet connect conversational AI to the normal Frieren RPG bot. The normal bot's character chat and persistent memory must be implemented separately, using its existing PostgreSQL database. Do not confuse in-process chat history with durable memory.
 
 ## Validation
 
-Run `npm run check` in the repository. Local model client tests use a mocked HTTP response and do not require a running model. To test a real model, install Ollama on the model host, pull a model, and verify the endpoint from the Frieren host before enabling the Discord command.
+Run `npm run check` in the repository. The provider tests mock HTTP responses and do not require a live key. A successful mock test proves client request handling, not that the real Groq account/key is enabled.
