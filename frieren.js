@@ -1,5 +1,9 @@
 
 import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const facts = [
   'Frieren, insanlarla geçirdiği zamanı sonradan daha iyi anlamaya çalışan uzun ömürlü bir elf büyücüsüdür.',
@@ -15,7 +19,7 @@ export default {
   async execute(interaction) {
     const fact = facts[Math.floor(Math.random() * facts.length)];
 
-    const gif = new AttachmentBuilder('./frieren.gif');
+    const gif = new AttachmentBuilder(join(__dirname, 'frieren.gif'));
 
     const embed = new EmbedBuilder()
       .setColor(0x9b8cff)
