@@ -280,3 +280,14 @@ test('health endpoint reports Discord readiness and database failures instead of
   assert.match(source, /res\.writeHead\(503\)/);
   assert.match(source, /Sağlık kontrolü başarısız/);
 });
+
+
+test('item use persists base HP and mana without permanently adding temporary equipment bonuses', async () => {
+  const source = await read('esyakullan.js');
+  assert.match(source, /mana = LEAST\(LEAST\(2000, max_mana \+ \$8\), mana \+ \$5\)/);
+  assert.match(source, /hp = LEAST\(LEAST\(2000, max_hp \+ \$7\), hp \+ \$6\)/);
+  assert.doesNotMatch(source, /max_mana \+ \$8 \+ \$12/);
+  assert.doesNotMatch(source, /max_hp \+ \$7 \+ \$11/);
+  assert.match(source, /Math\.min\(1, Number\(user\.hp\) \/ Math\.max\(1, Number\(user\.max_hp\)\)\)/);
+  assert.match(source, /Math\.min\(1, Number\(user\.mana\) \/ Math\.max\(1, Number\(user\.max_mana\)\)\)/);
+});
