@@ -67,3 +67,33 @@ test('relevant memories rank matching keywords and fall back to recent entries',
   const fallback = await store.relevant('user-a', 'unrelatedxyz');
   assert.deepEqual(fallback, []);
 });
+
+
+test('saving the same key updates only that user\'s existing memory', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  await store.save('user-a', 'preference', 'short answers');
+  await store.save('user-b', 'preference', 'long answers');
+  await store.save('user-a', 'preference', 'Turkish answers');
+  assert.deepEqual((await store.list('user-a')).map(row => row.memory_value), ['Turkish answers']);
+  assert.deepEqual((await store.list('user-b')).map(row => row.memory_value), ['long answers']);
+});
+
+test('deleting a key owned by another user cannot delete that user\'s memory', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  await store.save('user-a', 'private', 'A secret test phrase');
+  await store.save('user-b', 'private', 'B private phrase');
+  assert.equal(await store.remove('user-a', 'private'), true);
+  assert.deepEqual((await store.list('user-b')).map(row => row.memory_value), ['B private phrase']);
+  assert.equal(await store.remove('user-a', 'private'), false);
+});
+
+test('database errors are propagated to the caller rather than converted into success', async () => {
+  class FailingPool extends FakePool {
+    async query(sql, params = []) {
+      if (sql.includes('INSERT INTO')) throw new Error('synthetic database failure');
+      return super.query(sql, params);
+    }
+  }
+  const store = createMemoryStore('postgres://test', { PoolClass: FailingPool });
+  await assert.rejects(store.save('user-a', 'project', 'test'), /synthetic database failure/);
+});

@@ -57,6 +57,7 @@ if (!rawTarget) {
 const words = tokens(rawTarget);
 const testFiles = await walk(root);
 const normalizedTarget = normalize(rawTarget);
+const isMemorySecurityCoverage = /bellek|memory|postgres|gizlilik|privacy|veritabani|database|hassas veri|log sizintisi/.test(normalizedTarget);
 const isCommandInteractionCoverage = normalizedTarget.includes('command interaction coverage')
   || normalizedTarget.includes('interaction command coverage')
   || normalizedTarget.includes('komut etkilesim kapsam');
@@ -75,21 +76,25 @@ const asksBroadRegression = matchedDomainCount >= 2
   || (hasGameplaySignal && hasProgressionSignal)
   || (hasGameplaySignal && hasDiscordSignal)
   || (hasProgressionSignal && hasDiscordSignal);
-const forcedFiles = asksBroadRegression
-  ? [
-      'scripts/test-boss-combat.js',
-      'scripts/check-gameplay-integrity.js',
-      'scripts/test-discord-scenarios.js',
-      'scripts/test-command-interaction-coverage.js'
-    ]
-  : isCommandInteractionCoverage
-    ? ['scripts/test-command-interaction-coverage.js']
-    : [];
-console.log('HEDEF EŞLEŞTİRME: ' + (asksBroadRegression
-  ? 'çok alanlı regresyon paketi -> savaş, oyun bütünlüğü (görev/ödül/ekipman/keşif), Discord senaryoları ve komut-etkileşim kapsamı'
-  : isCommandInteractionCoverage
-    ? 'command interaction coverage -> scripts/test-command-interaction-coverage.js'
-    : 'anahtar kavram eşleştirmesi'));
+const forcedFiles = isMemorySecurityCoverage
+  ? ['ai-agent/memory-store.test.js']
+  : asksBroadRegression
+    ? [
+        'scripts/test-boss-combat.js',
+        'scripts/check-gameplay-integrity.js',
+        'scripts/test-discord-scenarios.js',
+        'scripts/test-command-interaction-coverage.js'
+      ]
+    : isCommandInteractionCoverage
+      ? ['scripts/test-command-interaction-coverage.js']
+      : [];
+console.log('HEDEF EŞLEŞTİRME: ' + (isMemorySecurityCoverage
+  ? 'Frieren AI bellek güvenliği -> ai-agent/memory-store.test.js (birim testleri; canlı PostgreSQL veya gerçek Discord gizlilik testi değildir)'
+  : asksBroadRegression
+    ? 'çok alanlı regresyon paketi -> savaş, oyun bütünlüğü (görev/ödül/ekipman/keşif), Discord senaryoları ve komut-etkileşim kapsamı'
+    : isCommandInteractionCoverage
+      ? 'command interaction coverage -> scripts/test-command-interaction-coverage.js'
+      : 'anahtar kavram eşleştirmesi'));
 const ranked = [];
 for (const file of testFiles) {
   const source = await readFile(file, 'utf8').catch(() => '');
