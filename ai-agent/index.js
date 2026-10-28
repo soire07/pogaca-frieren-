@@ -111,7 +111,7 @@ function buildLocalTestSummary(result) {
       failed === null ? null : failed + ' başarısız',
     ].filter(Boolean).join(', ');
     return 'Otomatik testler başarıyla tamamlandı' + (details ? ' (' + details + ').' : '.')
-      + ' Bu rapor Gemini kullanılmadan oluşturuldu.';
+      + ' Bu sonuç yalnızca çalıştırılan otomatik testleri kapsar; canlı sunucudaki tüm komutların sorunsuz olduğunu tek başına kanıtlamaz.';
   }
 
   const details = [
@@ -128,7 +128,7 @@ function buildLocalTestSummary(result) {
 
 
 client.once(Events.ClientReady, readyClient => {
-  console.log('Frieren AI agent online as ' + readyClient.user.tag);
+  console.log('Frieren bot test service online as ' + readyClient.user.tag);
 });
 
 client.on(Events.InteractionCreate, async interaction => {
@@ -150,14 +150,6 @@ client.on(Events.InteractionCreate, async interaction => {
     await interaction.deferReply({ ephemeral: true });
     try {
       const result = await runTests();
-      const report = [
-        'Exit code: ' + (result.code ?? 'none'),
-        'Timed out: ' + result.timedOut,
-        'STDOUT:',
-        result.stdout,
-        'STDERR:',
-        result.stderr,
-      ].join('\n');
       const summary = buildLocalTestSummary(result);
       const status = result.code === 0 ? 'TESTLER BAŞARILI' : result.timedOut ? 'TEST ZAMAN AŞIMI' : 'TESTLER BAŞARISIZ';
       const rawOutput = (result.stdout + '\n' + result.stderr).trim().slice(-950) || '(Test çıktısı boş.)';
@@ -172,8 +164,6 @@ client.on(Events.InteractionCreate, async interaction => {
     return;
   }
 
-
-
 });
 
 client.on(Events.Error, error => console.error('Discord client error:', error.message));
@@ -186,8 +176,8 @@ try {
     : Routes.applicationCommands(process.env.DISCORD_CLIENT_ID);
   await rest.put(commandRoute, { body: commands });
   console.log(process.env.DISCORD_GUILD_ID
-    ? 'Frieren AI slash commands registered for the configured guild.'
-    : 'Frieren AI global slash commands registered.');
+    ? 'Frieren test slash command registered for the configured guild.'
+    : 'Frieren test slash command registered globally.');
 } catch (error) {
   // Keep the process available for diagnostics; already-registered commands may still work.
   console.error('Slash command registration failed:', error.message);
