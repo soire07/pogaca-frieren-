@@ -21,10 +21,11 @@ for (const file of tracked) {
   if (budget <= 0) break;
   let content = await readFile(file, 'utf8');
   content = content.replace(/(DISCORD_TOKEN|OPENAI_API_KEY|DATABASE_URL|PASSWORD|SECRET)\s*[:=]\s*['"`]?[^\s,'"`]+/gi, '$1=[REDACTED]');
-  const excerpt = content.slice(0, Math.max(0, budget - file.length - 40));
-  if (!excerpt) continue;
-  files.push({ path: file, content: excerpt });
-  budget -= excerpt.length + file.length + 40;
+  const required = content.length + file.length + 40;
+  // Never provide a truncated file that the model could accidentally write back as a full replacement.
+  if (required > budget) continue;
+  files.push({ path: file, content });
+  budget -= required;
 }
 
 const response = await fetch('https://api.openai.com/v1/responses', {
@@ -64,7 +65,7 @@ if (proposal.changes.length === 0) {
 }
 if (proposal.changes.length > 4) throw new Error('Model proposed more than 4 changed files.');
 
-const allowed = new Set(tracked);
+const allowed = new Set(files.map(file => file.path));
 const changed = [];
 for (const item of proposal.changes) {
   if (!item || typeof item.path !== 'string' || typeof item.content !== 'string') throw new Error('Invalid change entry.');
