@@ -666,3 +666,17 @@ test('equipment panel displays set bonuses and lists every supported combat mode
     assert.ok(source.includes(command), 'equipment panel should explain set bonus support for ' + command);
   }
 });
+
+
+test('legacy party dungeon applies character builds, defensive class passive and talent ranks', async () => {
+  const source = await read('zindan.js');
+  assert.match(source, /class_name, active_build, last_dungeon_at/);
+  assert.match(source, /AS talent_attack/);
+  assert.match(source, /AS talent_defense/);
+  assert.match(source, /AS talent_hp/);
+  assert.match(source, /const build = getCharacterBuild\(player\.active_build\)/);
+  assert.match(source, /applyClassDefense\(Number\(player\.defense\) \+ gear\.defense, player\.class_name\)/);
+  assert.match(source, /build\.attack \* \(1 \+ Number\(player\.talent_attack\) \* 0\.04\)/);
+  assert.match(source, /build\.defense \* \(1 \+ Number\(player\.talent_defense\) \* 0\.04\)/);
+  assert.match(source, /build\.hp \* \(1 \+ Number\(player\.talent_hp\) \* 0\.05\)/);
+});
