@@ -17,7 +17,7 @@ async function walk(dir, depth = 0) {
     if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'coverage') continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) files.push(...await walk(full, depth + 1));
-    else if (path.basename(full) !== 'test-request.js' && (/\.(test|spec)\.[cm]?[jt]s$/.test(entry.name) || /^test-[\w-]+\.js$/.test(entry.name) || entry.name === 'check-gameplay-integrity.js')) files.push(full);
+    else if (!['test-request.js', 'test-live-memory.js'].includes(path.basename(full)) && (/\.(test|spec)\.[cm]?[jt]s$/.test(entry.name) || /^test-[\w-]+\.js$/.test(entry.name) || entry.name === 'check-gameplay-integrity.js')) files.push(full);
   }
   return files;
 }
@@ -124,6 +124,35 @@ if (!selected.length) {
 console.log('SEÇİLEN TEST DOSYALARI: ' + selected.map(item => item.file + ' (' + item.score + ' eşleşme)').join('; '));
 const results = [];
 for (const item of selected) results.push(await run(path.join(root, item.file)));
+
+if (isMemorySecurityCoverage) {
+  if (!process.env.DATABASE_URL?.trim()) {
+    console.log('\\nCANLI POSTGRESQL TESTİ: ATLANDI (DATABASE_URL bu çalışma ortamında yok).');
+  } else {
+    const live = await new Promise(resolve => {
+      const child = spawn(process.execPath, ['scripts/test-live-memory.js'], {
+        cwd: root, shell: false, windowsHide: true, env: { ...process.env, CI: 'true' },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      let stdout = '', stderr = '', done = false;
+      const finish = (code, extra = '') => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve({ file: 'scripts/test-live-memory.js', code, stdout: (stdout + extra).slice(-5000), stderr: stderr.slice(-2000) });
+      };
+      child.stdout.on('data', chunk => { stdout = (stdout + chunk.toString()).slice(-5000); });
+      child.stderr.on('data', chunk => { stderr = (stderr + chunk.toString()).slice(-2000); });
+      child.on('error', error => finish(null, error.message));
+      child.on('close', code => finish(code));
+      const timer = setTimeout(() => { child.kill('SIGTERM'); finish(null, 'Canlı PostgreSQL testi zaman aşımına uğradı.'); }, Math.max(30000, Math.min(Number(process.env.FRIEREN_TEST_TIMEOUT_MS) || 180000, 300000)));
+    });
+    console.log('\\n--- scripts/test-live-memory.js | ' + (live.code === 0 ? 'BAŞARILI' : 'BAŞARISIZ') + ' ---');
+    if (live.stdout) console.log(live.stdout);
+    if (live.stderr) console.log(live.stderr);
+    results.push(live);
+  }
+}
 for (const result of results) {
   console.log('\n--- ' + result.file + ' | ' + (result.code === 0 ? 'BAŞARILI' : 'BAŞARISIZ') + ' ---');
   if (result.stdout) console.log(result.stdout);
