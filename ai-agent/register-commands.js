@@ -19,6 +19,18 @@ const commands = [
     .addStringOption(option => option.setName('soru').setDescription('Sorunu veya inceleme isteğini yaz.').setRequired(true).setMaxLength(1500))
     .toJSON(),
   new SlashCommandBuilder()
+    .setName('frieren-bellek')
+    .setDescription('Kişisel kalıcı belleğini yönetir.')
+    .addSubcommand(subcommand => subcommand.setName('kaydet').setDescription('Bilgiyi kalıcı belleğe kaydet.')
+      .addStringOption(option => option.setName('anahtar').setDescription('Kısa kayıt adı').setRequired(true).setMaxLength(60))
+      .addStringOption(option => option.setName('bilgi').setDescription('Saklanacak bilgi').setRequired(true).setMaxLength(500)))
+    .addSubcommand(subcommand => subcommand.setName('listele').setDescription('Kalıcı bellek kayıtlarını listele.'))
+    .addSubcommand(subcommand => subcommand.setName('sil').setDescription('Bir kaydı sil.')
+      .addStringOption(option => option.setName('anahtar').setDescription('Silinecek kayıt adı').setRequired(true).setMaxLength(60)))
+    .addSubcommand(subcommand => subcommand.setName('temizle').setDescription('Tüm kişisel bellek kayıtlarını sil.')
+      .addBooleanOption(option => option.setName('onayla').setDescription('Silme işlemini onayla').setRequired(true)))
+    .toJSON(),
+  new SlashCommandBuilder()
     .setName('status')
     .setDescription('Frieren AI servisinin canlı çalışma durumunu gösterir.')
     .toJSON(),

@@ -4,7 +4,13 @@ A separate, restricted Discord bot for AI-assisted diagnostics of the Frieren ga
 
 ## Commands
 - `/frieren-test`: runs the repository's allowlisted `npm run check` command and returns the test report.
-- `/frieren-ai soru:`: asks the coding assistant for read-only code and test-system guidance.
+- `/frieren-ai soru:`: asks the coding assistant for read-only code and test-system guidance, using relevant saved memory when configured.
+- `/frieren-bellek kaydet`: save a user-owned memory by key.
+- `/frieren-bellek listele`: list your own saved memories.
+- `/frieren-bellek sil`: delete one of your own saved memories.
+- `/frieren-bellek temizle`: delete all of your own saved memories after explicit confirmation.
+
+Persistent memory requires `DATABASE_URL` pointing to a PostgreSQL database. Each record is scoped to the Discord user ID. Only explicitly saved data is stored; chat messages are not automatically retained. Never store credentials, tokens, or other secrets. The AI treats memory contents as untrusted context, not instructions.
 
 Only Discord user IDs listed in `FRIEREN_ADMIN_IDS` can run either command. No arbitrary shell commands, file writes, GitHub mutations, or deployments are exposed by the bot.
 
@@ -25,6 +31,7 @@ Configure these environment variables in Render:
 - `FRIEREN_MODEL_PROVIDER=groq`: selected provider.
 - `FRIEREN_MODEL`: optional model override; default is `openai/gpt-oss-20b`.
 - `FRIEREN_ADMIN_IDS`: comma-separated trusted Discord user IDs.
+- `DATABASE_URL`: optional PostgreSQL connection string for persistent memory. Store it only as a Render secret environment variable; never commit it.
 - `FRIEREN_TEST_TIMEOUT_MS`: optional test timeout, maximum five minutes.
 
 Save environment changes and let Render redeploy. Groq free-tier rate limits apply. If quota is reached, the request fails visibly rather than switching to a paid API.
