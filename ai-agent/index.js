@@ -87,6 +87,29 @@ function runTests() {
   });
 }
 
+function runCommandAudit() {
+  return new Promise(resolve => {
+    const child = spawn('node', ['scripts/check-commands.js'], {
+      cwd: rootDir,
+      shell: false,
+      windowsHide: true,
+      env: { ...process.env, CI: 'true' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    const finish = (code, error = '') => resolve({
+      code,
+      stdout: redactSecrets(stdout),
+      stderr: redactSecrets(stderr + error),
+    });
+    child.stdout.on('data', chunk => { stdout = (stdout + chunk.toString()).slice(-12000); });
+    child.stderr.on('data', chunk => { stderr = (stderr + chunk.toString()).slice(-12000); });
+    child.on('error', error => finish(null, '\\n' + error.message));
+    child.on('close', code => finish(code));
+  });
+}
+
 function buildLocalTestSummary(result) {
   const output = [result.stdout || '', result.stderr || ''].join('\n');
   const readCount = label => {
