@@ -49,9 +49,9 @@ export default {
         '**Yeni oyuncu rotası**\n' +
         '1. **/rehber** — temel sistemleri öğren.\n' +
         '2. **/kimimben** — karakter keşfet ve **/koleksiyon** ile kontrol et.\n' +
-        '3. **/karakter olustur** — adını ve sınıfını seç; **/karakter panel** ile durumunu gör.\n' +
+        '3. **/karakter** — paneli aç; İsim / Oluştur düğmesiyle karakterini kur, sınıfını ve savaş yapını panelden seç.\n' +
         '4. **/gunlukodul** → **/kesif** — ilk ödülünü alıp yolculuğa çık.\n\n' +
-        'Komutun adını yazmaya başladığında Discord’un açtığı seçenekleri ve zorunlu alanları da kontrol et.'
+        'Komutun adını yazmaya başladığında Discord’un açtığı seçenekleri ve zorunlu alanları da kontrol et. **/karakter** tek bir panel komutudur; alt komut kullanmaz.'
       )
       .addFields(sections)
       .setFooter({ text: 'Poğaça Frieren • Acele etme, hazırlan, keşfet ve yolculuğuna kendi izini bırak.' });
