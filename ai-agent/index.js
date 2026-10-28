@@ -108,28 +108,38 @@ async function askAI(question, testReport = '') {
     'When a test report is supplied, distinguish confirmed failures from hypotheses.',
   ].join('\n');
 
-  const response = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent',
-    {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-goog-api-key': geminiApiKey,
+  const requestBody = JSON.stringify({
+    systemInstruction: { parts: [{ text: instructions }] },
+    contents: [{ role: 'user', parts: [{ text: 'User request:\n' + question + '\n\nTest report (may be empty):\n' + testReport.slice(-15_000) }] }],
+    generationConfig: { maxOutputTokens: 1200, temperature: 0.2 },
+  });
+  let response;
+  let payload = {};
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    response = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent',
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-goog-api-key': geminiApiKey,
+        },
+        body: requestBody,
+        signal: AbortSignal.timeout(45_000),
       },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: instructions }] },
-        contents: [{ role: 'user', parts: [{ text: 'User request:\n' + question + '\n\nTest report (may be empty):\n' + testReport.slice(-15_000) }] }],
-        generationConfig: { maxOutputTokens: 1200, temperature: 0.2 },
-      }),
-      signal: AbortSignal.timeout(45_000),
-    },
-  );
+    );
+    payload = await response.json().catch(() => ({}));
+    if (response.ok) break;
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const providerMessage = payload?.error?.message || ('HTTP ' + response.status);
-    throw new Error('Gemini API request failed: ' + providerMessage);
+    // Retry only transient overload/rate-limit/server errors; never retry invalid keys or requests.
+    const retryable = [408, 429, 500, 502, 503, 504].includes(response.status);
+    if (!retryable || attempt === 2) {
+      const providerMessage = payload?.error?.message || ('HTTP ' + response.status);
+      throw new Error('Gemini API request failed (' + response.status + '): ' + providerMessage);
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000 * (2 ** attempt)));
   }
+
   const answer = payload?.candidates?.[0]?.content?.parts
     ?.map(part => part.text || '')
     .join('')
