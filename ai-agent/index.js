@@ -173,6 +173,30 @@ async function askAI(question, testReport = '') {
 
       // Retry only transient overload/rate-limit/server errors; never retry invalid keys or requests.
       const retryable = [408, 429, 500, 502, 503, 504].includes(response.status);
+      if (response.status === 503 && attempt === 2 && model !== 'gemini-3.6-flash') {
+        // The configured model stayed overloaded after retries; try one alternate model once.
+        console.warn('Gemini model ' + model + ' remained unavailable (503); trying gemini-3.6-flash fallback.');
+        const fallbackResponse = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
+          {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'x-goog-api-key': geminiApiKey,
+            },
+            body: requestBody,
+            signal: AbortSignal.timeout(45_000),
+          },
+        );
+        const fallbackPayload = await fallbackResponse.json().catch(() => ({}));
+        if (fallbackResponse.ok) {
+          payload = fallbackPayload;
+          response = fallbackResponse;
+          break;
+        }
+        const fallbackMessage = fallbackPayload?.error?.message || ('HTTP ' + fallbackResponse.status);
+        throw new Error('Gemini primary model failed with 503; fallback gemini-3.6-flash failed (' + fallbackResponse.status + '): ' + fallbackMessage);
+      }
       if (!retryable || attempt === 2) {
         const providerMessage = payload?.error?.message || ('HTTP ' + response.status);
         throw new Error('Gemini API request failed (' + response.status + '): ' + providerMessage);
