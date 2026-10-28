@@ -53,11 +53,10 @@ for (const file of [...new Set(files)].sort()) {
     for (const option of options || []) {
       if (option.autocomplete && typeof command.autocomplete !== 'function') issues.push('autocomplete seçeneği var ancak handler yok: ' + option.name);
       if (option.type === 1 || option.type === 2) inspectOptions(option.options);
-      if (option.required && option.choices?.length) issues.push('Gerekli seçenek choices içeriyor: ' + option.name);
     }
   };
   inspectOptions(schema.options);
-  const result = { command: '/' + schema.name, file: relative, status: issues.length ? 'FAIL' : 'PASS', checks: ['module import', 'schema serialization', 'name/description', 'execute handler', 'autocomplete contract'], issues };
+  const result = { command: '/' + schema.name, file: relative, status: issues.length ? 'FAIL' : 'PASS', checks: ['module import', 'schema serialization', 'name/description', 'execute handler', 'autocomplete contract', 'required options may validly define choices'], issues };
   commands.push(result);
   if (issues.length) errors.push({ file: relative, issue: issues.join('; ') });
 }
