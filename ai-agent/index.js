@@ -29,6 +29,7 @@ const admins = new Set(process.env.FRIEREN_ADMIN_IDS.split(',').map(value => val
 const rootDir = fileURLToPath(new URL('../', import.meta.url));
 const timeoutMs = Math.max(30_000, Math.min(Number(process.env.FRIEREN_TEST_TIMEOUT_MS) || 180_000, 300_000));
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+// Free provider runtime is configured in this file.
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 45_000, maxRetries: 1 }) : null;
 
 // Render Web Services require an HTTP port. This lightweight endpoint does not expose bot controls.
