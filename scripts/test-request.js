@@ -57,16 +57,9 @@ if (!rawTarget) {
 const words = tokens(rawTarget);
 const testFiles = await walk(root);
 const normalizedTarget = normalize(rawTarget);
-const targetAliases = [
-  {
-    pattern: /command.*interaction.*coverage|interaction.*command.*coverage|komut.*etkile[sş]im.*kapsam|etkile[sş]im.*komut.*kapsam/i,
-    files: ['scripts/test-command-interaction-coverage.js'],
-  },
-];
-const forcedFiles = targetAliases
-  .filter(alias => alias.pattern.test(normalizedTarget))
-  .flatMap(alias => alias.files)
-  .filter(file => testFiles.some(candidate => path.relative(root, candidate).replace(/\\\\/g, '/') === file));
+const forcedFiles = /command\\s+interaction\\s+coverage|interaction\\s+command\\s+coverage|komut\\s+etkilesim\\s+kapsam/i.test(normalizedTarget)
+  ? ['scripts/test-command-interaction-coverage.js']
+  : [];
 const ranked = [];
 for (const file of testFiles) {
   const source = await readFile(file, 'utf8').catch(() => '');
@@ -76,11 +69,11 @@ for (const file of testFiles) {
 ranked.sort((a, b) => b.score - a.score || a.file.localeCompare(b.file));
 const selectedMap = new Map();
 for (const file of forcedFiles) {
-  const existing = ranked.find(item => path.relative(root, item.file).replace(/\\\\/g, '/') === file);
-  selectedMap.set(file, existing || { file: path.join(root, file), hits: words, score: words.length, forced: true });
+  selectedMap.set(file, { file: path.join(root, file), hits: words, score: words.length, forced: true });
 }
 for (const item of ranked.filter(item => item.score >= Math.min(2, Math.max(1, words.length))).slice(0, 5)) {
-  selectedMap.set(path.relative(root, item.file).replace(/\\\\/g, '/'), item);
+  const key = path.relative(root, item.file).split(path.sep).join('/');
+  if (!selectedMap.has(key)) selectedMap.set(key, item);
 }
 const selected = [...selectedMap.values()].slice(0, 5);
 
