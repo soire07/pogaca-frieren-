@@ -1,6 +1,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
+import { applyEquipmentSetBonus } from './rpg-mechanics.js';
 import { levelForXp } from './utils.js';
 
 const COOLDOWN_MINUTES = 30;
@@ -119,7 +120,8 @@ export default {
       }
 
       const combatants = players.map(player => {
-        const gear = equipmentBonus(gearByUser.get(player.user_id) || []);
+        const equippedItems = gearByUser.get(player.user_id) || [];
+        const gear = applyEquipmentSetBonus(equippedItems, equipmentBonus(equippedItems));
         return {
           ...player,
           level: Number(player.level),
