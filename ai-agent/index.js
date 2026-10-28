@@ -232,29 +232,42 @@ function runTargetedTests(target) {
     });
     let stdout = '';
     let stderr = '';
+    let selectionNotice = '';
+    let selectionScanBuffer = '';
     let settled = false;
     const finish = (code, error = '') => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      const selectionNotice = isCommandInteractionCoverage
-        ? 'SEÇİLEN TEST DOSYALARI: scripts/test-command-interaction-coverage.js (doğrudan çalıştırıldı)\n'
+      const directNotice = isCommandInteractionCoverage
+        ? 'SEÇİLEN TEST DOSYALARI: scripts/test-command-interaction-coverage.js (doğrudan çalıştırıldı)\\n'
         : '';
       const safeStdout = redactSecrets(stdout);
       const safeStderr = redactSecrets(stderr + error);
-      // Node's test runner writes t.diagnostic() to stderr; include it in the visible targeted-test report.
+      // Keep the selection header even when verbose test output pushes it out of the retained output tail.
+      const matcherNotice = selectionNotice && !safeStdout.includes('SEÇİLEN TEST DOSYALARI:')
+        ? selectionNotice + '\\n'
+        : '';
       const diagnosticOutput = isCommandInteractionCoverage && safeStderr.trim()
-        ? '\n=== HEDEFLİ TEST TANILAMALARI ===\n' + safeStderr.trim()
+        ? '\\n=== HEDEFLİ TEST TANILAMALARI ===\\n' + safeStderr.trim()
         : '';
       resolve({
         applicable: true,
         code,
-        stdout: selectionNotice + safeStdout + diagnosticOutput,
+        stdout: directNotice + matcherNotice + safeStdout + diagnosticOutput,
         stderr: isCommandInteractionCoverage ? '' : safeStderr,
         note: '',
       });
     };
-    child.stdout.on('data', chunk => { stdout = (stdout + chunk.toString()).slice(-10000); });
+    child.stdout.on('data', chunk => {
+      const text = chunk.toString();
+      selectionScanBuffer = (selectionScanBuffer + text).slice(-2000);
+      if (!selectionNotice) {
+        const match = selectionScanBuffer.match(/SEÇİLEN TEST DOSYALARI:[^\\r\\n]*/);
+        if (match) selectionNotice = match[0];
+      }
+      stdout = (stdout + text).slice(-10000);
+    });
     child.stderr.on('data', chunk => { stderr = (stderr + chunk.toString()).slice(-4000); });
     child.on('error', error => finish(null, error.message));
     child.on('close', code => finish(code));
