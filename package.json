@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node index.js",
     "deploy-commands": "node deploy-commands.js",
-    "check": "node --check index.js && node --check scripts/ai-self-repair.js && node --check deploy-commands.js && node --check ai-agent/index.js && node --check ai-agent/register-commands.js && node scripts/check-commands.js && node scripts/audit-command-contracts.js && node scripts/audit-command-test-coverage.js && node scripts/check-feature-inventory.js && node scripts/check-gameplay-integrity.js && npm test",
+    "check": "node --check index.js && node --check scripts/ai-self-repair.js && node --check deploy-commands.js && node --check ai-agent/index.js && node --check ai-agent/conversation-memory.js && node --test ai-agent/conversation-memory.test.js && node --check ai-agent/register-commands.js && node scripts/check-commands.js && node scripts/audit-command-contracts.js && node scripts/audit-command-test-coverage.js && node scripts/check-feature-inventory.js && node scripts/check-gameplay-integrity.js && npm test",
     "test": "node --test ai-agent/config.test.js scripts/test-utils.js scripts/test-discord-scenarios.js scripts/test-boss-combat.js scripts/test-command-interaction-coverage.js"
   },
   "engines": {
