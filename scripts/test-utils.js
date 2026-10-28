@@ -30,7 +30,7 @@ test('levelForXp and xpForNextLevel agree at level boundaries', () => {
 });
 
 import { characters, drawCharacter } from '../character-data.js';
-import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, dungeonChoiceOutcome, dungeonEnemyStats, progressionMilestone, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening } from '../rpg-mechanics.js';
+import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, dungeonChoiceOutcome, dungeonEnemyStats, progressionMilestone, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost } from '../rpg-mechanics.js';
 
  test('drawCharacter forced legendary mode guarantees an Efsanevi character', () => {
   for (let i = 0; i < 100; i += 1) {
