@@ -680,3 +680,16 @@ test('legacy party dungeon applies character builds, defensive class passive and
   assert.match(source, /build\.defense \* \(1 \+ Number\(player\.talent_defense\) \* 0\.04\)/);
   assert.match(source, /build\.hp \* \(1 \+ Number\(player\.talent_hp\) \* 0\.05\)/);
 });
+
+
+test('magic duel applies both players talent bonuses to HP, attack and defense', async () => {
+  const source = await read('buyusavasi.js');
+  assert.equal((source.match(/AS talent_attack/g) || []).length, 2, 'both duel participants need attack talent ranks');
+  assert.equal((source.match(/AS talent_defense/g) || []).length, 2, 'both duel participants need defense talent ranks');
+  assert.equal((source.match(/AS talent_hp/g) || []).length, 2, 'both duel participants need HP talent ranks');
+  for (const player of ['stats1', 'stats2']) {
+    assert.match(source, new RegExp('Number\\(' + player + '\\.talent_hp\\) \\* 0\\.05'));
+    assert.match(source, new RegExp('Number\\(' + player + '\\.talent_attack\\) \\* 0\\.04'));
+    assert.match(source, new RegExp('Number\\(' + player + '\\.talent_defense\\) \\* 0\\.04'));
+  }
+});
