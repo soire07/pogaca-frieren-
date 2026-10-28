@@ -54,11 +54,11 @@ const response = await fetch('https://api.groq.com/openai/v1/chat/completions', 
 });
 if (!response.ok) {
   const detail = (await response.text()).slice(0, 1200);
-  throw new Error(`OpenAI API failed (${response.status}): ${detail}`);
+  throw new Error(`Groq API failed (${response.status}): ${detail}`);
 }
 const payload = await response.json();
 const raw = payload.choices?.[0]?.message?.content;
-if (!raw) throw new Error('Model returned no output_text.');
+if (!raw) throw new Error('Groq model returned no message content.');
 let proposal;
 try { proposal = JSON.parse(raw); } catch { throw new Error('Model response was not valid JSON.'); }
 if (!Array.isArray(proposal.changes) || typeof proposal.summary !== 'string') {
