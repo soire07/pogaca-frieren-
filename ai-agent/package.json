@@ -1,0 +1,20 @@
+{
+  "name": "frieren-ai-test-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Restricted AI-assisted diagnostics and test runner for the Frieren Discord bot",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "register": "node register-commands.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "discord.js": "^14.22.1",
+    "openai": "^5.0.0",
+    "dotenv": "^16.4.7"
+  }
+}
