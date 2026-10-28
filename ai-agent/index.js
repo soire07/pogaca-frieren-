@@ -39,7 +39,12 @@ healthServer.listen(port, '0.0.0.0', () => console.log('Health server listening 
 const runningGuilds = new Set();
 
 const commands = [
-  new SlashCommandBuilder().setName('frieren-test').setDescription('Frieren botunun otomatik testlerini çalıştırır.').toJSON(),
+  new SlashCommandBuilder().setName('frieren-test').setDescription('Frieren botunun kapsamlı otomatik test ve tanılama paketini çalıştırır.').toJSON(),
+  new SlashCommandBuilder()
+    .setName('frieren-ai')
+    .setDescription('Frieren botunun kodu ve test sistemi hakkında yapay zekâya soru sorar.')
+    .addStringOption(option => option.setName('soru').setDescription('Sorunu veya inceleme isteğini yaz.').setRequired(true).setMaxLength(1500))
+    .toJSON(),
 ];
 
 function redactSecrets(value) {
@@ -87,6 +92,36 @@ function runTests() {
   });
 }
 
+
+async function runSyntaxChecks() {
+  const files = ['ai-agent/index.js', 'ai-agent/register-commands.js'];
+  const results = await Promise.all(files.map(file => new Promise(resolve => {
+    const child = spawn('node', ['--check', file], {
+      cwd: rootDir, shell: false, windowsHide: true,
+      env: { ...process.env, CI: 'true' }, stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    let settled = false;
+    const finish = (code, error = '') => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ file, code, stdout, stderr: stderr + error });
+    };
+    child.stdout.on('data', chunk => { stdout = (stdout + chunk.toString()).slice(-2000); });
+    child.stderr.on('data', chunk => { stderr = (stderr + chunk.toString()).slice(-2000); });
+    child.on('error', error => finish(null, error.message));
+    child.on('close', code => finish(code));
+    const timer = setTimeout(() => { child.kill('SIGTERM'); finish(null, 'Syntax check timed out'); }, timeoutMs);
+  })));
+  return {
+    code: results.every(result => result.code === 0) ? 0 : 1,
+    stdout: results.map(result => result.file + ': ' + (result.code === 0 ? 'OK' : 'FAILED')).join('\\n'),
+    stderr: results.filter(result => result.code !== 0).map(result => result.file + ': ' + result.stderr).join('\\n'),
+  };
+}
+
 function runCommandAudit() {
   return new Promise(resolve => {
     const child = spawn('node', ['scripts/check-commands.js'], {
@@ -98,15 +133,22 @@ function runCommandAudit() {
     });
     let stdout = '';
     let stderr = '';
-    const finish = (code, error = '') => resolve({
-      code,
-      stdout: redactSecrets(stdout),
-      stderr: redactSecrets(stderr + error),
-    });
+    let settled = false;
+    const finish = (code, error = '') => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({
+        code,
+        stdout: redactSecrets(stdout),
+        stderr: redactSecrets(stderr + error),
+      });
+    };
     child.stdout.on('data', chunk => { stdout = (stdout + chunk.toString()).slice(-12000); });
     child.stderr.on('data', chunk => { stderr = (stderr + chunk.toString()).slice(-12000); });
     child.on('error', error => finish(null, '\\n' + error.message));
     child.on('close', code => finish(code));
+    const timer = setTimeout(() => { child.kill('SIGTERM'); finish(null, '\\nKomut denetimi zaman aşımına uğradı.'); }, timeoutMs);
   });
 }
 
@@ -172,15 +214,19 @@ client.on(Events.InteractionCreate, async interaction => {
     runningGuilds.add(lockKey);
     await interaction.deferReply({ ephemeral: true });
     try {
-      const [audit, result] = await Promise.all([runCommandAudit(), runTests()]);
+      const [agentSyntax, audit, result] = await Promise.all([
+        runSyntaxChecks(),
+        runCommandAudit(),
+        runTests(),
+      ]);
       const auditOutput = audit.stdout + '\n' + audit.stderr;
       const commandCount = auditOutput.match(/Komut denetimi başarılı: (\d+) slash komutu/);
       const commandList = auditOutput.split(/\r?\n/).find(line => line.startsWith('/')) || '';
-      const auditPassed = audit.code === 0 && Boolean(commandCount);
+      const auditPassed = audit.code === 0 && Boolean(commandCount);\n      const syntaxPassed = agentSyntax.code === 0;
       const testsPassed = result.code === 0 && !result.timedOut;
-      const status = auditPassed && testsPassed ? 'KOMUT DENETİMİ VE TESTLER BAŞARILI' : result.timedOut ? 'TEST ZAMAN AŞIMI' : 'TESTLER BAŞARISIZ';
+      const status = auditPassed && testsPassed && syntaxPassed ? 'TÜM OTOMATİK DENETİMLER BAŞARILI' : result.timedOut ? 'TEST ZAMAN AŞIMI' : 'DENETİM BAŞARISIZ';
       const summary = buildLocalTestSummary(result);
-      const auditSummary = auditPassed
+      const syntaxSummary = syntaxPassed ? 'AI servis sözdizimi: başarılı.' : 'AI servis sözdizimi BAŞARISIZ: ' + agentSyntax.stderr.slice(-250);\n      const auditSummary = auditPassed
         ? 'Komut dosyası/şema denetimi: ' + commandCount[1] + ' komut yüklendi; ad, açıklama, otomatik tamamlama ve yinelenen ad kontrolleri geçti.'
         : 'Komut dosyası/şema denetimi BAŞARISIZ. Ayrıntılar test çıktısında.';
       const rawOutput = (auditOutput + '\n' + result.stdout + '\n' + result.stderr).trim().slice(-650) || '(Test çıktısı boş.)';
