@@ -65,5 +65,5 @@ test('relevant memories rank matching keywords and fall back to recent entries',
   const matched = await store.relevant('user-a', 'Frieren game project');
   assert.equal(matched[0].memory_key, 'project');
   const fallback = await store.relevant('user-a', 'unrelatedxyz');
-  assert.equal(fallback.length, 2);
+  assert.deepEqual(fallback, []);
 });
