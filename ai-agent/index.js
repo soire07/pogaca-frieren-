@@ -22,7 +22,7 @@ if (missing.length) {
 const admins = new Set(process.env.FRIEREN_ADMIN_IDS.split(',').map(value => value.trim()).filter(Boolean));
 const rootDir = fileURLToPath(new URL('../', import.meta.url));
 const timeoutMs = Math.max(30_000, Math.min(Number(process.env.FRIEREN_TEST_TIMEOUT_MS) || 180_000, 300_000));
-const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 const geminiApiKey = process.env.GEMINI_API_KEY?.trim() || '';
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
@@ -176,7 +176,7 @@ client.on(Events.InteractionCreate, async interaction => {
         );
       } catch (aiError) {
         console.error('Test AI summary failed:', aiError.message);
-        summary = 'Yapay zekâ özeti alınamadı; testler API kullanmadan çalıştırıldı. Ücretsiz AI özeti için Gemini API anahtarını GEMINI_API_KEY olarak ekleyebilirsin. Test sonucu aşağıda gösteriliyor.';
+        summary = 'Testler tamamlandı ancak Gemini özeti alınamadı. Render günlüklerinde model/API hatasını kontrol et; test sonucu aşağıda gösteriliyor.';
       }
       const status = result.code === 0 ? 'TESTLER BAŞARILI' : result.timedOut ? 'TEST ZAMAN AŞIMI' : 'TESTLER BAŞARISIZ';
       const rawOutput = (result.stdout + '\n' + result.stderr).trim().slice(-950) || '(Test çıktısı boş.)';
