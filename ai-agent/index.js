@@ -7,6 +7,8 @@ import {
   Client,
   Events,
   GatewayIntentBits,
+  REST,
+  Routes,
   SlashCommandBuilder,
 } from 'discord.js';
 
@@ -169,6 +171,21 @@ client.on(Events.InteractionCreate, async interaction => {
 });
 
 client.on(Events.Error, error => console.error('Discord client error:', error.message));
+
+try {
+  // Register commands on startup so fresh deployments do not depend on a manual step.
+  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+  const commandRoute = process.env.DISCORD_GUILD_ID
+    ? Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, process.env.DISCORD_GUILD_ID)
+    : Routes.applicationCommands(process.env.DISCORD_CLIENT_ID);
+  await rest.put(commandRoute, { body: commands });
+  console.log(process.env.DISCORD_GUILD_ID
+    ? 'Frieren AI slash commands registered for the configured guild.'
+    : 'Frieren AI global slash commands registered.');
+} catch (error) {
+  // Keep the process available for diagnostics; already-registered commands may still work.
+  console.error('Slash command registration failed:', error.message);
+}
 
 try {
   await client.login(process.env.DISCORD_TOKEN);
