@@ -30,7 +30,7 @@ test('levelForXp and xpForNextLevel agree at level boundaries', () => {
 });
 
 import { characters, drawCharacter } from '../character-data.js';
-import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, dungeonChoiceOutcome, dungeonEnemyStats, progressionMilestone, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening } from '../rpg-mechanics.js';
+import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, dungeonChoiceOutcome, dungeonEnemyStats, progressionMilestone, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterBuild, CHARACTER_BUILDS, shouldGuaranteeRareDiscovery } from '../rpg-mechanics.js';
 
  test('drawCharacter forced legendary mode guarantees an Efsanevi character', () => {
   for (let i = 0; i < 100; i += 1) {
@@ -574,4 +574,103 @@ test('solo, raid and dungeon boss panels can display their own configured artwor
   assert.match(dungeon, /getBossArtUrl\('dungeonFinal'\)/);
   assert.match(envExample, /POGACA_BOSS_ART_SCHATTENWOLF_URL/);
   assert.match(envExample, /POGACA_DUNGEON_FINAL_BOSS_ART_URL/);
+});
+
+
+test('class stat helpers handle localized names, missing classes and mana minimums', () => {
+  assert.equal(applyClassDamage(100, 'Büyücü'), 108);
+  assert.equal(applyClassDefense(100, 'Muhafız'), 112);
+  assert.equal(applyClassHealing(100, 'Şifacı'), 120);
+  assert.equal(applyClassDamage(100, undefined), 100);
+  assert.equal(applyClassManaCost(0, 'Büyücü'), 1);
+  assert.equal(applyClassManaCost(-10, 'Büyücü'), 1);
+});
+
+test('boss phase helper clamps HP ratios and handles invalid maximum HP', () => {
+  assert.equal(getBossPhase(200, 100), 1);
+  assert.equal(getBossPhase(-1, 100), 3);
+  assert.equal(getBossPhase(50, 100), 2);
+  assert.equal(getBossPhase(1, 0), 1);
+  assert.equal(getBossPhase(Number.POSITIVE_INFINITY, 100), 1);
+});
+
+test('incoming boss damage never drops below one and ignores negative defense', () => {
+  assert.equal(calculateBossIncomingDamage(0, 100, 1), 1);
+  assert.equal(calculateBossIncomingDamage(-50, -20, 1), 1);
+  assert.equal(calculateBossIncomingDamage(10, -20, 1), 10);
+  assert.equal(calculateBossIncomingDamage('invalid', 0, 1), 1);
+});
+
+test('spell mastery awakening is inactive below level ten and clamps mastery bounds', () => {
+  for (const level of [-10, 0, 9, Number.NaN]) {
+    assert.equal(getSpellMasteryAwakening('zoltraak', level).damage, 0);
+  }
+  assert.equal(getSpellMasteryAwakening('zoltraak', 100).damage, 8);
+  assert.equal(getSpellMasteryAwakening('unknown-spell', 10).damage, 0);
+});
+
+test('level-scaled quest rewards remain nonnegative and cap their multiplier', () => {
+  const low = getLevelScaledQuestReward(-10, -5, 0, false);
+  assert.equal(low.coins, 0);
+  assert.equal(low.xp, 0);
+  assert.equal(low.multiplier, 1);
+  const high = getLevelScaledQuestReward(100, 50, 10000, true);
+  assert.equal(high.multiplier, 3);
+  assert.equal(high.coins, 600);
+  assert.equal(high.xp, 450);
+  assert.equal(high.completionBonus, true);
+});
+
+test('exploration mastery rewards trigger only at positive multiples of three', () => {
+  assert.deepEqual(explorationMasteryReward(0), { level: 0, coins: 0, xp: 0, milestone: false });
+  assert.deepEqual(explorationMasteryReward(2), { level: 0, coins: 0, xp: 0, milestone: false });
+  assert.deepEqual(explorationMasteryReward(3), { level: 1, coins: 40, xp: 30, milestone: true });
+  assert.deepEqual(explorationMasteryReward(6), { level: 2, coins: 40, xp: 30, milestone: true });
+  assert.deepEqual(explorationMasteryReward(-3), { level: 0, coins: 0, xp: 0, milestone: false });
+});
+
+
+test('character build keys resolve consistently and unknown values fall back safely', () => {
+  for (const key of Object.keys(CHARACTER_BUILDS)) {
+    assert.equal(getCharacterBuild(key), CHARACTER_BUILDS[key]);
+  }
+  assert.equal(getCharacterBuild(undefined), CHARACTER_BUILDS.dengeli);
+  assert.equal(getCharacterBuild('not-a-build'), CHARACTER_BUILDS.dengeli);
+});
+
+test('raid boss selection stays in catalog for boundary and malformed random values', () => {
+  for (const value of [0, 0.5, 0.999999, -1, 1, Number.NaN]) {
+    assert.ok(RAID_BOSSES.includes(chooseRaidBoss(() => value)));
+  }
+});
+
+test('equipment set bonuses do not grant a set bonus before the required piece count', () => {
+  const base = { attack: 10, defense: 7, hp: 100, mana: 30 };
+  const oneLegendary = applyEquipmentSetBonus([{ rarity: 'Efsanevi' }], base);
+  assert.equal(oneLegendary.attack, 10);
+  assert.equal(oneLegendary.hp, 100);
+  assert.equal(oneLegendary.setText, null);
+  const twoLegendary = applyEquipmentSetBonus([{ rarity: 'Efsanevi' }, { rarity: 'Efsanevi' }], base);
+  assert.equal(twoLegendary.attack, 14);
+  assert.equal(twoLegendary.hp, 125);
+});
+
+test('dungeon scaling remains positive for normal supported inputs', () => {
+  for (let floor = 1; floor <= 20; floor += 1) {
+    for (const level of [1, 10, 50, 100]) {
+      for (const partySize of [1, 2, 4, 8]) {
+        const stats = dungeonEnemyStats(floor, level, partySize);
+        assert.ok(Number.isFinite(stats.hp) && stats.hp > 0);
+        assert.ok(Number.isFinite(stats.damage) && stats.damage >= 5);
+      }
+    }
+  }
+});
+
+test('rare discovery guarantee respects milestone and collection caps', () => {
+  assert.equal(shouldGuaranteeRareDiscovery(0, 0), false);
+  assert.equal(shouldGuaranteeRareDiscovery(18, 0), false);
+  assert.equal(shouldGuaranteeRareDiscovery(19, 0), true);
+  assert.equal(shouldGuaranteeRareDiscovery(39, 1), true);
+  assert.equal(shouldGuaranteeRareDiscovery(60, 3), false);
 });
