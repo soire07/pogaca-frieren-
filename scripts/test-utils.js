@@ -30,7 +30,7 @@ test('levelForXp and xpForNextLevel agree at level boundaries', () => {
 });
 
 import { characters, drawCharacter } from '../character-data.js';
-import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, dungeonChoiceOutcome, dungeonEnemyStats, progressionMilestone, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost } from '../rpg-mechanics.js';
+import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, dungeonChoiceOutcome, dungeonEnemyStats, progressionMilestone, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterBuild, CHARACTER_BUILDS, shouldGuaranteeRareDiscovery } from '../rpg-mechanics.js';
 
  test('drawCharacter forced legendary mode guarantees an Efsanevi character', () => {
   for (let i = 0; i < 100; i += 1) {
@@ -627,4 +627,50 @@ test('exploration mastery rewards trigger only at positive multiples of three', 
   assert.deepEqual(explorationMasteryReward(3), { level: 1, coins: 40, xp: 30, milestone: true });
   assert.deepEqual(explorationMasteryReward(6), { level: 2, coins: 40, xp: 30, milestone: true });
   assert.deepEqual(explorationMasteryReward(-3), { level: 0, coins: 0, xp: 0, milestone: false });
+});
+
+
+test('character build keys resolve consistently and unknown values fall back safely', () => {
+  for (const key of Object.keys(CHARACTER_BUILDS)) {
+    assert.equal(getCharacterBuild(key), CHARACTER_BUILDS[key]);
+  }
+  assert.equal(getCharacterBuild(undefined), CHARACTER_BUILDS.dengeli);
+  assert.equal(getCharacterBuild('not-a-build'), CHARACTER_BUILDS.dengeli);
+});
+
+test('raid boss selection stays in catalog for boundary and malformed random values', () => {
+  for (const value of [0, 0.5, 0.999999, -1, 1, Number.NaN]) {
+    assert.ok(RAID_BOSSES.includes(chooseRaidBoss(() => value)));
+  }
+});
+
+test('equipment set bonuses do not grant a set bonus before the required piece count', () => {
+  const base = { attack: 10, defense: 7, hp: 100, mana: 30 };
+  const oneLegendary = applyEquipmentSetBonus([{ rarity: 'Efsanevi' }], base);
+  assert.equal(oneLegendary.attack, 10);
+  assert.equal(oneLegendary.hp, 100);
+  assert.equal(oneLegendary.setText, null);
+  const twoLegendary = applyEquipmentSetBonus([{ rarity: 'Efsanevi' }, { rarity: 'Efsanevi' }], base);
+  assert.equal(twoLegendary.attack, 14);
+  assert.equal(twoLegendary.hp, 125);
+});
+
+test('dungeon scaling remains positive for normal supported inputs', () => {
+  for (let floor = 1; floor <= 20; floor += 1) {
+    for (const level of [1, 10, 50, 100]) {
+      for (const partySize of [1, 2, 4, 8]) {
+        const stats = dungeonEnemyStats(floor, level, partySize);
+        assert.ok(Number.isFinite(stats.hp) && stats.hp > 0);
+        assert.ok(Number.isFinite(stats.damage) && stats.damage >= 5);
+      }
+    }
+  }
+});
+
+test('rare discovery guarantee respects milestone and collection caps', () => {
+  assert.equal(shouldGuaranteeRareDiscovery(0, 0), false);
+  assert.equal(shouldGuaranteeRareDiscovery(18, 0), false);
+  assert.equal(shouldGuaranteeRareDiscovery(19, 0), true);
+  assert.equal(shouldGuaranteeRareDiscovery(39, 1), true);
+  assert.equal(shouldGuaranteeRareDiscovery(60, 3), false);
 });
