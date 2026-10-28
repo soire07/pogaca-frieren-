@@ -222,11 +222,13 @@ client.on(Events.InteractionCreate, async interaction => {
       const auditOutput = audit.stdout + '\n' + audit.stderr;
       const commandCount = auditOutput.match(/Komut denetimi başarılı: (\d+) slash komutu/);
       const commandList = auditOutput.split(/\r?\n/).find(line => line.startsWith('/')) || '';
-      const auditPassed = audit.code === 0 && Boolean(commandCount);\n      const syntaxPassed = agentSyntax.code === 0;
+      const auditPassed = audit.code === 0 && Boolean(commandCount);
+      const syntaxPassed = agentSyntax.code === 0;
       const testsPassed = result.code === 0 && !result.timedOut;
       const status = auditPassed && testsPassed && syntaxPassed ? 'TÜM OTOMATİK DENETİMLER BAŞARILI' : result.timedOut ? 'TEST ZAMAN AŞIMI' : 'DENETİM BAŞARISIZ';
       const summary = buildLocalTestSummary(result);
-      const syntaxSummary = syntaxPassed ? 'AI servis sözdizimi: başarılı.' : 'AI servis sözdizimi BAŞARISIZ: ' + agentSyntax.stderr.slice(-250);\n      const auditSummary = auditPassed
+      const syntaxSummary = syntaxPassed ? 'AI servis sözdizimi: başarılı.' : 'AI servis sözdizimi BAŞARISIZ: ' + agentSyntax.stderr.slice(-250);
+      const auditSummary = auditPassed
         ? 'Komut dosyası/şema denetimi: ' + commandCount[1] + ' komut yüklendi; ad, açıklama, otomatik tamamlama ve yinelenen ad kontrolleri geçti.'
         : 'Komut dosyası/şema denetimi BAŞARISIZ. Ayrıntılar test çıktısında.';
       const rawOutput = (auditOutput + '\n' + result.stdout + '\n' + result.stderr).trim().slice(-650) || '(Test çıktısı boş.)';
