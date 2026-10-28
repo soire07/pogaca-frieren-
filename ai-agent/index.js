@@ -93,13 +93,15 @@ async function collectCodeContext(question) {
   }
   await addCommandFiles('.');
   const snippets = [];
-  let budget = 42_000;
+  // Keep the prompt comfortably below Groq's free-tier per-minute token ceiling.
+  // Source code is token-dense; cap both the total context and each individual file.
+  let budget = 10_000;
   for (const relative of candidates) {
     if (budget <= 0) break;
     const source = await readFile(path.join(rootDir, relative), 'utf8').catch(() => '');
     if (!source) continue;
     const safe = source.replace(/(DISCORD_TOKEN|GROQ_API_KEY|OPENAI_API_KEY|DATABASE_URL|PASSWORD|SECRET)\s*[:=]\s*['"`]?[^\s,'"`]+/gi, '$1=[REDACTED]');
-    const excerpt = safe.slice(0, Math.min(safe.length, budget - relative.length - 20));
+    const excerpt = safe.slice(0, Math.min(safe.length, 2_500, budget - relative.length - 20));
     if (excerpt) snippets.push('FILE: ' + relative + '\n' + excerpt);
     budget -= excerpt.length + relative.length + 20;
   }
