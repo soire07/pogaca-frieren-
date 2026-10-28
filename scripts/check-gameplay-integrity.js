@@ -609,3 +609,18 @@ test('party dungeon applies equipment HP bonuses proportionally to current HP', 
   assert.match(source, /maxHp:\s*Math\.min\(2000, Number\(player\.max_hp\) \+ gear\.hp\)/,
     'dungeon max HP should include equipment HP bonuses');
 });
+
+test('party dungeon and magic duel both apply equipment set bonuses', async () => {
+  const dungeon = await read('zindan.js');
+  const duel = await read('buyusavasi.js');
+  assert.match(dungeon, /import \{ applyEquipmentSetBonus \} from '\.\/rpg-mechanics\.js';/,
+    'party dungeon should use the shared equipment set bonus rules');
+  assert.match(dungeon, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/,
+    'party dungeon should include set bonuses in its combat stats');
+  assert.match(duel, /applyClassDamage, applyClassDefense, applyClassHealing, applyEquipmentSetBonus, getCharacterBuild/,
+    'magic duel should import the shared equipment set bonus rules');
+  assert.match(duel, /applyEquipmentSetBonus\(equipped1, equipmentBonus\(equipped1\)\)/,
+    'challenger set bonuses should affect duel stats');
+  assert.match(duel, /applyEquipmentSetBonus\(equipped2, equipmentBonus\(equipped2\)\)/,
+    'opponent set bonuses should affect duel stats');
+});
