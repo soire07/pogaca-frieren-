@@ -105,15 +105,15 @@ test('command interaction coverage: every discoverable slash command exposes a v
   const permissionSignalCovered = [];
   const permissionSignalUnclear = [];
   const permissionSensitiveSource = [
-    /setDefaultMemberPermissions\\s*\\(/,
+    /setDefaultMemberPermissions\s*\(/,
     /PermissionFlagsBits/,
-    /memberPermissions\\s*\\??\\.has\\s*\\(/,
-    /\\.ban\\s*\\(/,
-    /\\.timeout\\s*\\(/,
-    /bulkDelete\\s*\\(/,
-    /\\.kick\\s*\\(/,
-    /\\.setNickname\\s*\\(/,
-    /\\.setRoles?\\s*\\(/,
+    /memberPermissions\s*\??\.has\s*\(/,
+    /\.ban\s*\(/,
+    /\.timeout\s*\(/,
+    /bulkDelete\s*\(/,
+    /\.kick\s*\(/,
+    /\.setNickname\s*\(/,
+    /\.setRoles?\s*\(/,
   ];
   for (const { file, schema } of commands) {
     const source = sourceByFile.get(file) || '';
