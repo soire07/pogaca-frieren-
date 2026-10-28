@@ -178,8 +178,16 @@ export default {
         ensureUser(interaction.guildId, opponent.id)
       ]);
       const [stats1Result, stats2Result, gear1Result, gear2Result] = await Promise.all([
-        pool.query('SELECT max_hp, attack, defense, class_name, active_build FROM users WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, challenger.id]),
-        pool.query('SELECT max_hp, attack, defense, class_name, active_build FROM users WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, opponent.id]),
+        pool.query(`SELECT max_hp, attack, defense, class_name, active_build,
+          COALESCE((SELECT attack_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_attack,
+          COALESCE((SELECT defense_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_defense,
+          COALESCE((SELECT hp_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_hp
+          FROM users WHERE guild_id=$1 AND user_id=$2`, [interaction.guildId, challenger.id]),
+        pool.query(`SELECT max_hp, attack, defense, class_name, active_build,
+          COALESCE((SELECT attack_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_attack,
+          COALESCE((SELECT defense_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_defense,
+          COALESCE((SELECT hp_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_hp
+          FROM users WHERE guild_id=$1 AND user_id=$2`, [interaction.guildId, opponent.id]),
         pool.query('SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, challenger.id]),
         pool.query('SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, opponent.id])
       ]);
@@ -191,12 +199,12 @@ export default {
       const gear2 = applyEquipmentSetBonus(equipped2, equipmentBonus(equipped2));
       const build1 = getCharacterBuild(stats1.active_build);
       const build2 = getCharacterBuild(stats2.active_build);
-      const maxHp1 = Math.min(2000, Math.round((Number(stats1.max_hp) + gear1.hp) * build1.hp));
-      const maxHp2 = Math.min(2000, Math.round((Number(stats2.max_hp) + gear2.hp) * build2.hp));
-      const attack1 = Math.min(500, Math.round((Number(stats1.attack) + gear1.attack) * build1.attack));
-      const attack2 = Math.min(500, Math.round((Number(stats2.attack) + gear2.attack) * build2.attack));
-      const defense1 = Math.min(250, Math.round(applyClassDefense(Number(stats1.defense) + gear1.defense, stats1.class_name) * build1.defense));
-      const defense2 = Math.min(250, Math.round(applyClassDefense(Number(stats2.defense) + gear2.defense, stats2.class_name) * build2.defense));
+      const maxHp1 = Math.min(2000, Math.round((Number(stats1.max_hp) + gear1.hp) * build1.hp * (1 + Number(stats1.talent_hp) * 0.05)));
+      const maxHp2 = Math.min(2000, Math.round((Number(stats2.max_hp) + gear2.hp) * build2.hp * (1 + Number(stats2.talent_hp) * 0.05)));
+      const attack1 = Math.min(500, Math.round((Number(stats1.attack) + gear1.attack) * build1.attack * (1 + Number(stats1.talent_attack) * 0.04)));
+      const attack2 = Math.min(500, Math.round((Number(stats2.attack) + gear2.attack) * build2.attack * (1 + Number(stats2.talent_attack) * 0.04)));
+      const defense1 = Math.min(250, Math.round(applyClassDefense(Number(stats1.defense) + gear1.defense, stats1.class_name) * build1.defense * (1 + Number(stats1.talent_defense) * 0.04)));
+      const defense2 = Math.min(250, Math.round(applyClassDefense(Number(stats2.defense) + gear2.defense, stats2.class_name) * build2.defense * (1 + Number(stats2.talent_defense) * 0.04)));
 
       const [upgrade1, upgrade2] = await Promise.all([
         pool.query('SELECT COALESCE(MAX(upgrade_level),0)::int AS level FROM character_upgrades WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, challenger.id]),
