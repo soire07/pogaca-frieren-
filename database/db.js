@@ -1,9 +1,8 @@
 import pg from 'pg';
 
 const { Pool } = pg;
-if (!process.env.DATABASE_URL) {
-  console.warn('UYARI: DATABASE_URL ayarlı değil. Bot veritabanı olmadan başlatılamaz.');
-}
+// Test/komut doğrulama ortamında DATABASE_URL bulunmayabilir.
+// Gerçek bot başlangıcında index.js DATABASE_URL eksikliğini açıkça kontrol eder.
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
