@@ -579,3 +579,24 @@ test('market catalog stays within the Frieren and Poagaca fantasy theme', async 
       'legacy inventory items must remain usable after market cleanup: ' + legacyId);
   }
 });
+
+
+test('legacy Frieren-themed consumables remain obtainable without renaming stored inventory keys', async () => {
+  const treasure = await read('hazineac.js');
+  const usable = await read('esyakullan.js');
+  const supplementalLoot = treasure.match(/const UTILITY_LOOT = \[([\s\S]*?)\n\];/);
+  assert.ok(supplementalLoot, 'supplemental treasure loot must exist');
+  for (const item of [
+    '✨ Eski Büyü Kalıntısı',
+    '🗝️ Harabe Anahtarı',
+    '🩸 İblis Özü',
+    '🌼 Kurutulmuş Çiçek',
+    '🥐 Büyülü Poğaça'
+  ]) {
+    assert.ok(supplementalLoot[1].includes(item), 'legacy themed item needs an obtainable source: ' + item);
+    assert.ok(usable.includes("key: '" + item + "'"), 'item-use must keep the exact legacy inventory key: ' + item);
+  }
+  assert.match(treasure, /roll < 0\.10[\s\S]*?UTILITY_LOOT/);
+  assert.match(treasure, /roll < 0\.04[\s\S]*?RARE_LOOT\[0\]/);
+  assert.match(treasure, /roll < 0\.01[\s\S]*?RARE_LOOT\[1\]/);
+});
