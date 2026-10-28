@@ -172,11 +172,23 @@ client.on(Events.InteractionCreate, async interaction => {
     runningGuilds.add(lockKey);
     await interaction.deferReply({ ephemeral: true });
     try {
-      const result = await runTests();
+      const [audit, result] = await Promise.all([runCommandAudit(), runTests()]);
+      const auditOutput = audit.stdout + '\n' + audit.stderr;
+      const commandCount = auditOutput.match(/Komut denetimi başarılı: (\d+) slash komutu/);
+      const commandList = auditOutput.split(/\r?\n/).find(line => line.startsWith('/')) || '';
+      const auditPassed = audit.code === 0 && Boolean(commandCount);
+      const testsPassed = result.code === 0 && !result.timedOut;
+      const status = auditPassed && testsPassed ? 'KOMUT DENETİMİ VE TESTLER BAŞARILI' : result.timedOut ? 'TEST ZAMAN AŞIMI' : 'TESTLER BAŞARISIZ';
       const summary = buildLocalTestSummary(result);
-      const status = result.code === 0 ? 'TESTLER BAŞARILI' : result.timedOut ? 'TEST ZAMAN AŞIMI' : 'TESTLER BAŞARISIZ';
-      const rawOutput = (result.stdout + '\n' + result.stderr).trim().slice(-950) || '(Test çıktısı boş.)';
-      const body = '**' + status + '**\n\n' + summary + '\n\nTest çıkış kodu: ' + (result.code ?? 'yok') + '\nSon test çıktısı:\n' + rawOutput;
+      const auditSummary = auditPassed
+        ? 'Komut dosyası/şema denetimi: ' + commandCount[1] + ' komut yüklendi; ad, açıklama, otomatik tamamlama ve yinelenen ad kontrolleri geçti.'
+        : 'Komut dosyası/şema denetimi BAŞARISIZ. Ayrıntılar test çıktısında.';
+      const rawOutput = (auditOutput + '\n' + result.stdout + '\n' + result.stderr).trim().slice(-650) || '(Test çıktısı boş.)';
+      const body = '**' + status + '**\n\n' + auditSummary + '\n' + summary
+        + '\n\nNot: Bu kontroller komut dosyalarının yüklenmesini/şemalarını ve otomatik regresyon testlerini doğrular; Discord üzerinde her komutun canlı etkileşimini tek başına kanıtlamaz.'
+        + '\n\nKomutlar: ' + (commandList || 'Ayrıntılı liste test çıktısında yok.')
+        + '\nTest çıkış kodu: ' + (testsPassed ? 0 : (result.code ?? 'yok'))
+        + '\nSon test çıktısı:\n' + rawOutput;
       await interaction.editReply(body.slice(0, 1950));
     } catch (error) {
       console.error('Test command failed:', error.message);
