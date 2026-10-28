@@ -2,15 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveAiModel } from './config.js';
 
-test('prefers FRIEREN_AI_MODEL when both model variables are set', () => {
-  assert.equal(resolveAiModel({ FRIEREN_AI_MODEL: ' gpt-custom ', OPENAI_MODEL: 'gpt-legacy' }), 'gpt-custom');
+test('prefers explicit FRIEREN_MODEL setting', () => {
+  assert.equal(resolveAiModel({ FRIEREN_MODEL: ' custom-free-model ' }), 'custom-free-model');
 });
 
-test('supports the legacy OPENAI_MODEL variable', () => {
-  assert.equal(resolveAiModel({ OPENAI_MODEL: ' gpt-legacy ' }), 'gpt-legacy');
+test('defaults to the free Groq-hosted open-weight model', () => {
+  assert.equal(resolveAiModel({}), 'openai/gpt-oss-20b');
 });
 
-test('falls back when model variables are missing or blank', () => {
-  assert.equal(resolveAiModel({}), 'gpt-4.1-mini');
-  assert.equal(resolveAiModel({ FRIEREN_AI_MODEL: '  ', OPENAI_MODEL: '' }), 'gpt-4.1-mini');
+test('ignores legacy paid-provider model variables', () => {
+  assert.equal(resolveAiModel({ OPENAI_MODEL: 'gpt-4.1-mini', FRIEREN_AI_MODEL: 'gpt-4.1' }), 'openai/gpt-oss-20b');
 });
