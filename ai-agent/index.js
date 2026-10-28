@@ -110,7 +110,7 @@ async function collectCodeContext(question) {
 async function answerCodeQuestion(question) {
   if (!openai) return {
     ok: false,
-    message: 'Ücretsiz AI sağlayıcısı için Render ortam değişkenlerine FRIEREN_AI_API_KEY eklenmeli. Varsayılan uç nokta Merkium ücretsiz API hizmetidir; ücretli OpenAI API'sine otomatik geçiş yapılmaz. /frieren-test otomatik testleri çalıştırmaya devam eder.'
+    message: 'Ücretsiz AI sağlayıcısı için Render ortam değişkenlerine FRIEREN_AI_API_KEY eklenmeli. Varsayılan uç nokta Merkium ücretsiz API hizmetidir; ücretli OpenAI API kullanımına otomatik geçiş yapılmaz. /frieren-test otomatik testleri çalıştırmaya devam eder.'
   };
   const context = await collectCodeContext(question);
   if (!context) return { ok: false, message: 'Bu soruyla ilişkili kaynak dosyası bulunamadı. Daha belirgin bir komut veya mekanik adıyla yeniden dene.' };
