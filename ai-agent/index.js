@@ -74,7 +74,7 @@ async function collectCodeContext(question) {
         if (!['node_modules', '.git', 'coverage', '.render'].includes(entry.name)) await addCommandFiles(relative, depth + 1);
       }
       else if (entry.isFile() && entry.name.endsWith('.js')) {
-        const normalized = relative.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '');
+        const normalized = relative.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
         const nameMatches = terms.some(term => normalized.includes(term));
         if (nameMatches) {
           candidates.add(relative);
@@ -82,7 +82,7 @@ async function collectCodeContext(question) {
           // Search source content as well as filenames so indirectly related implementations
           // are not silently omitted from AI diagnostics.
           const source = await readFile(path.join(rootDir, relative), 'utf8').catch(() => '');
-          const lowerSource = source.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '');
+          const lowerSource = source.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
           const matchingTerms = terms.reduce((count, term) => count + (lowerSource.includes(term) ? 1 : 0), 0);
           if (matchingTerms >= Math.min(2, terms.length)) candidates.add(relative);
         }
