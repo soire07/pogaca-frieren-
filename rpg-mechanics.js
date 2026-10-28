@@ -21,12 +21,15 @@ export function applyRaidWeakness(damage, boss, action) {
 export function applyEquipmentSetBonus(items, bonus) {
   const legendaryCount = items.filter(item => item.rarity === 'Efsanevi').length;
   const epicCount = items.filter(item => item.rarity === 'Destansı').length;
+  const setTexts = [];
+  if (legendaryCount >= 2) setTexts.push('Efsanevi set: +4 saldırı, +25 HP');
+  if (epicCount >= 2) setTexts.push('Destansı set: +3 savunma, +15 mana');
   return {
     attack: bonus.attack + (legendaryCount >= 2 ? 4 : 0),
     defense: bonus.defense + (epicCount >= 2 ? 3 : 0),
     hp: bonus.hp + (legendaryCount >= 2 ? 25 : 0),
     mana: bonus.mana + (epicCount >= 2 ? 15 : 0),
-    setText: legendaryCount >= 2 ? 'Efsanevi set: +4 saldırı, +25 HP' : epicCount >= 2 ? 'Destansı set: +3 savunma, +15 mana' : null
+    setText: setTexts.length ? setTexts.join(' · ') : null
   };
 }
 
