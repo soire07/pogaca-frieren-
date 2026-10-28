@@ -19,9 +19,9 @@ export function resolveLocalModelConfig(env = process.env) {
   if (provider !== 'ollama') {
     throw new Error('Unsupported FRIEREN_MODEL_PROVIDER. Supported values: groq, ollama.');
   }
-  const baseUrl = (env.FRIEREN_MODEL_URL || 'http://127.0.0.1:11434').trim().replace(/\\/+$/, '');
+  const baseUrl = (env.FRIEREN_MODEL_URL || 'http://127.0.0.1:11434').trim().replace(/\/+$/, '');
   const model = (env.FRIEREN_LOCAL_MODEL || 'qwen2.5:3b').trim();
-  if (!/^https?:\\/\\//i.test(baseUrl)) throw new Error('FRIEREN_MODEL_URL must be an http(s) URL.');
+  if (!/^https?:\/\//i.test(baseUrl)) throw new Error('FRIEREN_MODEL_URL must be an http(s) URL.');
   if (!model) throw new Error('FRIEREN_LOCAL_MODEL cannot be empty.');
   return { provider, baseUrl, model, timeoutMs: boundedTimeout };
 }
