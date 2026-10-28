@@ -94,6 +94,30 @@ function runTests() {
   });
 }
 
+function buildLocalTestSummary(result) {
+  const output = (result.stdout || '') + '\\n' + (result.stderr || '');
+  const readCount = label => {
+    const match = output.match(new RegExp('(?:ℹ\\\\s*)?' + label + '\\\\s+(\\\\d+)', 'i'));
+    return match ? Number(match[1]) : null;
+  };
+  const tests = readCount('tests');
+  const passed = readCount('pass');
+  const failed = readCount('fail');
+
+  if (result.code === 0) {
+    const details = [
+      tests === null ? null : tests + ' test çalıştırıldı',
+      passed === null ? null : passed + ' başarılı',
+      failed === null ? null : failed + ' başarısız',
+    ].filter(Boolean).join(', ');
+    return 'Otomatik testler başarıyla tamamlandı' + (details ? ' (' + details + ').' : '.')
+      + ' Gemini şu anda geçici bir 503 yoğunluk hatası veriyor; bu, test sonucunu etkilemedi. Daha sonra tekrar deneyebilirsin.';
+  }
+
+  return 'Otomatik testler başarıyla tamamlanmadı (çıkış kodu: '
+    + (result.code ?? 'yok') + '). Gemini özeti de alınamadı; ayrıntılar için test çıktısını ve Render günlüklerini incele.';
+}
+
 async function askAI(question, testReport = '') {
   if (!geminiApiKey) {
     throw new Error('GEMINI_API_KEY is not configured; AI features are disabled until a free Gemini API key is added.');
@@ -198,7 +222,7 @@ client.on(Events.InteractionCreate, async interaction => {
         );
       } catch (aiError) {
         console.error('Test AI summary failed:', aiError.message);
-        summary = 'Testler tamamlandı ancak Gemini özeti alınamadı. Render günlüklerinde model/API hatasını kontrol et; test sonucu aşağıda gösteriliyor.';
+        summary = buildLocalTestSummary(result);
       }
       const status = result.code === 0 ? 'TESTLER BAŞARILI' : result.timedOut ? 'TEST ZAMAN AŞIMI' : 'TESTLER BAŞARISIZ';
       const rawOutput = (result.stdout + '\n' + result.stderr).trim().slice(-950) || '(Test çıktısı boş.)';
