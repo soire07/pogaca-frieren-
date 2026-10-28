@@ -336,10 +336,11 @@ client.on(Events.InteractionCreate, async interaction => {
       const auditPassed = audit.code === 0 && Boolean(commandCount) && Number(commandCount[3]) === 0;
       const syntaxPassed = agentSyntax.code === 0;
       const testsPassed = result.code === 0 && !result.timedOut;
-      const status = auditPassed && testsPassed && syntaxPassed ? 'TÜM OTOMATİK DENETİMLER BAŞARILI' : result.timedOut ? 'TEST ZAMAN AŞIMI' : 'DENETİM BAŞARISIZ';
-      const summary = buildLocalTestSummary(result);
       const targetedOutput = (targeted.stdout || '') + '\n' + (targeted.stderr || '');
       const targetedHasTests = /SEÇİLEN TEST DOSYALARI:/.test(targetedOutput);
+      const targetedPassed = targeted.code === 0 && targetedHasTests;
+      const status = result.timedOut ? 'TEST ZAMAN AŞIMI' : !auditPassed || !testsPassed || !syntaxPassed || (targetedHasTests && !targetedPassed) ? 'DENETİM BAŞARISIZ' : !targetedHasTests ? 'HEDEFE ÖZEL KAPSAM EKSİK' : 'TÜM OTOMATİK DENETİMLER BAŞARILI';
+      const summary = buildLocalTestSummary(result);
       const targetedSummary = targeted.applicable
         ? (!targetedHasTests
           ? 'Hedefe özel test kapsamı: BULUNAMADI. İstekle eşleşen test dosyası seçilmedi; bu hedef için başarı iddiası verilmiyor.'
