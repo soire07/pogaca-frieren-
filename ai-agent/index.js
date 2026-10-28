@@ -39,7 +39,11 @@ healthServer.listen(port, '0.0.0.0', () => console.log('Health server listening 
 const runningGuilds = new Set();
 
 const commands = [
-  new SlashCommandBuilder().setName('frieren-test').setDescription('Frieren botunun kapsamlı otomatik test ve tanılama paketini çalıştırır.').toJSON(),
+  new SlashCommandBuilder()
+    .setName('frieren-test')
+    .setDescription('Yazdığın hedefi dikkate alarak Frieren otomatik test ve tanılama paketini çalıştırır.')
+    .addStringOption(option => option.setName('hedef').setDescription('Neyi test etmemi istiyorsun? Örn. boss hasarı, görev ödülleri, envanter.') .setRequired(true).setMaxLength(500))
+    .toJSON(),
   new SlashCommandBuilder()
     .setName('frieren-ai')
     .setDescription('Frieren botunun kodu ve test sistemi hakkında yapay zekâya soru sorar.')
@@ -152,6 +156,17 @@ function runCommandAudit() {
   });
 }
 
+function classifyTestTarget(target) {
+  const groups = [
+    { label: 'Savaş ve RPG mekanikleri', pattern: /sava[sş]|boss|iblis|hasar|savunma|sınıf|sinif|büyü|buyu|mana|şifa|sifa|zindan|ekipman|set bonus|karakter/i },
+    { label: 'Görev, ödül ve ilerleme', pattern: /görev|gorev|ödül|odul|xp|deneyim|seviye|level|keşif|kesif|ganimet|zanaat|craft/i },
+    { label: 'Komut ve Discord etkileşimleri', pattern: /komut|slash|buton|button|etkileşim|etkilesim|discord|cooldown|bekleme süresi|rol/i },
+    { label: 'Envanter ve ekonomi', pattern: /envanter|eşya|esya|altın|altin|para|market|pazar|satın|satin|satış|satis/i },
+  ];
+  const matched = groups.filter(group => group.pattern.test(target)).map(group => group.label);
+  return matched.length ? matched : ['Genel otomatik denetim'];
+}
+
 function buildLocalTestSummary(result) {
   const output = [result.stdout || '', result.stderr || ''].join('\n');
   const readCount = label => {
@@ -205,6 +220,8 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 
   if (interaction.commandName === 'frieren-test') {
+    const target = interaction.options.getString('hedef', true).trim();
+    const targetGroups = classifyTestTarget(target);
     const lockKey = interaction.guildId || interaction.user.id;
     if (runningGuilds.has(lockKey)) {
       await interaction.reply({ content: 'Bu ortamda bir test zaten çalışıyor. Lütfen bitmesini bekle.', ephemeral: true });
@@ -232,8 +249,11 @@ client.on(Events.InteractionCreate, async interaction => {
         ? 'Komut dosyası/şema denetimi: ' + commandCount[1] + ' komut yüklendi; ad, açıklama, otomatik tamamlama ve yinelenen ad kontrolleri geçti.'
         : 'Komut dosyası/şema denetimi BAŞARISIZ. Ayrıntılar test çıktısında.';
       const rawOutput = (auditOutput + '\n' + result.stdout + '\n' + result.stderr).trim().slice(-650) || '(Test çıktısı boş.)';
-      const body = '**' + status + '**\n\n' + auditSummary + '\n' + summary
-        + '\n\nNot: Bu kontroller komut dosyalarının yüklenmesini/şemalarını ve otomatik regresyon testlerini doğrular; Discord üzerinde her komutun canlı etkileşimini tek başına kanıtlamaz.'
+      const body = '**' + status + '**\n\n**İstenen test:** ' + target.slice(0, 500)
+        + '\n**İlgili alan:** ' + targetGroups.join(' • ')
+        + '\n\n' + auditSummary + '\n' + summary
+        + '\n\nKapsam notu: Bu komut mevcut otomatik kontrol paketini çalıştırır. İstenen senaryo için özel bir test bulunmuyorsa bu sonuç o senaryonun tek başına doğrulandığı anlamına gelmez; rapor bunu otomatik test kapsamıyla sınırlı tutar.'
+        + '\nDiscord üzerinde her komutun canlı etkileşimini bu paket tek başına kanıtlamaz.'
         + '\n\nKomutlar: ' + (commandList || 'Ayrıntılı liste test çıktısında yok.')
         + '\nTest çıkış kodu: ' + (testsPassed ? 0 : (result.code ?? 'yok'))
         + '\nSon test çıktısı:\n' + rawOutput;
