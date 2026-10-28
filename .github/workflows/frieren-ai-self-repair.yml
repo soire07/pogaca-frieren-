@@ -41,10 +41,10 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Generate a constrained repair proposal
+      - name: Generate a constrained repair proposal with free Groq API
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          FRIEREN_AI_MODEL: gpt-4.1-mini
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          FRIEREN_MODEL: openai/gpt-oss-20b
           FRIEREN_REPAIR_TASK: ${{ inputs.task }}
         run: node scripts/ai-self-repair.js
 

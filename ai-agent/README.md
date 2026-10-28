@@ -34,3 +34,22 @@ Save environment changes and let Render redeploy. Groq free-tier rate limits app
 This is not a copy of ChatGPT and does not automatically inherit this conversation's tools, memory, GitHub permissions, or Render access. The model only sees the question and selected source context. The current implementation does not edit code or deploy changes.
 
 Never commit a real `.env` file or secrets. The agent uses a separate Discord bot token and must not be given Administrator permission.
+
+
+## Free Groq repair workflow
+
+The optional GitHub Actions workflow `.github/workflows/frieren-ai-self-repair.yml` can draft a bounded repair pull request without using a paid OpenAI API.
+
+1. In GitHub, open **Settings → Secrets and variables → Actions** for this repository.
+2. Add repository secret `GROQ_API_KEY` using a free-tier key from https://console.groq.com/keys.
+3. Open **Actions → Frieren AI Safe Self-Repair → Run workflow**, choose `frieren-ai-agent` as the base branch, and describe one specific bug.
+4. The workflow proposes changes, runs `npm run check`, and opens a pull request only if checks pass. It does not merge or deploy the proposed repair automatically.
+
+The key is not stored in the repository. Groq free-tier limits apply; quota errors stop the run rather than falling back to a paid provider.
+
+
+## Free scheduled health check
+
+The GitHub Actions workflow `.github/workflows/frieren-ai-health.yml` checks the Render `/health` endpoint every 10 minutes and retries briefly if Render is waking the service. It fails if the HTTP health response or Discord gateway readiness is not healthy. You can also run it manually from the Actions tab.
+
+This is a best-effort free-tier workaround, not an uptime guarantee: GitHub scheduled jobs can be delayed, and Render can still restart or suspend free services.
