@@ -95,15 +95,22 @@ function runTests() {
 }
 
 function buildLocalTestSummary(result) {
-  const output = (result.stdout || '') + '\\n' + (result.stderr || '');
+  const output = [result.stdout || '', result.stderr || ''].join('\n');
   const readCount = label => {
-    const match = output.match(new RegExp('(?:ℹ\\\\s*)?' + label + '\\\\s+(\\\\d+)', 'i'));
+    const match = output.match(new RegExp('(?:ℹ\\s*)?' + label + '\\s+(\\d+)', 'i'));
     return match ? Number(match[1]) : null;
   };
   const tests = readCount('tests');
   const passed = readCount('pass');
   const failed = readCount('fail');
+  const failedLines = output.split(/\r?\n/)
+    .filter(line => /^\s*(?:✖|×|not ok\b|✗)\s*/i.test(line))
+    .map(line => line.trim())
+    .slice(0, 8);
 
+  if (result.timedOut) {
+    return 'Testler zaman aşımına uğradı. Süre sınırını ve son test çıktısını kontrol et.';
+  }
   if (result.code === 0) {
     const details = [
       tests === null ? null : tests + ' test çalıştırıldı',
@@ -111,11 +118,19 @@ function buildLocalTestSummary(result) {
       failed === null ? null : failed + ' başarısız',
     ].filter(Boolean).join(', ');
     return 'Otomatik testler başarıyla tamamlandı' + (details ? ' (' + details + ').' : '.')
-      + ' Gemini şu anda geçici bir 503 yoğunluk hatası veriyor; bu, test sonucunu etkilemedi. Daha sonra tekrar deneyebilirsin.';
+      + ' Bu rapor Gemini kullanılmadan oluşturuldu.';
   }
 
-  return 'Otomatik testler başarıyla tamamlanmadı (çıkış kodu: '
-    + (result.code ?? 'yok') + '). Gemini özeti de alınamadı; ayrıntılar için test çıktısını ve Render günlüklerini incele.';
+  const details = [
+    tests === null ? null : tests + ' test çalıştırıldı',
+    passed === null ? null : passed + ' başarılı',
+    failed === null ? null : failed + ' başarısız',
+  ].filter(Boolean).join(', ');
+  const failures = failedLines.length
+    ? '\nBaşarısız testler:\n- ' + failedLines.join('\n- ')
+    : '\nAyrıntılı hata için aşağıdaki test çıktısını ve Render günlüklerini kontrol et.';
+  return 'Otomatik testler başarısız oldu (çıkış kodu: ' + (result.code ?? 'yok') + ').'
+    + (details ? ' ' + details + '.' : '') + failures;
 }
 
 async function askAI(question, testReport = '') {
@@ -214,16 +229,7 @@ client.on(Events.InteractionCreate, async interaction => {
         'STDERR:',
         result.stderr,
       ].join('\n');
-      let summary;
-      try {
-        summary = await askAI(
-          'Summarize this automated test run. List passed/failed checks if visible, identify likely causes, and suggest the safest next action. Do not claim unobserved results.',
-          report,
-        );
-      } catch (aiError) {
-        console.error('Test AI summary failed:', aiError.message);
-        summary = buildLocalTestSummary(result);
-      }
+      const summary = buildLocalTestSummary(result);
       const status = result.code === 0 ? 'TESTLER BAŞARILI' : result.timedOut ? 'TEST ZAMAN AŞIMI' : 'TESTLER BAŞARISIZ';
       const rawOutput = (result.stdout + '\n' + result.stderr).trim().slice(-950) || '(Test çıktısı boş.)';
       const body = '**' + status + '**\n\n' + summary + '\n\nTest çıkış kodu: ' + (result.code ?? 'yok') + '\nSon test çıktısı:\n' + rawOutput;
