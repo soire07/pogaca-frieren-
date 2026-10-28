@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readdir } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -74,7 +74,7 @@ test('command interaction coverage: every discoverable slash command exposes a v
   ];
   const sourceByFile = new Map();
   for (const { file } of commands) {
-    sourceByFile.set(file, await (await import('node:fs/promises')).readFile(path.join(root, file), 'utf8'));
+    sourceByFile.set(file, await readFile(path.join(root, file), 'utf8'));
   }
 
   const seenNames = new Set();
