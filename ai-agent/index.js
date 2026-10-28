@@ -236,7 +236,10 @@ function runTargetedTests(target) {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      resolve({ applicable: true, code, stdout: redactSecrets(stdout), stderr: redactSecrets(stderr + error), note: '' });
+      const selectionNotice = isCommandInteractionCoverage
+        ? 'SEÇİLEN TEST DOSYALARI: scripts/test-command-interaction-coverage.js (doğrudan çalıştırıldı)\\n'
+        : '';
+      resolve({ applicable: true, code, stdout: selectionNotice + redactSecrets(stdout), stderr: redactSecrets(stderr + error), note: '' });
     };
     child.stdout.on('data', chunk => { stdout = (stdout + chunk.toString()).slice(-10000); });
     child.stderr.on('data', chunk => { stderr = (stderr + chunk.toString()).slice(-4000); });
