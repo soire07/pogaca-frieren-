@@ -138,8 +138,8 @@ export default {
           max_mana = LEAST(2000, max_mana + $8),
           attack = LEAST(500, attack + $9),
           defense = LEAST(250, defense + $10),
-          mana = LEAST(LEAST(2000, max_mana + $8 + $12), mana + $5),
-          hp = LEAST(LEAST(2000, max_hp + $7 + $11), hp + $6),
+          mana = LEAST(LEAST(2000, max_mana + $8), mana + $5),
+          hp = LEAST(LEAST(2000, max_hp + $7), hp + $6),
           stat_points = stat_points + GREATEST(0, (FLOOR(SQRT((xp + $3)::numeric / 100))::int + 1) - level),
           level = FLOOR(SQRT((xp + $3)::numeric / 100))::int + 1
          WHERE guild_id=$1 AND user_id=$2
@@ -154,8 +154,8 @@ export default {
         .setTitle('✨ Eşya kullanıldı!')
         .setDescription([
           item.description,
-          item.hp ? `Şu anki HP: **${user.hp}/${Math.min(2000, Number(user.max_hp) + gear.hp)}**.` : '',
-          item.mana ? `Şu anki Mana: **${user.mana}/${Math.min(2000, Number(user.max_mana) + gear.mana)}**.` : '',
+          item.hp ? `Şu anki HP: **${Math.round(Math.min(1, Number(user.hp) / Math.max(1, Number(user.max_hp))) * Math.min(2000, Number(user.max_hp) + gear.hp))}/${Math.min(2000, Number(user.max_hp) + gear.hp)}**.` : '',
+          item.mana ? `Şu anki Mana: **${Math.round(Math.min(1, Number(user.mana) / Math.max(1, Number(user.max_mana))) * Math.min(2000, Number(user.max_mana) + gear.mana))}/${Math.min(2000, Number(user.max_mana) + gear.mana)}**.` : '',
           item.attack ? `Kalıcı saldırı bonusu: **+${item.attack}**.` : '',
           item.defense ? `Kalıcı savunma bonusu: **+${item.defense}**.` : '',
           item.maxHp ? `Maksimum can bonusu: **+${item.maxHp}**.` : '',
