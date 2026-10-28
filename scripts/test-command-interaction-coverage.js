@@ -45,7 +45,7 @@ async function loadCommandEntries() {
   return { commands, loadErrors };
 }
 
-test('command interaction coverage: every discoverable slash command exposes a valid interaction contract', async () => {
+test('command interaction coverage: every discoverable slash command exposes a valid interaction contract', async (t) => {
   const { commands, loadErrors } = await loadCommandEntries();
 
   assert.deepEqual(loadErrors, [], 'All command modules should import without throwing');
@@ -112,10 +112,10 @@ test('command interaction coverage: every discoverable slash command exposes a v
   }
 
   assert.deepEqual(failures, [], failures.join('\\n'));
-  console.log('Structural interaction coverage checked ' + commands.length + ' slash commands.');
-  console.log('Command response-path source signal: ' + responseCovered.length + '/' + commands.length + ' commands.');
-  console.log('Commands needing response-path review: ' + (responseUnclear.join(', ') || 'none'));
-  console.log('Interaction/permission source signal: ' + safetySignalCovered.length + '/' + commands.length + ' commands.');
-  console.log('Commands needing interaction/permission review: ' + (safetySignalUnclear.join(', ') || 'none'));
-  console.log('Scope: static source signals only; signals do not prove that paths execute correctly. No live Discord API call is performed.');
+  t.diagnostic('Structural interaction coverage checked ' + commands.length + ' slash commands.');
+  t.diagnostic('Command response-path source signal: ' + responseCovered.length + '/' + commands.length + ' commands.');
+  t.diagnostic('Commands needing response-path review: ' + (responseUnclear.join(', ') || 'none'));
+  t.diagnostic('Interaction/permission source signal: ' + safetySignalCovered.length + '/' + commands.length + ' commands.');
+  t.diagnostic('Commands needing interaction/permission review: ' + (safetySignalUnclear.join(', ') || 'none'));
+  t.diagnostic('Scope: static source signals only; signals do not prove that paths execute correctly. No live Discord API call is performed.');
 });
