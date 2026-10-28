@@ -600,3 +600,12 @@ test('legacy Frieren-themed consumables remain obtainable without renaming store
   assert.match(treasure, /roll < 0\.04[\s\S]*?RARE_LOOT\[0\]/);
   assert.match(treasure, /roll < 0\.01[\s\S]*?RARE_LOOT\[1\]/);
 });
+
+
+test('party dungeon applies equipment HP bonuses proportionally to current HP', async () => {
+  const source = await read('zindan.js');
+  assert.match(source, /hp:\s*Math\.min\([\s\S]*?Math\.round\(\(Number\(player\.hp\)\s*\/\s*Math\.max\(1, Number\(player\.max_hp\)\)\)\s*\*\s*Math\.min\(2000, Number\(player\.max_hp\) \+ gear\.hp\)\)/,
+    'dungeon current HP should scale with equipment-adjusted max HP');
+  assert.match(source, /maxHp:\s*Math\.min\(2000, Number\(player\.max_hp\) \+ gear\.hp\)/,
+    'dungeon max HP should include equipment HP bonuses');
+});
