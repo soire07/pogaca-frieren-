@@ -384,7 +384,7 @@ client.on(Events.InteractionCreate, async interaction => {
         responseReview ? 'Yanıt yolu incelemesi: ' + responseReview.slice(0, 300) : '',
         safetySignal ? 'Etkileşim/izin sinyali: ' + safetySignal : '',
         safetyReview ? 'Etkileşim/izin incelemesi: ' + safetyReview.slice(0, 300) : '',
-      ].filter(Boolean).join('\\n');
+      ].filter(Boolean).join('\n');
       const syntaxSummary = syntaxPassed ? 'AI servis sözdizimi: başarılı.' : 'AI servis sözdizimi BAŞARISIZ: ' + agentSyntax.stderr.slice(-250);
       const auditSummary = auditPassed
         ? 'Komut sözleşme denetimi: ' + commandCount[1] + ' komut keşfedildi; ' + commandCount[2] + ' PASS, ' + commandCount[3] + ' FAIL. Her komut için ayrı sonuç üretildi.'
