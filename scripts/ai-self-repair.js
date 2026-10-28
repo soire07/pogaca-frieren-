@@ -49,7 +49,7 @@ const response = await fetch('https://api.groq.com/openai/v1/chat/completions', 
       { role: 'user', content: JSON.stringify({ task, repositoryFiles: files }) }
     ],
     response_format: { type: 'json_object' },
-    max_completion_tokens: 9000
+    max_completion_tokens: 8000
   })
 });
 if (!response.ok) {
