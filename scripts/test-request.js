@@ -17,7 +17,7 @@ async function walk(dir, depth = 0) {
     if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'coverage') continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) files.push(...await walk(full, depth + 1));
-    else if (/\.(test|spec)\.[cm]?[jt]s$/.test(entry.name) || /^test-[\w-]+\.js$/.test(entry.name) || /^test-.*\.js$/.test(path.basename(full))) files.push(full);
+    else if (path.basename(full) !== 'test-request.js' && (/\.(test|spec)\.[cm]?[jt]s$/.test(entry.name) || /^test-[\w-]+\.js$/.test(entry.name) || entry.name === 'check-gameplay-integrity.js')) files.push(full);
   }
   return files;
 }
@@ -68,6 +68,7 @@ const asksBroadRegression = [
 const forcedFiles = asksBroadRegression
   ? [
       'scripts/test-boss-combat.js',
+      'scripts/check-gameplay-integrity.js',
       'scripts/test-discord-scenarios.js',
       'scripts/test-command-interaction-coverage.js'
     ]
@@ -75,7 +76,7 @@ const forcedFiles = asksBroadRegression
     ? ['scripts/test-command-interaction-coverage.js']
     : [];
 console.log('HEDEF EŞLEŞTİRME: ' + (asksBroadRegression
-  ? 'çok alanlı regresyon paketi -> savaş/RPG, Discord senaryoları, komut-etkileşim kapsamı'
+  ? 'çok alanlı regresyon paketi -> savaş, oyun bütünlüğü (görev/ödül/ekipman/keşif), Discord senaryoları ve komut-etkileşim kapsamı'
   : isCommandInteractionCoverage
     ? 'command interaction coverage -> scripts/test-command-interaction-coverage.js'
     : 'anahtar kavram eşleştirmesi'));
@@ -117,6 +118,6 @@ const failed = results.filter(result => result.code !== 0);
 console.log('\nHEDEFE ÖZEL SONUÇ: ' + (failed.length ? 'BAŞARISIZ' : 'SEÇİLEN TESTLER BAŞARILI'));
 console.log('KAPSAM SINIRI: Bu motor mevcut testleri isteğe göre eşleştirir; kendi başına yeni test kodu üretmez ve eşleşen testler isteğin her ayrıntısını kanıtlamayabilir.');
 if (asksBroadRegression) {
-  console.log('EKSİK KAPSAM: Bu paket savaş/boss, Discord senaryo ve komut-etkileşim testlerini içerir. Görev, ödül, karakter gelişimi, ekipman ve keşif için ayrı, doğrudan hedeflenmiş test dosyaları bu paket içinde bulunmuyorsa bunlar ayrıca eksik olarak değerlendirilmelidir; genel senaryo testleri bu alanların tamamını tek tek kanıtlamaz.');
+  console.log('KAPSAM NOTU: check-gameplay-integrity.js mevcut görev/ödül, sınıf görevi, PvP build, profil, ekipman seti ve keşif doğrulamalarını içerir; bunlar mevcut testlerdir, yeni test gibi sayılmaz. Ayrı, doğrudan davranış testi bulunmayan alt alanlar ve canlı Discord akışı ayrıca eksik kabul edilmelidir.');
 }
 process.exit(failed.length ? 1 : 0);
