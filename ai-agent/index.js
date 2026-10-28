@@ -7,6 +7,7 @@ import {
   Client,
   Events,
   GatewayIntentBits,
+  MessageFlags,
   REST,
   Routes,
   SlashCommandBuilder,
@@ -118,7 +119,7 @@ client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
   if (!admins.has(interaction.user.id)) {
-    await interaction.reply({ content: 'Bu komut yalnızca yetkili geliştiriciler tarafından kullanılabilir.', ephemeral: true });
+    await interaction.reply({ content: 'Bu komut yalnızca yetkili geliştiriciler tarafından kullanılabilir.', flags: MessageFlags.Ephemeral });
     return;
   }
 
@@ -141,12 +142,19 @@ client.on(Events.InteractionCreate, async interaction => {
         'STDERR:',
         result.stderr,
       ].join('\n');
-      const summary = await askAI(
-        'Summarize this automated test run. List passed/failed checks if visible, identify likely causes, and suggest the safest next action. Do not claim unobserved results.',
-        report,
-      );
+      let summary;
+      try {
+        summary = await askAI(
+          'Summarize this automated test run. List passed/failed checks if visible, identify likely causes, and suggest the safest next action. Do not claim unobserved results.',
+          report,
+        );
+      } catch (aiError) {
+        console.error('Test AI summary failed:', aiError.message);
+        summary = 'Yapay zekâ özeti alınamadı. Test sonucu gerçek çıkış koduna göre gösteriliyor. OpenAI API kredilerini kontrol et.';
+      }
       const status = result.code === 0 ? 'TESTLER BAŞARILI' : result.timedOut ? 'TEST ZAMAN AŞIMI' : 'TESTLER BAŞARISIZ';
-      const body = '**' + status + '**\n\n' + summary + '\n\nSon test çıktısı:\n' + (result.stdout + '\n' + result.stderr).slice(-1200);
+      const rawOutput = (result.stdout + '\n' + result.stderr).trim().slice(-950) || '(Test çıktısı boş.)';
+      const body = '**' + status + '**\n\n' + summary + '\n\nTest çıkış kodu: ' + (result.code ?? 'yok') + '\nSon test çıktısı:\n' + rawOutput;
       await interaction.editReply(body.slice(0, 1950));
     } catch (error) {
       console.error('Test command failed:', error.message);
