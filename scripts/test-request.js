@@ -60,11 +60,21 @@ const normalizedTarget = normalize(rawTarget);
 const isCommandInteractionCoverage = normalizedTarget.includes('command interaction coverage')
   || normalizedTarget.includes('interaction command coverage')
   || normalizedTarget.includes('komut etkilesim kapsam');
-const asksBroadRegression = [
-  /savas|combat|boss|hasar|damage|savunma|defense|rpg|karakter|character|ekipman|equipment|kesif|explor/,
-  /gorev|quest|odul|reward|ilerleme|progress|seviye|level|tecrube|experience|xp/,
-  /discord|komut|command|etkilesim|interaction|slash|buton|button|izin|permission/
-].filter(pattern => pattern.test(normalizedTarget)).length >= 2;
+// The caller may pass either the full request or only its summarized "related areas" label.
+// Treat broad RPG + quest/progression + Discord requests consistently in both cases.
+const domainSignals = {
+  gameplay: /savas|combat|boss|hasar|damage|savunma|defense|rpg|karakter|character|ekipman|equipment|kesif|explor|mekanik/,
+  progression: /gorev|quest|odul|reward|ilerleme|progress|seviye|level|tecrube|experience|xp|ganimet|sinif gorev/,
+  discord: /discord|komut|command|etkilesim|interaction|slash|buton|button|izin|permission/,
+};
+const matchedDomainCount = Object.values(domainSignals).filter(pattern => pattern.test(normalizedTarget)).length;
+const hasGameplaySignal = domainSignals.gameplay.test(normalizedTarget);
+const hasProgressionSignal = domainSignals.progression.test(normalizedTarget);
+const hasDiscordSignal = domainSignals.discord.test(normalizedTarget);
+const asksBroadRegression = matchedDomainCount >= 2
+  || (hasGameplaySignal && hasProgressionSignal)
+  || (hasGameplaySignal && hasDiscordSignal)
+  || (hasProgressionSignal && hasDiscordSignal);
 const forcedFiles = asksBroadRegression
   ? [
       'scripts/test-boss-combat.js',
