@@ -4,7 +4,7 @@ A separate, restricted Discord bot for AI-assisted diagnostics of the Frieren ga
 
 ## Commands
 
-- `/frieren-test`: runs the repository's allowlisted `npm run check` command and asks the configured OpenAI model to summarize the output.
+- `/frieren-test`: runs the repository's allowlisted `npm run check` command and asks the configured free OpenAI-compatible model to summarize the output.
 - `/frieren-ai soru:`: asks the model for coding and test-system guidance.
 
 Only Discord user IDs listed in `FRIEREN_ADMIN_IDS` can run either command. No arbitrary shell commands, file writes, GitHub mutations, or deployments are exposed by the bot. Test execution is limited to one run per guild at a time and has a timeout.
@@ -24,8 +24,9 @@ Add environment variables in the new service's Render dashboard:
 - `DISCORD_TOKEN`: token for the new Discord application, not the existing Frieren bot.
 - `DISCORD_CLIENT_ID`: application ID for the new bot.
 - `DISCORD_GUILD_ID`: optional test server ID for instant guild-scoped command registration.
-- `OPENAI_API_KEY`: API key with API billing/access configured.
-- `OPENAI_MODEL`: optional model name; default is `gpt-4.1-mini`.
+- `FRIEREN_AI_API_KEY`: free API key created at https://chat.merkium.nl/ (no credit card required).
+- `FRIEREN_AI_BASE_URL`: defaults to `https://chat.merkium.nl/api/v1`.
+- `FRIEREN_AI_MODEL`: defaults to `pluto-1.2-flash` (free model).
 - `FRIEREN_ADMIN_IDS`: comma-separated trusted Discord user IDs.
 - `FRIEREN_TEST_TIMEOUT_MS`: optional test timeout, maximum five minutes.
 
@@ -33,6 +34,6 @@ Run `npm run register` once in the service shell after setting the Discord varia
 
 ## Important limitations
 
-This is not a copy of ChatGPT and does not automatically inherit this conversation's tools, memory, GitHub permissions, or Render access. The model only sees the question and any test report supplied to it. The current implementation does not edit code or deploy changes. Review proposed changes separately and keep production deployment under human control.
+This is not a copy of ChatGPT and does not automatically inherit this conversation's tools, memory, GitHub permissions, or Render access. The model only sees the question and selected source context supplied to it. The default provider is a third-party free API; review its privacy terms before sending private code. The agent does not use the paid OpenAI API by default. The current implementation does not edit code or deploy changes. Review proposed changes separately and keep production deployment under human control.
 
 Never commit a real `.env` file or secrets. The agent uses a separate Discord bot token and must not be given Administrator permission. Grant only the permissions needed to view the server and use slash commands.
