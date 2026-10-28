@@ -374,6 +374,17 @@ client.on(Events.InteractionCreate, async interaction => {
             ? 'Hedefe özel testler: BAŞARILI. ' + (targetedOutput.match(/SEÇİLEN TEST DOSYALARI: ([^\n]+)/)?.[1] || 'Seçilen testler geçti.')
             : 'Hedefe özel testler: BAŞARISIZ (çıkış kodu: ' + (targeted.code ?? 'yok') + '). ' + targetedOutput.slice(-300))
         : 'Hedefe özel test kapsamı: EKSİK. ' + targeted.note;
+      const readDiagnostic = pattern => targetedOutput.match(pattern)?.[1]?.trim() || '';
+      const responseSignal = readDiagnostic(/Command response-path source signal:\\s*(.+)/);
+      const responseReview = readDiagnostic(/Commands needing response-path review:\\s*(.+)/);
+      const safetySignal = readDiagnostic(/Interaction\\/permission source signal:\\s*(.+)/);
+      const safetyReview = readDiagnostic(/Commands needing interaction\\/permission review:\\s*(.+)/);
+      const diagnosticSummary = [
+        responseSignal ? 'Yanıt yolu sinyali: ' + responseSignal : '',
+        responseReview ? 'Yanıt yolu incelemesi: ' + responseReview.slice(0, 300) : '',
+        safetySignal ? 'Etkileşim/izin sinyali: ' + safetySignal : '',
+        safetyReview ? 'Etkileşim/izin incelemesi: ' + safetyReview.slice(0, 300) : '',
+      ].filter(Boolean).join('\\n');
       const syntaxSummary = syntaxPassed ? 'AI servis sözdizimi: başarılı.' : 'AI servis sözdizimi BAŞARISIZ: ' + agentSyntax.stderr.slice(-250);
       const auditSummary = auditPassed
         ? 'Komut sözleşme denetimi: ' + commandCount[1] + ' komut keşfedildi; ' + commandCount[2] + ' PASS, ' + commandCount[3] + ' FAIL. Her komut için ayrı sonuç üretildi.'
@@ -407,6 +418,7 @@ client.on(Events.InteractionCreate, async interaction => {
         + '\n**İlgili alan:** ' + targetGroups.join(' • ')
         + '\n\n' + syntaxSummary + '\n' + auditSummary + '\n' + summary
         + '\n' + targetedSummary
+        + (diagnosticSummary ? '\n' + diagnosticSummary : '\nHedefli test tanılamaları rapor dosyasında bulunur.')
         + '\n\nKapsam notu: Genel paket ile hedefli testler ayrı raporlanır. Hedefli paket yalnızca kapsadığı senaryoları doğrular; canlı Discord etkileşimlerini tek başına kanıtlamaz.'
         + '\nDiscord üzerinde her komutun canlı etkileşimini bu paket tek başına kanıtlamaz.'
         + '\n\nKomutlar: ' + (commandList || 'Ayrıntılı liste test çıktısında yok.')
