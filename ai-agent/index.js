@@ -68,7 +68,7 @@ async function collectCodeContext(question) {
     const entries = await readdir(path.join(rootDir, dir), { withFileTypes: true }).catch(() => []);
     for (const entry of entries) {
       const relative = path.join(dir, entry.name);
-      if (entry.isDirectory()) await addCommandFiles(relative, depth + 1);
+      if (entry.isDirectory()) {\n        if (!['node_modules', '.git', 'coverage', '.render'].includes(entry.name)) await addCommandFiles(relative, depth + 1);\n      }
       else if (entry.isFile() && entry.name.endsWith('.js')) {
         const normalized = relative.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
         if (terms.some(term => normalized.includes(term))) candidates.add(relative);
