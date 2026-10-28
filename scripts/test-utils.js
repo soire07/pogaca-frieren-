@@ -575,3 +575,56 @@ test('solo, raid and dungeon boss panels can display their own configured artwor
   assert.match(envExample, /POGACA_BOSS_ART_SCHATTENWOLF_URL/);
   assert.match(envExample, /POGACA_DUNGEON_FINAL_BOSS_ART_URL/);
 });
+
+
+test('class stat helpers handle localized names, missing classes and mana minimums', () => {
+  assert.equal(applyClassDamage(100, 'Büyücü'), 108);
+  assert.equal(applyClassDefense(100, 'Muhafız'), 112);
+  assert.equal(applyClassHealing(100, 'Şifacı'), 120);
+  assert.equal(applyClassDamage(100, undefined), 100);
+  assert.equal(applyClassManaCost(0, 'Büyücü'), 1);
+  assert.equal(applyClassManaCost(-10, 'Büyücü'), 1);
+});
+
+test('boss phase helper clamps HP ratios and handles invalid maximum HP', () => {
+  assert.equal(getBossPhase(200, 100), 1);
+  assert.equal(getBossPhase(-1, 100), 3);
+  assert.equal(getBossPhase(50, 100), 2);
+  assert.equal(getBossPhase(1, 0), 1);
+  assert.equal(getBossPhase(Number.POSITIVE_INFINITY, 100), 1);
+});
+
+test('incoming boss damage never drops below one and ignores negative defense', () => {
+  assert.equal(calculateBossIncomingDamage(0, 100, 1), 1);
+  assert.equal(calculateBossIncomingDamage(-50, -20, 1), 1);
+  assert.equal(calculateBossIncomingDamage(10, -20, 1), 10);
+  assert.equal(calculateBossIncomingDamage('invalid', 0, 1), 1);
+});
+
+test('spell mastery awakening is inactive below level ten and clamps mastery bounds', () => {
+  for (const level of [-10, 0, 9, Number.NaN]) {
+    assert.equal(getSpellMasteryAwakening('zoltraak', level).damage, 0);
+  }
+  assert.equal(getSpellMasteryAwakening('zoltraak', 100).damage, 8);
+  assert.equal(getSpellMasteryAwakening('unknown-spell', 10).damage, 0);
+});
+
+test('level-scaled quest rewards remain nonnegative and cap their multiplier', () => {
+  const low = getLevelScaledQuestReward(-10, -5, 0, false);
+  assert.equal(low.coins, 0);
+  assert.equal(low.xp, 0);
+  assert.equal(low.multiplier, 1);
+  const high = getLevelScaledQuestReward(100, 50, 10000, true);
+  assert.equal(high.multiplier, 3);
+  assert.equal(high.coins, 600);
+  assert.equal(high.xp, 450);
+  assert.equal(high.completionBonus, true);
+});
+
+test('exploration mastery rewards trigger only at positive multiples of three', () => {
+  assert.deepEqual(explorationMasteryReward(0), { level: 0, coins: 0, xp: 0, milestone: false });
+  assert.deepEqual(explorationMasteryReward(2), { level: 0, coins: 0, xp: 0, milestone: false });
+  assert.deepEqual(explorationMasteryReward(3), { level: 1, coins: 40, xp: 30, milestone: true });
+  assert.deepEqual(explorationMasteryReward(6), { level: 2, coins: 40, xp: 30, milestone: true });
+  assert.deepEqual(explorationMasteryReward(-3), { level: 0, coins: 0, xp: 0, milestone: false });
+});
