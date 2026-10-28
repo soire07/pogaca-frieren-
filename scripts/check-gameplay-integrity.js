@@ -694,3 +694,14 @@ test('magic duel applies both players talent bonuses to HP, attack and defense',
     assert.match(source, new RegExp('Number\\(' + player + '\\.talent_defense\\) \\* 0\\.04'));
   }
 });
+
+
+test('layered dungeon enforces HP, attack and defense caps after all multipliers', async () => {
+  const source = await read('katlizindan.js');
+  assert.match(source, /const maxHp = Math\.min\(2000, Math\.round\(baseMaxHp \* build\.hp \* role\.hp \* \(1 \+ Number\(p\.talent_hp\) \* 0\.05\)\)\)/,
+    'final HP must remain capped after build, role and talent multipliers');
+  assert.match(source, /attack: Math\.min\(500, Math\.round\(Math\.min\(500, Number\(p\.attack\) \+ bonus\.attack\) \* build\.attack \* role\.attack \* \(1 \+ Number\(p\.talent_attack\) \* 0\.04\)\)\)/,
+    'final attack must remain capped after build, role and talent multipliers');
+  assert.match(source, /defense: Math\.min\(250, Math\.round\(Math\.min\(250, applyClassDefense\([\s\S]*?\) \* build\.defense \* \(1 \+ Number\(p\.talent_defense\) \* 0\.04\)\) \* role\.defense\)\)/,
+    'final defense must remain capped after build, class and talent multipliers');
+});
