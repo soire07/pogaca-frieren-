@@ -181,6 +181,14 @@ export default {
         const newXp = Number(player.xp) + xpReward;
         const newLevel = levelForXp(newXp);
         const gainedPoints = Math.max(0, newLevel - Number(player.level));
+        // Gear can raise combat max HP, but only the base-stat proportion is persisted.
+        const persistedHp = Math.max(
+          0,
+          Math.min(
+            Number(player.max_hp),
+            Math.round((hpNow[i] / Math.max(1, Number(player.maxHp))) * Number(player.max_hp))
+          )
+        );
         await db.query(
           `UPDATE users SET
             hp=$3,
@@ -192,7 +200,7 @@ export default {
             dungeon_runs=dungeon_runs+1,
             last_dungeon_at=NOW()
            WHERE guild_id=$1 AND user_id=$2`,
-          [interaction.guildId, player.user_id, hpNow[i], newXp, newLevel, coinReward, gainedPoints, win ? 1 : 0]
+          [interaction.guildId, player.user_id, persistedHp, newXp, newLevel, coinReward, gainedPoints, win ? 1 : 0]
         );
         if (lootItem) {
           await db.query(
