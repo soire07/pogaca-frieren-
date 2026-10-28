@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
+  AttachmentBuilder,
   Client,
   Events,
   GatewayIntentBits,
@@ -291,7 +292,11 @@ client.on(Events.InteractionCreate, async interaction => {
         + '\n\nKomutlar: ' + (commandList || 'Ayrıntılı liste test çıktısında yok.')
         + '\nTest çıkış kodu: ' + (testsPassed ? 0 : (result.code ?? 'yok'))
         + '\nSon test çıktısı:\n' + rawOutput;
-      await interaction.editReply(body.slice(0, 1950));
+      const summaryMessage = (body.slice(0, 1650) + '\n\nTam komut listesi ve hata ayrıntıları rapor dosyasında.').slice(0, 1950);
+      await interaction.editReply({
+        content: summaryMessage,
+        files: [new AttachmentBuilder(Buffer.from(rawOutput, 'utf8'), { name: 'frieren-test-report.txt' })],
+      });
     } catch (error) {
       console.error('Test command failed:', error.message);
       await interaction.editReply('Test çalıştırılırken hata oluştu. Ayrıntılar servis günlüklerine yazıldı.');
