@@ -53,3 +53,8 @@ The key is not stored in the repository. Groq free-tier limits apply; quota erro
 The GitHub Actions workflow `.github/workflows/frieren-ai-health.yml` checks the Render `/health` endpoint every 10 minutes and retries briefly if Render is waking the service. It fails if the HTTP health response or Discord gateway readiness is not healthy. You can also run it manually from the Actions tab.
 
 This is a best-effort free-tier workaround, not an uptime guarantee: GitHub scheduled jobs can be delayed, and Render can still restart or suspend free services.
+
+
+## Short conversation context
+
+The `/frieren-ai` coding assistant keeps the last four question/answer exchanges separately for each authorized Discord user, for up to 30 minutes of inactivity. The buffer is memory-only, limited to 100 users, and automatically expires; it resets when the service restarts or redeploys. It is used only to keep follow-up coding questions coherent and is not permanent memory.
