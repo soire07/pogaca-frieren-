@@ -244,7 +244,7 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 
   if (interaction.commandName === 'frieren-ai') {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply();
     try {
       const question = interaction.options.getString('soru', true);
       const answer = await askAI(question);
