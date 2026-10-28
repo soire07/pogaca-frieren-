@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import OpenAI from 'openai';
@@ -22,6 +23,19 @@ const timeoutMs = Math.max(30_000, Math.min(Number(process.env.FRIEREN_TEST_TIME
 const model = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+// Render Web Services require an HTTP port. This lightweight endpoint does not expose bot controls.
+const port = Number(process.env.PORT) || 10000;
+const healthServer = createServer((req, res) => {
+  if (req.url === '/health') {
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ status: 'ok', discordReady: client.isReady() }));
+    return;
+  }
+  res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
+  res.end('Frieren AI agent is running.');
+});
+healthServer.listen(port, '0.0.0.0', () => console.log('Health server listening on port ' + port));
 const runningGuilds = new Set();
 
 const commands = [
