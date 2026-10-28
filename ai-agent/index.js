@@ -179,8 +179,8 @@ async function runSyntaxChecks() {
   })));
   return {
     code: results.every(result => result.code === 0) ? 0 : 1,
-    stdout: results.map(result => result.file + ': ' + (result.code === 0 ? 'OK' : 'FAILED')).join('\\n'),
-    stderr: results.filter(result => result.code !== 0).map(result => result.file + ': ' + result.stderr).join('\\n'),
+    stdout: results.map(result => result.file + ': ' + (result.code === 0 ? 'OK' : 'FAILED')).join('\n'),
+    stderr: results.filter(result => result.code !== 0).map(result => result.file + ': ' + result.stderr).join('\n'),
   };
 }
 
@@ -208,9 +208,9 @@ function runCommandAudit() {
     };
     child.stdout.on('data', chunk => { stdout = (stdout + chunk.toString()).slice(-12000); });
     child.stderr.on('data', chunk => { stderr = (stderr + chunk.toString()).slice(-12000); });
-    child.on('error', error => finish(null, '\\n' + error.message));
+    child.on('error', error => finish(null, '\n' + error.message));
     child.on('close', code => finish(code));
-    const timer = setTimeout(() => { child.kill('SIGTERM'); finish(null, '\\nKomut denetimi zaman aşımına uğradı.'); }, timeoutMs);
+    const timer = setTimeout(() => { child.kill('SIGTERM'); finish(null, '\nKomut denetimi zaman aşımına uğradı.'); }, timeoutMs);
   });
 }
 
@@ -238,13 +238,13 @@ function runTargetedTests(target) {
       settled = true;
       clearTimeout(timer);
       const selectionNotice = isCommandInteractionCoverage
-        ? 'SEÇİLEN TEST DOSYALARI: scripts/test-command-interaction-coverage.js (doğrudan çalıştırıldı)\\n'
+        ? 'SEÇİLEN TEST DOSYALARI: scripts/test-command-interaction-coverage.js (doğrudan çalıştırıldı)\n'
         : '';
       const safeStdout = redactSecrets(stdout);
       const safeStderr = redactSecrets(stderr + error);
       // Node's test runner writes t.diagnostic() to stderr; include it in the visible targeted-test report.
       const diagnosticOutput = isCommandInteractionCoverage && safeStderr.trim()
-        ? '\\n=== HEDEFLİ TEST TANILAMALARI ===\\n' + safeStderr.trim()
+        ? '\n=== HEDEFLİ TEST TANILAMALARI ===\n' + safeStderr.trim()
         : '';
       resolve({
         applicable: true,
