@@ -116,26 +116,38 @@ async function askAI(question, testReport = '') {
   let response;
   let payload = {};
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    response = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent',
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-goog-api-key': geminiApiKey,
+    try {
+      response = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent',
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-goog-api-key': geminiApiKey,
+          },
+          body: requestBody,
+          signal: AbortSignal.timeout(45_000),
         },
-        body: requestBody,
-        signal: AbortSignal.timeout(45_000),
-      },
-    );
-    payload = await response.json().catch(() => ({}));
-    if (response.ok) break;
+      );
+      payload = await response.json().catch(() => ({}));
+      if (response.ok) break;
 
-    // Retry only transient overload/rate-limit/server errors; never retry invalid keys or requests.
-    const retryable = [408, 429, 500, 502, 503, 504].includes(response.status);
-    if (!retryable || attempt === 2) {
-      const providerMessage = payload?.error?.message || ('HTTP ' + response.status);
-      throw new Error('Gemini API request failed (' + response.status + '): ' + providerMessage);
+      // Retry only transient overload/rate-limit/server errors; never retry invalid keys or requests.
+      const retryable = [408, 429, 500, 502, 503, 504].includes(response.status);
+      if (!retryable || attempt === 2) {
+        const providerMessage = payload?.error?.message || ('HTTP ' + response.status);
+        throw new Error('Gemini API request failed (' + response.status + '): ' + providerMessage);
+      }
+      console.warn('Transient Gemini API response (' + response.status + '); retry ' + (attempt + 1) + '/2.');
+    } catch (error) {
+      // fetch() throws for timeouts and network failures before an HTTP response exists.
+      const transientNetworkError = error?.name === 'TimeoutError'
+        || error?.name === 'AbortError'
+        || error?.name === 'TypeError';
+      if (!transientNetworkError || attempt === 2) {
+        throw new Error('Gemini API request failed: ' + (error?.message || 'Unknown network error'));
+      }
+      console.warn('Transient Gemini network/timeout error; retry ' + (attempt + 1) + '/2.');
     }
     await new Promise(resolve => setTimeout(resolve, 1000 * (2 ** attempt)));
   }
