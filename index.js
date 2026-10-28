@@ -171,7 +171,9 @@ client.on(Events.MessageBulkDelete, async messages => {
 
 client.once(Events.ClientReady, async readyClient => {
   try {
-    const slashCommands = [...client.commands.values()].map(command => command.data.toJSON());
+    const slashCommands = [...client.commands.values()].map(command =>
+      typeof command.data?.toJSON === 'function' ? command.data.toJSON() : command.data
+    );
 
     // Eski sunucu kapsamlı komutlar global komutlarla aynı adları taşıyıp iki kez görünebilir.
     // Botun bulunduğu sunuculardaki eski kayıtları temizlemeden yeni kayıtları yayımlama.
