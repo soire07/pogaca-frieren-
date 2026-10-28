@@ -261,17 +261,21 @@ client.on(Events.InteractionCreate, async interaction => {
         runTargetedTests(target),
       ]);
       const auditOutput = audit.stdout + '\n' + audit.stderr;
-      const commandCount = auditOutput.match(/Komut denetimi başarılı: (\d+) slash komutu/);
-      const commandList = auditOutput.split(/\r?\n/).find(line => line.startsWith('/')) || '';
+      const commandCount = auditOutput.match(/ÖZET: (\d+) komut keşfedildi; (\d+) PASS; (\d+) FAIL/);
+      const commandList = auditOutput.split(/\r?\n/).filter(line => /^(?:PASS|FAIL) \//.test(line)).slice(0, 8).join(', ') || '';
       const auditPassed = audit.code === 0 && Boolean(commandCount) && Number(commandCount[3]) === 0;
       const syntaxPassed = agentSyntax.code === 0;
       const testsPassed = result.code === 0 && !result.timedOut;
       const status = auditPassed && testsPassed && syntaxPassed ? 'TÜM OTOMATİK DENETİMLER BAŞARILI' : result.timedOut ? 'TEST ZAMAN AŞIMI' : 'DENETİM BAŞARISIZ';
       const summary = buildLocalTestSummary(result);
+      const targetedOutput = (targeted.stdout || '') + '\\n' + (targeted.stderr || '');
+      const targetedHasTests = /SEÇİLEN TEST DOSYALARI:/.test(targetedOutput);
       const targetedSummary = targeted.applicable
-        ? (targeted.code === 0
-          ? 'Hedefe özel boss/savaş testleri: BAŞARILI. Sınır hasarı, faz eşikleri, faz çarpanları, boss zayıflıkları ve sınıf bonusları kontrol edildi.'
-          : 'Hedefe özel boss/savaş testleri: BAŞARISIZ (çıkış kodu: ' + (targeted.code ?? 'yok') + '). ' + (targeted.stderr || targeted.stdout).slice(-250))
+        ? (!targetedHasTests
+          ? 'Hedefe özel test kapsamı: BULUNAMADI. İstekle eşleşen test dosyası seçilmedi; bu hedef için başarı iddiası verilmiyor.'
+          : targeted.code === 0
+            ? 'Hedefe özel testler: BAŞARILI. ' + (targetedOutput.match(/SEÇİLEN TEST DOSYALARI: ([^\\n]+)/)?.[1] || 'Seçilen testler geçti.')
+            : 'Hedefe özel testler: BAŞARISIZ (çıkış kodu: ' + (targeted.code ?? 'yok') + '). ' + targetedOutput.slice(-300))
         : 'Hedefe özel test kapsamı: EKSİK. ' + targeted.note;
       const syntaxSummary = syntaxPassed ? 'AI servis sözdizimi: başarılı.' : 'AI servis sözdizimi BAŞARISIZ: ' + agentSyntax.stderr.slice(-250);
       const auditSummary = auditPassed
