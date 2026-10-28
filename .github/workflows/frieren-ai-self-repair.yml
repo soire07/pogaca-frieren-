@@ -43,8 +43,9 @@ jobs:
 
       - name: Generate a constrained repair proposal
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          FRIEREN_AI_MODEL: gpt-4.1-mini
+          FRIEREN_AI_API_KEY: ${{ secrets.FRIEREN_AI_API_KEY }}
+          FRIEREN_AI_BASE_URL: https://chat.merkium.nl/api/v1
+          FRIEREN_AI_MODEL: pluto-1.2-flash
           FRIEREN_REPAIR_TASK: ${{ inputs.task }}
         run: node scripts/ai-self-repair.js
 
