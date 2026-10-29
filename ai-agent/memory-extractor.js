@@ -1,4 +1,4 @@
-const SENSITIVE_TERMS = /\b(password|passcode|parola|sifre|şifre|token|api key|secret|iban|credit card|kredi karti|adresim|ev adresi|telefon numaram|tc kimlik|diagnosis|tani kondu|hastaligim|hastalığım|ilacim|ilacım|oyum|partim|dinim|cinsel|sexual|political affiliation)\b/i;
+const SENSITIVE_TERMS = /\b(password|passcode|parola|sifre\\w*|şifre\\w*|token|api key|secret|iban|credit card|kredi karti|adresim|ev adresi|telefon numaram|tc kimlik|diagnosis|tani kondu|hastaligim|hastalığım|ilacim|ilacım|oyum|partim|dinim|cinsel|sexual|political affiliation)\b/i;
 
 function clean(value) {
   return String(value ?? '').replace(/\s+/g, ' ').trim();
