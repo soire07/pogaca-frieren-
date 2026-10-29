@@ -717,17 +717,22 @@ client.on(Events.InteractionCreate, async interaction => {
         '',
         'NOT: PASS yalnızca ilgili otomatik kontrolün geçtiğini belirtir. Canlı Discord kullanıcı akışları ve üretim veritabanı etkileri bu raporla otomatik olarak kanıtlanmış sayılmaz.'
       ].join('\n').trim();
-      const body = '**' + status + '**\n\n**İstenen test:** ' + target.slice(0, 500)
-        + '\n**İlgili alan:** ' + targetGroups.join(' • ')
-        + '\n\n' + syntaxSummary + '\n' + auditSummary + '\n' + summary
-        + '\n' + liveRpgSummary + '\n' + targetedSummary
-        + (diagnosticSummary ? '\n' + diagnosticSummary : '\nHedefli test tanılamaları rapor dosyasında bulunur.')
-        + '\n\nKapsam notu: Genel paket ile hedefli testler ayrı raporlanır. Hedefli paket yalnızca kapsadığı senaryoları doğrular; canlı Discord etkileşimlerini tek başına kanıtlamaz.'
-        + '\nDiscord üzerinde her komutun canlı etkileşimini bu paket tek başına kanıtlamaz.'
-        + '\n\nKomutlar: ' + (commandList || 'Ayrıntılı liste test çıktısında yok.')
-        + '\nTest çıkış kodu: ' + (testsPassed ? 0 : (result.code ?? 'yok'))
-        + '\nSon test çıktısı:\n' + rawOutput;
-      const summaryMessage = (body.slice(0, 1650) + '\n\nTam komut listesi ve hata ayrıntıları rapor dosyasında.').slice(0, 1950);
+      const targetedFiles = targetedOutput.match(/SEÇİLEN TEST DOSYALARI: ([^\n]+)/)?.[1] || 'Çıktıda dosya listesi bulunamadı.';
+      const body = '**' + status + '**\n'
+        + '\n**İstenen hedef:** ' + target.slice(0, 350)
+        + '\n**Bu çalıştırmada yapılan kod düzeltmesi:** YOK. /frieren-test yalnızca test çalıştırır; kaynak dosyalarını değiştirmez. Testlerin geçmesi, hata düzeltildiği anlamına gelmez.'
+        + '\n\n**Doğrulama sonuçları**'
+        + '\n- AI sözdizimi: ' + (syntaxPassed ? 'PASS' : 'FAIL')
+        + '\n- Komut sözleşmeleri: ' + (auditPassed ? commandCount[1] + ' komut, ' + commandCount[2] + ' PASS, ' + commandCount[3] + ' FAIL' : 'FAIL')
+        + '\n- Genel test paketi: ' + summary
+        + '\n- Hedefli testler: ' + (targetedHasTests ? targetedFiles : 'Kapsam bulunamadı')
+        + '\n- Hedefli sonuç: ' + (targetedPassed ? 'PASS' : 'PASS değil / doğrulanamadı')
+        + '\n- Canlı RPG sağlık kontrolü: ' + (liveRpgPassed ? 'PASS' : 'FAIL — ' + liveRpgHealth.summary)
+        + (diagnosticSummary ? '\n\n**Ek tanılamalar**\n' + diagnosticSummary : '')
+        + '\n\n**Ne düzeltildi?** Bu çalıştırmada hiçbir kaynak kod değişikliği yapılmadı. Hangi hataların düzeltildiğini söyleyebilmek için ayrı bir kod değişikliği ve onu doğrulayan test gerekir.'
+        + '\n**Sınır:** Bunlar otomatik kontrollerdir; her komutun gerçek Discord kullanıcı akışında çalıştığını kanıtlamaz.'
+        + '\n\nTam log ve komut sonuçları ekli rapor dosyasında.';
+      const summaryMessage = body.slice(0, 1950);
       await interaction.editReply({
         content: summaryMessage,
         files: [new AttachmentBuilder(Buffer.from(rawOutput, 'utf8'), { name: 'frieren-test-report.txt' })],
