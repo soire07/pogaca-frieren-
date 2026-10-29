@@ -7,10 +7,27 @@ class FakePool {
     this.options = options;
     this.calls = [];
     this.rows = [];
+    this.conversationRows = [];
+    this.nextConversationId = 1;
     FakePool.instance = this;
   }
   async query(sql, params = []) {
     this.calls.push({ sql, params });
+    if (sql.includes('INSERT INTO frieren_ai_conversation')) {
+      const [userId, role, content] = params;
+      this.conversationRows.push({ id: this.nextConversationId++, user_id: userId, role, content });
+      return { rows: [], rowCount: 1 };
+    }
+    if (sql.includes('SELECT role, content FROM frieren_ai_conversation')) {
+      const [userId, limit] = params;
+      return { rows: this.conversationRows.filter(row => row.user_id === userId).slice(-limit).reverse().map(({ role, content }) => ({ role, content })), rowCount: 0 };
+    }
+    if (sql.includes('DELETE FROM frieren_ai_conversation')) {
+      const [userId] = params;
+      const keep = new Set(this.conversationRows.filter(row => row.user_id === userId).slice(-12).map(row => row.id));
+      this.conversationRows = this.conversationRows.filter(row => row.user_id !== userId || keep.has(row.id));
+      return { rows: [], rowCount: 0 };
+    }
     if (sql.includes('INSERT INTO frieren_ai_memories')) {
       const [userId, key, value] = params;
       const row = { memory_key: key, memory_value: value, updated_at: new Date(0) };
@@ -116,4 +133,19 @@ test('save rejects keys and values beyond the documented schema limits', async (
 test('memory keyword normalization preserves words and removes Turkish diacritics correctly', () => {
   const words = memoryStoreInternals.normalizeWords('Frieren Türkçe büyü');
   assert.deepEqual([...words].sort(), ['buyu', 'frieren', 'turkce']);
+});
+
+
+test('conversation history persists in order and is isolated per Discord user', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  await store.addConversationTurn('user-a', 'user', 'Elara adlı karakterimiz var.');
+  await store.addConversationTurn('user-a', 'assistant', 'Elara hikâyenin kahramanı.');
+  await store.addConversationTurn('user-b', 'user', 'Başka bir konuşma.');
+  assert.deepEqual(await store.getConversationHistory('user-a'), [
+    { role: 'user', content: 'Elara adlı karakterimiz var.' },
+    { role: 'assistant', content: 'Elara hikâyenin kahramanı.' },
+  ]);
+  assert.deepEqual(await store.getConversationHistory('user-b'), [
+    { role: 'user', content: 'Başka bir konuşma.' },
+  ]);
 });
