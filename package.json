@@ -8,7 +8,7 @@
     "start": "node index.js",
     "deploy-commands": "node deploy-commands.js",
     "check": "node --check index.js && node --check deploy-commands.js && node scripts/check-commands.js && node scripts/check-feature-inventory.js && node scripts/check-gameplay-integrity.js && npm test",
-    "test": "node --test scripts/test-utils.js scripts/test-discord-scenarios.js"
+    "test": "node --test scripts/test-utils.js scripts/test-discord-scenarios.js scripts/test-gameplay-persistence.js"
   },
   "engines": {
     "node": ">=20"
