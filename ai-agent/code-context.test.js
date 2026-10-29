@@ -25,7 +25,7 @@ test('excerpt prefers a dense relevant match over an earlier generic keyword', (
     ...Array.from({ length: 40 }, () => '// damage is used by many unrelated systems'),
     'function calculateBossDamageFormula(boss, attack) { return boss.defense - attack; }',
     ...Array.from({ length: 40 }, () => '// unrelated footer'),
-  ].join('\\n');
+  ].join('\n');
   const excerpt = findRelevantExcerpt(source, ['boss', 'damage', 'formula'], 500);
   assert.ok(excerpt.length <= 500);
   assert.match(excerpt, /calculateBossDamageFormula/);
