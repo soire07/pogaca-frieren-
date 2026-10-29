@@ -2,7 +2,7 @@ import 'dotenv/config';
 import OpenAI from 'openai';
 import { resolveAiModel } from './config.js';
 import { createMemoryStore } from './memory-store.js';
-import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
+import { countNodeTests, hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
 import { getTestLockKey, getPublicHealthPayload, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
 import { checkLiveRpgHealth } from './live-rpg-health.js';
 import { readFile, readdir } from 'node:fs/promises';
@@ -542,8 +542,7 @@ client.on(Events.InteractionCreate, async interaction => {
       const testsPassed = result.code === 0 && !result.timedOut;
       const targetedOutput = (targeted.stdout || '') + '\n' + (targeted.stderr || '');
       // A selected-file banner alone is not proof that tests actually ran.
-      const targetedCountMatch = targetedOutput.match(/(?:ℹ\s*)tests\s+(\d+)/i);
-      const targetedTestCount = targetedCountMatch ? Number(targetedCountMatch[1]) : 0;
+      const targetedTestCount = countNodeTests(targetedOutput);
       const targetedHasTests = /SEÇİLEN TEST DOSYALARI:/.test(targetedOutput) && targetedTestCount > 0;
       const memoryPrivacyTarget = isMemoryPrivacyTarget(target);
       const liveMemoryProofPassed = hasLiveMemoryPrivacyProof(target, targetedOutput);
