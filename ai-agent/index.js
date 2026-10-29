@@ -77,6 +77,11 @@ const commands = [
       .addBooleanOption(option => option.setName('onayla').setDescription('Tüm kişisel bellek kayıtlarını silmeyi onayla.').setRequired(true)))
     .toJSON(),
   new SlashCommandBuilder()
+    .setName('frieren-komut-denetle')
+    .setDescription('Poğaça Frieren komut işleyicilerini yalıtılmış veritabanında çalıştırıp raporlar.')
+    .addStringOption(option => option.setName('komut').setDescription('Tek bir komut adı (boş bırakırsan tüm komutlar denenir).').setRequired(false).setMaxLength(80))
+    .toJSON(),
+  new SlashCommandBuilder()
     .setName('status')
     .setDescription('Frieren AI servisinin canlı çalışma durumunu gösterir.')
     .toJSON(),
@@ -459,6 +464,46 @@ client.on(Events.InteractionCreate, async interaction => {
     await sendPrivateError(interaction, 'Bu komut yalnızca yetkili geliştiriciler tarafından kullanılabilir.', error => {
       console.error('Authorization denial reply failed:', redactSecrets(error.message || 'unknown error'));
     });
+    return;
+  }
+
+  if (interaction.commandName === 'frieren-komut-denetle') {
+    const baseUrl = process.env.FRIEREN_BRIDGE_URL?.trim()?.replace(/\/$/, '');
+    const secret = process.env.FRIEREN_BRIDGE_SECRET?.trim();
+    if (!baseUrl || !secret) {
+      await interaction.reply({ content: 'Komut köprüsü yapılandırılmamış. Frieren AI ortamında FRIEREN_BRIDGE_URL ve FRIEREN_BRIDGE_SECRET eksik.', flags: MessageFlags.Ephemeral });
+      return;
+    }
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    try {
+      const commandName = interaction.options.getString('komut')?.trim().replace(/^\//, '');
+      const response = await fetch(baseUrl + '/internal/test-suite', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + secret },
+        body: JSON.stringify({ commands: commandName ? [commandName] : [] }),
+        signal: AbortSignal.timeout(timeoutMs)
+      });
+      const raw = await response.text();
+      let report;
+      try { report = JSON.parse(raw); } catch { throw new Error('Poğaça Frieren geçerli JSON raporu döndürmedi (HTTP ' + response.status + ').'); }
+      if (!response.ok) throw new Error('Poğaça Frieren test köprüsü HTTP ' + response.status + ': ' + (report.message || report.error || 'bilinmeyen hata'));
+      const summary = report.summary || {};
+      const resultRows = (report.results || []).map(item =>
+        (item.status === 'PASS' ? '✅' : item.status === 'FAIL' ? '❌' : '⏸️') + ' **/' + item.command + '** — ' + item.status
+        + (item.error ? '\n' + String(item.error).slice(0, 350) : '')
+      );
+      const preview = resultRows.slice(0, 12).join('\n') || 'Test sonucu bulunamadı.';
+      await interaction.editReply({
+        content: '**Poğaça Frieren komut denetimi tamamlandı**\n'
+          + 'Toplam: ' + (summary.total ?? 0) + ' | PASS: ' + (summary.pass ?? 0) + ' | FAIL: ' + (summary.fail ?? 0)
+          + '\nÇalıştırma: gerçek komut işleyicisi + sentetik Discord etkileşimi + frieren_test PostgreSQL şeması.\n'
+          + 'Not: Bu Discord üzerinden gerçek kullanıcı etkileşimi değil; üretim tablolarından ayrı test şemasında işleyici denemesidir. PASS, yalnızca yanıt/etki üretildiğini gösterir; özellik mantığının tamamını tek başına kanıtlamaz.\n\n'
+          + preview + (resultRows.length > 12 ? '\n… ve raporda ' + (resultRows.length - 12) + ' komut daha.' : ''),
+        files: [new AttachmentBuilder(Buffer.from(JSON.stringify(report, null, 2), 'utf8'), { name: 'pogaca-frieren-command-test-report.json' })]
+      });
+    } catch (error) {
+      await interaction.editReply({ content: 'Komut denetimi başarısız: ' + redactSecrets(error.message || 'unknown error').slice(0, 1500) });
+    }
     return;
   }
 
