@@ -86,7 +86,7 @@ const forcedFiles = isMemorySecurityCoverage
         'scripts/test-command-interaction-coverage.js'
       ]
     : isCommandInteractionCoverage
-      ? ['scripts/test-command-interaction-coverage.js']
+      ? ['scripts/test-command-interaction-coverage.js', 'scripts/test-uncovered-commands.js']
       : [];
 console.log('HEDEF EŞLEŞTİRME: ' + (isMemorySecurityCoverage
   ? 'Frieren AI bellek güvenliği -> ai-agent/memory-store.test.js (birim testleri; canlı PostgreSQL veya gerçek Discord gizlilik testi değildir)'
