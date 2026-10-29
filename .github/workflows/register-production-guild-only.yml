@@ -50,9 +50,12 @@ jobs:
       - name: Verify production guild target
         run: |
           test "1539562273197260860" = "${PRODUCTION_GUILD_ID}"
-          echo "Command registration target verified: production guild only."
+          test "${GUILD_IDS}" = "${PRODUCTION_GUILD_ID}"
+          test -z "${TEST_GUILD_ID:-}"
+          echo "Command registration target verified: production guild only; test guild excluded."
         env:
           PRODUCTION_GUILD_ID: "1539562273197260860"
+          GUILD_IDS: "1539562273197260860"
       - name: Wait for Discord's latest advertised cooldown
         run: sleep 240
       - name: Register commands in production guild only
