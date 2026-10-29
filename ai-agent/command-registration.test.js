@@ -23,7 +23,7 @@ test('manual registration includes every diagnostic slash command handled by run
 });
 
 test('registration exposes only the four Frieren AI root commands and four memory subcommands', () => {
-  assert.ok(!manual.includes(".setName('status')"), 'registration must not include /status');
+  assert.ok(manual.includes(".setName('status')"), 'registration must include /status');
   for (const name of ['kaydet', 'listele', 'sil', 'temizle']) {
     assert.match(manual, new RegExp(`setName\\(['\"]${name}['\"]\\)`), `registration is missing memory subcommand ${name}`);
   }
