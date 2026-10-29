@@ -727,11 +727,14 @@ test('character management is a single interactive panel, not slash subcommands'
 });
 
 
-test('slash command sync clears stale guild-scoped duplicates before registering the current command set', async () => {
+test('slash command registration is managed by deploy script, not runtime startup', async () => {
   const handler = await read('index.js');
-  assert.match(handler, /const guilds = \[\.\.\.readyClient\.guilds\.cache\.values\(\)\]/);
-  assert.match(handler, /await guild\.commands\.set\(\[\]\)/);
-  assert.match(handler, /await readyClient\.application\.commands\.set\(slashCommands\)/);
+  const deploy = await read('deploy-commands.js');
+  assert.ok(handler.includes('Slash komutları yalnızca deploy-commands.js / GitHub Actions tarafından kaydedilir.'));
+  assert.ok(!handler.includes('guild.commands.set([])'));
+  assert.ok(!handler.includes('application.commands.set('));
+  assert.ok(deploy.includes('Routes.applicationGuildCommands'));
+  assert.ok(deploy.includes('Routes.applicationCommands'));
 });
 
 test('player-facing help documents the single character panel command', async () => {
