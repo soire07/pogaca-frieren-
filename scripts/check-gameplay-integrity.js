@@ -313,7 +313,9 @@ test('item-use SQL bind count exactly matches placeholders', async () => {
 
 test('equipment equip and unequip are transactional, user-scoped, and clamp persistent base HP/mana', async () => {
   const source = await read('ekipman.js');
-  const equipStart = source.indexOf("await db.query('BEGIN')", source.indexOf('const db = await pool.connect();', source.indexOf("if (action === 'unequip')") + 1));
+  const equipActionStart = source.indexOf('const item = equipmentItems.find(entry => entry.id === itemId)');
+  const equipConnection = source.indexOf('const db = await pool.connect();', equipActionStart);
+  const equipStart = source.indexOf("await db.query('BEGIN')", equipConnection);
   const equipInsert = source.indexOf('INSERT INTO user_equipment', equipStart);
   const equipStats = source.indexOf('const effectiveMaxHp =', equipInsert);
   const equipClamp = source.indexOf('UPDATE users SET hp=LEAST(hp,$3), mana=LEAST(mana,$4)', equipStats);
