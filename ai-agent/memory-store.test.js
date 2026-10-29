@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createMemoryStore, memoryStoreInternals } from './memory-store.js';
+import { createMemoryStore, memoryStoreInternals, shouldUseConversationHistory } from './memory-store.js';
 import { extractAutomaticMemories } from './memory-extractor.js';
 
 class FakePool {
@@ -235,4 +235,12 @@ test('automatic memory extraction blocks sensitive terms with Turkish suffixes',
 test('automatic memory extraction does not invent facts from casual mentions', () => {
   assert.deepEqual(extractAutomaticMemories('Bugün kaplumbağa gördüm.'), []);
   assert.deepEqual(extractAutomaticMemories('Minecraft çok popüler bir oyun.'), []);
+});
+
+
+test('deleted specific facts cannot be recovered from conversation history', () => {
+  assert.equal(shouldUseConversationHistory('Benim en sevdiğim yemek neydi?', []), false);
+  assert.equal(shouldUseConversationHistory('Benim en sevdiğim yemek neydi?', [{ memory_key: 'favori_yemek', memory_value: 'mantı' }]), true);
+  assert.equal(shouldUseConversationHistory('Benim hakkımda kayıtlı olan tüm anılarını listele.', []), false);
+  assert.equal(shouldUseConversationHistory('Bugün nasılsın?', []), true);
 });
