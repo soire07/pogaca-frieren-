@@ -16,6 +16,10 @@ if (process.env.DISCORD_GUILD_ID.trim() !== TEST_GUILD_ID) {
 
 const commands = [
   new SlashCommandBuilder()
+    .setName('status')
+    .setDescription('Frieren AI servisinin canlı çalışma durumunu gösterir.')
+    .toJSON(),
+  new SlashCommandBuilder()
     .setName('frieren-test')
     .setDescription('Yazdığın hedefi dikkate alarak Frieren otomatik test ve tanılama paketini çalıştırır.')
     .addStringOption(option => option.setName('hedef').setDescription('Neyi test etmemi istiyorsun? Örn. boss hasarı, görev ödülleri, envanter.').setRequired(true).setMaxLength(4000))
@@ -48,4 +52,4 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 const route = Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, TEST_GUILD_ID);
 
 await rest.put(route, { body: commands });
-console.log('Frieren AI test-guild commands registered: 4 root commands, including /frieren-bellek with 4 subcommands.');
+console.log('Frieren AI test-guild commands registered: 4 root commands (/status, /frieren-ai, /frieren-test, /frieren-komut-denetle) and 4 /frieren-bellek subcommands.');
