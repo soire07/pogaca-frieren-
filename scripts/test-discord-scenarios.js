@@ -760,6 +760,10 @@ test('slash command deployment uses bounded Discord rate-limit retries and prese
   const deploy = await read('deploy-commands.js');
   assert.ok(deploy.includes("rejectOnRateLimit: ['/applications']") && deploy.includes("new REST({"), 'REST must use the route-prefix array expected by the installed discord.js REST version');
   assert.ok(deploy.includes("rest.on('rateLimited'"), 'rate-limit scope and bucket details must be logged');
+  assert.ok(deploy.includes('makeRequest: async (url, init) =>'), 'HTTP responses must be instrumented without bypassing the REST manager');
+  assert.ok(deploy.includes("response.headers.get('x-ratelimit-scope')"), '429 diagnostics must capture Discord rate-limit scope');
+  assert.ok(deploy.includes("response.headers.get('x-ratelimit-bucket')"), '429 diagnostics must capture the route bucket');
+  assert.ok(deploy.includes('response.clone().json()'), '429 diagnostics must inspect the response body without consuming it');
   assert.ok(deploy.includes('const MAX_RATE_LIMIT_RETRIES = 3'), 'command registration retries must be bounded');
   assert.ok(deploy.includes("error?.name?.startsWith('RateLimitError')"), 'REST rate-limit errors include the route in their name and must still be retried');
   assert.ok(deploy.includes('const RATE_LIMIT_SAFETY_MARGIN_MS = 10_000'), 'manual retry must leave a safety margin after Discord rate limits reset');
