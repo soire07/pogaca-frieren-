@@ -1,7 +1,7 @@
 name: Register Discord Commands
 
-# Legacy registration loops were stopped; each new sync now runs single-flight with bounded retries.
-# deploy-commands.js logs safe 429 metadata and stops after a bounded number of retries.
+# Legacy registration loops were stopped; sync runs single-flight with bounded retries.
+# deploy-commands.js treats Discord 30034 daily command-create exhaustion as non-retryable.
 
 permissions:
   contents: read
