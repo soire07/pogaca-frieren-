@@ -53,7 +53,10 @@ function normalizeWords(value) {
 
 function isMemoryRecallQuestion(value) {
   const normalized = normalizeText(value);
-  return /\b(hatirla|hatirliyorsun|hatirladin|hatirladiklarin|aklinda ne var|benim hakkimda ne|bellegimde ne var|bellegimde neler var|bellek kayitlarim|hafizamda ne var|gecmiste ne demistim|ne demistim|neleri biliyorsun|neler biliyorsun|what do you remember|what have i told you)\b/.test(normalized);
+  return /\\b(hatirla|hatirliyorsun|hatirladin|hatirladiklarin|aklinda ne var|benim hakkimda ne|bellegimde ne var|bellegimde neler var|bellek kayitlarim|hafizamda ne var|gecmiste ne demistim|ne demistim|neleri biliyorsun|neler biliyorsun|what do you remember|what have i told you)\\b/.test(normalized)
+    || /\\btum (?:kayitli olan )?anilar\\w*\\b/.test(normalized)
+    || /\\btum (?:kayitli )?bellek kayitlar\\w*\\b/.test(normalized)
+    || /\\bkayitli olan tum anilar\\w*\\b/.test(normalized);
 }
 
 export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
@@ -187,9 +190,9 @@ export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
         .sort((a, b) => b.score - a.score || a.index - b.index)
         .slice(0, 8)
         .map(item => item.memory);
-      // Explicit recall questions should get a small recent-memory overview instead of
-      // an empty context merely because the question shares no keywords with saved facts.
-      if (recallIntent && matched.length === 0) return memories.slice(0, 5);
+      // Explicit recall questions ask for an overview, not just the one record that
+      // happens to share a keyword with the question. Return recent records, always scoped by user ID.
+      if (recallIntent) return memories.slice(0, 8);
       return matched;
     },
 
