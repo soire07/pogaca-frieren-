@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { equipmentItems, equipmentBonus } from '../equipment-data.js';
+import { applyEquipmentSetBonus, getLevelScaledQuestReward } from '../rpg-mechanics.js';
 import {
   RAID_BOSSES,
   applyRaidWeakness,
@@ -62,4 +64,43 @@ test('class damage, defense and healing bonuses round down consistently', () => 
   assert.equal(applyClassDamage(101, 'Gezgin'), 101);
   assert.equal(applyClassDefense(101, 'Muhafız'), 113);
   assert.equal(applyClassHealing(26, 'Şifacı'), 31);
+});
+
+
+test('legendary and epic set bonuses activate at exact thresholds and disappear when a piece is removed', () => {
+  const legendary = equipmentItems.filter(item => ['demon_blade', 'demon_armor'].includes(item.id));
+  const legendaryBonus = applyEquipmentSetBonus(legendary, equipmentBonus(legendary));
+  assert.equal(legendaryBonus.attack, 20);
+  assert.equal(legendaryBonus.hp, 85);
+  assert.equal(legendaryBonus.setText, 'Efsanevi set: +4 saldırı, +25 HP');
+
+  const oneLegendary = legendary.filter(item => item.id !== 'demon_blade');
+  const noSet = applyEquipmentSetBonus(oneLegendary, equipmentBonus(oneLegendary));
+  assert.equal(noSet.attack, 0);
+  assert.equal(noSet.hp, 60);
+  assert.equal(noSet.setText, null);
+
+  const epic = equipmentItems.filter(item => ['frieren_robe', 'rune_ring'].includes(item.id));
+  const epicBonus = applyEquipmentSetBonus(epic, equipmentBonus(epic));
+  assert.equal(epicBonus.defense, 10);
+  assert.equal(epicBonus.mana, 65);
+  assert.equal(epicBonus.setText, 'Destansı set: +3 savunma, +15 mana');
+
+  const oneEpic = epic.filter(item => item.id !== 'rune_ring');
+  const noEpicSet = applyEquipmentSetBonus(oneEpic, equipmentBonus(oneEpic));
+  assert.equal(noEpicSet.defense, 7);
+  assert.equal(noEpicSet.mana, 30);
+  assert.equal(noEpicSet.setText, null);
+});
+
+test('quest reward scaling returns deterministic coins and XP, including the chain completion bonus', () => {
+  assert.deepEqual(getLevelScaledQuestReward(100, 80, 21, false), {
+    multiplier: 1.2, coins: 120, xp: 96, completionBonus: false
+  });
+  assert.deepEqual(getLevelScaledQuestReward(100, 80, 21, true), {
+    multiplier: 1.2, coins: 240, xp: 216, completionBonus: true
+  });
+  assert.deepEqual(getLevelScaledQuestReward(-5, -10, 0, false), {
+    multiplier: 1, coins: 0, xp: 0, completionBonus: false
+  });
 });
