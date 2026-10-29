@@ -133,9 +133,16 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
         interaction.member = makeMember(userId);
         await command.execute(interaction);
         const responded = effects.length > 0;
+        const expected = 'Komut işleyicisi hata atmadan tamamlanmalı ve en az bir Discord yanıtı/etkisi üretmeli.';
+        const actual = responded
+          ? 'İşleyici tamamlandı; ' + effects.length + ' yanıt/etki kaydedildi.'
+          : 'İşleyici tamamlandı ancak yanıt/etki kaydedilmedi.';
         results.push({
           command: schema?.name || 'unknown',
           status: responded ? 'PASS' : 'FAIL',
+          expected,
+          actual,
+          comparison: responded ? 'MATCH: temel işleyici sözleşmesi sağlandı' : 'MISMATCH: beklenen yanıt/etki yok',
           evidenceType: 'handler-executed-with-synthetic-discord-interaction',
           automaticallyObserved: true,
           responseCount: effects.length,
@@ -145,6 +152,9 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
       } catch (error) {
         results.push({
           command: command.data?.name || 'unknown', status: 'FAIL',
+          expected: 'Komut işleyicisi hata atmadan tamamlanmalı ve en az bir Discord yanıtı/etkisi üretmeli.',
+          actual: 'İşleyici hata fırlattı: ' + String(error?.message || error).slice(0, 500),
+          comparison: 'MISMATCH: işleyici hata verdi',
           evidenceType: 'handler-executed-with-synthetic-discord-interaction',
           automaticallyObserved: true, responseCount: effects.length,
           responses: effects.slice(0, 4),
@@ -152,7 +162,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
         });
       }
     }
-    for (const name of unknown) results.push({ command: name, status: 'FAIL', error: 'Komut bulunamadı.' });
+    for (const name of unknown) results.push({ command: name, status: 'FAIL', expected: 'Komut kayıtlı olmalı.', actual: 'Komut bulunamadı.', comparison: 'MISMATCH', error: 'Komut bulunamadı.' });
     return {
       title: 'Poğaça Frieren isolated command handler test report',
       generatedAt: new Date().toISOString(),
