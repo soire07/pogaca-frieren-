@@ -3,7 +3,7 @@ import { pool, ensureUser } from './database/db.js';
 import { getBossArtUrl } from './boss-art.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus } from './rpg-mechanics.js';
+import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
 
@@ -343,15 +343,8 @@ export default {
         return interaction.editReply({ content: `⏳ <@${concurrentRun.user_id}> başka bir baskın nedeniyle bekleme süresine girdi; yaklaşık ${remaining} dakika sonra yeniden deneyin. Bu baskının ödülleri kaydedilmedi.`, components: [] });
       }
       const win=bossHp<=0;
-      const persistedHpNow=hpNow.map((hp,i)=> {
-        const combatMaxHp = Math.max(1, Number(fighters[i].maxHp));
-        const baseMaxHp = Math.max(1, Number(fighters[i].baseMaxHp));
-        return Math.max(0, Math.min(baseMaxHp, Math.round((hp / combatMaxHp) * baseMaxHp)));
-      });
-      const persistedManaNow=fighters.map(f=>Math.max(0,Math.min(
-        Math.max(1,Number(f.baseMaxMana)),
-        Math.round((Number(f.mana)/Math.max(1,Number(f.maxMana)))*Math.max(1,Number(f.baseMaxMana)))
-      )));
+      const persistedHpNow=hpNow.map((hp,i)=>restoreResourceRatio(hp, fighters[i].maxHp, fighters[i].baseMaxHp));
+      const persistedManaNow=fighters.map(f=>restoreResourceRatio(f.mana, f.maxMana, f.baseMaxMana));
       for (const [userId, casts] of spellCasts) {
         const mastery = await db.query(
           `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
