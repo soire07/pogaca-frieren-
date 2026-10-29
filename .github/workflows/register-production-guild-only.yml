@@ -1,6 +1,6 @@
 name: Register Poğaça Frieren in production guild only
 
-# Controlled production-only registration after fixing the test/production target mix-up. Test-guild commands belong to ai-agent/register-commands.js; command writes are quota-limited.
+# Controlled production-only registration after fixing the test/production target mix-up. Test-guild commands belong to ai-agent/register-commands.js; command writes are quota-limited. This run uses the latest validated production workflow.
 on:
   push:
     branches: [main]
