@@ -493,13 +493,13 @@ client.on(Events.InteractionCreate, async interaction => {
         + (item.actual ? '\nBeklenen: ' + String(item.expected || '').slice(0, 100) + '\nGerçek: ' + String(item.actual).slice(0, 130) : '')
         + (item.error ? '\nHata: ' + String(item.error).slice(0, 180) : '')
       );
-      const preview = resultRows.slice(0, 12).join('\n') || 'Test sonucu bulunamadı.';
+      const preview = resultRows.slice(0, 5).join('\n') || 'Test sonucu bulunamadı.';
       await interaction.editReply({
         content: '**Poğaça Frieren komut denetimi tamamlandı**\n'
           + 'Toplam: ' + (summary.total ?? 0) + ' | PASS: ' + (summary.pass ?? 0) + ' | FAIL: ' + (summary.fail ?? 0)
           + '\nÇalıştırma: gerçek komut işleyicisi + sentetik Discord etkileşimi + frieren_test PostgreSQL şeması.\n'
           + 'Not: Bu Discord üzerinden gerçek kullanıcı etkileşimi değil; üretim tablolarından ayrı test şemasında işleyici denemesidir. PASS, yalnızca yanıt/etki üretildiğini gösterir; özellik mantığının tamamını tek başına kanıtlamaz.\n\n'
-          + preview + (resultRows.length > 12 ? '\n… ve raporda ' + (resultRows.length - 12) + ' komut daha.' : ''),
+          + preview + (resultRows.length > 5 ? '\n… ve raporda ' + (resultRows.length - 5) + ' komut daha.' : ''),
         files: [new AttachmentBuilder(Buffer.from(JSON.stringify(report, null, 2), 'utf8'), { name: 'pogaca-frieren-command-test-report.json' })]
       });
     } catch (error) {
