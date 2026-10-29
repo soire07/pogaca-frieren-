@@ -41,8 +41,8 @@ test('registration exposes only the four Frieren AI root commands and four memor
 test('runtime and manual registration remain pinned to the Frieren test guild', () => {
   assert.match(runtime, /getFrierenAiCommandRoute/);
   assert.match(manual, /getFrierenAiCommandRoute/);
-  assert.doesNotMatch(runtime, /Routes\\.applicationCommands\\(/);
-  assert.doesNotMatch(manual, /Routes\\.applicationCommands\\(/);
+  assert.doesNotMatch(runtime, /Routes\.applicationCommands\(/);
+  assert.doesNotMatch(manual, /Routes\.applicationCommands\(/);
   assert.equal(getFrierenAiCommandRoute(' app-id '), '/applications/app-id/guilds/1564945192803639356/commands');
   assert.throws(() => getFrierenAiCommandRoute(' '), /DISCORD_CLIENT_ID is required/);
 });
