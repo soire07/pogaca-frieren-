@@ -19,7 +19,7 @@ function normalizeWords(value) {
     String(value ?? '')
       .toLocaleLowerCase('tr-TR')
       .normalize('NFKD')
-      .replace(/[\\u0300-\\u036f]/g, '')
+      .replace(/[\u0300-\u036f]/g, '')
       .split(/[^a-z0-9]+/)
       .filter(word => word.length >= 3)
   );
