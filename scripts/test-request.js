@@ -133,7 +133,7 @@ if (isMemorySecurityCoverage) {
       stdout: 'CANLI POSTGRESQL TESTİ: BAŞARISIZ — DATABASE_URL bu çalışma ortamında tanımlı değil. Bellek gizliliği denetimi tam başarılı sayılamaz.',
       stderr: ''
     };
-    console.log('\\n--- scripts/test-live-memory.js | BAŞARISIZ ---');
+    console.log('\n--- scripts/test-live-memory.js | BAŞARISIZ ---');
     console.log(missingDatabase.stdout);
     results.push(missingDatabase);
   } else {
@@ -155,7 +155,7 @@ if (isMemorySecurityCoverage) {
       child.on('close', code => finish(code));
       const timer = setTimeout(() => { child.kill('SIGTERM'); finish(null, 'Canlı PostgreSQL testi zaman aşımına uğradı.'); }, Math.max(30000, Math.min(Number(process.env.FRIEREN_TEST_TIMEOUT_MS) || 180000, 300000)));
     });
-    console.log('\\n--- scripts/test-live-memory.js | ' + (live.code === 0 ? 'BAŞARILI' : 'BAŞARISIZ') + ' ---');
+    console.log('\n--- scripts/test-live-memory.js | ' + (live.code === 0 ? 'BAŞARILI' : 'BAŞARISIZ') + ' ---');
     if (live.stdout) console.log(live.stdout);
     if (live.stderr) console.log(live.stderr);
     results.push(live);
