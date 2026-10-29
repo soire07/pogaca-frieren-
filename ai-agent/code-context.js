@@ -24,11 +24,9 @@ export function findRelevantExcerpt(source, terms, maxLength = 1800) {
   const normalizedTerms = [...new Set(terms.map(normalizeForSearch).filter(Boolean))];
   if (!normalizedTerms.length) return source.slice(0, limit);
 
-  let bestLine = 0;
   let bestScore = -1;
   let offset = 0;
   let bestOffset = 0;
-  let lineOffset = 0;
   for (const line of lines) {
     const normalizedLine = normalizeForSearch(line);
     let score = 0;
@@ -40,11 +38,9 @@ export function findRelevantExcerpt(source, terms, maxLength = 1800) {
     }
     if (score > bestScore) {
       bestScore = score;
-      bestLine = lineOffset;
       bestOffset = offset;
     }
     offset += line.length + 1;
-    lineOffset += 1;
   }
 
   if (bestScore <= 0) return source.slice(0, limit);
