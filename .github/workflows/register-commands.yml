@@ -1,6 +1,6 @@
 name: Register Discord Commands
 
-# Registration is single-flight, bounded, and only attempted after the stale legacy run was cancelled.
+# Legacy registration loops were stopped; each new sync now runs single-flight with bounded retries.
 # deploy-commands.js logs safe 429 metadata and stops after a bounded number of retries.
 
 permissions:
