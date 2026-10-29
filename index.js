@@ -8,6 +8,8 @@ import { renderMarket, renderMarketItem, buyMarketItem, renderPurchaseResult, re
 import { levelForXp } from './utils.js';
 import { handleCharacterPanelInteraction } from './karakter.js';
 import { createServer } from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
+import { runCommandTestSuite } from './scripts/live-command-test.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 if (!process.env.DISCORD_TOKEN) throw new Error('DISCORD_TOKEN eksik. Render Environment bölümünü kontrol et.');
@@ -397,6 +399,43 @@ process.on('SIGTERM', async () => {
 const PORT = process.env.PORT || 3000;
 
 createServer(async (req, res) => {
+  const sendJson = (status, payload) => {
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(payload));
+  };
+  if (req.url?.startsWith('/internal/test-')) {
+    const configuredSecret = process.env.FRIEREN_BRIDGE_SECRET || '';
+    const suppliedSecret = String(req.headers.authorization || '').replace(/^Bearer\\s+/i, '');
+    const a = Buffer.from(configuredSecret);
+    const b = Buffer.from(suppliedSecret);
+    const authorized = configuredSecret.length >= 32 && a.length === b.length && timingSafeEqual(a, b);
+    if (!authorized) return sendJson(401, { error: 'unauthorized' });
+    if (!client.isReady()) return sendJson(503, { error: 'discord_not_ready' });
+    if (req.method === 'GET' && req.url === '/internal/test-catalog') {
+      const commands = [...client.commands.values()].map(command => {
+        const data = typeof command.data?.toJSON === 'function' ? command.data.toJSON() : command.data;
+        return { name: data.name, description: data.description, options: data.options || [] };
+      });
+      return sendJson(200, { service: 'pogaca-frieren', generatedAt: new Date().toISOString(), count: commands.length, commands });
+    }
+    if (req.method === 'POST' && req.url === '/internal/test-suite') {
+      let raw = '';
+      try {
+        for await (const chunk of req) {
+          raw += chunk;
+          if (raw.length > 32_768) return sendJson(413, { error: 'payload_too_large' });
+        }
+        const body = raw ? JSON.parse(raw) : {};
+        const names = Array.isArray(body.commands) ? body.commands.filter(x => typeof x === 'string').slice(0, 100) : [];
+        const report = await runCommandTestSuite(client.commands, names);
+        return sendJson(200, report);
+      } catch (error) {
+        console.error('Frieren isolated command test failed:', error?.stack || error);
+        return sendJson(500, { error: 'test_runner_failed', message: String(error?.message || error).slice(0, 800) });
+      }
+    }
+    return sendJson(404, { error: 'not_found' });
+  }
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   if (!client.isReady()) {
     res.writeHead(503);
