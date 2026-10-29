@@ -10,9 +10,9 @@ A separate, restricted Discord bot for AI-assisted diagnostics of the Frieren ga
 - `/frieren-bellek sil`: delete one of your own saved memories.
 - `/frieren-bellek temizle`: delete all of your own saved memories after explicit confirmation.
 
-Persistent memory requires `DATABASE_URL` pointing to a PostgreSQL database. Each record is scoped to the Discord user ID. Only explicitly saved data is stored; chat messages are not automatically retained. Never store credentials, tokens, or other secrets. The AI treats memory contents as untrusted context, not instructions.
+Persistent memory requires `DATABASE_URL` pointing to a PostgreSQL database. Saved memory records and recent conversational turns are scoped to the Discord user ID and are never selected across accounts. The bot keeps at most 12 recent user/assistant conversation messages per user; only ordinary conversational `/frieren-ai` turns are retained, while technical/code requests are not added to chat history. `/frieren-bellek` manages explicitly saved facts; its `temizle` action clears saved facts, not the separate recent conversation history. Never store credentials, tokens, or other secrets. The AI treats memory contents as untrusted context, not instructions.
 
-Only Discord user IDs listed in `FRIEREN_ADMIN_IDS` can run either command. No arbitrary shell commands, file writes, GitHub mutations, or deployments are exposed by the bot.
+The `/frieren-test` and `/frieren-komut-denetle` diagnostic commands are restricted to Discord user IDs listed in `FRIEREN_ADMIN_IDS`. `/status`, `/frieren-ai`, and personal `/frieren-bellek` actions are available to users. No arbitrary shell commands, file writes, GitHub mutations, or deployments are exposed by the bot.
 
 ## Render setup
 
