@@ -1,6 +1,6 @@
 name: Register Discord Commands
 
-# Command writes are manual-only to prevent every code push from consuming Discord's daily create quota.
+# Poğaça Frieren commands are registered only in the production server. Frieren AI has its own registration script in ai-agent/.
 permissions:
   contents: read
   statuses: write
@@ -55,10 +55,8 @@ jobs:
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          # Frieren AI intentionally stays only in the test server.
-          GUILD_IDS: ''
-          TEST_GUILD_ID: '1564945192803639356'
-          TEST_COMMAND_NAMES: 'status,yardim,rehber,karakter'
+          # Main server only; never register this bot's commands in the Frieren AI test server.
+          GUILD_IDS: '1539562273197260860'
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
