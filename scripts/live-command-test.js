@@ -78,8 +78,7 @@ function makeMember(id) {
   return {
     id, user: { id, username: 'FrierenTest', tag: 'FrierenTest#0001', bot: false, toString() { return '<@' + id + '>'; } },
     displayName: 'FrierenTest', nickname: null, displayAvatarURL: () => 'https://example.com/test-avatar.png', roles, permissions: { has: () => true },
-    ban: async () => ({ simulated: true }), kick: async () => ({ simulated: true }),
-    timeout: async () => ({ simulated: true }), setNickname: async () => ({ simulated: true }),
+    setNickname: async () => ({ simulated: true }),
     communicationDisabledUntilTimestamp: null, toString() { return '<@' + id + '>'; }
   };
 }
@@ -92,9 +91,6 @@ function makeInteraction(command, options, guildId, effects) {
     members: {
       cache: new Map([[user.id, member]]),
       fetch: async (id) => makeMember(typeof id === 'string' ? id : user.id),
-      // GuildMemberManager.ban is a manager-level method in discord.js v14.
-      // This is deliberately a no-op simulation; tests must never ban a real user.
-      ban: async (userId, options = {}) => ({ simulated: true, userId, options })
     },
     roles: { cache: new Map(), fetch: async (id) => ({ id, name: 'test-role', members: new Map() }) },
     channels: { cache: new Map([[channel.id, channel]]), fetch: async () => channel },
