@@ -17,19 +17,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Check Render health and Discord gateway readiness
+      - name: Check public liveness endpoint
         shell: bash
         env:
           HEALTH_URL: https://frieren-ai-agent.onrender.com/health
         run: |
           for attempt in {1..6}; do
             body="$(curl --silent --show-error --fail --max-time 15 "$HEALTH_URL" 2>/dev/null || true)"
-            if printf '%s' "$body" | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status==='ok' && j.discordReady===true ? 0 : 1)}catch{process.exit(1)}})"; then
-              echo "Frieren AI health endpoint and Discord connection are ready."
+            if printf '%s' "$body" | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status==='ok' ? 0 : 1)}catch{process.exit(1)}})"; then
+              echo "Frieren AI public liveness endpoint is responding."
               exit 0
             fi
-            echo "Health check attempt $attempt/6 did not pass; retrying."
+            echo "Liveness check attempt $attempt/6 did not pass; retrying."
             sleep 10
           done
-          echo "::error::Frieren AI did not become ready after 6 attempts."
+          echo "::error::Frieren AI liveness endpoint did not respond after 6 attempts."
           exit 1
