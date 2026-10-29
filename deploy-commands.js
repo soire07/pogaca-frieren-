@@ -12,6 +12,21 @@ if (!token || !clientId) {
   throw new Error('DISCORD_TOKEN ve CLIENT_ID Render Environment içinde olmalı.');
 }
 
+const rest = new REST({ version: '10' }).setToken(token);
+rest.on('rateLimited', info => {
+  console.warn('Discord REST rate limit encountered.', JSON.stringify({
+    method: info.method,
+    route: info.route,
+    bucket: info.hash,
+    limit: info.limit,
+    retryAfterSeconds: Number((info.retryAfter / 1000).toFixed(3)),
+    resetAfterSeconds: Number((info.timeToReset / 1000).toFixed(3)),
+    globalRateLimit: info.global,
+    scope: info.scope,
+    majorParameter: info.majorParameter
+  }));
+});
+
 
 async function findCommandFiles(directory) {
   let entries;
@@ -63,68 +78,25 @@ if (duplicates.length) {
 }
 console.log(`Kaydedilmeye hazır ${commands.length} komut doğrulandı.`);
 
-// Use explicit fetch timeouts so a stalled Discord REST request cannot hang CI for minutes.
+// Use discord.js's REST manager so route buckets, shared limits, and retry-after
+// windows are coordinated by the supported Discord transport rather than a custom fetch loop.
 async function discordRequest(route, { method = 'GET', body } = {}) {
-  const url = `https://discord.com/api/v10${route}`;
-  const attempts = 5;
-  for (let attempt = 1; attempt <= attempts; attempt++) {
-    let response;
-    try {
-      response = await fetch(url, {
-        method,
-        headers: {
-          authorization: `Bot ${token}`,
-          'content-type': 'application/json',
-          'user-agent': 'DiscordBot (https://github.com/soire07/pogaca-frieren-, 1.0.0)'
-        },
-        body: body === undefined ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(20_000)
-      });
-    } catch (error) {
-      console.error('Discord REST network request failed.', JSON.stringify({
-        method, route, attempt, name: error?.name ?? 'Error',
-        message: error?.message ?? String(error)
-      }));
-      if (attempt === attempts) throw error;
-      await new Promise(resolve => setTimeout(resolve, attempt * 1000));
-      continue;
-    }
-
-    const responseText = await response.text();
-    let data = null;
-    if (responseText) {
-      try { data = JSON.parse(responseText); }
-      catch { data = { message: responseText.slice(0, 500) }; }
-    }
-    if (response.ok) return data;
-
-    const retryable = response.status === 429 || response.status >= 500;
-    const retryAfterSeconds = Number(response.headers.get('retry-after') || data?.retry_after || 0);
-    console.error('Discord REST request returned an error.', JSON.stringify({
-      method, route, attempt, status: response.status,
-      message: data?.message ?? 'No response message',
-      retryAfterSeconds: Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : null,
-      globalRateLimit: data?.global ?? null
+  try {
+    if (method === 'GET') return await rest.get(route);
+    if (method === 'PUT') return await rest.put(route, { body });
+    throw new Error('Unsupported Discord REST method: ' + method);
+  } catch (error) {
+    console.error('Discord REST request failed.', JSON.stringify({
+      method,
+      route,
+      name: error?.name ?? 'Error',
+      status: error?.status ?? error?.httpStatus ?? null,
+      code: error?.code ?? null,
+      message: error?.message ?? String(error),
+      retryAfterSeconds: Number.isFinite(error?.retryAfter) ? Number((error.retryAfter / 1000).toFixed(3)) : null
     }));
-    if (!retryable || attempt === attempts) {
-      const error = new Error(`Discord API ${method} ${route} returned HTTP ${response.status}: ${data?.message ?? 'unknown error'}`);
-      error.status = response.status;
-      error.retryAfterSeconds = retryAfterSeconds;
-      throw error;
-    }
-    // Discord's bucket limits can require waits longer than a few seconds.
-    // Respect the server-provided retry_after instead of retrying too early.
-    const waitMs = Math.max(1500, Math.ceil((Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : attempt) * 1000) + 2500);
-    if (waitMs > 15 * 60 * 1000) {
-      const error = new Error(`Discord requested a retry delay of ${Math.ceil(waitMs / 1000)} seconds; refusing an unexpectedly long CI wait.`);
-      error.status = response.status;
-      error.retryAfterSeconds = retryAfterSeconds;
-      throw error;
-    }
-    console.warn(`Discord rate limit/retryable error; waiting ${Math.ceil(waitMs / 1000)} seconds before attempt ${attempt + 1}.`);
-    await new Promise(resolve => setTimeout(resolve, waitMs));
+    throw error;
   }
-  throw new Error('Discord REST request exhausted retry attempts.');
 }
 
 async function putWithDiagnostics(route, body, label) {
