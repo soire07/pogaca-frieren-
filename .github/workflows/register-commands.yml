@@ -1,6 +1,6 @@
 name: Register Discord Commands
 
-# deploy-commands.js bounds and diagnoses 429 retries; this workflow only runs for command changes or workflow edits.
+# deploy-commands.js bounds retries and logs safe 429 metadata; this workflow only runs for command changes or workflow edits.
 
 permissions:
   contents: read
