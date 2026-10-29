@@ -26,7 +26,16 @@ new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('
 export async function renderCharacterPanel(guildId,user){
 await ensureUser(guildId,user.id);
 const {rows:[u]}=await pool.query('SELECT character_name,xp,level,coins,class_name,active_build,hp,max_hp,mana,max_mana,attack,defense,stat_points,boss_defeats,exploration_count FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,user.id]);
-const e=new EmbedBuilder().setColor(0x9b8cff).setAuthor({name:'✦ POĞAÇA FRIEREN / MACERACI DOSYASI'}).setThumbnail(user.displayAvatarURL({size:256})).setFooter({text:'Poğaça Frieren • Panel işlemleri yalnızca sana uygulanır.'});
+const e=new EmbedBuilder().setColor(0x9b8cff).setAuthor({name:'✦ POĞAÇA FRIEREN / MACERACI DOSYASI'}).setFooter({text:'Poğaça Frieren • Panel işlemleri yalnızca sana uygulanır.'});
+try {
+  const avatarUrl = typeof user.displayAvatarURL === 'function' ? user.displayAvatarURL({ size: 256 }) : null;
+  if (typeof avatarUrl === 'string') {
+    const parsedAvatarUrl = new URL(avatarUrl);
+    if (parsedAvatarUrl.protocol === 'https:' || parsedAvatarUrl.protocol === 'http:') e.setThumbnail(parsedAvatarUrl.toString());
+  }
+} catch {
+  // Avatar thumbnails are optional; an invalid or unavailable URL must not break the character panel.
+}
 if(!u?.character_name){e.setTitle('🌠 İlk yolculuğuna hazırlan').setDescription('Henüz karakterin yok. İsim / Oluştur düğmesine bas. Sonrasında sınıfını, savaş yapını, büyülerini ve gelişimini bu panelden yönetebilirsin.').addFields({name:'🧭 Sınıf',value:'Büyücü, Muhafız, Şifacı veya Gezgin seçebilirsin.'},{name:'📖 Başlangıç',value:'Karakterini oluştur, sınıfını seç ve ilk keşfine çık.'});return{embeds:[e],components:controls(user.id)};}
 const level=Number(u.level),xp=Number(u.xp),need=xpForNextLevel(level),prev=xpForNextLevel(Math.max(0,level-1)),ck=Object.keys(CHARACTER_CLASSES).find(k=>CHARACTER_CLASSES[k].label===u.class_name)||'gezgin',build=getCharacterBuild(u.active_build);
 e.setTitle('🌠 '+u.character_name).setDescription('*Her yolculuk, henüz tanımadığın bir dünyaya atılan ilk adımdır.*\n\n**'+(labels[ck]||u.class_name||'Gezgin')+'** · **Seviye '+level+'**\n'+build.label+' — '+build.description+'\n'+(CHARACTER_CLASSES[ck]?.description||''));
