@@ -5,6 +5,7 @@ import { createMemoryStore } from './memory-store.js';
 import { countNodeTests, hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
 import { getTestLockKey, getPublicHealthPayload, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
 import { checkLiveRpgHealth } from './live-rpg-health.js';
+import { createLiveCommandTestRecord, summarizeLiveCommandTests } from './live-command-test-lab.js';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createServer } from 'node:http';
@@ -52,6 +53,9 @@ const healthServer = createServer((req, res) => {
 });
 healthServer.listen(port, '0.0.0.0', () => console.log('Health server listening on port ' + port));
 const runningGuilds = new Set();
+// Operator-submitted evidence is explicitly labeled as such; it is not automatic observation.
+const liveCommandTestRecords = [];
+const maxLiveCommandTestRecords = 100;
 
 const commands = [
   new SlashCommandBuilder()
@@ -75,6 +79,18 @@ const commands = [
       .addStringOption(option => option.setName('anahtar').setDescription('Silinecek kayıt adı').setRequired(true).setMaxLength(60)))
     .addSubcommand(subcommand => subcommand.setName('temizle').setDescription('Sana ait tüm kalıcı bellek kayıtlarını siler.')
       .addBooleanOption(option => option.setName('onayla').setDescription('Tüm kişisel bellek kayıtlarını silmeyi onayla.').setRequired(true)))
+    .toJSON(),
+  new SlashCommandBuilder()
+    .setName('frieren-live-test')
+    .setDescription('Gerçek Discord komut testinin beklenen/gerçek sonucunu kanıt notuyla kaydeder.')
+    .addStringOption(option => option.setName('komut').setDescription('Gerçekte çalıştırdığın Poğaça Frieren komutu, ör. /gunluk').setRequired(true).setMaxLength(100))
+    .addStringOption(option => option.setName('beklenen').setDescription('Testten önce beklenen sonuç').setRequired(true).setMaxLength(1500))
+    .addStringOption(option => option.setName('gercek_sonuc').setDescription('Discord üzerinde gözlemlediğin gerçek sonuç').setRequired(true).setMaxLength(1500))
+    .addStringOption(option => option.setName('durum').setDescription('Karşılaştırma sonucu').setRequired(true)
+      .addChoices({ name: 'PASS — eşleşti', value: 'PASS' }, { name: 'FAIL — eşleşmedi', value: 'FAIL' }, { name: 'BLOCKED — test edilemedi', value: 'BLOCKED' }))
+    .addStringOption(option => option.setName('veri_izolasyonu').setDescription('Komutun veri güvenliği nasıl doğrulandı?').setRequired(true)
+      .addChoices({ name: 'Salt okunur komut', value: 'READ_ONLY' }, { name: 'Yalıtılmış test veritabanı', value: 'ISOLATED_TEST_DB' }, { name: 'Doğrulanmadı', value: 'NOT_VERIFIED' }))
+    .addStringOption(option => option.setName('test_kaniti').setDescription('Ne çalıştırdın ve hangi sonucu gözlemledin? Gizli veri/token ekleme.').setRequired(true).setMaxLength(1500))
     .toJSON(),
   new SlashCommandBuilder()
     .setName('status')
@@ -422,6 +438,58 @@ client.once(Events.ClientReady, readyClient => {
 
 client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === 'frieren-live-test') {
+    if (!isAuthorizedAdmin(interaction.user.id, admins)) {
+      await interaction.reply({ content: 'Bu test raporlama komutu yalnızca izin verilen yöneticiler tarafından kullanılabilir.', ephemeral: true });
+      return;
+    }
+    const testGuildId = process.env.TEST_GUILD_ID?.trim();
+    if (!testGuildId) {
+      await interaction.reply({ content: 'Güvenlik nedeniyle canlı test kaydı kapalı: Render üzerinde TEST_GUILD_ID ayarlanmamış. Yalnızca gerçekten izole edilmiş test sunucusunu belirt; üretim sunucusunda veri değiştiren komutları deneme.', ephemeral: true });
+      return;
+    }
+    if (interaction.guildId !== testGuildId) {
+      await interaction.reply({ content: 'Bu komut yalnızca TEST_GUILD_ID ile eşleşen test sunucusunda kullanılabilir.', ephemeral: true });
+      return;
+    }
+    try {
+      const record = createLiveCommandTestRecord({
+        guildId: interaction.guildId,
+        operatorId: interaction.user.id,
+        command: interaction.options.getString('komut', true),
+        expected: interaction.options.getString('beklenen', true),
+        observed: interaction.options.getString('gercek_sonuc', true),
+        status: interaction.options.getString('durum', true),
+        isolation: interaction.options.getString('veri_izolasyonu', true),
+        evidence: interaction.options.getString('test_kaniti', true),
+      });
+      liveCommandTestRecords.push(record);
+      if (liveCommandTestRecords.length > maxLiveCommandTestRecords) liveCommandTestRecords.shift();
+      const summary = summarizeLiveCommandTests(liveCommandTestRecords);
+      const report = {
+        title: 'Frieren live command operator report',
+        generatedAt: new Date().toISOString(),
+        note: 'Operator-recorded evidence; the test agent did not automatically invoke or observe the target command.',
+        summary,
+        records: liveCommandTestRecords,
+      };
+      const statusLabel = record.status === 'PASS' ? 'PASS' : record.status === 'FAIL' ? 'FAIL' : 'BLOCKED';
+      const content = 'Canlı komut testi kaydedildi: **' + statusLabel + '** — /' + record.command
+        + '\nBeklenen ve gözlenen sonuç operatör tarafından kaydedildi; otomatik olarak gözlemlenmiş sayılmaz.'
+        + '\nBu çalışan süreçte kayıtlı toplam: ' + summary.total + ' | PASS: ' + summary.pass + ' | FAIL: ' + summary.fail + ' | BLOCKED: ' + summary.blocked
+        + '\nPASS kaydı yalnızca salt okunur veya yalıtılmış test veritabanı seçildiğinde kabul edilir. Bu JSON raporunu indirerek kalıcı sakla; Render bellek kayıtları yeniden başlatmada sıfırlanır.';
+      await interaction.reply({
+        content: content.slice(0, 1900),
+        files: [new AttachmentBuilder(Buffer.from(JSON.stringify(report, null, 2), 'utf8'), { name: 'frieren-live-command-test-report.json' })],
+        ephemeral: true,
+      });
+    } catch (error) {
+      const message = error.validationErrors?.join('; ') || error.message || 'unknown error';
+      await interaction.reply({ content: 'Test kaydı reddedildi: ' + redactSecrets(message).slice(0, 1500), ephemeral: true });
+    }
+    return;
+  }
 
   if (interaction.commandName === 'status') {
     const ready = client.isReady();
