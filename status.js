@@ -13,8 +13,7 @@ function formatUptime(milliseconds) {
 export default {
   data: new SlashCommandBuilder()
     .setName('status')
-    .setDescription('Frieren botunun çalışma durumunu gösterir.')
-    .toJSON(),
+    .setDescription('Frieren botunun çalışma durumunu gösterir.'),
   async execute(interaction) {
     const client = interaction.client;
     const ping = client.ws.ping;
