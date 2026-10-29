@@ -55,7 +55,9 @@ jobs:
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          GUILD_IDS: '1539562273197260860,1564945192803639356'
+          GUILD_IDS: '1539562273197260860'
+          TEST_GUILD_ID: '1564945192803639356'
+          TEST_COMMAND_NAMES: 'status,yardim,rehber,karakter'
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
