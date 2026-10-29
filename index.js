@@ -294,6 +294,7 @@ process.on('SIGTERM', async () => {
   await pool.end();
   process.exit(0);
 });
+const PORT = process.env.PORT || 3000;
 let uptimeRobotCache = null;
 
 createServer(async (req, res) => {
