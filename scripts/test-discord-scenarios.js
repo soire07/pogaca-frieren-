@@ -774,3 +774,12 @@ test('slash command deployment uses bounded REST retries and preserves commands 
   assert.ok(workflow.includes("GUILD_IDS: '1539562273197260860,1564945192803639356'"), 'production and test guild IDs must be explicit and separate');
   assert.ok(!workflow.includes('GUILD_ID: ${{ secrets.GUILD_ID }}'), 'do not use the ambiguous single GUILD_ID secret');
 });
+
+
+test('slash command deployment delegates rate limits to discord.js REST manager and logs bucket diagnostics', async () => {
+  const deploy = await read('deploy-commands.js');
+  assert.ok(deploy.includes("new REST({ version: '10' }).setToken(token)"), 'command deployment must use discord.js REST rate-limit handling');
+  assert.ok(deploy.includes("rest.on('rateLimited'"), 'rate-limit scope and bucket details must be logged');
+  assert.ok(deploy.includes("rest.put("), 'guild command updates must use the REST manager');
+  assert.ok(!deploy.includes('response = await fetch(url'), 'command registration must not bypass the REST rate-limit manager');
+});
