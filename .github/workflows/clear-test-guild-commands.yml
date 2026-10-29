@@ -1,0 +1,71 @@
+name: Clear Poğaça commands from Frieren AI test guild
+
+# One-time cleanup: the Poğaça application must not publish its 61 RPG commands in the Frieren AI test guild.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/clear-test-guild-commands.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: discord-command-registration
+  cancel-in-progress: true
+
+jobs:
+  clear-test-guild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Remove only Poğaça commands from the test guild
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          TEST_GUILD_ID: "1564945192803639356"
+          PRODUCTION_GUILD_ID: "1539562273197260860"
+        run: |
+          node --input-type=module <<'NODE'
+          const token = process.env.DISCORD_TOKEN;
+          const clientId = process.env.CLIENT_ID;
+          const testGuildId = process.env.TEST_GUILD_ID;
+          const productionGuildId = process.env.PRODUCTION_GUILD_ID;
+          if (!token || !clientId) throw new Error('Required Discord secrets are missing.');
+          if (testGuildId !== '1564945192803639356' || testGuildId === productionGuildId) {
+            throw new Error('Safety check failed: refusing to modify a non-test guild.');
+          }
+          async function request(route, method = 'GET', body) {
+            const response = await fetch('https://discord.com/api/v10' + route, {
+              method,
+              headers: {
+                authorization: 'Bot ' + token,
+                'content-type': 'application/json',
+                'user-agent': 'DiscordBot (https://github.com/soire07/pogaca-frieren-, 1.0.0)'
+              },
+              body: body === undefined ? undefined : JSON.stringify(body),
+              signal: AbortSignal.timeout(15000)
+            });
+            const raw = await response.text();
+            let data = null;
+            try { data = raw ? JSON.parse(raw) : null; } catch { data = { message: raw.slice(0, 200) }; }
+            if (!response.ok) throw new Error('Discord API ' + method + ' ' + route + ' failed: HTTP ' + response.status + ' ' + (data?.message || '') + ' code=' + (data?.code ?? 'n/a'));
+            return data;
+          }
+          const app = await request('/oauth2/applications/@me');
+          if (String(app.id) !== String(clientId)) throw new Error('CLIENT_ID does not match the supplied bot token.');
+          const route = '/applications/' + clientId + '/guilds/' + testGuildId + '/commands';
+          const current = await request(route);
+          console.log('Poğaça command count in test guild before cleanup: ' + current.length);
+          console.log('Existing names: ' + current.map(command => '/' + command.name).sort().join(', '));
+          if (current.length) {
+            await request(route, 'PUT', []);
+            console.log('Cleared Poğaça commands from the test guild; Frieren AI uses a separate Discord application.');
+          } else {
+            console.log('No Poğaça commands to remove from the test guild.');
+          }
+          const remaining = await request(route);
+          console.log('Verified remaining Poğaça commands in test guild: ' + remaining.length);
+          if (remaining.length !== 0) throw new Error('Verification failed: Poğaça commands remain in the test guild.');
+          NODE
