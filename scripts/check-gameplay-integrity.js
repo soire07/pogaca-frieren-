@@ -349,7 +349,7 @@ test('solo and cooperative combat persist HP/mana against base stats, not tempor
     assert.match(source, /const baseMaxHp = Math\.max\(1, Number\(/, name + ': base max HP captured');
     assert.match(source, /Math\.min\(baseMaxHp, Math\.round\(\(hp \/ combatMaxHp\) \* baseMaxHp\)\)/, name + ': combat HP converted back to base scale');
     assert.match(source, /persistedManaNow/, name + ': mana is persisted separately');
-    assert.match(source, /Math\.round\(\(Number\((?:p|f)\.mana\)\s*\/\s*Math\.max\(1, Number\((?:p|f)\.maxMana\)\)\)\s*\*\s*Math\.max\(1, Number\((?:p|f)\.max_mana\)\)\)/, name + ': combat mana converted back to base scale');
+    assert.match(source, /Math\.round\(\(Number\((?:p|f)\.mana\)\s*\/\s*Math\.max\(1, Number\((?:p|f)\.maxMana\)\)\)\s*\*\s*Math\.max\(1, Number\((?:p\.max_mana|f\.baseMaxMana)\)\)\)/, name + ': combat mana converted back to base scale');
   }
 });
 
