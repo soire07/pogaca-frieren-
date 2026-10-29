@@ -44,7 +44,7 @@ const port = Number(process.env.PORT) || 10000;
 const healthServer = createServer((req, res) => {
   if (req.url === '/health') {
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify(getPublicHealthPayload()));
+    res.end(JSON.stringify(getPublicHealthPayload({ discordReady: client.isReady() })));
     return;
   }
   res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
