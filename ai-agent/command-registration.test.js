@@ -16,7 +16,7 @@ test('manual registration keeps the required /frieren-test target option', () =>
 });
 
 test('manual registration includes every diagnostic slash command handled by runtime', () => {
-  for (const name of ['frieren-test', 'frieren-ai', 'frieren-bellek', 'frieren-komut-denetle']) {
+  for (const name of ['status', 'frieren-test', 'frieren-ai', 'frieren-bellek', 'frieren-komut-denetle']) {
     assert.match(runtime, new RegExp(`setName\\(['"]${name}['"]\\)`), `runtime is missing /${name}`);
     assert.match(manual, new RegExp(`setName\\(['"]${name}['"]\\)`), `manual registration is missing /${name}`);
   }
@@ -26,7 +26,7 @@ test('registration exposes only the four Frieren AI root commands and four memor
   for (const name of ['kaydet', 'listele', 'sil', 'temizle']) {
     assert.match(manual, new RegExp(`setName\\(['\"]${name}['\"]\\)`), `registration is missing memory subcommand ${name}`);
   }
-  for (const name of ['status', 'yardim', 'rehber', 'karakter']) {
+  for (const name of ['yardim', 'rehber', 'karakter']) {
     assert.doesNotMatch(manual, new RegExp(`setName\\(['\"]${name}['\"]\\)`), `registration must not publish unrelated /${name}`);
     assert.doesNotMatch(runtime, new RegExp(`setName\\(['\"]${name}['\"]\\)`), `runtime must not define unrelated /${name}`);
   }
