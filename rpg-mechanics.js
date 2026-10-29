@@ -205,3 +205,16 @@ export function getLevelScaledQuestReward(baseCoins, baseXp, playerLevel, comple
     completionBonus: completesChain
   };
 }
+
+
+/**
+ * Converts a temporary combat resource value back to the persistent base-stat scale.
+ * Equipment, build, talent and role multipliers must never be stored as permanent HP/mana.
+ */
+export function restoreResourceRatio(currentResource, effectiveMaximum, baseMaximum) {
+  const baseMax = Number(baseMaximum);
+  const current = Number(currentResource);
+  const effectiveMax = Math.max(1, Number(effectiveMaximum) || 1);
+  if (!Number.isFinite(baseMax) || baseMax < 1 || !Number.isFinite(current)) return 0;
+  return Math.max(0, Math.min(baseMax, Math.round((current / effectiveMax) * baseMax)));
+}
