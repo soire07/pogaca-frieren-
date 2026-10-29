@@ -155,7 +155,35 @@ function isConversationalQuestion(question) {
   return !hasTechnicalIntent;
 }
 
+function isExplicitMemoryOverviewQuestion(value) {
+  const normalized = String(value ?? '')
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFKD')
+    .replace(/[\\u0300-\\u036f]/g, '')
+    .replace(/ı/g, 'i')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\\s+/g, ' ')
+    .trim();
+  return /\\b(tum|butun)\\b.*\\b(anilar|bellek kayitlar|kayitli bilgilerin)\\b/.test(normalized)
+    || /\\b(bellegimde|hafizamda)\\b.*\\b(tum|butun)\\b/.test(normalized)
+    || /\\b(listeler|listele|sirala|siralar)\\b.*\\b(bellek|anilar|kayitlar)\\b/.test(normalized);
+}
+
 async function answerCodeQuestion(question, userId) {
+  // Memory overview requests must be answered from the database directly, not summarized by an LLM.
+  if (memoryStore && userId && isExplicitMemoryOverviewQuestion(question)) {
+    try {
+      const memories = await memoryStore.list(userId);
+      if (!memories.length) {
+        return { ok: true, message: '🧠 Kalıcı belleğinde henüz kayıtlı bir anı yok. Konuşma geçmişi ile kalıcı bellek ayrı tutulur.' };
+      }
+      const lines = memories.map((item, index) => `${index + 1}. **${item.memory_key}**: ${item.memory_value}`);
+      return { ok: true, message: '🧠 **Kalıcı belleğinde kayıtlı anılar (tekrarsız liste)**\\n' + lines.join('\\n') };
+    } catch (error) {
+      console.error('Explicit memory overview failed:', redactSecrets(error.message || 'unknown error'));
+      return { ok: false, message: 'Kalıcı bellek kayıtları okunamadı. Veritabanı bağlantısını kontrol etmek gerekiyor.' };
+    }
+  }
   if (!groq) return {
     ok: false,
     message: 'Groq API anahtarı ayarlanmamış. Render ortam değişkenlerine GROQ_API_KEY eklenmeli. Ücretli API sağlayıcısına otomatik geçiş yapılmaz. /frieren-test otomatik testleri çalıştırmaya devam eder.'
