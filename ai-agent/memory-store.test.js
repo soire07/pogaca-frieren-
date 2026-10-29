@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createMemoryStore } from './memory-store.js';
+import { createMemoryStore, memoryStoreInternals } from './memory-store.js';
 
 class FakePool {
   constructor(options) {
@@ -110,4 +110,10 @@ test('save rejects keys and values beyond the documented schema limits', async (
   await assert.rejects(store.save('user-a', 'k'.repeat(61), 'value'), /key must be at most 60 characters/i);
   await assert.rejects(store.save('user-a', 'key', 'v'.repeat(501)), /value must be at most 500 characters/i);
   assert.equal(FakePool.instance.calls.some(call => call.sql.includes('INSERT INTO')), false);
+});
+
+
+test('memory keyword normalization preserves words and removes Turkish diacritics correctly', () => {
+  const words = memoryStoreInternals.normalizeWords('Frieren Türkçe büyü');
+  assert.deepEqual([...words].sort(), ['buyu', 'frieren', 'turkce']);
 });
