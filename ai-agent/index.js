@@ -171,12 +171,13 @@ async function answerCodeQuestion(question, userId) {
   let message = '';
   try {
     response = await groq.chat.completions.create({
+      reasoning_effort: 'low',
       model: resolveAiModel(process.env),
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: 'KULLANICI SORUSU:\n' + question.slice(0, 1200) + memoryContext + '\n\nKAYNAK KODLAR (yalnızca inceleme için):\n' + context }
       ],
-      max_tokens: 900,
+      max_completion_tokens: 900,
     });
     message = extractText(response);
     if (!message) {
@@ -186,12 +187,13 @@ async function answerCodeQuestion(question, userId) {
         usage: response?.usage ?? null,
       }));
       response = await groq.chat.completions.create({
+      reasoning_effort: 'low',
         model: resolveAiModel(process.env),
         messages: [
           { role: 'system', content: systemPrompt + ' Yanıtı mutlaka görünür metin olarak ver. En azından bulguyu, belirsizliği ve sonraki somut adımı kısa maddelerle yaz; boş yanıt verme.' },
           { role: 'user', content: 'İstek: ' + question.slice(0, 1200) + '\n\nİlgili kaynak koddan alınan kısa bağlam:\n' + context.slice(0, 1600) }
         ],
-        max_tokens: 700,
+        max_completion_tokens: 700,
       });
       message = extractText(response);
     }
@@ -202,12 +204,13 @@ async function answerCodeQuestion(question, userId) {
       console.warn('Groq isteği bağlam/token sınırını aştı; daha küçük bağlamla yeniden deneniyor.');
       try {
         response = await groq.chat.completions.create({
+      reasoning_effort: 'low',
           model: resolveAiModel(process.env),
           messages: [
             { role: 'system', content: systemPrompt + ' Kısa ve görünür Türkçe yanıt ver; boş yanıt verme.' },
             { role: 'user', content: 'İstek: ' + question.slice(0, 800) + '\n\nİlgili kaynak kod:\n' + context.slice(0, 900) }
           ],
-          max_tokens: 450,
+          max_completion_tokens: 450,
         });
         message = extractText(response);
       } catch (retryError) {
