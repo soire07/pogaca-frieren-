@@ -19,7 +19,24 @@ function sampleValue(option) {
   }
 }
 function fakeChannel() {
-  return { id: '900000000000000004', name: 'test-channel', isTextBased: () => true, send: async () => ({ id: 'test-message' }), toString() { return '<#900000000000000004>'; } };
+  return {
+    id: '900000000000000004',
+    name: 'test-channel',
+    isTextBased: () => true,
+    send: async () => ({ id: 'test-message' }),
+    // Simulate the Discord.js message collector API without creating a real collector.
+    createMessageCollector: () => {
+      const listeners = new Map();
+      return {
+        on(event, listener) { listeners.set(event, listener); return this; },
+        stop(reason = 'user') {
+          const end = listeners.get('end');
+          if (end) void end([], reason);
+        }
+      };
+    },
+    toString() { return '<#900000000000000004>'; }
+  };
 }
 function buildOptions(schemaOptions = [], overrides = {}) {
   const values = { ...overrides };
@@ -72,7 +89,13 @@ function makeInteraction(command, options, guildId, effects) {
   const channel = fakeChannel();
   const guild = {
     id: guildId, name: 'Frieren Isolated Test Guild', memberCount: 1,
-    members: { cache: new Map([[user.id, member]]), fetch: async (id) => makeMember(typeof id === 'string' ? id : user.id) },
+    members: {
+      cache: new Map([[user.id, member]]),
+      fetch: async (id) => makeMember(typeof id === 'string' ? id : user.id),
+      // GuildMemberManager.ban is a manager-level method in discord.js v14.
+      // This is deliberately a no-op simulation; tests must never ban a real user.
+      ban: async (userId, options = {}) => ({ simulated: true, userId, options })
+    },
     roles: { cache: new Map(), fetch: async (id) => ({ id, name: 'test-role', members: new Map() }) },
     channels: { cache: new Map([[channel.id, channel]]), fetch: async () => channel },
     bans: { fetch: async () => new Map() },
