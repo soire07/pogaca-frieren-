@@ -53,7 +53,7 @@ function normalizeWords(value) {
 
 function isMemoryRecallQuestion(value) {
   const normalized = normalizeText(value);
-  return /\b(hatirla|hatirliyorsun|hatirladin|hatirladiklarin|aklinda ne var|benim hakkimda ne|bellek|hafiza|gecmiste ne demistim|ne demistim|neleri biliyorsun|neler biliyorsun|what do you remember|what have i told you)\b/.test(normalized);
+  return /\b(hatirla|hatirliyorsun|hatirladin|hatirladiklarin|aklinda ne var|benim hakkimda ne|bellegimde ne var|bellegimde neler var|bellek kayitlarim|hafizamda ne var|gecmiste ne demistim|ne demistim|neleri biliyorsun|neler biliyorsun|what do you remember|what have i told you)\b/.test(normalized);
 }
 
 export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
