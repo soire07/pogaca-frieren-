@@ -485,6 +485,14 @@ function buildLocalTestSummary(result) {
 
 client.once(Events.ClientReady, readyClient => {
   console.log('Frieren bot test service online as ' + readyClient.user.tag);
+  const configuredGuildId = process.env.DISCORD_GUILD_ID?.trim();
+  console.log(configuredGuildId
+    ? 'Frieren AI slash-command target: guild-scope; ID son 4 hane=' + configuredGuildId.slice(-4)
+    : 'UYARI: DISCORD_GUILD_ID boş/eksik; Frieren AI slash commands GLOBAL kaydedildi.');
+  const connectedGuilds = [...readyClient.guilds.cache.values()]
+    .map(guild => ({ name: guild.name, id: guild.id }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  console.log('Frieren AI botunun bağlı Discord sunucuları (ad/ID):', JSON.stringify(connectedGuilds));
 });
 
 client.on(Events.InteractionCreate, async interaction => {
