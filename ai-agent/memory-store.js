@@ -22,15 +22,38 @@ const CREATE_TABLE_SQL = `
   )
 `;
 
+const STOP_WORDS = new Set([
+  'acaba', 'ama', 'ancak', 'artik', 'bana', 'bazi', 'ben', 'beni', 'benim',
+  'bir', 'biraz', 'biri', 'biz', 'bizim', 'bu', 'buna', 'bunu', 'bunun',
+  'cok', 'da', 'daha', 'de', 'degil', 'diye', 'en', 'gibi', 'icin', 'ile',
+  'mi', 'mu', 'mı', 'mü', 'ne', 'neden', 'nerede', 'nasil', 'niye', 'o',
+  'olan', 'olarak', 'onlar', 'onu', 'onun', 'oyle', 'sen', 'seni', 'senin',
+  'siz', 'size', 'su', 'tum', 've', 'veya', 'ya', 'yani', 'the', 'and',
+  'for', 'with', 'what', 'about', 'tell', 'me', 'my'
+]);
+
+function normalizeText(value) {
+  return String(value ?? '')
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ı/g, 'i')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function normalizeWords(value) {
   return new Set(
-    String(value ?? '')
-      .toLocaleLowerCase('tr-TR')
-      .normalize('NFKD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .split(/[^a-z0-9]+/)
-      .filter(word => word.length >= 3)
+    normalizeText(value)
+      .split(' ')
+      .filter(word => word.length >= 3 && !STOP_WORDS.has(word))
   );
+}
+
+function isMemoryRecallQuestion(value) {
+  const normalized = normalizeText(value);
+  return /\b(hatirla|hatirliyorsun|hatirladin|hatirladiklarin|aklinda ne var|benim hakkimda ne|bellek|hafiza|gecmiste ne demistim|ne demistim|neleri biliyorsun|neler biliyorsun|what do you remember|what have i told you)\b/.test(normalized);
 }
 
 export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
@@ -144,16 +167,29 @@ export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
       const memories = await this.list(userId);
       if (!memories.length) return [];
       const questionWords = normalizeWords(question);
-      const scored = memories.map(memory => {
-        const memoryWords = normalizeWords(memory.memory_key + ' ' + memory.memory_value);
+      const recallIntent = isMemoryRecallQuestion(question);
+      const normalizedQuestion = normalizeText(question);
+      const scored = memories.map((memory, index) => {
+        const keyWords = normalizeWords(memory.memory_key);
+        const valueWords = normalizeWords(memory.memory_value);
         let score = 0;
-        for (const word of questionWords) if (memoryWords.has(word)) score += 1;
-        return { memory, score };
+        for (const word of questionWords) {
+          if (keyWords.has(word)) score += 3;
+          else if (valueWords.has(word)) score += 1;
+        }
+        const normalizedKey = normalizeText(memory.memory_key);
+        const normalizedValue = normalizeText(memory.memory_value);
+        if (normalizedKey.length >= 4 && normalizedQuestion.includes(normalizedKey)) score += 4;
+        if (normalizedValue.length >= 8 && normalizedQuestion.includes(normalizedValue)) score += 5;
+        return { memory, score, index };
       });
       const matched = scored.filter(item => item.score > 0)
-        .sort((a, b) => b.score - a.score)
+        .sort((a, b) => b.score - a.score || a.index - b.index)
         .slice(0, 8)
         .map(item => item.memory);
+      // Explicit recall questions should get a small recent-memory overview instead of
+      // an empty context merely because the question shares no keywords with saved facts.
+      if (recallIntent && matched.length === 0) return memories.slice(0, 5);
       return matched;
     },
 
