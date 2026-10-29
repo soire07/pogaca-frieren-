@@ -18,7 +18,28 @@ let lastRateLimitInfo = null;
 const rest = new REST({
   version: '10',
   offset: 5000,
-  rejectOnRateLimit: ['/applications']
+  rejectOnRateLimit: ['/applications'],
+  makeRequest: async (url, init) => {
+    const response = await fetch(url, init);
+    if (response.status === 429) {
+      const data = await response.clone().json().catch(() => null);
+      console.warn('Discord HTTP 429 response diagnostics.', JSON.stringify({
+        status: response.status,
+        retryAfterHeader: response.headers.get('retry-after'),
+        scope: response.headers.get('x-ratelimit-scope'),
+        bucket: response.headers.get('x-ratelimit-bucket'),
+        globalHeader: response.headers.get('x-ratelimit-global'),
+        resetAfter: response.headers.get('x-ratelimit-reset-after'),
+        remaining: response.headers.get('x-ratelimit-remaining'),
+        limit: response.headers.get('x-ratelimit-limit'),
+        message: typeof data?.message === 'string' ? data.message.slice(0, 160) : null,
+        retryAfterBodySeconds: Number.isFinite(data?.retry_after) ? data.retry_after : null,
+        globalBody: typeof data?.global === 'boolean' ? data.global : null,
+        code: data?.code ?? null
+      }));
+    }
+    return response;
+  }
 }).setToken(token);
 
 rest.on('rateLimited', info => {
