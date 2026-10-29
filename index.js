@@ -70,6 +70,17 @@ async function loadCommands() {
 }
 
 
+async function sendPrivateInteractionError(interaction, content) {
+  if (!interaction?.isRepliable?.()) return;
+  const payload = { content, flags: MessageFlags.Ephemeral };
+  try {
+    if (interaction.deferred || interaction.replied) await interaction.followUp(payload);
+    else await interaction.reply(payload);
+  } catch (error) {
+    console.error('Etkileşim hata yanıtı gönderilemedi:', error?.message || error);
+  }
+}
+
 client.once(Events.ClientReady, async readyClient => {
   try {
     const slashCommands = [...client.commands.values()].map(command =>
@@ -112,7 +123,8 @@ client.once(Events.ClientReady, async readyClient => {
 });
 
 client.on(Events.InteractionCreate, async interaction => {
-  if (await handleCharacterPanelInteraction(interaction)) return;
+  try {
+    if (await handleCharacterPanelInteraction(interaction)) return;
   if (interaction.isButton() && interaction.customId.startsWith('market_')) {
     const parts = interaction.customId.split(':');
     const action = parts[0];
@@ -158,7 +170,7 @@ client.on(Events.InteractionCreate, async interaction => {
       return interaction.update({ ...panel, content: notice, attachments:[] });
     } catch (error) {
       console.error('Market paneli hatası:', error);
-      return interaction.reply({ content: 'Market panelinde bir sorun oluştu. Biraz sonra tekrar dene.', flags: MessageFlags.Ephemeral }).catch(() => {});
+      return sendPrivateInteractionError(interaction, 'Market panelinde bir sorun oluştu. Biraz sonra tekrar dene.');
     }
   }
   if (interaction.isButton() && (interaction.customId.startsWith('trade_accept:') || interaction.customId.startsWith('trade_decline:'))) {
@@ -166,8 +178,9 @@ client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.guildId || !offerId) {
       return interaction.reply({ content: 'Bu takas teklifi geçersiz.', flags: MessageFlags.Ephemeral });
     }
-    const db = await pool.connect();
+    let db;
     try {
+      db = await pool.connect();
       await db.query('BEGIN');
       const offerResult = await db.query(
         'SELECT * FROM trade_offers WHERE offer_id=$1 AND guild_id=$2 FOR UPDATE',
@@ -236,10 +249,10 @@ client.on(Events.InteractionCreate, async interaction => {
       await db.query('COMMIT');
       return interaction.update({ content: '✅ Takas tamamlandı! **' + found.rows[0].character_name + '** ×' + offer.amount + ' kopya yeni sahibine aktarıldı.', embeds: [], components: [] });
     } catch (error) {
-      await db.query('ROLLBACK').catch(() => {});
-      console.error('Takas kabul hatası:', error);
-      return interaction.reply({ content: 'Takas sırasında hata oluştu. Daha sonra tekrar dene.', flags: MessageFlags.Ephemeral }).catch(() => {});
-    } finally { db.release(); }
+      if (db) await db.query('ROLLBACK').catch(() => {});
+      console.error('Takas kabul hatası:', error?.stack || error);
+      return sendPrivateInteractionError(interaction, 'Takas sırasında hata oluştu. Daha sonra tekrar dene.');
+    } finally { db?.release(); }
   }
   if (interaction.isAutocomplete()) {
     const command = client.commands.get(interaction.commandName);
@@ -255,9 +268,11 @@ client.on(Events.InteractionCreate, async interaction => {
     await command.execute(interaction);
   } catch (error) {
     console.error(`/${interaction.commandName} hatası:`, error);
-    const message = { content: 'Bu komut çalışırken bir hata oluştu. Hata kaydedildi; daha sonra tekrar dene.', flags: MessageFlags.Ephemeral };
-    if (interaction.replied || interaction.deferred) await interaction.followUp(message).catch(() => {});
-    else await interaction.reply(message).catch(() => {});
+    await sendPrivateInteractionError(interaction, 'Bu komut çalışırken bir hata oluştu. Hata kaydedildi; daha sonra tekrar dene.');
+  }
+  } catch (error) {
+    console.error('Etkileşim yönlendirme hatası:', error?.stack || error);
+    await sendPrivateInteractionError(interaction, 'Bu etkileşim işlenirken bir hata oluştu. Biraz sonra tekrar dene.');
   }
 });
 

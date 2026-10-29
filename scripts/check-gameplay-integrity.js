@@ -336,3 +336,13 @@ test('equipment equip and unequip are user-scoped transactions and never permane
   assert.doesNotMatch(source, /UPDATE users SET[^;]*(?:max_hp|max_mana)\s*=/,
     'equipping gear must not persist temporary max HP/mana bonuses to base stats');
 });
+
+
+test('interaction dispatch catches component-handler and database-acquisition failures safely', async () => {
+  const source = await read('index.js');
+  assert.match(source, /async function sendPrivateInteractionError\\(interaction, content\\)/);
+  assert.match(source, /client\\.on\\(Events\\.InteractionCreate, async interaction => \\{\\s*try \\{/);
+  assert.match(source, /if \\(interaction\\.deferred \\|\\| interaction\\.replied\\) await interaction\\.followUp\\(payload\\)/);
+  assert.match(source, /let db;\\s*try \\{\\s*db = await pool\\.connect\\(\\)/);
+  assert.match(source, /finally \\{ db\\?\\.release\\(\\); \\}/);
+});
