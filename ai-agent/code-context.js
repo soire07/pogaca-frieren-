@@ -20,7 +20,7 @@ export function scoreCodeCandidate(filePath, source, terms) {
 export function findRelevantExcerpt(source, terms, maxLength = 1800) {
   if (typeof source !== 'string' || !source || !Number.isFinite(maxLength) || maxLength <= 0) return '';
   const limit = Math.floor(maxLength);
-  const lines = source.split('\\n');
+  const lines = source.split('\n');
   const normalizedTerms = [...new Set(terms.map(normalizeForSearch).filter(Boolean))];
   if (!normalizedTerms.length) return source.slice(0, limit);
 
