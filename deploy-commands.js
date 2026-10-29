@@ -99,17 +99,30 @@ async function discordRequest(route, { method = 'GET', body } = {}) {
     if (response.ok) return data;
 
     const retryable = response.status === 429 || response.status >= 500;
+    const retryAfterSeconds = Number(response.headers.get('retry-after') || data?.retry_after || 0);
     console.error('Discord REST request returned an error.', JSON.stringify({
       method, route, attempt, status: response.status,
-      message: data?.message ?? 'No response message'
+      message: data?.message ?? 'No response message',
+      retryAfterSeconds: Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : null,
+      globalRateLimit: data?.global ?? null
     }));
     if (!retryable || attempt === attempts) {
       const error = new Error(`Discord API ${method} ${route} returned HTTP ${response.status}: ${data?.message ?? 'unknown error'}`);
       error.status = response.status;
+      error.retryAfterSeconds = retryAfterSeconds;
       throw error;
     }
-    const retryAfter = Number(response.headers.get('retry-after') || data?.retry_after || attempt);
-    await new Promise(resolve => setTimeout(resolve, Math.min(Math.max(retryAfter * 1000, 500), 10_000)));
+    // Discord's bucket limits can require waits longer than a few seconds.
+    // Respect the server-provided retry_after instead of retrying too early.
+    const waitMs = Math.max(500, Math.ceil((Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : attempt) * 1000));
+    if (waitMs > 15 * 60 * 1000) {
+      const error = new Error(`Discord requested a retry delay of ${Math.ceil(waitMs / 1000)} seconds; refusing an unexpectedly long CI wait.`);
+      error.status = response.status;
+      error.retryAfterSeconds = retryAfterSeconds;
+      throw error;
+    }
+    console.warn(`Discord rate limit/retryable error; waiting ${Math.ceil(waitMs / 1000)} seconds before attempt ${attempt + 1}.`);
+    await new Promise(resolve => setTimeout(resolve, waitMs));
   }
   throw new Error('Discord REST request exhausted retry attempts.');
 }
