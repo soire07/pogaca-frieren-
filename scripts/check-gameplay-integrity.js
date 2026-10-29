@@ -340,9 +340,9 @@ test('equipment equip and unequip are user-scoped transactions and never permane
 
 test('interaction dispatch catches component-handler and database-acquisition failures safely', async () => {
   const source = await read('index.js');
-  assert.match(source, /async function sendPrivateInteractionError\\(interaction, content\\)/);
-  assert.match(source, /client\\.on\\(Events\\.InteractionCreate, async interaction => \\{\\s*try \\{/);
-  assert.match(source, /if \\(interaction\\.deferred \\|\\| interaction\\.replied\\) await interaction\\.followUp\\(payload\\)/);
-  assert.match(source, /let db;\\s*try \\{\\s*db = await pool\\.connect\\(\\)/);
-  assert.match(source, /finally \\{ db\\?\\.release\\(\\); \\}/);
+  assert.ok(source.includes('async function sendPrivateInteractionError(interaction, content)'));
+  assert.ok(source.includes('client.on(Events.InteractionCreate, async interaction => {\n  try {'));
+  assert.ok(source.includes('if (interaction.deferred || interaction.replied) await interaction.followUp(payload)'));
+  assert.ok(source.includes('let db;\n    try {\n      db = await pool.connect()'));
+  assert.ok(source.includes('finally { db?.release(); }'));
 });
