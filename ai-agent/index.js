@@ -57,6 +57,10 @@ const runningGuilds = new Set();
 
 const commands = [
   new SlashCommandBuilder()
+    .setName('status')
+    .setDescription('Frieren AI servisinin çalışma durumunu gösterir.')
+    .toJSON(),
+  new SlashCommandBuilder()
     .setName('frieren-test')
     .setDescription('Yazdığın hedefi dikkate alarak Frieren otomatik test ve tanılama paketini çalıştırır.')
     .addStringOption(option => option.setName('hedef').setDescription('Neyi test etmemi istiyorsun? Örn. boss hasarı, görev ödülleri, envanter.') .setRequired(true).setMaxLength(4000))
@@ -498,6 +502,30 @@ client.on(Events.InteractionCreate, async interaction => {
     await sendPrivateError(interaction, 'Bu komut yalnızca yetkili geliştiriciler tarafından kullanılabilir.', error => {
       console.error('Authorization denial reply failed:', redactSecrets(error.message || 'unknown error'));
     });
+    return;
+  }
+
+  if (interaction.commandName === 'status') {
+    const uptimeSeconds = Math.floor(process.uptime());
+    const hours = Math.floor(uptimeSeconds / 3600);
+    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+    const seconds = uptimeSeconds % 60;
+    const provider = process.env.FRIEREN_MODEL_PROVIDER || 'groq';
+    const model = process.env.FRIEREN_MODEL || 'openai/gpt-oss-20b';
+    const embed = new EmbedBuilder()
+      .setTitle('Frieren AI — Servis Durumu')
+      .setColor(client.isReady() ? 0x57F287 : 0xED4245)
+      .addFields(
+        { name: 'Discord bağlantısı', value: client.isReady() ? 'Bağlı' : 'Bağlı değil', inline: true },
+        { name: 'Gateway gecikmesi', value: client.ws.ping >= 0 ? client.ws.ping + ' ms' : 'Ölçülemiyor', inline: true },
+        { name: 'Çalışma süresi', value: hours + ' sa ' + minutes + ' dk ' + seconds + ' sn', inline: true },
+        { name: 'Bağlı sunucu sayısı', value: String(client.guilds.cache.size), inline: true },
+        { name: 'Yapay zekâ sağlayıcısı', value: provider + (groq ? ' — API hazır' : ' — GROQ_API_KEY eksik'), inline: true },
+        { name: 'Model', value: model, inline: true },
+        { name: 'Kalıcı bellek', value: memoryStore ? 'Yapılandırılmış' : 'Yapılandırılmamış', inline: true }
+      )
+      .setTimestamp();
+    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     return;
   }
 
