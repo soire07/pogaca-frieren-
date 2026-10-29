@@ -1,4 +1,5 @@
 name: Verify Discord command state without writes
+# Read-only verification; this workflow must never create, update, or delete commands.
 
 on:
   push:
