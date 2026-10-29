@@ -63,8 +63,9 @@ test('public health payload reports Discord readiness without disclosing interna
 });
 
 
-test('health endpoint status stays unready until Discord gateway is ready', () => {
-  assert.equal(getPublicHealthStatus({ discordReady: false }), 503);
+test('health endpoint stays live while Discord gateway is not ready or reconnecting', () => {
+  // This is a liveness endpoint used by the host monitor; readiness is exposed in the payload.
+  assert.equal(getPublicHealthStatus({ discordReady: false }), 200);
   assert.equal(getPublicHealthStatus({ discordReady: true }), 200);
-  assert.equal(getPublicHealthStatus(), 503);
+  assert.equal(getPublicHealthStatus(), 200);
 });
