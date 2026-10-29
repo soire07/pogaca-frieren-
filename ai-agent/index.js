@@ -4,7 +4,7 @@ import { resolveAiModel } from './config.js';
 import { findRelevantExcerpt, scoreCodeCandidate } from './code-context.js';
 import { createMemoryStore } from './memory-store.js';
 import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
-import { getTestLockKey, getPublicHealthPayload, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
+import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
 import { checkLiveRpgHealth } from './live-rpg-health.js';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -44,8 +44,9 @@ const memoryStore = process.env.DATABASE_URL?.trim() ? createMemoryStore(process
 const port = Number(process.env.PORT) || 10000;
 const healthServer = createServer((req, res) => {
   if (req.url === '/health') {
-    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify(getPublicHealthPayload({ discordReady: client.isReady() })));
+    const discordReady = client.isReady();
+    res.writeHead(getPublicHealthStatus({ discordReady }), { 'content-type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(getPublicHealthPayload({ discordReady })));
     return;
   }
   res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
