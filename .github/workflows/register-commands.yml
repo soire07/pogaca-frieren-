@@ -16,11 +16,9 @@ on:
       - main
     paths:
     - '*.js'
+    - '!index.js'
+    - '!deploy-commands.js'
     - 'commands/**'
-    - 'database/**'
-    - 'scripts/**'
-    - 'feature-inventory.json'
-    - 'package.json'
     - '.github/workflows/register-commands.yml'
 
 jobs:

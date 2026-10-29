@@ -12,8 +12,17 @@ if (!token || !clientId) {
   throw new Error('DISCORD_TOKEN ve CLIENT_ID Render Environment içinde olmalı.');
 }
 
-const rest = new REST({ version: '10', offset: 5000 }).setToken(token);
+const MAX_RATE_LIMIT_RETRIES = 3;
+const RATE_LIMIT_SAFETY_MARGIN_MS = 10_000;
+let lastRateLimitInfo = null;
+const rest = new REST({
+  version: '10',
+  offset: 5000,
+  rejectOnRateLimit: true
+}).setToken(token);
+
 rest.on('rateLimited', info => {
+  lastRateLimitInfo = info;
   console.warn('Discord REST rate limit encountered.', JSON.stringify({
     method: info.method,
     route: info.route,
@@ -78,25 +87,51 @@ if (duplicates.length) {
 }
 console.log(`Kaydedilmeye hazır ${commands.length} komut doğrulandı.`);
 
-// Use discord.js's REST manager so route buckets, shared limits, and retry-after
-// windows are coordinated by the supported Discord transport rather than a custom fetch loop.
+// Keep discord.js's route tracking, but reject 429s so this script controls the
+// retry boundary. Re-queueing at the exact reset boundary caused repeated 429s.
 async function discordRequest(route, { method = 'GET', body } = {}) {
-  try {
-    if (method === 'GET') return await rest.get(route);
-    if (method === 'PUT') return await rest.put(route, { body });
-    throw new Error('Unsupported Discord REST method: ' + method);
-  } catch (error) {
-    console.error('Discord REST request failed.', JSON.stringify({
-      method,
-      route,
-      name: error?.name ?? 'Error',
-      status: error?.status ?? error?.httpStatus ?? null,
-      code: error?.code ?? null,
-      message: error?.message ?? String(error),
-      retryAfterSeconds: Number.isFinite(error?.retryAfter) ? Number((error.retryAfter / 1000).toFixed(3)) : null
-    }));
-    throw error;
+  const maxAttempts = MAX_RATE_LIMIT_RETRIES + 1;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    lastRateLimitInfo = null;
+    try {
+      if (method === 'GET') return await rest.get(route);
+      if (method === 'PUT') return await rest.put(route, { body });
+      throw new Error('Unsupported Discord REST method: ' + method);
+    } catch (error) {
+      const status = error?.status ?? error?.httpStatus ?? null;
+      const retryAfterMs = Number(lastRateLimitInfo?.retryAfter ?? error?.retryAfter);
+      const rateLimited = status === 429 || error?.name === 'RateLimitError' || lastRateLimitInfo !== null;
+
+      console.error('Discord REST request failed.', JSON.stringify({
+        method,
+        route,
+        attempt,
+        maxAttempts,
+        name: error?.name ?? 'Error',
+        status,
+        code: error?.code ?? null,
+        message: error?.message ?? String(error),
+        retryAfterSeconds: Number.isFinite(retryAfterMs) && retryAfterMs > 0
+          ? Number((retryAfterMs / 1000).toFixed(3))
+          : null,
+        scope: lastRateLimitInfo?.scope ?? null,
+        bucket: lastRateLimitInfo?.hash ?? null
+      }));
+
+      if (!rateLimited || attempt === maxAttempts || !Number.isFinite(retryAfterMs) || retryAfterMs <= 0) {
+        throw error;
+      }
+
+      const delayMs = Math.ceil(retryAfterMs) + RATE_LIMIT_SAFETY_MARGIN_MS;
+      console.warn(
+        `Discord 429: attempt ${attempt}/${maxAttempts - 1}; waiting ${Math.ceil(delayMs / 1000)} seconds before retry.`
+      );
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
   }
+
+  throw new Error('Discord REST request exhausted its bounded retry attempts.');
 }
 
 async function putWithDiagnostics(route, body, label) {

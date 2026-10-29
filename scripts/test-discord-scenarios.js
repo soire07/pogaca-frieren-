@@ -756,11 +756,13 @@ test('character panel and global error replies use MessageFlags for private resp
 });
 
 
-test('slash command deployment uses discord.js rate-limit handling and preserves commands until guild sync succeeds', async () => {
+test('slash command deployment uses bounded Discord rate-limit retries and preserves commands until guild sync succeeds', async () => {
   const deploy = await read('deploy-commands.js');
-  assert.ok(deploy.includes("new REST({ version: '10', offset: 5000 }).setToken(token)"), 'command deployment must use discord.js REST rate-limit handling and a safe reset margin');
-  assert.ok(deploy.includes("new REST({ version: '10', offset: 5000 }).setToken(token)"), 'command registration must leave a conservative margin after Discord rate limits reset');
+  assert.ok(deploy.includes("rejectOnRateLimit: true") && deploy.includes("new REST({"), 'REST must reject rate-limited requests so retry timing is explicitly controlled');
   assert.ok(deploy.includes("rest.on('rateLimited'"), 'rate-limit scope and bucket details must be logged');
+  assert.ok(deploy.includes('const MAX_RATE_LIMIT_RETRIES = 3'), 'command registration retries must be bounded');
+  assert.ok(deploy.includes('const RATE_LIMIT_SAFETY_MARGIN_MS = 10_000'), 'manual retry must leave a safety margin after Discord rate limits reset');
+  assert.ok(deploy.includes('await new Promise(resolve => setTimeout(resolve, delayMs))'), 'rate-limit retries must wait explicitly instead of requeueing indefinitely');
   assert.ok(deploy.includes('await rest.get(route)'), 'guild targets must be resolved through the REST manager');
   assert.ok(deploy.includes('await rest.put(route, { body })'), 'command writes must use the REST manager');
   assert.ok(!deploy.includes('response = await fetch(url'), 'command registration must not bypass the REST rate-limit manager');
@@ -769,10 +771,12 @@ test('slash command deployment uses discord.js rate-limit handling and preserves
   const globalWrite = deploy.indexOf('Routes.applicationCommands');
   assert.ok(guildWrite >= 0 && globalWrite > guildWrite, 'register guild commands before clearing global duplicates');
   const workflow = await read('.github/workflows/register-commands.yml');
-  assert.ok(workflow.includes('timeout-minutes: 20'), 'command registration job must allow Discord rate-limit backoff to finish');
+  assert.ok(workflow.includes('timeout-minutes: 20'), 'command registration job must allow bounded Discord rate-limit retries to finish');
   assert.ok(workflow.includes('npm run check'), 'full project checks must pass before changing live Discord commands');
   assert.ok(deploy.includes('process.env.GUILD_IDS'), 'deployment must support explicit multiple guild targets');
   assert.ok(deploy.includes('await discordRequest(Routes.guild(guildId))'), 'each target must be verified before changing command lists');
   assert.ok(workflow.includes("GUILD_IDS: '1539562273197260860,1564945192803639356'"), 'production and test guild IDs must be explicit and separate');
   assert.ok(!workflow.includes('GUILD_ID: ${{ secrets.GUILD_ID }}'), 'do not use the ambiguous single GUILD_ID secret');
+  assert.ok(!workflow.includes("    - 'scripts/**'"), 'test and helper script commits must not repeatedly re-register Discord commands');
+  assert.ok(workflow.includes("    - '!index.js'") && workflow.includes("    - '!deploy-commands.js'"), 'runtime and registration-helper edits must not trigger redundant command overwrites');
 });
