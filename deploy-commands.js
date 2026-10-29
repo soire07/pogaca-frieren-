@@ -101,7 +101,7 @@ async function discordRequest(route, { method = 'GET', body } = {}) {
     } catch (error) {
       const status = error?.status ?? error?.httpStatus ?? null;
       const retryAfterMs = Number(lastRateLimitInfo?.retryAfter ?? error?.retryAfter);
-      const rateLimited = status === 429 || error?.name === 'RateLimitError' || lastRateLimitInfo !== null;
+      const rateLimited = status === 429 || error?.name?.startsWith('RateLimitError') || lastRateLimitInfo !== null;
 
       console.error('Discord REST request failed.', JSON.stringify({
         method,
