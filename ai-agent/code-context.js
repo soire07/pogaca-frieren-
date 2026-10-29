@@ -20,15 +20,36 @@ export function scoreCodeCandidate(filePath, source, terms) {
 export function findRelevantExcerpt(source, terms, maxLength = 1800) {
   if (typeof source !== 'string' || !source || !Number.isFinite(maxLength) || maxLength <= 0) return '';
   const limit = Math.floor(maxLength);
-  const normalizedSource = normalizeForSearch(source);
-  let firstMatch = -1;
-  for (const term of terms) {
-    const normalizedTerm = normalizeForSearch(term);
-    if (!normalizedTerm) continue;
-    const index = normalizedSource.indexOf(normalizedTerm);
-    if (index >= 0 && (firstMatch < 0 || index < firstMatch)) firstMatch = index;
+  const lines = source.split('\\n');
+  const normalizedTerms = [...new Set(terms.map(normalizeForSearch).filter(Boolean))];
+  if (!normalizedTerms.length) return source.slice(0, limit);
+
+  let bestLine = 0;
+  let bestScore = -1;
+  let offset = 0;
+  let bestOffset = 0;
+  let lineOffset = 0;
+  for (const line of lines) {
+    const normalizedLine = normalizeForSearch(line);
+    let score = 0;
+    for (const term of normalizedTerms) {
+      if (!normalizedLine.includes(term)) continue;
+      score += 4;
+      const matches = normalizedLine.split(term).length - 1;
+      score += Math.min(matches - 1, 3);
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestLine = lineOffset;
+      bestOffset = offset;
+    }
+    offset += line.length + 1;
+    lineOffset += 1;
   }
-  if (firstMatch < 0) return source.slice(0, limit);
-  const start = Math.max(0, firstMatch - Math.floor(limit * 0.25));
+
+  if (bestScore <= 0) return source.slice(0, limit);
+  // Center the excerpt around the densest match, not the first generic keyword
+  // anywhere in a large file. This keeps the relevant implementation in context.
+  const start = Math.max(0, Math.min(source.length - limit, bestOffset - Math.floor(limit * 0.25)));
   return source.slice(start, start + limit);
 }
