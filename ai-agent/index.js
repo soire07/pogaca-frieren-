@@ -529,7 +529,8 @@ client.once(Events.ClientReady, readyClient => {
 client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
-  if (!isAuthorizedAdmin(interaction.user.id, admins)) {
+  const adminOnlyCommands = new Set(['frieren-test', 'frieren-komut-denetle']);
+  if (adminOnlyCommands.has(interaction.commandName) && !isAuthorizedAdmin(interaction.user.id, admins)) {
     await sendPrivateError(interaction, 'Bu komut yalnızca yetkili geliştiriciler tarafından kullanılabilir.', error => {
       console.error('Authorization denial reply failed:', redactSecrets(error.message || 'unknown error'));
     });
