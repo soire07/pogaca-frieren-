@@ -63,26 +63,41 @@ if (duplicates.length) {
 }
 console.log(`Kaydedilmeye hazır ${commands.length} komut doğrulandı.`);
 
-const rest = new REST({ version: '10', timeout: 15_000 }).setToken(token);
-async function putWithTimeout(route, body) {
-  return rest.put(route, { body, signal: AbortSignal.timeout(15_000) });
+// discord.js REST kendi timeout/retry mekanizmasını yönetsin. Harici AbortSignal,
+// yeniden denemeler sürerken isteği erken iptal edip gereksiz kayıt hatalarına yol açabilir.
+const rest = new REST({ version: '10', timeout: 60_000, retries: 2 }).setToken(token);
+async function putWithDiagnostics(route, body, label) {
+  try {
+    return await rest.put(route, { body });
+  } catch (error) {
+    console.error(`Discord API komut kaydı başarısız (${label}).`, JSON.stringify({
+      name: error?.name ?? 'Error',
+      message: error?.message ?? String(error),
+      status: error?.status ?? null,
+      code: error?.code ?? null,
+      route
+    }));
+    throw error;
+  }
 }
 console.log(`Discord komut eşitlemesi başlıyor: ${commands.length} komut.`);
 
 if (process.env.GUILD_ID) {
   // Önce hedef sunucuya komutları kaydet; bu başarısız olursa mevcut global komutları silme.
-  await putWithTimeout(
+  await putWithDiagnostics(
     Routes.applicationGuildCommands(clientId, process.env.GUILD_ID),
-    commands
+    commands,
+    'hedef sunucuya kayıt'
   );
   console.log(`${commands.length} komut hedef sunucuya kaydedildi.`);
   // Yalnızca hedef sunucu kaydı başarılı olduktan sonra eski global kopyaları temizle.
-  await putWithTimeout(Routes.applicationCommands(clientId), []);
+  await putWithDiagnostics(Routes.applicationCommands(clientId), [], 'eski global komutları temizleme');
   console.log('Eski global komut kayıtları temizlendi.');
 } else {
-  await putWithTimeout(
+  await putWithDiagnostics(
     Routes.applicationCommands(clientId),
-    commands
+    commands,
+    'global kayıt'
   );
   console.log(`${commands.length} komut global olarak kaydedildi.`);
 }
