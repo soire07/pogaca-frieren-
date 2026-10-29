@@ -147,14 +147,14 @@ async function collectCodeContext(question) {
 function isConversationalQuestion(question) {
   const normalized = question.toLocaleLowerCase('tr-TR')
     .normalize('NFKD')
-    .replace(/[\\u0300-\\u036f]/g, '')
-    .replace(/[^a-z0-9\\s]/g, ' ')
-    .replace(/\\s+/g, ' ')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
-  const hasTechnicalIntent = /\\b(kod|komut|test|hata|bug|debug|dosya|fonksiyon|veritabani|database|api|deploy|render|discord|incele|duzelt|analiz)\\b/.test(normalized);
+  const hasTechnicalIntent = /\b(kod|komut|test|hata|bug|debug|dosya|fonksiyon|veritabani|database|api|deploy|render|discord|incele|duzelt|analiz)\b/.test(normalized);
   if (hasTechnicalIntent) return false;
-  return /^(merhaba|selam|hey|hello|hi|gunaydin|iyi aksamlar|iyi geceler)\\b/.test(normalized)
-    || /\\b(kendini tanit|kimsin|ne yapabilirsin|neler yapabilirsin|nasilsin|seni tanimak istiyorum)\\b/.test(normalized);
+  return /^(merhaba|selam|hey|hello|hi|gunaydin|iyi aksamlar|iyi geceler)\b/.test(normalized)
+    || /\b(kendini tanit|kimsin|ne yapabilirsin|neler yapabilirsin|nasilsin|seni tanimak istiyorum)\b/.test(normalized);
 }
 
 async function answerCodeQuestion(question, userId) {
@@ -162,8 +162,9 @@ async function answerCodeQuestion(question, userId) {
     ok: false,
     message: 'Groq API anahtarı ayarlanmamış. Render ortam değişkenlerine GROQ_API_KEY eklenmeli. Ücretli API sağlayıcısına otomatik geçiş yapılmaz. /frieren-test otomatik testleri çalıştırmaya devam eder.'
   };
-  const context = await collectCodeContext(question);
-  if (!context) return { ok: false, message: 'Bu soruyla ilişkili kaynak dosyası bulunamadı. Daha belirgin bir komut veya mekanik adıyla yeniden dene.' };
+  const conversational = isConversationalQuestion(question);
+  const context = conversational ? '' : await collectCodeContext(question);
+  if (!context && !conversational) return { ok: false, message: 'Bu soruyla ilişkili kaynak dosyası bulunamadı. Daha belirgin bir komut veya mekanik adıyla yeniden dene.' };
   let memories = [];
   if (memoryStore && userId) {
     try {
@@ -188,7 +189,9 @@ async function answerCodeQuestion(question, userId) {
       model: resolveAiModel(process.env),
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: 'KULLANICI SORUSU:\n' + question.slice(0, 1200) + memoryContext + '\n\nKAYNAK KODLAR (yalnızca inceleme için):\n' + context }
+        { role: 'user', content: conversational
+          ? 'KULLANICI MESAJI:\n' + question.slice(0, 1200) + memoryContext
+          : 'KULLANICI SORUSU:\n' + question.slice(0, 1200) + memoryContext + '\n\nKAYNAK KODLAR (yalnızca inceleme için):\n' + context }
       ],
       max_completion_tokens: 900,
     });
