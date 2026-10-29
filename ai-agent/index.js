@@ -195,11 +195,31 @@ async function answerCodeQuestion(question, userId) {
       message = extractText(response);
     }
   } catch (error) {
-    console.error('Groq kod inceleme isteği başarısız:', redactSecrets(error?.message || String(error)));
-    return { ok: false, message: 'AI sağlayıcısına istek başarısız oldu. Kod incelemesi tamamlanmadı; Render kayıtlarında hata ayrıntısı tutuldu. Biraz sonra tekrar deneyebilirsin.' };
+    const errorText = error?.message || String(error);
+    const contextLimitError = error?.status === 413 || /\\b413\\b|request too large|tokens per minute|\\bTPM\\b/i.test(errorText);
+    if (contextLimitError) {
+      console.warn('Groq isteği bağlam/token sınırını aştı; daha küçük bağlamla yeniden deneniyor.');
+      try {
+        response = await groq.chat.completions.create({
+          model: resolveAiModel(process.env),
+          messages: [
+            { role: 'system', content: systemPrompt + ' Kısa ve görünür Türkçe yanıt ver; boş yanıt verme.' },
+            { role: 'user', content: 'İstek: ' + question.slice(0, 800) + '\\n\\nİlgili kaynak kod:\\n' + context.slice(0, 900) }
+          ],
+          max_tokens: 450,
+        });
+        message = extractText(response);
+      } catch (retryError) {
+        console.error('Groq kısa bağlamlı yeniden deneme başarısız:', redactSecrets(retryError?.message || String(retryError)));
+        return { ok: false, message: 'AI sağlayıcısının ücretsiz token sınırı aşıldı; kısa bağlamlı yeniden deneme de başarısız oldu. Kod incelemesi tamamlanmadı ve kodda değişiklik yapılmadı.' };
+      }
+    } else {
+      console.error('Groq kod inceleme isteği başarısız:', redactSecrets(errorText));
+      return { ok: false, message: 'AI sağlayıcısına istek başarısız oldu. Kod incelemesi tamamlanmadı; Render kayıtlarında hata ayrıntısı tutuldu. Biraz sonra tekrar deneyebilirsin.' };
+    }
   }
   if (!message) {
-    console.error('Groq iki denemede de boş içerik döndürdü.', JSON.stringify({
+    console.error('Groq kullanılabilir yanıt döndürmedi.', JSON.stringify({
       model: response?.model ?? resolveAiModel(process.env),
       finishReason: response?.choices?.[0]?.finish_reason ?? null,
       usage: response?.usage ?? null,
