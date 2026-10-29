@@ -541,12 +541,15 @@ client.on(Events.InteractionCreate, async interaction => {
       const syntaxPassed = agentSyntax.code === 0;
       const testsPassed = result.code === 0 && !result.timedOut;
       const targetedOutput = (targeted.stdout || '') + '\n' + (targeted.stderr || '');
-      const targetedHasTests = /SEÇİLEN TEST DOSYALARI:/.test(targetedOutput);
+      // A selected-file banner alone is not proof that tests actually ran.
+      const targetedCountMatch = targetedOutput.match(/(?:ℹ\\s*)tests\\s+(\\d+)/i);
+      const targetedTestCount = targetedCountMatch ? Number(targetedCountMatch[1]) : 0;
+      const targetedHasTests = /SEÇİLEN TEST DOSYALARI:/.test(targetedOutput) && targetedTestCount > 0;
       const memoryPrivacyTarget = isMemoryPrivacyTarget(target);
       const liveMemoryProofPassed = hasLiveMemoryPrivacyProof(target, targetedOutput);
       const targetedPassed = targeted.code === 0 && targetedHasTests && liveMemoryProofPassed;
       const liveRpgPassed = liveRpgHealth.ok;
-      const status = result.timedOut ? 'TEST ZAMAN AŞIMI' : !auditPassed || !testsPassed || !syntaxPassed || !liveRpgPassed || (targetedHasTests && !targetedPassed) || (memoryPrivacyTarget && !liveMemoryProofPassed) ? 'DENETİM BAŞARISIZ' : !targetedHasTests ? 'HEDEFE ÖZEL KAPSAM EKSİK' : 'TÜM OTOMATİK DENETİMLER BAŞARILI';
+      const status = result.timedOut ? 'TEST ZAMAN AŞIMI' : !auditPassed || !testsPassed || !syntaxPassed || !liveRpgPassed || (targetedHasTests && !targetedPassed) || (memoryPrivacyTarget && !liveMemoryProofPassed) ? 'DENETİM BAŞARISIZ' : !targetedHasTests ? 'HEDEFE ÖZEL KAPSAM EKSİK' : 'OTOMATİK KONTROLLER GEÇTİ — CANLI KOMUT E2E TESTİ DEĞİL';
       const summary = buildLocalTestSummary(result);
       const targetedSummary = targeted.applicable
         ? (memoryPrivacyTarget && !liveMemoryProofPassed
@@ -554,7 +557,7 @@ client.on(Events.InteractionCreate, async interaction => {
           : !targetedHasTests
             ? 'Hedefe özel test kapsamı: BULUNAMADI. İstekle eşleşen test dosyası seçilmedi; bu hedef için başarı iddiası verilmiyor.'
             : targeted.code === 0
-              ? 'Hedefe özel testler: BAŞARILI. ' + (targetedOutput.match(/SEÇİLEN TEST DOSYALARI: ([^\n]+)/)?.[1] || 'Seçilen testler geçti.')
+              ? 'Hedefe özel testler: BAŞARILI (' + targetedTestCount + ' gerçek node:test testi). ' + (targetedOutput.match(/SEÇİLEN TEST DOSYALARI: ([^\n]+)/)?.[1] || 'Seçilen testler geçti.')
                 + liveMemoryPrivacySummarySuffix(memoryPrivacyTarget)
               : 'Hedefe özel testler: BAŞARISIZ (çıkış kodu: ' + (targeted.code ?? 'yok') + '). ' + targetedOutput.slice(-300))
         : 'Hedefe özel test kapsamı: EKSİK. ' + targeted.note;
@@ -574,7 +577,7 @@ client.on(Events.InteractionCreate, async interaction => {
         ? 'Canlı RPG botu: BAŞARILI — Discord bağlantısı ve PostgreSQL sağlık endpointi yanıt verdi.'
         : 'Canlı RPG botu: BAŞARISIZ — ' + liveRpgHealth.summary;
       const auditSummary = auditPassed
-        ? 'Komut sözleşme denetimi: ' + commandCount[1] + ' komut keşfedildi; ' + commandCount[2] + ' PASS, ' + commandCount[3] + ' FAIL. Her komut için ayrı sonuç üretildi.'
+        ? 'Komut sözleşme denetimi: ' + commandCount[1] + ' komut keşfedildi; ' + commandCount[2] + ' PASS, ' + commandCount[3] + ' FAIL. Bu yalnızca modül/şema/işleyici sözleşmesini kontrol eder; gerçek Discord komut yürütmesi değildir.'
         : 'Komut sözleşme denetimi BAŞARISIZ. Ayrıntılar test çıktısında.';
       const rawOutput = [
         'FRIEREN OTOMATİK DENETİM RAPORU',
@@ -607,7 +610,7 @@ client.on(Events.InteractionCreate, async interaction => {
         targetedOutput,
         'Çıkış kodu: ' + (targeted.code ?? 'yok'),
         '',
-        'NOT: PASS yalnızca ilgili otomatik kontrolün geçtiğini belirtir. Canlı Discord kullanıcı akışları ve üretim veritabanı etkileri bu raporla otomatik olarak kanıtlanmış sayılmaz.'
+        'NOT: Komut sözleşme denetimi statiktir. Hedefli test sayısı yalnızca gerçekten çalıştırılan node:test testlerini sayar. Bu rapor canlı Discord üzerinde her slash komutu çağırmaz; gerçek kullanıcı etkileşimleri ve üretim verisi etkileri E2E olarak doğrulanmış sayılmaz.'
       ].join('\n').trim();
       const body = '**' + status + '**\n\n**İstenen test:** ' + target.slice(0, 500)
         + '\n**İlgili alan:** ' + targetGroups.join(' • ')
