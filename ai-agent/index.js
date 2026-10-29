@@ -495,8 +495,8 @@ client.on(Events.InteractionCreate, async interaction => {
       );
       const preview = resultRows.slice(0, 5).join('\n') || 'Test sonucu bulunamadı.';
       await interaction.editReply({
-        content: '**Poğaça Frieren komut denetimi tamamlandı**\n'
-          + 'Toplam: ' + (summary.total ?? 0) + ' | PASS: ' + (summary.pass ?? 0) + ' | FAIL: ' + (summary.fail ?? 0)
+        content: '**Poğaça Frieren komut smoke denemesi tamamlandı**\n'
+          + 'Toplam: ' + (summary.total ?? 0) + ' | PASS: ' + (summary.pass ?? 0) + ' | FAIL: ' + (summary.fail ?? 0) + ' | Kesin değil: ' + (summary.inconclusive ?? 0)
           + '\nÇalıştırma: gerçek komut işleyicisi + sentetik Discord etkileşimi + frieren_test PostgreSQL şeması.\n'
           + 'Not: Bu Discord üzerinden gerçek kullanıcı etkileşimi değil; üretim tablolarından ayrı test şemasında işleyici denemesidir. PASS, yalnızca yanıt/etki üretildiğini gösterir; özellik mantığının tamamını tek başına kanıtlamaz.\n\n'
           + preview + (resultRows.length > 5 ? '\n… ve raporda ' + (resultRows.length - 5) + ' komut daha.' : ''),
