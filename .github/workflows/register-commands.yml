@@ -18,6 +18,20 @@ jobs:
   register:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: frieren_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d frieren_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Projeyi indir
         uses: actions/checkout@v4
@@ -33,7 +47,7 @@ jobs:
       - name: Tüm proje kontrollerini ve testleri çalıştır
         run: npm run check
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/frieren_test
 
       - name: Komutları Discord'a kaydet
         run: npm run deploy-commands
@@ -41,4 +55,4 @@ jobs:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           GUILD_ID: ${{ secrets.GUILD_ID }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/frieren_test
