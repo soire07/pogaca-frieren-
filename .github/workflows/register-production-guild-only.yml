@@ -47,6 +47,12 @@ jobs:
         run: npm run check
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/frieren_test
+      - name: Verify production guild target
+        run: |
+          test "1539562273197260860" = "${PRODUCTION_GUILD_ID}"
+          echo "Command registration target verified: production guild only."
+        env:
+          PRODUCTION_GUILD_ID: "1539562273197260860"
       - name: Wait for Discord's latest advertised cooldown
         run: sleep 240
       - name: Register commands in production guild only
