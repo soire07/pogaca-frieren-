@@ -758,7 +758,7 @@ test('character panel and global error replies use MessageFlags for private resp
 
 test('slash command deployment uses bounded Discord rate-limit retries and preserves commands until guild sync succeeds', async () => {
   const deploy = await read('deploy-commands.js');
-  assert.ok(deploy.includes("rejectOnRateLimit: true") && deploy.includes("new REST({"), 'REST must reject rate-limited requests so retry timing is explicitly controlled');
+  assert.ok(deploy.includes("rejectOnRateLimit: ['/applications']") && deploy.includes("new REST({"), 'REST must use the route-prefix array expected by the installed discord.js REST version');
   assert.ok(deploy.includes("rest.on('rateLimited'"), 'rate-limit scope and bucket details must be logged');
   assert.ok(deploy.includes('const MAX_RATE_LIMIT_RETRIES = 3'), 'command registration retries must be bounded');
   assert.ok(deploy.includes('const RATE_LIMIT_SAFETY_MARGIN_MS = 10_000'), 'manual retry must leave a safety margin after Discord rate limits reset');

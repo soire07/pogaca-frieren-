@@ -18,7 +18,7 @@ let lastRateLimitInfo = null;
 const rest = new REST({
   version: '10',
   offset: 5000,
-  rejectOnRateLimit: true
+  rejectOnRateLimit: ['/applications']
 }).setToken(token);
 
 rest.on('rateLimited', info => {
