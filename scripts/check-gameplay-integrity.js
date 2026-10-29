@@ -293,19 +293,78 @@ test('item use persists base HP and mana without permanently adding temporary eq
 });
 
 
-test('item use binds exactly the SQL placeholders and never passes unused equipment bonuses', async () => {
+test('item-use SQL bind count exactly matches placeholders', async () => {
   const source = await read('esyakullan.js');
   const start = source.indexOf('const updated = await db.query(');
   assert.ok(start >= 0, 'item-use UPDATE query missing');
-  const end = source.indexOf('\\n      );', start);
-  assert.ok(end > start, 'item-use UPDATE query closing not found');
+  const end = source.indexOf('\n      );', start);
+  assert.ok(end > start, 'item-use SQL query closing not found');
   const call = source.slice(start, end);
-  const placeholders = [...call.matchAll(/\\$(\\d+)/g)].map(match => Number(match[1]));
+  const placeholders = [...call.matchAll(/\$(\d+)/g)].map(match => Number(match[1]));
+  assert.ok(placeholders.length > 0, 'SQL placeholders missing');
   const maxPlaceholder = Math.max(...placeholders);
-  const valuesMatch = call.match(/,\\s*\\[([\\s\\S]*?)\\]\\s*$/);
+  const valuesMatch = call.match(/,\s*\[([\s\S]*?)\]\s*$/);
   assert.ok(valuesMatch, 'item-use SQL parameter array missing');
   const parameterCount = valuesMatch[1].split(',').length;
   assert.equal(parameterCount, maxPlaceholder,
     'PostgreSQL bind parameter count must match the highest SQL placeholder');
   assert.equal(parameterCount, 10, 'item-use query currently uses ten placeholders');
+});
+
+test('equipment equip and unequip are transactional, user-scoped, and clamp persistent base HP/mana', async () => {
+  const source = await read('ekipman.js');
+  const equipStart = source.indexOf("await db.query('BEGIN')", source.indexOf('const db = await pool.connect();', source.indexOf("if (action === 'unequip')") + 1));
+  const equipInsert = source.indexOf('INSERT INTO user_equipment', equipStart);
+  const equipStats = source.indexOf('const effectiveMaxHp =', equipInsert);
+  const equipClamp = source.indexOf('UPDATE users SET hp=LEAST(hp,$3), mana=LEAST(mana,$4)', equipStats);
+  const equipCommit = source.indexOf("await db.query('COMMIT')", equipClamp);
+  assert.ok(equipStart >= 0 && equipInsert > equipStart && equipStats > equipInsert && equipClamp > equipStats && equipCommit > equipClamp,
+    'equip must write equipment, derive effective caps, clamp base resources, and commit in order');
+
+  const unequipStart = source.indexOf("await db.query('BEGIN')", source.indexOf("if (action === 'unequip')"));
+  const unequipDelete = source.indexOf('DELETE FROM user_equipment', unequipStart);
+  const unequipStats = source.indexOf('const effectiveMaxHp =', unequipDelete);
+  const unequipClamp = source.indexOf('UPDATE users SET hp=LEAST(hp,$3), mana=LEAST(mana,$4)', unequipStats);
+  const unequipCommit = source.indexOf("await db.query('COMMIT')", unequipClamp);
+  assert.ok(unequipStart >= 0 && unequipDelete > unequipStart && unequipStats > unequipDelete && unequipClamp > unequipStats && unequipCommit > unequipClamp,
+    'unequip must remove equipment, derive remaining caps, clamp base resources, and commit in order');
+
+  assert.equal((source.match(/WHERE guild_id=\$1 AND user_id=\$2/g) || []).length >= 4, true,
+    'equipment writes and resource updates must be scoped to the guild/user pair');
+  assert.match(source, /SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/);
+  assert.match(source, /SELECT item_key FROM user_equipment WHERE guild_id=\$1 AND user_id=\$2/);
+  assert.match(source, /Math\.min\(2000, Number\(baseStats\.rows\[0\]\.max_hp\) \+ gear\.hp\)/);
+  assert.match(source, /Math\.min\(2000, Number\(baseStats\.rows\[0\]\.max_mana\) \+ gear\.mana\)/);
+});
+
+test('solo and cooperative combat persist HP/mana against base stats, not temporary equipment/build caps', async () => {
+  const solo = await read('iblisavasi.js');
+  const dungeon = await read('katlizindan.js');
+  const raid = await read('ortakboss.js');
+  assert.match(solo, /const toPersistentHp = hp => Math\.max\(0, Math\.min\(Number\(stats\.max_hp\), Math\.round\(\(hp \/ Math\.max\(1, playerMaxHp\)\) \* Number\(stats\.max_hp\)\)\)\)/);
+  assert.match(solo, /toPersistentMana\(playerMana\)/);
+  for (const [name, source] of [['dungeon', dungeon], ['raid', raid]]) {
+    assert.match(source, /const baseMaxHp = Number\((?:p|f)\.max_hp\)/, name + ': base max HP captured');
+    assert.match(source, /Math\.min\(baseMaxHp, Math\.round\(\(hp \/ combatMaxHp\) \* baseMaxHp\)\)/, name + ': combat HP converted back to base scale');
+    assert.match(source, /persistedManaNow/, name + ': mana is persisted separately');
+    assert.match(source, /Math\.min\(baseMaxMana, Math\.round\(\(mana \/ combatMaxMana\) \* baseMaxMana\)\)/, name + ': combat mana converted back to base scale');
+  }
+});
+
+test('solo combat victory and cooperative victory persist rewards with resource state transactionally', async () => {
+  const solo = await read('iblisavasi.js');
+  const dungeon = await read('katlizindan.js');
+  const raid = await read('ortakboss.js');
+  const victory = solo.indexOf('if (bossHp <= 0)');
+  const soloBegin = solo.indexOf("await db.query('BEGIN')", victory);
+  const soloSave = solo.indexOf('UPDATE users SET hp=$3, mana=$4, coins=coins+$5, xp=xp+$6', soloBegin);
+  const soloCommit = solo.indexOf("await db.query('COMMIT')", soloSave);
+  assert.ok(victory >= 0 && soloBegin > victory && soloSave > soloBegin && soloCommit > soloSave,
+    'solo victory must commit HP/mana and rewards in the same transaction');
+  for (const [name, source, rewardField] of [['dungeon', dungeon, 'dungeon_wins'], ['raid', raid, 'boss_defeats']]) {
+    assert.match(source, /UPDATE users SET/);
+    assert.match(source, new RegExp(rewardField + '='));
+    assert.match(source, /await db\.query\('COMMIT'\)/);
+    assert.match(source, /await db\.query\('ROLLBACK'\)/);
+  }
 });
