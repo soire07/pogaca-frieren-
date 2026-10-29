@@ -12,7 +12,7 @@ if (!token || !clientId) {
   throw new Error('DISCORD_TOKEN ve CLIENT_ID Render Environment içinde olmalı.');
 }
 
-const rest = new REST({ version: '10' }).setToken(token);
+const rest = new REST({ version: '10', offset: 5000 }).setToken(token);
 rest.on('rateLimited', info => {
   console.warn('Discord REST rate limit encountered.', JSON.stringify({
     method: info.method,
