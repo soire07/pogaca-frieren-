@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [runtime, manual] = await Promise.all([
+const [runtime, manual, target] = await Promise.all([
   readFile(new URL('./index.js', import.meta.url), 'utf8'),
   readFile(new URL('./register-commands.js', import.meta.url), 'utf8'),
+  readFile(new URL('./command-registration-target.js', import.meta.url), 'utf8'),
 ]);
 
 test('manual registration keeps the required /frieren-test target option', () => {
@@ -26,8 +27,10 @@ test('manual registration includes every diagnostic slash command handled by run
 test('runtime and manual registration are pinned to the test guild, never global commands', () => {
   assert.match(runtime, /FRIEREN_AI_TEST_GUILD_ID/);
   assert.match(manual, /FRIEREN_AI_TEST_GUILD_ID/);
-  assert.doesNotMatch(runtime, /Routes\\.applicationCommands\\(/);
-  assert.doesNotMatch(manual, /Routes\\.applicationCommands\\(/);
+  assert.equal(runtime.includes('Routes.applicationCommands('), false);
+  assert.equal(manual.includes('Routes.applicationCommands('), false);
   assert.match(runtime, /getFrierenAiCommandRoute/);
   assert.match(manual, /getFrierenAiCommandRoute/);
+  assert.match(target, /FRIEREN_AI_TEST_GUILD_ID = '1564945192803639356'/);
+  assert.match(target, /Routes\.applicationGuildCommands\(clientId\.trim\(\), FRIEREN_AI_TEST_GUILD_ID\)/);
 });
