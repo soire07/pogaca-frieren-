@@ -40,14 +40,28 @@ Save changes and let Render redeploy. Check the service's `/health` endpoint and
 2. Confirm the report is attached and inspect whether a targeted test was actually selected. A missing targeted test is a coverage gap, not a pass.
 3. Run a harmless main-bot command in the staging server manually and record its expected response. Do not use economy, combat, or moderation commands until state isolation is verified.
 
-## 5. What is and is not a live test
+## 5. Operator-assisted live command evidence
+
+The test agent now exposes `/frieren-live-test`. This is an **operator evidence recorder**, not a self-bot and not an automatic command invoker.
+
+1. Configure `TEST_GUILD_ID` on the Frieren AI Render service to the ID of the already-existing guild only if it is genuinely safe for testing and the target bot is present there. The command is disabled until this value is set, and it rejects use in any other guild.
+2. Ensure the person recording results is included in `FRIEREN_ADMIN_IDS`.
+3. Run the target Poğaça Frieren command manually in Discord using a disposable test character. Compare its real response and resulting state with the expected result.
+4. Invoke `/frieren-live-test` and provide the command, expected result, observed result, status, isolation type, and evidence note.
+5. Download and retain the generated JSON report. The current report history is held in process memory and resets on service restart; each generated attachment includes the records still in memory.
+
+A PASS is rejected unless the operator declares the command read-only or confirms an isolated test database. That declaration is recorded, not independently proven by the test agent. Use FAIL for a mismatch and BLOCKED if you cannot safely or reliably test it. Never label a command PASS when you have not run it.
+
+This operator workflow does not make the bot automatically invoke another application's slash command. Fully automated live E2E requires a supported authorized user-side client/runner; do not use self-bots, user tokens, browser cookies, or undocumented automation. Test results explicitly state that evidence was operator-recorded.
+
+## 6. What is and is not a live test
 
 - **Code test:** a local automated test passed.
 - **Discord API readiness:** the bot is connected and can see the configured guild.
 - **Human-observed end-to-end test:** a tester actually invoked the main bot's slash command and checked its response/components.
 - **Automated end-to-end test:** only report this when a supported authorized client actually invokes the command and verifies the response. A bot-to-bot message, command schema audit, or green health check is not proof.
 
-## Troubleshooting
+## 7. Troubleshooting
 
 - Commands absent: verify the test agent's `DISCORD_GUILD_ID`, app ID, bot token, invite scopes, and Render deploy logs.
 - Bot cannot see channels: check its role/channel overwrites and `View Channels`.
