@@ -156,17 +156,15 @@ function isConversationalQuestion(question) {
 }
 
 function isExplicitMemoryOverviewQuestion(value) {
-  const normalized = String(value ?? '')
-    .toLocaleLowerCase('tr-TR')
-    .normalize('NFKD')
-    .replace(/[\\u0300-\\u036f]/g, '')
-    .replace(/ı/g, 'i')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\\s+/g, ' ')
-    .trim();
-  return /\\b(tum|butun)\\b.*\\b(anilar|bellek kayitlar|kayitli bilgilerin)\\b/.test(normalized)
-    || /\\b(bellegimde|hafizamda)\\b.*\\b(tum|butun)\\b/.test(normalized)
-    || /\\b(listeler|listele|sirala|siralar)\\b.*\\b(bellek|anilar|kayitlar)\\b/.test(normalized);
+  const normalized = String(value ?? '').toLocaleLowerCase('tr-TR')
+    .replaceAll('ı', 'i').replaceAll('İ', 'i')
+    .replaceAll('ü', 'u').replaceAll('ö', 'o').replaceAll('ş', 's')
+    .replaceAll('ğ', 'g').replaceAll('ç', 'c')
+    .replaceAll('?', ' ').replaceAll(',', ' ').replaceAll('.', ' ').replaceAll(':', ' ');
+  const allWords = normalized.includes('tum') || normalized.includes('butun') || normalized.includes('hepsini') || normalized.includes('her birini');
+  const memoryWords = normalized.includes('ani') || normalized.includes('bellek') || normalized.includes('kayit') || normalized.includes('bilgi');
+  const listingWords = normalized.includes('listele') || normalized.includes('sirala') || normalized.includes('liste');
+  return (allWords && memoryWords) || (listingWords && memoryWords);
 }
 
 async function answerCodeQuestion(question, userId) {
