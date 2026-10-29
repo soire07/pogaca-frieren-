@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#11121c">
+<meta name="description" content="Frieren AI — Discord için yapay zekâ destekli sohbet, kişisel bellek ve geliştirici tanılama asistanı.">
+<title>Frieren AI — Zamanın Ötesinde Bir Zekâ</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0c13;--panel:#131521;--panel2:#191b2b;--text:#f4f2ff;--muted:#a7a8bd;--purple:#b6a0ff;--blue:#91d7ff;--line:rgba(210,205,255,.14);--max:1120px}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse at 75% 8%,rgba(116,91,190,.18),transparent 36%),radial-gradient(ellipse at 10% 40%,rgba(70,130,170,.09),transparent 35%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6}a{color:inherit;text-decoration:none}.wrap{width:min(var(--max),calc(100% - 40px));margin:auto}.nav{display:flex;align-items:center;justify-content:space-between;padding:24px 0;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:12px;font-weight:750;letter-spacing:.02em}.mark{width:38px;height:38px;display:grid;place-items:center;border:1px solid rgba(182,160,255,.55);border-radius:13px;background:linear-gradient(145deg,rgba(182,160,255,.2),rgba(145,215,255,.07));color:var(--purple);font-size:21px}.navlinks{display:flex;gap:26px;color:var(--muted);font-size:14px}.navlinks a:hover,.textlink:hover{color:var(--text)}.hero{padding:94px 0 76px;display:grid;grid-template-columns:1.15fr .85fr;gap:56px;align-items:center;min-height:570px}.eyebrow{display:inline-flex;align-items:center;gap:9px;color:var(--blue);border:1px solid rgba(145,215,255,.22);background:rgba(145,215,255,.06);padding:7px 12px;border-radius:999px;font-size:12px;letter-spacing:.12em;text-transform:uppercase}.dot{width:7px;height:7px;border-radius:50%;background:#91e8bf;box-shadow:0 0 12px #91e8bf}h1{font-size:clamp(42px,6.5vw,76px);line-height:1.04;letter-spacing:-.055em;margin:24px 0 20px}h1 span{background:linear-gradient(100deg,#d6c9ff,#91d7ff);-webkit-background-clip:text;background-clip:text;color:transparent}.lead{max-width:580px;color:var(--muted);font-size:17px}.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:13px 18px;border-radius:12px;font-weight:700;font-size:14px;border:1px solid var(--line);transition:transform .2s,background .2s}.btn:hover{transform:translateY(-2px)}.primary{color:#11121b;background:linear-gradient(110deg,#d6c9ff,#91d7ff);border-color:transparent}.secondary{background:rgba(255,255,255,.025)}.note{margin-top:18px;font-size:12px;color:#81839c}.orb-wrap{position:relative;display:grid;place-items:center;min-height:340px}.orb{width:min(320px,75vw);aspect-ratio:1;border-radius:50%;position:relative;display:grid;place-items:center;background:radial-gradient(circle at 35% 28%,rgba(228,219,255,.2),transparent 22%),radial-gradient(circle at 50% 50%,rgba(120,100,190,.23),rgba(35,37,62,.25) 48%,transparent 70%);border:1px solid rgba(198,185,255,.2);box-shadow:0 0 100px rgba(131,108,216,.14),inset 0 0 60px rgba(165,148,255,.08)}.orb:before,.orb:after{content:"";position:absolute;inset:20px;border-radius:50%;border:1px solid rgba(182,160,255,.25);transform:rotate(-30deg) scaleX(.48)}.orb:after{transform:rotate(35deg) scaleX(.48);border-color:rgba(145,215,255,.25)}.rune{font-size:112px;font-weight:200;color:#e4dcff;text-shadow:0 0 40px rgba(182,160,255,.5);font-family:Georgia,serif}.float{position:absolute;right:0;bottom:22px;padding:14px 16px;background:rgba(19,21,33,.88);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:14px;max-width:220px;font-size:12px;color:var(--muted)}.float strong{display:block;color:var(--text);font-size:14px;margin-bottom:3px}.section{padding:72px 0}.section-head{max-width:650px;margin-bottom:30px}.kicker{font-size:12px;letter-spacing:.15em;text-transform:uppercase;color:var(--purple);font-weight:750}.section h2{font-size:clamp(28px,4vw,42px);line-height:1.15;letter-spacing:-.035em;margin:10px 0 12px}.sub{color:var(--muted);margin:0}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:24px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.012));min-height:190px}.icon{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:rgba(182,160,255,.1);color:var(--purple);font-size:20px;margin-bottom:17px}.card h3{margin:0 0 8px;font-size:17px}.card p{margin:0;color:var(--muted);font-size:14px}.commands{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.command{display:flex;gap:15px;align-items:flex-start;padding:18px;border-radius:14px;background:var(--panel);border:1px solid var(--line)}.slash{font-family:ui-monospace,monospace;color:var(--blue);background:rgba(145,215,255,.08);border-radius:8px;padding:6px 9px;font-size:13px;white-space:nowrap}.command strong{display:block;font-size:14px}.command p{margin:4px 0 0;color:var(--muted);font-size:13px}.callout{padding:34px;border:1px solid rgba(182,160,255,.22);border-radius:22px;background:radial-gradient(ellipse at 100% 0,rgba(145,215,255,.09),transparent 45%),linear-gradient(135deg,rgba(182,160,255,.08),rgba(255,255,255,.015));display:flex;justify-content:space-between;align-items:center;gap:25px}.callout h2{margin-top:0}.footer{padding:28px 0 36px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;color:#85879f;font-size:12px}.footer a{color:#c9c1ed}.disclaimer{color:#777990;font-size:11px;margin-top:12px}
+@media(max-width:780px){.navlinks{gap:14px}.hero{grid-template-columns:1fr;padding:68px 0 48px;gap:10px}.orb-wrap{min-height:270px}.orb{width:235px}.rune{font-size:84px}.float{right:3%;bottom:8px}.grid{grid-template-columns:1fr 1fr}.commands{grid-template-columns:1fr}.callout{align-items:flex-start;flex-direction:column}.section{padding:52px 0}}
+@media(max-width:480px){.wrap{width:min(var(--max),calc(100% - 28px))}.nav{padding:17px 0}.navlinks{gap:12px;font-size:12px}.navlinks a:nth-child(2){display:none}.brand{font-size:14px}.hero{padding-top:52px}h1{font-size:44px}.lead{font-size:15px}.grid{grid-template-columns:1fr}.card{min-height:0}.section{padding:44px 0}.callout{padding:23px}.footer{flex-direction:column}.orb-wrap{min-height:245px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="wrap nav">
+<a class="brand" href="#top" aria-label="Frieren AI ana sayfa"><span class="mark" aria-hidden="true">✧</span><span>FRIEREN <span style="color:var(--purple)">AI</span></span></a>
+<nav class="navlinks" aria-label="Ana menü"><a href="#ozellikler">Özellikler</a><a href="#komutlar">Komutlar</a><a href="#durum">Servis durumu</a></nav>
+</header>
+<main id="top">
+<section class="wrap hero">
+<div>
+<div class="eyebrow"><span class="dot"></span> Discord yapay zekâ asistanı</div>
+<h1>Zamanın ötesinde<br><span>bir zekâ.</span></h1>
+<p class="lead">Frieren AI; sorulara yanıt vermek, bağlamı hatırlamak ve geliştirici testlerini kolaylaştırmak için tasarlanmış bir Discord asistanıdır. Sade, kontrollü ve sürekli gelişen bir deneyim.</p>
+<div class="actions"><a class="btn primary" href="https://discord.com/" target="_blank" rel="noopener noreferrer">Discord'u keşfet <span aria-hidden="true">↗</span></a><a class="btn secondary" href="https://frieren-ai-agent.onrender.com/health" target="_blank" rel="noopener noreferrer">Servis durumunu gör <span aria-hidden="true">↗</span></a></div>
+<p class="note">Ücretsiz altyapı hedefi · Groq destekli yapay zekâ · Discord üzerinde çalışır</p>
+</div>
+<div class="orb-wrap" aria-hidden="true"><div class="orb"><span class="rune">ᚠ</span></div><div class="float"><strong>Frieren AI</strong>Bilgi, bağlam ve merak için tasarlandı.</div></div>
+</section>
+<section class="section" id="ozellikler"><div class="wrap">
+<div class="section-head"><div class="kicker">Neler yapabilir?</div><h2>Bir asistandan fazlası.</h2><p class="sub">Günlük kullanım ile geliştirici araçlarını aynı yerde buluşturan temel yetenekler.</p></div>
+<div class="grid">
+<article class="card"><div class="icon" aria-hidden="true">✦</div><h3>Yapay zekâ sohbeti</h3><p>Sorularını yanıtlamaya ve botun kod yapısı hakkında yardımcı olmaya odaklanan sohbet deneyimi.</p></article>
+<article class="card"><div class="icon" aria-hidden="true">◈</div><h3>Kişisel bellek</h3><p>Kullanıcıya özel kayıtları ayrı tutma; kayıtları listeleme, güncelleme ve silme akışı.</p></article>
+<article class="card"><div class="icon" aria-hidden="true">⌘</div><h3>Test ve tanılama</h3><p>Hedefe yönelik otomatik kontroller ve geliştiriciye yönelik test raporları.</p></article>
+<article class="card"><div class="icon" aria-hidden="true">⛨</div><h3>Gizlilik odaklı</h3><p>Bellek işlemlerinde kullanıcı ayrımı ve hata durumlarını kontrollü ele alma yaklaşımı.</p></article>
+<article class="card"><div class="icon" aria-hidden="true">⌁</div><h3>Canlı servis kontrolü</h3><p>Servisin sağlık uç noktası üzerinden temel çalışma durumunu kontrol edebilme.</p></article>
+<article class="card"><div class="icon" aria-hidden="true">↗</div><h3>Sürekli geliştirme</h3><p>GitHub üzerinden sürüm kontrolü ve otomatik test süreçleriyle geliştirilen bir proje.</p></article>
+</div></div></section>
+<section class="section" id="komutlar"><div class="wrap">
+<div class="section-head"><div class="kicker">Discord komutları</div><h2>İhtiyacın olan araçlar.</h2><p class="sub">Komutlar, botun mevcut işlevlerine göre listelenmiştir.</p></div>
+<div class="commands">
+<div class="command"><span class="slash">/frieren-ai</span><div><strong>Yapay zekâya sor</strong><p>Botun kodu veya test sistemi hakkında soru sor.</p></div></div>
+<div class="command"><span class="slash">/frieren-test</span><div><strong>Test çalıştır</strong><p>Belirttiğin hedefe yönelik test ve tanılama paketi iste.</p></div></div>
+<div class="command"><span class="slash">/frieren-bellek</span><div><strong>Belleğini yönet</strong><p>Kişisel kayıtlarını kaydet, listele veya sil.</p></div></div>
+<div class="command"><span class="slash">/status</span><div><strong>Servis durumunu kontrol et</strong><p>Frieren AI servisinin çalışma durumunu görüntüle.</p></div></div>
+</div>
+<p class="disclaimer">Komutların kullanılabilirliği Discord sunucusundaki bot izinlerine ve güncel dağıtıma bağlıdır.</p>
+</div></section>
+<section class="section" id="durum"><div class="wrap"><div class="callout"><div><div class="kicker">Proje bağlantıları</div><h2>Frieren'in yolculuğunu takip et.</h2><p class="sub">Kod deposunu incele veya servis sağlık yanıtını kontrol et.</p></div><div class="actions" style="margin-top:0"><a class="btn primary" href="https://github.com/soire07/pogaca-frieren-" target="_blank" rel="noopener noreferrer">GitHub deposu ↗</a><a class="btn secondary" href="https://frieren-ai-agent.onrender.com/health" target="_blank" rel="noopener noreferrer">Sağlık kontrolü ↗</a></div></div></div></section>
+</main>
+<footer class="wrap footer"><span>© <span id="year">2026</span> Frieren AI · Developed by Soiree</span><span>Topluluk için geliştirildi; sade ve erişilebilir kalacak şekilde tasarlandı.</span></footer>
+<script>document.getElementById('year').textContent=new Date().getFullYear();</script>
+</body>
+</html>
