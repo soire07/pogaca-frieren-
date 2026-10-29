@@ -3,6 +3,14 @@ import pg from 'pg';
 const { Pool } = pg;
 
 const CREATE_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS frieren_ai_conversation (
+    id BIGSERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    role VARCHAR(10) NOT NULL CHECK (role IN ('user', 'assistant')),
+    content VARCHAR(1500) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS frieren_ai_conversation_user_recent_idx ON frieren_ai_conversation (user_id, id DESC);
   CREATE TABLE IF NOT EXISTS frieren_ai_memories (
     id BIGSERIAL PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -102,6 +110,34 @@ export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
         [String(userId)]
       );
       return result.rowCount ?? 0;
+    },
+
+    async addConversationTurn(userId, role, content) {
+      const normalizedUserId = String(userId ?? '').trim();
+      const normalizedRole = String(role ?? '').trim();
+      const normalizedContent = String(content ?? '').trim();
+      if (!normalizedUserId) throw new TypeError('Conversation user ID is required.');
+      if (!['user', 'assistant'].includes(normalizedRole)) throw new TypeError('Conversation role must be user or assistant.');
+      if (!normalizedContent) throw new TypeError('Conversation content must not be empty.');
+      await ensureSchema();
+      await pool.query(
+        'INSERT INTO frieren_ai_conversation (user_id, role, content) VALUES ($1, $2, $3)',
+        [normalizedUserId, normalizedRole, normalizedContent.slice(0, 1500)]
+      );
+      await pool.query(
+        'DELETE FROM frieren_ai_conversation WHERE user_id = $1 AND id NOT IN (SELECT id FROM frieren_ai_conversation WHERE user_id = $1 ORDER BY id DESC LIMIT 12)',
+        [normalizedUserId]
+      );
+    },
+
+    async getConversationHistory(userId, limit = 8) {
+      await ensureSchema();
+      const safeLimit = Math.max(1, Math.min(Number(limit) || 8, 12));
+      const result = await pool.query(
+        'SELECT role, content FROM frieren_ai_conversation WHERE user_id = $1 ORDER BY id DESC LIMIT $2',
+        [String(userId), safeLimit]
+      );
+      return result.rows.reverse();
     },
 
     async relevant(userId, question) {
