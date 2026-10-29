@@ -156,9 +156,10 @@ test('memory recall questions return recent user-owned memories even without key
   await store.save('user-a', 'favorite_color', 'Purple');
   await store.save('user-a', 'story_character', 'Elara and a purple dragon named Gölge');
   await store.save('user-b', 'private_note', 'Only user B can see this');
-  const recalled = await store.relevant('user-a', 'Benim hakkımda neler hatırlıyorsun?');
+  const recalled = await store.relevant('user-a', 'Benim hakkımda kayıtlı olan tüm anılarını listele.');
   assert.equal(recalled.length, 2);
   assert.ok(recalled.some(row => row.memory_key === 'favorite_color'));
+  assert.ok(recalled.some(row => row.memory_key === 'story_character'));
   assert.ok(recalled.every(row => row.memory_value !== 'Only user B can see this'));
 });
 
