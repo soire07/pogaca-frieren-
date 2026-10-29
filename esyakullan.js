@@ -144,7 +144,7 @@ export default {
           level = FLOOR(SQRT((xp + $3)::numeric / 100))::int + 1
          WHERE guild_id=$1 AND user_id=$2
          RETURNING xp, coins, level, hp, max_hp, mana, max_mana, attack, defense, stat_points`,
-        [interaction.guildId, interaction.user.id, item.xp, item.coins, item.mana || 0, item.hp || 0, item.maxHp || 0, item.maxMana || 0, item.attack || 0, item.defense || 0, gear.hp, gear.mana]
+        [interaction.guildId, interaction.user.id, item.xp, item.coins, item.mana || 0, item.hp || 0, item.maxHp || 0, item.maxMana || 0, item.attack || 0, item.defense || 0]
       );
 
       await db.query('COMMIT');
