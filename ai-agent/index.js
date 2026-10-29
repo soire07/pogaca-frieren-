@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { resolveAiModel } from './config.js';
 import { findRelevantExcerpt, scoreCodeCandidate } from './code-context.js';
 import { createMemoryStore } from './memory-store.js';
+import { extractAutomaticMemories } from './memory-extractor.js';
 import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, isTargetedTestFailure, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
 import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
 import { checkLiveRpgHealth } from './live-rpg-health.js';
@@ -284,8 +285,13 @@ async function answerCodeQuestion(question, userId) {
     try {
       await memoryStore.addConversationTurn(userId, 'user', question.slice(0, 1500));
       await memoryStore.addConversationTurn(userId, 'assistant', message.slice(0, 1500));
+      // Store only clear, non-sensitive facts extracted locally from the user's own statement.
+      // The Discord user ID scopes every write; no extra AI/API request is made for extraction.
+      for (const memory of extractAutomaticMemories(question)) {
+        await memoryStore.save(userId, memory.key, memory.value);
+      }
     } catch (error) {
-      console.error('Conversation history save failed:', redactSecrets(error.message || 'unknown error'));
+      console.error('Conversation or automatic memory save failed:', redactSecrets(error.message || 'unknown error'));
     }
   }
   return { ok: true, message };
