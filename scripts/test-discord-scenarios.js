@@ -770,7 +770,7 @@ test('slash command deployment uses bounded Discord rate-limit retries and prese
   assert.ok(deploy.includes('await new Promise(resolve => setTimeout(resolve, delayMs))'), 'rate-limit retries must wait explicitly instead of requeueing indefinitely');
   assert.ok(deploy.includes('await rest.get(route)'), 'guild targets must be resolved through the REST manager');
   assert.ok(deploy.includes('await rest.put(route, { body })'), 'command writes must use the REST manager');
-  assert.ok(!deploy.includes('response = await fetch(url'), 'command registration must not bypass the REST rate-limit manager');
+  assert.ok(deploy.includes('makeRequest: async (url, init) =>') && deploy.includes('return response;'), 'HTTP diagnostics must stay inside the REST manager transport');
   assert.ok(deploy.includes('async function putWithDiagnostics'), 'registration failures must log actionable API error details');
   const guildWrite = deploy.indexOf('Routes.applicationGuildCommands');
   const globalWrite = deploy.indexOf('Routes.applicationCommands');
