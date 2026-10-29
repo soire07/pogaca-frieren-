@@ -490,7 +490,8 @@ client.on(Events.InteractionCreate, async interaction => {
       const summary = report.summary || {};
       const resultRows = (report.results || []).map(item =>
         (item.status === 'PASS' ? '✅' : item.status === 'FAIL' ? '❌' : '⏸️') + ' **/' + item.command + '** — ' + item.status
-        + (item.error ? '\n' + String(item.error).slice(0, 350) : '')
+        + (item.actual ? '\nBeklenen: ' + String(item.expected || '').slice(0, 100) + '\nGerçek: ' + String(item.actual).slice(0, 130) : '')
+        + (item.error ? '\nHata: ' + String(item.error).slice(0, 180) : '')
       );
       const preview = resultRows.slice(0, 12).join('\n') || 'Test sonucu bulunamadı.';
       await interaction.editReply({
