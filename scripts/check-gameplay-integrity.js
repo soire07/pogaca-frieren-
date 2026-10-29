@@ -291,3 +291,21 @@ test('item use persists base HP and mana without permanently adding temporary eq
   assert.match(source, /Math\.min\(1, Number\(user\.hp\) \/ Math\.max\(1, Number\(user\.max_hp\)\)\)/);
   assert.match(source, /Math\.min\(1, Number\(user\.mana\) \/ Math\.max\(1, Number\(user\.max_mana\)\)\)/);
 });
+
+
+test('item use binds exactly the SQL placeholders and never passes unused equipment bonuses', async () => {
+  const source = await read('esyakullan.js');
+  const start = source.indexOf('const updated = await db.query(');
+  assert.ok(start >= 0, 'item-use UPDATE query missing');
+  const end = source.indexOf('\\n      );', start);
+  assert.ok(end > start, 'item-use UPDATE query closing not found');
+  const call = source.slice(start, end);
+  const placeholders = [...call.matchAll(/\\$(\\d+)/g)].map(match => Number(match[1]));
+  const maxPlaceholder = Math.max(...placeholders);
+  const valuesMatch = call.match(/,\\s*\\[([\\s\\S]*?)\\]\\s*$/);
+  assert.ok(valuesMatch, 'item-use SQL parameter array missing');
+  const parameterCount = valuesMatch[1].split(',').length;
+  assert.equal(parameterCount, maxPlaceholder,
+    'PostgreSQL bind parameter count must match the highest SQL placeholder');
+  assert.equal(parameterCount, 10, 'item-use query currently uses ten placeholders');
+});
