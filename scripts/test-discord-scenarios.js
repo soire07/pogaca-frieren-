@@ -759,6 +759,7 @@ test('character panel and global error replies use MessageFlags for private resp
 test('slash command deployment uses discord.js rate-limit handling and preserves commands until guild sync succeeds', async () => {
   const deploy = await read('deploy-commands.js');
   assert.ok(deploy.includes("new REST({ version: '10' }).setToken(token)"), 'command deployment must use discord.js REST rate-limit handling');
+  assert.ok(deploy.includes("new REST({ version: '10', offset: 5000 }).setToken(token)"), 'command registration must leave a conservative margin after Discord rate limits reset');
   assert.ok(deploy.includes("rest.on('rateLimited'"), 'rate-limit scope and bucket details must be logged');
   assert.ok(deploy.includes('await rest.get(route)'), 'guild targets must be resolved through the REST manager');
   assert.ok(deploy.includes('await rest.put(route, { body })'), 'command writes must use the REST manager');
