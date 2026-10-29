@@ -20,3 +20,13 @@ test('excerpt helper safely handles missing or invalid limits', () => {
   assert.equal(findRelevantExcerpt('some source', ['missing'], 0), '');
   assert.equal(findRelevantExcerpt('some source', ['missing'], 4), 'some');
 });
+test('excerpt prefers a dense relevant match over an earlier generic keyword', () => {
+  const source = [
+    ...Array.from({ length: 40 }, () => '// damage is used by many unrelated systems'),
+    'function calculateBossDamageFormula(boss, attack) { return boss.defense - attack; }',
+    ...Array.from({ length: 40 }, () => '// unrelated footer'),
+  ].join('\\n');
+  const excerpt = findRelevantExcerpt(source, ['boss', 'damage', 'formula'], 500);
+  assert.ok(excerpt.length <= 500);
+  assert.match(excerpt, /calculateBossDamageFormula/);
+});
