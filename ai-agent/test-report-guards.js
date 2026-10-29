@@ -22,7 +22,7 @@ export function liveMemoryPrivacySummarySuffix(isMemoryPrivacyTarget) {
 
 
 export function countNodeTests(output) {
-  const matches = String(output ?? '').matchAll(/(?:ℹ\\s*)tests\\s+(\\d+)/gi);
+  const matches = String(output ?? '').matchAll(/(?:ℹ\s*)tests\s+(\d+)/gi);
   let total = 0;
   for (const match of matches) total += Number(match[1]);
   return total;
