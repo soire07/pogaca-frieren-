@@ -26,7 +26,9 @@ export async function sendPrivateError(interaction, content, onError = () => {})
 }
 
 export function getPublicHealthStatus({ discordReady = false } = {}) {
-  return discordReady ? 200 : 503;
+  // Liveness endpoint: HTTP server is alive even while Discord reconnects.
+  // Discord readiness is reported separately in the payload.
+  return 200;
 }
 
 export function getPublicHealthPayload({ discordReady = false } = {}) {
