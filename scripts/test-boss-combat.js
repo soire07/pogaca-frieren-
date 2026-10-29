@@ -63,3 +63,34 @@ test('class damage, defense and healing bonuses round down consistently', () => 
   assert.equal(applyClassDefense(101, 'Muhafız'), 113);
   assert.equal(applyClassHealing(26, 'Şifacı'), 31);
 });
+
+test('solo boss victory grants rewards in one transaction and guards duplicate button handling', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const victory = source.indexOf('if (bossHp <= 0)');
+  const begin = source.indexOf("await db.query('BEGIN')", victory);
+  const rewardUpdate = source.indexOf('coins=coins+$5, xp=xp+$6, boss_defeats=boss_defeats+1', begin);
+  const firstInventory = source.indexOf('INSERT INTO inventory', begin);
+  const commit = source.indexOf("await db.query('COMMIT')", firstInventory);
+  assert.ok(victory >= 0 && begin > victory && rewardUpdate > begin && firstInventory > rewardUpdate && commit > firstInventory,
+    'victory rewards and inventory must be committed in one transaction');
+  assert.equal((source.match(/coins=coins\+\$5, xp=xp\+\$6, boss_defeats=boss_defeats\+1/g) || []).length, 1,
+    'boss victory reward update must have a single code path');
+  assert.match(source, /if \(finished \|\| busy\) return button\.deferUpdate\(\)/);
+  assert.match(source, /finished = true;\s*collector\.stop\('victory'\)/);
+  assert.match(source, /await db\.query\('ROLLBACK'\)\.catch/);
+});
+
+test('boss defeat and expired combat persist survival state without granting victory rewards', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const defeat = source.indexOf('if (playerHp <= 0)');
+  const collectorEnd = source.indexOf("collector.on('end'", defeat);
+  assert.ok(defeat >= 0 && collectorEnd > defeat, 'defeat and timeout handlers must exist');
+  const failurePaths = source.slice(defeat, collectorEnd);
+  assert.match(failurePaths, /Ödül kazanamadın/);
+  assert.doesNotMatch(failurePaths, /coins=coins\+|xp=xp\+|boss_defeats=boss_defeats\+|INSERT INTO inventory/);
+  const timeoutPath = source.slice(collectorEnd);
+  assert.match(timeoutPath, /Savaşın süresi doldu/);
+  assert.doesNotMatch(timeoutPath, /coins=coins\+|xp=xp\+|boss_defeats=boss_defeats\+|INSERT INTO inventory/);
+  assert.match(source, /UPDATE users SET hp=\$3, mana=\$4 WHERE guild_id=\$1 AND user_id=\$2/);
+});
+
