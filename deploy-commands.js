@@ -225,54 +225,79 @@ const configuredGuildIds = [...new Set(
     .map(value => value.trim())
     .filter(Boolean)
 )];
-let targetDescription = configuredGuildIds.length
-  ? 'Discord command targets: ' + configuredGuildIds.map(id => '…' + id.slice(-4)).join(', ') + ' (resolving server names)'
-  : 'Discord command target: GLOBAL (GUILD_ID/GUILD_IDS missing or empty)';
-
+const testGuildId = process.env.TEST_GUILD_ID?.trim() || '';
+const testCommandNames = [...new Set(
+  (process.env.TEST_COMMAND_NAMES?.trim() || '')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean)
+)];
+if (!configuredGuildIds.length) {
+  throw new Error('GUILD_IDS must explicitly contain the production guild ID; global command registration is disabled.');
+}
+if (testGuildId && !testCommandNames.length) {
+  throw new Error('TEST_GUILD_ID requires an explicit TEST_COMMAND_NAMES allowlist.');
+}
+if (testGuildId && configuredGuildIds.includes(testGuildId)) {
+  throw new Error('The test guild must not also be listed as a production guild.');
+}
+const testCommands = testGuildId
+  ? commands.filter(command => testCommandNames.includes(command.name))
+  : [];
+if (testGuildId) {
+  const missingTestCommands = testCommandNames.filter(name => !commands.some(command => command.name === name));
+  if (missingTestCommands.length) {
+    throw new Error('Configured test commands were not found: ' + missingTestCommands.map(name => '/' + name).join(', '));
+  }
+  if (testCommands.length !== testCommandNames.length) {
+    throw new Error('Test command allowlist contains duplicate names.');
+  }
+}
+let targetDescription = 'Production guild IDs: ' + configuredGuildIds.map(id => '…' + id.slice(-4)).join(', ');
+if (testGuildId) {
+  targetDescription += '; test guild …' + testGuildId.slice(-4) + ' will receive only: '
+    + testCommands.map(command => '/' + command.name).join(', ');
+}
 try {
   console.log(targetDescription);
   await publishCommitStatus('pending', targetDescription);
-  console.log(`Discord command sync starting: ${commands.length} commands.`);
+  console.log(`Discord command sync starting: ${commands.length} production commands and ${testCommands.length} test commands.`);
 
-  if (configuredGuildIds.length) {
-    // Resolve every target before any command list is changed. This makes the target IDs auditable
-    // and prevents a mistyped/missing guild from causing a partial command deployment.
-    const targetGuilds = [];
-    for (const guildId of configuredGuildIds) {
-      const guild = await discordRequest(Routes.guild(guildId));
-      if (String(guild?.id) !== guildId || typeof guild?.name !== 'string') {
-        throw new Error('A configured guild ID did not resolve to the expected Discord guild.');
-      }
-      targetGuilds.push({ id: guild.id, name: guild.name });
+  // Resolve every target before any command list is changed. Never fall back to global registration.
+  const targetGuilds = [];
+  for (const guildId of configuredGuildIds) {
+    const guild = await discordRequest(Routes.guild(guildId));
+    if (String(guild?.id) !== guildId || typeof guild?.name !== 'string') {
+      throw new Error('A configured production guild ID did not resolve to the expected Discord guild.');
     }
-
-    targetDescription = 'Discord command targets: ' + targetGuilds
-      .map(guild => `${guild.name} (ID …${guild.id.slice(-4)})`)
-      .join('; ');
-    console.log(targetDescription);
-    await publishCommitStatus('pending', targetDescription);
-
-    // Register all configured guilds first; if any registration fails, preserve global commands.
-    for (const guild of targetGuilds) {
-      await putWithDiagnostics(
-        Routes.applicationGuildCommands(clientId, guild.id),
-        commands,
-        'guild registration: ' + guild.name
-      );
-      console.log(`${commands.length} commands registered in ${guild.name} (ID ending ${guild.id.slice(-4)}).`);
-    }
-
-    // Clear legacy global duplicates only after every configured target was updated successfully.
-    await putWithDiagnostics(Routes.applicationCommands(clientId), [], 'clear legacy global commands');
-    console.log('Legacy global command registrations cleared after every target guild succeeded.');
-  } else {
-    await putWithDiagnostics(
-      Routes.applicationCommands(clientId),
-      commands,
-      'global registration'
-    );
-    console.log(`${commands.length} commands registered globally.`);
+    targetGuilds.push({ id: guild.id, name: guild.name, commands, kind: 'production' });
   }
+  if (testGuildId) {
+    const guild = await discordRequest(Routes.guild(testGuildId));
+    if (String(guild?.id) !== testGuildId || typeof guild?.name !== 'string') {
+      throw new Error('The configured test guild ID did not resolve to the expected Discord guild.');
+    }
+    targetGuilds.push({ id: guild.id, name: guild.name, commands: testCommands, kind: 'test' });
+  }
+
+  targetDescription = 'Discord command targets: ' + targetGuilds
+    .map(guild => `${guild.name} (ID …${guild.id.slice(-4)}): ${guild.commands.length} commands [${guild.kind}]`)
+    .join('; ');
+  console.log(targetDescription);
+  await publishCommitStatus('pending', targetDescription);
+
+  for (const guild of targetGuilds) {
+    await putWithDiagnostics(
+      Routes.applicationGuildCommands(clientId, guild.id),
+      guild.commands,
+      guild.kind + ' guild registration: ' + guild.name
+    );
+    console.log(`${guild.commands.length} commands registered in ${guild.name} (${guild.kind}, ID ending ${guild.id.slice(-4)}).`);
+  }
+
+  // Clear legacy global duplicates only after every configured guild was updated successfully.
+  await putWithDiagnostics(Routes.applicationCommands(clientId), [], 'clear legacy global commands');
+  console.log('Legacy global command registrations cleared after every configured guild succeeded.');
 
   await publishCommitStatus('success', targetDescription);
   console.log('Discord command sync completed.');
