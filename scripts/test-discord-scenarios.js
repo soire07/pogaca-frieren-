@@ -756,13 +756,16 @@ test('character panel and global error replies use MessageFlags for private resp
 });
 
 
-test('slash command deployment times out and preserves existing commands until guild sync succeeds', async () => {
+test('slash command deployment uses bounded REST retries and preserves commands until guild sync succeeds', async () => {
   const deploy = await read('deploy-commands.js');
-  assert.ok(deploy.includes("timeout: 15_000"));
-  assert.ok(deploy.includes("AbortSignal.timeout(15_000)"), 'Discord API requests must have an explicit abort deadline');
+  assert.ok(deploy.includes("timeout: 60_000"), 'each Discord REST request needs a bounded, practical timeout');
+  assert.ok(deploy.includes("retries: 2"), 'transient Discord REST failures should get bounded retries');
+  assert.ok(!deploy.includes("AbortSignal.timeout"), 'external abort signals must not cancel the REST client's own retry cycle');
+  assert.ok(deploy.includes('async function putWithDiagnostics'), 'registration failures must log actionable API error details');
   const guildWrite = deploy.indexOf('Routes.applicationGuildCommands');
   const globalWrite = deploy.indexOf('Routes.applicationCommands');
   assert.ok(guildWrite >= 0 && globalWrite > guildWrite, 'register guild commands before clearing global duplicates');
   const workflow = await read('.github/workflows/register-commands.yml');
-  assert.ok(workflow.includes('timeout-minutes: 3'), 'command registration job must not hang indefinitely');
+  assert.ok(workflow.includes('timeout-minutes: 5'), 'command registration job must allow bounded retries to finish');
+  assert.ok(workflow.includes('npm run check'), 'full project checks must pass before changing live Discord commands');
 });
