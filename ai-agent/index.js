@@ -274,9 +274,13 @@ function runCommandAudit() {
 function runTargetedTests(target) {
   return new Promise(resolve => {
     const normalizedTarget = target.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('tr-TR');
+    const isMemorySecurityCoverage = isMemoryPrivacyTarget(target);
     const isCommandInteractionCoverage = normalizedTarget.includes('command interaction coverage')
       || normalizedTarget.includes('interaction command coverage')
       || normalizedTarget.includes('komut etkilesim kapsam');
+    // Privacy targets must use test-request.js so live PostgreSQL isolation proof runs
+    // when configured and fails closed when DATABASE_URL is unavailable. The previous
+    // broad-suite shortcut silently bypassed this required proof.
     // Broad multi-domain RPG requests must not depend on fuzzy keyword matching.
     // Select existing suites directly so the report cannot falsely say no tests matched.
     const broadGroups = [
@@ -291,14 +295,20 @@ function runTargetedTests(target) {
       'scripts/test-discord-scenarios.js',
       'scripts/test-command-interaction-coverage.js'
     ];
-    const testArgs = isBroadRegression
-      ? ['--test', ...broadTestFiles]
-      : isCommandInteractionCoverage
-        ? ['--test', 'scripts/test-command-interaction-coverage.js']
-        : ['scripts/test-request.js', target];
-    const directSuiteNotice = isBroadRegression
-      ? 'SEÇİLEN TEST DOSYALARI: ' + broadTestFiles.join('; ') + ' (mevcut testler; doğrudan çok alanlı paket)'
-      : '';
+    const testArgs = isMemorySecurityCoverage
+      ? ['scripts/test-request.js', target]
+      : isBroadRegression
+        ? ['--test', ...broadTestFiles]
+        : isCommandInteractionCoverage
+          ? ['--test', 'scripts/test-command-interaction-coverage.js']
+          : ['scripts/test-request.js', target];
+    const directSuiteNotice = isMemorySecurityCoverage
+      ? ''
+      : isBroadRegression
+        ? 'SEÇİLEN TEST DOSYALARI: ' + broadTestFiles.join('; ') + ' (mevcut testler; doğrudan çok alanlı paket)'
+        : isCommandInteractionCoverage
+          ? 'SEÇİLEN TEST DOSYALARI: scripts/test-command-interaction-coverage.js (doğrudan çalıştırıldı)'
+          : '';
     console.log('HEDEFLİ TEST ÇALIŞTIRMA: ' + (isBroadRegression
       ? 'Doğrudan çok alanlı RPG regresyon paketi'
       : isCommandInteractionCoverage
