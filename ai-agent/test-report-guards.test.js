@@ -37,3 +37,11 @@ test('formats live memory proof as a real new line, not a literal backslash-n', 
 test('omits the live memory suffix for unrelated test targets', () => {
   assert.equal(liveMemoryPrivacySummarySuffix(false), '');
 });
+
+test('marks a failed targeted test as a failure even when no suite header was emitted', async () => {
+  const { isTargetedTestFailure } = await import('./test-report-guards.js');
+  assert.equal(isTargetedTestFailure({ applicable: true, code: 1, stdout: 'test runner failed before selection' }), true);
+  assert.equal(isTargetedTestFailure({ applicable: true, code: null }), true);
+  assert.equal(isTargetedTestFailure({ applicable: true, code: 0 }), false);
+  assert.equal(isTargetedTestFailure({ applicable: false, code: 1 }), false);
+});
