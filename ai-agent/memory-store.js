@@ -59,6 +59,20 @@ function isMemoryRecallQuestion(value) {
     || /\bkayitli olan tum anilar\w*\b/.test(normalized);
 }
 
+
+function isSpecificPersonalFactRecallQuestion(value) {
+  const normalized = normalizeText(value);
+  return /\\b(en sevdigim|favorim|favori)\\b.{0,80}\\b(neydi|ne|hangisi|hangisiydi)\\b/.test(normalized)
+    || /\\b(hangi|ne)\\b.{0,40}\\b(seviyordum|seviyorum|tercih ediyordum)\\b/.test(normalized);
+}
+
+// Do not let old turns resurrect facts after the user deletes their saved memory.
+export function shouldUseConversationHistory(question, relevantMemories) {
+  if (isMemoryRecallQuestion(question)) return false;
+  if (isSpecificPersonalFactRecallQuestion(question) && (!Array.isArray(relevantMemories) || relevantMemories.length === 0)) return false;
+  return true;
+}
+
 export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
   if (!connectionString || typeof connectionString !== 'string') {
     throw new TypeError('A PostgreSQL connection string is required.');
