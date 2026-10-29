@@ -756,12 +756,13 @@ test('character panel and global error replies use MessageFlags for private resp
 });
 
 
-test('slash command deployment uses bounded REST retries and preserves commands until guild sync succeeds', async () => {
+test('slash command deployment uses discord.js rate-limit handling and preserves commands until guild sync succeeds', async () => {
   const deploy = await read('deploy-commands.js');
-  assert.ok(deploy.includes("signal: AbortSignal.timeout(20_000)"), 'each Discord REST request must have a hard timeout');
-  assert.ok(deploy.includes("const attempts = 5"), 'transient Discord REST failures should get enough bounded retries');
-  assert.ok(deploy.includes("* 1000) + 2500"), 'Discord retry waits should include a safety margin to avoid retrying at the exact rate-limit boundary');
-  assert.ok(deploy.includes("async function discordRequest"), 'Discord requests must use the bounded diagnostic transport');
+  assert.ok(deploy.includes("new REST({ version: '10' }).setToken(token)"), 'command deployment must use discord.js REST rate-limit handling');
+  assert.ok(deploy.includes("rest.on('rateLimited'"), 'rate-limit scope and bucket details must be logged');
+  assert.ok(deploy.includes('await rest.get(route)'), 'guild targets must be resolved through the REST manager');
+  assert.ok(deploy.includes('await rest.put(route, { body })'), 'command writes must use the REST manager');
+  assert.ok(!deploy.includes('response = await fetch(url'), 'command registration must not bypass the REST rate-limit manager');
   assert.ok(deploy.includes('async function putWithDiagnostics'), 'registration failures must log actionable API error details');
   const guildWrite = deploy.indexOf('Routes.applicationGuildCommands');
   const globalWrite = deploy.indexOf('Routes.applicationCommands');
@@ -773,13 +774,4 @@ test('slash command deployment uses bounded REST retries and preserves commands 
   assert.ok(deploy.includes('await discordRequest(Routes.guild(guildId))'), 'each target must be verified before changing command lists');
   assert.ok(workflow.includes("GUILD_IDS: '1539562273197260860,1564945192803639356'"), 'production and test guild IDs must be explicit and separate');
   assert.ok(!workflow.includes('GUILD_ID: ${{ secrets.GUILD_ID }}'), 'do not use the ambiguous single GUILD_ID secret');
-});
-
-
-test('slash command deployment delegates rate limits to discord.js REST manager and logs bucket diagnostics', async () => {
-  const deploy = await read('deploy-commands.js');
-  assert.ok(deploy.includes("new REST({ version: '10' }).setToken(token)"), 'command deployment must use discord.js REST rate-limit handling');
-  assert.ok(deploy.includes("rest.on('rateLimited'"), 'rate-limit scope and bucket details must be logged');
-  assert.ok(deploy.includes("rest.put("), 'guild command updates must use the REST manager');
-  assert.ok(!deploy.includes('response = await fetch(url'), 'command registration must not bypass the REST rate-limit manager');
 });
