@@ -19,3 +19,7 @@ export function liveMemoryPrivacySummarySuffix(isMemoryPrivacyTarget) {
     ? '\nCanlı PostgreSQL bellek gizliliği: BAŞARILI — scripts/test-live-memory.js çıktısı doğrulandı.'
     : '';
 }
+
+export function isTargetedTestFailure(targeted) {
+  return Boolean(targeted?.applicable) && targeted.code !== 0;
+}
