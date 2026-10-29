@@ -297,18 +297,6 @@
       "status": "implemented_needs_runtime_test"
     },
     {
-      "id": "MOD-002",
-      "name": "Timeout command",
-      "category": "Moderation",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "MOD-003",
-      "name": "Ban command",
-      "category": "Moderation",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
       "id": "MOD-004",
       "name": "Moderation case logging",
       "category": "Moderation",
@@ -1947,5 +1935,5 @@
       "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 323
+  "count": 321
 }
