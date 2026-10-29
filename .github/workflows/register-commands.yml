@@ -44,6 +44,9 @@ jobs:
       - name: Paketleri kur
         run: npm install
 
+      - name: Tüm JavaScript dosyalarının sözdizimini kontrol et
+        run: find . -path './node_modules' -prune -o -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+
       - name: Tüm proje kontrollerini ve testleri çalıştır
         run: npm run check
         env:
