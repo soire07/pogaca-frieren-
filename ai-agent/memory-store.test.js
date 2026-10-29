@@ -169,4 +169,5 @@ test('memory relevance prioritizes meaningful matches over common Turkish filler
   const matched = await store.relevant('user-a', 'Ben bana ne demiştim, Frieren projesi hakkında?');
   assert.equal(matched[0].memory_key, 'project');
   assert.deepEqual(await store.relevant('user-a', 've ama için'), []);
+  assert.deepEqual(await store.relevant('user-a', 'Bellek nasıl çalışıyor?'), []);
 });
