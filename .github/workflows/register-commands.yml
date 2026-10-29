@@ -7,7 +7,7 @@ permissions:
 # Never let multiple deploy runs overwrite Discord commands concurrently.
 concurrency:
   group: discord-command-registration
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 on:
   workflow_dispatch:
