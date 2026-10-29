@@ -7,14 +7,17 @@ on:
       - main
     paths:
     - '*.js'
+    - 'commands/**'
     - 'database/**'
+    - 'scripts/**'
+    - 'feature-inventory.json'
     - 'package.json'
     - '.github/workflows/register-commands.yml'
 
 jobs:
   register:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - name: Projeyi indir
         uses: actions/checkout@v4
@@ -27,14 +30,10 @@ jobs:
       - name: Paketleri kur
         run: npm install
 
-      - name: JavaScript sözdizimini kontrol et
-        run: |
-          for file in *.js database/*.js scripts/*.js; do
-            if [ -f "$file" ]; then
-              echo "Checking $file"
-              node --check "$file"
-            fi
-          done
+      - name: Tüm proje kontrollerini ve testleri çalıştır
+        run: npm run check
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Komutları Discord'a kaydet
         run: npm run deploy-commands
