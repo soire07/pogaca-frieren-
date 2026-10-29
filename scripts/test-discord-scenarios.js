@@ -766,7 +766,7 @@ test('slash command deployment uses bounded REST retries and preserves commands 
   const globalWrite = deploy.indexOf('Routes.applicationCommands');
   assert.ok(guildWrite >= 0 && globalWrite > guildWrite, 'register guild commands before clearing global duplicates');
   const workflow = await read('.github/workflows/register-commands.yml');
-  assert.ok(workflow.includes('timeout-minutes: 5'), 'command registration job must allow bounded retries to finish');
+  assert.ok(workflow.includes('timeout-minutes: 20'), 'command registration job must allow Discord rate-limit backoff to finish');
   assert.ok(workflow.includes('npm run check'), 'full project checks must pass before changing live Discord commands');
   assert.ok(deploy.includes('process.env.GUILD_IDS'), 'deployment must support explicit multiple guild targets');
   assert.ok(deploy.includes('await discordRequest(Routes.guild(guildId))'), 'each target must be verified before changing command lists');
