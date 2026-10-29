@@ -30,7 +30,7 @@ test('does not require live memory proof for unrelated targets', () => {
 test('formats live memory proof as a real new line, not a literal backslash-n', () => {
   const suffix = liveMemoryPrivacySummarySuffix(true);
   assert.equal(suffix.startsWith('\n'), true);
-  assert.equal(suffix.includes('\n'), false);
+  assert.equal(suffix.includes('\\n'), false);
   assert.match(suffix, /Canlı PostgreSQL bellek gizliliği: BAŞARILI/);
 });
 
