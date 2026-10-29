@@ -25,6 +25,10 @@ export async function sendPrivateError(interaction, content, onError = () => {})
   }
 }
 
+export function getPublicHealthStatus({ discordReady = false } = {}) {
+  return discordReady ? 200 : 503;
+}
+
 export function getPublicHealthPayload({ discordReady = false } = {}) {
   // Expose only readiness, never tokens, configuration, or database details.
   return { status: 'ok', discordReady: Boolean(discordReady) };
