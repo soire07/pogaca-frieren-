@@ -86,6 +86,10 @@ client.once(Events.ClientReady, async readyClient => {
   // Bot her yeniden başladığında komut listesini temizlemek, diğer sunuculardaki komutları
   // silebilir ve aynı anda çalışan kayıt iş akışıyla yarışabilir.
   console.log(`Poğaça Frieren aktif: ${readyClient.user.tag}`);
+  const connectedGuilds = [...readyClient.guilds.cache.values()]
+    .map(guild => ({ name: guild.name, id: guild.id }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  console.log('Bağlı Discord sunucuları (ad/ID):', JSON.stringify(connectedGuilds));
   const activities = [
     'bin yıllık büyüler öğreniyor ✨',
     'Fern ile büyü çalışıyor 🔮',
