@@ -18,8 +18,9 @@ on:
       - main
     paths:
     - '*.js'
+    - 'deploy-commands.js'
+    - 'scripts/test-discord-scenarios.js'
     - '!index.js'
-    - '!deploy-commands.js'
     - 'commands/**'
     - '.github/workflows/register-commands.yml'
 
