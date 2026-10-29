@@ -758,9 +758,9 @@ test('character panel and global error replies use MessageFlags for private resp
 
 test('slash command deployment uses bounded REST retries and preserves commands until guild sync succeeds', async () => {
   const deploy = await read('deploy-commands.js');
-  assert.ok(deploy.includes("timeout: 60_000"), 'each Discord REST request needs a bounded, practical timeout');
-  assert.ok(deploy.includes("retries: 2"), 'transient Discord REST failures should get bounded retries');
-  assert.ok(!deploy.includes("AbortSignal.timeout"), "external abort signals must not cancel the REST client's own retry cycle");
+  assert.ok(deploy.includes("signal: AbortSignal.timeout(20_000)"), 'each Discord REST request must have a hard timeout');
+  assert.ok(deploy.includes("const attempts = 3"), 'transient Discord REST failures should get bounded retries');
+  assert.ok(deploy.includes("async function discordRequest"), 'Discord requests must use the bounded diagnostic transport');
   assert.ok(deploy.includes('async function putWithDiagnostics'), 'registration failures must log actionable API error details');
   const guildWrite = deploy.indexOf('Routes.applicationGuildCommands');
   const globalWrite = deploy.indexOf('Routes.applicationCommands');
@@ -769,7 +769,7 @@ test('slash command deployment uses bounded REST retries and preserves commands 
   assert.ok(workflow.includes('timeout-minutes: 5'), 'command registration job must allow bounded retries to finish');
   assert.ok(workflow.includes('npm run check'), 'full project checks must pass before changing live Discord commands');
   assert.ok(deploy.includes('process.env.GUILD_IDS'), 'deployment must support explicit multiple guild targets');
-  assert.ok(deploy.includes('await rest.get(Routes.guild(guildId))'), 'each target must be verified before changing command lists');
+  assert.ok(deploy.includes('await discordRequest(Routes.guild(guildId))'), 'each target must be verified before changing command lists');
   assert.ok(workflow.includes("GUILD_IDS: '1539562273197260860,1564945192803639356'"), 'production and test guild IDs must be explicit and separate');
   assert.ok(!workflow.includes('GUILD_ID: ${{ secrets.GUILD_ID }}'), 'do not use the ambiguous single GUILD_ID secret');
 });
