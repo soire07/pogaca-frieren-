@@ -61,7 +61,8 @@ jobs:
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          GUILD_ID: ${{ secrets.GUILD_ID }}
+          # Explicitly verified guild IDs: production + test; do not reuse the ambiguous GUILD_ID secret.
+          GUILD_IDS: '1539562273197260860,1564945192803639356'
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
