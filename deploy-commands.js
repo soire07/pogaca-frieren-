@@ -16,6 +16,8 @@ const MAX_RATE_LIMIT_RETRIES = 3;
 const RATE_LIMIT_SAFETY_MARGIN_MS = 10_000;
 const RATE_LIMIT_BACKOFF_MULTIPLIER = 2;
 let lastRateLimitInfo = null;
+let lastHttpErrorCode = null;
+let lastHttpErrorMessage = null;
 const rest = new REST({
   version: '10',
   offset: 5000,
@@ -24,6 +26,8 @@ const rest = new REST({
     const response = await fetch(url, init);
     if (response.status === 429) {
       const data = await response.clone().json().catch(() => null);
+      lastHttpErrorCode = data?.code ?? null;
+      lastHttpErrorMessage = typeof data?.message === 'string' ? data.message : null;
       console.warn('Discord HTTP 429 response diagnostics.', JSON.stringify({
         status: response.status,
         retryAfterHeader: response.headers.get('retry-after'),
@@ -116,6 +120,8 @@ async function discordRequest(route, { method = 'GET', body } = {}) {
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     lastRateLimitInfo = null;
+    lastHttpErrorCode = null;
+    lastHttpErrorMessage = null;
     try {
       if (method === 'GET') return await rest.get(route);
       if (method === 'PUT') return await rest.put(route, { body });
@@ -124,6 +130,8 @@ async function discordRequest(route, { method = 'GET', body } = {}) {
       const status = error?.status ?? error?.httpStatus ?? null;
       const retryAfterMs = Number(lastRateLimitInfo?.retryAfter ?? error?.retryAfter);
       const rateLimited = status === 429 || error?.name?.startsWith('RateLimitError') || lastRateLimitInfo !== null;
+      const dailyCommandCreateLimit = Number(lastHttpErrorCode ?? error?.code) === 30034
+        || /daily application command creates/i.test(lastHttpErrorMessage ?? error?.message ?? '');
 
       console.error('Discord REST request failed.', JSON.stringify({
         method,
@@ -133,6 +141,8 @@ async function discordRequest(route, { method = 'GET', body } = {}) {
         name: error?.name ?? 'Error',
         status,
         code: error?.code ?? null,
+        httpErrorCode: lastHttpErrorCode,
+        httpErrorMessage: lastHttpErrorMessage,
         message: error?.message ?? String(error),
         retryAfterSeconds: Number.isFinite(retryAfterMs) && retryAfterMs > 0
           ? Number((retryAfterMs / 1000).toFixed(3))
@@ -140,6 +150,13 @@ async function discordRequest(route, { method = 'GET', body } = {}) {
         scope: lastRateLimitInfo?.scope ?? null,
         bucket: lastRateLimitInfo?.hash ?? null
       }));
+
+      // Discord code 30034 is the daily application-command creation cap, not a transient
+      // route 429. Retrying a bulk overwrite can consume more creates and keep the bot offline.
+      if (dailyCommandCreateLimit) {
+        console.error('Discord daily application-command creation limit reached (30034); stopping writes without retry.');
+        throw error;
+      }
 
       if (!rateLimited || attempt === maxAttempts || !Number.isFinite(retryAfterMs) || retryAfterMs <= 0) {
         throw error;
