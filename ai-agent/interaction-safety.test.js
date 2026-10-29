@@ -53,9 +53,11 @@ test('failed error replies are swallowed and reported without causing another un
 });
 
 
-test('public health payload exposes liveness without disclosing internal configuration', () => {
-  const payload = getPublicHealthPayload();
-  assert.deepEqual(payload, { status: 'ok' });
-  assert.equal('discordReady' in payload, false);
+test('public health payload reports Discord readiness without disclosing internal configuration', () => {
+  assert.deepEqual(getPublicHealthPayload({ discordReady: true }), { status: 'ok', discordReady: true });
+  assert.deepEqual(getPublicHealthPayload({ discordReady: false }), { status: 'ok', discordReady: false });
+  assert.deepEqual(getPublicHealthPayload(), { status: 'ok', discordReady: false });
+  const payload = getPublicHealthPayload({ discordReady: true });
   assert.equal('persistentMemoryConfigured' in payload, false);
+  assert.equal('discordToken' in payload, false);
 });
