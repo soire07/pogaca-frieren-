@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getTestLockKey, getPublicHealthPayload, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
+import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
 
 test('authorization accepts only exact non-empty IDs in the trusted allowlist', () => {
   const admins = new Set(['123', '456']);
@@ -60,4 +60,11 @@ test('public health payload reports Discord readiness without disclosing interna
   const payload = getPublicHealthPayload({ discordReady: true });
   assert.equal('persistentMemoryConfigured' in payload, false);
   assert.equal('discordToken' in payload, false);
+});
+
+
+test('health endpoint status stays unready until Discord gateway is ready', () => {
+  assert.equal(getPublicHealthStatus({ discordReady: false }), 503);
+  assert.equal(getPublicHealthStatus({ discordReady: true }), 200);
+  assert.equal(getPublicHealthStatus(), 503);
 });
