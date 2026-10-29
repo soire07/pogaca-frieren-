@@ -48,7 +48,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/frieren_test
       - name: Wait for Discord's advertised retry window
-        run: sleep 270
+        run: sleep 300
       - name: Register commands in production guild only
         run: npm run deploy-commands
         env:
