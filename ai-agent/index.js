@@ -542,7 +542,7 @@ client.on(Events.InteractionCreate, async interaction => {
       const testsPassed = result.code === 0 && !result.timedOut;
       const targetedOutput = (targeted.stdout || '') + '\n' + (targeted.stderr || '');
       // A selected-file banner alone is not proof that tests actually ran.
-      const targetedCountMatch = targetedOutput.match(/(?:ℹ\\s*)tests\\s+(\\d+)/i);
+      const targetedCountMatch = targetedOutput.match(/(?:ℹ\s*)tests\s+(\d+)/i);
       const targetedTestCount = targetedCountMatch ? Number(targetedCountMatch[1]) : 0;
       const targetedHasTests = /SEÇİLEN TEST DOSYALARI:/.test(targetedOutput) && targetedTestCount > 0;
       const memoryPrivacyTarget = isMemoryPrivacyTarget(target);
