@@ -1,17 +1,54 @@
 import pg from 'pg';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 const { Pool } = pg;
 if (!process.env.DATABASE_URL) {
   console.warn('UYARI: DATABASE_URL ayarlı değil. Bot veritabanı olmadan başlatılamaz.');
 }
 
-export const pool = new Pool({
+const productionPool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : undefined,
   max: 5,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 10_000
 });
+const testContext = new AsyncLocalStorage();
+const isolatedTestPool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : undefined,
+  options: '-c search_path=frieren_test',
+  max: 2,
+  idleTimeoutMillis: 10_000,
+  connectionTimeoutMillis: 10_000
+});
+export const pool = new Proxy(productionPool, {
+  get(target, property) {
+    if (property === 'query') return (...args) => (testContext.getStore() ? isolatedTestPool : target).query(...args);
+    if (property === 'connect') return (...args) => (testContext.getStore() ? isolatedTestPool : target).connect(...args);
+    return Reflect.get(target, property, target);
+  }
+});
+
+// Commands executed by Frieren AI are routed into a dedicated PostgreSQL schema.
+// This keeps test rows/tables separate from production tables even on the free DB plan.
+let testSchemaQueue = Promise.resolve();
+export async function withIsolatedTestSchema(callback) {
+  const previous = testSchemaQueue;
+  let release;
+  testSchemaQueue = new Promise(resolve => { release = resolve; });
+  await previous;
+  try {
+    await productionPool.query('DROP SCHEMA IF EXISTS frieren_test CASCADE');
+    await productionPool.query('CREATE SCHEMA frieren_test');
+    return await testContext.run(true, async () => {
+      await initDatabase();
+      return await callback();
+    });
+  } finally {
+    release();
+  }
+}
 
 export async function initDatabase() {
   await pool.query(`
