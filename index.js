@@ -294,13 +294,79 @@ process.on('SIGTERM', async () => {
   await pool.end();
   process.exit(0);
 });
-const PORT = process.env.PORT || 3000;
+let uptimeRobotCache = null;\nconst PORT = process.env.PORT || 3000;
 
 createServer(async (req, res) => {
   const sendJson = (status, payload) => {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(payload));
   };
+  if (req.method === 'GET' && req.url === '/uptimerobot-status') {
+    const apiKey = process.env.UPTIMEROBOT_API_KEY;
+    if (!apiKey) return sendJson(503, { error: 'uptimerobot_not_configured' });
+
+    // Cache briefly to protect the UptimeRobot API rate limit from public polling.
+    if (uptimeRobotCache && Date.now() - uptimeRobotCache.checkedAt < 60_000) {
+      return sendJson(200, uptimeRobotCache.payload);
+    }
+
+    try {
+      const body = new URLSearchParams({
+        api_key: apiKey,
+        format: 'json',
+        custom_uptime_ratios: '7-30-45'
+      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8_000);
+      let response;
+      try {
+        response = await fetch('https://api.uptimerobot.com/v2/getMonitors', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body,
+          signal: controller.signal
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+      if (!response.ok) return sendJson(502, { error: 'uptimerobot_api_http_error' });
+      const data = await response.json();
+      if (data.stat !== 'ok' || !Array.isArray(data.monitors)) {
+        console.error('UptimeRobot API returned an unsuccessful response.');
+        return sendJson(502, { error: 'uptimerobot_api_error' });
+      }
+
+      const monitor = data.monitors.find(item => {
+        const monitoredUrl = String(item.url || '').replace(/\\/$/, '').toLowerCase();
+        return monitoredUrl === 'https://pogaca-frieren.onrender.com'
+          || String(item.friendly_name || '').toLowerCase() === 'poğaça frieren';
+      });
+      if (!monitor) return sendJson(404, { error: 'pogaca_frieren_monitor_not_found' });
+
+      const statusText = ({
+        0: 'paused',
+        1: 'not_checked_yet',
+        2: 'up',
+        8: 'seems_down',
+        9: 'down'
+      })[Number(monitor.status)] || 'unknown';
+      const payload = {
+        service: 'pogaca-frieren',
+        checkedAt: new Date().toISOString(),
+        monitor: {
+          name: String(monitor.friendly_name || 'Poğaça Frieren'),
+          status: statusText,
+          url: 'https://pogaca-frieren.onrender.com',
+          uptimeRatios: monitor.custom_uptime_ratio || null
+        }
+      };
+      uptimeRobotCache = { checkedAt: Date.now(), payload };
+      return sendJson(200, payload);
+    } catch (error) {
+      console.error('UptimeRobot status check failed:', error?.name || 'Error');
+      return sendJson(502, { error: 'uptimerobot_check_failed' });
+    }
+  }
   if (req.url?.startsWith('/internal/test-')) {
     const configuredSecret = process.env.FRIEREN_BRIDGE_SECRET || '';
     const suppliedSecret = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
