@@ -83,10 +83,6 @@ const commands = [
     .setDescription('Poğaça Frieren komut işleyicilerini yalıtılmış veritabanında çalıştırıp raporlar.')
     .addStringOption(option => option.setName('komut').setDescription('Tek bir komut adı (boş bırakırsan tüm komutlar denenir).').setRequired(false).setMaxLength(80))
     .toJSON(),
-  new SlashCommandBuilder()
-    .setName('status')
-    .setDescription('Frieren AI servisinin canlı çalışma durumunu gösterir.')
-    .toJSON(),
 ];
 
 
@@ -498,38 +494,6 @@ client.once(Events.ClientReady, readyClient => {
 client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
-  if (interaction.commandName === 'status') {
-    const ready = client.isReady();
-    const ping = client.ws.ping;
-    const uptimeSeconds = Math.floor(process.uptime());
-    const days = Math.floor(uptimeSeconds / 86400);
-    const hours = Math.floor((uptimeSeconds % 86400) / 3600);
-    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
-    const seconds = uptimeSeconds % 60;
-    const uptime = [days ? days + 'g' : '', hours ? hours + 'sa' : '', minutes ? minutes + 'dk' : '', seconds + 'sn'].filter(Boolean).join(' ');
-    const embed = new EmbedBuilder()
-      .setColor(ready ? 0x57F287 : 0xED4245)
-      .setTitle('✨ Frieren AI • Servis Durumu')
-      .setDescription(ready ? 'Discord bot bağlantısı hazır; HTTP sağlık sunucusu çalışıyor.' : 'Discord botu henüz hazır değil.')
-      .addFields(
-        { name: 'Discord bağlantısı', value: ready ? '🟢 Çevrimiçi' : '🔴 Hazır değil', inline: true },
-        { name: 'WebSocket gecikmesi', value: Number.isFinite(ping) && ping >= 0 ? Math.round(ping) + ' ms' : 'Ölçülemiyor', inline: true },
-        { name: 'Çalışma süresi', value: uptime, inline: true },
-        { name: 'AI sağlayıcısı', value: groq ? 'Groq yapılandırılmış' : 'Yapılandırılmamış', inline: true },
-        { name: 'Kalıcı bellek', value: memoryStore ? 'PostgreSQL yapılandırılmış' : 'DATABASE_URL eksik', inline: true },
-        { name: 'Model', value: resolveAiModel(process.env).slice(0, 100), inline: true },
-        { name: 'Bellek kullanımı', value: Math.round(process.memoryUsage().rss / 1024 / 1024) + ' MB', inline: true },
-      )
-      .setFooter({ text: 'Sağlayıcı yapılandırması, API isteğinin başarıyla tamamlandığını garanti etmez.' })
-      .setTimestamp();
-    try {
-      await interaction.reply({ embeds: [embed], ephemeral: true });
-    } catch (error) {
-      console.error('Status interaction reply failed:', redactSecrets(error.message || 'unknown error'));
-    }
-    return;
-  }
-
   if (!isAuthorizedAdmin(interaction.user.id, admins)) {
     await sendPrivateError(interaction, 'Bu komut yalnızca yetkili geliştiriciler tarafından kullanılabilir.', error => {
       console.error('Authorization denial reply failed:', redactSecrets(error.message || 'unknown error'));
@@ -763,13 +727,13 @@ client.on(Events.Error, error => console.error('Discord client error:', error.me
 try {
   // Register commands on startup so fresh deployments do not depend on a manual step.
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-  const commandRoute = process.env.DISCORD_GUILD_ID
-    ? Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, process.env.DISCORD_GUILD_ID)
-    : Routes.applicationCommands(process.env.DISCORD_CLIENT_ID);
+  const testGuildId = '1564945192803639356';
+  if (process.env.DISCORD_GUILD_ID?.trim() !== testGuildId) {
+    throw new Error('DISCORD_GUILD_ID must be the Frieren AI test server (…9356); global and production registration are disabled.');
+  }
+  const commandRoute = Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, testGuildId);
   await rest.put(commandRoute, { body: commands });
-  console.log(process.env.DISCORD_GUILD_ID
-    ? 'Frieren test slash command registered for the configured guild.'
-    : 'Frieren test slash command registered globally.');
+  console.log('Frieren AI slash commands registered in the test guild only.');
 } catch (error) {
   // Keep the process available for diagnostics; already-registered commands may still work.
   console.error('Slash command registration failed:', error.message);
