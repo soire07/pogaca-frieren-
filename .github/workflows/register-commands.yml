@@ -1,5 +1,9 @@
 name: Register Discord Commands
 
+permissions:
+  contents: read
+  statuses: write
+
 on:
   workflow_dispatch:
   push:
@@ -58,4 +62,8 @@ jobs:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           GUILD_ID: ${{ secrets.GUILD_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/frieren_test
