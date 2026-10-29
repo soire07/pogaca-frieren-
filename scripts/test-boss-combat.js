@@ -82,7 +82,7 @@ test('legendary and epic set bonuses activate at exact thresholds and disappear 
 
   const epic = equipmentItems.filter(item => ['frieren_robe', 'rune_ring'].includes(item.id));
   const epicBonus = applyEquipmentSetBonus(epic, equipmentBonus(epic));
-  assert.equal(epicBonus.defense, 10);
+  assert.equal(epicBonus.defense, 13);
   assert.equal(epicBonus.mana, 65);
   assert.equal(epicBonus.setText, 'Destansı set: +3 savunma, +15 mana');
 
