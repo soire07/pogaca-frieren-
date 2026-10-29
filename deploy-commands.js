@@ -286,18 +286,81 @@ try {
   console.log(targetDescription);
   await publishCommitStatus('pending', targetDescription);
 
+  // Read current state first. A bulk overwrite on every run needlessly consumes
+  // Discord's daily application-command creation quota even when nothing changed.
+  function stableValue(value) {
+    if (Array.isArray(value)) return value.map(stableValue);
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(
+        Object.keys(value)
+          .filter(key => !['id', 'application_id', 'guild_id', 'version'].includes(key))
+          .sort()
+          .map(key => [key, stableValue(value[key])])
+      );
+    }
+    return value;
+  }
+
+  function matchesDesiredCommand(existing, desired) {
+    // Discord adds response-only fields and may materialize defaults. Compare every
+    // field authored by this repository, ignoring only server-generated identifiers.
+    const normalize = value => {
+      if (Array.isArray(value)) return value.map(normalize);
+      if (value && typeof value === 'object') {
+        return Object.fromEntries(
+          Object.keys(value)
+            .filter(key => !['id', 'application_id', 'guild_id', 'version'].includes(key))
+            .sort()
+            .map(key => [key, normalize(value[key])])
+        );
+      }
+      return value;
+    };
+    const current = normalize(existing);
+    const wanted = normalize(desired);
+    return Object.entries(wanted).every(([key, value]) => {
+      if (value === undefined) return true;
+      if (Array.isArray(value)) {
+        return Array.isArray(current[key]) && JSON.stringify(stableValue(current[key])) === JSON.stringify(stableValue(value));
+      }
+      if (value && typeof value === 'object') {
+        return current[key] && typeof current[key] === 'object' && matchesDesiredCommand(current[key], value);
+      }
+      return current[key] === value || (value == null && current[key] == null);
+    });
+  }
+
   for (const guild of targetGuilds) {
+    const route = Routes.applicationGuildCommands(clientId, guild.id);
+    const existingCommands = await discordRequest(route);
+    const existingByName = new Map(existingCommands.map(command => [command.name, command]));
+    const sameNames = existingCommands.length === guild.commands.length
+      && guild.commands.every(command => existingByName.has(command.name));
+    const sameDefinitions = sameNames
+      && guild.commands.every(command => matchesDesiredCommand(existingByName.get(command.name), command));
+
+    if (sameDefinitions) {
+      console.log(`No changes for ${guild.name} (${guild.kind}); skipped command write to preserve daily quota.`);
+      continue;
+    }
+
     await putWithDiagnostics(
-      Routes.applicationGuildCommands(clientId, guild.id),
+      route,
       guild.commands,
       guild.kind + ' guild registration: ' + guild.name
     );
-    console.log(`${guild.commands.length} commands registered in ${guild.name} (${guild.kind}, ID ending ${guild.id.slice(-4)}).`);
+    console.log(`Updated ${guild.commands.length} commands in ${guild.name} (${guild.kind}, ID ending ${guild.id.slice(-4)}).`);
   }
 
-  // Clear legacy global duplicates only after every configured guild was updated successfully.
-  await putWithDiagnostics(Routes.applicationCommands(clientId), [], 'clear legacy global commands');
-  console.log('Legacy global command registrations cleared after every configured guild succeeded.');
+  // Clear legacy global duplicates only when they actually exist.
+  const globalRoute = Routes.applicationCommands(clientId);
+  const existingGlobalCommands = await discordRequest(globalRoute);
+  if (existingGlobalCommands.length) {
+    await putWithDiagnostics(globalRoute, [], 'clear legacy global commands');
+    console.log('Legacy global command registrations cleared after every configured guild was verified.');
+  } else {
+    console.log('No legacy global commands found; skipped unnecessary global command write.');
+  }
 
   await publishCommitStatus('success', targetDescription);
   console.log('Discord command sync completed.');
