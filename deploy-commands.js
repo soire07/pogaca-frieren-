@@ -80,6 +80,12 @@ async function putWithDiagnostics(route, body, label) {
     throw error;
   }
 }
+if (process.env.GUILD_ID?.trim()) {
+  const targetGuildId = process.env.GUILD_ID.trim();
+  console.log('Discord komut hedefi: guild-scope; ID son 4 hane=' + targetGuildId.slice(-4));
+} else {
+  console.warn('Discord komut hedefi: GLOBAL; GUILD_ID boş/eksik. Bu, komutları tüm sunucular için kaydedebilir.');
+}
 console.log(`Discord komut eşitlemesi başlıyor: ${commands.length} komut.`);
 
 if (process.env.GUILD_ID) {
