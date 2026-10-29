@@ -147,11 +147,11 @@ async function collectCodeContext(question) {
 function isConversationalQuestion(question) {
   const normalized = question.toLocaleLowerCase('tr-TR')
     .normalize('NFKD')
-    .replace(/[\\u0300-\\u036f]/g, '')
-    .replace(/[^a-z0-9\\s]/g, ' ')
-    .replace(/\\s+/g, ' ')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
-  const hasTechnicalIntent = /\\b(kod|komut|test|hata|bug|debug|dosya|fonksiyon|veritabani|database|api|deploy|render|incele|duzelt|analiz|kaynak kod|stack trace)\\b/.test(normalized);
+  const hasTechnicalIntent = /\b(kod|komut|test|hata|bug|debug|dosya|fonksiyon|veritabani|database|api|deploy|render|incele|duzelt|analiz|kaynak kod|stack trace)\b/.test(normalized);
   return !hasTechnicalIntent;
 }
 
@@ -197,8 +197,8 @@ async function answerCodeQuestion(question, userId) {
         { role: 'system', content: systemPrompt },
         ...conversationHistory,
         { role: 'user', content: conversational
-          ? 'KULLANICI MESAJI:\\n' + question.slice(0, 1200) + memoryContext
-          : 'KULLANICI SORUSU:\\n' + question.slice(0, 1200) + memoryContext + '\\n\\nKAYNAK KODLAR (yalnızca inceleme için):\\n' + context }
+          ? 'KULLANICI MESAJI:\n' + question.slice(0, 1200) + memoryContext
+          : 'KULLANICI SORUSU:\n' + question.slice(0, 1200) + memoryContext + '\n\nKAYNAK KODLAR (yalnızca inceleme için):\n' + context }
       ],
       max_completion_tokens: 900,
     });
