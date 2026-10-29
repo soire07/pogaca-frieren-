@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryStore, memoryStoreInternals } from './memory-store.js';
+import { extractAutomaticMemories } from './memory-extractor.js';
 
 class FakePool {
   constructor(options) {
@@ -171,4 +172,25 @@ test('memory relevance prioritizes meaningful matches over common Turkish filler
   assert.equal(matched[0].memory_key, 'project');
   assert.deepEqual(await store.relevant('user-a', 've ama için'), []);
   assert.deepEqual(await store.relevant('user-a', 'Bellek nasıl çalışıyor?'), []);
+});
+
+test('automatic memory extraction captures explicit favorite facts', () => {
+  assert.deepEqual(extractAutomaticMemories('En sevdiğim renk mor.'), [
+    { key: 'favori_renk', value: 'En sevdiği renk: mor.' }
+  ]);
+});
+
+test('automatic memory extraction captures clear identity and story statements', () => {
+  assert.deepEqual(extractAutomaticMemories('Benim adım Deniz.'), [
+    { key: 'kullanici_adi', value: 'Kullanıcının adı: Deniz.' }
+  ]);
+  const story = extractAutomaticMemories('Elara karakterimiz karanlık ormanlardan korkuyor ve Gölge adlı mor bir ejderhası var.');
+  assert.equal(story.length, 1);
+  assert.match(story[0].value, /Elara karakterimiz/);
+});
+
+test('automatic memory extraction ignores questions and sensitive-looking content', () => {
+  assert.deepEqual(extractAutomaticMemories('En sevdiğim renk mor mu?'), []);
+  assert.deepEqual(extractAutomaticMemories('Bugün nasılsın?'), []);
+  assert.deepEqual(extractAutomaticMemories('Şifrem 12345, bunu hatırla.'), []);
 });
