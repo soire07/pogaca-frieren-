@@ -196,7 +196,7 @@ async function answerCodeQuestion(question, userId) {
     }
   } catch (error) {
     const errorText = error?.message || String(error);
-    const contextLimitError = error?.status === 413 || /\\b413\\b|request too large|tokens per minute|\\bTPM\\b/i.test(errorText);
+    const contextLimitError = error?.status === 413 || /\b413\b|request too large|tokens per minute|\bTPM\b/i.test(errorText);
     if (contextLimitError) {
       console.warn('Groq isteği bağlam/token sınırını aştı; daha küçük bağlamla yeniden deneniyor.');
       try {
@@ -204,7 +204,7 @@ async function answerCodeQuestion(question, userId) {
           model: resolveAiModel(process.env),
           messages: [
             { role: 'system', content: systemPrompt + ' Kısa ve görünür Türkçe yanıt ver; boş yanıt verme.' },
-            { role: 'user', content: 'İstek: ' + question.slice(0, 800) + '\\n\\nİlgili kaynak kod:\\n' + context.slice(0, 900) }
+            { role: 'user', content: 'İstek: ' + question.slice(0, 800) + '\n\nİlgili kaynak kod:\n' + context.slice(0, 900) }
           ],
           max_tokens: 450,
         });
