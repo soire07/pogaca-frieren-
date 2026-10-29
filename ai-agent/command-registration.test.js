@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { registerCommandsIfChanged, getFrierenAiCommandRoute } from './command-registration-target.js';
 
 const [runtime, manual] = await Promise.all([
   readFile(new URL('./index.js', import.meta.url), 'utf8'),
@@ -34,4 +35,40 @@ test('registration exposes only the four Frieren AI root commands and four memor
   assert.match(manual, /const required = \['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DISCORD_GUILD_ID'\]/);
   assert.match(manual, /const TEST_GUILD_ID = '1564945192803639356'/);
   assert.doesNotMatch(manual, /Routes\.applicationCommands\(/, 'global command registration must remain disabled');
+});
+
+
+test('runtime and manual registration remain pinned to the Frieren test guild', () => {
+  assert.match(runtime, /getFrierenAiCommandRoute/);
+  assert.match(manual, /getFrierenAiCommandRoute/);
+  assert.doesNotMatch(runtime, /Routes\\.applicationCommands\\(/);
+  assert.doesNotMatch(manual, /Routes\\.applicationCommands\\(/);
+  assert.equal(getFrierenAiCommandRoute(' app-id '), '/applications/app-id/guilds/1564945192803639356/commands');
+  assert.throws(() => getFrierenAiCommandRoute(' '), /DISCORD_CLIENT_ID is required/);
+});
+
+test('command registration does not write when existing definitions already match', async () => {
+  let putCount = 0;
+  const rest = {
+    get: async () => [{ id: 'remote-id', application_id: 'app-id', type: 1, name: 'frieren-ai', description: 'Analyze code', options: [] }],
+    put: async () => { putCount += 1; },
+  };
+  const commands = [{ name: 'frieren-ai', description: 'Analyze code', options: [] }];
+  const result = await registerCommandsIfChanged(rest, '/test-guild/commands', commands);
+  assert.deepEqual(result, { changed: false, count: 1 });
+  assert.equal(putCount, 0);
+});
+
+test('command registration writes only when a definition differs', async () => {
+  let putCount = 0;
+  let payload = null;
+  const rest = {
+    get: async () => [{ name: 'frieren-ai', description: 'Old description', options: [] }],
+    put: async (_route, body) => { putCount += 1; payload = body; },
+  };
+  const commands = [{ name: 'frieren-ai', description: 'New description', options: [] }];
+  const result = await registerCommandsIfChanged(rest, '/test-guild/commands', commands);
+  assert.deepEqual(result, { changed: true, count: 1 });
+  assert.equal(putCount, 1);
+  assert.deepEqual(payload, { body: commands });
 });
