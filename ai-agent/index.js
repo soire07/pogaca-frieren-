@@ -525,7 +525,7 @@ client.on(Events.InteractionCreate, async interaction => {
         { name: 'Kalıcı bellek', value: memoryStore ? 'Yapılandırılmış' : 'Yapılandırılmamış', inline: true }
       )
       .setTimestamp();
-    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    await interaction.reply({ embeds: [embed] });
     return;
   }
 
