@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import OpenAI from 'openai';
 import { resolveAiModel } from './config.js';
+import { getFrierenAiCommandRoute, FRIEREN_AI_TEST_GUILD_ID } from './command-registration-target.js';
 import { findRelevantExcerpt, scoreCodeCandidate } from './code-context.js';
 import { createMemoryStore } from './memory-store.js';
 import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, isTargetedTestFailure, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
@@ -19,7 +20,6 @@ import {
   GatewayIntentBits,
   MessageFlags,
   REST,
-  Routes,
   SlashCommandBuilder,
 } from 'discord.js';
 
@@ -763,13 +763,9 @@ client.on(Events.Error, error => console.error('Discord client error:', error.me
 try {
   // Register commands on startup so fresh deployments do not depend on a manual step.
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-  const commandRoute = process.env.DISCORD_GUILD_ID
-    ? Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, process.env.DISCORD_GUILD_ID)
-    : Routes.applicationCommands(process.env.DISCORD_CLIENT_ID);
+  const commandRoute = getFrierenAiCommandRoute(process.env.DISCORD_CLIENT_ID);
   await rest.put(commandRoute, { body: commands });
-  console.log(process.env.DISCORD_GUILD_ID
-    ? 'Frieren test slash command registered for the configured guild.'
-    : 'Frieren test slash command registered globally.');
+  console.log('Frieren AI slash commands registered for test guild ID ' + FRIEREN_AI_TEST_GUILD_ID + '.');
 } catch (error) {
   // Keep the process available for diagnostics; already-registered commands may still work.
   console.error('Slash command registration failed:', error.message);
