@@ -19,3 +19,11 @@ export function liveMemoryPrivacySummarySuffix(isMemoryPrivacyTarget) {
     ? '\nCanlı PostgreSQL bellek gizliliği: BAŞARILI — scripts/test-live-memory.js çıktısı doğrulandı.'
     : '';
 }
+
+
+export function countNodeTests(output) {
+  const matches = String(output ?? '').matchAll(/(?:ℹ\\s*)tests\\s+(\\d+)/gi);
+  let total = 0;
+  for (const match of matches) total += Number(match[1]);
+  return total;
+}
