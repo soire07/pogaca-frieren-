@@ -1,0 +1,44 @@
+name: Register Frieren AI Test-Guild Commands
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/register-frieren-ai-commands.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frieren-ai-test-guild-command-registration
+  cancel-in-progress: false
+
+jobs:
+  register:
+    name: Register Frieren AI commands in test guild only
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out Frieren AI branch
+        uses: actions/checkout@v4
+        with:
+          ref: frieren-ai-agent
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install AI-agent dependencies
+        working-directory: ai-agent
+        run: npm install
+
+      - name: Validate test-guild target and register commands
+        working-directory: ai-agent
+        run: npm run register
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+          DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
