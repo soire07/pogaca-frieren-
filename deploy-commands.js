@@ -63,18 +63,65 @@ if (duplicates.length) {
 }
 console.log(`Kaydedilmeye hazır ${commands.length} komut doğrulandı.`);
 
-// Let discord.js own its timeout/retry policy; do not race it with an external AbortSignal.
-const rest = new REST({ version: '10', timeout: 60_000, retries: 2 }).setToken(token);
+// Use explicit fetch timeouts so a stalled Discord REST request cannot hang CI for minutes.
+async function discordRequest(route, { method = 'GET', body } = {}) {
+  const url = `https://discord.com/api/v10${route}`;
+  const attempts = 3;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    let response;
+    try {
+      response = await fetch(url, {
+        method,
+        headers: {
+          authorization: `Bot ${token}`,
+          'content-type': 'application/json',
+          'user-agent': 'DiscordBot (https://github.com/soire07/pogaca-frieren-, 1.0.0)'
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(20_000)
+      });
+    } catch (error) {
+      console.error('Discord REST network request failed.', JSON.stringify({
+        method, route, attempt, name: error?.name ?? 'Error',
+        message: error?.message ?? String(error)
+      }));
+      if (attempt === attempts) throw error;
+      await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+      continue;
+    }
+
+    const responseText = await response.text();
+    let data = null;
+    if (responseText) {
+      try { data = JSON.parse(responseText); }
+      catch { data = { message: responseText.slice(0, 500) }; }
+    }
+    if (response.ok) return data;
+
+    const retryable = response.status === 429 || response.status >= 500;
+    console.error('Discord REST request returned an error.', JSON.stringify({
+      method, route, attempt, status: response.status,
+      message: data?.message ?? 'No response message'
+    }));
+    if (!retryable || attempt === attempts) {
+      const error = new Error(`Discord API ${method} ${route} returned HTTP ${response.status}: ${data?.message ?? 'unknown error'}`);
+      error.status = response.status;
+      throw error;
+    }
+    const retryAfter = Number(response.headers.get('retry-after') || data?.retry_after || attempt);
+    await new Promise(resolve => setTimeout(resolve, Math.min(Math.max(retryAfter * 1000, 500), 10_000)));
+  }
+  throw new Error('Discord REST request exhausted retry attempts.');
+}
 
 async function putWithDiagnostics(route, body, label) {
   try {
-    return await rest.put(route, { body });
+    return await discordRequest(route, { method: 'PUT', body });
   } catch (error) {
     console.error(`Discord API command registration failed (${label}).`, JSON.stringify({
       name: error?.name ?? 'Error',
       message: error?.message ?? String(error),
       status: error?.status ?? null,
-      code: error?.code ?? null,
       route
     }));
     throw error;
@@ -132,7 +179,7 @@ try {
     // and prevents a mistyped/missing guild from causing a partial command deployment.
     const targetGuilds = [];
     for (const guildId of configuredGuildIds) {
-      const guild = await rest.get(Routes.guild(guildId));
+      const guild = await discordRequest(Routes.guild(guildId));
       if (String(guild?.id) !== guildId || typeof guild?.name !== 'string') {
         throw new Error('A configured guild ID did not resolve to the expected Discord guild.');
       }
