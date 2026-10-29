@@ -93,7 +93,7 @@ const commands = [
 async function collectCodeContext(question) {
   const roots = ['index.js', 'rpg-mechanics.js', 'package.json', 'scripts/check-commands.js',
     'scripts/audit-command-contracts.js', 'scripts/test-request.js', 'scripts/test-boss-combat.js',
-    'scripts/test-discord-scenarios.js', 'scripts/test-utils.js', 'database/db.js'];
+    'scripts/test-discord-scenarios.js', 'scripts/test-uncovered-commands.js', 'scripts/test-utils.js', 'database/db.js'];
   const terms = question.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').split(/[^a-z0-9]+/).filter(word => word.length >= 3);
   const candidates = new Set(roots);
   async function addCommandFiles(dir, depth = 0) {
