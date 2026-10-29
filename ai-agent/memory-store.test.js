@@ -149,3 +149,24 @@ test('conversation history persists in order and is isolated per Discord user', 
     { role: 'user', content: 'Başka bir konuşma.' },
   ]);
 });
+
+
+test('memory recall questions return recent user-owned memories even without keyword overlap', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  await store.save('user-a', 'favorite_color', 'Purple');
+  await store.save('user-a', 'story_character', 'Elara and a purple dragon named Gölge');
+  await store.save('user-b', 'private_note', 'Only user B can see this');
+  const recalled = await store.relevant('user-a', 'Benim hakkımda neler hatırlıyorsun?');
+  assert.equal(recalled.length, 2);
+  assert.ok(recalled.some(row => row.memory_key === 'favorite_color'));
+  assert.ok(recalled.every(row => row.memory_value !== 'Only user B can see this'));
+});
+
+test('memory relevance prioritizes meaningful matches over common Turkish filler words', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  await store.save('user-a', 'project', 'Frieren RPG game');
+  await store.save('user-a', 'style', 'Prefer short Turkish answers');
+  const matched = await store.relevant('user-a', 'Ben bana ne demiştim, Frieren projesi hakkında?');
+  assert.equal(matched[0].memory_key, 'project');
+  assert.deepEqual(await store.relevant('user-a', 've ama için'), []);
+});
