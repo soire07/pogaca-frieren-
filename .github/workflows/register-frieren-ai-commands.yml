@@ -1,4 +1,5 @@
 name: Register Frieren AI Test-Guild Commands
+# Registration script now derives the application ID from the bot token.
 
 on:
   workflow_dispatch:
