@@ -31,7 +31,10 @@ test('registration exposes only the four Frieren AI root commands and four memor
     assert.doesNotMatch(manual, new RegExp(`setName\\(['\"]${name}['\"]\\)`), `registration must not publish unrelated /${name}`);
     assert.doesNotMatch(runtime, new RegExp(`setName\\(['\"]${name}['\"]\\)`), `runtime must not define unrelated /${name}`);
   }
-  assert.match(manual, /const required = \['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DISCORD_GUILD_ID'\]/);
+  assert.match(manual, /const required = \\['DISCORD_TOKEN'\\]/);
+  assert.match(manual, /const botUser = await rest\\.get\\(Routes\\.user\\(\\)\\)/);
+  assert.match(manual, /const TEST_GUILD_ID = '1564945192803639356'/);
+  assert.match(manual, /configuredGuildId && configuredGuildId !== TEST_GUILD_ID/);
   assert.match(manual, /const TEST_GUILD_ID = '1564945192803639356'/);
   assert.doesNotMatch(manual, /Routes\.applicationCommands\(/, 'global command registration must remain disabled');
 });
