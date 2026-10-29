@@ -1,7 +1,11 @@
 name: Register Poğaça Frieren in production guild only
 
-# Manual-only: Discord command writes are quota-limited.
+# One controlled attempt after Discord's explicit 30034 retry window; no recurring registration.
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/register-production-guild-only.yml"
   workflow_dispatch:
 
 permissions:
@@ -15,7 +19,7 @@ concurrency:
 jobs:
   register-production:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:16
@@ -43,6 +47,8 @@ jobs:
         run: npm run check
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/frieren_test
+      - name: Wait for Discord's advertised retry window
+        run: sleep 270
       - name: Register commands in production guild only
         run: npm run deploy-commands
         env:
