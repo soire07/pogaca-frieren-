@@ -31,6 +31,11 @@ const commands = [
       .addBooleanOption(option => option.setName('onayla').setDescription('Silme işlemini onayla').setRequired(true)))
     .toJSON(),
   new SlashCommandBuilder()
+    .setName('frieren-komut-denetle')
+    .setDescription('Poğaça Frieren komut işleyicilerini yalıtılmış veritabanında çalıştırıp raporlar.')
+    .addStringOption(option => option.setName('komut').setDescription('Tek bir komut adı (boş bırakırsan tüm komutlar denenir).').setRequired(false).setMaxLength(80))
+    .toJSON(),
+  new SlashCommandBuilder()
     .setName('status')
     .setDescription('Frieren AI servisinin canlı çalışma durumunu gösterir.')
     .toJSON(),
