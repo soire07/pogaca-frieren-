@@ -1,6 +1,7 @@
 name: Register Discord Commands
 
-# deploy-commands.js bounds retries and logs safe 429 metadata; this workflow only runs for command changes or workflow edits.
+# Registration is single-flight, bounded, and only attempted after the stale legacy run was cancelled.
+# deploy-commands.js logs safe 429 metadata and stops after a bounded number of retries.
 
 permissions:
   contents: read
