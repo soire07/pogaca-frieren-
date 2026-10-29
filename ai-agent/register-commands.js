@@ -1,10 +1,16 @@
 import 'dotenv/config';
 import { REST, Routes, SlashCommandBuilder } from 'discord.js';
 
-const required = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID'];
+const required = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DISCORD_GUILD_ID'];
 const missing = required.filter(key => !process.env[key]?.trim());
 if (missing.length) {
   console.error('Missing required environment variables: ' + missing.join(', '));
+  process.exit(1);
+}
+
+const TEST_GUILD_ID = '1564945192803639356';
+if (process.env.DISCORD_GUILD_ID.trim() !== TEST_GUILD_ID) {
+  console.error('Frieren AI command registration is restricted to the test guild …9356. Global and production-guild registration are disabled.');
   process.exit(1);
 }
 
@@ -36,16 +42,10 @@ const commands = [
     .setDescription('Poğaça Frieren komut işleyicilerini yalıtılmış veritabanında çalıştırıp raporlar.')
     .addStringOption(option => option.setName('komut').setDescription('Tek bir komut adı (boş bırakırsan tüm komutlar denenir).').setRequired(false).setMaxLength(80))
     .toJSON(),
-  new SlashCommandBuilder()
-    .setName('status')
-    .setDescription('Frieren AI servisinin canlı çalışma durumunu gösterir.')
-    .toJSON(),
 ];
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-const route = process.env.DISCORD_GUILD_ID
-  ? Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, process.env.DISCORD_GUILD_ID)
-  : Routes.applicationCommands(process.env.DISCORD_CLIENT_ID);
+const route = Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, TEST_GUILD_ID);
 
 await rest.put(route, { body: commands });
-console.log(process.env.DISCORD_GUILD_ID ? 'Frieren AI guild commands registered.' : 'Frieren AI global commands registered.');
+console.log('Frieren AI test-guild commands registered: 4 root commands, including /frieren-bellek with 4 subcommands.');
