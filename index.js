@@ -294,7 +294,7 @@ process.on('SIGTERM', async () => {
   await pool.end();
   process.exit(0);
 });
-let uptimeRobotCache = null;\nconst PORT = process.env.PORT || 3000;
+let uptimeRobotCache = null;
 
 createServer(async (req, res) => {
   const sendJson = (status, payload) => {
@@ -337,7 +337,7 @@ createServer(async (req, res) => {
       }
 
       const monitor = data.monitors.find(item => {
-        const monitoredUrl = String(item.url || '').replace(/\\/$/, '').toLowerCase();
+        const monitoredUrl = String(item.url || '').replace(/\/$/, '').toLowerCase();
         return monitoredUrl === 'https://pogaca-frieren.onrender.com'
           || String(item.friendly_name || '').toLowerCase() === 'poğaça frieren';
       });
