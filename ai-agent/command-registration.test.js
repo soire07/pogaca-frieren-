@@ -26,8 +26,9 @@ test('registration exposes only the four Frieren AI root commands and four memor
   for (const name of ['kaydet', 'listele', 'sil', 'temizle']) {
     assert.match(manual, new RegExp(`setName\\(['\"]${name}['\"]\\)`), `registration is missing memory subcommand ${name}`);
   }
-  for (const name of ['yardim', 'rehber', 'karakter']) {
+  for (const name of ['status', 'yardim', 'rehber', 'karakter']) {
     assert.doesNotMatch(manual, new RegExp(`setName\\(['\"]${name}['\"]\\)`), `registration must not publish unrelated /${name}`);
+    assert.doesNotMatch(runtime, new RegExp(`setName\\(['\"]${name}['\"]\\)`), `runtime must not define unrelated /${name}`);
   }
   assert.match(manual, /const required = \['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DISCORD_GUILD_ID'\]/);
   assert.match(manual, /const TEST_GUILD_ID = '1564945192803639356'/);
