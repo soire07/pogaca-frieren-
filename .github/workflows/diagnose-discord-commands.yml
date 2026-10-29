@@ -1,0 +1,76 @@
+name: Diagnose Discord Command Registration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/diagnose-discord-commands.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read Discord command state without changing it
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          GUILD_IDS: "1539562273197260860,1564945192803639356"
+        run: |
+          node --input-type=module <<'NODE'
+          const token = process.env.DISCORD_TOKEN;
+          const clientId = process.env.CLIENT_ID;
+          const guildIds = process.env.GUILD_IDS.split(',').map(value => value.trim()).filter(Boolean);
+          if (!token || !clientId) throw new Error('DISCORD_TOKEN or CLIENT_ID secret is missing.');
+
+          async function inspect(route, label) {
+            const response = await fetch('https://discord.com/api/v10' + route, {
+              headers: { authorization: 'Bot ' + token, 'user-agent': 'DiscordBot (https://github.com/soire07/pogaca-frieren-, 1.0.0)' },
+              signal: AbortSignal.timeout(15000)
+            });
+            const text = await response.text();
+            let data = null;
+            try { data = text ? JSON.parse(text) : null; } catch { data = { message: text.slice(0, 300) }; }
+            console.log(JSON.stringify({
+              check: label,
+              status: response.status,
+              bucket: response.headers.get('x-ratelimit-bucket'),
+              limit: response.headers.get('x-ratelimit-limit'),
+              remaining: response.headers.get('x-ratelimit-remaining'),
+              resetAfter: response.headers.get('x-ratelimit-reset-after'),
+              retryAfter: response.headers.get('retry-after'),
+              globalRateLimit: data?.global ?? response.headers.get('x-ratelimit-global') ?? null,
+              message: response.ok ? undefined : (data?.message ?? 'Unknown Discord API error')
+            }));
+            if (!response.ok) throw new Error(label + ' failed with HTTP ' + response.status);
+            return data;
+          }
+
+          const app = await inspect('/oauth2/applications/@me', 'token application identity');
+          if (String(app.id) !== String(clientId)) {
+            console.error('CLIENT_ID does not match the application represented by DISCORD_TOKEN. IDs are intentionally shown only by suffix.', JSON.stringify({
+              tokenApplicationSuffix: String(app.id).slice(-4),
+              configuredClientSuffix: String(clientId).slice(-4)
+            }));
+            process.exit(1);
+          }
+          console.log('Configured CLIENT_ID matches the bot token application.');
+
+          for (const guildId of guildIds) {
+            const commands = await inspect('/applications/' + clientId + '/guilds/' + guildId + '/commands', 'guild commands …' + guildId.slice(-4));
+            console.log(JSON.stringify({
+              guildSuffix: guildId.slice(-4),
+              commandCount: Array.isArray(commands) ? commands.length : null,
+              commandNames: Array.isArray(commands) ? commands.map(command => command.name).sort() : []
+            }));
+          }
+
+          const globalCommands = await inspect('/applications/' + clientId + '/commands', 'global commands');
+          console.log(JSON.stringify({
+            globalCommandCount: Array.isArray(globalCommands) ? globalCommands.length : null,
+            globalCommandNames: Array.isArray(globalCommands) ? globalCommands.map(command => command.name).sort() : []
+          }));
+          NODE
