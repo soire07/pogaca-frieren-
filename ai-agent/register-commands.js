@@ -1,5 +1,6 @@
 import 'dotenv/config';
-import { REST, Routes, SlashCommandBuilder } from 'discord.js';
+import { REST, SlashCommandBuilder } from 'discord.js';
+import { getFrierenAiCommandRoute, FRIEREN_AI_TEST_GUILD_ID } from './command-registration-target.js';
 
 const required = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID'];
 const missing = required.filter(key => !process.env[key]?.trim());
@@ -43,9 +44,7 @@ const commands = [
 ];
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-const route = process.env.DISCORD_GUILD_ID
-  ? Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, process.env.DISCORD_GUILD_ID)
-  : Routes.applicationCommands(process.env.DISCORD_CLIENT_ID);
+const route = getFrierenAiCommandRoute(process.env.DISCORD_CLIENT_ID);
 
 await rest.put(route, { body: commands });
-console.log(process.env.DISCORD_GUILD_ID ? 'Frieren AI guild commands registered.' : 'Frieren AI global commands registered.');
+console.log('Frieren AI commands registered for test guild ID ' + FRIEREN_AI_TEST_GUILD_ID + '.');
