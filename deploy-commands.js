@@ -14,6 +14,7 @@ if (!token || !clientId) {
 
 const MAX_RATE_LIMIT_RETRIES = 3;
 const RATE_LIMIT_SAFETY_MARGIN_MS = 10_000;
+const RATE_LIMIT_BACKOFF_MULTIPLIER = 2;
 let lastRateLimitInfo = null;
 const rest = new REST({
   version: '10',
@@ -144,7 +145,8 @@ async function discordRequest(route, { method = 'GET', body } = {}) {
         throw error;
       }
 
-      const delayMs = Math.ceil(retryAfterMs) + RATE_LIMIT_SAFETY_MARGIN_MS;
+      const exponentialBackoffMs = Math.ceil(retryAfterMs * (RATE_LIMIT_BACKOFF_MULTIPLIER ** (attempt - 1)));
+      const delayMs = exponentialBackoffMs + RATE_LIMIT_SAFETY_MARGIN_MS;
       console.warn(
         `Discord 429: attempt ${attempt}/${maxAttempts - 1}; waiting ${Math.ceil(delayMs / 1000)} seconds before retry.`
       );
