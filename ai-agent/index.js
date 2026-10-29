@@ -4,6 +4,7 @@ import { resolveAiModel } from './config.js';
 import { createMemoryStore } from './memory-store.js';
 import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
 import { getTestLockKey, getPublicHealthPayload, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
+import { checkLiveRpgHealth } from './live-rpg-health.js';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createServer } from 'node:http';
@@ -516,11 +517,12 @@ client.on(Events.InteractionCreate, async interaction => {
     runningGuilds.add(lockKey);
     try {
       await interaction.deferReply({ ephemeral: true });
-      const [agentSyntax, audit, result, targeted] = await Promise.all([
+      const [agentSyntax, audit, result, targeted, liveRpgHealth] = await Promise.all([
         runSyntaxChecks(),
         runCommandAudit(),
         runTests(),
         runTargetedTests(target),
+        checkLiveRpgHealth(),
       ]);
       const auditOutput = audit.stdout + '\n' + audit.stderr;
       const commandCount = auditOutput.match(/ÖZET: (\d+) komut keşfedildi; (\d+) PASS; (\d+) FAIL/);
@@ -533,7 +535,8 @@ client.on(Events.InteractionCreate, async interaction => {
       const memoryPrivacyTarget = isMemoryPrivacyTarget(target);
       const liveMemoryProofPassed = hasLiveMemoryPrivacyProof(target, targetedOutput);
       const targetedPassed = targeted.code === 0 && targetedHasTests && liveMemoryProofPassed;
-      const status = result.timedOut ? 'TEST ZAMAN AŞIMI' : !auditPassed || !testsPassed || !syntaxPassed || (targetedHasTests && !targetedPassed) || (memoryPrivacyTarget && !liveMemoryProofPassed) ? 'DENETİM BAŞARISIZ' : !targetedHasTests ? 'HEDEFE ÖZEL KAPSAM EKSİK' : 'TÜM OTOMATİK DENETİMLER BAŞARILI';
+      const liveRpgPassed = liveRpgHealth.ok;
+      const status = result.timedOut ? 'TEST ZAMAN AŞIMI' : !auditPassed || !testsPassed || !syntaxPassed || !liveRpgPassed || (targetedHasTests && !targetedPassed) || (memoryPrivacyTarget && !liveMemoryProofPassed) ? 'DENETİM BAŞARISIZ' : !targetedHasTests ? 'HEDEFE ÖZEL KAPSAM EKSİK' : 'TÜM OTOMATİK DENETİMLER BAŞARILI';
       const summary = buildLocalTestSummary(result);
       const targetedSummary = targeted.applicable
         ? (memoryPrivacyTarget && !liveMemoryProofPassed
@@ -557,6 +560,9 @@ client.on(Events.InteractionCreate, async interaction => {
         safetyReview ? 'İzin gerektiren komutlarda inceleme: ' + safetyReview.slice(0, 300) : '',
       ].filter(Boolean).join('\n');
       const syntaxSummary = syntaxPassed ? 'AI servis sözdizimi: başarılı.' : 'AI servis sözdizimi BAŞARISIZ: ' + agentSyntax.stderr.slice(-250);
+      const liveRpgSummary = liveRpgPassed
+        ? 'Canlı RPG botu: BAŞARILI — Discord bağlantısı ve PostgreSQL sağlık endpointi yanıt verdi.'
+        : 'Canlı RPG botu: BAŞARISIZ — ' + liveRpgHealth.summary;
       const auditSummary = auditPassed
         ? 'Komut sözleşme denetimi: ' + commandCount[1] + ' komut keşfedildi; ' + commandCount[2] + ' PASS, ' + commandCount[3] + ' FAIL. Her komut için ayrı sonuç üretildi.'
         : 'Komut sözleşme denetimi BAŞARISIZ. Ayrıntılar test çıktısında.';
@@ -570,6 +576,9 @@ client.on(Events.InteractionCreate, async interaction => {
         agentSyntax.stdout || '',
         agentSyntax.stderr || '',
         'Durum: ' + (syntaxPassed ? 'PASS' : 'FAIL'),
+        '',
+        '=== CANLI RPG DISCORD + VERİTABANI SAĞLIK KONTROLÜ ===',
+        liveRpgHealth.report,
         '',
         '=== KOMUT SÖZLEŞME DENETİMİ ===',
         auditOutput,
@@ -593,7 +602,7 @@ client.on(Events.InteractionCreate, async interaction => {
       const body = '**' + status + '**\n\n**İstenen test:** ' + target.slice(0, 500)
         + '\n**İlgili alan:** ' + targetGroups.join(' • ')
         + '\n\n' + syntaxSummary + '\n' + auditSummary + '\n' + summary
-        + '\n' + targetedSummary
+        + '\n' + liveRpgSummary + '\n' + targetedSummary
         + (diagnosticSummary ? '\n' + diagnosticSummary : '\nHedefli test tanılamaları rapor dosyasında bulunur.')
         + '\n\nKapsam notu: Genel paket ile hedefli testler ayrı raporlanır. Hedefli paket yalnızca kapsadığı senaryoları doğrular; canlı Discord etkileşimlerini tek başına kanıtlamaz.'
         + '\nDiscord üzerinde her komutun canlı etkileşimini bu paket tek başına kanıtlamaz.'
