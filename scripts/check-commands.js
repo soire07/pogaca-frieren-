@@ -51,6 +51,13 @@ for (const filePath of files) {
   }
 }
 
+// Poğaça Frieren is an entertainment/RPG bot, not a moderation bot.
+const forbiddenCommands = new Set(['ban', 'kick', 'timeout', 'uyar', 'temizle', 'kurulum']);
+const forbiddenPresent = names.filter(name => forbiddenCommands.has(name));
+if (forbiddenPresent.length) {
+  errors.push('Yasaklı moderasyon/yönetim komutları yeniden eklenmiş: ' + [...new Set(forbiddenPresent)].map(name => '/' + name).join(', '));
+}
+
 const duplicates = names.filter((name, index) => names.indexOf(name) !== index);
 if (duplicates.length) errors.push('Tekrarlanan komut adları: ' + [...new Set(duplicates)].join(', '));
 if (errors.length) {
