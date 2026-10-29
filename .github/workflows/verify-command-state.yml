@@ -1,0 +1,53 @@
+name: Verify Discord command state without writes
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/verify-command-state.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read command state from Discord
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          GUILD_IDS: "1539562273197260860,1564945192803639356"
+        run: |
+          node --input-type=module <<'NODE'
+          const token = process.env.DISCORD_TOKEN;
+          const clientId = process.env.CLIENT_ID;
+          const guildIds = process.env.GUILD_IDS.split(',').map(value => value.trim()).filter(Boolean);
+          if (!token || !clientId) throw new Error('Required Discord secrets are missing.');
+          async function inspect(route, label) {
+            const response = await fetch('https://discord.com/api/v10' + route, {
+              headers: { authorization: 'Bot ' + token, 'user-agent': 'DiscordBot (https://github.com/soire07/pogaca-frieren-, 1.0.0)' },
+              signal: AbortSignal.timeout(15000)
+            });
+            const text = await response.text();
+            let data = null;
+            try { data = text ? JSON.parse(text) : null; } catch { data = { message: text.slice(0, 200) }; }
+            console.log(JSON.stringify({
+              check: label, status: response.status,
+              commandCount: Array.isArray(data) ? data.length : undefined,
+              hasRehber: Array.isArray(data) ? data.some(command => command.name === 'rehber') : undefined,
+              commandNames: Array.isArray(data) ? data.map(command => command.name).sort() : undefined,
+              message: response.ok ? undefined : data?.message,
+              code: response.ok ? undefined : data?.code
+            }));
+            if (!response.ok) throw new Error(label + ' failed with HTTP ' + response.status);
+            return data;
+          }
+          const app = await inspect('/oauth2/applications/@me', 'token application identity');
+          if (String(app.id) !== String(clientId)) throw new Error('CLIENT_ID does not match token application.');
+          for (const guildId of guildIds) {
+            await inspect('/applications/' + clientId + '/guilds/' + guildId + '/commands', 'guild commands …' + guildId.slice(-4));
+          }
+          await inspect('/applications/' + clientId + '/commands', 'global commands');
+          NODE
