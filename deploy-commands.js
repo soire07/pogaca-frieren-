@@ -66,7 +66,7 @@ console.log(`Kaydedilmeye hazır ${commands.length} komut doğrulandı.`);
 // Use explicit fetch timeouts so a stalled Discord REST request cannot hang CI for minutes.
 async function discordRequest(route, { method = 'GET', body } = {}) {
   const url = `https://discord.com/api/v10${route}`;
-  const attempts = 3;
+  const attempts = 5;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     let response;
     try {
@@ -114,7 +114,7 @@ async function discordRequest(route, { method = 'GET', body } = {}) {
     }
     // Discord's bucket limits can require waits longer than a few seconds.
     // Respect the server-provided retry_after instead of retrying too early.
-    const waitMs = Math.max(500, Math.ceil((Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : attempt) * 1000));
+    const waitMs = Math.max(1500, Math.ceil((Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : attempt) * 1000) + 2500);
     if (waitMs > 15 * 60 * 1000) {
       const error = new Error(`Discord requested a retry delay of ${Math.ceil(waitMs / 1000)} seconds; refusing an unexpectedly long CI wait.`);
       error.status = response.status;
