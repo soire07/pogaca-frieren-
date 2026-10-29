@@ -10,7 +10,7 @@ import { pool, ensureUser } from './database/db.js';
 import { getBossArtUrl } from './boss-art.js';
 import { recordJournalEntry } from './gameplay-journal.js';
 import { equipmentItems, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
-import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, applyEquipmentSetBonus, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening } from './rpg-mechanics.js';
+import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, applyEquipmentSetBonus, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening, restoreResourceRatio } from './rpg-mechanics.js';
 
 const PLAYER_MAX_HP = 100;
 const COOLDOWN_MS = 30 * 60 * 1000;
@@ -127,8 +127,8 @@ export default {
     let playerHp = Math.min(playerMaxHp, Math.round((Number(stats.hp) / Math.max(1, Number(stats.max_hp))) * playerMaxHp));
     let playerMana = Math.min(playerMaxMana, Math.round((Number(stats.mana) / Math.max(1, Number(stats.max_mana))) * playerMaxMana));
     // Combat HP and mana are scaled by gear/build; persist each value as a base-stat ratio.
-    const toPersistentHp = hp => Math.max(0, Math.min(Number(stats.max_hp), Math.round((hp / Math.max(1, playerMaxHp)) * Number(stats.max_hp))));
-    const toPersistentMana = mana => Math.max(0, Math.min(Number(stats.max_mana), Math.round((mana / Math.max(1, playerMaxMana)) * Number(stats.max_mana))));
+    const toPersistentHp = hp => restoreResourceRatio(hp, playerMaxHp, stats.max_hp);
+    const toPersistentMana = mana => restoreResourceRatio(mana, playerMaxMana, stats.max_mana);
     const gearSummary = [
       equippedItems.length
         ? equippedItems.map(item => item.name + ' (' + formatEquipmentBonus(item) + ')').join('\n')

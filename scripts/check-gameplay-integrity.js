@@ -94,23 +94,27 @@ test('player profile displays selected combat build and build-adjusted stats', a
 });
 
 
-test('party combat applies class discounts and healing passives and converts scaled HP back to persistent base HP', async () => {
+test('party combat applies class discounts/healing and uses shared HP/mana persistence conversion', async () => {
   const dungeon = await read('katlizindan.js');
   const raid = await read('ortakboss.js');
   for (const [name, source] of [['dungeon', dungeon], ['raid', raid]]) {
     assert.match(source, /applyClassManaCost\(10, (?:p|f)\.class_name|applyClassManaCost\(10, f\.className\)/);
     assert.match(source, /applyClassManaCost\(18, (?:p|f)\.class_name|applyClassManaCost\(18, f\.className\)/);
     assert.match(source, /applyClassHealing\(26, (?:p|f)\.class_name|applyClassHealing\(26, f\.className\)/);
-    assert.match(source, /hp \/ combatMaxHp/);
-    assert.match(source, /Math\.min\(baseMaxHp, Math\.round\(\(hp \/ combatMaxHp\) \* baseMaxHp\)\)/);
+    assert.match(source, /restoreResourceRatio/);
+    assert.match(source, /persistedHpNow/);
+    assert.match(source, /persistedManaNow/);
+    assert.match(source, /restoreResourceRatio\(/, name + ': persistent resource conversion helper used');
   }
 });
 
 
-test('solo demon battle persists build-adjusted HP as a base-stat health ratio', async () => {
+test('solo demon battle persists HP and mana using the shared base-stat ratio helper', async () => {
   const source = await read('iblisavasi.js');
-  assert.match(source, /const toPersistentHp = hp => Math\.max\(0, Math\.min\(Number\(stats\.max_hp\), Math\.round\(\(hp \/ Math\.max\(1, playerMaxHp\)\) \* Number\(stats\.max_hp\)\)\)\)/);
+  assert.match(source, /const toPersistentHp = hp => restoreResourceRatio\(hp, playerMaxHp, stats\.max_hp\)/);
+  assert.match(source, /const toPersistentMana = mana => restoreResourceRatio\(mana, playerMaxMana, stats\.max_mana\)/);
   assert.equal((source.match(/toPersistentHp\(playerHp\)/g) || []).length, 2);
+  assert.equal((source.match(/toPersistentMana\(playerMana\)/g) || []).length, 2);
 });
 
 
@@ -290,4 +294,45 @@ test('item use persists base HP and mana without permanently adding temporary eq
   assert.doesNotMatch(source, /max_hp \+ \$7 \+ \$11/);
   assert.match(source, /Math\.min\(1, Number\(user\.hp\) \/ Math\.max\(1, Number\(user\.max_hp\)\)\)/);
   assert.match(source, /Math\.min\(1, Number\(user\.mana\) \/ Math\.max\(1, Number\(user\.max_mana\)\)\)/);
+});
+
+
+test('item-use SQL bind count exactly matches its highest placeholder', async () => {
+  const source = await read('esyakullan.js');
+  const start = source.indexOf('const updated = await db.query(');
+  assert.ok(start >= 0, 'item-use UPDATE query missing');
+  const end = source.indexOf('\n      );', start);
+  assert.ok(end > start, 'item-use SQL query closing not found');
+  const call = source.slice(start, end);
+  const placeholders = [...call.matchAll(/\$(\d+)/g)].map(match => Number(match[1]));
+  assert.ok(placeholders.length > 0, 'SQL placeholders missing');
+  const maxPlaceholder = Math.max(...placeholders);
+  const valuesMatch = call.match(/,\s*\[([\s\S]*?)\]\s*$/);
+  assert.ok(valuesMatch, 'item-use SQL parameter array missing');
+  const parameterCount = valuesMatch[1].split(',').length;
+  assert.equal(parameterCount, maxPlaceholder, 'PostgreSQL bind values must match the highest placeholder');
+});
+
+test('equipment equip and unequip are user-scoped transactions and never permanently add gear stats', async () => {
+  const source = await read('ekipman.js');
+  const unequipAction = source.indexOf("if (action === 'unequip')");
+  const unequipBegin = source.indexOf("await db.query('BEGIN')", unequipAction);
+  const unequipDelete = source.indexOf('DELETE FROM user_equipment', unequipBegin);
+  const unequipClamp = source.indexOf('UPDATE users SET hp=LEAST(hp,$3), mana=LEAST(mana,$4)', unequipDelete);
+  const unequipCommit = source.indexOf("await db.query('COMMIT')", unequipClamp);
+  assert.ok(unequipAction >= 0 && unequipBegin > unequipAction && unequipDelete > unequipBegin && unequipClamp > unequipDelete && unequipCommit > unequipClamp,
+    'unequip must remove gear, clamp resources and commit transactionally');
+
+  const equipItem = source.indexOf("const item = equipmentItems.find");
+  const equipBegin = source.indexOf("await db.query('BEGIN')", equipItem);
+  const equipInsert = source.indexOf('INSERT INTO user_equipment', equipBegin);
+  const equipClamp = source.indexOf('UPDATE users SET hp=LEAST(hp,$3), mana=LEAST(mana,$4)', equipInsert);
+  const equipCommit = source.indexOf("await db.query('COMMIT')", equipClamp);
+  assert.ok(equipItem >= 0 && equipBegin > equipItem && equipInsert > equipBegin && equipClamp > equipInsert && equipCommit > equipClamp,
+    'equip must write gear, clamp resources and commit transactionally');
+  assert.equal((source.match(/WHERE guild_id=\$1 AND user_id=\$2/g) || []).length >= 4, true,
+    'equipment reads and writes must be scoped to guild/user');
+  assert.match(source, /SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=\$1 AND user_id=\$2 FOR UPDATE/);
+  assert.doesNotMatch(source, /UPDATE users SET[^;]*(?:max_hp|max_mana)\s*=/,
+    'equipping gear must not persist temporary max HP/mana bonuses to base stats');
 });

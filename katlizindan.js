@@ -4,7 +4,7 @@ import { getBossArtUrl } from './boss-art.js';
 import { recordJournalEntry } from './gameplay-journal.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus } from './rpg-mechanics.js';
+import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio } from './rpg-mechanics.js';
 
 const FLOORS = 5;
 
@@ -440,15 +440,8 @@ export default {
           : floorsCleared >= 1
             ? '💎 Mana Kristali'
             : null;
-      const persistedHpNow = hpNow.map((hp, i) => {
-        const combatMaxHp = Math.max(1, Number(players[i].maxHp));
-        const baseMaxHp = Math.max(1, Number(players[i].max_hp));
-        return Math.max(0, Math.min(baseMaxHp, Math.round((hp / combatMaxHp) * baseMaxHp)));
-      });
-      const persistedManaNow = players.map(p => Math.max(0, Math.min(
-        Math.max(1, Number(p.max_mana)),
-        Math.round((Number(p.mana) / Math.max(1, Number(p.maxMana))) * Math.max(1, Number(p.max_mana)))
-      )));
+      const persistedHpNow = hpNow.map((hp, i) => restoreResourceRatio(hp, players[i].maxHp, players[i].max_hp));
+      const persistedManaNow = players.map(p => restoreResourceRatio(p.mana, p.maxMana, p.max_mana));
       for (const [userId, casts] of spellCasts) {
         const mastery = await db.query(
           `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
