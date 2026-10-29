@@ -291,30 +291,6 @@
       "status": "implemented_needs_runtime_test"
     },
     {
-      "id": "MOD-001",
-      "name": "Moderation warning command",
-      "category": "Moderation",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "MOD-004",
-      "name": "Moderation case logging",
-      "category": "Moderation",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "SRV-001",
-      "name": "Guild welcome message settings",
-      "category": "Server",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "SRV-002",
-      "name": "Configurable moderation log channel",
-      "category": "Server",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
       "id": "SRV-003",
       "name": "Bot/server statistics",
       "category": "Server",

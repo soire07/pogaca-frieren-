@@ -28,10 +28,6 @@ const sections = [
   {
     name: '🥐 Eğlence ve topluluk',
     value: '**/animequiz** — Anime bilgi yarışması · **/pogaca** — Poğaça molası · **/sans** — Şansını dene\n**/saril** — Bir oyuncuya sarıl · **/mimic** — Mimic şakası · **/istatistik** — Bot istatistikleri'
-  },
-  {
-    name: '🛡️ Sunucu yönetimi',
-    value: '**/kurulum** — Sunucu karşılama ve log ayarları · **/uyar** — Uyarı ver\n**/timeout** — Geçici iletişim kısıtlaması · **/ban** — Sunucudan uzaklaştır · **/temizle** — Mesajları temizle\nBu komutlar için uygun sunucu izinleri gerekebilir.'
   }
 ];
 
