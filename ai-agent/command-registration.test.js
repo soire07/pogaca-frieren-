@@ -21,3 +21,13 @@ test('manual registration includes every diagnostic slash command handled by run
     assert.match(manual, new RegExp(`setName\\(['"]${name}['"]\\)`), `manual registration is missing /${name}`);
   }
 });
+
+
+test('runtime and manual registration are pinned to the test guild, never global commands', () => {
+  assert.match(runtime, /FRIEREN_AI_TEST_GUILD_ID/);
+  assert.match(manual, /FRIEREN_AI_TEST_GUILD_ID/);
+  assert.doesNotMatch(runtime, /Routes\\.applicationCommands\\(/);
+  assert.doesNotMatch(manual, /Routes\\.applicationCommands\\(/);
+  assert.match(runtime, /getFrierenAiCommandRoute/);
+  assert.match(manual, /getFrierenAiCommandRoute/);
+});
