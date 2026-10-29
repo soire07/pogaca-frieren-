@@ -420,7 +420,7 @@ function runTargetedTests(target) {
       const text = chunk.toString();
       selectionScanBuffer = (selectionScanBuffer + text).slice(-2000);
       if (!selectionNotice) {
-        const match = selectionScanBuffer.match(/SEÇİLEN TEST DOSYALARI:[^\\r\\n]*/);
+        const match = selectionScanBuffer.match(/SEÇİLEN TEST DOSYALARI:[^\r\n]*/);
         if (match) selectionNotice = match[0];
       }
       stdout = (stdout + text).slice(-10000);
