@@ -9,7 +9,7 @@ function sampleValue(option) {
     case 3: return option.choices?.[0]?.value ?? 'test';
     case 4: return option.min_value ?? 1;
     case 5: return true;
-    case 6: return { id: '900000000000000001', username: 'FrierenTest', tag: 'FrierenTest#0001', bot: false, toString() { return '<@900000000000000001>'; } };
+    case 6: return { id: '900000000000000001', username: 'FrierenTest', tag: 'FrierenTest#0001', bot: false, displayAvatarURL() { return 'https://example.com/test-avatar.png'; }, toString() { return '<@900000000000000001>'; } };
     case 7: return fakeChannel();
     case 8: return { id: '900000000000000002', name: 'test-role', members: new Map(), toString() { return '<@&900000000000000002>'; } };
     case 9: return { id: '900000000000000003', username: 'FrierenTest', toString() { return '<@900000000000000003>'; } };
@@ -77,14 +77,14 @@ function makeMember(id) {
   const roles = { cache: new Map(), add: async () => {}, remove: async () => {} };
   return {
     id, user: { id, username: 'FrierenTest', tag: 'FrierenTest#0001', bot: false, toString() { return '<@' + id + '>'; } },
-    displayName: 'FrierenTest', nickname: null, roles, permissions: { has: () => true },
+    displayName: 'FrierenTest', nickname: null, displayAvatarURL: () => 'https://example.com/test-avatar.png', roles, permissions: { has: () => true },
     ban: async () => ({ simulated: true }), kick: async () => ({ simulated: true }),
     timeout: async () => ({ simulated: true }), setNickname: async () => ({ simulated: true }),
     communicationDisabledUntilTimestamp: null, toString() { return '<@' + id + '>'; }
   };
 }
 function makeInteraction(command, options, guildId, effects) {
-  const user = { id: '900000000000000001', username: 'FrierenTest', tag: 'FrierenTest#0001', bot: false, displayAvatarURL: () => '', toString() { return '<@' + this.id + '>'; } };
+  const user = { id: '900000000000000001', username: 'FrierenTest', tag: 'FrierenTest#0001', bot: false, displayAvatarURL: () => 'https://example.com/test-avatar.png', toString() { return '<@' + this.id + '>'; } };
   const member = makeMember(user.id);
   const channel = fakeChannel();
   const guild = {
