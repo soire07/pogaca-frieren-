@@ -1,0 +1,27 @@
+name: Cancel stale Discord command registration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cancel-stale-command-registration.yml"
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cancel-stale-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Cancel the obsolete registration run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: |
+          gh run cancel 40852722229 --repo "$GH_REPOSITORY" || {
+            echo "The stale run may already have stopped; checking its state."
+            gh run view 40852722229 --repo "$GH_REPOSITORY"
+          }
+          gh run view 40852722229 --repo "$GH_REPOSITORY" --json status,conclusion
