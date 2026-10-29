@@ -786,8 +786,8 @@ test('slash command deployment uses bounded Discord rate-limit retries and prese
   assert.ok(deploy.includes('process.env.GUILD_IDS'), 'deployment must support explicit multiple guild targets');
   assert.ok(deploy.includes('await discordRequest(Routes.guild(guildId))'), 'each target must be verified before changing command lists');
   assert.ok(workflow.includes("GUILD_IDS: '1539562273197260860'"), 'production guild must receive the full command set alone');
-  assert.ok(workflow.includes("TEST_GUILD_ID: '1564945192803639356'"), 'test guild must be configured separately');
-  assert.ok(workflow.includes("TEST_COMMAND_NAMES: 'status,yardim,rehber,karakter'"), 'test guild must receive an explicit four-command allowlist');
+  assert.ok(!workflow.includes('TEST_GUILD_ID:'), 'Poğaça registration must not write commands to the Frieren AI test guild');
+  assert.ok(!workflow.includes('TEST_COMMAND_NAMES:'), 'the Poğaça workflow must not use unrelated Frieren AI command names');
   assert.ok(deploy.includes('process.env.TEST_GUILD_ID'), 'test guild must have a separate deployment target');
   assert.ok(deploy.includes('process.env.TEST_COMMAND_NAMES'), 'test command subset must be explicit');
   assert.ok(deploy.includes('global command registration is disabled'), 'missing guild IDs must never fall back to global registration');
