@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { equipmentItems, equipmentBonus } from '../equipment-data.js';
-import { applyEquipmentSetBonus, getLevelScaledQuestReward } from '../rpg-mechanics.js';
+import { applyEquipmentSetBonus, getLevelScaledQuestReward, restoreResourceRatio } from '../rpg-mechanics.js';
 import {
   RAID_BOSSES,
   applyRaidWeakness,
@@ -103,4 +103,17 @@ test('quest reward scaling returns deterministic coins and XP, including the cha
   assert.deepEqual(getLevelScaledQuestReward(-5, -10, 0, false), {
     multiplier: 1, coins: 0, xp: 0, completionBonus: false
   });
+});
+
+
+test('HP and mana persist as base-stat ratios across temporary equipment and combat multipliers', () => {
+  assert.equal(restoreResourceRatio(75, 150, 100), 50, '75/150 combat HP must persist as 50/100 base HP');
+  assert.equal(restoreResourceRatio(45, 75, 100), 60, '45/75 combat mana must persist as 60/100 base mana');
+  assert.equal(restoreResourceRatio(150, 150, 100), 100, 'full temporary HP must not persist above base maximum');
+  assert.equal(restoreResourceRatio(190, 150, 100), 100, 'over-cap HP must be clamped to the base maximum');
+  assert.equal(restoreResourceRatio(-10, 150, 100), 0, 'negative HP must clamp to zero');
+  assert.equal(restoreResourceRatio(0, 150, 100), 0);
+  assert.equal(restoreResourceRatio(1, 0, 100), 100, 'invalid effective maximum uses a safe divisor');
+  assert.equal(restoreResourceRatio(50, 150, 0), 0, 'invalid base maximum must not create persistent resources');
+  assert.equal(restoreResourceRatio(Number.NaN, 150, 100), 0, 'invalid current resource must be rejected');
 });
