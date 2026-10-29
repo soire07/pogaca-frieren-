@@ -176,7 +176,7 @@ async function answerCodeQuestion(question, userId) {
         return { ok: true, message: '🧠 Kalıcı belleğinde henüz kayıtlı bir anı yok. Konuşma geçmişi ile kalıcı bellek ayrı tutulur.' };
       }
       const lines = memories.map((item, index) => `${index + 1}. **${item.memory_key}**: ${item.memory_value}`);
-      return { ok: true, message: '🧠 **Kalıcı belleğinde kayıtlı anılar (tekrarsız liste)**\\n' + lines.join('\\n') };
+      return { ok: true, message: '🧠 **Kalıcı belleğinde kayıtlı anılar (tekrarsız liste)**' + String.fromCharCode(10) + lines.join(String.fromCharCode(10)) };
     } catch (error) {
       console.error('Explicit memory overview failed:', redactSecrets(error.message || 'unknown error'));
       return { ok: false, message: 'Kalıcı bellek kayıtları okunamadı. Veritabanı bağlantısını kontrol etmek gerekiyor.' };
