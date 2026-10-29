@@ -785,5 +785,7 @@ test('slash command deployment uses bounded Discord rate-limit retries and prese
   assert.ok(workflow.includes("GUILD_IDS: '1539562273197260860,1564945192803639356'"), 'production and test guild IDs must be explicit and separate');
   assert.ok(!workflow.includes('GUILD_ID: ${{ secrets.GUILD_ID }}'), 'do not use the ambiguous single GUILD_ID secret');
   assert.ok(!workflow.includes("    - 'scripts/**'"), 'test and helper script commits must not repeatedly re-register Discord commands');
-  assert.ok(workflow.includes("    - '!index.js'") && workflow.includes("    - '!deploy-commands.js'"), 'runtime and registration-helper edits must not trigger redundant command overwrites');
+  assert.ok(workflow.includes("    - 'deploy-commands.js'"), 'registration logic fixes must trigger a live registration attempt');
+  assert.ok(workflow.includes("    - 'scripts/test-discord-scenarios.js'"), 'registration regression test changes must trigger a live registration attempt');
+  assert.ok(workflow.includes("    - '!index.js'"), 'runtime-only edits must not trigger redundant command overwrites');
 });
