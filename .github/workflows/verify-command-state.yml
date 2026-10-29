@@ -1,6 +1,6 @@
 name: Verify Discord command state without writes
 # Read-only verification; this workflow must never create, update, or delete commands.
-# Triggered on 2026-10-29 to verify the live guild/global command counts.
+# Triggered on 2026-10-29 after Discord reported daily command-create limit 30034; read-only audit only.
 
 on:
   push:
