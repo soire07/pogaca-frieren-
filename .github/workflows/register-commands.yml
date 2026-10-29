@@ -1,5 +1,7 @@
 name: Register Discord Commands
 
+# deploy-commands.js bounds 429 retries; this workflow only runs for command changes or workflow edits.
+
 permissions:
   contents: read
   statuses: write
