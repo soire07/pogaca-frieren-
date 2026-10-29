@@ -194,3 +194,45 @@ test('automatic memory extraction ignores questions and sensitive-looking conten
   assert.deepEqual(extractAutomaticMemories('Bugün nasılsın?'), []);
   assert.deepEqual(extractAutomaticMemories('Şifrem 12345, bunu hatırla.'), []);
 });
+
+
+test('automatic memory extraction captures explicit hobby and game preferences', () => {
+  const game = extractAutomaticMemories('Ben Minecraft oynamayı seviyorum.');
+  assert.equal(game.length, 1);
+  assert.equal(game[0].key, 'tercih_oyun');
+  assert.match(game[0].value, /Minecraft/i);
+
+  const hobby = extractAutomaticMemories('Hobim dijital çizim yapmak.');
+  assert.equal(hobby.length, 1);
+  assert.equal(hobby[0].key, 'hobi');
+  assert.match(hobby[0].value, /dijital çizim/i);
+});
+
+test('automatic memory extraction captures a clearly stated ongoing project and goal', () => {
+  const project = extractAutomaticMemories('Şu sıralar Frieren AI üzerinde çalışıyorum.');
+  assert.equal(project.length, 1);
+  assert.equal(project[0].key, 'proje_frieren_ai');
+  assert.match(project[0].value, /Frieren AI/i);
+
+  const goal = extractAutomaticMemories('Hedefim Discord botumu geliştirmek.');
+  assert.equal(goal.length, 1);
+  assert.equal(goal[0].key, 'hedef');
+  assert.match(goal[0].value, /Discord botumu geliştirmek/i);
+});
+
+test('automatic memory extraction blocks sensitive terms with Turkish suffixes', () => {
+  for (const message of [
+    'Şifrem 12345, bunu hatırla.',
+    'API key değerim abc123456789.',
+    'Ev adresim İstanbul merkezde.',
+    'Hastalığım hakkında kayıt tut.',
+    'Telefon numaram 5551234567.'
+  ]) {
+    assert.deepEqual(extractAutomaticMemories(message), [], message);
+  }
+});
+
+test('automatic memory extraction does not invent facts from casual mentions', () => {
+  assert.deepEqual(extractAutomaticMemories('Bugün kaplumbağa gördüm.'), []);
+  assert.deepEqual(extractAutomaticMemories('Minecraft çok popüler bir oyun.'), []);
+});
