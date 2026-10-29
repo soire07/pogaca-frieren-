@@ -112,37 +112,52 @@ async function publishCommitStatus(state, description) {
   }
 }
 
-const configuredGuildId = process.env.GUILD_ID?.trim();
-let targetDescription = configuredGuildId
-  ? 'Discord command target: guild ID ending ' + configuredGuildId.slice(-4) + ' (resolving server name)'
-  : 'Discord command target: GLOBAL (GUILD_ID is missing or empty)';
+const configuredGuildIds = [...new Set(
+  (process.env.GUILD_IDS?.trim() || process.env.GUILD_ID?.trim() || '')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean)
+)];
+let targetDescription = configuredGuildIds.length
+  ? 'Discord command targets: ' + configuredGuildIds.map(id => '…' + id.slice(-4)).join(', ') + ' (resolving server names)'
+  : 'Discord command target: GLOBAL (GUILD_ID/GUILD_IDS missing or empty)';
 
 try {
   console.log(targetDescription);
   await publishCommitStatus('pending', targetDescription);
   console.log(`Discord command sync starting: ${commands.length} commands.`);
 
-  if (configuredGuildId) {
-    // Verify that this bot can resolve the target guild before changing any command list.
-    const targetGuild = await rest.get(Routes.guild(configuredGuildId));
-    if (String(targetGuild?.id) !== configuredGuildId || typeof targetGuild?.name !== 'string') {
-      throw new Error('Configured GUILD_ID did not resolve to the expected Discord guild.');
+  if (configuredGuildIds.length) {
+    // Resolve every target before any command list is changed. This makes the target IDs auditable
+    // and prevents a mistyped/missing guild from causing a partial command deployment.
+    const targetGuilds = [];
+    for (const guildId of configuredGuildIds) {
+      const guild = await rest.get(Routes.guild(guildId));
+      if (String(guild?.id) !== guildId || typeof guild?.name !== 'string') {
+        throw new Error('A configured guild ID did not resolve to the expected Discord guild.');
+      }
+      targetGuilds.push({ id: guild.id, name: guild.name });
     }
-    targetDescription = `Discord command target: ${targetGuild.name} (ID ending ${configuredGuildId.slice(-4)})`;
+
+    targetDescription = 'Discord command targets: ' + targetGuilds
+      .map(guild => `${guild.name} (ID …${guild.id.slice(-4)})`)
+      .join('; ');
     console.log(targetDescription);
     await publishCommitStatus('pending', targetDescription);
 
-    // Register the target guild first; if it fails, preserve existing global commands.
-    await putWithDiagnostics(
-      Routes.applicationGuildCommands(clientId, configuredGuildId),
-      commands,
-      'target guild registration'
-    );
-    console.log(`${commands.length} commands registered in target guild.`);
+    // Register all configured guilds first; if any registration fails, preserve global commands.
+    for (const guild of targetGuilds) {
+      await putWithDiagnostics(
+        Routes.applicationGuildCommands(clientId, guild.id),
+        commands,
+        'guild registration: ' + guild.name
+      );
+      console.log(`${commands.length} commands registered in ${guild.name} (ID ending ${guild.id.slice(-4)}).`);
+    }
 
-    // Clear legacy global duplicates only after target registration has succeeded.
+    // Clear legacy global duplicates only after every configured target was updated successfully.
     await putWithDiagnostics(Routes.applicationCommands(clientId), [], 'clear legacy global commands');
-    console.log('Legacy global command registrations cleared.');
+    console.log('Legacy global command registrations cleared after every target guild succeeded.');
   } else {
     await putWithDiagnostics(
       Routes.applicationCommands(clientId),
