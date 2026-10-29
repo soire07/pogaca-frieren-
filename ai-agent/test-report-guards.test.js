@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
+import { countNodeTests, hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
 
 test('recognizes Turkish and English memory privacy targets', () => {
   assert.equal(isMemoryPrivacyTarget('memory privacy'), true);
@@ -30,7 +30,7 @@ test('does not require live memory proof for unrelated targets', () => {
 test('formats live memory proof as a real new line, not a literal backslash-n', () => {
   const suffix = liveMemoryPrivacySummarySuffix(true);
   assert.equal(suffix.startsWith('\n'), true);
-  assert.equal(suffix.includes('\\n'), false);
+  assert.equal(suffix.includes('\n'), false);
   assert.match(suffix, /Canlı PostgreSQL bellek gizliliği: BAŞARILI/);
 });
 
@@ -39,11 +39,9 @@ test('omits the live memory suffix for unrelated test targets', () => {
 });
 
 
-import { countNodeTests } from './test-report-guards.js';
-
 test('counts real node:test summary totals and rejects selected-file banners without test totals', () => {
   assert.equal(countNodeTests('SEÇİLEN TEST DOSYALARI: scripts/test-boss-combat.js'), 0);
-  assert.equal(countNodeTests('ℹ tests 22\\nℹ pass 22\\nℹ fail 0'), 22);
-  assert.equal(countNodeTests('ℹ tests 3\\nℹ tests 4'), 7);
+  assert.equal(countNodeTests('ℹ tests 22\nℹ pass 22\nℹ fail 0'), 22);
+  assert.equal(countNodeTests('ℹ tests 3\nℹ tests 4'), 7);
   assert.equal(countNodeTests(''), 0);
 });
