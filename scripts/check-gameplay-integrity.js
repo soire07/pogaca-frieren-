@@ -346,3 +346,14 @@ test('interaction dispatch catches component-handler and database-acquisition fa
   assert.ok(source.includes('let db;\n    try {\n      db = await pool.connect()'));
   assert.ok(source.includes('finally { db?.release(); }'));
 });
+
+
+test('runtime startup does not clear or race slash-command registration', async () => {
+  const source = await read('index.js');
+  assert.ok(source.includes('Slash komutları yalnızca deploy-commands.js / GitHub Actions tarafından kaydedilir.'));
+  assert.doesNotMatch(source, /guild\\.commands\\.set\\(\\[\\]\\)/);
+  assert.doesNotMatch(source, /application\\.commands\\.set\\(/);
+  const deploy = await read('deploy-commands.js');
+  assert.match(deploy, /Routes\\.applicationGuildCommands/);
+  assert.match(deploy, /Routes\\.applicationCommands/);
+});

@@ -82,29 +82,9 @@ async function sendPrivateInteractionError(interaction, content) {
 }
 
 client.once(Events.ClientReady, async readyClient => {
-  try {
-    const slashCommands = [...client.commands.values()].map(command =>
-      typeof command.data?.toJSON === 'function' ? command.data.toJSON() : command.data
-    );
-
-    // Eski sunucu kapsamlı komutlar global komutlarla aynı adları taşıyıp iki kez görünebilir.
-    // Botun bulunduğu sunuculardaki eski kayıtları temizlemeden yeni kayıtları yayımlama.
-    const guilds = [...readyClient.guilds.cache.values()];
-    for (const guild of guilds) {
-      await guild.commands.set([]);
-    }
-
-    if (process.env.GUILD_ID) {
-      await readyClient.application.commands.set([]);
-      await readyClient.application.commands.set(slashCommands, process.env.GUILD_ID);
-      console.log(`${slashCommands.length} slash komutu hedef sunucuya eşitlendi; ${guilds.length} sunucudaki eski kayıtlar ve global kayıtlar temizlendi.`);
-    } else {
-      await readyClient.application.commands.set(slashCommands);
-      console.log(`${slashCommands.length} slash komutu global olarak eşitlendi; ${guilds.length} sunucudaki eski kayıtlar temizlendi.`);
-    }
-  } catch (error) {
-    console.error('Slash komutları otomatik eşitlenemedi:', error);
-  }
+  // Slash komutları yalnızca deploy-commands.js / GitHub Actions tarafından kaydedilir.
+  // Bot her yeniden başladığında komut listesini temizlemek, diğer sunuculardaki komutları
+  // silebilir ve aynı anda çalışan kayıt iş akışıyla yarışabilir.
   console.log(`Poğaça Frieren aktif: ${readyClient.user.tag}`);
   const activities = [
     'bin yıllık büyüler öğreniyor ✨',
