@@ -3,7 +3,7 @@ import OpenAI from 'openai';
 import { resolveAiModel } from './config.js';
 import { findRelevantExcerpt, scoreCodeCandidate } from './code-context.js';
 import { createMemoryStore } from './memory-store.js';
-import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
+import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, isTargetedTestFailure, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
 import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
 import { checkLiveRpgHealth } from './live-rpg-health.js';
 import { readFile, readdir } from 'node:fs/promises';
@@ -395,18 +395,18 @@ function runTargetedTests(target) {
       settled = true;
       clearTimeout(timer);
       const directNotice = directSuiteNotice
-        ? directSuiteNotice + '\\n'
+        ? directSuiteNotice + '\n'
         : isCommandInteractionCoverage
-          ? 'SEÇİLEN TEST DOSYALARI: scripts/test-command-interaction-coverage.js (doğrudan çalıştırıldı)\\n'
+          ? 'SEÇİLEN TEST DOSYALARI: scripts/test-command-interaction-coverage.js (doğrudan çalıştırıldı)\n'
           : '';
       const safeStdout = redactSecrets(stdout);
       const safeStderr = redactSecrets(stderr + error);
       // Keep the selection header even when verbose test output pushes it out of the retained output tail.
       const matcherNotice = selectionNotice && !safeStdout.includes('SEÇİLEN TEST DOSYALARI:')
-        ? selectionNotice + '\\n'
+        ? selectionNotice + '\n'
         : '';
       const diagnosticOutput = isCommandInteractionCoverage && safeStderr.trim()
-        ? '\\n=== HEDEFLİ TEST TANILAMALARI ===\\n' + safeStderr.trim()
+        ? '\n=== HEDEFLİ TEST TANILAMALARI ===\n' + safeStderr.trim()
         : '';
       resolve({
         applicable: true,
@@ -654,7 +654,7 @@ client.on(Events.InteractionCreate, async interaction => {
       const liveMemoryProofPassed = hasLiveMemoryPrivacyProof(target, targetedOutput);
       const targetedPassed = targeted.code === 0 && targetedHasTests && liveMemoryProofPassed;
       const liveRpgPassed = liveRpgHealth.ok;
-      const status = result.timedOut ? 'TEST ZAMAN AŞIMI' : !auditPassed || !testsPassed || !syntaxPassed || !liveRpgPassed || (targetedHasTests && !targetedPassed) || (memoryPrivacyTarget && !liveMemoryProofPassed) ? 'DENETİM BAŞARISIZ' : !targetedHasTests ? 'HEDEFE ÖZEL KAPSAM EKSİK' : 'TÜM OTOMATİK DENETİMLER BAŞARILI';
+      const status = result.timedOut ? 'TEST ZAMAN AŞIMI' : !auditPassed || !testsPassed || !syntaxPassed || !liveRpgPassed || isTargetedTestFailure(targeted) || (targetedHasTests && !targetedPassed) || (memoryPrivacyTarget && !liveMemoryProofPassed) ? 'DENETİM BAŞARISIZ' : !targetedHasTests ? 'HEDEFE ÖZEL KAPSAM EKSİK' : 'TÜM OTOMATİK DENETİMLER BAŞARILI';
       const summary = buildLocalTestSummary(result);
       const targetedSummary = targeted.applicable
         ? (memoryPrivacyTarget && !liveMemoryProofPassed
