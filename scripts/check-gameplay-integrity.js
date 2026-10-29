@@ -94,23 +94,28 @@ test('player profile displays selected combat build and build-adjusted stats', a
 });
 
 
-test('party combat applies class discounts and healing passives and converts scaled HP back to persistent base HP', async () => {
+test('party combat applies class discounts/healing and uses shared HP/mana persistence conversion', async () => {
   const dungeon = await read('katlizindan.js');
   const raid = await read('ortakboss.js');
   for (const [name, source] of [['dungeon', dungeon], ['raid', raid]]) {
     assert.match(source, /applyClassManaCost\(10, (?:p|f)\.class_name|applyClassManaCost\(10, f\.className\)/);
     assert.match(source, /applyClassManaCost\(18, (?:p|f)\.class_name|applyClassManaCost\(18, f\.className\)/);
     assert.match(source, /applyClassHealing\(26, (?:p|f)\.class_name|applyClassHealing\(26, f\.className\)/);
-    assert.match(source, /hp \/ combatMaxHp/);
-    assert.match(source, /Math\.min\(baseMaxHp, Math\.round\(\(hp \/ combatMaxHp\) \* baseMaxHp\)\)/);
+    assert.match(source, /restoreResourceRatio/);
+    assert.match(source, /persistedHpNow/);
+    assert.match(source, /persistedManaNow/);
+    assert.match(source, /restoreResourceRatio\((?:hp, players\[i\]\.maxHp, players\[i\]\.max_hp|hp, fighters\[i\]\.maxHp, fighters\[i\]\.baseMaxHp)\)/, name + ': HP persistence uses effective-to-base conversion');
   }
 });
 
 
-test('solo demon battle persists build-adjusted HP as a base-stat health ratio', async () => {
+test('solo demon battle uses the shared base-resource persistence helper', async () => {
   const source = await read('iblisavasi.js');
-  assert.match(source, /const toPersistentHp = hp => Math\.max\(0, Math\.min\(Number\(stats\.max_hp\), Math\.round\(\(hp \/ Math\.max\(1, playerMaxHp\)\) \* Number\(stats\.max_hp\)\)\)\)/);
+  assert.match(source, /restoreResourceRatio/);
+  assert.match(source, /const toPersistentHp = hp => restoreResourceRatio\(hp, playerMaxHp, stats\.max_hp\)/);
+  assert.match(source, /const toPersistentMana = mana => restoreResourceRatio\(mana, playerMaxMana, stats\.max_mana\)/);
   assert.equal((source.match(/toPersistentHp\(playerHp\)/g) || []).length, 2);
+  assert.equal((source.match(/toPersistentMana\(playerMana\)/g) || []).length, 2);
 });
 
 
@@ -343,17 +348,13 @@ test('solo and cooperative combat persist HP/mana against base stats, not tempor
   const solo = await read('iblisavasi.js');
   const dungeon = await read('katlizindan.js');
   const raid = await read('ortakboss.js');
-  assert.match(solo, /const toPersistentHp = hp => Math\.max\(0, Math\.min\(Number\(stats\.max_hp\), Math\.round\(\(hp \/ Math\.max\(1, playerMaxHp\)\) \* Number\(stats\.max_hp\)\)\)\)/);
-  assert.match(solo, /toPersistentMana\(playerMana\)/);
+  assert.match(solo, /const toPersistentHp = hp => restoreResourceRatio\(hp, playerMaxHp, stats\.max_hp\)/);
+  assert.match(solo, /const toPersistentMana = mana => restoreResourceRatio\(mana, playerMaxMana, stats\.max_mana\)/);
   for (const [name, source] of [['dungeon', dungeon], ['raid', raid]]) {
-    assert.match(source, /const baseMaxHp = Math\.max\(1, Number\(/, name + ': base max HP captured');
-    assert.match(source, /Math\.min\(baseMaxHp, Math\.round\(\(hp \/ combatMaxHp\) \* baseMaxHp\)\)/, name + ': combat HP converted back to base scale');
-    assert.match(source, /persistedManaNow/, name + ': mana is persisted separately');
-    assert.ok(
-      source.includes('Math.round((Number(p.mana) / Math.max(1, Number(p.maxMana))) * Math.max(1, Number(p.max_mana)))') ||
-      source.includes('Math.round((Number(f.mana)/Math.max(1,Number(f.maxMana)))*Math.max(1,Number(f.baseMaxMana)))'),
-      name + ': combat mana converted back to base scale'
-    );
+    assert.match(source, /restoreResourceRatio/ , name + ': shared persistence helper imported');
+    assert.match(source, /persistedHpNow/, name + ': HP is persisted');
+    assert.match(source, /persistedManaNow/, name + ': mana is persisted');
+    assert.match(source, /restoreResourceRatio\(/, name + ': effective resources are converted to base scale');
   }
 });
 
