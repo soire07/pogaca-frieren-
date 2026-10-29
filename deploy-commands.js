@@ -232,8 +232,8 @@ const testCommandNames = [...new Set(
     .map(value => value.trim())
     .filter(Boolean)
 )];
-if (!configuredGuildIds.length) {
-  throw new Error('GUILD_IDS must explicitly contain the production guild ID; global command registration is disabled.');
+if (!configuredGuildIds.length && !testGuildId) {
+  throw new Error('Configure either GUILD_IDS or TEST_GUILD_ID; global command registration is disabled.');
 }
 if (testGuildId && !testCommandNames.length) {
   throw new Error('TEST_GUILD_ID requires an explicit TEST_COMMAND_NAMES allowlist.');
@@ -253,7 +253,9 @@ if (testGuildId) {
     throw new Error('Test command allowlist contains duplicate names.');
   }
 }
-let targetDescription = 'Production guild IDs: ' + configuredGuildIds.map(id => '…' + id.slice(-4)).join(', ');
+let targetDescription = configuredGuildIds.length
+  ? 'Production guild IDs: ' + configuredGuildIds.map(id => '…' + id.slice(-4)).join(', ')
+  : 'Test-only registration; no production guilds configured.';
 if (testGuildId) {
   targetDescription += '; test guild …' + testGuildId.slice(-4) + ' will receive only: '
     + testCommands.map(command => '/' + command.name).join(', ');
