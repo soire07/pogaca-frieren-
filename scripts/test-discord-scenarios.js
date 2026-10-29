@@ -754,3 +754,14 @@ test('character panel and global error replies use MessageFlags for private resp
   assert.doesNotMatch(character, /ephemeral:\s*true/);
   assert.doesNotMatch(handler, /ephemeral:\s*true/);
 });
+
+
+test('slash command deployment times out and preserves existing commands until guild sync succeeds', async () => {
+  const deploy = await read('deploy-commands.js');
+  assert.ok(deploy.includes("timeout: 15_000"));
+  const guildWrite = deploy.indexOf('Routes.applicationGuildCommands');
+  const globalWrite = deploy.indexOf('Routes.applicationCommands');
+  assert.ok(guildWrite >= 0 && globalWrite > guildWrite, 'register guild commands before clearing global duplicates');
+  const workflow = await read('.github/workflows/register-commands.yml');
+  assert.ok(workflow.includes('timeout-minutes: 3'), 'command registration job must not hang indefinitely');
+});

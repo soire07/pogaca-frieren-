@@ -63,16 +63,19 @@ if (duplicates.length) {
 }
 console.log(`Kaydedilmeye hazır ${commands.length} komut doğrulandı.`);
 
-const rest = new REST({ version: '10' }).setToken(token);
+const rest = new REST({ version: '10', timeout: 15_000 }).setToken(token);
+console.log(`Discord komut eşitlemesi başlıyor: ${commands.length} komut.`);
 
 if (process.env.GUILD_ID) {
-  // Global kayıtları boşalt; sunucu komutlarıyla aynı adların iki kez görünmesini önle.
-  await rest.put(Routes.applicationCommands(clientId), { body: [] });
+  // Önce hedef sunucuya komutları kaydet; bu başarısız olursa mevcut global komutları silme.
   await rest.put(
     Routes.applicationGuildCommands(clientId, process.env.GUILD_ID),
     { body: commands }
   );
-  console.log(`${commands.length} komut test sunucusuna kaydedildi; eski global komutlar temizlendi.`);
+  console.log(`${commands.length} komut hedef sunucuya kaydedildi.`);
+  // Yalnızca hedef sunucu kaydı başarılı olduktan sonra eski global kopyaları temizle.
+  await rest.put(Routes.applicationCommands(clientId), { body: [] });
+  console.log('Eski global komut kayıtları temizlendi.');
 } else {
   await rest.put(
     Routes.applicationCommands(clientId),
@@ -80,3 +83,4 @@ if (process.env.GUILD_ID) {
   );
   console.log(`${commands.length} komut global olarak kaydedildi.`);
 }
+console.log('Discord komut eşitlemesi tamamlandı.');
