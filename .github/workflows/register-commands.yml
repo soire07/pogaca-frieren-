@@ -1,29 +1,16 @@
 name: Register Discord Commands
 
-# Legacy registration loops were stopped; sync runs single-flight with bounded retries.
-# deploy-commands.js treats Discord 30034 daily command-create exhaustion as non-retryable.
-
+# Command writes are manual-only to prevent every code push from consuming Discord's daily create quota.
 permissions:
   contents: read
   statuses: write
 
-# Never let multiple deploy runs overwrite Discord commands concurrently.
 concurrency:
   group: discord-command-registration
   cancel-in-progress: true
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-    - '*.js'
-    - 'deploy-commands.js'
-    - 'scripts/test-discord-scenarios.js'
-    - '!index.js'
-    - 'commands/**'
-    - '.github/workflows/register-commands.yml'
 
 jobs:
   register:
@@ -68,7 +55,6 @@ jobs:
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          # Explicitly verified guild IDs: production + test; do not reuse the ambiguous GUILD_ID secret.
           GUILD_IDS: '1539562273197260860,1564945192803639356'
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
