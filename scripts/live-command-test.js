@@ -158,10 +158,10 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           : 'İşleyici tamamlandı ancak yanıt/etki kaydedilmedi.';
         results.push({
           command: schema?.name || 'unknown',
-          status: responded ? 'PASS' : 'FAIL',
+          status: responded ? 'INCONCLUSIVE' : 'FAIL',
           expected,
           actual,
-          comparison: responded ? 'MATCH: temel işleyici sözleşmesi sağlandı' : 'MISMATCH: beklenen yanıt/etki yok',
+          comparison: responded ? 'INCONCLUSIVE: yanıt yolu çalıştı; beklenen özellik davranışı henüz doğrulanmadı' : 'MISMATCH: beklenen yanıt/etki yok',
           evidenceType: 'handler-executed-with-synthetic-discord-interaction',
           automaticallyObserved: true,
           responseCount: effects.length,
@@ -186,11 +186,12 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
       title: 'Poğaça Frieren isolated command handler test report',
       generatedAt: new Date().toISOString(),
       executionMode: 'synthetic Discord interaction; isolated PostgreSQL schema frieren_test',
-      note: 'This validates command handler execution and recorded response, not Discord API delivery or semantic correctness of every feature. Commands that require external Discord state may fail due to fixture limits.',
+      note: 'A recorded response alone is INCONCLUSIVE, never PASS. This harness uses synthetic Discord interactions and an isolated PostgreSQL schema; it does not deliver real Discord interactions or prove feature semantics. PASS must be added only alongside command-specific behavioral assertions. Commands requiring real Discord state may fail due to fixture limits.',
       summary: {
         total: results.length,
         pass: results.filter(x => x.status === 'PASS').length,
         fail: results.filter(x => x.status === 'FAIL').length,
+        inconclusive: results.filter(x => x.status === 'INCONCLUSIVE').length,
         blocked: 0
       },
       results
