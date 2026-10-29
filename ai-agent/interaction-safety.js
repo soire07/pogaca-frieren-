@@ -25,7 +25,7 @@ export async function sendPrivateError(interaction, content, onError = () => {})
   }
 }
 
-export function getPublicHealthPayload() {
-  // Public uptime probes need liveness only; internal configuration stays private.
-  return { status: 'ok' };
+export function getPublicHealthPayload({ discordReady = false } = {}) {
+  // Expose only readiness, never tokens, configuration, or database details.
+  return { status: 'ok', discordReady: Boolean(discordReady) };
 }
