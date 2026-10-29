@@ -1,11 +1,8 @@
 name: Register Poğaça Frieren in production guild only
 
+# Manual-only: Discord command writes are quota-limited.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/register-production-guild-only.yml"
 
 permissions:
   contents: read
