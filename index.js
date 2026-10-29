@@ -405,7 +405,7 @@ createServer(async (req, res) => {
   };
   if (req.url?.startsWith('/internal/test-')) {
     const configuredSecret = process.env.FRIEREN_BRIDGE_SECRET || '';
-    const suppliedSecret = String(req.headers.authorization || '').replace(/^Bearer\\s+/i, '');
+    const suppliedSecret = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
     const a = Buffer.from(configuredSecret);
     const b = Buffer.from(suppliedSecret);
     const authorized = configuredSecret.length >= 32 && a.length === b.length && timingSafeEqual(a, b);
