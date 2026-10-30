@@ -49,6 +49,7 @@ test('mention handler loads only this guild and user history, then stores both t
   const replies = [];
   const message = {
     guild: { id: 'guild-7' },
+    channelId: 'channel-1',
     author: { id: 'user-9', bot: false },
     mentions: { users: { has: id => id === 'bot-1' } },
     content: '<@bot-1> Nasılsın?',
