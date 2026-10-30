@@ -163,7 +163,7 @@ test('Frieren persona uses canonical identity and forbids invented appearance or
   assert.match(systemPrompt, /Frieren: Beyond Journey.s End/i);
   assert.match(systemPrompt, /elf büyücüsü/i);
   assert.doesNotMatch(systemPrompt, /Poğaça Discord sunucusunda yaşayan/i);
-  assert.match(systemPrompt, /görünüş.*uydurma|uydurma.*görünüş/i);
+  assert.match(systemPrompt, /Yeşil tüy.*uydurma/i);
   assert.match(systemPrompt, /Himmel/i);
 });
 
