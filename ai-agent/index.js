@@ -89,7 +89,7 @@ const commands = [
     .toJSON(),
   new SlashCommandBuilder()
     .setName('frieren-komut-denetle')
-    .setDescription('Poğaça Frieren komut işleyicilerini yalıtılmış veritabanında çalıştırıp raporlar.')
+    .setDescription('Poğaça Frieren komutlarını yalıtılmış veritabanında davranışsal kontrollerle denetler.')
     .addStringOption(option => option.setName('komut').setDescription('Tek bir komut adı (boş bırakırsan tüm komutlar denenir).').setRequired(false).setMaxLength(80))
     .toJSON(),
 ];
@@ -613,10 +613,10 @@ client.on(Events.InteractionCreate, async interaction => {
       const resultRows = (report.results || []).map(item => formatCommandTestResult(item));
       const preview = resultRows.slice(0, 5).join('\n') || 'Test sonucu bulunamadı.';
       await interaction.editReply({
-        content: '**Poğaça Frieren komut smoke denemesi tamamlandı**\n'
+        content: '**Poğaça Frieren davranış denetimi tamamlandı**\n'
           + 'Toplam: ' + (summary.total ?? 0) + ' | PASS: ' + (summary.pass ?? 0) + ' | FAIL: ' + (summary.fail ?? 0) + ' | Kesin değil: ' + (summary.inconclusive ?? 0)
-          + '\nÇalıştırma: gerçek komut işleyicisi + sentetik Discord etkileşimi + frieren_test PostgreSQL şeması.\n'
-          + 'Not: Bu Discord üzerinden gerçek kullanıcı etkileşimi değil; üretim tablolarından ayrı test şemasında işleyici denemesidir. PASS, yalnızca yanıt/etki üretildiğini gösterir; özellik mantığının tamamını tek başına kanıtlamaz.\n\n'
+          + '\nÇalıştırma: gerçek komut işleyicileri + sentetik Discord etkileşimleri + frieren_test PostgreSQL şeması.\n'
+          + 'Not: Bu gerçek Discord kullanıcı işlemi değildir. Yanıt tek başına PASS sayılmaz; PASS için ilgili davranış ve veritabanı kontrollerinin tamamı geçmelidir. Üretim oyuncu verileri değiştirilmez.\n\n'
           + preview + (resultRows.length > 5 ? '\n… ve raporda ' + (resultRows.length - 5) + ' komut daha.' : ''),
         files: [new AttachmentBuilder(Buffer.from(JSON.stringify(report, null, 2), 'utf8'), { name: 'pogaca-frieren-command-test-report.json' })]
       });
