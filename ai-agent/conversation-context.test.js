@@ -13,3 +13,15 @@ test('fictional character profiles are not treated as the Discord user', () => {
   assert.match(context, /Her karakterin adı ile özelliklerini ayrı eşleştir/u);
   assert.match(context, /başka karaktere aktarma/u);
 });
+
+test('character facts stay attached to their named character and unknown fields stay unknown', () => {
+  const context = formatConversationContext([
+    { role: 'user', content: 'Arven kayıp kardeşini arıyor. Eldrin kayıp haritayı arıyor.' },
+  ]);
+
+  assert.match(context, /yalnızca aynı cümlede veya açık bir gönderimde adı belirtilen karaktere bağla/u);
+  assert.match(context, /Arven'in kayıp kardeşini arama amacı yalnızca Arven'e/u);
+  assert.match(context, /Eldrin'in kayıp haritayı arama amacı yalnızca Eldrin'e/u);
+  assert.match(context, /yaş, yer veya hayvan tercihi tahmin etme/u);
+  assert.match(context, /bilinmiyor kabul et/u);
+});
