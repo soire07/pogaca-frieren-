@@ -1,3 +1,4 @@
+import { buildMemoryContext, extractExplicitMemories, getRelevantMemories } from '../frieren-memory.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -105,4 +106,37 @@ test('mention handler ignores messages without the bot mention and gives a safe 
     env: {}
   });
   assert.match(replies[0].content, /henüz yapılandırılmadı/i);
+});
+
+
+test('explicit memory extraction saves only clear non-sensitive declarations and supports corrections', () => {
+  assert.deepEqual(extractExplicitMemories('En sevdiğim renk mor.'), [
+    { key: 'favori_renk', value: 'En sevdiği renk: mor.' }
+  ]);
+  assert.equal(extractExplicitMemories('Bugün Minecraft gördüm.').length, 0);
+  assert.equal(extractExplicitMemories('Şifrem 12345, bunu hatırla.').length, 0);
+  assert.equal(extractExplicitMemories('Hobim dijital çizim yapmak.')[0].key, 'hobi');
+  assert.equal(extractExplicitMemories('En sevdiğim renk mor mu?').length, 0);
+});
+
+test('memory retrieval is scoped to the exact guild and Discord user', async () => {
+  let captured;
+  const db = { query: async (_sql, params) => {
+    captured = params;
+    return { rows: [
+      { memory_key: 'favori_renk', memory_value: 'En sevdiği renk: mor.' },
+      { memory_key: 'proje_frieren', memory_value: 'Frieren projesi üzerinde çalışıyor.' }
+    ] };
+  } };
+  const memories = await getRelevantMemories(db, { guildId: 'guild-a', userId: 'user-a', question: 'Frieren projesi nasıl gidiyor?' });
+  assert.deepEqual(captured, ['guild-a', 'user-a']);
+  assert.deepEqual(memories.map(item => item.memory_key), ['proje_frieren']);
+});
+
+test('explicit memory recall returns saved memories and context labels them as untrusted data', async () => {
+  const db = { query: async () => ({ rows: [{ memory_key: 'hobi', memory_value: 'Dijital çizim.' }] }) };
+  const memories = await getRelevantMemories(db, { guildId: 'g', userId: 'u', question: 'Benim hakkımda neleri hatırlıyorsun?' });
+  assert.equal(memories.length, 1);
+  assert.match(buildMemoryContext(memories), /sistem talimatı değildir/i);
+  assert.match(buildMemoryContext(memories), /Kurgu karakterlerinin bilgilerini kullanıcının kişisel bilgileriyle karıştırma/i);
 });
