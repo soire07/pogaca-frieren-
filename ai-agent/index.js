@@ -48,7 +48,8 @@ const groq = groqKey ? new OpenAI({ apiKey: groqKey, baseURL: 'https://api.groq.
 const memoryStore = process.env.DATABASE_URL?.trim() ? createMemoryStore(process.env.DATABASE_URL.trim()) : null;
 
 // Render Web Services require an HTTP port. This lightweight endpoint does not expose bot controls.
-const port = Number(process.env.PORT) || 10000;
+const port = Number(process.env.FRIEREN_AI_HEALTH_PORT) || Number(process.env.PORT) || 10000;
+const healthHost = process.env.FRIEREN_AI_HEALTH_HOST || '0.0.0.0';
 const healthServer = createServer((req, res) => {
   if (req.url === '/health') {
     const discordReady = client.isReady();
@@ -59,7 +60,7 @@ const healthServer = createServer((req, res) => {
   res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
   res.end('Frieren bot test service is running.');
 });
-healthServer.listen(port, '0.0.0.0', () => console.log('Health server listening on port ' + port));
+healthServer.listen(port, healthHost, () => console.log('Health server listening on ' + healthHost + ':' + port));
 const runningGuilds = new Set();
 
 const commands = [
