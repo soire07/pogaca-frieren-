@@ -231,8 +231,8 @@ async function answerCodeQuestion(question, userId, conversationId) {
       for (const memory of memoriesToSave) {
         await memoryStore.save(userId, memory.key, memory.value);
       }
-      const saved = memoriesToSave.map(memory => '**' + memory.key + '**: ' + memory.value).join('\\n');
-      return { ok: true, message: '🧠 Kalıcı belleğine kaydettim.\\n' + saved };
+      const saved = memoriesToSave.map(memory => '**' + memory.key + '**: ' + memory.value).join(String.fromCharCode(10));
+      return { ok: true, message: '🧠 Kalıcı belleğine kaydettim.' + String.fromCharCode(10) + saved };
     } catch (error) {
       console.error('Explicit natural-language memory save failed:', redactSecrets(error.message || 'unknown error'));
       return { ok: false, message: 'Kalıcı belleğe kayıt yapılamadı. Veritabanı bağlantısını kontrol etmek gerekiyor.' };
