@@ -40,7 +40,7 @@ try {
   }
 
   const report = await runCommandTestSuite(commands);
-  await writeFile('command-audit-report.json', JSON.stringify(report, null, 2) + '\\n');
+  await writeFile('command-audit-report.json', JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify(report, null, 2));
   if (report.summary.fail > 0) process.exitCode = 1;
 } catch (error) {
