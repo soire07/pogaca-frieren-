@@ -1,13 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [
+  "version": 2,
+  "routes": [
     {
-      "source": "/",
-      "destination": "https://pogaca-frieren.onrender.com/owner"
+      "src": "^/$",
+      "dest": "https://pogaca-frieren.onrender.com/owner"
     },
     {
-      "source": "/:path*",
-      "destination": "https://pogaca-frieren.onrender.com/:path*"
+      "src": "^/(.*)$",
+      "dest": "https://pogaca-frieren.onrender.com/$1"
     }
   ]
 }
