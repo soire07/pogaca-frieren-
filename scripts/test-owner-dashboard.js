@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, getFrierenAIReadiness } from '../owner-dashboard.js';
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
 const ownerId = '1553794496234262641';
@@ -172,4 +172,26 @@ test('owner dashboard does not label the AI bot online when readiness is incompl
   assert.match(html, /Frieren AI/);
   assert.match(html, /Kontrol gerekli/);
   assert.match(html, /Frieren Poğaça/);
+});
+
+
+test('Frieren AI readiness is fetched through the local main-service bridge', async () => {
+  let requestedUrl = '';
+  const expected = { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true };
+  const result = await getFrierenAIReadiness({
+    baseUrl: 'http://127.0.0.1:3000',
+    fetchImpl: async url => {
+      requestedUrl = url;
+      return { ok: true, json: async () => expected };
+    }
+  });
+  assert.equal(requestedUrl, 'http://127.0.0.1:3000/ai-ready');
+  assert.deepEqual(result, expected);
+});
+
+test('Frieren AI readiness fails closed when the local bridge is unavailable', async () => {
+  const result = await getFrierenAIReadiness({
+    fetchImpl: async () => { throw new Error('bridge unavailable'); }
+  });
+  assert.equal(result, null);
 });
