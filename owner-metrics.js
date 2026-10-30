@@ -104,7 +104,7 @@ export async function getRenderServiceMetrics({
     };
   } catch (error) {
     const message = String(error?.message || '');
-    const safeMessage = /^RENDER_METRICS_HTTP_\\d{3}$/.test(message)
+    const safeMessage = /^RENDER_METRICS_HTTP_\d{3}$/.test(message)
       ? 'Render API isteği başarısız oldu (' + message.slice(-3) + ').'
       : 'Render metrikleri şu anda alınamıyor.';
     return { status: 'unavailable', source: 'render', points: [], message: safeMessage };
