@@ -845,3 +845,34 @@ test('co-op fixture builder rejects accidental duplicate primary IDs', async () 
   const { buildCoopTestUserIds } = await import('./coop-test-users.js');
   assert.throws(() => buildCoopTestUserIds(2, '900000000000000202'), /duplicate player IDs/);
 });
+
+
+test('adventure result audit checks the player-visible route name instead of an internal discovery key', async () => {
+  const runner = await read('scripts/live-command-test.js');
+  assert.match(runner, /payloadTextFromEffects\(effects\)/);
+  assert.match(runner, /embed\?\.toJSON/);
+  assert.match(runner, /Array\.isArray\(row\)/);
+  assert.match(runner, /row\?\.components/);
+  assert.match(runner, /component\?\.data\?\.custom_id/);
+  assert.match(runner, /payloadText\.includes\('Kuzey Ormanı'\)/);
+  assert.doesNotMatch(runner, /Macera Tamamlandı'\) && payloadText\.includes\('forest-grimoire'\)/);
+});
+
+test('daily crafting mission audit verifies displayed rewards and proves that viewing the mission is read-only', async () => {
+  const runner = await read('scripts/live-command-test.js');
+  assert.match(runner, /payloadText\.includes\('\+100 altın'\)/);
+  assert.match(runner, /payloadText\.includes\('\+50 XP'\)/);
+  assert.match(runner, /const before = await pool\.query\('SELECT coins,xp,level/);
+  assert.match(runner, /oyuncunun altın, XP ve seviyesi değişmemeli/);
+  assert.match(runner, /commandName === 'zanaatgorevi'/);
+});
+
+test('kimimben and status commands have command-specific behavioral assertions', async () => {
+  const runner = await read('scripts/live-command-test.js');
+  assert.match(runner, /commandName === 'kimimben'/);
+  assert.match(runner, /character_draw_count,last_character_draw_at,character_draw_cooldown_until/);
+  assert.match(runner, /anime_character_collection/);
+  assert.match(runner, /commandName === 'status'/);
+  assert.match(runner, /42 ms/);
+  assert.match(runner, /Yüklü komut/);
+});

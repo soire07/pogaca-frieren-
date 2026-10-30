@@ -182,6 +182,34 @@ function makeSimulatedMessage(payload, simulation) {
   };
 }
 
+function payloadTextFromEffects(effects) {
+  return effects.flatMap(effect => {
+    const payload = effect?.payload;
+    if (typeof payload === 'string') return [payload];
+    if (!payload || typeof payload !== 'object') return [];
+    const embeds = (payload.embeds || []).flatMap(embed => {
+      const data = typeof embed?.toJSON === 'function' ? embed.toJSON() : (embed?.data ?? embed);
+      return [
+        data?.title,
+        data?.description,
+        ...(data?.fields || []).flatMap(field => [field?.name, field?.value]),
+        data?.footer?.text,
+        data?.author?.name
+      ];
+    });
+    const components = (payload.components || []).flatMap(row => {
+      if (Array.isArray(row)) return row;
+      return (row?.components || []).flatMap(component => [
+        component?.data?.custom_id,
+        component?.data?.label,
+        component?.customId,
+        component?.label
+      ]);
+    });
+    return [payload.content, ...embeds, ...components];
+  }).filter(value => typeof value === 'string' && value.length).join('\n');
+}
+
 function normalizePayload(payload) {
   if (typeof payload === 'string') return { content: payload.slice(0, 1800) };
   if (!payload || typeof payload !== 'object') return payload;
@@ -734,11 +762,11 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           const route = await pool.query("SELECT visits FROM adventure_route_mastery WHERE guild_id=$1 AND user_id=$2 AND route_key='forest-grimoire'", [guildId, userId]);
           const discovery = await pool.query("SELECT discovery_key FROM adventure_discoveries WHERE guild_id=$1 AND user_id=$2 AND discovery_key='forest-grimoire'", [guildId, userId]);
           const history = await pool.query("SELECT discovery_key,coins_awarded,xp_awarded FROM adventure_history WHERE guild_id=$1 AND user_id=$2", [guildId, userId]);
-          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          const payloadText = payloadTextFromEffects(effects);
           behavioralChecks.push(
             { name: 'Macera ödül ve bekleme süresi kaydı', expected: 'altın/XP artmalı ve last_adventure_at kaydedilmeli', actual: 'altın ' + player.rows[0]?.coins + ', XP ' + player.rows[0]?.xp + ', zaman ' + Boolean(player.rows[0]?.last_adventure_at), passed: Number(player.rows[0]?.coins) > 0 && Number(player.rows[0]?.xp) > 0 && Boolean(player.rows[0]?.last_adventure_at) },
             { name: 'Rota ustalığı ve keşif kaydı', expected: 'forest-grimoire rotası ve geçmiş kaydı bir kez yazılmalı', actual: 'rota ' + (route.rows[0]?.visits ?? 0) + ', keşif ' + discovery.rowCount + ', geçmiş ' + history.rowCount, passed: Number(route.rows[0]?.visits) === 1 && discovery.rowCount === 1 && history.rowCount === 1 && history.rows[0].discovery_key === 'forest-grimoire' },
-            { name: 'Macera sonuç paneli', expected: 'macera tamamlandı ve rota bilgisi gösterilmeli', actual: payloadText.includes('Macera Tamamlandı') ? 'sonuç paneli gösterildi' : payloadText.slice(0, 400), passed: payloadText.includes('Macera Tamamlandı') && payloadText.includes('forest-grimoire') }
+            { name: 'Macera sonuç paneli', expected: 'macera tamamlandı ve seçilen rotanın görünen adı gösterilmeli', actual: payloadText.includes('Macera Tamamlandı') && payloadText.includes('Kuzey Ormanı') ? 'sonuç paneli ve Kuzey Ormanı rotası gösterildi' : payloadText.slice(0, 500), passed: payloadText.includes('Macera Tamamlandı') && payloadText.includes('Kuzey Ormanı') }
           );
         } else if (commandName === 'rehber') {
           const before = await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
@@ -798,15 +826,18 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Zanaat tarif kataloğu', expected: 'demir kılıç ve ekipman tarifleri listelenmeli', actual: payloadText.includes('Zanaat Tarif Defteri') ? 'tarif defteri açıldı' : payloadText.slice(0, 400), passed: payloadText.includes('Zanaat Tarif Defteri') && payloadText.includes('Gezginin Demir Kılıcı') && payloadText.includes('Malzeme') }
           );
         } else if (commandName === 'zanaatgorevi') {
+          const before = await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const interaction = makeInteraction(command, buildOptions(schema?.options, { odul_al: false }), guildId, effects);
           interaction.user.id = userId;
           interaction.member = makeMember(userId);
           await command.execute(interaction);
           const progress = await pool.query('SELECT crafted_items,claimed_at FROM daily_crafting_progress WHERE guild_id=$1 AND user_id=$2 AND mission_date=CURRENT_DATE', [guildId, userId]);
-          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          const after = await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const payloadText = payloadTextFromEffects(effects);
+          const missionVisible = payloadText.includes('3 ekipman') && payloadText.includes('+100 altın') && payloadText.includes('+50 XP');
           behavioralChecks.push(
-            { name: 'Günlük zanaat görevi durumu', expected: '3 ekipman hedefi ve 100 altın/50 XP ödülü gösterilmeli', actual: 'üretim ' + (progress.rows[0]?.crafted_items ?? 0) + '/3', passed: Number(progress.rows[0]?.crafted_items) === 0 && !progress.rows[0]?.claimed_at && payloadText.includes('3 ekipman') && payloadText.includes('100 altın') && payloadText.includes('50 XP') },
-            { name: 'Görev görüntüleme ödül vermez', expected: 'oyuncu bakiyesi değişmemeli', actual: 'ödül talebi yapılmadı', passed: true }
+            { name: 'Günlük zanaat görevi durumu', expected: '3 ekipman hedefi ve +100 altın/+50 XP ödülü gösterilmeli; ilerleme 0/3 olmalı', actual: 'üretim ' + (progress.rows[0]?.crafted_items ?? 0) + '/3; görev metni ' + (missionVisible ? 'tam' : payloadText.slice(0, 350)), passed: Number(progress.rows[0]?.crafted_items) === 0 && !progress.rows[0]?.claimed_at && missionVisible },
+            { name: 'Görev görüntüleme ödül vermez', expected: 'oyuncunun altın, XP ve seviyesi değişmemeli', actual: JSON.stringify(before.rows[0]) + ' → ' + JSON.stringify(after.rows[0]), passed: ['coins','xp','level'].every(key => Number(before.rows[0]?.[key]) === Number(after.rows[0]?.[key])) }
           );
         } else if (commandName === 'yetenekagaci') {
           await pool.query('UPDATE users SET level=6 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
@@ -1034,6 +1065,39 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Şifa iksiri HP yenilemesi', expected: '40 → 100 / 100', actual: user ? 'HP ' + user.hp + ' / ' + user.max_hp : 'kullanıcı kaydı yok', passed: Number(user?.hp) === 100 && Number(user?.max_hp) === 100 },
             { name: 'Şifa iksiri mana yenilemesi', expected: '20 → 45 / 100', actual: user ? 'Mana ' + user.mana + ' / ' + user.max_mana : 'kullanıcı kaydı yok', passed: Number(user?.mana) === 45 && Number(user?.max_mana) === 100 },
             { name: 'Şifa iksiri tüketimi ve sayaç', expected: 'envanterden silinmiş; items_used_count=1', actual: (potionState.rows[0] ? 'envanter miktarı ' + potionState.rows[0].quantity : 'envanterden silinmiş') + '; kullanım sayısı ' + user?.items_used_count, passed: potionState.rowCount === 0 && Number(user?.items_used_count) === 1 }
+          );
+        } else if (commandName === 'kimimben') {
+          await pool.query(
+            'UPDATE users SET pity_count=0,character_draw_count=0,character_draw_cooldown_until=NULL,last_character_draw_at=NULL WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const collection = await pool.query(
+            'SELECT COUNT(*)::int AS distinct_characters,COALESCE(SUM(quantity),0)::int AS total_copies FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          const state = await pool.query(
+            'SELECT character_draw_count,last_character_draw_at,character_draw_cooldown_until FROM users WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          const payloadText = payloadTextFromEffects(effects);
+          behavioralChecks.push(
+            { name: 'Kimimben karakter keşfi ve koleksiyon kaydı', expected: 'bir karakter keşfedilmeli ve koleksiyona tam bir kopya eklenmeli', actual: collection.rows[0]?.distinct_characters + ' karakter / ' + collection.rows[0]?.total_copies + ' kopya', passed: Number(collection.rows[0]?.distinct_characters) === 1 && Number(collection.rows[0]?.total_copies) === 1 },
+            { name: 'Kimimben çekim limiti ve zaman damgası', expected: 'çekim sayacı 1 olmalı ve son çekim zamanı kaydedilmeli', actual: 'sayaç ' + state.rows[0]?.character_draw_count + ' / zaman ' + Boolean(state.rows[0]?.last_character_draw_at), passed: Number(state.rows[0]?.character_draw_count) === 1 && Boolean(state.rows[0]?.last_character_draw_at) && state.rows[0]?.character_draw_cooldown_until == null },
+            { name: 'Kimimben karakter kartı ve yenileme düğmesi', expected: 'karakter kartı ve yalnızca kullanıcıya ait yenileme düğmesi gösterilmeli', actual: payloadText.includes('kimimben_again') ? 'karakter kartı ve yenileme düğmesi gösterildi' : payloadText.slice(0, 400), passed: payloadText.includes('Karakter Keşfi') && payloadText.includes('kimimben_again') }
+          );
+        } else if (commandName === 'status') {
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const payloadText = payloadTextFromEffects(effects);
+          behavioralChecks.push(
+            { name: 'Status canlı Discord bağlantısı', expected: 'bot çevrimiçi ve Discord gecikmesi gösterilmeli', actual: payloadText.includes('Çevrimiçi') && payloadText.includes('42 ms') ? 'çevrimiçi / 42 ms' : payloadText.slice(0, 400), passed: payloadText.includes('Çevrimiçi') && payloadText.includes('42 ms') },
+            { name: 'Status çalışma bilgileri', expected: 'çalışma süresi, sunucu sayısı, komut sayısı ve Node.js sürümü gösterilmeli', actual: ['Çalışma süresi','Sunucu sayısı','Yüklü komut','Node.js'].filter(value => payloadText.includes(value)).join(', '), passed: ['Çalışma süresi','Sunucu sayısı','Yüklü komut','Node.js'].every(value => payloadText.includes(value)) }
           );
         } else {
           const options = buildOptions(schema?.options, { user: undefined });
