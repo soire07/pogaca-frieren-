@@ -12,6 +12,7 @@ import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, isAuthor
 import { checkLiveRpgHealth } from './live-rpg-health.js';
 import { formatCommandTestResult } from './command-test-report.js';
 import { parseCommandNames } from './command-test-input.js';
+import { splitDiscordMessage } from './discord-message-chunks.js';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createServer } from 'node:http';
@@ -612,15 +613,19 @@ client.on(Events.InteractionCreate, async interaction => {
       if (!response.ok) throw new Error('Poğaça Frieren test köprüsü HTTP ' + response.status + ': ' + (report.message || report.error || 'bilinmeyen hata'));
       const summary = report.summary || {};
       const resultRows = (report.results || []).map(item => formatCommandTestResult(item));
-      const preview = resultRows.slice(0, 5).join('\n') || 'Test sonucu bulunamadı.';
+      const reportText = '**Poğaça Frieren davranış denetimi tamamlandı**\\n'
+        + 'Toplam: ' + (summary.total ?? 0) + ' | PASS: ' + (summary.pass ?? 0) + ' | FAIL: ' + (summary.fail ?? 0) + ' | Kesin değil: ' + (summary.inconclusive ?? 0)
+        + '\\nÇalıştırma: gerçek komut işleyicileri + sentetik Discord etkileşimleri + frieren_test PostgreSQL şeması.\\n'
+        + 'Not: Bu gerçek Discord kullanıcı işlemi değildir. Yanıt tek başına PASS sayılmaz; PASS için ilgili davranış ve veritabanı kontrollerinin tamamı geçmelidir. Üretim oyuncu verileri değiştirilmez.\\n\\n'
+        + (resultRows.join('\\n\\n') || 'Test sonucu bulunamadı.');
+      const messageChunks = splitDiscordMessage(reportText, 1900);
       await interaction.editReply({
-        content: '**Poğaça Frieren davranış denetimi tamamlandı**\n'
-          + 'Toplam: ' + (summary.total ?? 0) + ' | PASS: ' + (summary.pass ?? 0) + ' | FAIL: ' + (summary.fail ?? 0) + ' | Kesin değil: ' + (summary.inconclusive ?? 0)
-          + '\nÇalıştırma: gerçek komut işleyicileri + sentetik Discord etkileşimleri + frieren_test PostgreSQL şeması.\n'
-          + 'Not: Bu gerçek Discord kullanıcı işlemi değildir. Yanıt tek başına PASS sayılmaz; PASS için ilgili davranış ve veritabanı kontrollerinin tamamı geçmelidir. Üretim oyuncu verileri değiştirilmez.\n\n'
-          + preview + (resultRows.length > 5 ? '\n… ve raporda ' + (resultRows.length - 5) + ' komut daha.' : ''),
+        content: messageChunks[0],
         files: [new AttachmentBuilder(Buffer.from(JSON.stringify(report, null, 2), 'utf8'), { name: 'pogaca-frieren-command-test-report.json' })]
       });
+      for (const chunk of messageChunks.slice(1)) {
+        await interaction.followUp({ content: chunk });
+      }
     } catch (error) {
       await interaction.editReply({ content: 'Komut denetimi başarısız: ' + redactSecrets(error.message || 'unknown error').slice(0, 1500) });
     }
