@@ -142,7 +142,7 @@ export async function handleOwnerDashboardRequest(req, res, { client }) {
         'Cache-Control': 'no-store',
         'Set-Cookie': [
           clearCookie(STATE_COOKIE),
-          SESSION_COOKIE + '=' + encodeURIComponent(session) + '; Path=/owner; HttpOnly; Secure; SameSite=Strict; Max-Age=' + SESSION_TTL_SECONDS
+          SESSION_COOKIE + '=' + encodeURIComponent(session) + '; Path=/owner; HttpOnly; Secure; SameSite=Lax; Max-Age=' + SESSION_TTL_SECONDS
         ]
       });
       res.end();
