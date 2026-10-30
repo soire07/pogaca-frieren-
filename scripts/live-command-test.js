@@ -214,7 +214,76 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           await pool.query('UPDATE users SET coins=100, mana=100 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
         }
         const behavioralChecks = [];
-        if (commandName === 'ekipman') {
+        if (commandName === 'sinifsec') {
+          const options = buildOptions(schema?.options, { sinif: 'buyucu' });
+          const interaction = makeInteraction(command, options, guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const state = await pool.query('SELECT class_name FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          behavioralChecks.push(
+            { name: 'Karakter sınıfı kalıcı kaydı', expected: 'Büyücü', actual: state.rows[0]?.class_name || 'kayıt yok', passed: state.rows[0]?.class_name === 'Büyücü' },
+            { name: 'Sınıf seçimi yanıtı', expected: 'sınıf sonucu Discord yanıtı', actual: effects.length + ' yanıt/etki', passed: effects.length > 0 }
+          );
+        } else if (commandName === 'gelisim') {
+          await pool.query('UPDATE users SET stat_points=5,attack=10 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const options = buildOptions(schema?.options, { ozellik: 'attack', puan: 3 });
+          const interaction = makeInteraction(command, options, guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const state = await pool.query('SELECT stat_points,attack FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          behavioralChecks.push(
+            { name: 'Saldırı puanı artışı', expected: '10 → 16 (+6)', actual: state.rows[0] ? String(state.rows[0].attack) : 'kayıt yok', passed: Number(state.rows[0]?.attack) === 16 },
+            { name: 'Gelişim puanı düşümü', expected: '5 → 2 (-3)', actual: state.rows[0] ? String(state.rows[0].stat_points) : 'kayıt yok', passed: Number(state.rows[0]?.stat_points) === 2 }
+          );
+        } else if (commandName === 'dinlen') {
+          await pool.query('UPDATE users SET hp=40,max_hp=100,mana=20,max_mana=100,last_rest_at=NULL WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const state = await pool.query('SELECT hp,max_hp,mana,max_mana,last_rest_at FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const player = state.rows[0];
+          behavioralChecks.push(
+            { name: 'Dinlenme HP yenilemesi', expected: '40 → 100', actual: player ? player.hp + '/' + player.max_hp : 'kayıt yok', passed: Number(player?.hp) === 100 && Number(player?.max_hp) === 100 },
+            { name: 'Dinlenme mana yenilemesi', expected: '20 → 100', actual: player ? player.mana + '/' + player.max_mana : 'kayıt yok', passed: Number(player?.mana) === 100 && Number(player?.max_mana) === 100 },
+            { name: 'Dinlenme zaman damgası', expected: 'last_rest_at kaydedilmeli', actual: String(player?.last_rest_at || 'NULL'), passed: player?.last_rest_at != null }
+          );
+        } else if (commandName === 'buyuogren') {
+          await pool.query('UPDATE users SET coins=500,level=30,boss_defeats=10 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const runLearn = async () => {
+            const actionEffects = [];
+            const interaction = makeInteraction(command, buildOptions(schema?.options, { buyu: 'alev_kuresi' }), guildId, actionEffects);
+            interaction.user.id = userId;
+            interaction.member = makeMember(userId);
+            await command.execute(interaction);
+            effects.push(...actionEffects);
+          };
+          await runLearn();
+          const afterFirst = await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const learned = await pool.query('SELECT spell_key FROM learned_spells WHERE guild_id=$1 AND user_id=$2 AND spell_key=$3', [guildId, userId, 'alev_kuresi']);
+          await runLearn();
+          const afterSecond = await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          behavioralChecks.push(
+            { name: 'Büyü öğrenme kaydı', expected: 'alev_kuresi bir kez kaydedilmeli', actual: learned.rowCount + ' kayıt', passed: learned.rowCount === 1 },
+            { name: 'Büyü satın alma bedeli', expected: '500 → 320 altın', actual: String(afterFirst.rows[0]?.coins), passed: Number(afterFirst.rows[0]?.coins) === 320 },
+            { name: 'Tekrar satın almada çift ücret alınmaması', expected: 'bakiye ikinci denemede 320 kalmalı', actual: String(afterSecond.rows[0]?.coins), passed: Number(afterSecond.rows[0]?.coins) === 320 }
+          );
+        } else if (commandName === 'gunlukodul') {
+          await pool.query('UPDATE users SET coins=0,daily_streak=0,last_daily_at=NULL WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const state = await pool.query('SELECT coins,daily_streak,best_daily_streak,last_daily_at FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const player = state.rows[0];
+          behavioralChecks.push(
+            { name: 'Günlük ödül bakiyesi', expected: '50–100 altın', actual: String(player?.coins), passed: Number(player?.coins) >= 50 && Number(player?.coins) <= 100 },
+            { name: 'Günlük seri kaydı', expected: 'daily_streak=1 ve best_daily_streak=1', actual: player ? player.daily_streak + '/' + player.best_daily_streak : 'kayıt yok', passed: Number(player?.daily_streak) === 1 && Number(player?.best_daily_streak) === 1 },
+            { name: 'Günlük ödül zaman damgası', expected: 'last_daily_at kaydedilmeli', actual: String(player?.last_daily_at || 'NULL'), passed: player?.last_daily_at != null }
+          );
+        } else if (commandName === 'ekipman') {
           await pool.query(
             'UPDATE users SET level=45,hp=100,max_hp=100,mana=100,max_mana=100 WHERE guild_id=$1 AND user_id=$2',
             [guildId, userId]
