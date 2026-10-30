@@ -197,10 +197,18 @@ export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
       const recallIntent = isMemoryRecallQuestion(question);
       const normalizedQuestion = normalizeText(question);
       const personalFactRecall = isSpecificPersonalFactRecallQuestion(question);
+      const personalRecallKeyMatches = memory => {
+        if (/\\b(adim|ismim)\\b/.test(normalizedQuestion)) return memory.memory_key === 'kullanici_adi';
+        if (/\\bhobim\\b/.test(normalizedQuestion)) return memory.memory_key === 'hobi';
+        if (/\\bhedefim\\b/.test(normalizedQuestion)) return memory.memory_key === 'hedef';
+        if (/\\b(projem|projede)\\b/.test(normalizedQuestion)) return String(memory.memory_key || '').startsWith('proje_');
+        if (/\\bhangi oyun\\b/.test(normalizedQuestion)) return memory.memory_key === 'tercih_oyun';
+        return false;
+      };
       const scored = memories.filter(memory => personalFactRecall || !String(memory.memory_key || '').startsWith('favori_')).map((memory, index) => {
         const keyWords = normalizeWords(memory.memory_key);
         const valueWords = normalizeWords(memory.memory_value);
-        let score = 0;
+        let score = personalFactRecall && personalRecallKeyMatches(memory) ? 10 : 0;
         for (const word of questionWords) {
           if (keyWords.has(word)) score += 3;
           else if (valueWords.has(word)) score += 1;
