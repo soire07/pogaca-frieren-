@@ -42,3 +42,67 @@ test('conversation builder keeps the Frieren persona and separates prior turns f
     { role: 'user', content: 'Beni hatırlıyor musun?' }
   ]);
 });
+
+test('mention handler loads only this guild and user history, then stores both turns', async () => {
+  const calls = [];
+  const replies = [];
+  const message = {
+    guild: { id: 'guild-7' },
+    author: { id: 'user-9', bot: false },
+    mentions: { users: { has: id => id === 'bot-1' } },
+    content: '<@bot-1> Nasılsın?',
+    reply: async payload => replies.push(payload)
+  };
+  const db = {
+    query: async (sql, params) => {
+      calls.push({ sql, params });
+      if (sql.startsWith('SELECT')) return { rows: [{ role: 'user', content: 'Önceki soru' }] };
+      return { rows: [] };
+    }
+  };
+  const handled = await (await import('../frieren-chat.js')).handleFrierenMentionMessage({
+    message,
+    botUserId: 'bot-1',
+    db,
+    env: { GROQ_API_KEY: 'test-key' },
+    fetchImpl: async (_url, options) => {
+      const body = JSON.parse(options.body);
+      assert.equal(body.messages.at(-2).content, 'Önceki soru');
+      assert.equal(body.messages.at(-1).content, 'Nasılsın?');
+      return { ok: true, json: async () => ({ choices: [{ message: { content: 'İyiyim. Sen nasılsın?' } }] }) };
+    }
+  });
+
+  assert.equal(handled, true);
+  assert.deepEqual(calls[0].params, ['guild-7', 'user-9', 12]);
+  assert.deepEqual(calls[1].params, ['guild-7', 'user-9', 'Nasılsın?', 'İyiyim. Sen nasılsın?']);
+  assert.equal(replies[0].content, 'İyiyim. Sen nasılsın?');
+  assert.deepEqual(replies[0].allowedMentions, { parse: [] });
+});
+
+test('mention handler ignores messages without the bot mention and gives a safe setup response without an API key', async () => {
+  let queried = false;
+  const base = {
+    guild: { id: 'guild-1' },
+    author: { id: 'user-1', bot: false },
+    mentions: { users: { has: () => true } },
+    content: '<@bot-1> Merhaba',
+    reply: async () => {}
+  };
+  assert.equal(await (await import('../frieren-chat.js')).handleFrierenMentionMessage({
+    message: { ...base, mentions: { users: { has: () => false } } },
+    botUserId: 'bot-1',
+    db: { query: async () => { queried = true; return { rows: [] }; } },
+    env: {}
+  }), false);
+  assert.equal(queried, false);
+
+  const replies = [];
+  await (await import('../frieren-chat.js')).handleFrierenMentionMessage({
+    message: { ...base, reply: async payload => replies.push(payload) },
+    botUserId: 'bot-1',
+    db: { query: async () => { throw new Error('must not query'); } },
+    env: {}
+  });
+  assert.match(replies[0].content, /henüz yapılandırılmadı/i);
+});
