@@ -12,6 +12,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
+import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 if (!process.env.DISCORD_TOKEN) throw new Error('DISCORD_TOKEN eksik. Render Environment bölümünü kontrol et.');
@@ -110,6 +111,12 @@ client.once(Events.ClientReady, async readyClient => {
 
 client.on(Events.InteractionCreate, async interaction => {
   try {
+    if (interaction.isChatInputCommand() && !interaction.commandName.startsWith('owner') && interaction.commandName !== 'status' && await getMaintenanceState(pool)) {
+      return sendPrivateInteractionError(interaction, 'Frieren şu anda bakım modunda. İşlemler kısa süreliğine durduruldu.');
+    }
+    if (!interaction.isChatInputCommand() && await getMaintenanceState(pool)) {
+      return sendPrivateInteractionError(interaction, 'Frieren şu anda bakım modunda. İşlemler kısa süreliğine durduruldu.');
+    }
     if (await handleCharacterPanelInteraction(interaction)) return;
   if (interaction.isButton() && interaction.customId.startsWith('market_')) {
     const parts = interaction.customId.split(':');
@@ -251,8 +258,10 @@ client.on(Events.InteractionCreate, async interaction => {
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
   try {
+    await recordCommandUsage(pool, interaction.commandName, interaction.guildId).catch(error => console.warn('Komut ölçümü kaydedilemedi:', error?.message || error));
     await command.execute(interaction);
   } catch (error) {
+    await recordOwnerError(pool, '/' + interaction.commandName, error?.name || 'CommandError').catch(() => {});
     console.error(`/${interaction.commandName} hatası:`, error);
     await sendPrivateInteractionError(interaction, 'Bu komut çalışırken bir hata oluştu. Hata kaydedildi; daha sonra tekrar dene.');
   }
@@ -266,6 +275,7 @@ client.on(Events.InteractionCreate, async interaction => {
 client.on(Events.MessageCreate, async message => {
   if (!message.guild || message.author.bot) return;
   try {
+    if (await getMaintenanceState(pool)) return;
     await handleFrierenMentionMessage({ message, botUserId: client.user?.id, db: pool });
     const gained = 10 + Math.floor(Math.random() * 11);
     const result = await pool.query(`INSERT INTO users (guild_id,user_id,xp,level,last_xp_at)
@@ -289,6 +299,7 @@ client.on(Events.MessageCreate, async message => {
 
 await loadCommands();
 await initDatabase();
+await initOwnerAdminSchema(pool);
 await client.login(process.env.DISCORD_TOKEN);
 
 process.on('SIGTERM', async () => {
@@ -301,7 +312,7 @@ const PORT = process.env.PORT || 3000;
 let uptimeRobotCache = null;
 
 createServer(async (req, res) => {
-  if (await handleOwnerDashboardRequest(req, res, { client })) return;
+  if (await handleOwnerDashboardRequest(req, res, { client, db: pool })) return;
   const sendJson = (status, payload) => {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(payload));

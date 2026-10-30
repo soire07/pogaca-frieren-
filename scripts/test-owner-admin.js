@@ -1,0 +1,83 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  OWNER_ID, isOwner, formatDuration, getMaintenanceState, setMaintenanceState,
+  createApprovalRequest, reviewApproval, listUserMemories, deleteUserMemory
+} from '../owner-admin.js';
+
+test('owner access is restricted to the configured owner ID', () => {
+  assert.equal(isOwner(OWNER_ID), true);
+  assert.equal(isOwner('1553794496234262642'), false);
+  assert.equal(isOwner(undefined), false);
+});
+
+test('uptime formatting is stable for day, hour, minute and second values', () => {
+  assert.equal(formatDuration(90061), '1g 1sa 1dk 1sn');
+  assert.equal(formatDuration(0), '0sn');
+});
+
+test('maintenance state is read from the persisted owner setting', async () => {
+  const db = { query: async () => ({ rows: [{ setting_value: { enabled: true } }] }) };
+  assert.equal(await getMaintenanceState(db), true);
+});
+
+test('maintenance changes are persisted and audited', async () => {
+  const calls = [];
+  const db = { query: async (sql, params) => { calls.push({ sql, params }); return { rows: [], rowCount: 1 }; } };
+  assert.equal(await setMaintenanceState(db, true, OWNER_ID), true);
+  assert.equal(calls.length, 2);
+  assert.match(calls[0].sql, /INSERT INTO owner_settings/);
+  assert.match(calls[1].sql, /INSERT INTO owner_audit_logs/);
+  assert.deepEqual(JSON.parse(calls[0].params[0]), { enabled: true });
+});
+
+test('technical requests are queued without allowing obvious secrets', async () => {
+  let inserted;
+  const db = { query: async (sql, params) => { inserted = params; return { rows: [{ id: 41 }] }; } };
+  const id = await createApprovalRequest(db, {
+    requesterId: '123', requesterTag: 'user#0001', requestType: 'kod',
+    title: 'Komut ekleme', details: 'Yeni bir eğlence komutu eklenmesini istiyorum.'
+  });
+  assert.equal(id, 41);
+  assert.equal(inserted[2], 'kod');
+  await assert.rejects(() => createApprovalRequest(db, {
+    requesterId: '123', requesterTag: 'user', requestType: 'kod',
+    title: 'Anahtar', details: 'Discord bot token: abc'
+  }), { message: 'POSSIBLE_SECRET_IN_REQUEST' });
+});
+
+test('approval review only updates a pending request and writes an audit record', async () => {
+  const calls = [];
+  const db = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    if (sql.startsWith('UPDATE owner_approval_requests')) return { rowCount: 1, rows: [{ id: 9, status: 'approved', title: 'Talep' }] };
+    return { rowCount: 1, rows: [] };
+  } };
+  const result = await reviewApproval(db, 9, 'approved', OWNER_ID);
+  assert.equal(result.status, 'approved');
+  assert.equal(calls.length, 2);
+  assert.match(calls[0].sql, /status='pending'/);
+  assert.match(calls[1].sql, /owner_audit_logs/);
+});
+
+test('memory lookup scopes by user and optional guild', async () => {
+  let params;
+  const db = { query: async (_sql, values) => { params = values; return { rows: [{ id: 3 }] }; } };
+  const rows = await listUserMemories(db, '456', '789', 500);
+  assert.equal(rows[0].id, 3);
+  assert.deepEqual(params, ['456', '789', 50]);
+});
+
+test('memory deletion records only metadata in the owner audit trail', async () => {
+  const calls = [];
+  const db = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    if (sql.startsWith('DELETE')) return { rowCount: 1, rows: [{ id: 7, guild_id: '1', user_id: '2', memory_key: 'hobi' }] };
+    return { rowCount: 1, rows: [] };
+  } };
+  const result = await deleteUserMemory(db, 7, OWNER_ID);
+  assert.equal(result.id, 7);
+  assert.equal(calls.length, 2);
+  assert.match(calls[1].sql, /owner_audit_logs/);
+  assert.doesNotMatch(JSON.stringify(calls[1].params), /memory_value/);
+});

@@ -17,7 +17,9 @@ test('owner session rejects expired sessions', () => {
 
 test('owner session rejects tampered signatures', () => {
   const token = createOwnerSession(secret, 2_000);
-  const tampered = token.slice(0, -1) + (token.endsWith('a') ? 'b' : 'a');
+  const [payload, signature] = token.split('.');
+  const changedSignature = (signature[0] === 'a' ? 'b' : 'a') + signature.slice(1);
+  const tampered = payload + '.' + changedSignature;
   assert.equal(verifyOwnerSession(tampered, secret, 1_000), false);
 });
 
