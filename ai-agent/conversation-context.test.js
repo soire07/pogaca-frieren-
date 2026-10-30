@@ -64,3 +64,17 @@ test('a new conversation always receives canonical character context', () => {
   assert.match(message.content, /Arven: 19 yaşında; kayıp kardeşini arıyor/u);
   assert.match(message.content, /Eldrin: 24 yaşında; sahil kasabasında yaşıyor/u);
 });
+
+test('canonical character profiles preserve all explicitly recorded animal preferences', () => {
+  const context = formatConversationContext([]);
+
+  assert.match(context, /Arven:[^\\n]*en sevdiği hayvan kediler/u);
+  assert.match(context, /Eldrin:[^\\n]*en sevdiği hayvan baykuş/u);
+});
+
+test('conversation context uses real line breaks instead of literal escaped newline text', () => {
+  const context = formatConversationContext([]);
+
+  assert.ok(context.includes('\\n'));
+  assert.equal(context.includes('\\\\n'), false);
+});
