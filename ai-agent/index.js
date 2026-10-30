@@ -663,7 +663,10 @@ client.on(Events.InteractionCreate, async interaction => {
       }
     } catch (error) {
       console.error('Persistent memory command failed:', redactSecrets(error.message || 'unknown error'));
-      await sendPrivateError(interaction, 'Kalıcı bellek işlemi tamamlanamadı. DATABASE_URL ve veritabanı bağlantısını kontrol etmek gerekiyor.', replyError => {
+      const message = error?.code === 'SENSITIVE_MEMORY_REJECTED'
+        ? 'Bu bilgi hassas kişisel veya gizli veri içerdiği için kalıcı belleğe kaydedilmedi.'
+        : 'Kalıcı bellek işlemi tamamlanamadı. Veritabanı bağlantısını kontrol etmek gerekiyor.';
+      await sendPrivateError(interaction, message, replyError => {
         console.error('Persistent memory error reply failed:', redactSecrets(replyError.message || 'unknown error'));
       });
     }

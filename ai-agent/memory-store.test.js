@@ -98,7 +98,7 @@ test('saving the same key updates only that user’s existing memory', async () 
 
 test('deleting a key owned by another user cannot delete that user’s memory', async () => {
   const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
-  await store.save('user-a', 'private', 'A secret test phrase');
+  await store.save('user-a', 'private', 'A private test phrase');
   await store.save('user-b', 'private', 'B private phrase');
   assert.equal(await store.remove('user-a', 'private'), true);
   assert.deepEqual((await store.list('user-b')).map(row => row.memory_value), ['B private phrase']);
@@ -122,6 +122,44 @@ test('save trims input and rejects empty user IDs, keys and values before databa
   await assert.rejects(store.save('user-a', '   ', 'value'), /key must not be empty/i);
   await assert.rejects(store.save('user-a', 'project', '   '), /value must not be empty/i);
   assert.equal(FakePool.instance.calls.some(call => call.sql.includes('INSERT INTO')), false);
+});
+
+
+test('manual memory writes reject secrets and sensitive personal data before persistence', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  const forbiddenValues = [
+    'Şifrem 12345.',
+    'Hedefim depresyonu yenmek.',
+    'Hedefim diyabetimi kontrol altında tutmak.',
+    'Dini inancım benim için çok önemli.',
+    'Ben biseksüelim.',
+    'Ben X partisine oy verdim.',
+    'Ev adresim İstanbul merkezde.',
+    'Kredi kartımın numarası 4111111111111111.',
+    'I have depression and anxiety.',
+    'My home address is 10 Main Street.',
+    'I am bisexual.',
+    'I voted for that political party.'
+  ];
+
+  for (const value of forbiddenValues) {
+    await assert.rejects(
+      store.save('user-a', 'private-note', value),
+      error => error?.code === 'SENSITIVE_MEMORY_REJECTED',
+      value
+    );
+  }
+  await assert.rejects(
+    store.save('user-a', 'depression', 'Ordinary note.'),
+    error => error?.code === 'SENSITIVE_MEMORY_REJECTED'
+  );
+  assert.equal(FakePool.instance.calls.some(call => call.sql.includes('INSERT INTO frieren_ai_memories')), false);
+});
+
+test('manual memory writes continue to accept ordinary non-sensitive preferences and projects', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  await store.save('user-a', 'project', 'Frieren RPG üzerinde çalışıyorum.');
+  assert.equal((await store.list('user-a'))[0]?.memory_value, 'Frieren RPG üzerinde çalışıyorum.');
 });
 
 test('save rejects keys and values beyond the documented schema limits', async () => {
@@ -345,4 +383,18 @@ test('favorite game corrections update both game records with the clean value', 
     { key: 'favori_oyun', value: 'En sevdiği oyun: Terraria.' },
     { key: 'tercih_oyun', value: 'Kullanıcı Terraria oynamayı seviyor.' },
   ]);
+});
+
+
+test('automatic extraction also blocks sensitive health, religion, orientation and political facts', () => {
+  for (const message of [
+    'Hedefim depresyonu yenmek.',
+    'Hedefim diyabetimi kontrol altında tutmak.',
+    'Dini inancım benim için çok önemli.',
+    'Ben biseksüelim.',
+    'Ben X partisine oy verdim.',
+    'Ev adresim İstanbul merkezde.',
+  ]) {
+    assert.deepEqual(extractAutomaticMemories(message), [], message);
+  }
 });

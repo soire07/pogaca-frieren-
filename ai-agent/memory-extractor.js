@@ -1,7 +1,37 @@
-const SENSITIVE_TERMS = /(password|passcode|parola|sifre|şifre|token|api[\s_-]*key|secret|iban|credit[\s_-]*card|kredi[\s_-]*kart|adresim|ev adres|telefon numara|tc kimlik|diagnosis|tanı kondu|hastalığım|hastaligim|ilacım|ilacim|oyum|partim|dinim|cinsel|sexual|political affiliation)/iu;
+const SENSITIVE_PATTERNS = [
+  /\b(?:password|passcode|parola|sifre|token|secret|api key|iban)\w*\b/,
+  /\b(?:credit card|kredi kart)\w*\b/,
+  /\b(?:ev )?adres\w*\b/,
+  /\b(?:home address|address|phone number|mobile number)\w*\b/,
+  /\btelefon(?: numara)?\w*\b/,
+  /\btc kimlik(?: numara)?\w*\b/,
+  /\bpasaport\w*\b/,
+  /\b(?:diagnos\w*|tani kondu|tani aldim|hastali\w*|rahatsizli\w*|depresyon\w*|depression\w*|anksiyete\w*|anxiety\w*|panik atak|bipolar\w*|diyabet\w*|diabetes\w*|seker hastali\w*|kanser\w*|cancer\w*|epilepsi\w*|epilepsy\w*|astim\w*|asthma\w*|hiv\b|hepatit\w*|ilac\w*|tedavi\w*|treatment\w*|terapi\w*|therapy\w*|psikiyatri\w*|psikolog\w*|hamile\w*|pregnant|gebelik\w*|pregnancy|otizm\w*|autism\w*|adhd\b|illness\w*|medication\w*|medical condition|health condition)\b/,
+  /\b(?:oyum|oy verdim|oy kullan\w*|partim|partiye uye\w*|siyasi gorus|politik gorus|political affiliation|i voted|vote for|political party|political views)\b/,
+  /\b(?:dinim|dini inanc\w*|inancim|mezhebim|dini gorus|religion|religious affiliation)\b/,
+  /\b(?:cinsel yonelim|cinsel hayat|cinsel yasam|cinsel tercihim|sexual orientation|sexual life|sex life|lezbiyen\w*|lesbian\w*|escinsel\w*|homosexual\w*|biseksuel\w*|bisexual\w*|gayim|geyim|i am gay|trans birey|transgender\w*)\b/,
+  /\b(?:etnik koken|irkim|irki kimlik|race|ethnicity)\b/,
+  /\b(?:suc kaydim|sabikam|criminal record)\b/,
+];
 
 function clean(value) {
   return String(value ?? '').replace(/\s+/g, ' ').trim();
+}
+
+function normalizeSensitiveText(value) {
+  return clean(value)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ı/g, 'i')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function containsSensitiveInformation(value) {
+  const normalized = normalizeSensitiveText(value);
+  return Boolean(normalized) && SENSITIVE_PATTERNS.some(pattern => pattern.test(normalized));
 }
 
 function slug(value) {
@@ -23,7 +53,7 @@ function normalizeFact(value) {
  */
 export function extractAutomaticMemories(message) {
   const text = clean(message);
-  if (text.length < 8 || text.length > 500 || /[?؟]/u.test(text) || SENSITIVE_TERMS.test(text)) return [];
+  if (text.length < 8 || text.length > 500 || /[?؟]/u.test(text) || containsSensitiveInformation(text)) return [];
 
   const facts = [];
   const add = (key, value) => {
@@ -42,8 +72,6 @@ export function extractAutomaticMemories(message) {
     const value = clean(favorite[2]).replace(/^(?:artık|bundan sonra|şimdi)\s+/iu, '').replace(/[.!]+$/u, '');
     if (value && value.length <= 120) {
       add('favori_' + category, 'En sevdiği ' + category.replace(/_/g, ' ') + ': ' + value + '.');
-      // A correction to the favorite game must also replace the normalized play-preference
-      // record; otherwise the two memory keys contradict each other on later recall.
       const isGameCorrection = category === 'oyun'
         && /\b(?:artık|bundan sonra|yerine|eskisini|güncelle|değişti)\b/iu.test(text);
       if (isGameCorrection) add('tercih_oyun', 'Kullanıcı ' + value + ' oynamayı seviyor.');
@@ -81,7 +109,6 @@ export function extractAutomaticMemories(message) {
     add('hedef', 'Kullanıcının hedefi: ' + value + '.');
   }
 
-  // Preserve explicit ongoing fictional/story context without storing every chat line.
   const hasStorySignal = /\b(hikaye|hikâye|karakter|ejderha|orman|rpg|gölge|golge|elara)\b/iu.test(text);
   const hasNamedStoryTerms = /\b(elara|gölge|golge)\b/iu.test(text);
   if (hasStorySignal && hasNamedStoryTerms && text.length >= 25 && text.length <= 350) {
@@ -92,4 +119,4 @@ export function extractAutomaticMemories(message) {
   return facts.slice(0, 3);
 }
 
-export const memoryExtractorInternals = { clean, slug, normalizeFact };
+export const memoryExtractorInternals = { clean, slug, normalizeFact, normalizeSensitiveText };
