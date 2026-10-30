@@ -36,7 +36,7 @@ test('assistant-generated false facts are excluded from factual conversation con
   assert.match(context, /Arven 19 yaşında/u);
   assert.doesNotMatch(context, /eski kütüphanede/u);
   assert.doesNotMatch(context, /kurttur/u);
-  assert.match(context, /yalnızca kullanıcı mesajları/u);
+  assert.match(context, /yalnızca KULLANICI mesajları/u);
 });
 
 test('assistant-only history does not establish character facts', () => {
