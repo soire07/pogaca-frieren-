@@ -12,8 +12,8 @@ export default {
   async execute(interaction) {
     if (!await ownerOnly(interaction)) return;
     if (interaction.options.getSubcommand() === 'listele') {
-      const rows = await listPendingApprovals(pool, 15);
-      const description = rows.length ? rows.map(row => '**#' + row.id + ' · ' + row.title + '**\nTür: ' + row.request_type + ' · Gönderen: ' + row.requester_tag + '\n' + String(row.details).slice(0, 220)).join('\n\n') : 'Bekleyen talep bulunmuyor.';
+      const rows = await listPendingApprovals(pool, 8);
+      const description = rows.length ? rows.map(row => '**#' + row.id + ' · ' + row.title + '**\nTür: ' + row.request_type + ' · Gönderen: ' + row.requester_tag + '\n' + String(row.details).slice(0, 140)).join('\n\n') : 'Bekleyen talep bulunmuyor.';
       return interaction.reply({ embeds: [createOwnerEmbed('Bekleyen teknik talepler', description)], ephemeral: true });
     }
     const id = interaction.options.getInteger('id', true);
