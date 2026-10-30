@@ -357,3 +357,17 @@ test('runtime startup does not clear or race slash-command registration', async 
   assert.ok(deploy.includes('Routes.applicationGuildCommands'));
   assert.ok(deploy.includes('Routes.applicationCommands'));
 });
+
+
+test('co-op raid acknowledges the Discord interaction before database work and types spell mastery casts explicitly', async () => {
+  const source = await read('ortakboss.js');
+  const ack = source.indexOf('await interaction.deferReply()');
+  const ensure = source.indexOf('await ensureUser(');
+  const firstDb = source.indexOf('pool.connect()');
+  assert.ok(ack >= 0 && ensure > ack && firstDb > ack,
+    'raid command must defer its reply before database work');
+  assert.match(source, /const msg = await interaction\.editReply\(/,
+    'invitation message must edit the deferred reply');
+  assert.match(source, /VALUES \(\$1,\$2,'zoltraak',\$3::integer,LEAST\(10,FLOOR\(\$3::numeric\/10\.0\)::int\),NOW\(\)\)/,
+    'spell mastery casts parameter must have explicit integer/numeric casts');
+});
