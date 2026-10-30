@@ -28,7 +28,8 @@ export default {
       );
       const count = Number(progress.crafted_items);
       if (!claim) {
-        await db.query('ROLLBACK');
+        // Persist the daily progress row even when the player only views the mission.
+        await db.query('COMMIT');
         const status = progress.claimed_at ? 'Ödül bugün zaten alındı.' : count >= TARGET ? 'Görev tamamlandı; odul_al seçeneğini true yaparak ödülünü alabilirsin.' : `Eksik: **${TARGET - count}** ekipman daha üret.`;
         const embed = new EmbedBuilder().setColor(0x9b8cff).setTitle('📋 Günlük Zanaat Görevi')
           .setDescription(`Hedef: **${TARGET} ekipman**\nBugünkü üretimin: **${count}/${TARGET}**\nÖdül: **+${REWARD.coins} altın · +${REWARD.xp} XP**\n\n${status}`)
@@ -36,7 +37,8 @@ export default {
         return interaction.reply({ embeds: [embed], ephemeral: true });
       }
       if (count < TARGET) {
-        await db.query('ROLLBACK');
+        // Keep the initialized progress row; no reward is granted before the target is met.
+        await db.query('COMMIT');
         return interaction.reply({ content: `Günlük görev için **${TARGET}** ekipman üretmelisin. Şu an: **${count}/${TARGET}**.`, ephemeral: true });
       }
       if (progress.claimed_at) {
