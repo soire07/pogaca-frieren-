@@ -53,19 +53,38 @@ test('failed error replies are swallowed and reported without causing another un
 });
 
 
-test('public health payload reports Discord readiness without disclosing internal configuration', () => {
-  assert.deepEqual(getPublicHealthPayload({ discordReady: true }), { status: 'ok', discordReady: true });
-  assert.deepEqual(getPublicHealthPayload({ discordReady: false }), { status: 'ok', discordReady: false });
-  assert.deepEqual(getPublicHealthPayload(), { status: 'ok', discordReady: false });
-  const payload = getPublicHealthPayload({ discordReady: true });
-  assert.equal('persistentMemoryConfigured' in payload, false);
-  assert.equal('discordToken' in payload, false);
+test('public health payload reports dependency readiness without exposing configuration', () => {
+  const ready = {
+    discordReady: true,
+    memoryDatabaseReady: true,
+    modelConfigured: true,
+    bridgeConfigured: false,
+  };
+  assert.deepEqual(getPublicHealthPayload(ready), {
+    status: 'ok',
+    discordReady: true,
+    memoryDatabaseReady: true,
+    modelConfigured: true,
+    bridgeConfigured: false,
+  });
+  const notReady = getPublicHealthPayload({ discordReady: true, memoryDatabaseReady: false, modelConfigured: true });
+  assert.deepEqual(notReady, {
+    status: 'not_ready',
+    discordReady: true,
+    memoryDatabaseReady: false,
+    modelConfigured: true,
+    bridgeConfigured: false,
+  });
+  assert.equal('discordToken' in notReady, false);
+  assert.equal('databaseUrl' in notReady, false);
+  assert.equal('groqApiKey' in notReady, false);
 });
 
-
-test('health endpoint stays live while Discord gateway is not ready or reconnecting', () => {
-  // This is a liveness endpoint used by the host monitor; readiness is exposed in the payload.
-  assert.equal(getPublicHealthStatus({ discordReady: false }), 200);
-  assert.equal(getPublicHealthStatus({ discordReady: true }), 200);
-  assert.equal(getPublicHealthStatus(), 200);
+test('health endpoint reports ready only when Discord, memory database and model are ready', () => {
+  assert.equal(getPublicHealthStatus({ discordReady: false, memoryDatabaseReady: true, modelConfigured: true }), 503);
+  assert.equal(getPublicHealthStatus({ discordReady: true, memoryDatabaseReady: false, modelConfigured: true }), 503);
+  assert.equal(getPublicHealthStatus({ discordReady: true, memoryDatabaseReady: true, modelConfigured: false }), 503);
+  assert.equal(getPublicHealthStatus({ discordReady: true, memoryDatabaseReady: true, modelConfigured: true, bridgeConfigured: false }), 200);
+  assert.equal(getPublicHealthStatus(), 503);
 });
+
