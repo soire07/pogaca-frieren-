@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "https://pogaca-frieren.onrender.com/owner"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "https://pogaca-frieren.onrender.com/$1"
+    }
+  ]
+}
