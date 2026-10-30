@@ -876,3 +876,14 @@ test('kimimben and status commands have command-specific behavioral assertions',
   assert.match(runner, /42 ms/);
   assert.match(runner, /Yüklü komut/);
 });
+
+test('isolated command tests preserve existing frieren_test data and serialize schema setup', async () => {
+  const schema = await read('database/db.js');
+  const runner = await read('scripts/live-command-test.js');
+
+  assert.doesNotMatch(schema, /DROP SCHEMA IF EXISTS frieren_test CASCADE/);
+  assert.match(schema, /CREATE SCHEMA IF NOT EXISTS frieren_test/);
+  assert.match(schema, /pg_advisory_lock\(20261030, 1\)/);
+  assert.match(schema, /if \(!testContext\.getStore\(\)\)/);
+  assert.match(runner, /randomUUID\(\)/);
+});
