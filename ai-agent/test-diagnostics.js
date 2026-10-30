@@ -38,7 +38,7 @@ export function buildTestDiagnostics({ syntax, audit, suite, targeted, liveRpg }
   const locations = extractFailureLocations(outputs.join('\n'));
   const failedStages = checks.filter(item => ['FAIL', 'ERROR', 'TIMEOUT'].includes(item.status)).map(item => item.name);
   return {
-    overall: failedStages.length ? 'FAIL' : checks.every(item => item.status === 'PASS' || item.status === 'NOT_RUN') ? 'PASS' : 'INCOMPLETE',
+    overall: failedStages.length ? 'FAIL' : checks.some(item => item.status === 'NOT_RUN') ? 'INCOMPLETE' : 'PASS',
     checks,
     failedStages,
     locations
