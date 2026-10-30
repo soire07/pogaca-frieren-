@@ -1,0 +1,64 @@
+name: Register Poğaça RPG test commands
+
+# Test-only allowlist. This workflow never writes to the production guild and never touches
+# the separate Frieren AI application's commands.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/register-rpg-test-commands.yml"
+      - "deploy-commands.js"
+      - "commands/**"
+      - "*.js"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: pogaca-rpg-test-command-registration
+  cancel-in-progress: false
+
+jobs:
+  register-test-commands:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: frieren_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d frieren_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install
+      - name: Validate project and command definitions
+        run: npm run check
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/frieren_test
+      - name: Register only the approved RPG test commands
+        run: npm run deploy-commands
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          GUILD_IDS: ""
+          TEST_GUILD_ID: "1564945192803639356"
+          TEST_COMMAND_NAMES: "karakter,envanter,sinifrehberi,buyupratik,dinlen,gunluk,kesif,rehber"
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/frieren_test
