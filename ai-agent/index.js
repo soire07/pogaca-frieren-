@@ -170,7 +170,7 @@ function isExplicitMemoryOverviewQuestion(value) {
   return (allWords && memoryWords) || (listingWords && memoryWords);
 }
 
-async function answerCodeQuestion(question, userId) {
+async function answerCodeQuestion(question, userId, conversationId) {
   // Memory overview requests must be answered from the database directly, not summarized by an LLM.
   if (memoryStore && userId && isExplicitMemoryOverviewQuestion(question)) {
     try {
@@ -206,9 +206,9 @@ async function answerCodeQuestion(question, userId) {
   let conversationHistory = [];
   if (memoryStore && userId && shouldUseConversationHistory(question, memories)) {
     try {
-      // Memory recall uses current saved-memory state, not old turns that can resurrect deleted facts.
-      // Keep a shorter history for code questions to preserve the free model's token budget.
-      conversationHistory = await memoryStore.getConversationHistory(userId, conversational ? 8 : 4);
+      // Scope history to the current Discord channel/thread; never mix parallel stories from other channels.
+      // Retain up to 80 turns in storage; the formatter selects a compact early+recent context window.
+      conversationHistory = await memoryStore.getConversationHistory(userId, conversationId, 80);
     } catch (error) {
       console.error('Conversation history lookup failed:', redactSecrets(error.message || 'unknown error'));
     }
@@ -286,8 +286,8 @@ async function answerCodeQuestion(question, userId) {
   }
   if (memoryStore && userId && conversational) {
     try {
-      await memoryStore.addConversationTurn(userId, 'user', question.slice(0, 1500));
-      await memoryStore.addConversationTurn(userId, 'assistant', message.slice(0, 1500));
+      await memoryStore.addConversationTurn(userId, conversationId, 'user', question.slice(0, 1500));
+      await memoryStore.addConversationTurn(userId, conversationId, 'assistant', message.slice(0, 1500));
       // Store only clear, non-sensitive facts extracted locally from the user's own statement.
       // The Discord user ID scopes every write; no extra AI/API request is made for extraction.
       for (const memory of extractAutomaticMemories(question)) {
@@ -680,7 +680,8 @@ client.on(Events.InteractionCreate, async interaction => {
     try {
       await interaction.deferReply({ ephemeral: true });
       const question = interaction.options.getString('soru', true).trim();
-      const answer = await answerCodeQuestion(question, interaction.user.id);
+      const conversationId = (interaction.guildId || 'dm') + ':' + (interaction.channelId || 'unknown');
+      const answer = await answerCodeQuestion(question, interaction.user.id, conversationId);
       await interaction.editReply(answer.message.slice(0, 1950));
     } catch (error) {
       console.error('Frieren AI analysis failed:', redactSecrets(error.message || 'unknown error'));
