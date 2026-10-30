@@ -132,7 +132,7 @@ export async function handleOwnerDashboardRequest(req, res, { client }) {
       if (!userResponse.ok) throw new Error('Discord identity lookup failed');
       const user = await userResponse.json();
       if (String(user.id) !== OWNER_ID) {
-        send(res, 403, page('Erişim reddedildi', '<h1>Bu panel sana açık değil</h1><p>Discord hesabın owner hesabı olarak doğrulanmadı.</p><a class="btn" href="/owner/login">Tekrar dene</a>'), { 'Set-Cookie': clearCookie(STATE_COOKIE) });
+        send(res, 403, page('Erişim reddedildi', '<h1>Bu panel sana açık değil</h1><p>Discord hesabın owner hesabı olarak doğrulanmadı.</p><a class="btn" href="/owner/login">Tekrar dene</a>'), { 'Set-Cookie': [clearCookie(STATE_COOKIE), clearCookie(SESSION_COOKIE)] });
         return true;
       }
 
@@ -148,7 +148,7 @@ export async function handleOwnerDashboardRequest(req, res, { client }) {
       res.end();
     } catch (error) {
       console.error('Owner OAuth login failed:', error?.message || 'unknown error');
-      send(res, 502, page('Discord bağlantı hatası', '<h1>Discord ile giriş tamamlanamadı</h1><p>Biraz sonra yeniden dene.</p>'), { 'Set-Cookie': clearCookie(STATE_COOKIE) });
+      send(res, 502, page('Discord bağlantı hatası', '<h1>Discord ile giriş tamamlanamadı</h1><p>Biraz sonra yeniden dene.</p>'), { 'Set-Cookie': [clearCookie(STATE_COOKIE), clearCookie(SESSION_COOKIE)] });
     }
     return true;
   }
