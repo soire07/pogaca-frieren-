@@ -171,6 +171,11 @@ export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
       if (!normalizedConversationId) throw new TypeError('Conversation ID is required.');
       if (!['user', 'assistant'].includes(normalizedRole)) throw new TypeError('Conversation role must be user or assistant.');
       if (!normalizedContent) throw new TypeError('Conversation content must not be empty.');
+      if (containsSensitiveInformation(normalizedContent)) {
+        const error = new Error('Sensitive conversation content cannot be stored.');
+        error.code = 'SENSITIVE_MEMORY_REJECTED';
+        throw error;
+      }
       await ensureSchema();
       await pool.query(
         'INSERT INTO frieren_ai_conversation (user_id, conversation_id, role, content) VALUES ($1, $2, $3, $4)',
