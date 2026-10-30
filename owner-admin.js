@@ -73,7 +73,7 @@ export async function createApprovalRequest(db, { requesterId, requesterTag, req
   const safeTitle = String(title || '').trim().slice(0, 160);
   const safeDetails = String(details || '').trim().slice(0, 1800);
   if (!safeTitle || !safeDetails || !['kod', 'teknik-bilgi'].includes(requestType)) throw new Error('INVALID_APPROVAL_REQUEST');
-  if (/(?:discord|groq|api)[ _-]?(?:token|key)|client_secret|password|parola|şifre/i.test(safeDetails)) throw new Error('POSSIBLE_SECRET_IN_REQUEST');
+  if (/(?:discord(?:[ _-]?bot)?|groq|api)[ _-]?(?:token|key)|client_secret|password|parola|şifre/i.test(safeDetails)) throw new Error('POSSIBLE_SECRET_IN_REQUEST');
   const result = await db.query(
     'INSERT INTO owner_approval_requests(requester_id,requester_tag,request_type,title,details) VALUES($1,$2,$3,$4,$5) RETURNING id',
     [String(requesterId), String(requesterTag || 'unknown').slice(0,100), requestType, safeTitle, safeDetails]
