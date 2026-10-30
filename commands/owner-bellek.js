@@ -16,7 +16,7 @@ export default {
     if (sub === 'listele') {
       const userId = interaction.options.getString('kullanici', true);
       const guildId = interaction.options.getString('sunucu');
-      const rows = await listUserMemories(pool, userId, guildId, 20);
+      const rows = await listUserMemories(pool, userId, guildId, 8);
       const description = rows.length ? rows.map(row => '**#' + row.id + ' · ' + row.memory_key + '** (sunucu ' + row.guild_id + ')\n' + row.memory_value).join('\n\n') : 'Bu kullanıcı için kayıtlı hafıza bulunamadı.';
       return interaction.reply({ embeds: [createOwnerEmbed('Kullanıcı hafızaları', description)], ephemeral: true });
     }
