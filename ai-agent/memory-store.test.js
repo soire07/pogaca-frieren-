@@ -17,12 +17,12 @@ class FakePool {
     this.calls.push({ sql, params });
     if (sql.includes('INSERT INTO frieren_ai_conversation')) {
       const [userId, conversationId, role, content] = params;
-      this.conversationRows.push({ id: this.nextConversationId++, user_id: userId, conversation_id: conversationId, role, content });
+      this.conversationRows.push({ id: this.nextConversationId++, user_id: userId, conversation_id: conversationId, role, content, privacy_checked: true });
       return { rows: [], rowCount: 1 };
     }
     if (sql.includes('SELECT role, content FROM frieren_ai_conversation')) {
       const [userId, conversationId, limit] = params;
-      return { rows: this.conversationRows.filter(row => row.user_id === userId && row.conversation_id === conversationId).slice(-limit).reverse().map(({ role, content }) => ({ role, content })), rowCount: 0 };
+      return { rows: this.conversationRows.filter(row => row.user_id === userId && row.conversation_id === conversationId && row.privacy_checked === true).slice(-limit).reverse().map(({ role, content }) => ({ role, content })), rowCount: 0 };
     }
     if (sql.includes('DELETE FROM frieren_ai_conversation')) {
       const [userId, conversationId] = params;
