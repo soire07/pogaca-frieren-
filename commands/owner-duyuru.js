@@ -6,9 +6,11 @@ export default {
   data: new SlashCommandBuilder().setName('owner-duyuru').setDescription('Seçtiğin sunucudaki kanala duyuru gönderir.')
     .addStringOption(option => option.setName('sunucu').setDescription('Hedef Discord sunucu ID').setRequired(true))
     .addStringOption(option => option.setName('kanal').setDescription('Hedef metin kanalı ID').setRequired(true))
-    .addStringOption(option => option.setName('mesaj').setDescription('Duyuru metni (en fazla 1800 karakter)').setRequired(true)),
+    .addStringOption(option => option.setName('mesaj').setDescription('Duyuru metni (en fazla 1800 karakter)').setRequired(true))
+    .addBooleanOption(option => option.setName('onay').setDescription('Bu sunucu ve kanala gönderimi onayla').setRequired(true)),
   async execute(interaction) {
     if (!await ownerOnly(interaction)) return;
+    if (!interaction.options.getBoolean('onay', true)) return interaction.reply({ content: 'Duyuru gönderimi için onay=true seçmelisin.', ephemeral: true });
     await interaction.deferReply({ ephemeral: true });
     try {
       const result = await sendOwnerAnnouncement(interaction.client, pool, {
