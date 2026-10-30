@@ -7,7 +7,7 @@ import {
 } from './owner-admin.js';
 
 const OWNER_ID = '1553794496234262641';
-const BASE_URL = 'https://pogaca-frieren.onrender.com';
+const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
 const SESSION_COOKIE = 'frieren_owner_session';
 const STATE_COOKIE = 'frieren_owner_oauth_state';
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
@@ -206,9 +206,12 @@ export function renderOwnerBotCards(overview, aiReadiness) {
     + '</section>';
 }
 
-async function getFrierenAIReadiness() {
+export async function getFrierenAIReadiness({
+  fetchImpl = globalThis.fetch,
+  baseUrl = 'http://127.0.0.1:' + (process.env.PORT || 3000)
+} = {}) {
   try {
-    const response = await fetch(BASE_URL + '/ai-ready', { signal: AbortSignal.timeout(4000) });
+    const response = await fetchImpl(baseUrl + '/ai-ready', { signal: AbortSignal.timeout(4000) });
     if (!response.ok) return null;
     return await response.json();
   } catch { return null; }
@@ -428,7 +431,8 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       getOwnerOverview(client, db),
       listPendingApprovals(db, 15),
       getRecentOwnerActivity(db),
-      getRenderServiceMetrics()
+      getRenderServiceMetrics(),
+      getFrierenAIReadiness()
     ]);
     const memoryUser = String(url.searchParams.get('memoryUser') || '').replace(/\D/g, '').slice(0, 24);
     const memories = memoryUser ? await listUserMemories(db, memoryUser, null, 30) : [];
