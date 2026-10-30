@@ -45,7 +45,7 @@ export function buildFrierenMessages({ history = [], userMessage, memories = [] 
   ];
 }
 
-export async function generateFrierenReply({ history = [], userMessage, env = process.env, fetchImpl = fetch }) {
+export async function generateFrierenReply({ history = [], userMessage, memories = [], env = process.env, fetchImpl = fetch }) {
   const apiKey = String(env.GROQ_API_KEY || '').trim();
   if (!apiKey) throw new Error('GROQ_API_KEY_MISSING');
 
@@ -64,7 +64,7 @@ export async function generateFrierenReply({ history = [], userMessage, env = pr
       signal: controller.signal,
       body: JSON.stringify({
         model,
-        messages: buildFrierenMessages({ history, userMessage }),
+        messages: buildFrierenMessages({ history, userMessage, memories }),
         temperature: 0.7,
         max_tokens: 700
       })
