@@ -64,7 +64,7 @@ export const CHARACTER_CLASSES = {
 };
 
 export function getCharacterClass(className) {
-  const normalized = String(className || 'Gezgin').normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase('tr-TR');
+  const normalized = String(className || 'Gezgin').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('tr-TR').replace(/ı/g, 'i');
   if (normalized.includes('buyucu')) return CHARACTER_CLASSES.buyucu;
   if (normalized.includes('muhafiz')) return CHARACTER_CLASSES.muhafiz;
   if (normalized.includes('sifaci')) return CHARACTER_CLASSES.sifaci;
