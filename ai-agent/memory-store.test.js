@@ -58,6 +58,14 @@ class FakePool {
   async end() {}
 }
 
+test('health check initializes the schema and verifies the PostgreSQL connection', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  assert.equal(await store.checkHealth(), true);
+  const calls = FakePool.instance.calls;
+  assert.ok(calls.some(call => call.sql.includes('CREATE TABLE IF NOT EXISTS frieren_ai_conversation')));
+  assert.ok(calls.some(call => call.sql === 'SELECT 1'));
+});
+
 test('save uses a parameterized query and scopes records to a user', async () => {
   const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
   await store.save('user-a', 'project', 'Frieren RPG');

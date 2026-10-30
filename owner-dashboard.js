@@ -23,6 +23,14 @@ export const OWNER_PANEL_SECTIONS = Object.freeze([
   { id: 'activity', label: 'İşlem Kayıtları', command: null }
 ]);
 
+export function getDiscordOAuthFailureDiagnostic(status, payload = {}) {
+  const numericStatus = Number(status);
+  const safeStatus = Number.isFinite(numericStatus) && numericStatus > 0 ? numericStatus : 0;
+  const rawCode = typeof payload?.error === 'string' ? payload.error : '';
+  const safeCode = /^[a-z0-9_]{1,64}$/i.test(rawCode) ? rawCode : 'unknown_error';
+  return 'HTTP ' + safeStatus + '; ' + safeCode;
+}
+
 export function renderOwnerNavigation() {
   return '<nav class="nav" aria-label="Owner panel bölümleri">' + OWNER_PANEL_SECTIONS
     .map(section => '<a href="#' + section.id + '">' + section.label
@@ -291,7 +299,10 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, grant_type: 'authorization_code', code, redirect_uri: redirectUri }),
         signal: AbortSignal.timeout(10000)
       });
-      if (!tokenResponse.ok) throw new Error('OAuth token exchange failed');
+      if (!tokenResponse.ok) {
+        const errorPayload = await tokenResponse.json().catch(() => ({}));
+        throw new Error('OAuth token exchange failed (' + getDiscordOAuthFailureDiagnostic(tokenResponse.status, errorPayload) + ')');
+      }
       const tokenData = await tokenResponse.json();
       const userResponse = await fetch('https://discord.com/api/users/@me', {
         headers: { Authorization: 'Bearer ' + tokenData.access_token }, signal: AbortSignal.timeout(10000)

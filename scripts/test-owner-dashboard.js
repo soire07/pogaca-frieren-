@@ -1,9 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, getDiscordOAuthFailureDiagnostic } from '../owner-dashboard.js';
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
 const ownerId = '1553794496234262641';
+
+test('Discord OAuth diagnostics expose only safe status and error codes', () => {
+  assert.equal(getDiscordOAuthFailureDiagnostic(401, { error: 'invalid_client', error_description: 'private detail' }), 'HTTP 401; invalid_client');
+  assert.equal(getDiscordOAuthFailureDiagnostic(400, { error: 'invalid_grant' }), 'HTTP 400; invalid_grant');
+  assert.equal(getDiscordOAuthFailureDiagnostic(502, { error: 'bad code; secret=hidden' }), 'HTTP 502; unknown_error');
+  assert.doesNotMatch(getDiscordOAuthFailureDiagnostic(401, { error: 'invalid_client', error_description: 'private detail' }), /private detail/);
+});
 
 test('owner session accepts a valid signed session for the configured owner', () => {
   const token = createOwnerSession(secret, 2_000);

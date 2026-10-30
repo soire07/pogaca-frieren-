@@ -105,6 +105,12 @@ export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
   }
 
   return {
+    async checkHealth() {
+      await ensureSchema();
+      await pool.query('SELECT 1');
+      return true;
+    },
+
     async save(userId, key, value) {
       const normalizedUserId = String(userId ?? '').trim();
       const normalizedKey = String(key ?? '').trim();

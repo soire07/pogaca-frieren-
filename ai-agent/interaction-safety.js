@@ -25,13 +25,28 @@ export async function sendPrivateError(interaction, content, onError = () => {})
   }
 }
 
-export function getPublicHealthStatus({ discordReady = false } = {}) {
-  // Liveness endpoint: HTTP server is alive even while Discord reconnects.
-  // Discord readiness is reported separately in the payload.
-  return 200;
+export function getPublicHealthStatus({
+  discordReady = false,
+  memoryDatabaseReady = false,
+  modelConfigured = false,
+} = {}) {
+  // Readiness is used by the combined service health proxy and external monitor.
+  return discordReady && memoryDatabaseReady && modelConfigured ? 200 : 503;
 }
 
-export function getPublicHealthPayload({ discordReady = false } = {}) {
-  // Expose only readiness, never tokens, configuration, or database details.
-  return { status: 'ok', discordReady: Boolean(discordReady) };
+export function getPublicHealthPayload({
+  discordReady = false,
+  memoryDatabaseReady = false,
+  modelConfigured = false,
+  bridgeConfigured = false,
+} = {}) {
+  // Expose only dependency readiness, never tokens, URLs, or configuration values.
+  const ready = Boolean(discordReady && memoryDatabaseReady && modelConfigured);
+  return {
+    status: ready ? 'ok' : 'not_ready',
+    discordReady: Boolean(discordReady),
+    memoryDatabaseReady: Boolean(memoryDatabaseReady),
+    modelConfigured: Boolean(modelConfigured),
+    bridgeConfigured: Boolean(bridgeConfigured),
+  };
 }
