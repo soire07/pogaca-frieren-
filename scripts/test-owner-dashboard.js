@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation } from '../owner-dashboard.js';
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
 const ownerId = '1553794496234262641';
@@ -47,4 +47,14 @@ test('owner OAuth state cookie is cleared using the same path it was created wit
   const cookie = clearOwnerCookie('frieren_owner_oauth_state', '/owner');
   assert.ok(cookie.includes('Path=/owner'));
   assert.match(cookie, /Max-Age=0/);
+});
+
+
+test('owner panel navigation exposes all six owner command workflows', () => {
+  const commands = OWNER_PANEL_SECTIONS.map(section => section.command).filter(Boolean);
+  assert.deepEqual(commands, ['/owner', '/owner-bilgi', '/owner-bellek', '/owner-onay', '/owner-duyuru', '/owner-bakim']);
+  const navigation = renderOwnerNavigation();
+  for (const id of ['overview', 'system', 'memories', 'approvals', 'announcements', 'maintenance', 'activity']) {
+    assert.match(navigation, new RegExp('href="#' + id + '"'));
+  }
 });
