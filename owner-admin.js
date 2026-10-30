@@ -16,7 +16,7 @@ export async function ownerOnly(interaction) {
 }
 
 export async function initOwnerAdminSchema(db) {
-  await db.query(\`
+  await db.query(`
     CREATE TABLE IF NOT EXISTS owner_settings (
       setting_key TEXT PRIMARY KEY,
       setting_value JSONB NOT NULL,
@@ -59,7 +59,7 @@ export async function initOwnerAdminSchema(db) {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_owner_approval_pending ON owner_approval_requests(status,created_at DESC);
-  \`);
+  `);
 }
 
 export async function auditOwnerAction(db, actorId, action, target = null, details = {}) {
@@ -110,9 +110,9 @@ export async function getMaintenanceState(db) {
 
 export async function setMaintenanceState(db, enabled, actorId) {
   await db.query(
-    \`INSERT INTO owner_settings(setting_key,setting_value,updated_by,updated_at)
+    `INSERT INTO owner_settings(setting_key,setting_value,updated_by,updated_at)
      VALUES('maintenance',$1::jsonb,$2,NOW())
-     ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_by=EXCLUDED.updated_by,updated_at=NOW()\`,
+     ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_by=EXCLUDED.updated_by,updated_at=NOW()`,
     [JSON.stringify({ enabled: Boolean(enabled) }), String(actorId)]
   );
   await auditOwnerAction(db, actorId, 'maintenance.update', null, { enabled: Boolean(enabled) });
@@ -168,9 +168,9 @@ export async function reviewApproval(db, id, decision, actorId) {
 
 export async function listUserMemories(db, userId, guildId = null, limit = 20) {
   const result = await db.query(
-    \`SELECT id,guild_id,user_id,memory_key,memory_value,created_at,updated_at
+    `SELECT id,guild_id,user_id,memory_key,memory_value,created_at,updated_at
      FROM frieren_chat_memories WHERE user_id=$1 AND ($2::text IS NULL OR guild_id=$2)
-     ORDER BY updated_at DESC LIMIT $3\`,
+     ORDER BY updated_at DESC LIMIT $3`,
     [String(userId), guildId ? String(guildId) : null, Math.max(1, Math.min(Number(limit) || 20, 50))]
   );
   return result.rows || [];
