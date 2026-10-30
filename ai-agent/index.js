@@ -5,6 +5,7 @@ import { findRelevantExcerpt, scoreCodeCandidate } from './code-context.js';
 import { createMemoryStore, shouldUseConversationHistory } from './memory-store.js';
 import { extractAutomaticMemories } from './memory-extractor.js';
 import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, isTargetedTestFailure, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
+import { buildTestDiagnostics } from './test-diagnostics.js';
 import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
 import { checkLiveRpgHealth } from './live-rpg-health.js';
 import { readFile, readdir } from 'node:fs/promises';
@@ -750,11 +751,27 @@ client.on(Events.InteractionCreate, async interaction => {
       const auditSummary = auditPassed
         ? 'Komut sözleşme denetimi: ' + commandCount[1] + ' komut keşfedildi; ' + commandCount[2] + ' PASS, ' + commandCount[3] + ' FAIL. Her komut için ayrı sonuç üretildi.'
         : 'Komut sözleşme denetimi BAŞARISIZ. Ayrıntılar test çıktısında.';
+      const diagnostics = buildTestDiagnostics({
+        syntax: agentSyntax,
+        audit,
+        suite: result,
+        targeted,
+        liveRpg: liveRpgHealth,
+      });
+      const diagnosticLines = [
+        'Yapılandırılmış tanılama: ' + diagnostics.overall,
+        ...diagnostics.checks.map(item => item.status + ' — ' + item.name + ': ' + item.detail),
+        'Başarısız aşamalar: ' + (diagnostics.failedStages.join(', ') || 'Yok'),
+        'Kaynak konumları: ' + (diagnostics.locations.map(item => item.file + ':' + item.line + ':' + item.column).join(', ') || 'Loglarda dosya/satır konumu bulunamadı.'),
+      ];
       const rawOutput = [
         'FRIEREN OTOMATİK DENETİM RAPORU',
         'Hedef: ' + target,
         'Alan: ' + targetGroups.join(' • '),
         'Zaman: ' + new Date().toISOString(),
+        '',
+        '=== YAPILANDIRILMIŞ TANILAMA ===',
+        ...diagnosticLines,
         '',
         '=== AI SERVİS SÖZDİZİMİ ===',
         agentSyntax.stdout || '',
@@ -787,6 +804,7 @@ client.on(Events.InteractionCreate, async interaction => {
       const body = '**' + status + '**\n'
         + '\n**İstenen hedef:** ' + target.slice(0, 350)
         + '\n**Bu çalıştırmada yapılan kod düzeltmesi:** YOK. /frieren-test yalnızca test çalıştırır; kaynak dosyalarını değiştirmez. Testlerin geçmesi, hata düzeltildiği anlamına gelmez.'
+        + '\n\n**Yapılandırılmış tanılama**\n' + diagnosticLines.join('\n').slice(0, 650)
         + '\n\n**Doğrulama sonuçları**'
         + '\n- AI sözdizimi: ' + (syntaxPassed ? 'PASS' : 'FAIL')
         + '\n- Komut sözleşmeleri: ' + (auditPassed ? commandCount[1] + ' komut, ' + commandCount[2] + ' PASS, ' + commandCount[3] + ' FAIL' : 'FAIL')
