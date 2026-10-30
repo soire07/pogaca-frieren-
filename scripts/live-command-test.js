@@ -102,7 +102,7 @@ function makeInteraction(command, options, guildId, effects, simulation = null) 
     bans: { fetch: async () => new Map() },
     commands: { cache: new Map() }
   };
-  const client = { commands: new Map(), user: { id: '900000000000000099', username: 'FrierenTestBot' }, users: { fetch: async id => ({ id, username: 'FrierenTest' }) } };
+  const client = { commands: new Map(), ws: { ping: 42 }, user: { id: '900000000000000099', username: 'FrierenTestBot' }, users: { fetch: async id => ({ id, username: 'FrierenTest' }) } };
   const interaction = {
     id: 'test-interaction-' + command.data.name, commandName: command.data.name, command, options, user, member, guild, guildId, channel, channelId: channel.id, client,
     memberPermissions: { has: () => true }, appPermissions: { has: () => true }, permissions: { has: () => true },
@@ -197,7 +197,10 @@ function normalizePayload(payload) {
 export async function runCommandTestSuite(commandMap, requestedNames = []) {
   const commands = requestedNames.length
     ? requestedNames.map(name => commandMap.get(name)).filter(Boolean)
-    : [...commandMap.values()];
+    : [...commandMap.values()].filter(command => {
+      const name = command?.data?.name || '';
+      return !command?.internalOnly && !name.startsWith('owner-') && name !== 'owner';
+    });
   const unknown = requestedNames.filter(name => !commandMap.has(name));
   return withIsolatedTestSchema(async () => {
     const results = [];
@@ -573,6 +576,93 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Karşılaşma kilidi temizliği', expected: 'savaş sonunda etkin karşılaşma kaydı kalmamalı', actual: reservations.rowCount + ' etkin kilit', passed: reservations.rowCount === 0 },
             { name: 'Komut sonucu paneli', expected: 'savaş sonucu Discord yanıtı üretilmeli', actual: effects.length + ' yanıt/etki; ' + (responseText.includes('Kat') || responseText.includes('Boss') ? 'savaş paneli içeriği kaydedildi' : 'panel metni kaydedildi'), passed: effects.length > 0 && (responseText.includes('Kat') || responseText.includes('Boss') || responseText.includes('baskın') || responseText.includes('zindan')) }
           );
+        } else if (commandName === 'bakiye') {
+          await pool.query('UPDATE users SET coins=4321,xp=987,level=7 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const state = await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Cüzdan bakiyesi ve oyuncu seviyesi', expected: '4.321 altın, 987 XP ve seviye 7 gösterilmeli', actual: payloadText.includes('4.321') && payloadText.includes('987') && payloadText.includes('7') ? 'Bakiye, XP ve seviye yanıtta gösterildi' : payloadText.slice(0, 500), passed: payloadText.includes('4.321') && payloadText.includes('987') && payloadText.includes('7') },
+            { name: 'Cüzdan salt okunur davranışı', expected: 'komut oyuncu bakiyesini değiştirmemeli', actual: state.rows[0] ? state.rows[0].coins + ' altın / ' + state.rows[0].xp + ' XP / seviye ' + state.rows[0].level : 'oyuncu kaydı yok', passed: Number(state.rows[0]?.coins) === 4321 && Number(state.rows[0]?.xp) === 987 && Number(state.rows[0]?.level) === 7 }
+          );
+        } else if (commandName === 'istatistik') {
+          await pool.query('UPDATE users SET level=7 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const state = await pool.query('SELECT COUNT(*)::int AS players,MAX(level)::int AS max_level FROM users WHERE guild_id=$1', [guildId]);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Sunucu oyuncu ve seviye istatistikleri', expected: '1 kayıtlı oyuncu ve en yüksek seviye 7 gösterilmeli', actual: state.rows[0].players + ' oyuncu / en yüksek seviye ' + state.rows[0].max_level, passed: Number(state.rows[0].players) === 1 && Number(state.rows[0].max_level) === 7 && payloadText.includes('1') && payloadText.includes('7') },
+            { name: 'İstatistik yanıtı ve ping alanı', expected: 'istatistik panelinde ping değeri gösterilmeli', actual: payloadText.includes('42') ? '42 ms ping alanı gösterildi' : 'Ping alanı bulunamadı', passed: payloadText.includes('42') }
+          );
+        } else if (commandName === 'liderlik') {
+          await pool.query('UPDATE users SET coins=4321,xp=987,level=7 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const state = await pool.query('SELECT user_id,coins,level,xp FROM users WHERE guild_id=$1 ORDER BY coins DESC LIMIT 10', [guildId]);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Liderlik sıralaması', expected: 'test oyuncusu 4.321 altın ve seviye 7 ile listelenmeli', actual: state.rows.length + ' sıralama kaydı; ' + (state.rows[0] ? state.rows[0].coins + ' altın / seviye ' + state.rows[0].level : 'kayıt yok'), passed: state.rowCount === 1 && state.rows[0].user_id === userId && Number(state.rows[0].coins) === 4321 && Number(state.rows[0].level) === 7 && payloadText.includes('FrierenTest') && payloadText.includes('4.321') }
+          );
+        } else if (commandName === 'hedefler') {
+          await pool.query('UPDATE users SET level=10,boss_defeats=5,dungeon_wins=3,exploration_count=10 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const state = await pool.query('SELECT level,boss_defeats,dungeon_wins,exploration_count FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          const labels = ['Yeni bir güç seviyesi','İblis avcısı','Zindan uzmanı','Kuzeyin kâşifi','Karakter koleksiyoncusu','Büyü öğrencisi'];
+          behavioralChecks.push(
+            { name: 'Altı gelişim hedefinin görünmesi', expected: 'seviye, boss, zindan, keşif, koleksiyon ve büyü hedefleri listelenmeli', actual: labels.filter(label => payloadText.includes(label)).join(', '), passed: labels.every(label => payloadText.includes(label)) },
+            { name: 'Tamamlanan hedeflerin DB ilerlemesi', expected: 'seviye 10, 5 boss, 3 zindan ve 10 keşif durumu korunmalı', actual: state.rows[0] ? JSON.stringify(state.rows[0]) : 'oyuncu kaydı yok', passed: Number(state.rows[0]?.level) === 10 && Number(state.rows[0]?.boss_defeats) === 5 && Number(state.rows[0]?.dungeon_wins) === 3 && Number(state.rows[0]?.exploration_count) === 10 }
+          );
+        } else if (commandName === 'hazinegecmisi') {
+          await pool.query('INSERT INTO treasure_openings(guild_id,user_id,loot_item,coins,xp) VALUES($1,$2,$3,$4,$5)', [guildId, userId, 'TEST Mana Kristali', 321, 123]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const state = await pool.query('SELECT loot_item,coins,xp FROM treasure_openings WHERE guild_id=$1 AND user_id=$2 ORDER BY opened_at DESC,id DESC LIMIT 10', [guildId, userId]);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Hazine geçmişi kayıtlarını gösterme', expected: 'TEST Mana Kristali, 321 altın ve 123 XP görünmeli', actual: payloadText.includes('TEST Mana Kristali') && payloadText.includes('321') && payloadText.includes('123') ? 'Test ganimeti yanıtta listelendi' : payloadText.slice(0, 500), passed: state.rowCount === 1 && state.rows[0].loot_item === 'TEST Mana Kristali' && Number(state.rows[0].coins) === 321 && Number(state.rows[0].xp) === 123 && payloadText.includes('TEST Mana Kristali') && payloadText.includes('321') && payloadText.includes('123') },
+            { name: 'Hazine geçmişinin salt okunur olması', expected: 'geçmiş sorgusu ganimet kayıtlarını değiştirmemeli', actual: state.rowCount + ' hazine kaydı', passed: state.rowCount === 1 }
+          );
+        } else if (commandName === 'kesifdefteri') {
+          const before = await pool.query('SELECT COUNT(*)::int AS total FROM adventure_discoveries WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const after = await pool.query('SELECT COUNT(*)::int AS total FROM adventure_discoveries WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          const labels = ['Macera Keşif Defteri','Hazine haritası','Günlük macera serisi','Keşfedilen yerler'];
+          behavioralChecks.push(
+            { name: 'Keşif defteri görünümü', expected: 'keşif defteri, hazine haritası, günlük seri ve rota ustalığı gösterilmeli', actual: labels.filter(label => payloadText.includes(label)).join(', '), passed: labels.every(label => payloadText.includes(label)) },
+            { name: 'Keşif defterinin salt okunur olması', expected: 'görüntüleme sırasında keşif kayıtları değişmemeli', actual: before.rows[0].total + ' → ' + after.rows[0].total + ' keşif kaydı', passed: Number(before.rows[0].total) === Number(after.rows[0].total) }
+          );
+        } else if (['bossrehberi','sinifrehberi','dunya','yardim','buyu','evren'].includes(commandName)) {
+          const before = await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const after = await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          const expectedTitles = { bossrehberi:'Kuzey Seferi', sinifrehberi:'Maceracı Sınıfları', dunya:'Frieren Dünyası', yardim:'Gezginin Komut Rehberi', buyu:'🔮', evren:'Frieren Evreni' };
+          const expectedTitle = expectedTitles[commandName];
+          behavioralChecks.push(
+            { name: 'Rehber içeriği ve başlık', expected: 'komuta ait rehber başlığı ve açıklaması gösterilmeli', actual: payloadText.includes(expectedTitle) ? expectedTitle + ' gösterildi' : payloadText.slice(0, 400), passed: payloadText.includes(expectedTitle) },
+            { name: 'Rehber komutunun oyuncu verisini değiştirmemesi', expected: 'rehber görüntüleme altın, XP ve seviyeyi değiştirmemeli', actual: JSON.stringify(before.rows[0]) + ' → ' + JSON.stringify(after.rows[0]), passed: Number(before.rows[0].coins) === Number(after.rows[0].coins) && Number(before.rows[0].xp) === Number(after.rows[0].xp) && Number(before.rows[0].level) === Number(after.rows[0].level) }
+          );
         } else if (commandName === 'esyakullan') {
           const potionKey = '🧪 Şifa İksiri';
           await pool.query(
@@ -650,7 +740,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
       title: 'Poğaça Frieren isolated command handler test report',
       generatedAt: new Date().toISOString(),
       executionMode: 'synthetic Discord interaction; isolated PostgreSQL schema frieren_test',
-      note: 'Bu rapor gerçek Discord kullanıcısının etkileşimi değildir. Yanıt kaydı tek başına INCONCLUSIVE sayılır. PASS yalnızca komuta özel davranış doğrulamaları ve yalıtılmış PostgreSQL durum kontrolleri geçtiğinde verilir. /buyupratik için altın, mana ve büyü ustalığı; /ekipman için kuşanma, çıkarma, envanter ve efsanevi set bonusu; /esyakullan için HP, mana ve eşya tüketimi yalıtılmış PostgreSQL üzerinde doğrulanır. /katlizindan ve /ortakboss için davet, rol, tur aksiyonları, ödül, HP/mana, oyuncu izolasyonu ve karşılaşma kilitleri yalıtılmış PostgreSQL üzerinde doğrulanır. /kesif için ödül, bölge ustalığı, kaynak sınırları ve bekleme süresi; /cantam için eşya listesi ve toplamlar; /buyular için başlangıç/öğrenilmiş büyü listesi; /buyuustaligi için kullanım ve ustalık seviyesi verileri yalıtılmış PostgreSQL üzerinde doğrulanır. Diğer komutlar için davranış testi eklenene kadar sonuç kesin değildir.',
+      note: 'Bu rapor gerçek Discord kullanıcısının etkileşimi değildir. Yanıt kaydı tek başına INCONCLUSIVE sayılır. PASS yalnızca komuta özel davranış doğrulamaları ve yalıtılmış PostgreSQL durum kontrolleri geçtiğinde verilir. /buyupratik için altın, mana ve büyü ustalığı; /ekipman için kuşanma, çıkarma, envanter ve efsanevi set bonusu; /esyakullan için HP, mana ve eşya tüketimi yalıtılmış PostgreSQL üzerinde doğrulanır. /katlizindan ve /ortakboss için davet, rol, tur aksiyonları, ödül, HP/mana, oyuncu izolasyonu ve karşılaşma kilitleri yalıtılmış PostgreSQL üzerinde doğrulanır. /kesif için ödül, bölge ustalığı, kaynak sınırları ve bekleme süresi; /cantam için eşya listesi ve toplamlar; /buyular için başlangıç/öğrenilmiş büyü listesi; /buyuustaligi için kullanım ve ustalık seviyesi verileri yalıtılmış PostgreSQL üzerinde doğrulanır. /bakiye için altın/XP/seviye gösterimi ve salt okunur davranış; /istatistik için oyuncu sayısı, en yüksek seviye ve ping; /liderlik için sıralama verisi; /hedefler için altı hedefin görünümü ve DB ilerlemesi; /hazinegecmisi için ganimet geçmişi; /kesifdefteri için keşif özeti ve salt okunur davranış; /bossrehberi, /sinifrehberi, /dunya, /yardim, /buyu ve /evren için içerik ve oyuncu verisi değişmezliği yalıtılmış PostgreSQL üzerinde doğrulanır. Komut adı boş bırakıldığında tüm herkese açık oyuncu komutları çalıştırılır; internal-only ve owner komutları varsayılan toplu denetime dahil edilmez. Davranış testi henüz tanımlanmamış komutlar kesin değil olarak raporlanır.',
       summary: {
         total: results.length,
         pass: results.filter(x => x.status === 'PASS').length,
