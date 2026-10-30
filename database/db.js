@@ -38,14 +38,22 @@ export async function withIsolatedTestSchema(callback) {
   let release;
   testSchemaQueue = new Promise(resolve => { release = resolve; });
   await previous;
+  let lockClient;
+  let lockAcquired = false;
   try {
-    await productionPool.query('DROP SCHEMA IF EXISTS frieren_test CASCADE');
-    await productionPool.query('CREATE SCHEMA frieren_test');
+    lockClient = await productionPool.connect();
+    await lockClient.query('SELECT pg_advisory_lock(20261030, 1)');
+    lockAcquired = true;
+    await productionPool.query('CREATE SCHEMA IF NOT EXISTS frieren_test');
     return await testContext.run(true, async () => {
       await initDatabase();
       return await callback();
     });
   } finally {
+    if (lockClient && lockAcquired) {
+      await lockClient.query('SELECT pg_advisory_unlock(20261030, 1)').catch(() => {});
+    }
+    lockClient?.release();
     release();
   }
 }
@@ -419,12 +427,11 @@ export async function initDatabase() {
     );
     CREATE INDEX IF NOT EXISTS idx_frieren_chat_memories_scope
       ON frieren_chat_memories(guild_id,user_id,updated_at DESC);
-    DELETE FROM frieren_chat_messages
-      WHERE id IN (
-        SELECT id FROM frieren_chat_messages
-        WHERE created_at < NOW() - INTERVAL '90 days'
-      );
   `);
+  if (!testContext.getStore()) {
+    await pool.query(`DELETE FROM frieren_chat_messages
+      WHERE created_at < NOW() - INTERVAL '90 days'`);
+  }
   const connectionCheck = await pool.query('SELECT current_database() AS database_name');
   console.log('PostgreSQL bağlantısı doğrulandı; veritabanı:', connectionCheck.rows[0]?.database_name ?? 'bilinmiyor');
   console.log('PostgreSQL tabloları hazır.');

@@ -4,8 +4,9 @@ import { equipmentItems, equipmentBonus } from '../equipment-data.js';
 import { applyEquipmentSetBonus } from '../rpg-mechanics.js';
 import { buildCoopTestUserIds } from './coop-test-users.js';
 import { handleCharacterPanelInteraction } from '../karakter.js';
+import { randomUUID } from 'node:crypto';
 
-const TEST_GUILD_PREFIX = 'frieren-test-guild-';
+const TEST_GUILD_PREFIX = 'frieren-test-guild-' + randomUUID() + '-';
 const TEST_USER_PREFIX = '900000000000';
 
 function sampleValue(option) {
