@@ -82,3 +82,52 @@ export async function generateFrierenReply({ history = [], userMessage, env = pr
     clearTimeout(timer);
   }
 }
+
+export async function handleFrierenMentionMessage({ message, botUserId, db, env = process.env, fetchImpl = fetch }) {
+  if (!isFrierenMentionMessage(message, botUserId)) return false;
+
+  const userMessage = extractFrierenPrompt(message.content, botUserId);
+  if (!userMessage) {
+    await message.reply({
+      content: 'Buradayım. Bana bir şey sormak veya anlatmak için etiketimin yanına mesajını yaz.',
+      allowedMentions: { parse: [] }
+    });
+    return true;
+  }
+
+  if (!String(env.GROQ_API_KEY || '').trim()) {
+    await message.reply({
+      content: 'Sohbet yeteneğim henüz yapılandırılmadı. Biraz sonra tekrar dene.',
+      allowedMentions: { parse: [] }
+    });
+    return true;
+  }
+
+  try {
+    const historyResult = await db.query(
+      'SELECT role, content FROM frieren_chat_messages WHERE guild_id=$1 AND user_id=$2 ORDER BY id DESC LIMIT $3',
+      [message.guild.id, message.author.id, MAX_HISTORY_MESSAGES]
+    );
+    const history = [...(historyResult.rows || [])].reverse();
+    const answer = await generateFrierenReply({ history, userMessage, env, fetchImpl });
+
+    await db.query(
+      `INSERT INTO frieren_chat_messages (guild_id,user_id,role,content)
+       VALUES ($1,$2,'user',$3),($1,$2,'assistant',$4)`,
+      [message.guild.id, message.author.id, userMessage, answer]
+    );
+    await message.reply({
+      content: answer,
+      allowedMentions: { parse: [] },
+      failIfNotExists: false
+    });
+  } catch (error) {
+    console.error('Frieren sohbet hatası:', error?.message || error);
+    await message.reply({
+      content: 'Şu anda yanıt veremiyorum. Biraz sonra tekrar dene.',
+      allowedMentions: { parse: [] },
+      failIfNotExists: false
+    }).catch(() => {});
+  }
+  return true;
+}
