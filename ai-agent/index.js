@@ -10,6 +10,7 @@ import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, isTargetedTestFailure
 import { buildTestDiagnostics } from './test-diagnostics.js';
 import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
 import { checkLiveRpgHealth } from './live-rpg-health.js';
+import { formatCommandTestResult } from './command-test-report.js';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createServer } from 'node:http';
@@ -609,11 +610,7 @@ client.on(Events.InteractionCreate, async interaction => {
       try { report = JSON.parse(raw); } catch { throw new Error('Poğaça Frieren geçerli JSON raporu döndürmedi (HTTP ' + response.status + ').'); }
       if (!response.ok) throw new Error('Poğaça Frieren test köprüsü HTTP ' + response.status + ': ' + (report.message || report.error || 'bilinmeyen hata'));
       const summary = report.summary || {};
-      const resultRows = (report.results || []).map(item =>
-        (item.status === 'PASS' ? '✅' : item.status === 'FAIL' ? '❌' : '⏸️') + ' **/' + item.command + '** — ' + item.status
-        + (item.actual ? '\nBeklenen: ' + String(item.expected || '').slice(0, 100) + '\nGerçek: ' + String(item.actual).slice(0, 130) : '')
-        + (item.error ? '\nHata: ' + String(item.error).slice(0, 180) : '')
-      );
+      const resultRows = (report.results || []).map(item => formatCommandTestResult(item));
       const preview = resultRows.slice(0, 5).join('\n') || 'Test sonucu bulunamadı.';
       await interaction.editReply({
         content: '**Poğaça Frieren komut smoke denemesi tamamlandı**\n'
