@@ -1,0 +1,47 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
+
+test('recognizes Turkish and English memory privacy targets', () => {
+  assert.equal(isMemoryPrivacyTarget('memory privacy'), true);
+  assert.equal(isMemoryPrivacyTarget('bellek gizliliği PostgreSQL'), true);
+  assert.equal(isMemoryPrivacyTarget('boss damage'), false);
+});
+
+test('does not accept unit-test-only output as live privacy proof', () => {
+  const unitOnly = 'SEÇİLEN TEST DOSYALARI: ai-agent/memory-store.test.js (2 eşleşme)\n21 test başarılı';
+  assert.equal(hasLiveMemoryPrivacyProof('memory privacy', unitOnly), false);
+});
+
+test('does not accept a skipped or failed live database test', () => {
+  assert.equal(hasLiveMemoryPrivacyProof('memory privacy', 'scripts/test-live-memory.js\nCANLI POSTGRESQL TESTİ: ATLANDI'), false);
+  assert.equal(hasLiveMemoryPrivacyProof('memory privacy', 'scripts/test-live-memory.js\nCANLI POSTGRESQL TESTİ: BAŞARISIZ'), false);
+});
+
+test('accepts only explicit successful live PostgreSQL test output', () => {
+  const passed = '--- scripts/test-live-memory.js | BAŞARILI ---\nCANLI POSTGRESQL TESTİ: BAŞARILI';
+  assert.equal(hasLiveMemoryPrivacyProof('memory privacy', passed), true);
+});
+
+test('does not require live memory proof for unrelated targets', () => {
+  assert.equal(hasLiveMemoryPrivacyProof('boss damage', 'only combat tests'), true);
+});
+
+test('formats live memory proof as a real new line, not a literal backslash-n', () => {
+  const suffix = liveMemoryPrivacySummarySuffix(true);
+  assert.equal(suffix.startsWith('\n'), true);
+  assert.equal(suffix.includes('\\n'), false);
+  assert.match(suffix, /Canlı PostgreSQL bellek gizliliği: BAŞARILI/);
+});
+
+test('omits the live memory suffix for unrelated test targets', () => {
+  assert.equal(liveMemoryPrivacySummarySuffix(false), '');
+});
+
+test('marks a failed targeted test as a failure even when no suite header was emitted', async () => {
+  const { isTargetedTestFailure } = await import('./test-report-guards.js');
+  assert.equal(isTargetedTestFailure({ applicable: true, code: 1, stdout: 'test runner failed before selection' }), true);
+  assert.equal(isTargetedTestFailure({ applicable: true, code: null }), true);
+  assert.equal(isTargetedTestFailure({ applicable: true, code: 0 }), false);
+  assert.equal(isTargetedTestFailure({ applicable: false, code: 1 }), false);
+});
