@@ -189,7 +189,7 @@ function normalizePayload(payload) {
     embeds: Array.isArray(payload.embeds) ? payload.embeds.map(e => {
       try { return typeof e.toJSON === 'function' ? e.toJSON() : e; } catch { return '[embed]'; }
     }).slice(0, 5) : undefined,
-    components: Array.isArray(payload.components) ? payload.components.length : undefined,
+    components: Array.isArray(payload.components) ? payload.components.map(row => (row.components || []).map(component => component.data?.custom_id).filter(Boolean)) : undefined,
     files: Array.isArray(payload.files) ? payload.files.length : undefined
   };
 }
