@@ -107,8 +107,33 @@ export function buildOwnerSessionCookie(session, maxAgeSeconds) {
 
 function page(title, content) {
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · Frieren Owner</title><style>
-  :root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#0c111b;color:#eef2fa}*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:24px;background:radial-gradient(ellipse at top,#27354c 0,#0c111b 58%)}main{width:min(100%,1120px);margin:0 auto}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}.brand{font-size:13px;letter-spacing:.14em;color:#a8b9d4}.hero,.panel{border:1px solid #35435a;border-radius:18px;background:#151d2a;padding:22px;box-shadow:0 16px 50px #0005}.hero{margin-bottom:16px}.hero h1{margin:6px 0;font-size:28px}.muted{color:#9eacc1;font-size:13px;line-height:1.55}.tag{display:inline-block;padding:5px 9px;border:1px solid #52627d;border-radius:999px;color:#c8d8f5;font-size:11px;letter-spacing:.08em}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:16px 0}.stat{background:#202b3c;border:1px solid #35445b;border-radius:13px;padding:15px}.stat small{display:block;color:#aab8ce;margin-bottom:7px}.stat strong{font-size:21px}.columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px;margin:14px 0}.panel h2{font-size:17px;margin:0 0 14px}.panel h3{font-size:14px;margin:18px 0 8px;color:#dce6f7}.btn{display:inline-block;background:#d5e2fa;color:#172033;padding:10px 15px;border-radius:9px;text-decoration:none;font-weight:700;border:0;cursor:pointer}.btn.danger{background:#542f3b;color:#ffe3e9}.btn.secondary{background:#29374b;color:#e0e9f8;border:1px solid #465772}form{margin:9px 0}label{display:block;font-size:12px;color:#afbdd1;margin:9px 0 5px}input,select,textarea{display:block;width:100%;border:1px solid #40516b;border-radius:8px;background:#0e1623;color:#f2f5fb;padding:10px;font:inherit}textarea{min-height:90px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.rowitem{border-top:1px solid #344156;padding:12px 0}.rowitem:first-of-type{border-top:0}.mono{font-family:ui-monospace,monospace;font-size:12px;overflow-wrap:anywhere}.notice{border:1px solid #52627d;background:#202b3c;border-radius:10px;padding:11px;margin:12px 0}.good{color:#8be0b0}.warn{color:#f4ce83}.bad{color:#ff9aa8}a{color:#d5e2fa}.small{font-size:12px;color:#91a0b7}.metric-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:12px 0}.metric-charts{margin-top:10px}.metric-bars{height:84px;display:flex;align-items:flex-end;gap:4px;padding:8px 0;border-bottom:1px solid #40516b}.metric-bars i{display:block;flex:1;min-width:3px;max-width:18px;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#a9c8ff,#536f9c);opacity:.9}.metrics-panel{margin:14px 0}.nav{position:sticky;top:8px;z-index:5;display:flex;gap:8px;overflow-x:auto;padding:9px;margin:0 0 16px;border:1px solid #35435a;border-radius:13px;background:#111a28f2;backdrop-filter:blur(12px)}.nav a{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;padding:9px 11px;border-radius:9px;text-decoration:none;color:#e5edfa;font-size:12px}.nav a:hover,.nav a:focus{background:#29374b;outline:1px solid #52627d}.nav span{font:10px ui-monospace,monospace;color:#91a8c8}.hero,.panel{scroll-margin-top:90px}@media(max-width:560px){body{padding:12px}.hero,.panel{padding:16px}.hero h1{font-size:23px}.nav{top:4px;margin-left:-2px;margin-right:-2px}}
-  </style></head><body><main>${content}</main></body></html>`;
+  :root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#070d1c;color:#edf3ff;--line:rgba(143,178,235,.23);--muted:#9eb0d0}
+  *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:22px}
+  body{margin:0;min-height:100vh;padding:24px;background:radial-gradient(ellipse at 68% -8%,rgba(83,109,190,.38),transparent 39%),radial-gradient(ellipse at 12% 45%,rgba(38,100,158,.19),transparent 38%),linear-gradient(145deg,#070d1c,#0b1530 55%,#0a1022);overflow-x:hidden}
+  body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.42;background-image:radial-gradient(1px 1px at 12% 18%,#e4efff 99%,transparent),radial-gradient(1px 1px at 72% 12%,#d4e6ff 99%,transparent),radial-gradient(1.5px 1.5px at 88% 42%,#c6d9ff 99%,transparent),radial-gradient(1px 1px at 32% 72%,#e4efff 99%,transparent);background-size:420px 360px}
+  main{position:relative;width:min(100%,1440px);margin:0 auto;padding-left:260px}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px;padding:10px 2px}
+  .brand{font-family:Georgia,serif;font-size:22px;letter-spacing:.18em;color:#d9e9ff;text-shadow:0 0 24px #8ebeff66}.top .small{margin-top:5px;letter-spacing:.2em;font-size:9px;color:#849cc4}
+  .hero,.panel{position:relative;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,rgba(15,31,64,.94),rgba(7,17,39,.94));padding:22px;box-shadow:0 18px 55px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.04);backdrop-filter:blur(15px)}
+  .hero{margin-bottom:16px;overflow:hidden}.hero:before{content:"✧";position:absolute;right:25px;top:8px;font-size:100px;color:rgba(185,214,255,.08);pointer-events:none}
+  .hero h1{margin:8px 0;font-family:Georgia,serif;font-weight:500;font-size:clamp(27px,3vw,38px);color:#f1f6ff;text-shadow:0 0 28px #9dc9ff44}
+  .muted{color:var(--muted);font-size:13px;line-height:1.65}.tag{display:inline-block;padding:6px 10px;border:1px solid rgba(155,195,255,.32);border-radius:999px;background:rgba(101,150,222,.09);color:#cce5ff;font-size:10px;letter-spacing:.12em}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:16px 0}.stat{background:linear-gradient(145deg,rgba(20,42,82,.88),rgba(10,24,52,.9));border:1px solid rgba(123,165,230,.24);border-radius:13px;padding:15px}.stat small{display:block;color:#aabedc;margin-bottom:7px}.stat strong{font-size:21px;color:#f0f5ff}
+  .columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px;margin:14px 0}
+  .bot-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.bot-card{display:flex;align-items:center;gap:18px;min-height:150px;overflow:hidden}.bot-card.ai{background:radial-gradient(circle at 12% 50%,rgba(108,151,225,.28),transparent 42%),linear-gradient(140deg,rgba(18,39,79,.96),rgba(8,19,44,.96))}.bot-card.pogaca{background:radial-gradient(circle at 12% 50%,rgba(171,120,222,.24),transparent 42%),linear-gradient(140deg,rgba(38,29,73,.94),rgba(12,19,47,.96))}.bot-symbol{flex:0 0 64px;width:64px;height:64px;display:grid;place-items:center;border-radius:50%;font-size:34px;color:#d7e9ff;background:radial-gradient(circle,rgba(127,178,255,.3),rgba(53,86,155,.1));border:1px solid rgba(166,205,255,.36);box-shadow:0 0 30px rgba(106,158,255,.16)}.bot-card.pogaca .bot-symbol{color:#f1d8ff;background:radial-gradient(circle,rgba(194,147,255,.3),rgba(94,60,143,.1));border-color:rgba(205,166,255,.35)}.bot-card h2{margin:7px 0 4px}.bot-card p{margin:0 0 8px}
+  .panel h2{font-family:Georgia,serif;font-size:18px;font-weight:500;color:#e4efff;margin:0 0 14px}.panel h3{font-size:14px;margin:18px 0 8px;color:#dceaff}
+  .btn{display:inline-block;background:linear-gradient(120deg,#c4ddff,#a8b8ff);color:#101d3a;padding:10px 15px;border-radius:9px;text-decoration:none;font-weight:700;border:0;cursor:pointer}.btn.danger{background:#63364d;color:#ffe3ed}.btn.secondary{background:#1c3158;color:#e0eaff;border:1px solid #45618f}
+  form{margin:9px 0}label{display:block;font-size:12px;color:#afc2e1;margin:9px 0 5px}input,select,textarea{display:block;width:100%;border:1px solid #334d79;border-radius:8px;background:#08152d;color:#f2f6ff;padding:10px;font:inherit}textarea{min-height:90px;resize:vertical}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.rowitem{border-top:1px solid rgba(125,162,220,.2);padding:12px 0}.rowitem:first-of-type{border-top:0}.mono{font-family:ui-monospace,monospace;font-size:12px;overflow-wrap:anywhere}
+  .notice{border:1px solid #526e9c;background:#152b50;border-radius:10px;padding:11px;margin:12px 0}.good{color:#72e7b8}.warn{color:#f4ce83}.bad{color:#ff9aa8}.small{font-size:12px;color:#91a8ca}
+  .metric-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:12px 0}.metric-charts{margin-top:10px}.metric-bars{height:84px;display:flex;align-items:flex-end;gap:4px;padding:8px 0;border-bottom:1px solid #405a85}.metric-bars i{display:block;flex:1;min-width:3px;max-width:18px;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#c2dfff,#657dce);opacity:.9}.metrics-panel{margin:14px 0}
+  .nav{position:fixed;left:max(18px,calc((100vw - 1440px)/2));top:22px;bottom:22px;width:232px;z-index:5;display:flex;flex-direction:column;gap:7px;overflow-y:auto;padding:14px;border:1px solid var(--line);border-radius:17px;background:linear-gradient(180deg,rgba(5,15,35,.96),rgba(8,21,47,.94));box-shadow:0 18px 55px #0006;backdrop-filter:blur(18px)}
+  .nav:before{content:"✧ F R I E R E N";font-family:Georgia,serif;font-size:17px;letter-spacing:.08em;color:#d8eaff;padding:8px 8px 16px;border-bottom:1px solid rgba(135,174,231,.2);margin-bottom:7px}
+  .nav a{display:flex;flex-direction:column;gap:4px;padding:11px 12px;border-radius:9px;text-decoration:none;color:#c6d8f4;font-size:13px;border:1px solid transparent}.nav a:hover,.nav a:focus{background:linear-gradient(100deg,rgba(38,91,164,.52),rgba(71,62,135,.22));border-color:rgba(133,179,247,.25);outline:none}.nav span{font:10px ui-monospace,monospace;color:#829dc6}
+  .hero,.panel{scroll-margin-top:24px}
+  @media(max-width:760px){body{padding:12px}main{padding-left:0}.bot-cards{grid-template-columns:1fr}.nav{position:sticky;top:6px;bottom:auto;left:auto;width:100%;max-height:190px;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;margin:0 0 14px;padding:8px}.nav:before{display:none}.nav a{flex:0 0 auto;min-width:116px}.hero,.panel{padding:16px}.hero h1{font-size:25px}}
+  @media(prefers-reduced-motion:no-preference){.panel,.stat{transition:border-color .2s ease,transform .2s ease}.panel:hover{border-color:rgba(165,199,255,.38)}.stat:hover{transform:translateY(-2px)}}
+</style></head><body><main>${content}</main></body></html>`;
 }
 
 function safeStringEqual(leftValue, rightValue) {
@@ -171,7 +196,25 @@ function renderRenderMetrics(metrics, overview) {
     + '<div class="notice warn">' + escapeHtml(statusText) + '</div><p class="small">Yerel Node.js bellek ölçümleri Render servisinin toplam RAM kullanımının yerine geçmez. CPU yüzdesi bu durumda gösterilmez.</p></section>';
 }
 
-function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics }) {
+export function renderOwnerBotCards(overview, aiReadiness) {
+  const aiReady = aiReadiness?.status === 'ok' && aiReadiness?.discordReady === true
+    && aiReadiness?.memoryDatabaseReady === true && aiReadiness?.modelConfigured === true;
+  const aiState = aiReady ? 'Çevrimiçi' : 'Kontrol gerekli';
+  return '<section class="columns bot-cards" aria-label="Bot durumları">'
+    + '<article class="panel bot-card ai"><div class="bot-symbol">✧</div><div><span class="tag">YAPAY ZEKA ASİSTANI</span><h2>Frieren AI</h2><p class="muted">Kodlama · Test · Kalıcı Hafıza · Sohbet</p><strong class="' + (aiReady ? 'good' : 'warn') + '">' + aiState + '</strong></div></article>'
+    + '<article class="panel bot-card pogaca"><div class="bot-symbol">✿</div><div><span class="tag">EĞLENCE & RPG BOTU</span><h2>Frieren Poğaça</h2><p class="muted">Anime · RPG · Görevler · Envanter</p><strong class="' + (overview.ready ? 'good' : 'bad') + '">' + (overview.ready ? 'Çevrimiçi' : 'Çevrimdışı') + '</strong></div></article>'
+    + '</section>';
+}
+
+async function getFrierenAIReadiness() {
+  try {
+    const response = await fetch(BASE_URL + '/ai-ready', { signal: AbortSignal.timeout(4000) });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch { return null; }
+}
+
+function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics, aiReadiness }) {
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
   const guildOptions = guilds.map(guild => `<option value="${escapeHtml(guild.id)}">${escapeHtml(guild.name)} · ${escapeHtml(guild.id)}</option>`).join('');
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
@@ -223,7 +266,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
         <div class="stat"><small>Bakım modu</small><strong class="${overview.maintenance ? 'warn' : 'good'}">${overview.maintenance ? 'Açık' : 'Kapalı'}</strong></div>
         <div class="stat"><small>Çalışma ortamı</small><strong>${escapeHtml(process.version)}</strong></div>
       </div>
-      ${renderRenderMetrics(renderMetrics, overview)}
+      ${renderOwnerBotCards(overview, aiReadiness)}\n      ${renderRenderMetrics(renderMetrics, overview)}
       <div class="actions"><a class="btn secondary" href="/owner">Durumu yenile</a><span class="small">Canlı süreç ölçümleri · Son sayfa yüklemesi</span></div>
     </section>
     <div class="columns">
@@ -381,7 +424,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   }
 
   try {
-    const [overview, approvals, activity, renderMetrics] = await Promise.all([
+    const [overview, approvals, activity, renderMetrics, aiReadiness] = await Promise.all([
       getOwnerOverview(client, db),
       listPendingApprovals(db, 15),
       getRecentOwnerActivity(db),
@@ -391,7 +434,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     const memories = memoryUser ? await listUserMemories(db, memoryUser, null, 30) : [];
     send(res, 200, renderDashboard({
       session, overview, client, approvals, memories, memoryUser,
-      notice: url.searchParams.get('notice'), activity, renderMetrics
+      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness
     }));
   } catch (error) {
     console.error('Owner dashboard load failed:', error?.message || error);
