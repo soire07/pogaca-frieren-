@@ -2,7 +2,7 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import {
   auditOwnerAction, getOwnerOverview, getMaintenanceState, listPendingApprovals,
   reviewApproval, listUserMemories, deleteUserMemory, setMaintenanceState,
-  sendOwnerAnnouncement
+  sendOwnerAnnouncement, getRecentOwnerActivity
 } from './owner-admin.js';
 
 const OWNER_ID = '1553794496234262641';
@@ -123,7 +123,7 @@ function redirect(res, location = '/owner') {
   res.end();
 }
 
-function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice }) {
+function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity }) {
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
   const guildOptions = guilds.map(guild => \`<option value="\${escapeHtml(guild.id)}">\${escapeHtml(guild.name)} · \${escapeHtml(guild.id)}</option>\`).join('');
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
@@ -143,7 +143,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     <div class="rowitem"><strong>#\${row.id} · \${escapeHtml(row.memory_key)}</strong>
       <div class="small">Kullanıcı \${escapeHtml(row.user_id)} · Sunucu \${escapeHtml(row.guild_id)}</div>
       <p>\${escapeHtml(row.memory_value)}</p>
-      <form method="post" action="/owner/action"><input type="hidden" name="csrf" value="\${escapeHtml(session.csrf)}"><input type="hidden" name="id" value="\${row.id}"><button class="btn danger" name="action" value="memory-delete">Bu kaydı sil</button></form>
+      <form method="post" action="/owner/action"><input type="hidden" name="csrf" value="\${escapeHtml(session.csrf)}"><input type="hidden" name="id" value="\${row.id}"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Kalıcı olarak silmeyi onaylıyorum</label><button class="btn danger" name="action" value="memory-delete">Bu kaydı sil</button></form>
     </div>\`).join('') : '<p class="muted">Arama için bir Discord kullanıcı ID gir veya eşleşen kayıt bulunmadı.</p>';
   const noticeText = ({
     maintenance_on: 'Bakım modu açıldı.',
@@ -196,6 +196,11 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
         \${memoryHtml}
       </section>
     </div>
+<div class="columns">
+      <section class="panel"><h2>Komut kullanım istatistikleri</h2>\${activity.commands.length ? activity.commands.map(row => '<div class="rowitem"><strong>/' + escapeHtml(row.command_name) + '</strong><div class="small">' + escapeHtml(row.usage_count) + ' kullanım · Son: ' + escapeHtml(new Date(row.last_used_at).toLocaleString('tr-TR')) + '</div></div>').join('') : '<p class="muted">Komut ölçümleri bu sürümden itibaren birikmeye başlayacak.</p>'}</section>
+      <section class="panel"><h2>Son teknik hatalar</h2>\${activity.errors.length ? activity.errors.map(row => '<div class="rowitem"><strong>' + escapeHtml(row.scope) + '</strong><div class="small">' + escapeHtml(row.error_type) + ' · ' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</div></div>').join('') : '<p class="muted">Kaydedilmiş teknik hata yok.</p>'}</section>
+    </div>
+    <section class="panel"><h2>Owner işlem geçmişi</h2>\${activity.audit.length ? activity.audit.map(row => '<div class="rowitem"><strong>' + escapeHtml(row.action) + '</strong><div class="small">' + escapeHtml(row.target || 'Genel') + ' · ' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</div></div>').join('') : '<p class="muted">Henüz yönetim işlemi kaydedilmedi.</p>'}</section>
     <section class="panel"><h2>Güvenlik ve denetim</h2><p class="muted">Owner OAuth, 8 saatlik imzalı oturum, HttpOnly/Secure/SameSite=Lax çerezi, CSRF doğrulaması ve işlem günlüğü aktiftir. Bot tokeni, OAuth sırrı ve veritabanı bağlantı adresi panelde gösterilmez.</p></section>
   \`);
 }
@@ -300,7 +305,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       } else if (action === 'approval-approved' || action === 'approval-rejected') {
         const result = await reviewApproval(db, form.get('id'), action === 'approval-approved' ? 'approved' : 'rejected', OWNER_ID);
         notice = result ? action.replace('-', '_') : 'invalid';
-      } else if (action === 'memory-delete') {
+      } else if (action === 'memory-delete' && form.get('confirm') === 'yes') {
         const result = await deleteUserMemory(db, form.get('id'), OWNER_ID);
         notice = result ? 'memory_deleted' : 'invalid';
       } else if (action === 'announcement-send') {
@@ -323,15 +328,16 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   }
 
   try {
-    const [overview, approvals] = await Promise.all([
+    const [overview, approvals, activity] = await Promise.all([
       getOwnerOverview(client, db),
-      listPendingApprovals(db, 15)
+      listPendingApprovals(db, 15),
+      getRecentOwnerActivity(db)
     ]);
     const memoryUser = String(url.searchParams.get('memoryUser') || '').replace(/\D/g, '').slice(0, 24);
     const memories = memoryUser ? await listUserMemories(db, memoryUser, null, 30) : [];
     send(res, 200, renderDashboard({
       session, overview, client, approvals, memories, memoryUser,
-      notice: url.searchParams.get('notice')
+      notice: url.searchParams.get('notice'), activity
     }));
   } catch (error) {
     console.error('Owner dashboard load failed:', error?.message || error);
