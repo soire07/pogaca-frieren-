@@ -1,5 +1,7 @@
 import { withIsolatedTestSchema, ensureUser, pool } from '../database/db.js';
 import { buildCommandEvidence } from './command-test-evidence.js';
+import { equipmentItems, equipmentBonus } from '../equipment-data.js';
+import { applyEquipmentSetBonus } from '../rpg-mechanics.js';
 
 const TEST_GUILD_PREFIX = 'frieren-test-guild-';
 const TEST_USER_PREFIX = '900000000000';
@@ -151,13 +153,99 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
         if (commandName === 'buyupratik') {
           await pool.query('UPDATE users SET coins=100, mana=100 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
         }
-        const options = buildOptions(schema?.options, { user: undefined });
-        const interaction = makeInteraction(command, options, guildId, effects);
-        interaction.user.id = userId;
-        interaction.member = makeMember(userId);
-        await command.execute(interaction);
-
         const behavioralChecks = [];
+        if (commandName === 'ekipman') {
+          await pool.query(
+            'UPDATE users SET level=45,hp=100,max_hp=100,mana=100,max_mana=100 WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          const blade = equipmentItems.find(item => item.id === 'demon_blade');
+          const armor = equipmentItems.find(item => item.id === 'demon_armor');
+          await pool.query(
+            'INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1),($1,$2,$4,1)',
+            [guildId, userId, blade.name, armor.name]
+          );
+          const executeAction = async values => {
+            const actionEffects = [];
+            const actionOptions = buildOptions(schema?.options, values);
+            const actionInteraction = makeInteraction(command, actionOptions, guildId, actionEffects);
+            actionInteraction.user.id = userId;
+            actionInteraction.member = makeMember(userId);
+            await command.execute(actionInteraction);
+            effects.push(...actionEffects);
+          };
+
+          await executeAction({ islem: 'equip', esya: 'demon_blade', yuva: 'weapon' });
+          await executeAction({ islem: 'equip', esya: 'demon_armor', yuva: 'armor' });
+          const equippedBefore = await pool.query(
+            'SELECT slot,item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2 ORDER BY slot',
+            [guildId, userId]
+          );
+          const equippedItems = equippedBefore.rows
+            .map(row => equipmentItems.find(item => item.name === row.item_key))
+            .filter(Boolean);
+          const activeSet = applyEquipmentSetBonus(equippedItems, equipmentBonus(equippedItems));
+          const inventoryBefore = await pool.query(
+            'SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 ORDER BY item_key',
+            [guildId, userId]
+          );
+          await executeAction({ islem: 'unequip', yuva: 'armor' });
+          const equippedAfter = await pool.query(
+            'SELECT slot,item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          const remainingItems = equippedAfter.rows
+            .map(row => equipmentItems.find(item => item.name === row.item_key))
+            .filter(Boolean);
+          const inactiveSet = applyEquipmentSetBonus(remainingItems, equipmentBonus(remainingItems));
+          const inventoryAfter = await pool.query(
+            'SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',
+            [guildId, userId, armor.name]
+          );
+          behavioralChecks.push(
+            { name: 'Silah ve zırh kuşanma kaydı', expected: '2 ekipman yuvası dolu', actual: equippedBefore.rowCount + ' ekipman yuvası dolu', passed: equippedBefore.rowCount === 2 && equippedBefore.rows.some(row => row.slot === 'weapon' && row.item_key === blade.name) && equippedBefore.rows.some(row => row.slot === 'armor' && row.item_key === armor.name) },
+            { name: 'Efsanevi set bonusu', expected: '+4 saldırı ve +25 HP; toplam saldırı 20, HP bonusu 85', actual: 'saldırı ' + activeSet.attack + ', HP bonusu ' + activeSet.hp + ', set: ' + activeSet.setText, passed: activeSet.attack === 20 && activeSet.hp === 85 && activeSet.setText === 'Efsanevi set: +4 saldırı, +25 HP' },
+            { name: 'Kuşanma envanter eşyasını tüketmez', expected: 'iki eşya da miktar 1 olarak kalır', actual: inventoryBefore.rows.map(row => row.quantity).join(', '), passed: inventoryBefore.rowCount === 2 && inventoryBefore.rows.every(row => Number(row.quantity) === 1) },
+            { name: 'Zırh çıkarma ve set bonusunun kapanması', expected: 'yalnızca silah kalır; set bonusu sıfırlanır', actual: equippedAfter.rowCount + ' ekipman kaldı; saldırı ' + inactiveSet.attack + ', HP bonusu ' + inactiveSet.hp + ', set: ' + inactiveSet.setText, passed: equippedAfter.rowCount === 1 && equippedAfter.rows[0].slot === 'weapon' && inactiveSet.attack === 16 && inactiveSet.hp === 0 && inactiveSet.setText === null },
+            { name: 'Çıkarılan zırh envantere geri döner', expected: 'zırh miktarı 1', actual: inventoryAfter.rows[0] ? 'miktar ' + inventoryAfter.rows[0].quantity : 'envanter kaydı yok', passed: Number(inventoryAfter.rows[0]?.quantity) === 1 }
+          );
+        } else if (commandName === 'esyakullan') {
+          const potionKey = '🧪 Şifa İksiri';
+          await pool.query(
+            'UPDATE users SET hp=40,max_hp=100,mana=20,max_mana=100 WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          await pool.query(
+            'INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)',
+            [guildId, userId, potionKey]
+          );
+          const options = buildOptions(schema?.options, { esya: 'healing_potion' });
+          const interaction = makeInteraction(command, options, guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const userState = await pool.query(
+            'SELECT hp,max_hp,mana,max_mana,items_used_count FROM users WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          const potionState = await pool.query(
+            'SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',
+            [guildId, userId, potionKey]
+          );
+          const user = userState.rows[0];
+          behavioralChecks.push(
+            { name: 'Şifa iksiri HP yenilemesi', expected: '40 → 100 / 100', actual: user ? 'HP ' + user.hp + ' / ' + user.max_hp : 'kullanıcı kaydı yok', passed: Number(user?.hp) === 100 && Number(user?.max_hp) === 100 },
+            { name: 'Şifa iksiri mana yenilemesi', expected: '20 → 45 / 100', actual: user ? 'Mana ' + user.mana + ' / ' + user.max_mana : 'kullanıcı kaydı yok', passed: Number(user?.mana) === 45 && Number(user?.max_mana) === 100 },
+            { name: 'Şifa iksiri tüketimi ve sayaç', expected: 'envanterden silinmiş; items_used_count=1', actual: (potionState.rows[0] ? 'envanter miktarı ' + potionState.rows[0].quantity : 'envanterden silinmiş') + '; kullanım sayısı ' + user?.items_used_count, passed: potionState.rowCount === 0 && Number(user?.items_used_count) === 1 }
+          );
+        } else {
+          const options = buildOptions(schema?.options, { user: undefined });
+          const interaction = makeInteraction(command, options, guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+        }
+
         if (commandName === 'buyupratik') {
           const userState = await pool.query('SELECT coins, mana FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const masteryState = await pool.query('SELECT casts, mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=$2 AND spell_key=$3', [guildId, userId, 'zoltraak']);
@@ -198,7 +286,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
       title: 'Poğaça Frieren isolated command handler test report',
       generatedAt: new Date().toISOString(),
       executionMode: 'synthetic Discord interaction; isolated PostgreSQL schema frieren_test',
-      note: 'Bu rapor gerçek Discord kullanıcısının etkileşimi değildir. Yanıt kaydı tek başına INCONCLUSIVE sayılır. PASS yalnızca komuta özel davranış doğrulamaları ve yalıtılmış PostgreSQL durum kontrolleri geçtiğinde verilir. Şu anda /buyupratik için altın, mana ve büyü ustalığı kalıcılığı doğrulanır; diğer komutlar için davranış testi eklenene kadar sonuç kesin değildir.',
+      note: 'Bu rapor gerçek Discord kullanıcısının etkileşimi değildir. Yanıt kaydı tek başına INCONCLUSIVE sayılır. PASS yalnızca komuta özel davranış doğrulamaları ve yalıtılmış PostgreSQL durum kontrolleri geçtiğinde verilir. /buyupratik için altın, mana ve büyü ustalığı; /ekipman için kuşanma, çıkarma, envanter ve efsanevi set bonusu; /esyakullan için HP, mana ve eşya tüketimi yalıtılmış PostgreSQL üzerinde doğrulanır. Diğer komutlar için davranış testi eklenene kadar sonuç kesin değildir.',
       summary: {
         total: results.length,
         pass: results.filter(x => x.status === 'PASS').length,
