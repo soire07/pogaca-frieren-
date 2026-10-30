@@ -9,6 +9,8 @@ import { levelForXp } from './utils.js';
 import { handleCharacterPanelInteraction } from './karakter.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
+import { spawn } from 'node:child_process';
+import { createAiAgentChildEnv, AI_AGENT_HEALTH_PORT } from './ai-agent/render-supervisor.js';
 import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
@@ -302,7 +304,45 @@ await initDatabase();
 await initOwnerAdminSchema(pool);
 await client.login(process.env.DISCORD_TOKEN);
 
+let aiAgentChild = null;
+let aiAgentRestartTimer = null;
+let shuttingDown = false;
+
+function startAiAgent() {
+  const config = createAiAgentChildEnv(process.env);
+  if (!config.ok) {
+    const reason = config.missing?.length
+      ? 'eksik Render değişkenleri: ' + config.missing.join(', ')
+      : 'AI botu yalnızca Frieren test sunucusuna kayıt yapabilir.';
+    console.error('Frieren AI Agent başlatılmadı; ' + reason);
+    return;
+  }
+
+  aiAgentChild = spawn(process.execPath, [join(__dirname, 'ai-agent', 'index.js')], {
+    cwd: __dirname,
+    env: config.env,
+    stdio: 'inherit',
+  });
+  console.log('Frieren AI Agent ayrı süreç olarak başlatıldı.');
+
+  aiAgentChild.once('error', error => {
+    console.error('Frieren AI Agent süreci başlatılamadı:', error.message);
+  });
+  aiAgentChild.once('exit', (code, signal) => {
+    aiAgentChild = null;
+    if (shuttingDown) return;
+    console.error('Frieren AI Agent kapandı (code=' + code + ', signal=' + signal + '). 5 saniye sonra yeniden başlatılacak.');
+    aiAgentRestartTimer = setTimeout(startAiAgent, 5_000);
+    aiAgentRestartTimer.unref();
+  });
+}
+
+startAiAgent();
+
 process.on('SIGTERM', async () => {
+  shuttingDown = true;
+  if (aiAgentRestartTimer) clearTimeout(aiAgentRestartTimer);
+  if (aiAgentChild && !aiAgentChild.killed) aiAgentChild.kill('SIGTERM');
   console.log('Kapatılıyor...');
   await client.destroy();
   await pool.end();
@@ -317,6 +357,22 @@ createServer(async (req, res) => {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(payload));
   };
+  if (req.method === 'GET' && req.url === '/ai-health') {
+    try {
+      const response = await fetch('http://127.0.0.1:' + AI_AGENT_HEALTH_PORT + '/health', {
+        signal: AbortSignal.timeout(2_500),
+      });
+      const body = await response.text();
+      res.writeHead(response.status, {
+        'Content-Type': response.headers.get('content-type') || 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+      });
+      res.end(body);
+    } catch {
+      sendJson(503, { status: 'not_ready', service: 'frieren-ai-agent' });
+    }
+    return;
+  }
   if (req.method === 'GET' && req.url === '/uptimerobot-status') {
     const apiKey = process.env.UPTIMEROBOT_API_KEY;
     if (!apiKey) return sendJson(503, { error: 'uptimerobot_not_configured' });
