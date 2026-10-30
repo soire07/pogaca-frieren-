@@ -40,7 +40,7 @@ if (missing.length) {
 const admins = new Set(process.env.FRIEREN_ADMIN_IDS.split(',').map(value => value.trim()).filter(Boolean));
 // The test runner resolves command modules relative to the repository root. Keep this path explicit for coverage diagnostics.
 const rootDir = fileURLToPath(new URL('../', import.meta.url));
-const timeoutMs = Math.max(30_000, Math.min(Number(process.env.FRIEREN_TEST_TIMEOUT_MS) || 180_000, 300_000));
+const timeoutMs = Math.max(30_000, Math.min(Number(process.env.FRIEREN_TEST_TIMEOUT_MS) || 240_000, 300_000));
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 // Free provider runtime is configured in this file.
 const groqKey = process.env.GROQ_API_KEY?.trim();
@@ -702,13 +702,12 @@ client.on(Events.InteractionCreate, async interaction => {
     runningGuilds.add(lockKey);
     try {
       await interaction.deferReply();
-      const [agentSyntax, audit, result, targeted, liveRpgHealth] = await Promise.all([
-        runSyntaxChecks(),
-        runCommandAudit(),
-        runTests(),
-        runTargetedTests(target),
-        checkLiveRpgHealth(),
-      ]);
+      // Run diagnostics sequentially: both Discord bots share one 512 MB Render instance.
+      const agentSyntax = await runSyntaxChecks();
+      const audit = await runCommandAudit();
+      const result = await runTests();
+      const targeted = await runTargetedTests(target);
+      const liveRpgHealth = await checkLiveRpgHealth();
       const auditOutput = audit.stdout + '\n' + audit.stderr;
       const commandCount = auditOutput.match(/ÖZET: (\d+) komut keşfedildi; (\d+) PASS; (\d+) FAIL/);
       const commandList = auditOutput.split(/\r?\n/).filter(line => /^(?:PASS|FAIL) \//.test(line)).slice(0, 8).join(', ') || '';
