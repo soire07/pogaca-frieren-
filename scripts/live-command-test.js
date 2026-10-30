@@ -319,6 +319,98 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
               passed: componentEffects.length >= 2
             }
           );
+        } else if (commandName === 'kesif') {
+          await pool.query(
+            'UPDATE users SET level=1,xp=0,coins=0,hp=100,max_hp=100,mana=100,max_mana=100,attack=10,defense=5,last_exploration_at=NULL,exploration_count=0 WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          const runExploration = async () => {
+            const actionEffects = [];
+            const interaction = makeInteraction(command, buildOptions(schema?.options, { bolge: 'merkez' }), guildId, actionEffects);
+            interaction.user.id = userId;
+            interaction.member = makeMember(userId);
+            await command.execute(interaction);
+            effects.push(...actionEffects);
+          };
+          await runExploration();
+          const first = await pool.query(
+            'SELECT xp,level,coins,hp,max_hp,mana,max_mana,last_exploration_at,exploration_count FROM users WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          const mastery = await pool.query(
+            'SELECT visits FROM exploration_region_mastery WHERE guild_id=$1 AND user_id=$2 AND region_key=$3',
+            [guildId, userId, 'merkez']
+          );
+          await runExploration();
+          const second = await pool.query(
+            'SELECT xp,coins,exploration_count FROM users WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          const player = first.rows[0];
+          behavioralChecks.push(
+            { name: 'Keşif ilerleme kaydı', expected: 'XP/altın kazanılmalı; keşif sayısı 1 ve zaman damgası kaydedilmeli', actual: player ? 'XP ' + player.xp + ', altın ' + player.coins + ', keşif ' + player.exploration_count + ', zaman ' + player.last_exploration_at : 'kullanıcı kaydı yok', passed: Number(player?.xp) > 0 && Number(player?.coins) > 0 && Number(player?.exploration_count) === 1 && player?.last_exploration_at != null },
+            { name: 'Bölge ustalığı ilerlemesi', expected: 'merkez bölgesi ziyareti 1 olarak kaydedilmeli', actual: String(mastery.rows[0]?.visits ?? 'kayıt yok'), passed: Number(mastery.rows[0]?.visits) === 1 },
+            { name: 'Keşif savaş kaynakları sınırları', expected: 'HP ve mana 0 ile maksimum değerleri arasında kalmalı', actual: player ? 'HP ' + player.hp + '/' + player.max_hp + ', mana ' + player.mana + '/' + player.max_mana : 'kullanıcı kaydı yok', passed: Number(player?.hp) >= 0 && Number(player?.hp) <= Number(player?.max_hp) && Number(player?.mana) >= 0 && Number(player?.mana) <= Number(player?.max_mana) },
+            { name: 'Keşif bekleme süresi çift ödülü engeller', expected: 'ikinci denemede keşif sayısı ve ödüller değişmemeli', actual: second.rows[0] ? 'XP ' + second.rows[0].xp + ', altın ' + second.rows[0].coins + ', keşif ' + second.rows[0].exploration_count : 'kullanıcı kaydı yok', passed: Number(second.rows[0]?.xp) === Number(player?.xp) && Number(second.rows[0]?.coins) === Number(player?.coins) && Number(second.rows[0]?.exploration_count) === 1 }
+          );
+        } else if (commandName === 'cantam') {
+          await pool.query(
+            "INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'🧪 Test Şifa İksiri',2),($1,$2,'📜 Test Grimoire',3)",
+            [guildId, userId]
+          );
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const state = await pool.query(
+            'SELECT COUNT(*)::int AS distinct_items,COALESCE(SUM(quantity),0)::int AS total_items FROM inventory WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          const responseText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Envanter eşya listesi', expected: 'iki eşya adı ve miktarları yanıtta görünmeli', actual: responseText.includes('Test Şifa İksiri') && responseText.includes('Test Grimoire') ? 'iki eşya da listelendi' : responseText.slice(0, 500), passed: responseText.includes('Test Şifa İksiri') && responseText.includes('Test Grimoire') && responseText.includes('×2') && responseText.includes('×3') },
+            { name: 'Envanter toplamları', expected: '2 farklı eşya ve toplam 5 adet', actual: state.rows[0] ? state.rows[0].distinct_items + ' farklı / ' + state.rows[0].total_items + ' toplam' : 'envanter kaydı yok', passed: Number(state.rows[0]?.distinct_items) === 2 && Number(state.rows[0]?.total_items) === 5 }
+          );
+        } else if (commandName === 'buyular') {
+          await pool.query(
+            "INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,'alev_kuresi')",
+            [guildId, userId]
+          );
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const learned = await pool.query(
+            'SELECT spell_key FROM learned_spells WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          const responseText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Başlangıç büyüsünün görünmesi', expected: 'Zoltraak varsayılan büyü olarak listelenmeli', actual: responseText.includes('Zoltraak') ? 'Zoltraak listelendi' : 'Zoltraak bulunamadı', passed: responseText.includes('Zoltraak') },
+            { name: 'Öğrenilmiş büyünün görünmesi', expected: 'Alev Küresi arşivde listelenmeli ve veritabanında bir kez bulunmalı', actual: learned.rows.map(row => row.spell_key).join(', ') + (responseText.includes('Alev Küresi') ? ' · yanıtta listelendi' : ' · yanıtta bulunamadı'), passed: learned.rowCount === 1 && responseText.includes('Alev Küresi') }
+          );
+        } else if (commandName === 'buyuustaligi') {
+          await pool.query(
+            "INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,'alev_kuresi'),($1,$2,'zoltraak')",
+            [guildId, userId]
+          );
+          await pool.query(
+            "INSERT INTO spell_mastery(guild_id,user_id,spell_key,casts,mastery_level) VALUES($1,$2,'alev_kuresi',20,2),($1,$2,'zoltraak',0,0)",
+            [guildId, userId]
+          );
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const mastery = await pool.query(
+            'SELECT spell_key,casts,mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=$2 ORDER BY spell_key',
+            [guildId, userId]
+          );
+          const responseText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Büyü ustalığı seviyeleri ve kullanım sayıları', expected: 'Alev Küresi 2/10 ve 20 kullanım; Zoltraak 0/10 görünmeli', actual: mastery.rows.map(row => row.spell_key + ': ' + row.mastery_level + '/10, ' + row.casts + ' kullanım').join(' | '), passed: mastery.rowCount === 2 && mastery.rows.some(row => row.spell_key === 'alev_kuresi' && Number(row.mastery_level) === 2 && Number(row.casts) === 20) && mastery.rows.some(row => row.spell_key === 'zoltraak' && Number(row.mastery_level) === 0 && Number(row.casts) === 0) },
+            { name: 'Büyü ustalığı paneli', expected: 'öğrenilmiş büyüler ve ustalık ilerlemesi yanıtta gösterilmeli', actual: responseText.includes('Alev Küresi') && responseText.includes('2/10') && responseText.includes('20 kullanım') ? 'ustalık paneli doğru içeriği gösterdi' : responseText.slice(0, 500), passed: responseText.includes('Alev Küresi') && responseText.includes('2/10') && responseText.includes('20 kullanım') && responseText.includes('Zoltraak') }
+          );
         } else if (commandName === 'dinlen') {
           await pool.query('UPDATE users SET hp=40,max_hp=100,mana=20,max_mana=100,last_rest_at=NULL WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
@@ -557,7 +649,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
       title: 'Poğaça Frieren isolated command handler test report',
       generatedAt: new Date().toISOString(),
       executionMode: 'synthetic Discord interaction; isolated PostgreSQL schema frieren_test',
-      note: 'Bu rapor gerçek Discord kullanıcısının etkileşimi değildir. Yanıt kaydı tek başına INCONCLUSIVE sayılır. PASS yalnızca komuta özel davranış doğrulamaları ve yalıtılmış PostgreSQL durum kontrolleri geçtiğinde verilir. /buyupratik için altın, mana ve büyü ustalığı; /ekipman için kuşanma, çıkarma, envanter ve efsanevi set bonusu; /esyakullan için HP, mana ve eşya tüketimi yalıtılmış PostgreSQL üzerinde doğrulanır. /katlizindan ve /ortakboss için davet, rol, tur aksiyonları, ödül, HP/mana, oyuncu izolasyonu ve karşılaşma kilitleri yalıtılmış PostgreSQL üzerinde doğrulanır. Diğer komutlar için davranış testi eklenene kadar sonuç kesin değildir.',
+      note: 'Bu rapor gerçek Discord kullanıcısının etkileşimi değildir. Yanıt kaydı tek başına INCONCLUSIVE sayılır. PASS yalnızca komuta özel davranış doğrulamaları ve yalıtılmış PostgreSQL durum kontrolleri geçtiğinde verilir. /buyupratik için altın, mana ve büyü ustalığı; /ekipman için kuşanma, çıkarma, envanter ve efsanevi set bonusu; /esyakullan için HP, mana ve eşya tüketimi yalıtılmış PostgreSQL üzerinde doğrulanır. /katlizindan ve /ortakboss için davet, rol, tur aksiyonları, ödül, HP/mana, oyuncu izolasyonu ve karşılaşma kilitleri yalıtılmış PostgreSQL üzerinde doğrulanır. /kesif için ödül, bölge ustalığı, kaynak sınırları ve bekleme süresi; /cantam için eşya listesi ve toplamlar; /buyular için başlangıç/öğrenilmiş büyü listesi; /buyuustaligi için kullanım ve ustalık seviyesi verileri yalıtılmış PostgreSQL üzerinde doğrulanır. Diğer komutlar için davranış testi eklenene kadar sonuç kesin değildir.',
       summary: {
         total: results.length,
         pass: results.filter(x => x.status === 'PASS').length,
