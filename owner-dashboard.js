@@ -86,6 +86,12 @@ function page(title, content) {
   </style></head><body><main>${content}</main></body></html>`;
 }
 
+function safeStringEqual(leftValue, rightValue) {
+  const left = Buffer.from(String(leftValue ?? ''));
+  const right = Buffer.from(String(rightValue ?? ''));
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
 function readForm(req) {
   return new Promise((resolve, reject) => {
     let body = '';
@@ -286,7 +292,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   if (url.pathname === '/owner/logout' && req.method === 'POST') {
     try {
       const form = await readForm(req);
-      if (form.get('csrf') !== session.csrf) return send(res, 403, page('İstek reddedildi', '<h1>Güvenlik doğrulaması başarısız</h1>'));
+      if (!safeStringEqual(form.get('csrf'), session.csrf)) return send(res, 403, page('İstek reddedildi', '<h1>Güvenlik doğrulaması başarısız</h1>'));
     } catch { return send(res, 400, page('Geçersiz istek', '<h1>İstek okunamadı</h1>')); }
     res.writeHead(303, { Location: '/owner', 'Cache-Control': 'no-store', 'Set-Cookie': clearOwnerCookie(SESSION_COOKIE, '/owner') });
     res.end();
