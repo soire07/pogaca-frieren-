@@ -8,7 +8,7 @@ import { isExplicitMemoryOverviewQuestion } from './memory-intent.js';
 import { extractAutomaticMemories } from './memory-extractor.js';
 import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, isTargetedTestFailure, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
 import { buildTestDiagnostics } from './test-diagnostics.js';
-import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
+import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, getPublicLivenessPayload, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
 import { checkLiveRpgHealth } from './live-rpg-health.js';
 import { formatCommandTestResult } from './command-test-report.js';
 import { parseCommandNames } from './command-test-input.js';
@@ -54,7 +54,18 @@ const bridgeConfigured = Boolean(process.env.FRIEREN_BRIDGE_URL?.trim() && proce
 const port = Number(process.env.FRIEREN_AI_HEALTH_PORT) || Number(process.env.PORT) || 10000;
 const healthHost = process.env.FRIEREN_AI_HEALTH_HOST || '0.0.0.0';
 const healthServer = createServer(async (req, res) => {
-  if (req.url === '/health') {
+  if (req.url === '/live') {
+    const readiness = {
+      discordReady: client.isReady(),
+      memoryDatabaseReady,
+      modelConfigured,
+      bridgeConfigured,
+    };
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(JSON.stringify(getPublicLivenessPayload(readiness)));
+    return;
+  }
+  if (req.url === '/health' || req.url === '/ready') {
     if (memoryStore && !memoryDatabaseReady) {
       try {
         await memoryStore.checkHealth();
