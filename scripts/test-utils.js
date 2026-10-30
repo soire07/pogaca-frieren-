@@ -30,7 +30,7 @@ test('levelForXp and xpForNextLevel agree at level boundaries', () => {
 });
 
 import { characters, drawCharacter } from '../character-data.js';
-import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, dungeonChoiceOutcome, dungeonEnemyStats, progressionMilestone, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening } from '../rpg-mechanics.js';
+import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, dungeonChoiceOutcome, dungeonEnemyStats, progressionMilestone, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening, getCharacterClass } from '../rpg-mechanics.js';
 
  test('drawCharacter forced legendary mode guarantees an Efsanevi character', () => {
   for (let i = 0; i < 100; i += 1) {
@@ -574,4 +574,12 @@ test('solo, raid and dungeon boss panels can display their own configured artwor
   assert.match(dungeon, /getBossArtUrl\('dungeonFinal'\)/);
   assert.match(envExample, /POGACA_BOSS_ART_SCHATTENWOLF_URL/);
   assert.match(envExample, /POGACA_DUNGEON_FINAL_BOSS_ART_URL/);
+});
+
+
+test('Turkish display names resolve to the intended persistent combat classes', () => {
+  assert.equal(getCharacterClass('Büyücü').label, 'Büyücü');
+  assert.equal(getCharacterClass('Muhafız').label, 'Muhafız');
+  assert.equal(getCharacterClass('Şifacı').label, 'Şifacı');
+  assert.equal(getCharacterClass('Gezgin').label, 'Gezgin');
 });
