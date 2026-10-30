@@ -2,6 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { formatConversationContext } from './conversation-context.js';
 
+test('canonical Arven and Eldrin profiles are always present, including new conversations', () => {
+  const context = formatConversationContext([]);
+
+  assert.match(context, /Arven: 19 yaşında; kayıp kardeşini arıyor; en sevdiği hayvan kediler/u);
+  assert.match(context, /Yaşadığı yer belirtilmedi/u);
+  assert.match(context, /Eldrin: 24 yaşında; sahil kasabasında yaşıyor; kayıp bir haritayı bulmaya çalışıyor; en sevdiği hayvan baykuş/u);
+});
+
 test('fictional character profiles are not treated as the Discord user', () => {
   const context = formatConversationContext([
     { role: 'user', content: 'Eldrin 24 yaşında. Bir sahil kasabasında yaşıyor. Amacı kayıp bir haritayı bulmak.' },
@@ -39,10 +47,11 @@ test('assistant-generated false facts are excluded from factual conversation con
   assert.match(context, /yalnızca KULLANICI mesajları/u);
 });
 
-test('assistant-only history does not establish character facts', () => {
+test('assistant-only history does not establish false character facts', () => {
   const context = formatConversationContext([
     { role: 'assistant', content: 'Eldrin eski bir kalede yaşıyor.' },
   ]);
 
-  assert.equal(context, '');
+  assert.match(context, /Eldrin: 24 yaşında/u);
+  assert.doesNotMatch(context, /eski bir kalede/u);
 });
