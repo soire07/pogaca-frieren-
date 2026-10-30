@@ -88,3 +88,18 @@ test('health endpoint reports ready only when Discord, memory database and model
   assert.equal(getPublicHealthStatus(), 503);
 });
 
+
+
+test('liveness remains healthy while dependency readiness is temporarily degraded', async () => {
+  const { getPublicLivenessPayload } = await import('./interaction-safety.js');
+  const payload = getPublicLivenessPayload({
+    discordReady: false,
+    memoryDatabaseReady: true,
+    modelConfigured: true,
+    bridgeConfigured: true,
+  });
+  assert.equal(payload.status, 'alive');
+  assert.equal(payload.ready, false);
+  assert.equal(payload.readiness.status, 'not_ready');
+  assert.equal(payload.readiness.discordReady, false);
+});
