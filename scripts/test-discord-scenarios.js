@@ -822,3 +822,9 @@ test('co-op command behavioral tests verify persisted rewards, resource bounds, 
   ]) assert.ok(runner.includes(check), 'missing behavioral assertion: ' + check);
   assert.match(runner, /synthetic Discord interaction; isolated PostgreSQL schema frieren_test/);
 });
+
+
+test('co-op test inventory fixtures are idempotent across repeated command runs', async () => {
+  const runner = await read('scripts/live-command-test.js');
+  assert.match(runner, /INSERT INTO inventory\(guild_id,user_id,item_key,quantity\) VALUES\(\$1,\$2,\$3,1\) ON CONFLICT\(guild_id,user_id,item_key\) DO UPDATE SET quantity=EXCLUDED\.quantity/);
+});
