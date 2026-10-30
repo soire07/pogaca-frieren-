@@ -456,3 +456,25 @@ test('legacy conversation history is retained in storage but never returned as t
   assert.ok(fake.conversationRows.some(row => row.id === 0 && row.privacy_checked === false),
     'legacy rows must remain stored; only their use as model context is disabled');
 });
+
+
+test('automatic memory extraction captures a favorite character followed by an explicit save request', () => {
+  assert.deepEqual(
+    extractAutomaticMemories('Benim favori karakterim Frieren. Bunu kalıcı belleğine kaydet.'),
+    [{ key: 'favori_karakter', value: 'En sevdiği karakter: Frieren.' }]
+  );
+});
+
+test('automatic memory extraction captures explicit favorite wording without saving the instruction text', () => {
+  assert.deepEqual(
+    extractAutomaticMemories('Favori karakterim Frieren, bunu belleğine kaydet.'),
+    [{ key: 'favori_karakter', value: 'En sevdiği karakter: Frieren.' }]
+  );
+});
+
+test('explicit save requests do not bypass sensitive-information filtering', () => {
+  assert.deepEqual(
+    extractAutomaticMemories('Benim şifrem 12345. Bunu kalıcı belleğine kaydet.'),
+    []
+  );
+});
