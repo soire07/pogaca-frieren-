@@ -38,9 +38,10 @@ export async function withIsolatedTestSchema(callback) {
   let release;
   testSchemaQueue = new Promise(resolve => { release = resolve; });
   await previous;
-  const lockClient = await productionPool.connect();
+  let lockClient;
   let lockAcquired = false;
   try {
+    lockClient = await productionPool.connect();
     await lockClient.query('SELECT pg_advisory_lock(20261030, 1)');
     lockAcquired = true;
     await productionPool.query('CREATE SCHEMA IF NOT EXISTS frieren_test');
@@ -49,10 +50,10 @@ export async function withIsolatedTestSchema(callback) {
       return await callback();
     });
   } finally {
-    if (lockAcquired) {
+    if (lockClient && lockAcquired) {
       await lockClient.query('SELECT pg_advisory_unlock(20261030, 1)').catch(() => {});
     }
-    lockClient.release();
+    lockClient?.release();
     release();
   }
 }
