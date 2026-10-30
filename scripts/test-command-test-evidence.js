@@ -34,3 +34,12 @@ test('any failed behavioral assertion makes the command FAIL', () => {
 test('no response and no behavioral assertion is a failure, not a pass', () => {
   assert.equal(buildCommandEvidence({}).status, 'FAIL');
 });
+
+test('behavioral assertions cannot produce PASS when the command emits no Discord response', () => {
+  const result = buildCommandEvidence({
+    responseCount: 0,
+    behavioralChecks: [{ name: 'coins', expected: '75', actual: '75', passed: true }]
+  });
+  assert.equal(result.status, 'FAIL');
+  assert.match(result.detail, /Discord yanıtını/);
+});
