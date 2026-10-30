@@ -45,5 +45,5 @@ test('command test input accepts multiple comma-separated targets and removes du
   assert.deepEqual(parseCommandNames('katlizindan, ortakboss, /katlizindan'), ['katlizindan', 'ortakboss']);
   assert.deepEqual(parseCommandNames(' /katlizindan ; ortakboss '), ['katlizindan', 'ortakboss']);
   assert.deepEqual(parseCommandNames('   '), []);
-  assert.deepEqual(parseCommandNames('invalid name, ortakboss'), ['ortakboss']);
+  assert.throws(() => parseCommandNames('invalid name'), /Geçersiz komut adı/);
 });
