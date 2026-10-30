@@ -613,11 +613,11 @@ client.on(Events.InteractionCreate, async interaction => {
       if (!response.ok) throw new Error('Poğaça Frieren test köprüsü HTTP ' + response.status + ': ' + (report.message || report.error || 'bilinmeyen hata'));
       const summary = report.summary || {};
       const resultRows = (report.results || []).map(item => formatCommandTestResult(item));
-      const reportText = '**Poğaça Frieren davranış denetimi tamamlandı**\\n'
+      const reportText = '**Poğaça Frieren davranış denetimi tamamlandı**\n'
         + 'Toplam: ' + (summary.total ?? 0) + ' | PASS: ' + (summary.pass ?? 0) + ' | FAIL: ' + (summary.fail ?? 0) + ' | Kesin değil: ' + (summary.inconclusive ?? 0)
-        + '\\nÇalıştırma: gerçek komut işleyicileri + sentetik Discord etkileşimleri + frieren_test PostgreSQL şeması.\\n'
-        + 'Not: Bu gerçek Discord kullanıcı işlemi değildir. Yanıt tek başına PASS sayılmaz; PASS için ilgili davranış ve veritabanı kontrollerinin tamamı geçmelidir. Üretim oyuncu verileri değiştirilmez.\\n\\n'
-        + (resultRows.join('\\n\\n') || 'Test sonucu bulunamadı.');
+        + '\nÇalıştırma: gerçek komut işleyicileri + sentetik Discord etkileşimleri + frieren_test PostgreSQL şeması.\n'
+        + 'Not: Bu gerçek Discord kullanıcı işlemi değildir. Yanıt tek başına PASS sayılmaz; PASS için ilgili davranış ve veritabanı kontrollerinin tamamı geçmelidir. Üretim oyuncu verileri değiştirilmez.\n\n'
+        + (resultRows.join('\n\n') || 'Test sonucu bulunamadı.');
       const messageChunks = splitDiscordMessage(reportText, 1900);
       await interaction.editReply({
         content: messageChunks[0],
