@@ -12,6 +12,16 @@ test('Discord OAuth diagnostics expose only safe status and error codes', () => 
   assert.doesNotMatch(getDiscordOAuthFailureDiagnostic(401, { error: 'invalid_client', error_description: 'private detail' }), /private detail/);
 });
 
+test('Discord OAuth state is self-verifying without a browser cookie', async () => {
+  const { createOwnerOAuthState, verifyOwnerOAuthState } = await import('../owner-dashboard.js');
+  const now = 1_800_000_000_000;
+  const state = createOwnerOAuthState(secret, now);
+  assert.equal(verifyOwnerOAuthState(state, secret, now + 1000), true);
+  assert.equal(verifyOwnerOAuthState(state, secret, now + 11 * 60 * 1000), false);
+  assert.equal(verifyOwnerOAuthState(state + 'tampered', secret, now + 1000), false);
+  assert.equal(verifyOwnerOAuthState(state, 'another-secret-that-is-at-least-32-characters', now + 1000), false);
+});
+
 test('owner session accepts a valid signed session for the configured owner', () => {
   const token = createOwnerSession(secret, 2_000);
   assert.equal(verifyOwnerSession(token, secret, 1_000), true);
