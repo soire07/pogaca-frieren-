@@ -6,8 +6,8 @@
       "destination": "https://pogaca-frieren.onrender.com/owner"
     },
     {
-      "source": "/(.*)",
-      "destination": "https://pogaca-frieren.onrender.com/$1"
+      "source": "/:path*",
+      "destination": "https://pogaca-frieren.onrender.com/:path*"
     }
   ]
 }
