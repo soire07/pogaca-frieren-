@@ -8,7 +8,7 @@
     "start": "node index.js",
     "deploy-commands": "node deploy-commands.js",
     "check": "node --check index.js && node --check frieren-chat.js && node --check deploy-commands.js && node scripts/check-commands.js && node scripts/check-feature-inventory.js && node scripts/check-gameplay-integrity.js && npm test",
-    "test": "node --test scripts/test-utils.js scripts/test-discord-scenarios.js scripts/test-gameplay-persistence.js scripts/test-frieren-chat.js scripts/test-owner-dashboard.js scripts/test-owner-admin.js"
+    "test": "node --test scripts/test-utils.js scripts/test-discord-scenarios.js scripts/test-gameplay-persistence.js scripts/test-command-test-evidence.js scripts/test-frieren-chat.js scripts/test-owner-dashboard.js scripts/test-owner-admin.js"
   },
   "engines": {
     "node": ">=20"
