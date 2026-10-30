@@ -663,6 +663,131 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Rehber içeriği ve başlık', expected: 'komuta ait rehber başlığı ve açıklaması gösterilmeli', actual: payloadText.includes(expectedTitle) ? expectedTitle + ' gösterildi' : payloadText.slice(0, 400), passed: payloadText.includes(expectedTitle) },
             { name: 'Rehber komutunun oyuncu verisini değiştirmemesi', expected: 'rehber görüntüleme altın, XP ve seviyeyi değiştirmemeli', actual: JSON.stringify(before.rows[0]) + ' → ' + JSON.stringify(after.rows[0]), passed: Number(before.rows[0].coins) === Number(after.rows[0].coins) && Number(before.rows[0].xp) === Number(after.rows[0].xp) && Number(before.rows[0].level) === Number(after.rows[0].level) }
           );
+        } else if (commandName === 'gorevzinciri') {
+          await pool.query("UPDATE users SET coins=0,xp=0,last_daily_at=NOW() WHERE guild_id=$1 AND user_id=$2", [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options, { odul: '1' }), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const player = await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const chain = await pool.query('SELECT current_step FROM daily_quest_chains WHERE guild_id=$1 AND user_id=$2 AND chain_date=CURRENT_DATE', [guildId, userId]);
+          const material = await pool.query("SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='🥐 Büyülü Poğaça Kutusu'", [guildId, userId]);
+          behavioralChecks.push(
+            { name: 'Görev zinciri ilk aşama ödülü', expected: '50 altın, 20 XP ve 1 poğaça kutusu verilmeli', actual: 'altın ' + player.rows[0]?.coins + ', XP ' + player.rows[0]?.xp + ', malzeme ' + (material.rows[0]?.quantity || 0), passed: Number(player.rows[0]?.coins) === 50 && Number(player.rows[0]?.xp) === 20 && Number(material.rows[0]?.quantity) === 1 },
+            { name: 'Görev zinciri aşama ilerlemesi', expected: 'current_step 1 → 2', actual: 'aşama ' + (chain.rows[0]?.current_step ?? 'yok'), passed: Number(chain.rows[0]?.current_step) === 2 }
+          );
+        } else if (commandName === 'hikaye') {
+          const interaction = makeInteraction(command, buildOptions(schema?.options, { karar: 'merak' }), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const progress = await pool.query('SELECT current_chapter,choices FROM story_progress WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const player = await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Hikâye başlangıç kararı', expected: 'Merak kararı kalıcı kaydedilmeli ve ilk bölüm ilerlemeli', actual: JSON.stringify(progress.rows[0] || null), passed: Number(progress.rows[0]?.current_chapter) === 1 && Array.isArray(progress.rows[0]?.choices) && progress.rows[0].choices[0] === 'merak' },
+            { name: 'Hikâye başlangıç ödülü', expected: '50 altın ve 25 XP verilmeli', actual: 'altın ' + player.rows[0]?.coins + ', XP ' + player.rows[0]?.xp, passed: Number(player.rows[0]?.coins) === 50 && Number(player.rows[0]?.xp) === 25 && payloadText.includes('Kuzey') }
+          );
+        } else if (commandName === 'karaktercek') {
+          await pool.query('UPDATE users SET last_free_character_at=NULL,free_character_pity_count=0 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const collection = await pool.query('SELECT COUNT(*)::int AS total,COALESCE(SUM(quantity),0)::int AS copies FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const state = await pool.query('SELECT last_free_character_at,free_character_pity_count FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          behavioralChecks.push(
+            { name: 'Günlük ücretsiz karakter kaydı', expected: '1 karakter koleksiyona eklenmeli', actual: collection.rows[0].total + ' karakter / ' + collection.rows[0].copies + ' kopya', passed: Number(collection.rows[0].total) === 1 && Number(collection.rows[0].copies) === 1 },
+            { name: 'Ücretsiz çekim bekleme süresi ve garanti sayacı', expected: 'last_free_character_at kaydedilmeli ve sayaç 0–10 aralığında olmalı', actual: String(state.rows[0]?.last_free_character_at) + ' / ' + state.rows[0]?.free_character_pity_count, passed: Boolean(state.rows[0]?.last_free_character_at) && Number(state.rows[0]?.free_character_pity_count) >= 0 && Number(state.rows[0]?.free_character_pity_count) <= 10 }
+          );
+        } else if (commandName === 'parcala') {
+          await pool.query("INSERT INTO anime_character_collection(guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,image,quantity) VALUES($1,$2,'Test Fern','Frieren','Nadir','🌿',123,'test','test',NULL,3)", [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options, { karakter: 'Test Fern', miktar: 2 }), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const collection = await pool.query("SELECT quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name='Test Fern'", [guildId, userId]);
+          const player = await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          behavioralChecks.push(
+            { name: 'Karakter kopyası parçalama', expected: '3 kopyadan 2 tanesi düşülmeli; 1 kopya korunmalı', actual: String(collection.rows[0]?.quantity ?? 0), passed: Number(collection.rows[0]?.quantity) === 1 },
+            { name: 'Nadir karakter parçalama ödülü', expected: '24 altın eklenmeli', actual: String(player.rows[0]?.coins ?? 0) + ' altın', passed: Number(player.rows[0]?.coins) === 24 }
+          );
+        } else if (commandName === 'envanter') {
+          await pool.query("INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'TEST Mana Kristali',2)", [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const state = await pool.query("SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='TEST Mana Kristali'", [guildId, userId]);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Envanter içeriği', expected: 'TEST Mana Kristali ×2 listelenmeli', actual: payloadText.includes('TEST Mana Kristali') ? 'eşya listelendi' : payloadText.slice(0, 400), passed: Number(state.rows[0]?.quantity) === 2 && payloadText.includes('TEST Mana Kristali') && payloadText.includes('× 2') },
+            { name: 'Envanter görüntüleme salt okunur', expected: 'eşya miktarı değişmemeli', actual: String(state.rows[0]?.quantity ?? 0), passed: Number(state.rows[0]?.quantity) === 2 }
+          );
+        } else if (commandName === 'maceraistatistik') {
+          await pool.query("INSERT INTO adventure_route_mastery(guild_id,user_id,route_key,visits) VALUES($1,$2,'test-route',3)", [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const state = await pool.query("SELECT visits FROM adventure_route_mastery WHERE guild_id=$1 AND user_id=$2 AND route_key='test-route'", [guildId, userId]);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Macera istatistikleri', expected: 'toplam macera 3 ve seviye/XP/altın paneli gösterilmeli', actual: payloadText.includes('Toplam macera') && payloadText.includes('3') ? 'istatistik paneli doğru' : payloadText.slice(0, 400), passed: Number(state.rows[0]?.visits) === 3 && payloadText.includes('Toplam macera') && payloadText.includes('3') },
+            { name: 'Macera istatistiği salt okunur', expected: 'rota ziyareti sayısı değişmemeli', actual: String(state.rows[0]?.visits ?? 0), passed: Number(state.rows[0]?.visits) === 3 }
+          );
+        } else if (['frieren','mimic','pogaca','sans','saril'].includes(commandName)) {
+          const before = await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const after = await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          const patterns = { frieren: ['Frieren','günlüğü'], mimic: ['Sandık','MIMIC'], pogaca: ['Fırın','poğaça'], sans: ['şans','eğlence amaçlı'], saril: ['Fern onaylı','dostça'] };
+          const found = patterns[commandName].some(value => payloadText.toLocaleLowerCase('tr-TR').includes(value.toLocaleLowerCase('tr-TR')));
+          behavioralChecks.push(
+            { name: 'Eğlence komutu içeriği', expected: 'komuta özgü anime/eğlence yanıtı gösterilmeli', actual: found ? 'beklenen içerik bulundu' : payloadText.slice(0, 400), passed: found },
+            { name: 'Eğlence komutu RPG verisini değiştirmez', expected: 'altın, XP ve seviye değişmemeli', actual: JSON.stringify(before.rows[0]) + ' → ' + JSON.stringify(after.rows[0]), passed: Number(before.rows[0].coins) === Number(after.rows[0].coins) && Number(before.rows[0].xp) === Number(after.rows[0].xp) && Number(before.rows[0].level) === Number(after.rows[0].level) }
+          );
+        } else if (commandName === 'karakterarsivi') {
+          const interaction = makeInteraction(command, buildOptions(schema?.options, { isim: 'frieren' }), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Karakter arşivi kartı', expected: 'Frieren adı, Elf büyücü rolü ve karakter açıklaması gösterilmeli', actual: payloadText.includes('Frieren') && payloadText.includes('Elf büyücü') ? 'Frieren arşiv kartı gösterildi' : payloadText.slice(0, 400), passed: payloadText.includes('Frieren') && payloadText.includes('Elf büyücü') && payloadText.includes('yolculuğunun anlamını') }
+          );
+        } else if (commandName === 'npc') {
+          const interaction = makeInteraction(command, buildOptions(schema?.options, { karakter: 'frieren', eylem: 'konus' }), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'NPC diyalog sistemi', expected: 'Frieren karşılaşma başlığı ve diyalog içeriği gösterilmeli', actual: payloadText.includes('Frieren') ? 'Frieren diyalogu gösterildi' : payloadText.slice(0, 400), passed: payloadText.includes('Frieren') && payloadText.includes('karşılaşma') && payloadText.includes('büyü kalıntıları') }
+          );
+        } else if (commandName === 'siralama') {
+          await pool.query('UPDATE users SET level=7,xp=987,coins=4321 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options, { kategori: 'level' }), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          const mine = await pool.query('SELECT level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          behavioralChecks.push(
+            { name: 'Oyuncu sıralama konumu', expected: 'test oyuncusu seviye 7 ile birinci sırada görünmeli', actual: 'seviye ' + mine.rows[0]?.level, passed: Number(mine.rows[0]?.level) === 7 && payloadText.includes('Seviye 7') && payloadText.includes('Senin sıran') && payloadText.includes('#1') }
+          );
+        } else if (commandName === 'buyukitabi') {
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Büyü kitabı sayfa paneli', expected: 'bir büyü adı, açıklaması ve sayfa gezinme düğmeleri gösterilmeli', actual: payloadText.includes('Büyük Büyü Kitabı') ? 'büyü kitabı paneli açıldı' : payloadText.slice(0, 400), passed: payloadText.includes('Büyük Büyü Kitabı') && payloadText.includes('buyukitabi_next') && payloadText.includes('buyukitabi_random') }
+          );
         } else if (commandName === 'ekipmanparcala') {
           const item = equipmentItems.find(entry => entry.id === 'iron_sword');
           const salvageItem = '🥐 Büyülü Poğaça Kutusu';
