@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { formatConversationContext } from './conversation-context.js';
+import { formatConversationContext, buildConversationContextMessage } from './conversation-context.js';
 
 test('canonical Arven and Eldrin profiles are always present, including new conversations', () => {
   const context = formatConversationContext([]);
@@ -54,4 +54,13 @@ test('assistant-only history does not establish false character facts', () => {
 
   assert.match(context, /Eldrin: 24 yaşında/u);
   assert.doesNotMatch(context, /eski bir kalede/u);
+});
+
+
+test('a new conversation always receives canonical character context', () => {
+  const message = buildConversationContextMessage([]);
+
+  assert.equal(message.role, 'system');
+  assert.match(message.content, /Arven: 19 yaşında; kayıp kardeşini arıyor/u);
+  assert.match(message.content, /Eldrin: 24 yaşında; sahil kasabasında yaşıyor/u);
 });
