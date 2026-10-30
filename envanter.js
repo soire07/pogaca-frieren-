@@ -13,6 +13,8 @@ export default {
       return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
     }
 
+    // Acknowledge immediately so inventory/equipment queries cannot expire the interaction.
+    await interaction.deferReply({ ephemeral: true });
     await ensureUser(interaction.guildId, interaction.user.id);
 
     const { rows } = await pool.query(
@@ -49,7 +51,7 @@ export default {
         .setStyle(ButtonStyle.Primary)
     );
 
-    await interaction.reply({
+    await interaction.editReply({
       embeds: [embed],
       files: [gif],
       components: [row],
