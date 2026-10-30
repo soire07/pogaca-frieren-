@@ -197,14 +197,15 @@ function payloadTextFromEffects(effects) {
         data?.author?.name
       ];
     });
-    const components = (payload.components || []).flatMap(row =>
-      (row?.components || []).flatMap(component => [
+    const components = (payload.components || []).flatMap(row => {
+      if (Array.isArray(row)) return row;
+      return (row?.components || []).flatMap(component => [
         component?.data?.custom_id,
         component?.data?.label,
         component?.customId,
         component?.label
-      ])
-    );
+      ]);
+    });
     return [payload.content, ...embeds, ...components];
   }).filter(value => typeof value === 'string' && value.length).join('\n');
 }
