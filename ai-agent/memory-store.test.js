@@ -486,3 +486,17 @@ test('explicit natural-language memory save intent is recognized without matchin
   assert.equal(isExplicitMemorySaveRequest('Bellek nasıl çalışıyor?'), false);
   assert.equal(isExplicitMemorySaveRequest('Bunu daha sonra hatırla.'), false);
 });
+
+
+test('explicit natural-language save persists the extracted fact only for the requesting Discord user', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  const request = 'Benim favori karakterim Frieren. Bunu kalıcı belleğine kaydet.';
+  assert.equal(isExplicitMemorySaveRequest(request), true);
+  for (const memory of extractAutomaticMemories(request)) {
+    await store.save('discord-user-1', memory.key, memory.value);
+  }
+  assert.deepEqual((await store.list('discord-user-1')).map(({ memory_key, memory_value }) => ({ key: memory_key, value: memory_value })), [
+    { key: 'favori_karakter', value: 'En sevdiği karakter: Frieren.' }
+  ]);
+  assert.deepEqual(await store.list('discord-user-2'), []);
+});
