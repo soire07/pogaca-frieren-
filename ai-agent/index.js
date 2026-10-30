@@ -4,6 +4,7 @@ import { resolveAiModel } from './config.js';
 import { findRelevantExcerpt, scoreCodeCandidate } from './code-context.js';
 import { createMemoryStore, shouldUseConversationHistory } from './memory-store.js';
 import { formatConversationContext } from './conversation-context.js';
+import { isExplicitMemoryOverviewQuestion } from './memory-intent.js';
 import { extractAutomaticMemories } from './memory-extractor.js';
 import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, isTargetedTestFailure, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
 import { buildTestDiagnostics } from './test-diagnostics.js';
@@ -156,18 +157,6 @@ function isConversationalQuestion(question) {
     .trim();
   const hasTechnicalIntent = /\b(kod|komut|test|hata|bug|debug|dosya|fonksiyon|veritabani|database|api|deploy|render|incele|duzelt|analiz|kaynak kod|stack trace)\b/.test(normalized);
   return !hasTechnicalIntent;
-}
-
-function isExplicitMemoryOverviewQuestion(value) {
-  const normalized = String(value ?? '').toLocaleLowerCase('tr-TR')
-    .replaceAll('ı', 'i').replaceAll('İ', 'i')
-    .replaceAll('ü', 'u').replaceAll('ö', 'o').replaceAll('ş', 's')
-    .replaceAll('ğ', 'g').replaceAll('ç', 'c')
-    .replaceAll('?', ' ').replaceAll(',', ' ').replaceAll('.', ' ').replaceAll(':', ' ');
-  const allWords = normalized.includes('tum') || normalized.includes('butun') || normalized.includes('hepsini') || normalized.includes('her birini');
-  const memoryWords = normalized.includes('ani') || normalized.includes('bellek') || normalized.includes('kayit') || normalized.includes('bilgi');
-  const listingWords = normalized.includes('listele') || normalized.includes('sirala') || normalized.includes('liste');
-  return (allWords && memoryWords) || (listingWords && memoryWords);
 }
 
 async function answerCodeQuestion(question, userId, conversationId) {
