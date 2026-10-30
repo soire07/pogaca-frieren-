@@ -12,7 +12,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
-import { getMaintenanceState, initOwnerAdminSchema } from './owner-admin.js';
+import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 if (!process.env.DISCORD_TOKEN) throw new Error('DISCORD_TOKEN eksik. Render Environment bölümünü kontrol et.');
@@ -258,8 +258,10 @@ client.on(Events.InteractionCreate, async interaction => {
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
   try {
+    await recordCommandUsage(pool, interaction.commandName, interaction.guildId).catch(error => console.warn('Komut ölçümü kaydedilemedi:', error?.message || error));
     await command.execute(interaction);
   } catch (error) {
+    await recordOwnerError(pool, '/' + interaction.commandName, error?.name || 'CommandError').catch(() => {});
     console.error(`/${interaction.commandName} hatası:`, error);
     await sendPrivateInteractionError(interaction, 'Bu komut çalışırken bir hata oluştu. Hata kaydedildi; daha sonra tekrar dene.');
   }
