@@ -6,7 +6,7 @@ const MAX_REPLY_LENGTH = 1900;
 const DEFAULT_OWNER_ID = '1553794496234262641';
 
 export function isCodeOrSourceRequest(text) {
-  const value = String(text || '').normalize('NFKC').toLocaleLowerCase('tr-TR');
+  const value = String(text || '').normalize('NFKC').toLowerCase();
   return /kod|kaynak kod|source code|github|repository|repo|index[.]js|package[.]json|[.]env|api.?key|token|gizli anahtar|botun yapım|botun yapılış|nasıl kodlandı|nasıl yazıldı|hangi kütüphane|hangi api|komutların yapım|komut kodu|yazılım|programlama/iu.test(value);
 }
 export function isFrierenMentionMessage(message, botUserId) {
