@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { parseCommandNames } from './command-test-input.js';
 import { readFile } from 'node:fs/promises';
 
 const [runtime, manual] = await Promise.all([
@@ -37,4 +38,12 @@ test('registration exposes only the four Frieren AI root commands and four memor
   assert.match(manual, /configuredGuildId && configuredGuildId !== TEST_GUILD_ID/);
   assert.match(manual, /const TEST_GUILD_ID = '1564945192803639356'/);
   assert.doesNotMatch(manual, /Routes\.applicationCommands\(/, 'global command registration must remain disabled');
+});
+
+
+test('command test input accepts multiple comma-separated targets and removes duplicates', () => {
+  assert.deepEqual(parseCommandNames('katlizindan, ortakboss, /katlizindan'), ['katlizindan', 'ortakboss']);
+  assert.deepEqual(parseCommandNames(' /katlizindan ; ortakboss '), ['katlizindan', 'ortakboss']);
+  assert.deepEqual(parseCommandNames('   '), []);
+  assert.deepEqual(parseCommandNames('invalid name, ortakboss'), ['ortakboss']);
 });
