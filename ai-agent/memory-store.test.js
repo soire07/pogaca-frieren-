@@ -124,6 +124,36 @@ test('save trims input and rejects empty user IDs, keys and values before databa
   assert.equal(FakePool.instance.calls.some(call => call.sql.includes('INSERT INTO')), false);
 });
 
+
+test('manual memory writes reject secrets and sensitive personal data before persistence', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  const forbiddenValues = [
+    'Şifrem 12345.',
+    'Hedefim depresyonu yenmek.',
+    'Hedefim diyabetimi kontrol altında tutmak.',
+    'Dini inancım benim için çok önemli.',
+    'Ben biseksüelim.',
+    'Ben X partisine oy verdim.',
+    'Ev adresim İstanbul merkezde.',
+    'Kredi kartımın numarası 4111111111111111.'
+  ];
+
+  for (const value of forbiddenValues) {
+    await assert.rejects(
+      store.save('user-a', 'private-note', value),
+      error => error?.code === 'SENSITIVE_MEMORY_REJECTED',
+      value
+    );
+  }
+  assert.equal(FakePool.instance.calls.some(call => call.sql.includes('INSERT INTO frieren_ai_memories')), false);
+});
+
+test('manual memory writes continue to accept ordinary non-sensitive preferences and projects', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  await store.save('user-a', 'project', 'Frieren RPG üzerinde çalışıyorum.');
+  assert.equal((await store.list('user-a'))[0]?.memory_value, 'Frieren RPG üzerinde çalışıyorum.');
+});
+
 test('save rejects keys and values beyond the documented schema limits', async () => {
   const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
   await assert.rejects(store.save('user-a', 'k'.repeat(61), 'value'), /key must be at most 60 characters/i);
