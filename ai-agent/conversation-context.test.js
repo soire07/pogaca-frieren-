@@ -25,3 +25,24 @@ test('character facts stay attached to their named character and unknown fields 
   assert.match(context, /yaş, yer veya hayvan tercihi tahmin etme/u);
   assert.match(context, /bilinmiyor kabul et/u);
 });
+
+test('assistant-generated false facts are excluded from factual conversation context', () => {
+  const context = formatConversationContext([
+    { role: 'user', content: 'Arven 19 yaşında, kayıp kardeşini arıyor ve en sevdiği hayvan kedidir.' },
+    { role: 'assistant', content: 'Arven eski kütüphanede yaşıyor ve en sevdiği hayvan kurttur.' },
+    { role: 'user', content: 'Arven hakkında bildiklerini özetle.' },
+  ]);
+
+  assert.match(context, /Arven 19 yaşında/u);
+  assert.doesNotMatch(context, /eski kütüphanede/u);
+  assert.doesNotMatch(context, /kurttur/u);
+  assert.match(context, /yalnızca kullanıcı mesajları/u);
+});
+
+test('assistant-only history does not establish character facts', () => {
+  const context = formatConversationContext([
+    { role: 'assistant', content: 'Eldrin eski bir kalede yaşıyor.' },
+  ]);
+
+  assert.equal(context, '');
+});
