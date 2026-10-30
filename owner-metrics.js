@@ -7,24 +7,45 @@ function seriesFrom(payload) {
   return [];
 }
 
-function pointMap(payload) {
+function groupedSeries(payload) {
   const points = new Map();
   for (const series of seriesFrom(payload)) {
     if (!Array.isArray(series?.values)) continue;
+    const instance = series.labels?.find(label => label?.field === 'instance')?.value || 'service';
     for (const item of series.values) {
       const timestamp = Date.parse(item?.timestamp);
       const value = Number(item?.value);
       if (!Number.isFinite(timestamp) || !Number.isFinite(value)) continue;
       const key = new Date(timestamp).toISOString();
-      points.set(key, (points.get(key) || 0) + value);
+      if (!points.has(key)) points.set(key, new Map());
+      const instances = points.get(key);
+      instances.set(instance, (instances.get(instance) || 0) + value);
     }
   }
-  return [...points.entries()].sort(([a], [b]) => a.localeCompare(b))
-    .map(([timestamp, value]) => ({ timestamp, value }));
+  return points;
+}
+
+function aggregateAgainstLimit(usagePayload, limitPayload) {
+  const usage = groupedSeries(usagePayload);
+  const limits = groupedSeries(limitPayload);
+  const result = [];
+  for (const timestamp of [...usage.keys()].sort()) {
+    const usageByInstance = usage.get(timestamp);
+    const limitByInstance = limits.get(timestamp);
+    let used = 0;
+    let limit = 0;
+    for (const [instance, value] of usageByInstance) {
+      if (!limitByInstance?.has(instance)) continue;
+      used += value;
+      limit += limitByInstance.get(instance);
+    }
+    if (limit > 0) result.push({ timestamp, used, limit, percent: used / limit * 100 });
+  }
+  return result;
 }
 
 function latestValue(points) {
-  return points.length ? points[points.length - 1].value : null;
+  return points.length ? points[points.length - 1] : null;
 }
 
 async function requestMetric(name, { apiKey, resourceId, startTime, endTime, fetchImpl }) {
@@ -61,35 +82,27 @@ export async function getRenderServiceMetrics({
       requestMetric('memory', { apiKey, resourceId, startTime, endTime, fetchImpl }),
       requestMetric('memory-limit', { apiKey, resourceId, startTime, endTime, fetchImpl })
     ]);
-    const cpuPoints = pointMap(cpu);
-    const cpuLimitPoints = pointMap(cpuLimit);
-    const memoryPoints = pointMap(memory);
-    const memoryLimitPoints = pointMap(memoryLimit);
-    const cpuUsed = latestValue(cpuPoints);
-    const cpuCapacity = latestValue(cpuLimitPoints);
-    const memoryUsedBytes = latestValue(memoryPoints);
-    const memoryLimitBytes = latestValue(memoryLimitPoints);
-    if ([cpuUsed, cpuCapacity, memoryUsedBytes, memoryLimitBytes].some(value => value === null)) {
+    const cpuPoints = aggregateAgainstLimit(cpu, cpuLimit);
+    const memoryPoints = aggregateAgainstLimit(memory, memoryLimit);
+    const latestCpu = latestValue(cpuPoints);
+    const latestMemory = latestValue(memoryPoints);
+    if (!latestCpu || !latestMemory) {
       return { status: 'unavailable', source: 'render', points: [], message: 'Render metrikleri henüz veri döndürmedi.' };
     }
-    const cpuPercent = cpuCapacity > 0 ? cpuUsed / cpuCapacity * 100 : null;
-    const memoryPercent = memoryLimitBytes > 0 ? memoryUsedBytes / memoryLimitBytes * 100 : null;
-    const cpuByTime = new Map(cpuPoints.map(point => [point.timestamp, point.value]));
-    const cpuLimitByTime = new Map(cpuLimitPoints.map(point => [point.timestamp, point.value]));
-    const memoryByTime = new Map(memoryPoints.map(point => [point.timestamp, point.value]));
-    const memoryLimitByTime = new Map(memoryLimitPoints.map(point => [point.timestamp, point.value]));
+    const cpuUsed = latestCpu.used;
+    const cpuCapacity = latestCpu.limit;
+    const memoryUsedBytes = latestMemory.used;
+    const memoryLimitBytes = latestMemory.limit;
+    const cpuPercent = latestCpu.percent;
+    const memoryPercent = latestMemory.percent;
+    const cpuByTime = new Map(cpuPoints.map(point => [point.timestamp, point.percent]));
+    const memoryByTime = new Map(memoryPoints.map(point => [point.timestamp, point.percent]));
     const timestamps = [...new Set([...cpuByTime.keys(), ...memoryByTime.keys()])].sort();
-    const points = timestamps.map(timestamp => {
-      const usedCpu = cpuByTime.get(timestamp);
-      const maxCpu = cpuLimitByTime.get(timestamp) ?? cpuCapacity;
-      const usedMemory = memoryByTime.get(timestamp);
-      const maxMemory = memoryLimitByTime.get(timestamp) ?? memoryLimitBytes;
-      return {
-        timestamp,
-        cpuPercent: Number.isFinite(usedCpu) && maxCpu > 0 ? usedCpu / maxCpu * 100 : null,
-        memoryPercent: Number.isFinite(usedMemory) && maxMemory > 0 ? usedMemory / maxMemory * 100 : null
-      };
-    }).slice(-60);
+    const points = timestamps.map(timestamp => ({
+      timestamp,
+      cpuPercent: cpuByTime.get(timestamp) ?? null,
+      memoryPercent: memoryByTime.get(timestamp) ?? null
+    })).slice(-60);
     return {
       status: 'available',
       source: 'render',
@@ -100,7 +113,7 @@ export async function getRenderServiceMetrics({
       memoryLimitBytes,
       memoryPercent,
       points,
-      updatedAt: new Date(Math.max(...timestamps.map(Date.parse))).toISOString()
+      updatedAt: [latestCpu.timestamp, latestMemory.timestamp].sort().at(-1)
     };
   } catch (error) {
     const message = String(error?.message || '');
