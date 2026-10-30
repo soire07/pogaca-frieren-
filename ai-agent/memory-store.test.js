@@ -274,15 +274,17 @@ test('story facts from earlier turns are surfaced as authoritative context for f
   assert.doesNotMatch(context, /kaplumbağa/i);
 });
 
-test('conversation context ignores invalid turns and bounds the number of included messages', () => {
-  const history = Array.from({ length: 12 }, (_, index) => ({
+test('conversation context ignores invalid turns and keeps opening plus recent messages', () => {
+  const history = Array.from({ length: 20 }, (_, index) => ({
     role: 'user',
     content: 'turn-' + index,
   }));
   history.push({ role: 'system', content: 'untrusted role' });
   const context = formatConversationContext(history);
-  assert.doesNotMatch(context, /turn-0/);
-  assert.match(context, /turn-11/);
+  assert.match(context, /turn-0/);
+  assert.match(context, /turn-3/);
+  assert.doesNotMatch(context, /turn-5/);
+  assert.match(context, /turn-19/);
   assert.doesNotMatch(context, /untrusted role/);
 });
 
