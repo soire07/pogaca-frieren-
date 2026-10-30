@@ -373,7 +373,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           );
         } else if (commandName === 'buyular') {
           await pool.query(
-            "INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,'alev_kuresi')",
+            "INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,'alev_kuresi') ON CONFLICT DO NOTHING",
             [guildId, userId]
           );
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
@@ -381,21 +381,22 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           interaction.member = makeMember(userId);
           await command.execute(interaction);
           const learned = await pool.query(
-            'SELECT spell_key FROM learned_spells WHERE guild_id=$1 AND user_id=$2',
+            'SELECT spell_key, COUNT(*) OVER (PARTITION BY spell_key)::int AS spell_count FROM learned_spells WHERE guild_id=$1 AND user_id=$2',
             [guildId, userId]
           );
+          const alevRows = learned.rows.filter(row => row.spell_key === 'alev_kuresi');
           const responseText = JSON.stringify(effects.map(effect => effect.payload));
           behavioralChecks.push(
             { name: 'Başlangıç büyüsünün görünmesi', expected: 'Zoltraak varsayılan büyü olarak listelenmeli', actual: responseText.includes('Zoltraak') ? 'Zoltraak listelendi' : 'Zoltraak bulunamadı', passed: responseText.includes('Zoltraak') },
-            { name: 'Öğrenilmiş büyünün görünmesi', expected: 'Alev Küresi arşivde listelenmeli ve veritabanında bir kez bulunmalı', actual: learned.rows.map(row => row.spell_key).join(', ') + (responseText.includes('Alev Küresi') ? ' · yanıtta listelendi' : ' · yanıtta bulunamadı'), passed: learned.rowCount === 1 && responseText.includes('Alev Küresi') }
+            { name: 'Öğrenilmiş büyünün görünmesi', expected: 'Alev Küresi arşivde listelenmeli ve kendi kaydı tam bir kez bulunmalı', actual: learned.rows.map(row => row.spell_key).join(', ') + (responseText.includes('Alev Küresi') ? ' · yanıtta listelendi' : ' · yanıtta bulunamadı') + ' · Alev Küresi kayıt sayısı: ' + alevRows.length, passed: alevRows.length === 1 && responseText.includes('Alev Küresi') }
           );
         } else if (commandName === 'buyuustaligi') {
           await pool.query(
-            "INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,'alev_kuresi'),($1,$2,'zoltraak')",
+            "INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,'alev_kuresi'),($1,$2,'zoltraak') ON CONFLICT DO NOTHING",
             [guildId, userId]
           );
           await pool.query(
-            "INSERT INTO spell_mastery(guild_id,user_id,spell_key,casts,mastery_level) VALUES($1,$2,'alev_kuresi',20,2),($1,$2,'zoltraak',0,0)",
+            "INSERT INTO spell_mastery(guild_id,user_id,spell_key,casts,mastery_level) VALUES($1,$2,'alev_kuresi',20,2),($1,$2,'zoltraak',0,0) ON CONFLICT (guild_id,user_id,spell_key) DO UPDATE SET casts=EXCLUDED.casts, mastery_level=EXCLUDED.mastery_level",
             [guildId, userId]
           );
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
