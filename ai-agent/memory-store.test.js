@@ -314,3 +314,14 @@ test('long conversation context preserves opening story facts and newest turns',
   assert.match(context, /Arven bugün kuzeye ulaştı/i);
   assert.doesNotMatch(context, /Ara sohbet mesajı 5/);
 });
+
+
+test('deleted identity and preference facts cannot be recovered from old conversation turns', () => {
+  assert.equal(shouldUseConversationHistory('Adım neydi?', []), false);
+  assert.equal(shouldUseConversationHistory('Hobim neydi?', []), false);
+  assert.equal(shouldUseConversationHistory('Hangi oyunu seviyordum?', []), false);
+  assert.equal(shouldUseConversationHistory('Hangi projede çalışıyordum?', []), false);
+  assert.equal(shouldUseConversationHistory('Adım neydi?', [
+    { memory_key: 'kullanici_adi', memory_value: 'Kullanıcının adı: Deniz.' }
+  ]), true);
+});
