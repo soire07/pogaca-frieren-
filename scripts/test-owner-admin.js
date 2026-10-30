@@ -28,7 +28,7 @@ test('maintenance changes are persisted and audited', async () => {
   assert.equal(calls.length, 2);
   assert.match(calls[0].sql, /INSERT INTO owner_settings/);
   assert.match(calls[1].sql, /INSERT INTO owner_audit_logs/);
-  assert.deepEqual(JSON.parse(calls[0].params[1]), { enabled: true });
+  assert.deepEqual(JSON.parse(calls[0].params[0]), { enabled: true });
 });
 
 test('technical requests are queued without allowing obvious secrets', async () => {
