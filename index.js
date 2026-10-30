@@ -339,13 +339,38 @@ function startAiAgent() {
 
 startAiAgent();
 
-process.on('SIGTERM', async () => {
+async function stopAiAgentChild() {
+  const child = aiAgentChild;
+  if (!child || child.exitCode !== null || child.signalCode !== null) return;
+
+  await new Promise(resolve => {
+    const forceKillTimer = setTimeout(() => {
+      if (child.exitCode === null && child.signalCode === null) {
+        console.error('Frieren AI Agent 5 saniyede kapanmadı; SIGKILL gönderiliyor.');
+        child.kill('SIGKILL');
+      }
+    }, 5_000);
+    forceKillTimer.unref();
+
+    child.once('exit', () => {
+      clearTimeout(forceKillTimer);
+      resolve();
+    });
+
+    if (!child.killed) child.kill('SIGTERM');
+  });
+}
+
+process.once('SIGTERM', async () => {
   shuttingDown = true;
   if (aiAgentRestartTimer) clearTimeout(aiAgentRestartTimer);
-  if (aiAgentChild && !aiAgentChild.killed) aiAgentChild.kill('SIGTERM');
   console.log('Kapatılıyor...');
-  await client.destroy();
-  await pool.end();
+
+  await Promise.allSettled([
+    client.destroy(),
+    pool.end(),
+    stopAiAgentChild(),
+  ]);
   process.exit(0);
 });
 const PORT = process.env.PORT || 3000;
