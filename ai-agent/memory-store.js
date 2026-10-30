@@ -186,7 +186,8 @@ export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
       const questionWords = normalizeWords(question);
       const recallIntent = isMemoryRecallQuestion(question);
       const normalizedQuestion = normalizeText(question);
-      const scored = memories.map((memory, index) => {
+      const personalFactRecall = isSpecificPersonalFactRecallQuestion(question);
+      const scored = memories.filter(memory => personalFactRecall || !String(memory.memory_key || '').startsWith('favori_')).map((memory, index) => {
         const keyWords = normalizeWords(memory.memory_key);
         const valueWords = normalizeWords(memory.memory_value);
         let score = 0;

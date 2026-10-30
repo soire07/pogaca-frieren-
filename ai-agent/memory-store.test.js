@@ -244,3 +244,13 @@ test('deleted specific facts cannot be recovered from conversation history', () 
   assert.equal(shouldUseConversationHistory('Benim hakkımda kayıtlı olan tüm anılarını listele.', []), false);
   assert.equal(shouldUseConversationHistory('Bugün nasılsın?', []), true);
 });
+
+
+test('personal favorite memories do not contaminate fictional character facts', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  await store.save('user-a', 'favori_hayvan', 'En sevdiği hayvan: kaplumbağa.');
+  assert.deepEqual(await store.relevant('user-a', "Arven'in en sevdiği hayvan kurt. Hikâyeye kurt ekleyelim."), []);
+  const personalRecall = await store.relevant('user-a', 'Benim en sevdiğim hayvan neydi?');
+  assert.equal(personalRecall.length, 1);
+  assert.equal(personalRecall[0].memory_key, 'favori_hayvan');
+});
