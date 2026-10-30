@@ -22,7 +22,9 @@ function send(res, status, body, headers = {}) {
 function cookies(req) {
   return Object.fromEntries(String(req.headers.cookie || '').split(';').map(part => {
     const index = part.indexOf('=');
-    return index < 0 ? ['', ''] : [part.slice(0, index).trim(), decodeURIComponent(part.slice(index + 1).trim())];
+    if (index < 0) return ['', ''];
+    try { return [part.slice(0, index).trim(), decodeURIComponent(part.slice(index + 1).trim())]; }
+    catch { return ['', '']; }
   }).filter(([key]) => key));
 }
 
@@ -41,6 +43,16 @@ function unsign(token, secret) {
   try { actual = Buffer.from(signature, 'base64url'); } catch { return null; }
   if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
   try { return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')); } catch { return null; }
+}
+
+export function createOwnerSession(secret, expiresAt) {
+  return sign({ sub: OWNER_ID, exp: expiresAt }, secret);
+}
+
+export function verifyOwnerSession(token, secret, nowSeconds = Math.floor(Date.now() / 1000)) {
+  if (!secret || secret.length < 32) return false;
+  const session = unsign(token, secret);
+  return session?.sub === OWNER_ID && Number.isInteger(session.exp) && session.exp > nowSeconds;
 }
 
 function clearCookie(name) {
@@ -124,7 +136,7 @@ export async function handleOwnerDashboardRequest(req, res, { client }) {
         return true;
       }
 
-      const session = sign({ sub: OWNER_ID, exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS }, sessionSecret);
+      const session = createOwnerSession(sessionSecret, Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS);
       res.writeHead(302, {
         Location: '/owner',
         'Cache-Control': 'no-store',
@@ -147,8 +159,7 @@ export async function handleOwnerDashboardRequest(req, res, { client }) {
     return true;
   }
 
-  const session = unsign(cookie[SESSION_COOKIE], sessionSecret);
-  const authenticated = session?.sub === OWNER_ID && Number.isInteger(session.exp) && session.exp > Math.floor(Date.now() / 1000);
+  const authenticated = verifyOwnerSession(cookie[SESSION_COOKIE], sessionSecret);
   if (!authenticated) {
     send(res, 200, page('Owner girişi', '<span class="tag">ÖZEL ERİŞİM</span><h1>Frieren · Owner Paneli</h1><p>Bu yönetim alanı yalnızca bot sahibine açıktır. Giriş, Discord hesabının kimliği doğrulanarak yapılır.</p><a class="btn" href="/owner/login">Discord ile giriş yap</a><p class="muted">Yetkisiz hesaplar panele erişemez.</p>'));
     return true;
