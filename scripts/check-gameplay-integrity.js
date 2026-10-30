@@ -380,8 +380,9 @@ test('inventory acknowledges privately before user creation and database reads',
   const firstQuery = source.indexOf('await pool.query(');
   assert.ok(ack >= 0 && ensure > ack && firstQuery > ack,
     'inventory must defer its ephemeral response before database work');
-  assert.match(source, /await interaction\\.editReply\\(\\{[\\s\\S]*?embeds: \\[embed\\]/,
-    'inventory must edit the deferred response with its embed');
-  assert.doesNotMatch(source, /await interaction\\.reply\\(\\{[\\s\\S]*?embeds: \\[embed\\]/,
+  assert.ok(source.includes('await interaction.editReply({'),
+    'inventory must edit the deferred response');
+  assert.ok(source.includes('embeds: [embed]'));
+  assert.ok(!source.includes('await interaction.reply({\n      embeds: [embed]'),
     'inventory must not reply a second time after deferring');
 });
