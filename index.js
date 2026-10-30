@@ -10,6 +10,7 @@ import { handleCharacterPanelInteraction } from './karakter.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { runCommandTestSuite } from './scripts/live-command-test.js';
+import { handleFrierenMentionMessage } from './frieren-chat.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 if (!process.env.DISCORD_TOKEN) throw new Error('DISCORD_TOKEN eksik. Render Environment bölümünü kontrol et.');
@@ -264,6 +265,7 @@ client.on(Events.InteractionCreate, async interaction => {
 client.on(Events.MessageCreate, async message => {
   if (!message.guild || message.author.bot) return;
   try {
+    await handleFrierenMentionMessage({ message, botUserId: client.user?.id, db: pool });
     const gained = 10 + Math.floor(Math.random() * 11);
     const result = await pool.query(`INSERT INTO users (guild_id,user_id,xp,level,last_xp_at)
       VALUES ($1,$2,$3,$4,NOW())
