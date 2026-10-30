@@ -187,14 +187,24 @@ function payloadTextFromEffects(effects) {
     const payload = effect?.payload;
     if (typeof payload === 'string') return [payload];
     if (!payload || typeof payload !== 'object') return [];
-    const embeds = (payload.embeds || []).flatMap(embed => [
-      embed?.title,
-      embed?.description,
-      ...(embed?.fields || []).flatMap(field => [field?.name, field?.value]),
-      embed?.footer?.text,
-      embed?.author?.name
-    ]);
-    const components = (payload.components || []).flatMap(row => Array.isArray(row) ? row : []);
+    const embeds = (payload.embeds || []).flatMap(embed => {
+      const data = typeof embed?.toJSON === 'function' ? embed.toJSON() : (embed?.data ?? embed);
+      return [
+        data?.title,
+        data?.description,
+        ...(data?.fields || []).flatMap(field => [field?.name, field?.value]),
+        data?.footer?.text,
+        data?.author?.name
+      ];
+    });
+    const components = (payload.components || []).flatMap(row =>
+      (row?.components || []).flatMap(component => [
+        component?.data?.custom_id,
+        component?.data?.label,
+        component?.customId,
+        component?.label
+      ])
+    );
     return [payload.content, ...embeds, ...components];
   }).filter(value => typeof value === 'string' && value.length).join('\n');
 }
