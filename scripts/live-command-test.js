@@ -214,7 +214,43 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           await pool.query('UPDATE users SET coins=100, mana=100 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
         }
         const behavioralChecks = [];
-        if (commandName === 'sinifsec') {
+        if (commandName === 'gunlukgorev') {
+          await pool.query('UPDATE users SET coins=100,last_adventure_at=NOW() WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const claimMission = async () => {
+            const actionEffects = [];
+            const interaction = makeInteraction(command, buildOptions(schema?.options, { odul: 'adventure' }), guildId, actionEffects);
+            interaction.user.id = userId;
+            interaction.member = makeMember(userId);
+            await command.execute(interaction);
+            effects.push(...actionEffects);
+          };
+          await claimMission();
+          const first = await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const claims = await pool.query("SELECT mission_key FROM daily_mission_claims WHERE guild_id=$1 AND user_id=$2 AND mission_date=CURRENT_DATE AND mission_key='adventure'", [guildId, userId]);
+          await claimMission();
+          const second = await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          behavioralChecks.push(
+            { name: 'Tamamlanan günlük görev ödülü', expected: '100 → 200 altın', actual: String(first.rows[0]?.coins), passed: Number(first.rows[0]?.coins) === 200 },
+            { name: 'Görev ödülünün tekil kaydı', expected: 'tek adventure claim kaydı', actual: claims.rowCount + ' kayıt', passed: claims.rowCount === 1 },
+            { name: 'Tekrar ödül almada çift ödeme engeli', expected: 'bakiye 200 kalmalı', actual: String(second.rows[0]?.coins), passed: Number(second.rows[0]?.coins) === 200 }
+          );
+        } else if (commandName === 'hazineac') {
+          await pool.query('UPDATE users SET coins=0,xp=0,level=1,stat_points=0 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          await pool.query("INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'🗝️ Kadim Hazine Sandığı',2)", [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options, { adet: 2 }), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const player = await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const chest = await pool.query("SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='🗝️ Kadim Hazine Sandığı'", [guildId, userId]);
+          const openings = await pool.query('SELECT loot_item,coins,xp FROM treasure_openings WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const loot = await pool.query("SELECT COALESCE(SUM(quantity),0)::int AS quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key <> '🗝️ Kadim Hazine Sandığı'", [guildId, userId]);
+          behavioralChecks.push(
+            { name: 'Sandık adedinin düşmesi', expected: '2 → 0 sandık', actual: String(chest.rows[0]?.quantity ?? 0), passed: chest.rowCount === 0 },
+            { name: 'Her sandık için ganimet kaydı', expected: '2 treasure_openings kaydı', actual: openings.rowCount + ' kayıt', passed: openings.rowCount === 2 },
+            { name: 'Ganimet ve ödül bakiyeleri', expected: 'pozitif altın, XP ve envanter ganimeti', actual: player.rows[0] ? 'altın ' + player.rows[0].coins + ', XP ' + player.rows[0].xp + ', eşya ' + loot.rows[0].quantity : 'kullanıcı kaydı yok', passed: Number(player.rows[0]?.coins) > 0 && Number(player.rows[0]?.xp) > 0 && Number(loot.rows[0]?.quantity) > 0 }
+          );
+        } else if (commandName === 'sinifsec') {
           const options = buildOptions(schema?.options, { sinif: 'buyucu' });
           const interaction = makeInteraction(command, options, guildId, effects);
           interaction.user.id = userId;
