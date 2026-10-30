@@ -382,9 +382,10 @@ createServer(async (req, res) => {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(payload));
   };
-  if (req.method === 'GET' && req.url === '/ai-health') {
+  if (req.method === 'GET' && (req.url === '/ai-health' || req.url === '/ai-ready')) {
     try {
-      const response = await fetch('http://127.0.0.1:' + AI_AGENT_HEALTH_PORT + '/health', {
+      const childPath = req.url === '/ai-health' ? '/live' : '/health';
+      const response = await fetch('http://127.0.0.1:' + AI_AGENT_HEALTH_PORT + childPath, {
         signal: AbortSignal.timeout(2_500),
       });
       const body = await response.text();
