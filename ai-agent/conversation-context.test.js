@@ -11,7 +11,7 @@ test('fictional character profiles are not treated as the Discord user', () => {
   assert.match(context, /karakterden üçüncü şahısla söz et/u);
   assert.match(context, /karakter özelliklerini kullanıcıya atfetme/u);
   assert.match(context, /Her karakter için ayrı bir profil tut/u);
-  assert.match(context, /başka karaktere aktarma/u);
+  assert.match(context, /Bu amaçları asla birbirine aktarma/u);
 });
 
 test('character facts stay attached to their named character and unknown fields stay unknown', () => {
