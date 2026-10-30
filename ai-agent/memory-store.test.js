@@ -398,3 +398,33 @@ test('automatic extraction also blocks sensitive health, religion, orientation a
     assert.deepEqual(extractAutomaticMemories(message), [], message);
   }
 });
+
+
+test('sensitive Discord messages are not persisted in conversation history', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  const sensitiveMessages = [
+    'My password is private-secret.',
+    'I have depression and anxiety.',
+    'Dini inancım benim için çok önemli.',
+    'Ben biseksüelim.',
+    'My home address is 10 Main Street.',
+    'I voted for that political party.'
+  ];
+  for (const message of sensitiveMessages) {
+    await assert.rejects(
+      store.addConversationTurn('user-a', 'guild:channel-1', 'user', message),
+      error => error?.code === 'SENSITIVE_MEMORY_REJECTED',
+      message
+    );
+  }
+  assert.equal(FakePool.instance.conversationRows.length, 0);
+  assert.equal(FakePool.instance.calls.some(call => call.sql.includes('INSERT INTO frieren_ai_conversation')), false);
+});
+
+test('ordinary Discord conversation turns remain available after sensitive-content filtering', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  await store.addConversationTurn('user-a', 'guild:channel-1', 'user', 'Frieren RPG üzerinde çalışıyorum.');
+  assert.deepEqual(await store.getConversationHistory('user-a', 'guild:channel-1'), [
+    { role: 'user', content: 'Frieren RPG üzerinde çalışıyorum.' }
+  ]);
+});
