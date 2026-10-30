@@ -65,7 +65,7 @@ function buildOptions(schemaOptions = [], overrides = {}) {
     getInteger: (name, required = false) => { const v = get(name); return v == null && required ? 1 : v; },
     getNumber: (name, required = false) => { const v = get(name); return v == null && required ? 1 : v; },
     getBoolean: (name, required = false) => { const v = get(name); return v == null && required ? true : v; },
-    getUser: (name) => get(name) || sampleValue(flat.find(x => x.name === name) || { type: 6 }),
+    getUser: (name, required = false) => { const value = get(name); return value ?? (required ? sampleValue(flat.find(x => x.name === name) || { type: 6 }) : null); },
     getMember: (name) => makeMember(get(name)?.id || '900000000000000001'),
     getChannel: (name) => get(name) || fakeChannel(),
     getRole: (name) => get(name) || sampleValue({ type: 8 }),
