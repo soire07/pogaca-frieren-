@@ -118,3 +118,32 @@ test('Render metric bars render bounded percentages without executable markup', 
   assert.match(html, /height:100\.0%/);
   assert.doesNotMatch(html, /<script/i);
 });
+
+
+test('Render metrics only compare usage with limits from the same instance', async () => {
+  const { getRenderServiceMetrics } = await import('../owner-metrics.js');
+  const timestamp = '2026-10-30T08:54:00.000Z';
+  const series = (instance, value) => ({
+    labels: [{ field: 'instance', value: instance }],
+    values: [{ timestamp, value }]
+  });
+  const responses = {
+    cpu: [series('instance-a', 0.05), series('instance-b', 0.09)],
+    'cpu-limit': [series('instance-a', 0.15)],
+    memory: [series('instance-a', 256 * 1024 * 1024), series('instance-b', 100 * 1024 * 1024)],
+    'memory-limit': [series('instance-a', 512 * 1024 * 1024)]
+  };
+  const result = await getRenderServiceMetrics({
+    apiKey: 'test-render-key',
+    resourceId: 'srv-test',
+    now: Date.parse(timestamp),
+    fetchImpl: async url => ({
+      ok: true,
+      json: async () => responses[new URL(url).pathname.split('/').pop()]
+    })
+  });
+  assert.equal(result.status, 'available');
+  assert.ok(Math.abs(result.cpuPercent - 33.3333) < 0.01);
+  assert.equal(result.memoryPercent, 50);
+  assert.equal(result.memoryUsedBytes, 256 * 1024 * 1024);
+});
