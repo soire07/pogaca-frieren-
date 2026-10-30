@@ -105,3 +105,54 @@ test('announcement rejects a channel that belongs to a different guild', async (
   }), { message: 'CHANNEL_GUILD_MISMATCH' });
   assert.equal(sent, false);
 });
+
+
+test('announcement uses the thread-specific send permission for thread channels', async () => {
+  let sent = false;
+  const channel = {
+    id: '222222222222222222',
+    guildId: '111111111111111111',
+    name: 'duyurular-thread',
+    isTextBased: () => true,
+    isThread: () => true,
+    permissionsFor: () => ({ has: permission => permission === 'SendMessagesInThreads' }),
+    send: async () => { sent = true; return { id: 'message-thread' }; }
+  };
+  const guild = {
+    id: '111111111111111111',
+    name: 'Guild A',
+    channels: { fetch: async () => channel },
+    members: { me: { id: 'bot' } }
+  };
+  const client = { guilds: { cache: new Map([[guild.id, guild]]) } };
+  const db = { query: async () => ({ rows: [], rowCount: 1 }) };
+  const { sendOwnerAnnouncement } = await import('../owner-admin.js');
+  const result = await sendOwnerAnnouncement(client, db, {
+    guildId: guild.id, channelId: channel.id, message: 'Test thread', actorId: OWNER_ID
+  });
+  assert.equal(sent, true);
+  assert.equal(result.messageId, 'message-thread');
+});
+
+test('announcement does not accept ordinary channel permission as a substitute for thread permission', async () => {
+  const channel = {
+    id: '222222222222222222',
+    guildId: '111111111111111111',
+    isTextBased: () => true,
+    isThread: () => true,
+    permissionsFor: () => ({ has: permission => permission === 'SendMessages' }),
+    send: async () => ({ id: 'message-thread' })
+  };
+  const guild = {
+    id: '111111111111111111',
+    name: 'Guild A',
+    channels: { fetch: async () => channel },
+    members: { me: { id: 'bot' } }
+  };
+  const client = { guilds: { cache: new Map([[guild.id, guild]]) } };
+  const db = { query: async () => ({ rows: [], rowCount: 1 }) };
+  const { sendOwnerAnnouncement } = await import('../owner-admin.js');
+  await assert.rejects(() => sendOwnerAnnouncement(client, db, {
+    guildId: guild.id, channelId: channel.id, message: 'Test thread', actorId: OWNER_ID
+  }), { message: 'MISSING_SEND_PERMISSION' });
+});
