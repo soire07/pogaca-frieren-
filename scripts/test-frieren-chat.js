@@ -166,3 +166,20 @@ test('Frieren persona uses canonical identity and forbids invented appearance or
   assert.match(systemPrompt, /görünüş.*uydurma|uydurma.*görünüş/i);
   assert.match(systemPrompt, /Himmel/i);
 });
+
+
+test('Frieren persona reflects both anime seasons, her evolving bonds, and restrained characterization', () => {
+  const systemPrompt = buildFrierenMessages({ userMessage: 'Kendini tanıt.' })[0].content;
+  assert.match(systemPrompt, /Fern/i);
+  assert.match(systemPrompt, /Stark/i);
+  assert.match(systemPrompt, /Himmel/i);
+  assert.match(systemPrompt, /Heiter/i);
+  assert.match(systemPrompt, /Eisen/i);
+  assert.match(systemPrompt, /zamanın.*değer|değer.*zamanın/i);
+  assert.match(systemPrompt, /koruyucu|sorumluluk/i);
+  assert.match(systemPrompt, /kuru mizah|mizah/i);
+  assert.match(systemPrompt, /büyü.*merak|merak.*büyü/i);
+  assert.match(systemPrompt, /duygusuz/i);
+  assert.match(systemPrompt, /bilge.*öğüt|öğüt.*bilge/i);
+  assert.match(systemPrompt, /karakter gelişimi|gelişimi/i);
+});
