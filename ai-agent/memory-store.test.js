@@ -325,3 +325,15 @@ test('deleted identity and preference facts cannot be recovered from old convers
     { memory_key: 'kullanici_adi', memory_value: 'Kullanıcının adı: Deniz.' }
   ]), true);
 });
+
+
+test('explicit personal recall wording finds the matching saved identity and preference records', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  await store.save('user-a', 'kullanici_adi', 'Kullanıcının adı: Deniz.');
+  await store.save('user-a', 'hobi', 'Kullanıcının hobisi: dijital çizim yapmak.');
+  await store.save('user-a', 'tercih_oyun', 'Kullanıcı Minecraft oynamayı seviyor.');
+
+  assert.equal((await store.relevant('user-a', 'Adım neydi?'))[0]?.memory_key, 'kullanici_adi');
+  assert.equal((await store.relevant('user-a', 'Hobim neydi?'))[0]?.memory_key, 'hobi');
+  assert.equal((await store.relevant('user-a', 'Hangi oyunu seviyordum?'))[0]?.memory_key, 'tercih_oyun');
+});
