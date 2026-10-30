@@ -34,12 +34,19 @@ export function extractAutomaticMemories(message) {
     facts.push({ key: safeKey, value: safeValue });
   };
 
-  const favorite = text.match(/\ben sevdiğim\s+(renk|oyun|karakter|yemek|müzik|sarki|şarkı|anime|dizi|film|kitap|hayvan)\s+(?:ise\s+)?(.+?)[.!]?$/iu);
+  // Capture only the declarative fact before the first sentence boundary. This prevents
+  // follow-up instructions such as "bunu kaydet ve eskisini güncelle" entering the value.
+  const favorite = text.match(/\ben sevdiğim\s+(renk|oyun|karakter|yemek|müzik|sarki|şarkı|anime|dizi|film|kitap|hayvan)\s+(?:ise\s+)?(.+?)(?=[.!?]|$)/iu);
   if (favorite) {
     const category = slug(favorite[1]);
-    const value = clean(favorite[2]).replace(/[.!]+$/u, '');
+    const value = clean(favorite[2]).replace(/^(?:artık|bundan sonra|şimdi)\s+/iu, '').replace(/[.!]+$/u, '');
     if (value && value.length <= 120) {
       add('favori_' + category, 'En sevdiği ' + category.replace(/_/g, ' ') + ': ' + value + '.');
+      // A correction to the favorite game must also replace the normalized play-preference
+      // record; otherwise the two memory keys contradict each other on later recall.
+      const isGameCorrection = category === 'oyun'
+        && /\b(?:artık|bundan sonra|yerine|eskisini|güncelle|değişti)\b/iu.test(text);
+      if (isGameCorrection) add('tercih_oyun', 'Kullanıcı ' + value + ' oynamayı seviyor.');
     }
   }
 
