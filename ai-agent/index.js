@@ -5,7 +5,7 @@ import { findRelevantExcerpt, scoreCodeCandidate } from './code-context.js';
 import { createMemoryStore, shouldUseConversationHistory } from './memory-store.js';
 import { buildConversationContextMessages } from './conversation-context.js';
 import { isExplicitMemoryOverviewQuestion } from './memory-intent.js';
-import { extractAutomaticMemories } from './memory-extractor.js';
+import { containsSensitiveInformation, extractAutomaticMemories, isExplicitMemorySaveRequest } from './memory-extractor.js';
 import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, isTargetedTestFailure, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
 import { buildTestDiagnostics } from './test-diagnostics.js';
 import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, getPublicLivenessPayload, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
@@ -217,6 +217,25 @@ async function answerCodeQuestion(question, userId, conversationId) {
     } catch (error) {
       console.error('Explicit memory overview failed:', redactSecrets(error.message || 'unknown error'));
       return { ok: false, message: 'Kalıcı bellek kayıtları okunamadı. Veritabanı bağlantısını kontrol etmek gerekiyor.' };
+    }
+  }
+  if (memoryStore && userId && isExplicitMemorySaveRequest(question)) {
+    if (containsSensitiveInformation(question)) {
+      return { ok: false, message: 'Bu bilgi hassas kişisel veya gizli veri içerdiği için kalıcı belleğe kaydedilmedi.' };
+    }
+    const memoriesToSave = extractAutomaticMemories(question);
+    if (!memoriesToSave.length) {
+      return { ok: false, message: 'Kaydetmek istediğin bilgiyi açıkça yazabilir misin? Örneğin: “Favori karakterim Frieren. Bunu kalıcı belleğine kaydet.”' };
+    }
+    try {
+      for (const memory of memoriesToSave) {
+        await memoryStore.save(userId, memory.key, memory.value);
+      }
+      const saved = memoriesToSave.map(memory => '**' + memory.key + '**: ' + memory.value).join(String.fromCharCode(10));
+      return { ok: true, message: '🧠 Kalıcı belleğine kaydettim.' + String.fromCharCode(10) + saved };
+    } catch (error) {
+      console.error('Explicit natural-language memory save failed:', redactSecrets(error.message || 'unknown error'));
+      return { ok: false, message: 'Kalıcı belleğe kayıt yapılamadı. Veritabanı bağlantısını kontrol etmek gerekiyor.' };
     }
   }
   if (!groq) return {

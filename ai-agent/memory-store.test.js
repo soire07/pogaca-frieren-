@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryStore, memoryStoreInternals, shouldUseConversationHistory } from './memory-store.js';
-import { extractAutomaticMemories } from './memory-extractor.js';
+import { extractAutomaticMemories, isExplicitMemorySaveRequest } from './memory-extractor.js';
 import { formatConversationContext } from './conversation-context.js';
 
 class FakePool {
@@ -455,4 +455,48 @@ test('legacy conversation history is retained in storage but never returned as t
   assert.deepEqual(history, [{ role: 'user', content: 'A new ordinary message.' }]);
   assert.ok(fake.conversationRows.some(row => row.id === 0 && row.privacy_checked === false),
     'legacy rows must remain stored; only their use as model context is disabled');
+});
+
+
+test('automatic memory extraction captures a favorite character followed by an explicit save request', () => {
+  assert.deepEqual(
+    extractAutomaticMemories('Benim favori karakterim Frieren. Bunu kalıcı belleğine kaydet.'),
+    [{ key: 'favori_karakter', value: 'En sevdiği karakter: Frieren.' }]
+  );
+});
+
+test('automatic memory extraction captures explicit favorite wording without saving the instruction text', () => {
+  assert.deepEqual(
+    extractAutomaticMemories('Favori karakterim Frieren, bunu belleğine kaydet.'),
+    [{ key: 'favori_karakter', value: 'En sevdiği karakter: Frieren.' }]
+  );
+});
+
+test('explicit save requests do not bypass sensitive-information filtering', () => {
+  assert.deepEqual(
+    extractAutomaticMemories('Benim şifrem 12345. Bunu kalıcı belleğine kaydet.'),
+    []
+  );
+});
+
+
+test('explicit natural-language memory save intent is recognized without matching ordinary memory questions', () => {
+  assert.equal(isExplicitMemorySaveRequest('Benim favori karakterim Frieren. Bunu kalıcı belleğine kaydet.'), true);
+  assert.equal(isExplicitMemorySaveRequest('Favori karakterim Frieren, bunu belleğine kaydet.'), true);
+  assert.equal(isExplicitMemorySaveRequest('Bellek nasıl çalışıyor?'), false);
+  assert.equal(isExplicitMemorySaveRequest('Bunu daha sonra hatırla.'), false);
+});
+
+
+test('explicit natural-language save persists the extracted fact only for the requesting Discord user', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  const request = 'Benim favori karakterim Frieren. Bunu kalıcı belleğine kaydet.';
+  assert.equal(isExplicitMemorySaveRequest(request), true);
+  for (const memory of extractAutomaticMemories(request)) {
+    await store.save('discord-user-1', memory.key, memory.value);
+  }
+  assert.deepEqual((await store.list('discord-user-1')).map(({ memory_key, memory_value }) => ({ key: memory_key, value: memory_value })), [
+    { key: 'favori_karakter', value: 'En sevdiği karakter: Frieren.' }
+  ]);
+  assert.deepEqual(await store.list('discord-user-2'), []);
 });

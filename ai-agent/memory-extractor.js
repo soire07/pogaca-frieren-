@@ -78,6 +78,12 @@ export function extractAutomaticMemories(message) {
     }
   }
 
+  const favoriteCharacter = text.match(/\b(?:benim\s+)?favori\s+karakterim\s+(.+?)(?=[,.!?]|$)/iu);
+  if (favoriteCharacter) {
+    const value = clean(favoriteCharacter[1]).replace(/[.!]+$/u, '');
+    if (value && value.length <= 120) add('favori_karakter', 'En sevdiği karakter: ' + value + '.');
+  }
+
   const name = text.match(/\b(?:benim adım|adım)\s+([\p{L}][\p{L}'’-]{1,40})\b/iu);
   if (name) add('kullanici_adi', 'Kullanıcının adı: ' + name[1] + '.');
 
@@ -117,6 +123,12 @@ export function extractAutomaticMemories(message) {
   }
 
   return facts.slice(0, 3);
+}
+
+export function isExplicitMemorySaveRequest(message) {
+  const normalized = normalizeSensitiveText(message);
+  return /\b(?:bunu )?(?:kalici )?belleg(?:ine|e) kaydet\b/.test(normalized)
+    || /\b(?:bunu )?hafizana kaydet\b/.test(normalized);
 }
 
 export const memoryExtractorInternals = { clean, slug, normalizeFact, normalizeSensitiveText };
