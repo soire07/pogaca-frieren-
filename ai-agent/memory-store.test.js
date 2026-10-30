@@ -337,3 +337,12 @@ test('explicit personal recall wording finds the matching saved identity and pre
   assert.equal((await store.relevant('user-a', 'Hobim neydi?'))[0]?.memory_key, 'hobi');
   assert.equal((await store.relevant('user-a', 'Hangi oyunu seviyordum?'))[0]?.memory_key, 'tercih_oyun');
 });
+
+
+test('favorite game corrections update both game records with the clean value', () => {
+  const corrected = extractAutomaticMemories('En sevdiğim oyun artık Terraria. Önceki oyun tercihim yerine bunu kaydet ve eskisini güncelle.');
+  assert.deepEqual(corrected, [
+    { key: 'favori_oyun', value: 'En sevdiği oyun: Terraria.' },
+    { key: 'tercih_oyun', value: 'Kullanıcı Terraria oynamayı seviyor.' },
+  ]);
+});
