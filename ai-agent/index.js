@@ -603,10 +603,10 @@ client.on(Events.InteractionCreate, async interaction => {
     const baseUrl = process.env.FRIEREN_BRIDGE_URL?.trim()?.replace(/\/$/, '');
     const secret = process.env.FRIEREN_BRIDGE_SECRET?.trim();
     if (!baseUrl || !secret) {
-      await interaction.reply({ content: 'Komut köprüsü yapılandırılmamış. Frieren AI ortamında FRIEREN_BRIDGE_URL ve FRIEREN_BRIDGE_SECRET eksik.', flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: 'Komut köprüsü yapılandırılmamış. Frieren AI ortamında FRIEREN_BRIDGE_URL ve FRIEREN_BRIDGE_SECRET eksik.', });
       return;
     }
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await interaction.deferReply();
     try {
       const commandName = interaction.options.getString('komut')?.trim().replace(/^\//, '');
       const response = await fetch(baseUrl + '/internal/test-suite', {
@@ -680,7 +680,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
   if (interaction.commandName === 'frieren-ai') {
     try {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply();
       const question = interaction.options.getString('soru', true).trim();
       const conversationId = (interaction.guildId || 'dm') + ':' + (interaction.channelId || 'unknown');
       const answer = await answerCodeQuestion(question, interaction.user.id, conversationId);
@@ -699,13 +699,13 @@ client.on(Events.InteractionCreate, async interaction => {
     const targetGroups = classifyTestTarget(target);
     const lockKey = getTestLockKey(interaction.guildId, interaction.user.id);
     if (runningGuilds.has(lockKey)) {
-      await interaction.reply({ content: 'Bu ortamda bir test zaten çalışıyor. Lütfen bitmesini bekle.', ephemeral: true });
+      await interaction.reply({ content: 'Bu ortamda bir test zaten çalışıyor. Lütfen bitmesini bekle.' });
       return;
     }
 
     runningGuilds.add(lockKey);
     try {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply();
       const [agentSyntax, audit, result, targeted, liveRpgHealth] = await Promise.all([
         runSyntaxChecks(),
         runCommandAudit(),
