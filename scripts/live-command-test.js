@@ -102,22 +102,22 @@ function makeInteraction(command, options, guildId, effects, simulation = null) 
     bans: { fetch: async () => new Map() },
     commands: { cache: new Map() }
   };
-  const client = { commands: new Map(), ws: { ping: 42 }, user: { id: '900000000000000099', username: 'FrierenTestBot' }, users: { fetch: async id => ({ id, username: 'FrierenTest' }) } };
+  const client = { commands: new Map(), ws: { ping: 42 }, isReady: () => true, uptime: 123456, guilds: { cache: new Map([['test-guild', guild]]) }, user: { id: '900000000000000099', username: 'FrierenTestBot' }, users: { fetch: async id => ({ id, username: 'FrierenTest' }) } };
   const interaction = {
     id: 'test-interaction-' + command.data.name, commandName: command.data.name, command, options, user, member, guild, guildId, channel, channelId: channel.id, client,
     memberPermissions: { has: () => true }, appPermissions: { has: () => true }, permissions: { has: () => true },
     replied: false, deferred: false, isChatInputCommand: () => true, isButton: () => false, isStringSelectMenu: () => false, isModalSubmit: () => false,
     inGuild: () => true, isRepliable: () => true,
-    reply: async payload => { interaction.replied = true; effects.push({ type: 'reply', payload: normalizePayload(payload) }); return simulation ? makeSimulatedMessage(payload, simulation) : payload; },
+    reply: async payload => { interaction.replied = true; effects.push({ type: 'reply', payload: normalizePayload(payload) }); return makeSimulatedMessage(payload, simulation || { users: [user] }); },
     deferReply: async payload => { interaction.deferred = true; effects.push({ type: 'deferReply', payload: normalizePayload(payload) }); },
-    editReply: async payload => { interaction.replied = true; effects.push({ type: 'editReply', payload: normalizePayload(payload) }); return simulation ? makeSimulatedMessage(payload, simulation) : payload; },
+    editReply: async payload => { interaction.replied = true; effects.push({ type: 'editReply', payload: normalizePayload(payload) }); return makeSimulatedMessage(payload, simulation || { users: [user] }); },
     followUp: async payload => { effects.push({ type: 'followUp', payload: normalizePayload(payload) }); return payload; },
     update: async payload => { effects.push({ type: 'update', payload: normalizePayload(payload) }); return payload; },
     deferUpdate: async () => { interaction.deferred = true; effects.push({ type: 'deferUpdate' }); },
     respond: async payload => { effects.push({ type: 'respond', payload: normalizePayload(payload) }); },
     showModal: async payload => { effects.push({ type: 'showModal', payload: normalizePayload(payload) }); },
     deleteReply: async () => { effects.push({ type: 'deleteReply' }); },
-    fetchReply: async () => ({ id: 'test-reply' })
+    fetchReply: async () => makeSimulatedMessage({}, simulation || { users: [user] })
   };
   client.commands.set(command.data.name, command);
   return interaction;
@@ -662,6 +662,23 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           behavioralChecks.push(
             { name: 'Rehber içeriği ve başlık', expected: 'komuta ait rehber başlığı ve açıklaması gösterilmeli', actual: payloadText.includes(expectedTitle) ? expectedTitle + ' gösterildi' : payloadText.slice(0, 400), passed: payloadText.includes(expectedTitle) },
             { name: 'Rehber komutunun oyuncu verisini değiştirmemesi', expected: 'rehber görüntüleme altın, XP ve seviyeyi değiştirmemeli', actual: JSON.stringify(before.rows[0]) + ' → ' + JSON.stringify(after.rows[0]), passed: Number(before.rows[0].coins) === Number(after.rows[0].coins) && Number(before.rows[0].xp) === Number(after.rows[0].xp) && Number(before.rows[0].level) === Number(after.rows[0].level) }
+          );
+        } else if (commandName === 'ekipmanparcala') {
+          const item = equipmentItems.find(entry => entry.id === 'iron_sword');
+          const salvageItem = '🥐 Büyülü Poğaça Kutusu';
+          await pool.query('INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,2)', [guildId, userId, item.name]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options, { esya: 'iron_sword', adet: 1 }), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const source = await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3', [guildId, userId, item.name]);
+          const returned = await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3', [guildId, userId, salvageItem]);
+          const progress = await pool.query('SELECT salvaged_items FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Ekipman parçalama envanter düşümü', expected: '2 demir kılıçtan 1 kalmalı', actual: String(source.rows[0]?.quantity ?? 0), passed: Number(source.rows[0]?.quantity) === 1 },
+            { name: 'Geri kazanım malzemesi', expected: '1 Büyülü Poğaça Kutusu eklenmeli', actual: String(returned.rows[0]?.quantity ?? 0), passed: Number(returned.rows[0]?.quantity) === 1 },
+            { name: 'Parçalama ilerlemesi ve yanıtı', expected: 'salvaged_items=1 ve işlem sonucu gösterilmeli', actual: 'ilerleme ' + (progress.rows[0]?.salvaged_items ?? 0), passed: Number(progress.rows[0]?.salvaged_items) === 1 && payloadText.includes('Ekipman Parçalandı') }
           );
         } else if (commandName === 'esyakullan') {
           const potionKey = '🧪 Şifa İksiri';
