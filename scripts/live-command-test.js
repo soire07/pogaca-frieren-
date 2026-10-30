@@ -30,6 +30,7 @@ function fakeChannel() {
     isTextBased: () => true,
     send: async () => ({ id: 'test-message' }),
     // Simulate the Discord.js message collector API without creating a real collector.
+    awaitMessageComponent: async () => { throw new Error('simulated invitation timeout'); },
     createMessageCollector: () => {
       const listeners = new Map();
       return {
@@ -662,6 +663,53 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           behavioralChecks.push(
             { name: 'Rehber içeriği ve başlık', expected: 'komuta ait rehber başlığı ve açıklaması gösterilmeli', actual: payloadText.includes(expectedTitle) ? expectedTitle + ' gösterildi' : payloadText.slice(0, 400), passed: payloadText.includes(expectedTitle) },
             { name: 'Rehber komutunun oyuncu verisini değiştirmemesi', expected: 'rehber görüntüleme altın, XP ve seviyeyi değiştirmemeli', actual: JSON.stringify(before.rows[0]) + ' → ' + JSON.stringify(after.rows[0]), passed: Number(before.rows[0].coins) === Number(after.rows[0].coins) && Number(before.rows[0].xp) === Number(after.rows[0].xp) && Number(before.rows[0].level) === Number(after.rows[0].level) }
+          );
+        } else if (commandName === 'gunluk') {
+          await pool.query("INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,'alev_kuresi') ON CONFLICT DO NOTHING", [guildId, userId]);
+          await pool.query("INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'🥐 Büyülü Poğaça Kutusu',1) ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=EXCLUDED.quantity", [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const entries = await pool.query('SELECT collection_key,entry_key FROM adventure_journal_entries WHERE guild_id=$1 AND user_id=$2 ORDER BY collection_key,entry_key', [guildId, userId]);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Macera günlüğü koleksiyon kaydı', expected: 'Alev Küresi ve Büyülü Poğaça Kutusu kalıcı günlük girdisi olmalı', actual: entries.rows.map(row => row.collection_key + ':' + row.entry_key).join(', '), passed: entries.rows.some(row => row.collection_key === 'spells' && row.entry_key === 'alev_kuresi') && entries.rows.some(row => row.collection_key === 'relics' && row.entry_key === 'Büyülü Poğaça Kutusu') },
+            { name: 'Macera günlüğü paneli', expected: 'karakter, başarılar, bölge ustalığı ve koleksiyon hedefleri gösterilmeli', actual: ['Macera Günlüğü','Karakter','Başarılar','Bölge ustalığı','Koleksiyon hedefleri'].filter(x => payloadText.includes(x)).join(', '), passed: ['Macera Günlüğü','Karakter','Başarılar','Bölge ustalığı','Koleksiyon hedefleri'].every(x => payloadText.includes(x)) }
+          );
+        } else if (commandName === 'takasteklif') {
+          await pool.query("INSERT INTO anime_character_collection(guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,image,quantity) VALUES($1,$2,'Test Fern','Frieren','Nadir','🌿',123,'test','test',NULL,3)", [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options, { kullanici: sampleValue({type:6}), karakter: 'Test Fern', miktar: 1 }), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const offer = await pool.query("SELECT from_user_id,to_user_id,character_name,amount,status FROM trade_offers WHERE guild_id=$1 AND from_user_id=$2 AND character_name='Test Fern'", [guildId, userId]);
+          const collection = await pool.query("SELECT quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name='Test Fern'", [guildId, userId]);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Takas teklifinin kalıcı kaydı', expected: 'alıcıya 1 Test Fern için bekleyen teklif oluşturulmalı', actual: offer.rows[0] ? offer.rows[0].status + ' / ' + offer.rows[0].amount : 'teklif yok', passed: offer.rowCount === 1 && offer.rows[0].to_user_id === '900000000000000001' && offer.rows[0].status === 'pending' && Number(offer.rows[0].amount) === 1 },
+            { name: 'Takas teklifi kopyayı önceden taşımaz', expected: 'teklif kabul edilene kadar gönderenin 3 kopyası korunmalı', actual: String(collection.rows[0]?.quantity ?? 0), passed: Number(collection.rows[0]?.quantity) === 3 && payloadText.includes('Karakter Takas Teklifi') && payloadText.includes('trade_accept:') }
+          );
+        } else if (commandName === 'zindan') {
+          const before = await pool.query('SELECT coins,xp,level,hp,dungeon_runs FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const after = await pool.query('SELECT coins,xp,level,hp,dungeon_runs FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Zindan davet paneli', expected: 'takım arkadaşına kabul/ret daveti gönderilmeli', actual: payloadText.includes('birlikte zindana') ? 'zindan daveti gönderildi' : payloadText.slice(0, 400), passed: payloadText.includes('birlikte zindana') && payloadText.includes('dungeon_accept:') && payloadText.includes('dungeon_decline:') },
+            { name: 'Yanıtlanmayan davetin güvenli kapanması', expected: 'süre dolunca zindan ödülü/hasarı uygulanmamalı', actual: JSON.stringify(before.rows[0]) + ' → ' + JSON.stringify(after.rows[0]), passed: ['coins','xp','level','hp','dungeon_runs'].every(key => Number(before.rows[0][key]) === Number(after.rows[0][key])) && payloadText.includes('davetinin süresi doldu') }
+          );
+        } else if (commandName === 'teknik-talep') {
+          const interaction = makeInteraction(command, buildOptions(schema?.options, { tur: 'teknik-bilgi', baslik: 'Güvenlik kontrolü', aciklama: 'Discord bot token paylaşımı' }), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Teknik talepte gizli bilgi koruması', expected: 'token ifadesi reddedilmeli ve güvenli uyarı verilmeli', actual: payloadText.includes('Gizli bilgileri paylaşmadan') ? 'gizli bilgi uyarısı gösterildi' : payloadText.slice(0, 400), passed: payloadText.includes('Gizli bilgileri paylaşmadan') && !payloadText.includes('Owner inceleme kuyruğuna eklendi') }
           );
         } else if (commandName === 'basarimlar') {
           await pool.query('UPDATE users SET coins=1000 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
