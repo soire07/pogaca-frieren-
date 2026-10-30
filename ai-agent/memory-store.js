@@ -13,7 +13,9 @@ const CREATE_TABLE_SQL = `
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
   ALTER TABLE frieren_ai_conversation ADD COLUMN IF NOT EXISTS conversation_id TEXT NOT NULL DEFAULT 'legacy';
+  ALTER TABLE frieren_ai_conversation ADD COLUMN IF NOT EXISTS privacy_checked BOOLEAN NOT NULL DEFAULT FALSE;
   CREATE INDEX IF NOT EXISTS frieren_ai_conversation_scope_recent_idx ON frieren_ai_conversation (user_id, conversation_id, id DESC);
+  CREATE INDEX IF NOT EXISTS frieren_ai_conversation_privacy_scope_recent_idx ON frieren_ai_conversation (user_id, conversation_id, id DESC) WHERE privacy_checked = TRUE;
   CREATE TABLE IF NOT EXISTS frieren_ai_memories (
     id BIGSERIAL PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -178,7 +180,7 @@ export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
       }
       await ensureSchema();
       await pool.query(
-        'INSERT INTO frieren_ai_conversation (user_id, conversation_id, role, content) VALUES ($1, $2, $3, $4)',
+        'INSERT INTO frieren_ai_conversation (user_id, conversation_id, role, content, privacy_checked) VALUES ($1, $2, $3, $4, TRUE)',
         [normalizedUserId, normalizedConversationId, normalizedRole, normalizedContent.slice(0, 1500)]
       );
       await pool.query(
@@ -195,7 +197,7 @@ export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
       if (!normalizedConversationId) throw new TypeError('Conversation ID is required.');
       const safeLimit = Math.max(1, Math.min(Number(limit) || 80, 80));
       const result = await pool.query(
-        'SELECT role, content FROM frieren_ai_conversation WHERE user_id = $1 AND conversation_id = $2 ORDER BY id DESC LIMIT $3',
+        'SELECT role, content FROM frieren_ai_conversation WHERE user_id = $1 AND conversation_id = $2 AND privacy_checked = TRUE ORDER BY id DESC LIMIT $3',
         [normalizedUserId, normalizedConversationId, safeLimit]
       );
       return result.rows.reverse();
