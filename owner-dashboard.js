@@ -195,7 +195,25 @@ function renderRenderMetrics(metrics, overview) {
     + '<div class="notice warn">' + escapeHtml(statusText) + '</div><p class="small">Yerel Node.js bellek ölçümleri Render servisinin toplam RAM kullanımının yerine geçmez. CPU yüzdesi bu durumda gösterilmez.</p></section>';
 }
 
-function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics }) {
+export function renderOwnerBotCards(overview, aiReadiness) {
+  const aiReady = aiReadiness?.status === 'ok' && aiReadiness?.discordReady === true
+    && aiReadiness?.memoryDatabaseReady === true && aiReadiness?.modelConfigured === true;
+  const aiState = aiReady ? 'Çevrimiçi' : 'Kontrol gerekli';
+  return '<section class="columns bot-cards" aria-label="Bot durumları">'
+    + '<article class="panel bot-card ai"><div class="bot-symbol">✧</div><div><span class="tag">YAPAY ZEKA ASİSTANI</span><h2>Frieren AI</h2><p class="muted">Kodlama · Test · Kalıcı Hafıza · Sohbet</p><strong class="' + (aiReady ? 'good' : 'warn') + '">' + aiState + '</strong></div></article>'
+    + '<article class="panel bot-card pogaca"><div class="bot-symbol">✿</div><div><span class="tag">EĞLENCE & RPG BOTU</span><h2>Frieren Poğaça</h2><p class="muted">Anime · RPG · Görevler · Envanter</p><strong class="' + (overview.ready ? 'good' : 'bad') + '">' + (overview.ready ? 'Çevrimiçi' : 'Çevrimdışı') + '</strong></div></article>'
+    + '</section>';
+}
+
+async function getFrierenAIReadiness() {
+  try {
+    const response = await fetch(BASE_URL + '/ai-ready', { signal: AbortSignal.timeout(4000) });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch { return null; }
+}
+
+function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics, aiReadiness }) {
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
   const guildOptions = guilds.map(guild => `<option value="${escapeHtml(guild.id)}">${escapeHtml(guild.name)} · ${escapeHtml(guild.id)}</option>`).join('');
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
@@ -247,7 +265,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
         <div class="stat"><small>Bakım modu</small><strong class="${overview.maintenance ? 'warn' : 'good'}">${overview.maintenance ? 'Açık' : 'Kapalı'}</strong></div>
         <div class="stat"><small>Çalışma ortamı</small><strong>${escapeHtml(process.version)}</strong></div>
       </div>
-      ${renderRenderMetrics(renderMetrics, overview)}
+      ${renderOwnerBotCards(overview, aiReadiness)}\n      ${renderRenderMetrics(renderMetrics, overview)}
       <div class="actions"><a class="btn secondary" href="/owner">Durumu yenile</a><span class="small">Canlı süreç ölçümleri · Son sayfa yüklemesi</span></div>
     </section>
     <div class="columns">
@@ -405,7 +423,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   }
 
   try {
-    const [overview, approvals, activity, renderMetrics] = await Promise.all([
+    const [overview, approvals, activity, renderMetrics, aiReadiness] = await Promise.all([
       getOwnerOverview(client, db),
       listPendingApprovals(db, 15),
       getRecentOwnerActivity(db),
@@ -415,7 +433,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     const memories = memoryUser ? await listUserMemories(db, memoryUser, null, 30) : [];
     send(res, 200, renderDashboard({
       session, overview, client, approvals, memories, memoryUser,
-      notice: url.searchParams.get('notice'), activity, renderMetrics
+      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness
     }));
   } catch (error) {
     console.error('Owner dashboard load failed:', error?.message || error);
