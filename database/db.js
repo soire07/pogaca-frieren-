@@ -396,6 +396,21 @@ export async function initDatabase() {
     );
     CREATE INDEX IF NOT EXISTS idx_moderation_target ON moderation_cases(guild_id, target_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_anime_collection_user ON anime_character_collection(guild_id, user_id);
+    CREATE TABLE IF NOT EXISTS frieren_chat_messages (
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('user','assistant')),
+      content TEXT NOT NULL CHECK (length(content) BETWEEN 1 AND 4000),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_frieren_chat_history
+      ON frieren_chat_messages(guild_id,user_id,id DESC);
+    DELETE FROM frieren_chat_messages
+      WHERE id IN (
+        SELECT id FROM frieren_chat_messages
+        WHERE created_at < NOW() - INTERVAL '90 days'
+      );
   `);
   const connectionCheck = await pool.query('SELECT current_database() AS database_name');
   console.log('PostgreSQL bağlantısı doğrulandı; veritabanı:', connectionCheck.rows[0]?.database_name ?? 'bilinmiyor');
