@@ -15,10 +15,10 @@ const MAX_BODY_BYTES = 8192;
 export const OWNER_PANEL_SECTIONS = Object.freeze([
   { id: 'overview', label: 'Genel Bakış', command: '/owner' },
   { id: 'system', label: 'Sistem Durumu', command: '/owner-bilgi' },
-  { id: 'maintenance', label: 'Bakım Merkezi', command: '/owner-bakim' },
   { id: 'memories', label: 'Hafıza Yönetimi', command: '/owner-bellek' },
   { id: 'approvals', label: 'Kod Talepleri', command: '/owner-onay' },
   { id: 'announcements', label: 'Duyuru Merkezi', command: '/owner-duyuru' },
+  { id: 'maintenance', label: 'Bakım Merkezi', command: '/owner-bakim' },
   { id: 'activity', label: 'İşlem Kayıtları', command: null }
 ]);
 
