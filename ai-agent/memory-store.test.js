@@ -17,12 +17,12 @@ class FakePool {
     this.calls.push({ sql, params });
     if (sql.includes('INSERT INTO frieren_ai_conversation')) {
       const [userId, conversationId, role, content] = params;
-      this.conversationRows.push({ id: this.nextConversationId++, user_id: userId, conversation_id: conversationId, role, content });
+      this.conversationRows.push({ id: this.nextConversationId++, user_id: userId, conversation_id: conversationId, role, content, privacy_checked: true });
       return { rows: [], rowCount: 1 };
     }
     if (sql.includes('SELECT role, content FROM frieren_ai_conversation')) {
       const [userId, conversationId, limit] = params;
-      return { rows: this.conversationRows.filter(row => row.user_id === userId && row.conversation_id === conversationId).slice(-limit).reverse().map(({ role, content }) => ({ role, content })), rowCount: 0 };
+      return { rows: this.conversationRows.filter(row => row.user_id === userId && row.conversation_id === conversationId && row.privacy_checked === true).slice(-limit).reverse().map(({ role, content }) => ({ role, content })), rowCount: 0 };
     }
     if (sql.includes('DELETE FROM frieren_ai_conversation')) {
       const [userId, conversationId] = params;
@@ -427,4 +427,24 @@ test('ordinary Discord conversation turns remain available after sensitive-conte
   assert.deepEqual(await store.getConversationHistory('user-a', 'guild:channel-1'), [
     { role: 'user', content: 'Frieren RPG üzerinde çalışıyorum.' }
   ]);
+});
+
+test('legacy conversation history is retained in storage but never returned as trusted context', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  const fake = FakePool.instance;
+  fake.conversationRows.push({
+    id: 0,
+    user_id: 'user-a',
+    conversation_id: 'guild:channel-1',
+    role: 'user',
+    content: 'Historical content that has not passed the new privacy guard.',
+    privacy_checked: false
+  });
+
+  await store.addConversationTurn('user-a', 'guild:channel-1', 'user', 'A new ordinary message.');
+  const history = await store.getConversationHistory('user-a', 'guild:channel-1');
+
+  assert.deepEqual(history, [{ role: 'user', content: 'A new ordinary message.' }]);
+  assert.ok(fake.conversationRows.some(row => row.id === 0 && row.privacy_checked === false),
+    'legacy rows must remain stored; only their use as model context is disabled');
 });
