@@ -64,6 +64,8 @@ export async function getRelevantMemories(db, { guildId, userId, question }) {
   );
   const memories = result.rows || [];
   const normalizedQuestion = normalize(question);
+  const fictionalContext = /\\b(?:karakter|hikaye|hikâye|kurgu|roman|rpg)\\b|\\b[\\p{L}]{3,}['’](?:in|ın|un|ün)\\b/iu.test(String(question));
+  if (fictionalContext) return [];
   const recall = /\b(hatırla|hatırlıyor musun|benim hakkımda|neleri biliyorsun|belleğimde|kayıtlı anı|ne demiştim)\b/iu.test(String(question));
   if (recall) return memories.slice(0, 8);
   const words = new Set(normalizedQuestion.split(' ').filter(word => word.length >= 3));
