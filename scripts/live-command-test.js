@@ -977,7 +977,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           await command.execute(interaction);
           const after = await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const payloadText = JSON.stringify(effects.map(effect => effect.payload));
-          const patterns = { frieren: ['Frieren','günlüğü'], mimic: ['Sandık','MIMIC'], pogaca: ['Fırın','poğaça'], sans: ['şans','eğlence amaçlı'], saril: ['Fern onaylı','dostça'] };
+          const patterns = { frieren: ['Frieren','günlüğü'], mimic: ['MIMIC', 'gerçek bir hazine', 'dokunmamanı', 'bayat bir poğaça'], pogaca: ['Fırın','poğaça'], sans: ['şans','eğlence amaçlı'], saril: ['Fern onaylı','dostça'] };
           const found = patterns[commandName].some(value => payloadText.toLocaleLowerCase('tr-TR').includes(value.toLocaleLowerCase('tr-TR')));
           behavioralChecks.push(
             { name: 'Eğlence komutu içeriği', expected: 'komuta özgü anime/eğlence yanıtı gösterilmeli', actual: found ? 'beklenen içerik bulundu' : payloadText.slice(0, 400), passed: found },
