@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { containsSensitiveInformation } from './memory-extractor.js';
 
 const { Pool } = pg;
 
@@ -112,6 +113,11 @@ export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
       if (normalizedKey.length > 60) throw new RangeError('Memory key must be at most 60 characters.');
       if (!normalizedValue) throw new TypeError('Memory value must not be empty.');
       if (normalizedValue.length > 500) throw new RangeError('Memory value must be at most 500 characters.');
+      if (containsSensitiveInformation(normalizedValue)) {
+        const error = new Error('Sensitive memory values cannot be saved.');
+        error.code = 'SENSITIVE_MEMORY_REJECTED';
+        throw error;
+      }
 
       await ensureSchema();
       const result = await pool.query(
