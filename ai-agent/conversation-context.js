@@ -24,6 +24,6 @@ export function formatConversationContext(history) {
     'ÖNCEKİ AYNI DISCORD KANALI / KONUŞMA (kronolojik kayıt):',
     ...turns,
     '',
-    'BAĞLAM KURALI: Açılış mesajlarında veya son mesajlarda açıkça verilen karakter, hikâye ve olay bilgileri mevcut sorunun bağlamıdır. Bu iki bölümdeki bilgileri birlikte kullan; yeniden verilmesini isteme. Yalnızca erişilebilir kayıtlarda bulunmayan ayrıntıları bilinmiyor olarak belirt. Kişisel kalıcı bellek kayıtlarını kurguya taşıma. Bu bağlam başka Discord kanallarını veya başka kullanıcıları kapsamaz.',
+    'BAĞLAM KURALI: Açılış mesajlarında veya son mesajlarda açıkça verilen karakter, hikâye ve olay bilgileri mevcut sorunun bağlamıdır. Bu iki bölümdeki bilgileri birlikte kullan; yeniden verilmesini isteme. Yalnızca erişilebilir kayıtlarda bulunmayan ayrıntıları bilinmiyor olarak belirt. Kişisel kalıcı bellek kayıtlarını kurguya taşıma. Tanıtılan karakter kullanıcı değildir; kullanıcı açıkça rol yaptığını söylemedikçe karakterden üçüncü şahısla söz et ve karakter özelliklerini kullanıcıya atfetme. Bu bağlam başka Discord kanallarını veya başka kullanıcıları kapsamaz.',
   ].join('\n');
 }
