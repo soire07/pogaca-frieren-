@@ -85,7 +85,7 @@ function makeMember(id) {
     communicationDisabledUntilTimestamp: null, toString() { return '<@' + id + '>'; }
   };
 }
-function makeInteraction(command, options, guildId, effects) {
+function makeInteraction(command, options, guildId, effects, simulation = null) {
   const user = { id: '900000000000000001', username: 'FrierenTest', tag: 'FrierenTest#0001', bot: false, displayAvatarURL: () => 'https://example.com/test-avatar.png', toString() { return '<@' + this.id + '>'; } };
   const member = makeMember(user.id);
   const channel = fakeChannel();
@@ -106,9 +106,9 @@ function makeInteraction(command, options, guildId, effects) {
     memberPermissions: { has: () => true }, appPermissions: { has: () => true }, permissions: { has: () => true },
     replied: false, deferred: false, isChatInputCommand: () => true, isButton: () => false, isStringSelectMenu: () => false, isModalSubmit: () => false,
     inGuild: () => true, isRepliable: () => true,
-    reply: async payload => { interaction.replied = true; effects.push({ type: 'reply', payload: normalizePayload(payload) }); return payload; },
+    reply: async payload => { interaction.replied = true; effects.push({ type: 'reply', payload: normalizePayload(payload) }); return simulation ? makeSimulatedMessage(payload, simulation) : payload; },
     deferReply: async payload => { interaction.deferred = true; effects.push({ type: 'deferReply', payload: normalizePayload(payload) }); },
-    editReply: async payload => { interaction.replied = true; effects.push({ type: 'editReply', payload: normalizePayload(payload) }); return payload; },
+    editReply: async payload => { interaction.replied = true; effects.push({ type: 'editReply', payload: normalizePayload(payload) }); return simulation ? makeSimulatedMessage(payload, simulation) : payload; },
     followUp: async payload => { effects.push({ type: 'followUp', payload: normalizePayload(payload) }); return payload; },
     update: async payload => { effects.push({ type: 'update', payload: normalizePayload(payload) }); return payload; },
     deferUpdate: async () => { interaction.deferred = true; effects.push({ type: 'deferUpdate' }); },
@@ -120,6 +120,65 @@ function makeInteraction(command, options, guildId, effects) {
   client.commands.set(command.data.name, command);
   return interaction;
 }
+
+function makeSimulatedMessage(payload, simulation) {
+  return {
+    createMessageComponentCollector({ filter } = {}) {
+      const listeners = { collect: [], end: [] };
+      let stopped = false;
+      const collector = {
+        on(event, listener) { listeners[event]?.push(listener); return this; },
+        once(event, listener) { listeners[event]?.push(listener); return this; },
+        stop(reason = 'test-complete') {
+          if (stopped) return;
+          stopped = true;
+          for (const listener of listeners.end) void Promise.resolve(listener([], reason));
+        }
+      };
+      queueMicrotask(async () => {
+        const buttons = (payload?.components || []).flatMap(row =>
+          (row.components || []).map(component => component.data?.custom_id).filter(Boolean)
+        );
+        let clicks = [];
+        const inviteButtons = buttons.filter(id => id.includes(':accept:') || id.includes(':yes:'));
+        const roleButtons = buttons.filter(id => id.includes(':role:'));
+        const pathButton = buttons.find(id => id.includes(':path:safe:'));
+        const actionButton = buttons.find(id => id.includes(':act:attack:'));
+        if (inviteButtons.length) {
+          clicks = inviteButtons.map(customId => ({
+            customId,
+            user: simulation.users.find(user => customId.endsWith(':' + user.id))
+          }));
+        } else if (roleButtons.length) {
+          const roleIds = ['tank', 'healer', 'damage'];
+          clicks = simulation.users.map((user, index) => ({
+            customId: roleButtons.find(id => id.includes(':role:' + roleIds[index] + ':')) || roleButtons.find(id => id.includes(':role:damage:')),
+            user
+          }));
+        } else if (pathButton) {
+          clicks = [{ customId: pathButton, user: simulation.users[0] }];
+        } else if (actionButton) {
+          clicks = simulation.users.map(user => ({ customId: actionButton, user }));
+        }
+        for (const click of clicks) {
+          if (!click.customId || !click.user) continue;
+          const component = {
+            ...click,
+            deferUpdate: async () => {},
+            reply: async () => {},
+            update: async () => {}
+          };
+          if (filter && !filter(component)) continue;
+          for (const listener of listeners.collect) await listener(component);
+          if (stopped) break;
+        }
+        if (!stopped) collector.stop('test-complete');
+      });
+      return collector;
+    }
+  };
+}
+
 function normalizePayload(payload) {
   if (typeof payload === 'string') return { content: payload.slice(0, 1800) };
   if (!payload || typeof payload !== 'object') return payload;
@@ -209,6 +268,66 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Zırh çıkarma ve set bonusunun kapanması', expected: 'yalnızca silah kalır; set bonusu sıfırlanır', actual: equippedAfter.rowCount + ' ekipman kaldı; saldırı ' + inactiveSet.attack + ', HP bonusu ' + inactiveSet.hp + ', set: ' + inactiveSet.setText, passed: equippedAfter.rowCount === 1 && equippedAfter.rows[0].slot === 'weapon' && inactiveSet.attack === 16 && inactiveSet.hp === 0 && inactiveSet.setText === null },
             { name: 'Çıkarılan zırh envantere geri döner', expected: 'zırh miktarı 1', actual: inventoryAfter.rows[0] ? 'miktar ' + inventoryAfter.rows[0].quantity : 'envanter kaydı yok', passed: Number(inventoryAfter.rows[0]?.quantity) === 1 }
           );
+
+        } else if (commandName === 'katlizindan' || commandName === 'ortakboss') {
+          const teamUsers = [0, 1, 2].map(offset => ({
+            id: TEST_USER_PREFIX + String(index).padStart(6, '0').slice(0, 5) + String(offset + 1),
+            username: 'FrierenTest' + (offset + 1),
+            tag: 'FrierenTest#0001',
+            bot: false,
+            displayAvatarURL: () => 'https://example.com/test-avatar.png',
+            toString() { return '<@' + this.id + '>'; }
+          }));
+          teamUsers[0].id = userId;
+          for (const member of teamUsers) {
+            await ensureUser(guildId, member.id);
+            await pool.query(
+              'UPDATE users SET level=50,xp=0,coins=100,hp=2000,max_hp=2000,mana=500,max_mana=500,attack=500,defense=250,last_dungeon_at=NULL,last_boss_at=NULL,dungeon_runs=0,dungeon_wins=0,boss_defeats=0 WHERE guild_id=$1 AND user_id=$2',
+              [guildId, member.id]
+            );
+            await pool.query(
+              'INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)',
+              [guildId, member.id, 'test-owner-' + member.id]
+            );
+          }
+          const options = buildOptions(schema?.options, {
+            takim_arkadasi: teamUsers[1],
+            takim_arkadasi_2: teamUsers[2],
+            zorluk: 'easy'
+          });
+          const simulation = { users: teamUsers };
+          const interaction = makeInteraction(command, options, guildId, effects, simulation);
+          interaction.id = 'test-interaction-' + commandName + '-' + index;
+          interaction.user.id = userId;
+          interaction.user.username = teamUsers[0].username;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const ids = teamUsers.map(member => member.id);
+          const saved = await pool.query(
+            'SELECT user_id,xp,coins,hp,max_hp,mana,max_mana,dungeon_runs,dungeon_wins,boss_defeats,last_dungeon_at,last_boss_at FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id',
+            [guildId, ids]
+          );
+          const reservations = await pool.query(
+            'SELECT user_id,encounter_type FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=ANY($2::text[])',
+            [guildId, ids]
+          );
+          const markers = await pool.query(
+            "SELECT user_id,item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND item_key LIKE 'test-owner-%' ORDER BY user_id",
+            [guildId, ids]
+          );
+          const isDungeon = commandName === 'katlizindan';
+          const timestampField = isDungeon ? 'last_dungeon_at' : 'last_boss_at';
+          const counterField = isDungeon ? 'dungeon_runs' : 'boss_defeats';
+          const responseText = JSON.stringify(effects.map(effect => effect.payload));
+          behavioralChecks.push(
+            { name: 'Üç takım üyesinin kalıcı kaydı', expected: 'aynı sunucuda 3 ayrı oyuncu kaydı', actual: saved.rowCount + ' oyuncu kaydı', passed: saved.rowCount === 3 && new Set(saved.rows.map(row => row.user_id)).size === 3 },
+            { name: 'Savaş sonucu ve bekleme süresi', expected: 'üç oyuncuda da karşılaşma zaman damgası ve sayaç', actual: saved.rows.map(row => row.user_id + ': ' + row[counterField] + ', ' + row[timestampField]).join(' | '), passed: saved.rows.length === 3 && saved.rows.every(row => Number(row[counterField]) === 1 && row[timestampField] != null) },
+            { name: 'Kişi başı savaş ödülü', expected: 'üç oyuncunun XP ve altın bakiyesi artmalı', actual: saved.rows.map(row => row.user_id + ': XP ' + row.xp + ', altın ' + row.coins).join(' | '), passed: saved.rows.length === 3 && saved.rows.every(row => Number(row.xp) > 0 && Number(row.coins) > 100) },
+            { name: 'HP ve mana sınırları korunur', expected: 'her oyuncuda 0 ≤ HP ≤ maksimum HP ve 0 ≤ mana ≤ maksimum mana', actual: saved.rows.map(row => row.user_id + ': ' + row.hp + '/' + row.max_hp + ' HP, ' + row.mana + '/' + row.max_mana + ' mana').join(' | '), passed: saved.rows.length === 3 && saved.rows.every(row => Number(row.hp) >= 0 && Number(row.hp) <= Number(row.max_hp) && Number(row.mana) >= 0 && Number(row.mana) <= Number(row.max_mana)) },
+            { name: 'Oyuncu verisi izolasyonu', expected: 'her oyuncunun yalnızca kendi test envanter işareti bulunmalı', actual: markers.rows.map(row => row.user_id + ': ' + row.item_key).join(' | '), passed: markers.rowCount === 3 && markers.rows.every(row => row.item_key === 'test-owner-' + row.user_id && Number(row.quantity) === 1) },
+            { name: 'Karşılaşma kilidi temizliği', expected: 'savaş sonunda etkin karşılaşma kaydı kalmamalı', actual: reservations.rowCount + ' etkin kilit', passed: reservations.rowCount === 0 },
+            { name: 'Komut sonucu paneli', expected: 'savaş sonucu Discord yanıtı üretilmeli', actual: effects.length + ' yanıt/etki; ' + (responseText.includes('Kat') || responseText.includes('Boss') ? 'savaş paneli içeriği kaydedildi' : 'panel metni kaydedildi'), passed: effects.length > 0 && (responseText.includes('Kat') || responseText.includes('Boss') || responseText.includes('baskın') || responseText.includes('zindan')) }
+          );
         } else if (commandName === 'esyakullan') {
           const potionKey = '🧪 Şifa İksiri';
           await pool.query(
@@ -286,7 +405,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
       title: 'Poğaça Frieren isolated command handler test report',
       generatedAt: new Date().toISOString(),
       executionMode: 'synthetic Discord interaction; isolated PostgreSQL schema frieren_test',
-      note: 'Bu rapor gerçek Discord kullanıcısının etkileşimi değildir. Yanıt kaydı tek başına INCONCLUSIVE sayılır. PASS yalnızca komuta özel davranış doğrulamaları ve yalıtılmış PostgreSQL durum kontrolleri geçtiğinde verilir. /buyupratik için altın, mana ve büyü ustalığı; /ekipman için kuşanma, çıkarma, envanter ve efsanevi set bonusu; /esyakullan için HP, mana ve eşya tüketimi yalıtılmış PostgreSQL üzerinde doğrulanır. Diğer komutlar için davranış testi eklenene kadar sonuç kesin değildir.',
+      note: 'Bu rapor gerçek Discord kullanıcısının etkileşimi değildir. Yanıt kaydı tek başına INCONCLUSIVE sayılır. PASS yalnızca komuta özel davranış doğrulamaları ve yalıtılmış PostgreSQL durum kontrolleri geçtiğinde verilir. /buyupratik için altın, mana ve büyü ustalığı; /ekipman için kuşanma, çıkarma, envanter ve efsanevi set bonusu; /esyakullan için HP, mana ve eşya tüketimi yalıtılmış PostgreSQL üzerinde doğrulanır. /katlizindan ve /ortakboss için davet, rol, tur aksiyonları, ödül, HP/mana, oyuncu izolasyonu ve karşılaşma kilitleri yalıtılmış PostgreSQL üzerinde doğrulanır. Diğer komutlar için davranış testi eklenene kadar sonuç kesin değildir.',
       summary: {
         total: results.length,
         pass: results.filter(x => x.status === 'PASS').length,
