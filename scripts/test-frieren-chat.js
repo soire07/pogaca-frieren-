@@ -162,7 +162,7 @@ test('Frieren persona uses canonical identity and forbids invented appearance or
   const systemPrompt = buildFrierenMessages({ userMessage: 'Kendini tanıt.' })[0].content;
   assert.match(systemPrompt, /Frieren: Beyond Journey.s End/i);
   assert.match(systemPrompt, /elf büyücüsü/i);
-  assert.match(systemPrompt, /Poğaça Discord sunucusunda yaşayan/i, 'legacy persona phrase must be removed');
+  assert.doesNotMatch(systemPrompt, /Poğaça Discord sunucusunda yaşayan/i);
   assert.match(systemPrompt, /görünüş.*uydurma|uydurma.*görünüş/i);
   assert.match(systemPrompt, /Himmel/i);
 });
