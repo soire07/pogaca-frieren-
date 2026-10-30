@@ -33,7 +33,7 @@ export const pool = new Proxy(productionPool, {
 // Commands executed by Frieren AI are routed into a dedicated PostgreSQL schema.
 // This keeps test rows/tables separate from production tables even on the free DB plan.
 let testSchemaQueue = Promise.resolve();
-export async function withIsolatedTestSchema(callback, { guildPrefix = null } = {}) {
+export async function withIsolatedTestSchema(callback) {
   const previous = testSchemaQueue;
   let release;
   testSchemaQueue = new Promise(resolve => { release = resolve; });
@@ -47,11 +47,7 @@ export async function withIsolatedTestSchema(callback, { guildPrefix = null } = 
     await productionPool.query('CREATE SCHEMA IF NOT EXISTS frieren_test');
     return await testContext.run(true, async () => {
       await initDatabase();
-      try {
-        return await callback();
-      } finally {
-        if (guildPrefix) await cleanupIsolatedTestGuild(guildPrefix);
-      }
+      return await callback();
     });
   } finally {
     if (lockClient && lockAcquired) {
@@ -59,65 +55,6 @@ export async function withIsolatedTestSchema(callback, { guildPrefix = null } = 
     }
     lockClient?.release();
     release();
-  }
-}
-
-export function isSafeTestGuildPrefix(prefix) {
-  return typeof prefix === 'string'
-    && /^frieren-test-guild-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-$/i.test(prefix);
-}
-
-export function buildTestCleanupOrder(tableNames, foreignKeys) {
-  const pending = new Set(tableNames);
-  const edges = foreignKeys.filter(edge => pending.has(edge.child) && pending.has(edge.parent));
-  const ordered = [];
-  while (pending.size) {
-    const leaf = [...pending].find(table =>
-      !edges.some(edge => edge.parent === table && pending.has(edge.child))
-    );
-    if (!leaf) throw new Error('TEST_CLEANUP_FOREIGN_KEY_CYCLE');
-    ordered.push(leaf);
-    pending.delete(leaf);
-  }
-  return ordered;
-}
-
-export async function cleanupIsolatedTestGuild(prefix) {
-  if (!testContext.getStore()) throw new Error('TEST_CLEANUP_OUTSIDE_ISOLATED_SCHEMA');
-  if (!isSafeTestGuildPrefix(prefix)) throw new Error('UNSAFE_TEST_GUILD_PREFIX');
-
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const tables = await client.query(
-      "SELECT table_name FROM information_schema.columns WHERE table_schema='frieren_test' AND column_name='guild_id' GROUP BY table_name"
-    );
-    const relations = await client.query(
-      `SELECT child.relname AS child, parent.relname AS parent
-       FROM pg_constraint constraint_row
-       JOIN pg_class child ON child.oid=constraint_row.conrelid
-       JOIN pg_namespace child_schema ON child_schema.oid=child.relnamespace
-       JOIN pg_class parent ON parent.oid=constraint_row.confrelid
-       JOIN pg_namespace parent_schema ON parent_schema.oid=parent.relnamespace
-       WHERE constraint_row.contype='f'
-         AND child_schema.nspname='frieren_test'
-         AND parent_schema.nspname='frieren_test'`
-    );
-    const order = buildTestCleanupOrder(
-      tables.rows.map(row => row.table_name),
-      relations.rows
-    );
-    for (const table of order) {
-      const identifier = table.replace(/"/g, '""');
-      await client.query(`DELETE FROM frieren_test."${identifier}" WHERE guild_id LIKE $1`, [prefix + '%']);
-    }
-    await client.query('COMMIT');
-    return { deletedTables: order.length };
-  } catch (error) {
-    await client.query('ROLLBACK').catch(() => {});
-    throw error;
-  } finally {
-    client.release();
   }
 }
 
