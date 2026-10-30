@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryStore, memoryStoreInternals, shouldUseConversationHistory } from './memory-store.js';
 import { extractAutomaticMemories } from './memory-extractor.js';
+import { formatConversationContext } from './conversation-context.js';
 
 class FakePool {
   constructor(options) {
@@ -253,4 +254,30 @@ test('personal favorite memories do not contaminate fictional character facts', 
   const personalRecall = await store.relevant('user-a', 'Benim en sevdiğim hayvan neydi?');
   assert.equal(personalRecall.length, 1);
   assert.equal(personalRecall[0].memory_key, 'favori_hayvan');
+});
+
+
+test('story facts from earlier turns are surfaced as authoritative context for follow-up questions', () => {
+  const context = formatConversationContext([
+    { role: 'user', content: 'Arven 19 yaşında, eski bir kütüphanede yaşıyor. Yolculuğa kayıp kardeşini bulmak için çıktı. En sevdiği hayvan kurt.' },
+    { role: 'assistant', content: 'Arven profilini anladım.' },
+    { role: 'user', content: 'Arven neden yolculuğa çıkmıştı ve nerede yaşıyordu?' },
+  ]);
+  assert.match(context, /eski bir kütüphanede yaşıyor/i);
+  assert.match(context, /kayıp kardeşini bulmak için çıktı/i);
+  assert.match(context, /KULLANICI:/);
+  assert.match(context, /BAĞLAM KURALI:/);
+  assert.doesNotMatch(context, /kaplumbağa/i);
+});
+
+test('conversation context ignores invalid turns and bounds the number of included messages', () => {
+  const history = Array.from({ length: 12 }, (_, index) => ({
+    role: 'user',
+    content: 'turn-' + index,
+  }));
+  history.push({ role: 'system', content: 'untrusted role' });
+  const context = formatConversationContext(history);
+  assert.doesNotMatch(context, /turn-0/);
+  assert.match(context, /turn-11/);
+  assert.doesNotMatch(context, /untrusted role/);
 });
