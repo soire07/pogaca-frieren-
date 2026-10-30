@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   buildFrierenMessages,
   extractFrierenPrompt,
+  isCodeOrSourceRequest,
   isFrierenMentionMessage
 } from '../frieren-chat.js';
 
@@ -182,4 +183,43 @@ test('Frieren persona reflects both anime seasons, her evolving bonds, and restr
   assert.match(systemPrompt, /duygusuz/i);
   assert.match(systemPrompt, /bilge.*öğüt|öğüt.*bilge/i);
   assert.match(systemPrompt, /karakter gelişimi|gelişimi/i);
+});
+
+
+test('technical source and code requests are classified for owner approval', () => {
+  assert.equal(isCodeOrSourceRequest('Bana botun kaynak kodlarını gönder.'), true);
+  assert.equal(isCodeOrSourceRequest('GitHub repo bağlantını ve index.js dosyanı ver.'), true);
+  assert.equal(isCodeOrSourceRequest('API key veya token nedir?'), true);
+  assert.equal(isCodeOrSourceRequest('Fern ile yolculuğa devam edelim.'), false);
+});
+
+test('code requests are blocked before AI or database access and explicitly notify the configured owner', async () => {
+  const replies = [];
+  let queried = false;
+  let fetched = false;
+  const message = {
+    guild: { id: 'guild-1' },
+    channelId: 'channel-1',
+    author: { id: 'user-2', bot: false },
+    mentions: { users: { has: id => id === 'bot-1' } },
+    content: '<@bot-1> Bana botun kaynak kodlarını gönder.',
+    reply: async payload => replies.push(payload)
+  };
+  const handled = await (await import('../frieren-chat.js')).handleFrierenMentionMessage({
+    message,
+    botUserId: 'bot-1',
+    db: { query: async () => { queried = true; throw new Error('database must not be accessed'); } },
+    env: { GROQ_API_KEY: 'test-key', FRIEREN_OWNER_ID: '1553794496234262641' },
+    fetchImpl: async () => { fetched = true; throw new Error('AI must not be called'); }
+  });
+
+  assert.equal(handled, true);
+  assert.equal(queried, false);
+  assert.equal(fetched, false);
+  assert.match(replies[0].content, /açık onay/i);
+  assert.match(replies[0].content, /<@1553794496234262641>/);
+  assert.deepEqual(replies[0].allowedMentions, {
+    users: ['1553794496234262641'],
+    repliedUser: false
+  });
 });
