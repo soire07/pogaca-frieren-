@@ -202,7 +202,7 @@ export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
         if (/\bhobim\b/.test(normalizedQuestion)) return memory.memory_key === 'hobi';
         if (/\bhedefim\b/.test(normalizedQuestion)) return memory.memory_key === 'hedef';
         if (/\b(projem|projede)\b/.test(normalizedQuestion)) return String(memory.memory_key || '').startsWith('proje_');
-        if (/\bhangi oyun\b/.test(normalizedQuestion)) return memory.memory_key === 'tercih_oyun';
+        if (/\bhangi oyun\w*\b/.test(normalizedQuestion)) return memory.memory_key === 'tercih_oyun';
         return false;
       };
       const scored = memories.filter(memory => personalFactRecall || !String(memory.memory_key || '').startsWith('favori_')).map((memory, index) => {
