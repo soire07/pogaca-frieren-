@@ -16,18 +16,18 @@ class FakePool {
   async query(sql, params = []) {
     this.calls.push({ sql, params });
     if (sql.includes('INSERT INTO frieren_ai_conversation')) {
-      const [userId, role, content] = params;
-      this.conversationRows.push({ id: this.nextConversationId++, user_id: userId, role, content });
+      const [userId, conversationId, role, content] = params;
+      this.conversationRows.push({ id: this.nextConversationId++, user_id: userId, conversation_id: conversationId, role, content });
       return { rows: [], rowCount: 1 };
     }
     if (sql.includes('SELECT role, content FROM frieren_ai_conversation')) {
-      const [userId, limit] = params;
-      return { rows: this.conversationRows.filter(row => row.user_id === userId).slice(-limit).reverse().map(({ role, content }) => ({ role, content })), rowCount: 0 };
+      const [userId, conversationId, limit] = params;
+      return { rows: this.conversationRows.filter(row => row.user_id === userId && row.conversation_id === conversationId).slice(-limit).reverse().map(({ role, content }) => ({ role, content })), rowCount: 0 };
     }
     if (sql.includes('DELETE FROM frieren_ai_conversation')) {
-      const [userId] = params;
-      const keep = new Set(this.conversationRows.filter(row => row.user_id === userId).slice(-12).map(row => row.id));
-      this.conversationRows = this.conversationRows.filter(row => row.user_id !== userId || keep.has(row.id));
+      const [userId, conversationId] = params;
+      const keep = new Set(this.conversationRows.filter(row => row.user_id === userId && row.conversation_id === conversationId).slice(-80).map(row => row.id));
+      this.conversationRows = this.conversationRows.filter(row => row.user_id !== userId || row.conversation_id !== conversationId || keep.has(row.id));
       return { rows: [], rowCount: 0 };
     }
     if (sql.includes('INSERT INTO frieren_ai_memories')) {
@@ -140,15 +140,19 @@ test('memory keyword normalization preserves words and removes Turkish diacritic
 
 test('conversation history persists in order and is isolated per Discord user', async () => {
   const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
-  await store.addConversationTurn('user-a', 'user', 'Elara adlı karakterimiz var.');
-  await store.addConversationTurn('user-a', 'assistant', 'Elara hikâyenin kahramanı.');
-  await store.addConversationTurn('user-b', 'user', 'Başka bir konuşma.');
-  assert.deepEqual(await store.getConversationHistory('user-a'), [
+  await store.addConversationTurn('user-a', 'guild:channel-1', 'user', 'Elara adlı karakterimiz var.');
+  await store.addConversationTurn('user-a', 'guild:channel-1', 'assistant', 'Elara hikâyenin kahramanı.');
+  await store.addConversationTurn('user-a', 'guild:channel-2', 'user', 'Başka bir hikâye.');
+  await store.addConversationTurn('user-b', 'guild:channel-1', 'user', 'Başka bir kullanıcı.');
+  assert.deepEqual(await store.getConversationHistory('user-a', 'guild:channel-1'), [
     { role: 'user', content: 'Elara adlı karakterimiz var.' },
     { role: 'assistant', content: 'Elara hikâyenin kahramanı.' },
   ]);
-  assert.deepEqual(await store.getConversationHistory('user-b'), [
-    { role: 'user', content: 'Başka bir konuşma.' },
+  assert.deepEqual(await store.getConversationHistory('user-a', 'guild:channel-2'), [
+    { role: 'user', content: 'Başka bir hikâye.' },
+  ]);
+  assert.deepEqual(await store.getConversationHistory('user-b', 'guild:channel-1'), [
+    { role: 'user', content: 'Başka bir kullanıcı.' },
   ]);
 });
 
@@ -270,14 +274,43 @@ test('story facts from earlier turns are surfaced as authoritative context for f
   assert.doesNotMatch(context, /kaplumbağa/i);
 });
 
-test('conversation context ignores invalid turns and bounds the number of included messages', () => {
-  const history = Array.from({ length: 12 }, (_, index) => ({
+test('conversation context ignores invalid turns and keeps opening plus recent messages', () => {
+  const history = Array.from({ length: 20 }, (_, index) => ({
     role: 'user',
     content: 'turn-' + index,
   }));
   history.push({ role: 'system', content: 'untrusted role' });
   const context = formatConversationContext(history);
-  assert.doesNotMatch(context, /turn-0/);
-  assert.match(context, /turn-11/);
+  assert.match(context, /turn-0/);
+  assert.match(context, /turn-3/);
+  assert.doesNotMatch(context, /turn-5/);
+  assert.match(context, /turn-19/);
   assert.doesNotMatch(context, /untrusted role/);
+});
+
+
+test('conversation history retains up to 80 turns independently per channel', async () => {
+  const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
+  for (let index = 0; index < 90; index++) {
+    await store.addConversationTurn('user-a', 'guild:long-story', 'user', 'turn-' + index);
+  }
+  const history = await store.getConversationHistory('user-a', 'guild:long-story');
+  assert.equal(history.length, 80);
+  assert.equal(history[0].content, 'turn-10');
+  assert.equal(history.at(-1).content, 'turn-89');
+  assert.deepEqual(await store.getConversationHistory('user-a', 'guild:other'), []);
+});
+
+test('long conversation context preserves opening story facts and newest turns', () => {
+  const history = [
+    { role: 'user', content: 'Arven eski bir kütüphanede yaşıyor ve kayıp kardeşini arıyor.' },
+    { role: 'assistant', content: 'Arven profilini kaydettim.' },
+    ...Array.from({ length: 20 }, (_, index) => ({ role: 'user', content: 'Ara sohbet mesajı ' + index })),
+    { role: 'user', content: 'Arven bugün kuzeye ulaştı.' },
+  ];
+  const context = formatConversationContext(history);
+  assert.match(context, /eski bir kütüphanede/i);
+  assert.match(context, /kayıp kardeşini arıyor/i);
+  assert.match(context, /Arven bugün kuzeye ulaştı/i);
+  assert.doesNotMatch(context, /Ara sohbet mesajı 5/);
 });
