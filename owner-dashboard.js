@@ -81,9 +81,9 @@ export function buildOwnerSessionCookie(session, maxAgeSeconds) {
 }
 
 function page(title, content) {
-  return \`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>\${escapeHtml(title)} · Frieren Owner</title><style>
+  return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · Frieren Owner</title><style>
   :root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#0c111b;color:#eef2fa}*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:24px;background:radial-gradient(ellipse at top,#27354c 0,#0c111b 58%)}main{width:min(100%,1120px);margin:0 auto}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}.brand{font-size:13px;letter-spacing:.14em;color:#a8b9d4}.hero,.panel{border:1px solid #35435a;border-radius:18px;background:#151d2a;padding:22px;box-shadow:0 16px 50px #0005}.hero{margin-bottom:16px}.hero h1{margin:6px 0;font-size:28px}.muted{color:#9eacc1;font-size:13px;line-height:1.55}.tag{display:inline-block;padding:5px 9px;border:1px solid #52627d;border-radius:999px;color:#c8d8f5;font-size:11px;letter-spacing:.08em}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:16px 0}.stat{background:#202b3c;border:1px solid #35445b;border-radius:13px;padding:15px}.stat small{display:block;color:#aab8ce;margin-bottom:7px}.stat strong{font-size:21px}.columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px;margin:14px 0}.panel h2{font-size:17px;margin:0 0 14px}.panel h3{font-size:14px;margin:18px 0 8px;color:#dce6f7}.btn{display:inline-block;background:#d5e2fa;color:#172033;padding:10px 15px;border-radius:9px;text-decoration:none;font-weight:700;border:0;cursor:pointer}.btn.danger{background:#542f3b;color:#ffe3e9}.btn.secondary{background:#29374b;color:#e0e9f8;border:1px solid #465772}form{margin:9px 0}label{display:block;font-size:12px;color:#afbdd1;margin:9px 0 5px}input,select,textarea{display:block;width:100%;border:1px solid #40516b;border-radius:8px;background:#0e1623;color:#f2f5fb;padding:10px;font:inherit}textarea{min-height:90px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.rowitem{border-top:1px solid #344156;padding:12px 0}.rowitem:first-of-type{border-top:0}.mono{font-family:ui-monospace,monospace;font-size:12px;overflow-wrap:anywhere}.notice{border:1px solid #52627d;background:#202b3c;border-radius:10px;padding:11px;margin:12px 0}.good{color:#8be0b0}.warn{color:#f4ce83}.bad{color:#ff9aa8}a{color:#d5e2fa}.small{font-size:12px;color:#91a0b7}@media(max-width:560px){body{padding:12px}.hero,.panel{padding:16px}.hero h1{font-size:23px}}
-  </style></head><body><main>\${content}</main></body></html>\`;
+  </style></head><body><main>${content}</main></body></html>`;
 }
 
 function readForm(req) {
@@ -125,26 +125,26 @@ function redirect(res, location = '/owner') {
 
 function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity }) {
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
-  const guildOptions = guilds.map(guild => \`<option value="\${escapeHtml(guild.id)}">\${escapeHtml(guild.name)} · \${escapeHtml(guild.id)}</option>\`).join('');
+  const guildOptions = guilds.map(guild => `<option value="${escapeHtml(guild.id)}">${escapeHtml(guild.name)} · ${escapeHtml(guild.id)}</option>`).join('');
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
     .filter(channel => channel.isTextBased?.() && channel.send)
-    .map(channel => \`<option value="\${escapeHtml(channel.id)}">\${escapeHtml(guild.name)} / #\${escapeHtml(channel.name)} · \${escapeHtml(guild.id)}</option>\`)).join('');
-  const approvalHtml = approvals.length ? approvals.map(row => \`
-    <div class="rowitem"><strong>#\${row.id} · \${escapeHtml(row.title)}</strong>
-      <div class="small">\${escapeHtml(row.request_type)} · \${escapeHtml(row.requester_tag)} · \${new Date(row.created_at).toLocaleString('tr-TR')}</div>
-      <p>\${escapeHtml(String(row.details).slice(0,700))}</p>
+    .map(channel => `<option value="${escapeHtml(channel.id)}">${escapeHtml(guild.name)} / #${escapeHtml(channel.name)} · ${escapeHtml(guild.id)}</option>`)).join('');
+  const approvalHtml = approvals.length ? approvals.map(row => `
+    <div class="rowitem"><strong>#${row.id} · ${escapeHtml(row.title)}</strong>
+      <div class="small">${escapeHtml(row.request_type)} · ${escapeHtml(row.requester_tag)} · ${new Date(row.created_at).toLocaleString('tr-TR')}</div>
+      <p>${escapeHtml(String(row.details).slice(0,700))}</p>
       <form method="post" action="/owner/action" class="actions">
-        <input type="hidden" name="csrf" value="\${escapeHtml(session.csrf)}"><input type="hidden" name="id" value="\${row.id}">
+        <input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="id" value="${row.id}">
         <button class="btn" name="action" value="approval-approved">Onayla</button>
         <button class="btn danger" name="action" value="approval-rejected">Reddet</button>
       </form>
-    </div>\`).join('') : '<p class="muted">Bekleyen talep yok.</p>';
-  const memoryHtml = memories.length ? memories.map(row => \`
-    <div class="rowitem"><strong>#\${row.id} · \${escapeHtml(row.memory_key)}</strong>
-      <div class="small">Kullanıcı \${escapeHtml(row.user_id)} · Sunucu \${escapeHtml(row.guild_id)}</div>
-      <p>\${escapeHtml(row.memory_value)}</p>
-      <form method="post" action="/owner/action"><input type="hidden" name="csrf" value="\${escapeHtml(session.csrf)}"><input type="hidden" name="id" value="\${row.id}"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Kalıcı olarak silmeyi onaylıyorum</label><button class="btn danger" name="action" value="memory-delete">Bu kaydı sil</button></form>
-    </div>\`).join('') : '<p class="muted">Arama için bir Discord kullanıcı ID gir veya eşleşen kayıt bulunmadı.</p>';
+    </div>`).join('') : '<p class="muted">Bekleyen talep yok.</p>';
+  const memoryHtml = memories.length ? memories.map(row => `
+    <div class="rowitem"><strong>#${row.id} · ${escapeHtml(row.memory_key)}</strong>
+      <div class="small">Kullanıcı ${escapeHtml(row.user_id)} · Sunucu ${escapeHtml(row.guild_id)}</div>
+      <p>${escapeHtml(row.memory_value)}</p>
+      <form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="id" value="${row.id}"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Kalıcı olarak silmeyi onaylıyorum</label><button class="btn danger" name="action" value="memory-delete">Bu kaydı sil</button></form>
+    </div>`).join('') : '<p class="muted">Arama için bir Discord kullanıcı ID gir veya eşleşen kayıt bulunmadı.</p>';
   const noticeText = ({
     maintenance_on: 'Bakım modu açıldı.',
     maintenance_off: 'Bakım modu kapatıldı.',
@@ -154,55 +154,55 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     announcement_sent: 'Duyuru seçilen kanala gönderildi.',
     invalid: 'İşlem tamamlanamadı. Alanları ve bot izinlerini kontrol et.'
   })[notice] || '';
-  return page('Owner Kontrol Merkezi', \`
+  return page('Owner Kontrol Merkezi', `
     <div class="top"><div><div class="brand">FRIEREN · PRIVATE OPERATIONS</div><div class="small">OWNER CONTROL CENTER</div></div>
-      <form method="post" action="/owner/logout"><input type="hidden" name="csrf" value="\${escapeHtml(session.csrf)}"><button class="btn secondary">Güvenli çıkış</button></form>
+      <form method="post" action="/owner/logout"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><button class="btn secondary">Güvenli çıkış</button></form>
     </div>
     <section class="hero"><span class="tag">OWNER · DOĞRULANDI</span><h1>Frieren Kontrol Merkezi</h1><p class="muted">Bu panel yalnızca yetkili Discord hesabına açıktır. Yönetim işlemleri kayıt altına alınır.</p>
-      \${noticeText ? '<div class="notice">' + escapeHtml(noticeText) + '</div>' : ''}
+      ${noticeText ? '<div class="notice">' + escapeHtml(noticeText) + '</div>' : ''}
       <div class="grid">
-        <div class="stat"><small>Bot bağlantısı</small><strong class="\${overview.ready ? 'good' : 'bad'}">\${overview.ready ? 'Çevrimiçi' : 'Çevrimdışı'}</strong></div>
-        <div class="stat"><small>Discord gecikmesi</small><strong>\${overview.ping === null ? '—' : overview.ping + ' ms'}</strong></div>
-        <div class="stat"><small>Çalışma süresi</small><strong>\${escapeHtml(formatDuration(overview.uptimeSeconds))}</strong></div>
-        <div class="stat"><small>Sunucular</small><strong>\${overview.guildCount}</strong></div>
-        <div class="stat"><small>Üye toplamı (önbellek)</small><strong>\${overview.userCount}</strong></div>
-        <div class="stat"><small>Slash komutları</small><strong>\${overview.commandCount}</strong></div>
-        <div class="stat"><small>Node heap / RSS</small><strong>\${escapeHtml(formatBytes(overview.heapUsedBytes))} / \${escapeHtml(formatBytes(overview.rssBytes))}</strong></div>
-        <div class="stat"><small>Veritabanı</small><strong class="\${overview.databaseReady ? 'good' : 'bad'}">\${overview.databaseReady ? 'Bağlı' : 'Hata'}</strong></div>
-        <div class="stat"><small>Kayıtlı kullanıcı hafızası</small><strong>\${overview.memoryCount}</strong></div>
-        <div class="stat"><small>Bekleyen teknik talepler</small><strong>\${overview.pendingApprovals}</strong></div>
-        <div class="stat"><small>Bakım modu</small><strong class="\${overview.maintenance ? 'warn' : 'good'}">\${overview.maintenance ? 'Açık' : 'Kapalı'}</strong></div>
-        <div class="stat"><small>Çalışma ortamı</small><strong>\${escapeHtml(process.version)}</strong></div>
+        <div class="stat"><small>Bot bağlantısı</small><strong class="${overview.ready ? 'good' : 'bad'}">${overview.ready ? 'Çevrimiçi' : 'Çevrimdışı'}</strong></div>
+        <div class="stat"><small>Discord gecikmesi</small><strong>${overview.ping === null ? '—' : overview.ping + ' ms'}</strong></div>
+        <div class="stat"><small>Çalışma süresi</small><strong>${escapeHtml(formatDuration(overview.uptimeSeconds))}</strong></div>
+        <div class="stat"><small>Sunucular</small><strong>${overview.guildCount}</strong></div>
+        <div class="stat"><small>Üye toplamı (önbellek)</small><strong>${overview.userCount}</strong></div>
+        <div class="stat"><small>Slash komutları</small><strong>${overview.commandCount}</strong></div>
+        <div class="stat"><small>Node heap / RSS</small><strong>${escapeHtml(formatBytes(overview.heapUsedBytes))} / ${escapeHtml(formatBytes(overview.rssBytes))}</strong></div>
+        <div class="stat"><small>Veritabanı</small><strong class="${overview.databaseReady ? 'good' : 'bad'}">${overview.databaseReady ? 'Bağlı' : 'Hata'}</strong></div>
+        <div class="stat"><small>Kayıtlı kullanıcı hafızası</small><strong>${overview.memoryCount}</strong></div>
+        <div class="stat"><small>Bekleyen teknik talepler</small><strong>${overview.pendingApprovals}</strong></div>
+        <div class="stat"><small>Bakım modu</small><strong class="${overview.maintenance ? 'warn' : 'good'}">${overview.maintenance ? 'Açık' : 'Kapalı'}</strong></div>
+        <div class="stat"><small>Çalışma ortamı</small><strong>${escapeHtml(process.version)}</strong></div>
       </div>
       <div class="actions"><a class="btn secondary" href="/owner">Durumu yenile</a><span class="small">Canlı süreç ölçümleri · Son sayfa yüklemesi</span></div>
     </section>
     <div class="columns">
       <section class="panel"><h2>Bakım modu</h2><p class="muted">Açıldığında normal kullanıcı komutları ve Frieren sohbeti durdurulur. Owner komutları çalışmaya devam eder.</p>
-        <form method="post" action="/owner/action" class="actions"><input type="hidden" name="csrf" value="\${escapeHtml(session.csrf)}"><button class="btn" name="action" value="maintenance-on">Bakımı aç</button><button class="btn secondary" name="action" value="maintenance-off">Bakımı kapat</button></form>
+        <form method="post" action="/owner/action" class="actions"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><button class="btn" name="action" value="maintenance-on">Bakımı aç</button><button class="btn secondary" name="action" value="maintenance-off">Bakımı kapat</button></form>
       </section>
       <section class="panel"><h2>Duyuru gönder</h2><p class="muted">Yalnızca seçtiğin sunucu ve kanala gönderilir. Botun kanalda mesaj gönderme izni olmalıdır.</p>
-        <form method="post" action="/owner/action"><input type="hidden" name="csrf" value="\${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="announcement-send">
-          <label>Hedef sunucu</label><select name="guildId" required><option value="">Sunucu seç</option>\${guildOptions}</select>
-          <label>Hedef metin kanalı</label><select name="channelId" required><option value="">Kanal seç</option>\${channelOptions}</select>
+        <form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="announcement-send">
+          <label>Hedef sunucu</label><select name="guildId" required><option value="">Sunucu seç</option>${guildOptions}</select>
+          <label>Hedef metin kanalı</label><select name="channelId" required><option value="">Kanal seç</option>${channelOptions}</select>
           <label>Duyuru metni</label><textarea name="message" maxlength="1800" required placeholder="Duyuru içeriği..."></textarea><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Seçtiğim kanala bu duyurunun gönderilmesini onaylıyorum</label>
           <button class="btn">Duyuruyu gönder</button>
         </form>
       </section>
     </div>
     <div class="columns">
-      <section class="panel"><h2>Teknik talep onayları</h2><p class="muted">Onay/ret yalnızca talebin durumunu değiştirir; hiçbir kod otomatik çalıştırılmaz.</p>\${approvalHtml}</section>
+      <section class="panel"><h2>Teknik talep onayları</h2><p class="muted">Onay/ret yalnızca talebin durumunu değiştirir; hiçbir kod otomatik çalıştırılmaz.</p>${approvalHtml}</section>
       <section class="panel"><h2>Kullanıcı hafızaları</h2><p class="muted">Yalnızca mevcut Frieren hafıza kayıtları listelenir. Silme işlemi kalıcıdır ve denetim kaydına yazılır.</p>
-        <form method="get" action="/owner"><label>Discord kullanıcı ID</label><input name="memoryUser" value="\${escapeHtml(memoryUser)}" inputmode="numeric" placeholder="Örn. 123456789012345678" required><button class="btn secondary">Hafızaları getir</button></form>
-        \${memoryHtml}
+        <form method="get" action="/owner"><label>Discord kullanıcı ID</label><input name="memoryUser" value="${escapeHtml(memoryUser)}" inputmode="numeric" placeholder="Örn. 123456789012345678" required><button class="btn secondary">Hafızaları getir</button></form>
+        ${memoryHtml}
       </section>
     </div>
 <div class="columns">
-      <section class="panel"><h2>Komut kullanım istatistikleri</h2>\${activity.commands.length ? activity.commands.map(row => '<div class="rowitem"><strong>/' + escapeHtml(row.command_name) + '</strong><div class="small">' + escapeHtml(row.usage_count) + ' kullanım · Son: ' + escapeHtml(new Date(row.last_used_at).toLocaleString('tr-TR')) + '</div></div>').join('') : '<p class="muted">Komut ölçümleri bu sürümden itibaren birikmeye başlayacak.</p>'}</section>
-      <section class="panel"><h2>Son teknik hatalar</h2>\${activity.errors.length ? activity.errors.map(row => '<div class="rowitem"><strong>' + escapeHtml(row.scope) + '</strong><div class="small">' + escapeHtml(row.error_type) + ' · ' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</div></div>').join('') : '<p class="muted">Kaydedilmiş teknik hata yok.</p>'}</section>
+      <section class="panel"><h2>Komut kullanım istatistikleri</h2>${activity.commands.length ? activity.commands.map(row => '<div class="rowitem"><strong>/' + escapeHtml(row.command_name) + '</strong><div class="small">' + escapeHtml(row.usage_count) + ' kullanım · Son: ' + escapeHtml(new Date(row.last_used_at).toLocaleString('tr-TR')) + '</div></div>').join('') : '<p class="muted">Komut ölçümleri bu sürümden itibaren birikmeye başlayacak.</p>'}</section>
+      <section class="panel"><h2>Son teknik hatalar</h2>${activity.errors.length ? activity.errors.map(row => '<div class="rowitem"><strong>' + escapeHtml(row.scope) + '</strong><div class="small">' + escapeHtml(row.error_type) + ' · ' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</div></div>').join('') : '<p class="muted">Kaydedilmiş teknik hata yok.</p>'}</section>
     </div>
-    <section class="panel"><h2>Owner işlem geçmişi</h2>\${activity.audit.length ? activity.audit.map(row => '<div class="rowitem"><strong>' + escapeHtml(row.action) + '</strong><div class="small">' + escapeHtml(row.target || 'Genel') + ' · ' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</div></div>').join('') : '<p class="muted">Henüz yönetim işlemi kaydedilmedi.</p>'}</section>
+    <section class="panel"><h2>Owner işlem geçmişi</h2>${activity.audit.length ? activity.audit.map(row => '<div class="rowitem"><strong>' + escapeHtml(row.action) + '</strong><div class="small">' + escapeHtml(row.target || 'Genel') + ' · ' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</div></div>').join('') : '<p class="muted">Henüz yönetim işlemi kaydedilmedi.</p>'}</section>
     <section class="panel"><h2>Güvenlik ve denetim</h2><p class="muted">Owner OAuth, 8 saatlik imzalı oturum, HttpOnly/Secure/SameSite=Lax çerezi, CSRF doğrulaması ve işlem günlüğü aktiftir. Bot tokeni, OAuth sırrı ve veritabanı bağlantı adresi panelde gösterilmez.</p></section>
-  \`);
+  `);
 }
 
 export async function handleOwnerDashboardRequest(req, res, { client, db }) {
