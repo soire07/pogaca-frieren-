@@ -232,10 +232,9 @@ export async function getFrierenAIReadiness({
 
 function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics, aiReadiness }) {
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
-  const guildOptions = guilds.map(guild => `<option value="${escapeHtml(guild.id)}">${escapeHtml(guild.name)} · ${escapeHtml(guild.id)}</option>`).join('');
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
     .filter(channel => channel.isTextBased?.() && channel.send)
-    .map(channel => `<option value="${escapeHtml(channel.id)}">${escapeHtml(guild.name)} / #${escapeHtml(channel.name)} · ${escapeHtml(guild.id)}</option>`)).join('');
+    .map(channel => `<option value="${escapeHtml(guild.id)}:${escapeHtml(channel.id)}">${escapeHtml(guild.name)} / #${escapeHtml(channel.name)}</option>`)).join('');
   const approvalHtml = approvals.length ? approvals.map(row => `
     <div class="rowitem"><strong>#${row.id} · ${escapeHtml(row.title)}</strong>
       <div class="small">${escapeHtml(row.request_type)} · ${escapeHtml(row.requester_tag)} · ${new Date(row.created_at).toLocaleString('tr-TR')}</div>
@@ -291,8 +290,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
       </section>
       <section class="panel" id="announcements"><h2>Duyuru gönder</h2><p class="muted">Yalnızca seçtiğin sunucu ve kanala gönderilir. Botun kanalda mesaj gönderme izni olmalıdır.</p>
         <form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="announcement-send">
-          <label>Hedef sunucu</label><select name="guildId" required><option value="">Sunucu seç</option>${guildOptions}</select>
-          <label>Hedef metin kanalı</label><select name="channelId" required><option value="">Kanal seç</option>${channelOptions}</select>
+          <label>Hedef sunucu ve metin kanalı</label><select name="target" required><option value="">Sunucu / kanal seç</option>${channelOptions}</select>
           <label>Duyuru metni</label><textarea name="message" maxlength="1800" required placeholder="Duyuru içeriği..."></textarea><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Seçtiğim kanala bu duyurunun gönderilmesini onaylıyorum</label>
           <button class="btn">Duyuruyu gönder</button>
         </form>
@@ -416,8 +414,10 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         const result = await deleteUserMemory(db, form.get('id'), OWNER_ID);
         notice = result ? 'memory_deleted' : 'invalid';
       } else if (action === 'announcement-send' && form.get('confirm') === 'yes') {
+        const [guildId, channelId, extra] = String(form.get('target') || '').split(':');
+        if (extra || !/^\d{17,20}$/.test(guildId || '') || !/^\d{17,20}$/.test(channelId || '')) throw new Error('INVALID_ANNOUNCEMENT_TARGET');
         const result = await sendOwnerAnnouncement(client, db, {
-          guildId: form.get('guildId'), channelId: form.get('channelId'), message: form.get('message'), actorId: OWNER_ID
+          guildId, channelId, message: form.get('message'), actorId: OWNER_ID
         });
         notice = result ? 'announcement_sent' : 'invalid';
       }

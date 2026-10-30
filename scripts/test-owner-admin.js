@@ -81,3 +81,27 @@ test('memory deletion records only metadata in the owner audit trail', async () 
   assert.match(calls[1].sql, /owner_audit_logs/);
   assert.doesNotMatch(JSON.stringify(calls[1].params), /memory_value/);
 });
+
+
+test('announcement rejects a channel that belongs to a different guild', async () => {
+  let sent = false;
+  const channel = {
+    id: '222222222222222222',
+    guildId: '333333333333333333',
+    isTextBased: () => true,
+    send: async () => { sent = true; return { id: 'message-1' }; }
+  };
+  const guild = {
+    id: '111111111111111111',
+    name: 'Guild A',
+    channels: { fetch: async () => channel },
+    members: { me: { id: 'bot' } }
+  };
+  const client = { guilds: { cache: new Map([[guild.id, guild]]) } };
+  const db = { query: async () => ({ rows: [], rowCount: 1 }) };
+  const { sendOwnerAnnouncement } = await import('../owner-admin.js');
+  await assert.rejects(() => sendOwnerAnnouncement(client, db, {
+    guildId: guild.id, channelId: channel.id, message: 'Test', actorId: OWNER_ID
+  }), { message: 'CHANNEL_GUILD_MISMATCH' });
+  assert.equal(sent, false);
+});

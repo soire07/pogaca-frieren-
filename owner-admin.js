@@ -197,6 +197,7 @@ export async function sendOwnerAnnouncement(client, db, { guildId, channelId, me
   if (!guild) throw new Error('GUILD_NOT_FOUND');
   const channel = await guild.channels.fetch(String(channelId));
   if (!channel?.isTextBased?.() || !channel?.send) throw new Error('CHANNEL_NOT_SENDABLE');
+  if (String(channel.guildId || channel.guild?.id || '') !== String(guild.id)) throw new Error('CHANNEL_GUILD_MISMATCH');
   const me = guild.members.me;
   if (!me || !channel.permissionsFor(me)?.has('SendMessages')) throw new Error('MISSING_SEND_PERMISSION');
   const sent = await channel.send({ content: text, allowedMentions: { parse: [] } });
