@@ -286,7 +286,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
               [guildId, member.id]
             );
             await pool.query(
-              'INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)',
+              'INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1) ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=EXCLUDED.quantity',
               [guildId, member.id, 'test-owner-' + member.id]
             );
           }
