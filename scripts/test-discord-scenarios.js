@@ -822,3 +822,26 @@ test('co-op command behavioral tests verify persisted rewards, resource bounds, 
   ]) assert.ok(runner.includes(check), 'missing behavioral assertion: ' + check);
   assert.match(runner, /synthetic Discord interaction; isolated PostgreSQL schema frieren_test/);
 });
+
+
+test('co-op test inventory fixtures are idempotent across repeated command runs', async () => {
+  const runner = await read('scripts/live-command-test.js');
+  assert.match(runner, /INSERT INTO inventory\(guild_id,user_id,item_key,quantity\) VALUES\(\$1,\$2,\$3,1\) ON CONFLICT\(guild_id,user_id,item_key\) DO UPDATE SET quantity=EXCLUDED\.quantity/);
+});
+
+
+test('co-op fixtures generate three unique player IDs for every command index', async () => {
+  const { buildCoopTestUserIds } = await import('./coop-test-users.js');
+  for (const index of [1, 2, 3, 10, 99, 1000]) {
+    const primary = '900000000000' + String(index).padStart(6, '0');
+    const ids = buildCoopTestUserIds(index, primary);
+    assert.equal(ids.length, 3);
+    assert.equal(new Set(ids).size, 3);
+    assert.equal(ids[0], primary);
+  }
+});
+
+test('co-op fixture builder rejects accidental duplicate primary IDs', async () => {
+  const { buildCoopTestUserIds } = await import('./coop-test-users.js');
+  assert.throws(() => buildCoopTestUserIds(2, '900000000000000202'), /duplicate player IDs/);
+});

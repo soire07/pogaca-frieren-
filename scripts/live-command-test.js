@@ -2,6 +2,7 @@ import { withIsolatedTestSchema, ensureUser, pool } from '../database/db.js';
 import { buildCommandEvidence } from './command-test-evidence.js';
 import { equipmentItems, equipmentBonus } from '../equipment-data.js';
 import { applyEquipmentSetBonus } from '../rpg-mechanics.js';
+import { buildCoopTestUserIds } from './coop-test-users.js';
 
 const TEST_GUILD_PREFIX = 'frieren-test-guild-';
 const TEST_USER_PREFIX = '900000000000';
@@ -270,15 +271,15 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           );
 
         } else if (commandName === 'katlizindan' || commandName === 'ortakboss') {
-          const teamUsers = [0, 1, 2].map(offset => ({
-            id: TEST_USER_PREFIX + String(index).padStart(6, '0').slice(0, 5) + String(offset + 1),
+          const teamUserIds = buildCoopTestUserIds(index, userId, TEST_USER_PREFIX);
+          const teamUsers = teamUserIds.map((id, offset) => ({
+            id,
             username: 'FrierenTest' + (offset + 1),
             tag: 'FrierenTest#0001',
             bot: false,
             displayAvatarURL: () => 'https://example.com/test-avatar.png',
             toString() { return '<@' + this.id + '>'; }
           }));
-          teamUsers[0].id = userId;
           for (const member of teamUsers) {
             await ensureUser(guildId, member.id);
             await pool.query(
@@ -286,7 +287,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
               [guildId, member.id]
             );
             await pool.query(
-              'INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)',
+              'INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1) ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=EXCLUDED.quantity',
               [guildId, member.id, 'test-owner-' + member.id]
             );
           }
