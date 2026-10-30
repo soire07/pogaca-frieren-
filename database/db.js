@@ -404,8 +404,21 @@ export async function initDatabase() {
       content TEXT NOT NULL CHECK (length(content) BETWEEN 1 AND 4000),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    CREATE INDEX IF NOT EXISTS idx_frieren_chat_history
-      ON frieren_chat_messages(guild_id,user_id,id DESC);
+    ALTER TABLE frieren_chat_messages ADD COLUMN IF NOT EXISTS channel_id TEXT NOT NULL DEFAULT 'legacy';
+    CREATE INDEX IF NOT EXISTS idx_frieren_chat_history_channel
+      ON frieren_chat_messages(guild_id,user_id,channel_id,id DESC);
+    CREATE TABLE IF NOT EXISTS frieren_chat_memories (
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      memory_key VARCHAR(60) NOT NULL,
+      memory_value VARCHAR(300) NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (guild_id,user_id,memory_key)
+    );
+    CREATE INDEX IF NOT EXISTS idx_frieren_chat_memories_scope
+      ON frieren_chat_memories(guild_id,user_id,updated_at DESC);
     DELETE FROM frieren_chat_messages
       WHERE id IN (
         SELECT id FROM frieren_chat_messages
