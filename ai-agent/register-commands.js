@@ -45,7 +45,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName('frieren-komut-denetle')
     .setDescription('Poğaça Frieren komut işleyicilerini yalıtılmış veritabanında çalıştırıp raporlar.')
-    .addStringOption(option => option.setName('komut').setDescription('Tek bir komut adı (boş bırakırsan tüm komutlar denenir).').setRequired(false).setMaxLength(80))
+    .addStringOption(option => option.setName('komut').setDescription('Bir veya daha fazla komut adı; virgülle ayır. Boş bırakırsan tüm komutlar denenir.').setRequired(false).setMaxLength(80))
     .toJSON(),
 ];
 
