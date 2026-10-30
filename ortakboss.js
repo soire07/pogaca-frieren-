@@ -39,13 +39,15 @@ export default {
     if (team.some(x => x.bot) || new Set(team.map(x => x.id)).size !== team.length) {
       return interaction.reply({ content: 'Takımda bot veya tekrar eden oyuncu olamaz.', ephemeral: true });
     }
+    // Acknowledge before database work; Discord interactions expire after a short window.
+    await interaction.deferReply();
     for (const user of team) await ensureUser(interaction.guildId, user.id);
     const invited = team.slice(1);
     const row = new ActionRowBuilder().addComponents(
       ...invited.map(x => new ButtonBuilder().setCustomId(`raid:yes:${interaction.id}:${x.id}`).setLabel(`Katıl: ${x.username}`.slice(0,80)).setStyle(ButtonStyle.Success)),
       new ButtonBuilder().setCustomId(`raid:no:${interaction.id}`).setLabel('Reddet').setStyle(ButtonStyle.Secondary)
     );
-    const msg = await interaction.reply({
+    const msg = await interaction.editReply({
       content: `🌌 <@${interaction.user.id}> **${BOSS.name}** baskını için takım kuruyor! ${invited.map(x => `<@${x.id}>`).join(' ')}\nHer davetli 60 saniye içinde katılmalı. Kabulden sonra herkes kendi rolünü seçecek.`,
       components: [row], allowedMentions: { users: team.map(x => x.id) }, fetchReply: true
     });
@@ -348,7 +350,7 @@ export default {
       for (const [userId, casts] of spellCasts) {
         const mastery = await db.query(
           `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
-           VALUES ($1,$2,'zoltraak',$3,LEAST(10,FLOOR($3/10.0)::int),NOW())
+           VALUES ($1,$2,'zoltraak',$3::integer,LEAST(10,FLOOR($3::numeric/10.0)::int),NOW())
            ON CONFLICT (guild_id,user_id,spell_key) DO UPDATE
            SET casts=spell_mastery.casts+EXCLUDED.casts,
                mastery_level=LEAST(10,FLOOR((spell_mastery.casts+EXCLUDED.casts)/10.0)::int),

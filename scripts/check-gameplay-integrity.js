@@ -357,3 +357,32 @@ test('runtime startup does not clear or race slash-command registration', async 
   assert.ok(deploy.includes('Routes.applicationGuildCommands'));
   assert.ok(deploy.includes('Routes.applicationCommands'));
 });
+
+
+test('co-op raid acknowledges the Discord interaction before database work and types spell mastery casts explicitly', async () => {
+  const source = await read('ortakboss.js');
+  const ack = source.indexOf('await interaction.deferReply()');
+  const ensure = source.indexOf('await ensureUser(');
+  const firstDb = source.indexOf('pool.connect()');
+  assert.ok(ack >= 0 && ensure > ack && firstDb > ack,
+    'raid command must defer its reply before database work');
+  assert.match(source, /const msg = await interaction\.editReply\(/,
+    'invitation message must edit the deferred reply');
+  assert.match(source, /VALUES \(\$1,\$2,'zoltraak',\$3::integer,LEAST\(10,FLOOR\(\$3::numeric\/10\.0\)::int\),NOW\(\)\)/,
+    'spell mastery casts parameter must have explicit integer/numeric casts');
+});
+
+
+test('inventory acknowledges privately before user creation and database reads', async () => {
+  const source = await read('envanter.js');
+  const ack = source.indexOf('await interaction.deferReply({ ephemeral: true })');
+  const ensure = source.indexOf('await ensureUser(');
+  const firstQuery = source.indexOf('await pool.query(');
+  assert.ok(ack >= 0 && ensure > ack && firstQuery > ack,
+    'inventory must defer its ephemeral response before database work');
+  assert.ok(source.includes('await interaction.editReply({'),
+    'inventory must edit the deferred response');
+  assert.ok(source.includes('embeds: [embed]'));
+  assert.ok(!source.includes('await interaction.reply({\n      embeds: [embed]'),
+    'inventory must not reply a second time after deferring');
+});
