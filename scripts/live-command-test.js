@@ -1,4 +1,5 @@
-import { withIsolatedTestSchema, ensureUser } from '../database/db.js';
+import { withIsolatedTestSchema, ensureUser, pool } from '../database/db.js';
+import { buildCommandEvidence } from './command-test-evidence.js';
 
 const TEST_GUILD_PREFIX = 'frieren-test-guild-';
 const TEST_USER_PREFIX = '900000000000';
@@ -146,27 +147,38 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
       try {
         await ensureUser(guildId, userId);
         const schema = typeof command.data?.toJSON === 'function' ? command.data.toJSON() : command.data;
+        const commandName = schema?.name || 'unknown';
+        if (commandName === 'buyupratik') {
+          await pool.query('UPDATE users SET coins=100, mana=100 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+        }
         const options = buildOptions(schema?.options, { user: undefined });
         const interaction = makeInteraction(command, options, guildId, effects);
         interaction.user.id = userId;
         interaction.member = makeMember(userId);
         await command.execute(interaction);
-        const responded = effects.length > 0;
-        const expected = 'Komut işleyicisi hata atmadan tamamlanmalı ve en az bir Discord yanıtı/etkisi üretmeli.';
-        const actual = responded
-          ? 'İşleyici tamamlandı; ' + effects.length + ' yanıt/etki kaydedildi.'
-          : 'İşleyici tamamlandı ancak yanıt/etki kaydedilmedi.';
+
+        const behavioralChecks = [];
+        if (commandName === 'buyupratik') {
+          const userState = await pool.query('SELECT coins, mana FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const masteryState = await pool.query('SELECT casts, mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=$2 AND spell_key=$3', [guildId, userId, 'zoltraak']);
+          const user = userState.rows[0];
+          const mastery = masteryState.rows[0];
+          behavioralChecks.push(
+            { name: 'Altın bakiyesi', expected: '100 → 75 (-25)', actual: user ? '100 → ' + user.coins : 'Kullanıcı satırı bulunamadı', passed: Number(user?.coins) === 75 },
+            { name: 'Mana bakiyesi', expected: '100 → 92 (-8)', actual: user ? '100 → ' + user.mana : 'Kullanıcı satırı bulunamadı', passed: Number(user?.mana) === 92 },
+            { name: 'Zoltraak ustalık kaydı', expected: 'casts=1, mastery_level=0', actual: mastery ? 'casts=' + mastery.casts + ', mastery_level=' + mastery.mastery_level : 'Ustalık kaydı bulunamadı', passed: Number(mastery?.casts) === 1 && Number(mastery?.mastery_level) === 0 }
+          );
+        }
+        const evidence = buildCommandEvidence({ responseCount: effects.length, behavioralChecks });
         results.push({
-          command: schema?.name || 'unknown',
-          status: responded ? 'INCONCLUSIVE' : 'FAIL',
-          expected,
-          actual,
-          comparison: responded ? 'INCONCLUSIVE: yanıt yolu çalıştı; beklenen özellik davranışı henüz doğrulanmadı' : 'MISMATCH: beklenen yanıt/etki yok',
-          evidenceType: 'handler-executed-with-synthetic-discord-interaction',
+          command: commandName,
+          ...evidence,
+          evidenceType: behavioralChecks.length ? 'synthetic-discord-interaction+isolated-postgresql-state-assertions' : 'handler-executed-with-synthetic-discord-interaction',
           automaticallyObserved: true,
           responseCount: effects.length,
           responses: effects.slice(0, 4),
-          error: responded ? null : 'Komut tamamlandı ancak yanıt/etki kaydedilmedi.'
+          behavioralChecks,
+          error: evidence.status === 'FAIL' ? evidence.detail : null
         });
       } catch (error) {
         results.push({
@@ -186,7 +198,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
       title: 'Poğaça Frieren isolated command handler test report',
       generatedAt: new Date().toISOString(),
       executionMode: 'synthetic Discord interaction; isolated PostgreSQL schema frieren_test',
-      note: 'A recorded response alone is INCONCLUSIVE, never PASS. This harness uses synthetic Discord interactions and an isolated PostgreSQL schema; it does not deliver real Discord interactions or prove feature semantics. PASS must be added only alongside command-specific behavioral assertions. Commands requiring real Discord state may fail due to fixture limits.',
+      note: 'Bu rapor gerçek Discord kullanıcısının etkileşimi değildir. Yanıt kaydı tek başına INCONCLUSIVE sayılır. PASS yalnızca komuta özel davranış doğrulamaları ve yalıtılmış PostgreSQL durum kontrolleri geçtiğinde verilir. Şu anda /buyupratik için altın, mana ve büyü ustalığı kalıcılığı doğrulanır; diğer komutlar için davranış testi eklenene kadar sonuç kesin değildir.',
       summary: {
         total: results.length,
         pass: results.filter(x => x.status === 'PASS').length,
