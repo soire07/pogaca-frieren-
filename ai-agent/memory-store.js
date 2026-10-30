@@ -64,8 +64,10 @@ function isMemoryRecallQuestion(value) {
 
 function isSpecificPersonalFactRecallQuestion(value) {
   const normalized = normalizeText(value);
-  return /\b(en sevdigim|favorim|favori)\b.{0,80}\b(neydi|ne|hangisi|hangisiydi)\b/.test(normalized)
-    || /\b(hangi|ne)\b.{0,40}\b(seviyordum|seviyorum|tercih ediyordum)\b/.test(normalized);
+  const explicitPersonalSubject = /\b(benim|adim|ismim|hobim|hedefim|projem|favorim|en sevdigim|tercihim)\b/.test(normalized);
+  const explicitRecallIntent = /\b(neydi|hangisi|hangisiydi|nelerdi|ne|hatirliyor musun|hatirliyor|soylemistim|demistim)\b/.test(normalized);
+  const asksAboutPersonalChoiceOrHistory = /\bhangi\b.{0,60}\b(seviyordum|seviyorum|tercih ediyordum|oynuyordum|calisiyordum|yasiyordum|yasiyorum)\b/.test(normalized);
+  return (explicitPersonalSubject && explicitRecallIntent) || asksAboutPersonalChoiceOrHistory;
 }
 
 // Do not let old turns resurrect facts after the user deletes their saved memory.
