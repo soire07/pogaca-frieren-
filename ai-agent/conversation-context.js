@@ -37,3 +37,11 @@ export function formatConversationContext(history) {
     `BAĞLAM KURALI: Bu bağlamda yalnızca KULLANICI mesajları olgusal kaynak kabul edilir. FRIEREN AI tarafından daha önce üretilmiş cevaplar, özetler, çıkarımlar veya tahminler karakter bilgisi için kanıt değildir; bunları gerçekmiş gibi tekrarlama. Kullanıcı bir bilgiyi açıkça doğrulamadıkça asistanın önceki iddialarını yok say. Kullanıcının en son açık düzeltmesi önceki kullanıcı beyanlarıyla çelişirse en son düzeltmeyi esas al. Açılış mesajlarında veya son mesajlarda açıkça verilen karakter, hikâye ve olay bilgileri mevcut sorunun bağlamıdır. Bu iki bölümdeki kullanıcı bilgilerini birlikte kullan; yeniden verilmesini isteme. Yalnızca erişilebilir kullanıcı kayıtlarında bulunmayan ayrıntıları bilinmiyor olarak belirt. Kişisel kalıcı bellek kayıtlarını kurguya taşıma. Tanıtılan karakter kullanıcı değildir; kullanıcı açıkça rol yaptığını söylemedikçe karakterden üçüncü şahısla söz et ve karakter özelliklerini kullanıcıya atfetme. Her karakter için ayrı bir profil tut. Yaş, yaşadığı yer, hayvan tercihi ve amaç gibi her alanı yalnızca aynı cümlede veya açık bir gönderimde adı belirtilen karaktere bağla; yalnızca yakınında geçmesi, aynı mesajda bulunması veya başka karaktere ait olması bilgi aktarımı için yeterli değildir. Arven'in kayıp kardeşini arama amacı yalnızca Arven'e; Eldrin'in kayıp haritayı arama amacı yalnızca Eldrin'e aittir. Bu amaçları asla birbirine aktarma. Bir alan ilgili karaktere açıkça bağlanmamışsa o alanı bilinmiyor kabul et; yaş, yer veya hayvan tercihi tahmin etme. Bir karakter sorulduğunda yalnızca o karaktere açıkça bağlanmış bilgileri kullan. Bu bağlam başka Discord kanallarını veya başka kullanıcıları kapsamaz`,
   ].join('\\n');
 }
+
+
+export function buildConversationContextMessage(history) {
+  return {
+    role: 'system',
+    content: formatConversationContext(history),
+  };
+}
