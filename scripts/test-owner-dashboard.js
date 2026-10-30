@@ -58,3 +58,63 @@ test('owner panel navigation exposes all six owner command workflows', () => {
     assert.match(navigation, new RegExp('href="#' + id + '"'));
   }
 });
+
+
+test('Render metrics stay disabled without an API key and do not make network requests', async () => {
+  const { getRenderServiceMetrics } = await import('../owner-metrics.js');
+  let calls = 0;
+  const result = await getRenderServiceMetrics({
+    apiKey: '',
+    resourceId: 'srv-test',
+    fetchImpl: async () => { calls += 1; throw new Error('unexpected request'); }
+  });
+  assert.equal(result.status, 'not_configured');
+  assert.equal(calls, 0);
+});
+
+test('Render metrics aggregate CPU and RAM against their limits', async () => {
+  const { getRenderServiceMetrics } = await import('../owner-metrics.js');
+  const timestamp = '2026-10-30T08:45:00.000Z';
+  const responses = {
+    cpu: [{ labels: [{ field: 'instance', value: 'srv-test-one' }], values: [{ timestamp, value: 0.05 }], unit: 'cpu' }],
+    'cpu-limit': [{ labels: [{ field: 'instance', value: 'srv-test-one' }], values: [{ timestamp, value: 0.15 }], unit: 'cpu' }],
+    memory: [{ labels: [{ field: 'instance', value: 'srv-test-one' }], values: [{ timestamp, value: 256 * 1024 * 1024 }], unit: 'bytes' }],
+    'memory-limit': [{ labels: [{ field: 'instance', value: 'srv-test-one' }], values: [{ timestamp, value: 512 * 1024 * 1024 }], unit: 'bytes' }]
+  };
+  const result = await getRenderServiceMetrics({
+    apiKey: 'test-render-key',
+    resourceId: 'srv-test',
+    now: Date.parse(timestamp),
+    fetchImpl: async url => ({
+      ok: true,
+      json: async () => responses[new URL(url).pathname.split('/').pop()]
+    })
+  });
+  assert.equal(result.status, 'available');
+  assert.equal(result.source, 'render');
+  assert.ok(Math.abs(result.cpuPercent - 33.3333) < 0.01);
+  assert.equal(result.memoryPercent, 50);
+  assert.equal(result.memoryUsedBytes, 256 * 1024 * 1024);
+  assert.equal(result.points.length, 1);
+  assert.equal(result.updatedAt, timestamp);
+});
+
+test('Render metrics hide credentials and return a safe status when the API rejects a request', async () => {
+  const { getRenderServiceMetrics } = await import('../owner-metrics.js');
+  const result = await getRenderServiceMetrics({
+    apiKey: 'do-not-leak-this-secret',
+    resourceId: 'srv-test',
+    fetchImpl: async () => ({ ok: false, status: 401 })
+  });
+  assert.equal(result.status, 'unavailable');
+  assert.match(result.message, /401/);
+  assert.doesNotMatch(JSON.stringify(result), /do-not-leak-this-secret/);
+});
+
+test('Render metric bars render bounded percentages without executable markup', async () => {
+  const { renderMetricBars } = await import('../owner-metrics.js');
+  const html = renderMetricBars([{ cpuPercent: -5 }, { cpuPercent: 125 }], 'cpuPercent', 'CPU');
+  assert.match(html, /height:2\.0%/);
+  assert.match(html, /height:100\.0%/);
+  assert.doesNotMatch(html, /<script/i);
+});
