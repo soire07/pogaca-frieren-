@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { safeDatabaseHostname } from './connection-diagnostics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 const { Pool } = pg;
@@ -434,6 +435,7 @@ export async function initDatabase() {
   }
   const connectionCheck = await pool.query('SELECT current_database() AS database_name');
   console.log('PostgreSQL bağlantısı doğrulandı; veritabanı:', connectionCheck.rows[0]?.database_name ?? 'bilinmiyor');
+  console.log('PostgreSQL endpoint host (safe):', safeDatabaseHostname(process.env.DATABASE_URL) ?? 'unavailable');
   console.log('PostgreSQL tabloları hazır.');
 }
 
