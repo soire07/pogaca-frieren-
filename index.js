@@ -11,6 +11,7 @@ import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
+import { handleOwnerDashboardRequest } from './owner-dashboard.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 if (!process.env.DISCORD_TOKEN) throw new Error('DISCORD_TOKEN eksik. Render Environment bölümünü kontrol et.');
@@ -300,6 +301,7 @@ const PORT = process.env.PORT || 3000;
 let uptimeRobotCache = null;
 
 createServer(async (req, res) => {
+  if (await handleOwnerDashboardRequest(req, res, { client })) return;
   const sendJson = (status, payload) => {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(payload));
