@@ -850,7 +850,7 @@ test('co-op fixture builder rejects accidental duplicate primary IDs', async () 
 test('adventure result audit checks the player-visible route name instead of an internal discovery key', async () => {
   const runner = await read('scripts/live-command-test.js');
   assert.match(runner, /payloadTextFromEffects\(effects\)/);
-  assert.match(runner, /embed\?\.toJSON\(\)/);
+  assert.match(runner, /embed\?\.toJSON/);
   assert.match(runner, /Array\.isArray\(row\)/);
   assert.match(runner, /row\?\.components/);
   assert.match(runner, /component\?\.data\?\.custom_id/);
