@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { resolveAiModel } from './config.js';
 import { findRelevantExcerpt, scoreCodeCandidate } from './code-context.js';
 import { createMemoryStore, shouldUseConversationHistory } from './memory-store.js';
+import { formatConversationContext } from './conversation-context.js';
 import { extractAutomaticMemories } from './memory-extractor.js';
 import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, isTargetedTestFailure, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
 import { buildTestDiagnostics } from './test-diagnostics.js';
@@ -225,7 +226,7 @@ async function answerCodeQuestion(question, userId) {
       model: resolveAiModel(process.env),
       messages: [
         { role: 'system', content: systemPrompt },
-        ...conversationHistory,
+        ...(conversationHistory.length ? [{ role: 'system', content: formatConversationContext(conversationHistory) }] : []),
         { role: 'user', content: conversational
           ? 'KULLANICI MESAJI:\n' + question.slice(0, 1200) + memoryContext
           : 'KULLANICI SORUSU:\n' + question.slice(0, 1200) + memoryContext + '\n\nKAYNAK KODLAR (yalnızca inceleme için):\n' + context }
