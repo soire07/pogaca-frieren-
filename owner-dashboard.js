@@ -55,8 +55,12 @@ export function verifyOwnerSession(token, secret, nowSeconds = Math.floor(Date.n
   return session?.sub === OWNER_ID && Number.isInteger(session.exp) && session.exp > nowSeconds;
 }
 
-function clearCookie(name) {
-  return name + '=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0';
+export function clearOwnerCookie(name, path = '/') {
+  return name + '=; Path=' + path + '; HttpOnly; Secure; SameSite=Lax; Max-Age=0';
+}
+
+export function buildOwnerSessionCookie(session, maxAgeSeconds) {
+  return SESSION_COOKIE + '=' + encodeURIComponent(session) + '; Path=/owner; HttpOnly; Secure; SameSite=Lax; Max-Age=' + maxAgeSeconds;
 }
 
 function page(title, content) {
@@ -79,7 +83,7 @@ export async function handleOwnerDashboardRequest(req, res, { client }) {
 
   const cookie = cookies(req);
   const redirectUri = process.env.OWNER_DASHBOARD_REDIRECT_URI || BASE_URL + '/owner/callback';
-  const commonHeaders = { 'Set-Cookie': clearCookie(STATE_COOKIE) };
+  const commonHeaders = { 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') };
 
   if (url.pathname === '/owner/login' && req.method === 'GET') {
     const state = randomBytes(32).toString('base64url');
@@ -106,7 +110,7 @@ export async function handleOwnerDashboardRequest(req, res, { client }) {
     const receivedState = url.searchParams.get('state');
     const code = url.searchParams.get('code');
     if (!savedState || savedState.exp < Date.now() || !receivedState || savedState.state !== receivedState || !code) {
-      send(res, 400, page('Giriş reddedildi', '<h1>Giriş doğrulanamadı</h1><p>OAuth doğrulaması geçersiz veya süresi dolmuş. Yeniden giriş yap.</p>'), { 'Set-Cookie': clearCookie(STATE_COOKIE) });
+      send(res, 400, page('Giriş reddedildi', '<h1>Giriş doğrulanamadı</h1><p>OAuth doğrulaması geçersiz veya süresi dolmuş. Yeniden giriş yap.</p>'), { 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
       return true;
     }
 
@@ -132,7 +136,7 @@ export async function handleOwnerDashboardRequest(req, res, { client }) {
       if (!userResponse.ok) throw new Error('Discord identity lookup failed');
       const user = await userResponse.json();
       if (String(user.id) !== OWNER_ID) {
-        send(res, 403, page('Erişim reddedildi', '<h1>Bu panel sana açık değil</h1><p>Discord hesabın owner hesabı olarak doğrulanmadı.</p><a class="btn" href="/owner/login">Tekrar dene</a>'), { 'Set-Cookie': [clearCookie(STATE_COOKIE), clearCookie(SESSION_COOKIE)] });
+        send(res, 403, page('Erişim reddedildi', '<h1>Bu panel sana açık değil</h1><p>Discord hesabın owner hesabı olarak doğrulanmadı.</p><a class="btn" href="/owner/login">Tekrar dene</a>'), { 'Set-Cookie': [clearCookie(STATE_COOKIE), clearOwnerCookie(SESSION_COOKIE, '/owner')] });
         return true;
       }
 
@@ -142,7 +146,7 @@ export async function handleOwnerDashboardRequest(req, res, { client }) {
         'Cache-Control': 'no-store',
         'Set-Cookie': [
           clearCookie(STATE_COOKIE),
-          SESSION_COOKIE + '=' + encodeURIComponent(session) + '; Path=/owner; HttpOnly; Secure; SameSite=Strict; Max-Age=' + SESSION_TTL_SECONDS
+          buildOwnerSessionCookie(session, SESSION_TTL_SECONDS)
         ]
       });
       res.end();
