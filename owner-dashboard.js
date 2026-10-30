@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { getRenderServiceMetrics, renderMetricBars } from './owner-metrics.js';
 import {
   auditOwnerAction, getOwnerOverview, getMaintenanceState, listPendingApprovals,
   reviewApproval, listUserMemories, deleteUserMemory, setMaintenanceState,
@@ -98,7 +99,7 @@ export function buildOwnerSessionCookie(session, maxAgeSeconds) {
 
 function page(title, content) {
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · Frieren Owner</title><style>
-  :root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#0c111b;color:#eef2fa}*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:24px;background:radial-gradient(ellipse at top,#27354c 0,#0c111b 58%)}main{width:min(100%,1120px);margin:0 auto}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}.brand{font-size:13px;letter-spacing:.14em;color:#a8b9d4}.hero,.panel{border:1px solid #35435a;border-radius:18px;background:#151d2a;padding:22px;box-shadow:0 16px 50px #0005}.hero{margin-bottom:16px}.hero h1{margin:6px 0;font-size:28px}.muted{color:#9eacc1;font-size:13px;line-height:1.55}.tag{display:inline-block;padding:5px 9px;border:1px solid #52627d;border-radius:999px;color:#c8d8f5;font-size:11px;letter-spacing:.08em}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:16px 0}.stat{background:#202b3c;border:1px solid #35445b;border-radius:13px;padding:15px}.stat small{display:block;color:#aab8ce;margin-bottom:7px}.stat strong{font-size:21px}.columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px;margin:14px 0}.panel h2{font-size:17px;margin:0 0 14px}.panel h3{font-size:14px;margin:18px 0 8px;color:#dce6f7}.btn{display:inline-block;background:#d5e2fa;color:#172033;padding:10px 15px;border-radius:9px;text-decoration:none;font-weight:700;border:0;cursor:pointer}.btn.danger{background:#542f3b;color:#ffe3e9}.btn.secondary{background:#29374b;color:#e0e9f8;border:1px solid #465772}form{margin:9px 0}label{display:block;font-size:12px;color:#afbdd1;margin:9px 0 5px}input,select,textarea{display:block;width:100%;border:1px solid #40516b;border-radius:8px;background:#0e1623;color:#f2f5fb;padding:10px;font:inherit}textarea{min-height:90px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.rowitem{border-top:1px solid #344156;padding:12px 0}.rowitem:first-of-type{border-top:0}.mono{font-family:ui-monospace,monospace;font-size:12px;overflow-wrap:anywhere}.notice{border:1px solid #52627d;background:#202b3c;border-radius:10px;padding:11px;margin:12px 0}.good{color:#8be0b0}.warn{color:#f4ce83}.bad{color:#ff9aa8}a{color:#d5e2fa}.small{font-size:12px;color:#91a0b7}.nav{position:sticky;top:8px;z-index:5;display:flex;gap:8px;overflow-x:auto;padding:9px;margin:0 0 16px;border:1px solid #35435a;border-radius:13px;background:#111a28f2;backdrop-filter:blur(12px)}.nav a{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;padding:9px 11px;border-radius:9px;text-decoration:none;color:#e5edfa;font-size:12px}.nav a:hover,.nav a:focus{background:#29374b;outline:1px solid #52627d}.nav span{font:10px ui-monospace,monospace;color:#91a8c8}.hero,.panel{scroll-margin-top:90px}@media(max-width:560px){body{padding:12px}.hero,.panel{padding:16px}.hero h1{font-size:23px}.nav{top:4px;margin-left:-2px;margin-right:-2px}}
+  :root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#0c111b;color:#eef2fa}*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:24px;background:radial-gradient(ellipse at top,#27354c 0,#0c111b 58%)}main{width:min(100%,1120px);margin:0 auto}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}.brand{font-size:13px;letter-spacing:.14em;color:#a8b9d4}.hero,.panel{border:1px solid #35435a;border-radius:18px;background:#151d2a;padding:22px;box-shadow:0 16px 50px #0005}.hero{margin-bottom:16px}.hero h1{margin:6px 0;font-size:28px}.muted{color:#9eacc1;font-size:13px;line-height:1.55}.tag{display:inline-block;padding:5px 9px;border:1px solid #52627d;border-radius:999px;color:#c8d8f5;font-size:11px;letter-spacing:.08em}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:16px 0}.stat{background:#202b3c;border:1px solid #35445b;border-radius:13px;padding:15px}.stat small{display:block;color:#aab8ce;margin-bottom:7px}.stat strong{font-size:21px}.columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px;margin:14px 0}.panel h2{font-size:17px;margin:0 0 14px}.panel h3{font-size:14px;margin:18px 0 8px;color:#dce6f7}.btn{display:inline-block;background:#d5e2fa;color:#172033;padding:10px 15px;border-radius:9px;text-decoration:none;font-weight:700;border:0;cursor:pointer}.btn.danger{background:#542f3b;color:#ffe3e9}.btn.secondary{background:#29374b;color:#e0e9f8;border:1px solid #465772}form{margin:9px 0}label{display:block;font-size:12px;color:#afbdd1;margin:9px 0 5px}input,select,textarea{display:block;width:100%;border:1px solid #40516b;border-radius:8px;background:#0e1623;color:#f2f5fb;padding:10px;font:inherit}textarea{min-height:90px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.rowitem{border-top:1px solid #344156;padding:12px 0}.rowitem:first-of-type{border-top:0}.mono{font-family:ui-monospace,monospace;font-size:12px;overflow-wrap:anywhere}.notice{border:1px solid #52627d;background:#202b3c;border-radius:10px;padding:11px;margin:12px 0}.good{color:#8be0b0}.warn{color:#f4ce83}.bad{color:#ff9aa8}a{color:#d5e2fa}.small{font-size:12px;color:#91a0b7}.metric-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:12px 0}.metric-charts{margin-top:10px}.metric-bars{height:84px;display:flex;align-items:flex-end;gap:4px;padding:8px 0;border-bottom:1px solid #40516b}.metric-bars i{display:block;flex:1;min-width:3px;max-width:18px;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#a9c8ff,#536f9c);opacity:.9}.metrics-panel{margin:14px 0}.nav{position:sticky;top:8px;z-index:5;display:flex;gap:8px;overflow-x:auto;padding:9px;margin:0 0 16px;border:1px solid #35435a;border-radius:13px;background:#111a28f2;backdrop-filter:blur(12px)}.nav a{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;padding:9px 11px;border-radius:9px;text-decoration:none;color:#e5edfa;font-size:12px}.nav a:hover,.nav a:focus{background:#29374b;outline:1px solid #52627d}.nav span{font:10px ui-monospace,monospace;color:#91a8c8}.hero,.panel{scroll-margin-top:90px}@media(max-width:560px){body{padding:12px}.hero,.panel{padding:16px}.hero h1{font-size:23px}.nav{top:4px;margin-left:-2px;margin-right:-2px}}
   </style></head><body><main>${content}</main></body></html>`;
 }
 
@@ -145,7 +146,24 @@ function redirect(res, location = '/owner') {
   res.end();
 }
 
-function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity }) {
+function renderRenderMetrics(metrics, overview) {
+  if (metrics?.status === 'available') {
+    return '<section class="panel metrics-panel"><div class="metric-heading"><div><h2>Render kaynak kullanımı</h2><p class="muted">Gerçek Render servis metrikleri · Son 60 dakika</p></div><span class="tag good">RENDER API BAĞLI</span></div>'
+      + '<div class="metric-grid"><div class="stat"><small>CPU kullanımı</small><strong>' + metrics.cpuPercent.toFixed(1) + '%</strong><div class="small">' + metrics.cpuUsed.toFixed(3) + ' / ' + metrics.cpuCapacity.toFixed(2) + ' CPU</div></div>'
+      + '<div class="stat"><small>RAM kullanımı</small><strong>' + metrics.memoryPercent.toFixed(1) + '%</strong><div class="small">' + formatBytes(metrics.memoryUsedBytes) + ' / ' + formatBytes(metrics.memoryLimitBytes) + '</div></div></div>'
+      + '<div class="columns metric-charts"><div><h3>CPU · Son 24 ölçüm</h3>' + renderMetricBars(metrics.points, 'cpuPercent', 'Render CPU kullanımı yüzdesi') + '</div><div><h3>RAM · Son 24 ölçüm</h3>' + renderMetricBars(metrics.points, 'memoryPercent', 'Render RAM kullanımı yüzdesi') + '</div></div>'
+      + '<p class="small">Son ölçüm: ' + escapeHtml(new Date(metrics.updatedAt).toLocaleString('tr-TR')) + ' · Ölçüm aralığı 60 saniye</p></section>';
+  }
+  const statusText = metrics?.status === 'not_configured'
+    ? 'Render API anahtarı henüz tanımlanmadı. Render CPU/RAM grafikleri için RENDER_API_KEY ortam değişkeni eklenmeli.'
+    : (metrics?.message || 'Render metrikleri şu anda alınamıyor.');
+  return '<section class="panel metrics-panel"><div class="metric-heading"><div><h2>Render kaynak kullanımı</h2><p class="muted">Render host metrikleri henüz bağlı değil.</p></div><span class="tag warn">YEREL ÖLÇÜM</span></div>'
+    + '<div class="metric-grid"><div class="stat"><small>Node.js RSS</small><strong>' + formatBytes(overview.rssBytes) + '</strong><div class="small">Bu süreç için ayrılan fiziksel bellek</div></div>'
+    + '<div class="stat"><small>Node.js heap</small><strong>' + formatBytes(overview.heapUsedBytes) + '</strong><div class="small">JavaScript heap kullanımı</div></div></div>'
+    + '<div class="notice warn">' + escapeHtml(statusText) + '</div><p class="small">Yerel Node.js bellek ölçümleri Render servisinin toplam RAM kullanımının yerine geçmez. CPU yüzdesi bu durumda gösterilmez.</p></section>';
+}
+
+function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics }) {
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
   const guildOptions = guilds.map(guild => `<option value="${escapeHtml(guild.id)}">${escapeHtml(guild.name)} · ${escapeHtml(guild.id)}</option>`).join('');
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
@@ -197,6 +215,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
         <div class="stat"><small>Bakım modu</small><strong class="${overview.maintenance ? 'warn' : 'good'}">${overview.maintenance ? 'Açık' : 'Kapalı'}</strong></div>
         <div class="stat"><small>Çalışma ortamı</small><strong>${escapeHtml(process.version)}</strong></div>
       </div>
+      ${renderRenderMetrics(renderMetrics, overview)}
       <div class="actions"><a class="btn secondary" href="/owner">Durumu yenile</a><span class="small">Canlı süreç ölçümleri · Son sayfa yüklemesi</span></div>
     </section>
     <div class="columns">
@@ -351,16 +370,17 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   }
 
   try {
-    const [overview, approvals, activity] = await Promise.all([
+    const [overview, approvals, activity, renderMetrics] = await Promise.all([
       getOwnerOverview(client, db),
       listPendingApprovals(db, 15),
-      getRecentOwnerActivity(db)
+      getRecentOwnerActivity(db),
+      getRenderServiceMetrics()
     ]);
     const memoryUser = String(url.searchParams.get('memoryUser') || '').replace(/\D/g, '').slice(0, 24);
     const memories = memoryUser ? await listUserMemories(db, memoryUser, null, 30) : [];
     send(res, 200, renderDashboard({
       session, overview, client, approvals, memories, memoryUser,
-      notice: url.searchParams.get('notice'), activity
+      notice: url.searchParams.get('notice'), activity, renderMetrics
     }));
   } catch (error) {
     console.error('Owner dashboard load failed:', error?.message || error);
