@@ -12,6 +12,22 @@ const STATE_COOKIE = 'frieren_owner_oauth_state';
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
 const MAX_BODY_BYTES = 8192;
 
+export const OWNER_PANEL_SECTIONS = Object.freeze([
+  { id: 'overview', label: 'Genel Bakış', command: '/owner' },
+  { id: 'system', label: 'Sistem Durumu', command: '/owner-bilgi' },
+  { id: 'maintenance', label: 'Bakım Merkezi', command: '/owner-bakim' },
+  { id: 'memories', label: 'Hafıza Yönetimi', command: '/owner-bellek' },
+  { id: 'approvals', label: 'Kod Talepleri', command: '/owner-onay' },
+  { id: 'announcements', label: 'Duyuru Merkezi', command: '/owner-duyuru' },
+  { id: 'activity', label: 'İşlem Kayıtları', command: null }
+]);
+
+export function renderOwnerNavigation() {
+  return '<nav class="nav" aria-label="Owner panel bölümleri">' + OWNER_PANEL_SECTIONS
+    .map(section => '<a href="#' + section.id + '">' + section.label
+      + (section.command ? '<span>' + section.command + '</span>' : '') + '</a>').join('') + '</nav>';
+}
+
 function send(res, status, body, headers = {}) {
   res.writeHead(status, {
     'Content-Type': 'text/html; charset=utf-8',
@@ -82,7 +98,7 @@ export function buildOwnerSessionCookie(session, maxAgeSeconds) {
 
 function page(title, content) {
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · Frieren Owner</title><style>
-  :root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#0c111b;color:#eef2fa}*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:24px;background:radial-gradient(ellipse at top,#27354c 0,#0c111b 58%)}main{width:min(100%,1120px);margin:0 auto}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}.brand{font-size:13px;letter-spacing:.14em;color:#a8b9d4}.hero,.panel{border:1px solid #35435a;border-radius:18px;background:#151d2a;padding:22px;box-shadow:0 16px 50px #0005}.hero{margin-bottom:16px}.hero h1{margin:6px 0;font-size:28px}.muted{color:#9eacc1;font-size:13px;line-height:1.55}.tag{display:inline-block;padding:5px 9px;border:1px solid #52627d;border-radius:999px;color:#c8d8f5;font-size:11px;letter-spacing:.08em}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:16px 0}.stat{background:#202b3c;border:1px solid #35445b;border-radius:13px;padding:15px}.stat small{display:block;color:#aab8ce;margin-bottom:7px}.stat strong{font-size:21px}.columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px;margin:14px 0}.panel h2{font-size:17px;margin:0 0 14px}.panel h3{font-size:14px;margin:18px 0 8px;color:#dce6f7}.btn{display:inline-block;background:#d5e2fa;color:#172033;padding:10px 15px;border-radius:9px;text-decoration:none;font-weight:700;border:0;cursor:pointer}.btn.danger{background:#542f3b;color:#ffe3e9}.btn.secondary{background:#29374b;color:#e0e9f8;border:1px solid #465772}form{margin:9px 0}label{display:block;font-size:12px;color:#afbdd1;margin:9px 0 5px}input,select,textarea{display:block;width:100%;border:1px solid #40516b;border-radius:8px;background:#0e1623;color:#f2f5fb;padding:10px;font:inherit}textarea{min-height:90px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.rowitem{border-top:1px solid #344156;padding:12px 0}.rowitem:first-of-type{border-top:0}.mono{font-family:ui-monospace,monospace;font-size:12px;overflow-wrap:anywhere}.notice{border:1px solid #52627d;background:#202b3c;border-radius:10px;padding:11px;margin:12px 0}.good{color:#8be0b0}.warn{color:#f4ce83}.bad{color:#ff9aa8}a{color:#d5e2fa}.small{font-size:12px;color:#91a0b7}@media(max-width:560px){body{padding:12px}.hero,.panel{padding:16px}.hero h1{font-size:23px}}
+  :root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#0c111b;color:#eef2fa}*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:24px;background:radial-gradient(ellipse at top,#27354c 0,#0c111b 58%)}main{width:min(100%,1120px);margin:0 auto}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}.brand{font-size:13px;letter-spacing:.14em;color:#a8b9d4}.hero,.panel{border:1px solid #35435a;border-radius:18px;background:#151d2a;padding:22px;box-shadow:0 16px 50px #0005}.hero{margin-bottom:16px}.hero h1{margin:6px 0;font-size:28px}.muted{color:#9eacc1;font-size:13px;line-height:1.55}.tag{display:inline-block;padding:5px 9px;border:1px solid #52627d;border-radius:999px;color:#c8d8f5;font-size:11px;letter-spacing:.08em}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:16px 0}.stat{background:#202b3c;border:1px solid #35445b;border-radius:13px;padding:15px}.stat small{display:block;color:#aab8ce;margin-bottom:7px}.stat strong{font-size:21px}.columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px;margin:14px 0}.panel h2{font-size:17px;margin:0 0 14px}.panel h3{font-size:14px;margin:18px 0 8px;color:#dce6f7}.btn{display:inline-block;background:#d5e2fa;color:#172033;padding:10px 15px;border-radius:9px;text-decoration:none;font-weight:700;border:0;cursor:pointer}.btn.danger{background:#542f3b;color:#ffe3e9}.btn.secondary{background:#29374b;color:#e0e9f8;border:1px solid #465772}form{margin:9px 0}label{display:block;font-size:12px;color:#afbdd1;margin:9px 0 5px}input,select,textarea{display:block;width:100%;border:1px solid #40516b;border-radius:8px;background:#0e1623;color:#f2f5fb;padding:10px;font:inherit}textarea{min-height:90px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.rowitem{border-top:1px solid #344156;padding:12px 0}.rowitem:first-of-type{border-top:0}.mono{font-family:ui-monospace,monospace;font-size:12px;overflow-wrap:anywhere}.notice{border:1px solid #52627d;background:#202b3c;border-radius:10px;padding:11px;margin:12px 0}.good{color:#8be0b0}.warn{color:#f4ce83}.bad{color:#ff9aa8}a{color:#d5e2fa}.small{font-size:12px;color:#91a0b7}.nav{position:sticky;top:8px;z-index:5;display:flex;gap:8px;overflow-x:auto;padding:9px;margin:0 0 16px;border:1px solid #35435a;border-radius:13px;background:#111a28f2;backdrop-filter:blur(12px)}.nav a{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;padding:9px 11px;border-radius:9px;text-decoration:none;color:#e5edfa;font-size:12px}.nav a:hover,.nav a:focus{background:#29374b;outline:1px solid #52627d}.nav span{font:10px ui-monospace,monospace;color:#91a8c8}.hero,.panel{scroll-margin-top:90px}@media(max-width:560px){body{padding:12px}.hero,.panel{padding:16px}.hero h1{font-size:23px}.nav{top:4px;margin-left:-2px;margin-right:-2px}}
   </style></head><body><main>${content}</main></body></html>`;
 }
 
@@ -164,9 +180,10 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     <div class="top"><div><div class="brand">FRIEREN · PRIVATE OPERATIONS</div><div class="small">OWNER CONTROL CENTER</div></div>
       <form method="post" action="/owner/logout"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><button class="btn secondary">Güvenli çıkış</button></form>
     </div>
-    <section class="hero"><span class="tag">OWNER · DOĞRULANDI</span><h1>Frieren Kontrol Merkezi</h1><p class="muted">Bu panel yalnızca yetkili Discord hesabına açıktır. Yönetim işlemleri kayıt altına alınır.</p>
+    ${renderOwnerNavigation()}
+    <section class="hero" id="overview"><span class="tag">OWNER · DOĞRULANDI</span><h1>Frieren Kontrol Merkezi</h1><p class="muted">Bu panel yalnızca yetkili Discord hesabına açıktır. Yönetim işlemleri kayıt altına alınır.</p>
       ${noticeText ? '<div class="notice">' + escapeHtml(noticeText) + '</div>' : ''}
-      <div class="grid">
+      <div class="grid" id="system">
         <div class="stat"><small>Bot bağlantısı</small><strong class="${overview.ready ? 'good' : 'bad'}">${overview.ready ? 'Çevrimiçi' : 'Çevrimdışı'}</strong></div>
         <div class="stat"><small>Discord gecikmesi</small><strong>${overview.ping === null ? '—' : overview.ping + ' ms'}</strong></div>
         <div class="stat"><small>Çalışma süresi</small><strong>${escapeHtml(formatDuration(overview.uptimeSeconds))}</strong></div>
@@ -183,10 +200,10 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
       <div class="actions"><a class="btn secondary" href="/owner">Durumu yenile</a><span class="small">Canlı süreç ölçümleri · Son sayfa yüklemesi</span></div>
     </section>
     <div class="columns">
-      <section class="panel"><h2>Bakım modu</h2><p class="muted">Açıldığında normal kullanıcı komutları ve Frieren sohbeti durdurulur. Owner komutları çalışmaya devam eder.</p>
-        <form method="post" action="/owner/action" class="actions"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><button class="btn" name="action" value="maintenance-on">Bakımı aç</button><button class="btn secondary" name="action" value="maintenance-off">Bakımı kapat</button></form>
+      <section class="panel" id="maintenance"><h2>Bakım modu</h2><p class="muted">Açıldığında normal kullanıcı komutları ve Frieren sohbeti durdurulur. Owner komutları çalışmaya devam eder.</p>
+        <form method="post" action="/owner/action" class="actions"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bakım modu değişikliğini onaylıyorum</label><button class="btn" name="action" value="maintenance-on">Bakımı aç</button><button class="btn secondary" name="action" value="maintenance-off">Bakımı kapat</button></form>
       </section>
-      <section class="panel"><h2>Duyuru gönder</h2><p class="muted">Yalnızca seçtiğin sunucu ve kanala gönderilir. Botun kanalda mesaj gönderme izni olmalıdır.</p>
+      <section class="panel" id="announcements"><h2>Duyuru gönder</h2><p class="muted">Yalnızca seçtiğin sunucu ve kanala gönderilir. Botun kanalda mesaj gönderme izni olmalıdır.</p>
         <form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="announcement-send">
           <label>Hedef sunucu</label><select name="guildId" required><option value="">Sunucu seç</option>${guildOptions}</select>
           <label>Hedef metin kanalı</label><select name="channelId" required><option value="">Kanal seç</option>${channelOptions}</select>
@@ -196,14 +213,14 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
       </section>
     </div>
     <div class="columns">
-      <section class="panel"><h2>Teknik talep onayları</h2><p class="muted">Onay/ret yalnızca talebin durumunu değiştirir; hiçbir kod otomatik çalıştırılmaz.</p>${approvalHtml}</section>
-      <section class="panel"><h2>Kullanıcı hafızaları</h2><p class="muted">Yalnızca mevcut Frieren hafıza kayıtları listelenir. Silme işlemi kalıcıdır ve denetim kaydına yazılır.</p>
+      <section class="panel" id="approvals"><h2>Teknik talep onayları</h2><p class="muted">Onay/ret yalnızca talebin durumunu değiştirir; hiçbir kod otomatik çalıştırılmaz.</p>${approvalHtml}</section>
+      <section class="panel" id="memories"><h2>Kullanıcı hafızaları</h2><p class="muted">Yalnızca mevcut Frieren hafıza kayıtları listelenir. Silme işlemi kalıcıdır ve denetim kaydına yazılır.</p>
         <form method="get" action="/owner"><label>Discord kullanıcı ID</label><input name="memoryUser" value="${escapeHtml(memoryUser)}" inputmode="numeric" placeholder="Örn. 123456789012345678" required><button class="btn secondary">Hafızaları getir</button></form>
         ${memoryHtml}
       </section>
     </div>
 <div class="columns">
-      <section class="panel"><h2>Komut kullanım istatistikleri</h2>${activity.commands.length ? activity.commands.map(row => '<div class="rowitem"><strong>/' + escapeHtml(row.command_name) + '</strong><div class="small">' + escapeHtml(row.usage_count) + ' kullanım · Son: ' + escapeHtml(new Date(row.last_used_at).toLocaleString('tr-TR')) + '</div></div>').join('') : '<p class="muted">Komut ölçümleri bu sürümden itibaren birikmeye başlayacak.</p>'}</section>
+      <section class="panel" id="activity"><h2>Komut kullanım istatistikleri</h2>${activity.commands.length ? activity.commands.map(row => '<div class="rowitem"><strong>/' + escapeHtml(row.command_name) + '</strong><div class="small">' + escapeHtml(row.usage_count) + ' kullanım · Son: ' + escapeHtml(new Date(row.last_used_at).toLocaleString('tr-TR')) + '</div></div>').join('') : '<p class="muted">Komut ölçümleri bu sürümden itibaren birikmeye başlayacak.</p>'}</section>
       <section class="panel"><h2>Son teknik hatalar</h2>${activity.errors.length ? activity.errors.map(row => '<div class="rowitem"><strong>' + escapeHtml(row.scope) + '</strong><div class="small">' + escapeHtml(row.error_type) + ' · ' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</div></div>').join('') : '<p class="muted">Kaydedilmiş teknik hata yok.</p>'}</section>
     </div>
     <section class="panel"><h2>Owner işlem geçmişi</h2>${activity.audit.length ? activity.audit.map(row => '<div class="rowitem"><strong>' + escapeHtml(row.action) + '</strong><div class="small">' + escapeHtml(row.target || 'Genel') + ' · ' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</div></div>').join('') : '<p class="muted">Henüz yönetim işlemi kaydedilmedi.</p>'}</section>
@@ -302,7 +319,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   if (url.pathname === '/owner/action' && req.method === 'POST') {
     try {
       const form = await readForm(req);
-      if (form.get('csrf') !== session.csrf) return send(res, 403, page('İstek reddedildi', '<h1>CSRF doğrulaması başarısız</h1>'));
+      if (!safeStringEqual(form.get('csrf'), session.csrf)) return send(res, 403, page('İstek reddedildi', '<h1>CSRF doğrulaması başarısız</h1>'));
       const action = form.get('action');
       let notice = 'invalid';
       if ((action === 'maintenance-on' || action === 'maintenance-off') && form.get('confirm') === 'yes') {
