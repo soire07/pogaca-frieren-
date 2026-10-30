@@ -32,6 +32,20 @@ export async function initOwnerAdminSchema(db) {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_owner_audit_recent ON owner_audit_logs(created_at DESC);
+    CREATE TABLE IF NOT EXISTS owner_command_metrics (
+      command_name TEXT NOT NULL,
+      guild_id TEXT NOT NULL DEFAULT '',
+      usage_count BIGINT NOT NULL DEFAULT 0,
+      last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(command_name,guild_id)
+    );
+    CREATE TABLE IF NOT EXISTS owner_error_logs (
+      id BIGSERIAL PRIMARY KEY,
+      scope TEXT NOT NULL,
+      error_type TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_owner_errors_recent ON owner_error_logs(created_at DESC);
     CREATE TABLE IF NOT EXISTS owner_approval_requests (
       id BIGSERIAL PRIMARY KEY,
       requester_id TEXT NOT NULL,
@@ -53,6 +67,40 @@ export async function auditOwnerAction(db, actorId, action, target = null, detai
     'INSERT INTO owner_audit_logs(actor_id,action,target,details) VALUES($1,$2,$3,$4::jsonb)',
     [String(actorId), String(action).slice(0,80), target ? String(target).slice(0,180) : null, JSON.stringify(details)]
   );
+}
+
+export async function createApprovalRequest(db, { requesterId, requesterTag, requestType, title, details }) {
+  const safeTitle = String(title || '').trim().slice(0, 160);
+  const safeDetails = String(details || '').trim().slice(0, 1800);
+  if (!safeTitle || !safeDetails || !['kod', 'teknik-bilgi'].includes(requestType)) throw new Error('INVALID_APPROVAL_REQUEST');
+  if (/(?:discord|groq|api)[ _-]?(?:token|key)|client_secret|password|parola|şifre/i.test(safeDetails)) throw new Error('POSSIBLE_SECRET_IN_REQUEST');
+  const result = await db.query(
+    'INSERT INTO owner_approval_requests(requester_id,requester_tag,request_type,title,details) VALUES($1,$2,$3,$4,$5) RETURNING id',
+    [String(requesterId), String(requesterTag || 'unknown').slice(0,100), requestType, safeTitle, safeDetails]
+  );
+  return result.rows[0].id;
+}
+
+export async function recordCommandUsage(db, commandName, guildId = null) {
+  await db.query(
+    `INSERT INTO owner_command_metrics(command_name,guild_id,usage_count,last_used_at)
+     VALUES($1,$2,1,NOW()) ON CONFLICT(command_name,guild_id)
+     DO UPDATE SET usage_count=owner_command_metrics.usage_count+1,last_used_at=NOW()`,
+    [String(commandName).slice(0,80), String(guildId || '')]
+  );
+}
+
+export async function recordOwnerError(db, scope, errorType) {
+  await db.query('INSERT INTO owner_error_logs(scope,error_type) VALUES($1,$2)', [String(scope).slice(0,80), String(errorType || 'Error').slice(0,80)]);
+}
+
+export async function getRecentOwnerActivity(db) {
+  const [commands, errors, audit] = await Promise.all([
+    db.query('SELECT command_name,SUM(usage_count)::bigint AS usage_count,MAX(last_used_at) AS last_used_at FROM owner_command_metrics GROUP BY command_name ORDER BY SUM(usage_count) DESC LIMIT 8'),
+    db.query('SELECT scope,error_type,created_at FROM owner_error_logs ORDER BY created_at DESC LIMIT 8'),
+    db.query('SELECT action,target,created_at FROM owner_audit_logs ORDER BY created_at DESC LIMIT 12')
+  ]);
+  return { commands: commands.rows || [], errors: errors.rows || [], audit: audit.rows || [] };
 }
 
 export async function getMaintenanceState(db) {
