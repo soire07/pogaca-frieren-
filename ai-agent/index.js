@@ -11,6 +11,7 @@ import { buildTestDiagnostics } from './test-diagnostics.js';
 import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
 import { checkLiveRpgHealth } from './live-rpg-health.js';
 import { formatCommandTestResult } from './command-test-report.js';
+import { parseCommandNames } from './command-test-input.js';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createServer } from 'node:http';
@@ -90,7 +91,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName('frieren-komut-denetle')
     .setDescription('Poğaça Frieren komutlarını yalıtılmış veritabanında davranışsal kontrollerle denetler.')
-    .addStringOption(option => option.setName('komut').setDescription('Tek bir komut adı (boş bırakırsan tüm komutlar denenir).').setRequired(false).setMaxLength(80))
+    .addStringOption(option => option.setName('komut').setDescription('Bir veya daha fazla komut adı; virgülle ayır. Boş bırakırsan tüm komutlar denenir.').setRequired(false).setMaxLength(80))
     .toJSON(),
 ];
 
@@ -598,11 +599,11 @@ client.on(Events.InteractionCreate, async interaction => {
     }
     await interaction.deferReply();
     try {
-      const commandName = interaction.options.getString('komut')?.trim().replace(/^\//, '');
+      const commandNames = parseCommandNames(interaction.options.getString('komut'));
       const response = await fetch(baseUrl + '/internal/test-suite', {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: 'Bearer ' + secret },
-        body: JSON.stringify({ commands: commandName ? [commandName] : [] }),
+        body: JSON.stringify({ commands: commandNames }),
         signal: AbortSignal.timeout(timeoutMs)
       });
       const raw = await response.text();
