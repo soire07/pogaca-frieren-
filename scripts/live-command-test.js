@@ -292,6 +292,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             'SELECT class_name,stat_points,attack FROM users WHERE guild_id=$1 AND user_id=$2',
             [guildId, userId]
           );
+          effects.push(...componentEffects);
           behavioralChecks.push(
             {
               name: 'Karakter paneli sınıf seçimi',
