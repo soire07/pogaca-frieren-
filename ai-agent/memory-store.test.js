@@ -135,7 +135,11 @@ test('manual memory writes reject secrets and sensitive personal data before per
     'Ben biseksüelim.',
     'Ben X partisine oy verdim.',
     'Ev adresim İstanbul merkezde.',
-    'Kredi kartımın numarası 4111111111111111.'
+    'Kredi kartımın numarası 4111111111111111.',
+    'I have depression and anxiety.',
+    'My home address is 10 Main Street.',
+    'I am bisexual.',
+    'I voted for that political party.'
   ];
 
   for (const value of forbiddenValues) {
@@ -145,6 +149,10 @@ test('manual memory writes reject secrets and sensitive personal data before per
       value
     );
   }
+  await assert.rejects(
+    store.save('user-a', 'depression', 'Ordinary note.'),
+    error => error?.code === 'SENSITIVE_MEMORY_REJECTED'
+  );
   assert.equal(FakePool.instance.calls.some(call => call.sql.includes('INSERT INTO frieren_ai_memories')), false);
 });
 
