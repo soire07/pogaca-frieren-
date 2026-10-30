@@ -71,6 +71,19 @@ function sign(value, secret) {
   return payload + '.' + signature;
 }
 
+export function createOwnerOAuthState(secret, now = Date.now()) {
+  if (!secret || secret.length < 32) throw new Error('Owner OAuth signing secret is invalid');
+  return sign({ purpose: 'discord-owner-oauth', nonce: randomBytes(32).toString('base64url'), exp: now + 10 * 60 * 1000 }, secret);
+}
+
+export function verifyOwnerOAuthState(token, secret, now = Date.now()) {
+  if (!secret || secret.length < 32) return false;
+  const payload = unsign(token, secret);
+  return payload?.purpose === 'discord-owner-oauth'
+    && typeof payload.nonce === 'string' && payload.nonce.length >= 32
+    && Number.isFinite(payload.exp) && payload.exp > now && payload.exp <= now + 10 * 60 * 1000 + 1000;
+}
+
 function unsign(token, secret) {
   if (typeof token !== 'string') return null;
   const [payload, signature, extra] = token.split('.');
@@ -317,26 +330,21 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   const redirectUri = process.env.OWNER_DASHBOARD_REDIRECT_URI || BASE_URL + '/owner/callback';
 
   if (url.pathname === '/owner/login' && req.method === 'GET') {
-    const state = randomBytes(32).toString('base64url');
-    const stateToken = sign({ state, exp: Date.now() + 10 * 60 * 1000 }, sessionSecret);
+    const state = createOwnerOAuthState(sessionSecret);
     const location = new URL('https://discord.com/oauth2/authorize');
     location.search = new URLSearchParams({
       client_id: clientId, response_type: 'code', redirect_uri: redirectUri, scope: 'identify', state
     }).toString();
-    res.writeHead(302, {
-      Location: location.toString(), 'Cache-Control': 'no-store',
-      'Set-Cookie': STATE_COOKIE + '=' + encodeURIComponent(stateToken) + '; Path=/owner; HttpOnly; Secure; SameSite=Lax; Max-Age=600'
-    });
+    res.writeHead(302, { Location: location.toString(), 'Cache-Control': 'no-store' });
     res.end();
     return true;
   }
 
   if (url.pathname === '/owner/callback' && req.method === 'GET') {
-    const savedState = unsign(cookie[STATE_COOKIE], sessionSecret);
     const receivedState = url.searchParams.get('state');
     const code = url.searchParams.get('code');
-    if (!savedState || savedState.exp < Date.now() || !receivedState || savedState.state !== receivedState || !code) {
-      send(res, 400, page('Giriş reddedildi', '<h1>Giriş doğrulanamadı</h1><p>OAuth doğrulaması geçersiz veya süresi dolmuş. Yeniden giriş yap.</p>'), { 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
+    if (!verifyOwnerOAuthState(receivedState, sessionSecret) || !code) {
+      send(res, 400, page('Giriş reddedildi', '<h1>Giriş doğrulanamadı</h1><p>OAuth doğrulaması geçersiz veya süresi dolmuş. Yeniden giriş yap.</p>'));
       return true;
     }
     try {
