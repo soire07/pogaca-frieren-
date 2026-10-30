@@ -8,6 +8,7 @@ import { renderMarket, renderMarketItem, buyMarketItem, renderPurchaseResult, re
 import { levelForXp } from './utils.js';
 import { handleCharacterPanelInteraction } from './karakter.js';
 import { createServer } from 'node:http';
+import { getRequestPathname } from './http-path.js';
 import { timingSafeEqual } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { createAiAgentChildEnv, AI_AGENT_HEALTH_PORT } from './ai-agent/render-supervisor.js';
@@ -382,7 +383,7 @@ createServer(async (req, res) => {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(payload));
   };
-  if (req.method === 'GET' && req.url === '/ai-health') {
+  if (req.method === 'GET' && getRequestPathname(req.url) === '/ai-health') {
     try {
       const response = await fetch('http://127.0.0.1:' + AI_AGENT_HEALTH_PORT + '/health', {
         signal: AbortSignal.timeout(2_500),
