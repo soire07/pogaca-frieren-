@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryStore, memoryStoreInternals, shouldUseConversationHistory } from './memory-store.js';
-import { extractAutomaticMemories } from './memory-extractor.js';
+import { extractAutomaticMemories, isExplicitMemorySaveRequest } from './memory-extractor.js';
 import { formatConversationContext } from './conversation-context.js';
 
 class FakePool {
@@ -477,4 +477,12 @@ test('explicit save requests do not bypass sensitive-information filtering', () 
     extractAutomaticMemories('Benim şifrem 12345. Bunu kalıcı belleğine kaydet.'),
     []
   );
+});
+
+
+test('explicit natural-language memory save intent is recognized without matching ordinary memory questions', () => {
+  assert.equal(isExplicitMemorySaveRequest('Benim favori karakterim Frieren. Bunu kalıcı belleğine kaydet.'), true);
+  assert.equal(isExplicitMemorySaveRequest('Favori karakterim Frieren, bunu belleğine kaydet.'), true);
+  assert.equal(isExplicitMemorySaveRequest('Bellek nasıl çalışıyor?'), false);
+  assert.equal(isExplicitMemorySaveRequest('Bunu daha sonra hatırla.'), false);
 });
