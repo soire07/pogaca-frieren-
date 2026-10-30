@@ -797,3 +797,28 @@ test('slash command deployment uses bounded Discord rate-limit retries and prese
   assert.ok(!workflow.includes("    - 'scripts/test-discord-scenarios.js'"), 'test-only changes must not trigger live Discord command writes');
   assert.ok(!workflow.includes("    - '!index.js'"), 'runtime-only edits must not trigger redundant command overwrites');
 });
+
+
+test('isolated command runner simulates co-op invitations, role selection, combat turns and path choices', async () => {
+  const runner = await read('scripts/live-command-test.js');
+  assert.match(runner, /function makeSimulatedMessage\(payload, simulation\)/);
+  assert.match(runner, /inviteButtons/);
+  assert.match(runner, /roleButtons/);
+  assert.match(runner, /actionButton/);
+  assert.match(runner, /pathButton/);
+  assert.match(runner, /getUser: \(name, required = false\)/);
+});
+
+test('co-op command behavioral tests verify persisted rewards, resource bounds, player isolation and encounter cleanup', async () => {
+  const runner = await read('scripts/live-command-test.js');
+  for (const command of ['katlizindan', 'ortakboss']) assert.ok(runner.includes("commandName === '" + command + "'"));
+  for (const check of [
+    'Üç takım üyesinin kalıcı kaydı',
+    'Savaş sonucu ve bekleme süresi',
+    'Kişi başı savaş ödülü',
+    'HP ve mana sınırları korunur',
+    'Oyuncu verisi izolasyonu',
+    'Karşılaşma kilidi temizliği'
+  ]) assert.ok(runner.includes(check), 'missing behavioral assertion: ' + check);
+  assert.match(runner, /synthetic Discord interaction; isolated PostgreSQL schema frieren_test/);
+});
