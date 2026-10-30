@@ -3,7 +3,7 @@ import OpenAI from 'openai';
 import { resolveAiModel } from './config.js';
 import { findRelevantExcerpt, scoreCodeCandidate } from './code-context.js';
 import { createMemoryStore, shouldUseConversationHistory } from './memory-store.js';
-import { formatConversationContext } from './conversation-context.js';
+import { buildConversationContextMessage } from './conversation-context.js';
 import { isExplicitMemoryOverviewQuestion } from './memory-intent.js';
 import { extractAutomaticMemories } from './memory-extractor.js';
 import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, isTargetedTestFailure, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
@@ -215,7 +215,7 @@ async function answerCodeQuestion(question, userId, conversationId) {
       model: resolveAiModel(process.env),
       messages: [
         { role: 'system', content: systemPrompt },
-        ...(conversationHistory.length ? [{ role: 'system', content: formatConversationContext(conversationHistory) }] : []),
+        buildConversationContextMessage(conversationHistory),
         { role: 'user', content: conversational
           ? 'KULLANICI MESAJI:\n' + question.slice(0, 1200) + memoryContext
           : 'KULLANICI SORUSU:\n' + question.slice(0, 1200) + memoryContext + '\n\nKAYNAK KODLAR (yalnızca inceleme için):\n' + context }
@@ -234,7 +234,7 @@ async function answerCodeQuestion(question, userId, conversationId) {
         model: resolveAiModel(process.env),
         messages: [
           { role: 'system', content: systemPrompt + ' Yanıtı mutlaka görünür metin olarak ver. En azından bulguyu, belirsizliği ve sonraki somut adımı kısa maddelerle yaz; boş yanıt verme.' },
-          ...(conversationHistory.length ? [{ role: 'system', content: formatConversationContext(conversationHistory) }] : []),
+          buildConversationContextMessage(conversationHistory),
           { role: 'user', content: 'İstek: ' + question.slice(0, 1200) + '\n\nİlgili kaynak koddan alınan kısa bağlam:\n' + context.slice(0, 1600) }
         ],
         max_completion_tokens: 700,
@@ -252,7 +252,7 @@ async function answerCodeQuestion(question, userId, conversationId) {
           model: resolveAiModel(process.env),
           messages: [
             { role: 'system', content: systemPrompt + ' Kısa ve görünür Türkçe yanıt ver; boş yanıt verme.' },
-            ...(conversationHistory.length ? [{ role: 'system', content: formatConversationContext(conversationHistory) }] : []),
+            buildConversationContextMessage(conversationHistory),
             { role: 'user', content: 'İstek: ' + question.slice(0, 800) + '\n\nİlgili kaynak kod:\n' + context.slice(0, 900) }
           ],
           max_completion_tokens: 450,
