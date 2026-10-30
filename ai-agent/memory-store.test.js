@@ -376,3 +376,17 @@ test('favorite game corrections update both game records with the clean value', 
     { key: 'tercih_oyun', value: 'Kullanıcı Terraria oynamayı seviyor.' },
   ]);
 });
+
+
+test('automatic extraction also blocks sensitive health, religion, orientation and political facts', () => {
+  for (const message of [
+    'Hedefim depresyonu yenmek.',
+    'Hedefim diyabetimi kontrol altında tutmak.',
+    'Dini inancım benim için çok önemli.',
+    'Ben biseksüelim.',
+    'Ben X partisine oy verdim.',
+    'Ev adresim İstanbul merkezde.',
+  ]) {
+    assert.deepEqual(extractAutomaticMemories(message), [], message);
+  }
+});
