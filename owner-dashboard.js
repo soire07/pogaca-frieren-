@@ -184,7 +184,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
         <form method="post" action="/owner/action"><input type="hidden" name="csrf" value="\${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="announcement-send">
           <label>Hedef sunucu</label><select name="guildId" required><option value="">Sunucu seç</option>\${guildOptions}</select>
           <label>Hedef metin kanalı</label><select name="channelId" required><option value="">Kanal seç</option>\${channelOptions}</select>
-          <label>Duyuru metni</label><textarea name="message" maxlength="1800" required placeholder="Duyuru içeriği..."></textarea>
+          <label>Duyuru metni</label><textarea name="message" maxlength="1800" required placeholder="Duyuru içeriği..."></textarea><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Seçtiğim kanala bu duyurunun gönderilmesini onaylıyorum</label>
           <button class="btn">Duyuruyu gönder</button>
         </form>
       </section>
@@ -299,7 +299,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       if (form.get('csrf') !== session.csrf) return send(res, 403, page('İstek reddedildi', '<h1>CSRF doğrulaması başarısız</h1>'));
       const action = form.get('action');
       let notice = 'invalid';
-      if (action === 'maintenance-on' || action === 'maintenance-off') {
+      if ((action === 'maintenance-on' || action === 'maintenance-off') && form.get('confirm') === 'yes') {
         await setMaintenanceState(db, action === 'maintenance-on', OWNER_ID);
         notice = action === 'maintenance-on' ? 'maintenance_on' : 'maintenance_off';
       } else if (action === 'approval-approved' || action === 'approval-rejected') {
@@ -308,7 +308,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       } else if (action === 'memory-delete' && form.get('confirm') === 'yes') {
         const result = await deleteUserMemory(db, form.get('id'), OWNER_ID);
         notice = result ? 'memory_deleted' : 'invalid';
-      } else if (action === 'announcement-send') {
+      } else if (action === 'announcement-send' && form.get('confirm') === 'yes') {
         const result = await sendOwnerAnnouncement(client, db, {
           guildId: form.get('guildId'), channelId: form.get('channelId'), message: form.get('message'), actorId: OWNER_ID
         });
