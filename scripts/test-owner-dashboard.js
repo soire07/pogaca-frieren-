@@ -36,13 +36,13 @@ test('owner session cookie survives the cross-site Discord OAuth redirect', () =
   const cookie = buildOwnerSessionCookie('signed-session', 28_800);
   assert.match(cookie, /SameSite=Lax/);
   assert.doesNotMatch(cookie, /SameSite=Strict/);
-  assert.match(cookie, /Path=\\/owner/);
+  assert.ok(cookie.includes('Path=/owner'));
   assert.match(cookie, /HttpOnly/);
   assert.match(cookie, /Secure/);
 });
 
 test('owner OAuth state cookie is cleared using the same path it was created with', () => {
   const cookie = clearOwnerCookie('frieren_owner_oauth_state', '/owner');
-  assert.match(cookie, /Path=\\/owner/);
+  assert.ok(cookie.includes('Path=/owner'));
   assert.match(cookie, /Max-Age=0/);
 });
