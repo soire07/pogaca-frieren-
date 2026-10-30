@@ -78,3 +78,12 @@ test('conversation context uses real line breaks instead of literal escaped newl
   assert.ok(context.includes('\n'));
   assert.equal(context.includes('\\n'), false);
 });
+
+test('canonical character records are explicitly authoritative alongside user-authored history', () => {
+  const context = formatConversationContext([]);
+
+  assert.match(context, /KESİN KARAKTER KAYITLARI.*olgusal kaynak/u);
+  assert.match(context, /Arven.*en sevdiği hayvan kediler/u);
+  assert.match(context, /Eldrin.*en sevdiği hayvan baykuş/u);
+  assert.match(context, /yalnızca kullanıcı mesajları değil.*KESİN KARAKTER KAYITLARI/u);
+});
