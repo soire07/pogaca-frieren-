@@ -46,21 +46,51 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const groqKey = process.env.GROQ_API_KEY?.trim();
 const groq = groqKey ? new OpenAI({ apiKey: groqKey, baseURL: 'https://api.groq.com/openai/v1', timeout: 45_000, maxRetries: 1 }) : null;
 const memoryStore = process.env.DATABASE_URL?.trim() ? createMemoryStore(process.env.DATABASE_URL.trim()) : null;
+let memoryDatabaseReady = false;
+const modelConfigured = Boolean(groq);
+const bridgeConfigured = Boolean(process.env.FRIEREN_BRIDGE_URL?.trim() && process.env.FRIEREN_BRIDGE_SECRET?.trim());
 
 // Render Web Services require an HTTP port. This lightweight endpoint does not expose bot controls.
 const port = Number(process.env.FRIEREN_AI_HEALTH_PORT) || Number(process.env.PORT) || 10000;
 const healthHost = process.env.FRIEREN_AI_HEALTH_HOST || '0.0.0.0';
-const healthServer = createServer((req, res) => {
+const healthServer = createServer(async (req, res) => {
   if (req.url === '/health') {
-    const discordReady = client.isReady();
-    res.writeHead(getPublicHealthStatus({ discordReady }), { 'content-type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify(getPublicHealthPayload({ discordReady })));
+    if (memoryStore && !memoryDatabaseReady) {
+      try {
+        await memoryStore.checkHealth();
+        memoryDatabaseReady = true;
+        console.log('Frieren AI hafıza PostgreSQL bağlantısı doğrulandı.');
+      } catch (error) {
+        console.error('Frieren AI hafıza PostgreSQL sağlık kontrolü başarısız:', redactSecrets(error?.message || String(error)));
+      }
+    }
+    const readiness = {
+      discordReady: client.isReady(),
+      memoryDatabaseReady,
+      modelConfigured,
+      bridgeConfigured,
+    };
+    res.writeHead(getPublicHealthStatus(readiness), { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(JSON.stringify(getPublicHealthPayload(readiness)));
     return;
   }
   res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
   res.end('Frieren bot test service is running.');
 });
 healthServer.listen(port, healthHost, () => console.log('Health server listening on ' + healthHost + ':' + port));
+if (memoryStore) {
+  try {
+    await memoryStore.checkHealth();
+    memoryDatabaseReady = true;
+    console.log('Frieren AI hafıza PostgreSQL bağlantısı doğrulandı.');
+  } catch (error) {
+    console.error('Frieren AI hafıza PostgreSQL bağlantısı kurulamadı:', redactSecrets(error?.message || String(error)));
+  }
+} else {
+  console.error('Frieren AI hafıza veritabanı yapılandırılmamış; FRIEREN_AI_DATABASE_URL kontrol edilmeli.');
+}
+if (!modelConfigured) console.error('Groq API anahtarı yapılandırılmamış; /frieren-ai yanıt veremez.');
+if (!bridgeConfigured) console.warn('Poğaça Frieren komut test köprüsü yapılandırılmamış; /frieren-komut-denetle kullanılamaz.');
 const runningGuilds = new Set();
 
 const commands = [
