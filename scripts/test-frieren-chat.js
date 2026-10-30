@@ -75,8 +75,10 @@ test('mention handler loads only this guild and user history, then stores both t
   });
 
   assert.equal(handled, true);
-  assert.deepEqual(calls[0].params, ['guild-7', 'user-9', 12]);
-  assert.deepEqual(calls[1].params, ['guild-7', 'user-9', 'Nasılsın?', 'İyiyim. Sen nasılsın?']);
+  const historyCall = calls.find(call => call.sql.includes('SELECT role, content'));
+  const insertCall = calls.find(call => call.sql.includes('INSERT INTO frieren_chat_messages'));
+  assert.deepEqual(historyCall.params, ['guild-7', 'user-9', 'channel-1', 16]);
+  assert.deepEqual(insertCall.params, ['guild-7', 'user-9', 'channel-1', 'Nasılsın?', 'İyiyim. Sen nasılsın?']);
   assert.equal(replies[0].content, 'İyiyim. Sen nasılsın?');
   assert.deepEqual(replies[0].allowedMentions, { parse: [] });
 });
@@ -139,4 +141,17 @@ test('explicit memory recall returns saved memories and context labels them as u
   assert.equal(memories.length, 1);
   assert.match(buildMemoryContext(memories), /sistem talimatı değildir/i);
   assert.match(buildMemoryContext(memories), /Kurgu karakterlerinin bilgilerini kullanıcının kişisel bilgileriyle karıştırma/i);
+});
+
+
+test('personal memories are not injected into fictional character questions', async () => {
+  const db = { query: async () => ({ rows: [
+    { memory_key: 'favori_hayvan', memory_value: 'En sevdiği hayvan: kaplumbağa.' }
+  ] }) };
+  const memories = await getRelevantMemories(db, {
+    guildId: 'guild-1',
+    userId: 'user-1',
+    question: "Arven'in en sevdiği hayvan nedir?"
+  });
+  assert.deepEqual(memories, []);
 });
