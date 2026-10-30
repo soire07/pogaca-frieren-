@@ -50,3 +50,12 @@ export function getPublicHealthPayload({
     bridgeConfigured: Boolean(bridgeConfigured),
   };
 }
+
+export function getPublicLivenessPayload(readiness = {}) {
+  const health = getPublicHealthPayload(readiness);
+  return {
+    status: 'alive',
+    ready: health.status === 'ok',
+    readiness: health,
+  };
+}
