@@ -371,3 +371,17 @@ test('co-op raid acknowledges the Discord interaction before database work and t
   assert.match(source, /VALUES \(\$1,\$2,'zoltraak',\$3::integer,LEAST\(10,FLOOR\(\$3::numeric\/10\.0\)::int\),NOW\(\)\)/,
     'spell mastery casts parameter must have explicit integer/numeric casts');
 });
+
+
+test('inventory acknowledges privately before user creation and database reads', async () => {
+  const source = await read('envanter.js');
+  const ack = source.indexOf('await interaction.deferReply({ ephemeral: true })');
+  const ensure = source.indexOf('await ensureUser(');
+  const firstQuery = source.indexOf('await pool.query(');
+  assert.ok(ack >= 0 && ensure > ack && firstQuery > ack,
+    'inventory must defer its ephemeral response before database work');
+  assert.match(source, /await interaction\\.editReply\\(\\{[\\s\\S]*?embeds: \\[embed\\]/,
+    'inventory must edit the deferred response with its embed');
+  assert.doesNotMatch(source, /await interaction\\.reply\\(\\{[\\s\\S]*?embeds: \\[embed\\]/,
+    'inventory must not reply a second time after deferring');
+});
