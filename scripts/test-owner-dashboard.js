@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, getDiscordOAuthFailureDiagnostic } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards } from '../owner-dashboard.js';
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
 const ownerId = '1553794496234262641';
@@ -153,4 +153,23 @@ test('Render metrics only compare usage with limits from the same instance', asy
   assert.ok(Math.abs(result.cpuPercent - 33.3333) < 0.01);
   assert.equal(result.memoryPercent, 50);
   assert.equal(result.memoryUsedBytes, 256 * 1024 * 1024);
+});
+
+
+test('owner dashboard displays both Frieren bots with independently grounded status', () => {
+  const html = renderOwnerBotCards({ ready: true }, {
+    status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true
+  });
+  assert.match(html, /Frieren AI/);
+  assert.match(html, /Frieren Poğaça/);
+  assert.equal((html.match(/Çevrimiçi/g) || []).length, 2);
+});
+
+test('owner dashboard does not label the AI bot online when readiness is incomplete', () => {
+  const html = renderOwnerBotCards({ ready: true }, {
+    status: 'ok', discordReady: true, memoryDatabaseReady: false, modelConfigured: true
+  });
+  assert.match(html, /Frieren AI/);
+  assert.match(html, /Kontrol gerekli/);
+  assert.match(html, /Frieren Poğaça/);
 });
