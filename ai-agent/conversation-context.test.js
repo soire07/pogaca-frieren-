@@ -85,5 +85,5 @@ test('canonical character records are explicitly authoritative alongside user-au
   assert.match(context, /KESİN KARAKTER KAYITLARI.*olgusal kaynak/u);
   assert.match(context, /Arven.*en sevdiği hayvan kediler/u);
   assert.match(context, /Eldrin.*en sevdiği hayvan baykuş/u);
-  assert.match(context, /yalnızca kullanıcı mesajları değil.*KESİN KARAKTER KAYITLARI/u);
+  assert.match(context, /KESİN KARAKTER KAYITLARI ve KULLANICI mesajları olgusal kaynak kabul edilir/u);
 });
