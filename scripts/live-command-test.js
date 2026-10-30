@@ -3,6 +3,7 @@ import { buildCommandEvidence } from './command-test-evidence.js';
 import { equipmentItems, equipmentBonus } from '../equipment-data.js';
 import { applyEquipmentSetBonus } from '../rpg-mechanics.js';
 import { buildCoopTestUserIds } from './coop-test-users.js';
+import { handleCharacterPanelInteraction } from '../karakter.js';
 
 const TEST_GUILD_PREFIX = 'frieren-test-guild-';
 const TEST_USER_PREFIX = '900000000000';
@@ -250,28 +251,72 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Her sandık için ganimet kaydı', expected: '2 treasure_openings kaydı', actual: openings.rowCount + ' kayıt', passed: openings.rowCount === 2 },
             { name: 'Ganimet ve ödül bakiyeleri', expected: 'pozitif altın, XP ve envanter ganimeti', actual: player.rows[0] ? 'altın ' + player.rows[0].coins + ', XP ' + player.rows[0].xp + ', eşya ' + loot.rows[0].quantity : 'kullanıcı kaydı yok', passed: Number(player.rows[0]?.coins) > 0 && Number(player.rows[0]?.xp) > 0 && Number(loot.rows[0]?.quantity) > 0 }
           );
-        } else if (commandName === 'sinifsec') {
-          const options = buildOptions(schema?.options, { sinif: 'buyucu' });
-          const interaction = makeInteraction(command, options, guildId, effects);
-          interaction.user.id = userId;
-          interaction.member = makeMember(userId);
-          await command.execute(interaction);
-          const state = await pool.query('SELECT class_name FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
-          behavioralChecks.push(
-            { name: 'Karakter sınıfı kalıcı kaydı', expected: 'Büyücü', actual: state.rows[0]?.class_name || 'kayıt yok', passed: state.rows[0]?.class_name === 'Büyücü' },
-            { name: 'Sınıf seçimi yanıtı', expected: 'sınıf sonucu Discord yanıtı', actual: effects.length + ' yanıt/etki', passed: effects.length > 0 }
+        } else if (commandName === 'karakter') {
+          await pool.query(
+            "UPDATE users SET character_name='FrierenTest',class_name='Gezgin',stat_points=5,attack=10 WHERE guild_id=$1 AND user_id=$2",
+            [guildId, userId]
           );
-        } else if (commandName === 'gelisim') {
-          await pool.query('UPDATE users SET stat_points=5,attack=10 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
-          const options = buildOptions(schema?.options, { ozellik: 'attack', puan: 3 });
-          const interaction = makeInteraction(command, options, guildId, effects);
-          interaction.user.id = userId;
-          interaction.member = makeMember(userId);
-          await command.execute(interaction);
-          const state = await pool.query('SELECT stat_points,attack FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const componentUser = {
+            id: userId, username: 'FrierenTest', tag: 'FrierenTest#0001', bot: false,
+            displayAvatarURL: () => 'https://example.com/test-avatar.png',
+            toString() { return '<@' + userId + '>'; }
+          };
+          const componentEffects = [];
+          const classInteraction = {
+            customId: 'charpanel:class:' + userId,
+            guildId, user: componentUser, values: ['buyucu'],
+            isButton: () => false, isStringSelectMenu: () => true, isModalSubmit: () => false,
+            reply: async payload => { componentEffects.push({ type: 'reply', payload: normalizePayload(payload) }); },
+            update: async payload => { componentEffects.push({ type: 'update', payload: normalizePayload(payload) }); },
+            followUp: async payload => { componentEffects.push({ type: 'followUp', payload: normalizePayload(payload) }); }
+          };
+          await handleCharacterPanelInteraction(classInteraction);
+          const classState = await pool.query(
+            'SELECT class_name FROM users WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          const statsInteraction = {
+            customId: 'charpanel:save-stats:' + userId,
+            guildId, user: componentUser,
+            isButton: () => false, isStringSelectMenu: () => false, isModalSubmit: () => true,
+            fields: { getTextInputValue: name => name === 'stat' ? 'attack' : '3' },
+            message: {
+              editable: true,
+              edit: async payload => { componentEffects.push({ type: 'message-edit', payload: normalizePayload(payload) }); }
+            },
+            reply: async payload => { componentEffects.push({ type: 'reply', payload: normalizePayload(payload) }); },
+            followUp: async payload => { componentEffects.push({ type: 'followUp', payload: normalizePayload(payload) }); }
+          };
+          await handleCharacterPanelInteraction(statsInteraction);
+          const state = await pool.query(
+            'SELECT class_name,stat_points,attack FROM users WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
           behavioralChecks.push(
-            { name: 'Saldırı puanı artışı', expected: '10 → 16 (+6)', actual: state.rows[0] ? String(state.rows[0].attack) : 'kayıt yok', passed: Number(state.rows[0]?.attack) === 16 },
-            { name: 'Gelişim puanı düşümü', expected: '5 → 2 (-3)', actual: state.rows[0] ? String(state.rows[0].stat_points) : 'kayıt yok', passed: Number(state.rows[0]?.stat_points) === 2 }
+            {
+              name: 'Karakter paneli sınıf seçimi',
+              expected: 'Büyücü sınıfı kalıcı kaydedilmeli',
+              actual: classState.rows[0]?.class_name || 'kayıt yok',
+              passed: classState.rows[0]?.class_name === 'Büyücü'
+            },
+            {
+              name: 'Karakter paneli saldırı gelişimi',
+              expected: '10 → 16 (+6)',
+              actual: state.rows[0] ? String(state.rows[0].attack) : 'kayıt yok',
+              passed: Number(state.rows[0]?.attack) === 16
+            },
+            {
+              name: 'Karakter paneli gelişim puanı düşümü',
+              expected: '5 → 2 (-3)',
+              actual: state.rows[0] ? String(state.rows[0].stat_points) : 'kayıt yok',
+              passed: Number(state.rows[0]?.stat_points) === 2
+            },
+            {
+              name: 'Karakter paneli etkileşim yanıtları',
+              expected: 'sınıf ve gelişim işlemleri yanıt üretmeli',
+              actual: componentEffects.length + ' yanıt/etki',
+              passed: componentEffects.length >= 2
+            }
           );
         } else if (commandName === 'dinlen') {
           await pool.query('UPDATE users SET hp=40,max_hp=100,mana=20,max_mana=100,last_rest_at=NULL WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
