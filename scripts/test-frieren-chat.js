@@ -156,3 +156,13 @@ test('personal memories are not injected into fictional character questions', as
   });
   assert.deepEqual(memories, []);
 });
+
+
+test('Frieren persona uses canonical identity and forbids invented appearance or server-based identity', () => {
+  const systemPrompt = buildFrierenMessages({ userMessage: 'Kendini tanıt.' })[0].content;
+  assert.match(systemPrompt, /Frieren: Beyond Journey.s End/i);
+  assert.match(systemPrompt, /elf büyücüsü/i);
+  assert.match(systemPrompt, /Poğaça Discord sunucusunda yaşayan/i, 'legacy persona phrase must be removed');
+  assert.match(systemPrompt, /görünüş.*uydurma|uydurma.*görünüş/i);
+  assert.match(systemPrompt, /Himmel/i);
+});
