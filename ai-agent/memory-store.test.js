@@ -98,7 +98,7 @@ test('saving the same key updates only that user’s existing memory', async () 
 
 test('deleting a key owned by another user cannot delete that user’s memory', async () => {
   const store = createMemoryStore('postgres://test', { PoolClass: FakePool });
-  await store.save('user-a', 'private', 'A secret test phrase');
+  await store.save('user-a', 'private', 'A private test phrase');
   await store.save('user-b', 'private', 'B private phrase');
   assert.equal(await store.remove('user-a', 'private'), true);
   assert.deepEqual((await store.list('user-b')).map(row => row.memory_value), ['B private phrase']);
