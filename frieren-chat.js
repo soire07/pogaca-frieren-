@@ -1,5 +1,6 @@
 import { buildMemoryContext, getRelevantMemories, saveExplicitMemories } from './frieren-memory.js';
-const MAX_HISTORY_MESSAGES = 24;
+const MAX_HISTORY_MESSAGES = 16;
+const MAX_HISTORY_CONTENT_LENGTH = 1000;
 const MAX_USER_MESSAGE_LENGTH = 1500;
 const MAX_REPLY_LENGTH = 1900;
 
@@ -22,7 +23,7 @@ export function buildFrierenMessages({ history = [], userMessage, memories = [] 
   const safeHistory = history
     .filter(item => ['user', 'assistant'].includes(item?.role) && typeof item.content === 'string' && item.content.trim())
     .slice(-MAX_HISTORY_MESSAGES)
-    .map(item => ({ role: item.role, content: item.content.slice(0, MAX_REPLY_LENGTH) }));
+    .map(item => ({ role: item.role, content: item.content.slice(0, MAX_HISTORY_CONTENT_LENGTH) }));
 
   return [
     {
