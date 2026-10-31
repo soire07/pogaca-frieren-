@@ -1,18 +1,53 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
-<title id="title">Frieren platform avatar</title><desc id="desc">White-haired elven mage portrait against a violet star field.</desc>
-<defs><radialGradient id="bg"><stop stop-color="#65517e"/><stop offset=".62" stop-color="#29213f"/><stop offset="1" stop-color="#111326"/></radialGradient><linearGradient id="hair" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".52" stop-color="#e4e9f7"/><stop offset="1" stop-color="#aab8d3"/></linearGradient><linearGradient id="skin" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff0e6"/><stop offset="1" stop-color="#e9cfc8"/></linearGradient></defs>
-<circle cx="256" cy="256" r="250" fill="url(#bg)"/><g fill="#f5e9ff" opacity=".8"><circle cx="88" cy="118" r="3"/><circle cx="410" cy="94" r="4"/><circle cx="420" cy="338" r="2.5"/><circle cx="100" cy="380" r="2"/><path d="M128 194v18m-9-9h18M384 210v20m-10-10h20" stroke="#f5e9ff" stroke-width="3"/></g>
-<circle cx="256" cy="254" r="188" fill="none" stroke="#e8d8ff" stroke-opacity=".2" stroke-width="3"/>
-<path d="M118 435Q93 322 128 197Q145 90 252 70Q372 51 405 178Q430 291 386 435Z" fill="url(#hair)" stroke="#9daecc" stroke-width="7"/>
-<path d="M170 332Q137 375 150 475L214 454 244 386 285 462 361 474Q376 365 337 316Z" fill="#eeeaf7" stroke="#a9b5d0" stroke-width="6"/>
-<path d="M212 342L255 390 296 342 281 470H229Z" fill="#8e83b2"/>
-<path d="M174 183Q175 109 256 100Q342 101 351 194L334 293Q320 356 256 364Q191 355 175 289Z" fill="url(#skin)" stroke="#d5c2c5" stroke-width="5"/>
-<path d="M125 225Q111 116 220 58Q310 15 381 109Q423 163 376 283L348 218Q328 185 305 155Q266 195 209 181Q183 211 158 267Z" fill="url(#hair)" stroke="#a6b4ce" stroke-width="7"/>
-<path d="M143 148L91 99 113 211M366 143L420 93 397 212" fill="url(#hair)" stroke="#a6b4ce" stroke-width="7"/>
-<path d="M186 244Q204 224 229 241M282 241Q308 222 329 243" fill="none" stroke="#697b9d" stroke-width="8" stroke-linecap="round"/>
-<ellipse cx="216" cy="265" rx="15" ry="22" fill="#6c9878"/><ellipse cx="300" cy="265" rx="15" ry="22" fill="#6c9878"/><circle cx="220" cy="257" r="5" fill="#fff"/><circle cx="304" cy="257" r="5" fill="#fff"/>
-<path d="M244 305Q256 314 270 305" fill="none" stroke="#b77e8d" stroke-width="6" stroke-linecap="round"/>
-<path d="M179 120Q214 75 268 79" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round"/>
-<path d="M340 132L368 116 380 148" fill="none" stroke="#b68dbd" stroke-width="10" stroke-linecap="round"/>
-<path d="M256 25l9 20 22 2-17 14 5 22-19-12-19 12 5-22-17-14 22-2Z" fill="#ead9ff" opacity=".85"/>
+<title id="title">Frieren — büyücü portresi</title>
+<desc id="desc">Uzun beyaz saçlı, sivri elf kulaklı, yeşil gözlü ve beyaz altın işlemeli giysili Frieren portresi.</desc>
+<defs>
+ <radialGradient id="night"><stop stop-color="#6d568f"/><stop offset=".58" stop-color="#302444"/><stop offset="1" stop-color="#100f20"/></radialGradient>
+ <linearGradient id="silver" x1=".08" y1="0" x2=".9" y2="1"><stop stop-color="#fff"/><stop offset=".38" stop-color="#edf0fb"/><stop offset=".72" stop-color="#c7d1e8"/><stop offset="1" stop-color="#8f9dbd"/></linearGradient>
+ <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff0e9"/><stop offset="1" stop-color="#e8c9c5"/></linearGradient>
+ <linearGradient id="cloth" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".55" stop-color="#e9e8f2"/><stop offset="1" stop-color="#b8c3da"/></linearGradient>
+ <radialGradient id="aura"><stop stop-color="#d8b8ff" stop-opacity=".55"/><stop offset="1" stop-color="#d8b8ff" stop-opacity="0"/></radialGradient>
+ <clipPath id="circle"><circle cx="256" cy="256" r="246"/></clipPath>
+</defs>
+<g clip-path="url(#circle)">
+ <rect width="512" height="512" fill="url(#night)"/>
+ <circle cx="256" cy="240" r="225" fill="url(#aura)"/>
+ <g fill="#f5e8ff" opacity=".9"><path d="M88 100l7 17 18 2-14 12 4 18-15-10-15 10 4-18-14-12 18-2z"/><path d="M405 118l5 12 13 1-10 9 3 13-11-7-11 7 3-13-10-9 13-1z"/><circle cx="111" cy="276" r="3"/><circle cx="420" cy="300" r="2.5"/><circle cx="365" cy="65" r="2"/></g>
+ <circle cx="256" cy="242" r="208" fill="none" stroke="#eadbff" stroke-opacity=".28" stroke-width="2"/>
+ <!-- long silver hair behind shoulders -->
+ <path d="M128 220Q85 105 174 48Q248 2 327 40Q431 73 421 207L450 512H64Z" fill="url(#silver)" stroke="#9ba9c6" stroke-width="5"/>
+ <path d="M157 190Q100 240 113 414L142 512H185L204 315M352 177Q424 235 393 421L373 512H330L313 310" fill="url(#silver)" stroke="#9ba9c6" stroke-width="4"/>
+ <!-- pointed ears -->
+ <path d="M159 203Q89 169 40 183Q89 241 165 254Z" fill="url(#skin)" stroke="#c9b9c5" stroke-width="5"/>
+ <path d="M352 203Q423 169 472 183Q423 241 346 254Z" fill="url(#skin)" stroke="#c9b9c5" stroke-width="5"/>
+ <path d="M144 214L83 194 151 237M368 214L429 194 361 237" fill="none" stroke="#d6aeb5" stroke-width="4"/>
+ <!-- outfit -->
+ <path d="M104 512Q111 386 170 344Q207 319 256 319Q307 319 345 344Q402 386 408 512Z" fill="url(#cloth)" stroke="#9ba9c6" stroke-width="5"/>
+ <path d="M205 336L256 398 307 336L291 512H221Z" fill="#29263e"/>
+ <path d="M173 359L209 345 256 398 303 345 339 359 316 414 256 437 196 414Z" fill="#f7f3fb" stroke="#c7c4d8" stroke-width="4"/>
+ <path d="M185 373L207 367 226 400M327 373L305 367 286 400" fill="none" stroke="#c49b5e" stroke-width="6"/>
+ <path d="M251 401L256 422 261 401" fill="none" stroke="#d5b36e" stroke-width="5"/>
+ <!-- hair framing face -->
+ <path d="M144 157Q147 62 242 49Q342 36 375 130Q394 194 359 294L339 344Q319 293 326 227Q291 203 269 151Q239 211 179 226Q184 291 165 347L139 291Q119 218 144 157Z" fill="url(#silver)" stroke="#a4b2cc" stroke-width="5"/>
+ <!-- face -->
+ <path d="M174 154Q201 101 258 104Q319 102 344 157L337 252Q327 316 258 333Q190 317 179 252Z" fill="url(#skin)" stroke="#d7c2c7" stroke-width="4"/>
+ <!-- crown fringe -->
+ <path d="M147 167Q152 78 245 56Q328 44 369 133Q345 125 321 142Q297 159 279 188Q266 153 250 123Q221 167 181 184L166 231Z" fill="url(#silver)" stroke="#a5b3cd" stroke-width="5"/>
+ <path d="M183 137Q219 77 286 80M293 95Q344 104 358 155" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" opacity=".85"/>
+ <path d="M183 221Q204 206 228 219M286 219Q311 205 333 221" fill="none" stroke="#7b829f" stroke-width="6" stroke-linecap="round"/>
+ <!-- green eyes -->
+ <path d="M194 234Q215 216 237 234Q216 255 194 234Z" fill="#789b83"/><path d="M280 234Q302 216 324 234Q302 255 280 234Z" fill="#789b83"/>
+ <ellipse cx="216" cy="235" rx="5" ry="10" fill="#344d4a"/><ellipse cx="302" cy="235" rx="5" ry="10" fill="#344d4a"/>
+ <circle cx="218" cy="230" r="3" fill="#fff"/><circle cx="304" cy="230" r="3" fill="#fff"/>
+ <path d="M253 247L248 274Q256 279 264 274" fill="none" stroke="#d5a6a6" stroke-width="3" stroke-linecap="round"/>
+ <path d="M239 294Q257 303 276 292" fill="none" stroke="#b87f8b" stroke-width="4" stroke-linecap="round"/>
+ <path d="M194 273Q208 281 223 274M291 274Q307 281 321 272" fill="none" stroke="#e5aaa8" stroke-width="5" opacity=".4"/>
+ <!-- signature hair ornaments -->
+ <path d="M145 123Q122 107 112 129Q126 150 150 145M367 123Q390 107 400 129Q386 150 362 145" fill="#b58cce" stroke="#f0d9ff" stroke-width="4"/>
+ <path d="M121 137L108 166M391 137L404 166" stroke="#d7b6e8" stroke-width="5" stroke-linecap="round"/>
+ <path d="M360 281Q379 301 362 323" fill="none" stroke="#c7a16b" stroke-width="4"/>
+ <circle cx="363" cy="325" r="9" fill="#a94f73" stroke="#f0d7dc" stroke-width="3"/>
+</g>
+<circle cx="256" cy="256" r="246" fill="none" stroke="#ead9ff" stroke-width="9" stroke-opacity=".85"/>
+<circle cx="256" cy="256" r="235" fill="none" stroke="#b99bdf" stroke-width="2" stroke-opacity=".65"/>
 </svg>
