@@ -10,6 +10,8 @@ import { DEFAULT_GUILD_FEATURES, listGuildFeatureSettings, setGuildFeatureEnable
 import { getOwnerDatabaseDiagnostics, getOwnerDatabaseTablePreview, renderOwnerWorkspace } from './owner-workspaces.js';
 import { getFrierenChatSettings, updateFrierenChatSettings } from './frieren-chat-settings.js';
 import { listOwnerDailyQuests, saveOwnerDailyQuest, setOwnerDailyQuestActive } from './owner-rpg-quests.js';
+import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } from './owner-rpg-content.js';
+import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -21,6 +23,7 @@ const MAX_BODY_BYTES = 8192;
 export const OWNER_PANEL_SECTIONS = Object.freeze([
   { id: 'overview', label: 'Genel Bakış', command: '/owner' },
   { id: 'system', label: 'Sistem Durumu', command: '/owner-bilgi' },
+  { id: 'bot-control', label: 'Bot Kontrol Merkezi', command: null },
   { id: 'memories', label: 'Hafıza Yönetimi', command: '/owner-bellek' },
   { id: 'approvals', label: 'Kod Talepleri', command: '/owner-onay' },
   { id: 'announcements', label: 'Duyuru Merkezi', command: '/owner-duyuru' },
@@ -41,6 +44,7 @@ export function getDiscordOAuthFailureDiagnostic(status, payload = {}) {
 export function renderOwnerNavigation() {
   const groups = [
     { label: 'GENEL', ids: ['overview', 'system'] },
+    { label: 'BOT KONTROL', ids: ['bot-control'] },
     { label: 'Frieren Poğaça', ids: ['servers', 'rpg', 'partners', 'behavior'] },
     { label: 'Frieren AI', ids: ['memories', 'approvals'] },
     { label: 'İŞLEMLER', ids: ['announcements', 'maintenance'] }
@@ -413,14 +417,89 @@ function renderRenderMetrics(metrics, overview) {
     + '<div class="notice warn">' + escapeHtml(statusText) + '</div><p class="small">Yerel Node.js bellek ölçümleri Render servisinin toplam RAM kullanımının yerine geçmez. CPU yüzdesi bu durumda gösterilmez.</p></section>';
 }
 
-export function renderOwnerBotCards(overview, aiReadiness) {
+export function renderOwnerBotCards(overview, aiReadiness, renderServices = null) {
   const aiReady = aiReadiness?.status === 'ok' && aiReadiness?.discordReady === true
     && aiReadiness?.memoryDatabaseReady === true && aiReadiness?.modelConfigured === true;
-  const aiState = aiReady ? 'Çevrimiçi' : 'Kontrol gerekli';
+  const aiService = renderServices?.services?.frieren_ai;
+  const aiState = aiService?.suspended ? 'Askıda' : aiReady ? 'Çevrimiçi'
+    : aiService?.status === 'running' ? 'Servis açık · kontrol gerekli' : 'Kontrol gerekli';
   return '<section class="columns bot-cards" aria-label="Bot çalışma alanları">'
-    + '<article class="panel bot-card ai"><div class="bot-symbol">✧</div><div class="bot-card-content"><span class="tag">AI · TEST & HAFIZA</span><h2>Frieren AI</h2><p class="muted">Kod denetimi, senaryo testleri ve kalıcı hafıza için ayrı asistan.</p><strong class="' + (aiReady ? 'good' : 'warn') + '">' + aiState + '</strong><div class="bot-card-actions"><a class="btn secondary" href="#memories">AI hafızası</a><a class="btn secondary" href="#approvals">Teknik talepler</a></div></div></article>'
-    + '<article class="panel bot-card pogaca"><div class="bot-symbol">✿</div><div class="bot-card-content"><span class="tag">EĞLENCE · RPG</span><h2>Frieren Poğaça</h2><p class="muted">Anime, karakterler, büyüler, görevler, zindanlar ve ekonomi.</p><strong class="' + (overview.ready ? 'good' : 'bad') + '">' + (overview.ready ? 'Çevrimiçi' : 'Çevrimdışı') + '</strong><div class="bot-card-actions"><a class="btn secondary" href="#rpg">RPG merkezi</a><a class="btn secondary" href="#behavior">Komut ve davranışlar</a></div></div></article>'
+    + '<article class="panel bot-card ai"><div class="bot-symbol">✧</div><div class="bot-card-content"><span class="tag">AI · TEST & HAFIZA</span><h2>Frieren AI</h2><p class="muted">Kod denetimi, senaryo testleri ve kalıcı hafıza için ayrı asistan.</p><strong class="' + (aiReady ? 'good' : 'warn') + '">' + aiState + '</strong><div class="bot-card-actions"><a class="btn secondary" href="#memories">AI hafızası</a><a class="btn secondary" href="#approvals">Teknik talepler</a><a class="btn secondary" href="#bot-control">Servis kontrolü</a></div></div></article>'
+    + '<article class="panel bot-card pogaca"><div class="bot-symbol">✿</div><div class="bot-card-content"><span class="tag">EĞLENCE · RPG</span><h2>Frieren Poğaça</h2><p class="muted">Anime, karakterler, büyüler, görevler, zindanlar ve ekonomi.</p><strong class="' + (overview.ready ? 'good' : 'bad') + '">' + (overview.ready ? 'Çevrimiçi' : 'Çevrimdışı') + '</strong><div class="bot-card-actions"><a class="btn secondary" href="#rpg">RPG merkezi</a><a class="btn secondary" href="#behavior">Komut ve davranışlar</a><a class="btn secondary" href="#bot-control">Servis kontrolü</a></div></div></article>'
     + '</section>';
+}
+
+function renderRenderActionForm(serviceKey, action, label, csrf, warningText = '') {
+  return '<form method="post" action="/owner/action" class="render-action-form">'
+    + '<input type="hidden" name="csrf" value="' + escapeHtml(csrf || '') + '">'
+    + '<input type="hidden" name="action" value="render-service-action">'
+    + '<input type="hidden" name="serviceKey" value="' + escapeHtml(serviceKey) + '">'
+    + '<input type="hidden" name="serviceAction" value="' + escapeHtml(action) + '">'
+    + '<label>İşlem gerekçesi</label><input name="reason" maxlength="200" required placeholder="Bu işlemi neden yapıyorsun?">'
+    + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> ' + escapeHtml(warningText || (label + ' işlemini onaylıyorum')) + '</label>'
+    + '<button class="btn ' + (action === 'suspend' ? 'danger' : 'secondary') + '">' + escapeHtml(label) + '</button></form>';
+}
+
+export function renderOwnerControlCenter(renderServices, overview, csrf, renderMetrics = null, aiRenderMetrics = null) {
+  const apiConfigured = renderServices?.apiConfigured === true;
+  const renderApiError = renderServices?.apiError || null;
+  const serviceStatus = service => {
+    if (service?.suspended === true || service?.status === 'suspended') return { label: 'Askıya alınmış', css: 'warn' };
+    if (service?.suspended === null && service?.health === 'healthy') return { label: 'Health 200 · Render askı durumu bilinmiyor', css: 'good' };
+    if (service?.suspended === null && service?.health === 'unhealthy') return { label: 'Health başarısız · Render askı durumu bilinmiyor', css: 'bad' };
+    if (service?.status === 'running') return { label: 'Çalışıyor · Health 200', css: 'good' };
+    if (service?.health === 'healthy') return { label: 'Health 200 · Render durumu doğrulanamadı', css: 'good' };
+    if (service?.health === 'unhealthy') return { label: 'Health kontrolü başarısız', css: 'bad' };
+    return { label: 'Durum bilinmiyor', css: 'warn' };
+  };
+  const serviceCard = (key, title, note) => {
+    const service = renderServices?.services?.[key] || {};
+    const state = serviceStatus(service);
+    const canControl = service.apiConfigured === true && !service.apiError;
+    const metrics = key === 'pogaca' ? renderMetrics : aiRenderMetrics;
+    const metricText = metrics?.status === 'available'
+      ? 'CPU ' + Number(metrics.cpuPercent).toFixed(1) + '% · RAM ' + Number(metrics.memoryPercent).toFixed(1) + '%'
+      : metrics?.message || '';
+    const meta = [
+      service.plan ? 'Plan: ' + escapeHtml(service.plan) : '',
+      service.updatedAt ? 'Son güncelleme: ' + escapeHtml(new Date(service.updatedAt).toLocaleString('tr-TR')) : '',
+      service.healthStatus ? 'Health HTTP ' + Number(service.healthStatus) : '',
+      metricText ? escapeHtml(metricText) : ''
+    ].filter(Boolean).join(' · ');
+    let actions = '';
+    if (key === 'pogaca') {
+      actions = canControl
+        ? renderRenderActionForm(key, 'restart', 'Yeniden başlat', csrf, 'Poğaça ve Owner Panel servisini yeniden başlatmayı onaylıyorum')
+        : '<p class="small">Yeniden başlatma için Render API bağlantısı gerekli.</p>';
+    } else if (canControl && service.suspended === true) {
+      actions = '<div class="notice warn">Bu servis kullanıcı tarafından askıya alınmış. Otomatik olarak başlatılmadı. Başlatma, AI servisini yeniden erişilebilir yapar ve Render Free çalışma süresini yeniden kullanmaya başlar.</div>'
+        + renderRenderActionForm(key, 'resume', 'AI servisini başlat', csrf, 'Askıdaki Frieren AI servisini başlatmayı onaylıyorum');
+    } else if (canControl && service.suspended === false) {
+      actions = renderRenderActionForm(key, 'restart', 'Yeniden başlat', csrf, 'Frieren AI servisini yeniden başlatmayı onaylıyorum')
+        + renderRenderActionForm(key, 'suspend', 'Askıya al', csrf, 'Frieren AI servisini durdurmayı ve erişimi kapatmayı onaylıyorum');
+    } else {
+      actions = '<p class="small">Başlatma, durdurma ve yeniden başlatma kontrolleri Render API bağlantısı doğrulandığında açılır.</p>';
+    }
+    return '<article class="panel render-service-card"><div class="actions"><span class="tag">' + (key === 'pogaca' ? 'ANA BOT + PANEL' : 'AYRI AI SERVİSİ') + '</span><strong class="' + state.css + '">' + state.label + '</strong></div>'
+      + '<h3>' + title + '</h3><p class="small">' + escapeHtml(service.url || '') + '</p>'
+      + (meta ? '<p class="small">' + meta + '</p>' : '')
+      + '<p class="muted">' + note + '</p>'
+      + (service.suspenders?.length ? '<p class="small">Askıya alma kaynağı: ' + escapeHtml(service.suspenders.join(', ')) + '</p>' : '')
+      + (service.apiError ? '<p class="notice warn">Render API: ' + escapeHtml(service.apiError) + '</p>' : '')
+      + '<div class="actions"><a class="btn secondary" href="' + escapeHtml(service.dashboardUrl || '#') + '" target="_blank" rel="noopener">Render servisini aç</a></div>'
+      + actions + '</article>';
+  };
+  const connectionNotice = !apiConfigured
+    ? '<div class="notice warn">Render API anahtarı henüz bağlı değil. Kontrolleri etkinleştirmek için her Render hesabının anahtarını ayrı sakla: Poğaça için RENDER_POGACA_API_KEY (veya RENDER_API_KEY), yeni Frieren AI hesabı için RENDER_FRIEREN_AI_API_KEY. Değerleri yalnızca Owner Panel'in çalıştığı Poğaça Render servisinin Environment bölümüne ekle; tarayıcıya veya Discord mesajına yazma. Servis ID değerleri mevcut hesaplara göre ayarlandı.</div>'
+    : renderApiError
+      ? '<div class="notice warn">En az bir Render servisi doğrulanamadı: ' + escapeHtml(renderApiError) + '. Hata bulunan servis kartının kontrolleri kapalıdır; diğer doğrulanmış servisler bağımsız kalır.</div>'
+      : '<div class="notice">Render API bağlı. İşlemler sunucu tarafında yürütülür, her istek denetim kaydına yazılır ve servis başına 90 saniyelik bekleme uygulanır.</div>';
+  return '<section class="panel" id="bot-control"><h2>Bot Kontrol Merkezi</h2><p class="muted">Poğaça Frieren ve Frieren AI birbirinden bağımsız yönetilir. Durumlar Render servis kaydı ve health endpoint üzerinden okunur.</p>'
+    + connectionNotice
+    + '<div class="columns">' 
+    + serviceCard('pogaca', 'Poğaça Frieren', 'Owner Panel bu servis üzerinde çalışıyor. Paneli erişilemez bırakmamak için Render askıya alma kontrolü kapalıdır. Kullanıcı komutlarını durdurmak için bakım modunu kullan: <a href="#maintenance">Bakım moduna git</a>.')
+    + serviceCard('frieren_ai', 'Frieren AI', 'Ayrı Render servisi. Askıya alma AI testlerini ve AI erişimini durdurur; başlatma yeniden çalışma süresini başlatır.')
+    + '</div><div class="small">Son sayfa yenilemesinde kontrol edildi. Servis işlemleri kabul edildikten sonra durumun değişmesi birkaç saniye sürebilir; sonucu görmek için sayfayı yenile.</div></section>';
 }
 
 export async function getFrierenAIReadiness({
@@ -434,7 +513,7 @@ export async function getFrierenAIReadiness({
   } catch { return null; }
 }
 
-function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics, aiReadiness, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild }) {
+function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild }) {
   const featureLabels = { commands: 'Tüm komutlar', rpg: 'RPG sistemi', character: 'Karakter sistemi', magic: 'Büyü ve yetenekler', equipment: 'Ekipman ve eşyalar', economy: 'Ekonomi ve mağaza', quests: 'Görevler', dungeons: 'Zindanlar', bosses: 'Boss sistemi', trading: 'Takas', messageXp: 'Mesaj XP kazanımı', aiChat: 'Frieren sohbet etkileşimi' };
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
@@ -484,6 +563,12 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
   const noticeText = ({
     maintenance_on: 'Bakım modu açıldı.',
     maintenance_off: 'Bakım modu kapatıldı.',
+    service_action_accepted: 'Render API işlemi kabul etti. Servis durumunu yenileyerek sonucu doğrula.',
+    service_action_audit_pending: 'Render API işlemi kabul etti ancak denetim kaydı güncellemesi gecikti. Servis durumunu ve audit kayıtlarını kontrol et.',
+    service_cooldown: 'Bu servis için yakın zamanda bir işlem yapıldı. Güvenlik bekleme süresi dolunca tekrar dene.',
+    render_api_missing: 'Render API anahtarı tanımlı değil. RENDER_API_KEY değerini yalnızca Render ortam değişkenlerinde sakla.',
+    render_api_auth_error: 'Render API kimlik doğrulaması veya yetki kapsamı yetersiz. Anahtar izinlerini Render hesabında kontrol et ve sunucu ortam değişkenini güncelle.',
+    render_api_service_error: 'Render servis kimliği yanlış olabilir, API sınırına ulaşılmış olabilir veya Render geçici hata döndürmüş olabilir. Servis ID değerlerini ve Render durumunu kontrol et.',
     approval_approved: 'Talep onaylandı. Kod otomatik çalıştırılmadı.',
     approval_rejected: 'Talep reddedildi.',
     memory_deleted: 'Hafıza kaydı silindi.',
@@ -516,7 +601,8 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
         <div class="stat"><small>Bakım modu</small><strong class="${overview.maintenance ? 'warn' : 'good'}">${overview.maintenance ? 'Açık' : 'Kapalı'}</strong></div>
         <div class="stat"><small>Çalışma ortamı</small><strong>${escapeHtml(process.version)}</strong></div>
       </div>
-      ${renderOwnerBotCards(overview, aiReadiness)}
+      ${renderOwnerBotCards(overview, aiReadiness, renderServices)}
+      ${renderOwnerControlCenter(renderServices, overview, session.csrf, renderMetrics, aiRenderMetrics)}
       <section class="panel" id="servers"><h2>Sunucu ve karşılama yönetimi</h2><p class="muted">Bağlı sunucuların karşılama ayarlarını ayrı ayrı yönet. Kaydetmeden önce bot izinleri doğrulanır.</p><div class="columns">${serverManagementHtml}</div></section>
       <section class="panel" id="partners"><h2>Partnerlik yönetimi</h2><p class="muted">Partner sunucularını kaydet, davet bağlantılarını güncelle ve kayıtları denetim altında tut.</p><form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="partner-save"><label>Partner sunucu adı</label><input name="partnerName" maxlength="80" required><label>Discord sunucu ID</label><input name="partnerGuildId" inputmode="numeric" pattern="[0-9]{17,20}" required><label>Discord davet bağlantısı</label><input name="partnerInvite" type="url" placeholder="https://discord.gg/..." required><button class="btn">Partner ekle / güncelle</button></form>${partnerHtml}</section>
       <section class="panel" id="behavior"><h2>Bot davranışları ve komutlar</h2><p class="muted">Ayarlar seçilen sunucuyla sınırlıdır. Komut kapatma gerçek etkileşim yönlendirmesinde uygulanır.</p><div class="columns">${featureManagementHtml}</div></section>
@@ -647,6 +733,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         const playerId = String(url.searchParams.get('userId') || '');
         if (playerId && data.guildId) data.player = await getOwnerRpgPlayerDetails(db, { guildId: data.guildId, userId: playerId });
         if (data.guildId) data.dailyQuests = await listOwnerDailyQuests(db, { guildId: data.guildId });
+        if (data.guildId) data.rpgContent = await listOwnerRpgContent(db, { guildId: data.guildId });
       }
       if (kind === 'database') {
         data.database = await getOwnerDatabaseDiagnostics(db);
@@ -658,7 +745,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         { label: 'Owner oturum imzası', configured: Boolean(process.env.ADMIN_SESSION_SECRET && process.env.ADMIN_SESSION_SECRET.length >= 32) },
         { label: 'PostgreSQL bağlantısı', configured: Boolean(db) },
         { label: 'Frieren AI köprü anahtarı', configured: Boolean(process.env.FRIEREN_BRIDGE_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET) },
-        { label: 'Render API metrikleri', configured: Boolean(process.env.RENDER_API_KEY && process.env.RENDER_SERVICE_ID) }
+        { label: 'Render API anahtarı', configured: Boolean(process.env.RENDER_API_KEY) }
       ];
       const content = renderOwnerNavigation() + '<div class="top"><div><div class="brand">FRIEREN</div><div class="small">THE ARCANE SANCTUARY · OWNER WORKSPACE</div></div><a class="btn secondary" href="/owner">Genel bakış</a></div>'
         + renderOwnerWorkspace(kind, data);
@@ -685,6 +772,17 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const form = await readForm(req);
       if (!safeStringEqual(form.get('csrf'), session.csrf)) return send(res, 403, page('İstek reddedildi', '<h1>CSRF doğrulaması başarısız</h1>'));
       const action = form.get('action');
+      if (action === 'render-service-action' && form.get('confirm') === 'yes') {
+        const result = await executeRenderServiceAction(db, {
+          serviceKey: form.get('serviceKey'),
+          action: form.get('serviceAction'),
+          reason: form.get('reason'),
+          actorId: OWNER_ID,
+          confirm: 'yes'
+        });
+        redirect(res, '/owner?notice=' + (result.auditPending ? 'service_action_audit_pending' : 'service_action_accepted') + '&serviceAction=' + encodeURIComponent(result.action));
+        return true;
+      }
       if (action === 'rpg-daily-quest-save' && form.get('confirm') === 'yes') {
         const guildId = String(form.get('guildId') || '');
         if (!client?.guilds?.cache?.has(guildId)) throw new Error('RPG_GUILD_NOT_AVAILABLE');
@@ -714,6 +812,37 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
           actorId: OWNER_ID
         });
         redirect(res, '/owner/pogaca?guildId=' + encodeURIComponent(guildId) + '&notice=quest_disabled');
+        return true;
+      }
+      if (action === 'rpg-content-save' && form.get('confirm') === 'yes') {
+        const guildId = String(form.get('guildId') || '');
+        if (!client?.guilds?.cache?.has(guildId)) throw new Error('RPG_GUILD_NOT_AVAILABLE');
+        const contentType = String(form.get('contentType') || '');
+        let config;
+        if (contentType === 'dungeon') {
+          config = { name: form.get('name'), hp: Number(form.get('hp')), damage: Number(form.get('damage')), xp: Number(form.get('xp')), coins: Number(form.get('coins')), lootChance: Number(form.get('lootChance')), loot: form.get('loot') };
+        } else if (contentType === 'solo_boss') {
+          config = { name: form.get('name'), region: form.get('region'), maxHp: Number(form.get('maxHp')), minDamage: Number(form.get('minDamage')), maxDamage: Number(form.get('maxDamage')), coinMin: Number(form.get('coinMin')), coinMax: Number(form.get('coinMax')), xpMin: Number(form.get('xpMin')), xpMax: Number(form.get('xpMax')), lootChance: Number(form.get('lootChance')), loot: form.get('loot') };
+        } else if (contentType === 'raid_boss') {
+          config = { name: form.get('name'), hp: Number(form.get('hp')), damage: Number(form.get('damage')), xp: Number(form.get('xp')), coins: Number(form.get('coins')), loot: form.get('loot'), weakness: form.get('weakness'), weaknessLabel: form.get('weaknessLabel') };
+        } else {
+          throw new Error('INVALID_RPG_CONTENT');
+        }
+        await saveOwnerRpgContent(db, {
+          guildId, contentType, contentKey: form.get('contentKey'), config,
+          active: form.get('active') !== 'no', reason: form.get('reason'), actorId: OWNER_ID
+        });
+        redirect(res, '/owner/pogaca?guildId=' + encodeURIComponent(guildId) + '&notice=content_saved');
+        return true;
+      }
+      if (action === 'rpg-content-disable' && form.get('confirm') === 'yes') {
+        const guildId = String(form.get('guildId') || '');
+        if (!client?.guilds?.cache?.has(guildId)) throw new Error('RPG_GUILD_NOT_AVAILABLE');
+        await setOwnerRpgContentActive(db, {
+          guildId, contentType: form.get('contentType'), contentKey: form.get('contentKey'),
+          active: false, reason: form.get('reason'), actorId: OWNER_ID
+        });
+        redirect(res, '/owner/pogaca?guildId=' + encodeURIComponent(guildId) + '&notice=content_disabled');
         return true;
       }
       if ((action === 'rpg-inventory-adjust' || action === 'rpg-equipment-set') && form.get('confirm') === 'yes') {
@@ -820,8 +949,14 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       }
       redirect(res, '/owner?notice=' + notice);
     } catch (error) {
-      console.error('Owner dashboard action failed:', error?.message || error);
-      redirect(res, '/owner?notice=invalid');
+      const code = String(error?.message || '');
+      console.error('Owner dashboard action failed:', code || 'unknown error');
+      const notice = code === 'RENDER_API_NOT_CONFIGURED' ? 'render_api_missing'
+        : code === 'RENDER_ACTION_COOLDOWN' ? 'service_cooldown'
+        : /^RENDER_API_HTTP_(401|403)$/.test(code) ? 'render_api_auth_error'
+        : /^RENDER_API_HTTP_(404|429|5\d\d)$/.test(code) ? 'render_api_service_error'
+        : 'invalid';
+      redirect(res, '/owner?notice=' + notice);
     }
     return true;
   }
@@ -832,22 +967,27 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   }
 
   try {
-    const [overview, approvals, activity, renderMetrics, aiReadiness, partners, rpgMetrics, guildConfigurations] = await Promise.all([
+    const [overview, approvals, activity, renderMetrics, aiReadiness, partners, rpgMetrics, guildConfigurations, renderServices] = await Promise.all([
       getOwnerOverview(client, db),
       listPendingApprovals(db, 15),
       getRecentOwnerActivity(db),
-      getRenderServiceMetrics(),
+      getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.pogaca.id }),
       getFrierenAIReadiness(),
       listOwnerPartnerLinks(db),
       getOwnerRpgMetrics(db),
-      listGuildConfigurations(db)
+      listGuildConfigurations(db),
+      getRenderBotServiceStatuses()
     ]);
+    const frierenService = renderServices?.services?.frieren_ai;
+    const aiRenderMetrics = frierenService?.apiConfigured && !frierenService?.apiError && frierenService?.suspended !== true
+      ? await getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.frieren_ai.id })
+      : { status: 'unavailable', source: 'render', points: [], message: frierenService?.suspended ? 'Frieren AI askıda; metrik sorgusu yapılmadı.' : 'Frieren AI metrikleri için Render API bağlantısı gerekli.' };
     const featureSettingsByGuild = new Map(await Promise.all([...client.guilds.cache.keys()].map(async guildId => [guildId, await listGuildFeatureSettings(db, guildId)])));
     const memoryUser = String(url.searchParams.get('memoryUser') || '').replace(/\D/g, '').slice(0, 24);
     const memories = memoryUser ? await listUserMemories(db, memoryUser, null, 30) : [];
     send(res, 200, renderDashboard({
       session, overview, client, approvals, memories, memoryUser,
-      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild
+      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild
     }));
   } catch (error) {
     console.error('Owner dashboard load failed:', error?.message || error);

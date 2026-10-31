@@ -18,39 +18,15 @@ const testContext = new AsyncLocalStorage();
 const isolatedTestPool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : undefined,
+  options: '-c search_path=frieren_test',
   max: 2,
   idleTimeoutMillis: 10_000,
   connectionTimeoutMillis: 10_000
 });
-
-async function getIsolatedClient() {
-  const client = await isolatedTestPool.connect();
-  try {
-    // Set schema on this exact client before any test query can run.
-    await client.query('SET search_path TO frieren_test');
-    return client;
-  } catch (error) {
-    client.release();
-    throw error;
-  }
-}
-
 export const pool = new Proxy(productionPool, {
   get(target, property) {
-    if (property === 'query') {
-      return (...args) => testContext.getStore()
-        ? (async () => {
-            const client = await getIsolatedClient();
-            try { return await client.query(...args); }
-            finally { client.release(); }
-          })()
-        : target.query(...args);
-    }
-    if (property === 'connect') {
-      return (...args) => testContext.getStore()
-        ? getIsolatedClient()
-        : target.connect(...args);
-    }
+    if (property === 'query') return (...args) => (testContext.getStore() ? isolatedTestPool : target).query(...args);
+    if (property === 'connect') return (...args) => (testContext.getStore() ? isolatedTestPool : target).connect(...args);
     return Reflect.get(target, property, target);
   }
 });
@@ -283,6 +259,19 @@ export async function initDatabase() {
     );
     CREATE INDEX IF NOT EXISTS idx_guild_daily_quests_active
       ON guild_daily_quests(guild_id,active,title);
+    CREATE TABLE IF NOT EXISTS guild_rpg_content_overrides (
+      guild_id TEXT NOT NULL,
+      content_type TEXT NOT NULL CHECK (content_type IN ('dungeon','solo_boss','raid_boss')),
+      content_key VARCHAR(60) NOT NULL,
+      config JSONB NOT NULL DEFAULT '{}'::jsonb,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      updated_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id,content_type,content_key)
+    );
+    CREATE INDEX IF NOT EXISTS idx_guild_rpg_content_overrides_type
+      ON guild_rpg_content_overrides(guild_id,content_type,active);
     CREATE TABLE IF NOT EXISTS adventure_discoveries (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,

@@ -4,8 +4,9 @@ export const RAID_BOSSES = [
   { id: 'fallen-mage', name: '🕯️ Düşmüş Büyücü Aura', hp: 195, damage: 17, xp: 230, coins: 260, loot: 'Auranın Mühürlü Asa Parçası', weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'mana-curse' }
 ];
 
-export function chooseRaidBoss(random = Math.random) {
-  return RAID_BOSSES[Math.floor(random() * RAID_BOSSES.length)] || RAID_BOSSES[0];
+export function chooseRaidBoss(random = Math.random, bosses = RAID_BOSSES) {
+  const catalog = Array.isArray(bosses) && bosses.length ? bosses : RAID_BOSSES;
+  return catalog[Math.floor(random() * catalog.length)] || catalog[0];
 }
 
 export const COMBAT_SPELLS = {

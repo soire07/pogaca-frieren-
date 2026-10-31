@@ -7,21 +7,13 @@ import {
   ComponentType
 } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
-import { getBossArtUrl } from './boss-art.js';
 import { recordJournalEntry } from './gameplay-journal.js';
+import { getGuildRpgContent } from './owner-rpg-content.js';
 import { equipmentItems, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
 import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, applyEquipmentSetBonus, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening, restoreResourceRatio } from './rpg-mechanics.js';
 
 const PLAYER_MAX_HP = 100;
 const COOLDOWN_MS = 30 * 60 * 1000;
-
-const bossTiers = [
-  { minLevel: 1, name: '🐺 Schattenwolf', region: 'Merkez Topraklar', maxHp: 120, minDamage: 7, maxDamage: 12, coinMin: 90, coinMax: 130, xpMin: 55, xpMax: 85, lootChance: 0.2, loot: ['🐺 Schattenwolfzahn'], craftingMaterial: '🥐 Büyülü Poğaça Kutusu', artUrl: getBossArtUrl('schattenwolf'), special: 'Rudelstoß', specialType: 'heavy' },
-  { minLevel: 10, name: '🗿 Kadim Harabe Muhafızı', region: 'Kadim Harabeler', maxHp: 210, minDamage: 10, maxDamage: 16, coinMin: 150, coinMax: 210, xpMin: 95, xpMax: 140, lootChance: 0.3, loot: ['🗿 Muhafız Rünü'], craftingMaterial: '📖 Yasak Büyü Kitabı', artUrl: getBossArtUrl('ruinGuardian'), special: 'Kadim Sarsıntı', specialType: 'heavy' },
-  { minLevel: 20, name: '👹 Kuzey İblisi', region: 'Kuzey Toprakları', maxHp: 330, minDamage: 13, maxDamage: 20, coinMin: 230, coinMax: 320, xpMin: 150, xpMax: 210, lootChance: 0.35, loot: ['🩸 Kuzey İblisinin Kalbi'], craftingMaterial: '🐉 Ejderha Pulu', artUrl: getBossArtUrl('northDemon'), special: 'Mana Kemiren Lanet', specialType: 'drain' },
-  { minLevel: 35, name: '🩸 Büyük İblis Komutanı', region: 'Kuzey Yaylaları', maxHp: 470, minDamage: 16, maxDamage: 24, coinMin: 340, coinMax: 470, xpMin: 220, xpMax: 310, lootChance: 0.45, loot: ['🩸 İblis Komutanının Kanı'], craftingMaterial: '🌙 Efsunlu Elf Yadigârı', artUrl: getBossArtUrl('demonCommander'), special: 'Komutanın Hiddeti', specialType: 'heavy' },
-  { minLevel: 50, name: '👑 Äußerst Sınavının İblis Efendisi', region: 'Äußerst Sınav Rotası', maxHp: 650, minDamage: 20, maxDamage: 29, coinMin: 500, coinMax: 700, xpMin: 330, xpMax: 460, lootChance: 0.55, loot: ['🩸 İblis Komutanının Kanı', '🗿 Muhafız Rünü', '🩸 Kuzey İblisinin Kalbi'], craftingMaterial: '👑 Himmel’in Efsanevi Yadigârı', artUrl: getBossArtUrl('ausserstLord'), special: 'Äußerst Büyü Patlaması', specialType: 'arcane' }
-];
 
 function hpBar(current, maximum, width = 10) {
   const max = Math.max(1, Number(maximum) || 1);
@@ -136,6 +128,13 @@ export default {
       gearBonus.setText ? '✨ **' + gearBonus.setText + '**' : null
     ].filter(Boolean).join('\n');
 
+    const bossTiers = await getGuildRpgContent(pool, interaction.guildId, 'solo_boss');
+    const playerLevel = Number(stats.level || 1);
+    const unlockedBossTiers = bossTiers.filter(tier => playerLevel >= tier.minLevel);
+    if (!unlockedBossTiers.length) {
+      return interaction.editReply('Bu seviyede şu anda aktif bir boss bulunmuyor. Owner Panel üzerinden uygun boss kademesini etkinleştir.');
+    }
+
     const claimed = await pool.query(
       `UPDATE users SET last_boss_at = NOW()
        WHERE guild_id=$1 AND user_id=$2
@@ -155,10 +154,8 @@ export default {
       [interaction.guildId, interaction.user.id]
     );
     const upgradeBonus = Number(upgrades.rows[0]?.level || 0) * 2;
-    const playerLevel = Number(stats.level || 1);
-    const unlockedBossTiers = bossTiers.filter(tier => playerLevel >= tier.minLevel);
-    // Rotate among unlocked tiers so earlier bosses remain replayable and journal collections can be completed.
-    const boss = unlockedBossTiers[Math.floor(Math.random() * unlockedBossTiers.length)] || bossTiers[0];
+    // Rotate among unlocked active tiers so earlier bosses remain replayable and journal collections can be completed.
+    const boss = unlockedBossTiers[Math.floor(Math.random() * unlockedBossTiers.length)] || unlockedBossTiers[0];
     let bossHp = boss.maxHp;
     let bossPhase = 1;
     let turnCount = 0;

@@ -1,6 +1,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder, ComponentType } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { getBossArtUrl } from './boss-art.js';
+import { getGuildRpgContent } from './owner-rpg-content.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
 import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio } from './rpg-mechanics.js';
@@ -28,7 +29,6 @@ export default {
     .addUserOption(o => o.setName('takim_arkadasi_3').setDescription('Üçüncü takım arkadaşı (isteğe bağlı)').setRequired(false)),
 
   async execute(interaction) {
-    const BOSS = chooseRaidBoss();
     if (!interaction.guildId || !interaction.channel) return interaction.reply({ content: 'Ortak boss baskını yalnızca sunucularda kullanılabilir.', ephemeral: true });
     const team = [
       interaction.user,
@@ -41,6 +41,13 @@ export default {
     }
     // Acknowledge before database work; Discord interactions expire after a short window.
     await interaction.deferReply();
+    let raidBosses;
+    try {
+      raidBosses = await getGuildRpgContent(pool, interaction.guildId, 'raid_boss');
+    } catch (error) {
+      console.error('Ortak boss kataloğu yüklenemedi; varsayılan katalog kullanılacak:', error?.message || error);
+    }
+    const BOSS = raidBosses?.length ? chooseRaidBoss(Math.random, raidBosses) : chooseRaidBoss();
     for (const user of team) await ensureUser(interaction.guildId, user.id);
     const invited = team.slice(1);
     const row = new ActionRowBuilder().addComponents(
