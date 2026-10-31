@@ -134,6 +134,7 @@ test('owner inventory grants known equipment and audits the change atomically', 
   const calls = [];
   const client = { query: async (sql, params) => {
     calls.push({ sql, params });
+    if (sql.includes('SELECT user_id FROM users')) return { rows: [{ user_id: '123456789012345678' }] };
     if (sql.includes('SELECT quantity FROM inventory')) return { rows: [{ quantity: 1 }] };
     if (sql.includes('SELECT slot,item_key FROM user_equipment')) return { rows: [] };
     return { rows: [] };
@@ -153,6 +154,7 @@ test('owner inventory refuses to remove equipped copies and rolls back', async (
   const calls = [];
   const client = { query: async (sql) => {
     calls.push(sql);
+    if (sql.includes('SELECT user_id FROM users')) return { rows: [{ user_id: '123456789012345678' }] };
     if (sql.includes('SELECT quantity FROM inventory')) return { rows: [{ quantity: 1 }] };
     if (sql.includes('SELECT slot,item_key FROM user_equipment')) return { rows: [{ slot: 'weapon', item_key: '⚔️ Gezginin Demir Kılıcı' }] };
     return { rows: [] };
