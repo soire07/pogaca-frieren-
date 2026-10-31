@@ -14,6 +14,7 @@ import { createAiAgentChildEnv, AI_AGENT_HEALTH_PORT } from './ai-agent/render-s
 import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
+import { handlePublicSiteRequest } from './public-site.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -378,6 +379,7 @@ let uptimeRobotCache = null;
 
 createServer(async (req, res) => {
   if (await handleOwnerDashboardRequest(req, res, { client, db: pool })) return;
+  if (await handlePublicSiteRequest(req, res, { client })) return;
   const sendJson = (status, payload) => {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(payload));
