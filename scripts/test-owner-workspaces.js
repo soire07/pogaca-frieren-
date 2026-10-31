@@ -78,6 +78,8 @@ test('database table preview uses public-table allowlist and hides sensitive col
   assert.match(calls.at(-1).sql, /LIMIT/);
   assert.ok(!calls.at(-1).sql.includes('email'));
   assert.ok(!calls.at(-1).sql.includes('password_hash'));
+  assert.ok(!calls.at(-1).sql.includes('setting_value'));
+  assert.ok(!calls.at(-1).sql.includes('details'));
   assert.deepEqual(calls.at(-1).params, ['%123%',25]);
 });
 
