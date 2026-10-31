@@ -55,6 +55,9 @@ test('class-specific daily quests use the guild catalog, validate progress trans
   }
   assert.ok(source.includes("SELECT class_name FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE"));
   assert.ok(source.includes("mission_key IN (SELECT quest_key FROM guild_daily_quests WHERE guild_id=$1 AND class_name IS NOT NULL)"));
+  assert.ok(source.includes("mission_key='__class_daily_reward__'"));
+  assert.ok(source.includes("VALUES($1,$2,CURRENT_DATE,'__class_daily_reward__')"));
+  assert.ok(source.includes("mission_key LIKE 'class_%'"));
   assert.ok(catalog.includes('FROM spell_mastery WHERE'));
   assert.ok(catalog.includes('last_boss_at::date = CURRENT_DATE'));
   assert.ok(catalog.includes('last_item_used_at::date = CURRENT_DATE'));
