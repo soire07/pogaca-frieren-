@@ -98,15 +98,20 @@ export function getDailyQuestObjectiveSql(objectiveType) {
 
 export async function ensureGuildDailyQuestCatalog(db, guildId) {
   const id = validateGuildId(guildId);
-  for (const quest of DEFAULT_DAILY_QUESTS) {
-    await db.query(
-      `INSERT INTO guild_daily_quests
-       (guild_id,quest_key,title,description,objective_type,class_name,reward_coins,active,is_system)
-       VALUES($1,$2,$3,$4,$5,$6,$7,TRUE,TRUE)
-       ON CONFLICT(guild_id,quest_key) DO NOTHING`,
-      [id, quest.key, quest.title, quest.description, quest.objectiveType, quest.className || null, quest.rewardCoins]
-    );
-  }
+  const values = DEFAULT_DAILY_QUESTS.map((quest, index) => {
+    const offset = 2 + index * 6;
+    return `($1,${offset},${offset + 1},${offset + 2},${offset + 3},${offset + 4},${offset + 5},TRUE,TRUE)`;
+  }).join(',');
+  const params = [id, ...DEFAULT_DAILY_QUESTS.flatMap(quest => [
+    quest.key, quest.title, quest.description, quest.objectiveType, quest.className || null, quest.rewardCoins
+  ])];
+  await db.query(
+    `INSERT INTO guild_daily_quests
+     (guild_id,quest_key,title,description,objective_type,class_name,reward_coins,active,is_system)
+     VALUES ${values}
+     ON CONFLICT(guild_id,quest_key) DO NOTHING`,
+    params
+  );
 }
 
 export async function listOwnerDailyQuests(db, { guildId } = {}) {
