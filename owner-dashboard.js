@@ -36,9 +36,25 @@ export function getDiscordOAuthFailureDiagnostic(status, payload = {}) {
 }
 
 export function renderOwnerNavigation() {
-  return '<nav class="nav" aria-label="Owner panel bölümleri">' + OWNER_PANEL_SECTIONS
-    .map(section => '<a href="#' + section.id + '">' + section.label
-      + (section.command ? '<span>' + section.command + '</span>' : '') + '</a>').join('') + '</nav>';
+  const groups = [
+    { label: 'GENEL', ids: ['overview', 'system'] },
+    { label: 'FRIEREN POĞAÇA', ids: ['servers', 'rpg', 'partners'] },
+    { label: 'FRIEREN AI', ids: ['memories', 'approvals'] },
+    { label: 'İŞLEMLER', ids: ['announcements', 'maintenance'] }
+  ];
+  const sections = new Map(OWNER_PANEL_SECTIONS.map(section => [section.id, section]));
+  return '<nav class="nav" aria-label="Owner panel bölümleri">'
+    + '<div class="nav-brand"><span class="nav-brand-mark">✧</span><strong>FRIEREN</strong><small>THE ARCANE SANCTUARY</small></div>'
+    + groups.map(group => '<div class="nav-group"><div class="nav-group-title">' + group.label + '</div>'
+      + group.ids.map(id => {
+        const section = sections.get(id);
+        return section ? '<a href="#' + section.id + '" aria-label="' + section.label + '"><span class="nav-icon" aria-hidden="true">' + ({
+          overview: '⌂', system: '◈', servers: '⌘', rpg: '✧', partners: '◇',
+          memories: '✦', approvals: '⚝', announcements: '➤', maintenance: '◉'
+        }[section.id] || '✧') + '</span><span class="nav-link-copy"><strong>' + section.label + '</strong>'
+          + (section.command ? '<small>' + section.command + '</small>' : '') + '</span></a>' : '';
+      }).join('') + '</div>').join('')
+    + '<div class="nav-footer"><span class="nav-status-dot"></span> OWNER ACCESS · PRIVATE</div></nav>';
 }
 
 function send(res, status, body, headers = {}) {
@@ -232,6 +248,99 @@ function page(title, content) {
   }
   @media(prefers-reduced-motion:reduce){body:after{animation:none}.panel,.btn,.nav a{transition:none}}
 
+
+  /* Owner sanctuary v2 — structured workspace, responsive navigation and usable controls */
+  :root{--surface:#09152f;--surface-raised:#102247;--stroke:rgba(145,177,241,.22);--text:#edf4ff;--muted:#a8bad9;--accent:#9dbdff;--accent-violet:#b5a2ff}
+  body{padding:18px;background:radial-gradient(ellipse at 82% 4%,rgba(90,119,205,.2),transparent 32%),radial-gradient(ellipse at 12% 72%,rgba(58,108,170,.16),transparent 36%),linear-gradient(145deg,#030817 0%,#08152f 48%,#080d20 100%)}
+  body:before{opacity:.34;background-size:480px 410px}
+  main{width:min(100%,1600px);padding-left:278px}
+  .nav{left:max(18px,calc((100vw - 1600px)/2));top:18px;bottom:18px;width:242px;gap:14px;padding:15px 12px;border-radius:18px;border:1px solid rgba(149,181,242,.25);background:linear-gradient(180deg,rgba(5,14,34,.98),rgba(8,20,47,.97));box-shadow:0 22px 70px rgba(0,0,0,.48)}
+  .nav:before{display:none}
+  .nav-brand{display:grid;grid-template-columns:34px 1fr;align-items:center;column-gap:9px;padding:8px 8px 17px;border-bottom:1px solid var(--stroke)}
+  .nav-brand-mark{grid-row:span 2;display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(164,195,255,.38);border-radius:11px;background:linear-gradient(145deg,#263f7b,#17274f);color:#e5efff;font-size:20px}
+  .nav-brand strong{font:600 16px Georgia,serif;letter-spacing:.18em;color:#e8f1ff}
+  .nav-brand small{font-size:8px;letter-spacing:.16em;color:#839dc8}
+  .nav-group{display:grid;gap:5px}
+  .nav-group-title{padding:2px 10px 5px;color:#718bb9;font-size:9px;font-weight:800;letter-spacing:.18em}
+  .nav a{display:flex;flex-direction:row;align-items:center;gap:10px;min-height:44px;padding:8px 10px;border:1px solid transparent;border-radius:10px;background:transparent;color:#c8d8f2}
+  .nav a:before{display:none}
+  .nav a:hover,.nav a:focus{transform:translateX(2px);background:linear-gradient(100deg,rgba(57,102,183,.3),rgba(106,91,173,.12));border-color:rgba(148,185,250,.25);box-shadow:inset 3px 0 #a9c7ff}
+  .nav-icon{display:grid;place-items:center;flex:0 0 28px;height:28px;border-radius:8px;background:rgba(110,151,225,.11);color:#b9d2ff;font-size:15px}
+  .nav-link-copy{display:grid;gap:3px;min-width:0}
+  .nav-link-copy strong{font-size:12px;font-weight:600;color:#dce8fc}
+  .nav-link-copy small{font:9px ui-monospace,monospace;color:#8199c2}
+  .nav-footer{margin-top:auto;padding:12px 9px 5px;border-top:1px solid var(--stroke);font-size:9px;letter-spacing:.1em;color:#8299bd}
+  .nav-status-dot{display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;background:#73ddb0;box-shadow:0 0 10px #73ddb088}
+  .top{position:relative;margin-bottom:16px;padding:13px 18px;border-radius:14px;background:rgba(9,22,49,.78);border-color:var(--stroke)}
+  .brand{font-size:20px;letter-spacing:.14em}
+  .hero{min-height:205px;padding:30px 32px;margin-bottom:17px;border-radius:16px;border-color:rgba(151,184,246,.3);background:linear-gradient(90deg,rgba(5,14,36,.98) 0%,rgba(7,20,49,.88) 52%,rgba(7,20,49,.34) 100%),url('/assets/frieren.gif') right center/auto 150% no-repeat,linear-gradient(120deg,#10295b,#121c43);box-shadow:0 24px 70px #0005}
+  .hero h1{font-size:clamp(30px,3.6vw,44px)}
+  .hero .muted{max-width:660px}
+  .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin:15px 0 18px}
+  .stat{min-height:92px;border-radius:13px;padding:14px;background:linear-gradient(145deg,rgba(17,39,81,.95),rgba(7,20,48,.98));border-color:rgba(127,164,232,.23)}
+  .stat small{font-size:11px;color:#a9bddf}
+  .stat strong{font:600 23px Georgia,serif}
+  .bot-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  .bot-card{align-items:flex-start;min-height:220px;padding:20px;gap:15px;border-radius:15px}
+  .bot-card.ai{background:radial-gradient(circle at 10% 12%,rgba(102,157,238,.25),transparent 45%),linear-gradient(145deg,#102a58,#091833)}
+  .bot-card.pogaca{background:radial-gradient(circle at 10% 12%,rgba(176,127,232,.23),transparent 45%),linear-gradient(145deg,#28234f,#111a3a)}
+  .bot-card-content{min-width:0;flex:1}
+  .bot-card h2{font:500 23px Georgia,serif;color:#edf4ff}
+  .bot-card p{min-height:42px;margin:5px 0 10px}
+  .bot-card-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:13px}
+  .bot-card-actions .btn{font-size:11px;padding:8px 10px}
+  .panel{padding:21px;border-radius:15px;background:linear-gradient(145deg,rgba(12,29,64,.97),rgba(5,15,37,.98));border-color:rgba(135,169,232,.22)}
+  .panel h2{font-size:20px;margin-bottom:8px}
+  .panel h3{font-size:14px}
+  .panel>.muted{margin:0 0 15px}
+  .columns{gap:14px;margin:15px 0}
+  .feature-setting{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:8px;padding:13px 0}
+  .feature-setting>div{min-width:0}
+  .feature-setting .small{margin-top:4px}
+  .inline-toggle{display:flex;align-items:center;gap:7px;white-space:nowrap;margin:0}
+  .inline-toggle input{width:17px;height:17px;accent-color:#9bbcff}
+  form{margin:12px 0}
+  input,select,textarea{border-color:rgba(121,157,221,.34);background:rgba(3,12,31,.82);border-radius:9px;padding:11px 12px}
+  input[type=checkbox]{width:auto;accent-color:#9bbcff}
+  label{font-size:12px;color:#b8c9e6}
+  .btn{border-radius:9px;background:linear-gradient(115deg,#527ff0,#786fe0);box-shadow:0 6px 20px rgba(75,112,208,.2)}
+  .btn.secondary{background:rgba(29,51,94,.9);border:1px solid rgba(133,169,232,.25);color:#dceaff;box-shadow:none}
+  .btn.danger{background:linear-gradient(115deg,#813f61,#62304f);color:#ffe8f0}
+  .rowitem{padding:14px 0;border-color:rgba(134,169,231,.18)}
+  .notice{border-radius:11px;background:rgba(33,62,111,.72);border-color:rgba(149,185,247,.32)}
+  .metrics-panel{margin:15px 0}
+  .hero,.panel{scroll-margin-top:18px}
+  @media(max-width:1100px){main{padding-left:250px}.nav{width:218px}.grid{grid-template-columns:repeat(3,minmax(0,1fr))}.feature-setting{grid-template-columns:minmax(0,1fr) auto auto}}
+  @media(max-width:760px){
+    body{padding:9px}
+    main{padding-left:0}
+    .nav{position:sticky;top:5px;left:auto;bottom:auto;width:100%;max-height:none;display:flex;flex-direction:row;align-items:stretch;gap:8px;overflow-x:auto;margin:0 0 11px;padding:8px;border-radius:12px}
+    .nav-brand{display:none}
+    .nav-group{display:flex;flex:0 0 auto;align-items:center;gap:5px}
+    .nav-group-title{display:none}
+    .nav a{flex:0 0 auto;min-height:38px;padding:7px 9px;gap:7px}
+    .nav a:hover,.nav a:focus{transform:none}
+    .nav-icon{flex-basis:22px;height:22px;font-size:12px}
+    .nav-link-copy strong{font-size:11px;white-space:nowrap}
+    .nav-link-copy small{display:none}
+    .nav-footer{display:none}
+    .top{padding:10px 12px}
+    .hero{min-height:175px;padding:21px 17px;background-position:center,right 35%;background-size:auto,auto 120%,cover}
+    .hero h1{font-size:27px}
+    .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .stat{min-height:78px;padding:11px}
+    .stat strong{font-size:18px}
+    .bot-cards{grid-template-columns:1fr}
+    .bot-card{min-height:0;padding:15px}
+    .bot-card p{min-height:0}
+    .panel{padding:15px}
+    .feature-setting{grid-template-columns:minmax(0,1fr) auto;gap:8px}
+    .feature-setting .btn{grid-column:auto}
+    .feature-setting .btn.secondary{font-size:10px;padding:8px}
+    .columns{grid-template-columns:1fr}
+  }
+  @media(max-width:390px){.nav a{padding:6px 7px}.nav-icon{display:none}.nav-link-copy strong{font-size:10px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 </style></head><body><main>${content}</main></body></html>`;
 }
 
@@ -299,9 +408,9 @@ export function renderOwnerBotCards(overview, aiReadiness) {
   const aiReady = aiReadiness?.status === 'ok' && aiReadiness?.discordReady === true
     && aiReadiness?.memoryDatabaseReady === true && aiReadiness?.modelConfigured === true;
   const aiState = aiReady ? 'Çevrimiçi' : 'Kontrol gerekli';
-  return '<section class="columns bot-cards" aria-label="Bot durumları">'
-    + '<article class="panel bot-card ai"><div class="bot-symbol">✧</div><div><span class="tag">YAPAY ZEKA ASİSTANI</span><h2>Frieren AI</h2><p class="muted">Kodlama · Test · Kalıcı Hafıza · Sohbet</p><strong class="' + (aiReady ? 'good' : 'warn') + '">' + aiState + '</strong></div></article>'
-    + '<article class="panel bot-card pogaca"><div class="bot-symbol">✿</div><div><span class="tag">EĞLENCE & RPG BOTU</span><h2>Frieren Poğaça</h2><p class="muted">Anime · RPG · Görevler · Envanter</p><strong class="' + (overview.ready ? 'good' : 'bad') + '">' + (overview.ready ? 'Çevrimiçi' : 'Çevrimdışı') + '</strong></div></article>'
+  return '<section class="columns bot-cards" aria-label="Bot çalışma alanları">'
+    + '<article class="panel bot-card ai"><div class="bot-symbol">✧</div><div class="bot-card-content"><span class="tag">AI · TEST & HAFIZA</span><h2>Frieren AI</h2><p class="muted">Kod denetimi, senaryo testleri ve kalıcı hafıza için ayrı asistan.</p><strong class="' + (aiReady ? 'good' : 'warn') + '">' + aiState + '</strong><div class="bot-card-actions"><a class="btn secondary" href="#memories">AI hafızası</a><a class="btn secondary" href="#approvals">Teknik talepler</a></div></div></article>'
+    + '<article class="panel bot-card pogaca"><div class="bot-symbol">✿</div><div class="bot-card-content"><span class="tag">EĞLENCE · RPG</span><h2>Frieren Poğaça</h2><p class="muted">Anime, karakterler, büyüler, görevler, zindanlar ve ekonomi.</p><strong class="' + (overview.ready ? 'good' : 'bad') + '">' + (overview.ready ? 'Çevrimiçi' : 'Çevrimdışı') + '</strong><div class="bot-card-actions"><a class="btn secondary" href="#rpg">RPG merkezi</a><a class="btn secondary" href="#behavior">Komut ve davranışlar</a></div></div></article>'
     + '</section>';
 }
 
