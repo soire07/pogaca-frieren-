@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">Frieren platform avatar</title><desc id="desc">White-haired elven mage portrait against a violet star field.</desc>
+<defs><radialGradient id="bg"><stop stop-color="#65517e"/><stop offset=".62" stop-color="#29213f"/><stop offset="1" stop-color="#111326"/></radialGradient><linearGradient id="hair" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".52" stop-color="#e4e9f7"/><stop offset="1" stop-color="#aab8d3"/></linearGradient><linearGradient id="skin" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff0e6"/><stop offset="1" stop-color="#e9cfc8"/></linearGradient></defs>
+<circle cx="256" cy="256" r="250" fill="url(#bg)"/><g fill="#f5e9ff" opacity=".8"><circle cx="88" cy="118" r="3"/><circle cx="410" cy="94" r="4"/><circle cx="420" cy="338" r="2.5"/><circle cx="100" cy="380" r="2"/><path d="M128 194v18m-9-9h18M384 210v20m-10-10h20" stroke="#f5e9ff" stroke-width="3"/></g>
+<circle cx="256" cy="254" r="188" fill="none" stroke="#e8d8ff" stroke-opacity=".2" stroke-width="3"/>
+<path d="M118 435Q93 322 128 197Q145 90 252 70Q372 51 405 178Q430 291 386 435Z" fill="url(#hair)" stroke="#9daecc" stroke-width="7"/>
+<path d="M170 332Q137 375 150 475L214 454 244 386 285 462 361 474Q376 365 337 316Z" fill="#eeeaf7" stroke="#a9b5d0" stroke-width="6"/>
+<path d="M212 342L255 390 296 342 281 470H229Z" fill="#8e83b2"/>
+<path d="M174 183Q175 109 256 100Q342 101 351 194L334 293Q320 356 256 364Q191 355 175 289Z" fill="url(#skin)" stroke="#d5c2c5" stroke-width="5"/>
+<path d="M125 225Q111 116 220 58Q310 15 381 109Q423 163 376 283L348 218Q328 185 305 155Q266 195 209 181Q183 211 158 267Z" fill="url(#hair)" stroke="#a6b4ce" stroke-width="7"/>
+<path d="M143 148L91 99 113 211M366 143L420 93 397 212" fill="url(#hair)" stroke="#a6b4ce" stroke-width="7"/>
+<path d="M186 244Q204 224 229 241M282 241Q308 222 329 243" fill="none" stroke="#697b9d" stroke-width="8" stroke-linecap="round"/>
+<ellipse cx="216" cy="265" rx="15" ry="22" fill="#6c9878"/><ellipse cx="300" cy="265" rx="15" ry="22" fill="#6c9878"/><circle cx="220" cy="257" r="5" fill="#fff"/><circle cx="304" cy="257" r="5" fill="#fff"/>
+<path d="M244 305Q256 314 270 305" fill="none" stroke="#b77e8d" stroke-width="6" stroke-linecap="round"/>
+<path d="M179 120Q214 75 268 79" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round"/>
+<path d="M340 132L368 116 380 148" fill="none" stroke="#b68dbd" stroke-width="10" stroke-linecap="round"/>
+<path d="M256 25l9 20 22 2-17 14 5 22-19-12-19 12 5-22-17-14 22-2Z" fill="#ead9ff" opacity=".85"/>
+</svg>
