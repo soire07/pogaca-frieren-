@@ -969,7 +969,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       getOwnerOverview(client, db),
       listPendingApprovals(db, 15),
       getRecentOwnerActivity(db),
-      getRenderServiceMetrics(),
+      getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.pogaca.id }),
       getFrierenAIReadiness(),
       listOwnerPartnerLinks(db),
       getOwnerRpgMetrics(db),
