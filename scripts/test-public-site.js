@@ -1,7 +1,88 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { handlePublicSiteRequest } from '../public-site.js';
-function res(){return {status:0,headers:{},body:'',writeHead(s,h={}){this.status=s;this.headers=h},end(b){this.body=b}}}
-test('home page shows live bot metrics and platform links',async()=>{const r=res();const client={guilds:{cache:{size:3}},commands:{size:68},isReady:()=>true};assert.equal(await handlePublicSiteRequest({method:'GET',url:'/'},r,{client}),true);assert.equal(r.status,200);assert.match(r.body,/Bin yıllık/);assert.match(r.body,/68 komut/);assert.match(r.body,/Frieren AI/)});
-test('Poğaça and AI pages render their feature areas',async()=>{const p=res(),a=res();await handlePublicSiteRequest({method:'GET',url:'/pogaca'},p,{client:{commands:{size:68},isReady:()=>true}});await handlePublicSiteRequest({method:'GET',url:'/frieren-ai'},a);assert.match(p.body,/Zindan &amp; Boss|Zindan & Boss/);assert.match(a.body,/Test sistemi/)});
-test('unknown routes and non-GET requests are not intercepted',async()=>{assert.equal(await handlePublicSiteRequest({method:'GET',url:'/unknown'},res()),false);assert.equal(await handlePublicSiteRequest({method:'POST',url:'/'},res()),false)});
+import { createPublicSiteSession, buildPublicSiteSessionCookie } from '../owner-dashboard.js';
+
+const secret = 'test-public-site-session-secret-at-least-32-characters';
+const visitor = { id: '123456789012345678', username: 'Gezgin', avatar: null };
+function res() {
+  return { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body) { this.body = body; } };
+}
+function request(path = '/', user = visitor) {
+  const token = createPublicSiteSession(secret, user, Math.floor(Date.now() / 1000) + 3600);
+  const cookie = buildPublicSiteSessionCookie(token, 3600).split(';')[0];
+  return { method: 'GET', url: path, headers: { cookie } };
+}
+
+test('anonymous visitors must authenticate with Discord before viewing the homepage', async () => {
+  const response = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/', headers: {} }, response), true);
+  assert.equal(response.status, 302);
+  assert.equal(response.headers.Location, '/owner/login');
+});
+
+test('authenticated homepage includes the member identity, profile, GIF gallery and draggable chibi', async () => {
+  const response = res();
+  const client = { guilds: { cache: { size: 3 } }, commands: { size: 68 }, isReady: () => true };
+  assert.equal(await handlePublicSiteRequest(request('/', visitor), response, { client }), true);
+  assert.equal(response.status, 200);
+  assert.match(response.body, /Bin yıllık/);
+  assert.match(response.body, /Gezgin/);
+  assert.match(response.body, /profile-banner/);
+  assert.match(response.body, /gif-gallery/);
+  assert.match(response.body, /id="chibi"/);
+  assert.match(response.body, /pointermove/);
+  assert.match(response.body, /Ensemden tutma/);
+  assert.match(response.body, /68/);
+});
+
+test('all public pages require a valid Discord session', async () => {
+  for (const path of ['/pogaca', '/frieren-ai', '/assets/frieren.gif']) {
+    const anonymous = res();
+    await handlePublicSiteRequest({ method: 'GET', url: path, headers: {} }, anonymous);
+    assert.equal(anonymous.status, 302, path);
+    const authenticated = res();
+    const handled = await handlePublicSiteRequest(request(path), authenticated);
+    assert.equal(handled, true, path);
+    if (!path.startsWith('/assets/')) assert.equal(authenticated.status, 200, path);
+  }
+});
+
+test('Poğaça page describes verified starter commands and includes a bot invite when configured', async () => {
+  const previous = process.env.CLIENT_ID;
+  process.env.CLIENT_ID = '123456789012345678';
+  try {
+    const response = res();
+    await handlePublicSiteRequest(request('/pogaca'), response);
+    assert.match(response.body, /\/karakter/);
+    assert.match(response.body, /\/bakiye/);
+    assert.match(response.body, /\/zindan/);
+    assert.match(response.body, /discord.com\/oauth2\/authorize/);
+  } finally {
+    if (previous === undefined) delete process.env.CLIENT_ID;
+    else process.env.CLIENT_ID = previous;
+  }
+});
+
+test('owner link is only rendered for the configured bot owner', async () => {
+  const owner = res();
+  const ownerUser = { id: '1553794496234262641', username: 'Owner', avatar: null };
+  await handlePublicSiteRequest(request('/', ownerUser), owner);
+  assert.match(owner.body, /href="\/owner"/);
+  const visitorResponse = res();
+  await handlePublicSiteRequest(request('/', visitor), visitorResponse);
+  assert.doesNotMatch(visitorResponse.body, /href="\/owner"/);
+});
+
+test('logout clears the shared member session cookie', async () => {
+  const response = res();
+  await handlePublicSiteRequest({ method: 'GET', url: '/logout', headers: {} }, response);
+  assert.equal(response.status, 302);
+  assert.match(response.headers['Set-Cookie'], /frieren_site_session=/);
+  assert.match(response.headers['Set-Cookie'], /Max-Age=0/);
+});
+
+test('unknown routes and non-GET requests are not intercepted', async () => {
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/unknown', headers: {} }, res()), false);
+  assert.equal(await handlePublicSiteRequest({ method: 'POST', url: '/', headers: {} }, res()), false);
+});
