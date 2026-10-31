@@ -82,6 +82,8 @@ export async function handlePublicSiteRequest(req, res, { client } = {}) {
     return true;
   }
   if (url.pathname === '/owner' || url.pathname.startsWith('/owner/')) return false;
+  const publicPaths = new Set(['/', '/pogaca', '/frieren-ai']);
+  if (!publicPaths.has(url.pathname) && !assets.has(url.pathname)) return false;
   const user = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
   if (!user) {
     res.writeHead(302, { Location: '/owner/login', 'Cache-Control': 'no-store' });
