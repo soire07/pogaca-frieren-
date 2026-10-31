@@ -29,14 +29,14 @@ jobs:
 
             for attempt in {1..8}; do
               local response http_code body curl_exit
-              if response="$(curl --silent --show-error --connect-timeout 10 --max-time 20 -w $'\\n%{http_code}' "$url" 2>&1)"; then
+              if response="$(curl --silent --show-error --connect-timeout 10 --max-time 20 -w $'\n%{http_code}' "$url" 2>&1)"; then
                 curl_exit=0
               else
                 curl_exit=$?
               fi
 
-              http_code="${response##*$'\\n'}"
-              body="${response%$'\\n'*}"
+              http_code="${response##*$'\n'}"
+              body="${response%$'\n'*}"
 
               if [[ "$curl_exit" -eq 0 && "$http_code" == "200" ]] \
                 && printf '%s' "$body" | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status===process.argv[1] ? 0 : 1)}catch{process.exit(1)}})" "$expected"; then
@@ -45,7 +45,7 @@ jobs:
               fi
 
               local safe_body
-              safe_body="$(printf '%s' "$body" | tr '\\n' ' ' | cut -c1-300)"
+              safe_body="$(printf '%s' "$body" | tr '\n' ' ' | cut -c1-300)"
               echo "::warning::$label attempt $attempt/8 failed; curl_exit=$curl_exit http_status=$http_code body=$safe_body"
               if [[ "$attempt" -lt 8 ]]; then sleep 5; fi
             done
@@ -68,14 +68,14 @@ jobs:
 
             for attempt in {1..8}; do
               local response http_code body curl_exit
-              if response="$(curl --silent --show-error --connect-timeout 10 --max-time 20 -w $'\\n%{http_code}' "$url" 2>&1)"; then
+              if response="$(curl --silent --show-error --connect-timeout 10 --max-time 20 -w $'\n%{http_code}' "$url" 2>&1)"; then
                 curl_exit=0
               else
                 curl_exit=$?
               fi
 
-              http_code="${response##*$'\\n'}"
-              body="${response%$'\\n'*}"
+              http_code="${response##*$'\n'}"
+              body="${response%$'\n'*}"
 
               if [[ "$curl_exit" -eq 0 && "$http_code" == "200" ]] \
                 && printf '%s' "$body" | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status===process.argv[1] ? 0 : 1)}catch{process.exit(1)}})" "$expected"; then
@@ -84,7 +84,7 @@ jobs:
               fi
 
               local safe_body
-              safe_body="$(printf '%s' "$body" | tr '\\n' ' ' | cut -c1-300)"
+              safe_body="$(printf '%s' "$body" | tr '\n' ' ' | cut -c1-300)"
               echo "::warning::$label attempt $attempt/8 failed; curl_exit=$curl_exit http_status=$http_code body=$safe_body"
               if [[ "$attempt" -lt 8 ]]; then sleep 5; fi
             done
