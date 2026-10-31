@@ -455,7 +455,7 @@ export function renderOwnerControlCenter(renderServices, overview, csrf, renderM
   const serviceCard = (key, title, note) => {
     const service = renderServices?.services?.[key] || {};
     const state = serviceStatus(service);
-    const canControl = apiConfigured && !service.apiError;
+    const canControl = service.apiConfigured === true && !service.apiError;
     const metrics = key === 'pogaca' ? renderMetrics : aiRenderMetrics;
     const metricText = metrics?.status === 'available'
       ? 'CPU ' + Number(metrics.cpuPercent).toFixed(1) + '% · RAM ' + Number(metrics.memoryPercent).toFixed(1) + '%'
@@ -490,7 +490,7 @@ export function renderOwnerControlCenter(renderServices, overview, csrf, renderM
       + actions + '</article>';
   };
   const connectionNotice = !apiConfigured
-    ? '<div class="notice warn">Render API anahtarı henüz bağlı değil. Kontrolleri etkinleştirmek için RENDER_API_KEY değerini yalnızca Render servisinin Environment bölümünde sakla; tarayıcıya veya Discord mesajına yazma. Yeni Render hesabına geçince RENDER_POGACA_SERVICE_ID ve RENDER_FRIEREN_AI_SERVICE_ID değerlerini güncelle.</div>'
+    ? '<div class="notice warn">Render API anahtarı henüz bağlı değil. Kontrolleri etkinleştirmek için her Render hesabının anahtarını ayrı sakla: Poğaça için RENDER_POGACA_API_KEY (veya RENDER_API_KEY), yeni Frieren AI hesabı için RENDER_FRIEREN_AI_API_KEY. Değerleri yalnızca Owner Panel'in çalıştığı Poğaça Render servisinin Environment bölümüne ekle; tarayıcıya veya Discord mesajına yazma. Servis ID değerleri mevcut hesaplara göre ayarlandı.</div>'
     : renderApiError
       ? '<div class="notice warn">En az bir Render servisi doğrulanamadı: ' + escapeHtml(renderApiError) + '. Hata bulunan servis kartının kontrolleri kapalıdır; diğer doğrulanmış servisler bağımsız kalır.</div>'
       : '<div class="notice">Render API bağlı. İşlemler sunucu tarafında yürütülür, her istek denetim kaydına yazılır ve servis başına 90 saniyelik bekleme uygulanır.</div>';
@@ -979,7 +979,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       getRenderBotServiceStatuses()
     ]);
     const frierenService = renderServices?.services?.frieren_ai;
-    const aiRenderMetrics = renderServices?.apiConfigured && !frierenService?.apiError && frierenService?.suspended !== true
+    const aiRenderMetrics = frierenService?.apiConfigured && !frierenService?.apiError && frierenService?.suspended !== true
       ? await getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.frieren_ai.id })
       : { status: 'unavailable', source: 'render', points: [], message: frierenService?.suspended ? 'Frieren AI askıda; metrik sorgusu yapılmadı.' : 'Frieren AI metrikleri için Render API bağlantısı gerekli.' };
     const featureSettingsByGuild = new Map(await Promise.all([...client.guilds.cache.keys()].map(async guildId => [guildId, await listGuildFeatureSettings(db, guildId)])));
