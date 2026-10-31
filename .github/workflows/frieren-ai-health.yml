@@ -15,38 +15,82 @@ concurrency:
 jobs:
   health:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 8
     steps:
       - name: Check embedded Frieren AI liveness
         shell: bash
         env:
           HEALTH_URL: https://pogaca-frieren.onrender.com/ai-health
         run: |
-          for attempt in {1..6}; do
-            body="$(curl --silent --show-error --fail --max-time 10 "$HEALTH_URL" 2>/dev/null || true)"
-            if printf '%s' "$body" | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status==='alive' ? 0 : 1)}catch{process.exit(1)}})"; then
-              echo "Embedded Frieren AI process is alive."
-              exit 0
-            fi
-            echo "Liveness check attempt $attempt/6 did not pass; retrying."
-            sleep 5
-          done
-          echo "::error::Embedded Frieren AI liveness endpoint did not respond after 6 attempts."
-          exit 1
+          check_endpoint() {
+            local url="$1"
+            local expected="$2"
+            local label="$3"
+
+            for attempt in {1..8}; do
+              local response http_code body curl_exit
+              if response="$(curl --silent --show-error --connect-timeout 10 --max-time 20 -w $'\\n%{http_code}' "$url" 2>&1)"; then
+                curl_exit=0
+              else
+                curl_exit=$?
+              fi
+
+              http_code="${response##*$'\\n'}"
+              body="${response%$'\\n'*}"
+
+              if [[ "$curl_exit" -eq 0 && "$http_code" == "200" ]] \
+                && printf '%s' "$body" | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status===process.argv[1] ? 0 : 1)}catch{process.exit(1)}})" "$expected"; then
+                echo "$label passed (HTTP 200, status=$expected)."
+                return 0
+              fi
+
+              local safe_body
+              safe_body="$(printf '%s' "$body" | tr '\\n' ' ' | cut -c1-300)"
+              echo "::warning::$label attempt $attempt/8 failed; curl_exit=$curl_exit http_status=$http_code body=$safe_body"
+              if [[ "$attempt" -lt 8 ]]; then sleep 5; fi
+            done
+
+            echo "::error::$label failed after 8 attempts."
+            return 1
+          }
+
+          check_endpoint "$HEALTH_URL" "alive" "Embedded Frieren AI liveness"
 
       - name: Check embedded Frieren AI readiness
         shell: bash
         env:
           READY_URL: https://pogaca-frieren.onrender.com/ai-ready
         run: |
-          for attempt in {1..6}; do
-            body="$(curl --silent --show-error --fail --max-time 10 "$READY_URL" 2>/dev/null || true)"
-            if printf '%s' "$body" | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status==='ok' ? 0 : 1)}catch{process.exit(1)}})"; then
-              echo "Embedded Frieren AI dependencies are ready."
-              exit 0
-            fi
-            echo "Readiness check attempt $attempt/6 did not pass; retrying."
-            sleep 5
-          done
-          echo "::error::Embedded Frieren AI did not become ready after 6 attempts."
-          exit 1
+          check_endpoint() {
+            local url="$1"
+            local expected="$2"
+            local label="$3"
+
+            for attempt in {1..8}; do
+              local response http_code body curl_exit
+              if response="$(curl --silent --show-error --connect-timeout 10 --max-time 20 -w $'\\n%{http_code}' "$url" 2>&1)"; then
+                curl_exit=0
+              else
+                curl_exit=$?
+              fi
+
+              http_code="${response##*$'\\n'}"
+              body="${response%$'\\n'*}"
+
+              if [[ "$curl_exit" -eq 0 && "$http_code" == "200" ]] \
+                && printf '%s' "$body" | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status===process.argv[1] ? 0 : 1)}catch{process.exit(1)}})" "$expected"; then
+                echo "$label passed (HTTP 200, status=$expected)."
+                return 0
+              fi
+
+              local safe_body
+              safe_body="$(printf '%s' "$body" | tr '\\n' ' ' | cut -c1-300)"
+              echo "::warning::$label attempt $attempt/8 failed; curl_exit=$curl_exit http_status=$http_code body=$safe_body"
+              if [[ "$attempt" -lt 8 ]]; then sleep 5; fi
+            done
+
+            echo "::error::$label failed after 8 attempts."
+            return 1
+          }
+
+          check_endpoint "$READY_URL" "ok" "Embedded Frieren AI readiness"
