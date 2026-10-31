@@ -592,7 +592,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
         <div class="stat"><small>Bakım modu</small><strong class="${overview.maintenance ? 'warn' : 'good'}">${overview.maintenance ? 'Açık' : 'Kapalı'}</strong></div>
         <div class="stat"><small>Çalışma ortamı</small><strong>${escapeHtml(process.version)}</strong></div>
       </div>
-      ${renderOwnerBotCards(overview, aiReadiness)}
+      ${renderOwnerBotCards(overview, aiReadiness, renderServices)}
       ${renderOwnerControlCenter(renderServices, overview, session.csrf)}
       <section class="panel" id="servers"><h2>Sunucu ve karşılama yönetimi</h2><p class="muted">Bağlı sunucuların karşılama ayarlarını ayrı ayrı yönet. Kaydetmeden önce bot izinleri doğrulanır.</p><div class="columns">${serverManagementHtml}</div></section>
       <section class="panel" id="partners"><h2>Partnerlik yönetimi</h2><p class="muted">Partner sunucularını kaydet, davet bağlantılarını güncelle ve kayıtları denetim altında tut.</p><form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="partner-save"><label>Partner sunucu adı</label><input name="partnerName" maxlength="80" required><label>Discord sunucu ID</label><input name="partnerGuildId" inputmode="numeric" pattern="[0-9]{17,20}" required><label>Discord davet bağlantısı</label><input name="partnerInvite" type="url" placeholder="https://discord.gg/..." required><button class="btn">Partner ekle / güncelle</button></form>${partnerHtml}</section>
@@ -736,7 +736,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         { label: 'Owner oturum imzası', configured: Boolean(process.env.ADMIN_SESSION_SECRET && process.env.ADMIN_SESSION_SECRET.length >= 32) },
         { label: 'PostgreSQL bağlantısı', configured: Boolean(db) },
         { label: 'Frieren AI köprü anahtarı', configured: Boolean(process.env.FRIEREN_BRIDGE_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET) },
-        { label: 'Render API metrikleri ve bot kontrolleri', configured: Boolean(process.env.RENDER_API_KEY && (process.env.RENDER_POGACA_SERVICE_ID || process.env.RENDER_SERVICE_ID) && process.env.RENDER_FRIEREN_AI_SERVICE_ID) }
+        { label: 'Render API anahtarı', configured: Boolean(process.env.RENDER_API_KEY) }
       ];
       const content = renderOwnerNavigation() + '<div class="top"><div><div class="brand">FRIEREN</div><div class="small">THE ARCANE SANCTUARY · OWNER WORKSPACE</div></div><a class="btn secondary" href="/owner">Genel bakış</a></div>'
         + renderOwnerWorkspace(kind, data);
