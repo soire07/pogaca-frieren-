@@ -560,6 +560,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     service_cooldown: 'Bu servis için yakın zamanda bir işlem yapıldı. Güvenlik bekleme süresi dolunca tekrar dene.',
     render_api_missing: 'Render API anahtarı tanımlı değil. RENDER_API_KEY değerini yalnızca Render ortam değişkenlerinde sakla.',
     render_api_auth_error: 'Render API kimlik doğrulaması başarısız. API anahtarını Render hesabında yenile ve sunucu ortam değişkenini güncelle.',
+    render_api_service_error: 'Render servis kimliği bulunamadı veya API istek sınırına ulaşıldı. Servis ID değerlerini ve Render API durumunu kontrol et.',
     approval_approved: 'Talep onaylandı. Kod otomatik çalıştırılmadı.',
     approval_rejected: 'Talep reddedildi.',
     memory_deleted: 'Hafıza kaydı silindi.',
@@ -763,6 +764,17 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const form = await readForm(req);
       if (!safeStringEqual(form.get('csrf'), session.csrf)) return send(res, 403, page('İstek reddedildi', '<h1>CSRF doğrulaması başarısız</h1>'));
       const action = form.get('action');
+      if (action === 'render-service-action' && form.get('confirm') === 'yes') {
+        const result = await executeRenderServiceAction(db, {
+          serviceKey: form.get('serviceKey'),
+          action: form.get('serviceAction'),
+          reason: form.get('reason'),
+          actorId: OWNER_ID,
+          confirm: 'yes'
+        });
+        redirect(res, '/owner?notice=service_action_accepted&serviceAction=' + encodeURIComponent(result.action));
+        return true;
+      }
       if (action === 'rpg-daily-quest-save' && form.get('confirm') === 'yes') {
         const guildId = String(form.get('guildId') || '');
         if (!client?.guilds?.cache?.has(guildId)) throw new Error('RPG_GUILD_NOT_AVAILABLE');
@@ -929,8 +941,14 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       }
       redirect(res, '/owner?notice=' + notice);
     } catch (error) {
-      console.error('Owner dashboard action failed:', error?.message || error);
-      redirect(res, '/owner?notice=invalid');
+      const code = String(error?.message || '');
+      console.error('Owner dashboard action failed:', code || 'unknown error');
+      const notice = code === 'RENDER_API_NOT_CONFIGURED' ? 'render_api_missing'
+        : code === 'RENDER_ACTION_COOLDOWN' ? 'service_cooldown'
+        : /^RENDER_API_HTTP_(401|403)$/.test(code) ? 'render_api_auth_error'
+        : /^RENDER_API_HTTP_(404|429)$/.test(code) ? 'render_api_service_error'
+        : 'invalid';
+      redirect(res, '/owner?notice=' + notice);
     }
     return true;
   }
