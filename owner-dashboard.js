@@ -750,7 +750,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const username = String(user?.username || 'Gezgin').slice(0, 64);
       const avatarHash = typeof user?.avatar === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(user.avatar) ? user.avatar : null;
       if (flow === 'register' || flow === 'login') {
-        if (!/^\\d{17,20}$/.test(userId)) throw new Error('INVALID_DISCORD_USER_ID');
+        if (!/^\d{17,20}$/.test(userId)) throw new Error('INVALID_DISCORD_USER_ID');
         await db.query(`
           CREATE TABLE IF NOT EXISTS frieren_site_members (
             discord_user_id TEXT PRIMARY KEY CHECK (discord_user_id ~ '^[0-9]{17,20}$'),
