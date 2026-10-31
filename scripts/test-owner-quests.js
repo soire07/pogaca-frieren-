@@ -49,7 +49,7 @@ test('daily quest catalog seeds defaults and lists only the selected guild', asy
   const calls = [];
   const db = { query: async (sql, params) => {
     calls.push({ sql, params });
-    if (sql.includes('SELECT quest_key')) return { rows: [{ quest_key: 'adventure', title: 'Macera tutkunu', active: true }] };
+    if (sql.includes('FROM guild_daily_quests')) return { rows: [{ quest_key: 'adventure', title: 'Macera tutkunu', active: true }] };
     return { rows: [], rowCount: 1 };
   } };
   const quests = await listOwnerDailyQuests(db, { guildId });
