@@ -5,9 +5,9 @@ import {
   reviewApproval, listUserMemories, deleteUserMemory, setMaintenanceState,
   sendOwnerAnnouncement, getRecentOwnerActivity
 } from './owner-admin.js';
-import { listOwnerPartnerLinks, saveOwnerPartnerLink, deleteOwnerPartnerLink, getOwnerRpgMetrics, updateGuildConfiguration, listGuildConfigurations } from './owner-platform.js';
+import { listOwnerPartnerLinks, saveOwnerPartnerLink, deleteOwnerPartnerLink, getOwnerRpgMetrics, updateGuildConfiguration, listGuildConfigurations, searchOwnerRpgPlayers, getOwnerRpgPlayerDetails, adjustOwnerRpgResources } from './owner-platform.js';
 import { DEFAULT_GUILD_FEATURES, listGuildFeatureSettings, setGuildFeatureEnabled, resetGuildFeatureSetting } from './guild-feature-settings.js';
-import { getOwnerDatabaseDiagnostics, renderOwnerWorkspace } from './owner-workspaces.js';
+import { getOwnerDatabaseDiagnostics, getOwnerDatabaseTablePreview, renderOwnerWorkspace } from './owner-workspaces.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -164,6 +164,7 @@ function page(title, content) {
   .btn{display:inline-block;background:linear-gradient(120deg,#c4ddff,#a8b8ff);color:#101d3a;padding:10px 15px;border-radius:9px;text-decoration:none;font-weight:700;border:0;cursor:pointer}.btn.danger{background:#63364d;color:#ffe3ed}.btn.secondary{background:#1c3158;color:#e0eaff;border:1px solid #45618f}
   form{margin:9px 0}label{display:block;font-size:12px;color:#afc2e1;margin:9px 0 5px}input,select,textarea{display:block;width:100%;border:1px solid #334d79;border-radius:8px;background:#08152d;color:#f2f6ff;padding:10px;font:inherit}textarea{min-height:90px;resize:vertical}
   .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.rowitem{border-top:1px solid rgba(125,162,220,.2);padding:12px 0}.rowitem:first-of-type{border-top:0}.mono{font-family:ui-monospace,monospace;font-size:12px;overflow-wrap:anywhere}
+  .data-table{width:100%;border-collapse:collapse;min-width:520px;font-size:12px}.data-table th,.data-table td{text-align:left;padding:10px;border-bottom:1px solid rgba(125,162,220,.2);vertical-align:top}.data-table th{color:#bcd2f4;background:rgba(85,122,184,.12)}.data-table td{color:#e1ebfc;max-width:280px;overflow-wrap:anywhere}
   .notice{border:1px solid #526e9c;background:#152b50;border-radius:10px;padding:11px;margin:12px 0}.good{color:#72e7b8}.warn{color:#f4ce83}.bad{color:#ff9aa8}.small{font-size:12px;color:#91a8ca}
   .metric-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:12px 0}.metric-charts{margin-top:10px}.metric-bars{height:84px;display:flex;align-items:flex-end;gap:4px;padding:8px 0;border-bottom:1px solid #405a85}.metric-bars i{display:block;flex:1;min-width:3px;max-width:18px;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#c2dfff,#657dce);opacity:.9}.metrics-panel{margin:14px 0}
   .nav{position:fixed;left:max(18px,calc((100vw - 1440px)/2));top:22px;bottom:22px;width:232px;z-index:5;display:flex;flex-direction:column;gap:7px;overflow-y:auto;padding:14px;border:1px solid var(--line);border-radius:17px;background:linear-gradient(180deg,rgba(5,15,35,.96),rgba(8,21,47,.94));box-shadow:0 18px 55px #0006;backdrop-filter:blur(18px)}
@@ -631,8 +632,24 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const kind = workspaceKinds[url.pathname];
       const data = {};
       if (kind === 'ai') { data.aiReadiness = await getFrierenAIReadiness(); data.csrf = session.csrf; }
-      if (kind === 'pogaca') data.rpgMetrics = await getOwnerRpgMetrics(db);
-      if (kind === 'database') data.database = await getOwnerDatabaseDiagnostics(db);
+      if (kind === 'pogaca') {
+        data.notice = url.searchParams.get('notice') || '';
+        data.rpgMetrics = await getOwnerRpgMetrics(db);
+        data.csrf = session.csrf;
+        data.guildOptions = [...(client?.guilds?.cache?.values?.() || [])].map(guild => ({ id: String(guild.id), name: String(guild.name || guild.id) }));
+        const requestedGuild = String(url.searchParams.get('guildId') || '');
+        data.guildId = data.guildOptions.some(guild => guild.id === requestedGuild) ? requestedGuild :
+          (data.guildOptions.some(guild => guild.id === '1539562273197260860') ? '1539562273197260860' : (data.guildOptions[0]?.id || ''));
+        data.search = String(url.searchParams.get('search') || '').slice(0,80);
+        if (data.guildId) data.players = await searchOwnerRpgPlayers(db, { guildId: data.guildId, query: data.search });
+        const playerId = String(url.searchParams.get('userId') || '');
+        if (playerId && data.guildId) data.player = await getOwnerRpgPlayerDetails(db, { guildId: data.guildId, userId: playerId });
+      }
+      if (kind === 'database') {
+        data.database = await getOwnerDatabaseDiagnostics(db);
+        const table = String(url.searchParams.get('table') || '');
+        if (table) data.preview = await getOwnerDatabaseTablePreview(db, { table, search: url.searchParams.get('search') || '' });
+      }
       if (kind === 'settings') data.settings = [
         { label: 'Discord OAuth istemcisi', configured: Boolean(process.env.CLIENT_ID && process.env.DISCORD_CLIENT_SECRET) },
         { label: 'Owner oturum imzası', configured: Boolean(process.env.ADMIN_SESSION_SECRET && process.env.ADMIN_SESSION_SECRET.length >= 32) },
@@ -665,11 +682,25 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const form = await readForm(req);
       if (!safeStringEqual(form.get('csrf'), session.csrf)) return send(res, 403, page('İstek reddedildi', '<h1>CSRF doğrulaması başarısız</h1>'));
       const action = form.get('action');
+      if (action === 'rpg-resource-adjust' && form.get('confirm') === 'yes') {
+        const guildId = String(form.get('guildId') || '');
+        if (!client?.guilds?.cache?.has(guildId)) throw new Error('RPG_GUILD_NOT_AVAILABLE');
+        await adjustOwnerRpgResources(db, {
+          guildId,
+          userId: form.get('userId'),
+          coinsDelta: Number(form.get('coinsDelta') || 0),
+          xpDelta: Number(form.get('xpDelta') || 0),
+          reason: form.get('reason'),
+          actorId: OWNER_ID
+        });
+        redirect(res, '/owner/pogaca?guildId=' + encodeURIComponent(guildId) + '&userId=' + encodeURIComponent(form.get('userId')) + '&notice=rpg_saved');
+        return true;
+      }
       if (action === 'ai-test-run' && form.get('confirm') === 'yes') {
         const secret = process.env.FRIEREN_BRIDGE_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || '';
         if (secret.length < 32) throw new Error('AI_TEST_BRIDGE_NOT_CONFIGURED');
         const rawCommands = String(form.get('commands') || '');
-        const commands = rawCommands.split(/[\\s,;]+/).map(value => value.trim()).filter(Boolean).slice(0, 80);
+        const commands = rawCommands.split(/[\x09-\x0d ,;]+/).map(value => value.trim()).filter(Boolean).slice(0, 80);
         const response = await fetch(BASE_URL + '/internal/test-suite', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + secret },

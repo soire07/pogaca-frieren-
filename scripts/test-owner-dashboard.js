@@ -217,6 +217,9 @@ function makeOwnerRequest({ action, csrf, id, confirm, cookie = true }) {
   if (csrf !== undefined) form.set('csrf', csrf === 'session' ? sessionCsrf : csrf);
   if (id !== undefined) form.set('id', String(id));
   if (confirm !== undefined) form.set('confirm', confirm);
+  for (const [key, value] of Object.entries(arguments[0] || {})) {
+    if (!['action','csrf','id','confirm','cookie'].includes(key) && value !== undefined) form.set(key, String(value));
+  }
   const req = new EventEmitter();
   req.method = 'POST';
   req.url = '/owner/action';
@@ -227,7 +230,7 @@ function makeOwnerRequest({ action, csrf, id, confirm, cookie = true }) {
   return { req, response, body: form.toString(), sessionCsrf };
 }
 
-async function runOwnerPost(options, db) {
+async function runOwnerPost(options, db, client = {}) {
   const previous = {
     CLIENT_ID: process.env.CLIENT_ID,
     DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
@@ -237,7 +240,7 @@ async function runOwnerPost(options, db) {
   process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
   process.env.ADMIN_SESSION_SECRET = secret;
   const { req, response, body, sessionCsrf } = makeOwnerRequest(options);
-  const pending = handleOwnerDashboardRequest(req, response, { client: {}, db });
+  const pending = handleOwnerDashboardRequest(req, response, { client, db });
   req.emit('data', Buffer.from(body));
   req.emit('end');
   try {
@@ -298,4 +301,43 @@ test('bot cards expose direct paths into their own management areas', () => {
   assert.match(html, /href="#behavior"/);
   assert.match(html, /href="#memories"/);
   assert.match(html, /href="#approvals"/);
+});
+
+
+test('RPG owner adjustment requires a guild currently connected to this bot', async () => {
+  let connected = false;
+  const db = { connect: async () => { connected = true; throw new Error('must not connect'); } };
+  const client = { guilds: { cache: new Map() } };
+  const { response } = await runOwnerPost({
+    action: 'rpg-resource-adjust', csrf: 'session', confirm: 'yes',
+    guildId: '1539562273197260860', userId: '123456789012345678',
+    coinsDelta: '10', xpDelta: '0', reason: 'test'
+  }, db, client);
+  assert.equal(response.status, 303);
+  assert.match(response.headers.Location, /notice=invalid/);
+  assert.equal(connected, false);
+});
+
+test('RPG owner adjustment reaches audited transaction only for connected guilds', async () => {
+  const calls = [];
+  const clientDb = {
+    query: async (sql, params) => {
+      calls.push({sql,params});
+      if (sql.includes('SELECT coins,xp')) return { rows: [{ coins: 20, xp: 10 }] };
+      if (sql.includes('UPDATE users')) return { rows: [{ coins: 30, xp: 10 }] };
+      return { rows: [] };
+    },
+    release() {}
+  };
+  const db = { connect: async () => clientDb };
+  const client = { guilds: { cache: new Map([['1539562273197260860', { id: '1539562273197260860' }]]) } };
+  const { response } = await runOwnerPost({
+    action: 'rpg-resource-adjust', csrf: 'session', confirm: 'yes',
+    guildId: '1539562273197260860', userId: '123456789012345678',
+    coinsDelta: '10', xpDelta: '0', reason: 'test adjustment'
+  }, db, client);
+  assert.equal(response.status, 303);
+  assert.match(response.headers.Location, /notice=rpg_saved/);
+  assert.ok(calls.some(call => call.sql.includes('owner_audit_logs')));
+  assert.ok(calls.some(call => call.sql === 'COMMIT'));
 });

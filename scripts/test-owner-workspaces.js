@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getOwnerDatabaseDiagnostics, renderOwnerWorkspace } from '../owner-workspaces.js';
+import { getOwnerDatabaseDiagnostics, getOwnerDatabaseTablePreview, renderOwnerWorkspace } from '../owner-workspaces.js';
 
 test('database diagnostics only count validated public table identifiers', async () => {
   const calls = [];
@@ -25,10 +25,11 @@ test('AI workspace does not claim readiness when a dependency is missing', () =>
   assert.match(html, /1564945192803639356/);
 });
 
-test('Poğaça workspace clearly labels unfinished RPG controls as read-only', () => {
-  const html = renderOwnerWorkspace('pogaca', { rpgMetrics: { players: 3, totalCoins: 45 } });
-  assert.match(html, /Oyuncu, eşya, ekonomi/);
-  assert.match(html, /salt okunur/);
+test('Poğaça workspace exposes scoped player controls while keeping unsupported edits disabled', () => {
+  const html = renderOwnerWorkspace('pogaca', { rpgMetrics: { players: 3, totalCoins: 45 }, guildId: '1539562273197260860', guildOptions: [{ id: '1539562273197260860', name: 'Main' }], player: { user_id: '123456789012345678', character_name: 'Frieren', class_name: 'Mage', level: 2, xp: 300, coins: 45, hp: 80, max_hp: 100, mana: 60, max_mana: 100, inventory: [] } });
+  assert.match(html, /Oyuncu arama/);
+  assert.match(html, /rpg-resource-adjust/);
+  assert.match(html, /Oyuncu silme, eşya ekleme\/silme/);
   assert.match(html, /Komut ve davranışlar/);
 });
 
@@ -50,4 +51,34 @@ test('AI workspace exposes an authenticated test form and safely renders its rep
   assert.match(html, /Testleri çalıştır/);
   assert.match(html, /&lt;script&gt;/);
   assert.doesNotMatch(html, /<script>/);
+});
+
+
+test('database table preview uses public-table allowlist and hides sensitive columns', async () => {
+  const calls = [];
+  const db = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    if (sql.includes('information_schema.tables')) return { rows: [{ table_name: 'users' }] };
+    if (sql.includes('information_schema.columns')) return { rows: [
+      { column_name: 'user_id', data_type: 'text' },
+      { column_name: 'coins', data_type: 'integer' },
+      { column_name: 'email', data_type: 'text' },
+      { column_name: 'password_hash', data_type: 'text' }
+    ] };
+    return { rows: [{ user_id: '123', coins: 40 }] };
+  } };
+  const preview = await getOwnerDatabaseTablePreview(db, { table: 'users', search: '123' });
+  assert.deepEqual(preview.columns, ['user_id','coins']);
+  assert.deepEqual(preview.rows, [{ user_id: '123', coins: '40' }]);
+  assert.match(calls.at(-1).sql, /LIMIT/);
+  assert.ok(!calls.at(-1).sql.includes('email'));
+  assert.ok(!calls.at(-1).sql.includes('password_hash'));
+  assert.deepEqual(calls.at(-1).params, ['%123%',25]);
+});
+
+test('database table preview rejects identifiers that are not plain public table names', async () => {
+  let called = false;
+  const db = { query: async () => { called = true; return { rows: [] }; } };
+  await assert.rejects(getOwnerDatabaseTablePreview(db, { table: 'users; DROP TABLE users' }), /INVALID_DATABASE_TABLE/);
+  assert.equal(called, false);
 });

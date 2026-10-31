@@ -1,3 +1,4 @@
+import { levelForXp } from './utils.js';
 const SNOWFLAKE = /^\d{17,20}$/;
 const OWNER = '1553794496234262641';
 
@@ -115,4 +116,79 @@ export async function listGuildConfigurations(db) {
     'SELECT guild_id,welcome_channel_id,log_channel_id,welcome_message FROM guild_settings ORDER BY guild_id'
   );
   return result.rows || [];
+}
+
+
+const OWNER_RESOURCE_LIMIT = 1_000_000;
+export async function searchOwnerRpgPlayers(db, { guildId, query = '', limit = 25 } = {}) {
+  const guild = String(guildId || '');
+  if (!SNOWFLAKE.test(guild)) throw new Error('INVALID_GUILD_ID');
+  const term = String(query || '').trim().slice(0, 80);
+  const boundedLimit = Math.max(1, Math.min(Number(limit) || 25, 25));
+  const result = await db.query(
+    `SELECT user_id,character_name,class_name,level,xp,coins,hp,max_hp,mana,max_mana
+     FROM users WHERE guild_id=$1 AND (
+       $2='' OR user_id=$2 OR COALESCE(character_name,'') ILIKE $3 OR class_name ILIKE $3
+     ) ORDER BY level DESC,xp DESC LIMIT $4`,
+    [guild, /^\d{17,20}$/.test(term) ? term : '', '%' + term.replace(/[\\%_]/g, '\\$&') + '%', boundedLimit]
+  );
+  return result.rows || [];
+}
+
+export async function getOwnerRpgPlayerDetails(db, { guildId, userId } = {}) {
+  const guild = String(guildId || '');
+  const user = String(userId || '');
+  if (!SNOWFLAKE.test(guild) || !SNOWFLAKE.test(user)) throw new Error('INVALID_PLAYER_TARGET');
+  const [player, inventory] = await Promise.all([
+    db.query('SELECT user_id,character_name,class_name,level,xp,coins,hp,max_hp,mana,max_mana,attack,defense,stat_points FROM users WHERE guild_id=$1 AND user_id=$2', [guild,user]),
+    db.query('SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 ORDER BY item_key LIMIT 50', [guild,user])
+  ]);
+  if (!player.rows?.[0]) return null;
+  return { ...player.rows[0], inventory: inventory.rows || [] };
+}
+
+export async function adjustOwnerRpgResources(db, {
+  guildId, userId, coinsDelta = 0, xpDelta = 0, reason, actorId = OWNER
+} = {}) {
+  const guild = String(guildId || '');
+  const user = String(userId || '');
+  const actor = String(actorId || '');
+  const coins = Number(coinsDelta);
+  const xp = Number(xpDelta);
+  const note = String(reason || '').trim().slice(0, 200);
+  if (!SNOWFLAKE.test(guild) || !SNOWFLAKE.test(user) || !SNOWFLAKE.test(actor) ||
+      !Number.isSafeInteger(coins) || !Number.isSafeInteger(xp) ||
+      Math.abs(coins) > OWNER_RESOURCE_LIMIT || Math.abs(xp) > OWNER_RESOURCE_LIMIT ||
+      (coins === 0 && xp === 0) || xp < 0 || !note) throw new Error('INVALID_RPG_ADJUSTMENT');
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const locked = await client.query(
+      'SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+      [guild,user]
+    );
+    if (!locked.rows?.[0]) throw new Error('PLAYER_NOT_FOUND');
+    const before = { coins: Number(locked.rows[0].coins), xp: Number(locked.rows[0].xp), level: Number(locked.rows[0].level) };
+    const nextXp = Math.max(0, before.xp + xp);
+    const nextLevel = levelForXp(nextXp);
+    const gainedStatPoints = Math.max(0, nextLevel - before.level);
+    const updated = await client.query(
+      `UPDATE users SET coins=GREATEST(0,coins+$3),xp=$4,level=$5,stat_points=stat_points+$6
+       WHERE guild_id=$1 AND user_id=$2 RETURNING coins,xp,level`,
+      [guild,user,coins,nextXp,nextLevel,gainedStatPoints]
+    );
+    const after = { coins: Number(updated.rows[0].coins), xp: Number(updated.rows[0].xp), level: Number(updated.rows[0].level) };
+    await client.query(
+      `INSERT INTO owner_audit_logs(actor_id,action,target,details)
+       VALUES($1,'rpg.resources.adjust',$2,$3::jsonb)`,
+      [actor,guild + ':' + user,JSON.stringify({ before, after, coinsDelta: coins, xpDelta: xp, reason: note })]
+    );
+    await client.query('COMMIT');
+    return { before, after };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
 }
