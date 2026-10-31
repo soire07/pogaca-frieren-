@@ -446,8 +446,8 @@ test('bot control center separates the main bot from the suspended AI service', 
   const html = renderOwnerControlCenter({
     apiConfigured: true,
     services: {
-      pogaca: { key: 'pogaca', name: 'Poğaça Frieren', id: 'srv-main', url: 'https://pogaca-frieren.onrender.com', dashboardUrl: 'https://dashboard.render.com/web/srv-main', plan: 'free', status: 'running', health: 'healthy', suspended: false, suspenders: [], allowedActions: ['restart'] },
-      frieren_ai: { key: 'frieren_ai', name: 'Frieren AI', id: 'srv-ai', url: 'https://frieren-ai-agent.onrender.com', dashboardUrl: 'https://dashboard.render.com/web/srv-ai', plan: 'free', status: 'suspended', health: 'suspended', suspended: true, suspenders: ['user'], allowedActions: ['restart','suspend','resume'] }
+      pogaca: { key: 'pogaca', apiConfigured: true, name: 'Poğaça Frieren', id: 'srv-main', url: 'https://pogaca-frieren.onrender.com', dashboardUrl: 'https://dashboard.render.com/web/srv-main', plan: 'free', status: 'running', health: 'healthy', suspended: false, suspenders: [], allowedActions: ['restart'] },
+      frieren_ai: { key: 'frieren_ai', apiConfigured: true, name: 'Frieren AI', id: 'srv-ai', url: 'https://frieren-ai-agent.onrender.com', dashboardUrl: 'https://dashboard.render.com/web/srv-ai', plan: 'free', status: 'suspended', health: 'suspended', suspended: true, suspenders: ['user'], allowedActions: ['restart','suspend','resume'] }
     }
   }, { maintenance: false }, 'csrf-token',
   { status: 'available', cpuPercent: 12.3, memoryPercent: 45.6 },
@@ -474,7 +474,8 @@ test('bot control center hides lifecycle controls until a server-side Render API
       frieren_ai: { key: 'frieren_ai', status: 'unknown', health: 'unavailable', suspended: null }
     }
   }, {}, 'csrf-token');
-  assert.match(html, /RENDER_API_KEY/);
+  assert.match(html, /RENDER_POGACA_API_KEY/);
+  assert.match(html, /RENDER_FRIEREN_AI_API_KEY/);
   assert.match(html, /RENDER_POGACA_SERVICE_ID/);
   assert.match(html, /RENDER_FRIEREN_AI_SERVICE_ID/);
   assert.doesNotMatch(html, /name="action" value="render-service-action"/);
