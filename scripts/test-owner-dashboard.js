@@ -394,3 +394,49 @@ test('owner daily quest save rejects a guild that the bot is not connected to', 
   assert.equal(response.headers.Location, '/owner?notice=invalid');
   assert.equal(connected, false);
 });
+
+
+test('owner dungeon and boss content save is confirmed, guild-scoped and audited', async () => {
+  const guildId = '1539562273197260860';
+  const calls = [];
+  const client = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    if (sql.includes('INSERT INTO guild_rpg_content_overrides')) return { rows: [{ content_key: 'level_1', active: true }] };
+    if (sql.includes('SELECT content_key,active')) return { rows: [{ content_key: 'level_1', active: true }] };
+    return { rows: [] };
+  }, release() { calls.push({ sql: 'RELEASE' }); } };
+  const db = { connect: async () => client };
+  const discordClient = { guilds: { cache: new Map([[guildId, {}]]) } };
+  const { response } = await runOwnerPost({
+    action: 'rpg-content-save', csrf: 'session', confirm: 'yes', guildId,
+    contentType: 'dungeon', contentKey: 'level_1',
+    name: 'Merkez Mahzen', hp: '180', damage: '9', xp: '50', coins: '60',
+    lootChance: '0.12', loot: 'Mahzen Anahtarı', active: 'yes', reason: 'Denge ayarı'
+  }, db, discordClient);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner/pogaca?guildId=' + guildId + '&notice=content_saved');
+  assert.ok(calls.some(call => call.sql.includes('pg_advisory_xact_lock')));
+  assert.ok(calls.some(call => call.sql.includes('owner_audit_logs')));
+  assert.ok(calls.some(call => call.sql === 'COMMIT'));
+});
+
+test('owner dungeon and boss content disable is reversible and keeps at least one active tier', async () => {
+  const guildId = '1539562273197260860';
+  const calls = [];
+  const client = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    if (sql.includes('INSERT INTO guild_rpg_content_overrides')) return { rows: [{ content_key: 'level_1', active: false }] };
+    if (sql.includes('SELECT content_key,active')) return { rows: [{ content_key: 'level_1', active: false }] };
+    return { rows: [] };
+  }, release() { calls.push({ sql: 'RELEASE' }); } };
+  const db = { connect: async () => client };
+  const discordClient = { guilds: { cache: new Map([[guildId, {}]]) } };
+  const { response } = await runOwnerPost({
+    action: 'rpg-content-disable', csrf: 'session', confirm: 'yes', guildId,
+    contentType: 'dungeon', contentKey: 'level_1', reason: 'Denge için geçici kapatma'
+  }, db, discordClient);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner/pogaca?guildId=' + guildId + '&notice=content_disabled');
+  assert.ok(calls.some(call => call.sql.includes('owner_audit_logs')));
+  assert.ok(calls.some(call => call.sql === 'COMMIT'));
+});
