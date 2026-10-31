@@ -38,8 +38,8 @@ export function getDiscordOAuthFailureDiagnostic(status, payload = {}) {
 export function renderOwnerNavigation() {
   const groups = [
     { label: 'GENEL', ids: ['overview', 'system'] },
-    { label: 'FRIEREN POĞAÇA', ids: ['servers', 'rpg', 'partners'] },
-    { label: 'FRIEREN AI', ids: ['memories', 'approvals'] },
+    { label: 'Frieren Poğaça', ids: ['servers', 'rpg', 'partners', 'behavior'] },
+    { label: 'Frieren AI', ids: ['memories', 'approvals'] },
     { label: 'İŞLEMLER', ids: ['announcements', 'maintenance'] }
   ];
   const sections = new Map(OWNER_PANEL_SECTIONS.map(section => [section.id, section]));
@@ -47,7 +47,7 @@ export function renderOwnerNavigation() {
     + '<div class="nav-brand"><span class="nav-brand-mark">✧</span><strong>FRIEREN</strong><small>THE ARCANE SANCTUARY</small></div>'
     + groups.map(group => '<div class="nav-group"><div class="nav-group-title">' + group.label + '</div>'
       + group.ids.map(id => {
-        const section = sections.get(id);
+        const section = sections.get(id) || (id === 'behavior' ? { id: 'behavior', label: 'Komut ve davranışlar', command: null } : null);
         return section ? '<a href="#' + section.id + '" aria-label="' + section.label + '"><span class="nav-icon" aria-hidden="true">' + ({
           overview: '⌂', system: '◈', servers: '⌘', rpg: '✧', partners: '◇',
           memories: '✦', approvals: '⚝', announcements: '➤', maintenance: '◉'
