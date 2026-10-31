@@ -92,3 +92,48 @@ test('database table preview rejects identifiers that are not plain public table
   await assert.rejects(getOwnerDatabaseTablePreview(db, { table: 'users; DROP TABLE users' }), /INVALID_DATABASE_TABLE/);
   assert.equal(called, false);
 });
+
+
+test('Poğaça workspace renders guild-scoped quest create, edit and reversible disable controls', () => {
+  const html = renderOwnerWorkspace('pogaca', {
+    csrf: 'quest-csrf',
+    guildId: '1539562273197260860',
+    guildOptions: [{ id: '1539562273197260860', name: 'Main' }],
+    dailyQuests: [{
+      quest_key: 'northern_trial',
+      title: 'Kuzey sınavı',
+      description: 'Bugün bir keşif tamamla.',
+      objective_type: 'explore',
+      class_name: null,
+      reward_coins: 250,
+      active: true,
+      is_system: false
+    }]
+  });
+  assert.match(html, /Günlük görev kataloğu/);
+  assert.match(html, /rpg-daily-quest-save/);
+  assert.match(html, /rpg-daily-quest-disable/);
+  assert.match(html, /northern_trial/);
+  assert.match(html, /Kuzey sınavı/);
+  assert.match(html, /Yeni görev ekle/);
+  assert.match(html, /quest-csrf/);
+  assert.match(html, /pasife al/);
+});
+
+test('Poğaça workspace escapes owner-managed quest content before rendering', () => {
+  const html = renderOwnerWorkspace('pogaca', {
+    guildId: '1539562273197260860',
+    dailyQuests: [{
+      quest_key: 'safe_quest',
+      title: '<script>alert(1)</script>',
+      description: '<img src=x onerror=alert(1)>',
+      objective_type: 'explore',
+      reward_coins: 50,
+      active: true,
+      is_system: false
+    }]
+  });
+  assert.doesNotMatch(html, /<script>/);
+  assert.doesNotMatch(html, /<img src=x/);
+  assert.match(html, /&lt;script&gt;/);
+});
