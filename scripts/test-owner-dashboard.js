@@ -457,7 +457,7 @@ test('bot control center separates the main bot from the suspended AI service', 
   assert.match(html, /Askıya alma kaynağı: user/);
   assert.match(html, /value="resume"/);
   assert.match(html, /value="restart"/);
-  assert.doesNotMatch(html.slice(html.indexOf('Poğaça Frieren'), html.indexOf('Frieren AI')), /value="suspend"/);
+  assert.doesNotMatch(html.slice(html.indexOf('<h3>Poğaça Frieren</h3>'), html.indexOf('<h3>Frieren AI</h3>')), /value="suspend"/);
   assert.match(html, /Owner Panel bu servis üzerinde çalışıyor/);
   assert.match(html, /csrf-token/);
 });
