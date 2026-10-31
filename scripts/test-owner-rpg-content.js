@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { chooseRaidBoss } from '../rpg-mechanics.js';
 import assert from 'node:assert/strict';
 import {
   DEFAULT_DUNGEON_TIERS,
@@ -25,6 +26,8 @@ test('RPG content catalog preserves all existing dungeon and boss encounters', (
   assert.equal(selectDungeonForLevel(8, DEFAULT_DUNGEON_TIERS).minLevel, 5);
   assert.equal(selectDungeonForLevel(20, DEFAULT_DUNGEON_TIERS).minLevel, 15);
   assert.equal(selectDungeonForLevel(45, DEFAULT_DUNGEON_TIERS).minLevel, 30);
+  assert.equal(selectDungeonForLevel(1, DEFAULT_DUNGEON_TIERS.filter(tier => tier.minLevel >= 5)), null);
+  assert.equal(chooseRaidBoss(() => 0, [{ id: 'custom-raid-boss' }]).id, 'custom-raid-boss');
 });
 
 test('RPG content validation accepts bounded dungeon and boss tuning', () => {
@@ -54,7 +57,7 @@ test('RPG content validation rejects unknown keys, unsafe values and invalid wea
 
 test('RPG content list merges guild overrides without changing other guild defaults', async () => {
   const db = { query: async (_sql, params) => {
-    assert.deepEqual(params, [guildId]);
+    assert.equal(params[0], guildId);
     return { rows: [{ content_type: 'dungeon', content_key: 'level_1', config: { hp: 180, name: 'Özel Mahzen' }, active: true }] };
   } };
   const items = await listOwnerRpgContent(db, { guildId });
@@ -109,7 +112,7 @@ test('the last active dungeon or boss cannot be disabled', async () => {
   const calls = [];
   const client = { query: async (sql, params) => {
     calls.push({ sql, params });
-    if (sql.includes('UPDATE guild_rpg_content_overrides')) return { rows: [{ content_key: 'level_1', active: false }], rowCount: 1 };
+    if (sql.includes('INSERT INTO guild_rpg_content_overrides')) return { rows: [{ content_key: 'level_1', active: false }], rowCount: 1 };
     if (sql.includes('SELECT content_key,active')) return { rows: keys.map(content_key => ({ content_key, active: false })) };
     return { rows: [] };
   }, release() {} };
