@@ -14,6 +14,7 @@ import { createAiAgentChildEnv, AI_AGENT_HEALTH_PORT } from './ai-agent/render-s
 import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
+import { getGuildFeatureEnabled, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
 
@@ -291,6 +292,16 @@ client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
+  if (interaction.guildId) {
+    const commandFeatureKey = 'command_' + interaction.commandName.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    const [commandsEnabled, commandEnabled] = await Promise.all([
+      getGuildFeatureEnabled(pool, interaction.guildId, 'commands'),
+      getGuildFeatureEnabled(pool, interaction.guildId, commandFeatureKey),
+    ]);
+    if (!commandsEnabled || !commandEnabled) {
+      return sendPrivateInteractionError(interaction, 'Bu komut bu sunucuda Owner Panel ayarlarıyla devre dışı bırakılmış.');
+    }
+  }
   try {
     await recordCommandUsage(pool, interaction.commandName, interaction.guildId).catch(error => console.warn('Komut ölçümü kaydedilemedi:', error?.message || error));
     await command.execute(interaction);
@@ -334,6 +345,7 @@ client.on(Events.MessageCreate, async message => {
 await loadCommands();
 await initDatabase();
 await initOwnerAdminSchema(pool);
+await initGuildFeatureSettingsSchema(pool);
 await client.login(process.env.DISCORD_TOKEN);
 
 let aiAgentChild = null;
