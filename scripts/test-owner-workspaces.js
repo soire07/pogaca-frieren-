@@ -43,12 +43,15 @@ test('database workspace escapes database names and table names', () => {
 test('AI workspace exposes an authenticated test form and safely renders its report', () => {
   const html = renderOwnerWorkspace('ai', {
     aiReadiness: { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true },
+    chatSettings: { enabled: true, style: 'warm', responseLength: 'balanced', loreFocus: true },
     csrf: 'csrf-token',
     testReport: { summary: { total: 4, pass: 3, fail: 1 }, detail: '<script>alert(1)</script>' }
   });
   assert.match(html, /ai-test-run/);
   assert.match(html, /csrf-token/);
   assert.match(html, /Testleri çalıştır/);
+  assert.match(html, /frieren-chat-settings/);
+  assert.match(html, /Poğaça sohbet kişiliği/);
   assert.match(html, /&lt;script&gt;/);
   assert.doesNotMatch(html, /<script>/);
 });
