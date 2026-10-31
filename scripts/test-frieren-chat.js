@@ -166,3 +166,37 @@ test('Frieren persona uses canonical identity and forbids invented appearance or
   assert.match(systemPrompt, /görünüş.*uydurma|uydurma.*görünüş/i);
   assert.match(systemPrompt, /Himmel/i);
 });
+
+
+test('Frieren chat builder applies owner-managed style and response-length preferences', () => {
+  const messages = buildFrierenMessages({
+    userMessage: 'Merhaba',
+    chatSettings: { enabled: true, style: 'witty', responseLength: 'detailed', loreFocus: true }
+  });
+  assert.match(messages[0].content, /ince mizah/);
+  assert.match(messages[0].content, /kapsamlı açıkla/);
+  assert.match(messages[0].content, /kanona sadık kal/);
+});
+
+test('disabled Frieren chat setting stops the mention handler before reading memories or calling the model', async () => {
+  const replies = [];
+  let modelCalled = false;
+  const message = {
+    guild: { id: 'guild-1' }, channelId: 'channel-1',
+    author: { id: 'user-1', bot: false },
+    mentions: { users: { has: () => true } },
+    content: '<@bot-1> Merhaba',
+    reply: async payload => replies.push(payload)
+  };
+  const db = { query: async sql => {
+    if (sql.includes('SELECT setting_value')) return { rows: [{ setting_value: { enabled: false, style: 'calm', responseLength: 'concise', loreFocus: true } }] };
+    throw new Error('disabled chat must not query memory or history');
+  } };
+  const handled = await (await import('../frieren-chat.js')).handleFrierenMentionMessage({
+    message, botUserId: 'bot-1', db, env: { GROQ_API_KEY: 'test-key' },
+    fetchImpl: async () => { modelCalled = true; throw new Error('model must not be called'); }
+  });
+  assert.equal(handled, true);
+  assert.equal(modelCalled, false);
+  assert.match(replies[0].content, /sohbet özelliğim kapalı/);
+});
