@@ -9,7 +9,7 @@ export const RENDER_BOT_SERVICES = Object.freeze({
     id: process.env.RENDER_POGACA_SERVICE_ID || process.env.RENDER_SERVICE_ID || process.env.RENDER_METRICS_SERVICE_ID || 'srv-dbf4vdvavr4c73cr6s00',
     url: process.env.RENDER_POGACA_URL || 'https://pogaca-frieren.onrender.com',
     healthPath: process.env.RENDER_POGACA_HEALTH_PATH || '/health',
-    dashboardUrl: 'https://dashboard.render.com/web/' + (process.env.RENDER_POGACA_SERVICE_ID || process.env.RENDER_SERVICE_ID || 'srv-dbf4vdvavr4c73cr6s00'),
+    dashboardUrl: 'https://dashboard.render.com/web/' + (process.env.RENDER_POGACA_SERVICE_ID || process.env.RENDER_SERVICE_ID || process.env.RENDER_METRICS_SERVICE_ID || 'srv-dbf4vdvavr4c73cr6s00'),
     canSuspend: false,
     allowedActions: Object.freeze(['restart'])
   }),
