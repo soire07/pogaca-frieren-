@@ -120,6 +120,6 @@ test('the last active dungeon or boss cannot be disabled', async () => {
     guildId, contentType: 'dungeon', contentKey: 'level_1',
     active: false, reason: 'Geçici kapatma', actorId
   }), /LAST_ACTIVE_RPG_CONTENT/);
-  assert.ok(calls.includes ? calls.includes('ROLLBACK') : calls.some(call => call.sql === 'ROLLBACK'));
+  assert.ok(calls.some(call => call.sql === 'ROLLBACK'));
   assert.ok(!calls.some(call => call.sql === 'COMMIT'));
 });
