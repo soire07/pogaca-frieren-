@@ -161,3 +161,12 @@ test('chibi has walking, nape-lift and anger interaction states', async () => {
   assert.match(response.body, /classList\.add\('angry'\)/);
   assert.match(response.body, /Ensemden tutmaaa/);
 });
+
+test('mobile public pages keep card actions and hero media within the viewport', async () => {
+  const response = res();
+  await handlePublicSiteRequest(request('/'), response);
+  assert.match(response.body, /Responsive visual polish/);
+  assert.match(response.body, /max-width:560px/);
+  assert.match(response.body, /\.actions \.btn\{flex:1 1 100%;width:100%\}/);
+  assert.match(response.body, /focus-visible/);
+});
