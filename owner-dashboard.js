@@ -9,6 +9,7 @@ import { listOwnerPartnerLinks, saveOwnerPartnerLink, deleteOwnerPartnerLink, ge
 import { DEFAULT_GUILD_FEATURES, listGuildFeatureSettings, setGuildFeatureEnabled, resetGuildFeatureSetting } from './guild-feature-settings.js';
 import { getOwnerDatabaseDiagnostics, getOwnerDatabaseTablePreview, renderOwnerWorkspace } from './owner-workspaces.js';
 import { getFrierenChatSettings, updateFrierenChatSettings } from './frieren-chat-settings.js';
+import { listOwnerDailyQuests, saveOwnerDailyQuest, setOwnerDailyQuestActive } from './owner-rpg-quests.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -645,6 +646,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         if (data.guildId) data.players = await searchOwnerRpgPlayers(db, { guildId: data.guildId, query: data.search });
         const playerId = String(url.searchParams.get('userId') || '');
         if (playerId && data.guildId) data.player = await getOwnerRpgPlayerDetails(db, { guildId: data.guildId, userId: playerId });
+        if (data.guildId) data.dailyQuests = await listOwnerDailyQuests(db, { guildId: data.guildId });
       }
       if (kind === 'database') {
         data.database = await getOwnerDatabaseDiagnostics(db);
@@ -683,6 +685,37 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const form = await readForm(req);
       if (!safeStringEqual(form.get('csrf'), session.csrf)) return send(res, 403, page('İstek reddedildi', '<h1>CSRF doğrulaması başarısız</h1>'));
       const action = form.get('action');
+      if (action === 'rpg-daily-quest-save' && form.get('confirm') === 'yes') {
+        const guildId = String(form.get('guildId') || '');
+        if (!client?.guilds?.cache?.has(guildId)) throw new Error('RPG_GUILD_NOT_AVAILABLE');
+        await saveOwnerDailyQuest(db, {
+          guildId,
+          questKey: form.get('questKey'),
+          title: form.get('title'),
+          description: form.get('description'),
+          objectiveType: form.get('objectiveType'),
+          className: form.get('className'),
+          rewardCoins: Number(form.get('rewardCoins')),
+          active: form.get('active') !== 'no',
+          reason: form.get('reason'),
+          actorId: OWNER_ID
+        });
+        redirect(res, '/owner/pogaca?guildId=' + encodeURIComponent(guildId) + '&notice=quest_saved');
+        return true;
+      }
+      if (action === 'rpg-daily-quest-disable' && form.get('confirm') === 'yes') {
+        const guildId = String(form.get('guildId') || '');
+        if (!client?.guilds?.cache?.has(guildId)) throw new Error('RPG_GUILD_NOT_AVAILABLE');
+        await setOwnerDailyQuestActive(db, {
+          guildId,
+          questKey: form.get('questKey'),
+          active: false,
+          reason: form.get('reason'),
+          actorId: OWNER_ID
+        });
+        redirect(res, '/owner/pogaca?guildId=' + encodeURIComponent(guildId) + '&notice=quest_disabled');
+        return true;
+      }
       if ((action === 'rpg-inventory-adjust' || action === 'rpg-equipment-set') && form.get('confirm') === 'yes') {
         const guildId = String(form.get('guildId') || '');
         const userId = String(form.get('userId') || '');
