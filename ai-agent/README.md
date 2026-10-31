@@ -26,7 +26,7 @@ This service uses the free Groq API and does not fall back to paid providers.
 Configure these environment variables in Render:
 - `DISCORD_TOKEN`: token for the separate Frieren AI agent Discord application.
 - `DISCORD_CLIENT_ID`: application ID for that bot.
-- `DISCORD_GUILD_ID`: optional test server ID for fast guild-scoped command registration.
+- `DISCORD_GUILD_ID`: required; must be the Frieren AI test server ID `1564945192803639356`. Global slash-command registration is disabled.
 - `GROQ_API_KEY`: secret key from https://console.groq.com/keys. Never commit the key to GitHub.
 - `FRIEREN_MODEL_PROVIDER=groq`: selected provider.
 - `FRIEREN_MODEL`: optional model override; default is `openai/gpt-oss-20b`.
