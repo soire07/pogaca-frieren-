@@ -438,6 +438,18 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       } else if (action === 'memory-delete' && form.get('confirm') === 'yes') {
         const result = await deleteUserMemory(db, form.get('id'), OWNER_ID);
         notice = result ? 'memory_deleted' : 'invalid';
+      } else if (action === 'guild-config') {
+        await updateGuildConfiguration(db, client, {
+          guildId: form.get('guildId'), welcomeChannelId: form.get('welcomeChannelId') || null,
+          logChannelId: form.get('logChannelId') || null, welcomeMessage: form.get('welcomeMessage'), actorId: OWNER_ID
+        });
+        notice = 'guild_config_saved';
+      } else if (action === 'partner-save') {
+        await saveOwnerPartnerLink(db, { guildId: form.get('partnerGuildId'), name: form.get('partnerName'), inviteUrl: form.get('partnerInvite') }, OWNER_ID);
+        notice = 'partner_saved';
+      } else if (action === 'partner-delete' && form.get('confirm') === 'yes') {
+        const removed = await deleteOwnerPartnerLink(db, form.get('id'), OWNER_ID);
+        notice = removed ? 'partner_deleted' : 'invalid';
       } else if (action === 'announcement-send' && form.get('confirm') === 'yes') {
         const [guildId, channelId, extra] = String(form.get('target') || '').split(':');
         if (extra || !/^\d{17,20}$/.test(guildId || '') || !/^\d{17,20}$/.test(channelId || '')) throw new Error('INVALID_ANNOUNCEMENT_TARGET');
