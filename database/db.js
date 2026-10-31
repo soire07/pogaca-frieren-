@@ -18,10 +18,16 @@ const testContext = new AsyncLocalStorage();
 const isolatedTestPool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : undefined,
-  options: '-c search_path=frieren_test',
   max: 2,
   idleTimeoutMillis: 10_000,
   connectionTimeoutMillis: 10_000
+});
+// Neon pooled endpoints reject the PostgreSQL startup `options` parameter.
+// Set the isolated schema on each test-pool connection after it is established.
+isolatedTestPool.on('connect', client => {
+  client.query('SET search_path TO frieren_test').catch(error => {
+    console.error('Failed to configure isolated test schema:', error.message);
+  });
 });
 export const pool = new Proxy(productionPool, {
   get(target, property) {
