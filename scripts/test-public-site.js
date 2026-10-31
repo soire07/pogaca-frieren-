@@ -117,3 +117,32 @@ test('chibi speech bubble is nested inside the draggable companion wrapper', asy
   assert.match(response.body, /chibiCompanion/);
   assert.match(response.body, /pointermove/);
 });
+
+
+test('registration and login pages expose separate Discord OAuth actions', async () => {
+  const registration = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/register', headers: {} }, registration), true);
+  assert.equal(registration.status, 200);
+  assert.match(registration.body, /Discord ile kayıt ol/);
+  assert.match(registration.body, /flow=register/);
+  const login = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/login', headers: {} }, login), true);
+  assert.equal(login.status, 200);
+  assert.match(login.body, /Discord ile giriş yap/);
+  assert.match(login.body, /flow=login/);
+});
+
+test('site profile uses dedicated site avatar and banner assets', async () => {
+  const response = res();
+  await handlePublicSiteRequest(request('/', visitor), response);
+  assert.match(response.body, /site-avatar\\.svg/);
+  assert.match(response.body, /site-banner\\.svg/);
+});
+
+test('chibi speech bubble travels inside the draggable companion wrapper', async () => {
+  const response = res();
+  await handlePublicSiteRequest(request('/', visitor), response);
+  assert.match(response.body, /id="chibiCompanion"/);
+  assert.match(response.body, /id="chibiHint"/);
+  assert.match(response.body, /pointermove/);
+});
