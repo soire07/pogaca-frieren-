@@ -54,7 +54,7 @@ test('daily quest catalog seeds defaults and lists only the selected guild', asy
   } };
   const quests = await listOwnerDailyQuests(db, { guildId });
   assert.equal(quests.length, 1);
-  assert.ok(calls.filter(call => call.sql.includes('INSERT INTO guild_daily_quests')).length >= 9);
+  assert.equal(calls.filter(call => call.sql.includes('INSERT INTO guild_daily_quests')).length, 1);
   assert.ok(calls.every(call => !call.sql.includes('guild_id=$2') || call.params.includes(guildId)));
   assert.deepEqual(calls.at(-1).params, [guildId]);
 });
