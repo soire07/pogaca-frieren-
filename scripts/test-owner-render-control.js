@@ -13,7 +13,7 @@ function makeDb({ recentRows = [], failAudit = false } = {}) {
   const client = {
     query: async (sql, params) => {
       calls.push({ sql, params });
-      if (sql.includes('SELECT id FROM owner_audit_logs')) return { rows: recentRows };
+      if (sql.includes('SELECT id FROM owner_audit_logs')) return { rows: recentRows, rowCount: recentRows.length };
       if (sql.includes('INSERT INTO owner_audit_logs')) {
         if (failAudit) throw new Error('audit unavailable');
         return { rows: [{ id: 42 }] };
