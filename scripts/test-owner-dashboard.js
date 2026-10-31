@@ -68,13 +68,14 @@ test('owner OAuth state cookie is cleared using the same path it was created wit
 });
 
 
-test('owner panel navigation exposes all six owner command workflows', () => {
+test('owner panel navigation exposes command workflows without a log center', () => {
   const commands = OWNER_PANEL_SECTIONS.map(section => section.command).filter(Boolean);
   assert.deepEqual(commands, ['/owner', '/owner-bilgi', '/owner-bellek', '/owner-onay', '/owner-duyuru', '/owner-bakim']);
   const navigation = renderOwnerNavigation();
-  for (const id of ['overview', 'system', 'memories', 'approvals', 'announcements', 'maintenance', 'activity']) {
+  for (const id of ['overview', 'system', 'memories', 'approvals', 'announcements', 'maintenance']) {
     assert.match(navigation, new RegExp('href="#' + id + '"'));
   }
+  assert.doesNotMatch(navigation, /Log Merkezi|href="#activity"/);
 });
 
 
