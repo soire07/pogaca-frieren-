@@ -43,7 +43,7 @@ test('AI workspace exposes an authenticated test form and safely renders its rep
   const html = renderOwnerWorkspace('ai', {
     aiReadiness: { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true },
     csrf: 'csrf-token',
-    testReport: { total: 4, passed: 3, failed: 1, detail: '<script>alert(1)</script>' }
+    testReport: { summary: { total: 4, pass: 3, fail: 1 }, detail: '<script>alert(1)</script>' }
   });
   assert.match(html, /ai-test-run/);
   assert.match(html, /csrf-token/);
