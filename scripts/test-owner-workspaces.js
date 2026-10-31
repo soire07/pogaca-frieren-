@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getOwnerDatabaseDiagnostics, renderOwnerWorkspace } from '../owner-workspaces.js';
+import { getOwnerDatabaseDiagnostics, getOwnerDatabaseTablePreview, renderOwnerWorkspace } from '../owner-workspaces.js';
 
 test('database diagnostics only count validated public table identifiers', async () => {
   const calls = [];
