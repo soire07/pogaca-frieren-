@@ -26,8 +26,7 @@ export const RPG_CONTENT_CATALOGS = Object.freeze({
 
 export function selectDungeonForLevel(level, tiers = DEFAULT_DUNGEON_TIERS) {
   const available = [...(tiers || [])].filter(tier => Number.isFinite(Number(tier.minLevel)));
-  if (!available.length) return DEFAULT_DUNGEON_TIERS[0];
   const unlocked = available.filter(tier => Number(level) >= Number(tier.minLevel))
     .sort((a, b) => Number(a.minLevel) - Number(b.minLevel));
-  return unlocked.at(-1) || available.sort((a, b) => Number(a.minLevel) - Number(b.minLevel))[0];
+  return unlocked.at(-1) || null;
 }
