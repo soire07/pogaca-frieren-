@@ -111,9 +111,9 @@ test('site profile uses dedicated brand avatar and banner assets', async () => {
   assert.match(response.body, /site-banner\.svg/);
 });
 
-test('dedicated site avatar asset is served as SVG to authenticated members', async () => {
+test('dedicated site avatar asset is public so auth screens can render it', async () => {
   const response = res();
-  await handlePublicSiteRequest(request('/assets/site-avatar.svg'), response);
+  await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-avatar.svg', headers: {} }, response);
   assert.equal(response.status, 200);
   assert.match(response.headers['Content-Type'], /image\/svg\+xml/);
   assert.match(String(response.body), /<svg/);
