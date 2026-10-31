@@ -73,9 +73,9 @@ test('owner panel navigation exposes command workflows without a log center', ()
   assert.deepEqual(commands, ['/owner', '/owner-bilgi', '/owner-bellek', '/owner-onay', '/owner-duyuru', '/owner-bakim']);
   const navigation = renderOwnerNavigation();
   for (const id of ['overview', 'system', 'memories', 'approvals', 'announcements', 'maintenance']) {
-    assert.match(navigation, new RegExp('href="#' + id + '"'));
+    assert.match(navigation, new RegExp('href="/owner#' + id + '"'));
   }
-  assert.doesNotMatch(navigation, /Log Merkezi|href="#activity"/);
+  assert.doesNotMatch(navigation, /Log Merkezi|href="\/owner#activity"/);
 });
 
 
