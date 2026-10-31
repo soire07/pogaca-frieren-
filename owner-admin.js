@@ -199,7 +199,8 @@ export async function sendOwnerAnnouncement(client, db, { guildId, channelId, me
   if (!channel?.isTextBased?.() || !channel?.send) throw new Error('CHANNEL_NOT_SENDABLE');
   if (String(channel.guildId || channel.guild?.id || '') !== String(guild.id)) throw new Error('CHANNEL_GUILD_MISMATCH');
   const me = guild.members.me;
-  if (!me || !channel.permissionsFor(me)?.has('SendMessages')) throw new Error('MISSING_SEND_PERMISSION');
+  const requiredPermission = channel.isThread?.() ? 'SendMessagesInThreads' : 'SendMessages';
+  if (!me || !channel.permissionsFor(me)?.has(requiredPermission)) throw new Error('MISSING_SEND_PERMISSION');
   const sent = await channel.send({ content: text, allowedMentions: { parse: [] } });
   await auditOwnerAction(db, actorId, 'announcement.send', guildId + '/' + channelId, {
     messageLength: text.length,
