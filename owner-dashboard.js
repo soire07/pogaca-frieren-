@@ -485,7 +485,7 @@ export function renderOwnerControlCenter(renderServices, overview, csrf) {
   const connectionNotice = !apiConfigured
     ? '<div class="notice warn">Render API anahtarı henüz bağlı değil. Kontrolleri etkinleştirmek için RENDER_API_KEY değerini yalnızca Render servisinin Environment bölümünde sakla; tarayıcıya veya Discord mesajına yazma. Yeni Render hesabına geçince RENDER_POGACA_SERVICE_ID ve RENDER_FRIEREN_AI_SERVICE_ID değerlerini güncelle.</div>'
     : renderApiError
-      ? '<div class="notice warn">Render API durum sorgusunda sorun var: ' + escapeHtml(renderApiError) + '. Kontroller güvenlik nedeniyle devre dışı bırakıldı.</div>'
+      ? '<div class="notice warn">En az bir Render servisi doğrulanamadı: ' + escapeHtml(renderApiError) + '. Hata bulunan servis kartının kontrolleri kapalıdır; diğer doğrulanmış servisler bağımsız kalır.</div>'
       : '<div class="notice">Render API bağlı. İşlemler sunucu tarafında yürütülür, her istek denetim kaydına yazılır ve servis başına 90 saniyelik bekleme uygulanır.</div>';
   return '<section class="panel" id="bot-control"><h2>Bot Kontrol Merkezi</h2><p class="muted">Poğaça Frieren ve Frieren AI birbirinden bağımsız yönetilir. Durumlar Render servis kaydı ve health endpoint üzerinden okunur.</p>'
     + connectionNotice
