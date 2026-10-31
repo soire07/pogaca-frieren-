@@ -57,7 +57,7 @@ test('approval decision and audit are atomic and only pending requests can chang
   assert.match(call.sql, /status='pending'/);
   assert.match(call.sql, /INSERT INTO owner_audit_logs/);
   assert.equal(call.params[0], 9);
-  assert.rejects(() => reviewApproval(db, 'not-an-id', 'approved', OWNER_ID), { message: 'INVALID_APPROVAL_ID' });
+  await assert.rejects(() => reviewApproval(db, 'not-an-id', 'approved', OWNER_ID), { message: 'INVALID_APPROVAL_ID' });
 });
 
 test('memory lookup scopes by user and optional guild', async () => {
