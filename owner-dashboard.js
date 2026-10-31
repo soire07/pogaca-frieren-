@@ -50,7 +50,7 @@ export function renderOwnerNavigation() {
     + groups.map(group => '<div class="nav-group"><div class="nav-group-title">' + group.label + '</div>'
       + group.ids.map(id => {
         const section = sections.get(id) || (id === 'behavior' ? { id: 'behavior', label: 'Komut ve davranışlar', command: null } : null);
-        return section ? '<a href="#' + section.id + '" aria-label="' + section.label + '"><span class="nav-icon" aria-hidden="true">' + ({
+        return section ? '<a href="/owner#' + section.id + '" aria-label="' + section.label + '"><span class="nav-icon" aria-hidden="true">' + ({
           overview: '⌂', system: '◈', servers: '⌘', rpg: '✧', partners: '◇',
           memories: '✦', approvals: '⚝', announcements: '➤', maintenance: '◉'
         }[section.id] || '✧') + '</span><span class="nav-link-copy"><strong>' + section.label + '</strong>'

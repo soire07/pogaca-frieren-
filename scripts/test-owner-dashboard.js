@@ -73,9 +73,9 @@ test('owner panel navigation exposes command workflows without a log center', ()
   assert.deepEqual(commands, ['/owner', '/owner-bilgi', '/owner-bellek', '/owner-onay', '/owner-duyuru', '/owner-bakim']);
   const navigation = renderOwnerNavigation();
   for (const id of ['overview', 'system', 'memories', 'approvals', 'announcements', 'maintenance']) {
-    assert.match(navigation, new RegExp('href="#' + id + '"'));
+    assert.match(navigation, new RegExp('href="/owner#' + id + '"'));
   }
-  assert.doesNotMatch(navigation, /Log Merkezi|href="#activity"/);
+  assert.doesNotMatch(navigation, /Log Merkezi|href="\/owner#activity"/);
 });
 
 
@@ -288,9 +288,9 @@ test('owner navigation groups bot workspaces and preserves the no-log policy', (
   assert.match(navigation, /Frieren Poğaça/);
   assert.match(navigation, /Frieren AI/);
   assert.match(navigation, /Komut ve davranışlar/);
-  assert.match(navigation, /href="#behavior"/);
-  assert.match(navigation, /href="#rpg"/);
-  assert.doesNotMatch(navigation, /Log Merkezi|href="#activity"/);
+  assert.ok(navigation.includes('href="/owner#behavior"'));
+  assert.ok(navigation.includes('href="/owner#rpg"'));
+  assert.ok(!navigation.includes('href="/owner#activity"'));
 });
 
 test('bot cards expose direct paths into their own management areas', () => {
