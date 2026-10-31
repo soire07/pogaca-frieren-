@@ -630,7 +630,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     try {
       const kind = workspaceKinds[url.pathname];
       const data = {};
-      if (kind === 'ai') data.aiReadiness = await getFrierenAIReadiness();
+      if (kind === 'ai') { data.aiReadiness = await getFrierenAIReadiness(); data.csrf = session.csrf; }
       if (kind === 'pogaca') data.rpgMetrics = await getOwnerRpgMetrics(db);
       if (kind === 'database') data.database = await getOwnerDatabaseDiagnostics(db);
       if (kind === 'settings') data.settings = [
@@ -665,6 +665,24 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const form = await readForm(req);
       if (!safeStringEqual(form.get('csrf'), session.csrf)) return send(res, 403, page('İstek reddedildi', '<h1>CSRF doğrulaması başarısız</h1>'));
       const action = form.get('action');
+      if (action === 'ai-test-run' && form.get('confirm') === 'yes') {
+        const secret = process.env.FRIEREN_BRIDGE_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || '';
+        if (secret.length < 32) throw new Error('AI_TEST_BRIDGE_NOT_CONFIGURED');
+        const rawCommands = String(form.get('commands') || '');
+        const commands = rawCommands.split(/[\\s,;]+/).map(value => value.trim()).filter(Boolean).slice(0, 80);
+        const response = await fetch(BASE_URL + '/internal/test-suite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + secret },
+          body: JSON.stringify({ commands }),
+          signal: AbortSignal.timeout(45000)
+        });
+        const report = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error('AI_TEST_RUN_FAILED_' + response.status);
+        const content = renderOwnerNavigation() + '<div class="top"><div><div class="brand">FRIEREN</div><div class="small">THE ARCANE SANCTUARY · TEST RAPORU</div></div><a class="btn secondary" href="/owner/frieren-ai">AI merkezine dön</a></div>'
+          + renderOwnerWorkspace('ai', { aiReadiness: await getFrierenAIReadiness(), csrf: session.csrf, testReport: report });
+        send(res, 200, page('Frieren AI test raporu', content));
+        return true;
+      }
       let notice = 'invalid';
       if ((action === 'maintenance-on' || action === 'maintenance-off') && form.get('confirm') === 'yes') {
         await setMaintenanceState(db, action === 'maintenance-on', OWNER_ID);

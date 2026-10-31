@@ -42,7 +42,12 @@ export function renderOwnerWorkspace(kind, data = {}) {
       + '<div class="stat"><small>İzinli sunucu</small><strong>Test sunucusu</strong><div class="small">1564945192803639356</div></div></div>'
       + '<section class="panel"><h2>Servis kontrolleri</h2>' + checks.map(([label, value]) =>
         '<div class="rowitem"><strong>' + label + '</strong><span class="' + (value === true ? 'good' : 'bad') + '"> · ' + (value === true ? 'Hazır' : value === false ? 'Başarısız' : 'Veri alınamadı') + '</span></div>'
-      ).join('') + '<p class="small">Bu ekran yalnızca servis sağlık durumunu gösterir; erişim izni olmayan sunuculara komut göndermez.</p></section>'
+      ).join('') + '<p class="small">Bu ekran yalnızca test sunucusu için sentetik komut senaryoları çalıştırır; gerçek kullanıcı işlemi yapmaz.</p></section>'
+      + '<section class="panel"><h2>Komut test çalıştırıcısı</h2><p class="muted">Boş bırakılırsa tüm komutlar denetlenir. Belirli komutları virgül veya satırla ayırarak girebilirsin. Testler sentetik etkileşim kullanır; gerçek Discord kullanıcısı adına işlem yapmaz.</p>'
+      + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="ai-test-run">'
+      + '<label>Komut adları (isteğe bağlı)</label><textarea name="commands" maxlength="2000" placeholder="karakter, bakiye, zindan"></textarea>'
+      + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Testleri şimdi çalıştırmayı onaylıyorum</label><button class="btn">Testleri çalıştır</button></form>'
+      + (data.testReport ? '<h3>Son çalıştırma sonucu</h3><div class="grid"><div class="stat"><small>Toplam</small><strong>' + Number(data.testReport.total || 0) + '</strong></div><div class="stat"><small>Başarılı</small><strong class="good">' + Number(data.testReport.passed || 0) + '</strong></div><div class="stat"><small>Başarısız</small><strong class="bad">' + Number(data.testReport.failed || 0) + '</strong></div></div><pre class="report">' + escapeHtml(JSON.stringify(data.testReport, null, 2).slice(0, 14000)) + '</pre>' : '') + '</section>'
       + '<div class="columns">' + card('AI hafızası', 'Kayıtlı hafızaları görüntüle ve gerektiğinde sil.', '/owner#memories')
       + card('Teknik talepler', 'Kod değişikliği taleplerini onayla veya reddet.', '/owner#approvals')
       + card('Genel durum', 'Ana kontrol merkezine dön.', '/owner') + '</div>';

@@ -38,3 +38,16 @@ test('database workspace escapes database names and table names', () => {
   assert.doesNotMatch(html, /<img>/);
   assert.match(html, /&lt;script&gt;/);
 });
+
+test('AI workspace exposes an authenticated test form and safely renders its report', () => {
+  const html = renderOwnerWorkspace('ai', {
+    aiReadiness: { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true },
+    csrf: 'csrf-token',
+    testReport: { total: 4, passed: 3, failed: 1, detail: '<script>alert(1)</script>' }
+  });
+  assert.match(html, /ai-test-run/);
+  assert.match(html, /csrf-token/);
+  assert.match(html, /Testleri çalıştır/);
+  assert.match(html, /&lt;script&gt;/);
+  assert.doesNotMatch(html, /<script>/);
+});
