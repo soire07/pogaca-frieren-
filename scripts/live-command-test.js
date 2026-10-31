@@ -6,8 +6,15 @@ import { buildCoopTestUserIds } from './coop-test-users.js';
 import { handleCharacterPanelInteraction } from '../karakter.js';
 import { randomUUID } from 'node:crypto';
 
-const TEST_GUILD_PREFIX = 'frieren-test-guild-' + randomUUID() + '-';
 const TEST_USER_PREFIX = '900000000000';
+
+export function buildIsolatedTestGuildId(index) {
+  const sequence = Number(index);
+  if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence > 999) {
+    throw new Error('INVALID_TEST_GUILD_SEQUENCE');
+  }
+  return '910000000000000' + String(sequence).padStart(3, '0');
+}
 
 function sampleValue(option) {
   if (option.type === 1 || option.type === 2) return undefined;
@@ -237,7 +244,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
     let index = 0;
     for (const command of commands) {
       index++;
-      const guildId = TEST_GUILD_PREFIX + index;
+      const guildId = buildIsolatedTestGuildId(index);
       const userId = TEST_USER_PREFIX + String(index).padStart(6, '0');
       const effects = [];
       try {
