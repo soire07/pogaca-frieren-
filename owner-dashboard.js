@@ -10,6 +10,7 @@ import { DEFAULT_GUILD_FEATURES, listGuildFeatureSettings, setGuildFeatureEnable
 import { getOwnerDatabaseDiagnostics, getOwnerDatabaseTablePreview, renderOwnerWorkspace } from './owner-workspaces.js';
 import { getFrierenChatSettings, updateFrierenChatSettings } from './frieren-chat-settings.js';
 import { listOwnerDailyQuests, saveOwnerDailyQuest, setOwnerDailyQuestActive } from './owner-rpg-quests.js';
+import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } from './owner-rpg-content.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -647,6 +648,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         const playerId = String(url.searchParams.get('userId') || '');
         if (playerId && data.guildId) data.player = await getOwnerRpgPlayerDetails(db, { guildId: data.guildId, userId: playerId });
         if (data.guildId) data.dailyQuests = await listOwnerDailyQuests(db, { guildId: data.guildId });
+        if (data.guildId) data.rpgContent = await listOwnerRpgContent(db, { guildId: data.guildId });
       }
       if (kind === 'database') {
         data.database = await getOwnerDatabaseDiagnostics(db);
@@ -714,6 +716,37 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
           actorId: OWNER_ID
         });
         redirect(res, '/owner/pogaca?guildId=' + encodeURIComponent(guildId) + '&notice=quest_disabled');
+        return true;
+      }
+      if (action === 'rpg-content-save' && form.get('confirm') === 'yes') {
+        const guildId = String(form.get('guildId') || '');
+        if (!client?.guilds?.cache?.has(guildId)) throw new Error('RPG_GUILD_NOT_AVAILABLE');
+        const contentType = String(form.get('contentType') || '');
+        let config;
+        if (contentType === 'dungeon') {
+          config = { name: form.get('name'), hp: Number(form.get('hp')), damage: Number(form.get('damage')), xp: Number(form.get('xp')), coins: Number(form.get('coins')), lootChance: Number(form.get('lootChance')), loot: form.get('loot') };
+        } else if (contentType === 'solo_boss') {
+          config = { name: form.get('name'), region: form.get('region'), maxHp: Number(form.get('maxHp')), minDamage: Number(form.get('minDamage')), maxDamage: Number(form.get('maxDamage')), coinMin: Number(form.get('coinMin')), coinMax: Number(form.get('coinMax')), xpMin: Number(form.get('xpMin')), xpMax: Number(form.get('xpMax')), lootChance: Number(form.get('lootChance')), loot: form.get('loot') };
+        } else if (contentType === 'raid_boss') {
+          config = { name: form.get('name'), hp: Number(form.get('hp')), damage: Number(form.get('damage')), xp: Number(form.get('xp')), coins: Number(form.get('coins')), loot: form.get('loot'), weakness: form.get('weakness'), weaknessLabel: form.get('weaknessLabel') };
+        } else {
+          throw new Error('INVALID_RPG_CONTENT');
+        }
+        await saveOwnerRpgContent(db, {
+          guildId, contentType, contentKey: form.get('contentKey'), config,
+          active: form.get('active') !== 'no', reason: form.get('reason'), actorId: OWNER_ID
+        });
+        redirect(res, '/owner/pogaca?guildId=' + encodeURIComponent(guildId) + '&notice=content_saved');
+        return true;
+      }
+      if (action === 'rpg-content-disable' && form.get('confirm') === 'yes') {
+        const guildId = String(form.get('guildId') || '');
+        if (!client?.guilds?.cache?.has(guildId)) throw new Error('RPG_GUILD_NOT_AVAILABLE');
+        await setOwnerRpgContentActive(db, {
+          guildId, contentType: form.get('contentType'), contentKey: form.get('contentKey'),
+          active: false, reason: form.get('reason'), actorId: OWNER_ID
+        });
+        redirect(res, '/owner/pogaca?guildId=' + encodeURIComponent(guildId) + '&notice=content_disabled');
         return true;
       }
       if ((action === 'rpg-inventory-adjust' || action === 'rpg-equipment-set') && form.get('confirm') === 'yes') {
