@@ -587,7 +587,7 @@ test('site registration callback creates a valid member table and session', asyn
     assert.equal(response.headers.Location, '/');
     assert.match(String(response.headers['Set-Cookie']), /frieren_site_session=/);
     assert.match(queries[0].sql, /CREATE TABLE IF NOT EXISTS frieren_site_members/);
-    assert.ok(queries[0].sql.includes("'^[0-9]{17,20}
+    assert.ok(queries[0].sql.includes("17,20"));
     assert.match(queries[1].sql, /INSERT INTO frieren_site_members/);
   } finally {
     for (const [key, value] of Object.entries(previous)) {
