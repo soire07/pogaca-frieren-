@@ -129,7 +129,7 @@ export async function searchOwnerRpgPlayers(db, { guildId, query = '', limit = 2
      FROM users WHERE guild_id=$1 AND (
        $2='' OR user_id=$2 OR COALESCE(character_name,'') ILIKE $3 OR class_name ILIKE $3
      ) ORDER BY level DESC,xp DESC LIMIT $4`,
-    [guild, /^\\d{17,20}$/.test(term) ? term : '', '%' + term.replace(/[\\%_]/g, '\\$&') + '%', boundedLimit]
+    [guild, /^\d{17,20}$/.test(term) ? term : '', '%' + term.replace(/[\\%_]/g, '\\$&') + '%', boundedLimit]
   );
   return result.rows || [];
 }
