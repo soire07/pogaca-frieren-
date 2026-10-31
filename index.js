@@ -323,7 +323,12 @@ client.on(Events.MessageCreate, async message => {
   if (!message.guild || message.author.bot) return;
   try {
     if (await getMaintenanceState(pool)) return;
-    await handleFrierenMentionMessage({ message, botUserId: client.user?.id, db: pool });
+    const [aiChatEnabled, messageXpEnabled] = await Promise.all([
+      getGuildFeatureEnabled(pool, message.guild.id, 'aiChat'),
+      getGuildFeatureEnabled(pool, message.guild.id, 'messageXp'),
+    ]);
+    if (aiChatEnabled) await handleFrierenMentionMessage({ message, botUserId: client.user?.id, db: pool });
+    if (!messageXpEnabled) return;
     const gained = 10 + Math.floor(Math.random() * 11);
     const result = await pool.query(`INSERT INTO users (guild_id,user_id,xp,level,last_xp_at)
       VALUES ($1,$2,$3,$4,NOW())
