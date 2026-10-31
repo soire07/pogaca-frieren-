@@ -46,6 +46,20 @@ test('RPG content validation accepts bounded dungeon and boss tuning', () => {
   });
   assert.equal(boss.config.hp, 260);
   assert.equal(boss.config.weakness, 'spell');
+
+  const soloBoss = validateOwnerRpgContentInput({
+    guildId, contentType: 'solo_boss', contentKey: 'level_1',
+    config: { name: 'Schattenwolf', region: 'Merkez', maxHp: 130, minDamage: 7, maxDamage: 13,
+      coinMin: 90, coinMax: 140, xpMin: 55, xpMax: 90, lootChance: 0.25, loot: 'Kurt Dişi, Gölge Pençesi' },
+    reason: 'Boss dengesi', actorId
+  });
+  assert.deepEqual(soloBoss.config.loot, ['Kurt Dişi', 'Gölge Pençesi']);
+  assert.throws(() => validateOwnerRpgContentInput({
+    guildId, contentType: 'solo_boss', contentKey: 'level_1',
+    config: { name: 'Schattenwolf', region: 'Merkez', maxHp: 130, minDamage: 20, maxDamage: 13,
+      coinMin: 90, coinMax: 140, xpMin: 55, xpMax: 90, lootChance: 0.25, loot: 'Kurt Dişi' },
+    reason: 'Boss dengesi', actorId
+  }), /INVALID_RPG_CONTENT/);
 });
 
 test('RPG content validation rejects unknown keys, unsafe values and invalid weaknesses', () => {
