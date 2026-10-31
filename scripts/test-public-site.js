@@ -4,6 +4,7 @@ import { handlePublicSiteRequest } from '../public-site.js';
 import { createPublicSiteSession, buildPublicSiteSessionCookie } from '../owner-dashboard.js';
 
 const secret = 'test-public-site-session-secret-at-least-32-characters';
+process.env.ADMIN_SESSION_SECRET = secret;
 const visitor = { id: '123456789012345678', username: 'Gezgin', avatar: null };
 function res() {
   return { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body) { this.body = body; } };
