@@ -9,6 +9,7 @@ on:
       - 'owner-workspaces.js'
       - 'owner-rpg-quests.js'
       - 'owner-rpg-content.js'
+      - 'owner-render-control.js'
       - 'rpg-content-catalog.js'
       - 'rpg-mechanics.js'
       - 'gunlukgorev.js'
@@ -33,6 +34,7 @@ on:
       - 'owner-workspaces.js'
       - 'owner-rpg-quests.js'
       - 'owner-rpg-content.js'
+      - 'owner-render-control.js'
       - 'rpg-content-catalog.js'
       - 'rpg-mechanics.js'
       - 'gunlukgorev.js'
@@ -59,5 +61,5 @@ jobs:
         with:
           node-version: 20
       - run: npm install --no-package-lock --no-audit --no-fund
-      - run: node --test --test-concurrency=1 scripts/test-owner-dashboard.js scripts/test-owner-workspaces.js scripts/test-owner-quests.js scripts/test-owner-rpg-content.js
+      - run: node --test --test-concurrency=1 scripts/test-owner-dashboard.js scripts/test-owner-workspaces.js scripts/test-owner-quests.js scripts/test-owner-rpg-content.js scripts/test-owner-render-control.js
       - run: node scripts/check-gameplay-integrity.js
