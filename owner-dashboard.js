@@ -698,7 +698,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         const secret = process.env.FRIEREN_BRIDGE_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || '';
         if (secret.length < 32) throw new Error('AI_TEST_BRIDGE_NOT_CONFIGURED');
         const rawCommands = String(form.get('commands') || '');
-        const commands = rawCommands.split(/[\\s,;]+/).map(value => value.trim()).filter(Boolean).slice(0, 80);
+        const commands = rawCommands.split(/[\x09-\x0d ,;]+/).map(value => value.trim()).filter(Boolean).slice(0, 80);
         const response = await fetch(BASE_URL + '/internal/test-suite', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + secret },
