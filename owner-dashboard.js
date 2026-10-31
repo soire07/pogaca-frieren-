@@ -490,7 +490,7 @@ export function renderOwnerControlCenter(renderServices, overview, csrf, renderM
       + actions + '</article>';
   };
   const connectionNotice = !apiConfigured
-    ? '<div class="notice warn">Render API anahtarı henüz bağlı değil. Kontrolleri etkinleştirmek için her Render hesabının anahtarını ayrı sakla: Poğaça için RENDER_POGACA_API_KEY (veya RENDER_API_KEY), yeni Frieren AI hesabı için RENDER_FRIEREN_AI_API_KEY. Değerleri yalnızca Owner Panel'in çalıştığı Poğaça Render servisinin Environment bölümüne ekle; tarayıcıya veya Discord mesajına yazma. Servis ID değerleri mevcut hesaplara göre ayarlandı.</div>'
+    ? '<div class="notice warn">Render API anahtarı henüz bağlı değil. Kontrolleri etkinleştirmek için her Render hesabının anahtarını ayrı sakla: Poğaça için RENDER_POGACA_API_KEY (veya RENDER_API_KEY), yeni Frieren AI hesabı için RENDER_FRIEREN_AI_API_KEY. Değerleri yalnızca Owner Panel ortamında çalıştığı Poğaça Render servisinin Environment bölümüne ekle; tarayıcıya veya Discord mesajına yazma. Servis ID değerleri mevcut hesaplara göre ayarlandı.</div>'
     : renderApiError
       ? '<div class="notice warn">En az bir Render servisi doğrulanamadı: ' + escapeHtml(renderApiError) + '. Hata bulunan servis kartının kontrolleri kapalıdır; diğer doğrulanmış servisler bağımsız kalır.</div>'
       : '<div class="notice">Render API bağlı. İşlemler sunucu tarafında yürütülür, her istek denetim kaydına yazılır ve servis başına 90 saniyelik bekleme uygulanır.</div>';
