@@ -559,7 +559,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     service_action_accepted: 'Render API işlemi kabul etti. Servis durumunu yenileyerek sonucu doğrula.',
     service_cooldown: 'Bu servis için yakın zamanda bir işlem yapıldı. Güvenlik bekleme süresi dolunca tekrar dene.',
     render_api_missing: 'Render API anahtarı tanımlı değil. RENDER_API_KEY değerini yalnızca Render ortam değişkenlerinde sakla.',
-    render_api_auth_error: 'Render API kimlik doğrulaması başarısız. API anahtarını Render hesabında yenile ve sunucu ortam değişkenini güncelle.',
+    render_api_auth_error: 'Render API kimlik doğrulaması veya yetki kapsamı yetersiz. Anahtar izinlerini Render hesabında kontrol et ve sunucu ortam değişkenini güncelle.',
     render_api_service_error: 'Render servis kimliği bulunamadı veya API istek sınırına ulaşıldı. Servis ID değerlerini ve Render API durumunu kontrol et.',
     approval_approved: 'Talep onaylandı. Kod otomatik çalıştırılmadı.',
     approval_rejected: 'Talep reddedildi.',
