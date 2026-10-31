@@ -112,6 +112,37 @@ client.once(Events.ClientReady, async readyClient => {
   }, 60_000);
 });
 
+client.on(Events.GuildMemberAdd, async member => {
+  try {
+    const result = await pool.query(
+      'SELECT welcome_channel_id,log_channel_id,welcome_message FROM guild_settings WHERE guild_id=$1',
+      [member.guild.id]
+    );
+    const settings = result.rows?.[0];
+    if (!settings) return;
+    const sendToConfiguredChannel = async (channelId, content) => {
+      if (!channelId) return;
+      const channel = await member.guild.channels.fetch(String(channelId)).catch(() => null);
+      if (!channel?.isTextBased?.() || !channel.send) return;
+      const me = member.guild.members.me;
+      if (!me || !channel.permissionsFor(me)?.has('SendMessages')) return;
+      await channel.send({ content, allowedMentions: { parse: [], users: [member.id] } });
+    };
+    if (settings.welcome_channel_id) {
+      const message = String(settings.welcome_message || 'Hoş geldin {user}! {server} sunucusuna katıldın.')
+        .replaceAll('{user}', '<@' + member.id + '>')
+        .replaceAll('{server}', member.guild.name);
+      await sendToConfiguredChannel(settings.welcome_channel_id, message.slice(0, 300));
+    }
+    if (settings.log_channel_id && settings.log_channel_id !== settings.welcome_channel_id) {
+      await sendToConfiguredChannel(settings.log_channel_id, '↗ Üye katıldı: ' + member.user.tag + ' (' + member.id + ')');
+    }
+  } catch (error) {
+    console.error('Guild member welcome/log handler failed:', error?.message || error);
+    await recordOwnerError(pool, 'guild-member-join', error?.name || 'Error').catch(() => {});
+  }
+});
+
 client.on(Events.InteractionCreate, async interaction => {
   try {
     if (interaction.isChatInputCommand() && !interaction.commandName.startsWith('owner') && interaction.commandName !== 'status' && await getMaintenanceState(pool)) {
