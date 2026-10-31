@@ -36,6 +36,51 @@ footer{margin-top:28px;padding:26px max(20px,calc((100vw - 1160px)/2));border-to
 @media(max-width:850px){.topbar{flex-wrap:wrap;padding:10px 18px}.topbar nav{order:3;width:100%;overflow:auto;gap:17px}.topbar nav a{white-space:nowrap}.hero{grid-template-columns:1fr;text-align:center;padding-top:32px}.lead{margin:auto}.actions{justify-content:center}.hero-art{min-height:290px}.hero-art img{height:290px}.grid{grid-template-columns:1fr 1fr}.split{grid-template-columns:1fr}.gif-gallery{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.user-chip span{display:none}.hero{min-height:0}.hero-art{min-height:245px}.hero-art img{height:245px}.section{padding:34px 0 45px}.grid,.stats{grid-template-columns:1fr}.gif-gallery{grid-template-columns:repeat(2,1fr);gap:14px}.profile-info{align-items:center}.profile-avatar{width:82px;height:82px} .chibi-companion{right:8px;bottom:8px;transform:scale(.82);transform-origin:bottom right}.chibi-hint{right:108px;bottom:88px;max-width:185px}footer{padding:24px 18px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;scroll-behavior:auto!important;transition:none!important}}
+
+/* Responsive visual polish */
+:focus-visible{outline:2px solid #e6d4ff;outline-offset:3px}
+img{max-width:100%}
+.wrap,.section,.grid,.split,.hero,.card,.profile{min-width:0}
+.card{height:100%;display:flex;flex-direction:column}
+.card .btn{align-self:flex-start;margin-top:auto}
+.command span,.lead,.card p{overflow-wrap:anywhere}
+.topbar nav{scrollbar-width:none}
+.topbar nav::-webkit-scrollbar{display:none}
+.btn:focus-visible,.user-chip a:focus-visible,.topbar nav a:focus-visible{border-radius:8px}
+@media(max-width:850px){
+  .topbar{gap:10px}
+  .topbar nav{padding:5px 0 7px}
+  .hero{gap:12px}
+  .hero-art{width:min(100%,520px);margin:0 auto}
+  .split{gap:18px}
+}
+@media(max-width:560px){
+  .wrap{width:calc(100% - 28px)}
+  .topbar{padding:9px 14px}
+  .brand{font-size:17px;letter-spacing:.12em}
+  .brand-mark{width:36px;height:36px;font-size:21px}
+  .topbar nav{gap:15px;font-size:12px}
+  .hero h1,.hero-title{font-size:clamp(34px,10vw,46px)}
+  .lead{font-size:14px;line-height:1.75}
+  .actions{gap:9px}
+  .actions .btn{flex:1 1 100%;width:100%}
+  .hero-art{min-height:220px}
+  .hero-art img{height:220px}
+  .section-head{padding:0 5px}
+  .card{padding:18px;border-radius:17px}
+  .gif-gallery{gap:12px}
+  .gif-item img{border-width:2px}
+  .visual{height:230px}
+  .cta{padding:25px 18px}
+  .cta h2{font-size:28px}
+  footer{align-items:flex-start}
+}
+@media(max-width:360px){
+  .user-chip{padding:4px 7px}
+  .brand small{font-size:8px}
+  .gif-gallery{gap:9px}
+}
+
 `;
 
 const CHIBI = `
