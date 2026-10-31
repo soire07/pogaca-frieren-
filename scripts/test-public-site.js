@@ -19,7 +19,7 @@ test('anonymous visitors must authenticate with Discord before viewing the homep
   const response = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/', headers: {} }, response), true);
   assert.equal(response.status, 302);
-  assert.equal(response.headers.Location, '/owner/login');
+  assert.equal(response.headers.Location, '/login');
 });
 
 test('authenticated homepage includes the member identity, profile, GIF gallery and draggable chibi', async () => {
@@ -87,4 +87,44 @@ test('logout clears the shared member session cookie', async () => {
 test('unknown routes and non-GET requests are not intercepted', async () => {
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/unknown', headers: {} }, res()), false);
   assert.equal(await handlePublicSiteRequest({ method: 'POST', url: '/', headers: {} }, res()), false);
+});
+
+
+
+test('registration and login pages expose separate Discord OAuth actions', async () => {
+  const registration = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/register', headers: {} }, registration), true);
+  assert.equal(registration.status, 200);
+  assert.match(registration.body, /Discord ile kayıt ol/);
+  assert.match(registration.body, /flow=register/);
+  const login = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/login', headers: {} }, login), true);
+  assert.equal(login.status, 200);
+  assert.match(login.body, /Discord ile giriş yap/);
+  assert.match(login.body, /flow=login/);
+});
+
+test('site profile uses dedicated brand avatar and banner assets', async () => {
+  const response = res();
+  await handlePublicSiteRequest(request('/', visitor), response);
+  assert.match(response.body, /site-avatar\.svg/);
+  assert.match(response.body, /site-banner\.svg/);
+});
+
+test('dedicated site avatar asset is public so auth screens can render it', async () => {
+  const response = res();
+  await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-avatar.svg', headers: {} }, response);
+  assert.equal(response.status, 200);
+  assert.match(response.headers['Content-Type'], /image\/svg\+xml/);
+  assert.match(String(response.body), /<svg/);
+});
+
+test('chibi speech bubble is nested inside the draggable companion wrapper', async () => {
+  const response = res();
+  await handlePublicSiteRequest(request('/', visitor), response);
+  const wrapperIndex = response.body.indexOf('id="chibiCompanion"');
+  const hintIndex = response.body.indexOf('id="chibiHint"');
+  const chibiIndex = response.body.indexOf('id="chibi"');
+  assert.ok(wrapperIndex >= 0 && hintIndex > wrapperIndex && chibiIndex > hintIndex);
+  assert.match(response.body, /pointermove/);
 });

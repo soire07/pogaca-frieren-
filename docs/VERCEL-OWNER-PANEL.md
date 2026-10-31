@@ -5,10 +5,10 @@ This repository remains the single source repository for Poğaça Frieren, Frier
 ## Architecture
 
 - Vercel serves the Frieren site hostname and reverse-proxies requests to the existing Poğaça Frieren HTTP service.
-- The public homepage, bot introduction pages, and site GIF assets require a signed Discord member session; the existing OAuth callback creates that session for any authenticated Discord account.
+- The public homepage, bot introduction pages, and site assets require a signed Discord member session. `/register` creates a persistent site membership for a Discord account; `/login` accepts only an account already present in `frieren_site_members`.
 - `/owner` remains a separate owner-only area. A second signed owner session is issued only when the Discord user ID matches the configured owner ID.
 - The main Node.js service continues to run the persistent Poğaça Frieren Discord client and supervises the Frieren AI child process.
-- Neon PostgreSQL remains the database. No database migration is performed by this deployment.
+- Neon PostgreSQL remains the database. The site-membership table is created additively on the first registration or login; existing RPG tables and records are not altered.
 - Vercel does not run either persistent Discord Gateway client.
 
 ## Vercel project
@@ -38,6 +38,6 @@ If the Vercel project has not yet been assigned `frierenbot.vercel.app`, replace
 ## Deployment safety
 
 - Do not merge this change until the focused owner-panel test workflow passes.
-- Do not change `DATABASE_URL`, Discord bot tokens, AI provider credentials, or production database schemas as part of the Vercel panel setup.
+- Do not change `DATABASE_URL`, Discord bot tokens, or AI provider credentials. The site registration flow adds only the dedicated `frieren_site_members` table and does not alter existing RPG tables.
 - Do not shut down the existing Render service; it is the current upstream runtime for the Vercel proxy.
 - The panel currently manages the main bot's existing owner operations and displays independent health status for Frieren AI. Start/stop/restart controls for both persistent services require a separately authenticated service-management API and are not enabled by this proxy configuration alone.

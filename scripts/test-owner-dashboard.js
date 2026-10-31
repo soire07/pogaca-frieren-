@@ -545,3 +545,13 @@ test('owner Render action route refuses to suspend the service that hosts its ow
     globalThis.fetch = previousFetch;
   }
 });
+
+
+test('site OAuth state supports separate registration and login modes', async () => {
+  const { createOwnerOAuthState, getOwnerOAuthFlow } = await import('../owner-dashboard.js');
+  const now = 1800000000000;
+  for (const flow of ['register', 'login', 'owner']) {
+    const state = createOwnerOAuthState(secret, now, flow);
+    assert.equal(getOwnerOAuthFlow(state, secret, now + 1000), flow);
+  }
+});
