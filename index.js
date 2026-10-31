@@ -14,7 +14,7 @@ import { createAiAgentChildEnv, AI_AGENT_HEALTH_PORT } from './ai-agent/render-s
 import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
-import { getGuildFeatureEnabled, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
+import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
 
@@ -294,11 +294,13 @@ client.on(Events.InteractionCreate, async interaction => {
   if (!command) return;
   if (interaction.guildId) {
     const commandFeatureKey = 'command_' + interaction.commandName.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-    const [commandsEnabled, commandEnabled] = await Promise.all([
+    const featureKeys = getCommandFeatureKeys(interaction.commandName);
+    const enabledStates = await Promise.all([
       getGuildFeatureEnabled(pool, interaction.guildId, 'commands'),
       getGuildFeatureEnabled(pool, interaction.guildId, commandFeatureKey),
+      ...featureKeys.map(key => getGuildFeatureEnabled(pool, interaction.guildId, key)),
     ]);
-    if (!commandsEnabled || !commandEnabled) {
+    if (enabledStates.some(enabled => !enabled)) {
       return sendPrivateInteractionError(interaction, 'Bu komut bu sunucuda Owner Panel ayarlarıyla devre dışı bırakılmış.');
     }
   }
