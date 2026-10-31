@@ -5,7 +5,7 @@ import {
   reviewApproval, listUserMemories, deleteUserMemory, setMaintenanceState,
   sendOwnerAnnouncement, getRecentOwnerActivity
 } from './owner-admin.js';
-import { listOwnerPartnerLinks, saveOwnerPartnerLink, deleteOwnerPartnerLink, getOwnerRpgMetrics, updateGuildConfiguration, listGuildConfigurations, searchOwnerRpgPlayers, getOwnerRpgPlayerDetails, adjustOwnerRpgResources } from './owner-platform.js';
+import { listOwnerPartnerLinks, saveOwnerPartnerLink, deleteOwnerPartnerLink, getOwnerRpgMetrics, updateGuildConfiguration, listGuildConfigurations, searchOwnerRpgPlayers, getOwnerRpgPlayerDetails, adjustOwnerRpgResources, adjustOwnerRpgInventory, setOwnerRpgEquipment } from './owner-platform.js';
 import { DEFAULT_GUILD_FEATURES, listGuildFeatureSettings, setGuildFeatureEnabled, resetGuildFeatureSetting } from './guild-feature-settings.js';
 import { getOwnerDatabaseDiagnostics, getOwnerDatabaseTablePreview, renderOwnerWorkspace } from './owner-workspaces.js';
 import { getFrierenChatSettings, updateFrierenChatSettings } from './frieren-chat-settings.js';
@@ -683,6 +683,26 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const form = await readForm(req);
       if (!safeStringEqual(form.get('csrf'), session.csrf)) return send(res, 403, page('İstek reddedildi', '<h1>CSRF doğrulaması başarısız</h1>'));
       const action = form.get('action');
+      if ((action === 'rpg-inventory-adjust' || action === 'rpg-equipment-set') && form.get('confirm') === 'yes') {
+        const guildId = String(form.get('guildId') || '');
+        const userId = String(form.get('userId') || '');
+        if (!client?.guilds?.cache?.has(guildId)) throw new Error('RPG_GUILD_NOT_AVAILABLE');
+        if (action === 'rpg-inventory-adjust') {
+          await adjustOwnerRpgInventory(db, {
+            guildId, userId, itemId: form.get('itemId'),
+            quantityDelta: Number(form.get('quantityDelta')),
+            reason: form.get('reason'), actorId: OWNER_ID
+          });
+        } else {
+          await setOwnerRpgEquipment(db, {
+            guildId, userId, slot: form.get('slot'),
+            itemId: form.get('itemId') || null,
+            reason: form.get('reason'), actorId: OWNER_ID
+          });
+        }
+        redirect(res, '/owner/pogaca?guildId=' + encodeURIComponent(guildId) + '&userId=' + encodeURIComponent(userId) + '&notice=rpg_saved');
+        return true;
+      }
       if (action === 'rpg-resource-adjust' && form.get('confirm') === 'yes') {
         const guildId = String(form.get('guildId') || '');
         if (!client?.guilds?.cache?.has(guildId)) throw new Error('RPG_GUILD_NOT_AVAILABLE');
