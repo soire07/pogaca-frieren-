@@ -122,6 +122,9 @@ test('dedicated site avatar asset is public so auth screens can render it', asyn
 test('chibi speech bubble is nested inside the draggable companion wrapper', async () => {
   const response = res();
   await handlePublicSiteRequest(request('/', visitor), response);
-  assert.match(response.body, /id="chibiCompanion"[\\s\\S]*id="chibiHint"[\\s\\S]*id="chibi"/);
+  const wrapperIndex = response.body.indexOf('id="chibiCompanion"');
+  const hintIndex = response.body.indexOf('id="chibiHint"');
+  const chibiIndex = response.body.indexOf('id="chibi"');
+  assert.ok(wrapperIndex >= 0 && hintIndex > wrapperIndex && chibiIndex > hintIndex);
   assert.match(response.body, /pointermove/);
 });
