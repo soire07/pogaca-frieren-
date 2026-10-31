@@ -255,6 +255,20 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
       <p>${escapeHtml(row.memory_value)}</p>
       <form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="id" value="${row.id}"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Kalıcı olarak silmeyi onaylıyorum</label><button class="btn danger" name="action" value="memory-delete">Bu kaydı sil</button></form>
     </div>`).join('') : '<p class="muted">Arama için bir Discord kullanıcı ID gir veya eşleşen kayıt bulunmadı.</p>';
+  const configByGuild = new Map(guildConfigurations.map(row => [String(row.guild_id), row]));
+  const serverManagementHtml = guilds.map(guild => {
+    const config = configByGuild.get(guild.id) || {};
+    const channels = [...guild.channels.cache.values()].filter(channel => channel.isTextBased?.() && channel.send);
+    const options = selected => '<option value="">Kapalı / seçilmedi</option>' + channels.map(channel => '<option value="' + escapeHtml(channel.id) + '"' + (String(selected || '') === channel.id ? ' selected' : '') + '>#' + escapeHtml(channel.name) + '</option>').join('');
+    return '<article class="panel"><h3>' + escapeHtml(guild.name) + '</h3><div class="small">Sunucu ID: ' + escapeHtml(guild.id) + ' · Üye: ' + Number(guild.memberCount || 0) + '</div>'
+      + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(session.csrf) + '"><input type="hidden" name="action" value="guild-config"><input type="hidden" name="guildId" value="' + escapeHtml(guild.id) + '">'
+      + '<label>Karşılama kanalı</label><select name="welcomeChannelId">' + options(config.welcome_channel_id) + '</select>'
+      + '<label>Sistem log kanalı</label><select name="logChannelId">' + options(config.log_channel_id) + '</select>'
+      + '<label>Karşılama mesajı</label><textarea name="welcomeMessage" maxlength="300">' + escapeHtml(config.welcome_message || 'Hoş geldin {user}! 🥐 {server} sunucusuna katıldın.') + '</textarea><div class="small">{user} ve {server} yer tutucuları kullanılabilir.</div><button class="btn">Ayarları kaydet</button></form></article>';
+  }).join('');
+  const partnerHtml = partners.length ? partners.map(row => '<div class="rowitem"><strong>' + escapeHtml(row.partner_name) + '</strong><div class="small">Sunucu: ' + escapeHtml(row.guild_id) + ' · ' + escapeHtml(row.status) + '</div><a class="small" href="' + escapeHtml(row.invite_url) + '" target="_blank" rel="noopener">Davet bağlantısı ↗</a>'
+    + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(session.csrf) + '"><input type="hidden" name="action" value="partner-delete"><input type="hidden" name="id" value="' + Number(row.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Silmeyi onaylıyorum</label><button class="btn danger">Partner kaydını sil</button></form></div>').join('') : '<p class="muted">Henüz partner kaydı yok.</p>';
+  const rpgHtml = '<div class="grid"><div class="stat"><small>Oyuncu</small><strong>' + rpgMetrics.players + '</strong></div><div class="stat"><small>Ortalama seviye</small><strong>' + rpgMetrics.averageLevel.toFixed(1) + '</strong></div><div class="stat"><small>Toplam oyun parası</small><strong>' + rpgMetrics.totalCoins.toLocaleString('tr-TR') + '</strong></div><div class="stat"><small>Envanter yığını / eşya</small><strong>' + rpgMetrics.inventoryStacks + ' / ' + rpgMetrics.itemCount + '</strong></div><div class="stat"><small>Boss zaferi</small><strong>' + rpgMetrics.bossWins + '</strong></div><div class="stat"><small>Zindan zaferi</small><strong>' + rpgMetrics.dungeonWins + '</strong></div></div><p class="muted">Mevcut PostgreSQL oyun verilerinden salt okunur ölçüm. Oyuncu ve ekonomi kayıtları bu ekrandan değiştirilmez.</p>';
   const noticeText = ({
     maintenance_on: 'Bakım modu açıldı.',
     maintenance_off: 'Bakım modu kapatıldı.',
@@ -288,7 +302,11 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
         <div class="stat"><small>Bakım modu</small><strong class="${overview.maintenance ? 'warn' : 'good'}">${overview.maintenance ? 'Açık' : 'Kapalı'}</strong></div>
         <div class="stat"><small>Çalışma ortamı</small><strong>${escapeHtml(process.version)}</strong></div>
       </div>
-      ${renderOwnerBotCards(overview, aiReadiness)}\n      ${renderRenderMetrics(renderMetrics, overview)}
+      ${renderOwnerBotCards(overview, aiReadiness)}
+      <section class="panel" id="servers"><h2>Sunucu ve karşılama yönetimi</h2><p class="muted">Bağlı sunucuların karşılama ve sistem log kanallarını yönet. Kaydetmeden önce bot izinleri doğrulanır.</p><div class="columns">${serverManagementHtml}</div></section>
+      <section class="panel" id="partners"><h2>Partnerlik yönetimi</h2><p class="muted">Partner sunucularını kaydet, davet bağlantılarını güncelle ve kayıtları denetim altında tut.</p><form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="partner-save"><label>Partner sunucu adı</label><input name="partnerName" maxlength="80" required><label>Discord sunucu ID</label><input name="partnerGuildId" inputmode="numeric" pattern="[0-9]{17,20}" required><label>Discord davet bağlantısı</label><input name="partnerInvite" type="url" placeholder="https://discord.gg/..." required><button class="btn">Partner ekle / güncelle</button></form>${partnerHtml}</section>
+      <section class="panel" id="rpg"><h2>RPG sistem istatistikleri</h2>${rpgHtml}</section>
+      ${renderRenderMetrics(renderMetrics, overview)}
       <div class="actions"><a class="btn secondary" href="/owner">Durumu yenile</a><span class="small">Canlı süreç ölçümleri · Son sayfa yüklemesi</span></div>
     </section>
     <div class="columns">
