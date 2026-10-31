@@ -182,6 +182,56 @@ function page(title, content) {
   @media(max-width:760px){main{padding-left:0}.hero:after{width:100%;opacity:.12;background-position:right bottom;background-size:auto 65%}.nav{max-height:160px}.nav a{min-width:126px}.top{padding:12px}.hero h1{font-size:28px}}
   @media(prefers-reduced-motion:reduce){body:after{animation:none}.panel,.btn,.nav a{transition:none}}
 
+  /* Arcane Sanctuary — reference-matched owner interface */
+  :root{--line:rgba(126,164,238,.28);--muted:#a9badb;--ice:#dceaff;--blue:#315fca;--violet:#8e82e8}
+  body{padding:14px;background:#030918 url('/assets/frieren.gif') center top/cover fixed no-repeat}
+  body:before{opacity:.68;background:linear-gradient(180deg,rgba(3,8,25,.48),rgba(3,8,25,.9)),radial-gradient(ellipse at 50% 0%,rgba(83,125,231,.3),transparent 52%),radial-gradient(1px 1px at 20% 28%,#fff 99%,transparent);background-size:cover,cover,360px 320px}
+  main{width:min(100%,1580px);padding-left:258px}
+  .nav{left:max(14px,calc((100vw - 1580px)/2));top:14px;bottom:14px;width:230px;padding:13px 11px;border-radius:15px;background:linear-gradient(180deg,rgba(3,10,29,.97),rgba(5,15,38,.95));border-color:rgba(144,177,247,.32)}
+  .nav:before{content:"✧  Frieren  ✧\\A Owner Panel\\A The Arcane Sanctuary";white-space:pre-line;line-height:1.65;letter-spacing:.04em;font-size:18px;text-align:center;padding:12px 6px 17px}
+  .nav a{flex-direction:row;align-items:center;gap:10px;min-height:39px;padding:9px 11px;border-radius:8px;font-size:12px}
+  .nav a:before{content:"✧";color:#8fb5ff;font-size:14px}
+  .nav a:hover,.nav a:focus{transform:none;background:linear-gradient(90deg,rgba(29,83,174,.68),rgba(56,69,137,.22));box-shadow:inset 3px 0 #8cb7ff}
+  .top{margin-bottom:12px;padding:12px 18px;background:rgba(4,13,34,.7);border-color:rgba(148,181,247,.27);border-radius:12px}
+  .brand{font-size:24px;letter-spacing:.06em}
+  .hero{min-height:180px;padding:28px 30px;background:linear-gradient(90deg,rgba(4,13,36,.97) 0%,rgba(5,17,45,.88) 42%,rgba(5,17,45,.2) 100%),url('/assets/frieren.gif') right 42%/auto 155% no-repeat,linear-gradient(120deg,#0b1d4a,#111b45);border-radius:13px;border-color:rgba(142,177,246,.38)}
+  .hero:before{content:"";right:0;top:0;width:100%;height:100%;font-size:0;background:linear-gradient(90deg,transparent 58%,rgba(7,16,42,.06));}
+  .hero:after{display:none}
+  .hero h1{font-size:clamp(28px,3vw,40px);margin:8px 0 5px}
+  .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}
+  .stat{min-height:88px;padding:13px 14px;border-radius:11px;background:linear-gradient(145deg,rgba(9,27,66,.96),rgba(4,15,39,.96));border-color:rgba(111,153,229,.3)}
+  .stat small{font-size:11px;letter-spacing:.01em}
+  .stat strong{font-size:21px}
+  .bot-cards{gap:12px}
+  .bot-card{min-height:116px;padding:17px 20px}
+  .bot-symbol{width:54px;height:54px;flex-basis:54px;font-size:28px}
+  .panel{border-radius:12px;background:linear-gradient(145deg,rgba(8,23,56,.96),rgba(4,13,34,.97));border-color:rgba(112,153,225,.28);padding:19px}
+  .panel h2{font-family:Georgia,serif;font-size:19px}
+  .columns{gap:12px}
+  .btn{background:linear-gradient(110deg,#426cf0,#6478e9);color:white;border:1px solid rgba(180,201,255,.22);border-radius:7px}
+  .btn.secondary{background:rgba(19,42,86,.92);color:#dceaff}
+  .tag{border-radius:5px;background:rgba(43,78,150,.28);letter-spacing:.08em}
+  .notice{border-radius:8px}
+  @media(max-width:980px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:760px){
+    body{padding:8px;background-position:62% top;background-size:auto 420px}
+    main{padding-left:0}
+    .nav{position:sticky;top:5px;left:auto;width:100%;max-height:128px;bottom:auto;margin-bottom:10px;padding:7px;background:rgba(3,10,29,.97)}
+    .nav:before{display:none}
+    .nav a{min-width:max-content;min-height:34px;padding:8px 10px}
+    .nav a:before{display:none}
+    .top{padding:10px 12px}
+    .brand{font-size:18px}
+    .hero{min-height:165px;padding:20px 17px;background-position:center,right 35%;background-size:auto,auto 115%,cover}
+    .hero h1{font-size:26px}
+    .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .stat{min-height:78px;padding:11px}
+    .stat strong{font-size:18px}
+    .panel{padding:14px}
+    .bot-card{min-height:100px}
+  }
+  @media(prefers-reduced-motion:reduce){body:after{animation:none}.panel,.btn,.nav a{transition:none}}
+
 </style></head><body><main>${content}</main></body></html>`;
 }
 
@@ -332,7 +382,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
       <form method="post" action="/owner/logout"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><button class="btn secondary">Güvenli çıkış</button></form>
     </div>
     ${renderOwnerNavigation()}
-    <section class="hero" id="overview"><span class="tag">OWNER · DOĞRULANDI</span><h1>Frieren Kontrol Merkezi</h1><p class="muted">Bu panel yalnızca yetkili Discord hesabına açıktır. Yönetim işlemleri kayıt altına alınır.</p>
+    <section class="hero" id="overview"><span class="tag">OWNER · DOĞRULANDI</span><h1>Frieren Kontrol Merkezi</h1><p class="muted">Bu panel yalnızca yetkili Discord hesabına açıktır. İki botun sunucu içi davranışını tek merkezden yönet.</p>
       ${noticeText ? '<div class="notice">' + escapeHtml(noticeText) + '</div>' : ''}
       <div class="grid" id="system">
         <div class="stat"><small>Bot bağlantısı</small><strong class="${overview.ready ? 'good' : 'bad'}">${overview.ready ? 'Çevrimiçi' : 'Çevrimdışı'}</strong></div>
@@ -349,7 +399,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
         <div class="stat"><small>Çalışma ortamı</small><strong>${escapeHtml(process.version)}</strong></div>
       </div>
       ${renderOwnerBotCards(overview, aiReadiness)}
-      <section class="panel" id="servers"><h2>Sunucu ve karşılama yönetimi</h2><p class="muted">Bağlı sunucuların karşılama ve sistem log kanallarını yönet. Kaydetmeden önce bot izinleri doğrulanır.</p><div class="columns">${serverManagementHtml}</div></section>
+      <section class="panel" id="servers"><h2>Sunucu ve karşılama yönetimi</h2><p class="muted">Bağlı sunucuların karşılama ayarlarını ayrı ayrı yönet. Kaydetmeden önce bot izinleri doğrulanır.</p><div class="columns">${serverManagementHtml}</div></section>
       <section class="panel" id="partners"><h2>Partnerlik yönetimi</h2><p class="muted">Partner sunucularını kaydet, davet bağlantılarını güncelle ve kayıtları denetim altında tut.</p><form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="partner-save"><label>Partner sunucu adı</label><input name="partnerName" maxlength="80" required><label>Discord sunucu ID</label><input name="partnerGuildId" inputmode="numeric" pattern="[0-9]{17,20}" required><label>Discord davet bağlantısı</label><input name="partnerInvite" type="url" placeholder="https://discord.gg/..." required><button class="btn">Partner ekle / güncelle</button></form>${partnerHtml}</section>
       <section class="panel" id="behavior"><h2>Bot davranışları ve komutlar</h2><p class="muted">Ayarlar seçilen sunucuyla sınırlıdır. Komut kapatma gerçek etkileşim yönlendirmesinde uygulanır.</p><div class="columns">${featureManagementHtml}</div></section>
       <section class="panel" id="rpg"><h2>RPG sistem istatistikleri</h2>${rpgHtml}</section>
@@ -370,7 +420,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     </div>
     <div class="columns">
       <section class="panel" id="approvals"><h2>Teknik talep onayları</h2><p class="muted">Onay/ret yalnızca talebin durumunu değiştirir; hiçbir kod otomatik çalıştırılmaz.</p>${approvalHtml}</section>
-      <section class="panel" id="memories"><h2>Kullanıcı hafızaları</h2><p class="muted">Yalnızca mevcut Frieren hafıza kayıtları listelenir. Silme işlemi kalıcıdır ve denetim kaydına yazılır.</p>
+      <section class="panel" id="memories"><h2>Kullanıcı hafızaları</h2><p class="muted">Yalnızca mevcut Frieren hafıza kayıtları listelenir. Silme işlemi kalıcıdır.</p>
         <form method="get" action="/owner"><label>Discord kullanıcı ID</label><input name="memoryUser" value="${escapeHtml(memoryUser)}" inputmode="numeric" placeholder="Örn. 123456789012345678" required><button class="btn secondary">Hafızaları getir</button></form>
         ${memoryHtml}
       </section>
