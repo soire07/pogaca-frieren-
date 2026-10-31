@@ -100,7 +100,7 @@ export async function ensureGuildDailyQuestCatalog(db, guildId) {
   const id = validateGuildId(guildId);
   const values = DEFAULT_DAILY_QUESTS.map((quest, index) => {
     const offset = 2 + index * 6;
-    return `($1,${offset},${offset + 1},${offset + 2},${offset + 3},${offset + 4},${offset + 5},TRUE,TRUE)`;
+    return `($1,$${offset},$${offset + 1},$${offset + 2},$${offset + 3},$${offset + 4},$${offset + 5},TRUE,TRUE)`;
   }).join(',');
   const params = [id, ...DEFAULT_DAILY_QUESTS.flatMap(quest => [
     quest.key, quest.title, quest.description, quest.objectiveType, quest.className || null, quest.rewardCoins
