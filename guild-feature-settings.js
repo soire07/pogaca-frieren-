@@ -97,5 +97,6 @@ export function getCommandFeatureKeys(commandName) {
   if (/zindan|dungeon/.test(name)) keys.push('dungeons');
   if (/boss/.test(name)) keys.push('bosses');
   if (/rpg|savas|savaş|dovus|dövüş|arena/.test(name)) keys.push('rpg');
+  if (keys.length) keys.push('rpg');
   return [...new Set(keys)];
 }
