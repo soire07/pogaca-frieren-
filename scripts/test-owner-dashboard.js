@@ -277,3 +277,25 @@ test('owner maintenance action uses the atomic database operation and redirects 
   assert.match(query, /WITH changed AS/);
   assert.match(query, /INSERT INTO owner_audit_logs/);
 });
+
+
+test('owner navigation groups bot workspaces and preserves the no-log policy', () => {
+  const navigation = renderOwnerNavigation();
+  assert.match(navigation, /nav-group/);
+  assert.match(navigation, /Frieren Poğaça/);
+  assert.match(navigation, /Frieren AI/);
+  assert.match(navigation, /Komut ve davranışlar/);
+  assert.match(navigation, /href="#behavior"/);
+  assert.match(navigation, /href="#rpg"/);
+  assert.doesNotMatch(navigation, /Log Merkezi|href="#activity"/);
+});
+
+test('bot cards expose direct paths into their own management areas', () => {
+  const html = renderOwnerBotCards({ ready: true }, {
+    status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true
+  });
+  assert.match(html, /href="#rpg"/);
+  assert.match(html, /href="#behavior"/);
+  assert.match(html, /href="#memories"/);
+  assert.match(html, /href="#approvals"/);
+});
