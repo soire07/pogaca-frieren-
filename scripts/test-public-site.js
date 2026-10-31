@@ -150,7 +150,8 @@ test('chibi has walking, nape-lift and anger interaction states', async () => {
   assert.match(response.body, /@keyframes chibi-angry/);
   assert.match(response.body, /class="chibi-lift-image"/);
   assert.match(response.body, /4986c180f4603e0057f5af1eadee59aea2df109b/);
-  assert.match(response.body, /class="chibi-hand"/);
+  assert.doesNotMatch(response.body, /class="chibi-hand"/);
+  assert.match(response.body, /dmmcy0pwk6bqi\.cloudfront\.net/);
   assert.match(response.body, /class="chibi-anger"/);
   assert.match(response.body, /classList\.add\('held'\)/);
   assert.match(response.body, /classList\.add\('angry'\)/);
