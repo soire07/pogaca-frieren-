@@ -69,8 +69,8 @@ test('RPG resource adjustment locks player, writes audit, and commits atomically
   const client = {
     query: async (sql, params) => {
       calls.push({ sql, params });
-      if (sql.includes('SELECT coins,xp')) return { rows: [{ coins: 100, xp: 20 }] };
-      if (sql.includes('UPDATE users')) return { rows: [{ coins: 150, xp: 25 }] };
+      if (sql.includes('SELECT coins,xp')) return { rows: [{ coins: 100, xp: 20, level: 1 }] };
+      if (sql.includes('UPDATE users')) return { rows: [{ coins: 150, xp: 25, level: 1 }] };
       return { rows: [] };
     },
     release() { calls.push({ sql: 'RELEASE' }); }
@@ -79,7 +79,7 @@ test('RPG resource adjustment locks player, writes audit, and commits atomically
     guildId: '223456789012345678', userId: '123456789012345678',
     coinsDelta: 50, xpDelta: 5, reason: 'Düzeltme', actorId: '1553794496234262641'
   });
-  assert.deepEqual(result, { before: { coins: 100, xp: 20 }, after: { coins: 150, xp: 25 } });
+  assert.deepEqual(result, { before: { coins: 100, xp: 20, level: 1 }, after: { coins: 150, xp: 25, level: 1 } });
   assert.ok(calls.some(call => call.sql === 'BEGIN'));
   assert.ok(calls.some(call => call.sql.includes('FOR UPDATE')));
   assert.ok(calls.some(call => call.sql.includes('owner_audit_logs')));
@@ -92,8 +92,8 @@ test('RPG resource adjustment rolls back if audit insertion fails', async () => 
   const client = {
     query: async sql => {
       calls.push(sql);
-      if (sql.includes('SELECT coins,xp')) return { rows: [{ coins: 100, xp: 20 }] };
-      if (sql.includes('UPDATE users')) return { rows: [{ coins: 110, xp: 20 }] };
+      if (sql.includes('SELECT coins,xp')) return { rows: [{ coins: 100, xp: 20, level: 1 }] };
+      if (sql.includes('UPDATE users')) return { rows: [{ coins: 110, xp: 20, level: 1 }] };
       if (sql.includes('owner_audit_logs')) throw new Error('audit unavailable');
       return { rows: [] };
     },
