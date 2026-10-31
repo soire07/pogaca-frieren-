@@ -187,23 +187,26 @@ test('owner dashboard does not label the AI bot online when readiness is incompl
 });
 
 
-test('Frieren AI readiness is fetched through the local main-service bridge', async () => {
+test('Frieren AI readiness is fetched from its separate Render health endpoint', async () => {
   let requestedUrl = '';
   const expected = { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true };
   const result = await getFrierenAIReadiness({
-    baseUrl: 'http://127.0.0.1:3000',
+    serviceUrl: 'https://frieren-ai.example',
+    healthPath: '/health',
     fetchImpl: async url => {
       requestedUrl = url;
       return { ok: true, json: async () => expected };
     }
   });
-  assert.equal(requestedUrl, 'http://127.0.0.1:3000/ai-ready');
+  assert.equal(requestedUrl, 'https://frieren-ai.example/health');
   assert.deepEqual(result, expected);
 });
 
-test('Frieren AI readiness fails closed when the local bridge is unavailable', async () => {
+test('Frieren AI readiness fails closed when its separate Render health endpoint is unavailable', async () => {
   const result = await getFrierenAIReadiness({
-    fetchImpl: async () => { throw new Error('bridge unavailable'); }
+    serviceUrl: 'https://frieren-ai.example',
+    healthPath: '/health',
+    fetchImpl: async () => { throw new Error('AI service unavailable'); }
   });
   assert.equal(result, null);
 });
