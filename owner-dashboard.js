@@ -504,10 +504,14 @@ export function renderOwnerControlCenter(renderServices, overview, csrf, renderM
 
 export async function getFrierenAIReadiness({
   fetchImpl = globalThis.fetch,
-  baseUrl = 'http://127.0.0.1:' + (process.env.PORT || 3000)
+  serviceUrl = RENDER_BOT_SERVICES.frieren_ai.url,
+  healthPath = RENDER_BOT_SERVICES.frieren_ai.healthPath
 } = {}) {
   try {
-    const response = await fetchImpl(baseUrl + '/ai-ready', { signal: AbortSignal.timeout(4000) });
+    const response = await fetchImpl(String(serviceUrl).replace(/\\/$/, '') + healthPath, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(5000)
+    });
     if (!response.ok) return null;
     return await response.json();
   } catch { return null; }
