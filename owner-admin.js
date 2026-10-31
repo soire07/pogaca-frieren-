@@ -59,6 +59,16 @@ export async function initOwnerAdminSchema(db) {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_owner_approval_pending ON owner_approval_requests(status,created_at DESC);
+    CREATE TABLE IF NOT EXISTS owner_partner_links (
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL UNIQUE,
+      partner_name VARCHAR(80) NOT NULL,
+      invite_url TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','paused')),
+      created_by TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_owner_partner_status ON owner_partner_links(status,created_at DESC);
   `);
 }
 
