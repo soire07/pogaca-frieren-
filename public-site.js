@@ -81,18 +81,18 @@ img{max-width:100%}
   .gif-gallery{gap:9px}
 }
 
-/* Hero artwork and profile card: cinematic landscape treatment. */
-.hero-art{display:block;width:100%;height:clamp(280px,34vw,390px);min-height:0;padding:10px;border:1px solid #eadbfa55;border-radius:28px;background:linear-gradient(145deg,#ffffff18,#ffffff05);box-shadow:0 24px 70px #08051288,0 0 55px #d7bdff22}
-.hero-art:before{inset:0;width:100%;height:100%;border-radius:22px;border-color:#e4d4ff25;box-shadow:inset 0 0 45px #d5c0ff18}
-.hero-art img{width:100%;height:100%;object-fit:cover;object-position:center 34%;border-radius:19px;filter:brightness(.94) saturate(.9) drop-shadow(0 12px 22px #08061288);animation:none}
+/* Circular Frieren journey GIF and refined profile card. */
+.hero-art{position:relative;display:block;width:clamp(260px,32vw,390px);height:clamp(260px,32vw,390px);min-height:0;aspect-ratio:1;margin:0 auto;padding:9px;overflow:hidden;border:1px solid #eadbfa77;border-radius:50%;background:radial-gradient(circle at 30% 20%,#eadbfa22,#171326 72%);box-shadow:0 0 0 8px #d9c3ff0d,0 24px 70px #08051288,0 0 55px #d7bdff30}
+.hero-art:before{content:"";position:absolute;inset:0;width:100%;height:100%;border:1px solid #e4d4ff35;border-radius:50%;box-shadow:inset 0 0 42px #d5c0ff24;pointer-events:none}
+.hero-art img{position:relative;display:block;width:100%;height:100%;max-width:none;object-fit:cover;object-position:center;border-radius:50%;filter:brightness(.96) saturate(.94) drop-shadow(0 12px 22px #08061288);animation:none}
 .profile{position:relative;isolation:isolate;border-radius:24px;border-color:#eadbfa66;background:linear-gradient(150deg,#ffffff12,#ffffff06 55%,#cdb5ff0a);box-shadow:0 24px 65px #06040d66,inset 0 1px #ffffff12}
 .profile-banner{position:relative;height:205px;background:linear-gradient(180deg,#17152b08 45%,#17152b99 100%),url('/assets/site-banner.svg') center 46%/cover no-repeat}
 .profile-info{position:relative;align-items:center;gap:18px;padding:0 24px 16px}
 .profile-avatar{flex:0 0 112px;width:112px;height:112px;margin-top:-58px;border:4px solid #211b35;border-radius:50%;object-fit:cover;object-position:center;background:#211b35;box-shadow:0 0 0 2px #d9c3ff88,0 12px 28px #05030d99}
 .profile-info h3{font-size:27px;letter-spacing:.01em}.profile-info p{font-size:12px;letter-spacing:.04em}.profile-body{padding:0 24px 24px;line-height:1.85}
-@media(max-width:850px){.hero-art{width:min(100%,620px);height:clamp(260px,58vw,350px);margin:10px auto 0}}
-@media(max-width:560px){.hero-art{height:245px;padding:7px;border-radius:21px}.hero-art:before{border-radius:16px}.hero-art img{border-radius:14px;object-position:center 32%}.profile-banner{height:155px;background-position:center 44%}.profile-info{gap:13px;padding:0 15px 14px}.profile-avatar{flex-basis:88px;width:88px;height:88px;margin-top:-45px;border-width:3px}.profile-info h3{font-size:21px}.profile-body{padding:0 16px 18px}}
-@media(max-width:390px){.profile-info{align-items:flex-start}.profile-avatar{flex-basis:76px;width:76px;height:76px;margin-top:-38px}.profile-info h3{font-size:18px}}
+@media(max-width:850px){.hero-art{width:clamp(250px,42vw,340px);height:clamp(250px,42vw,340px);margin:10px auto 0}}
+@media(max-width:560px){.hero-art{width:250px;height:250px;padding:7px;border-radius:50%}.hero-art:before{border-radius:50%}.hero-art img{border-radius:50%}.profile-banner{height:155px;background-position:center 44%}.profile-info{gap:13px;padding:0 15px 14px}.profile-avatar{flex-basis:88px;width:88px;height:88px;margin-top:-45px;border-width:3px}.profile-info h3{font-size:21px}.profile-body{padding:0 16px 18px}}
+@media(max-width:390px){.hero-art{width:220px;height:220px}.profile-info{align-items:flex-start}.profile-avatar{flex-basis:76px;width:76px;height:76px;margin-top:-38px}.profile-info h3{font-size:18px}}
 
 `;
 
