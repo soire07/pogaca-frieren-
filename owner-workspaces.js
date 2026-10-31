@@ -1,4 +1,5 @@
 import { equipmentItems, equipmentSlots } from './equipment-data.js';
+import { DAILY_QUEST_OBJECTIVES, DAILY_QUEST_CLASSES } from './owner-rpg-quests.js';
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -70,7 +71,28 @@ export function renderOwnerWorkspace(kind, data = {}) {
     const guildOptions = data.guildOptions || [];
     const selectedGuild = String(data.guildId || '');
     const selectedPlayer = data.player || null;
-    const noticeText = data.notice === 'rpg_saved' ? 'Oyuncu kaynakları güncellendi ve işlem denetim kaydına yazıldı.' : data.notice === 'rpg_error' ? 'Kaynak güncellemesi yapılamadı. Oyuncuyu, gerekçeyi ve değerleri kontrol et.' : '';
+    const dailyQuests = data.dailyQuests || [];
+    const noticeText = data.notice === 'rpg_saved' ? 'Oyuncu kaynakları güncellendi ve işlem denetim kaydına yazıldı.'
+      : data.notice === 'rpg_error' ? 'Kaynak güncellemesi yapılamadı. Oyuncuyu, gerekçeyi ve değerleri kontrol et.'
+      : data.notice === 'quest_saved' ? 'Görev kaydedildi. Değişiklik denetim kaydına eklendi.'
+      : data.notice === 'quest_disabled' ? 'Görev pasife alındı; geçmiş ödül kayıtları korundu.'
+      : data.notice === 'quest_error' ? 'Görev işlemi tamamlanamadı. Alanları ve işlem gerekçesini kontrol et.'
+      : '';
+    const renderQuestForm = (quest = {}) => '<form method="post" action="/owner/action">'
+      + '<input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="rpg-daily-quest-save">'
+      + '<input type="hidden" name="guildId" value="' + escapeHtml(selectedGuild) + '">'
+      + (quest.quest_key ? '<input type="hidden" name="questKey" value="' + escapeHtml(quest.quest_key) + '">' : '<label>Görev kodu (küçük harf, sayı, alt çizgi)</label><input name="questKey" maxlength="40" pattern="[a-z][a-z0-9_]{1,39}" required placeholder="kuzey_gorevi">')
+      + '<label>Görev adı</label><input name="title" maxlength="80" value="' + escapeHtml(quest.title || '') + '" required>'
+      + '<label>Açıklama</label><textarea name="description" maxlength="240" required>' + escapeHtml(quest.description || '') + '</textarea>'
+      + '<label>Hedef türü</label><select name="objectiveType">' + Object.entries(DAILY_QUEST_OBJECTIVES).map(([value, objective]) => '<option value="' + value + '"' + (quest.objective_type === value ? ' selected' : '') + '>' + escapeHtml(objective.label) + '</option>').join('') + '</select>'
+      + '<label>Sınıf kısıtlaması</label><select name="className"><option value="">Tüm sınıflar</option>' + DAILY_QUEST_CLASSES.map(name => '<option value="' + escapeHtml(name) + '"' + (quest.class_name === name ? ' selected' : '') + '>' + escapeHtml(name) + '</option>').join('') + '</select>'
+      + '<label>Ödül (altın · 0–5000)</label><input type="number" name="rewardCoins" min="0" max="5000" value="' + Number(quest.reward_coins ?? 100) + '" required>'
+      + '<label>Durum</label><select name="active"><option value="yes"' + (quest.active === false ? '' : ' selected') + '>Aktif</option><option value="no"' + (quest.active === false ? ' selected' : '') + '>Pasif</option></select>'
+      + '<label>İşlem gerekçesi</label><input name="reason" maxlength="200" required placeholder="Değişikliğin nedenini yaz">'
+      + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Görev değişikliğini onaylıyorum</label><button class="btn">Görevi kaydet</button></form>';
+    const questManagementHtml = '<section class="panel"><h2>Günlük görev kataloğu</h2><p class="muted">Görevler seçili Discord sunucusuna özeldir. Yalnızca desteklenen oyun hedefleri seçilebilir; ödül talebi oyuncu ve gün bazında tekilleştirilir. Silme işlemi geçmiş kayıtları korumak için pasife alma olarak uygulanır.</p>'
+      + (dailyQuests.length ? '<div class="columns">' + dailyQuests.map(quest => '<article class="panel"><div class="actions"><span class="tag">' + (quest.is_system ? 'SİSTEM GÖREVİ' : 'ÖZEL GÖREV') + '</span><span class="' + (quest.active ? 'good' : 'warn') + '">' + (quest.active ? 'Aktif' : 'Pasif') + '</span></div><h3>' + escapeHtml(quest.title) + '</h3><p class="small">' + escapeHtml(quest.quest_key) + ' · ' + Number(quest.reward_coins) + ' altın</p>' + renderQuestForm(quest) + '</article>').join('') + '</div>' : '<p class="muted">Henüz görev kataloğu yüklenmedi.</p>')
+      + '<h3>Yeni görev ekle</h3>' + renderQuestForm() + '</section>';
     return heading('Frieren Poğaça', 'Oyuncu kayıtları, RPG kaynakları ve oyun ekonomisi için denetimli yönetim alanı.')
       + '<div class="grid">'
       + [['Oyuncu', rpg.players], ['Ortalama seviye', rpg.averageLevel], ['Toplam altın', rpg.totalCoins], ['Envanter yığını', rpg.inventoryStacks], ['Eşya adedi', rpg.itemCount], ['Boss zaferi', rpg.bossWins], ['Zindan zaferi', rpg.dungeonWins]]
@@ -97,7 +119,8 @@ export function renderOwnerWorkspace(kind, data = {}) {
         + '<label>XP değişimi (+/-)</label><input type="number" name="xpDelta" min="0" max="1000000" value="0">'
         + '<label>İşlem gerekçesi (zorunlu)</label><input name="reason" maxlength="200" required placeholder="Örn. hatalı ödül düzeltmesi">'
         + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu kaynak değişikliğini onaylıyorum</label><button class="btn">Kaynakları güncelle</button></form></section>' : '')
-      + '<p class="notice warn">Oyuncu silme, HP/Mana değerlerini doğrudan değiştirme, görev ve boss ilerlemesi değiştirme kapalıdır. Envanter ve ekipman işlemleri katalog, seviye, sahiplik ve denetim kontrolleriyle sınırlıdır.</p>'
+      + questManagementHtml
+      + '<p class="notice warn">Oyuncu silme, HP/Mana değerlerini doğrudan değiştirme ve oyuncuların görev/boss ilerlemesini elle değiştirme kapalıdır. Görev tanımları ise sunucu bazında, denetim kaydıyla yönetilir.</p>'
       + '<div class="columns">' + card('Komut ve davranışlar', 'Komutları sunucu bazında yönet.', '/owner#behavior') + card('Sunucu ayarları', 'Karşılama ve özellik tercihleri.', '/owner#servers') + '</div>';
   }
   if (kind === 'database') {
