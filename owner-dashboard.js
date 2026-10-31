@@ -736,7 +736,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         { label: 'Owner oturum imzası', configured: Boolean(process.env.ADMIN_SESSION_SECRET && process.env.ADMIN_SESSION_SECRET.length >= 32) },
         { label: 'PostgreSQL bağlantısı', configured: Boolean(db) },
         { label: 'Frieren AI köprü anahtarı', configured: Boolean(process.env.FRIEREN_BRIDGE_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET) },
-        { label: 'Render API metrikleri', configured: Boolean(process.env.RENDER_API_KEY && process.env.RENDER_SERVICE_ID) }
+        { label: 'Render API metrikleri ve bot kontrolleri', configured: Boolean(process.env.RENDER_API_KEY && (process.env.RENDER_POGACA_SERVICE_ID || process.env.RENDER_SERVICE_ID) && process.env.RENDER_FRIEREN_AI_SERVICE_ID) }
       ];
       const content = renderOwnerNavigation() + '<div class="top"><div><div class="brand">FRIEREN</div><div class="small">THE ARCANE SANCTUARY · OWNER WORKSPACE</div></div><a class="btn secondary" href="/owner">Genel bakış</a></div>'
         + renderOwnerWorkspace(kind, data);
@@ -941,7 +941,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   }
 
   try {
-    const [overview, approvals, activity, renderMetrics, aiReadiness, partners, rpgMetrics, guildConfigurations] = await Promise.all([
+    const [overview, approvals, activity, renderMetrics, aiReadiness, partners, rpgMetrics, guildConfigurations, renderServices] = await Promise.all([
       getOwnerOverview(client, db),
       listPendingApprovals(db, 15),
       getRecentOwnerActivity(db),
@@ -949,14 +949,15 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       getFrierenAIReadiness(),
       listOwnerPartnerLinks(db),
       getOwnerRpgMetrics(db),
-      listGuildConfigurations(db)
+      listGuildConfigurations(db),
+      getRenderBotServiceStatuses()
     ]);
     const featureSettingsByGuild = new Map(await Promise.all([...client.guilds.cache.keys()].map(async guildId => [guildId, await listGuildFeatureSettings(db, guildId)])));
     const memoryUser = String(url.searchParams.get('memoryUser') || '').replace(/\D/g, '').slice(0, 24);
     const memories = memoryUser ? await listUserMemories(db, memoryUser, null, 30) : [];
     send(res, 200, renderDashboard({
       session, overview, client, approvals, memories, memoryUser,
-      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild
+      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, renderServices, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild
     }));
   } catch (error) {
     console.error('Owner dashboard load failed:', error?.message || error);
