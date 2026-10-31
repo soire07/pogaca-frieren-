@@ -34,6 +34,7 @@ test('authenticated homepage includes the member identity, profile, GIF gallery 
   assert.match(response.body, /id="chibi"/);
   assert.match(response.body, /pointermove/);
   assert.match(response.body, /Ensemden tutma/);
+  assert.equal((response.body.match(/class="gif-item"/g) || []).length, 16);
   assert.match(response.body, /68/);
 });
 
