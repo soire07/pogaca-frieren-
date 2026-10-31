@@ -259,6 +259,19 @@ export async function initDatabase() {
     );
     CREATE INDEX IF NOT EXISTS idx_guild_daily_quests_active
       ON guild_daily_quests(guild_id,active,title);
+    CREATE TABLE IF NOT EXISTS guild_rpg_content_overrides (
+      guild_id TEXT NOT NULL,
+      content_type TEXT NOT NULL CHECK (content_type IN ('dungeon','solo_boss','raid_boss')),
+      content_key VARCHAR(60) NOT NULL,
+      config JSONB NOT NULL DEFAULT '{}'::jsonb,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      updated_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id,content_type,content_key)
+    );
+    CREATE INDEX IF NOT EXISTS idx_guild_rpg_content_overrides_type
+      ON guild_rpg_content_overrides(guild_id,content_type,active);
     CREATE TABLE IF NOT EXISTS adventure_discoveries (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
