@@ -131,6 +131,37 @@ export function createOwnerSession(secret, expiresAt) {
   return sign({ sub: OWNER_ID, exp: expiresAt, csrf: randomBytes(24).toString('base64url') }, secret);
 }
 
+export function createPublicSiteSession(secret, user, expiresAt) {
+  const id = String(user?.id || '');
+  if (!/^\d{17,20}$/.test(id)) throw new Error('Invalid Discord user for site session');
+  const avatarHash = typeof user?.avatar === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(user.avatar) ? user.avatar : null;
+  return sign({
+    purpose: 'frieren-site-session',
+    sub: id,
+    username: String(user?.username || 'Gezgin').slice(0, 64),
+    avatarHash,
+    exp: expiresAt
+  }, secret);
+}
+
+export function readPublicSiteSession(token, secret, nowSeconds = Math.floor(Date.now() / 1000)) {
+  if (!secret || secret.length < 32 || !token) return null;
+  const session = unsign(token, secret);
+  if (session?.purpose !== 'frieren-site-session' || !/^\d{17,20}$/.test(String(session.sub || ''))
+      || !Number.isInteger(session.exp) || session.exp <= nowSeconds) return null;
+  const avatarHash = typeof session.avatarHash === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(session.avatarHash)
+    ? session.avatarHash : null;
+  return {
+    id: String(session.sub),
+    username: String(session.username || 'Gezgin').slice(0, 64),
+    avatarUrl: avatarHash ? 'https://cdn.discordapp.com/avatars/' + session.sub + '/' + avatarHash + '.png?size=128' : null
+  };
+}
+
+export function buildPublicSiteSessionCookie(session, maxAgeSeconds) {
+  return 'frieren_site_session=' + encodeURIComponent(session) + '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=' + maxAgeSeconds;
+}
+
 export function readOwnerSession(token, secret, nowSeconds = Math.floor(Date.now() / 1000)) {
   if (!secret || secret.length < 32) return null;
   const session = unsign(token, secret);
@@ -354,6 +385,24 @@ function page(title, content) {
   }
   @media(max-width:390px){.nav a{padding:6px 7px}.nav-icon{display:none}.nav-link-copy strong{font-size:10px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+
+  /* Soft Moonlit Sanctuary — refreshed owner-panel skin */
+  :root{--line:rgba(220,198,255,.25);--muted:#c6bddb}
+  body{background:radial-gradient(ellipse at 12% 0%,rgba(188,158,232,.24),transparent 34%),radial-gradient(ellipse at 92% 35%,rgba(232,181,211,.13),transparent 38%),linear-gradient(145deg,#100f23,#201a35 55%,#14152b)}
+  body:before{opacity:.25}
+  .nav{background:linear-gradient(180deg,rgba(27,22,48,.98),rgba(32,25,52,.96));border-color:rgba(224,203,255,.32);box-shadow:0 18px 55px #09071388}
+  .nav a{border-radius:14px}
+  .nav a:hover,.nav a:focus{background:linear-gradient(100deg,rgba(170,139,220,.24),rgba(221,168,204,.16));border-color:rgba(229,203,255,.38);box-shadow:inset 3px 0 #e8d2ff}
+  .panel,.hero,.top,.stat,.notice{border-radius:20px}
+  .panel{background:linear-gradient(145deg,rgba(38,31,61,.96),rgba(20,21,44,.97));border-color:rgba(215,192,248,.23)}
+  .hero{background:radial-gradient(ellipse at 90% 15%,rgba(216,186,250,.18),transparent 40%),linear-gradient(145deg,rgba(45,36,69,.97),rgba(21,22,45,.98));border-color:rgba(224,202,255,.32)}
+  .top{background:linear-gradient(100deg,rgba(45,36,70,.85),rgba(24,24,48,.8));border-color:rgba(220,199,255,.23)}
+  .btn{border-radius:13px;background:linear-gradient(120deg,#f0dff1,#d4c6f7);color:#29203b;box-shadow:0 7px 22px #d9c1f622}
+  .btn.secondary{background:#352c51;color:#f0e8ff;border-color:#76658e}
+  input,select,textarea{background:#15152d;border-color:#594b70;border-radius:12px}
+  .notice{background:linear-gradient(100deg,#392c50,#292440);border-color:#9d82b8}
+  .stat{background:linear-gradient(145deg,rgba(57,44,79,.85),rgba(30,27,53,.96));border-color:rgba(221,197,255,.23)}
+  @media(max-width:760px){.nav{background:rgba(27,22,48,.98)}}
 </style></head><body><main>${content}</main></body></html>`;
 }
 
@@ -686,14 +735,19 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       });
       if (!userResponse.ok) throw new Error('Discord identity lookup failed');
       const user = await userResponse.json();
-      if (String(user.id) !== OWNER_ID) {
-        send(res, 403, page('Erişim reddedildi', '<h1>Bu panel sana açık değil</h1><p>Discord hesabın owner hesabı olarak doğrulanmadı.</p><a class="btn" href="/owner/login">Tekrar dene</a>'), { 'Set-Cookie': [clearOwnerCookie(STATE_COOKIE, '/owner'), clearOwnerCookie(SESSION_COOKIE, '/owner')] });
-        return true;
+      const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS;
+      const siteSession = createPublicSiteSession(sessionSecret, user, expiresAt);
+      const setCookies = [
+        clearOwnerCookie(STATE_COOKIE, '/owner'),
+        buildPublicSiteSessionCookie(siteSession, SESSION_TTL_SECONDS)
+      ];
+      if (String(user.id) === OWNER_ID) {
+        const ownerSession = createOwnerSession(sessionSecret, expiresAt);
+        setCookies.push(buildOwnerSessionCookie(ownerSession, SESSION_TTL_SECONDS));
       }
-      const session = createOwnerSession(sessionSecret, Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS);
       res.writeHead(302, {
-        Location: '/owner', 'Cache-Control': 'no-store',
-        'Set-Cookie': [clearOwnerCookie(STATE_COOKIE, '/owner'), buildOwnerSessionCookie(session, SESSION_TTL_SECONDS)]
+        Location: '/', 'Cache-Control': 'no-store',
+        'Set-Cookie': setCookies
       });
       res.end();
     } catch (error) {
@@ -708,7 +762,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     if (url.pathname === '/owner/logout' || url.pathname === '/owner/action') {
       send(res, 401, page('Oturum gerekli', '<h1>Oturum süresi doldu</h1><a class="btn" href="/owner/login">Yeniden giriş yap</a>'), { 'Set-Cookie': clearOwnerCookie(SESSION_COOKIE, '/owner') });
     } else {
-      send(res, 200, page('Owner girişi', '<span class="tag">ÖZEL ERİŞİM</span><h1>Frieren · Owner Paneli</h1><p>Bu yönetim alanı yalnızca bot sahibine açıktır. Giriş, Discord hesabının kimliği doğrulanarak yapılır.</p><a class="btn" href="/owner/login">Discord ile giriş yap</a><p class="muted">Yetkisiz hesaplar panele erişemez.</p>'));
+      send(res, 200, page('Frieren giriş', '<span class="tag">✧ FANTASTİK YOLCULUĞA GİRİŞ</span><h1>Frieren evrenine hoş geldin</h1><p>Siteye devam etmek için Discord hesabınla giriş yap. Girişten sonra ana sayfa, bot tanıtımı ve GIF galerisi açılır. Owner Panel yalnızca bot sahibine özeldir.</p><a class="btn" href="/owner/login">Discord ile devam et</a><p class="muted">Güvenli giriş · Discord kimlik doğrulaması</p>'));
     }
     return true;
   }
