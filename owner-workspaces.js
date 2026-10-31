@@ -117,7 +117,7 @@ export function renderOwnerWorkspace(kind, data = {}) {
 }
 
 
-const PRIVATE_COLUMN = /(password|secret|token|credential|api.?key|access.?key|refresh|email|phone|address|ip.?address|memory.?value|message.?content|content)/i;
+const PRIVATE_COLUMN = /(password|secret|token|credential|api.?key|access.?key|refresh|email|phone|address|ip.?address|memory.?value|message.?content|content|setting.?value|details)/i;
 const quoteIdentifier = value => '"' + String(value).replace(/"/g, '""') + '"';
 
 export async function getOwnerDatabaseTablePreview(db, { table, search = '' } = {}) {
