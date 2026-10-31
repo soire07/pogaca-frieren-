@@ -164,6 +164,7 @@ function page(title, content) {
   .btn{display:inline-block;background:linear-gradient(120deg,#c4ddff,#a8b8ff);color:#101d3a;padding:10px 15px;border-radius:9px;text-decoration:none;font-weight:700;border:0;cursor:pointer}.btn.danger{background:#63364d;color:#ffe3ed}.btn.secondary{background:#1c3158;color:#e0eaff;border:1px solid #45618f}
   form{margin:9px 0}label{display:block;font-size:12px;color:#afc2e1;margin:9px 0 5px}input,select,textarea{display:block;width:100%;border:1px solid #334d79;border-radius:8px;background:#08152d;color:#f2f6ff;padding:10px;font:inherit}textarea{min-height:90px;resize:vertical}
   .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.rowitem{border-top:1px solid rgba(125,162,220,.2);padding:12px 0}.rowitem:first-of-type{border-top:0}.mono{font-family:ui-monospace,monospace;font-size:12px;overflow-wrap:anywhere}
+  .data-table{width:100%;border-collapse:collapse;min-width:520px;font-size:12px}.data-table th,.data-table td{text-align:left;padding:10px;border-bottom:1px solid rgba(125,162,220,.2);vertical-align:top}.data-table th{color:#bcd2f4;background:rgba(85,122,184,.12)}.data-table td{color:#e1ebfc;max-width:280px;overflow-wrap:anywhere}
   .notice{border:1px solid #526e9c;background:#152b50;border-radius:10px;padding:11px;margin:12px 0}.good{color:#72e7b8}.warn{color:#f4ce83}.bad{color:#ff9aa8}.small{font-size:12px;color:#91a8ca}
   .metric-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:12px 0}.metric-charts{margin-top:10px}.metric-bars{height:84px;display:flex;align-items:flex-end;gap:4px;padding:8px 0;border-bottom:1px solid #405a85}.metric-bars i{display:block;flex:1;min-width:3px;max-width:18px;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#c2dfff,#657dce);opacity:.9}.metrics-panel{margin:14px 0}
   .nav{position:fixed;left:max(18px,calc((100vw - 1440px)/2));top:22px;bottom:22px;width:232px;z-index:5;display:flex;flex-direction:column;gap:7px;overflow-y:auto;padding:14px;border:1px solid var(--line);border-radius:17px;background:linear-gradient(180deg,rgba(5,15,35,.96),rgba(8,21,47,.94));box-shadow:0 18px 55px #0006;backdrop-filter:blur(18px)}
@@ -632,6 +633,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const data = {};
       if (kind === 'ai') { data.aiReadiness = await getFrierenAIReadiness(); data.csrf = session.csrf; }
       if (kind === 'pogaca') {
+        data.notice = url.searchParams.get('notice') || '';
         data.rpgMetrics = await getOwnerRpgMetrics(db);
         data.csrf = session.csrf;
         data.guildOptions = [...(client?.guilds?.cache?.values?.() || [])].map(guild => ({ id: String(guild.id), name: String(guild.name || guild.id) }));
