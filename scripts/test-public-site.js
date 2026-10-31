@@ -107,15 +107,15 @@ test('registration and login pages expose separate Discord OAuth actions', async
 test('site profile uses dedicated brand avatar and banner assets', async () => {
   const response = res();
   await handlePublicSiteRequest(request('/', visitor), response);
-  assert.match(response.body, /site-avatar\\.svg/);
-  assert.match(response.body, /site-banner\\.svg/);
+  assert.match(response.body, /site-avatar\.svg/);
+  assert.match(response.body, /site-banner\.svg/);
 });
 
 test('dedicated site avatar asset is served as SVG to authenticated members', async () => {
   const response = res();
   await handlePublicSiteRequest(request('/assets/site-avatar.svg'), response);
   assert.equal(response.status, 200);
-  assert.match(response.headers['Content-Type'], /image\\/svg\\+xml/);
+  assert.match(response.headers['Content-Type'], /image\/svg\+xml/);
   assert.match(String(response.body), /<svg/);
 });
 
