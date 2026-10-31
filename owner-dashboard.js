@@ -24,8 +24,7 @@ export const OWNER_PANEL_SECTIONS = Object.freeze([
   { id: 'maintenance', label: 'Bakım Merkezi', command: '/owner-bakim' },
   { id: 'servers', label: 'Sunucu Yönetimi', command: null },
   { id: 'partners', label: 'Partnerlik', command: null },
-  { id: 'rpg', label: 'RPG Yönetimi', command: null },
-  { id: 'activity', label: 'Log Merkezi', command: null }
+  { id: 'rpg', label: 'RPG Yönetimi', command: null }
 ]);
 
 export function getDiscordOAuthFailureDiagnostic(status, payload = {}) {
@@ -297,7 +296,6 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     return '<article class="panel"><h3>' + escapeHtml(guild.name) + '</h3><div class="small">Sunucu ID: ' + escapeHtml(guild.id) + ' · Üye: ' + Number(guild.memberCount || 0) + '</div>'
       + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(session.csrf) + '"><input type="hidden" name="action" value="guild-config"><input type="hidden" name="guildId" value="' + escapeHtml(guild.id) + '">'
       + '<label>Karşılama kanalı</label><select name="welcomeChannelId">' + options(config.welcome_channel_id) + '</select>'
-      + '<label>Sistem log kanalı</label><select name="logChannelId">' + options(config.log_channel_id) + '</select>'
       + '<label>Karşılama mesajı</label><textarea name="welcomeMessage" maxlength="300">' + escapeHtml(config.welcome_message || 'Hoş geldin {user}! 🥐 {server} sunucusuna katıldın.') + '</textarea><div class="small">{user} ve {server} yer tutucuları kullanılabilir.</div><button class="btn">Ayarları kaydet</button></form></article>';
   }).join('');
   const partnerHtml = partners.length ? partners.map(row => '<div class="rowitem"><strong>' + escapeHtml(row.partner_name) + '</strong><div class="small">Sunucu: ' + escapeHtml(row.guild_id) + ' · ' + escapeHtml(row.status) + '</div><a class="small" href="' + escapeHtml(row.invite_url) + '" target="_blank" rel="noopener">Davet bağlantısı ↗</a>'
@@ -377,12 +375,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
         ${memoryHtml}
       </section>
     </div>
-<div class="columns">
-      <section class="panel" id="activity"><h2>Komut kullanım istatistikleri</h2>${activity.commands.length ? activity.commands.map(row => '<div class="rowitem"><strong>/' + escapeHtml(row.command_name) + '</strong><div class="small">' + escapeHtml(row.usage_count) + ' kullanım · Son: ' + escapeHtml(new Date(row.last_used_at).toLocaleString('tr-TR')) + '</div></div>').join('') : '<p class="muted">Komut ölçümleri bu sürümden itibaren birikmeye başlayacak.</p>'}</section>
-      <section class="panel"><h2>Son teknik hatalar</h2>${activity.errors.length ? activity.errors.map(row => '<div class="rowitem"><strong>' + escapeHtml(row.scope) + '</strong><div class="small">' + escapeHtml(row.error_type) + ' · ' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</div></div>').join('') : '<p class="muted">Kaydedilmiş teknik hata yok.</p>'}</section>
-    </div>
-    <section class="panel"><h2>Owner işlem geçmişi</h2>${activity.audit.length ? activity.audit.map(row => '<div class="rowitem"><strong>' + escapeHtml(row.action) + '</strong><div class="small">' + escapeHtml(row.target || 'Genel') + ' · ' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</div></div>').join('') : '<p class="muted">Henüz yönetim işlemi kaydedilmedi.</p>'}</section>
-    <section class="panel"><h2>Güvenlik ve denetim</h2><p class="muted">Owner OAuth, 8 saatlik imzalı oturum, HttpOnly/Secure/SameSite=Lax çerezi, CSRF doğrulaması ve işlem günlüğü aktiftir. Bot tokeni, OAuth sırrı ve veritabanı bağlantı adresi panelde gösterilmez.</p></section>
+
   `);
 }
 
