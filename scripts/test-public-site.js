@@ -140,3 +140,17 @@ test('registration and login error pages show centered recovery messaging and a 
     assert.match(response.body, /text-align:center/);
   }
 });
+
+
+test('chibi has walking, nape-lift and anger interaction states', async () => {
+  const response = res();
+  await handlePublicSiteRequest(request('/', visitor), response);
+  assert.match(response.body, /@keyframes chibi-walk/);
+  assert.match(response.body, /@keyframes chibi-lift/);
+  assert.match(response.body, /@keyframes chibi-angry/);
+  assert.match(response.body, /class="chibi-hand"/);
+  assert.match(response.body, /class="chibi-anger"/);
+  assert.match(response.body, /classList\.add\('held'\)/);
+  assert.match(response.body, /classList\.add\('angry'\)/);
+  assert.match(response.body, /Ensemden tutmaaa/);
+});
