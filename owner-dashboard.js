@@ -11,7 +11,7 @@ import { getOwnerDatabaseDiagnostics, getOwnerDatabaseTablePreview, renderOwnerW
 import { getFrierenChatSettings, updateFrierenChatSettings } from './frieren-chat-settings.js';
 import { listOwnerDailyQuests, saveOwnerDailyQuest, setOwnerDailyQuestActive } from './owner-rpg-quests.js';
 import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } from './owner-rpg-content.js';
-import { getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
+import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -440,7 +440,7 @@ function renderRenderActionForm(serviceKey, action, label, csrf, warningText = '
     + '<button class="btn ' + (action === 'suspend' ? 'danger' : 'secondary') + '">' + escapeHtml(label) + '</button></form>';
 }
 
-export function renderOwnerControlCenter(renderServices, overview, csrf) {
+export function renderOwnerControlCenter(renderServices, overview, csrf, renderMetrics = null, aiRenderMetrics = null) {
   const apiConfigured = renderServices?.apiConfigured === true;
   const renderApiError = renderServices?.apiError || null;
   const serviceStatus = service => {
@@ -454,10 +454,15 @@ export function renderOwnerControlCenter(renderServices, overview, csrf) {
     const service = renderServices?.services?.[key] || {};
     const state = serviceStatus(service);
     const canControl = apiConfigured && !service.apiError;
+    const metrics = key === 'pogaca' ? renderMetrics : aiRenderMetrics;
+    const metricText = metrics?.status === 'available'
+      ? 'CPU ' + Number(metrics.cpuPercent).toFixed(1) + '% · RAM ' + Number(metrics.memoryPercent).toFixed(1) + '%'
+      : metrics?.message || '';
     const meta = [
       service.plan ? 'Plan: ' + escapeHtml(service.plan) : '',
       service.updatedAt ? 'Son güncelleme: ' + escapeHtml(new Date(service.updatedAt).toLocaleString('tr-TR')) : '',
-      service.healthStatus ? 'Health HTTP ' + Number(service.healthStatus) : ''
+      service.healthStatus ? 'Health HTTP ' + Number(service.healthStatus) : '',
+      metricText ? escapeHtml(metricText) : ''
     ].filter(Boolean).join(' · ');
     let actions = '';
     if (key === 'pogaca') {
@@ -506,7 +511,7 @@ export async function getFrierenAIReadiness({
   } catch { return null; }
 }
 
-function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics, aiReadiness, renderServices, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild }) {
+function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild }) {
   const featureLabels = { commands: 'Tüm komutlar', rpg: 'RPG sistemi', character: 'Karakter sistemi', magic: 'Büyü ve yetenekler', equipment: 'Ekipman ve eşyalar', economy: 'Ekonomi ve mağaza', quests: 'Görevler', dungeons: 'Zindanlar', bosses: 'Boss sistemi', trading: 'Takas', messageXp: 'Mesaj XP kazanımı', aiChat: 'Frieren sohbet etkileşimi' };
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
@@ -595,7 +600,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
         <div class="stat"><small>Çalışma ortamı</small><strong>${escapeHtml(process.version)}</strong></div>
       </div>
       ${renderOwnerBotCards(overview, aiReadiness, renderServices)}
-      ${renderOwnerControlCenter(renderServices, overview, session.csrf)}
+      ${renderOwnerControlCenter(renderServices, overview, session.csrf, renderMetrics, aiRenderMetrics)}
       <section class="panel" id="servers"><h2>Sunucu ve karşılama yönetimi</h2><p class="muted">Bağlı sunucuların karşılama ayarlarını ayrı ayrı yönet. Kaydetmeden önce bot izinleri doğrulanır.</p><div class="columns">${serverManagementHtml}</div></section>
       <section class="panel" id="partners"><h2>Partnerlik yönetimi</h2><p class="muted">Partner sunucularını kaydet, davet bağlantılarını güncelle ve kayıtları denetim altında tut.</p><form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="partner-save"><label>Partner sunucu adı</label><input name="partnerName" maxlength="80" required><label>Discord sunucu ID</label><input name="partnerGuildId" inputmode="numeric" pattern="[0-9]{17,20}" required><label>Discord davet bağlantısı</label><input name="partnerInvite" type="url" placeholder="https://discord.gg/..." required><button class="btn">Partner ekle / güncelle</button></form>${partnerHtml}</section>
       <section class="panel" id="behavior"><h2>Bot davranışları ve komutlar</h2><p class="muted">Ayarlar seçilen sunucuyla sınırlıdır. Komut kapatma gerçek etkileşim yönlendirmesinde uygulanır.</p><div class="columns">${featureManagementHtml}</div></section>
@@ -971,12 +976,16 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       listGuildConfigurations(db),
       getRenderBotServiceStatuses()
     ]);
+    const frierenService = renderServices?.services?.frieren_ai;
+    const aiRenderMetrics = renderServices?.apiConfigured && !frierenService?.apiError && frierenService?.suspended !== true
+      ? await getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.frieren_ai.id })
+      : { status: 'unavailable', source: 'render', points: [], message: frierenService?.suspended ? 'Frieren AI askıda; metrik sorgusu yapılmadı.' : 'Frieren AI metrikleri için Render API bağlantısı gerekli.' };
     const featureSettingsByGuild = new Map(await Promise.all([...client.guilds.cache.keys()].map(async guildId => [guildId, await listGuildFeatureSettings(db, guildId)])));
     const memoryUser = String(url.searchParams.get('memoryUser') || '').replace(/\D/g, '').slice(0, 24);
     const memories = memoryUser ? await listUserMemories(db, memoryUser, null, 30) : [];
     send(res, 200, renderDashboard({
       session, overview, client, approvals, memories, memoryUser,
-      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, renderServices, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild
+      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild
     }));
   } catch (error) {
     console.error('Owner dashboard load failed:', error?.message || error);
