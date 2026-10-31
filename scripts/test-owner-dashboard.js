@@ -355,3 +355,42 @@ test('Owner can save validated Frieren chat preferences with CSRF protection and
   assert.match(query, /owner_settings/);
   assert.match(query, /owner_audit_logs/);
 });
+
+
+test('owner daily quest save is guild-scoped, confirmed and audited before redirect', async () => {
+  const guildId = '1539562273197260860';
+  const calls = [];
+  const client = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    if (sql.includes('INSERT INTO guild_daily_quests')) return { rows: [{ quest_key: 'northern_trial' }] };
+    return { rows: [] };
+  }, release() { calls.push({ sql: 'RELEASE' }); } };
+  const db = { connect: async () => client };
+  const discordClient = { guilds: { cache: new Map([[guildId, {}]]) } };
+  const { response } = await runOwnerPost({
+    action: 'rpg-daily-quest-save', csrf: 'session', confirm: 'yes', guildId,
+    questKey: 'northern_trial', title: 'Kuzey sınavı',
+    description: 'Bugün bir keşif tamamla.', objectiveType: 'explore',
+    className: '', rewardCoins: '250', active: 'yes', reason: 'Yeni sezon görevi'
+  }, db, discordClient);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner/pogaca?guildId=' + guildId + '&notice=quest_saved');
+  assert.ok(calls.some(call => call.sql === 'BEGIN'));
+  assert.ok(calls.some(call => call.sql.includes('owner_audit_logs')));
+  assert.ok(calls.some(call => call.sql === 'COMMIT'));
+  assert.equal(calls.at(-1).sql, 'RELEASE');
+});
+
+test('owner daily quest save rejects a guild that the bot is not connected to', async () => {
+  let connected = false;
+  const db = { connect: async () => { connected = true; throw new Error('must not connect'); } };
+  const { response } = await runOwnerPost({
+    action: 'rpg-daily-quest-save', csrf: 'session', confirm: 'yes',
+    guildId: '1539562273197260860', questKey: 'northern_trial',
+    title: 'Kuzey sınavı', description: 'Bugün bir keşif tamamla.',
+    objectiveType: 'explore', rewardCoins: '250', active: 'yes', reason: 'Yeni sezon görevi'
+  }, db, { guilds: { cache: new Map() } });
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner?notice=invalid');
+  assert.equal(connected, false);
+});

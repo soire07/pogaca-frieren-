@@ -265,6 +265,24 @@ export async function initDatabase() {
       PRIMARY KEY (guild_id,user_id,mission_date,mission_key),
       FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS guild_daily_quests (
+      guild_id TEXT NOT NULL,
+      quest_key VARCHAR(40) NOT NULL CHECK (quest_key ~ '^[a-z][a-z0-9_]{1,39}$'),
+      title VARCHAR(80) NOT NULL,
+      description VARCHAR(240) NOT NULL,
+      objective_type TEXT NOT NULL CHECK (objective_type IN ('adventure','daily','draw','explore','item','boss_fight','boss_win','spell')),
+      class_name TEXT CHECK (class_name IS NULL OR class_name IN ('Büyücü','Muhafız','Şifacı','Gezgin')),
+      reward_coins INTEGER NOT NULL DEFAULT 0 CHECK (reward_coins BETWEEN 0 AND 5000),
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      is_system BOOLEAN NOT NULL DEFAULT FALSE,
+      created_by TEXT,
+      updated_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id,quest_key)
+    );
+    CREATE INDEX IF NOT EXISTS idx_guild_daily_quests_active
+      ON guild_daily_quests(guild_id,active,title);
     CREATE TABLE IF NOT EXISTS adventure_discoveries (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
