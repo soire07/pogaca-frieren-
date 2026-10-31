@@ -141,3 +141,16 @@ test('live dungeon and boss commands consume the guild-scoped content catalog', 
   assert.ok(raidBoss.includes('chooseRaidBoss(Math.random, raidBosses)'));
   assert.ok(schema.includes('CREATE TABLE IF NOT EXISTS guild_rpg_content_overrides'));
 });
+
+
+test('starter-level dungeon and solo boss tiers cannot be disabled while higher tiers remain', async () => {
+  const client = { query: async sql => {
+    if (sql.includes('INSERT INTO guild_rpg_content_overrides')) return { rows: [{ content_key: 'level_1', active: false }] };
+    if (sql.includes('SELECT content_key,active')) return { rows: [{ content_key: 'level_1', active: false }] };
+    return { rows: [] };
+  }, release() {} };
+  await assert.rejects(setOwnerRpgContentActive({ connect: async () => client }, {
+    guildId, contentType: 'solo_boss', contentKey: 'level_1',
+    active: false, reason: 'Denge değişikliği', actorId
+  }), /STARTER_RPG_CONTENT_REQUIRED/);
+});
