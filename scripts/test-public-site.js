@@ -135,7 +135,7 @@ test('registration and login error pages show centered recovery messaging and a 
     await handlePublicSiteRequest({ method: 'GET', url: path, headers: {} }, response);
     assert.equal(response.status, 200);
     assert.match(response.body, /Discord doğrulaması tamamlanamadı/);
-    assert.match(response.body, /class="auth-back" href="\\/">← Ana sayfaya dön/);
+    assert.ok(response.body.includes('class="auth-back" href="/">← Ana sayfaya dön'));
     assert.match(response.body, /place-items:center/);
     assert.match(response.body, /text-align:center/);
   }
