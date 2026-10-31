@@ -121,6 +121,10 @@ export default {
       const averageLevel = Math.floor(combatants.reduce((sum, player) => sum + player.level, 0) / combatants.length);
       const dungeonTiers = await getGuildRpgContent(db, interaction.guildId, 'dungeon');
       const dungeon = selectDungeonForLevel(averageLevel, dungeonTiers);
+      if (!dungeon) {
+        await db.query('ROLLBACK');
+        return interaction.editReply({ content: 'Bu seviyede şu anda aktif bir zindan yok. Owner Panel üzerinden uygun seviye kademesini etkinleştir.', components: [] });
+      }
       let dungeonHp = dungeon.hp;
       let turn = 0;
       const log = [];
