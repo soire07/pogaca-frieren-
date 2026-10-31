@@ -117,3 +117,14 @@ test('RPG resource adjustment rejects unbounded or reasonless edits before openi
   }), /INVALID_RPG_ADJUSTMENT/);
   assert.equal(connected, false);
 });
+
+
+test('RPG resource adjustment rejects negative XP to preserve previously earned stat points', async () => {
+  let connected = false;
+  const db = { connect: async () => { connected = true; throw new Error('should not connect'); } };
+  await assert.rejects(adjustOwnerRpgResources(db, {
+    guildId: '223456789012345678', userId: '123456789012345678',
+    xpDelta: -5, reason: 'correction'
+  }), /INVALID_RPG_ADJUSTMENT/);
+  assert.equal(connected, false);
+});
