@@ -64,7 +64,7 @@ async function requestMetric(name, { apiKey, resourceId, startTime, endTime, fet
 }
 
 export async function getRenderServiceMetrics({
-  apiKey = process.env.RENDER_API_KEY,
+  apiKey = process.env.RENDER_POGACA_API_KEY || process.env.RENDER_API_KEY,
   resourceId = process.env.RENDER_METRICS_SERVICE_ID || process.env.RENDER_SERVICE_ID || 'srv-dbf4vdvavr4c73cr6s00',
   fetchImpl = globalThis.fetch,
   now = Date.now()
