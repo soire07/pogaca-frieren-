@@ -980,7 +980,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     ]);
     const frierenService = renderServices?.services?.frieren_ai;
     const aiRenderMetrics = frierenService?.apiConfigured && !frierenService?.apiError && frierenService?.suspended !== true
-      ? await getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.frieren_ai.id })
+      ? await getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.frieren_ai.id, apiKey: process.env.RENDER_FRIEREN_AI_API_KEY })
       : { status: 'unavailable', source: 'render', points: [], message: frierenService?.suspended ? 'Frieren AI askıda; metrik sorgusu yapılmadı.' : 'Frieren AI metrikleri için Render API bağlantısı gerekli.' };
     const featureSettingsByGuild = new Map(await Promise.all([...client.guilds.cache.keys()].map(async guildId => [guildId, await listGuildFeatureSettings(db, guildId)])));
     const memoryUser = String(url.searchParams.get('memoryUser') || '').replace(/\D/g, '').slice(0, 24);
