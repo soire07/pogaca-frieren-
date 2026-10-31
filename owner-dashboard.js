@@ -1074,13 +1074,15 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
             [userId, username, avatarHash]
           );
           if (!created.rowCount) {
-            send(res, 409, page('Zaten kayıtlısın', '<h1>Bu Discord hesabı zaten kayıtlı</h1><p>Yeni hesap açmana gerek yok. Mevcut hesabınla giriş yapabilirsin.</p><a class="btn" href="/login">Giriş yap</a>'), { 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
+            res.writeHead(302, { Location: '/login?status=already_registered', 'Cache-Control': 'no-store', 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
+            res.end();
             return true;
           }
         } else {
           const existing = await db.query('SELECT discord_user_id FROM frieren_site_members WHERE discord_user_id=$1', [userId]);
           if (!existing.rowCount) {
-            send(res, 403, page('Kayıt bulunamadı', '<h1>Henüz site kaydın yok</h1><p>Önce ücretsiz Discord kaydını oluşturmalısın.</p><a class="btn" href="/register">Kayıt ol</a>'), { 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
+            res.writeHead(302, { Location: '/register?status=not_registered', 'Cache-Control': 'no-store', 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
+            res.end();
             return true;
           }
           await db.query(
