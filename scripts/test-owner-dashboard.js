@@ -1,6 +1,7 @@
 import test from 'node:test';
+import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, getFrierenAIReadiness } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
 const ownerId = '1553794496234262641';
@@ -204,4 +205,75 @@ test('Frieren AI readiness fails closed when the local bridge is unavailable', a
     fetchImpl: async () => { throw new Error('bridge unavailable'); }
   });
   assert.equal(result, null);
+});
+
+
+function makeOwnerRequest({ action, csrf, id, confirm, cookie = true }) {
+  const token = createOwnerSession(secret, Math.floor(Date.now() / 1000) + 3600);
+  const sessionCsrf = JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString()).csrf;
+  const form = new URLSearchParams();
+  if (action) form.set('action', action);
+  if (csrf !== undefined) form.set('csrf', csrf);
+  if (id !== undefined) form.set('id', String(id));
+  if (confirm !== undefined) form.set('confirm', confirm);
+  const req = new EventEmitter();
+  req.method = 'POST';
+  req.url = '/owner/action';
+  req.headers = { cookie: cookie ? 'frieren_owner_session=' + encodeURIComponent(token) : '' };
+  const response = { status: 0, headers: {}, body: '', writeHead(status, headers = {}) {
+    this.status = status; this.headers = headers;
+  }, end(body = '') { this.body = body; } };
+  return { req, response, body: form.toString(), sessionCsrf };
+}
+
+async function runOwnerPost(options, db) {
+  const previous = {
+    CLIENT_ID: process.env.CLIENT_ID,
+    DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
+    ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET
+  };
+  process.env.CLIENT_ID = 'test-client-id';
+  process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
+  process.env.ADMIN_SESSION_SECRET = secret;
+  const { req, response, body, sessionCsrf } = makeOwnerRequest(options);
+  const pending = handleOwnerDashboardRequest(req, response, { client: {}, db });
+  req.emit('data', Buffer.from(body));
+  req.emit('end');
+  try {
+    await pending;
+    return { response, sessionCsrf };
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+}
+
+test('owner action endpoint rejects requests without an authenticated owner session', async () => {
+  const db = { query: async () => { throw new Error('database must not be touched'); } };
+  const { response } = await runOwnerPost({ action: 'maintenance-on', csrf: 'invalid', cookie: false }, db);
+  assert.equal(response.status, 401);
+  assert.match(response.body, /Oturum süresi doldu/);
+});
+
+test('owner action endpoint rejects invalid CSRF tokens without changing state', async () => {
+  let calls = 0;
+  const db = { query: async () => { calls += 1; return { rows: [], rowCount: 1 }; } };
+  const { response } = await runOwnerPost({ action: 'maintenance-on', csrf: 'wrong-token', confirm: 'yes' }, db);
+  assert.equal(response.status, 403);
+  assert.match(response.body, /CSRF doğrulaması başarısız/);
+  assert.equal(calls, 0);
+});
+
+test('owner maintenance action uses the atomic database operation and redirects on success', async () => {
+  let query = '';
+  const db = { query: async sql => { query = sql; return { rows: [], rowCount: 1 }; } };
+  const { response, sessionCsrf } = await runOwnerPost({ action: 'maintenance-on', csrf: undefined, confirm: 'yes' }, db);
+  // Re-submit with the CSRF token extracted from the generated owner session.
+  assert.ok(sessionCsrf.length >= 32);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner?notice=maintenance_on');
+  assert.match(query, /WITH changed AS/);
+  assert.match(query, /INSERT INTO owner_audit_logs/);
 });
