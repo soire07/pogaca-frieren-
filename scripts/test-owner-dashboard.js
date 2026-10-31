@@ -390,6 +390,7 @@ test('owner daily quest save rejects a guild that the bot is not connected to', 
     title: 'Kuzey sınavı', description: 'Bugün bir keşif tamamla.',
     objectiveType: 'explore', rewardCoins: '250', active: 'yes', reason: 'Yeni sezon görevi'
   }, db, { guilds: { cache: new Map() } });
-  assert.equal(response.status, 500);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner?notice=invalid');
   assert.equal(connected, false);
 });
