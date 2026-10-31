@@ -5,6 +5,7 @@ import {
   reviewApproval, listUserMemories, deleteUserMemory, setMaintenanceState,
   sendOwnerAnnouncement, getRecentOwnerActivity
 } from './owner-admin.js';
+import { listOwnerPartnerLinks, saveOwnerPartnerLink, deleteOwnerPartnerLink, getOwnerRpgMetrics, updateGuildConfiguration, listGuildConfigurations } from './owner-platform.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -20,7 +21,10 @@ export const OWNER_PANEL_SECTIONS = Object.freeze([
   { id: 'approvals', label: 'Kod Talepleri', command: '/owner-onay' },
   { id: 'announcements', label: 'Duyuru Merkezi', command: '/owner-duyuru' },
   { id: 'maintenance', label: 'Bakım Merkezi', command: '/owner-bakim' },
-  { id: 'activity', label: 'İşlem Kayıtları', command: null }
+  { id: 'servers', label: 'Sunucu Yönetimi', command: null },
+  { id: 'partners', label: 'Partnerlik', command: null },
+  { id: 'rpg', label: 'RPG Yönetimi', command: null },
+  { id: 'activity', label: 'Log Merkezi', command: null }
 ]);
 
 export function getDiscordOAuthFailureDiagnostic(status, payload = {}) {
@@ -230,7 +234,7 @@ export async function getFrierenAIReadiness({
   } catch { return null; }
 }
 
-function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics, aiReadiness }) {
+function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics, aiReadiness, partners, rpgMetrics, guildConfigurations }) {
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
     .filter(channel => channel.isTextBased?.() && channel.send)
@@ -258,6 +262,9 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     approval_rejected: 'Talep reddedildi.',
     memory_deleted: 'Hafıza kaydı silindi.',
     announcement_sent: 'Duyuru seçilen kanala gönderildi.',
+    guild_config_saved: 'Sunucu ayarları kaydedildi.',
+    partner_saved: 'Partner kaydı kaydedildi.',
+    partner_deleted: 'Partner kaydı silindi.',
     invalid: 'İşlem tamamlanamadı. Alanları ve bot izinlerini kontrol et.'
   })[notice] || '';
   return page('Owner Kontrol Merkezi', `
@@ -435,18 +442,21 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   }
 
   try {
-    const [overview, approvals, activity, renderMetrics, aiReadiness] = await Promise.all([
+    const [overview, approvals, activity, renderMetrics, aiReadiness, partners, rpgMetrics, guildConfigurations] = await Promise.all([
       getOwnerOverview(client, db),
       listPendingApprovals(db, 15),
       getRecentOwnerActivity(db),
       getRenderServiceMetrics(),
-      getFrierenAIReadiness()
+      getFrierenAIReadiness(),
+      listOwnerPartnerLinks(db),
+      getOwnerRpgMetrics(db),
+      listGuildConfigurations(db)
     ]);
     const memoryUser = String(url.searchParams.get('memoryUser') || '').replace(/\D/g, '').slice(0, 24);
     const memories = memoryUser ? await listUserMemories(db, memoryUser, null, 30) : [];
     send(res, 200, renderDashboard({
       session, overview, client, approvals, memories, memoryUser,
-      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness
+      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, partners, rpgMetrics, guildConfigurations
     }));
   } catch (error) {
     console.error('Owner dashboard load failed:', error?.message || error);
