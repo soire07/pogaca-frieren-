@@ -178,6 +178,7 @@ export async function saveOwnerRpgContent(db, input = {}) {
   const client = await db.connect();
   try {
     await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))', [item.guildId, item.contentType]);
     const saved = await client.query(
       `INSERT INTO guild_rpg_content_overrides
        (guild_id,content_type,content_key,config,active,updated_by,updated_at)
@@ -220,6 +221,7 @@ export async function setOwnerRpgContentActive(db, input = {}) {
   const client = await db.connect();
   try {
     await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))', [guildId, contentType]);
     const result = await client.query(
       `INSERT INTO guild_rpg_content_overrides
        (guild_id,content_type,content_key,config,active,updated_by,updated_at)
