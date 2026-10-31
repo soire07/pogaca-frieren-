@@ -22,7 +22,7 @@ test('anonymous visitors must authenticate with Discord before viewing the homep
   assert.equal(response.headers.Location, '/login');
 });
 
-test('authenticated homepage includes the member identity, profile, GIF gallery and draggable chibi', async () => {
+test('authenticated homepage includes the member identity, profile and GIF gallery', async () => {
   const response = res();
   const client = { guilds: { cache: { size: 3 } }, commands: { size: 68 }, isReady: () => true };
   assert.equal(await handlePublicSiteRequest(request('/', visitor), response, { client }), true);
@@ -31,9 +31,6 @@ test('authenticated homepage includes the member identity, profile, GIF gallery 
   assert.match(response.body, /Gezgin/);
   assert.match(response.body, /profile-banner/);
   assert.match(response.body, /gif-gallery/);
-  assert.match(response.body, /id="chibi"/);
-  assert.match(response.body, /pointermove/);
-  assert.match(response.body, /Ensemden tutma/);
   assert.equal((response.body.match(/class="gif-item"/g) || []).length, 16);
   assert.match(response.body, /68/);
 });
@@ -119,16 +116,6 @@ test('dedicated site avatar asset is public so auth screens can render it', asyn
   assert.match(String(response.body), /<svg/);
 });
 
-test('chibi speech bubble is nested inside the draggable companion wrapper', async () => {
-  const response = res();
-  await handlePublicSiteRequest(request('/', visitor), response);
-  const wrapperIndex = response.body.indexOf('id="chibiCompanion"');
-  const hintIndex = response.body.indexOf('id="chibiHint"');
-  const chibiIndex = response.body.indexOf('id="chibi"');
-  assert.ok(wrapperIndex >= 0 && hintIndex > wrapperIndex && chibiIndex > hintIndex);
-  assert.match(response.body, /pointermove/);
-});
-
 test('registration and login error pages show centered recovery messaging and a home link', async () => {
   for (const path of ['/register?status=oauth_error', '/login?status=oauth_error']) {
     const response = res();
@@ -141,26 +128,6 @@ test('registration and login error pages show centered recovery messaging and a 
   }
 });
 
-
-test('chibi has walking, nape-lift and anger interaction states', async () => {
-  const response = res();
-  await handlePublicSiteRequest(request('/', visitor), response);
-  assert.match(response.body, /@keyframes chibi-walk/);
-  assert.match(response.body, /@keyframes chibi-lift/);
-  assert.match(response.body, /@keyframes chibi-angry/);
-  assert.match(response.body, /class="chibi-lift-image"/);
-  assert.match(response.body, /class="chibi-state-image chibi-walk-image"/);
-  assert.match(response.body, /class="chibi-state-image chibi-anger-image"/);
-  assert.match(response.body, /d30ff5335ce59dcc6557bfadc7a3f8e94b852575/);
-  assert.match(response.body, /ce36a7299e5162fe460c6f60657fa6998585d95b/);
-  assert.match(response.body, /4986c180f4603e0057f5af1eadee59aea2df109b/);
-  assert.doesNotMatch(response.body, /class="chibi-hand"/);
-  assert.match(response.body, /dmmcy0pwk6bqi\.cloudfront\.net/);
-  assert.match(response.body, /class="chibi-anger"/);
-  assert.match(response.body, /classList\.add\('held'\)/);
-  assert.match(response.body, /classList\.add\('angry'\)/);
-  assert.match(response.body, /Ensemden tutmaaa/);
-});
 
 test('mobile public pages keep card actions and hero media within the viewport', async () => {
   const response = res();
