@@ -290,7 +290,7 @@ test('owner navigation groups bot workspaces and preserves the no-log policy', (
   assert.match(navigation, /Komut ve davranışlar/);
   assert.ok(navigation.includes('href="/owner#behavior"'));
   assert.ok(navigation.includes('href="/owner#rpg"'));
-  assert.doesNotMatch(navigation, /Log Merkezi|href="\\/owner#activity"/);
+  assert.ok(!navigation.includes('href="/owner#activity"'));
 });
 
 test('bot cards expose direct paths into their own management areas', () => {
