@@ -59,3 +59,25 @@ export function getPublicLivenessPayload(readiness = {}) {
     readiness: health,
   };
 }
+
+export async function checkBridgeReachability({ baseUrl, secret, fetchImpl = fetch, timeoutMs = 5_000 } = {}) {
+  if (typeof baseUrl !== 'string' || !baseUrl.trim() || typeof secret !== 'string' || secret.length < 32) {
+    return { reachable: false, commandCount: 0, reason: 'not_configured' };
+  }
+  const normalizedBaseUrl = baseUrl.trim().replace(/\/$/, '');
+  try {
+    const response = await fetchImpl(normalizedBaseUrl + '/internal/test-catalog', {
+      method: 'GET',
+      headers: { authorization: 'Bearer ' + secret, accept: 'application/json' },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!response.ok) return { reachable: false, commandCount: 0, reason: 'http_' + response.status };
+    const payload = await response.json();
+    if (payload?.service !== 'pogaca-frieren' || !Array.isArray(payload.commands) || !Number.isInteger(payload.count) || payload.count !== payload.commands.length) {
+      return { reachable: false, commandCount: 0, reason: 'invalid_response' };
+    }
+    return { reachable: true, commandCount: payload.count, reason: 'ok' };
+  } catch {
+    return { reachable: false, commandCount: 0, reason: 'request_failed' };
+  }
+}
