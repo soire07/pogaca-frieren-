@@ -56,12 +56,16 @@ test('RPG player detail returns inventory only for the selected guild and player
     calls.push(params);
     return sql.includes('FROM users')
       ? { rows: [{ user_id: params[1], coins: 50 }] }
-      : { rows: [{ item_key: 'healing_potion', quantity: 2 }] };
+      : sql.includes('FROM inventory')
+        ? { rows: [{ item_key: 'healing_potion', quantity: 2 }] }
+        : { rows: [{ slot: 'weapon', item_key: '⚔️ Gezginin Demir Kılıcı' }] };
   } };
   const detail = await getOwnerRpgPlayerDetails(db, { guildId: '223456789012345678', userId: '123456789012345678' });
   assert.equal(detail.coins, 50);
   assert.deepEqual(detail.inventory, [{ item_key: 'healing_potion', quantity: 2 }]);
-  assert.deepEqual(calls, [['223456789012345678','123456789012345678'],['223456789012345678','123456789012345678']]);
+  assert.deepEqual(detail.equipment, [{ slot: 'weapon', item_key: '⚔️ Gezginin Demir Kılıcı' }]);
+  assert.equal(calls.length, 3);
+  assert.ok(calls.every(params => params[0] === '223456789012345678' && params[1] === '123456789012345678'));
 });
 
 test('RPG resource adjustment locks player, writes audit, and commits atomically', async () => {
