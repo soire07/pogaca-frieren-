@@ -508,7 +508,7 @@ export async function getFrierenAIReadiness({
   healthPath = RENDER_BOT_SERVICES.frieren_ai.healthPath
 } = {}) {
   try {
-    const response = await fetchImpl(String(serviceUrl).replace(/\\/$/, '') + healthPath, {
+    const response = await fetchImpl(String(serviceUrl).replace(/\/$/, '') + healthPath, {
       headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(5000)
     });
