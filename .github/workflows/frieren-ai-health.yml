@@ -29,8 +29,8 @@ jobs:
           response_file="$RUNNER_TEMP/frieren-live.json"
           for attempt in {1..8}; do
             http_code="$(curl --silent --show-error --connect-timeout 10 --max-time 20 -o "$response_file" -w '%{http_code}' "$HEALTH_URL" 2>&1)" || true
-            if [[ "$http_code" == "200" ]] && node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status==='alive'?0:1)}catch{process.exit(1)}})" < "$response_file"; then
-              echo "Frieren AI liveness passed (HTTP 200)."
+            if [[ "$http_code" == "200" ]] && node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status==='alive' && j.readiness?.bridgeConfigured===true?0:1)}catch{process.exit(1)}})" < "$response_file"; then
+              echo "Frieren AI liveness passed (HTTP 200; bridge configured)."
               exit 0
             fi
             echo "::warning::Liveness attempt $attempt/8 failed; HTTP $http_code."
@@ -47,8 +47,8 @@ jobs:
           response_file="$RUNNER_TEMP/frieren-ready.json"
           for attempt in {1..8}; do
             http_code="$(curl --silent --show-error --connect-timeout 10 --max-time 20 -o "$response_file" -w '%{http_code}' "$READY_URL" 2>&1)" || true
-            if [[ "$http_code" == "200" ]] && node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status==='ok' && j.discordReady===true && j.memoryDatabaseReady===true && j.modelConfigured===true ? 0 : 1)}catch{process.exit(1)}})" < "$response_file"; then
-              echo "Frieren AI readiness passed (HTTP 200; Discord, memory DB, and model ready)."
+            if [[ "$http_code" == "200" ]] && node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status==='ok' && j.discordReady===true && j.memoryDatabaseReady===true && j.modelConfigured===true && j.bridgeConfigured===true ? 0 : 1)}catch{process.exit(1)}})" < "$response_file"; then
+              echo "Frieren AI readiness passed (HTTP 200; Discord, memory DB, model, and test bridge ready)."
               exit 0
             fi
             echo "::warning::Readiness attempt $attempt/8 failed; HTTP $http_code."
