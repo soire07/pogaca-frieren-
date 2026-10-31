@@ -7,6 +7,7 @@ import {
 } from './owner-admin.js';
 import { listOwnerPartnerLinks, saveOwnerPartnerLink, deleteOwnerPartnerLink, getOwnerRpgMetrics, updateGuildConfiguration, listGuildConfigurations } from './owner-platform.js';
 import { DEFAULT_GUILD_FEATURES, listGuildFeatureSettings, setGuildFeatureEnabled, resetGuildFeatureSetting } from './guild-feature-settings.js';
+import { getOwnerDatabaseDiagnostics, renderOwnerWorkspace } from './owner-workspaces.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -54,6 +55,11 @@ export function renderOwnerNavigation() {
         }[section.id] || '✧') + '</span><span class="nav-link-copy"><strong>' + section.label + '</strong>'
           + (section.command ? '<small>' + section.command + '</small>' : '') + '</span></a>' : '';
       }).join('') + '</div>').join('')
+    + '<div class="nav-group"><div class="nav-group-title">ÇALIŞMA ALANLARI</div>'
+    + '<a href="/owner/pogaca"><span class="nav-icon">✿</span><span class="nav-link-copy"><strong>Poğaça çalışma alanı</strong></span></a>'
+    + '<a href="/owner/frieren-ai"><span class="nav-icon">✧</span><span class="nav-link-copy"><strong>Frieren AI merkezi</strong></span></a>'
+    + '<a href="/owner/database"><span class="nav-icon">◈</span><span class="nav-link-copy"><strong>Veritabanı</strong></span></a>'
+    + '<a href="/owner/settings"><span class="nav-icon">⚙</span><span class="nav-link-copy"><strong>Owner ayarları</strong></span></a></div>'
     + '<div class="nav-footer"><span class="nav-status-dot"></span> OWNER ACCESS · PRIVATE</div></nav>';
 }
 
@@ -610,6 +616,36 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       send(res, 401, page('Oturum gerekli', '<h1>Oturum süresi doldu</h1><a class="btn" href="/owner/login">Yeniden giriş yap</a>'), { 'Set-Cookie': clearOwnerCookie(SESSION_COOKIE, '/owner') });
     } else {
       send(res, 200, page('Owner girişi', '<span class="tag">ÖZEL ERİŞİM</span><h1>Frieren · Owner Paneli</h1><p>Bu yönetim alanı yalnızca bot sahibine açıktır. Giriş, Discord hesabının kimliği doğrulanarak yapılır.</p><a class="btn" href="/owner/login">Discord ile giriş yap</a><p class="muted">Yetkisiz hesaplar panele erişemez.</p>'));
+    }
+    return true;
+  }
+
+  const workspaceKinds = {
+    '/owner/frieren-ai': 'ai',
+    '/owner/pogaca': 'pogaca',
+    '/owner/database': 'database',
+    '/owner/settings': 'settings'
+  };
+  if (workspaceKinds[url.pathname] && req.method === 'GET') {
+    try {
+      const kind = workspaceKinds[url.pathname];
+      const data = {};
+      if (kind === 'ai') data.aiReadiness = await getFrierenAIReadiness();
+      if (kind === 'pogaca') data.rpgMetrics = await getOwnerRpgMetrics(db);
+      if (kind === 'database') data.database = await getOwnerDatabaseDiagnostics(db);
+      if (kind === 'settings') data.settings = [
+        { label: 'Discord OAuth istemcisi', configured: Boolean(process.env.CLIENT_ID && process.env.DISCORD_CLIENT_SECRET) },
+        { label: 'Owner oturum imzası', configured: Boolean(process.env.ADMIN_SESSION_SECRET && process.env.ADMIN_SESSION_SECRET.length >= 32) },
+        { label: 'PostgreSQL bağlantısı', configured: Boolean(db) },
+        { label: 'Frieren AI köprü anahtarı', configured: Boolean(process.env.FRIEREN_BRIDGE_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET) },
+        { label: 'Render API metrikleri', configured: Boolean(process.env.RENDER_API_KEY && process.env.RENDER_SERVICE_ID) }
+      ];
+      const content = renderOwnerNavigation() + '<div class="top"><div><div class="brand">FRIEREN</div><div class="small">THE ARCANE SANCTUARY · OWNER WORKSPACE</div></div><a class="btn secondary" href="/owner">Genel bakış</a></div>'
+        + renderOwnerWorkspace(kind, data);
+      send(res, 200, page(kind === 'ai' ? 'Frieren AI' : kind === 'pogaca' ? 'Poğaça Frieren' : kind === 'database' ? 'PostgreSQL' : 'Owner ayarları', content));
+    } catch (error) {
+      console.error('Owner workspace load failed:', error?.message || error);
+      send(res, 503, page('Çalışma alanı yüklenemedi', '<h1>Çalışma alanı yüklenemedi</h1><p>Bağlantı ve veritabanı durumunu kontrol et.</p><a class="btn" href="/owner">Panele dön</a>'));
     }
     return true;
   }
