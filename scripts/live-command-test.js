@@ -250,23 +250,47 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
         const behavioralChecks = [];
         if (commandName === 'gunlukgorev') {
           await pool.query('UPDATE users SET coins=100,last_adventure_at=NOW() WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
-          const claimMission = async () => {
+          const claimMission = async questKey => {
             const actionEffects = [];
-            const interaction = makeInteraction(command, buildOptions(schema?.options, { odul: 'adventure' }), guildId, actionEffects);
+            const interaction = makeInteraction(command, buildOptions(schema?.options, { odul: questKey }), guildId, actionEffects);
             interaction.user.id = userId;
             interaction.member = makeMember(userId);
             await command.execute(interaction);
             effects.push(...actionEffects);
           };
-          await claimMission();
+          await claimMission('adventure');
           const first = await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const claims = await pool.query("SELECT mission_key FROM daily_mission_claims WHERE guild_id=$1 AND user_id=$2 AND mission_date=CURRENT_DATE AND mission_key='adventure'", [guildId, userId]);
-          await claimMission();
+          await claimMission('adventure');
           const second = await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           behavioralChecks.push(
             { name: 'Tamamlanan günlük görev ödülü', expected: '100 → 200 altın', actual: String(first.rows[0]?.coins), passed: Number(first.rows[0]?.coins) === 200 },
             { name: 'Görev ödülünün tekil kaydı', expected: 'tek adventure claim kaydı', actual: claims.rowCount + ' kayıt', passed: claims.rowCount === 1 },
             { name: 'Tekrar ödül almada çift ödeme engeli', expected: 'bakiye 200 kalmalı', actual: String(second.rows[0]?.coins), passed: Number(second.rows[0]?.coins) === 200 }
+          );
+
+          await pool.query("UPDATE users SET class_name='Muhafız',last_boss_at=NOW(),coins=0 WHERE guild_id=$1 AND user_id=$2", [guildId, userId]);
+          await claimMission('class_muhafiz');
+          const classBalance = await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const classClaims = await pool.query(
+            "SELECT mission_key FROM daily_mission_claims WHERE guild_id=$1 AND user_id=$2 AND mission_date=CURRENT_DATE AND mission_key IN ('class_muhafiz','__class_daily_reward__')",
+            [guildId, userId]
+          );
+          await pool.query(
+            `INSERT INTO guild_daily_quests(guild_id,quest_key,title,description,objective_type,class_name,reward_coins,active,is_system)
+             VALUES($1,'class_custom_trial','Özel Muhafız Görevi','Bir boss karşılaşmasına katıl','boss_fight','Muhafız',90,TRUE,FALSE)`,
+            [guildId]
+          );
+          await claimMission('class_custom_trial');
+          const classBalanceAfterSecond = await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const customClaim = await pool.query(
+            "SELECT 1 FROM daily_mission_claims WHERE guild_id=$1 AND user_id=$2 AND mission_date=CURRENT_DATE AND mission_key='class_custom_trial'",
+            [guildId, userId]
+          );
+          behavioralChecks.push(
+            { name: 'Sınıfa özel görev ödülü', expected: '130 altın', actual: String(classBalance.rows[0]?.coins), passed: Number(classBalance.rows[0]?.coins) === 130 },
+            { name: 'Kalıcı sınıf ödül kilidi', expected: 'class_muhafiz ve sentinel kayıtları', actual: classClaims.rowCount + ' kayıt', passed: classClaims.rowCount === 2 },
+            { name: 'İkinci sınıf görevi engeli', expected: 'bakiye 130 kalmalı ve özel claim oluşmamalı', actual: 'bakiye ' + classBalanceAfterSecond.rows[0]?.coins + ', claim ' + customClaim.rowCount, passed: Number(classBalanceAfterSecond.rows[0]?.coins) === 130 && customClaim.rowCount === 0 }
           );
         } else if (commandName === 'hazineac') {
           await pool.query('UPDATE users SET coins=0,xp=0,level=1,stat_points=0 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
