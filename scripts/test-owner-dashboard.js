@@ -597,13 +597,3 @@ test('site registration callback creates a valid member table and session', asyn
     }
   }
 });
-"));
-    assert.match(queries[1].sql, /INSERT INTO frieren_site_members/);
-  } finally {
-    for (const [key, value] of Object.entries(previous)) {
-      if (key === 'fetch') globalThis.fetch = value;
-      else if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
-  }
-});
