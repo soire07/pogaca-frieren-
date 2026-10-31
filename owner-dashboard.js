@@ -445,6 +445,8 @@ export function renderOwnerControlCenter(renderServices, overview, csrf, renderM
   const renderApiError = renderServices?.apiError || null;
   const serviceStatus = service => {
     if (service?.suspended === true || service?.status === 'suspended') return { label: 'Askıya alınmış', css: 'warn' };
+    if (service?.suspended === null && service?.health === 'healthy') return { label: 'Health 200 · Render askı durumu bilinmiyor', css: 'good' };
+    if (service?.suspended === null && service?.health === 'unhealthy') return { label: 'Health başarısız · Render askı durumu bilinmiyor', css: 'bad' };
     if (service?.status === 'running') return { label: 'Çalışıyor · Health 200', css: 'good' };
     if (service?.health === 'healthy') return { label: 'Health 200 · Render durumu doğrulanamadı', css: 'good' };
     if (service?.health === 'unhealthy') return { label: 'Health kontrolü başarısız', css: 'bad' };
