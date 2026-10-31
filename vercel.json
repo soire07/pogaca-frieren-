@@ -4,7 +4,7 @@
   "routes": [
     {
       "src": "^/$",
-      "dest": "https://pogaca-frieren.onrender.com/owner"
+      "dest": "https://pogaca-frieren.onrender.com/"
     },
     {
       "src": "^/(.*)$",
