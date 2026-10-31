@@ -168,9 +168,12 @@ async function assertAtLeastOneActive(client, guildId, contentType) {
     [guildId, contentType]
   );
   const overrides = new Map((result.rows || []).map(row => [row.content_key, row.active !== false]));
-  const activeCount = RPG_CONTENT_CATALOGS[contentType]
+  const catalog = RPG_CONTENT_CATALOGS[contentType];
+  const activeCount = catalog
     .filter(item => overrides.has(item.key) ? overrides.get(item.key) : true).length;
   if (activeCount < 1) throw new Error('LAST_ACTIVE_RPG_CONTENT');
+  const starter = catalog.find(item => Number(item.minLevel) === 1);
+  if (starter && overrides.get(starter.key) === false) throw new Error('STARTER_RPG_CONTENT_REQUIRED');
 }
 
 export async function saveOwnerRpgContent(db, input = {}) {
