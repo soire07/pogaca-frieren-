@@ -32,7 +32,7 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /profile-banner/);
   assert.match(response.body, /gif-gallery/);
   assert.match(response.body, /object-fit:cover/);
-  assert.match(response.body, /height:clamp\\(280px,34vw,390px\\)/);
+  assert.match(response.body, /height:clamp\(280px,34vw,390px\)/);
   assert.match(response.body, /profile-avatar/);
   assert.match(response.body, /height:205px/);
   assert.equal((response.body.match(/class="gif-item"/g) || []).length, 16);
