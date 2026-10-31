@@ -449,8 +449,12 @@ test('bot control center separates the main bot from the suspended AI service', 
       pogaca: { key: 'pogaca', name: 'Poğaça Frieren', id: 'srv-main', url: 'https://pogaca-frieren.onrender.com', dashboardUrl: 'https://dashboard.render.com/web/srv-main', plan: 'free', status: 'running', health: 'healthy', suspended: false, suspenders: [], allowedActions: ['restart'] },
       frieren_ai: { key: 'frieren_ai', name: 'Frieren AI', id: 'srv-ai', url: 'https://frieren-ai-agent.onrender.com', dashboardUrl: 'https://dashboard.render.com/web/srv-ai', plan: 'free', status: 'suspended', health: 'suspended', suspended: true, suspenders: ['user'], allowedActions: ['restart','suspend','resume'] }
     }
-  }, { maintenance: false }, 'csrf-token');
+  }, { maintenance: false }, 'csrf-token',
+  { status: 'available', cpuPercent: 12.3, memoryPercent: 45.6 },
+  { status: 'available', cpuPercent: 5.5, memoryPercent: 30.1 });
   assert.match(html, /Bot Kontrol Merkezi/);
+  assert.match(html, /CPU 12\.3% · RAM 45\.6%/);
+  assert.match(html, /CPU 5\.5% · RAM 30\.1%/);
   assert.match(html, /Poğaça Frieren/);
   assert.match(html, /Frieren AI/);
   assert.match(html, /Askıya alınmış/);
