@@ -1,0 +1,46 @@
+name: Frieren AI CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ai-agent/**'
+      - '.github/workflows/frieren-ai-ci.yml'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ai-agent/**'
+      - '.github/workflows/frieren-ai-ci.yml'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frieren-ai-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install RPG bot dependencies
+        run: npm install
+      - name: Install Frieren AI dependencies
+        run: npm install --prefix ai-agent
+      - name: Run syntax, command audits, and automated tests
+        run: npm run check
