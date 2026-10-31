@@ -42,7 +42,7 @@ test('guild settings require a real text channel in the selected guild', async (
 
 test('RPG player search is guild-scoped and bounded', async () => {
   let params;
-  const db = { query: async (_sql, values) => { params = values; return { rows: [{ user_id: '123456789012345678' }] }; } };
+  const db = { query: async (_sql, values) => { params = values; return { rows: [{ user_id: '123456789012345678' }], rowCount: 1 }; } };
   const result = await searchOwnerRpgPlayers(db, { guildId: '223456789012345678', query: 'Frieren', limit: 500 });
   assert.equal(result.length, 1);
   assert.equal(params[0], '223456789012345678');
@@ -138,8 +138,8 @@ test('owner inventory grants known equipment and audits the change atomically', 
   const calls = [];
   const client = { query: async (sql, params) => {
     calls.push({ sql, params });
-    if (sql.includes('SELECT user_id FROM users')) return { rows: [{ user_id: '123456789012345678' }] };
-    if (sql.includes('SELECT quantity FROM inventory')) return { rows: [{ quantity: 1 }] };
+    if (sql.includes('SELECT user_id FROM users')) return { rows: [{ user_id: '123456789012345678' }], rowCount: 1 };
+    if (sql.includes('SELECT quantity FROM inventory')) return { rows: [{ quantity: 1 }], rowCount: 1 };
     if (sql.includes('SELECT slot,item_key FROM user_equipment')) return { rows: [] };
     return { rows: [] };
   }, release() {} };
@@ -158,8 +158,8 @@ test('owner inventory refuses to remove equipped copies and rolls back', async (
   const calls = [];
   const client = { query: async (sql) => {
     calls.push(sql);
-    if (sql.includes('SELECT user_id FROM users')) return { rows: [{ user_id: '123456789012345678' }] };
-    if (sql.includes('SELECT quantity FROM inventory')) return { rows: [{ quantity: 1 }] };
+    if (sql.includes('SELECT user_id FROM users')) return { rows: [{ user_id: '123456789012345678' }], rowCount: 1 };
+    if (sql.includes('SELECT quantity FROM inventory')) return { rows: [{ quantity: 1 }], rowCount: 1 };
     if (sql.includes('SELECT slot,item_key FROM user_equipment')) return { rows: [{ slot: 'weapon', item_key: '⚔️ Gezginin Demir Kılıcı' }] };
     return { rows: [] };
   }, release() {} };
@@ -176,8 +176,8 @@ test('owner equipment change validates ownership, slot and preserves base max st
   const calls = [];
   const client = { query: async (sql, params) => {
     calls.push({ sql, params });
-    if (sql.includes('SELECT level FROM users')) return { rows: [{ level: 10, hp: 90, max_hp: 100, mana: 80, max_mana: 100 }] };
-    if (sql.includes('SELECT quantity FROM inventory')) return { rows: [{ quantity: 1 }] };
+    if (sql.includes('SELECT level,hp,max_hp,mana,max_mana FROM users')) return { rows: [{ level: 10, hp: 90, max_hp: 100, mana: 80, max_mana: 100 }] };
+    if (sql.includes('SELECT quantity FROM inventory')) return { rows: [{ quantity: 1 }], rowCount: 1 };
     if (sql.includes('SELECT item_key FROM user_equipment')) return { rows: [{ item_key: '⚔️ Gezginin Demir Kılıcı' }] };
     return { rows: [] };
   }, release() {} };
