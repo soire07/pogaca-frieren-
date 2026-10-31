@@ -16,10 +16,10 @@ export const RENDER_BOT_SERVICES = Object.freeze({
   frieren_ai: Object.freeze({
     key: 'frieren_ai',
     name: 'Frieren AI',
-    id: process.env.RENDER_FRIEREN_AI_SERVICE_ID || 'srv-dbgrl2ff3r2c73agqamg',
-    url: process.env.RENDER_FRIEREN_AI_URL || 'https://frieren-ai-agent.onrender.com',
-    healthPath: process.env.RENDER_FRIEREN_AI_HEALTH_PATH || '/ai-health',
-    dashboardUrl: 'https://dashboard.render.com/web/' + (process.env.RENDER_FRIEREN_AI_SERVICE_ID || 'srv-dbgrl2ff3r2c73agqamg'),
+    id: process.env.RENDER_FRIEREN_AI_SERVICE_ID || 'srv-dbj192flk1mc73805ia0',
+    url: process.env.RENDER_FRIEREN_AI_URL || 'https://pogaca-frieren-kltd.onrender.com',
+    healthPath: process.env.RENDER_FRIEREN_AI_HEALTH_PATH || '/health',
+    dashboardUrl: 'https://dashboard.render.com/web/' + (process.env.RENDER_FRIEREN_AI_SERVICE_ID || 'srv-dbj192flk1mc73805ia0'),
     canSuspend: true,
     allowedActions: Object.freeze(['restart', 'suspend', 'resume'])
   })
@@ -45,14 +45,20 @@ async function readHealth(service, fetchImpl) {
   }
 }
 
+function getServiceApiToken(serviceKey, override) {
+  if (override !== undefined) return String(override || '').trim();
+  if (serviceKey === 'pogaca') return String(process.env.RENDER_POGACA_API_KEY || process.env.RENDER_API_KEY || '').trim();
+  return String(process.env.RENDER_FRIEREN_AI_API_KEY || '').trim();
+}
+
 export async function getRenderBotServiceStatuses({
   fetchImpl = globalThis.fetch,
-  apiKey = process.env.RENDER_API_KEY
+  apiKey
 } = {}) {
-  const token = String(apiKey || '').trim();
   const results = await Promise.all(Object.entries(RENDER_BOT_SERVICES).map(async ([key, service]) => {
     let details = null;
     let serviceApiError = null;
+    const token = getServiceApiToken(key, apiKey);
     if (token) {
       try {
         const response = await fetchImpl(API_BASE + '/services/' + encodeURIComponent(service.id), {
@@ -85,6 +91,7 @@ export async function getRenderBotServiceStatuses({
       health: healthResult.health,
       healthStatus: healthResult.healthStatus,
       apiError: serviceApiError,
+      apiConfigured: Boolean(token),
       updatedAt: details?.updatedAt || null,
       canSuspend: service.canSuspend,
       allowedActions: service.allowedActions
@@ -92,7 +99,7 @@ export async function getRenderBotServiceStatuses({
   }));
   const services = Object.fromEntries(results.map(service => [service.key, service]));
   const apiError = results.find(service => service.apiError)?.apiError || null;
-  return { apiConfigured: Boolean(token), apiError, services };
+  return { apiConfigured: results.every(service => service.apiConfigured), apiError, services };
 }
 
 async function updateActionAudit(client, auditId, details) {
@@ -105,7 +112,7 @@ async function updateActionAudit(client, auditId, details) {
 }
 
 export async function executeRenderServiceAction(db, input = {}, {
-  apiKey = process.env.RENDER_API_KEY,
+  apiKey,
   fetchImpl = globalThis.fetch
 } = {}) {
   const serviceKey = String(input.serviceKey || '');
@@ -116,7 +123,7 @@ export async function executeRenderServiceAction(db, input = {}, {
   const reason = String(input.reason || '').trim();
   const actorId = String(input.actorId || OWNER).trim();
   if (!SNOWFLAKE.test(actorId) || reason.length < 3 || reason.length > 200) throw new Error('INVALID_RENDER_ACTION');
-  const token = String(apiKey || '').trim();
+  const token = getServiceApiToken(serviceKey, apiKey);
   if (!token) throw new Error('RENDER_API_NOT_CONFIGURED');
 
   const client = await db.connect();
