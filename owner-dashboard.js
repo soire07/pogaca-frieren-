@@ -6,6 +6,7 @@ import {
   sendOwnerAnnouncement, getRecentOwnerActivity
 } from './owner-admin.js';
 import { listOwnerPartnerLinks, saveOwnerPartnerLink, deleteOwnerPartnerLink, getOwnerRpgMetrics, updateGuildConfiguration, listGuildConfigurations } from './owner-platform.js';
+import { DEFAULT_GUILD_FEATURES, listGuildFeatureSettings, setGuildFeatureEnabled, resetGuildFeatureSetting } from './guild-feature-settings.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -267,6 +268,8 @@ export async function getFrierenAIReadiness({
 }
 
 function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics, aiReadiness, partners, rpgMetrics, guildConfigurations }) {
+  const featureLabels = { commands: 'Tüm komutlar', rpg: 'RPG sistemi', character: 'Karakter sistemi', magic: 'Büyü ve yetenekler', equipment: 'Ekipman ve eşyalar', economy: 'Ekonomi ve mağaza', quests: 'Görevler', dungeons: 'Zindanlar', bosses: 'Boss sistemi', trading: 'Takas', messageXp: 'Mesaj XP kazanımı', aiChat: 'Frieren sohbet etkileşimi' };
+  const featureSettingsByGuild = arguments[0].featureSettingsByGuild || new Map();
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
     .filter(channel => channel.isTextBased?.() && channel.send)
@@ -300,6 +303,18 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
   }).join('');
   const partnerHtml = partners.length ? partners.map(row => '<div class="rowitem"><strong>' + escapeHtml(row.partner_name) + '</strong><div class="small">Sunucu: ' + escapeHtml(row.guild_id) + ' · ' + escapeHtml(row.status) + '</div><a class="small" href="' + escapeHtml(row.invite_url) + '" target="_blank" rel="noopener">Davet bağlantısı ↗</a>'
     + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(session.csrf) + '"><input type="hidden" name="action" value="partner-delete"><input type="hidden" name="id" value="' + Number(row.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Silmeyi onaylıyorum</label><button class="btn danger">Partner kaydını sil</button></form></div>').join('') : '<p class="muted">Henüz partner kaydı yok.</p>';
+  const featureManagementHtml = guilds.map(guild => {
+    const saved = new Map((featureSettingsByGuild.get(guild.id) || []).map(row => [row.feature_key, row]));
+    const keys = [...Object.keys(DEFAULT_GUILD_FEATURES), ...[...client.commands.keys()].map(name => 'command_' + name.toLowerCase().replace(/[^a-z0-9_-]/g, '_'))];
+    const uniqueKeys = [...new Set(keys)];
+    const rows = uniqueKeys.map(key => {
+      const row = saved.get(key);
+      const enabled = row ? row.enabled === true : (DEFAULT_GUILD_FEATURES[key] ?? true);
+      const label = featureLabels[key] || (key.startsWith('command_') ? '/' + key.slice(8).replace(/_/g, '-') : key);
+      return '<form method="post" action="/owner/action" class="rowitem feature-setting"><input type="hidden" name="csrf" value="' + escapeHtml(session.csrf) + '"><input type="hidden" name="action" value="feature-setting"><input type="hidden" name="guildId" value="' + escapeHtml(guild.id) + '"><input type="hidden" name="featureKey" value="' + escapeHtml(key) + '"><div><strong>' + escapeHtml(label) + '</strong><div class="small">' + (row ? 'Sunucuya özel ayar' : 'Genel varsayılan: açık') + '</div></div><label class="inline-toggle"><input type="checkbox" name="enabled" value="yes"' + (enabled ? ' checked' : '') + '> Açık</label><button class="btn secondary" name="featureAction" value="save">Kaydet</button><button class="btn secondary" name="featureAction" value="reset">Varsayılana döndür</button></form>';
+    }).join('');
+    return '<article class="panel"><h3>' + escapeHtml(guild.name) + '</h3><div class="small">Sunucu ID: ' + escapeHtml(guild.id) + '</div>' + rows + '</article>';
+  }).join('');
   const rpgHtml = '<div class="grid"><div class="stat"><small>Oyuncu</small><strong>' + rpgMetrics.players + '</strong></div><div class="stat"><small>Ortalama seviye</small><strong>' + rpgMetrics.averageLevel.toFixed(1) + '</strong></div><div class="stat"><small>Toplam oyun parası</small><strong>' + rpgMetrics.totalCoins.toLocaleString('tr-TR') + '</strong></div><div class="stat"><small>Envanter yığını / eşya</small><strong>' + rpgMetrics.inventoryStacks + ' / ' + rpgMetrics.itemCount + '</strong></div><div class="stat"><small>Boss zaferi</small><strong>' + rpgMetrics.bossWins + '</strong></div><div class="stat"><small>Zindan zaferi</small><strong>' + rpgMetrics.dungeonWins + '</strong></div></div><p class="muted">Mevcut PostgreSQL oyun verilerinden salt okunur ölçüm. Oyuncu ve ekonomi kayıtları bu ekrandan değiştirilmez.</p>';
   const noticeText = ({
     maintenance_on: 'Bakım modu açıldı.',
@@ -309,6 +324,8 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     memory_deleted: 'Hafıza kaydı silindi.',
     announcement_sent: 'Duyuru seçilen kanala gönderildi.',
     guild_config_saved: 'Sunucu ayarları kaydedildi.',
+    feature_saved: 'Bot davranışı bu sunucu için kaydedildi.',
+    feature_reset: 'Sunucu ayarı genel varsayılana döndürüldü.',
     partner_saved: 'Partner kaydı kaydedildi.',
     partner_deleted: 'Partner kaydı silindi.',
     invalid: 'İşlem tamamlanamadı. Alanları ve bot izinlerini kontrol et.'
@@ -337,6 +354,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
       ${renderOwnerBotCards(overview, aiReadiness)}
       <section class="panel" id="servers"><h2>Sunucu ve karşılama yönetimi</h2><p class="muted">Bağlı sunucuların karşılama ve sistem log kanallarını yönet. Kaydetmeden önce bot izinleri doğrulanır.</p><div class="columns">${serverManagementHtml}</div></section>
       <section class="panel" id="partners"><h2>Partnerlik yönetimi</h2><p class="muted">Partner sunucularını kaydet, davet bağlantılarını güncelle ve kayıtları denetim altında tut.</p><form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="partner-save"><label>Partner sunucu adı</label><input name="partnerName" maxlength="80" required><label>Discord sunucu ID</label><input name="partnerGuildId" inputmode="numeric" pattern="[0-9]{17,20}" required><label>Discord davet bağlantısı</label><input name="partnerInvite" type="url" placeholder="https://discord.gg/..." required><button class="btn">Partner ekle / güncelle</button></form>${partnerHtml}</section>
+      <section class="panel" id="behavior"><h2>Bot davranışları ve komutlar</h2><p class="muted">Ayarlar seçilen sunucuyla sınırlıdır. Komut kapatma gerçek etkileşim yönlendirmesinde uygulanır.</p><div class="columns">${featureManagementHtml}</div></section>
       <section class="panel" id="rpg"><h2>RPG sistem istatistikleri</h2>${rpgHtml}</section>
       ${renderRenderMetrics(renderMetrics, overview)}
       <div class="actions"><a class="btn secondary" href="/owner">Durumu yenile</a><span class="small">Canlı süreç ölçümleri · Son sayfa yüklemesi</span></div>
@@ -470,6 +488,16 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       } else if (action === 'memory-delete' && form.get('confirm') === 'yes') {
         const result = await deleteUserMemory(db, form.get('id'), OWNER_ID);
         notice = result ? 'memory_deleted' : 'invalid';
+      } else if (action === 'feature-setting') {
+        const guildId = String(form.get('guildId') || '');
+        const featureKey = String(form.get('featureKey') || '');
+        if (form.get('featureAction') === 'reset') {
+          await resetGuildFeatureSetting(db, { guildId, featureKey });
+          notice = 'feature_reset';
+        } else {
+          await setGuildFeatureEnabled(db, { guildId, featureKey, enabled: form.get('enabled') === 'yes', actorId: OWNER_ID });
+          notice = 'feature_saved';
+        }
       } else if (action === 'guild-config') {
         await updateGuildConfiguration(db, client, {
           guildId: form.get('guildId'), welcomeChannelId: form.get('welcomeChannelId') || null,
@@ -514,11 +542,12 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       getOwnerRpgMetrics(db),
       listGuildConfigurations(db)
     ]);
+    const featureSettingsByGuild = new Map(await Promise.all([...client.guilds.cache.keys()].map(async guildId => [guildId, await listGuildFeatureSettings(db, guildId)])));
     const memoryUser = String(url.searchParams.get('memoryUser') || '').replace(/\D/g, '').slice(0, 24);
     const memories = memoryUser ? await listUserMemories(db, memoryUser, null, 30) : [];
     send(res, 200, renderDashboard({
       session, overview, client, approvals, memories, memoryUser,
-      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, partners, rpgMetrics, guildConfigurations
+      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild
     }));
   } catch (error) {
     console.error('Owner dashboard load failed:', error?.message || error);
