@@ -137,3 +137,37 @@ test('Poğaça workspace escapes owner-managed quest content before rendering', 
   assert.doesNotMatch(html, /<img src=x/);
   assert.match(html, /&lt;script&gt;/);
 });
+
+
+test('Poğaça workspace renders guild-scoped dungeon and boss tuning forms', () => {
+  const html = renderOwnerWorkspace('pogaca', {
+    csrf: 'content-csrf',
+    guildId: '1539562273197260860',
+    guildOptions: [{ id: '1539562273197260860', name: 'Main' }],
+    rpgContent: [
+      { content_type: 'dungeon', content_key: 'level_1', active: true, config: { name: 'Merkez Mahzen', minLevel: 1, hp: 160, damage: 8, xp: 45, coins: 55, lootChance: 0.1, loot: 'Mahzen Anahtarı' } },
+      { content_type: 'solo_boss', content_key: 'level_1', active: true, config: { name: 'Schattenwolf', minLevel: 1, region: 'Merkez', maxHp: 120, minDamage: 7, maxDamage: 12, coinMin: 90, coinMax: 130, xpMin: 55, xpMax: 85, lootChance: 0.2, loot: ['Kurt Dişi'], special: 'Rudelstoß' } },
+      { content_type: 'raid_boss', content_key: 'north-general', active: true, config: { name: 'Kuzey Generali', hp: 220, damage: 14, xp: 180, coins: 220, loot: 'İblis Mührü', weakness: 'spell', weaknessLabel: 'Büyü' } }
+    ]
+  });
+  assert.match(html, /Zindan ve boss kataloğu/);
+  assert.match(html, /rpg-content-save/);
+  assert.match(html, /rpg-content-disable/);
+  assert.match(html, /Schattenwolf/);
+  assert.match(html, /Kuzey Generali/);
+  assert.match(html, /content-csrf/);
+  assert.match(html, /Son aktif içerik kapatılamaz/);
+});
+
+test('Poğaça workspace escapes owner-managed boss and dungeon labels', () => {
+  const html = renderOwnerWorkspace('pogaca', {
+    guildId: '1539562273197260860',
+    rpgContent: [{
+      content_type: 'dungeon', content_key: 'level_1', active: true,
+      config: { name: '<script>alert(1)</script>', minLevel: 1, hp: 160, damage: 8, xp: 45, coins: 55, lootChance: 0.1, loot: '<img src=x>' }
+    }]
+  });
+  assert.doesNotMatch(html, /<script>/);
+  assert.doesNotMatch(html, /<img src=x>/);
+  assert.match(html, /&lt;script&gt;/);
+});
