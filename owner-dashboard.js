@@ -750,9 +750,52 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const username = String(user?.username || 'Gezgin').slice(0, 64);
       const avatarHash = typeof user?.avatar === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(user.avatar) ? user.avatar : null;
       if (flow === 'register' || flow === 'login') {
+        if (!/^\\d{17,20}$/.test(userId)) throw new Error('INVALID_DISCORD_USER_ID');
         await db.query(`
           CREATE TABLE IF NOT EXISTS frieren_site_members (
-            discord_user_id TEXT PRIMARY KEY CHECK (discord_user_id ~ '^[0-9]{17,20}
+            discord_user_id TEXT PRIMARY KEY CHECK (discord_user_id ~ '^[0-9]{17,20}$'),
+            username VARCHAR(64) NOT NULL,
+            avatar_hash TEXT,
+            registered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            last_login_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          )
+        `);
+        if (flow === 'register') {
+          const created = await db.query(
+            'INSERT INTO frieren_site_members (discord_user_id, username, avatar_hash) VALUES ($1,$2,$3) ON CONFLICT (discord_user_id) DO NOTHING RETURNING discord_user_id',
+            [userId, username, avatarHash]
+          );
+          if (!created.rowCount) {
+            res.writeHead(302, { Location: '/login?status=already_registered', 'Cache-Control': 'no-store', 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
+            res.end();
+            return true;
+          }
+        } else {
+          const existing = await db.query('SELECT discord_user_id FROM frieren_site_members WHERE discord_user_id=$1', [userId]);
+          if (!existing.rowCount) {
+            res.writeHead(302, { Location: '/register?status=not_registered', 'Cache-Control': 'no-store', 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
+            res.end();
+            return true;
+          }
+          await db.query(
+            'UPDATE frieren_site_members SET username=$2, avatar_hash=$3, last_login_at=NOW() WHERE discord_user_id=$1',
+            [userId, username, avatarHash]
+          );
+        }
+      } else if (userId !== OWNER_ID) {
+        send(res, 403, page('Owner erişimi reddedildi', '<h1>Bu alan yalnızca site sahibine açıktır</h1><p>Siteye normal giriş yapmak için kayıt veya giriş sayfasını kullan.</p><a class="btn" href="/login">Siteye dön</a>'), { 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
+        return true;
+      }
+      const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS;
+      const setCookies = [clearOwnerCookie(STATE_COOKIE, '/owner')];
+      if (flow === 'register' || flow === 'login' || userId === OWNER_ID) {
+        const siteSession = createPublicSiteSession(sessionSecret, user, expiresAt);
+        setCookies.push(buildPublicSiteSessionCookie(siteSession, SESSION_TTL_SECONDS));
+      }
+      if (userId === OWNER_ID) {
+        const ownerSession = createOwnerSession(sessionSecret, expiresAt);
+        setCookies.push(buildOwnerSessionCookie(ownerSession, SESSION_TTL_SECONDS));
+      }
       res.writeHead(302, {
         Location: '/', 'Cache-Control': 'no-store',
         'Set-Cookie': setCookies
@@ -760,7 +803,16 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       res.end();
     } catch (error) {
       console.error('Owner OAuth login failed:', error?.message || 'unknown error');
-      send(res, 502, page('Discord bağlantı hatası', '<h1>Discord ile giriş tamamlanamadı</h1><p>Biraz sonra yeniden dene.</p>'), { 'Set-Cookie': [clearOwnerCookie(STATE_COOKIE, '/owner'), clearOwnerCookie(SESSION_COOKIE, '/owner')] });
+      if (flow === 'register' || flow === 'login') {
+        res.writeHead(302, {
+          Location: '/' + flow + '?status=oauth_error',
+          'Cache-Control': 'no-store',
+          'Set-Cookie': [clearOwnerCookie(STATE_COOKIE, '/owner'), clearOwnerCookie(SESSION_COOKIE, '/owner')]
+        });
+        res.end();
+      } else {
+        send(res, 502, page('Discord bağlantı hatası', '<h1>Discord ile giriş tamamlanamadı</h1><p>Biraz sonra yeniden dene.</p><a class="btn secondary" href="/">Ana sayfaya dön</a>'), { 'Set-Cookie': [clearOwnerCookie(STATE_COOKIE, '/owner'), clearOwnerCookie(SESSION_COOKIE, '/owner')] });
+      }
     }
     return true;
   }
