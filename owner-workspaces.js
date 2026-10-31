@@ -58,11 +58,12 @@ export function renderOwnerWorkspace(kind, data = {}) {
     const guildOptions = data.guildOptions || [];
     const selectedGuild = String(data.guildId || '');
     const selectedPlayer = data.player || null;
+    const noticeText = data.notice === 'rpg_saved' ? 'Oyuncu kaynakları güncellendi ve işlem denetim kaydına yazıldı.' : data.notice === 'rpg_error' ? 'Kaynak güncellemesi yapılamadı. Oyuncuyu, gerekçeyi ve değerleri kontrol et.' : '';
     return heading('Frieren Poğaça', 'Oyuncu kayıtları, RPG kaynakları ve oyun ekonomisi için denetimli yönetim alanı.')
       + '<div class="grid">'
       + [['Oyuncu', rpg.players], ['Ortalama seviye', rpg.averageLevel], ['Toplam altın', rpg.totalCoins], ['Envanter yığını', rpg.inventoryStacks], ['Eşya adedi', rpg.itemCount], ['Boss zaferi', rpg.bossWins], ['Zindan zaferi', rpg.dungeonWins]]
         .map(([label, value]) => '<div class="stat"><small>' + label + '</small><strong>' + Number(value || 0).toLocaleString('tr-TR') + '</strong></div>').join('')
-      + '</div><section class="panel"><h2>Oyuncu arama</h2><form method="get" action="/owner/pogaca">'
+      + '</div>' + (noticeText ? '<p class="notice">' + noticeText + '</p>' : '') + '<section class="panel"><h2>Oyuncu arama</h2><form method="get" action="/owner/pogaca">'
       + '<label>Discord sunucusu</label><select name="guildId">' + guildOptions.map(guild => '<option value="' + escapeHtml(guild.id) + '"' + (guild.id === selectedGuild ? ' selected' : '') + '>' + escapeHtml(guild.name) + ' · ' + escapeHtml(guild.id) + '</option>').join('') + '</select>'
       + '<label>Oyuncu adı veya Discord ID</label><input name="search" maxlength="80" value="' + escapeHtml(data.search || '') + '" placeholder="Karakter adı veya kullanıcı ID">'
       + '<button class="btn secondary">Oyuncuları bul</button></form>'
