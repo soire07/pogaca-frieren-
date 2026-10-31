@@ -140,12 +140,13 @@ export async function getOwnerRpgPlayerDetails(db, { guildId, userId } = {}) {
   const guild = String(guildId || '');
   const user = String(userId || '');
   if (!SNOWFLAKE.test(guild) || !SNOWFLAKE.test(user)) throw new Error('INVALID_PLAYER_TARGET');
-  const [player, inventory] = await Promise.all([
+  const [player, inventory, equipment] = await Promise.all([
     db.query('SELECT user_id,character_name,class_name,level,xp,coins,hp,max_hp,mana,max_mana,attack,defense,stat_points FROM users WHERE guild_id=$1 AND user_id=$2', [guild,user]),
-    db.query('SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 ORDER BY item_key LIMIT 50', [guild,user])
+    db.query('SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 ORDER BY item_key LIMIT 50', [guild,user]),
+    db.query('SELECT slot,item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2 ORDER BY slot', [guild,user])
   ]);
   if (!player.rows?.[0]) return null;
-  return { ...player.rows[0], inventory: inventory.rows || [] };
+  return { ...player.rows[0], inventory: inventory.rows || [], equipment: equipment.rows || [] };
 }
 
 export async function adjustOwnerRpgResources(db, {
