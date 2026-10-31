@@ -429,6 +429,72 @@ export function renderOwnerBotCards(overview, aiReadiness, renderServices = null
     + '</section>';
 }
 
+function renderRenderActionForm(serviceKey, action, label, csrf, warningText = '') {
+  return '<form method="post" action="/owner/action" class="render-action-form">'
+    + '<input type="hidden" name="csrf" value="' + escapeHtml(csrf || '') + '">'
+    + '<input type="hidden" name="action" value="render-service-action">'
+    + '<input type="hidden" name="serviceKey" value="' + escapeHtml(serviceKey) + '">'
+    + '<input type="hidden" name="serviceAction" value="' + escapeHtml(action) + '">'
+    + '<label>İşlem gerekçesi</label><input name="reason" maxlength="200" required placeholder="Bu işlemi neden yapıyorsun?">'
+    + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> ' + escapeHtml(warningText || (label + ' işlemini onaylıyorum')) + '</label>'
+    + '<button class="btn ' + (action === 'suspend' ? 'danger' : 'secondary') + '">' + escapeHtml(label) + '</button></form>';
+}
+
+export function renderOwnerControlCenter(renderServices, overview, csrf) {
+  const apiConfigured = renderServices?.apiConfigured === true;
+  const renderApiError = renderServices?.apiError || null;
+  const serviceStatus = service => {
+    if (service?.suspended === true || service?.status === 'suspended') return { label: 'Askıya alınmış', css: 'warn' };
+    if (service?.status === 'running') return { label: 'Çalışıyor · Health 200', css: 'good' };
+    if (service?.health === 'healthy') return { label: 'Health 200 · Render durumu doğrulanamadı', css: 'good' };
+    if (service?.health === 'unhealthy') return { label: 'Health kontrolü başarısız', css: 'bad' };
+    return { label: 'Durum bilinmiyor', css: 'warn' };
+  };
+  const serviceCard = (key, title, note) => {
+    const service = renderServices?.services?.[key] || {};
+    const state = serviceStatus(service);
+    const canControl = apiConfigured && !service.apiError;
+    const meta = [
+      service.plan ? 'Plan: ' + escapeHtml(service.plan) : '',
+      service.updatedAt ? 'Son güncelleme: ' + escapeHtml(new Date(service.updatedAt).toLocaleString('tr-TR')) : '',
+      service.healthStatus ? 'Health HTTP ' + Number(service.healthStatus) : ''
+    ].filter(Boolean).join(' · ');
+    let actions = '';
+    if (key === 'pogaca') {
+      actions = canControl
+        ? renderRenderActionForm(key, 'restart', 'Yeniden başlat', csrf, 'Poğaça ve Owner Panel servisini yeniden başlatmayı onaylıyorum')
+        : '<p class="small">Yeniden başlatma için Render API bağlantısı gerekli.</p>';
+    } else if (canControl && service.suspended === true) {
+      actions = '<div class="notice warn">Bu servis kullanıcı tarafından askıya alınmış. Otomatik olarak başlatılmadı. Başlatma, AI servisini yeniden erişilebilir yapar ve Render Free çalışma süresini yeniden kullanmaya başlar.</div>'
+        + renderRenderActionForm(key, 'resume', 'AI servisini başlat', csrf, 'Askıdaki Frieren AI servisini başlatmayı onaylıyorum');
+    } else if (canControl && service.suspended === false) {
+      actions = renderRenderActionForm(key, 'restart', 'Yeniden başlat', csrf, 'Frieren AI servisini yeniden başlatmayı onaylıyorum')
+        + renderRenderActionForm(key, 'suspend', 'Askıya al', csrf, 'Frieren AI servisini durdurmayı ve erişimi kapatmayı onaylıyorum');
+    } else {
+      actions = '<p class="small">Başlatma, durdurma ve yeniden başlatma kontrolleri Render API bağlantısı doğrulandığında açılır.</p>';
+    }
+    return '<article class="panel render-service-card"><div class="actions"><span class="tag">' + (key === 'pogaca' ? 'ANA BOT + PANEL' : 'AYRI AI SERVİSİ') + '</span><strong class="' + state.css + '">' + state.label + '</strong></div>'
+      + '<h3>' + title + '</h3><p class="small">' + escapeHtml(service.url || '') + '</p>'
+      + (meta ? '<p class="small">' + meta + '</p>' : '')
+      + '<p class="muted">' + note + '</p>'
+      + (service.suspenders?.length ? '<p class="small">Askıya alma kaynağı: ' + escapeHtml(service.suspenders.join(', ')) + '</p>' : '')
+      + (service.apiError ? '<p class="notice warn">Render API: ' + escapeHtml(service.apiError) + '</p>' : '')
+      + '<div class="actions"><a class="btn secondary" href="' + escapeHtml(service.dashboardUrl || '#') + '" target="_blank" rel="noopener">Render servisini aç</a></div>'
+      + actions + '</article>';
+  };
+  const connectionNotice = !apiConfigured
+    ? '<div class="notice warn">Render API anahtarı henüz bağlı değil. Kontrolleri etkinleştirmek için RENDER_API_KEY değerini yalnızca Render servisinin Environment bölümünde sakla; tarayıcıya veya Discord mesajına yazma. Yeni Render hesabına geçince RENDER_POGACA_SERVICE_ID ve RENDER_FRIEREN_AI_SERVICE_ID değerlerini güncelle.</div>'
+    : renderApiError
+      ? '<div class="notice warn">Render API durum sorgusunda sorun var: ' + escapeHtml(renderApiError) + '. Kontroller güvenlik nedeniyle devre dışı bırakıldı.</div>'
+      : '<div class="notice">Render API bağlı. İşlemler sunucu tarafında yürütülür, her istek denetim kaydına yazılır ve servis başına 90 saniyelik bekleme uygulanır.</div>';
+  return '<section class="panel" id="bot-control"><h2>Bot Kontrol Merkezi</h2><p class="muted">Poğaça Frieren ve Frieren AI birbirinden bağımsız yönetilir. Durumlar Render servis kaydı ve health endpoint üzerinden okunur.</p>'
+    + connectionNotice
+    + '<div class="columns">' 
+    + serviceCard('pogaca', 'Poğaça Frieren', 'Owner Panel bu servis üzerinde çalışıyor. Paneli erişilemez bırakmamak için Render askıya alma kontrolü kapalıdır. Kullanıcı komutlarını durdurmak için bakım modunu kullan: <a href="#maintenance">Bakım moduna git</a>.')
+    + serviceCard('frieren_ai', 'Frieren AI', 'Ayrı Render servisi. Askıya alma AI testlerini ve AI erişimini durdurur; başlatma yeniden çalışma süresini başlatır.')
+    + '</div><div class="small">Son sayfa yenilemesinde kontrol edildi. Servis işlemleri kabul edildikten sonra durumun değişmesi birkaç saniye sürebilir; sonucu görmek için sayfayı yenile.</div></section>';
+}
+
 export async function getFrierenAIReadiness({
   fetchImpl = globalThis.fetch,
   baseUrl = 'http://127.0.0.1:' + (process.env.PORT || 3000)
