@@ -37,6 +37,8 @@ test('Render status can use public health endpoints without exposing or requirin
   assert.equal(status.apiConfigured, false);
   assert.equal(status.services.pogaca.health, 'healthy');
   assert.equal(status.services.frieren_ai.health, 'healthy');
+  assert.equal(status.services.frieren_ai.url, 'https://pogaca-frieren-kltd.onrender.com');
+  assert.equal(status.services.frieren_ai.id, 'srv-dbj192flk1mc73805ia0');
   assert.equal(requested.length, 2);
   assert.ok(requested.every(url => !url.includes('/v1/services/')));
 });
@@ -165,4 +167,64 @@ test('Render actions fail closed when the API key is missing', async () => {
     reason: 'Başlat', confirm: true
   }, { apiKey: '', fetchImpl: async () => { throw new Error('must not fetch'); } }), /RENDER_API_NOT_CONFIGURED/);
   assert.equal(connected, false);
+});
+
+
+test('separate Render accounts use separate API keys and the migrated Frieren AI endpoint', async () => {
+  const oldMain = process.env.RENDER_POGACA_API_KEY;
+  const oldLegacy = process.env.RENDER_API_KEY;
+  const oldAi = process.env.RENDER_FRIEREN_AI_API_KEY;
+  process.env.RENDER_POGACA_API_KEY = 'primary-account-key';
+  delete process.env.RENDER_API_KEY;
+  process.env.RENDER_FRIEREN_AI_API_KEY = 'frieren-account-key';
+  const auth = [];
+  try {
+    const status = await getRenderBotServiceStatuses({
+      fetchImpl: async (url, options) => {
+        const target = String(url);
+        if (target.includes('/v1/services/')) {
+          auth.push({ target, authorization: options.headers.Authorization });
+          const ai = target.includes(RENDER_BOT_SERVICES.frieren_ai.id);
+          return { ok: true, status: 200, json: async () => ({
+            id: ai ? RENDER_BOT_SERVICES.frieren_ai.id : RENDER_BOT_SERVICES.pogaca.id,
+            suspended: 'not_suspended', suspenders: [], serviceDetails: { plan: 'free' }
+          }) };
+        }
+        return { ok: true, status: 200, json: async () => ({ status: 'ok' }) };
+      }
+    });
+    assert.equal(status.apiConfigured, true);
+    assert.equal(status.services.pogaca.apiConfigured, true);
+    assert.equal(status.services.frieren_ai.apiConfigured, true);
+    assert.deepEqual(auth.map(x => x.authorization).sort(), ['Bearer frieren-account-key', 'Bearer primary-account-key']);
+    assert.ok(auth.some(x => x.target.endsWith('/' + RENDER_BOT_SERVICES.frieren_ai.id)));
+  } finally {
+    if (oldMain === undefined) delete process.env.RENDER_POGACA_API_KEY; else process.env.RENDER_POGACA_API_KEY = oldMain;
+    if (oldLegacy === undefined) delete process.env.RENDER_API_KEY; else process.env.RENDER_API_KEY = oldLegacy;
+    if (oldAi === undefined) delete process.env.RENDER_FRIEREN_AI_API_KEY; else process.env.RENDER_FRIEREN_AI_API_KEY = oldAi;
+  }
+});
+
+test('Frieren AI actions use only the new account API key', async () => {
+  const oldAi = process.env.RENDER_FRIEREN_AI_API_KEY;
+  const oldMain = process.env.RENDER_POGACA_API_KEY;
+  process.env.RENDER_FRIEREN_AI_API_KEY = 'frieren-account-key';
+  process.env.RENDER_POGACA_API_KEY = 'primary-account-key';
+  let authorization = '';
+  try {
+    const { db } = makeDb();
+    await executeRenderServiceAction(db, {
+      serviceKey: 'frieren_ai', action: 'restart', actorId,
+      reason: 'Yeni AI servisini yeniden başlatma testi', confirm: true
+    }, {
+      fetchImpl: async (_url, options) => {
+        authorization = options.headers.Authorization;
+        return { ok: true, status: 202, json: async () => ({}) };
+      }
+    });
+    assert.equal(authorization, 'Bearer frieren-account-key');
+  } finally {
+    if (oldAi === undefined) delete process.env.RENDER_FRIEREN_AI_API_KEY; else process.env.RENDER_FRIEREN_AI_API_KEY = oldAi;
+    if (oldMain === undefined) delete process.env.RENDER_POGACA_API_KEY; else process.env.RENDER_POGACA_API_KEY = oldMain;
+  }
 });
