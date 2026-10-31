@@ -50,9 +50,7 @@ export async function getRenderBotServiceStatuses({
   apiKey = process.env.RENDER_API_KEY
 } = {}) {
   const token = String(apiKey || '').trim();
-  const services = {};
-  let apiError = null;
-  for (const [key, service] of Object.entries(RENDER_BOT_SERVICES)) {
+  const results = await Promise.all(Object.entries(RENDER_BOT_SERVICES).map(async ([key, service]) => {
     let details = null;
     let serviceApiError = null;
     if (token) {
@@ -67,7 +65,6 @@ export async function getRenderBotServiceStatuses({
         if (!details || details.id !== service.id) throw new Error('RENDER_SERVICE_ID_MISMATCH');
       } catch (error) {
         serviceApiError = safeErrorCode(error);
-        apiError ||= serviceApiError;
       }
     }
 
@@ -75,7 +72,7 @@ export async function getRenderBotServiceStatuses({
     const healthResult = suspended ? { health: 'suspended', healthStatus: null } : await readHealth(service, fetchImpl);
     const status = suspended ? 'suspended' : healthResult.health === 'healthy' ? 'running'
       : healthResult.health === 'unhealthy' ? 'unhealthy' : 'unknown';
-    services[key] = {
+    return {
       key,
       name: service.name,
       id: service.id,
@@ -92,7 +89,9 @@ export async function getRenderBotServiceStatuses({
       canSuspend: service.canSuspend,
       allowedActions: service.allowedActions
     };
-  }
+  }));
+  const services = Object.fromEntries(results.map(service => [service.key, service]));
+  const apiError = results.find(service => service.apiError)?.apiError || null;
   return { apiConfigured: Boolean(token), apiError, services };
 }
 
