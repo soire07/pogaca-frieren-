@@ -66,7 +66,9 @@ test('database table preview uses public-table allowlist and hides sensitive col
       { column_name: 'user_id', data_type: 'text' },
       { column_name: 'coins', data_type: 'integer' },
       { column_name: 'email', data_type: 'text' },
-      { column_name: 'password_hash', data_type: 'text' }
+      { column_name: 'password_hash', data_type: 'text' },
+      { column_name: 'setting_value', data_type: 'jsonb' },
+      { column_name: 'details', data_type: 'jsonb' }
     ] };
     return { rows: [{ user_id: '123', coins: 40 }] };
   } };
