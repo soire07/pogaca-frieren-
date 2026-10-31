@@ -1,4 +1,4 @@
-name: Frieren AI Free Health Check
+name: Frieren AI Health Check
 
 on:
   schedule:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: frieren-ai-free-health-check
+  group: frieren-ai-health-check
   cancel-in-progress: true
 
 jobs:
@@ -17,19 +17,36 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Check public liveness endpoint
+      - name: Check embedded Frieren AI liveness
         shell: bash
         env:
-          HEALTH_URL: https://frieren-ai-agent.onrender.com/health
+          HEALTH_URL: https://pogaca-frieren.onrender.com/ai-health
         run: |
           for attempt in {1..6}; do
-            body="$(curl --silent --show-error --fail --max-time 15 "$HEALTH_URL" 2>/dev/null || true)"
-            if printf '%s' "$body" | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status==='ok' ? 0 : 1)}catch{process.exit(1)}})"; then
-              echo "Frieren AI public liveness endpoint is responding."
+            body="$(curl --silent --show-error --fail --max-time 10 "$HEALTH_URL" 2>/dev/null || true)"
+            if printf '%s' "$body" | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status==='alive' ? 0 : 1)}catch{process.exit(1)}})"; then
+              echo "Embedded Frieren AI process is alive."
               exit 0
             fi
             echo "Liveness check attempt $attempt/6 did not pass; retrying."
-            sleep 10
+            sleep 5
           done
-          echo "::error::Frieren AI liveness endpoint did not respond after 6 attempts."
+          echo "::error::Embedded Frieren AI liveness endpoint did not respond after 6 attempts."
+          exit 1
+
+      - name: Check embedded Frieren AI readiness
+        shell: bash
+        env:
+          READY_URL: https://pogaca-frieren.onrender.com/ai-ready
+        run: |
+          for attempt in {1..6}; do
+            body="$(curl --silent --show-error --fail --max-time 10 "$READY_URL" 2>/dev/null || true)"
+            if printf '%s' "$body" | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status==='ok' ? 0 : 1)}catch{process.exit(1)}})"; then
+              echo "Embedded Frieren AI dependencies are ready."
+              exit 0
+            fi
+            echo "Readiness check attempt $attempt/6 did not pass; retrying."
+            sleep 5
+          done
+          echo "::error::Embedded Frieren AI did not become ready after 6 attempts."
           exit 1
