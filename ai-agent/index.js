@@ -607,7 +607,7 @@ function buildLocalTestSummary(result) {
 
 client.once(Events.ClientReady, readyClient => {
   console.log('Frieren bot test service online as ' + readyClient.user.tag);
-  const configuredGuildId = process.env.DISCORD_GUILD_ID?.trim();
+  const configuredGuildId = process.env.DISCORD_GUILD_ID?.trim() || '1564945192803639356';
   console.log(configuredGuildId
     ? 'Frieren AI slash-command target: guild-scope; ID son 4 hane=' + configuredGuildId.slice(-4)
     : 'UYARI: DISCORD_GUILD_ID boş/eksik; Frieren AI slash commands GLOBAL kaydedildi.');
@@ -619,6 +619,11 @@ client.once(Events.ClientReady, readyClient => {
 
 client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
+  const allowedGuildId = process.env.DISCORD_GUILD_ID?.trim() || '1564945192803639356';
+  if (!interaction.guildId || !allowedGuildId || interaction.guildId !== allowedGuildId) {
+    if (interaction.isRepliable()) await interaction.reply({ content: 'Frieren AI yalnızca yapılandırılmış test sunucusunda kullanılabilir.', ephemeral: true }).catch(() => {});
+    return;
+  }
 
   const adminOnlyCommands = new Set(['frieren-test', 'frieren-komut-denetle']);
   if (adminOnlyCommands.has(interaction.commandName) && !isAuthorizedAdmin(interaction.user.id, admins)) {

@@ -14,6 +14,7 @@ import { createAiAgentChildEnv, AI_AGENT_HEALTH_PORT } from './ai-agent/render-s
 import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
+import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
 
@@ -291,6 +292,18 @@ client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
+  if (interaction.guildId) {
+    const commandFeatureKey = 'command_' + interaction.commandName.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    const featureKeys = getCommandFeatureKeys(interaction.commandName);
+    const enabledStates = await Promise.all([
+      getGuildFeatureEnabled(pool, interaction.guildId, 'commands'),
+      getGuildFeatureEnabled(pool, interaction.guildId, commandFeatureKey),
+      ...featureKeys.map(key => getGuildFeatureEnabled(pool, interaction.guildId, key)),
+    ]);
+    if (enabledStates.some(enabled => !enabled)) {
+      return sendPrivateInteractionError(interaction, 'Bu komut bu sunucuda Owner Panel ayarlarıyla devre dışı bırakılmış.');
+    }
+  }
   try {
     await recordCommandUsage(pool, interaction.commandName, interaction.guildId).catch(error => console.warn('Komut ölçümü kaydedilemedi:', error?.message || error));
     await command.execute(interaction);
@@ -310,7 +323,12 @@ client.on(Events.MessageCreate, async message => {
   if (!message.guild || message.author.bot) return;
   try {
     if (await getMaintenanceState(pool)) return;
-    await handleFrierenMentionMessage({ message, botUserId: client.user?.id, db: pool });
+    const [aiChatEnabled, messageXpEnabled] = await Promise.all([
+      getGuildFeatureEnabled(pool, message.guild.id, 'aiChat'),
+      getGuildFeatureEnabled(pool, message.guild.id, 'messageXp'),
+    ]);
+    if (aiChatEnabled) await handleFrierenMentionMessage({ message, botUserId: client.user?.id, db: pool });
+    if (!messageXpEnabled) return;
     const gained = 10 + Math.floor(Math.random() * 11);
     const result = await pool.query(`INSERT INTO users (guild_id,user_id,xp,level,last_xp_at)
       VALUES ($1,$2,$3,$4,NOW())
@@ -334,6 +352,7 @@ client.on(Events.MessageCreate, async message => {
 await loadCommands();
 await initDatabase();
 await initOwnerAdminSchema(pool);
+await initGuildFeatureSettingsSchema(pool);
 await client.login(process.env.DISCORD_TOKEN);
 
 let aiAgentChild = null;
