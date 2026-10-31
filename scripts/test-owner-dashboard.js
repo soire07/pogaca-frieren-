@@ -284,6 +284,7 @@ test('owner navigation groups bot workspaces and preserves the no-log policy', (
   assert.match(navigation, /nav-group/);
   assert.match(navigation, /Frieren Poğaça/);
   assert.match(navigation, /Frieren AI/);
+  assert.match(navigation, /Komut ve davranışlar/);
   assert.match(navigation, /href="#behavior"/);
   assert.match(navigation, /href="#rpg"/);
   assert.doesNotMatch(navigation, /Log Merkezi|href="#activity"/);
