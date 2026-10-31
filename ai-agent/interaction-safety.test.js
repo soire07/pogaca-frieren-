@@ -103,3 +103,43 @@ test('liveness remains healthy while dependency readiness is temporarily degrade
   assert.equal(payload.readiness.status, 'not_ready');
   assert.equal(payload.readiness.discordReady, false);
 });
+
+
+test('bridge reachability rejects missing or short credentials without making a request', async () => {
+  const { checkBridgeReachability } = await import('./interaction-safety.js');
+  let called = false;
+  const result = await checkBridgeReachability({ baseUrl: 'https://example.test', secret: 'short', fetchImpl: async () => { called = true; } });
+  assert.deepEqual(result, { reachable: false, commandCount: 0, reason: 'not_configured' });
+  assert.equal(called, false);
+});
+
+test('bridge reachability authenticates catalog request and validates command count', async () => {
+  const { checkBridgeReachability } = await import('./interaction-safety.js');
+  let request;
+  const result = await checkBridgeReachability({
+    baseUrl: 'https://pogaca-frieren.onrender.com/',
+    secret: 'x'.repeat(40),
+    fetchImpl: async (url, options) => {
+      request = { url, options };
+      return { ok: true, async json() { return { service: 'pogaca-frieren', count: 68, commands: Array.from({ length: 68 }, (_, i) => ({ name: 'cmd-' + i })) }; } };
+    },
+  });
+  assert.equal(result.reachable, true);
+  assert.equal(result.commandCount, 68);
+  assert.equal(request.url, 'https://pogaca-frieren.onrender.com/internal/test-catalog');
+  assert.equal(request.options.headers.authorization, 'Bearer ' + 'x'.repeat(40));
+});
+
+test('bridge reachability fails closed on unauthorized or malformed catalog responses', async () => {
+  const { checkBridgeReachability } = await import('./interaction-safety.js');
+  const unauthorized = await checkBridgeReachability({
+    baseUrl: 'https://example.test', secret: 'x'.repeat(40),
+    fetchImpl: async () => ({ ok: false, status: 401 }),
+  });
+  assert.deepEqual(unauthorized, { reachable: false, commandCount: 0, reason: 'http_401' });
+  const malformed = await checkBridgeReachability({
+    baseUrl: 'https://example.test', secret: 'x'.repeat(40),
+    fetchImpl: async () => ({ ok: true, async json() { return { service: 'wrong', count: 1, commands: [] }; } }),
+  });
+  assert.deepEqual(malformed, { reachable: false, commandCount: 0, reason: 'invalid_response' });
+});
