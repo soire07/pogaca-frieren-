@@ -1,5 +1,5 @@
 const SNOWFLAKE = /^\d{17,20}$/;
-const KEY_PATTERN = /^[a-z][a-z0-9_-]{0,79}$/;
+const KEY_PATTERN = /^[a-z][a-zA-Z0-9_-]{0,79}$/;
 
 export const DEFAULT_GUILD_FEATURES = Object.freeze({
   commands: true,
