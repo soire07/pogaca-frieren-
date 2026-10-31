@@ -425,15 +425,15 @@ test('owner dungeon and boss content disable is reversible and keeps at least on
   const calls = [];
   const client = { query: async (sql, params) => {
     calls.push({ sql, params });
-    if (sql.includes('INSERT INTO guild_rpg_content_overrides')) return { rows: [{ content_key: 'level_1', active: false }] };
-    if (sql.includes('SELECT content_key,active')) return { rows: [{ content_key: 'level_1', active: false }] };
+    if (sql.includes('INSERT INTO guild_rpg_content_overrides')) return { rows: [{ content_key: 'level_5', active: false }] };
+    if (sql.includes('SELECT content_key,active')) return { rows: [{ content_key: 'level_5', active: false }] };
     return { rows: [] };
   }, release() { calls.push({ sql: 'RELEASE' }); } };
   const db = { connect: async () => client };
   const discordClient = { guilds: { cache: new Map([[guildId, {}]]) } };
   const { response } = await runOwnerPost({
     action: 'rpg-content-disable', csrf: 'session', confirm: 'yes', guildId,
-    contentType: 'dungeon', contentKey: 'level_1', reason: 'Denge için geçici kapatma'
+    contentType: 'dungeon', contentKey: 'level_5', reason: 'Denge için geçici kapatma'
   }, db, discordClient);
   assert.equal(response.status, 303);
   assert.equal(response.headers.Location, '/owner/pogaca?guildId=' + guildId + '&notice=content_disabled');
