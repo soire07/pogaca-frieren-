@@ -150,6 +150,38 @@ function page(title, content) {
   .hero,.panel{scroll-margin-top:24px}
   @media(max-width:760px){body{padding:12px}main{padding-left:0}.bot-cards{grid-template-columns:1fr}.nav{position:sticky;top:6px;bottom:auto;left:auto;width:100%;max-height:190px;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;margin:0 0 14px;padding:8px}.nav:before{display:none}.nav a{flex:0 0 auto;min-width:116px}.hero,.panel{padding:16px}.hero h1{font-size:25px}}
   @media(prefers-reduced-motion:no-preference){.panel,.stat{transition:border-color .2s ease,transform .2s ease}.panel:hover{border-color:rgba(165,199,255,.38)}.stat:hover{transform:translateY(-2px)}}
+
+  /* FRIEREN OWNER EXPERIENCE */
+  body{background:radial-gradient(ellipse at 78% 0%,rgba(110,139,218,.25),transparent 34%),radial-gradient(ellipse at 4% 58%,rgba(69,112,181,.18),transparent 38%),linear-gradient(145deg,#050a18,#0b1530 52%,#080e21)}
+  body:after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.2;background-image:radial-gradient(2px 2px at 18% 34%,#d9e9ff 99%,transparent),radial-gradient(1px 1px at 62% 64%,#fff 99%,transparent),radial-gradient(1px 1px at 91% 13%,#b9d6ff 99%,transparent);background-size:520px 460px;animation:owner-stars 11s ease-in-out infinite alternate}
+  @keyframes owner-stars{from{opacity:.12;transform:translateY(0)}to{opacity:.34;transform:translateY(-8px)}}
+  main{width:min(100%,1520px);padding-left:270px}
+  .top{padding:16px 20px;border:1px solid rgba(171,199,255,.18);border-radius:17px;background:linear-gradient(100deg,rgba(19,36,74,.72),rgba(9,18,42,.52));box-shadow:0 12px 40px #0003}
+  .brand{font-size:24px;letter-spacing:.24em;text-shadow:0 0 28px #b8d5ff88}
+  .hero{background:radial-gradient(ellipse at 90% 15%,rgba(120,154,232,.24),transparent 40%),linear-gradient(145deg,rgba(18,35,73,.96),rgba(7,16,38,.97));border-color:rgba(180,207,255,.3);box-shadow:0 25px 80px #0005,inset 0 1px #fff1}
+  .hero:after{content:"";position:absolute;right:0;top:0;width:42%;height:100%;pointer-events:none;opacity:.22;background:url('/assets/frieren.gif') right center/contain no-repeat;mask-image:linear-gradient(90deg,transparent,#000 32%)}
+  .hero>*{position:relative;z-index:1}
+  .hero h1{font-size:clamp(30px,4vw,46px);letter-spacing:.01em}
+  .panel{background:linear-gradient(145deg,rgba(18,33,68,.94),rgba(7,16,37,.96));border-color:rgba(154,188,246,.2);box-shadow:0 16px 48px #0004,inset 0 1px #fff1;transition:transform .22s,border-color .22s,box-shadow .22s}
+  .panel:hover{transform:translateY(-2px);border-color:rgba(178,207,255,.42);box-shadow:0 20px 55px #0005,0 0 25px #9fc7ff0c}
+  .stat{position:relative;overflow:hidden;background:linear-gradient(145deg,rgba(28,52,99,.88),rgba(10,24,53,.95));border-color:rgba(148,186,248,.24);box-shadow:inset 0 1px #fff1}
+  .stat:after{content:"✧";position:absolute;right:12px;top:5px;color:#d9eaff22;font-size:28px}
+  .stat strong{font-family:Georgia,serif;font-size:24px;letter-spacing:.01em}
+  .nav{width:244px;border-radius:20px;background:linear-gradient(180deg,rgba(7,17,40,.98),rgba(10,23,51,.96));border-color:rgba(173,202,255,.22);box-shadow:0 20px 70px #0008}
+  .nav:before{font-size:18px;letter-spacing:.2em;padding:12px 8px 19px}
+  .nav a{position:relative;overflow:hidden;border-radius:11px;padding:12px 13px;background:rgba(255,255,255,.015);transition:background .2s,border-color .2s,transform .2s}
+  .nav a:hover,.nav a:focus{transform:translateX(3px);background:linear-gradient(100deg,rgba(57,111,190,.38),rgba(94,81,157,.2));border-color:rgba(161,198,255,.35);box-shadow:inset 3px 0 #bcd8ff}
+  .btn{position:relative;overflow:hidden;box-shadow:0 7px 24px #8ebeff24;transition:transform .18s,filter .18s,box-shadow .18s}
+  .btn:after{content:"";position:absolute;inset:-60% auto -60% -40%;width:28%;transform:rotate(24deg);background:linear-gradient(90deg,transparent,#fff8,transparent);transition:left .45s}
+  .btn:hover{transform:translateY(-2px);filter:brightness(1.08);box-shadow:0 10px 30px #9fc5ff40}
+  .btn:hover:after{left:125%}
+  input:focus,select:focus,textarea:focus{outline:2px solid #9fc5ff99;outline-offset:2px;border-color:#b8d5ff}
+  .tag{box-shadow:0 0 22px #8ebeff12}
+  .notice{border-color:#9cbfff66;background:linear-gradient(100deg,#172f56,#172747)}
+  .rowitem{border-color:rgba(154,190,249,.17)}
+  @media(max-width:760px){main{padding-left:0}.hero:after{width:100%;opacity:.12;background-position:right bottom;background-size:auto 65%}.nav{max-height:160px}.nav a{min-width:126px}.top{padding:12px}.hero h1{font-size:28px}}
+  @media(prefers-reduced-motion:reduce){body:after{animation:none}.panel,.btn,.nav a{transition:none}}
+
 </style></head><body><main>${content}</main></body></html>`;
 }
 
