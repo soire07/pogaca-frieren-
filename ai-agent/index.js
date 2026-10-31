@@ -619,6 +619,11 @@ client.once(Events.ClientReady, readyClient => {
 
 client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
+  const allowedGuildId = process.env.DISCORD_GUILD_ID?.trim();
+  if (!interaction.guildId || !allowedGuildId || interaction.guildId !== allowedGuildId) {
+    if (interaction.isRepliable()) await interaction.reply({ content: 'Frieren AI yalnızca yapılandırılmış test sunucusunda kullanılabilir.', ephemeral: true }).catch(() => {});
+    return;
+  }
 
   const adminOnlyCommands = new Set(['frieren-test', 'frieren-komut-denetle']);
   if (adminOnlyCommands.has(interaction.commandName) && !isAuthorizedAdmin(interaction.user.id, admins)) {
