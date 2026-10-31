@@ -568,7 +568,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     service_cooldown: 'Bu servis için yakın zamanda bir işlem yapıldı. Güvenlik bekleme süresi dolunca tekrar dene.',
     render_api_missing: 'Render API anahtarı tanımlı değil. RENDER_API_KEY değerini yalnızca Render ortam değişkenlerinde sakla.',
     render_api_auth_error: 'Render API kimlik doğrulaması veya yetki kapsamı yetersiz. Anahtar izinlerini Render hesabında kontrol et ve sunucu ortam değişkenini güncelle.',
-    render_api_service_error: 'Render servis kimliği bulunamadı veya API istek sınırına ulaşıldı. Servis ID değerlerini ve Render API durumunu kontrol et.',
+    render_api_service_error: 'Render servis kimliği yanlış olabilir, API sınırına ulaşılmış olabilir veya Render geçici hata döndürmüş olabilir. Servis ID değerlerini ve Render durumunu kontrol et.',
     approval_approved: 'Talep onaylandı. Kod otomatik çalıştırılmadı.',
     approval_rejected: 'Talep reddedildi.',
     memory_deleted: 'Hafıza kaydı silindi.',
@@ -954,7 +954,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const notice = code === 'RENDER_API_NOT_CONFIGURED' ? 'render_api_missing'
         : code === 'RENDER_ACTION_COOLDOWN' ? 'service_cooldown'
         : /^RENDER_API_HTTP_(401|403)$/.test(code) ? 'render_api_auth_error'
-        : /^RENDER_API_HTTP_(404|429)$/.test(code) ? 'render_api_service_error'
+        : /^RENDER_API_HTTP_(404|429|5\d\d)$/.test(code) ? 'render_api_service_error'
         : 'invalid';
       redirect(res, '/owner?notice=' + notice);
     }
