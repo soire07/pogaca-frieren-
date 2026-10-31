@@ -116,7 +116,7 @@ client.once(Events.ClientReady, async readyClient => {
 client.on(Events.GuildMemberAdd, async member => {
   try {
     const result = await pool.query(
-      'SELECT welcome_channel_id,log_channel_id,welcome_message FROM guild_settings WHERE guild_id=$1',
+      'SELECT welcome_channel_id,welcome_message FROM guild_settings WHERE guild_id=$1',
       [member.guild.id]
     );
     const settings = result.rows?.[0];
@@ -135,11 +135,8 @@ client.on(Events.GuildMemberAdd, async member => {
         .replaceAll('{server}', member.guild.name);
       await sendToConfiguredChannel(settings.welcome_channel_id, message.slice(0, 300));
     }
-    if (settings.log_channel_id && settings.log_channel_id !== settings.welcome_channel_id) {
-      await sendToConfiguredChannel(settings.log_channel_id, '↗ Üye katıldı: ' + member.user.tag + ' (' + member.id + ')');
-    }
   } catch (error) {
-    console.error('Guild member welcome/log handler failed:', error?.message || error);
+    console.error('Guild member welcome handler failed:', error?.message || error);
     await recordOwnerError(pool, 'guild-member-join', error?.name || 'Error').catch(() => {});
   }
 });
