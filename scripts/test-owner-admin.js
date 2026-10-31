@@ -21,14 +21,14 @@ test('maintenance state is read from the persisted owner setting', async () => {
   assert.equal(await getMaintenanceState(db), true);
 });
 
-test('maintenance changes are persisted and audited', async () => {
-  const calls = [];
-  const db = { query: async (sql, params) => { calls.push({ sql, params }); return { rows: [], rowCount: 1 }; } };
+test('maintenance state and audit are written in one atomic statement', async () => {
+  let call;
+  const db = { query: async (sql, params) => { call = { sql, params }; return { rows: [], rowCount: 1 }; } };
   assert.equal(await setMaintenanceState(db, true, OWNER_ID), true);
-  assert.equal(calls.length, 2);
-  assert.match(calls[0].sql, /INSERT INTO owner_settings/);
-  assert.match(calls[1].sql, /INSERT INTO owner_audit_logs/);
-  assert.deepEqual(JSON.parse(calls[0].params[0]), { enabled: true });
+  assert.match(call.sql, /WITH changed AS/);
+  assert.match(call.sql, /INSERT INTO owner_audit_logs/);
+  assert.deepEqual(JSON.parse(call.params[0]), { enabled: true });
+  assert.deepEqual(JSON.parse(call.params[2]), { enabled: true });
 });
 
 test('technical requests are queued without allowing obvious secrets', async () => {
@@ -46,18 +46,18 @@ test('technical requests are queued without allowing obvious secrets', async () 
   }), { message: 'POSSIBLE_SECRET_IN_REQUEST' });
 });
 
-test('approval review only updates a pending request and writes an audit record', async () => {
-  const calls = [];
+test('approval decision and audit are atomic and only pending requests can change', async () => {
+  let call;
   const db = { query: async (sql, params) => {
-    calls.push({ sql, params });
-    if (sql.startsWith('UPDATE owner_approval_requests')) return { rowCount: 1, rows: [{ id: 9, status: 'approved', title: 'Talep' }] };
-    return { rowCount: 1, rows: [] };
+    call = { sql, params };
+    return { rowCount: 1, rows: [{ id: 9, status: 'approved', title: 'Talep' }] };
   } };
   const result = await reviewApproval(db, 9, 'approved', OWNER_ID);
   assert.equal(result.status, 'approved');
-  assert.equal(calls.length, 2);
-  assert.match(calls[0].sql, /status='pending'/);
-  assert.match(calls[1].sql, /owner_audit_logs/);
+  assert.match(call.sql, /status='pending'/);
+  assert.match(call.sql, /INSERT INTO owner_audit_logs/);
+  assert.equal(call.params[0], 9);
+  assert.rejects(() => reviewApproval(db, 'not-an-id', 'approved', OWNER_ID), { message: 'INVALID_APPROVAL_ID' });
 });
 
 test('memory lookup scopes by user and optional guild', async () => {
@@ -68,18 +68,18 @@ test('memory lookup scopes by user and optional guild', async () => {
   assert.deepEqual(params, ['456', '789', 50]);
 });
 
-test('memory deletion records only metadata in the owner audit trail', async () => {
-  const calls = [];
+test('memory deletion and metadata audit are atomic and never log memory content', async () => {
+  let call;
   const db = { query: async (sql, params) => {
-    calls.push({ sql, params });
-    if (sql.startsWith('DELETE')) return { rowCount: 1, rows: [{ id: 7, guild_id: '1', user_id: '2', memory_key: 'hobi' }] };
-    return { rowCount: 1, rows: [] };
+    call = { sql, params };
+    return { rowCount: 1, rows: [{ id: 7, guild_id: '1', user_id: '2', memory_key: 'hobi' }] };
   } };
   const result = await deleteUserMemory(db, 7, OWNER_ID);
   assert.equal(result.id, 7);
-  assert.equal(calls.length, 2);
-  assert.match(calls[1].sql, /owner_audit_logs/);
-  assert.doesNotMatch(JSON.stringify(calls[1].params), /memory_value/);
+  assert.match(call.sql, /DELETE FROM frieren_chat_memories/);
+  assert.match(call.sql, /INSERT INTO owner_audit_logs/);
+  assert.doesNotMatch(JSON.stringify(call.params), /memory_value/);
+  await assert.rejects(() => deleteUserMemory(db, 'not-an-id', OWNER_ID), { message: 'INVALID_MEMORY_ID' });
 });
 
 

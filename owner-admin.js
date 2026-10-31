@@ -109,14 +109,19 @@ export async function getMaintenanceState(db) {
 }
 
 export async function setMaintenanceState(db, enabled, actorId) {
+  const state = Boolean(enabled);
   await db.query(
-    `INSERT INTO owner_settings(setting_key,setting_value,updated_by,updated_at)
-     VALUES('maintenance',$1::jsonb,$2,NOW())
-     ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_by=EXCLUDED.updated_by,updated_at=NOW()`,
-    [JSON.stringify({ enabled: Boolean(enabled) }), String(actorId)]
+    `WITH changed AS (
+       INSERT INTO owner_settings(setting_key,setting_value,updated_by,updated_at)
+       VALUES('maintenance',$1::jsonb,$2,NOW())
+       ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_by=EXCLUDED.updated_by,updated_at=NOW()
+       RETURNING setting_key
+     )
+     INSERT INTO owner_audit_logs(actor_id,action,target,details)
+     SELECT $2,'maintenance.update',NULL,$3::jsonb FROM changed`,
+    [JSON.stringify({ enabled: state }), String(actorId), JSON.stringify({ enabled: state })]
   );
-  await auditOwnerAction(db, actorId, 'maintenance.update', null, { enabled: Boolean(enabled) });
-  return Boolean(enabled);
+  return state;
 }
 
 export async function getOwnerOverview(client, db) {
@@ -157,13 +162,21 @@ export async function listPendingApprovals(db, limit = 15) {
 
 export async function reviewApproval(db, id, decision, actorId) {
   if (!['approved','rejected'].includes(decision)) throw new Error('INVALID_APPROVAL_DECISION');
+  const requestId = Number(id);
+  if (!Number.isSafeInteger(requestId) || requestId <= 0) throw new Error('INVALID_APPROVAL_ID');
   const result = await db.query(
-    "UPDATE owner_approval_requests SET status=$2,reviewed_by=$3,reviewed_at=NOW() WHERE id=$1 AND status='pending' RETURNING id,status,title",
-    [Number(id), decision, String(actorId)]
+    `WITH changed AS (
+       UPDATE owner_approval_requests SET status=$2,reviewed_by=$3,reviewed_at=NOW()
+       WHERE id=$1 AND status='pending' RETURNING id,status,title
+     ), logged AS (
+       INSERT INTO owner_audit_logs(actor_id,action,target,details)
+       SELECT $3,'approval.' || $2,$1::text,jsonb_build_object('title',title) FROM changed
+       RETURNING id
+     )
+     SELECT changed.id,changed.status,changed.title FROM changed JOIN logged ON TRUE`,
+    [requestId, decision, String(actorId)]
   );
-  if (!result.rowCount) return null;
-  await auditOwnerAction(db, actorId, 'approval.' + decision, String(id), { title: result.rows[0].title });
-  return result.rows[0];
+  return result.rows?.[0] || null;
 }
 
 export async function listUserMemories(db, userId, guildId = null, limit = 20) {
@@ -177,17 +190,23 @@ export async function listUserMemories(db, userId, guildId = null, limit = 20) {
 }
 
 export async function deleteUserMemory(db, memoryId, actorId) {
+  const id = Number(memoryId);
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error('INVALID_MEMORY_ID');
   const result = await db.query(
-    'DELETE FROM frieren_chat_memories WHERE id=$1 RETURNING id,guild_id,user_id,memory_key',
-    [Number(memoryId)]
+    `WITH removed AS (
+       DELETE FROM frieren_chat_memories WHERE id=$1
+       RETURNING id,guild_id,user_id,memory_key
+     ), logged AS (
+       INSERT INTO owner_audit_logs(actor_id,action,target,details)
+       SELECT $2,'memory.delete',$1::text,
+         jsonb_build_object('guildId',guild_id,'userId',user_id,'key',memory_key)
+       FROM removed RETURNING id
+     )
+     SELECT removed.id,removed.guild_id,removed.user_id,removed.memory_key
+     FROM removed JOIN logged ON TRUE`,
+    [id, String(actorId)]
   );
-  if (!result.rowCount) return null;
-  await auditOwnerAction(db, actorId, 'memory.delete', String(memoryId), {
-    guildId: result.rows[0].guild_id,
-    userId: result.rows[0].user_id,
-    key: result.rows[0].memory_key
-  });
-  return result.rows[0];
+  return result.rows?.[0] || null;
 }
 
 export async function sendOwnerAnnouncement(client, db, { guildId, channelId, message, actorId }) {
