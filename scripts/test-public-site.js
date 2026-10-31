@@ -19,7 +19,7 @@ test('anonymous visitors must authenticate with Discord before viewing the homep
   const response = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/', headers: {} }, response), true);
   assert.equal(response.status, 302);
-  assert.equal(response.headers.Location, '/owner/login');
+  assert.equal(response.headers.Location, '/login');
 });
 
 test('authenticated homepage includes the member identity, profile, GIF gallery and draggable chibi', async () => {
@@ -87,4 +87,33 @@ test('logout clears the shared member session cookie', async () => {
 test('unknown routes and non-GET requests are not intercepted', async () => {
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/unknown', headers: {} }, res()), false);
   assert.equal(await handlePublicSiteRequest({ method: 'POST', url: '/', headers: {} }, res()), false);
+});
+
+
+test('registration and login pages offer distinct Discord OAuth flows', async () => {
+  const registration = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/register', headers: {} }, registration), true);
+  assert.equal(registration.status, 200);
+  assert.match(registration.body, /Discord ile kayıt ol/);
+  assert.match(registration.body, /\/owner\/login\?flow=register/);
+  const login = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/login', headers: {} }, login), true);
+  assert.equal(login.status, 200);
+  assert.match(login.body, /Discord ile giriş yap/);
+  assert.match(login.body, /\/owner\/login\?flow=login/);
+});
+
+test('site profile uses dedicated brand avatar and banner assets', async () => {
+  const response = res();
+  await handlePublicSiteRequest(request('/', visitor), response);
+  assert.match(response.body, /\/assets\/site-avatar\.svg/);
+  assert.match(response.body, /\/assets\/site-banner\.svg/);
+});
+
+test('chibi speech bubble is nested inside the draggable companion wrapper', async () => {
+  const response = res();
+  await handlePublicSiteRequest(request('/', visitor), response);
+  assert.match(response.body, /id="chibiCompanion"[\s\S]*id="chibiHint"[\s\S]*id="chibi"/);
+  assert.match(response.body, /chibiCompanion/);
+  assert.match(response.body, /pointermove/);
 });
