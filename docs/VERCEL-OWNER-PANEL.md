@@ -4,7 +4,9 @@ This repository remains the single source repository for Poğaça Frieren, Frier
 
 ## Architecture
 
-- Vercel serves the public panel hostname and reverse-proxies requests to the existing Poğaça Frieren HTTP service.
+- Vercel serves the Frieren site hostname and reverse-proxies requests to the existing Poğaça Frieren HTTP service.
+- The public homepage, bot introduction pages, and site GIF assets require a signed Discord member session; the existing OAuth callback creates that session for any authenticated Discord account.
+- `/owner` remains a separate owner-only area. A second signed owner session is issued only when the Discord user ID matches the configured owner ID.
 - The main Node.js service continues to run the persistent Poğaça Frieren Discord client and supervises the Frieren AI child process.
 - Neon PostgreSQL remains the database. No database migration is performed by this deployment.
 - Vercel does not run either persistent Discord Gateway client.
@@ -16,7 +18,7 @@ This repository remains the single source repository for Poğaça Frieren, Frier
 - Framework preset: `Other`
 - Build command: leave unset (the Vercel project is acting as a reverse proxy, not building the Discord bot).
 - Output directory: leave unset.
-- The root URL rewrites to `/owner`; all other paths are proxied to the current main service by `vercel.json`.
+- All paths, including `/`, are proxied to the current main service by `vercel.json`; the app routes `/` to the Discord-gated member homepage and keeps `/owner` separate.
 
 ## Required OAuth hostname configuration
 
@@ -25,7 +27,7 @@ Before using the Vercel hostname, configure these variables on the **main Poğa�
 - `OWNER_DASHBOARD_BASE_URL=https://frierenbot.vercel.app`
 - `OWNER_DASHBOARD_REDIRECT_URI=https://frierenbot.vercel.app/owner/callback`
 
-Then add this exact redirect URI to the Discord Developer Portal OAuth2 redirect list:
+The existing OAuth callback is shared by the member site and Owner Panel. Add this exact redirect URI to the Discord Developer Portal OAuth2 redirect list:
 
 `https://frierenbot.vercel.app/owner/callback`
 
