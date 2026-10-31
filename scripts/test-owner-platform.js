@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { saveOwnerPartnerLink, deleteOwnerPartnerLink, getOwnerRpgMetrics, updateGuildConfiguration } from '../owner-platform.js';
+import { saveOwnerPartnerLink, deleteOwnerPartnerLink, getOwnerRpgMetrics, updateGuildConfiguration, searchOwnerRpgPlayers, getOwnerRpgPlayerDetails, adjustOwnerRpgResources } from '../owner-platform.js';
 
 test('partner records validate Discord invite URLs and write atomically with audit', async () => {
   let call;
@@ -37,4 +37,83 @@ test('guild settings require a real text channel in the selected guild', async (
   assert.equal(queried,false);
   await updateGuildConfiguration(db,client,{guildId:'123456789012345678',welcomeChannelId:channel.id});
   assert.equal(queried,true);
+});
+
+
+test('RPG player search is guild-scoped and bounded', async () => {
+  let params;
+  const db = { query: async (_sql, values) => { params = values; return { rows: [{ user_id: '123456789012345678' }] }; } };
+  const result = await searchOwnerRpgPlayers(db, { guildId: '223456789012345678', query: 'Frieren', limit: 500 });
+  assert.equal(result.length, 1);
+  assert.equal(params[0], '223456789012345678');
+  assert.equal(params[3], 25);
+  await assert.rejects(searchOwnerRpgPlayers(db, { guildId: 'bad' }), /INVALID_GUILD_ID/);
+});
+
+test('RPG player detail returns inventory only for the selected guild and player', async () => {
+  const calls = [];
+  const db = { query: async (sql, params) => {
+    calls.push(params);
+    return sql.includes('FROM users')
+      ? { rows: [{ user_id: params[1], coins: 50 }] }
+      : { rows: [{ item_key: 'healing_potion', quantity: 2 }] };
+  } };
+  const detail = await getOwnerRpgPlayerDetails(db, { guildId: '223456789012345678', userId: '123456789012345678' });
+  assert.equal(detail.coins, 50);
+  assert.deepEqual(detail.inventory, [{ item_key: 'healing_potion', quantity: 2 }]);
+  assert.deepEqual(calls, [['223456789012345678','123456789012345678'],['223456789012345678','123456789012345678']]);
+});
+
+test('RPG resource adjustment locks player, writes audit, and commits atomically', async () => {
+  const calls = [];
+  const client = {
+    query: async (sql, params) => {
+      calls.push({ sql, params });
+      if (sql.includes('SELECT coins,xp')) return { rows: [{ coins: 100, xp: 20 }] };
+      if (sql.includes('UPDATE users')) return { rows: [{ coins: 150, xp: 25 }] };
+      return { rows: [] };
+    },
+    release() { calls.push({ sql: 'RELEASE' }); }
+  };
+  const result = await adjustOwnerRpgResources({ connect: async () => client }, {
+    guildId: '223456789012345678', userId: '123456789012345678',
+    coinsDelta: 50, xpDelta: 5, reason: 'Düzeltme', actorId: '1553794496234262641'
+  });
+  assert.deepEqual(result, { before: { coins: 100, xp: 20 }, after: { coins: 150, xp: 25 } });
+  assert.ok(calls.some(call => call.sql === 'BEGIN'));
+  assert.ok(calls.some(call => call.sql.includes('FOR UPDATE')));
+  assert.ok(calls.some(call => call.sql.includes('owner_audit_logs')));
+  assert.ok(calls.some(call => call.sql === 'COMMIT'));
+  assert.equal(calls.at(-1).sql, 'RELEASE');
+});
+
+test('RPG resource adjustment rolls back if audit insertion fails', async () => {
+  const calls = [];
+  const client = {
+    query: async sql => {
+      calls.push(sql);
+      if (sql.includes('SELECT coins,xp')) return { rows: [{ coins: 100, xp: 20 }] };
+      if (sql.includes('UPDATE users')) return { rows: [{ coins: 110, xp: 20 }] };
+      if (sql.includes('owner_audit_logs')) throw new Error('audit unavailable');
+      return { rows: [] };
+    },
+    release() {}
+  };
+  await assert.rejects(adjustOwnerRpgResources({ connect: async () => client }, {
+    guildId: '223456789012345678', userId: '123456789012345678',
+    coinsDelta: 10, reason: 'Düzeltme'
+  }), /audit unavailable/);
+  assert.ok(calls.includes('ROLLBACK'));
+});
+
+test('RPG resource adjustment rejects unbounded or reasonless edits before opening a transaction', async () => {
+  let connected = false;
+  const db = { connect: async () => { connected = true; throw new Error('should not connect'); } };
+  await assert.rejects(adjustOwnerRpgResources(db, {
+    guildId: '223456789012345678', userId: '123456789012345678', coinsDelta: 1000001, reason: 'x'
+  }), /INVALID_RPG_ADJUSTMENT/);
+  await assert.rejects(adjustOwnerRpgResources(db, {
+    guildId: '223456789012345678', userId: '123456789012345678', coinsDelta: 1, reason: ''
+  }), /INVALID_RPG_ADJUSTMENT/);
+  assert.equal(connected, false);
 });
