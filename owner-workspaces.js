@@ -77,6 +77,9 @@ export function renderOwnerWorkspace(kind, data = {}) {
       : data.notice === 'quest_saved' ? 'Görev kaydedildi. Değişiklik denetim kaydına eklendi.'
       : data.notice === 'quest_disabled' ? 'Görev pasife alındı; geçmiş ödül kayıtları korundu.'
       : data.notice === 'quest_error' ? 'Görev işlemi tamamlanamadı. Alanları ve işlem gerekçesini kontrol et.'
+      : data.notice === 'content_saved' ? 'Zindan veya boss ayarı kaydedildi ve denetim kaydına eklendi.'
+      : data.notice === 'content_disabled' ? 'İçerik pasife alındı; son aktif zindan/boss korundu.'
+      : data.notice === 'content_error' ? 'Zindan/boss ayarı kaydedilemedi. Değerleri ve gerekçeyi kontrol et.'
       : '';
     const renderQuestForm = (quest = {}) => '<form method="post" action="/owner/action">'
       + '<input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="rpg-daily-quest-save">'
@@ -90,6 +93,55 @@ export function renderOwnerWorkspace(kind, data = {}) {
       + '<label>Durum</label><select name="active"><option value="yes"' + (quest.active === false ? '' : ' selected') + '>Aktif</option><option value="no"' + (quest.active === false ? ' selected' : '') + '>Pasif</option></select>'
       + '<label>İşlem gerekçesi</label><input name="reason" maxlength="200" required placeholder="Değişikliğin nedenini yaz">'
       + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Görev değişikliğini onaylıyorum</label><button class="btn">Görevi kaydet</button></form>';
+    const rpgContent = data.rpgContent || [];
+    const contentTypeLabels = { dungeon: 'Zindan', solo_boss: 'Tekli boss', raid_boss: 'Ortak boss' };
+    const renderContentFields = item => {
+      const config = item.config || {};
+      const field = (name, label, value, type = 'number', min = null, max = null, step = null) =>
+        '<label>' + label + '</label><input type="' + type + '" name="' + name + '" value="' + escapeHtml(value) + '"' +
+        (min === null ? '' : ' min="' + min + '"') + (max === null ? '' : ' max="' + max + '"') +
+        (step === null ? '' : ' step="' + step + '"') + ' required>';
+      if (item.content_type === 'dungeon') return field('name','Zindan adı',config.name,'text')
+        + field('hp','Düşman HP',config.hp,'number',80,10000,1)
+        + field('damage','Düşman hasarı',config.damage,'number',1,500,1)
+        + field('xp','Zafer XP',config.xp,'number',0,10000,1)
+        + field('coins','Zafer altını',config.coins,'number',0,10000,1)
+        + field('lootChance','Ganimet ihtimali (0–1)',config.lootChance,'number',0,1,0.01)
+        + field('loot','Ganimet adı',config.loot,'text');
+      if (item.content_type === 'solo_boss') return field('name','Boss adı',config.name,'text')
+        + field('region','Bölge',config.region,'text')
+        + field('maxHp','Boss HP',config.maxHp,'number',50,20000,1)
+        + field('minDamage','Minimum hasar',config.minDamage,'number',1,1000,1)
+        + field('maxDamage','Maksimum hasar',config.maxDamage,'number',1,1500,1)
+        + field('coinMin','Minimum altın',config.coinMin,'number',0,20000,1)
+        + field('coinMax','Maksimum altın',config.coinMax,'number',0,30000,1)
+        + field('xpMin','Minimum XP',config.xpMin,'number',0,10000,1)
+        + field('xpMax','Maksimum XP',config.xpMax,'number',0,20000,1)
+        + field('lootChance','Ganimet ihtimali (0–1)',config.lootChance,'number',0,1,0.01)
+        + field('loot','Ganimet listesi (virgülle ayır)',(config.loot || []).join(', '),'text');
+      return field('name','Boss adı',config.name,'text')
+        + field('hp','Boss HP',config.hp,'number',50,20000,1)
+        + field('damage','Boss hasarı',config.damage,'number',1,1500,1)
+        + field('xp','Zafer XP',config.xp,'number',0,20000,1)
+        + field('coins','Zafer altını',config.coins,'number',0,30000,1)
+        + field('loot','Ganimet adı',config.loot,'text')
+        + '<label>Zayıflık türü</label><select name="weakness"><option value="spell"' + (config.weakness === 'spell' ? ' selected' : '') + '>Büyü</option><option value="attack"' + (config.weakness === 'attack' ? ' selected' : '') + '>Fiziksel saldırı</option></select>'
+        + field('weaknessLabel','Zayıflık açıklaması',config.weaknessLabel,'text');
+    };
+    const renderContentForm = item => '<form method="post" action="/owner/action">'
+      + '<input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="rpg-content-save">'
+      + '<input type="hidden" name="guildId" value="' + escapeHtml(selectedGuild) + '"><input type="hidden" name="contentType" value="' + escapeHtml(item.content_type) + '"><input type="hidden" name="contentKey" value="' + escapeHtml(item.content_key) + '">'
+      + renderContentFields(item)
+      + '<label>Durum</label><select name="active"><option value="yes"' + (item.active ? ' selected' : '') + '>Aktif</option><option value="no"' + (!item.active ? ' selected' : '') + '>Pasif</option></select>'
+      + '<label>İşlem gerekçesi</label><input name="reason" maxlength="200" required placeholder="Denge değişikliğinin nedeni">'
+      + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Değişikliği onaylıyorum</label><button class="btn">Ayarları kaydet</button></form>';
+    const rpgContentHtml = '<section class="panel"><h2>Zindan ve boss kataloğu</h2><p class="muted">Zindan ve boss ayarları seçili sunucuya özeldir. Savaş yetenekleri ve özel saldırı türleri sabit tutulur; HP, hasar, ödül, ganimet ve desteklenen zayıflık değerleri güvenli aralıklarla düzenlenebilir. Son aktif içerik kapatılamaz.</p>'
+      + ['dungeon','solo_boss','raid_boss'].map(type => '<h3>' + contentTypeLabels[type] + 'lar</h3><div class="columns">'
+        + rpgContent.filter(item => item.content_type === type).map(item => '<article class="panel"><div class="actions"><span class="tag">' + escapeHtml(item.content_key) + '</span><span class="' + (item.active ? 'good' : 'warn') + '">' + (item.active ? 'Aktif' : 'Pasif') + '</span></div>'
+          + '<h3>' + escapeHtml(item.config.name) + '</h3><p class="small">Seviye eşiği: ' + Number(item.config.minLevel || 0) + (item.config.special ? ' · Özel hamle: ' + escapeHtml(item.config.special) : '') + '</p>'
+          + renderContentForm(item)
+          + (item.active ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="rpg-content-disable"><input type="hidden" name="guildId" value="' + escapeHtml(selectedGuild) + '"><input type="hidden" name="contentType" value="' + escapeHtml(item.content_type) + '"><input type="hidden" name="contentKey" value="' + escapeHtml(item.content_key) + '"><label>Pasife alma gerekçesi</label><input name="reason" maxlength="200" required><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> İçeriği pasife almayı onaylıyorum</label><button class="btn danger">Pasife al</button></form>' : '')
+          + '</article>').join('') + '</div>').join('') + '</section>';
     const questManagementHtml = '<section class="panel"><h2>Günlük görev kataloğu</h2><p class="muted">Görevler seçili Discord sunucusuna özeldir. Yalnızca desteklenen oyun hedefleri seçilebilir; ödül talebi oyuncu ve gün bazında tekilleştirilir. Silme işlemi geçmiş kayıtları korumak için pasife alma olarak uygulanır.</p>'
       + (dailyQuests.length ? '<div class="columns">' + dailyQuests.map(quest => '<article class="panel"><div class="actions"><span class="tag">' + (quest.is_system ? 'SİSTEM GÖREVİ' : 'ÖZEL GÖREV') + '</span><span class="' + (quest.active ? 'good' : 'warn') + '">' + (quest.active ? 'Aktif' : 'Pasif') + '</span></div><h3>' + escapeHtml(quest.title) + '</h3><p class="small">' + escapeHtml(quest.quest_key) + ' · ' + Number(quest.reward_coins) + ' altın</p>' + renderQuestForm(quest)
         + (quest.active ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="rpg-daily-quest-disable"><input type="hidden" name="guildId" value="' + escapeHtml(selectedGuild) + '"><input type="hidden" name="questKey" value="' + escapeHtml(quest.quest_key) + '"><label>Pasife alma gerekçesi</label><input name="reason" maxlength="200" required><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu görevi pasife almayı onaylıyorum</label><button class="btn danger">Görevi pasife al</button></form>' : '')
@@ -122,6 +174,7 @@ export function renderOwnerWorkspace(kind, data = {}) {
         + '<label>İşlem gerekçesi (zorunlu)</label><input name="reason" maxlength="200" required placeholder="Örn. hatalı ödül düzeltmesi">'
         + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu kaynak değişikliğini onaylıyorum</label><button class="btn">Kaynakları güncelle</button></form></section>' : '')
       + questManagementHtml
+      + rpgContentHtml
       + '<p class="notice warn">Oyuncu silme, HP/Mana değerlerini doğrudan değiştirme ve oyuncuların görev/boss ilerlemesini elle değiştirme kapalıdır. Görev tanımları ise sunucu bazında, denetim kaydıyla yönetilir.</p>'
       + '<div class="columns">' + card('Komut ve davranışlar', 'Komutları sunucu bazında yönet.', '/owner#behavior') + card('Sunucu ayarları', 'Karşılama ve özellik tercihleri.', '/owner#servers') + '</div>';
   }
