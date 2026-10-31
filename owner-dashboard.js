@@ -557,6 +557,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     maintenance_on: 'Bakım modu açıldı.',
     maintenance_off: 'Bakım modu kapatıldı.',
     service_action_accepted: 'Render API işlemi kabul etti. Servis durumunu yenileyerek sonucu doğrula.',
+    service_action_audit_pending: 'Render API işlemi kabul etti ancak denetim kaydı güncellemesi gecikti. Servis durumunu ve audit kayıtlarını kontrol et.',
     service_cooldown: 'Bu servis için yakın zamanda bir işlem yapıldı. Güvenlik bekleme süresi dolunca tekrar dene.',
     render_api_missing: 'Render API anahtarı tanımlı değil. RENDER_API_KEY değerini yalnızca Render ortam değişkenlerinde sakla.',
     render_api_auth_error: 'Render API kimlik doğrulaması veya yetki kapsamı yetersiz. Anahtar izinlerini Render hesabında kontrol et ve sunucu ortam değişkenini güncelle.',
@@ -772,7 +773,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
           actorId: OWNER_ID,
           confirm: 'yes'
         });
-        redirect(res, '/owner?notice=service_action_accepted&serviceAction=' + encodeURIComponent(result.action));
+        redirect(res, '/owner?notice=' + (result.auditPending ? 'service_action_audit_pending' : 'service_action_accepted') + '&serviceAction=' + encodeURIComponent(result.action));
         return true;
       }
       if (action === 'rpg-daily-quest-save' && form.get('confirm') === 'yes') {
