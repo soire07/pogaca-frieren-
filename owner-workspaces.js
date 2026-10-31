@@ -43,6 +43,16 @@ export function renderOwnerWorkspace(kind, data = {}) {
       + '<section class="panel"><h2>Servis kontrolleri</h2>' + checks.map(([label, value]) =>
         '<div class="rowitem"><strong>' + label + '</strong><span class="' + (value === true ? 'good' : 'bad') + '"> · ' + (value === true ? 'Hazır' : value === false ? 'Başarısız' : 'Veri alınamadı') + '</span></div>'
       ).join('') + '<p class="small">Bu ekran yalnızca test sunucusu için sentetik komut senaryoları çalıştırır; gerçek kullanıcı işlemi yapmaz.</p></section>'
+      + '<section class="panel"><h2>Poğaça sohbet kişiliği</h2><p class="muted">Bu ayarlar Poğaça Frieren’in etiketle açılan sohbet davranışını etkiler. Frieren AI kod/test ajanının çalışma sunucusu bu ayarlardan bağımsızdır.</p>'
+      + (data.notice === 'chat_settings_saved' ? '<p class="notice">Sohbet tercihleri kaydedildi.</p>' : '')
+      + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="frieren-chat-settings">'
+      + '<label><input type="checkbox" name="enabled" value="yes"' + (data.chatSettings?.enabled !== false ? ' checked' : '') + ' style="display:inline;width:auto"> Etiketle sohbet özelliği açık</label>'
+      + '<label>Konuşma tarzı</label><select name="style">'
+      + [['calm','Sakin ve düşünceli'],['warm','Sıcak ve nazik'],['witty','İnce mizahlı'],['formal','Resmi ve ölçülü']].map(([value,label]) => '<option value="' + value + '"' + (data.chatSettings?.style === value ? ' selected' : '') + '>' + label + '</option>').join('')
+      + '</select><label>Yanıt uzunluğu</label><select name="responseLength">'
+      + [['concise','Kısa'],['balanced','Dengeli'],['detailed','Ayrıntılı']].map(([value,label]) => '<option value="' + value + '"' + (data.chatSettings?.responseLength === value ? ' selected' : '') + '>' + label + '</option>').join('')
+      + '</select><label><input type="checkbox" name="loreFocus" value="yes"' + (data.chatSettings?.loreFocus !== false ? ' checked' : '') + ' style="display:inline;width:auto"> Frieren anime evrenine öncelik ver</label>'
+      + '<button class="btn">Sohbet tercihlerini kaydet</button></form></section>'
       + '<section class="panel"><h2>Komut test çalıştırıcısı</h2><p class="muted">Boş bırakılırsa tüm komutlar denetlenir. Belirli komutları virgül veya satırla ayırarak girebilirsin. Testler sentetik etkileşim kullanır; gerçek Discord kullanıcısı adına işlem yapmaz.</p>'
       + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="ai-test-run">'
       + '<label>Komut adları (isteğe bağlı)</label><textarea name="commands" maxlength="2000" placeholder="karakter, bakiye, zindan"></textarea>'

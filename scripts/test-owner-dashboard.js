@@ -341,3 +341,17 @@ test('RPG owner adjustment reaches audited transaction only for connected guilds
   assert.ok(calls.some(call => call.sql.includes('owner_audit_logs')));
   assert.ok(calls.some(call => call.sql === 'COMMIT'));
 });
+
+
+test('Owner can save validated Frieren chat preferences with CSRF protection and audit', async () => {
+  let query = '';
+  const db = { query: async sql => { query = sql; return { rows: [{ setting_value: { enabled: true, style: 'warm', responseLength: 'balanced', loreFocus: false } }] }; } };
+  const { response } = await runOwnerPost({
+    action: 'frieren-chat-settings', csrf: 'session',
+    enabled: 'yes', style: 'warm', responseLength: 'balanced', loreFocus: 'no'
+  }, db);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner/frieren-ai?notice=chat_settings_saved');
+  assert.match(query, /owner_settings/);
+  assert.match(query, /owner_audit_logs/);
+});

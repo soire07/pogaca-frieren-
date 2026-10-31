@@ -8,6 +8,7 @@ import {
 import { listOwnerPartnerLinks, saveOwnerPartnerLink, deleteOwnerPartnerLink, getOwnerRpgMetrics, updateGuildConfiguration, listGuildConfigurations, searchOwnerRpgPlayers, getOwnerRpgPlayerDetails, adjustOwnerRpgResources } from './owner-platform.js';
 import { DEFAULT_GUILD_FEATURES, listGuildFeatureSettings, setGuildFeatureEnabled, resetGuildFeatureSetting } from './guild-feature-settings.js';
 import { getOwnerDatabaseDiagnostics, getOwnerDatabaseTablePreview, renderOwnerWorkspace } from './owner-workspaces.js';
+import { getFrierenChatSettings, updateFrierenChatSettings } from './frieren-chat-settings.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -631,7 +632,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     try {
       const kind = workspaceKinds[url.pathname];
       const data = {};
-      if (kind === 'ai') { data.aiReadiness = await getFrierenAIReadiness(); data.csrf = session.csrf; }
+      if (kind === 'ai') { data.aiReadiness = await getFrierenAIReadiness(); data.chatSettings = await getFrierenChatSettings(db); data.csrf = session.csrf; data.notice = url.searchParams.get('notice') || ''; }
       if (kind === 'pogaca') {
         data.notice = url.searchParams.get('notice') || '';
         data.rpgMetrics = await getOwnerRpgMetrics(db);
@@ -694,6 +695,16 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
           actorId: OWNER_ID
         });
         redirect(res, '/owner/pogaca?guildId=' + encodeURIComponent(guildId) + '&userId=' + encodeURIComponent(form.get('userId')) + '&notice=rpg_saved');
+        return true;
+      }
+      if (action === 'frieren-chat-settings') {
+        await updateFrierenChatSettings(db, {
+          enabled: form.get('enabled') === 'yes',
+          style: String(form.get('style') || ''),
+          responseLength: String(form.get('responseLength') || ''),
+          loreFocus: form.get('loreFocus') === 'yes'
+        }, OWNER_ID);
+        redirect(res, '/owner/frieren-ai?notice=chat_settings_saved');
         return true;
       }
       if (action === 'ai-test-run' && form.get('confirm') === 'yes') {
