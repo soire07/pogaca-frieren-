@@ -123,3 +123,21 @@ test('the last active dungeon or boss cannot be disabled', async () => {
   assert.ok(calls.some(call => call.sql === 'ROLLBACK'));
   assert.ok(!calls.some(call => call.sql === 'COMMIT'));
 });
+
+
+test('live dungeon and boss commands consume the guild-scoped content catalog', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const [dungeon, soloBoss, raidBoss, schema] = await Promise.all([
+    readFile(new URL('../zindan.js', import.meta.url), 'utf8'),
+    readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8'),
+    readFile(new URL('../ortakboss.js', import.meta.url), 'utf8'),
+    readFile(new URL('../database/db.js', import.meta.url), 'utf8')
+  ]);
+  assert.ok(dungeon.includes("getGuildRpgContent(db, interaction.guildId, 'dungeon')"));
+  assert.ok(dungeon.includes('selectDungeonForLevel(averageLevel, dungeonTiers)'));
+  assert.ok(soloBoss.includes("getGuildRpgContent(pool, interaction.guildId, 'solo_boss')"));
+  assert.ok(soloBoss.includes('unlockedBossTiers'));
+  assert.ok(raidBoss.includes("getGuildRpgContent(pool, interaction.guildId, 'raid_boss')"));
+  assert.ok(raidBoss.includes('chooseRaidBoss(Math.random, raidBosses)'));
+  assert.ok(schema.includes('CREATE TABLE IF NOT EXISTS guild_rpg_content_overrides'));
+});
