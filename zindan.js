@@ -2,16 +2,11 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, Embe
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
+import { getGuildRpgContent } from './owner-rpg-content.js';
+import { selectDungeonForLevel } from './rpg-content-catalog.js';
 
 const COOLDOWN_MINUTES = 30;
 const COOLDOWN_MS = COOLDOWN_MINUTES * 60_000;
-
-function dungeonForLevel(level) {
-  if (level >= 30) return { name: '🌑 Kuzeyin Mühürlü Mahzeni', hp: 620, damage: 28, xp: 150, coins: 180, level: 30, lootChance: 0.22, loot: 'Kuzey Mührü' };
-  if (level >= 15) return { name: '🗿 Kadim Harabe Zindanı', hp: 420, damage: 20, xp: 110, coins: 130, level: 15, lootChance: 0.18, loot: 'Kadim Rün Parçası' };
-  if (level >= 5) return { name: '🌲 Büyük Orman Zindanı', hp: 260, damage: 13, xp: 75, coins: 90, level: 5, lootChance: 0.14, loot: 'Orman Kristali' };
-  return { name: '🌾 Merkez Topraklar Mahzeni', hp: 160, damage: 8, xp: 45, coins: 55, level: 1, lootChance: 0.10, loot: 'Eski Mahzen Anahtarı' };
-}
 
 export default {
   data: new SlashCommandBuilder()
@@ -124,7 +119,12 @@ export default {
       }
 
       const averageLevel = Math.floor(combatants.reduce((sum, player) => sum + player.level, 0) / combatants.length);
-      const dungeon = dungeonForLevel(averageLevel);
+      const dungeonTiers = await getGuildRpgContent(db, interaction.guildId, 'dungeon');
+      const dungeon = selectDungeonForLevel(averageLevel, dungeonTiers);
+      if (!dungeon) {
+        await db.query('ROLLBACK');
+        return interaction.editReply({ content: 'Bu seviyede şu anda aktif bir zindan yok. Owner Panel üzerinden uygun seviye kademesini etkinleştir.', components: [] });
+      }
       let dungeonHp = dungeon.hp;
       let turn = 0;
       const log = [];

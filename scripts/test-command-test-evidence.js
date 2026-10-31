@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildCommandEvidence } from './command-test-evidence.js';
+import { buildIsolatedTestGuildId } from './live-command-test.js';
 
 test('a command is PASS only when every command-specific behavior assertion passes', () => {
   const result = buildCommandEvidence({
@@ -42,4 +43,14 @@ test('behavioral assertions cannot produce PASS when the command emits no Discor
   });
   assert.equal(result.status, 'FAIL');
   assert.match(result.detail, /Discord yanıtını/);
+});
+
+
+test('isolated command test guild IDs are valid Discord snowflakes', () => {
+  const first = buildIsolatedTestGuildId(1);
+  const last = buildIsolatedTestGuildId(999);
+  assert.match(first, /^\d{17,20}$/);
+  assert.match(last, /^\d{17,20}$/);
+  assert.notEqual(first, last);
+  assert.throws(() => buildIsolatedTestGuildId(0), /INVALID_TEST_GUILD_SEQUENCE/);
 });

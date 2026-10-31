@@ -504,6 +504,7 @@ test('quest chain integrates level-scaled XP, level-ups, stat points and complet
 
 test('solo boss victories grant recipe materials matched to boss tier', async () => {
   const combat = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const catalog = await readFile(new URL('../rpg-content-catalog.js', import.meta.url), 'utf8');
   const crafting = await readFile(new URL('../zanaat.js', import.meta.url), 'utf8');
   for (const material of [
     '🥐 Büyülü Poğaça Kutusu',
@@ -512,7 +513,7 @@ test('solo boss victories grant recipe materials matched to boss tier', async ()
     '🌙 Efsunlu Elf Yadigârı',
     '👑 Himmel’in Efsanevi Yadigârı'
   ]) {
-    assert.ok(combat.includes(material), `boss tiers missing crafting material: ${material}`);
+    assert.ok(catalog.includes(material), `boss catalog missing crafting material: ${material}`);
     assert.ok(crafting.includes(material), `boss crafting material has no recipe: ${material}`);
   }
   assert.match(combat, /boss\.craftingMaterial/);

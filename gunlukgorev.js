@@ -71,7 +71,11 @@ export default {
             const priorClassClaim = await db.query(
               `SELECT 1 FROM daily_mission_claims
                WHERE guild_id=$1 AND user_id=$2 AND mission_date=CURRENT_DATE
-                 AND mission_key IN (SELECT quest_key FROM guild_daily_quests WHERE guild_id=$1 AND class_name IS NOT NULL)
+                 AND (
+                   mission_key='__class_daily_reward__'
+                   OR mission_key LIKE 'class_%'
+                   OR mission_key IN (SELECT quest_key FROM guild_daily_quests WHERE guild_id=$1 AND class_name IS NOT NULL)
+                 )
                LIMIT 1`,
               [interaction.guildId, interaction.user.id]
             );
@@ -97,6 +101,18 @@ export default {
           if (!claim.rowCount) {
             await db.query('ROLLBACK');
             return interaction.editReply('Bu görevin ödülünü bugün zaten aldın.');
+          }
+          if (mission.class_name) {
+            const classClaim = await db.query(
+              `INSERT INTO daily_mission_claims(guild_id,user_id,mission_date,mission_key)
+               VALUES($1,$2,CURRENT_DATE,'__class_daily_reward__')
+               ON CONFLICT DO NOTHING RETURNING mission_key`,
+              [interaction.guildId, interaction.user.id]
+            );
+            if (!classClaim.rowCount) {
+              await db.query('ROLLBACK');
+              return interaction.editReply('Bugün sınıfına özel görev ödülünü zaten aldın.');
+            }
           }
           await db.query(
             'UPDATE users SET coins=coins+$3 WHERE guild_id=$1 AND user_id=$2',

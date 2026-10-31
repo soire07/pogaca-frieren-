@@ -885,5 +885,6 @@ test('isolated command tests preserve existing frieren_test data and serialize s
   assert.match(schema, /CREATE SCHEMA IF NOT EXISTS frieren_test/);
   assert.match(schema, /pg_advisory_lock\(20261030, 1\)/);
   assert.match(schema, /if \(!testContext\.getStore\(\)\)/);
-  assert.match(runner, /randomUUID\(\)/);
+  assert.match(runner, /buildIsolatedTestGuildId\(index\)/);
+  assert.match(runner, /return '910000000000000'/);
 });

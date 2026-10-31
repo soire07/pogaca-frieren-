@@ -5,6 +5,7 @@ import {
   DAILY_QUEST_OBJECTIVES,
   validateOwnerDailyQuestInput,
   getDailyQuestObjectiveSql,
+  ensureGuildDailyQuestCatalog,
   listOwnerDailyQuests,
   saveOwnerDailyQuest,
   setOwnerDailyQuestActive
@@ -122,4 +123,15 @@ test('deleting a daily quest is a reversible soft-disable and preserves claim hi
   assert.ok(!calls.some(call => call.sql.includes('DELETE FROM daily_mission_claims')));
   assert.ok(calls.some(call => call.sql.includes('owner_audit_logs')));
   assert.ok(calls.some(call => call.sql === 'COMMIT'));
+});
+
+
+test('daily quest catalog seed binds every default quest field as a SQL parameter', async () => {
+  let call;
+  await ensureGuildDailyQuestCatalog({
+    query: async (sql, params) => { call = { sql, params }; return { rows: [] }; }
+  }, guildId);
+  assert.equal(call.params.length, 1 + DEFAULT_DAILY_QUESTS.length * 6);
+  assert.ok(call.sql.includes('$' + call.params.length));
+  assert.ok(!call.sql.includes('($1,2,3,4,5,6,7,'));
 });

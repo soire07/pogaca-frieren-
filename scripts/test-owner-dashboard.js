@@ -1,7 +1,7 @@
 import test from 'node:test';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
 const ownerId = '1553794496234262641';
@@ -72,7 +72,7 @@ test('owner panel navigation exposes command workflows without a log center', ()
   const commands = OWNER_PANEL_SECTIONS.map(section => section.command).filter(Boolean);
   assert.deepEqual(commands, ['/owner', '/owner-bilgi', '/owner-bellek', '/owner-onay', '/owner-duyuru', '/owner-bakim']);
   const navigation = renderOwnerNavigation();
-  for (const id of ['overview', 'system', 'memories', 'approvals', 'announcements', 'maintenance']) {
+  for (const id of ['overview', 'system', 'bot-control', 'memories', 'approvals', 'announcements', 'maintenance']) {
     assert.match(navigation, new RegExp('href="/owner#' + id + '"'));
   }
   assert.doesNotMatch(navigation, /Log Merkezi|href="\/owner#activity"/);
@@ -393,4 +393,152 @@ test('owner daily quest save rejects a guild that the bot is not connected to', 
   assert.equal(response.status, 303);
   assert.equal(response.headers.Location, '/owner?notice=invalid');
   assert.equal(connected, false);
+});
+
+
+test('owner dungeon and boss content save is confirmed, guild-scoped and audited', async () => {
+  const guildId = '1539562273197260860';
+  const calls = [];
+  const client = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    if (sql.includes('INSERT INTO guild_rpg_content_overrides')) return { rows: [{ content_key: 'level_1', active: true }] };
+    if (sql.includes('SELECT content_key,active')) return { rows: [{ content_key: 'level_1', active: true }] };
+    return { rows: [] };
+  }, release() { calls.push({ sql: 'RELEASE' }); } };
+  const db = { connect: async () => client };
+  const discordClient = { guilds: { cache: new Map([[guildId, {}]]) } };
+  const { response } = await runOwnerPost({
+    action: 'rpg-content-save', csrf: 'session', confirm: 'yes', guildId,
+    contentType: 'dungeon', contentKey: 'level_1',
+    name: 'Merkez Mahzen', hp: '180', damage: '9', xp: '50', coins: '60',
+    lootChance: '0.12', loot: 'Mahzen Anahtarı', active: 'yes', reason: 'Denge ayarı'
+  }, db, discordClient);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner/pogaca?guildId=' + guildId + '&notice=content_saved');
+  assert.ok(calls.some(call => call.sql.includes('pg_advisory_xact_lock')));
+  assert.ok(calls.some(call => call.sql.includes('owner_audit_logs')));
+  assert.ok(calls.some(call => call.sql === 'COMMIT'));
+});
+
+test('owner dungeon and boss content disable is reversible and keeps at least one active tier', async () => {
+  const guildId = '1539562273197260860';
+  const calls = [];
+  const client = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    if (sql.includes('INSERT INTO guild_rpg_content_overrides')) return { rows: [{ content_key: 'level_5', active: false }] };
+    if (sql.includes('SELECT content_key,active')) return { rows: [{ content_key: 'level_5', active: false }] };
+    return { rows: [] };
+  }, release() { calls.push({ sql: 'RELEASE' }); } };
+  const db = { connect: async () => client };
+  const discordClient = { guilds: { cache: new Map([[guildId, {}]]) } };
+  const { response } = await runOwnerPost({
+    action: 'rpg-content-disable', csrf: 'session', confirm: 'yes', guildId,
+    contentType: 'dungeon', contentKey: 'level_5', reason: 'Denge için geçici kapatma'
+  }, db, discordClient);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner/pogaca?guildId=' + guildId + '&notice=content_disabled');
+  assert.ok(calls.some(call => call.sql.includes('owner_audit_logs')));
+  assert.ok(calls.some(call => call.sql === 'COMMIT'));
+});
+
+
+test('bot control center separates the main bot from the suspended AI service', () => {
+  const html = renderOwnerControlCenter({
+    apiConfigured: true,
+    services: {
+      pogaca: { key: 'pogaca', apiConfigured: true, name: 'Poğaça Frieren', id: 'srv-main', url: 'https://pogaca-frieren.onrender.com', dashboardUrl: 'https://dashboard.render.com/web/srv-main', plan: 'free', status: 'running', health: 'healthy', suspended: false, suspenders: [], allowedActions: ['restart'] },
+      frieren_ai: { key: 'frieren_ai', apiConfigured: true, name: 'Frieren AI', id: 'srv-ai', url: 'https://frieren-ai-agent.onrender.com', dashboardUrl: 'https://dashboard.render.com/web/srv-ai', plan: 'free', status: 'suspended', health: 'suspended', suspended: true, suspenders: ['user'], allowedActions: ['restart','suspend','resume'] }
+    }
+  }, { maintenance: false }, 'csrf-token',
+  { status: 'available', cpuPercent: 12.3, memoryPercent: 45.6 },
+  { status: 'available', cpuPercent: 5.5, memoryPercent: 30.1 });
+  assert.match(html, /Bot Kontrol Merkezi/);
+  assert.match(html, /CPU 12\.3% · RAM 45\.6%/);
+  assert.match(html, /CPU 5\.5% · RAM 30\.1%/);
+  assert.match(html, /Poğaça Frieren/);
+  assert.match(html, /Frieren AI/);
+  assert.match(html, /Askıya alınmış/);
+  assert.match(html, /Askıya alma kaynağı: user/);
+  assert.match(html, /value="resume"/);
+  assert.match(html, /value="restart"/);
+  assert.doesNotMatch(html.slice(html.indexOf('<h3>Poğaça Frieren</h3>'), html.indexOf('<h3>Frieren AI</h3>')), /value="suspend"/);
+  assert.match(html, /Owner Panel bu servis üzerinde çalışıyor/);
+  assert.match(html, /csrf-token/);
+});
+
+test('bot control center hides lifecycle controls until a server-side Render API key is configured', () => {
+  const html = renderOwnerControlCenter({
+    apiConfigured: false,
+    services: {
+      pogaca: { key: 'pogaca', status: 'running', health: 'healthy', suspended: null },
+      frieren_ai: { key: 'frieren_ai', status: 'unknown', health: 'unavailable', suspended: null }
+    }
+  }, {}, 'csrf-token');
+  assert.match(html, /RENDER_POGACA_API_KEY/);
+  assert.match(html, /RENDER_FRIEREN_AI_API_KEY/);
+  assert.match(html, /RENDER_POGACA_SERVICE_ID/);
+  assert.match(html, /RENDER_FRIEREN_AI_SERVICE_ID/);
+  assert.doesNotMatch(html, /name="action" value="render-service-action"/);
+  assert.doesNotMatch(html, /test-token|server-only-token/);
+});
+
+test('owner Render action route resumes Frieren AI through the server-side API and audits it', async () => {
+  const previousKey = process.env.RENDER_FRIEREN_AI_API_KEY;
+  const previousFetch = globalThis.fetch;
+  process.env.RENDER_FRIEREN_AI_API_KEY = 'server-only-test-token';
+  let request = null;
+  const calls = [];
+  const client = {
+    query: async (sql, params) => {
+      calls.push({ sql, params });
+      if (sql.includes('INSERT INTO owner_audit_logs')) return { rows: [{ id: 77 }] };
+      if (sql.includes('SELECT id FROM owner_audit_logs')) return { rows: [] };
+      return { rows: [] };
+    },
+    release() { calls.push({ sql: 'RELEASE' }); }
+  };
+  const db = { connect: async () => client };
+  globalThis.fetch = async (url, options) => {
+    request = { url: String(url), options };
+    return { ok: true, status: 202, json: async () => ({ message: 'Service resumed' }) };
+  };
+  try {
+    const { response } = await runOwnerPost({
+      action: 'render-service-action', serviceKey: 'frieren_ai', serviceAction: 'resume',
+      csrf: 'session', confirm: 'yes', reason: 'AI testlerini çalıştıracağım'
+    }, db);
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.Location, '/owner?notice=service_action_accepted&serviceAction=resume');
+    assert.ok(request.url.endsWith('/resume'));
+    assert.equal(request.options.headers.Authorization, 'Bearer server-only-test-token');
+    assert.ok(calls.some(call => call.sql.includes('INSERT INTO owner_audit_logs')));
+    assert.ok(calls.some(call => call.sql.includes('UPDATE owner_audit_logs')));
+    assert.ok(calls.some(call => call.sql === 'COMMIT'));
+  } finally {
+    if (previousKey === undefined) delete process.env.RENDER_FRIEREN_AI_API_KEY;
+    else process.env.RENDER_FRIEREN_AI_API_KEY = previousKey;
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test('owner Render action route refuses to suspend the service that hosts its own panel', async () => {
+  const previousKey = process.env.RENDER_API_KEY;
+  const previousFetch = globalThis.fetch;
+  process.env.RENDER_API_KEY = 'server-only-test-token';
+  let fetched = false;
+  globalThis.fetch = async () => { fetched = true; throw new Error('must not fetch'); };
+  try {
+    const db = { connect: async () => { throw new Error('database must not be touched'); } };
+    const { response } = await runOwnerPost({
+      action: 'render-service-action', serviceKey: 'pogaca', serviceAction: 'suspend',
+      csrf: 'session', confirm: 'yes', reason: 'Paneli durdurma testi'
+    }, db);
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.Location, '/owner?notice=invalid');
+    assert.equal(fetched, false);
+  } finally {
+    if (previousKey === undefined) delete process.env.RENDER_API_KEY;
+    else process.env.RENDER_API_KEY = previousKey;
+    globalThis.fetch = previousFetch;
+  }
 });
