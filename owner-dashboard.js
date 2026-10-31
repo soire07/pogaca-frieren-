@@ -133,7 +133,7 @@ export function createOwnerSession(secret, expiresAt) {
 
 export function createPublicSiteSession(secret, user, expiresAt) {
   const id = String(user?.id || '');
-  if (!/^\\d{17,20}$/.test(id)) throw new Error('Invalid Discord user for site session');
+  if (!/^\d{17,20}$/.test(id)) throw new Error('Invalid Discord user for site session');
   const avatarHash = typeof user?.avatar === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(user.avatar) ? user.avatar : null;
   return sign({
     purpose: 'frieren-site-session',
@@ -147,7 +147,7 @@ export function createPublicSiteSession(secret, user, expiresAt) {
 export function readPublicSiteSession(token, secret, nowSeconds = Math.floor(Date.now() / 1000)) {
   if (!secret || secret.length < 32 || !token) return null;
   const session = unsign(token, secret);
-  if (session?.purpose !== 'frieren-site-session' || !/^\\d{17,20}$/.test(String(session.sub || ''))
+  if (session?.purpose !== 'frieren-site-session' || !/^\d{17,20}$/.test(String(session.sub || ''))
       || !Number.isInteger(session.exp) || session.exp <= nowSeconds) return null;
   const avatarHash = typeof session.avatarHash === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(session.avatarHash)
     ? session.avatarHash : null;
