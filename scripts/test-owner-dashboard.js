@@ -213,7 +213,7 @@ function makeOwnerRequest({ action, csrf, id, confirm, cookie = true }) {
   const sessionCsrf = JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString()).csrf;
   const form = new URLSearchParams();
   if (action) form.set('action', action);
-  if (csrf !== undefined) form.set('csrf', csrf);
+  if (csrf !== undefined) form.set('csrf', csrf === 'session' ? sessionCsrf : csrf);
   if (id !== undefined) form.set('id', String(id));
   if (confirm !== undefined) form.set('confirm', confirm);
   const req = new EventEmitter();
@@ -269,8 +269,7 @@ test('owner action endpoint rejects invalid CSRF tokens without changing state',
 test('owner maintenance action uses the atomic database operation and redirects on success', async () => {
   let query = '';
   const db = { query: async sql => { query = sql; return { rows: [], rowCount: 1 }; } };
-  const { response, sessionCsrf } = await runOwnerPost({ action: 'maintenance-on', csrf: undefined, confirm: 'yes' }, db);
-  // Re-submit with the CSRF token extracted from the generated owner session.
+  const { response, sessionCsrf } = await runOwnerPost({ action: 'maintenance-on', csrf: 'session', confirm: 'yes' }, db);
   assert.ok(sessionCsrf.length >= 32);
   assert.equal(response.status, 303);
   assert.equal(response.headers.Location, '/owner?notice=maintenance_on');
