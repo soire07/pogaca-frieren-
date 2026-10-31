@@ -159,7 +159,7 @@ export async function adjustOwnerRpgResources(db, {
   if (!SNOWFLAKE.test(guild) || !SNOWFLAKE.test(user) || !SNOWFLAKE.test(actor) ||
       !Number.isSafeInteger(coins) || !Number.isSafeInteger(xp) ||
       Math.abs(coins) > OWNER_RESOURCE_LIMIT || Math.abs(xp) > OWNER_RESOURCE_LIMIT ||
-      (coins === 0 && xp === 0) || !note) throw new Error('INVALID_RPG_ADJUSTMENT');
+      (coins === 0 && xp === 0) || xp < 0 || !note) throw new Error('INVALID_RPG_ADJUSTMENT');
   const client = await db.connect();
   try {
     await client.query('BEGIN');
