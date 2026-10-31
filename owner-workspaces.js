@@ -54,16 +54,31 @@ export function renderOwnerWorkspace(kind, data = {}) {
   }
   if (kind === 'pogaca') {
     const rpg = data.rpgMetrics || {};
-    return heading('Frieren Poğaça', 'Anime, karakterler, büyüler ve RPG ekonomisi için bot yönetim alanı.')
+    const players = data.players || [];
+    const guildOptions = data.guildOptions || [];
+    const selectedGuild = String(data.guildId || '');
+    const selectedPlayer = data.player || null;
+    return heading('Frieren Poğaça', 'Oyuncu kayıtları, RPG kaynakları ve oyun ekonomisi için denetimli yönetim alanı.')
       + '<div class="grid">'
       + [['Oyuncu', rpg.players], ['Ortalama seviye', rpg.averageLevel], ['Toplam altın', rpg.totalCoins], ['Envanter yığını', rpg.inventoryStacks], ['Eşya adedi', rpg.itemCount], ['Boss zaferi', rpg.bossWins], ['Zindan zaferi', rpg.dungeonWins]]
         .map(([label, value]) => '<div class="stat"><small>' + label + '</small><strong>' + Number(value || 0).toLocaleString('tr-TR') + '</strong></div>').join('')
-      + '</div><div class="columns">'
-      + card('Sunucu ve karşılama', 'Sunucuya özel karşılama mesajlarını yönet.', '/owner#servers')
-      + card('Komut ve davranışlar', 'Komutları ve oyun özelliklerini sunucu bazında açıp kapat.', '/owner#behavior')
-      + card('RPG merkezi', 'Mevcut RPG istatistikleri ve oyun alanı.', '/owner#rpg')
-      + card('Partnerlik', 'Partner sunucularını ve davetlerini yönet.', '/owner#partners')
-      + '</div><p class="notice warn">Oyuncu, eşya, ekonomi, görev ve boss verilerinde doğrudan düzenleme kontrolleri henüz etkin değil. Bu sayfa şu an güvenli, salt okunur özet sunar.</p>';
+      + '</div><section class="panel"><h2>Oyuncu arama</h2><form method="get" action="/owner/pogaca">'
+      + '<label>Discord sunucusu</label><select name="guildId">' + guildOptions.map(guild => '<option value="' + escapeHtml(guild.id) + '"' + (guild.id === selectedGuild ? ' selected' : '') + '>' + escapeHtml(guild.name) + ' · ' + escapeHtml(guild.id) + '</option>').join('') + '</select>'
+      + '<label>Oyuncu adı veya Discord ID</label><input name="search" maxlength="80" value="' + escapeHtml(data.search || '') + '" placeholder="Karakter adı veya kullanıcı ID">'
+      + '<button class="btn secondary">Oyuncuları bul</button></form>'
+      + (players.length ? '<div style="overflow:auto"><table class="data-table"><thead><tr><th>Oyuncu</th><th>Seviye</th><th>Altın</th><th>XP</th><th></th></tr></thead><tbody>' + players.map(player => '<tr><td>' + escapeHtml(player.character_name || player.user_id) + '<div class="small mono">' + escapeHtml(player.user_id) + '</div></td><td>' + Number(player.level || 0) + '</td><td>' + Number(player.coins || 0).toLocaleString('tr-TR') + '</td><td>' + Number(player.xp || 0).toLocaleString('tr-TR') + '</td><td><a href="/owner/pogaca?guildId=' + encodeURIComponent(selectedGuild) + '&userId=' + encodeURIComponent(player.user_id) + '">Detay</a></td></tr>').join('') + '</tbody></table></div>' : '<p class="muted">Oyuncu bulunamadı. Sunucu seçip arama yap.</p>')
+      + '</section>'
+      + (selectedPlayer ? '<section class="panel"><h2>Oyuncu ayrıntısı</h2><p><strong>' + escapeHtml(selectedPlayer.character_name || 'İsimsiz karakter') + '</strong> · ' + escapeHtml(selectedPlayer.user_id) + '</p>'
+        + '<div class="grid"><div class="stat"><small>Sınıf / Seviye</small><strong>' + escapeHtml(selectedPlayer.class_name) + ' / ' + Number(selectedPlayer.level) + '</strong></div><div class="stat"><small>Altın</small><strong>' + Number(selectedPlayer.coins).toLocaleString('tr-TR') + '</strong></div><div class="stat"><small>XP</small><strong>' + Number(selectedPlayer.xp).toLocaleString('tr-TR') + '</strong></div><div class="stat"><small>HP / Mana</small><strong>' + Number(selectedPlayer.hp) + '/' + Number(selectedPlayer.max_hp) + ' · ' + Number(selectedPlayer.mana) + '/' + Number(selectedPlayer.max_mana) + '</strong></div></div>'
+        + '<h3>Envanter (salt okunur)</h3>' + (selectedPlayer.inventory.length ? selectedPlayer.inventory.map(item => '<div class="rowitem">' + escapeHtml(item.item_key) + '<strong style="float:right">×' + Number(item.quantity) + '</strong></div>').join('') : '<p class="muted">Envanter boş.</p>')
+        + '<h3>Kaynak düzeltmesi</h3><p class="muted">Yalnızca altın ve XP değiştirilebilir. Negatif değer azaltır. Her işlem veritabanı transaction ve owner denetim kaydıyla kaydedilir. Değerler sıfırın altına inmez; tek işlem üst sınırı ±1.000.000.</p>'
+        + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="rpg-resource-adjust"><input type="hidden" name="guildId" value="' + escapeHtml(selectedGuild) + '"><input type="hidden" name="userId" value="' + escapeHtml(selectedPlayer.user_id) + '">'
+        + '<label>Altın değişimi (+/-)</label><input type="number" name="coinsDelta" min="-1000000" max="1000000" value="0">'
+        + '<label>XP değişimi (+/-)</label><input type="number" name="xpDelta" min="-1000000" max="1000000" value="0">'
+        + '<label>İşlem gerekçesi (zorunlu)</label><input name="reason" maxlength="200" required placeholder="Örn. hatalı ödül düzeltmesi">'
+        + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu kaynak değişikliğini onaylıyorum</label><button class="btn">Kaynakları güncelle</button></form></section>' : '')
+      + '<p class="notice warn">Oyuncu silme, eşya ekleme/silme, HP, ekipman, görev ve boss ilerlemesi değiştirme kapalıdır. Bu işlemler için ayrı doğrulama ve geri alma mekanizması olmadan üretim verisine dokunulmaz.</p>'
+      + '<div class="columns">' + card('Komut ve davranışlar', 'Komutları sunucu bazında yönet.', '/owner#behavior') + card('Sunucu ayarları', 'Karşılama ve özellik tercihleri.', '/owner#servers') + '</div>';
   }
   if (kind === 'database') {
     const db = data.database;
