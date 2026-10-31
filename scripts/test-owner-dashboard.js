@@ -483,9 +483,9 @@ test('bot control center hides lifecycle controls until a server-side Render API
 });
 
 test('owner Render action route resumes Frieren AI through the server-side API and audits it', async () => {
-  const previousKey = process.env.RENDER_API_KEY;
+  const previousKey = process.env.RENDER_FRIEREN_AI_API_KEY;
   const previousFetch = globalThis.fetch;
-  process.env.RENDER_API_KEY = 'server-only-test-token';
+  process.env.RENDER_FRIEREN_AI_API_KEY = 'server-only-test-token';
   let request = null;
   const calls = [];
   const client = {
@@ -515,8 +515,8 @@ test('owner Render action route resumes Frieren AI through the server-side API a
     assert.ok(calls.some(call => call.sql.includes('UPDATE owner_audit_logs')));
     assert.ok(calls.some(call => call.sql === 'COMMIT'));
   } finally {
-    if (previousKey === undefined) delete process.env.RENDER_API_KEY;
-    else process.env.RENDER_API_KEY = previousKey;
+    if (previousKey === undefined) delete process.env.RENDER_FRIEREN_AI_API_KEY;
+    else process.env.RENDER_FRIEREN_AI_API_KEY = previousKey;
     globalThis.fetch = previousFetch;
   }
 });
