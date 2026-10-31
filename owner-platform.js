@@ -1,4 +1,5 @@
 import { levelForXp } from './utils.js';
+import { equipmentItems, equipmentBonus } from './equipment-data.js';
 const SNOWFLAKE = /^\d{17,20}$/;
 const OWNER = '1553794496234262641';
 
@@ -139,12 +140,13 @@ export async function getOwnerRpgPlayerDetails(db, { guildId, userId } = {}) {
   const guild = String(guildId || '');
   const user = String(userId || '');
   if (!SNOWFLAKE.test(guild) || !SNOWFLAKE.test(user)) throw new Error('INVALID_PLAYER_TARGET');
-  const [player, inventory] = await Promise.all([
+  const [player, inventory, equipment] = await Promise.all([
     db.query('SELECT user_id,character_name,class_name,level,xp,coins,hp,max_hp,mana,max_mana,attack,defense,stat_points FROM users WHERE guild_id=$1 AND user_id=$2', [guild,user]),
-    db.query('SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 ORDER BY item_key LIMIT 50', [guild,user])
+    db.query('SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 ORDER BY item_key LIMIT 50', [guild,user]),
+    db.query('SELECT slot,item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2 ORDER BY slot', [guild,user])
   ]);
   if (!player.rows?.[0]) return null;
-  return { ...player.rows[0], inventory: inventory.rows || [] };
+  return { ...player.rows[0], inventory: inventory.rows || [], equipment: equipment.rows || [] };
 }
 
 export async function adjustOwnerRpgResources(db, {
@@ -185,6 +187,160 @@ export async function adjustOwnerRpgResources(db, {
     );
     await client.query('COMMIT');
     return { before, after };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+
+const OWNER_INVENTORY_LIMIT = 1000;
+function validateOwnerRpgTarget({ guildId, userId, actorId = OWNER, reason }) {
+  const guild = String(guildId || '');
+  const user = String(userId || '');
+  const actor = String(actorId || '');
+  const note = String(reason || '').trim().slice(0, 200);
+  if (!SNOWFLAKE.test(guild) || !SNOWFLAKE.test(user) || !SNOWFLAKE.test(actor) || !note) {
+    throw new Error('INVALID_RPG_INVENTORY_ACTION');
+  }
+  return { guild, user, actor, note };
+}
+
+export async function adjustOwnerRpgInventory(db, {
+  guildId, userId, itemId, quantityDelta, reason, actorId = OWNER
+} = {}) {
+  const target = validateOwnerRpgTarget({ guildId, userId, actorId, reason });
+  const item = equipmentItems.find(entry => entry.id === String(itemId || ''));
+  const delta = Number(quantityDelta);
+  if (!item || !Number.isSafeInteger(delta) || delta === 0 || Math.abs(delta) > OWNER_INVENTORY_LIMIT) {
+    throw new Error('INVALID_RPG_INVENTORY_ACTION');
+  }
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    // Match gameplay's equipment lock order (inventory before users) to avoid deadlocks.
+    const inventory = await client.query(
+      'SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3 FOR UPDATE',
+      [target.guild, target.user, item.name]
+    );
+    const player = await client.query(
+      'SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+      [target.guild, target.user]
+    );
+    if (!player.rowCount) throw new Error('PLAYER_NOT_FOUND');
+    const equipped = await client.query(
+      'SELECT slot,item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+      [target.guild, target.user]
+    );
+    const before = Number(inventory.rows?.[0]?.quantity || 0);
+    const equippedCount = (equipped.rows || []).filter(row => row.item_key === item.name).length;
+    const after = before + delta;
+    if (after < equippedCount) throw new Error('EQUIPPED_ITEM_CANNOT_BE_REMOVED');
+    if (after < 0 || after > OWNER_INVENTORY_LIMIT) throw new Error('RPG_INVENTORY_QUANTITY_OUT_OF_RANGE');
+    if (after === 0) {
+      await client.query(
+        'DELETE FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',
+        [target.guild, target.user, item.name]
+      );
+    } else {
+      await client.query(
+        `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,$4)
+         ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=EXCLUDED.quantity`,
+        [target.guild, target.user, item.name, after]
+      );
+    }
+    await client.query(
+      `INSERT INTO owner_audit_logs(actor_id,action,target,details)
+       VALUES($1,'rpg.inventory.adjust',$2,$3::jsonb)`,
+      [target.actor, target.guild + ':' + target.user,
+        JSON.stringify({ itemId: item.id, itemName: item.name, before, after, delta, reason: target.note })]
+    );
+    await client.query('COMMIT');
+    return { itemId: item.id, itemName: item.name, before, quantity: after };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function setOwnerRpgEquipment(db, {
+  guildId, userId, slot, itemId = null, reason, actorId = OWNER
+} = {}) {
+  const target = validateOwnerRpgTarget({ guildId, userId, actorId, reason });
+  const selectedSlot = String(slot || '');
+  const validSlots = ['weapon', 'armor', 'ring1', 'ring2'];
+  const item = itemId ? equipmentItems.find(entry => entry.id === String(itemId)) : null;
+  if (!validSlots.includes(selectedSlot) || (itemId && !item) ||
+      (item && item.slot !== (selectedSlot.startsWith('ring') ? 'ring' : selectedSlot))) {
+    throw new Error('INVALID_EQUIPMENT_SLOT');
+  }
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    // Lock the candidate inventory stack before the player row, matching /ekipman.
+    const owned = item ? await client.query(
+      'SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3 FOR UPDATE',
+      [target.guild, target.user, item.name]
+    ) : { rows: [], rowCount: 0 };
+    const playerResult = await client.query(
+      'SELECT level,hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+      [target.guild, target.user]
+    );
+    const player = playerResult.rows?.[0];
+    if (!player) throw new Error('PLAYER_NOT_FOUND');
+    if (item && Number(player.level) < item.levelReq) throw new Error('EQUIPMENT_LEVEL_REQUIREMENT_NOT_MET');
+    const currentSlot = await client.query(
+      'SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2 AND slot=$3 FOR UPDATE',
+      [target.guild, target.user, selectedSlot]
+    );
+    const previousItem = currentSlot.rows?.[0]?.item_key || null;
+    if (item) {
+      const sameItemEquipped = await client.query(
+        'SELECT COUNT(*)::int AS count FROM user_equipment WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',
+        [target.guild, target.user, item.name]
+      );
+      const alreadyInSlot = previousItem === item.name;
+      if (!owned.rowCount || Number(owned.rows[0].quantity) < Number(sameItemEquipped.rows?.[0]?.count || 0) + (alreadyInSlot ? 0 : 1)) {
+        throw new Error('EQUIPMENT_NOT_OWNED');
+      }
+      await client.query(
+        `INSERT INTO user_equipment(guild_id,user_id,slot,item_key)
+         VALUES($1,$2,$3,$4)
+         ON CONFLICT(guild_id,user_id,slot) DO UPDATE SET item_key=EXCLUDED.item_key,equipped_at=NOW()`,
+        [target.guild, target.user, selectedSlot, item.name]
+      );
+    } else {
+      await client.query(
+        'DELETE FROM user_equipment WHERE guild_id=$1 AND user_id=$2 AND slot=$3',
+        [target.guild, target.user, selectedSlot]
+      );
+    }
+    const allEquipped = await client.query(
+      'SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+      [target.guild, target.user]
+    );
+    const bonus = equipmentBonus((allEquipped.rows || [])
+      .map(row => equipmentItems.find(entry => entry.name === row.item_key)).filter(Boolean));
+    const effectiveMaxHp = Math.min(2000, Number(player.max_hp) + bonus.hp);
+    const effectiveMaxMana = Math.min(2000, Number(player.max_mana) + bonus.mana);
+    await client.query(
+      'UPDATE users SET hp=LEAST(hp,$3),mana=LEAST(mana,$4) WHERE guild_id=$1 AND user_id=$2',
+      [target.guild, target.user, effectiveMaxHp, effectiveMaxMana]
+    );
+    await client.query(
+      `INSERT INTO owner_audit_logs(actor_id,action,target,details)
+       VALUES($1,'rpg.equipment.set',$2,$3::jsonb)`,
+      [target.actor, target.guild + ':' + target.user,
+        JSON.stringify({ slot: selectedSlot, before: previousItem, after: item?.name || null,
+          effectiveMaxHp, effectiveMaxMana, reason: target.note })]
+    );
+    await client.query('COMMIT');
+    return { slot: selectedSlot, before: previousItem, itemName: item?.name || null,
+      effectiveMaxHp, effectiveMaxMana };
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     throw error;

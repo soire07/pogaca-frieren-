@@ -29,7 +29,10 @@ test('Poğaça workspace exposes scoped player controls while keeping unsupporte
   const html = renderOwnerWorkspace('pogaca', { rpgMetrics: { players: 3, totalCoins: 45 }, guildId: '1539562273197260860', guildOptions: [{ id: '1539562273197260860', name: 'Main' }], player: { user_id: '123456789012345678', character_name: 'Frieren', class_name: 'Mage', level: 2, xp: 300, coins: 45, hp: 80, max_hp: 100, mana: 60, max_mana: 100, inventory: [] } });
   assert.match(html, /Oyuncu arama/);
   assert.match(html, /rpg-resource-adjust/);
-  assert.match(html, /Oyuncu silme, eşya ekleme\/silme/);
+  assert.match(html, /Oyuncu silme, HP\/Mana/);
+  assert.match(html, /rpg-inventory-adjust/);
+  assert.match(html, /rpg-equipment-set/);
+  assert.match(html, /Kuşanılan ekipman/);
   assert.match(html, /Komut ve davranışlar/);
 });
 
