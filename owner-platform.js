@@ -1,3 +1,4 @@
+import { levelForXp } from './utils.js';
 const SNOWFLAKE = /^\d{17,20}$/;
 const OWNER = '1553794496234262641';
 
@@ -163,17 +164,20 @@ export async function adjustOwnerRpgResources(db, {
   try {
     await client.query('BEGIN');
     const locked = await client.query(
-      'SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+      'SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
       [guild,user]
     );
     if (!locked.rows?.[0]) throw new Error('PLAYER_NOT_FOUND');
-    const before = { coins: Number(locked.rows[0].coins), xp: Number(locked.rows[0].xp) };
+    const before = { coins: Number(locked.rows[0].coins), xp: Number(locked.rows[0].xp), level: Number(locked.rows[0].level) };
+    const nextXp = Math.max(0, before.xp + xp);
+    const nextLevel = levelForXp(nextXp);
+    const gainedStatPoints = Math.max(0, nextLevel - before.level);
     const updated = await client.query(
-      `UPDATE users SET coins=GREATEST(0,coins+$3),xp=GREATEST(0,xp+$4)
-       WHERE guild_id=$1 AND user_id=$2 RETURNING coins,xp`,
-      [guild,user,coins,xp]
+      `UPDATE users SET coins=GREATEST(0,coins+$3),xp=$4,level=$5,stat_points=stat_points+$6
+       WHERE guild_id=$1 AND user_id=$2 RETURNING coins,xp,level`,
+      [guild,user,coins,nextXp,nextLevel,gainedStatPoints]
     );
-    const after = { coins: Number(updated.rows[0].coins), xp: Number(updated.rows[0].xp) };
+    const after = { coins: Number(updated.rows[0].coins), xp: Number(updated.rows[0].xp), level: Number(updated.rows[0].level) };
     await client.query(
       `INSERT INTO owner_audit_logs(actor_id,action,target,details)
        VALUES($1,'rpg.resources.adjust',$2,$3::jsonb)`,
