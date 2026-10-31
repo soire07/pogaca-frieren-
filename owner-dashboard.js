@@ -11,6 +11,7 @@ import { getOwnerDatabaseDiagnostics, getOwnerDatabaseTablePreview, renderOwnerW
 import { getFrierenChatSettings, updateFrierenChatSettings } from './frieren-chat-settings.js';
 import { listOwnerDailyQuests, saveOwnerDailyQuest, setOwnerDailyQuestActive } from './owner-rpg-quests.js';
 import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } from './owner-rpg-content.js';
+import { getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -22,6 +23,7 @@ const MAX_BODY_BYTES = 8192;
 export const OWNER_PANEL_SECTIONS = Object.freeze([
   { id: 'overview', label: 'Genel Bakış', command: '/owner' },
   { id: 'system', label: 'Sistem Durumu', command: '/owner-bilgi' },
+  { id: 'bot-control', label: 'Bot Kontrol Merkezi', command: null },
   { id: 'memories', label: 'Hafıza Yönetimi', command: '/owner-bellek' },
   { id: 'approvals', label: 'Kod Talepleri', command: '/owner-onay' },
   { id: 'announcements', label: 'Duyuru Merkezi', command: '/owner-duyuru' },
@@ -42,6 +44,7 @@ export function getDiscordOAuthFailureDiagnostic(status, payload = {}) {
 export function renderOwnerNavigation() {
   const groups = [
     { label: 'GENEL', ids: ['overview', 'system'] },
+    { label: 'BOT KONTROL', ids: ['bot-control'] },
     { label: 'Frieren Poğaça', ids: ['servers', 'rpg', 'partners', 'behavior'] },
     { label: 'Frieren AI', ids: ['memories', 'approvals'] },
     { label: 'İŞLEMLER', ids: ['announcements', 'maintenance'] }
@@ -414,13 +417,15 @@ function renderRenderMetrics(metrics, overview) {
     + '<div class="notice warn">' + escapeHtml(statusText) + '</div><p class="small">Yerel Node.js bellek ölçümleri Render servisinin toplam RAM kullanımının yerine geçmez. CPU yüzdesi bu durumda gösterilmez.</p></section>';
 }
 
-export function renderOwnerBotCards(overview, aiReadiness) {
+export function renderOwnerBotCards(overview, aiReadiness, renderServices = null) {
   const aiReady = aiReadiness?.status === 'ok' && aiReadiness?.discordReady === true
     && aiReadiness?.memoryDatabaseReady === true && aiReadiness?.modelConfigured === true;
-  const aiState = aiReady ? 'Çevrimiçi' : 'Kontrol gerekli';
+  const aiService = renderServices?.services?.frieren_ai;
+  const aiState = aiService?.suspended ? 'Askıda' : aiReady ? 'Çevrimiçi'
+    : aiService?.status === 'running' ? 'Servis açık · kontrol gerekli' : 'Kontrol gerekli';
   return '<section class="columns bot-cards" aria-label="Bot çalışma alanları">'
-    + '<article class="panel bot-card ai"><div class="bot-symbol">✧</div><div class="bot-card-content"><span class="tag">AI · TEST & HAFIZA</span><h2>Frieren AI</h2><p class="muted">Kod denetimi, senaryo testleri ve kalıcı hafıza için ayrı asistan.</p><strong class="' + (aiReady ? 'good' : 'warn') + '">' + aiState + '</strong><div class="bot-card-actions"><a class="btn secondary" href="#memories">AI hafızası</a><a class="btn secondary" href="#approvals">Teknik talepler</a></div></div></article>'
-    + '<article class="panel bot-card pogaca"><div class="bot-symbol">✿</div><div class="bot-card-content"><span class="tag">EĞLENCE · RPG</span><h2>Frieren Poğaça</h2><p class="muted">Anime, karakterler, büyüler, görevler, zindanlar ve ekonomi.</p><strong class="' + (overview.ready ? 'good' : 'bad') + '">' + (overview.ready ? 'Çevrimiçi' : 'Çevrimdışı') + '</strong><div class="bot-card-actions"><a class="btn secondary" href="#rpg">RPG merkezi</a><a class="btn secondary" href="#behavior">Komut ve davranışlar</a></div></div></article>'
+    + '<article class="panel bot-card ai"><div class="bot-symbol">✧</div><div class="bot-card-content"><span class="tag">AI · TEST & HAFIZA</span><h2>Frieren AI</h2><p class="muted">Kod denetimi, senaryo testleri ve kalıcı hafıza için ayrı asistan.</p><strong class="' + (aiReady ? 'good' : 'warn') + '">' + aiState + '</strong><div class="bot-card-actions"><a class="btn secondary" href="#memories">AI hafızası</a><a class="btn secondary" href="#approvals">Teknik talepler</a><a class="btn secondary" href="#bot-control">Servis kontrolü</a></div></div></article>'
+    + '<article class="panel bot-card pogaca"><div class="bot-symbol">✿</div><div class="bot-card-content"><span class="tag">EĞLENCE · RPG</span><h2>Frieren Poğaça</h2><p class="muted">Anime, karakterler, büyüler, görevler, zindanlar ve ekonomi.</p><strong class="' + (overview.ready ? 'good' : 'bad') + '">' + (overview.ready ? 'Çevrimiçi' : 'Çevrimdışı') + '</strong><div class="bot-card-actions"><a class="btn secondary" href="#rpg">RPG merkezi</a><a class="btn secondary" href="#behavior">Komut ve davranışlar</a><a class="btn secondary" href="#bot-control">Servis kontrolü</a></div></div></article>'
     + '</section>';
 }
 
@@ -435,7 +440,7 @@ export async function getFrierenAIReadiness({
   } catch { return null; }
 }
 
-function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics, aiReadiness, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild }) {
+function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics, aiReadiness, renderServices, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild }) {
   const featureLabels = { commands: 'Tüm komutlar', rpg: 'RPG sistemi', character: 'Karakter sistemi', magic: 'Büyü ve yetenekler', equipment: 'Ekipman ve eşyalar', economy: 'Ekonomi ve mağaza', quests: 'Görevler', dungeons: 'Zindanlar', bosses: 'Boss sistemi', trading: 'Takas', messageXp: 'Mesaj XP kazanımı', aiChat: 'Frieren sohbet etkileşimi' };
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
@@ -485,6 +490,10 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
   const noticeText = ({
     maintenance_on: 'Bakım modu açıldı.',
     maintenance_off: 'Bakım modu kapatıldı.',
+    service_action_accepted: 'Render API işlemi kabul etti. Servis durumunu yenileyerek sonucu doğrula.',
+    service_cooldown: 'Bu servis için yakın zamanda bir işlem yapıldı. Güvenlik bekleme süresi dolunca tekrar dene.',
+    render_api_missing: 'Render API anahtarı tanımlı değil. RENDER_API_KEY değerini yalnızca Render ortam değişkenlerinde sakla.',
+    render_api_auth_error: 'Render API kimlik doğrulaması başarısız. API anahtarını Render hesabında yenile ve sunucu ortam değişkenini güncelle.',
     approval_approved: 'Talep onaylandı. Kod otomatik çalıştırılmadı.',
     approval_rejected: 'Talep reddedildi.',
     memory_deleted: 'Hafıza kaydı silindi.',
@@ -518,6 +527,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
         <div class="stat"><small>Çalışma ortamı</small><strong>${escapeHtml(process.version)}</strong></div>
       </div>
       ${renderOwnerBotCards(overview, aiReadiness)}
+      ${renderOwnerControlCenter(renderServices, overview, session.csrf)}
       <section class="panel" id="servers"><h2>Sunucu ve karşılama yönetimi</h2><p class="muted">Bağlı sunucuların karşılama ayarlarını ayrı ayrı yönet. Kaydetmeden önce bot izinleri doğrulanır.</p><div class="columns">${serverManagementHtml}</div></section>
       <section class="panel" id="partners"><h2>Partnerlik yönetimi</h2><p class="muted">Partner sunucularını kaydet, davet bağlantılarını güncelle ve kayıtları denetim altında tut.</p><form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="partner-save"><label>Partner sunucu adı</label><input name="partnerName" maxlength="80" required><label>Discord sunucu ID</label><input name="partnerGuildId" inputmode="numeric" pattern="[0-9]{17,20}" required><label>Discord davet bağlantısı</label><input name="partnerInvite" type="url" placeholder="https://discord.gg/..." required><button class="btn">Partner ekle / güncelle</button></form>${partnerHtml}</section>
       <section class="panel" id="behavior"><h2>Bot davranışları ve komutlar</h2><p class="muted">Ayarlar seçilen sunucuyla sınırlıdır. Komut kapatma gerçek etkileşim yönlendirmesinde uygulanır.</p><div class="columns">${featureManagementHtml}</div></section>
