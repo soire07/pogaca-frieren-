@@ -22,17 +22,35 @@ const isolatedTestPool = new Pool({
   idleTimeoutMillis: 10_000,
   connectionTimeoutMillis: 10_000
 });
-// Neon pooled endpoints reject the PostgreSQL startup `options` parameter.
-// Set the isolated schema on each test-pool connection after it is established.
-isolatedTestPool.on('connect', client => {
-  client.query('SET search_path TO frieren_test').catch(error => {
-    console.error('Failed to configure isolated test schema:', error.message);
-  });
-});
+
+async function getIsolatedClient() {
+  const client = await isolatedTestPool.connect();
+  try {
+    // Set schema on this exact client before any test query can run.
+    await client.query('SET search_path TO frieren_test');
+    return client;
+  } catch (error) {
+    client.release();
+    throw error;
+  }
+}
+
 export const pool = new Proxy(productionPool, {
   get(target, property) {
-    if (property === 'query') return (...args) => (testContext.getStore() ? isolatedTestPool : target).query(...args);
-    if (property === 'connect') return (...args) => (testContext.getStore() ? isolatedTestPool : target).connect(...args);
+    if (property === 'query') {
+      return (...args) => testContext.getStore()
+        ? (async () => {
+            const client = await getIsolatedClient();
+            try { return await client.query(...args); }
+            finally { client.release(); }
+          })()
+        : target.query(...args);
+    }
+    if (property === 'connect') {
+      return (...args) => testContext.getStore()
+        ? getIsolatedClient()
+        : target.connect(...args);
+    }
     return Reflect.get(target, property, target);
   }
 });
