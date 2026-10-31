@@ -92,6 +92,18 @@ export async function handlePublicSiteRequest(req, res, { client } = {}) {
     return true;
   }
   if (url.pathname === '/owner' || url.pathname.startsWith('/owner/')) return false;
+  if (assets.has(url.pathname) && ['site-avatar.svg', 'site-banner.svg'].includes(assets.get(url.pathname))) {
+    try {
+      const file = assets.get(url.pathname);
+      const data = await readFile(new URL('./' + file, import.meta.url));
+      res.writeHead(200, { 'Content-Type': 'image/svg+xml; charset=utf-8', 'Cache-Control': 'public,max-age=86400', 'X-Content-Type-Options': 'nosniff' });
+      res.end(data);
+    } catch {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Asset bulunamadı.');
+    }
+    return true;
+  }
   if (url.pathname === '/login' || url.pathname === '/register') {
     const user = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
     if (user) {
