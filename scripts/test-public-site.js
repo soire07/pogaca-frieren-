@@ -128,3 +128,15 @@ test('chibi speech bubble is nested inside the draggable companion wrapper', asy
   assert.ok(wrapperIndex >= 0 && hintIndex > wrapperIndex && chibiIndex > hintIndex);
   assert.match(response.body, /pointermove/);
 });
+
+test('registration and login error pages show centered recovery messaging and a home link', async () => {
+  for (const path of ['/register?status=oauth_error', '/login?status=oauth_error']) {
+    const response = res();
+    await handlePublicSiteRequest({ method: 'GET', url: path, headers: {} }, response);
+    assert.equal(response.status, 200);
+    assert.match(response.body, /Discord doğrulaması tamamlanamadı/);
+    assert.match(response.body, /class="auth-back" href="\\/">← Ana sayfaya dön/);
+    assert.match(response.body, /place-items:center/);
+    assert.match(response.body, /text-align:center/);
+  }
+});
