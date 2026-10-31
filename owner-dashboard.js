@@ -411,6 +411,45 @@ function page(title, content) {
   .notice{background:linear-gradient(100deg,#392c50,#292440);border-color:#9d82b8}
   .stat{background:linear-gradient(145deg,rgba(57,44,79,.85),rgba(30,27,53,.96));border-color:rgba(221,197,255,.23)}
   @media(max-width:760px){.nav{background:rgba(27,22,48,.98)}}
+
+  /* Responsive layout safeguards */
+  main,.panel,.hero,.columns,.grid,.bot-card,.bot-card-content{min-width:0}
+  .data-table{display:block;width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+  .data-table th,.data-table td{white-space:normal}
+  .actions .btn,button.btn{min-height:40px}
+  a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #ead8ff;outline-offset:3px}
+  .bot-card-actions .btn{white-space:normal;line-height:1.35}
+  .metric-bars{min-width:0}
+  @media(max-width:1100px){
+    .columns,.metric-charts{min-width:0}
+    .bot-card{min-width:0}
+  }
+  @media(max-width:760px){
+    body{padding:8px; padding-bottom:max(8px,env(safe-area-inset-bottom))}
+    .nav{scroll-snap-type:x proximity;overscroll-behavior-x:contain}
+    .nav-group{scroll-snap-align:start}
+    .top{gap:8px}
+    .top>*{min-width:0}
+    .hero{background-size:auto,auto 105%,cover;background-position:center,right bottom}
+    .hero h1{overflow-wrap:anywhere}
+    .grid,.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .columns,.metric-charts{grid-template-columns:minmax(0,1fr)}
+    .feature-setting{grid-template-columns:minmax(0,1fr) auto}
+    .data-table{font-size:11px}
+    .data-table th,.data-table td{padding:8px}
+    .btn{max-width:100%;white-space:normal;line-height:1.35}
+  }
+  @media(max-width:390px){
+    .grid,.metric-grid{grid-template-columns:minmax(0,1fr)}
+    .hero,.panel{padding:13px}
+    .nav a{min-width:max-content}
+    .bot-card{gap:10px}
+    .bot-symbol{flex-basis:42px;width:42px;height:42px;font-size:22px}
+    .bot-card h2{font-size:19px}
+    .feature-setting{grid-template-columns:minmax(0,1fr)}
+    .feature-setting .btn{justify-self:start}
+  }
+
 </style></head><body><main>${content}</main></body></html>`;
 }
 
