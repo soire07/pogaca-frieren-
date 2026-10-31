@@ -73,9 +73,12 @@ export function renderOwnerWorkspace(kind, data = {}) {
       + '<div class="grid"><div class="stat"><small>Bağlantı</small><strong class="good">Bağlı</strong></div>'
       + '<div class="stat"><small>Veritabanı</small><strong>' + escapeHtml(db.databaseName) + '</strong></div>'
       + '<div class="stat"><small>Tablo sayısı</small><strong>' + db.tables.length + '</strong></div></div>'
-      + '<section class="panel"><h2>Tablo kayıt sayıları</h2><p class="muted">Yalnızca public şemasındaki tablo adları ve kayıt sayıları okunur. Veri içeriği değiştirilmez.</p>'
-      + (db.tables.length ? '<div class="rowitem"><strong>Tablo</strong><strong style="float:right">Kayıt</strong></div>' + db.tables.map(row => '<div class="rowitem"><span>' + escapeHtml(row.name) + '</span><strong style="float:right">' + Number(row.rows).toLocaleString('tr-TR') + '</strong></div>').join('') : '<p class="muted">Tablo bulunamadı.</p>')
-      + '</section><p class="small">Son kontrol: ' + escapeHtml(db.checkedAt ? new Date(db.checkedAt).toLocaleString('tr-TR') : 'bilinmiyor') + '</p>';
+      + '<section class="panel"><h2>Tablolar</h2><p class="muted">Kayıtlar salt okunur görüntülenir. Parola, token, anahtar, e-posta, mesaj ve hafıza içeriği gibi hassas alanlar listelenmez.</p>'
+      + (db.tables.length ? '<div class="rowitem"><strong>Tablo</strong><strong style="float:right">Kayıt</strong></div>' + db.tables.map(row => '<div class="rowitem"><a href="/owner/database?table=' + encodeURIComponent(row.name) + '">' + escapeHtml(row.name) + '</a><strong style="float:right">' + Number(row.rows).toLocaleString('tr-TR') + '</strong></div>').join('') : '<p class="muted">Tablo bulunamadı.</p>')
+      + '</section>'
+      + (data.preview ? '<section class="panel"><h2>' + escapeHtml(data.preview.table) + ' · kayıt önizleme</h2><form method="get" action="/owner/database"><input type="hidden" name="table" value="' + escapeHtml(data.preview.table) + '"><label>Güvenli alanlarda ara</label><input name="search" maxlength="80" value="' + escapeHtml(data.preview.search) + '" placeholder="Arama terimi"><button class="btn secondary">Ara</button></form>'
+        + (data.preview.rows.length && data.preview.columns.length ? '<div style="overflow:auto"><table class="data-table"><thead><tr>' + data.preview.columns.map(name => '<th>' + escapeHtml(name) + '</th>').join('') + '</tr></thead><tbody>' + data.preview.rows.map(row => '<tr>' + data.preview.columns.map(name => '<td>' + escapeHtml(row[name]) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>' : '<p class="muted">Gösterilecek kayıt bulunamadı veya bu tabloda güvenli alan yok.</p>') + '</section>' : '')
+      + '<p class="small">Son kontrol: ' + escapeHtml(db.checkedAt ? new Date(db.checkedAt).toLocaleString('tr-TR') : 'bilinmiyor') + '</p>';
   }
   if (kind === 'settings') {
     const checks = data.settings || [];
@@ -85,4 +88,46 @@ export function renderOwnerWorkspace(kind, data = {}) {
       ).join('') + '</section><p class="notice">Güvenlik gereği token, API anahtarı, parola veya bağlantı dizesi bu ekranda görüntülenmez.</p>';
   }
   return '<section class="hero"><h1>Owner çalışma alanı</h1></section>';
+}
+
+
+const PRIVATE_COLUMN = /(password|secret|token|credential|api.?key|access.?key|refresh|email|phone|address|ip.?address|memory.?value|message.?content|content)/i;
+const quoteIdentifier = value => '"' + String(value).replace(/"/g, '""') + '"';
+
+export async function getOwnerDatabaseTablePreview(db, { table, search = '' } = {}) {
+  const tableName = String(table || '').trim();
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tableName)) throw new Error('INVALID_DATABASE_TABLE');
+  const allowed = await db.query(
+    "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' AND table_name=$1 LIMIT 1",
+    [tableName]
+  );
+  if (!allowed.rows?.length) throw new Error('DATABASE_TABLE_NOT_FOUND');
+  const metadata = await db.query(
+    "SELECT column_name,data_type FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 ORDER BY ordinal_position",
+    [tableName]
+  );
+  const columns = (metadata.rows || []).filter(row =>
+    /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(String(row.column_name || '')) && !PRIVATE_COLUMN.test(row.column_name)
+  ).slice(0, 10);
+  if (!columns.length) return { table: tableName, columns: [], rows: [], search: '' };
+  const term = String(search || '').trim().slice(0, 80);
+  const searchable = columns.filter(row => /text|character|uuid|integer|bigint|numeric|boolean|date|timestamp/i.test(row.data_type));
+  const where = term && searchable.length
+    ? ' WHERE ' + searchable.map(row => quoteIdentifier(row.column_name) + "::text ILIKE $1").join(' OR ')
+    : '';
+  const params = term && searchable.length ? ['%' + term.replace(/[\\%_]/g, '\\$&') + '%', 25] : [25];
+  const result = await db.query(
+    'SELECT ' + columns.map(row => quoteIdentifier(row.column_name)).join(',') +
+    ' FROM public.' + quoteIdentifier(tableName) + where + ' LIMIT $' + params.length,
+    params
+  );
+  return {
+    table: tableName,
+    columns: columns.map(row => row.column_name),
+    rows: (result.rows || []).map(row => Object.fromEntries(columns.map(column => [
+      column.column_name,
+      row[column.column_name] == null ? '' : String(row[column.column_name]).slice(0, 240)
+    ]))),
+    search: term
+  };
 }
