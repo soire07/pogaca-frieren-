@@ -475,6 +475,8 @@ test('bot control center hides lifecycle controls until a server-side Render API
     }
   }, {}, 'csrf-token');
   assert.match(html, /RENDER_API_KEY/);
+  assert.match(html, /RENDER_POGACA_SERVICE_ID/);
+  assert.match(html, /RENDER_FRIEREN_AI_SERVICE_ID/);
   assert.doesNotMatch(html, /name="action" value="render-service-action"/);
   assert.doesNotMatch(html, /test-token|server-only-token/);
 });
