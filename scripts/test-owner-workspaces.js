@@ -25,10 +25,11 @@ test('AI workspace does not claim readiness when a dependency is missing', () =>
   assert.match(html, /1564945192803639356/);
 });
 
-test('Poğaça workspace clearly labels unfinished RPG controls as read-only', () => {
+test('Poğaça workspace exposes scoped player controls while keeping unsupported edits disabled', () => {
   const html = renderOwnerWorkspace('pogaca', { rpgMetrics: { players: 3, totalCoins: 45 } });
-  assert.match(html, /Oyuncu, eşya, ekonomi/);
-  assert.match(html, /salt okunur/);
+  assert.match(html, /Oyuncu arama/);
+  assert.match(html, /rpg-resource-adjust/);
+  assert.match(html, /Oyuncu silme, eşya ekleme\/silme/);
   assert.match(html, /Komut ve davranışlar/);
 });
 
