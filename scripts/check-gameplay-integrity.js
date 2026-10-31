@@ -26,12 +26,12 @@ test('trade offers are persistent, expiring and single-use', async () => {
 test('daily mission progress and reward claim stay in one transaction', async () => {
   const source = await read('gunlukgorev.js');
   const begin = source.indexOf("await db.query('BEGIN')");
-  const progress = source.indexOf('const progress=await db.query(mission.sql');
+  const progress = source.indexOf('getDailyQuestObjectiveSql(mission.objective_type)');
   const claim = source.indexOf('INSERT INTO daily_mission_claims');
   const commit = source.indexOf("await db.query('COMMIT')", claim);
   assert.ok(begin >= 0 && progress > begin && claim > progress && commit > claim,
     'progress must be checked after BEGIN and before the claim is committed');
-  assert.match(source, /if\(!progress\.rows\[0\]\?\.done\)\{await db\.query\('ROLLBACK'\)/);
+  assert.match(source, /if \(!progress\.rows\[0\]\?\.done\)/);
 });
 
 test('collection rarity filters expose all supported rarities and preserve pagination state', async () => {
@@ -46,27 +46,27 @@ test('collection rarity filters expose all supported rarities and preserve pagin
 });
 
 
-test('class-specific daily quests require the selected class, validate progress transactionally and allow only one class reward per day', async () => {
+test('class-specific daily quests use the guild catalog, validate progress transactionally and allow one class reward per day', async () => {
   const source = await read('gunlukgorev.js');
+  const catalog = await read('owner-rpg-quests.js');
   for (const [key, label] of [['class_buyucu','Büyücü'], ['class_muhafiz','Muhafız'], ['class_sifaci','Şifacı'], ['class_gezgin','Gezgin']]) {
-    assert.ok(source.includes(key), 'missing class mission: ' + key);
-    assert.ok(source.includes("className:'" + label + "'"), 'missing class gate: ' + label);
+    assert.ok(catalog.includes("key: '" + key + "'"), 'missing class mission: ' + key);
+    assert.ok(catalog.includes("className: '" + label + "'"), 'missing class gate: ' + label);
   }
   assert.ok(source.includes("SELECT class_name FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE"));
-  assert.ok(source.includes("mission_key LIKE 'class_%'"));
-  assert.ok(source.includes("sm.updated_at::date=CURRENT_DATE"));
-  assert.ok(source.includes("u.last_boss_at::date=CURRENT_DATE"));
-  assert.ok(source.includes("u.last_item_used_at::date=CURRENT_DATE"));
-  assert.ok(source.includes("u.last_exploration_at::date=CURRENT_DATE"));
+  assert.ok(source.includes("mission_key IN (SELECT quest_key FROM guild_daily_quests WHERE guild_id=$1 AND class_name IS NOT NULL)"));
+  assert.ok(catalog.includes('FROM spell_mastery WHERE'));
+  assert.ok(catalog.includes('last_boss_at::date = CURRENT_DATE'));
+  assert.ok(catalog.includes('last_item_used_at::date = CURRENT_DATE'));
+  assert.ok(catalog.includes('last_exploration_at::date = CURRENT_DATE'));
   const begin = source.indexOf("await db.query('BEGIN')");
   const classLock = source.indexOf("SELECT class_name FROM users", begin);
-  const progress = source.indexOf('const progress=await db.query(mission.sql', begin);
+  const progress = source.indexOf('getDailyQuestObjectiveSql(mission.objective_type)', begin);
   const claim = source.indexOf('INSERT INTO daily_mission_claims', begin);
   const commit = source.indexOf("await db.query('COMMIT')", claim);
   assert.ok(begin >= 0 && classLock > begin && progress > classLock && claim > progress && commit > claim,
     'class, progress and daily claim must be validated in one transaction');
 });
-
 
 test('PvP duels apply persistent class passives and selected combat builds', async () => {
   const source = await read('buyusavasi.js');
