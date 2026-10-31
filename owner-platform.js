@@ -220,15 +220,16 @@ export async function adjustOwnerRpgInventory(db, {
   const client = await db.connect();
   try {
     await client.query('BEGIN');
+    // Match gameplay's equipment lock order (inventory before users) to avoid deadlocks.
+    const inventory = await client.query(
+      'SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3 FOR UPDATE',
+      [target.guild, target.user, item.name]
+    );
     const player = await client.query(
       'SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
       [target.guild, target.user]
     );
     if (!player.rowCount) throw new Error('PLAYER_NOT_FOUND');
-    const inventory = await client.query(
-      'SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3 FOR UPDATE',
-      [target.guild, target.user, item.name]
-    );
     const equipped = await client.query(
       'SELECT slot,item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
       [target.guild, target.user]
@@ -280,6 +281,11 @@ export async function setOwnerRpgEquipment(db, {
   const client = await db.connect();
   try {
     await client.query('BEGIN');
+    // Lock the candidate inventory stack before the player row, matching /ekipman.
+    const owned = item ? await client.query(
+      'SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3 FOR UPDATE',
+      [target.guild, target.user, item.name]
+    ) : { rows: [], rowCount: 0 };
     const playerResult = await client.query(
       'SELECT level,hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
       [target.guild, target.user]
@@ -293,10 +299,6 @@ export async function setOwnerRpgEquipment(db, {
     );
     const previousItem = currentSlot.rows?.[0]?.item_key || null;
     if (item) {
-      const owned = await client.query(
-        'SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3 FOR UPDATE',
-        [target.guild, target.user, item.name]
-      );
       const sameItemEquipped = await client.query(
         'SELECT COUNT(*)::int AS count FROM user_equipment WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',
         [target.guild, target.user, item.name]
