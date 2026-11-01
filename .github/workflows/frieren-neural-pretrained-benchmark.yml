@@ -1,6 +1,12 @@
 name: Frieren Neural — Pretrained CPU Benchmark
 
 on:
+  push:
+    branches:
+      - frieren-neural-foundation
+    paths:
+      - "frieren-neural/benchmarks/**"
+      - ".github/workflows/frieren-neural-pretrained-benchmark.yml"
   workflow_dispatch:
 
 permissions:
