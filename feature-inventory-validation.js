@@ -3,10 +3,12 @@ export function validateFeatureInventory(inventory) {
   if (!inventory || typeof inventory !== 'object' || Array.isArray(inventory)) {
     return ['Envanter bir JSON nesnesi olmalı.'];
   }
+  const features = Array.isArray(inventory.features) ? inventory.features : [];
+  const statuses = Array.isArray(inventory.statuses) ? inventory.statuses : [];
   if (!Array.isArray(inventory.features)) errors.push('features bir dizi olmalı.');
-  if (!Array.isArray(inventory.statuses) || inventory.statuses.length === 0) errors.push('statuses boş olmayan bir dizi olmalı.');
-  if (!Number.isInteger(inventory.count) || inventory.count !== (inventory.features?.length ?? 0)) {
-    errors.push(`count alanı (${inventory.count}) kayıt sayısıyla (${inventory.features?.length ?? 0}) eşleşmeli.`);
+  if (!statuses.length) errors.push('statuses boş olmayan bir dizi olmalı.');
+  if (!Number.isInteger(inventory.count) || inventory.count !== features.length) {
+    errors.push(`count alanı (${inventory.count}) kayıt sayısıyla (${features.length}) eşleşmeli.`);
   }
   if (!Number.isInteger(inventory.targetFeatures) || inventory.targetFeatures < 1) {
     errors.push('targetFeatures pozitif bir tam sayı olmalı.');
@@ -15,7 +17,7 @@ export function validateFeatureInventory(inventory) {
 
   const ids = [];
   const normalizedNames = [];
-  for (const [index, feature] of (inventory.features || []).entries()) {
+  for (const [index, feature] of features.entries()) {
     if (!feature || typeof feature !== 'object' || Array.isArray(feature)) {
       errors.push(`Özellik kaydı ${index + 1} bir nesne olmalı.`);
       continue;
@@ -28,7 +30,7 @@ export function validateFeatureInventory(inventory) {
     if (!category) errors.push(`Özellik kategorisi boş: ${id || 'kayıt ' + (index + 1)}`);
     ids.push(id);
     normalizedNames.push(name.toLocaleLowerCase('en-US'));
-    if (!inventory.statuses?.includes(feature.status)) {
+    if (!statuses.includes(feature.status)) {
       errors.push(`Geçersiz durum: ${id || '(kimlik yok)'} → ${feature.status}`);
     }
   }
