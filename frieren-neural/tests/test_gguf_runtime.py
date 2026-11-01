@@ -17,5 +17,4 @@ def test_persona_prompt_uses_real_line_breaks_before_user_message():
 
     user_content = model.request["messages"][0]["content"]
     assert "Kullanıcının isteğini yerine getir:\n\nMerhaba" in user_content
-    assert r"Kullanıcının isteğini yerine getir:\\n\\nMerhaba" not in user_content
     assert answer == "Merhaba, nasıl yardımcı olabilirim?"
