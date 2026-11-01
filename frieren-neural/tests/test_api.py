@@ -6,7 +6,7 @@ from frieren_neural.api import app, clear_runtime_cache
 
 @pytest.fixture
 def api_client():
-    with TestClient(app) as client:
+    with TestClient(app, base_url="https://testserver") as client:
         yield client
     clear_runtime_cache()
 
@@ -91,7 +91,7 @@ def test_web_login_requires_strong_secrets_and_same_origin(api_client, monkeypat
 
     monkeypatch.setenv("FRIEREN_WEB_PASSWORD", "p" * 24)
     monkeypatch.setenv("FRIEREN_SESSION_SECRET", "s" * 48)
-    response = api_client.post("/web/login", json={"password": "wrong-password"}, headers={"Origin": "https://attacker.example"})
+    response = api_client.post("/web/login", json={"password": "wrong-password-long"}, headers={"Origin": "https://attacker.example"})
     assert response.status_code == 403
 
 
