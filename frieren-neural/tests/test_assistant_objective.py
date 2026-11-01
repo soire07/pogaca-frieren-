@@ -32,7 +32,8 @@ def test_non_chat_corpus_keeps_legacy_full_token_supervision():
     tokenizer = BPETokenizer.train(["Frieren studies magic."], vocab_size=280)
     token_ids, loss_mask = encode_dialogue_stream_with_loss_mask("Frieren studies magic.", tokenizer)
     assert len(token_ids) == len(loss_mask)
-    assert all(loss_mask)
+    assert loss_mask[0] is False
+    assert all(loss_mask[1:])
 
 
 def test_assistant_masked_batch_never_contains_an_empty_loss_window():
