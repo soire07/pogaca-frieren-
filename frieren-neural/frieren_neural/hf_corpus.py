@@ -18,7 +18,7 @@ DATASET_ID = "cisimcik/turkish-chat-max-25k"
 DATASET_URL = f"https://huggingface.co/datasets/{DATASET_ID}"
 DATASET_LICENSE = "apache-2.0"
 EXPECTED_DATASET_ROWS = 24_543
-PREPROCESSING_VERSION = "1"
+PREPROCESSING_VERSION = "2"
 DIALOGUE_SEPARATOR = "\n\n---\n\n"
 REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
 
