@@ -1,4 +1,5 @@
 import { EmbedBuilder, MessageFlags } from 'discord.js';
+import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
 
 export const OWNER_ID = '1553794496234262641';
 export const OWNER_PANEL_URL = 'https://pogaca-frieren.onrender.com/owner';
@@ -43,8 +44,10 @@ export async function initOwnerAdminSchema(db) {
       id BIGSERIAL PRIMARY KEY,
       scope TEXT NOT NULL,
       error_type TEXT NOT NULL,
+      error_message TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE owner_error_logs ADD COLUMN IF NOT EXISTS error_message TEXT NOT NULL DEFAULT '';
     CREATE INDEX IF NOT EXISTS idx_owner_errors_recent ON owner_error_logs(created_at DESC);
     CREATE TABLE IF NOT EXISTS owner_approval_requests (
       id BIGSERIAL PRIMARY KEY,
@@ -69,6 +72,17 @@ export async function initOwnerAdminSchema(db) {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_owner_partner_status ON owner_partner_links(status,created_at DESC);
+    CREATE TABLE IF NOT EXISTS owner_test_runs (
+      id BIGSERIAL PRIMARY KEY,
+      actor_id TEXT NOT NULL,
+      target TEXT NOT NULL,
+      status VARCHAR(40) NOT NULL,
+      summary JSONB NOT NULL DEFAULT '{}'::jsonb,
+      details JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_owner_test_runs_recent ON owner_test_runs(created_at DESC);
+
   `);
 }
 
@@ -100,8 +114,20 @@ export async function recordCommandUsage(db, commandName, guildId = null) {
   );
 }
 
-export async function recordOwnerError(db, scope, errorType) {
-  await db.query('INSERT INTO owner_error_logs(scope,error_type) VALUES($1,$2)', [String(scope).slice(0,80), String(errorType || 'Error').slice(0,80)]);
+export async function recordOwnerError(db, scope, errorType, errorMessage = '') {
+  const message = String(errorMessage || '').trim().slice(0, 500);
+  const safeMessage = message && !containsSensitiveInformation(message) ? message : message ? '[hassas hata ayrıntıları gizlendi]' : '';
+  await db.query(
+    `WITH inserted AS (
+       INSERT INTO owner_error_logs(scope,error_type,error_message) VALUES($1,$2,$3) RETURNING id
+     ), pruned AS (
+       DELETE FROM owner_error_logs
+       WHERE id NOT IN (SELECT id FROM owner_error_logs ORDER BY id DESC LIMIT 2000)
+       RETURNING id
+     )
+     SELECT id FROM inserted`,
+    [String(scope).slice(0,80), String(errorType || 'Error').slice(0,80), safeMessage]
+  );
 }
 
 export async function getRecentOwnerActivity(db) {
@@ -247,6 +273,156 @@ export async function sendOwnerAnnouncement(client, db, { guildId, channelId, me
     messageId: sent.id
   });
   return { guildName: guild.name, channelName: channel.name, messageId: sent.id };
+}
+
+
+export async function listOwnerAuditLogs(db, { action = '', target = '', page = 1, limit = 20 } = {}) {
+  const pageNumber = Number(page);
+  if (!Number.isSafeInteger(pageNumber) || pageNumber < 1) throw new Error('INVALID_AUDIT_PAGE');
+  const pageSize = Math.max(1, Math.min(Number(limit) || 20, 50));
+  const filters = [];
+  const params = [];
+  const addFilter = (column, value) => {
+    const term = String(value || '').trim().slice(0, 80).replace(/[%_]/g, '');
+    if (!term) return;
+    params.push('%' + term + '%');
+    filters.push(column + ' ILIKE $' + params.length);
+  };
+  addFilter('action', action);
+  addFilter("COALESCE(target,'')", target);
+  params.push(pageSize);
+  const limitParam = params.length;
+  params.push((pageNumber - 1) * pageSize);
+  const offsetParam = params.length;
+  const where = filters.length ? 'WHERE ' + filters.join(' AND ') : '';
+  const result = await db.query(
+    'SELECT id,actor_id,action,target,details,created_at,COUNT(*) OVER()::int AS total_count ' +
+    'FROM owner_audit_logs ' + where + ' ORDER BY id DESC LIMIT $' + limitParam + ' OFFSET $' + offsetParam,
+    params
+  );
+  const rows = result.rows || [];
+  return { rows: rows.map(({ total_count, ...row }) => row), page: pageNumber, limit: pageSize, total: Number(rows[0]?.total_count || 0) };
+}
+
+export async function listOwnerErrorLogs(db, { scope = '', page = 1, limit = 20 } = {}) {
+  const pageNumber = Number(page);
+  if (!Number.isSafeInteger(pageNumber) || pageNumber < 1) throw new Error('INVALID_ERROR_PAGE');
+  const pageSize = Math.max(1, Math.min(Number(limit) || 20, 50));
+  const params = [];
+  const filter = String(scope || '').trim().slice(0, 80).replace(/[%_]/g, '');
+  const where = filter ? (params.push('%' + filter + '%'), 'WHERE scope ILIKE $1') : '';
+  params.push(pageSize);
+  const limitParam = params.length;
+  params.push((pageNumber - 1) * pageSize);
+  const dollar = String.fromCharCode(36);
+  const result = await db.query(
+    'SELECT id,scope,error_type,error_message,created_at,COUNT(*) OVER()::int AS total_count FROM owner_error_logs ' +
+    where + ' ORDER BY id DESC LIMIT ' + dollar + limitParam + ' OFFSET ' + dollar + params.length,
+    params
+  );
+  const rows = result.rows || [];
+  return { rows: rows.map(({ total_count, ...row }) => row), page: pageNumber, limit: pageSize, total: Number(rows[0]?.total_count || 0) };
+}
+
+export async function searchOwnerMemories(db, { userId = '', guildId = '', key = '', limit = 20 } = {}) {
+  const filters = [];
+  const params = [];
+  const dollar = String.fromCharCode(36);
+  const addExact = (column, value, errorCode) => {
+    const term = String(value || '').trim();
+    if (!term) return;
+    if (!/^[0-9]{17,20}$/.test(term)) throw new Error(errorCode);
+    params.push(term);
+    filters.push(column + '=' + dollar + params.length);
+  };
+  addExact('user_id', userId, 'INVALID_MEMORY_USER');
+  addExact('guild_id', guildId, 'INVALID_MEMORY_GUILD');
+  const memoryKey = String(key || '').trim().slice(0, 60).replace(/[%_]/g, '');
+  if (memoryKey) {
+    params.push('%' + memoryKey + '%');
+    filters.push('memory_key ILIKE ' + dollar + params.length);
+  }
+  const pageSize = Math.max(1, Math.min(Number(limit) || 20, 50));
+  params.push(pageSize);
+  const result = await db.query(
+    'SELECT id,guild_id,user_id,memory_key,memory_value,created_at,updated_at FROM frieren_chat_memories ' +
+    (filters.length ? 'WHERE ' + filters.join(' AND ') + ' ' : '') +
+    'ORDER BY updated_at DESC,id DESC LIMIT ' + dollar + params.length,
+    params
+  );
+  return result.rows || [];
+}
+
+export async function updateOwnerMemory(db, { id, value, actorId }) {
+  const memoryId = Number(id);
+  const memoryValue = String(value ?? '').trim();
+  const actor = String(actorId || '');
+  if (!Number.isSafeInteger(memoryId) || memoryId <= 0) throw new Error('INVALID_MEMORY_ID');
+  if (!memoryValue || memoryValue.length > 1000) throw new Error('INVALID_MEMORY_VALUE');
+  if (containsSensitiveInformation(memoryValue)) throw new Error('SENSITIVE_MEMORY_REJECTED');
+  if (!/^[0-9]{17,20}$/.test(actor)) throw new Error('INVALID_MEMORY_ACTOR');
+  const result = await db.query(
+    `WITH changed AS (
+       UPDATE frieren_chat_memories
+       SET memory_value=$2,updated_at=NOW()
+       WHERE id=$1
+       RETURNING id,guild_id,user_id,memory_key
+     ), logged AS (
+       INSERT INTO owner_audit_logs(actor_id,action,target,details)
+       SELECT $3,'memory.update',$1::text,
+         jsonb_build_object('userId',user_id,'guildId',guild_id,'key',memory_key)
+       FROM changed RETURNING id
+     )
+     SELECT changed.id,changed.guild_id,changed.user_id,changed.memory_key
+     FROM changed JOIN logged ON TRUE`,
+    [memoryId, memoryValue, actor]
+  );
+  return result.rows?.[0] || null;
+}
+
+export async function recordOwnerTestRun(db, { actorId, target, report } = {}) {
+  const actor = String(actorId || '');
+  const testTarget = String(target || '').trim().slice(0, 4000);
+  if (!/^[0-9]{17,20}$/.test(actor) || !testTarget) throw new Error('INVALID_TEST_RUN');
+  if (containsSensitiveInformation(testTarget)) throw new Error('SENSITIVE_TEST_TARGET_REJECTED');
+  const summary = report?.summary && typeof report.summary === 'object' ? report.summary : {};
+  const safeSummary = {
+    total: Math.max(0, Number(summary.total ?? report?.total ?? 0) || 0),
+    pass: Math.max(0, Number(summary.pass ?? report?.passed ?? 0) || 0),
+    fail: Math.max(0, Number(summary.fail ?? report?.failed ?? 0) || 0),
+    skipped: Math.max(0, Number(summary.skipped ?? 0) || 0)
+  };
+  const details = {
+    status: String(report?.status || (safeSummary.fail > 0 ? 'FAIL' : safeSummary.total > 0 && safeSummary.pass === safeSummary.total ? 'PASS' : 'NOT_TESTED')).slice(0, 40),
+    failedStages: Array.isArray(report?.failedStages) ? report.failedStages.slice(0, 20).map(value => String(value).slice(0, 120)) : [],
+    testFiles: Array.isArray(report?.testFiles) ? report.testFiles.slice(0, 20).map(value => String(value).slice(0, 160)) : []
+  };
+  const result = await db.query(
+    `WITH inserted AS (
+       INSERT INTO owner_test_runs(actor_id,target,status,summary,details)
+       VALUES($1,$2,$3,$4::jsonb,$5::jsonb) RETURNING id,created_at
+     ), pruned AS (
+       DELETE FROM owner_test_runs
+       WHERE id NOT IN (SELECT id FROM owner_test_runs ORDER BY id DESC LIMIT 500)
+       RETURNING id
+     )
+     SELECT id,created_at FROM inserted`,
+    [actor, testTarget, details.status, JSON.stringify(safeSummary), JSON.stringify(details)]
+  );
+  return result.rows?.[0] || null;
+}
+
+export async function listOwnerTestRuns(db, { page = 1, limit = 20 } = {}) {
+  const pageNumber = Number(page);
+  if (!Number.isSafeInteger(pageNumber) || pageNumber < 1) throw new Error('INVALID_TEST_RUN_PAGE');
+  const pageSize = Math.max(1, Math.min(Number(limit) || 20, 50));
+  const result = await db.query(
+    `SELECT id,target,status,summary,details,created_at,COUNT(*) OVER()::int AS total_count
+     FROM owner_test_runs ORDER BY id DESC LIMIT $1 OFFSET $2`,
+    [pageSize, (pageNumber - 1) * pageSize]
+  );
+  const rows = result.rows || [];
+  return { rows: rows.map(({ total_count, ...row }) => row), page: pageNumber, limit: pageSize, total: Number(rows[0]?.total_count || 0) };
 }
 
 export function formatDuration(totalSeconds) {

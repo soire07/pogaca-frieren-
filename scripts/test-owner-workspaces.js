@@ -8,12 +8,16 @@ test('database diagnostics use one statistics query instead of scanning every ta
     calls += 1;
     assert.match(sql, /pg_stat_user_tables/);
     return { rows: [
-      { database_name: 'frieren', checked_at: '2026-10-31T00:00:00Z', table_name: 'users', row_count: '12' },
+      { database_name: 'frieren', checked_at: '2026-10-31T00:00:00Z', server_version: '18.0', database_size_bytes: '1048576', active_connections: 2, idle_connections: 1, table_name: 'users', row_count: '12' },
       { database_name: 'frieren', checked_at: '2026-10-31T00:00:00Z', table_name: 'inventory', row_count: '8' }
     ] };
   } };
   const result = await getOwnerDatabaseDiagnostics(db);
   assert.equal(result.connected, true);
+  assert.equal(result.serverVersion, '18.0');
+  assert.equal(result.databaseSizeBytes, 1048576);
+  assert.equal(result.activeConnections, 2);
+  assert.equal(result.idleConnections, 1);
   assert.deepEqual(result.tables, [{ name: 'users', rows: 12 }, { name: 'inventory', rows: 8 }]);
   assert.equal(calls, 1);
 });
@@ -47,13 +51,15 @@ test('AI workspace exposes an authenticated test form and safely renders its rep
     aiReadiness: { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true },
     chatSettings: { enabled: true, style: 'warm', responseLength: 'balanced', loreFocus: true },
     csrf: 'csrf-token',
-    testReport: { summary: { total: 4, pass: 3, fail: 1 }, detail: '<script>alert(1)</script>' }
+    notice: 'test_saved',
+    testRuns: { rows: [{ id: 2, target: '<script>alert(1)</script>', status: 'FAIL', summary: { total: 4, pass: 3, fail: 1 }, details: { testFiles: [], failedStages: [] }, created_at: '2026-11-01T00:00:00Z' }] }
   });
   assert.match(html, /ai-test-run/);
   assert.match(html, /csrf-token/);
   assert.match(html, /Testleri çalıştır/);
   assert.match(html, /frieren-chat-settings/);
   assert.match(html, /Poğaça sohbet kişiliği/);
+  assert.match(html, /Test sonucu kaydedildi/);
   assert.match(html, /&lt;script&gt;/);
   assert.doesNotMatch(html, /<script>/);
 });
@@ -169,4 +175,37 @@ test('Poğaça workspace escapes owner-managed boss and dungeon labels', () => {
   assert.doesNotMatch(html, /<script>/);
   assert.doesNotMatch(html, /<img src=x>/);
   assert.match(html, /&lt;script&gt;/);
+});
+
+test('database workspace explains free-tier restore limits and refuses to imply automated snapshots', () => {
+  const html = renderOwnerWorkspace('database', {
+    database: { connected: true, databaseName: 'frieren', tables: [], checkedAt: null },
+    backup: { consoleUrl: 'https://console.neon.tech/app/projects/project-id' }
+  });
+  assert.match(html, /6 saatlik Point-in-Time Restore/);
+  assert.match(html, /uzun süreli yedek yerine geçmez/);
+  assert.match(html, /snapshot listesi ve zamanlama boştu/);
+  assert.match(html, /Neon yedekleme ve dalları aç/);
+});
+
+test('AI workspace accepts free-text test goals and renders persisted run history without claiming code generation', () => {
+  const html = renderOwnerWorkspace('ai', {
+    csrf: 'scenario-csrf',
+    aiReadiness: { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true },
+    testRuns: { rows: [{ id: 5, target: 'Ekipman HP geri dönüşü', status: 'NOT_TESTED', summary: { total: 0, pass: 0, fail: 0 }, details: { testFiles: [], failedStages: ['Eşleşme yok'] }, created_at: '2026-11-01T00:00:00Z' }] }
+  });
+  assert.match(html, /name="target"/);
+  assert.match(html, /Ekipman kuşanıldığında/);
+  assert.match(html, /mevcut test dosyalarıyla eşleştirilir/);
+  assert.match(html, /NOT_TESTED/);
+  assert.match(html, /Ekipman HP geri dönüşü/);
+  assert.match(html, /Tüm denetim ve test geçmişi/);
+});
+
+test('AI workspace explains when a sensitive scenario is rejected before execution', () => {
+  const html = renderOwnerWorkspace('ai', {
+    notice: 'test_target_sensitive',
+    aiReadiness: { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true }
+  });
+  assert.match(html, /hassas bilgi içerdiği için çalıştırılmadı veya kaydedilmedi/);
 });

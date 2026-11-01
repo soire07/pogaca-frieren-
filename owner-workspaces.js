@@ -8,6 +8,10 @@ const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
 export async function getOwnerDatabaseDiagnostics(db) {
   const result = await db.query(`
     SELECT current_database() AS database_name, NOW() AS checked_at,
+      current_setting('server_version') AS server_version,
+      pg_database_size(current_database())::bigint AS database_size_bytes,
+      (SELECT COUNT(*)::int FROM pg_stat_activity WHERE datname=current_database() AND state='active') AS active_connections,
+      (SELECT COUNT(*)::int FROM pg_stat_activity WHERE datname=current_database() AND state='idle') AS idle_connections,
       tables.table_name, COALESCE(stats.n_live_tup,0)::bigint AS row_count
     FROM information_schema.tables AS tables
     LEFT JOIN pg_stat_user_tables AS stats
@@ -16,10 +20,15 @@ export async function getOwnerDatabaseDiagnostics(db) {
     ORDER BY tables.table_name LIMIT 40
   `);
   const rows = result.rows || [];
+  const first = rows[0] || {};
   return {
     connected: true,
-    databaseName: String(rows[0]?.database_name || ''),
-    checkedAt: rows[0]?.checked_at || null,
+    databaseName: String(first.database_name || ''),
+    checkedAt: first.checked_at || null,
+    serverVersion: String(first.server_version || ''),
+    databaseSizeBytes: Number(first.database_size_bytes || 0),
+    activeConnections: Number(first.active_connections || 0),
+    idleConnections: Number(first.idle_connections || 0),
     tables: rows.map(row => ({ name: String(row.table_name || ''), rows: Number(row.row_count || 0) }))
   };
 }
@@ -53,11 +62,14 @@ export function renderOwnerWorkspace(kind, data = {}) {
       + [['concise','Kısa'],['balanced','Dengeli'],['detailed','Ayrıntılı']].map(([value,label]) => '<option value="' + value + '"' + (data.chatSettings?.responseLength === value ? ' selected' : '') + '>' + label + '</option>').join('')
       + '</select><label><input type="checkbox" name="loreFocus" value="yes"' + (data.chatSettings?.loreFocus !== false ? ' checked' : '') + ' style="display:inline;width:auto"> Frieren anime evrenine öncelik ver</label>'
       + '<button class="btn">Sohbet tercihlerini kaydet</button></form></section>'
+      + (data.notice === 'test_saved' ? '<p class="notice">Test sonucu kaydedildi. PASS, FAIL veya TEST EDİLMEDİ durumunu geçmişten inceleyebilirsin.</p>' : data.notice === 'test_target_sensitive' ? '<p class="notice warn">Test senaryosu hassas bilgi içerdiği için çalıştırılmadı veya kaydedilmedi.</p>' : '')
       + '<section class="panel"><h2>Komut test çalıştırıcısı</h2><p class="muted">Boş bırakılırsa tüm komutlar denetlenir. Belirli komutları virgül veya satırla ayırarak girebilirsin. Testler sentetik etkileşim kullanır; gerçek Discord kullanıcısı adına işlem yapmaz.</p>'
       + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="ai-test-run">'
+      + '<label>Yazdığın test senaryosu veya hedef (isteğe bağlı)</label><textarea name="target" maxlength="4000" placeholder="Örn. Ekipman kuşanıldığında temel HP/Mana değerleri kalıcı değişmemeli; çıkarıldığında eski değerler geri gelmeli."></textarea>'
       + '<label>Komut adları (isteğe bağlı)</label><textarea name="commands" maxlength="2000" placeholder="karakter, bakiye, zindan"></textarea>'
+      + '<p class="small">Senaryo metni mevcut test dosyalarıyla eşleştirilir. Eşleşen test bulunamazsa veya hiçbir test gerçekten çalışmazsa sonuç BAŞARILI değil, TEST EDİLMEDİ olarak kaydedilir. PASS yalnızca seçilen testler geçerse verilir; bu, yazdığın senaryonun her ayrıntısının kapsandığı anlamına gelmez. Bu alan kendiliğinden yeni test kodu üretmez.</p>'
       + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Testleri şimdi çalıştırmayı onaylıyorum</label><button class="btn">Testleri çalıştır</button></form>'
-      + (data.testReport ? '<h3>Son çalıştırma sonucu</h3><div class="grid"><div class="stat"><small>Toplam</small><strong>' + Number(data.testReport.summary?.total ?? data.testReport.total ?? 0) + '</strong></div><div class="stat"><small>Başarılı</small><strong class="good">' + Number(data.testReport.summary?.pass ?? data.testReport.passed ?? 0) + '</strong></div><div class="stat"><small>Başarısız</small><strong class="bad">' + Number(data.testReport.summary?.fail ?? data.testReport.failed ?? 0) + '</strong></div></div><pre class="report">' + escapeHtml(JSON.stringify(data.testReport, null, 2).slice(0, 14000)) + '</pre>' : '') + '</section>'
+      + (data.testRuns?.rows?.length ? '<section class="panel"><h3>Son test çalıştırmaları</h3>' + data.testRuns.rows.map(run => '<div class="rowitem"><div class="actions"><strong>#' + Number(run.id) + ' · ' + escapeHtml(String(run.target || '').slice(0, 180)) + '</strong><span class="' + (run.status === 'PASS' ? 'good' : run.status === 'FAIL' ? 'bad' : 'warn') + '">' + escapeHtml(run.status) + '</span></div><div class="small">' + Number(run.summary?.total || 0) + ' test · ' + Number(run.summary?.pass || 0) + ' PASS · ' + Number(run.summary?.fail || 0) + ' FAIL · ' + escapeHtml(new Date(run.created_at).toLocaleString('tr-TR')) + '</div>' + (Array.isArray(run.details?.testFiles) ? '<div class="small">Dosyalar: ' + escapeHtml(run.details.testFiles.join(', ')) + '</div>' : '') + (Array.isArray(run.details?.failedStages) && run.details.failedStages.length ? '<p class="notice warn">' + escapeHtml(run.details.failedStages.join(' · ')) + '</p>' : '') + '</div>').join('') + '<a href="/owner/activity">Tüm denetim ve test geçmişi</a></section>' : '<p class="muted">Henüz kaydedilmiş test çalıştırması yok.</p>') + '</section>'
       + '<div class="columns">' + card('AI hafızası', 'Kayıtlı hafızaları görüntüle ve gerektiğinde sil.', '/owner#memories')
       + card('Teknik talepler', 'Kod değişikliği taleplerini onayla veya reddet.', '/owner#approvals')
       + card('Genel durum', 'Ana kontrol merkezine dön.', '/owner') + '</div>';
@@ -182,12 +194,20 @@ export function renderOwnerWorkspace(kind, data = {}) {
     return heading('PostgreSQL', 'Üretim verilerine zarar vermeden salt okunur veritabanı görünümü.')
       + '<div class="grid"><div class="stat"><small>Bağlantı</small><strong class="good">Bağlı</strong></div>'
       + '<div class="stat"><small>Veritabanı</small><strong>' + escapeHtml(db.databaseName) + '</strong></div>'
-      + '<div class="stat"><small>Tablo sayısı</small><strong>' + db.tables.length + '</strong></div></div>'
+      + '<div class="stat"><small>Tablo sayısı</small><strong>' + db.tables.length + '</strong></div>'
+      + '<div class="stat"><small>Veritabanı boyutu</small><strong>' + (Number(db.databaseSizeBytes || 0) / 1024 / 1024).toFixed(1) + ' MB</strong></div>'
+      + '<div class="stat"><small>PostgreSQL</small><strong>' + escapeHtml(db.serverVersion || '—') + '</strong></div>'
+      + '<div class="stat"><small>Aktif / boş bağlantı</small><strong>' + Number(db.activeConnections || 0) + ' / ' + Number(db.idleConnections || 0) + '</strong></div></div>'
       + '<section class="panel"><h2>Tablolar</h2><p class="muted">Kayıtlar salt okunur görüntülenir. Parola, token, anahtar, e-posta, mesaj ve hafıza içeriği gibi hassas alanlar listelenmez.</p>'
       + (db.tables.length ? '<div class="rowitem"><strong>Tablo</strong><strong style="float:right">Tahmini kayıt</strong></div>' + db.tables.map(row => '<div class="rowitem"><a href="/owner/database?table=' + encodeURIComponent(row.name) + '">' + escapeHtml(row.name) + '</a><strong style="float:right">' + Number(row.rows).toLocaleString('tr-TR') + '</strong></div>').join('') : '<p class="muted">Tablo bulunamadı.</p>')
       + '</section>'
       + (data.preview ? '<section class="panel"><h2>' + escapeHtml(data.preview.table) + ' · kayıt önizleme</h2><form method="get" action="/owner/database"><input type="hidden" name="table" value="' + escapeHtml(data.preview.table) + '"><label>Güvenli alanlarda ara</label><input name="search" maxlength="80" value="' + escapeHtml(data.preview.search) + '" placeholder="Arama terimi"><button class="btn secondary">Ara</button></form>'
         + (data.preview.rows.length && data.preview.columns.length ? '<div style="overflow:auto"><table class="data-table"><thead><tr>' + data.preview.columns.map(name => '<th>' + escapeHtml(name) + '</th>').join('') + '</tr></thead><tbody>' + data.preview.rows.map(row => '<tr>' + data.preview.columns.map(name => '<td>' + escapeHtml(row[name]) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>' : '<p class="muted">Gösterilecek kayıt bulunamadı veya bu tabloda güvenli alan yok.</p>') + '</section>' : '')
+      + '<section class="panel"><h2>Yedekleme ve geri yükleme</h2>'
+      + '<div class="notice warn">Bu Neon Free projesinde 6 saatlik Point-in-Time Restore (PITR) penceresi var; bu uzun süreli yedek yerine geçmez. Son dış kontrolde snapshot listesi ve zamanlama boştu. Snapshot özellikleri ve olası ücretler planına göre değişebildiğinden Neon Console üzerinden doğrula. Bu panel snapshot oluşturmaz ve üretim dalına geri yükleme başlatmaz.</div>'
+      + '<p class="muted">Geri yükleme gerekirse Neon Console üzerinden önce ayrı bir kurtarma dalına (branch) geri yükle, verileri doğrula ve ancak bundan sonra üretim dalını değiştir. Doğrudan üretim dalının üzerine geri yükleme bu panelde özellikle kapalı tutulur.</p>'
+      + (data.backup?.consoleUrl ? '<a class="btn secondary" href="' + escapeHtml(data.backup.consoleUrl) + '" target="_blank" rel="noopener">Neon yedekleme ve dalları aç</a>' : '<p class="small">Neon proje bağlantısı için Render ortamında NEON_PROJECT_ID yapılandırılmamış.</p>')
+      + '</section>'
       + '<p class="small">Son kontrol: ' + escapeHtml(db.checkedAt ? new Date(db.checkedAt).toLocaleString('tr-TR') : 'bilinmiyor') + '</p>';
   }
   if (kind === 'settings') {

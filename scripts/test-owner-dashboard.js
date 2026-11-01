@@ -1,7 +1,7 @@
 import test from 'node:test';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
 const ownerId = '1553794496234262641';
@@ -68,14 +68,14 @@ test('owner OAuth state cookie is cleared using the same path it was created wit
 });
 
 
-test('owner panel navigation exposes command workflows without a log center', () => {
+test('owner panel navigation exposes command workflows and the new activity center', () => {
   const commands = OWNER_PANEL_SECTIONS.map(section => section.command).filter(Boolean);
   assert.deepEqual(commands, ['/owner', '/owner-bilgi', '/owner-bellek', '/owner-onay', '/owner-duyuru', '/owner-bakim']);
   const navigation = renderOwnerNavigation();
   for (const id of ['overview', 'system', 'bot-control', 'memories', 'approvals', 'announcements', 'maintenance']) {
     assert.match(navigation, new RegExp('href="/owner#' + id + '"'));
   }
-  assert.doesNotMatch(navigation, /Log Merkezi|href="\/owner#activity"/);
+  assert.match(navigation, /Denetim ve test geçmişi/);
 });
 
 
@@ -596,4 +596,26 @@ test('site registration callback creates a valid member table and session', asyn
       else process.env[key] = value;
     }
   }
+});
+
+test('owner activity workspace renders paginated audit and test history safely', () => {
+  const html = renderOwnerActivityWorkspace({
+    action: 'memory.update',
+    target: '123',
+    audit: { page: 2, limit: 20, total: 24, rows: [{ id: 12, actor_id: '1553794496234262641', action: 'memory.update', target: '<script>', created_at: '2026-11-01T00:00:00Z' }] },
+    errors: { page: 1, limit: 20, total: 1, rows: [{ id: 4, scope: 'discord', error_type: 'GatewayError', error_message: '<script>alert(1)</script>', created_at: '2026-11-01T00:00:00Z' }] },
+    errorScope: 'discord',
+    testRuns: { page: 2, limit: 10, total: 21, rows: [{ id: 3, target: '<img src=x>', status: 'FAIL', summary: { total: 4, pass: 3, fail: 1 }, details: { testFiles: ['scripts/test-request.js'], failedStages: ['<script>alert(1)</script>'] }, created_at: '2026-11-01T00:00:00Z' }] }
+  });
+  assert.match(html, /Denetim ve test geçmişi/);
+  assert.match(html, /Önceki/);
+  assert.match(html, /Önceki testler/);
+  assert.match(html, /memory.update/);
+  assert.match(html, /Hata kayıtları/);
+  assert.match(html, /GatewayError/);
+  assert.match(html, /&lt;script&gt;/);
+  assert.match(html, /name="errorScope"/);
+  assert.doesNotMatch(html, /<script>/);
+  assert.doesNotMatch(html, /<img src=x>/);
+  assert.match(html, /&lt;script&gt;/);
 });

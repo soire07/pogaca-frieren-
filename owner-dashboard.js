@@ -3,7 +3,8 @@ import { getRenderServiceMetrics, renderMetricBars } from './owner-metrics.js';
 import {
   auditOwnerAction, getOwnerOverview, getMaintenanceState, listPendingApprovals,
   reviewApproval, listUserMemories, deleteUserMemory, setMaintenanceState,
-  sendOwnerAnnouncement, getRecentOwnerActivity
+  sendOwnerAnnouncement, getRecentOwnerActivity, listOwnerAuditLogs, listOwnerErrorLogs, recordOwnerTestRun, listOwnerTestRuns,
+  searchOwnerMemories, updateOwnerMemory
 } from './owner-admin.js';
 import { listOwnerPartnerLinks, saveOwnerPartnerLink, deleteOwnerPartnerLink, getOwnerRpgMetrics, updateGuildConfiguration, listGuildConfigurations, searchOwnerRpgPlayers, getOwnerRpgPlayerDetails, adjustOwnerRpgResources, adjustOwnerRpgInventory, setOwnerRpgEquipment } from './owner-platform.js';
 import { DEFAULT_GUILD_FEATURES, listGuildFeatureSettingsForGuilds, setGuildFeatureEnabled, resetGuildFeatureSetting } from './guild-feature-settings.js';
@@ -13,13 +14,14 @@ import { listOwnerDailyQuests, saveOwnerDailyQuest, setOwnerDailyQuestActive } f
 import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } from './owner-rpg-content.js';
 import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
+import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
 const SESSION_COOKIE = 'frieren_owner_session';
 const STATE_COOKIE = 'frieren_owner_oauth_state';
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
-const MAX_BODY_BYTES = 8192;
+const MAX_BODY_BYTES = 24_576;
 
 export const OWNER_PANEL_SECTIONS = Object.freeze([
   { id: 'overview', label: 'Genel Bakış', command: '/owner' },
@@ -62,6 +64,7 @@ export function renderOwnerNavigation() {
         }[section.id] || '✧') + '</span><span class="nav-link-copy"><strong>' + section.label + '</strong>'
           + (section.command ? '<small>' + section.command + '</small>' : '') + '</span></a>' : '';
       }).join('') + '</div>').join('')
+    + '<div class="nav-group"><div class="nav-group-title">İŞLEM GEÇMİŞİ</div><a href="/owner/activity"><span class="nav-icon">◷</span><span class="nav-link-copy"><strong>Denetim ve test geçmişi</strong></span></a></div>'
     + '<div class="nav-group"><div class="nav-group-title">ÇALIŞMA ALANLARI</div>'
     + '<a href="/owner/pogaca"><span class="nav-icon">✿</span><span class="nav-link-copy"><strong>Poğaça çalışma alanı</strong></span></a>'
     + '<a href="/owner/frieren-ai"><span class="nav-icon">✧</span><span class="nav-link-copy"><strong>Frieren AI merkezi</strong></span></a>'
@@ -354,7 +357,7 @@ export async function getFrierenAIReadiness({
   } catch { return null; }
 }
 
-function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild }) {
+function renderDashboard({ session, overview, client, approvals, memories, memoryUser, memoryGuild, memoryKey, notice, activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild }) {
   const featureLabels = { commands: 'Tüm komutlar', rpg: 'RPG sistemi', character: 'Karakter sistemi', magic: 'Büyü ve yetenekler', equipment: 'Ekipman ve eşyalar', economy: 'Ekonomi ve mağaza', quests: 'Görevler', dungeons: 'Zindanlar', bosses: 'Boss sistemi', trading: 'Takas', messageXp: 'Mesaj XP kazanımı', aiChat: 'Frieren sohbet etkileşimi' };
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
@@ -373,9 +376,9 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
   const memoryHtml = memories.length ? memories.map(row => `
     <div class="rowitem"><strong>#${row.id} · ${escapeHtml(row.memory_key)}</strong>
       <div class="small">Kullanıcı ${escapeHtml(row.user_id)} · Sunucu ${escapeHtml(row.guild_id)}</div>
-      <p>${escapeHtml(row.memory_value)}</p>
+      <form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="id" value="${row.id}"><input type="hidden" name="action" value="memory-update"><label>Hafıza içeriği</label><textarea name="value" maxlength="1000" required>${escapeHtml(row.memory_value)}</textarea><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Düzenlemeyi onaylıyorum</label><button class="btn secondary">Hafızayı güncelle</button></form>
       <form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="id" value="${row.id}"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Kalıcı olarak silmeyi onaylıyorum</label><button class="btn danger" name="action" value="memory-delete">Bu kaydı sil</button></form>
-    </div>`).join('') : '<p class="muted">Arama için bir Discord kullanıcı ID gir veya eşleşen kayıt bulunmadı.</p>';
+    </div>`).join('') : '<p class="muted">Filtrelere uygun hafıza kaydı bulunamadı.</p>';
   const configByGuild = new Map(guildConfigurations.map(row => [String(row.guild_id), row]));
   const serverManagementHtml = guilds.map(guild => {
     const config = configByGuild.get(guild.id) || {};
@@ -413,6 +416,9 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     approval_approved: 'Talep onaylandı. Kod otomatik çalıştırılmadı.',
     approval_rejected: 'Talep reddedildi.',
     memory_deleted: 'Hafıza kaydı silindi.',
+    memory_updated: 'Hafıza kaydı güncellendi ve denetim kaydına eklendi.',
+    memory_sensitive_rejected: 'Bu içerik hassas veri içerebileceği için hafızaya kaydedilmedi.',
+    test_target_sensitive: 'Test senaryosu hassas bilgi içerdiği için çalıştırılmadı veya kaydedilmedi.',
     announcement_sent: 'Duyuru seçilen kanala gönderildi.',
     guild_config_saved: 'Sunucu ayarları kaydedildi.',
     feature_saved: 'Bot davranışı bu sunucu için kaydedildi.',
@@ -466,12 +472,50 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     <div class="columns">
       <section class="panel" id="approvals"><h2>Teknik talep onayları</h2><p class="muted">Onay/ret yalnızca talebin durumunu değiştirir; hiçbir kod otomatik çalıştırılmaz.</p>${approvalHtml}</section>
       <section class="panel" id="memories"><h2>Kullanıcı hafızaları</h2><p class="muted">Yalnızca mevcut Frieren hafıza kayıtları listelenir. Silme işlemi kalıcıdır.</p>
-        <form method="get" action="/owner"><label>Discord kullanıcı ID</label><input name="memoryUser" value="${escapeHtml(memoryUser)}" inputmode="numeric" placeholder="Örn. 123456789012345678" required><button class="btn secondary">Hafızaları getir</button></form>
+        <form method="get" action="/owner"><label>Discord kullanıcı ID (isteğe bağlı)</label><input name="memoryUser" value="${escapeHtml(memoryUser)}" inputmode="numeric" pattern="[0-9]{17,20}" placeholder="Kullanıcı ID"><label>Discord sunucu ID (isteğe bağlı)</label><input name="memoryGuild" value="${escapeHtml(memoryGuild)}" inputmode="numeric" pattern="[0-9]{17,20}" placeholder="Sunucu ID"><label>Hafıza anahtarı (isteğe bağlı)</label><input name="memoryKey" value="${escapeHtml(memoryKey)}" maxlength="60" placeholder="Örn. cevap-tercihi"><button class="btn secondary">Hafızaları filtrele</button></form>
         ${memoryHtml}
       </section>
     </div>
 
   `);
+}
+
+export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limit: 20, total: 0 }, errors = { rows: [], page: 1, limit: 20, total: 0 }, testRuns = { rows: [], page: 1, limit: 10, total: 0 }, action = '', target = '', errorScope = '' } = {}) {
+  const auditRows = audit.rows || [];
+  const testRows = testRuns.rows || [];
+  const auditHtml = auditRows.length ? auditRows.map(row =>
+    '<div class="rowitem"><div class="actions"><strong>#' + Number(row.id) + ' · ' + escapeHtml(row.action) + '</strong><span class="small">' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</span></div>'
+    + '<div class="small">İşlemi yapan: ' + escapeHtml(row.actor_id) + ' · Hedef: ' + escapeHtml(row.target || '—') + '</div></div>'
+  ).join('') : '<p class="muted">Bu filtrelerle eşleşen işlem bulunamadı.</p>';
+  const errorRows = errors.rows || [];
+  const errorHtml = errorRows.length ? errorRows.map(row =>
+    '<div class="rowitem"><div class="actions"><strong>#' + Number(row.id) + ' · ' + escapeHtml(row.error_type) + '</strong><span class="small">' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</span></div>'
+    + '<div class="small">Bölüm: ' + escapeHtml(row.scope) + '</div>'
+    + (row.error_message ? '<p class="small">' + escapeHtml(String(row.error_message).slice(0, 240)) + '</p>' : '') + '</div>'
+  ).join('') : '<p class="muted">Kaydedilmiş hata kaydı bulunamadı.</p>';
+  const errorQuery = page => '/owner/activity?' + new URLSearchParams({ action, target, page: String(audit.page), errorScope, errorPage: String(page), testPage: String(testRuns.page) }).toString();
+  const errorPrevious = errors.page > 1 ? '<a class="btn secondary" href="' + errorQuery(errors.page - 1) + '">Önceki hatalar</a>' : '';
+  const errorNext = errors.page * errors.limit < errors.total ? '<a class="btn secondary" href="' + errorQuery(errors.page + 1) + '">Sonraki hatalar</a>' : '';
+  const testHtml = testRows.length ? testRows.map(run =>
+    '<div class="rowitem"><div class="actions"><strong>#' + Number(run.id) + ' · ' + escapeHtml(String(run.target || '').slice(0, 180)) + '</strong><span class="' + (run.status === 'PASS' ? 'good' : run.status === 'FAIL' ? 'bad' : 'warn') + '">' + escapeHtml(run.status) + '</span></div>'
+    + '<div class="small">' + Number(run.summary?.total || 0) + ' test · ' + Number(run.summary?.pass || 0) + ' PASS · ' + Number(run.summary?.fail || 0) + ' FAIL · ' + escapeHtml(new Date(run.created_at).toLocaleString('tr-TR')) + '</div>'
+    + (Array.isArray(run.details?.testFiles) && run.details.testFiles.length ? '<div class="small">Test dosyaları: ' + escapeHtml(run.details.testFiles.join(', ')) + '</div>' : '')
+    + (Array.isArray(run.details?.failedStages) && run.details.failedStages.length ? '<p class="notice warn">' + escapeHtml(run.details.failedStages.join(' · ')) + '</p>' : '')
+    + '</div>'
+  ).join('') : '<p class="muted">Henüz kaydedilmiş test çalıştırması yok.</p>';
+  const auditQuery = page => '/owner/activity?' + new URLSearchParams({ action, target, page: String(page), errorScope, errorPage: String(errors.page), testPage: String(testRuns.page) }).toString();
+  const testQuery = page => '/owner/activity?' + new URLSearchParams({ action, target, page: String(audit.page), errorScope, errorPage: String(errors.page), testPage: String(page) }).toString();
+  const testPrevious = testRuns.page > 1 ? '<a class="btn secondary" href="' + testQuery(testRuns.page - 1) + '">Önceki testler</a>' : '';
+  const testNext = testRuns.page * testRuns.limit < testRuns.total ? '<a class="btn secondary" href="' + testQuery(testRuns.page + 1) + '">Sonraki testler</a>' : '';
+  const previous = audit.page > 1 ? '<a class="btn secondary" href="' + auditQuery(audit.page - 1) + '">Önceki</a>' : '';
+  const next = audit.page * audit.limit < audit.total ? '<a class="btn secondary" href="' + auditQuery(audit.page + 1) + '">Sonraki</a>' : '';
+  return page('Denetim ve test geçmişi', renderOwnerNavigation()
+    + '<div class="top"><div><div class="brand">FRIEREN · PRIVATE OPERATIONS</div><div class="small">AUDIT & TEST HISTORY</div></div><a class="btn secondary" href="/owner">Kontrol merkezine dön</a></div>'
+    + '<section class="hero"><span class="tag">OWNER · PRIVATE</span><h1>Denetim ve test geçmişi</h1><p class="muted">İşlemler, test sonuçları ve başarısız aşamalar. Hassas kayıt içerikleri bu listede gösterilmez.</p></section>'
+    + '<section class="panel"><h2>İşlem kayıtları · ' + Number(audit.total) + '</h2><form method="get" action="/owner/activity"><label>İşlem türü</label><input name="action" maxlength="80" value="' + escapeHtml(action) + '" placeholder="Örn. memory.update"><label>Hedef</label><input name="target" maxlength="80" value="' + escapeHtml(target) + '" placeholder="Kayıt veya servis ID"><button class="btn secondary">Filtrele</button></form>'
+    + auditHtml + '<div class="actions">' + previous + next + '<span class="small">Sayfa ' + Number(audit.page) + ' · En fazla ' + Number(audit.limit) + ' kayıt</span></div></section>'
+    + '<section class="panel"><h2>Hata kayıtları · ' + Number(errors.total) + '</h2><form method="get" action="/owner/activity"><input type="hidden" name="action" value="' + escapeHtml(action) + '"><input type="hidden" name="target" value="' + escapeHtml(target) + '"><input type="hidden" name="page" value="' + Number(audit.page) + '"><label>Hata bölümü</label><input name="errorScope" maxlength="80" value="' + escapeHtml(errorScope) + '" placeholder="Örn. discord"><button class="btn secondary">Hataları filtrele</button></form>' + errorHtml + '<div class="actions">' + errorPrevious + errorNext + '<span class="small">Sayfa ' + Number(errors.page) + '</span></div></section>'
+    + '<section class="panel"><h2>Frieren AI test geçmişi · ' + Number(testRuns.total) + '</h2>' + testHtml + '<div class="actions">' + testPrevious + testNext + '<span class="small">Sayfa ' + Number(testRuns.page) + '</span></div></section>');
 }
 
 export async function handleOwnerDashboardRequest(req, res, { client, db }) {
@@ -637,7 +681,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     try {
       const kind = workspaceKinds[url.pathname];
       const data = {};
-      if (kind === 'ai') { data.aiReadiness = await getFrierenAIReadiness(); data.chatSettings = await getFrierenChatSettings(db); data.csrf = session.csrf; data.notice = url.searchParams.get('notice') || ''; }
+      if (kind === 'ai') { data.aiReadiness = await getFrierenAIReadiness(); data.chatSettings = await getFrierenChatSettings(db); data.testRuns = await listOwnerTestRuns(db, { limit: 10 }); data.csrf = session.csrf; data.notice = url.searchParams.get('notice') || ''; }
       if (kind === 'pogaca') {
         data.notice = url.searchParams.get('notice') || '';
         data.rpgMetrics = await getOwnerRpgMetrics(db);
@@ -655,6 +699,8 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       }
       if (kind === 'database') {
         data.database = await getOwnerDatabaseDiagnostics(db);
+        const neonProjectId = String(process.env.NEON_PROJECT_ID || '').trim();
+        data.backup = { consoleUrl: /^[a-z0-9-]{1,60}$/.test(neonProjectId) ? 'https://console.neon.tech/app/projects/' + neonProjectId : null };
         const table = String(url.searchParams.get('table') || '');
         if (table) data.preview = await getOwnerDatabaseTablePreview(db, { table, search: url.searchParams.get('search') || '' });
       }
@@ -662,8 +708,13 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         { label: 'Discord OAuth istemcisi', configured: Boolean(process.env.CLIENT_ID && process.env.DISCORD_CLIENT_SECRET) },
         { label: 'Owner oturum imzası', configured: Boolean(process.env.ADMIN_SESSION_SECRET && process.env.ADMIN_SESSION_SECRET.length >= 32) },
         { label: 'PostgreSQL bağlantısı', configured: Boolean(db) },
-        { label: 'Frieren AI köprü anahtarı', configured: Boolean(process.env.FRIEREN_BRIDGE_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET) },
-        { label: 'Render API anahtarı', configured: Boolean(process.env.RENDER_API_KEY) }
+        { label: 'Frieren AI köprü anahtarı', configured: Boolean(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET) },
+        { label: 'Frieren AI sağlık doğrulama anahtarı', configured: Boolean(process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_BRIDGE_SECRET) },
+        { label: 'Poğaça Render API anahtarı', configured: Boolean(process.env.RENDER_POGACA_API_KEY || process.env.RENDER_API_KEY) },
+        { label: 'Frieren AI Render API anahtarı', configured: Boolean(process.env.RENDER_FRIEREN_AI_API_KEY) },
+        { label: 'Poğaça Render servis kimliği', configured: Boolean(RENDER_BOT_SERVICES.pogaca.id) },
+        { label: 'Frieren AI Render servis kimliği', configured: Boolean(RENDER_BOT_SERVICES.frieren_ai.id) },
+        { label: 'Neon Console kısayolu (isteğe bağlı)', configured: Boolean(process.env.NEON_PROJECT_ID) }
       ];
       const content = renderOwnerNavigation() + '<div class="top"><div><div class="brand">FRIEREN</div><div class="small">THE ARCANE SANCTUARY · OWNER WORKSPACE</div></div><a class="btn secondary" href="/owner">Genel bakış</a></div>'
         + renderOwnerWorkspace(kind, data);
@@ -671,6 +722,27 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     } catch (error) {
       console.error('Owner workspace load failed:', error?.message || error);
       send(res, 503, page('Çalışma alanı yüklenemedi', '<h1>Çalışma alanı yüklenemedi</h1><p>Bağlantı ve veritabanı durumunu kontrol et.</p><a class="btn" href="/owner">Panele dön</a>'));
+    }
+    return true;
+  }
+
+  if (url.pathname === '/owner/activity' && req.method === 'GET') {
+    try {
+      const actionFilter = String(url.searchParams.get('action') || '').slice(0, 80);
+      const targetFilter = String(url.searchParams.get('target') || '').slice(0, 80);
+      const pageNumber = Math.max(1, Math.min(Number(url.searchParams.get('page')) || 1, 100000));
+      const errorPage = Math.max(1, Math.min(Number(url.searchParams.get('errorPage')) || 1, 100000));
+      const testPage = Math.max(1, Math.min(Number(url.searchParams.get('testPage')) || 1, 100000));
+      const errorScope = String(url.searchParams.get('errorScope') || '').slice(0, 80);
+      const [audit, errors, testRuns] = await Promise.all([
+        listOwnerAuditLogs(db, { action: actionFilter, target: targetFilter, page: pageNumber, limit: 20 }),
+        listOwnerErrorLogs(db, { scope: errorScope, page: errorPage, limit: 20 }),
+        listOwnerTestRuns(db, { page: testPage, limit: 20 })
+      ]);
+      send(res, 200, renderOwnerActivityWorkspace({ audit, errors, testRuns, action: actionFilter, target: targetFilter, errorScope }));
+    } catch (error) {
+      console.error('Owner activity history failed:', error?.message || error);
+      send(res, 503, page('Geçmiş yüklenemedi', '<h1>Denetim geçmişi yüklenemedi</h1><a class="btn" href="/owner">Panele dön</a>'));
     }
     return true;
   }
@@ -808,21 +880,34 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         return true;
       }
       if (action === 'ai-test-run' && form.get('confirm') === 'yes') {
-        const secret = process.env.FRIEREN_BRIDGE_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || '';
-        if (secret.length < 32) throw new Error('AI_TEST_BRIDGE_NOT_CONFIGURED');
+        const target = String(form.get('target') || '').trim().slice(0, 4000);
+        if (target && containsSensitiveInformation(target)) throw new Error('SENSITIVE_TEST_TARGET_REJECTED');
         const rawCommands = String(form.get('commands') || '');
         const commands = rawCommands.split(/[\x09-\x0d ,;]+/).map(value => value.trim()).filter(Boolean).slice(0, 80);
-        const response = await fetch(BASE_URL + '/internal/test-suite', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + secret },
-          body: JSON.stringify({ commands }),
-          signal: AbortSignal.timeout(45000)
-        });
+        const secret = String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+        let response;
+        if (target) {
+          if (secret.length < 32) throw new Error('AI_TEST_BRIDGE_NOT_CONFIGURED');
+          response = await fetch('http://127.0.0.1:10001/internal/test-scenario', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + secret },
+            body: JSON.stringify({ target }),
+            signal: AbortSignal.timeout(240000)
+          });
+        } else {
+          if (secret.length < 32) throw new Error('AI_TEST_BRIDGE_NOT_CONFIGURED');
+          response = await fetch(BASE_URL + '/internal/test-suite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + secret },
+            body: JSON.stringify({ commands }),
+            signal: AbortSignal.timeout(45000)
+          });
+        }
         const report = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error('AI_TEST_RUN_FAILED_' + response.status);
-        const content = renderOwnerNavigation() + '<div class="top"><div><div class="brand">FRIEREN</div><div class="small">THE ARCANE SANCTUARY · TEST RAPORU</div></div><a class="btn secondary" href="/owner/frieren-ai">AI merkezine dön</a></div>'
-          + renderOwnerWorkspace('ai', { aiReadiness: await getFrierenAIReadiness(), csrf: session.csrf, testReport: report });
-        send(res, 200, page('Frieren AI test raporu', content));
+        const savedTarget = target || (commands.length ? 'Komut denetimi: ' + commands.join(', ') : 'Tüm komutların denetimi');
+        await recordOwnerTestRun(db, { actorId: OWNER_ID, target: savedTarget, report });
+        redirect(res, '/owner/frieren-ai?notice=test_saved');
         return true;
       }
       let notice = 'invalid';
@@ -832,6 +917,9 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       } else if (action === 'approval-approved' || action === 'approval-rejected') {
         const result = await reviewApproval(db, form.get('id'), action === 'approval-approved' ? 'approved' : 'rejected', OWNER_ID);
         notice = result ? action.replace('-', '_') : 'invalid';
+      } else if (action === 'memory-update' && form.get('confirm') === 'yes') {
+        const result = await updateOwnerMemory(db, { id: form.get('id'), value: form.get('value'), actorId: OWNER_ID });
+        notice = result ? 'memory_updated' : 'invalid';
       } else if (action === 'memory-delete' && form.get('confirm') === 'yes') {
         const result = await deleteUserMemory(db, form.get('id'), OWNER_ID);
         notice = result ? 'memory_deleted' : 'invalid';
@@ -869,7 +957,9 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     } catch (error) {
       const code = String(error?.message || '');
       console.error('Owner dashboard action failed:', code || 'unknown error');
-      const notice = code === 'RENDER_API_NOT_CONFIGURED' ? 'render_api_missing'
+      const notice = code === 'SENSITIVE_TEST_TARGET_REJECTED' ? 'test_target_sensitive'
+        : code === 'SENSITIVE_MEMORY_REJECTED' ? 'memory_sensitive_rejected'
+        : code === 'RENDER_API_NOT_CONFIGURED' ? 'render_api_missing'
         : code === 'RENDER_ACTION_COOLDOWN' ? 'service_cooldown'
         : /^RENDER_API_HTTP_(401|403)$/.test(code) ? 'render_api_auth_error'
         : /^RENDER_API_HTTP_(404|429|5\d\d)$/.test(code) ? 'render_api_service_error'
@@ -923,8 +1013,11 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         : Promise.resolve({ status: 'unavailable', source: 'render', points: [], message: frierenService?.suspended ? 'Frieren AI askıda; metrik sorgusu yapılmadı.' : 'Frieren AI servis durumu doğrulandıktan sonra metrikler alınacak.' }),
       { status: 'loading', source: 'render', points: [], message: 'Frieren AI metrikleri arka planda yenileniyor.' }
     );
-    const memoryUser = String(url.searchParams.get('memoryUser') || '').replace(/\D/g, '').slice(0, 24);
-    const memories = memoryUser ? await listUserMemories(db, memoryUser, null, 30) : [];
+    const memoryUser = String(url.searchParams.get('memoryUser') || '').trim().slice(0, 24);
+    const memoryGuild = String(url.searchParams.get('memoryGuild') || '').trim().slice(0, 24);
+    const memoryKey = String(url.searchParams.get('memoryKey') || '').trim().slice(0, 60);
+    const memories = memoryUser || memoryGuild || memoryKey
+      ? await searchOwnerMemories(db, { userId: memoryUser, guildId: memoryGuild, key: memoryKey, limit: 30 }) : [];
     send(res, 200, renderDashboard({
       session, overview, client, approvals, memories, memoryUser,
       notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  OWNER_ID, isOwner, formatDuration, getMaintenanceState, setMaintenanceState, getOwnerOverview, getRecentOwnerActivity,
+  OWNER_ID, isOwner, formatDuration, initOwnerAdminSchema, getMaintenanceState, setMaintenanceState, getOwnerOverview, getRecentOwnerActivity,
   createApprovalRequest, reviewApproval, listUserMemories, deleteUserMemory
 } from '../owner-admin.js';
 
@@ -187,4 +187,13 @@ test('announcement does not accept ordinary channel permission as a substitute f
   await assert.rejects(() => sendOwnerAnnouncement(client, db, {
     guildId: guild.id, channelId: channel.id, message: 'Test thread', actorId: OWNER_ID
   }), { message: 'MISSING_SEND_PERMISSION' });
+});
+
+test('owner schema creates a bounded test-run history table and recent index', async () => {
+  let sql = '';
+  await initOwnerAdminSchema({ query: async statement => { sql = statement; return { rows: [] }; } });
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS owner_test_runs/);
+  assert.match(sql, /idx_owner_test_runs_recent/);
+  assert.match(sql, /summary JSONB NOT NULL/);
+  assert.match(sql, /details JSONB NOT NULL/);
 });
