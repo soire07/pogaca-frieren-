@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder, ComponentType } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder, ComponentType, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { settleRaidRewards } from './rpg-reward-transactions.js';
 import { getBossArtUrl } from './boss-art.js';
