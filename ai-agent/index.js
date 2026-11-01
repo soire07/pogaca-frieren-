@@ -16,6 +16,7 @@ import { splitDiscordMessage } from './discord-message-chunks.js';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createServer } from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
@@ -54,6 +55,19 @@ const bridgeConfigured = Boolean(process.env.FRIEREN_BRIDGE_URL?.trim() && proce
 const port = Number(process.env.FRIEREN_AI_HEALTH_PORT) || Number(process.env.PORT) || 10000;
 const healthHost = process.env.FRIEREN_AI_HEALTH_HOST || '0.0.0.0';
 const healthServer = createServer(async (req, res) => {
+  const privateHealthPaths = new Set(['/health', '/ready', '/live', '/bridge-health']);
+  if (privateHealthPaths.has(req.url)) {
+    const expected = process.env.FRIEREN_AI_HEALTH_SECRET || '';
+    const supplied = req.headers['x-frieren-health-secret'] || '';
+    const valid = expected.length >= 32 && typeof supplied === 'string'
+      && Buffer.byteLength(expected) === Buffer.byteLength(supplied)
+      && timingSafeEqual(Buffer.from(expected), Buffer.from(supplied));
+    if (!valid) {
+      res.writeHead(404, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'not_found' }));
+      return;
+    }
+  }
   if (req.url === '/bridge-health') {
     const result = await checkBridgeReachability({
       baseUrl: process.env.FRIEREN_BRIDGE_URL,
