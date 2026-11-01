@@ -179,7 +179,7 @@ def generate(
     return {
         # Preserve the public response contract while using the exact chat format
         # shared by assistant-only training and the quality benchmark.
-        "text": request.prompt + raw_completion,
+        "text": request.prompt + ((" " + completion) if completion else ""),
         "completion": completion,
         "step": int(metadata["step"]),
     }
@@ -419,7 +419,7 @@ def web_generate(
     raw_completion = result[len(generation_prompt):] if result.startswith(generation_prompt) else result
     completion = raw_completion.lstrip()
     return {
-        "text": payload.prompt + raw_completion,
+        "text": payload.prompt + ((" " + completion) if completion else ""),
         "completion": completion,
         "step": int(metadata["step"]),
     }
