@@ -16,7 +16,7 @@ import torch
 from torch import Tensor
 
 from .model import GPTConfig, GPTLanguageModel
-from .tokenizer import CharacterTokenizer
+from .tokenizer import BPETokenizer
 
 
 SUPPORTED_SUFFIXES = {".txt", ".md"}
@@ -180,7 +180,7 @@ def train_model(
     torch.manual_seed(settings.seed)
     selected_device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
     corpus_fingerprint = hashlib.sha256(json.dumps(list(documents), ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
-    tokenizer = CharacterTokenizer.train(documents)
+    tokenizer = BPETokenizer.train(\n        documents, vocab_size=settings.tokenizer_vocab_size, min_frequency=settings.tokenizer_min_frequency\n    )
     encoded: list[int] = []
     for document in documents:
         encoded.extend(tokenizer.encode(document.strip()))
