@@ -90,6 +90,7 @@ const healthServer = createServer(async (req, res) => {
       res.end(JSON.stringify({ error: 'scenario_already_running' }));
       return;
     }
+    guardianReviewInProgress = true;
     let raw = '';
     try {
       for await (const chunk of req) {
@@ -156,7 +157,6 @@ const healthServer = createServer(async (req, res) => {
       }
       const body = raw ? JSON.parse(raw) : {};
       const incident = normalizeGuardianReviewIncident(body.incident);
-      guardianReviewInProgress = true;
       const review = await reviewGuardianIncident({
         groq,
         model: resolveAiModel(process.env),
