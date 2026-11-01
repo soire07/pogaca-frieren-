@@ -15,12 +15,12 @@ import time
 from pathlib import Path
 from typing import Any
 
-from frieren_neural.quality_evaluation import PROMPTS, PROMPT_SET_VERSION
+from frieren_neural.quality_evaluation import PROMPTS, PROMPT_SET_VERSION, empty_score_template
 
 MODEL_ID = "Qwen/Qwen3-0.6B"
 MODEL_REVISION = "c1899de289a04d12100db370d81485cdf75e47ca"
 MODEL_LICENSE = "Apache-2.0"
-MAX_NEW_TOKENS = 80
+MAX_NEW_TOKENS = 160
 
 
 def benchmark_prompt_digest() -> str:
