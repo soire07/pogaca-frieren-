@@ -86,8 +86,8 @@ def load_licensed_corpus(path: str | Path) -> list[str]:
         raise ValueError("Licensed corpus path must be a directory.")
     root_resolved = root.resolve()
     manifest_path = root / "corpus_manifest.json"
-    if not manifest_path.is_file():
-        raise ValueError("A corpus_manifest.json file is required before CLI training.")
+    if not manifest_path.is_file() or not manifest_path.resolve().is_relative_to(root_resolved):
+        raise ValueError("A corpus_manifest.json file inside the corpus directory is required before CLI training.")
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
