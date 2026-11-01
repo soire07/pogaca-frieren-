@@ -101,7 +101,7 @@ import dailyQuestCommand from '../gunlukgorev.js';
 import tradeOfferCommand from '../takasteklif.js';
 
 function testSnowflake(prefix) {
-  return prefix + String(randomInt(0, 1_000_000_000_000_000)).padStart(15, '0');
+  return prefix + String(randomInt(0, 281_474_976_710_655)).padStart(15, '0');
 }
 
 test('two concurrent daily mission claims grant the reward only once', {
