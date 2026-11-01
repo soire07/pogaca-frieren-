@@ -887,7 +887,10 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         const table = String(url.searchParams.get('table') || '');
         if (table) data.preview = await getOwnerDatabaseTablePreview(db, { table, search: url.searchParams.get('search') || '' });
       }
-      if (kind === 'settings') data.settings = [
+      if (kind === 'settings') {
+        const ownerTotp = await getOwnerTotpConfig(db);
+        data.settings = [
+        { label: 'Owner Panel TOTP ikinci doğrulama', configured: ownerTotp.enabled === true && typeof ownerTotp.secret === 'string' },
         { label: 'Discord OAuth istemcisi', configured: Boolean(process.env.CLIENT_ID && process.env.DISCORD_CLIENT_SECRET) },
         { label: 'Owner oturum imzası', configured: Boolean(process.env.ADMIN_SESSION_SECRET && process.env.ADMIN_SESSION_SECRET.length >= 32) },
         { label: 'PostgreSQL bağlantısı', configured: Boolean(db) },
@@ -898,7 +901,8 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         { label: 'Poğaça Render servis kimliği', configured: Boolean(RENDER_BOT_SERVICES.pogaca.id) },
         { label: 'Frieren AI Render servis kimliği', configured: Boolean(RENDER_BOT_SERVICES.frieren_ai.id) },
         { label: 'Neon Console kısayolu (isteğe bağlı)', configured: Boolean(process.env.NEON_PROJECT_ID) }
-      ];
+        ];
+      }
       const content = renderOwnerNavigation() + '<div class="top"><div><div class="brand">FRIEREN</div><div class="small">THE ARCANE SANCTUARY · OWNER WORKSPACE</div></div><a class="btn secondary" href="/owner">Genel bakış</a></div>'
         + renderOwnerWorkspace(kind, data);
       send(res, 200, page(kind === 'ai' ? 'Frieren AI' : kind === 'pogaca' ? 'Poğaça Frieren' : kind === 'database' ? 'PostgreSQL' : 'Owner ayarları', content));
