@@ -18,7 +18,7 @@ from frieren_neural.quality_evaluation import DIMENSIONS, PROMPTS, PROMPT_SET_VE
 
 MODEL_URL = "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf"
 MODEL_SHA256 = "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031"
-MODEL_SIZE_BYTES = 639_000_000
+MODEL_MAX_SIZE_BYTES = 700 * 1024 * 1024
 MAX_NEW_TOKENS = 160
 
 
@@ -27,7 +27,7 @@ def peak_rss_mib() -> float:
 
 
 def download_model(path: Path) -> None:
-    if path.exists() and path.stat().st_size == MODEL_SIZE_BYTES:
+    if path.exists() and 0 < path.stat().st_size <= MODEL_MAX_SIZE_BYTES:
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         if digest == MODEL_SHA256:
             return
@@ -38,15 +38,15 @@ def download_model(path: Path) -> None:
     request = urllib.request.Request(MODEL_URL, headers={"User-Agent": "FrierenNeuralBenchmark/1.0"})
     with urllib.request.urlopen(request, timeout=60) as response, temporary.open("wb") as output:
         declared = response.headers.get("Content-Length")
-        if declared and int(declared) != MODEL_SIZE_BYTES:
-            raise ValueError(f"Unexpected model size header: {declared}")
+        if declared and int(declared) > MODEL_MAX_SIZE_BYTES:
+            raise ValueError(f"Model exceeds the 700 MiB safety cap: {declared}")
         while chunk := response.read(1024 * 1024):
             size += len(chunk)
-            if size > MODEL_SIZE_BYTES:
+            if size > MODEL_MAX_SIZE_BYTES:
                 raise ValueError("Model download exceeded pinned size; refusing it.")
             digest.update(chunk)
             output.write(chunk)
-    if size != MODEL_SIZE_BYTES or digest.hexdigest() != MODEL_SHA256:
+    if size <= 0 or size > MODEL_MAX_SIZE_BYTES or digest.hexdigest() != MODEL_SHA256:
         temporary.unlink(missing_ok=True)
         raise ValueError(f"Model integrity check failed: bytes={size}, sha256={digest.hexdigest()}")
     temporary.replace(path)
