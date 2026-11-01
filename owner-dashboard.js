@@ -536,6 +536,56 @@ export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limi
     + '<section class="panel"><h2>Frieren AI test geçmişi · ' + Number(testRuns.total) + '</h2>' + testHtml + '<div class="actions">' + testPrevious + testNext + '<span class="small">Sayfa ' + Number(testRuns.page) + '</span></div></section>');
 }
 
+export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf = '', notice = '' } = {}) {
+  const noticeText = ({
+    guardian_scan_complete: 'Tarama tamamlandı. Yeni bulgular ve servis durumları aşağıda listeleniyor.',
+    guardian_review_complete: 'Frieren AI incelemesini tamamladı. Öneri yalnızca taslaktır; kod değiştirilmedi.',
+    guardian_resolved: 'Olay çözüldü olarak işaretlendi.',
+    guardian_not_configured: 'Frieren AI köprüsü yapılandırılmamış. Gerekli gizli anahtar Owner Panel sunucu ortamında bulunamadı.',
+    guardian_review_failed: 'Frieren AI incelemesi tamamlanamadı. Olay ve hata kaydı korundu.',
+  })[notice] || '';
+  const incidentHtml = incidents.length ? incidents.map(incident => {
+    const evidence = Array.isArray(incident.evidence) ? incident.evidence : [];
+    const canReview = !['in_review','resolved','ignored'].includes(incident.status);
+    return '<article class="rowitem"><div class="actions"><strong>#' + Number(incident.id) + ' · ' + escapeHtml(incident.title) + '</strong><span class="tag ' + (incident.severity === 'critical' || incident.severity === 'high' ? 'warn' : '') + '">' + escapeHtml(incident.severity) + '</span></div>'
+      + '<div class="small">' + escapeHtml(incident.system) + ' · ' + escapeHtml(incident.code) + ' · ' + escapeHtml(incident.status) + ' · ' + Number(incident.occurrence_count) + ' tekrar · Son görülme ' + escapeHtml(new Date(incident.last_seen).toLocaleString('tr-TR')) + '</div>'
+      + '<p>' + escapeHtml(incident.summary) + '</p>'
+      + (evidence.length ? '<details><summary>Kanıt kayıtları (' + evidence.length + ')</summary>' + evidence.map(item => '<div class="small">' + escapeHtml(item.file || '') + (item.line ? ':' + Number(item.line) : '') + ' ' + escapeHtml(item.message || '') + '</div>').join('') + '</details>' : '')
+      + '<div class="actions">'
+      + (canReview ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-review"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Frieren AI incelemesini başlat</label><button class="btn">AI ile analiz et</button></form>' : '')
+      + (!['resolved','ignored'].includes(incident.status) ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-resolve"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Sorunu kontrol ettim</label><button class="btn secondary">Çözüldü işaretle</button></form>' : '')
+      + '</div></article>';
+  }).join('') : '<p class="muted">Henüz Guardian olayı kaydedilmedi. İlk taramayı başlatabilirsin.</p>';
+  const jobHtml = jobs.length ? jobs.map(job => {
+    const result = job.result && typeof job.result === 'object' ? job.result : {};
+    const affected = Array.isArray(result.affectedFiles) ? result.affectedFiles : [];
+    const tests = Array.isArray(result.tests) ? result.tests : [];
+    const risks = Array.isArray(result.risks) ? result.risks : [];
+    return '<article class="rowitem"><div class="actions"><strong>İş #' + Number(job.id) + ' · ' + escapeHtml(job.incident_title || 'Guardian incelemesi') + '</strong><span class="tag">' + escapeHtml(job.status) + '</span></div>'
+      + '<div class="small">' + escapeHtml(job.agent) + ' · ' + escapeHtml(job.system) + ' · ' + escapeHtml(new Date(job.created_at).toLocaleString('tr-TR')) + '</div>'
+      + (result.rootCause ? '<p><strong>Kök neden değerlendirmesi:</strong> ' + escapeHtml(result.rootCause) + '</p>' : '')
+      + (result.confidence ? '<p class="small">Güven: ' + escapeHtml(result.confidence) + ' · Uygulandı: hayır · İnsan incelemesi gerekli</p>' : '')
+      + (result.suggestedFix ? '<p><strong>Önerilen çözüm:</strong> ' + escapeHtml(result.suggestedFix) + '</p>' : '')
+      + (affected.length ? '<p class="small">İlgili dosyalar: ' + affected.map(escapeHtml).join(', ') + '</p>' : '')
+      + (tests.length ? '<p class="small">Test planı: ' + tests.map(escapeHtml).join(' · ') + '</p>' : '')
+      + (risks.length ? '<p class="small">Riskler: ' + risks.map(escapeHtml).join(' · ') + '</p>' : '')
+      + (result.proposedPatch ? '<details><summary>Önerilen yama taslağı (uygulanmadı)</summary><pre>' + escapeHtml(result.proposedPatch) + '</pre></details>' : '')
+      + (result.status === 'insufficient_context' ? '<p class="notice warn">Kaynak bağlamı yetersiz; tahminle düzeltme hazırlanmadı.</p>' : '')
+      + '</article>';
+  }).join('') : '<p class="muted">Henüz Frieren AI inceleme görevi yok.</p>';
+  const critical = incidents.filter(item => item.severity === 'critical').length;
+  const open = incidents.filter(item => !['resolved','ignored'].includes(item.status)).length;
+  return page('Neural Guardian', renderOwnerNavigation()
+    + '<div class="top"><div><div class="brand">FRIEREN · NEURAL GUARDIAN</div><div class="small">INCIDENT CONTROL & ENGINEERING REVIEW</div></div><a class="btn secondary" href="/owner">Kontrol merkezine dön</a></div>'
+    + '<section class="hero"><span class="tag">OWNER · PRIVATE</span><h1>Neural Guardian</h1><p class="muted">Frieren Neural, Frieren AI ve Poğaça Frieren için hata tespiti, olay geçmişi ve mühendislik incelemesi.</p>'
+    + (noticeText ? '<div class="notice">' + escapeHtml(noticeText) + '</div>' : '')
+    + '<div class="grid"><div class="stat"><small>Açık olay</small><strong>' + open + '</strong></div><div class="stat"><small>Kritik olay</small><strong>' + critical + '</strong></div><div class="stat"><small>İnceleme görevi</small><strong>' + jobs.length + '</strong></div></div>'
+    + '<section class="panel"><h2>Sağlık taraması</h2><p class="muted">Yerel Discord/DB durumu ve yapılandırılmış AI sağlık kontrolü incelenir. Neural için yalnızca ayrı, hafif bir canlılık URL\'si tanımlanmışsa istek gönderilir; model yükleyen /health endpoint\'i otomatik çağrılmaz.</p>'
+    + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-scan"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Sağlık taramasını başlatmayı onaylıyorum</label><button class="btn">Sistemleri tara</button></form></section>'
+    + '<section class="panel"><h2>Hata ve olay kayıtları</h2>' + incidentHtml + '</section>'
+    + '<section class="panel"><h2>Frieren AI mühendislik incelemeleri</h2><p class="muted">Frieren AI kök neden ve yama önerisi hazırlar. Öneriler otomatik uygulanmaz; birleştirme ve dağıtım için ayrıca Owner onayı gerekir.</p>' + jobHtml + '</section>'
+    + '<p class="small">Guardian yeni yerel hata kayıtlarını izler. Harici servis kontrolleri bu ekrandaki tarama düğmesiyle yapılır; ücretsiz Render servislerini sürekli uyandıran keep-alive sorguları çalıştırılmaz.</p></section>');
+}
 export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   const url = new URL(req.url, BASE_URL);
   if (!url.pathname.startsWith('/owner')) return false;
