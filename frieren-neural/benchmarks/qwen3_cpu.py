@@ -99,7 +99,7 @@ def run_benchmark(output_dir: Path, *, limit: int | None = None, threads: int = 
     outputs: list[dict[str, Any]] = []
     generation_started = time.perf_counter()
     with torch.inference_mode():
-        for case_id, category, prompt, _hint in cases:
+        for case_index, (case_id, category, prompt, _hint) in enumerate(cases):
             encoded = tokenizer.apply_chat_template(
                 [{"role": "user", "content": prompt}],
                 tokenize=True, add_generation_prompt=True,
@@ -112,7 +112,9 @@ def run_benchmark(output_dir: Path, *, limit: int | None = None, threads: int = 
             started_case = time.perf_counter()
             generated = model.generate(
                 input_ids=input_ids, attention_mask=attention_mask,
-                max_new_tokens=MAX_NEW_TOKENS, do_sample=False,
+                max_new_tokens=MAX_NEW_TOKENS, do_sample=True,
+                temperature=0.7, top_p=0.8, top_k=20,
+                generator=torch.Generator(device="cpu").manual_seed(20261101 + case_index),
                 use_cache=True, pad_token_id=tokenizer.eos_token_id,
                 eos_token_id=tokenizer.eos_token_id,
             )
@@ -135,7 +137,7 @@ def run_benchmark(output_dir: Path, *, limit: int | None = None, threads: int = 
         "license": MODEL_LICENSE, "prompt_set_version": PROMPT_SET_VERSION,
         "prompt_count": len(cases), "prompt_set_sha256": benchmark_prompt_digest(),
         "device": "cpu", "dtype": "float32", "threads": threads,
-        "max_new_tokens": MAX_NEW_TOKENS,
+        "max_new_tokens": MAX_NEW_TOKENS,\n        "decoding_settings": {"do_sample": True, "temperature": 0.7, "top_p": 0.8, "top_k": 20, "seed_base": 20261101},
         "model_load_seconds": load_seconds,
         "generation_total_seconds": round(time.perf_counter() - generation_started, 3),
         "latency_median_seconds": round(statistics.median(latencies), 3),
