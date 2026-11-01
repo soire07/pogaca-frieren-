@@ -198,3 +198,172 @@ test('concurrent trade offers cannot reserve the sender last character copy twic
       'exactly one interaction should receive a successful trade offer');
   });
 });
+
+
+async function acceptTradeTransaction(guildId, offerId, acceptingUserId) {
+  const db = await pool.connect();
+  try {
+    await db.query('BEGIN');
+    const snapshotResult = await db.query(
+      'SELECT from_user_id,to_user_id FROM trade_offers WHERE offer_id=$1 AND guild_id=$2',
+      [offerId, guildId]
+    );
+    const snapshot = snapshotResult.rows[0];
+    if (!snapshot || acceptingUserId !== snapshot.to_user_id) {
+      await db.query('ROLLBACK');
+      return false;
+    }
+    const locks = await db.query(
+      'SELECT user_id FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE',
+      [guildId, [snapshot.from_user_id, snapshot.to_user_id].sort()]
+    );
+    if (locks.rowCount !== 2) {
+      await db.query('ROLLBACK');
+      return false;
+    }
+    const offerResult = await db.query(
+      'SELECT * FROM trade_offers WHERE offer_id=$1 AND guild_id=$2 FOR UPDATE',
+      [offerId, guildId]
+    );
+    const offer = offerResult.rows[0];
+    if (!offer || offer.status !== 'pending' || new Date(offer.expires_at).getTime() <= Date.now()) {
+      await db.query('ROLLBACK');
+      return false;
+    }
+    const found = await db.query(
+      'SELECT character_name,quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name=$3 FOR UPDATE',
+      [guildId, offer.from_user_id, offer.character_name]
+    );
+    const reserved = await db.query(
+      `SELECT COALESCE(SUM(amount),0)::int AS amount FROM trade_offers
+       WHERE guild_id=$1 AND from_user_id=$2 AND character_name=$3
+       AND status='pending' AND expires_at>NOW() AND offer_id<>$4`,
+      [guildId, offer.from_user_id, offer.character_name, offerId]
+    );
+    if (!found.rowCount || Number(found.rows[0].quantity)-Number(offer.amount)<Number(reserved.rows[0].amount)+1) {
+      await db.query('ROLLBACK');
+      return false;
+    }
+    const character = await db.query(
+      'SELECT anime,rarity,emoji,color,description,traits,image FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name=$3',
+      [guildId,offer.from_user_id,offer.character_name]
+    );
+    const c=character.rows[0];
+    await db.query(
+      'UPDATE anime_character_collection SET quantity=quantity-$4,last_obtained_at=NOW() WHERE guild_id=$1 AND user_id=$2 AND character_name=$3',
+      [guildId,offer.from_user_id,offer.character_name,Number(offer.amount)]
+    );
+    await db.query(
+      `INSERT INTO anime_character_collection
+       (guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,image,quantity)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+       ON CONFLICT(guild_id,user_id,character_name) DO UPDATE
+       SET quantity=anime_character_collection.quantity+EXCLUDED.quantity,last_obtained_at=NOW()`,
+      [guildId,offer.to_user_id,offer.character_name,c.anime,c.rarity,c.emoji,c.color,c.description,c.traits,c.image,Number(offer.amount)]
+    );
+    await db.query("UPDATE trade_offers SET status='accepted',resolved_at=NOW() WHERE offer_id=$1",[offerId]);
+    await db.query('COMMIT');
+    return true;
+  } catch(error) {
+    await db.query('ROLLBACK').catch(()=>{});
+    throw error;
+  } finally {
+    db.release();
+  }
+}
+
+test('the same trade offer can be accepted concurrently only once', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId=testSnowflake('91'), from=testSnowflake('90'), to=testSnowflake('92'), offerId=randomUUID();
+    await ensureUser(guildId,from); await ensureUser(guildId,to);
+    await pool.query(
+      `INSERT INTO anime_character_collection
+       (guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,quantity)
+       VALUES($1,$2,'Fern','Frieren','Nadir','🪄',10194172,'fixture','fixture',2)`,
+      [guildId,from]
+    );
+    await pool.query(
+      `INSERT INTO trade_offers(offer_id,guild_id,from_user_id,to_user_id,character_name,amount,expires_at)
+       VALUES($1,$2,$3,$4,'Fern',1,NOW()+INTERVAL '5 minutes')`,
+      [offerId,guildId,from,to]
+    );
+    const outcomes=await Promise.all([
+      acceptTradeTransaction(guildId,offerId,to),
+      acceptTradeTransaction(guildId,offerId,to)
+    ]);
+    const source=await pool.query(
+      "SELECT quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name='Fern'",
+      [guildId,from]
+    );
+    const target=await pool.query(
+      "SELECT quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name='Fern'",
+      [guildId,to]
+    );
+    const offer=await pool.query('SELECT status FROM trade_offers WHERE offer_id=$1',[offerId]);
+    assert.equal(outcomes.filter(Boolean).length,1,'exactly one accept operation must commit');
+    assert.equal(Number(source.rows[0].quantity),1,'sender loses exactly one copy');
+    assert.equal(Number(target.rows[0].quantity),1,'recipient receives exactly one copy');
+    assert.equal(offer.rows[0].status,'accepted');
+  });
+});
+
+test('a boss battle reward claim is idempotent under concurrent requests', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId=testSnowflake('91'), userId=testSnowflake('90'), battleId=randomUUID();
+    await ensureUser(guildId,userId);
+    const claim=()=>pool.query(
+      `UPDATE users SET coins=coins+250,xp=xp+100,last_boss_battle_id=$3,
+       boss_defeats=boss_defeats+1,last_boss_win_at=NOW()
+       WHERE guild_id=$1 AND user_id=$2 AND last_boss_battle_id IS DISTINCT FROM $3
+       RETURNING user_id`,
+      [guildId,userId,battleId]
+    );
+    const outcomes=await Promise.all([claim(),claim()]);
+    const player=await pool.query(
+      'SELECT coins,xp,boss_defeats,last_boss_battle_id FROM users WHERE guild_id=$1 AND user_id=$2',
+      [guildId,userId]
+    );
+    assert.equal(outcomes.reduce((n,r)=>n+r.rowCount,0),1,'only one concurrent claim may update the player');
+    assert.equal(Number(player.rows[0].coins),250);
+    assert.equal(Number(player.rows[0].xp),100);
+    assert.equal(Number(player.rows[0].boss_defeats),1);
+    assert.equal(player.rows[0].last_boss_battle_id,battleId);
+  });
+});
+
+test('overlapping co-op encounters cannot reserve the same player twice', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId=testSnowflake('91'), userId=testSnowflake('90');
+    await ensureUser(guildId,userId);
+    const reserve=async encounterId=>{
+      const db=await pool.connect();
+      try {
+        await db.query('BEGIN');
+        await db.query(
+          `INSERT INTO active_rpg_encounters(guild_id,user_id,encounter_id,encounter_type,expires_at)
+           VALUES($1,$2,$3,'raid',NOW()+INTERVAL '30 minutes')`,
+          [guildId,userId,encounterId]
+        );
+        await db.query('COMMIT');
+        return true;
+      } catch(error) {
+        await db.query('ROLLBACK').catch(()=>{});
+        if(error.code==='23505') return false;
+        throw error;
+      } finally { db.release(); }
+    };
+    const outcomes=await Promise.all([reserve(randomUUID()),reserve(randomUUID())]);
+    const active=await pool.query(
+      'SELECT encounter_id FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=$2',
+      [guildId,userId]
+    );
+    assert.equal(outcomes.filter(Boolean).length,1,'one player can belong to only one active encounter');
+    assert.equal(active.rowCount,1);
+  });
+});
