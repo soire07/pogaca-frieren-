@@ -105,12 +105,21 @@ export async function recordOwnerError(db, scope, errorType) {
 }
 
 export async function getRecentOwnerActivity(db) {
-  const [commands, errors, audit] = await Promise.all([
-    db.query('SELECT command_name,SUM(usage_count)::bigint AS usage_count,MAX(last_used_at) AS last_used_at FROM owner_command_metrics GROUP BY command_name ORDER BY SUM(usage_count) DESC LIMIT 8'),
-    db.query('SELECT scope,error_type,created_at FROM owner_error_logs ORDER BY created_at DESC LIMIT 8'),
-    db.query('SELECT action,target,created_at FROM owner_audit_logs ORDER BY created_at DESC LIMIT 12')
-  ]);
-  return { commands: commands.rows || [], errors: errors.rows || [], audit: audit.rows || [] };
+  const result = await db.query(`
+    SELECT
+      COALESCE((SELECT json_agg(row_to_json(command_rows)) FROM (
+        SELECT command_name,SUM(usage_count)::bigint AS usage_count,MAX(last_used_at) AS last_used_at
+        FROM owner_command_metrics GROUP BY command_name ORDER BY SUM(usage_count) DESC LIMIT 8
+      ) command_rows), '[]'::json) AS commands,
+      COALESCE((SELECT json_agg(row_to_json(error_rows)) FROM (
+        SELECT scope,error_type,created_at FROM owner_error_logs ORDER BY created_at DESC LIMIT 8
+      ) error_rows), '[]'::json) AS errors,
+      COALESCE((SELECT json_agg(row_to_json(audit_rows)) FROM (
+        SELECT action,target,created_at FROM owner_audit_logs ORDER BY created_at DESC LIMIT 12
+      ) audit_rows), '[]'::json) AS audit
+  `);
+  const row = result.rows?.[0] || {};
+  return { commands: row.commands || [], errors: row.errors || [], audit: row.audit || [] };
 }
 
 export async function getMaintenanceState(db) {
@@ -135,12 +144,14 @@ export async function setMaintenanceState(db, enabled, actorId) {
 }
 
 export async function getOwnerOverview(client, db) {
-  const [dbCheck, memoryCount, pendingCount, settings] = await Promise.all([
-    db.query('SELECT 1 AS ok'),
-    db.query('SELECT COUNT(*)::int AS count FROM frieren_chat_memories'),
-    db.query("SELECT COUNT(*)::int AS count FROM owner_approval_requests WHERE status='pending'"),
-    db.query("SELECT setting_value FROM owner_settings WHERE setting_key='maintenance'")
-  ]);
+  const result = await db.query(`
+    SELECT
+      1 AS ok,
+      (SELECT COUNT(*)::int FROM frieren_chat_memories) AS memory_count,
+      (SELECT COUNT(*)::int FROM owner_approval_requests WHERE status='pending') AS pending_count,
+      (SELECT setting_value FROM owner_settings WHERE setting_key='maintenance' LIMIT 1) AS maintenance_value
+  `);
+  const row = result.rows?.[0] || {};
   const memoryBytes = process.memoryUsage();
   return {
     ready: Boolean(client?.isReady?.()),
@@ -155,10 +166,10 @@ export async function getOwnerOverview(client, db) {
     rssBytes: memoryBytes.rss,
     heapUsedBytes: memoryBytes.heapUsed,
     cpuUsage: process.cpuUsage(),
-    databaseReady: dbCheck.rows?.[0]?.ok === 1,
-    memoryCount: Number(memoryCount.rows?.[0]?.count || 0),
-    pendingApprovals: Number(pendingCount.rows?.[0]?.count || 0),
-    maintenance: settings.rows[0]?.setting_value?.enabled === true
+    databaseReady: row.ok === 1,
+    memoryCount: Number(row.memory_count || 0),
+    pendingApprovals: Number(row.pending_count || 0),
+    maintenance: row.maintenance_value?.enabled === true
   };
 }
 
