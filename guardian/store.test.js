@@ -51,7 +51,7 @@ test('Guardian review completion stores a proposal and moves incident to approva
     jobId: 8, status: 'completed', result: { status: 'proposal_only', applied: false },
   }), true);
   assert.match(calls[0].sql, /finished_at=NOW/);
-  assert.match(calls[1].sql, /awaiting_approval/);
+  assert.equal(calls[1].params[1], 'awaiting_approval');
   assert.deepEqual(JSON.parse(calls[0].params[2]), { status: 'proposal_only', applied: false });
 });
 
