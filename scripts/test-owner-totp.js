@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   generateTotpSecret, encryptTotpSecret, decryptTotpSecret,
-  createTotpCode, verifyTotpCode, createTotpUri
+  createTotpCode, verifyTotpCode, createTotpUri, generateTotpRecoveryCodes, hashTotpRecoveryCode
 } from '../owner-totp.js';
 
 const key = 'owner-session-secret-for-totp-tests-at-least-32-chars';
@@ -50,4 +50,15 @@ test('TOTP URI encodes issuer and account label without leaking extra parameters
   assert.match(uri, /issuer=Frieren%20Owner/);
   assert.match(uri, /algorithm=SHA1/);
   assert.match(uri, /digits=6/);
+});
+
+test('recovery codes are unique, bounded, normalized, and stored only as hashes', () => {
+  const codes = generateTotpRecoveryCodes(8);
+  assert.equal(codes.length, 8);
+  assert.equal(new Set(codes).size, 8);
+  assert.ok(codes.every(code => /^[A-F0-9]{16}$/.test(code)));
+  assert.equal(hashTotpRecoveryCode(codes[0]), hashTotpRecoveryCode(codes[0].toLowerCase()));
+  assert.equal(hashTotpRecoveryCode(codes[0]), hashTotpRecoveryCode(codes[0].match(/.{4}/g).join('-')));
+  assert.notEqual(hashTotpRecoveryCode(codes[0]), codes[0]);
+  assert.equal(hashTotpRecoveryCode('not-a-recovery-code'), null);
 });
