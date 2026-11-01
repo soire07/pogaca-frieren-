@@ -67,6 +67,11 @@ jobs:
             --data ./corpus/turkish-daily-dialogues-test \
             --checkpoint ./checkpoints/frieren-neural-small.pt \
             --batch-size 4 --batches 25 --device cpu | tee ./heldout-metrics.json
+      - name: Generate the fixed 24-prompt Turkish human-review report
+        run: |
+          frieren-neural-evaluate-quality \
+            --checkpoint ./checkpoints/frieren-neural-small.pt \
+            --output-dir ./quality-reports/latest
       - name: Upload model checkpoint and metrics
         uses: actions/upload-artifact@v4
         with:
@@ -75,6 +80,9 @@ jobs:
             frieren-neural/checkpoints/frieren-neural-small.pt
             frieren-neural/training-metrics.json
             frieren-neural/heldout-metrics.json
+            frieren-neural/quality-reports/latest/quality-report.json
+            frieren-neural/quality-reports/latest/quality-report.md
+            frieren-neural/quality-reports/latest/human-scores.template.json
             frieren-neural/corpus/turkish-daily-dialogues/corpus_manifest.json
             frieren-neural/corpus/turkish-daily-dialogues-test/corpus_manifest.json
           if-no-files-found: error
