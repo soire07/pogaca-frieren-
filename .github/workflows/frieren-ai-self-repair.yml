@@ -71,3 +71,4 @@ jobs:
             ai-agent/*.js
             scripts/*.js
             database/*.js
+            commands/*.js
