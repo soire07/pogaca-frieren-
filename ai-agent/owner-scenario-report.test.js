@@ -45,3 +45,11 @@ test('memory privacy scenarios pass only when the live PostgreSQL test file repo
   });
   assert.equal(report.status, 'PASS');
 });
+
+test('a matched file with zero executed tests is not reported as PASS', () => {
+  const report = buildOwnerScenarioReport('boss hasarı', {
+    code: 0,
+    stdout: 'SEÇİLEN TEST DOSYALARI: scripts/test-boss-combat.js (3 eşleşme)\n# tests 0\n# pass 0\n# fail 0\n# skipped 0'
+  });
+  assert.equal(report.status, 'NOT_TESTED');
+});
