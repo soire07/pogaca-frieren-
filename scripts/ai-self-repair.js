@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { lstat, readFile, readdir, realpath, rename, writeFile, copyFile, unlink } from 'node:fs/promises';
+import { lstat, readFile, readdir, realpath, rename, writeFile, copyFile, unlink, chmod } from 'node:fs/promises';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -93,6 +93,8 @@ export async function applyRepairProposal(rootDir, proposal, fileOps = { rename,
       const entry = { ...file, temporary, backup, replaced: false };
       staged.push(entry);
       await fileOps.writeFile(temporary, file.content, { encoding: 'utf8', flag: 'wx', mode: file.mode });
+      // writeFile applies the process umask; restore the original permission bits explicitly.
+      await chmod(temporary, file.mode);
       await fileOps.copyFile(file.target, backup);
     }
 
