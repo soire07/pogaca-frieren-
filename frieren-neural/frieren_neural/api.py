@@ -10,8 +10,11 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from .model import GPTLanguageModel
+from .tokenizer import BPETokenizer
 from .training import generate_text, load_checkpoint
 
 
@@ -22,6 +25,21 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None,
 )
+_allowed_origins = [
+    origin.strip().rstrip("/")
+    for origin in os.environ.get("FRIEREN_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+if _allowed_origins:
+    if "*" in _allowed_origins:
+        raise RuntimeError("FRIEREN_ALLOWED_ORIGINS must list explicit trusted origins, not a wildcard.")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_allowed_origins,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Authorization", "Content-Type"],
+        allow_credentials=False,
+    )
 _generation_lock = threading.Lock()
 
 
@@ -33,7 +51,9 @@ class GenerateRequest(BaseModel):
 
 
 @lru_cache(maxsize=1)
-def _load_runtime(checkpoint_path: str, device: str) -> tuple[object, object, dict[str, float | int | str]]:
+def _load_runtime(
+    checkpoint_path: str, device: str
+) -> tuple[GPTLanguageModel, BPETokenizer, dict[str, float | int | str]]:
     return load_checkpoint(checkpoint_path, device=device)
 
 
