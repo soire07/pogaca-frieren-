@@ -20,7 +20,7 @@ const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTE
 const SESSION_COOKIE = 'frieren_owner_session';
 const STATE_COOKIE = 'frieren_owner_oauth_state';
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
-const MAX_BODY_BYTES = 8192;
+const MAX_BODY_BYTES = 24_576;
 
 export const OWNER_PANEL_SECTIONS = Object.freeze([
   { id: 'overview', label: 'Genel Bakış', command: '/owner' },
@@ -469,7 +469,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     <div class="columns">
       <section class="panel" id="approvals"><h2>Teknik talep onayları</h2><p class="muted">Onay/ret yalnızca talebin durumunu değiştirir; hiçbir kod otomatik çalıştırılmaz.</p>${approvalHtml}</section>
       <section class="panel" id="memories"><h2>Kullanıcı hafızaları</h2><p class="muted">Yalnızca mevcut Frieren hafıza kayıtları listelenir. Silme işlemi kalıcıdır.</p>
-        <form method="get" action="/owner"><label>Discord kullanıcı ID (isteğe bağlı)</label><input name="memoryUser" value="${escapeHtml(memoryUser)}" inputmode="numeric" placeholder="Kullanıcı ID"><label>Discord sunucu ID (isteğe bağlı)</label><input name="memoryGuild" value="${escapeHtml(memoryGuild)}" inputmode="numeric" placeholder="Sunucu ID"><label>Hafıza anahtarı (isteğe bağlı)</label><input name="memoryKey" value="${escapeHtml(memoryKey)}" maxlength="60" placeholder="Örn. cevap-tercihi"><button class="btn secondary">Hafızaları filtrele</button></form>
+        <form method="get" action="/owner"><label>Discord kullanıcı ID (isteğe bağlı)</label><input name="memoryUser" value="${escapeHtml(memoryUser)}" inputmode="numeric" pattern="[0-9]{17,20}" placeholder="Kullanıcı ID"><label>Discord sunucu ID (isteğe bağlı)</label><input name="memoryGuild" value="${escapeHtml(memoryGuild)}" inputmode="numeric" pattern="[0-9]{17,20}" placeholder="Sunucu ID"><label>Hafıza anahtarı (isteğe bağlı)</label><input name="memoryKey" value="${escapeHtml(memoryKey)}" maxlength="60" placeholder="Örn. cevap-tercihi"><button class="btn secondary">Hafızaları filtrele</button></form>
         ${memoryHtml}
       </section>
     </div>
@@ -477,7 +477,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
   `);
 }
 
-export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limit: 20, total: 0 }, errors = { rows: [], page: 1, limit: 20, total: 0 }, testRuns = { rows: [], page: 1, limit: 10, total: 0 }, action = '', target = '' } = {}) {
+export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limit: 20, total: 0 }, errors = { rows: [], page: 1, limit: 20, total: 0 }, testRuns = { rows: [], page: 1, limit: 10, total: 0 }, action = '', target = '', errorScope = '' } = {}) {
   const auditRows = audit.rows || [];
   const testRows = testRuns.rows || [];
   const auditHtml = auditRows.length ? auditRows.map(row =>
@@ -489,6 +489,9 @@ export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limi
     '<div class="rowitem"><div class="actions"><strong>#' + Number(row.id) + ' · ' + escapeHtml(row.error_type) + '</strong><span class="small">' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</span></div>'
     + '<div class="small">Bölüm: ' + escapeHtml(row.scope) + '</div></div>'
   ).join('') : '<p class="muted">Kaydedilmiş hata kaydı bulunamadı.</p>';
+  const errorQuery = page => '/owner/activity?' + new URLSearchParams({ action, target, page: String(audit.page), errorScope, errorPage: String(page) }).toString();
+  const errorPrevious = errors.page > 1 ? '<a class="btn secondary" href="' + errorQuery(errors.page - 1) + '">Önceki hatalar</a>' : '';
+  const errorNext = errors.page * errors.limit < errors.total ? '<a class="btn secondary" href="' + errorQuery(errors.page + 1) + '">Sonraki hatalar</a>' : '';
   const testHtml = testRows.length ? testRows.map(run =>
     '<div class="rowitem"><div class="actions"><strong>#' + Number(run.id) + ' · ' + escapeHtml(run.target) + '</strong><span class="' + (run.status === 'PASS' ? 'good' : run.status === 'FAIL' ? 'bad' : 'warn') + '">' + escapeHtml(run.status) + '</span></div>'
     + '<div class="small">' + Number(run.summary?.total || 0) + ' test · ' + Number(run.summary?.pass || 0) + ' PASS · ' + Number(run.summary?.fail || 0) + ' FAIL · ' + escapeHtml(new Date(run.created_at).toLocaleString('tr-TR')) + '</div>'
@@ -496,7 +499,7 @@ export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limi
     + (Array.isArray(run.details?.failedStages) && run.details.failedStages.length ? '<p class="notice warn">' + escapeHtml(run.details.failedStages.join(' · ')) + '</p>' : '')
     + '</div>'
   ).join('') : '<p class="muted">Henüz kaydedilmiş test çalıştırması yok.</p>';
-  const auditQuery = page => '/owner/activity?' + new URLSearchParams({ action, target, page: String(page) }).toString();
+  const auditQuery = page => '/owner/activity?' + new URLSearchParams({ action, target, page: String(page), errorScope, errorPage: String(errors.page) }).toString();
   const previous = audit.page > 1 ? '<a class="btn secondary" href="' + auditQuery(audit.page - 1) + '">Önceki</a>' : '';
   const next = audit.page * audit.limit < audit.total ? '<a class="btn secondary" href="' + auditQuery(audit.page + 1) + '">Sonraki</a>' : '';
   return page('Denetim ve test geçmişi', renderOwnerNavigation()
@@ -504,7 +507,7 @@ export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limi
     + '<section class="hero"><span class="tag">OWNER · PRIVATE</span><h1>Denetim ve test geçmişi</h1><p class="muted">İşlemler, test sonuçları ve başarısız aşamalar. Hassas kayıt içerikleri bu listede gösterilmez.</p></section>'
     + '<section class="panel"><h2>İşlem kayıtları · ' + Number(audit.total) + '</h2><form method="get" action="/owner/activity"><label>İşlem türü</label><input name="action" maxlength="80" value="' + escapeHtml(action) + '" placeholder="Örn. memory.update"><label>Hedef</label><input name="target" maxlength="80" value="' + escapeHtml(target) + '" placeholder="Kayıt veya servis ID"><button class="btn secondary">Filtrele</button></form>'
     + auditHtml + '<div class="actions">' + previous + next + '<span class="small">Sayfa ' + Number(audit.page) + ' · En fazla ' + Number(audit.limit) + ' kayıt</span></div></section>'
-    + '<section class="panel"><h2>Hata kayıtları · ' + Number(errors.total) + '</h2>' + errorHtml + '</section>'
+    + '<section class="panel"><h2>Hata kayıtları · ' + Number(errors.total) + '</h2><form method="get" action="/owner/activity"><input type="hidden" name="action" value="' + escapeHtml(action) + '"><input type="hidden" name="target" value="' + escapeHtml(target) + '"><input type="hidden" name="page" value="' + Number(audit.page) + '"><label>Hata bölümü</label><input name="errorScope" maxlength="80" value="' + escapeHtml(errorScope) + '" placeholder="Örn. discord"><button class="btn secondary">Hataları filtrele</button></form>' + errorHtml + '<div class="actions">' + errorPrevious + errorNext + '<span class="small">Sayfa ' + Number(errors.page) + '</span></div></section>'
     + '<section class="panel"><h2>Frieren AI test geçmişi · ' + Number(testRuns.total) + '</h2>' + testHtml + '</section>');
 }
 
@@ -720,12 +723,14 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const actionFilter = String(url.searchParams.get('action') || '').slice(0, 80);
       const targetFilter = String(url.searchParams.get('target') || '').slice(0, 80);
       const pageNumber = Math.max(1, Math.min(Number(url.searchParams.get('page')) || 1, 100000));
+      const errorPage = Math.max(1, Math.min(Number(url.searchParams.get('errorPage')) || 1, 100000));
+      const errorScope = String(url.searchParams.get('errorScope') || '').slice(0, 80);
       const [audit, errors, testRuns] = await Promise.all([
         listOwnerAuditLogs(db, { action: actionFilter, target: targetFilter, page: pageNumber, limit: 20 }),
-        listOwnerErrorLogs(db, { page: 1, limit: 20 }),
+        listOwnerErrorLogs(db, { scope: errorScope, page: errorPage, limit: 20 }),
         listOwnerTestRuns(db, { page: 1, limit: 20 })
       ]);
-      send(res, 200, renderOwnerActivityWorkspace({ audit, errors, testRuns, action: actionFilter, target: targetFilter }));
+      send(res, 200, renderOwnerActivityWorkspace({ audit, errors, testRuns, action: actionFilter, target: targetFilter, errorScope }));
     } catch (error) {
       console.error('Owner activity history failed:', error?.message || error);
       send(res, 503, page('Geçmiş yüklenemedi', '<h1>Denetim geçmişi yüklenemedi</h1><a class="btn" href="/owner">Panele dön</a>'));
