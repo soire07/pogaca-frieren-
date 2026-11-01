@@ -351,3 +351,126 @@ def test_health_check_does_not_bypass_generation_capacity(api_client, monkeypatc
     finally:
         api._generation_slots.release()
         api._generation_slots.release()
+
+
+def test_shared_generation_capacity_uses_postgres_session_lock(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+    import frieren_neural.api as api
+
+    class Cursor:
+        def fetchone(self):
+            return (True,)
+
+    class Connection:
+        closed = False
+        def __enter__(self):
+            return self
+        def __exit__(self, *_args):
+            self.closed = True
+        def execute(self, query, params=()):
+            self.query = query
+            self.params = params
+            return Cursor()
+
+    connection = Connection()
+    monkeypatch.setenv("FRIEREN_DATABASE_URL", "postgresql://test")
+    monkeypatch.setitem(sys.modules, "psycopg", SimpleNamespace(
+        connect=lambda *args, **kwargs: connection
+    ))
+
+    with api._generation_capacity():
+        assert connection.params == (api._GENERATION_LOCK_IDS[0],)
+        assert "pg_try_advisory_lock" in connection.query
+    assert connection.closed
+
+
+def test_shared_generation_capacity_fails_closed_when_database_is_unavailable(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+    import frieren_neural.api as api
+
+    def unavailable(*_args, **_kwargs):
+        raise OSError("database unavailable")
+
+    monkeypatch.setenv("FRIEREN_DATABASE_URL", "postgresql://test")
+    monkeypatch.setitem(sys.modules, "psycopg", SimpleNamespace(connect=unavailable))
+    with pytest.raises(HTTPException) as error:
+        with api._generation_capacity():
+            pass
+    assert error.value.status_code == 503
+    assert error.value.detail == "Shared generation capacity is temporarily unavailable."
+
+
+def test_shared_login_rate_limit_uses_atomic_database_transaction(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+    import frieren_neural.api as api
+
+    class Cursor:
+        def __init__(self, row=None):
+            self.row = row
+        def fetchone(self):
+            return self.row
+
+    class Transaction:
+        def __enter__(self):
+            return self
+        def __exit__(self, *_args):
+            return False
+
+    class Connection:
+        def __init__(self):
+            self.statements = []
+        def __enter__(self):
+            return self
+        def __exit__(self, *_args):
+            return False
+        def transaction(self):
+            return Transaction()
+        def execute(self, query, params=()):
+            self.statements.append((query, params))
+            if "count(*) FROM neural_login_attempts WHERE client_key" in query:
+                return Cursor((0,))
+            if "count(DISTINCT client_key)" in query:
+                return Cursor((1,))
+            return Cursor()
+
+    connection = Connection()
+    monkeypatch.setenv("FRIEREN_DATABASE_URL", "postgresql://test")
+    monkeypatch.setitem(sys.modules, "psycopg", SimpleNamespace(
+        connect=lambda *args, **kwargs: connection
+    ))
+    scope = {
+        "type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
+        "method": "POST", "scheme": "https", "path": "/", "raw_path": b"/",
+        "query_string": b"", "headers": [], "client": ("198.51.100.42", 12345),
+        "server": ("testserver", 443),
+    }
+    key = api._login_rate_limit(Request(scope))
+    assert key.startswith("db:")
+    sql = " ".join(statement for statement, _ in connection.statements)
+    assert "pg_advisory_xact_lock" in sql
+    assert "DELETE FROM neural_login_attempts" in sql
+    assert "INSERT INTO neural_login_attempts" in sql
+
+
+def test_shared_login_rate_limit_fails_closed_when_database_is_unavailable(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+    import frieren_neural.api as api
+
+    def unavailable(*_args, **_kwargs):
+        raise OSError("database unavailable")
+
+    monkeypatch.setenv("FRIEREN_DATABASE_URL", "postgresql://test")
+    monkeypatch.setitem(sys.modules, "psycopg", SimpleNamespace(connect=unavailable))
+    scope = {
+        "type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
+        "method": "POST", "scheme": "https", "path": "/", "raw_path": b"/",
+        "query_string": b"", "headers": [], "client": ("198.51.100.42", 12345),
+        "server": ("testserver", 443),
+    }
+    with pytest.raises(HTTPException) as error:
+        api._login_rate_limit(Request(scope))
+    assert error.value.status_code == 503
