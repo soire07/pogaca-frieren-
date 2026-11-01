@@ -48,7 +48,7 @@ def greedy_generate(model: Any, tokenizer: Any, prompt: str) -> tuple[str, int]:
     if tokenizer.eos_id in completion_ids:
         completion_ids = completion_ids[:completion_ids.index(tokenizer.eos_id)]
     response = tokenizer.decode(completion_ids).strip()
-    role_boundary = re.search(r"(?:^|\\n)(?:Kullanıcı|Asistan):(?: |$)", response)
+    role_boundary = re.search(r"(?:^|\n)(?:Kullanıcı|Asistan):(?: |$)", response)
     if role_boundary:
         response = response[:role_boundary.start()].strip()
     return response, generated_count
