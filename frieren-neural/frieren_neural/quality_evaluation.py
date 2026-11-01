@@ -40,6 +40,16 @@ PROMPTS = (
 ("TR-024","Contradiction handling","Kullanıcı: Veritabanına yazma.\nAsistan: Sadece okuyacağım.\nKullanıcı: Sadece okuma testi yap.\nAsistan:","Yazma yasağını koru; yalnızca okuma yap."),
 )
 
+def format_benchmark_prompt(prompt: str) -> str:
+    """Apply the same user/assistant template used by the training corpus."""
+    if not isinstance(prompt, str) or not prompt.strip():
+        raise ValueError("Benchmark prompt must be a non-empty string.")
+    normalized = prompt.rstrip()
+    if normalized.endswith("Asistan:"):
+        return normalized
+    return f"Kullanıcı: {normalized}\\nAsistan:"
+
+
 def load_prompt_set() -> list[dict[str, str]]:
     return [{"id": i, "category": c, "prompt": p, "review_hint": h} for i,c,p,h in PROMPTS]
 
@@ -167,11 +177,12 @@ def evaluate_checkpoint_quality(checkpoint_path:str|Path,*,device:str="cpu")->tu
     for item in load_prompt_set():
         random.seed(DECODING_SETTINGS["seed"])
         torch.manual_seed(DECODING_SETTINGS["seed"])
-        full=generate_text(model,tokenizer,item["prompt"],max_new_tokens=DECODING_SETTINGS["max_new_tokens"],
+        model_prompt = format_benchmark_prompt(item["prompt"])
+        full=generate_text(model,tokenizer,model_prompt,max_new_tokens=DECODING_SETTINGS["max_new_tokens"],
           temperature=DECODING_SETTINGS["temperature"],top_k=DECODING_SETTINGS["top_k"])
-        generated=full[len(item["prompt"]):] if full.startswith(item["prompt"]) else full
+        generated=full[len(model_prompt):] if full.startswith(model_prompt) else full
         outputs.append({"id":item["id"],"category":item["category"],"prompt":item["prompt"],
-          "review_hint":item["review_hint"],"output":generated.strip()})
+          "model_prompt":model_prompt,"review_hint":item["review_hint"],"output":generated.strip()})
     return outputs,checkpoint_sha,int(metadata["step"])
 
 def build_parser()->argparse.ArgumentParser:
