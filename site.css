@@ -101,3 +101,9 @@ img{max-width:100%}
 @media(max-width:850px){.catalog-tools{grid-template-columns:1fr 1fr}.catalog-tools #command-result-count{grid-column:1/-1}}
 @media(max-width:560px){.catalog-hero{padding:36px 0 12px}.catalog-tools{grid-template-columns:1fr}.catalog-tools #command-result-count{grid-column:auto}.command-catalog{grid-template-columns:1fr}.command-card{padding:15px}}
 @media(prefers-reduced-motion:reduce){.command-card{transition:none}.command-card:hover{transform:none}}
+
+/* Responsive homepage banner */
+.home-banner{width:min(1320px,calc(100% - 36px));margin:26px auto 0;overflow:hidden;aspect-ratio:16/5;border:1px solid #eadbfa66;border-radius:26px;background:#171326;box-shadow:0 24px 65px #06040d66,0 0 45px #d7bdff1c}
+.home-banner img{display:block;width:100%;height:100%;object-fit:cover;object-position:center;}
+@media(max-width:850px){.home-banner{width:calc(100% - 28px);margin-top:18px;aspect-ratio:16/7;border-radius:19px}}
+@media(max-width:560px){.home-banner{aspect-ratio:5/3;margin-top:14px;border-radius:15px}.home-banner img{object-position:62% center}}
