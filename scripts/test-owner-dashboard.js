@@ -631,3 +631,8 @@ test('owner scenario tests target the separately hosted Frieren AI service over 
   );
   assert.throws(() => getFrierenAiScenarioEndpoint({ FRIEREN_AI_PUBLIC_URL: 'http://127.0.0.1:10001' }), /INVALID_FRIEREN_AI_PUBLIC_URL/);
 });
+
+test('owner navigation provides a safe public-site preview shortcut', () => {
+  assert.match(renderOwnerNavigation(), /Ana siteyi önizle/);
+  assert.match(renderOwnerNavigation(), /href="\/" target="_blank" rel="noopener"/);
+});
