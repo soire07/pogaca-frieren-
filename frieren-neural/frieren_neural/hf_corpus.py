@@ -94,7 +94,8 @@ def build_corpus(rows: Iterable[object]) -> tuple[list[str], list[str], dict[str
     }
     for row in rows:
         stats["total_rows"] += 1
-        if isinstance(row, dict) and row.get("id") in seen:
+        candidate_id = row.get("id") if isinstance(row, dict) else None
+        if isinstance(candidate_id, str) and candidate_id in seen:
             stats["duplicate_rows"] += 1
             continue
         rendered = _render_visible_dialogue(row)
@@ -121,22 +122,15 @@ def build_corpus(rows: Iterable[object]) -> tuple[list[str], list[str], dict[str
     return train_dialogues, heldout_dialogues, stats, train_ids, heldout_ids
 
 
-def _atomic_write(path: Path, content: str) -> None:
-    temporary_name: str | None = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", newline="\n", dir=path.parent,
-            prefix=f".{path.name}.", suffix=".tmp", delete=False,
-        ) as temporary:
-            temporary_name = temporary.name
-            temporary.write(content)
-            temporary.flush()
-            os.fsync(temporary.fileno())
-        os.replace(temporary_name, path)
-    except Exception:
-        if temporary_name and os.path.exists(temporary_name):
-            os.unlink(temporary_name)
-        raise
+def _stage_write(path: Path, content: str) -> Path:
+    with tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", newline="\\n", dir=path.parent,
+        prefix=f".{path.name}.", suffix=".tmp", delete=False,
+    ) as temporary:
+        temporary.write(content)
+        temporary.flush()
+        os.fsync(temporary.fileno())
+        return Path(temporary.name)
 
 
 def _write_split(
@@ -179,11 +173,27 @@ def _write_split(
             "sha256": text_hash,
         }],
     }
-    _atomic_write(split_dir / relative_file, text_content)
-    _atomic_write(
-        split_dir / "corpus_manifest.json",
-        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
-    )
+    final_paths = (split_dir / relative_file, split_dir / "corpus_manifest.json")
+    staged_paths: list[Path] = []
+    committed_paths: list[Path] = []
+    try:
+        staged_paths.append(_stage_write(final_paths[0], text_content))
+        staged_paths.append(_stage_write(
+            final_paths[1], json.dumps(manifest, ensure_ascii=False, indent=2) + "\\n"
+        ))
+        for staged, final in zip(staged_paths, final_paths, strict=True):
+            if final.exists():
+                raise FileExistsError(f"Refusing to overwrite corpus file: {final.name}")
+            os.replace(staged, final)
+            committed_paths.append(final)
+    except Exception:
+        for final in reversed(committed_paths):
+            final.unlink(missing_ok=True)
+        raise
+    finally:
+        for staged in staged_paths:
+            staged.unlink(missing_ok=True)
+
     return {
         "split": split,
         "dialogues": len(dialogues),
