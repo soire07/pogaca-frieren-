@@ -248,7 +248,7 @@ def test_evaluation_uses_separate_corpus_and_returns_perplexity(tmp_path: Path):
     metrics = evaluate_checkpoint(checkpoint, evaluation_corpus, batch_size=1, batches=2, device="cpu")
     assert metrics["loss"] > 0
     assert metrics["perplexity"] >= 1
-    assert metrics["loss_objective_version"] == 1
+    assert metrics["loss_objective_version"] == 2
     assert metrics["checkpoint_training_loss_objective_version"] == 1
 
 
