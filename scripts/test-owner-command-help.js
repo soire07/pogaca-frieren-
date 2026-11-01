@@ -30,6 +30,10 @@ test('persists a version and current command help in one transaction',async()=>{
   assert.ok(statements.some(sql=>sql.includes('LIMIT 30')));
   assert.equal(statements.at(-1),'COMMIT');
 });
+test('rejects non-Discord owner actor identifiers',async()=>{
+  const db={async query(){throw Error('database should not be reached');}};
+  await assert.rejects(()=>saveOwnerCommandHelp(db,{commandName:'karakter',shortDescription:'Karakter profili.',longDescription:'Oyuncu karakterini gösterir.',actorId:'owner'}),/INVALID_COMMAND_HELP_ACTOR/);
+});
 test('rolls back when persistence fails',async()=>{
   const statements=[];
   const db={async query(sql){statements.push(sql);if(sql.includes('INSERT INTO owner_command_help('))throw Error('db write failed');return {rows:[]};}};
