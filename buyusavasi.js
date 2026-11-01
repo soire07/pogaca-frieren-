@@ -1,13 +1,11 @@
 
-import {
-  SlashCommandBuilder,
+import { SlashCommandBuilder,
   EmbedBuilder,
   AttachmentBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType
-} from 'discord.js';
+  ComponentType, MessageFlags } from 'discord.js';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pool, ensureUser } from './database/db.js';
