@@ -97,3 +97,14 @@ test('error history supports scope filtering and bounded pagination', async () =
   assert.deepEqual(call.params, ['%discord%', 50, 0]);
   assert.equal(result.rows[0].error_type, 'GatewayError');
 });
+
+test('test history refuses to persist scenarios containing credentials', async () => {
+  let called = false;
+  const db = { query: async () => { called = true; return { rows: [] }; } };
+  await assert.rejects(recordOwnerTestRun(db, {
+    actorId: '1553794496234262641',
+    target: 'Discord bot token abc123',
+    report: { status: 'PASS', summary: { total: 1, pass: 1, fail: 0 } }
+  }), /SENSITIVE_TEST_TARGET_REJECTED/);
+  assert.equal(called, false);
+});
