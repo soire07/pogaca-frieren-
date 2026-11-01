@@ -12,7 +12,7 @@ import { getFrierenChatSettings, updateFrierenChatSettings } from './frieren-cha
 import { listOwnerDailyQuests, saveOwnerDailyQuest, setOwnerDailyQuestActive } from './owner-rpg-quests.js';
 import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } from './owner-rpg-content.js';
 import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
-import { getStaleOwnerData } from './owner-data-cache.js';
+import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -886,13 +886,15 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
 
   try {
     const [overview, approvals, activity, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild] = await Promise.all([
-      getOwnerOverview(client, db),
+      getOwnerData('dashboard:overview', () => getOwnerOverview(client, db), 5_000),
       listPendingApprovals(db, 15),
-      getRecentOwnerActivity(db),
-      listOwnerPartnerLinks(db),
-      getOwnerRpgMetrics(db),
-      listGuildConfigurations(db),
-      listGuildFeatureSettingsForGuilds(db, [...(client?.guilds?.cache?.keys?.() || [])])
+      getOwnerData('dashboard:activity', () => getRecentOwnerActivity(db), 15_000),
+      getOwnerData('dashboard:partners', () => listOwnerPartnerLinks(db), 15_000),
+      getOwnerData('dashboard:rpg-metrics', () => getOwnerRpgMetrics(db), 15_000),
+      getOwnerData('dashboard:guild-configurations', () => listGuildConfigurations(db), 10_000),
+      getOwnerData('dashboard:feature-settings', () => listGuildFeatureSettingsForGuilds(
+        db, [...(client?.guilds?.cache?.keys?.() || [])]
+      ), 10_000)
     ]);
     const renderMetrics = getStaleOwnerData(
       'render-metrics:pogaca',
