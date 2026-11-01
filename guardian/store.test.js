@@ -5,6 +5,8 @@ import {
   createGuardianReviewJob,
   finishGuardianReviewJob,
   resolveGuardianIncident,
+  reserveGuardianRepairDispatch,
+  finishGuardianRepairDispatch,
 } from './store.js';
 
 test('Guardian incident upsert uses a stable fingerprint and increments occurrences atomically', async () => {
