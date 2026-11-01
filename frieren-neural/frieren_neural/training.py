@@ -24,6 +24,7 @@ from .tokenizer import BPETokenizer
 SUPPORTED_SUFFIXES = {".txt", ".md"}
 DIALOGUE_SEPARATOR = "\n\n---\n\n"
 DIALOGUE_ENCODING_VERSION = 2
+LOSS_OBJECTIVE_VERSION = 1
 
 
 @dataclass(frozen=True)
@@ -138,8 +139,10 @@ def load_licensed_corpus(path: str | Path) -> list[str]:
 
 
 
-def encode_dialogue_stream(text: str, tokenizer: BPETokenizer) -> list[int]:
-    """Encode conversations with BOS per dialogue and EOS after every assistant turn."""
+def encode_dialogue_stream_with_loss_mask(
+    text: str, tokenizer: BPETokenizer
+) -> tuple[list[int], list[bool]]:
+    """Encode chat context fully while supervising assistant turns and their EOS only."""
     if not isinstance(text, str) or not text.strip():
         raise ValueError("Dialogue text must be a non-empty string.")
     dialogues = [part.strip() for part in text.split(DIALOGUE_SEPARATOR) if part.strip()]
@@ -147,18 +150,22 @@ def encode_dialogue_stream(text: str, tokenizer: BPETokenizer) -> list[int]:
         raise ValueError("Dialogue text must contain at least one non-empty dialogue.")
 
     token_ids: list[int] = []
+    loss_mask: list[bool] = []
     for dialogue in dialogues:
-        # Preserve the legacy raw-text path for non-chat corpora. Imported
-        # Turkish chat rows use explicit role labels and are split per turn.
         parts = [
             part for part in re.split(r"(?m)(?=^(?:Kullanıcı|Asistan): )", dialogue)
             if part
         ]
         if not parts or not parts[0].startswith("Kullanıcı: "):
-            token_ids.extend(tokenizer.encode(dialogue, add_bos=True, add_eos=True))
+            encoded = tokenizer.encode(dialogue, add_bos=True, add_eos=True)
+            token_ids.extend(encoded)
+            # Preserve legacy full-text training for non-chat corpora. BOS is context,
+            # never a prediction target.
+            loss_mask.extend([False] + [True] * (len(encoded) - 1))
             continue
 
         token_ids.append(tokenizer.bos_id)
+        loss_mask.append(False)
         expected_role = "Kullanıcı"
         for part in parts:
             if part.startswith("Kullanıcı: "):
@@ -169,15 +176,24 @@ def encode_dialogue_stream(text: str, tokenizer: BPETokenizer) -> list[int]:
                 raise ValueError("Dialogue contains a message without a recognized role label.")
             if role != expected_role:
                 raise ValueError("Dialogue messages must alternate between user and assistant roles.")
-            token_ids.extend(tokenizer.encode(part))
+            encoded = tokenizer.encode(part)
+            token_ids.extend(encoded)
+            loss_mask.extend([role == "Asistan"] * len(encoded))
             if role == "Asistan":
-                # Generation stops here, before the following user's turn.
                 token_ids.append(tokenizer.eos_id)
+                loss_mask.append(True)
                 expected_role = "Kullanıcı"
             else:
                 expected_role = "Asistan"
         if expected_role == "Asistan":
             token_ids.append(tokenizer.eos_id)
+            loss_mask.append(False)
+    return token_ids, loss_mask
+
+
+def encode_dialogue_stream(text: str, tokenizer: BPETokenizer) -> list[int]:
+    """Compatibility wrapper returning the encoded dialogue token stream."""
+    token_ids, _ = encode_dialogue_stream_with_loss_mask(text, tokenizer)
     return token_ids
 
 
@@ -254,13 +270,31 @@ def split_tokens(tokens: Tensor, validation_fraction: float = 0.1) -> tuple[Tens
 
 
 def _sample_batch(
-    data: Tensor, *, batch_size: int, block_size: int, device: torch.device, generator: torch.Generator
+    data: Tensor, *, batch_size: int, block_size: int, device: torch.device,
+    generator: torch.Generator, target_mask: Tensor | None = None,
 ) -> tuple[Tensor, Tensor]:
     if len(data) <= block_size:
         raise ValueError(f"Each token split must contain more than block_size ({block_size}) tokens.")
-    starts = torch.randint(len(data) - block_size, (batch_size,), generator=generator)
+    if target_mask is not None:
+        if target_mask.shape != data.shape or target_mask.dtype != torch.bool:
+            raise ValueError("target_mask must be a boolean tensor matching the token stream.")
+        # A window must contain at least one supervised next-token target. The
+        # mask is shifted with targets, not inputs, to preserve causal alignment.
+        windows = target_mask.unfold(0, block_size + 1, 1)[:, 1:]
+        valid_starts = torch.nonzero(windows.any(dim=1), as_tuple=False).flatten()
+        if valid_starts.numel() == 0:
+            raise ValueError("Token split contains no assistant targets in any training window.")
+        choices = torch.randint(valid_starts.numel(), (batch_size,), generator=generator)
+        starts = valid_starts[choices]
+    else:
+        starts = torch.randint(len(data) - block_size, (batch_size,), generator=generator)
     inputs = torch.stack([data[int(start) : int(start) + block_size] for start in starts])
     targets = torch.stack([data[int(start) + 1 : int(start) + block_size + 1] for start in starts])
+    if target_mask is not None:
+        masks = torch.stack([
+            target_mask[int(start) + 1 : int(start) + block_size + 1] for start in starts
+        ])
+        targets = targets.masked_fill(~masks, -100)
     return inputs.to(device), targets.to(device)
 
 
@@ -273,8 +307,9 @@ def evaluate_loss(
     block_size: int,
     batches: int = 20,
     seed: int = 1337,
+    target_mask: Tensor | None = None,
 ) -> float:
-    """Return mean next-token loss over deterministic random windows."""
+    """Return deterministic loss over supervised targets only when a mask is supplied."""
     if batches < 1:
         raise ValueError("batches must be positive.")
     was_training = model.training
@@ -285,7 +320,8 @@ def evaluate_loss(
         for _ in range(batches):
             inputs, targets = _sample_batch(
                 data, batch_size=batch_size, block_size=block_size,
-                device=next(model.parameters()).device, generator=generator
+                device=next(model.parameters()).device, generator=generator,
+                target_mask=target_mask,
             )
             _, loss = model(inputs, targets=targets)
             losses.append(float(loss.item()))
@@ -297,18 +333,18 @@ def evaluate_loss(
 @torch.no_grad()
 def _evaluate_pair(
     model: GPTLanguageModel, train_data: Tensor, validation_data: Tensor, config: TrainingConfig,
-    device: torch.device, seed: int,
+    device: torch.device, seed: int, train_mask: Tensor, validation_mask: Tensor,
 ) -> tuple[float, float]:
     was_training = model.training
     model.eval()
     generator = torch.Generator(device="cpu").manual_seed(seed)
     results = []
     try:
-        for data in (train_data, validation_data):
+        for data, target_mask in ((train_data, train_mask), (validation_data, validation_mask)):
             values = []
             for _ in range(config.eval_batches):
                 x, y = _sample_batch(data, batch_size=config.batch_size, block_size=config.block_size,
-                                     device=device, generator=generator)
+                                     device=device, generator=generator, target_mask=target_mask)
                 _, loss = model(x, targets=y)
                 values.append(float(loss.item()))
             results.append(sum(values) / len(values))
@@ -357,8 +393,8 @@ def train_model(
             [train_text], vocab_size=effective_vocab_size,
             min_frequency=settings.tokenizer_min_frequency
         )
-        train_ids = encode_dialogue_stream(train_text, tokenizer)
-        validation_ids = encode_dialogue_stream(validation_text, tokenizer)
+        train_ids, train_loss_mask = encode_dialogue_stream_with_loss_mask(train_text, tokenizer)
+        validation_ids, validation_loss_mask = encode_dialogue_stream_with_loss_mask(validation_text, tokenizer)
         if min(len(train_ids), len(validation_ids)) + 1 > settings.block_size:
             break
         if effective_vocab_size == BPETokenizer.BASE_VOCAB_SIZE:
@@ -372,6 +408,8 @@ def train_model(
         )
     train_data = torch.tensor(train_ids, dtype=torch.long)
     validation_data = torch.tensor(validation_ids, dtype=torch.long)
+    train_target_mask = torch.tensor(train_loss_mask, dtype=torch.bool)
+    validation_target_mask = torch.tensor(validation_loss_mask, dtype=torch.bool)
 
     model_config = GPTConfig(
         vocab_size=tokenizer.vocab_size, d_model=settings.d_model, n_heads=settings.n_heads,
@@ -391,6 +429,10 @@ def train_model(
         if saved.get("dialogue_encoding_version", 1) != DIALOGUE_ENCODING_VERSION:
             raise ValueError(
                 "Checkpoint uses an incompatible dialogue encoding; start a fresh training run."
+            )
+        if saved.get("loss_objective_version") != LOSS_OBJECTIVE_VERSION:
+            raise ValueError(
+                "Checkpoint uses an incompatible loss objective; start a fresh assistant-only training run."
             )
         saved_training_config = dict(saved.get("training_config", {}))
         current_training_config = asdict(settings)
@@ -419,8 +461,10 @@ def train_model(
     for step in range(start_step + 1, settings.max_steps + 1):
         final_step = step
         model.train()
-        x, y = _sample_batch(train_data, batch_size=settings.batch_size, block_size=settings.block_size,
-                             device=selected_device, generator=batch_generator)
+        x, y = _sample_batch(
+            train_data, batch_size=settings.batch_size, block_size=settings.block_size,
+            device=selected_device, generator=batch_generator, target_mask=train_target_mask,
+        )
         _, loss = model(x, targets=y)
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
@@ -429,11 +473,13 @@ def train_model(
 
         if step % settings.eval_interval == 0 or step == settings.max_steps:
             train_loss, validation_loss = _evaluate_pair(
-                model, train_data, validation_data, settings, selected_device, settings.seed + step
+                model, train_data, validation_data, settings, selected_device, settings.seed + step,
+                train_target_mask, validation_target_mask,
             )
             _atomic_save({
                 "format_version": 2,
                 "dialogue_encoding_version": DIALOGUE_ENCODING_VERSION,
+                "loss_objective_version": LOSS_OBJECTIVE_VERSION,
                 "step": step,
                 "model_config": asdict(model_config),
                 "training_config": asdict(settings),
@@ -552,7 +598,7 @@ def generate_text(
     temperature: float = 0.8,
     top_k: int = 40,
 ) -> str:
-    """Return the exact prompt plus generated completion, stopping at EOS."""
+    """Return the prompt plus completion, stopping at EOS or a leaked chat-role boundary."""
     if not prompt:
         raise ValueError("prompt must not be empty.")
     device = next(model.parameters()).device
@@ -564,7 +610,11 @@ def generate_text(
     completion_ids = generated[len(prompt_ids):]
     if tokenizer.eos_id in completion_ids:
         completion_ids = completion_ids[:completion_ids.index(tokenizer.eos_id)]
-    return prompt + tokenizer.decode(completion_ids)
+    completion = tokenizer.decode(completion_ids)
+    role_boundary = re.search(r"(?:^|\\n)(?:Kullanıcı|Asistan):(?: |$)", completion)
+    if role_boundary:
+        completion = completion[:role_boundary.start()]
+    return prompt + completion
 
 
 def evaluate_checkpoint(
@@ -588,10 +638,13 @@ def evaluate_checkpoint(
     evaluation_text = "\n".join(item.strip() for item in documents)
     # Use the same chat-aware BOS/EOS encoding as training so held-out
     # perplexity measures the actual conversation stream format.
-    tokens = torch.tensor(encode_dialogue_stream(evaluation_text, tokenizer), dtype=torch.long)
+    token_ids = encode_dialogue_stream(evaluation_text, tokenizer)
+    _, evaluation_loss_mask = encode_dialogue_stream_with_loss_mask(evaluation_text, tokenizer)
+    tokens = torch.tensor(token_ids, dtype=torch.long)
+    target_mask = torch.tensor(evaluation_loss_mask, dtype=torch.bool)
     loss = evaluate_loss(
         model, tokens, batch_size=batch_size, block_size=model.config.max_seq_len,
-        batches=batches, seed=seed
+        batches=batches, seed=seed, target_mask=target_mask,
     )
     try:
         perplexity = math.exp(loss)
