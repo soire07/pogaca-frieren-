@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import time
 from urllib.parse import urlparse
 
 import aiohttp
@@ -44,6 +45,7 @@ class FrierenDiscordClient(discord.Client):
         self.api_token = api_token
         self.guild_id = guild_id
         self.session: aiohttp.ClientSession | None = None
+        self._last_requests: dict[int, float] = {}
 
         async def ask(
             interaction: discord.Interaction,
@@ -77,6 +79,18 @@ class FrierenDiscordClient(discord.Client):
         await super().close()
 
     async def _ask(self, interaction: discord.Interaction, prompt: str) -> None:
+        user_id = interaction.user.id
+        now = time.monotonic()
+        previous = self._last_requests.get(user_id, 0.0)
+        if now - previous < 5.0:
+            await interaction.response.send_message("Please wait a few seconds before asking again.", ephemeral=True)
+            return
+        self._last_requests[user_id] = now
+        if len(self._last_requests) > 5_000:
+            self._last_requests = {
+                user: timestamp for user, timestamp in self._last_requests.items()
+                if now - timestamp < 60.0
+            }
         await interaction.response.defer(thinking=True)
         if self.session is None:
             await interaction.followup.send("Frieren AI API is not ready.")
@@ -112,7 +126,7 @@ def main() -> None:
     if len(api_token) < 32:
         raise RuntimeError("FRIEREN_API_TOKEN must contain at least 32 characters.")
     parsed_url = urlparse(api_url)
-    if parsed_url.scheme != "https" and parsed_url.hostname not in {"localhost", "127.0.0.1"}:
+    if not parsed_url.hostname or (parsed_url.scheme != "https" and parsed_url.hostname not in {"localhost", "127.0.0.1"}):
         raise RuntimeError("FRIEREN_API_URL must use HTTPS outside localhost.")
     guild_value = os.environ.get("FRIEREN_DISCORD_GUILD_ID")
     guild_id = int(guild_value) if guild_value else None
