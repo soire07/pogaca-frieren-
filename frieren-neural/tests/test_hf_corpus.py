@@ -84,6 +84,7 @@ def test_prepare_corpus_writes_apache_manifest_and_loader_verifies_content_hash(
 
     manifest = json.loads((train_dir / "corpus_manifest.json").read_text(encoding="utf-8"))
     assert manifest["dataset"]["revision"] == "a" * 40
+    assert manifest["dataset"]["preprocessing_version"] == "2"
     assert manifest["dataset"]["filter"]["reasoning_field_included"] is False
     assert manifest["documents"][0]["license"] == "Apache-2.0"
     assert len(manifest["documents"][0]["sha256"]) == 64
