@@ -605,10 +605,11 @@ test('owner activity workspace renders paginated audit and test history safely',
     audit: { page: 2, limit: 20, total: 24, rows: [{ id: 12, actor_id: '1553794496234262641', action: 'memory.update', target: '<script>', created_at: '2026-11-01T00:00:00Z' }] },
     errors: { page: 1, limit: 20, total: 1, rows: [{ id: 4, scope: 'discord', error_type: 'GatewayError', created_at: '2026-11-01T00:00:00Z' }] },
     errorScope: 'discord',
-    testRuns: { page: 1, limit: 10, total: 1, rows: [{ id: 3, target: '<img src=x>', status: 'FAIL', summary: { total: 4, pass: 3, fail: 1 }, details: { testFiles: ['scripts/test-request.js'], failedStages: ['<script>alert(1)</script>'] }, created_at: '2026-11-01T00:00:00Z' }] }
+    testRuns: { page: 2, limit: 10, total: 21, rows: [{ id: 3, target: '<img src=x>', status: 'FAIL', summary: { total: 4, pass: 3, fail: 1 }, details: { testFiles: ['scripts/test-request.js'], failedStages: ['<script>alert(1)</script>'] }, created_at: '2026-11-01T00:00:00Z' }] }
   });
   assert.match(html, /Denetim ve test geçmişi/);
   assert.match(html, /Önceki/);
+  assert.match(html, /Önceki testler/);
   assert.match(html, /memory.update/);
   assert.match(html, /Hata kayıtları/);
   assert.match(html, /GatewayError/);
