@@ -139,12 +139,16 @@ async function mailReset(email,token) {
   const link=baseUrl()+'/reset-password?token='+encodeURIComponent(token);
   await sendGmail(email,'Frieren Portal · Şifre yenileme','<h1>Frieren Portal</h1><p>Şifreni yenile:</p><p><a href="'+link+'">Yeni şifre oluştur</a></p><p>Bağlantı 30 dakika geçerlidir.</p>','Şifre yenileme: '+link);
 }
+let schemaPromise = null;
 async function schema(db) {
-  await db.query("CREATE TABLE IF NOT EXISTS frieren_site_accounts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), username VARCHAR(24) NOT NULL, email VARCHAR(254) NOT NULL, password_hash TEXT NOT NULL, email_verified_at TIMESTAMPTZ, verification_token_hash TEXT, verification_expires_at TIMESTAMPTZ, reset_token_hash TEXT, reset_expires_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
-  await db.query('CREATE UNIQUE INDEX IF NOT EXISTS frieren_site_accounts_username_uq ON frieren_site_accounts (LOWER(username))');
-  await db.query('CREATE UNIQUE INDEX IF NOT EXISTS frieren_site_accounts_email_uq ON frieren_site_accounts (LOWER(email))');
-  await db.query('CREATE INDEX IF NOT EXISTS frieren_site_accounts_verification_idx ON frieren_site_accounts (verification_token_hash) WHERE verification_token_hash IS NOT NULL');
-  await db.query('CREATE INDEX IF NOT EXISTS frieren_site_accounts_reset_idx ON frieren_site_accounts (reset_token_hash) WHERE reset_token_hash IS NOT NULL');
+  if (!schemaPromise) schemaPromise = (async () => {
+    await db.query("CREATE TABLE IF NOT EXISTS frieren_site_accounts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), username VARCHAR(24) NOT NULL, email VARCHAR(254) NOT NULL, password_hash TEXT NOT NULL, email_verified_at TIMESTAMPTZ, verification_token_hash TEXT, verification_expires_at TIMESTAMPTZ, reset_token_hash TEXT, reset_expires_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+    await db.query('CREATE UNIQUE INDEX IF NOT EXISTS frieren_site_accounts_username_uq ON frieren_site_accounts (LOWER(username))');
+    await db.query('CREATE UNIQUE INDEX IF NOT EXISTS frieren_site_accounts_email_uq ON frieren_site_accounts (LOWER(email))');
+    await db.query('CREATE INDEX IF NOT EXISTS frieren_site_accounts_verification_idx ON frieren_site_accounts (verification_token_hash) WHERE verification_token_hash IS NOT NULL');
+    await db.query('CREATE INDEX IF NOT EXISTS frieren_site_accounts_reset_idx ON frieren_site_accounts (reset_token_hash) WHERE reset_token_hash IS NOT NULL');
+  })();
+  try { await schemaPromise; } catch (error) { schemaPromise = null; throw error; }
 }
 function limited(key,max,now=Date.now()) {
   for(const [k,v] of attempts) if(v.until<=now) attempts.delete(k);
