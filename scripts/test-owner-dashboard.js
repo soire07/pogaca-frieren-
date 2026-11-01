@@ -557,7 +557,7 @@ test('site OAuth state supports separate registration and login modes', async ()
   }
 });
 
-test('site registration callback creates a valid member table and session', async () => {
+test('legacy public Discord OAuth callbacks redirect to password registration before token exchange', async () => {
   const { createOwnerOAuthState } = await import('../owner-dashboard.js');
   const previous = {
     CLIENT_ID: process.env.CLIENT_ID,
@@ -571,25 +571,19 @@ test('site registration callback creates a valid member table and session', asyn
   process.env.ADMIN_SESSION_SECRET = secret;
   process.env.OWNER_DASHBOARD_REDIRECT_URI = 'https://pogaca-frieren.onrender.com/owner/callback';
   const state = createOwnerOAuthState(secret, Date.now(), 'register');
-  const user = { id: '123456789012345678', username: 'Gezgin', avatar: 'avatar_hash_123' };
   const queries = [];
-  const db = { async query(sql, params) {
-    queries.push({ sql: String(sql), params });
-    return { rowCount: 1, rows: [{ discord_user_id: user.id }] };
-  } };
-  globalThis.fetch = async (url) => url.includes('/oauth2/token')
-    ? { ok: true, json: async () => ({ access_token: 'test-access-token' }) }
-    : { ok: true, json: async () => user };
-  const req = { method: 'GET', url: '/owner/callback?code=test-code&state=' + encodeURIComponent(state), headers: {} };
+  const db = { async query(sql, params) { queries.push({ sql: String(sql), params }); return { rowCount: 0, rows: [] }; } };
+  let fetchCalled = false;
+  globalThis.fetch = async () => { fetchCalled = true; throw new Error('Public site OAuth must not call Discord'); };
+  const req = { method: 'GET', url: '/owner/callback?code=legacy-code&state=' + encodeURIComponent(state), headers: {} };
   const response = { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body = '') { this.body = body; } };
   try {
     assert.equal(await handleOwnerDashboardRequest(req, response, { client: {}, db }), true);
     assert.equal(response.status, 302);
-    assert.equal(response.headers.Location, '/');
-    assert.match(String(response.headers['Set-Cookie']), /frieren_site_session=/);
-    assert.match(queries[0].sql, /CREATE TABLE IF NOT EXISTS frieren_site_members/);
-    assert.ok(queries[0].sql.includes("17,20"));
-    assert.match(queries[1].sql, /INSERT INTO frieren_site_members/);
+    assert.equal(response.headers.Location, '/register');
+    assert.equal(fetchCalled, false);
+    assert.equal(queries.length, 0);
+    assert.doesNotMatch(String(response.headers['Set-Cookie'] || ''), /frieren_site_session=/);
   } finally {
     for (const [key, value] of Object.entries(previous)) {
       if (key === 'fetch') globalThis.fetch = value;
@@ -598,7 +592,6 @@ test('site registration callback creates a valid member table and session', asyn
     }
   }
 });
-
 test('owner activity workspace renders paginated audit and test history safely', () => {
   const html = renderOwnerActivityWorkspace({
     action: 'memory.update',
