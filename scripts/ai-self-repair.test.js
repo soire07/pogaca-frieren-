@@ -134,3 +134,45 @@ test('repair application preserves the exact executable permission bits despite 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+
+test('repair application retains the only backup when rollback itself fails', async () => {
+  const { readdir } = await import('node:fs/promises');
+  const root = await mkdtemp(path.join(tmpdir(), 'frieren-repair-recovery-'));
+  const firstPath = path.join(root, 'first.js');
+  const secondPath = path.join(root, 'second.js');
+  try {
+    await writeFile(firstPath, 'const first = "original";\\n');
+    await writeFile(secondPath, 'const second = "original";\\n');
+    let replacementRenames = 0;
+    const fs = await import('node:fs/promises');
+    const fileOps = {
+      writeFile,
+      copyFile: fs.copyFile,
+      unlink: fs.unlink,
+      rename: async (source, destination) => {
+        if (source.endsWith('.tmp')) {
+          replacementRenames += 1;
+          if (replacementRenames === 2) throw new Error('SIMULATED_REPLACEMENT_FAILURE');
+        }
+        if (source.endsWith('.bak')) throw new Error('SIMULATED_ROLLBACK_FAILURE');
+        return fs.rename(source, destination);
+      },
+    };
+    await assert.rejects(
+      applyRepairProposal(root, { files: [
+        { path: 'first.js', content: 'const first = "changed";\\n' },
+        { path: 'second.js', content: 'const second = "changed";\\n' },
+      ] }, fileOps),
+      /REPAIR_ROLLBACK_FAILED/
+    );
+    assert.equal(await readFile(firstPath, 'utf8'), 'const first = "changed";\\n');
+    const leftovers = await readdir(root);
+    const backupName = leftovers.find(name => name.startsWith('first.js.frieren-') && name.endsWith('.bak'));
+    assert.ok(backupName, 'the original file backup must remain available for manual recovery');
+    assert.equal(await readFile(path.join(root, backupName), 'utf8'), 'const first = "original";\\n');
+    assert.equal(await readFile(secondPath, 'utf8'), 'const second = "original";\\n');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
