@@ -37,7 +37,6 @@ def test_generation_rejects_invalid_bearer_token(api_client, monkeypatch):
 
 
 def test_generation_uses_checkpoint_and_returns_prompt_prefix(api_client, monkeypatch, tmp_path):
-    import torch
     from frieren_neural.training import TrainingConfig, train_model
 
     checkpoint = tmp_path / "api-model.pt"
@@ -67,3 +66,14 @@ def test_generation_uses_checkpoint_and_returns_prompt_prefix(api_client, monkey
 def test_generation_validates_request_limits(api_client):
     response = api_client.post("/generate", json={"prompt": "x", "max_new_tokens": 9999})
     assert response.status_code == 422
+
+
+
+def test_authorization_header_must_use_bearer_scheme(api_client, monkeypatch):
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "z" * 40)
+    response = api_client.post(
+        "/generate",
+        json={"prompt": "Frieren"},
+        headers={"Authorization": "z" * 40},
+    )
+    assert response.status_code == 401
