@@ -849,6 +849,82 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const form = await readForm(req);
       if (!safeStringEqual(form.get('csrf'), session.csrf)) return send(res, 403, page('İstek reddedildi', '<h1>CSRF doğrulaması başarısız</h1>'));
       const action = form.get('action');
+      if (action === 'guardian-scan' && form.get('confirm') === 'yes') {
+        let found = 0;
+        if (!client?.isReady?.()) {
+          await upsertGuardianIncident(db, { system: 'pogaca_frieren', code: 'DISCORD_CLIENT_NOT_READY', title: 'Poğaça Discord bağlantısı hazır değil', summary: 'Owner Panel taramasında Discord istemcisi hazır görünmüyor.', severity: 'high' });
+          found += 1;
+        }
+        await db.query('SELECT 1');
+        const healthSecret = String(process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+        if (healthSecret.length >= 32) {
+          const aiBase = String(process.env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).replace(/\/$/, '');
+          try {
+            const response = await fetch(aiBase + '/health', { headers: { Accept: 'application/json', 'x-frieren-health-secret': healthSecret }, signal: AbortSignal.timeout(7000) });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok || !['ok','ready'].includes(String(payload.status || '').toLowerCase())) {
+              await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_HEALTH_CHECK_FAILED', title: 'Frieren AI sağlık kontrolü başarısız', summary: 'Frieren AI sağlık endpoint HTTP ' + response.status + ' döndürdü; payload durumu: ' + String(payload.status || 'bilinmiyor'), severity: 'high' });
+              found += 1;
+            }
+          } catch (error) {
+            await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_HEALTH_UNREACHABLE', title: 'Frieren AI sağlık endpointine ulaşılamadı', summary: String(error?.name || 'NetworkError') + ': Frieren AI sağlık kontrolü zaman aşımına uğradı veya bağlantı kurulamadı.', severity: 'high' });
+            found += 1;
+          }
+        }
+        const neuralLiveUrl = String(process.env.FRIEREN_NEURAL_LIVE_URL || '').trim();
+        if (neuralLiveUrl) {
+          const parsed = new URL(neuralLiveUrl);
+          if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_NEURAL_LIVE_URL');
+          try {
+            const response = await fetch(parsed.toString(), { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(5000) });
+            if (!response.ok) {
+              await upsertGuardianIncident(db, { system: 'frieren_neural', code: 'NEURAL_LIVENESS_FAILED', title: 'Frieren Neural canlılık kontrolü başarısız', summary: 'Yapılandırılmış hafif canlılık endpointi HTTP ' + response.status + ' döndürdü.', severity: 'high' });
+              found += 1;
+            }
+          } catch (error) {
+            await upsertGuardianIncident(db, { system: 'frieren_neural', code: 'NEURAL_LIVENESS_UNREACHABLE', title: 'Frieren Neural canlılık endpointine ulaşılamadı', summary: String(error?.name || 'NetworkError') + ': Canlılık kontrolü başarısız.', severity: 'high' });
+            found += 1;
+          }
+        }
+        await auditOwnerAction(db, OWNER_ID, 'guardian.scan', null, { findings: found, neuralConfigured: Boolean(neuralLiveUrl), frierenAiHealthConfigured: healthSecret.length >= 32 });
+        redirect(res, '/owner/guardian?notice=guardian_scan_complete');
+        return true;
+      }
+      if (action === 'guardian-review' && form.get('confirm') === 'yes') {
+        let job = null;
+        try {
+          const incident = await getGuardianIncident(db, form.get('incidentId'));
+          if (!incident) throw new Error('GUARDIAN_INCIDENT_NOT_FOUND');
+          const secret = String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+          if (secret.length < 32) throw new Error('GUARDIAN_BRIDGE_NOT_CONFIGURED');
+          job = await createGuardianReviewJob(db, { incidentId: incident.id, actorId: OWNER_ID });
+          if (job.reused && ['queued','running'].includes(job.status)) {
+            redirect(res, '/owner/guardian?notice=guardian_review_complete');
+            return true;
+          }
+          const response = await fetch(getFrierenAiGuardianEndpoint(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + secret },
+            body: JSON.stringify({ incident: { system: incident.system, code: incident.code, title: incident.title, summary: incident.summary, evidence: incident.evidence } }),
+            signal: AbortSignal.timeout(60_000),
+          });
+          const review = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error('GUARDIAN_AI_HTTP_' + response.status);
+          await finishGuardianReviewJob(db, { jobId: job.id, status: 'completed', result: review });
+          await auditOwnerAction(db, OWNER_ID, 'guardian.review.completed', String(incident.id), { jobId: job.id, resultStatus: review.status || 'proposal_only', applied: false });
+          redirect(res, '/owner/guardian?notice=guardian_review_complete');
+        } catch (error) {
+          if (job?.id && !job.reused) await finishGuardianReviewJob(db, { jobId: job.id, status: 'failed', error: error?.message || 'REVIEW_FAILED' }).catch(() => {});
+          throw error;
+        }
+        return true;
+      }
+      if (action === 'guardian-resolve' && form.get('confirm') === 'yes') {
+        const result = await resolveGuardianIncident(db, { incidentId: form.get('incidentId'), actorId: OWNER_ID });
+        if (!result) throw new Error('GUARDIAN_INCIDENT_NOT_FOUND');
+        redirect(res, '/owner/guardian?notice=guardian_resolved');
+        return true;
+      }
       if (action === 'render-service-action' && form.get('confirm') === 'yes') {
         const result = await executeRenderServiceAction(db, {
           serviceKey: form.get('serviceKey'),
