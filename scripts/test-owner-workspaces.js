@@ -182,9 +182,9 @@ test('database workspace explains free-tier restore limits and refuses to imply 
     database: { connected: true, databaseName: 'frieren', tables: [], checkedAt: null },
     backup: { consoleUrl: 'https://console.neon.tech/app/projects/project-id' }
   });
-  assert.match(html, /otomatik snapshot zamanlaması kullanılamaz/);
   assert.match(html, /6 saatlik Point-in-Time Restore/);
-  assert.match(html, /0,09 USD\/GB-ay/);
+  assert.match(html, /uzun süreli yedek yerine geçmez/);
+  assert.match(html, /snapshot listesi ve zamanlama boştu/);
   assert.match(html, /Neon yedekleme ve dalları aç/);
 });
 
