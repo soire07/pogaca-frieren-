@@ -1162,7 +1162,15 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     const renderServices = getStaleOwnerData(
       'render-services',
       () => getRenderBotServiceStatuses(),
-      { services: {}, updatedAt: null, status: 'loading' }
+      {
+        status: 'loading',
+        apiConfigured: Boolean(process.env.RENDER_POGACA_API_KEY || process.env.RENDER_API_KEY || process.env.RENDER_FRIEREN_AI_API_KEY),
+        services: {
+          pogaca: { status: 'checking', url: RENDER_BOT_SERVICES.pogaca.url, apiConfigured: Boolean(process.env.RENDER_POGACA_API_KEY || process.env.RENDER_API_KEY) },
+          frieren_ai: { status: 'checking', url: RENDER_BOT_SERVICES.frieren_ai.url, apiConfigured: Boolean(process.env.RENDER_FRIEREN_AI_API_KEY) }
+        },
+        updatedAt: null
+      }
     );
     const frierenService = renderServices?.services?.frieren_ai;
     const aiReadiness = frierenService?.healthPayload || null;
