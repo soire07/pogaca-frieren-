@@ -146,6 +146,7 @@ Install the serving extra and start the service:
 pip install -e ".[serve]"
 export FRIEREN_CHECKPOINT=checkpoints/frieren-neural.pt
 export FRIEREN_API_TOKEN="use-a-random-secret-at-least-32-characters-long"
+export FRIEREN_DATABASE_URL="postgresql://.../neondb?sslmode=require"
 export FRIEREN_ALLOWED_ORIGINS="https://your-web-app.example"
 uvicorn frieren_neural.api:app --host 0.0.0.0 --port 8000
 ```
@@ -163,11 +164,15 @@ This API is a single shared service, not a collection of serverless functions. I
 
 The FastAPI service also serves a small responsive chat page at `/`. It uses a server-side password login and an HttpOnly, Secure, SameSite=Strict signed session cookie; the shared API token is never placed in browser JavaScript.
 
-### Process and worker limits
+### Shared admission, login limits, and worker constraints
 
-The current generation semaphore, generation mutex, model cache, and login-attempt limiter are **process-local**. They protect concurrent requests handled by one Python process only; they do not provide a global limit across multiple Uvicorn/Gunicorn workers, containers, or separate service instances. Running multiple workers multiplies the effective generation and login-attempt limits and can load one model copy per worker.
+Set `FRIEREN_DATABASE_URL` to the connection string of the dedicated `frieren-neural-infra` Neon database. Install `.[serve]`; it includes the Psycopg PostgreSQL driver. Apply `migrations/001_shared_admission.sql` before enabling the setting.
 
-**Deployment constraint: run exactly one API worker and one service instance for this experimental version.** Do not start Uvicorn with `--workers > 1`, Gunicorn with multiple workers, or horizontal replicas. A future multi-worker deployment requires a shared atomic admission/rate-limit store and a deliberate model-memory strategy (for example, a shared database/Redis-backed limiter plus explicit per-instance model sizing); a process-local lock is not an acceptable substitute. This restriction is a documented deployment requirement, not a claim that the application can detect every external process-manager configuration.
+- With `FRIEREN_DATABASE_URL` configured, PostgreSQL advisory locks enforce **one global active inference request** across API processes. The session lock is released automatically when the database connection closes or the worker crashes. If PostgreSQL is unavailable, inference fails closed with HTTP 503 rather than silently falling back to a weaker local limit.
+- Login attempts are stored as SHA-256 client keys in `neural_login_attempts`; a PostgreSQL transaction lock makes the five-attempt/five-minute threshold and 2,000-client cap atomic across processes. Expired rows are pruned during login checks.
+- Without `FRIEREN_DATABASE_URL`, the API retains process-local limits for local development only. Do not mistake this fallback for multi-worker protection.
+
+**Deployment constraint: continue to run exactly one API worker and one service instance.** Do not start Uvicorn with `--workers > 1`, Gunicorn with multiple workers, or horizontal replicas. The shared lock prevents concurrent inference, but each worker still has its own model cache and may load a duplicate model copy over time. Multi-instance hosting requires a deliberate model-memory/worker architecture and load testing first.
 
 Configure these additional host secrets:
 
