@@ -68,12 +68,12 @@ test('solo boss victory grants rewards in one transaction and guards duplicate b
   const source = await (await import('node:fs/promises')).readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
   const victory = source.indexOf('if (bossHp <= 0)');
   const begin = source.indexOf("await db.query('BEGIN')", victory);
-  const rewardUpdate = source.indexOf('coins=coins+$5, xp=xp+$6, boss_defeats=boss_defeats+1', begin);
+  const rewardUpdate = source.indexOf('coins=coins+$5, xp=xp+$6, last_boss_battle_id=$7', begin);
   const firstInventory = source.indexOf('INSERT INTO inventory', begin);
   const commit = source.indexOf("await db.query('COMMIT')", firstInventory);
   assert.ok(victory >= 0 && begin > victory && rewardUpdate > begin && firstInventory > rewardUpdate && commit > firstInventory,
     'victory rewards and inventory must be committed in one transaction');
-  assert.equal((source.match(/coins=coins\+\$5, xp=xp\+\$6, boss_defeats=boss_defeats\+1/g) || []).length, 1,
+  assert.equal((source.match(/last_boss_battle_id=\$7/g) || []).length, 1,
     'boss victory reward update must have a single code path');
   assert.match(source, /if \(finished \|\| busy\) return button\.deferUpdate\(\)/);
   assert.match(source, /finished = true;\s*collector\.stop\('victory'\)/);
@@ -94,3 +94,18 @@ test('boss defeat and expired combat persist survival state without granting vic
   assert.match(source, /UPDATE users SET hp=\$3, mana=\$4 WHERE guild_id=\$1 AND user_id=\$2/);
 });
 
+
+test('solo boss reward persistence is idempotent per battle session across duplicate handlers', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const schema = await (await import('node:fs/promises')).readFile(new URL('../database/db.js', import.meta.url), 'utf8');
+  assert.match(source, /randomUUID/);
+  assert.match(source, /last_boss_battle_id/);
+  assert.ok(source.includes('last_boss_battle_id IS DISTINCT FROM $7'));
+  const victory = source.indexOf('if (bossHp <= 0)');
+  const begin = source.indexOf("await db.query('BEGIN')", victory);
+  const reward = source.indexOf('last_boss_battle_id=$7', begin);
+  const commit = source.indexOf("await db.query('COMMIT')", reward);
+  assert.ok(victory >= 0 && begin > victory && reward > begin && commit > reward,
+    'the battle session must be claimed atomically before rewards commit');
+  assert.match(schema, /last_boss_battle_id TEXT/);
+});

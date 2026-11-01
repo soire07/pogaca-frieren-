@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   SlashCommandBuilder,
   EmbedBuilder,
@@ -156,6 +157,7 @@ export default {
     const upgradeBonus = Number(upgrades.rows[0]?.level || 0) * 2;
     // Rotate among unlocked active tiers so earlier bosses remain replayable and journal collections can be completed.
     const boss = unlockedBossTiers[Math.floor(Math.random() * unlockedBossTiers.length)] || unlockedBossTiers[0];
+    const battleId = randomUUID();
     let bossHp = boss.maxHp;
     let bossPhase = 1;
     let turnCount = 0;
@@ -324,13 +326,21 @@ export default {
           const db = await pool.connect();
           try {
             await db.query('BEGIN');
-            await db.query(
-              `UPDATE users SET hp=$3, mana=$4, coins=coins+$5, xp=xp+$6, boss_defeats=boss_defeats+1, last_boss_win_at=NOW(),
+            const rewardClaim = await db.query(
+              `UPDATE users SET hp=$3, mana=$4, coins=coins+$5, xp=xp+$6, last_boss_battle_id=$7,
+                boss_defeats=boss_defeats+1, last_boss_win_at=NOW(),
                 stat_points=stat_points+GREATEST(0,(FLOOR(SQRT((xp+$6)::numeric / 100))::int + 1)-level),
                 level=FLOOR(SQRT((xp+$6)::numeric / 100))::int + 1
-               WHERE guild_id=$1 AND user_id=$2`,
-              [interaction.guildId, interaction.user.id, toPersistentHp(playerHp), toPersistentMana(playerMana), rewardCoins, rewardXp]
+               WHERE guild_id=$1 AND user_id=$2 AND last_boss_battle_id IS DISTINCT FROM $7
+               RETURNING user_id`,
+              [interaction.guildId, interaction.user.id, toPersistentHp(playerHp), toPersistentMana(playerMana), rewardCoins, rewardXp, battleId]
             );
+            if (rewardClaim.rowCount !== 1) {
+              await db.query('ROLLBACK');
+              finished = true;
+              collector.stop('duplicate-victory');
+              return button.update({ content: 'Bu savaşın ödülü daha önce işlendi; tekrar ödül verilmedi.', embeds: [], components: [] });
+            }
             const journalBossKey = boss.name.includes('Schattenwolf') ? 'schattenwolf'
               : boss.name.includes('Harabe Muhafızı') ? 'ruinGuardian'
                 : boss.name.includes('Kuzey İblisi') ? 'northDemon'
