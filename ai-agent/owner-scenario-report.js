@@ -15,7 +15,7 @@ export function buildOwnerScenarioReport(target, result = {}) {
     skipped: sumMetric('skipped')
   };
   const memoryPrivacyTarget = /bellek|memory|gizlilik|privacy|postgres|veritabani|database/i.test(String(target || ''));
-  const liveMemoryProof = output.includes('CANLI POSTGRESQL TESTİ: BAŞARILI');
+  const liveMemoryProof = output.includes('scripts/test-live-memory.js') && output.includes('CANLI POSTGRESQL TESTİ: BAŞARILI');
   const failedStages = [];
   if (!testFiles.length) failedStages.push('Hedefe uygun mevcut test dosyası bulunamadı.');
   if (result.code !== 0 && testFiles.length) failedStages.push('Seçilen test paketlerinden en az biri başarısız oldu veya tamamlanamadı.');
