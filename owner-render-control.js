@@ -39,9 +39,13 @@ async function readHealth(service, fetchImpl) {
       headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(5000)
     });
-    return { health: response.ok ? 'healthy' : 'unhealthy', healthStatus: response.status };
+    let healthPayload = null;
+    if (response.ok) {
+      try { healthPayload = await response.json(); } catch { healthPayload = null; }
+    }
+    return { health: response.ok ? 'healthy' : 'unhealthy', healthStatus: response.status, healthPayload };
   } catch {
-    return { health: 'unavailable', healthStatus: null };
+    return { health: 'unavailable', healthStatus: null, healthPayload: null };
   }
 }
 
@@ -56,28 +60,30 @@ export async function getRenderBotServiceStatuses({
   apiKey
 } = {}) {
   const results = await Promise.all(Object.entries(RENDER_BOT_SERVICES).map(async ([key, service]) => {
-    let details = null;
-    let serviceApiError = null;
     const token = getServiceApiToken(key, apiKey);
-    if (token) {
-      try {
-        const response = await fetchImpl(API_BASE + '/services/' + encodeURIComponent(service.id), {
-          method: 'GET',
-          headers: { Accept: 'application/json', Authorization: 'Bearer ' + token },
-          signal: AbortSignal.timeout(5000)
-        });
-        if (!response.ok) throw new Error('RENDER_API_HTTP_' + response.status);
-        details = await response.json();
-        if (!details || details.id !== service.id) throw new Error('RENDER_SERVICE_ID_MISMATCH');
-      } catch (error) {
-        serviceApiError = safeErrorCode(error);
-      }
-    }
-
+    const apiRequest = token
+      ? (async () => {
+          try {
+            const response = await fetchImpl(API_BASE + '/services/' + encodeURIComponent(service.id), {
+              method: 'GET',
+              headers: { Accept: 'application/json', Authorization: 'Bearer ' + token },
+              signal: AbortSignal.timeout(5000)
+            });
+            if (!response.ok) throw new Error('RENDER_API_HTTP_' + response.status);
+            const details = await response.json();
+            if (!details || details.id !== service.id) throw new Error('RENDER_SERVICE_ID_MISMATCH');
+            return { details, serviceApiError: null };
+          } catch (error) {
+            return { details: null, serviceApiError: safeErrorCode(error) };
+          }
+        })()
+      : Promise.resolve({ details: null, serviceApiError: null });
+    const healthRequest = readHealth(service, fetchImpl);
+    const [{ details, serviceApiError }, healthResult] = await Promise.all([apiRequest, healthRequest]);
     const suspended = details?.suspended === 'suspended';
-    const healthResult = suspended ? { health: 'suspended', healthStatus: null } : await readHealth(service, fetchImpl);
-    const status = suspended ? 'suspended' : healthResult.health === 'healthy' ? 'running'
-      : healthResult.health === 'unhealthy' ? 'unhealthy' : 'unknown';
+    const finalHealth = suspended ? { health: 'suspended', healthStatus: null, healthPayload: null } : healthResult;
+    const status = suspended ? 'suspended' : finalHealth.health === 'healthy' ? 'running'
+      : finalHealth.health === 'unhealthy' ? 'unhealthy' : 'unknown';
     return {
       key,
       name: service.name,
@@ -88,8 +94,9 @@ export async function getRenderBotServiceStatuses({
       suspended: details ? suspended : null,
       suspenders: Array.isArray(details?.suspenders) ? details.suspenders : [],
       status,
-      health: healthResult.health,
-      healthStatus: healthResult.healthStatus,
+      health: finalHealth.health,
+      healthStatus: finalHealth.healthStatus,
+      healthPayload: finalHealth.healthPayload,
       apiError: serviceApiError,
       apiConfigured: Boolean(token),
       updatedAt: details?.updatedAt || null,
