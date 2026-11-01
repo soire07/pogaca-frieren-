@@ -232,3 +232,8 @@ A live inspection of the public dataset viewer exposed at least one `tr_only` ca
 ## Turkish conversation quality gate
 
 The fixed, human-reviewed benchmark, scoring rubric, and release thresholds are defined in [QUALITY_GATE.md](QUALITY_GATE.md). The current checkpoint has not passed that review and remains experimental.
+
+
+### Baseline artifact audit (2026-11-01)
+
+The CPU baseline artifact from workflow run [41307444879](https://github.com/soire07/pogaca-frieren-/actions/runs/41307444879) was downloaded and inspected without deploying or modifying any service. Its checkpoint confirms a deliberately small configuration: 2 Transformer layers, 2 attention heads, 64-dimensional embeddings, 64-token context, vocabulary size 384, batch size 4, and 1,000 optimizer steps. The held-out metrics file reports loss 3.4980 and perplexity 33.0493. The training workflow used only 3 evaluation batches for this small CPU run, so these metrics are useful as a smoke/baseline signal but are too noisy and too narrow to establish conversational quality. A future comparison must use identical, larger held-out evaluation settings, fixed prompts, reviewed generations, and preferably multiple seeds. Do not treat this artifact as a deployable assistant checkpoint.
