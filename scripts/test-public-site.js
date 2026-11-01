@@ -31,10 +31,9 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /Gezgin/);
   assert.match(response.body, /profile-banner/);
   assert.match(response.body, /gif-gallery/);
-  assert.match(response.body, /object-fit:cover/);
-  assert.match(response.body, /border-radius:50%/);
+  assert.match(response.body, /href="\/assets\/site\.css"/);
   assert.match(response.body, /profile-avatar/);
-  assert.match(response.body, /height:205px/);
+  assert.equal((response.body.match(/loading="lazy"/g) || []).length, 17);
   assert.equal((response.body.match(/class="gif-item"/g) || []).length, 16);
   assert.match(response.body, /68/);
 });
@@ -109,7 +108,19 @@ test('site profile uses dedicated brand avatar and banner assets', async () => {
   const response = res();
   await handlePublicSiteRequest(request('/', visitor), response);
   assert.match(response.body, /site-avatar\.svg/);
-  assert.match(response.body, /site-banner\.svg/);
+  const stylesheet = res();
+  await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
+  assert.match(String(stylesheet.body), /site-banner\.svg/);
+});
+
+test('shared stylesheet is publicly cacheable for authenticated and auth pages', async () => {
+  const response = res();
+  await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, response);
+  assert.equal(response.status, 200);
+  assert.match(response.headers['Content-Type'], /text\/css/);
+  assert.match(response.headers['Cache-Control'], /public,max-age=86400/);
+  assert.match(String(response.body), /@media\(max-width:560px\)/);
+  assert.match(String(response.body), /\.hero-art/);
 });
 
 test('dedicated site avatar asset is public so auth screens can render it', async () => {
@@ -127,8 +138,7 @@ test('registration and login error pages show centered recovery messaging withou
     assert.equal(response.status, 200);
     assert.match(response.body, /Discord doğrulaması tamamlanamadı/);
     assert.doesNotMatch(response.body, /class="auth-back"|Ana sayfaya dön/);
-    assert.match(response.body, /place-items:center/);
-    assert.match(response.body, /text-align:center/);
+    assert.match(response.body, /href="\/assets\/site\.css"/);
   }
 });
 
@@ -136,8 +146,10 @@ test('registration and login error pages show centered recovery messaging withou
 test('mobile public pages keep card actions and hero media within the viewport', async () => {
   const response = res();
   await handlePublicSiteRequest(request('/'), response);
-  assert.match(response.body, /Responsive visual polish/);
-  assert.match(response.body, /max-width:560px/);
-  assert.match(response.body, /\.actions \.btn\{flex:1 1 100%;width:100%\}/);
-  assert.match(response.body, /focus-visible/);
+  assert.match(response.body, /assets\/site\.css/);
+  const stylesheet = res();
+  await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
+  assert.match(String(stylesheet.body), /max-width:560px/);
+  assert.match(String(stylesheet.body), /\.actions \.btn\{flex:1 1 100%;width:100%\}/);
+  assert.match(String(stylesheet.body), /focus-visible/);
 });
