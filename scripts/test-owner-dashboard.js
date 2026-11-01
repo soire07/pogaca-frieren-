@@ -1,7 +1,7 @@
 import test from 'node:test';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderCommandHelpManager, renderOwnerLayout, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderCommandHelpManager, renderOwnerLayout, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, loadOwnerCommandHelpSafely, handleOwnerDashboardRequest } from '../owner-dashboard.js';
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
 const ownerId = '1553794496234262641';
@@ -645,6 +645,25 @@ test('owner workspace layout places navigation and content in one balanced shell
   assert.ok(html.endsWith('<div class="owner-content"><section class="owner-content">content</section></div></div>'));
 });
 
+
+test('owner dashboard keeps running with live command descriptions when optional help storage is unavailable', async () => {
+  let reads = 0;
+  const entries = await loadOwnerCommandHelpSafely({
+    async query() {
+      reads += 1;
+      throw new Error('private database connection details');
+    }
+  });
+  assert.deepEqual(entries, []);
+  assert.equal(reads, 1);
+  const commands = new Map([['karakter', {
+    data: { name: 'karakter', description: 'Canlı slash komut açıklaması.' }
+  }]]);
+  const html = renderCommandHelpManager(commands, entries, 'test-csrf');
+  assert.match(html, /\/karakter/);
+  assert.match(html, /Canlı slash komut açıklaması/);
+  assert.doesNotMatch(html, /private database connection details/);
+});
 
 test('command help manager lists loaded commands with bounded editable descriptions', () => {
   const commands = new Map([

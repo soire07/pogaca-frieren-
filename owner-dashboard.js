@@ -395,6 +395,15 @@ export function renderCommandHelpManager(commands, overrides = [], csrf = '') {
     }).join('');
 }
 
+export async function loadOwnerCommandHelpSafely(db) {
+  try {
+    return await listOwnerCommandHelp(db);
+  } catch {
+    console.warn('Owner command help unavailable; dashboard continues without custom help text.');
+    return [];
+  }
+}
+
 function renderDashboard({ session, overview, client, approvals, memories, memoryUser, memoryGuild, memoryKey, notice, activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild, commandHelpEntries }) {
   const featureLabels = { commands: 'Tüm komutlar', rpg: 'RPG sistemi', character: 'Karakter sistemi', magic: 'Büyü ve yetenekler', equipment: 'Ekipman ve eşyalar', economy: 'Ekonomi ve mağaza', quests: 'Görevler', dungeons: 'Zindanlar', bosses: 'Boss sistemi', trading: 'Takas', messageXp: 'Mesaj XP kazanımı', aiChat: 'Frieren sohbet etkileşimi' };
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
@@ -1031,7 +1040,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       getOwnerData('dashboard:feature-settings', () => listGuildFeatureSettingsForGuilds(
         db, [...(client?.guilds?.cache?.keys?.() || [])]
       ), 10_000),
-      listOwnerCommandHelp(db)
+      loadOwnerCommandHelpSafely(db)
     ]);
     const renderMetrics = getStaleOwnerData(
       'render-metrics:pogaca',
