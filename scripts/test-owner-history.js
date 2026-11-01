@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  listOwnerAuditLogs, recordOwnerTestRun, listOwnerTestRuns,
+  listOwnerAuditLogs, listOwnerErrorLogs, recordOwnerTestRun, listOwnerTestRuns,
   searchOwnerMemories, updateOwnerMemory
 } from '../owner-admin.js';
 
@@ -82,4 +82,17 @@ test('memory edits reject sensitive values before touching the database', async 
     id: 8, value: 'Discord bot token abc123', actorId: '1553794496234262641'
   }), /SENSITIVE_MEMORY_REJECTED/);
   assert.equal(called, false);
+});
+
+test('error history supports scope filtering and bounded pagination', async () => {
+  let call;
+  const db = { query: async (sql, params) => {
+    call = { sql, params };
+    return { rows: [{ id: 9, scope: 'discord', error_type: 'GatewayError', created_at: '2026-11-01T00:00:00Z', total_count: 1 }] };
+  } };
+  const result = await listOwnerErrorLogs(db, { scope: 'discord', page: 1, limit: 100 });
+  assert.match(call.sql, /scope ILIKE/);
+  assert.match(call.sql, /ORDER BY id DESC/);
+  assert.deepEqual(call.params, ['%discord%', 50, 0]);
+  assert.equal(result.rows[0].error_type, 'GatewayError');
 });
