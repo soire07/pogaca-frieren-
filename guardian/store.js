@@ -134,6 +134,40 @@ export async function resolveGuardianIncident(db, { incidentId, actorId }) {
   return result.rows?.[0] || null;
 }
 
+export async function getLatestGuardianJob(db, incidentId) {
+  const id = Number(incidentId);
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error('INVALID_GUARDIAN_INCIDENT_ID');
+  const result = await db.query(
+    'SELECT * FROM owner_guardian_jobs WHERE incident_id=$1 AND agent=\'frieren_ai\' ORDER BY id DESC LIMIT 1',
+    [id]
+  );
+  return result.rows?.[0] || null;
+}
+
+export async function reserveGuardianRepairDispatch(db, jobId) {
+  const id = Number(jobId);
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error('INVALID_GUARDIAN_JOB_ID');
+  const result = await db.query(
+    `UPDATE owner_guardian_jobs SET repair_dispatch_status='dispatching',repair_dispatch_at=NOW()
+     WHERE id=$1 AND status='completed' AND repair_dispatch_status IN ('not_requested','failed')
+     RETURNING *`,
+    [id]
+  );
+  return result.rows?.[0] || null;
+}
+
+export async function finishGuardianRepairDispatch(db, { jobId, status, workflowUrl = null }) {
+  const id = Number(jobId);
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error('INVALID_GUARDIAN_JOB_ID');
+  if (!['dispatched','failed'].includes(status)) throw new Error('INVALID_GUARDIAN_DISPATCH_STATUS');
+  const result = await db.query(
+    `UPDATE owner_guardian_jobs SET repair_dispatch_status=$2,repair_workflow_url=$3
+     WHERE id=$1 AND repair_dispatch_status='dispatching' RETURNING id`,
+    [id, status, status === 'dispatched' ? workflowUrl : null]
+  );
+  return Boolean(result.rows?.[0]);
+}
+
 export async function listGuardianJobs(db, limit = 20) {
   const safeLimit = Math.max(1, Math.min(Number(limit) || 20, 100));
   const result = await db.query(
