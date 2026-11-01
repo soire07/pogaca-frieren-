@@ -112,7 +112,10 @@ export async function initOwnerAdminSchema(db) {
       created_by TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       started_at TIMESTAMPTZ,
-      finished_at TIMESTAMPTZ
+      finished_at TIMESTAMPTZ,
+      repair_dispatch_status VARCHAR(16) NOT NULL DEFAULT 'not_requested' CHECK (repair_dispatch_status IN ('not_requested','dispatching','dispatched','failed')),
+      repair_dispatch_at TIMESTAMPTZ,
+      repair_workflow_url TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_owner_guardian_jobs_recent ON owner_guardian_jobs(created_at DESC);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_owner_guardian_jobs_active
