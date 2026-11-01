@@ -1,4 +1,4 @@
-import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { EmbedBuilder, SlashCommandBuilder, MessageFlags } from 'discord.js';
 
 function formatUptime(milliseconds) {
   const totalSeconds = Math.floor(Math.max(0, milliseconds) / 1000);
