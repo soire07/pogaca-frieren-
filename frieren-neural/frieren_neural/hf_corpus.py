@@ -17,6 +17,7 @@ from typing import Iterable
 DATASET_ID = "cisimcik/turkish-chat-max-25k"
 DATASET_URL = f"https://huggingface.co/datasets/{DATASET_ID}"
 DATASET_LICENSE = "apache-2.0"
+EXPECTED_DATASET_ROWS = 24_543
 PREPROCESSING_VERSION = "1"
 DIALOGUE_SEPARATOR = "\n\n---\n\n"
 REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -124,7 +125,7 @@ def build_corpus(rows: Iterable[object]) -> tuple[list[str], list[str], dict[str
 
 def _stage_write(path: Path, content: str) -> Path:
     with tempfile.NamedTemporaryFile(
-        mode="w", encoding="utf-8", newline="\\n", dir=path.parent,
+        mode="w", encoding="utf-8", newline="\n", dir=path.parent,
         prefix=f".{path.name}.", suffix=".tmp", delete=False,
     ) as temporary:
         temporary.write(content)
@@ -179,7 +180,7 @@ def _write_split(
     try:
         staged_paths.append(_stage_write(final_paths[0], text_content))
         staged_paths.append(_stage_write(
-            final_paths[1], json.dumps(manifest, ensure_ascii=False, indent=2) + "\\n"
+            final_paths[1], json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
         ))
         for staged, final in zip(staged_paths, final_paths, strict=True):
             if final.exists():
@@ -248,6 +249,8 @@ def main() -> None:
     if not revision:
         raise SystemExit("Hugging Face did not provide an immutable dataset revision; refusing to continue.")
     dataset = load_dataset(DATASET_ID, split="train", revision=revision)
+    if len(dataset) != EXPECTED_DATASET_ROWS:
+        raise SystemExit(f"Expected {EXPECTED_DATASET_ROWS} pinned dataset rows; received {len(dataset)}.")
     result = prepare_turkish_chat_max_25k(
         dataset, args.output, revision=revision, license_name=license_name or ""
     )
