@@ -361,7 +361,11 @@ export async function getFrierenAIReadiness({
       signal: AbortSignal.timeout(5000)
     });
     if (!response.ok) return null;
-    return await response.json();
+    const payload = await response.json();
+    if (payload && typeof payload.ready === 'boolean' && payload.readiness && typeof payload.readiness === 'object') {
+      return payload.readiness;
+    }
+    return payload;
   } catch { return null; }
 }
 
