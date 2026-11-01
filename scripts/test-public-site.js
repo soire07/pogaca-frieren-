@@ -109,7 +109,7 @@ test('registration and login pages expose separate Discord OAuth actions', async
 test('site profile uses dedicated brand avatar and banner assets', async () => {
   const response = res();
   await handlePublicSiteRequest(request('/', visitor), response);
-  assert.match(response.body, /site-avatar\.svg/);
+  assert.match(response.body, /site-avatar\\.webp/);
   const stylesheet = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
   assert.match(String(stylesheet.body), /site-banner\.webp/);
@@ -137,10 +137,10 @@ test('Owner Panel stylesheet is served as a cacheable static asset', async () =>
 
 test('dedicated site avatar asset is public so auth screens can render it', async () => {
   const response = res();
-  await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-avatar.svg', headers: {} }, response);
+  await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-avatar.webp', headers: {} }, response);
   assert.equal(response.status, 200);
-  assert.match(response.headers['Content-Type'], /image\/svg\+xml/);
-  assert.match(String(response.body), /<svg/);
+  assert.match(response.headers['Content-Type'], /image\/webp/);
+  assert.ok(Buffer.isBuffer(response.body) && response.body.length > 1000);
 });
 
 test('registration and login error pages show centered recovery messaging without a home link', async () => {
