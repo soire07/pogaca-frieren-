@@ -147,7 +147,7 @@ def _corpus_fingerprint(documents: Sequence[str]) -> str:
 
 def _corpus_content_fingerprint(documents: Sequence[str]) -> str:
     """Hash normalized text independent of how a caller groups documents."""
-    normalized = "\n".join(document.strip() for document in documents).encode("utf-8")
+    normalized = " ".join(" ".join(document.split()) for document in documents).encode("utf-8")
     return hashlib.sha256(normalized).hexdigest()
 
 
