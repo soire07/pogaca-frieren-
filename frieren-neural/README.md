@@ -133,7 +133,7 @@ The bot token and API token must be stored as host secrets, never in Git or clie
 2. **Training:** BPE, provenance checks, leakage-free split, training, evaluation, and deterministic resume are implemented.
 3. **Evaluation:** held-out perplexity, Turkish/English quality sets, and regression benchmarks.
 4. **Memory and tools:** separate retrieval/memory and tool execution from model weights.
-5. **Serving:** a small inference API, then web and Discord adapters sharing the same core.
+5. **Serving:** authenticated FastAPI inference API and Discord `/ask` adapter are implemented; a browser chat UI, hosting, and deployment remain.
 6. **Scaling:** improve data, tokenizer, model size, and training only when suitable compute is available.
 
 A genuinely capable model requires substantial clean data and compute. This is a small research model, not a ChatGPT-equivalent system.
