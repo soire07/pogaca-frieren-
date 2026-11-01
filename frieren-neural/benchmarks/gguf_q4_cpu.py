@@ -1,4 +1,4 @@
-"""Pinned, checksum-verified Qwen3-0.6B Q8_0 GGUF CPU benchmark.
+"""Pinned, checksum-verified Qwen3-0.6B Q4_K_M GGUF CPU benchmark.
 
 Isolated evaluation only: no production integration or model training.
 """
@@ -15,7 +15,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from frieren_neural.quality_evaluation import DIMENSIONS, PROMPTS, PROMPT_SET_VERSION
+from frieren_neural.quality_evaluation import DIMENSIONS, PROMPTS, PROMPT_SET_VERSION\nfrom frieren_neural.qwen3_decoding import build_qwen3_chat_request
 
 MODEL_URL = "https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/060ae942940c11394cfb1a7313ddcb92c2c4db11/Qwen3-0.6B-Q4_K_M.gguf"
 MODEL_SHA256 = "dd4750858c52f1c040e9ff4f54ba9365e11e8e81021abffd9b9c02646cf334d7"
@@ -40,7 +40,7 @@ def download_model(path: Path) -> None:
     with urllib.request.urlopen(request, timeout=60) as response, temporary.open("wb") as output:
         declared = response.headers.get("Content-Length")
         if declared and int(declared) > MODEL_MAX_SIZE_BYTES:
-            raise ValueError(f"Model exceeds the 700 MiB safety cap: {declared}")
+            raise ValueError(f"Model exceeds the 450 MiB safety cap: {declared}")
         while chunk := response.read(1024 * 1024):
             size += len(chunk)
             if size > MODEL_MAX_SIZE_BYTES:
@@ -88,16 +88,11 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
 
     outputs = []
     generation_started = time.perf_counter()
-    for case_id, category, prompt, _hint in PROMPTS:
+    for case_index, (case_id, category, prompt, _hint) in enumerate(PROMPTS):
         started = time.perf_counter()
         result = llm.create_chat_completion(
-            messages=[
-                {"role": "system", "content": "/no_think"},
-                {"role": "user", "content": prompt},
-            ],
+            **build_qwen3_chat_request(prompt, seed=20261101 + case_index),
             max_tokens=MAX_NEW_TOKENS,
-            temperature=0.0,
-            top_p=1.0,
         )
         elapsed = round(time.perf_counter() - started, 3)
         choice = result["choices"][0]
@@ -143,7 +138,7 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
         "threads": threads,
         "context_tokens": 1024,
         "max_new_tokens": MAX_NEW_TOKENS,
-        "thinking_mode": "Qwen3 /no_think system-message switch; empty wrapper stripped; non-empty reasoning redacted",
+        "thinking_mode": "Qwen3 /no_think user-turn switch; non-empty reasoning redacted",\n        "decoding_settings": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "min_p": 0.0, "seed_base": 20261101},
         "download_seconds": download_seconds,
         "model_load_seconds": load_seconds,
         "generation_total_seconds": round(time.perf_counter() - generation_started, 3),
