@@ -49,7 +49,21 @@ def test_report_applies_quality_gate_to_human_scores():
         outputs=[{"id": f"TR-{number:03d}", "output": "örnek yanıt"} for number in range(1, 25)],
         scores=scores,
         training_provenance={"manifest_sha256":"d"*64,"licenses":["CC BY 4.0"]},
-        heldout_metrics={"loss":2.0,"perplexity":7.39},
+        checkpoint_metadata={
+            "format_version": 2,
+            "dialogue_encoding_version": 2,
+            "loss_objective_version": 1,
+            "training_objective": "assistant_response_tokens_plus_eos",
+            "model_config": {"d_model": 16, "n_layers": 1},
+            "training_config": {"max_steps": 10},
+            "tokenizer_type": "byte_bpe",
+            "tokenizer_vocab_size": 280,
+        },
+        heldout_metrics={
+            "loss":2.0, "perplexity":7.39,
+            "loss_objective_version": 1,
+            "checkpoint_training_loss_objective_version": 1,
+        },
         baseline_report={
             "prompt_set_version": quality.PROMPT_SET_VERSION,
             "decoding_settings": quality.DECODING_SETTINGS,
@@ -105,7 +119,14 @@ def test_cli_writes_machine_and_human_readable_report(tmp_path, monkeypatch):
     monkeypatch.setattr(
         quality,
         "load_checkpoint",
-        lambda *_args, **_kwargs: (object(), object(), {"step": 123}),
+        lambda *_args, **_kwargs: (
+            object(), object(), {
+                "step": 123, "format_version": 2, "dialogue_encoding_version": 2,
+                "loss_objective_version": 1, "training_objective": "assistant_response_tokens_plus_eos",
+                "model_config": {"d_model": 16}, "training_config": {"max_steps": 123},
+                "tokenizer_type": "byte_bpe", "tokenizer_vocab_size": 280,
+            }
+        ),
     )
     monkeypatch.setattr(
         quality,
@@ -123,9 +144,52 @@ def test_cli_writes_machine_and_human_readable_report(tmp_path, monkeypatch):
     scores_path = tmp_path / "report" / "human-scores.template.json"
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["decision"] == "NOT READY"
+    assert report["checkpoint_metadata"]["tokenizer_type"] == "byte_bpe"
     assert len(report["outputs"]) == 24
     assert "TR-024" in markdown_path.read_text(encoding="utf-8")
     template = json.loads(scores_path.read_text(encoding="utf-8"))
     assert template["schema_version"] == 1
     assert set(template["cases"][0]["reviewer_1"]) >= set(quality.DIMENSIONS)
     assert template["cases"][0]["reviewer_1"]["critical_safety_failure"] is None
+
+
+
+def test_report_blocks_mismatched_heldout_objective():
+    scores = quality.empty_score_template()
+    for case in scores["cases"]:
+        for reviewer in ("reviewer_1", "reviewer_2"):
+            case[reviewer] = {
+                **{dimension: 4 for dimension in quality.DIMENSIONS},
+                "critical_safety_failure": False,
+                "fabricated_claim": False,
+            }
+    report = quality.build_report(
+        checkpoint_sha256="e" * 64,
+        checkpoint_step=100,
+        outputs=[{"id": f"TR-{number:03d}", "output": "örnek"} for number in range(1, 25)],
+        scores=scores,
+        checkpoint_metadata={
+            "format_version": 2, "dialogue_encoding_version": 2,
+            "loss_objective_version": 1, "model_config": {"d_model": 16},
+            "training_config": {"max_steps": 100}, "tokenizer_type": "byte_bpe",
+            "tokenizer_vocab_size": 280,
+        },
+        training_provenance={"manifest_sha256": "f" * 64, "licenses": ["CC BY 4.0"]},
+        heldout_metrics={
+            "loss": 2.0, "perplexity": 7.39,
+            "loss_objective_version": 0,
+            "checkpoint_training_loss_objective_version": 1,
+        },
+        baseline_report={
+            "prompt_set_version": quality.PROMPT_SET_VERSION,
+            "decoding_settings": quality.DECODING_SETTINGS,
+            "checkpoint_sha256": "0" * 64,
+            "human_review": {"completed": True},
+            "metrics": {
+                "dimension_averages": {dimension: 3.5 for dimension in quality.DIMENSIONS},
+                "overall_average": 3.5,
+            },
+        },
+    )
+    assert report["decision"] == "NOT READY"
+    assert "held_out_objective_mismatch" in report["blocking_reasons"]
