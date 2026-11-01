@@ -822,6 +822,124 @@
         ]
       },
       "limitation": "Dungeon-depth and full-clear material wiring plus recipe availability are asserted; a complete live party dungeon clear is not verified."
+    },
+    {
+      "featureId": "RPG-001",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "profil.js",
+          "markers": [
+            "SELECT xp, level, coins, class_name, active_build, hp, max_hp, mana, max_mana, attack, defense, stat_points",
+            "applyEquipmentSetBonus(equippedItems, equipmentBonus(equippedItems))"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/check-gameplay-integrity.js",
+        "name": "player profile displays selected combat build and build-adjusted stats",
+        "markers": [
+          "getCharacterBuild(u.active_build)",
+          "Savaş yapısı",
+          "(Number(u.max_hp) + gear.hp) * build.hp"
+        ]
+      },
+      "limitation": "Profile query and build-adjusted display calculations are asserted; the complete Discord profile interaction is not executed."
+    },
+    {
+      "featureId": "RPG-003",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "utils.js",
+          "markers": [
+            "export function levelForXp(xp)",
+            "export function xpForNextLevel(level)"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "levelForXp uses the expected XP thresholds",
+        "markers": [
+          "levelForXp(0), 1",
+          "levelForXp(100), 2",
+          "levelForXp(400), 3",
+          "levelForXp(900), 4"
+        ]
+      },
+      "limitation": "XP-to-level thresholds and boundary behavior are directly unit-tested; Discord reward delivery is not covered by this unit test."
+    },
+    {
+      "featureId": "RPG-004",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "gorevzinciri.js",
+          "markers": [
+            "const newLevel = levelForXp(newXp);",
+            "stat_points=stat_points+$6"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "quest chain integrates level-scaled XP, level-ups, stat points and completion bonus",
+        "markers": [
+          "levelForXp(newXp)",
+          "stat_points=stat_points+$6",
+          "getLevelScaledQuestReward(200, 80, 51, true)"
+        ]
+      },
+      "limitation": "Quest completion source is checked for level and stat-point writes; no live player quest claim is executed."
+    },
+    {
+      "featureId": "RPG-020",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "esyakullan.js",
+          "markers": [
+            "const updated = await db.query(",
+            "max_mana + $8",
+            "max_hp + $7"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/check-gameplay-integrity.js",
+        "name": "item use persists base HP and mana without permanently adding temporary equipment bonuses",
+        "markers": [
+          "max_mana + $8",
+          "max_hp + $7",
+          "Math.min(1, Number(user.hp) / Math.max(1, Number(user.max_hp)))"
+        ]
+      },
+      "limitation": "Item-use resource conversion and SQL update shape are source-asserted, including a separate bind-count regression test; no live inventory item is consumed."
+    },
+    {
+      "featureId": "RPG-024",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "ekipman.js",
+          "markers": [
+            "INSERT INTO user_equipment(guild_id,user_id,slot,item_key)",
+            "DELETE FROM user_equipment",
+            "SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/check-gameplay-integrity.js",
+        "name": "equipment equip and unequip are user-scoped transactions and never permanently add gear stats",
+        "markers": [
+          "DELETE FROM user_equipment",
+          "INSERT INTO user_equipment",
+          "must not persist temporary max HP/mana bonuses"
+        ]
+      },
+      "limitation": "Player-first row locking, user scoping, transactional equip/unequip and base-stat protection are statically asserted; no live Discord equip action is run."
     }
   ]
 }
