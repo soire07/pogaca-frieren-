@@ -17,9 +17,11 @@ export const GUARDIAN_INCIDENT_STATUSES = Object.freeze([
 ]);
 
 const SECRET_PATTERNS = [
-  /(authorization\s*:\s*bearer\s+)[A-Za-z0-9._~+\/-]+/gi,
-  /\b(DISCORD_TOKEN|GROQ_API_KEY|OPENAI_API_KEY|FRIEREN_API_TOKEN|FRIEREN_BRIDGE_SECRET|DATABASE_URL|PASSWORD|CLIENT_SECRET)\s*[:=]\s*["'`]?[^\s,'"`]+/gi,
-  /postgres(?:ql)?:\/\/[^\s"'<>]+/gi,
+  /(authorization\\s*:\\s*bearer\\s+)[A-Za-z0-9._~+\\/-]+/gi,
+  /(authorization\\s*:\\s*basic\\s+)[A-Za-z0-9+/=]+/gi,
+  /\\b([A-Z][A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|PRIVATE_KEY|ACCESS_KEY|DATABASE_URL|DSN))\\s*[:=]\\s*[\"']?[^\\s,'\"]+/gi,
+  /(?:postgres(?:ql)?|mysql|mongodb(?:\\+srv)?):\\/\\/[^\\s\"'<>]+/gi,
+  /https?:\\/\\/[^\\s/@:]+:[^\\s/@]+@[^\\s\"'<>]+/gi,
 ];
 
 export function redactGuardianText(value, maxLength = 1600) {
