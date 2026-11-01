@@ -137,7 +137,7 @@ client.on(Events.GuildMemberAdd, async member => {
     }
   } catch (error) {
     console.error('Guild member welcome handler failed:', error?.message || error);
-    await recordOwnerError(pool, 'guild-member-join', error?.name || 'Error').catch(() => {});
+    await recordOwnerError(pool, 'guild-member-join', error?.name || 'Error', error?.message || '').catch(() => {});
   }
 });
 
@@ -305,7 +305,7 @@ client.on(Events.InteractionCreate, async interaction => {
     await recordCommandUsage(pool, interaction.commandName, interaction.guildId).catch(error => console.warn('Komut ölçümü kaydedilemedi:', error?.message || error));
     await command.execute(interaction);
   } catch (error) {
-    await recordOwnerError(pool, '/' + interaction.commandName, error?.name || 'CommandError').catch(() => {});
+    await recordOwnerError(pool, '/' + interaction.commandName, error?.name || 'CommandError', error?.message || '').catch(() => {});
     console.error(`/${interaction.commandName} hatası:`, error);
     await sendPrivateInteractionError(interaction, 'Bu komut çalışırken bir hata oluştu. Hata kaydedildi; daha sonra tekrar dene.');
   }
