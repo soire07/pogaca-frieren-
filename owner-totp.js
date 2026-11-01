@@ -104,3 +104,14 @@ export function createTotpUri(secret, account = 'owner') {
   });
   return 'otpauth://totp/' + label + '?' + query.toString();
 }
+
+export function generateTotpRecoveryCodes(count = 8) {
+  const boundedCount = Math.max(4, Math.min(12, Math.floor(Number(count) || 8)));
+  return Array.from({ length: boundedCount }, () => randomBytes(8).toString('hex').toUpperCase());
+}
+
+export function hashTotpRecoveryCode(code) {
+  const normalized = String(code || '').replace(/[\\s-]/g, '').toUpperCase();
+  if (!/^[A-F0-9]{16}$/.test(normalized)) return null;
+  return createHash('sha256').update('frieren-owner-recovery-v1:', 'utf8').update(normalized, 'utf8').digest('hex');
+}
