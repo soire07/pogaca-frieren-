@@ -70,6 +70,12 @@ The checkpoint loaded successfully and text generation executed, but the generat
 
 [GitHub Actions run and 30-day checkpoint artifact](https://github.com/soire07/pogaca-frieren-/actions/runs/41306097844).
 
+## Assistant-turn EOS and multi-turn prompt encoding (2026-11-01)
+
+Dialogue encoding version 2 inserts an EOS token after every assistant response, rather than only at the end of a complete conversation. Generation prompts preserve the same boundary markers between completed assistant turns while leaving the final `Asistan:` prefix open. Held-out evaluation uses the same chat-aware encoder as training.
+
+New checkpoints record `dialogue_encoding_version=2`. Version-1 checkpoints remain loadable for inference, but the trainer refuses to resume them because their token boundaries are incompatible; start a fresh training run to adopt version 2.
+
 ## Dialogue-boundary-safe retraining (2026-11-01)
 
 After correcting the internal split to preserve complete conversations, the baseline was retrained from scratch on the same pinned 3,950-conversation training split. The independent 525-conversation test split remained untouched and was checksum-verified again.

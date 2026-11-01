@@ -43,7 +43,7 @@ jobs:
           frieren-neural-train-small \
             --data ./corpus/turkish-daily-dialogues \
             --checkpoint ./checkpoints/frieren-neural-small.pt \
-            --steps 8000 --batch-size 4 --block-size 128 --eval-interval 500 --eval-batches 5 \
+            --steps 8000 --batch-size 4 --block-size 128 --eval-interval 500 --eval-batches 10 \
             --d-model 128 --n-heads 4 --n-layers 4 --tokenizer-vocab-size 1024 | tee ./training-metrics.json
       - name: Verify checkpoint can be loaded and generate a smoke sample
         run: |
