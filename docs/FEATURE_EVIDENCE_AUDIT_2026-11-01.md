@@ -48,7 +48,8 @@ A manually inspected traceability map now links 31 selected feature IDs to concr
 4. Keep production verification separate; do not run destructive or economy-mutating tests in the live guild/database.
 5. After evidence is linked, update each feature status individually. Do not bulk-upgrade a category.
 
-## New targeted regression coverage\n\n- Solo boss phase transitions, phase-scaled attacks, special attack bonuses and freeze cancellation are checked at handler level.\n- Cooperative raid and final layered-dungeon boss phase transitions and damage scaling are checked at handler level.\n- All eight mastery-10 spell awakenings are checked numerically, including level-9 lockout and level-10 clamping.\n- The inventory validator now accepts the established RPG/SRV/FUN/SOC ID namespaces, rejects malformed records and duplicates, and reports RPG gaps without filling them.\n\n## Protected boundaries
+## New targeted regression coverage\n\n- Exploration pity, regional mastery, region-specific materials, daily quest stage materials, level-scaled quest rewards, boss-tier materials and dungeon-clear relic rewards are mapped to existing tests.
+- Solo boss phase transitions, phase-scaled attacks, special attack bonuses and freeze cancellation are checked at handler level.\n- Cooperative raid and final layered-dungeon boss phase transitions and damage scaling are checked at handler level.\n- All eight mastery-10 spell awakenings are checked numerically, including level-9 lockout and level-10 clamping.\n- The inventory validator now accepts the established RPG/SRV/FUN/SOC ID namespaces, rejects malformed records and duplicates, and reports RPG gaps without filling them.\n\n## Protected boundaries
 
 - No production database writes were made for this audit.
 - No Discord live command registration was changed.
