@@ -73,7 +73,7 @@ const healthServer = createServer(async (req, res) => {
     }
   }
   if (req.url === '/internal/test-scenario' && req.method === 'POST') {
-    const expected = String(process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+    const expected = String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
     const authorization = String(req.headers.authorization || '');
     const supplied = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
     const authorized = expected.length >= 32 && supplied.length === expected.length
