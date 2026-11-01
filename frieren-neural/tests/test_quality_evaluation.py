@@ -62,7 +62,7 @@ def test_report_applies_quality_gate_to_human_scores():
         heldout_metrics={
             "loss":2.0, "perplexity":7.39,
             "loss_objective_version": 2,
-            "checkpoint_training_loss_objective_version": 1,
+            "checkpoint_training_loss_objective_version": 2,
         },
         baseline_report={
             "prompt_set_version": quality.PROMPT_SET_VERSION,
@@ -181,7 +181,7 @@ def test_report_blocks_mismatched_heldout_objective():
         heldout_metrics={
             "loss": 2.0, "perplexity": 7.39,
             "loss_objective_version": 1,
-            "checkpoint_training_loss_objective_version": 1,
+            "checkpoint_training_loss_objective_version": 2,
         },
         baseline_report={
             "prompt_set_version": quality.PROMPT_SET_VERSION,
