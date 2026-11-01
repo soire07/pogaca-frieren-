@@ -1144,7 +1144,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   }
 
   try {
-    const [overview, approvals, activity, renderMetrics, aiReadiness, partners, rpgMetrics, guildConfigurations, renderServices] = await Promise.all([
+    const [overview, approvals, activity, renderMetrics, partners, rpgMetrics, guildConfigurations, renderServices] = await Promise.all([
       getOwnerOverview(client, db),
       listPendingApprovals(db, 15),
       getRecentOwnerActivity(db),
