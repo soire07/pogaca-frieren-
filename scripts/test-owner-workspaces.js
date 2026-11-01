@@ -185,3 +185,17 @@ test('database workspace explains free-tier restore limits and refuses to imply 
   assert.match(html, /0,09 USD\/GB-ay/);
   assert.match(html, /Neon yedekleme ve dalları aç/);
 });
+
+test('AI workspace accepts free-text test goals and renders persisted run history without claiming code generation', () => {
+  const html = renderOwnerWorkspace('ai', {
+    csrf: 'scenario-csrf',
+    aiReadiness: { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true },
+    testRuns: { rows: [{ id: 5, target: 'Ekipman HP geri dönüşü', status: 'NOT_TESTED', summary: { total: 0, pass: 0, fail: 0 }, details: { testFiles: [], failedStages: ['Eşleşme yok'] }, created_at: '2026-11-01T00:00:00Z' }] }
+  });
+  assert.match(html, /name="target"/);
+  assert.match(html, /Ekipman kuşanıldığında/);
+  assert.match(html, /mevcut test dosyalarıyla eşleştirilir/);
+  assert.match(html, /NOT_TESTED/);
+  assert.match(html, /Ekipman HP geri dönüşü/);
+  assert.match(html, /Tüm denetim ve test geçmişi/);
+});
