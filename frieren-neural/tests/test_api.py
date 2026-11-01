@@ -77,3 +77,78 @@ def test_authorization_header_must_use_bearer_scheme(api_client, monkeypatch):
         headers={"Authorization": "z" * 40},
     )
     assert response.status_code == 401
+
+
+def test_web_login_requires_strong_secrets_and_same_origin(api_client, monkeypatch):
+    monkeypatch.delenv("FRIEREN_WEB_PASSWORD", raising=False)
+    monkeypatch.delenv("FRIEREN_SESSION_SECRET", raising=False)
+    response = api_client.post(
+        "/web/login",
+        json={"password": "p" * 24},
+        headers={"Origin": "https://testserver"},
+    )
+    assert response.status_code == 503
+
+    monkeypatch.setenv("FRIEREN_WEB_PASSWORD", "p" * 24)
+    monkeypatch.setenv("FRIEREN_SESSION_SECRET", "s" * 48)
+    response = api_client.post("/web/login", json={"password": "wrong-password"}, headers={"Origin": "https://attacker.example"})
+    assert response.status_code == 403
+
+
+def test_web_login_sets_http_only_secure_session_cookie(api_client, monkeypatch):
+    monkeypatch.setenv("FRIEREN_WEB_PASSWORD", "p" * 24)
+    monkeypatch.setenv("FRIEREN_SESSION_SECRET", "s" * 48)
+    response = api_client.post(
+        "/web/login",
+        json={"password": "p" * 24},
+        headers={"Origin": "https://testserver"},
+    )
+    assert response.status_code == 200
+    cookie = response.headers["set-cookie"].lower()
+    assert "httponly" in cookie
+    assert "secure" in cookie
+    assert "samesite=strict" in cookie
+
+
+def test_web_generation_requires_a_valid_session(api_client, monkeypatch):
+    monkeypatch.setenv("FRIEREN_WEB_PASSWORD", "p" * 24)
+    monkeypatch.setenv("FRIEREN_SESSION_SECRET", "s" * 48)
+    response = api_client.post(
+        "/web/generate",
+        json={"prompt": "Frieren"},
+        headers={"Origin": "https://testserver"},
+    )
+    assert response.status_code == 401
+
+
+def test_web_login_and_generation_use_server_side_session(api_client, monkeypatch, tmp_path):
+    from frieren_neural.training import TrainingConfig, train_model
+
+    checkpoint = tmp_path / "web-model.pt"
+    train_model(
+        ["Frieren learns magic. Fern studies spells. " * 10],
+        checkpoint,
+        TrainingConfig(
+            max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+            d_model=16, n_heads=2, n_layers=1, dropout=0.0, tokenizer_vocab_size=280,
+        ),
+        device="cpu",
+    )
+    monkeypatch.setenv("FRIEREN_WEB_PASSWORD", "p" * 24)
+    monkeypatch.setenv("FRIEREN_SESSION_SECRET", "s" * 48)
+    monkeypatch.setenv("FRIEREN_CHECKPOINT", str(checkpoint))
+    monkeypatch.setenv("FRIEREN_DEVICE", "cpu")
+    clear_runtime_cache()
+    login = api_client.post(
+        "/web/login",
+        json={"password": "p" * 24},
+        headers={"Origin": "https://testserver"},
+    )
+    assert login.status_code == 200
+    response = api_client.post(
+        "/web/generate",
+        json={"prompt": "Frieren", "max_new_tokens": 2, "top_k": 1},
+        headers={"Origin": "https://testserver"},
+    )
+    assert response.status_code == 200
+    assert response.json()["text"].startswith("Frieren")
