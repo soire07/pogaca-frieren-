@@ -51,6 +51,9 @@ _generation_lock = threading.Lock()
 _generation_slots = threading.BoundedSemaphore(2)
 _login_attempts: dict[str, list[float]] = {}
 _login_attempts_lock = threading.Lock()
+_MAX_LOGIN_CLIENTS = 2_000
+_LOGIN_WINDOW_SECONDS = 300
+_MAX_LOGIN_ATTEMPTS = 5
 _SESSION_COOKIE = "frieren_session"
 _SESSION_TTL_SECONDS = 3_600
 
@@ -187,15 +190,23 @@ def _login_rate_limit(request: Request) -> str:
     client_ip = request.client.host if request.client else "unknown"
     now = time.monotonic()
     with _login_attempts_lock:
-        recent = [attempt for attempt in _login_attempts.get(client_ip, []) if now - attempt < 300]
-        if len(recent) >= 5:
+        recent = [
+            attempt for attempt in _login_attempts.get(client_ip, [])
+            if now - attempt < _LOGIN_WINDOW_SECONDS
+        ]
+        if len(recent) >= _MAX_LOGIN_ATTEMPTS:
             raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
+
+        if client_ip not in _login_attempts and len(_login_attempts) >= _MAX_LOGIN_CLIENTS:
+            # Bound memory even if requests arrive from many distinct source addresses.
+            for ip, attempts in list(_login_attempts.items()):
+                if not attempts or now - attempts[-1] >= _LOGIN_WINDOW_SECONDS:
+                    _login_attempts.pop(ip, None)
+            if len(_login_attempts) >= _MAX_LOGIN_CLIENTS:
+                raise HTTPException(status_code=429, detail="Login capacity is temporarily full. Try again later.")
+
         recent.append(now)
         _login_attempts[client_ip] = recent
-        if len(_login_attempts) > 2_000:
-            for ip, attempts in list(_login_attempts.items()):
-                if not attempts or now - attempts[-1] >= 300:
-                    _login_attempts.pop(ip, None)
     return client_ip
 
 
