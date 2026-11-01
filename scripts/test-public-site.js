@@ -191,6 +191,18 @@ test('command catalogue is authenticated, dynamic, searchable and safely escapes
   assert.match(response.body, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
 });
 
+test('command catalogue applies owner-managed descriptions and renders long help safely', async () => {
+  const response = res();
+  const commands = new Map([['karakter', { data: { name: 'karakter', description: 'Original kısa açıklama.' } }]]);
+  const db = { async query() { return { rows: [{ command_name: 'karakter', short_description: 'Özel kısa açıklama.', long_description: '<img src=x onerror=alert(1)> Uzun rehber metni.', version_count: 2, version_history: [] }] }; } };
+  await handlePublicSiteRequest(request('/komutlar'), response, { client: { commands }, db });
+  assert.equal(response.status, 200);
+  assert.match(response.body, /Özel kısa açıklama/);
+  assert.match(response.body, /Uzun rehber metni/);
+  assert.doesNotMatch(response.body, /<img src=x onerror=alert\(1\)>/);
+  assert.match(response.body, /&lt;img src=x onerror=alert\(1\)&gt;/);
+});
+
 test('command catalogue handles an unavailable command collection without throwing', async () => {
   const response = res();
   await handlePublicSiteRequest(request('/komutlar'), response, { client: {} });
