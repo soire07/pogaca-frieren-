@@ -68,9 +68,9 @@ jobs:
           body: |
             Automated Frieren AI repair proposal.
 
-            **Requested task:** ${{ inputs.task }}
+            **Guardian incident:** #${{ inputs.incident_id || 'manual' }}
 
-            The workflow generated a constrained patch and ran `npm run check` before opening this pull request. This PR is not automatically merged or deployed.
+            The private task description is intentionally not copied into this public pull request body. The workflow generated a constrained patch and ran `npm run check` before opening this pull request. This PR is not automatically merged or deployed.
           commit-message: "fix: AI-assisted Frieren repair proposal"
           add-paths: |
             *.js
