@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import json
 import platform
+import re
 import resource
 import statistics
 import time
@@ -89,26 +90,30 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
     generation_started = time.perf_counter()
     for case_id, category, prompt, _hint in PROMPTS:
         started = time.perf_counter()
-        formatted_prompt = (
-            "<|im_start|>user\\n"
-            + prompt
-            + "<|im_end|>\\n<|im_start|>assistant\\n<think>\\n\\n</think>\\n\\n"
-        )
-        result = llm.create_completion(
-            prompt=formatted_prompt,
+        result = llm.create_chat_completion(
+            messages=[
+                {"role": "system", "content": "/no_think"},
+                {"role": "user", "content": prompt},
+            ],
             max_tokens=MAX_NEW_TOKENS,
             temperature=0.0,
             top_p=1.0,
-            stop=["<|im_end|>", "<|endoftext|>"],
         )
         elapsed = round(time.perf_counter() - started, 3)
         choice = result["choices"][0]
-        text = choice["text"] or ""
+        raw_text = choice["message"]["content"] or ""
+        think_match = re.search(r"<think>(.*?)</think>", raw_text, flags=re.DOTALL)
+        reasoning_leakage = bool(think_match and think_match.group(1).strip())
+        text = (
+            "[REASONING LEAKAGE REDACTED]"
+            if reasoning_leakage
+            else re.sub(r"<think>\\s*</think>\\s*", "", raw_text).strip()
+        )
         outputs.append({
             "id": case_id,
             "category": category,
             "prompt": prompt,
-            "output": text.strip(),
+            "output": text,\n            "reasoning_leakage": reasoning_leakage,
             "latency_seconds": elapsed,
             "completion_tokens": result.get("usage", {}).get("completion_tokens"),
             "finish_reason": choice.get("finish_reason"),
@@ -132,7 +137,7 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
         "threads": threads,
         "context_tokens": 1024,
         "max_new_tokens": MAX_NEW_TOKENS,
-        "thinking_mode": "Qwen3 template hard-disabled by explicit empty think block",
+        "thinking_mode": "Qwen3 /no_think system-message switch; empty wrapper stripped; non-empty reasoning redacted",
         "download_seconds": download_seconds,
         "model_load_seconds": load_seconds,
         "generation_total_seconds": round(time.perf_counter() - generation_started, 3),
