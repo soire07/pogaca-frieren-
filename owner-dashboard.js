@@ -490,7 +490,7 @@ export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limi
     '<div class="rowitem"><div class="actions"><strong>#' + Number(row.id) + ' · ' + escapeHtml(row.error_type) + '</strong><span class="small">' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</span></div>'
     + '<div class="small">Bölüm: ' + escapeHtml(row.scope) + '</div></div>'
   ).join('') : '<p class="muted">Kaydedilmiş hata kaydı bulunamadı.</p>';
-  const errorQuery = page => '/owner/activity?' + new URLSearchParams({ action, target, page: String(audit.page), errorScope, errorPage: String(page) }).toString();
+  const errorQuery = page => '/owner/activity?' + new URLSearchParams({ action, target, page: String(audit.page), errorScope, errorPage: String(page), testPage: String(testRuns.page) }).toString();
   const errorPrevious = errors.page > 1 ? '<a class="btn secondary" href="' + errorQuery(errors.page - 1) + '">Önceki hatalar</a>' : '';
   const errorNext = errors.page * errors.limit < errors.total ? '<a class="btn secondary" href="' + errorQuery(errors.page + 1) + '">Sonraki hatalar</a>' : '';
   const testHtml = testRows.length ? testRows.map(run =>
@@ -500,7 +500,7 @@ export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limi
     + (Array.isArray(run.details?.failedStages) && run.details.failedStages.length ? '<p class="notice warn">' + escapeHtml(run.details.failedStages.join(' · ')) + '</p>' : '')
     + '</div>'
   ).join('') : '<p class="muted">Henüz kaydedilmiş test çalıştırması yok.</p>';
-  const auditQuery = page => '/owner/activity?' + new URLSearchParams({ action, target, page: String(page), errorScope, errorPage: String(errors.page) }).toString();
+  const auditQuery = page => '/owner/activity?' + new URLSearchParams({ action, target, page: String(page), errorScope, errorPage: String(errors.page), testPage: String(testRuns.page) }).toString();
   const testQuery = page => '/owner/activity?' + new URLSearchParams({ action, target, page: String(audit.page), errorScope, errorPage: String(errors.page), testPage: String(page) }).toString();
   const testPrevious = testRuns.page > 1 ? '<a class="btn secondary" href="' + testQuery(testRuns.page - 1) + '">Önceki testler</a>' : '';
   const testNext = testRuns.page * testRuns.limit < testRuns.total ? '<a class="btn secondary" href="' + testQuery(testRuns.page + 1) + '">Sonraki testler</a>' : '';
