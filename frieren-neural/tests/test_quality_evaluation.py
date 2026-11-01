@@ -146,7 +146,10 @@ def test_cli_writes_machine_and_human_readable_report(tmp_path, monkeypatch):
     assert report["decision"] == "NOT READY"
     assert report["checkpoint_metadata"]["tokenizer_type"] == "byte_bpe"
     assert len(report["outputs"]) == 24
-    assert "TR-024" in markdown_path.read_text(encoding="utf-8")
+    markdown = markdown_path.read_text(encoding="utf-8")
+    assert "TR-024" in markdown
+    assert "Checkpoint configuration" in markdown
+    assert "Training objective" in markdown
     template = json.loads(scores_path.read_text(encoding="utf-8"))
     assert template["schema_version"] == 1
     assert set(template["cases"][0]["reviewer_1"]) >= set(quality.DIMENSIONS)
@@ -192,4 +195,21 @@ def test_report_blocks_mismatched_heldout_objective():
         },
     )
     assert report["decision"] == "NOT READY"
+    assert "held_out_objective_mismatch" in report["blocking_reasons"]
+
+
+
+def test_report_blocks_missing_checkpoint_metadata():
+    report = quality.build_report(
+        checkpoint_sha256="a" * 64,
+        checkpoint_step=1,
+        outputs=[{"id": f"TR-{number:03d}", "output": "örnek"} for number in range(1, 25)],
+        scores=None,
+        heldout_metrics={
+            "loss": 2.0, "perplexity": 7.39,
+            "loss_objective_version": 1,
+            "checkpoint_training_loss_objective_version": 0,
+        },
+    )
+    assert "checkpoint_metadata_missing" in report["blocking_reasons"]
     assert "held_out_objective_mismatch" in report["blocking_reasons"]
