@@ -683,6 +683,8 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       }
       if (kind === 'database') {
         data.database = await getOwnerDatabaseDiagnostics(db);
+        const neonProjectId = String(process.env.NEON_PROJECT_ID || '').trim();
+        data.backup = { consoleUrl: /^[a-z0-9-]{1,60}$/.test(neonProjectId) ? 'https://console.neon.tech/app/projects/' + neonProjectId : null };
         const table = String(url.searchParams.get('table') || '');
         if (table) data.preview = await getOwnerDatabaseTablePreview(db, { table, search: url.searchParams.get('search') || '' });
       }
@@ -690,8 +692,13 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         { label: 'Discord OAuth istemcisi', configured: Boolean(process.env.CLIENT_ID && process.env.DISCORD_CLIENT_SECRET) },
         { label: 'Owner oturum imzası', configured: Boolean(process.env.ADMIN_SESSION_SECRET && process.env.ADMIN_SESSION_SECRET.length >= 32) },
         { label: 'PostgreSQL bağlantısı', configured: Boolean(db) },
-        { label: 'Frieren AI köprü anahtarı', configured: Boolean(process.env.FRIEREN_BRIDGE_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET) },
-        { label: 'Render API anahtarı', configured: Boolean(process.env.RENDER_API_KEY) }
+        { label: 'Frieren AI köprü anahtarı', configured: Boolean(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET) },
+        { label: 'Poğaça Render API anahtarı', configured: Boolean(process.env.RENDER_POGACA_API_KEY || process.env.RENDER_API_KEY) },
+        { label: 'Frieren AI Render API anahtarı', configured: Boolean(process.env.RENDER_FRIEREN_AI_API_KEY) },
+        { label: 'Poğaça Render servis kimliği', configured: Boolean(process.env.RENDER_POGACA_SERVICE_ID || process.env.RENDER_SERVICE_ID) },
+        { label: 'Frieren AI Render servis kimliği', configured: Boolean(process.env.RENDER_FRIEREN_AI_SERVICE_ID) },
+        { label: 'Neon proje kimliği', configured: Boolean(process.env.NEON_PROJECT_ID) },
+        { label: 'Neon API bağlantısı', configured: Boolean(process.env.NEON_API_KEY && process.env.NEON_PROJECT_ID) }
       ];
       const content = renderOwnerNavigation() + '<div class="top"><div><div class="brand">FRIEREN</div><div class="small">THE ARCANE SANCTUARY · OWNER WORKSPACE</div></div><a class="btn secondary" href="/owner">Genel bakış</a></div>'
         + renderOwnerWorkspace(kind, data);
