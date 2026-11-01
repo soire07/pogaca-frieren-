@@ -13,7 +13,7 @@ export function getStaleOwnerData(key, loader, fallback, ttlMs = 30_000) {
       .then(loader)
       .then(value => {
         entry.value = value;
-        entry.expiresAt = Date.now() + Math.max(1_000, Number(ttlMs) || 30_000);
+        entry.expiresAt = Date.now() + Math.max(1, Number(ttlMs) || 30_000);
       })
       .catch(() => {
         // Keep the last known good value and retry on the next request.
