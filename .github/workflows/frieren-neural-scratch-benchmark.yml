@@ -1,0 +1,59 @@
+name: Frieren Neural — Scratch Checkpoint Controlled CPU Benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - frieren-neural-foundation
+    paths:
+      - "frieren-neural/benchmarks/scratch_greedy_cpu.py"
+      - ".github/workflows/frieren-neural-scratch-benchmark.yml"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  scratch-greedy-cpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: frieren-neural-foundation
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: frieren-neural/pyproject.toml
+      - name: Download preserved historical checkpoint artifact
+        uses: actions/download-artifact@v4
+        with:
+          repository: soire07/pogaca-frieren-
+          run-id: 41330601987
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          name: frieren-neural-cpu-candidate-9b45c729e4a51ee14b69bd4989678e5c44b35a3b
+          path: scratch-artifact
+      - name: Install CPU-only PyTorch and project package
+        working-directory: frieren-neural
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+          python -m pip install -e .
+      - name: Compile controlled scratch benchmark
+        working-directory: frieren-neural
+        run: python -m compileall -q benchmarks/scratch_greedy_cpu.py
+      - name: Run all 24 prompts with greedy 160-token decoding
+        working-directory: frieren-neural
+        run: |
+          python benchmarks/scratch_greedy_cpu.py \\
+            --checkpoint ../scratch-artifact/checkpoints/frieren-neural-small.pt \\
+            --output-dir benchmark-results/scratch-greedy --threads 2
+      - name: Upload scratch benchmark and review sheet
+        uses: actions/upload-artifact@v4
+        with:
+          name: frieren-neural-scratch-greedy-cpu-benchmark
+          path: |
+            frieren-neural/benchmark-results/scratch-greedy/scratch-greedy-quality-report.json
+            frieren-neural/benchmark-results/scratch-greedy/human-scores.template.json
+          if-no-files-found: error
+          retention-days: 30
