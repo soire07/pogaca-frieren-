@@ -113,7 +113,7 @@ def generate(
     device = os.environ.get("FRIEREN_DEVICE", "cpu")
     try:
         model, tokenizer, metadata = _load_runtime(str(checkpoint.resolve()), device)
-    except (OSError, RuntimeError, ValueError, KeyError) as error:
+    except (OSError, RuntimeError, ValueError, KeyError, EOFError, pickle.UnpicklingError) as error:
         raise HTTPException(status_code=503, detail="Model checkpoint could not be loaded.") from error
     try:
         with _generation_lock:
@@ -217,6 +217,7 @@ checkSession();
             "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
             "X-Content-Type-Options": "nosniff",
             "Referrer-Policy": "no-referrer",
+            "Cache-Control": "no-store",
         },
     )
 
