@@ -1949,10 +1949,10 @@
         298,
         299
       ],
-      "featureLevelEvidenceLinks": 24,
+      "featureLevelEvidenceLinks": 31,
       "discordRuntimeVerified": 0,
       "productionVerified": 0,
-      "note": "Twenty-four selected records now have manually inspected source-to-test traceability links in feature-evidence.json. The links include automated static assertions, partial handler wiring checks and direct unit assertions; they do not promote the inventory status or imply Discord/production verification for the other records."
+      "note": "Thirty-one selected records have manually inspected source-to-test traceability links in feature-evidence.json. The map mixes direct unit assertions, static source assertions and partial handler checks; it does not promote inventory status or imply Discord/production verification for the remaining records."
     },
     "verifiedTestSuites": [
       {
