@@ -102,8 +102,12 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
         elapsed = round(time.perf_counter() - started, 3)
         choice = result["choices"][0]
         raw_text = choice["message"]["content"] or ""
-        think_match = re.search(r"<think>(.*?)</think>", raw_text, flags=re.DOTALL)
-        reasoning_leakage = bool(think_match and think_match.group(1).strip())
+        think_start = raw_text.find("<think>")
+        think_end = raw_text.find("</think>", think_start + len("<think>")) if think_start >= 0 else -1
+        reasoning_leakage = (
+            think_start >= 0
+            and (think_end < 0 or bool(raw_text[think_start + len("<think>"):think_end].strip()))
+        )
         text = (
             "[REASONING LEAKAGE REDACTED]"
             if reasoning_leakage
@@ -146,6 +150,8 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
         "latency_p95_seconds": latencies[p95_index],
         "peak_process_rss_mib": peak_rss_mib(),
         "python_version": platform.python_version(),
+        "reasoning_leakage_count": sum(item["reasoning_leakage"] for item in outputs),
+        "reasoning_leakage_case_ids": [item["id"] for item in outputs if item["reasoning_leakage"]],
         "outputs": outputs,
         "human_review": {"completed": False, "reviewers_required": 2},
         "production_deployed": False,
