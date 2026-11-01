@@ -79,6 +79,29 @@ print(metrics)
 print(generate_text(model, tokenizer, "Frieren ", max_new_tokens=80))
 ```
 
+## Shared inference API
+
+The optional FastAPI service exposes one health route and one authenticated generation route. Both the future web client and Discord adapter should call this same API rather than loading separate model copies.
+
+Install the serving extra and start the service:
+
+```bash
+pip install -e ".[serve]"
+export FRIEREN_CHECKPOINT=checkpoints/frieren-neural.pt
+export FRIEREN_API_TOKEN="use-a-random-secret-at-least-32-characters-long"
+export FRIEREN_ALLOWED_ORIGINS="https://your-web-app.example"
+uvicorn frieren_neural.api:app --host 0.0.0.0 --port 8000
+```
+
+- `GET /health` loads and checks the configured checkpoint without exposing its path or credentials.
+- `POST /generate` requires `Authorization: Bearer <token>` and has strict prompt/output limits.
+- CORS is disabled unless explicit origins are listed in `FRIEREN_ALLOWED_ORIGINS`; wildcard origins are rejected.
+- If no strong API token or valid checkpoint is configured, generation fails closed.
+- Keep the API token in the host's secret/environment settings. Never commit it or place it in the browser bundle.
+
+This API is a single shared service, not a collection of serverless functions. It is not deployed by this change; hosting and the web/Discord clients remain separate milestones.
+
+
 ## Engineering constraints
 
 1. Never put credentials, Discord tokens, database URLs, or private user data in this directory.
