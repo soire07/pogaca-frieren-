@@ -57,7 +57,7 @@ export function renderOwnerNavigation() {
   const groups = [
     { label: 'GENEL', ids: ['overview', 'system'] },
     { label: 'BOT KONTROL', ids: ['bot-control'] },
-    { label: 'Frieren Poğaça', ids: ['servers', 'rpg', 'partners', 'behavior'] },
+    { label: 'Frieren Poğaça', ids: ['servers', 'rpg', 'partners', 'behavior', 'command-help'] },
     { label: 'Frieren AI', ids: ['memories', 'approvals'] },
     { label: 'İŞLEMLER', ids: ['announcements', 'maintenance'] }
   ];
@@ -390,6 +390,7 @@ export function renderCommandHelpManager(commands, overrides = [], csrf = '') {
         + '<label>Discord kısa açıklaması <span class="small">(1–100 karakter)</span></label><input name="shortDescription" maxlength="100" minlength="1" required value="' + escapeHtml(shortText) + '">'
         + '<label>Owner Panel / web yardım metni <span class="small">(en fazla 2.000 karakter)</span></label><textarea name="longDescription" maxlength="2000" rows="4" required>' + escapeHtml(longText) + '</textarea>'
         + '<div class="small">' + (row.updated_at ? 'Son düzenleme: ' + escapeHtml(new Date(row.updated_at).toLocaleString('tr-TR')) + ' · ' + Number(row.version_count||1) + ' sürüm' : 'Özel açıklama yok; mevcut komut açıklaması başlangıç metni olarak gösteriliyor.') + '</div>'
+        + (Array.isArray(row.version_history) && row.version_history.length ? '<details><summary class="small">Önceki sürümleri görüntüle</summary>' + row.version_history.map(version => '<div class="rowitem"><div class="small">' + escapeHtml(new Date(version.created_at).toLocaleString('tr-TR')) + ' · ' + escapeHtml(version.actor_id) + '</div><strong>' + escapeHtml(version.short_description) + '</strong><p class="small">' + escapeHtml(version.long_description) + '</p></div>').join('') + '</details>' : '')
         + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu açıklama sürümünü kaydetmeyi onaylıyorum</label><button class="btn secondary">Taslağı kaydet</button></form></details>';
     }).join('');
 }
