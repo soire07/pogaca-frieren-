@@ -163,6 +163,12 @@ This API is a single shared service, not a collection of serverless functions. I
 
 The FastAPI service also serves a small responsive chat page at `/`. It uses a server-side password login and an HttpOnly, Secure, SameSite=Strict signed session cookie; the shared API token is never placed in browser JavaScript.
 
+### Process and worker limits
+
+The current generation semaphore, generation mutex, model cache, and login-attempt limiter are **process-local**. They protect concurrent requests handled by one Python process only; they do not provide a global limit across multiple Uvicorn/Gunicorn workers, containers, or separate service instances. Running multiple workers multiplies the effective generation and login-attempt limits and can load one model copy per worker.
+
+**Deployment constraint: run exactly one API worker and one service instance for this experimental version.** Do not start Uvicorn with `--workers > 1`, Gunicorn with multiple workers, or horizontal replicas. A future multi-worker deployment requires a shared atomic admission/rate-limit store and a deliberate model-memory strategy (for example, a shared database/Redis-backed limiter plus explicit per-instance model sizing); a process-local lock is not an acceptable substitute. This restriction is a documented deployment requirement, not a claim that the application can detect every external process-manager configuration.
+
 Configure these additional host secrets:
 
 - `FRIEREN_WEB_PASSWORD`: a strong password of at least 16 characters.
