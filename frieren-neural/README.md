@@ -38,6 +38,8 @@ A reproducible importer is included for **Turkish Daily Dialogues 5K v1.0.0** by
 pip install -e .
 frieren-neural-prepare-turkish-dialogues --output ./corpus/turkish-daily-dialogues
 frieren-neural-train --data ./corpus/turkish-daily-dialogues --steps 1000 --batch-size 4 --block-size 64
+# More conservative CPU profile (smaller model and shorter evaluation batches):
+frieren-neural-train-small --data ./corpus/turkish-daily-dialogues --steps 1000
 \`\`\`
 
 The generated manifest records the dataset source, version, CC BY 4.0 license, attribution requirement, and verified source digest. Keep the generated corpus out of Git. This small synthetic dialogue set is suitable for a Turkish conversational-format baseline; it is **not** broad pretraining data and cannot by itself produce a knowledgeable or fluent general-purpose assistant. Add separately licensed, diverse Turkish and English text before drawing conclusions about general language ability.
@@ -68,7 +70,7 @@ frieren-neural-train --data ./corpus --steps 1000 --batch-size 8 --block-size 12
 frieren-neural-train --data ./corpus --steps 2000 --batch-size 8 --block-size 128 --resume
 ```
 
-Training automatically uses CUDA when available and otherwise CPU. CPU is suitable for smoke tests and very small experiments, not large-scale pretraining. Resume verifies corpus fingerprint, tokenizer, model configuration, and training settings; only the target step count may increase. It also restores RNG states so a split CPU run can reproduce an uninterrupted run.
+Training automatically uses CUDA when available and otherwise CPU. CPU is suitable for smoke tests and very small experiments, not large-scale pretraining. The `frieren-neural-train-small` command uses a 2-layer, 64-dimensional model, batch size 4, context length 64, and three evaluation batches to keep the first CPU experiment resource-conscious. Resume verifies corpus fingerprint, tokenizer, model configuration, and training settings; only the target step count may increase. It also restores RNG states so a split CPU run can reproduce an uninterrupted run.
 
 Checkpoints are written atomically and ignored by Git. Keep datasets and model weights in private storage, not Git.
 
