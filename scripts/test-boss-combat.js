@@ -127,7 +127,7 @@ test('cooperative raid announces second and final boss phases and scales incomin
   assert.match(source, /if \(currentPhase > bossPhase\)/);
   assert.match(source, /ikinci evreye geçti/);
   assert.match(source, /son evreye geçti/);
-  assert.match(source, /calculateBossIncomingDamage\\(rawDamage, Math\\.round\\(target\\.defense\\*0\\.56\\), bossPhase\\)/);
+  assert.match(source, /calculateBossIncomingDamage\(rawDamage, Math\.round\(target\.defense\*0\.56\), bossPhase\)/);
   assert.match(source, /bossPhaseSpecialBonus\(bossPhase\)/);
 });
 
