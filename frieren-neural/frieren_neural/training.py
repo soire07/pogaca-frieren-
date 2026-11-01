@@ -365,7 +365,7 @@ if __name__ == "__main__":
 
 def load_checkpoint(
     checkpoint_path: str | Path, *, device: str | torch.device | None = None
-) -> tuple[GPTLanguageModel, BPETokenizer, dict[str, float | int]]:
+) -> tuple[GPTLanguageModel, BPETokenizer, dict[str, float | int | str]]:
     """Load a versioned checkpoint using PyTorch's restricted weights-only loader."""
     selected_device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
     payload = torch.load(checkpoint_path, map_location=selected_device, weights_only=True)
@@ -381,8 +381,9 @@ def load_checkpoint(
     except (KeyError, TypeError, ValueError) as error:
         raise ValueError("Checkpoint is missing valid model or tokenizer data.") from error
     model.eval()
-    metadata: dict[str, float | int] = {
+    metadata: dict[str, float | int | str] = {
         "step": int(payload["step"]),
+        "corpus_sha256": str(payload["corpus_sha256"]),
         "train_loss": float(payload["train_loss"]),
         "validation_loss": float(payload["validation_loss"]),
     }
@@ -430,8 +431,7 @@ def evaluate_checkpoint(
         json.dumps(list(documents), ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
     model, tokenizer, metadata = load_checkpoint(checkpoint_path, device=device)
-    payload = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
-    if fingerprint == payload.get("corpus_sha256"):
+    if fingerprint == metadata["corpus_sha256"]:
         raise ValueError("Evaluation corpus must be separate from the training corpus.")
     evaluation_text = "\n".join(item.strip() for item in documents)
     tokens = torch.tensor(tokenizer.encode(evaluation_text) + [tokenizer.eos_id], dtype=torch.long)
