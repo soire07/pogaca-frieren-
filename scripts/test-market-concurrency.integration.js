@@ -5,6 +5,7 @@ import { ensureUser, pool, withIsolatedTestSchema } from '../database/db.js';
 import { buyMarketItem } from '../market.js';
 import { resolveTradeOffer } from '../trade-transaction.js';
 import { claimSoloBossReward, settleRaidRewards, settleDungeonRewards } from '../rpg-reward-transactions.js';
+import { initOwnerCommandHelpSchema, saveOwnerCommandHelp } from '../owner-command-help.js';
 
 const dedicatedAuditDatabase = /^postgres(?:ql)?:\/\/postgres:postgres@localhost:5432\/frieren_audit(?:\?|$)/.test(
   process.env.DATABASE_URL || ''
@@ -555,5 +556,38 @@ test('co-op settlement failure rolls back all player rewards atomically', {
     for(const player of players.rows) {
       assert.equal(Number(player.coins),10); assert.equal(Number(player.xp),20); assert.equal(Number(player.boss_defeats),0);
     }
+  });
+});
+
+
+test('owner command-help version retention remains bounded under concurrent saves', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    await initOwnerCommandHelpSchema(pool);
+    const commandName = 'help-race-' + randomUUID().slice(0, 8);
+    const saves = Array.from({ length: 48 }, (_, index) => saveOwnerCommandHelp(pool, {
+      commandName,
+      shortDescription: 'Concurrent description ' + index,
+      longDescription: 'Concurrent command help revision ' + index,
+      actorId: '1553794496234262641'
+    }));
+
+    await Promise.all(saves);
+
+    const history = await pool.query(
+      'SELECT id,short_description FROM owner_command_help_versions WHERE command_name=$1 ORDER BY created_at DESC,id DESC',
+      [commandName]
+    );
+    const current = await pool.query(
+      'SELECT short_description,long_description FROM owner_command_help WHERE command_name=$1',
+      [commandName]
+    );
+
+    assert.equal(history.rowCount, 30, 'concurrent saves must never exceed the 30-version retention cap');
+    assert.equal(current.rowCount, 1, 'concurrent saves must leave one current command-help record');
+    assert.ok(history.rows.some(row => row.short_description === current.rows[0].short_description),
+      'the current command description must have a retained history entry');
+    assert.equal(new Set(history.rows.map(row => row.id)).size, 30, 'retained history IDs must be unique');
   });
 });

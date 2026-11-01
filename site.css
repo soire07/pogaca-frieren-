@@ -101,3 +101,15 @@ img{max-width:100%}
 @media(max-width:850px){.catalog-tools{grid-template-columns:1fr 1fr}.catalog-tools #command-result-count{grid-column:1/-1}}
 @media(max-width:560px){.catalog-hero{padding:36px 0 12px}.catalog-tools{grid-template-columns:1fr}.catalog-tools #command-result-count{grid-column:auto}.command-catalog{grid-template-columns:1fr}.command-card{padding:15px}}
 @media(prefers-reduced-motion:reduce){.command-card{transition:none}.command-card:hover{transform:none}}
+
+
+/* Command option guidance: compact, readable and consistent with the spellbook catalog. */
+.command-details{margin-top:12px;border-top:1px solid var(--line);padding-top:9px;color:var(--muted);font-size:12px}
+.command-details summary{cursor:pointer;color:#dfd0f3;font-weight:600;list-style-position:inside}
+.command-details summary:focus-visible{outline:2px solid #cbb7e8;outline-offset:3px;border-radius:5px}
+.command-details ul{display:grid;gap:8px;margin:10px 0 0;padding:0;list-style:none}
+.command-details li{display:grid;grid-template-columns:minmax(80px,auto) minmax(0,1fr);gap:9px;align-items:start}
+.command-details li code{color:#f1dfff;overflow-wrap:anywhere}
+.command-details li span{overflow-wrap:anywhere}
+@media(max-width:560px){.command-details li{grid-template-columns:minmax(0,1fr);gap:3px}}
+@media(prefers-reduced-motion:reduce){.command-details *{scroll-behavior:auto}}

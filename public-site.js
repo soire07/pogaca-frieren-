@@ -1,6 +1,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { readPublicSiteSession } from './owner-dashboard.js';
+import { listOwnerCommandHelp } from './owner-command-help.js';
 
 const SITE_COOKIE = 'frieren_site_session';
 const OWNER_ID = '1553794496234262641';
@@ -48,19 +49,49 @@ function getPublicCommandCategory(name, description) {
   return 'Diğer';
 }
 
-function commandCatalog(client, user) {
-  const commands = [...(client?.commands?.values?.() || [])]
+export function buildPublicCommandEntries(commandCollection, helpOverrides = []) {
+  const overrides = new Map((helpOverrides || []).map(row => [String(row.command_name), row]));
+  return [...(commandCollection?.values?.() || [])]
     .map(command => {
       const data = typeof command?.data?.toJSON === 'function' ? command.data.toJSON() : command?.data;
       if (!data?.name) return null;
-      const description = String(data.description || 'Komut açıklaması henüz eklenmemiş.');
-      return { name: String(data.name), description, category: getPublicCommandCategory(data.name, description) };
+      const override = overrides.get(String(data.name));
+       const description = String(override?.short_description || data.description || 'Komut açıklaması henüz eklenmemiş.');
+       const longDescription = String(override?.long_description || command.help || command.longDescription || description);
+      const collectOptions = (items, prefix = '') => (Array.isArray(items) ? items : []).flatMap(option => {
+        if (!option?.name) return [];
+        const name = prefix ? prefix + ' / ' + String(option.name) : String(option.name);
+        const entry = {
+          name,
+          description: String(option.description || 'Açıklama eklenmemiş.'),
+          required: option.required === true,
+          type: Number.isInteger(option.type) ? option.type : null,
+          choices: (Array.isArray(option.choices) ? option.choices : []).map(choice => String(choice.name || choice.value || ''))
+        };
+        const nested = collectOptions(option.options, name);
+        return [entry, ...nested];
+      });
+      const options = collectOptions(data.options);
+      return { name: String(data.name), description, longDescription, category: getPublicCommandCategory(data.name, description), options };
     })
     .filter(Boolean)
     .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+}
+
+function renderCommandOptions(options) {
+  if (!options.length) return '';
+  const rows = options.map(option => '<li><code>' + esc(option.name) + '</code><span>' + esc(option.description)
+    + (option.required ? ' · Zorunlu' : ' · İsteğe bağlı')
+    + (option.choices.length ? ' · Seçenekler: ' + esc(option.choices.join(', ')) : '')
+    + '</span></li>').join('');
+  return '<details class="command-details"><summary>Kullanım ayrıntıları (' + options.length + ')</summary><ul>' + rows + '</ul></details>';
+}
+
+function commandCatalog(client, user, helpOverrides = []) {
+  const commands = buildPublicCommandEntries(client?.commands, helpOverrides);
   const categories = [...new Set(commands.map(command => command.category))].sort((a, b) => a.localeCompare(b, 'tr'));
   const categoryOptions = ['<option value="all">Tüm kategoriler</option>', ...categories.map(category => '<option value="' + esc(category) + '">' + esc(category) + '</option>')].join('');
-  const cards = commands.map(command => '<article class="command-card" data-name="' + esc((command.name + ' ' + command.description).toLocaleLowerCase('tr')) + '" data-category="' + esc(command.category) + '"><div class="command-card-top"><code>/' + esc(command.name) + '</code><span>' + esc(command.category) + '</span></div><p>' + esc(command.description) + '</p></article>').join('');
+  const cards = commands.map(command => '<article class="command-card" data-name="' + esc((command.name + ' ' + command.description + ' ' + command.longDescription + ' ' + command.options.map(option => option.name + ' ' + option.description).join(' ')).toLocaleLowerCase('tr')) + '" data-category="' + esc(command.category) + '"><div class="command-card-top"><code>/' + esc(command.name) + '</code><span>' + esc(command.category) + '</span></div><p>' + esc(command.description) + '</p>' + (command.longDescription && command.longDescription !== command.description ? '<details class="command-details"><summary>Ayrıntılı yardım</summary><p>' + esc(command.longDescription) + '</p></details>' : '') + renderCommandOptions(command.options) + '</article>').join('');
   const content = '<main><section class="wrap catalog-hero"><div class="eyebrow">✧ KOMUT ARŞİVİ · FRIEREN YOLCULUĞU ✧</div><h1 class="hero-title">Bütün <em>komutlar.</em></h1><p class="lead">Poğaça Frieren sunucunda kullanabileceğin komutları tek yerde keşfet. Arama yap, kategoriye göre filtrele ve yeni macerana hazırlan.</p><div class="catalog-count"><strong>' + commands.length + '</strong><span>yüklenmiş komut</span></div></section><section class="section"><div class="wrap"><div class="catalog-tools"><label class="sr-only" for="command-search">Komutlarda ara</label><input id="command-search" type="search" placeholder="Komut adı veya açıklamada ara…" autocomplete="off"><label class="sr-only" for="command-category">Kategori seç</label><select id="command-category">' + categoryOptions + '</select><span id="command-result-count" aria-live="polite">' + commands.length + '/' + commands.length + ' komut gösteriliyor</span></div><div class="command-catalog" id="command-catalog">' + (cards || '<p class="muted">Komut kataloğu şu anda yüklenemiyor.</p>') + '</div><p class="catalog-empty" id="command-empty" hidden>Bu aramayla eşleşen komut bulunamadı.</p></div></section><section class="section"><div class="wrap cta"><h2>Maceraya hazır mısın?</h2><p>Komutları Discord sunucunda kullanarak kendi hikâyeni oluştur.</p><a class="btn" href="/pogaca">Poğaça Frieren sayfasına dön</a></div></section></main><script>(()=>{const search=document.getElementById("command-search");const category=document.getElementById("command-category");const cards=[...document.querySelectorAll(".command-card")];const count=document.getElementById("command-result-count");const empty=document.getElementById("command-empty");const filter=()=>{const query=search.value.trim().toLocaleLowerCase("tr");let visible=0;for(const card of cards){const matchesText=card.dataset.name.includes(query);const matchesCategory=category.value==="all"||card.dataset.category===category.value;const show=matchesText&&matchesCategory;card.hidden=!show;if(show)visible++;}count.textContent=visible+" / "+cards.length+" komut gösteriliyor";empty.hidden=visible!==0;};search.addEventListener("input",filter);category.addEventListener("change",filter);})();</script>';
   return page('Komut Arşivi', content, user);
 }
@@ -86,7 +117,7 @@ function authPage(mode, status = '') {
   return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><title>' + title + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css"><style>.auth-wrap{min-height:100vh;display:grid;place-items:center;padding:28px 18px}.auth-card{width:min(100%,520px);padding:34px;border:1px solid #e8dafa55;border-radius:26px;background:linear-gradient(145deg,#34294cdd,#17152eee);box-shadow:0 24px 80px #05030d88;text-align:center}.auth-mark{width:90px;height:90px;border-radius:50%;object-fit:cover;border:2px solid #e8dafa88;box-shadow:0 0 45px #d8bdff55}.auth-card h1{font:38px Georgia,serif;margin:18px 0 8px}.auth-card p{color:var(--muted)}.auth-card .btn{margin:14px 0}.auth-notice{max-width:100%;margin:16px auto!important;padding:12px 14px;border:1px solid #f0c8a866;border-radius:12px;background:#a8793918;color:#ffe3b4!important;text-align:center}.auth-back{display:inline-flex;margin-top:12px;padding:9px 14px;border:1px solid #e8dafa55;border-radius:12px;color:#f0e6ff;background:#ffffff0b}.auth-back:hover{background:#ffffff18}</style></head><body><main class="auth-wrap"><section class="auth-card"><img class="auth-mark" src="/assets/site-avatar.svg" alt="Frieren site simgesi"><div class="eyebrow">✧ FRIEREN · THE ARCANE JOURNEY ✧</div><h1>' + title + '</h1><p>' + (registering ? 'Site hesabını Discord kimliğinle ücretsiz oluştur. Ayrı bir şifre belirlemen gerekmez.' : 'Kayıtlı Discord hesabınla güvenli şekilde devam et.') + '</p>' + notice + '<a class="btn" href="/owner/login?flow=' + (registering ? 'register' : 'login') + '">' + action + '</a>' + alternate + '<p class="muted">Kimlik doğrulaması Discord üzerinden yapılır. Şifreni bu siteyle paylaşmazsın.</p></section></main></body></html>';
 }
 
-export async function handlePublicSiteRequest(req, res, { client } = {}) {
+export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   const url = new URL(req.url, 'http://localhost');
   if (req.method !== 'GET') return false;
   const cookie = cookies(req);
@@ -140,7 +171,11 @@ export async function handlePublicSiteRequest(req, res, { client } = {}) {
     }
     return true;
   }
-  const routes = new Map([['/', () => home(client, user)], ['/pogaca', () => pogaca(client, user)], ['/komutlar', () => commandCatalog(client, user)], ['/frieren-ai', () => aiPage(user)]]);
+  let commandHelpEntries = [];
+  if (url.pathname === '/komutlar' && db) {
+    try { commandHelpEntries = await listOwnerCommandHelp(db); } catch { commandHelpEntries = []; }
+  }
+  const routes = new Map([['/', () => home(client, user)], ['/pogaca', () => pogaca(client, user)], ['/komutlar', () => commandCatalog(client, user, commandHelpEntries)], ['/frieren-ai', () => aiPage(user)]]);
   const render = routes.get(url.pathname);
   if (!render) return false;
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });

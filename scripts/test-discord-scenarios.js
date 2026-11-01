@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { getSpellMasteryAwakening } from '../rpg-mechanics.js';
 
 const read = path => readFile(new URL('../' + path, import.meta.url), 'utf8');
 
@@ -887,4 +888,28 @@ test('isolated command tests preserve existing frieren_test data and serialize s
   assert.match(schema, /if \(!testContext\.getStore\(\)\)/);
   assert.match(runner, /buildIsolatedTestGuildId\(index\)/);
   assert.match(runner, /return '910000000000000'/);
+});
+
+
+test('all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten', () => {
+  const cases = [
+    ['zoltraak', { damage: 8 }],
+    ['alev_kuresi', { damage: 10 }],
+    ['buz_mizragi', { freezeChance: 0.1 }],
+    ['koruyucu_bariyer', { shieldReduction: 0.05 }],
+    ['sifa_isigi', { healing: 10 }],
+    ['yildirim_zinciri', { damage: 12 }],
+    ['tas_duvar', { wallReduction: 0.05 }],
+    ['mana_patlamasi', { damage: 15 }]
+  ];
+  for (const [spell, expected] of cases) {
+    const locked = getSpellMasteryAwakening(spell, 9);
+    assert.deepEqual(locked, { damage: 0, freezeChance: 0, shieldReduction: 0, healing: 0, wallReduction: 0 }, spell + ' must remain locked at mastery 9');
+    const awakened = getSpellMasteryAwakening(spell, 10);
+    assert.deepEqual(awakened, { damage: 0, freezeChance: 0, shieldReduction: 0, healing: 0, wallReduction: 0, ...expected }, spell + ' mastery-10 capstone');
+    assert.deepEqual(getSpellMasteryAwakening(spell, 99), awakened, spell + ' mastery must clamp at level 10');
+  }
+  assert.deepEqual(getSpellMasteryAwakening('zoltraak', -5), {
+    damage: 0, freezeChance: 0, shieldReduction: 0, healing: 0, wallReduction: 0
+  });
 });

@@ -1911,5 +1911,95 @@
       "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 317
+  "count": 317,
+  "evidencePolicy": {
+    "auditedAt": "2026-11-01",
+    "scope": "Initial evidence audit of the 317 currently catalogued records; this is not a claim that all 2,000 planned features have been inventoried.",
+    "rules": [
+      "A feature remains implemented_needs_runtime_test until feature-specific source and behavioral evidence are linked.",
+      "Source presence alone is not proof of behavior.",
+      "Automated tests are not Discord runtime verification.",
+      "Discord test-guild verification is not production verification.",
+      "Production verification requires explicit, observed live evidence.",
+      "Do not count aliases, files, UI labels or cosmetic changes as separate features."
+    ],
+    "aggregateEvidence": {
+      "inventoryRecords": 317,
+      "duplicateIds": 0,
+      "duplicateNormalizedNames": 0,
+      "highestNumericRpgSuffix": 323,
+      "absentRpgSuffixes": [
+        281,
+        282,
+        283,
+        284,
+        285,
+        286,
+        287,
+        288,
+        289,
+        290,
+        291,
+        292,
+        293,
+        294,
+        295,
+        296,
+        297,
+        298,
+        299
+      ],
+      "featureLevelEvidenceLinks": 36,
+      "discordRuntimeVerified": 0,
+      "productionVerified": 0,
+      "note": "Thirty-six selected records have manually inspected source-to-test traceability links in feature-evidence.json. The map mixes direct unit assertions and static source assertions; it does not promote inventory status or imply Discord/production verification for the remaining records.",
+      "historyChecked": [
+        {
+          "ref": "9555b7dc326dc2291e24000d439243a5d676ae12",
+          "date": "2026-10-27",
+          "finding": "RPG-281 through RPG-299 are absent from the historical 323-record inventory snapshot; RPG-280 is followed by RPG-300."
+        },
+        {
+          "ref": "7dc00d4b82f9c3efd141cbcd32abc0a5b17ca5d5",
+          "date": "2026-10-29",
+          "finding": "The inventory diff removes MOD-002 and MOD-003; it does not restore or renumber RPG-281 through RPG-299."
+        },
+        {
+          "ref": "e73970f31adccb2764dc3ad63504d6697fa4f394",
+          "date": "2026-10-29",
+          "finding": "The inventory diff removes MOD-001, MOD-004, SRV-001 and SRV-002; no RPG-281 through RPG-299 entries appear in the patch."
+        }
+      ]
+    },
+    "verifiedTestSuites": [
+      {
+        "path": "scripts/test-discord-scenarios.js",
+        "scope": "Co-op, dungeons, raids, spells, classes, quests, exploration, discoveries, crafting, salvage, history and interaction scenarios"
+      },
+      {
+        "path": "scripts/check-gameplay-integrity.js",
+        "scope": "Trade, missions, PvP, persistent stats, gear, item use, lock ordering, transactions, health readiness and command error handling"
+      },
+      {
+        "path": "scripts/test-economy-crafting-integrity.js",
+        "scope": "Market purchase serialization, crafting material locks, trade reservation expiry"
+      },
+      {
+        "path": "scripts/test-boss-combat.js",
+        "scope": "Boss damage, phases, raid weaknesses, reward idempotency and transaction persistence"
+      },
+      {
+        "path": "scripts/test-gameplay-persistence.js",
+        "scope": "Equipment set bonus activation/removal, quest reward determinism, HP/Mana base-stat ratios"
+      },
+      {
+        "path": "scripts/test-command-interaction-coverage.js",
+        "scope": "Discoverable slash command module loading and interaction contract validation"
+      },
+      {
+        "path": "scripts/test-command-test-evidence.js",
+        "scope": "PASS requires a Discord response and command-specific behavioral assertions"
+      }
+    ]
+  }
 }

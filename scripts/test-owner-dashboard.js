@@ -1,7 +1,7 @@
 import test from 'node:test';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderCommandHelpManager, renderOwnerLayout, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, loadOwnerCommandHelpSafely, handleOwnerDashboardRequest } from '../owner-dashboard.js';
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
 const ownerId = '1553794496234262641';
@@ -635,4 +635,150 @@ test('owner scenario tests target the separately hosted Frieren AI service over 
 test('owner navigation provides a safe public-site preview shortcut', () => {
   assert.match(renderOwnerNavigation(), /Ana siteyi önizle/);
   assert.match(renderOwnerNavigation(), /href="\/" target="_blank" rel="noopener"/);
+});
+
+
+test('owner workspace layout places navigation and content in one balanced shell', () => {
+  const html = renderOwnerLayout('<nav class="nav">navigation</nav>', '<section class="owner-content">content</section>');
+  assert.ok(html.startsWith('<div class="owner-shell">'));
+  assert.ok(html.includes('<nav class="nav">navigation</nav>'));
+  assert.ok(html.endsWith('<div class="owner-content"><section class="owner-content">content</section></div></div>'));
+});
+
+
+test('owner dashboard keeps running with live command descriptions when optional help storage is unavailable', async () => {
+  let reads = 0;
+  const entries = await loadOwnerCommandHelpSafely({
+    async query() {
+      reads += 1;
+      throw new Error('private database connection details');
+    }
+  });
+  assert.deepEqual(entries, []);
+  assert.equal(reads, 1);
+  const commands = new Map([['karakter', {
+    data: { name: 'karakter', description: 'Canlı slash komut açıklaması.' }
+  }]]);
+  const html = renderCommandHelpManager(commands, entries, 'test-csrf');
+  assert.match(html, /\/karakter/);
+  assert.match(html, /Canlı slash komut açıklaması/);
+  assert.doesNotMatch(html, /private database connection details/);
+});
+
+test('command help manager lists loaded commands with bounded editable descriptions', () => {
+  const commands = new Map([
+    ['karakter', { data: { name: 'karakter', description: 'Karakter profilini görüntüle.' } }],
+    ['zindan', { data: { name: 'zindan', description: 'Zindan macerası başlat.' } }]
+  ]);
+  const html = renderCommandHelpManager(commands, [{
+    command_name: 'karakter', short_description: 'Özel kısa açıklama.',
+    long_description: 'Karakterinin ilerlemesini görüntüle.',
+    updated_at: '2026-11-01T12:00:00.000Z', version_count: 3, version_history: []
+  }], 'csrf-token');
+  assert.match(html, /\/karakter/);
+  assert.match(html, /\/zindan/);
+  assert.match(html, /maxlength="100"/);
+  assert.match(html, /maxlength="2000"/);
+  assert.match(html, /Özel kısa açıklama/);
+  assert.match(html, /3 sürüm/);
+  assert.match(html, /csrf-token/);
+});
+
+test('command help manager escapes stored owner content before rendering', () => {
+  const commands = new Map([['karakter', { data: { name: 'karakter', description: 'Kısa açıklama.' } }]]);
+  const html = renderCommandHelpManager(commands, [{
+    command_name: 'karakter', short_description: '<script>alert(1)</script>',
+    long_description: '<img src=x onerror=alert(1)>', version_count: 1, version_history: []
+  }], 'csrf');
+  assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
+  assert.doesNotMatch(html, /<img src=x onerror=alert\(1\)>/);
+  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+});
+
+
+test('command help save requires owner CSRF confirmation before touching persistence', async () => {
+  let calls = 0;
+  const db = { query: async () => { calls += 1; return { rows: [] }; } };
+  const client = { commands: new Map([['karakter', {}]]) };
+  const { response } = await runOwnerPost({
+    action: 'command-help-save', csrf: 'wrong-token', confirm: 'yes',
+    commandName: 'karakter', shortDescription: 'Karakter profili.',
+    longDescription: 'Oyuncunun karakterini ve ilerlemesini gösterir.'
+  }, db, client);
+  assert.equal(response.status, 403);
+  assert.match(response.body, /CSRF doğrulaması başarısız/);
+  assert.equal(calls, 0);
+});
+
+test('command help save validates the loaded slash command and commits version plus current text atomically', async () => {
+  const statements = [];
+  const db = { async query(sql, params) { statements.push({ sql, params }); return { rows: [] }; } };
+  const client = { commands: new Map([['karakter', {}]]) };
+  const { response } = await runOwnerPost({
+    action: 'command-help-save', csrf: 'session', confirm: 'yes',
+    commandName: 'karakter', shortDescription: 'Karakter profilini görüntüle.',
+    longDescription: 'Oyuncunun karakterini, seviyesini ve savaş yapısını görüntüler.'
+  }, db, client);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner?notice=command_help_saved#command-help');
+  assert.equal(statements[0].sql, 'BEGIN');
+  assert.ok(statements.some(row => row.sql.includes('INSERT INTO owner_command_help_versions')));
+  const current = statements.find(row => row.sql.includes('INSERT INTO owner_command_help('));
+  assert.deepEqual(current.params, [
+    'karakter',
+    'Karakter profilini görüntüle.',
+    'Oyuncunun karakterini, seviyesini ve savaş yapısını görüntüler.',
+    '1553794496234262641'
+  ]);
+  assert.ok(statements.some(row => row.sql.includes('LIMIT 30')));
+  assert.equal(statements.at(-1).sql, 'COMMIT');
+});
+
+test('command help save rejects names that are not loaded slash commands without database writes', async () => {
+  let calls = 0;
+  const db = { async query() { calls += 1; throw new Error('database must not be touched'); } };
+  const client = { commands: new Map([['karakter', {}]]) };
+  const { response } = await runOwnerPost({
+    action: 'command-help-save', csrf: 'session', confirm: 'yes',
+    commandName: 'unknown-command', shortDescription: 'Geçersiz komut.',
+    longDescription: 'Bu komut botta yüklü değil.'
+  }, db, client);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner?notice=invalid');
+  assert.equal(calls, 0);
+});
+
+test('command help save refuses an unchecked confirmation without touching persistence', async () => {
+  let databaseWrites = 0;
+  const db = { async query() { databaseWrites += 1; throw new Error('unconfirmed help save must not reach persistence'); } };
+  const client = { commands: new Map([['karakter', {}]]) };
+  const { response } = await runOwnerPost({
+    action: 'command-help-save', csrf: 'session',
+    commandName: 'karakter', shortDescription: 'Karakter profili.',
+    longDescription: 'Oyuncunun karakterini ve ilerlemesini gösterir.'
+  }, db, client);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner?notice=invalid');
+  assert.equal(databaseWrites, 0);
+});
+
+test('command help save reports failure and rolls back when current help persistence fails', async () => {
+  const statements = [];
+  const db = { async query(sql, params) {
+    statements.push({ sql, params });
+    if (sql.includes('INSERT INTO owner_command_help(')) throw new Error('private database failure');
+    return { rows: [] };
+  } };
+  const client = { commands: new Map([['karakter', {}]]) };
+  const { response } = await runOwnerPost({
+    action: 'command-help-save', csrf: 'session', confirm: 'yes',
+    commandName: 'karakter', shortDescription: 'Karakter profili.',
+    longDescription: 'Oyuncunun karakterini ve ilerlemesini gösterir.'
+  }, db, client);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner?notice=invalid');
+  assert.equal(statements[0].sql, 'BEGIN');
+  assert.ok(statements.some(row => row.sql.includes('INSERT INTO owner_command_help_versions')));
+  assert.equal(statements.at(-1).sql, 'ROLLBACK');
+  assert.doesNotMatch(response.body, /private database failure/);
 });
