@@ -25,6 +25,9 @@ on:
       - 'scripts/test-owner-platform.js'
       - 'ai-agent/owner-scenario-report.js'
       - 'ai-agent/owner-scenario-report.test.js'
+      - 'ai-agent/guardian-review.js'
+      - 'ai-agent/guardian-review.test.js'
+      - 'guardian/**'
       - 'scripts/test-owner-quests.js'
       - 'scripts/test-owner-rpg-content.js'
       - 'scripts/check-gameplay-integrity.js'
@@ -73,5 +76,6 @@ jobs:
         with:
           node-version: 20
       - run: npm install --no-package-lock --no-audit --no-fund
-      - run: node --test --test-concurrency=1 scripts/test-owner-dashboard.js scripts/test-owner-workspaces.js scripts/test-owner-admin.js scripts/test-owner-history.js scripts/test-owner-metrics.js scripts/test-owner-platform.js scripts/test-owner-quests.js scripts/test-owner-rpg-content.js scripts/test-owner-render-control.js ai-agent/owner-scenario-report.test.js
+      - run: node --check guardian/core.js && node --check guardian/store.js && node --check guardian/monitor.js && node --check ai-agent/guardian-review.js && node --check ai-agent/index.js && node --check owner-dashboard.js && node --check owner-admin.js && node --check index.js
+      - run: node --test --test-concurrency=1 scripts/test-owner-dashboard.js scripts/test-owner-workspaces.js scripts/test-owner-admin.js scripts/test-owner-history.js scripts/test-owner-metrics.js scripts/test-owner-platform.js scripts/test-owner-quests.js scripts/test-owner-rpg-content.js scripts/test-owner-render-control.js ai-agent/owner-scenario-report.test.js ai-agent/guardian-review.test.js guardian/*.test.js
       - run: node scripts/check-gameplay-integrity.js
