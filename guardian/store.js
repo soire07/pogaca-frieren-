@@ -183,6 +183,13 @@ export async function updateGuardianRepairStatus(db, { jobId, runId = null, runU
   return Boolean(result.rows?.[0]);
 }
 
+export async function getGuardianMonitorState(db) {
+  const result = await db.query(
+    "SELECT monitor_key,last_seen_error_id,last_tick_at,last_error,updated_at FROM owner_guardian_monitor_state WHERE monitor_key='owner_error_logs' LIMIT 1"
+  );
+  return result.rows?.[0] || null;
+}
+
 export async function listGuardianJobs(db, limit = 20) {
   const safeLimit = Math.max(1, Math.min(Number(limit) || 20, 100));
   const result = await db.query(
