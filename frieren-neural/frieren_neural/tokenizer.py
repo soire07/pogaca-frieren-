@@ -112,7 +112,8 @@ class BPETokenizer:
         for index, pair in enumerate(self.merges):
             expected_id = self.BASE_VOCAB_SIZE + index
             if (not isinstance(pair, tuple) or len(pair) != 2
-                    or any(not isinstance(token, int) or token < 0 or token >= expected_id\n                           or self.PAD_ID <= token < self.BASE_VOCAB_SIZE for token in pair)):
+                    or any(not isinstance(token, int) or token < 0 or token >= expected_id
+                           or self.PAD_ID <= token < self.BASE_VOCAB_SIZE for token in pair)):
                 raise ValueError("Invalid BPE merge: each pair must reference earlier token IDs.")
 
     @classmethod
