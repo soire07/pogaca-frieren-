@@ -6,6 +6,7 @@ from frieren_neural.tokenizer import BPETokenizer
 from frieren_neural.training import (
     encode_dialogue_stream_with_loss_mask,
     generate_text,
+    encode_generation_prompt,
     _sample_batch,
 )
 
