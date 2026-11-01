@@ -211,8 +211,10 @@ function secondFactorForm(title, description, action, csrf, extra = '') {
 
 export function createPublicSiteSession(secret, user, expiresAt) {
   const id = String(user?.id || '');
-  if (!/^\d{17,20}$/.test(id)) throw new Error('Invalid Discord user for site session');
-  const avatarHash = typeof user?.avatar === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(user.avatar) ? user.avatar : null;
+  const discordId = /^\d{17,20}$/.test(id);
+  const siteAccountId = /^site_[0-9a-f-]{36}$/i.test(id);
+  if (!discordId && !siteAccountId) throw new Error('Invalid public site account for site session');
+  const avatarHash = discordId && typeof user?.avatar === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(user.avatar) ? user.avatar : null;
   return sign({
     purpose: 'frieren-site-session',
     sub: id,
@@ -225,14 +227,15 @@ export function createPublicSiteSession(secret, user, expiresAt) {
 export function readPublicSiteSession(token, secret, nowSeconds = Math.floor(Date.now() / 1000)) {
   if (!secret || secret.length < 32 || !token) return null;
   const session = unsign(token, secret);
-  if (session?.purpose !== 'frieren-site-session' || !/^\d{17,20}$/.test(String(session.sub || ''))
+  const subject = String(session?.sub || '');
+  if (session?.purpose !== 'frieren-site-session' || (!/^\d{17,20}$/.test(subject) && !/^site_[0-9a-f-]{36}$/i.test(subject))
       || !Number.isInteger(session.exp) || session.exp <= nowSeconds) return null;
-  const avatarHash = typeof session.avatarHash === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(session.avatarHash)
+  const avatarHash = /^\d{17,20}$/.test(subject) && typeof session.avatarHash === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(session.avatarHash)
     ? session.avatarHash : null;
   return {
-    id: String(session.sub),
+    id: subject,
     username: String(session.username || 'Gezgin').slice(0, 64),
-    avatarUrl: avatarHash ? 'https://cdn.discordapp.com/avatars/' + session.sub + '/' + avatarHash + '.png?size=128' : null
+    avatarUrl: avatarHash ? 'https://cdn.discordapp.com/avatars/' + subject + '/' + avatarHash + '.png?size=128' : null
   };
 }
 
@@ -605,7 +608,12 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
 
   if (url.pathname === '/owner/login' && req.method === 'GET') {
     const requestedFlow = url.searchParams.get('flow');
-    const flow = ['register', 'login'].includes(requestedFlow) ? requestedFlow : 'owner';
+    if (requestedFlow === 'register' || requestedFlow === 'login') {
+      res.writeHead(302, { Location: requestedFlow === 'register' ? '/register' : '/login', 'Cache-Control': 'no-store' });
+      res.end();
+      return true;
+    }
+    const flow = 'owner';
     const state = createOwnerOAuthState(sessionSecret, Date.now(), flow);
     const location = new URL('https://discord.com/oauth2/authorize');
     location.search = new URLSearchParams({
@@ -644,6 +652,11 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const username = String(user?.username || 'Gezgin').slice(0, 64);
       const avatarHash = typeof user?.avatar === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(user.avatar) ? user.avatar : null;
       if (flow === 'register' || flow === 'login') {
+        res.writeHead(302, { Location: flow === 'register' ? '/register' : '/login', 'Cache-Control': 'no-store', 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
+        res.end();
+        return true;
+      }
+      if (false) {
         if (!/^\d{17,20}$/.test(userId)) throw new Error('INVALID_DISCORD_USER_ID');
         await db.query(`
           CREATE TABLE IF NOT EXISTS frieren_site_members (
