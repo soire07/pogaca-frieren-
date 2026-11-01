@@ -204,4 +204,6 @@ test('owner schema creates a bounded test-run history table and recent index', a
   assert.match(sql, /repair_pr_url/);
   assert.match(sql, /repair_checks_status/);
   assert.match(sql, /owner_guardian_monitor_state/);
+  assert.match(sql, /last_tick_at/);
+  assert.match(sql, /last_error TEXT/);
 });
