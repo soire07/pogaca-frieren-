@@ -43,7 +43,7 @@ jobs:
           frieren-neural-train-small \
             --data ./corpus/turkish-daily-dialogues \
             --checkpoint ./checkpoints/frieren-neural-small.pt \
-            --steps 1000 | tee ./training-metrics.json
+            --steps 2000 --batch-size 4 --block-size 96 --d-model 96 --n-heads 4 --n-layers 3 --tokenizer-vocab-size 512 | tee ./training-metrics.json
       - name: Verify checkpoint can be loaded and generate a smoke sample
         run: |
           python - <<'PY'
@@ -52,7 +52,7 @@ jobs:
           from frieren_neural.training import generate_text, load_checkpoint
 
           model, tokenizer, metrics = load_checkpoint("./checkpoints/frieren-neural-small.pt", device="cpu")
-          assert metrics["step"] == 1000, metrics
+          assert metrics["step"] == 2000, metrics
           assert math.isfinite(metrics["train_loss"])
           assert math.isfinite(metrics["validation_loss"])
           sample = generate_text(model, tokenizer, "Kullanıcı: Merhaba.\nAsistan:", max_new_tokens=24, top_k=8)
