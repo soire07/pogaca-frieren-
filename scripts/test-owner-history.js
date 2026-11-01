@@ -74,3 +74,12 @@ test('memory updates validate input and audit only metadata, never memory conten
   assert.match(call.sql, /jsonb_build_object\('userId',user_id,'guildId',guild_id,'key',memory_key\)/);
   await assert.rejects(updateOwnerMemory(db, { id: 8, value: '   ', actorId: '1553794496234262641' }), /INVALID_MEMORY_VALUE/);
 });
+
+test('memory edits reject sensitive values before touching the database', async () => {
+  let called = false;
+  const db = { query: async () => { called = true; return { rows: [] }; } };
+  await assert.rejects(updateOwnerMemory(db, {
+    id: 8, value: 'Discord bot token abc123', actorId: '1553794496234262641'
+  }), /SENSITIVE_MEMORY_REJECTED/);
+  assert.equal(called, false);
+});
