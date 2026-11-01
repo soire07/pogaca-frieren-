@@ -109,7 +109,12 @@ def health() -> dict[str, str]:
     if not checkpoint.is_file():
         return {"status": "model_unavailable"}
     try:
-        _load_runtime(str(checkpoint.resolve()), os.environ.get("FRIEREN_DEVICE", "cpu"))
+        with _generation_capacity(), _generation_lock:
+            _load_runtime(str(checkpoint.resolve()), os.environ.get("FRIEREN_DEVICE", "cpu"))
+    except HTTPException as error:
+        if error.status_code == 503:
+            return {"status": "busy"}
+        raise
     except (OSError, RuntimeError, ValueError, KeyError, EOFError, pickle.UnpicklingError):
         return {"status": "model_unavailable"}
     return {"status": "ready"}
