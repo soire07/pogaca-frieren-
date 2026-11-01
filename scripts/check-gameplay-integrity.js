@@ -389,3 +389,23 @@ test('inventory acknowledges privately before user creation and database reads',
   assert.ok(!source.includes('await interaction.reply({\n      embeds: [embed]'),
     'inventory must not reply a second time after deferring');
 });
+
+
+test('same-player equipment mutations lock the player row before reading or writing equipped slots', async () => {
+  const source = await read('ekipman.js');
+
+  const unequipAction = source.indexOf("if (action === 'unequip')");
+  const unequipBegin = source.indexOf("await db.query('BEGIN')", unequipAction);
+  const unequipLock = source.indexOf('SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', unequipBegin);
+  const unequipDelete = source.indexOf('DELETE FROM user_equipment', unequipBegin);
+  assert.ok(unequipAction >= 0 && unequipBegin > unequipAction && unequipLock > unequipBegin && unequipLock < unequipDelete,
+    'unequip must serialize on the player row before deleting an equipped slot');
+
+  const equipItem = source.indexOf('const item = equipmentItems.find');
+  const equipBegin = source.indexOf("await db.query('BEGIN')", equipItem);
+  const equipLock = source.indexOf('SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', equipBegin);
+  const equipOwned = source.indexOf('SELECT quantity FROM inventory', equipBegin);
+  const equipWrite = source.indexOf('INSERT INTO user_equipment', equipBegin);
+  assert.ok(equipItem >= 0 && equipBegin > equipItem && equipLock > equipBegin && equipLock < equipOwned && equipOwned < equipWrite,
+    'equip must serialize on the player row before inventory validation and equipped-slot writes');
+});
