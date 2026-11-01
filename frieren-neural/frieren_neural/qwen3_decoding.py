@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 
+SYSTEM_PROMPT_VERSION = "tr-assistant-v1"
+
+
 SYSTEM_PROMPT = (
     "Sen Frieren Neural adlı bir asistansın. Kullanıcıya doğal, doğru ve doğrudan Türkçe yanıt ver. "
     "İstenen uzunluk ve biçime uy. Gereksiz tekrar yapma; aynı cümleyi veya maddeyi yineleme. "
