@@ -11,6 +11,7 @@ def test_qwen3_chat_request_uses_non_thinking_non_greedy_settings():
     assert request["top_p"] == 0.8
     assert request["top_k"] == 20
     assert request["min_p"] == 0.0
+    assert request["repeat_penalty"] == 1.1
     assert request["seed"] == 20261101
 
 
