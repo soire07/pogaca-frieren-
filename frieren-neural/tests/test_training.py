@@ -1,3 +1,4 @@
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -47,9 +48,12 @@ def test_training_writes_resumable_checkpoint_and_finite_metrics(tmp_path: Path)
     assert torch.isfinite(torch.tensor(result["validation_loss"]))
     assert checkpoint.is_file()
 
-    resumed = train_model(corpus, checkpoint, config, resume=True)
-    assert resumed["step"] == 3
+    resumed = train_model(corpus, checkpoint, replace(config, max_steps=5), resume=True)
+    assert resumed["step"] == 5
     assert torch.isfinite(torch.tensor(resumed["validation_loss"]))
+
+    with pytest.raises(ValueError, match="Checkpoint corpus/model/training settings"):
+        train_model(["Fern studies spells. Frieren learns magic. " * 8], checkpoint, replace(config, max_steps=6), resume=True)
 
 
 def test_evaluate_loss_returns_finite_validation_value():
