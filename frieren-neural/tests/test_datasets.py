@@ -122,7 +122,7 @@ def test_prepare_dataset_rejects_unknown_split(tmp_path):
 def test_prepare_dataset_rolls_back_partial_output_when_manifest_commit_fails(
     tmp_path, monkeypatch
 ):
-    raw = (json.dumps(_record(), ensure_ascii=False) + "\\n").encode("utf-8")
+    raw = (json.dumps(_record(), ensure_ascii=False) + "\n").encode("utf-8")
     _install_fake_download(monkeypatch, raw)
     output = tmp_path / "prepared"
     real_replace = datasets.os.replace
@@ -141,3 +141,4 @@ def test_prepare_dataset_rolls_back_partial_output_when_manifest_commit_fails(
         datasets.prepare_turkish_daily_dialogues(output)
 
     assert list(output.iterdir()) == []
+    assert not list(output.glob(".*.tmp"))
