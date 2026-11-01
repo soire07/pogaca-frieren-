@@ -250,7 +250,11 @@ client.on(Events.InteractionCreate, async interaction => {
         await db.query('ROLLBACK');
         return interaction.update({ content: offer.status === 'accepted' ? '✅ Bu takas daha önce tamamlandı.' : offer.status === 'declined' ? '❌ Bu takas daha önce reddedildi.' : '⏰ Bu takas teklifi artık geçerli değil.', embeds: [], components: [] });
       }
-      if (new Date(offer.expires_at).getTime() <= Date.now()) {
+      const expiryResult = await db.query(
+        'SELECT expires_at <= NOW() AS expired FROM trade_offers WHERE offer_id=$1 AND guild_id=$2',
+        [offerId, interaction.guildId]
+      );
+      if (expiryResult.rows[0].expired) {
         await db.query("UPDATE trade_offers SET status='expired',resolved_at=NOW() WHERE offer_id=$1",[offerId]);
         await db.query('COMMIT');
         return interaction.update({ content: '⏰ Takas teklifinin süresi doldu.', embeds: [], components: [] });
