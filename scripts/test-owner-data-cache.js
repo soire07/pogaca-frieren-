@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { clearOwnerDataCacheForTests, getStaleOwnerData } from '../owner-data-cache.js';
+import { clearOwnerDataCacheForTests, getOwnerData, getStaleOwnerData } from '../owner-data-cache.js';
 
 test('owner data cache returns immediately and refreshes only once for concurrent requests', async () => {
   clearOwnerDataCacheForTests();
