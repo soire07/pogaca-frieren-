@@ -5,12 +5,18 @@ on:
     branches:
       - frieren-neural-foundation
     paths:
-      - "frieren-neural/**"
-      - ".github/workflows/frieren-neural-ci.yml"
+      - "frieren-neural/frieren_neural/**"
+      - "frieren-neural/tests/**"
+      - "frieren-neural/pyproject.toml"
+      - "frieren-neural/QUALITY_GATE.md"
+      - "frieren-neural/corpus_manifest.example.json"
   pull_request:
     paths:
-      - "frieren-neural/**"
-      - ".github/workflows/frieren-neural-ci.yml"
+      - "frieren-neural/frieren_neural/**"
+      - "frieren-neural/tests/**"
+      - "frieren-neural/pyproject.toml"
+      - "frieren-neural/QUALITY_GATE.md"
+      - "frieren-neural/corpus_manifest.example.json"
   workflow_dispatch:
 
 permissions:
