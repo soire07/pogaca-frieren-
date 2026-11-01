@@ -388,8 +388,15 @@ export async function recordOwnerTestRun(db, { actorId, target, report } = {}) {
     })) : []
   };
   const result = await db.query(
-    `INSERT INTO owner_test_runs(actor_id,target,status,summary,details)
-     VALUES($1,$2,$3,$4::jsonb,$5::jsonb) RETURNING id,created_at`,
+    `WITH inserted AS (
+       INSERT INTO owner_test_runs(actor_id,target,status,summary,details)
+       VALUES($1,$2,$3,$4::jsonb,$5::jsonb) RETURNING id,created_at
+     ), pruned AS (
+       DELETE FROM owner_test_runs
+       WHERE id NOT IN (SELECT id FROM owner_test_runs ORDER BY id DESC LIMIT 500)
+       RETURNING id
+     )
+     SELECT id,created_at FROM inserted`,
     [actor, testTarget, details.status, JSON.stringify(safeSummary), JSON.stringify(details)]
   );
   return result.rows?.[0] || null;
