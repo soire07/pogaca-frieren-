@@ -656,40 +656,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         res.end();
         return true;
       }
-      if (false) {
-        if (!/^\d{17,20}$/.test(userId)) throw new Error('INVALID_DISCORD_USER_ID');
-        await db.query(`
-          CREATE TABLE IF NOT EXISTS frieren_site_members (
-            discord_user_id TEXT PRIMARY KEY CHECK (discord_user_id ~ '^[0-9]{17,20}$'),
-            username VARCHAR(64) NOT NULL,
-            avatar_hash TEXT,
-            registered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            last_login_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-          )
-        `);
-        if (flow === 'register') {
-          const created = await db.query(
-            'INSERT INTO frieren_site_members (discord_user_id, username, avatar_hash) VALUES ($1,$2,$3) ON CONFLICT (discord_user_id) DO NOTHING RETURNING discord_user_id',
-            [userId, username, avatarHash]
-          );
-          if (!created.rowCount) {
-            res.writeHead(302, { Location: '/login?status=already_registered', 'Cache-Control': 'no-store', 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
-            res.end();
-            return true;
-          }
-        } else {
-          const existing = await db.query('SELECT discord_user_id FROM frieren_site_members WHERE discord_user_id=$1', [userId]);
-          if (!existing.rowCount) {
-            res.writeHead(302, { Location: '/register?status=not_registered', 'Cache-Control': 'no-store', 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
-            res.end();
-            return true;
-          }
-          await db.query(
-            'UPDATE frieren_site_members SET username=$2, avatar_hash=$3, last_login_at=NOW() WHERE discord_user_id=$1',
-            [userId, username, avatarHash]
-          );
-        }
-      } else if (userId !== OWNER_ID) {
+      if (userId !== OWNER_ID) {
         send(res, 403, page('Owner erişimi reddedildi', '<h1>Bu alan yalnızca site sahibine açıktır</h1><p>Siteye normal giriş yapmak için kayıt veya giriş sayfasını kullan.</p><a class="btn" href="/login">Siteye dön</a>'), { 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
         return true;
       }
