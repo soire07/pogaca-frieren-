@@ -477,6 +477,31 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
   `);
 }
 
+export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limit: 20, total: 0 }, testRuns = { rows: [], page: 1, limit: 10, total: 0 }, action = '', target = '' } = {}) {
+  const auditRows = audit.rows || [];
+  const testRows = testRuns.rows || [];
+  const auditHtml = auditRows.length ? auditRows.map(row =>
+    '<div class="rowitem"><div class="actions"><strong>#' + Number(row.id) + ' · ' + escapeHtml(row.action) + '</strong><span class="small">' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</span></div>'
+    + '<div class="small">İşlemi yapan: ' + escapeHtml(row.actor_id) + ' · Hedef: ' + escapeHtml(row.target || '—') + '</div></div>'
+  ).join('') : '<p class="muted">Bu filtrelerle eşleşen işlem bulunamadı.</p>';
+  const testHtml = testRows.length ? testRows.map(run =>
+    '<div class="rowitem"><div class="actions"><strong>#' + Number(run.id) + ' · ' + escapeHtml(run.target) + '</strong><span class="' + (run.status === 'PASS' ? 'good' : run.status === 'FAIL' ? 'bad' : 'warn') + '">' + escapeHtml(run.status) + '</span></div>'
+    + '<div class="small">' + Number(run.summary?.total || 0) + ' test · ' + Number(run.summary?.pass || 0) + ' PASS · ' + Number(run.summary?.fail || 0) + ' FAIL · ' + escapeHtml(new Date(run.created_at).toLocaleString('tr-TR')) + '</div>'
+    + (Array.isArray(run.details?.testFiles) && run.details.testFiles.length ? '<div class="small">Test dosyaları: ' + escapeHtml(run.details.testFiles.join(', ')) + '</div>' : '')
+    + (Array.isArray(run.details?.failedStages) && run.details.failedStages.length ? '<p class="notice warn">' + escapeHtml(run.details.failedStages.join(' · ')) + '</p>' : '')
+    + '</div>'
+  ).join('') : '<p class="muted">Henüz kaydedilmiş test çalıştırması yok.</p>';
+  const auditQuery = page => '/owner/activity?' + new URLSearchParams({ action, target, page: String(page) }).toString();
+  const previous = audit.page > 1 ? '<a class="btn secondary" href="' + auditQuery(audit.page - 1) + '">Önceki</a>' : '';
+  const next = audit.page * audit.limit < audit.total ? '<a class="btn secondary" href="' + auditQuery(audit.page + 1) + '">Sonraki</a>' : '';
+  return page('Denetim ve test geçmişi', renderOwnerNavigation()
+    + '<div class="top"><div><div class="brand">FRIEREN · PRIVATE OPERATIONS</div><div class="small">AUDIT & TEST HISTORY</div></div><a class="btn secondary" href="/owner">Kontrol merkezine dön</a></div>'
+    + '<section class="hero"><span class="tag">OWNER · PRIVATE</span><h1>Denetim ve test geçmişi</h1><p class="muted">İşlemler, test sonuçları ve başarısız aşamalar. Hassas kayıt içerikleri bu listede gösterilmez.</p></section>'
+    + '<section class="panel"><h2>İşlem kayıtları · ' + Number(audit.total) + '</h2><form method="get" action="/owner/activity"><label>İşlem türü</label><input name="action" maxlength="80" value="' + escapeHtml(action) + '" placeholder="Örn. memory.update"><label>Hedef</label><input name="target" maxlength="80" value="' + escapeHtml(target) + '" placeholder="Kayıt veya servis ID"><button class="btn secondary">Filtrele</button></form>'
+    + auditHtml + '<div class="actions">' + previous + next + '<span class="small">Sayfa ' + Number(audit.page) + ' · En fazla ' + Number(audit.limit) + ' kayıt</span></div></section>'
+    + '<section class="panel"><h2>Frieren AI test geçmişi · ' + Number(testRuns.total) + '</h2>' + testHtml + '</section>');
+}
+
 export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   const url = new URL(req.url, BASE_URL);
   if (!url.pathname.startsWith('/owner')) return false;
@@ -640,7 +665,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     try {
       const kind = workspaceKinds[url.pathname];
       const data = {};
-      if (kind === 'ai') { data.aiReadiness = await getFrierenAIReadiness(); data.chatSettings = await getFrierenChatSettings(db); data.csrf = session.csrf; data.notice = url.searchParams.get('notice') || ''; }
+      if (kind === 'ai') { data.aiReadiness = await getFrierenAIReadiness(); data.chatSettings = await getFrierenChatSettings(db); data.testRuns = await listOwnerTestRuns(db, { limit: 10 }); data.csrf = session.csrf; data.notice = url.searchParams.get('notice') || ''; }
       if (kind === 'pogaca') {
         data.notice = url.searchParams.get('notice') || '';
         data.rpgMetrics = await getOwnerRpgMetrics(db);
@@ -674,6 +699,23 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     } catch (error) {
       console.error('Owner workspace load failed:', error?.message || error);
       send(res, 503, page('Çalışma alanı yüklenemedi', '<h1>Çalışma alanı yüklenemedi</h1><p>Bağlantı ve veritabanı durumunu kontrol et.</p><a class="btn" href="/owner">Panele dön</a>'));
+    }
+    return true;
+  }
+
+  if (url.pathname === '/owner/activity' && req.method === 'GET') {
+    try {
+      const actionFilter = String(url.searchParams.get('action') || '').slice(0, 80);
+      const targetFilter = String(url.searchParams.get('target') || '').slice(0, 80);
+      const pageNumber = Math.max(1, Math.min(Number(url.searchParams.get('page')) || 1, 100000));
+      const [audit, testRuns] = await Promise.all([
+        listOwnerAuditLogs(db, { action: actionFilter, target: targetFilter, page: pageNumber, limit: 20 }),
+        listOwnerTestRuns(db, { page: 1, limit: 20 })
+      ]);
+      send(res, 200, renderOwnerActivityWorkspace({ audit, testRuns, action: actionFilter, target: targetFilter }));
+    } catch (error) {
+      console.error('Owner activity history failed:', error?.message || error);
+      send(res, 503, page('Geçmiş yüklenemedi', '<h1>Denetim geçmişi yüklenemedi</h1><a class="btn" href="/owner">Panele dön</a>'));
     }
     return true;
   }
@@ -811,21 +853,33 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         return true;
       }
       if (action === 'ai-test-run' && form.get('confirm') === 'yes') {
-        const secret = process.env.FRIEREN_BRIDGE_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || '';
-        if (secret.length < 32) throw new Error('AI_TEST_BRIDGE_NOT_CONFIGURED');
+        const target = String(form.get('target') || '').trim().slice(0, 4000);
         const rawCommands = String(form.get('commands') || '');
         const commands = rawCommands.split(/[\x09-\x0d ,;]+/).map(value => value.trim()).filter(Boolean).slice(0, 80);
-        const response = await fetch(BASE_URL + '/internal/test-suite', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + secret },
-          body: JSON.stringify({ commands }),
-          signal: AbortSignal.timeout(45000)
-        });
+        const secret = String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+        let response;
+        if (target) {
+          if (secret.length < 32) throw new Error('AI_TEST_BRIDGE_NOT_CONFIGURED');
+          response = await fetch('http://127.0.0.1:10001/internal/test-scenario', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + secret },
+            body: JSON.stringify({ target }),
+            signal: AbortSignal.timeout(240000)
+          });
+        } else {
+          if (secret.length < 32) throw new Error('AI_TEST_BRIDGE_NOT_CONFIGURED');
+          response = await fetch(BASE_URL + '/internal/test-suite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + secret },
+            body: JSON.stringify({ commands }),
+            signal: AbortSignal.timeout(45000)
+          });
+        }
         const report = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error('AI_TEST_RUN_FAILED_' + response.status);
-        const content = renderOwnerNavigation() + '<div class="top"><div><div class="brand">FRIEREN</div><div class="small">THE ARCANE SANCTUARY · TEST RAPORU</div></div><a class="btn secondary" href="/owner/frieren-ai">AI merkezine dön</a></div>'
-          + renderOwnerWorkspace('ai', { aiReadiness: await getFrierenAIReadiness(), csrf: session.csrf, testReport: report });
-        send(res, 200, page('Frieren AI test raporu', content));
+        const savedTarget = target || (commands.length ? 'Komut denetimi: ' + commands.join(', ') : 'Tüm komutların denetimi');
+        await recordOwnerTestRun(db, { actorId: OWNER_ID, target: savedTarget, report });
+        redirect(res, '/owner/frieren-ai?notice=test_saved');
         return true;
       }
       let notice = 'invalid';
