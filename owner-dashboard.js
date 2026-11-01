@@ -916,9 +916,9 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     const aiReadiness = frierenService?.healthPayload || null;
     const aiRenderMetrics = getStaleOwnerData(
       'render-metrics:frieren-ai',
-      () => frierenService?.apiConfigured && !frierenService?.apiError && frierenService?.suspended !== true
+      () => frierenService?.status === 'running' && frierenService?.apiConfigured && !frierenService?.apiError
         ? getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.frieren_ai.id, apiKey: process.env.RENDER_FRIEREN_AI_API_KEY })
-        : Promise.resolve({ status: 'unavailable', source: 'render', points: [], message: frierenService?.suspended ? 'Frieren AI askıda; metrik sorgusu yapılmadı.' : 'Frieren AI metrikleri için Render API bağlantısı gerekli.' }),
+        : Promise.resolve({ status: 'unavailable', source: 'render', points: [], message: frierenService?.suspended ? 'Frieren AI askıda; metrik sorgusu yapılmadı.' : 'Frieren AI servis durumu doğrulandıktan sonra metrikler alınacak.' }),
       { status: 'loading', source: 'render', points: [], message: 'Frieren AI metrikleri arka planda yenileniyor.' }
     );
     const memoryUser = String(url.searchParams.get('memoryUser') || '').replace(/\D/g, '').slice(0, 24);
