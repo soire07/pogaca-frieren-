@@ -20,7 +20,7 @@ from frieren_neural.quality_evaluation import PROMPTS, PROMPT_SET_VERSION, empty
 MODEL_ID = "Qwen/Qwen3-0.6B"
 MODEL_REVISION = "c1899de289a04d12100db370d81485cdf75e47ca"
 MODEL_LICENSE = "Apache-2.0"
-MAX_NEW_TOKENS = 160
+MAX_NEW_TOKENS = 256
 
 
 def benchmark_prompt_digest() -> str:
@@ -114,7 +114,7 @@ def run_benchmark(output_dir: Path, *, limit: int | None = None, threads: int = 
             generated = model.generate(
                 input_ids=input_ids, attention_mask=attention_mask,
                 max_new_tokens=MAX_NEW_TOKENS, do_sample=True,
-                temperature=0.7, top_p=0.8, top_k=20,
+                temperature=0.7, top_p=0.8, top_k=20, repetition_penalty=1.1,
                 use_cache=True, pad_token_id=tokenizer.eos_token_id,
                 eos_token_id=tokenizer.eos_token_id,
             )
@@ -138,7 +138,7 @@ def run_benchmark(output_dir: Path, *, limit: int | None = None, threads: int = 
         "prompt_count": len(cases), "prompt_set_sha256": benchmark_prompt_digest(),
         "device": "cpu", "dtype": "float32", "threads": threads,
         "max_new_tokens": MAX_NEW_TOKENS,
-        "decoding_settings": {"do_sample": True, "temperature": 0.7, "top_p": 0.8, "top_k": 20, "seed_base": 20261101},
+        "decoding_settings": {"do_sample": True, "temperature": 0.7, "top_p": 0.8, "top_k": 20, "repetition_penalty": 1.1, "seed_base": 20261101},
         "model_load_seconds": load_seconds,
         "generation_total_seconds": round(time.perf_counter() - generation_started, 3),
         "latency_median_seconds": round(statistics.median(latencies), 3),
