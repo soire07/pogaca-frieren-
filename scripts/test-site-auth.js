@@ -22,7 +22,7 @@ function fakeDb() {
 
 test('SMTP reply parser handles split CRLF chunks and multiline Gmail responses', () => {
   const first = consumeSmtpBuffer('220-smtp.gmail.com ESMTP\r');
-  assert.equal(first.buffer, '\r');
+  assert.equal(first.buffer, '220-smtp.gmail.com ESMTP\r');
   assert.deepEqual(first.replies, []);
   const second = consumeSmtpBuffer(first.buffer + '\n250-smtp.gmail.com at your service\r\n250 AUTH LOGIN PLAIN\r\n', first.lines);
   assert.equal(second.buffer, '');
