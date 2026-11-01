@@ -7,14 +7,14 @@ This directory is isolated from the existing Discord bot and its runtime. It doe
 ## Current scope
 
 - A compact decoder-only Transformer (GPT-style) implemented with PyTorch.
-- A deterministic Unicode character tokenizer for the first educational baseline.
+- A deterministic byte-level BPE tokenizer that round-trips multilingual UTF-8 text without an unknown-byte fallback.\n- The original character tokenizer remains available for compatibility and simple unit tests.
 - Next-token language-model objective and autoregressive generation helper.
 - UTF-8 text corpus loader for `.txt` and `.md` files.
 - Chronological train/validation split, mini-batch sampling, AdamW, gradient clipping, and periodic loss evaluation.
 - Atomic checkpoints with optimizer state and guarded resume.
 - Unit tests and a CPU GitHub Actions test workflow.
 
-The character tokenizer is temporary, not a production multilingual tokenizer. SentencePiece/BPE and a properly licensed multilingual corpus remain prerequisites for serious training.
+The custom byte-level BPE implementation is a compact baseline, not a production-grade SentencePiece implementation. Its deterministic merge training is intentionally simple and should be benchmarked on a properly licensed multilingual corpus before serious training.
 
 ## Requirements
 
@@ -57,7 +57,7 @@ print(logits.shape)
 
 Place UTF-8 `.txt` or `.md` files in a corpus directory. Only use text you have the right to use. Record each source, its license, and any usage restrictions before training; do not use private messages or personal data.
 
-The loader recursively reads supported files in sorted path order. The train/validation split is chronological to reduce leakage between neighboring text windows.
+The loader recursively reads supported files in sorted path order. The train/validation split is chronological to reduce leakage between neighboring text windows. The tokenizer learns byte-pair merges from the supplied corpus; its vocabulary size can be tuned in `TrainingConfig`.
 
 ```bash
 pip install -e ".[dev]"
