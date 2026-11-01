@@ -22,7 +22,7 @@ def build_qwen3_chat_request(prompt: str, *, seed: int) -> dict[str, object]:
     return {
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"/no_think\\n\\n{prompt.strip()}"},
+            {"role": "user", "content": f"/no_think\n\n{prompt.strip()}"},
         ],
         "temperature": 0.7,
         "top_p": 0.8,
