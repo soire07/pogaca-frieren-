@@ -144,3 +144,10 @@ def test_assistant_role_marker_is_context_not_a_prediction_target():
         if enabled and token != tokenizer.eos_id
     ])
     assert decoded_masked == " yanıt"
+
+
+
+def test_assistant_objective_version_is_explicit_and_current():
+    from frieren_neural.training import LOSS_OBJECTIVE_VERSION
+
+    assert LOSS_OBJECTIVE_VERSION == 2
