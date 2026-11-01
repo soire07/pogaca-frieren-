@@ -174,11 +174,12 @@ def generate(
             )
         except (RuntimeError, ValueError) as error:
             raise HTTPException(status_code=422, detail="The prompt could not be processed.") from error
-    completion = _completion_only(generation_prompt, result)
+    raw_completion = result[len(generation_prompt):] if result.startswith(generation_prompt) else result
+    completion = raw_completion.lstrip()
     return {
         # Preserve the public response contract while using the exact chat format
         # shared by assistant-only training and the quality benchmark.
-        "text": request.prompt + completion,
+        "text": request.prompt + raw_completion,
         "completion": completion,
         "step": int(metadata["step"]),
     }
@@ -415,9 +416,10 @@ def web_generate(
             )
     except (OSError, RuntimeError, ValueError, KeyError, EOFError, pickle.UnpicklingError) as error:
         raise HTTPException(status_code=503, detail="Model could not process the request.") from error
-    completion = _completion_only(generation_prompt, result)
+    raw_completion = result[len(generation_prompt):] if result.startswith(generation_prompt) else result
+    completion = raw_completion.lstrip()
     return {
-        "text": payload.prompt + completion,
+        "text": payload.prompt + raw_completion,
         "completion": completion,
         "step": int(metadata["step"]),
     }
