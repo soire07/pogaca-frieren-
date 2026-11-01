@@ -1,0 +1,32 @@
+name: Frieren Neural CI
+
+on:
+  push:
+    branches:
+      - frieren-neural-foundation
+    paths:
+      - "frieren-neural/**"
+      - ".github/workflows/frieren-neural-ci.yml"
+  pull_request:
+    paths:
+      - "frieren-neural/**"
+      - ".github/workflows/frieren-neural-ci.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frieren-neural
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: frieren-neural/pyproject.toml
+      - name: Install package and test dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Run tests
+        run: pytest
