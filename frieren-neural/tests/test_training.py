@@ -3,13 +3,7 @@ from pathlib import Path
 import pytest
 import torch
 
-from frieren_neural.training import (
-    TrainingConfig,
-    load_text_corpus,
-    split_tokens,
-    train_model,
-    evaluate_loss,
-)
+from frieren_neural.training import TrainingConfig, evaluate_loss, load_text_corpus, split_tokens, train_model
 
 
 def test_load_text_corpus_reads_supported_files_in_stable_order(tmp_path: Path):
@@ -27,37 +21,25 @@ def test_load_text_corpus_rejects_missing_or_empty_corpus(tmp_path: Path):
         load_text_corpus(tmp_path)
 
 
-def test_split_tokens_is_deterministic_and_keeps_both_splits():
+def test_split_tokens_is_chronological_and_preserves_all_tokens():
     tokens = torch.arange(100)
-    train_a, val_a = split_tokens(tokens, validation_fraction=0.2, seed=17)
-    train_b, val_b = split_tokens(tokens, validation_fraction=0.2, seed=17)
-    assert torch.equal(train_a, train_b)
-    assert torch.equal(val_a, val_b)
-    assert len(train_a) + len(val_a) == 100
-    assert len(val_a) == 20
+    train, validation = split_tokens(tokens, validation_fraction=0.2)
+    assert torch.equal(train, torch.arange(80))
+    assert torch.equal(validation, torch.arange(80, 100))
 
 
 def test_split_tokens_rejects_too_short_sequences():
     with pytest.raises(ValueError, match="at least"):
-        split_tokens(torch.arange(3), validation_fraction=0.2, seed=1)
+        split_tokens(torch.arange(3), validation_fraction=0.2)
 
 
 def test_training_writes_resumable_checkpoint_and_finite_metrics(tmp_path: Path):
     corpus = ["Frieren learns magic. Fern studies spells. " * 8]
     checkpoint = tmp_path / "model.pt"
     config = TrainingConfig(
-        max_steps=3,
-        eval_interval=1,
-        eval_batches=2,
-        batch_size=2,
-        block_size=8,
-        learning_rate=1e-3,
-        validation_fraction=0.2,
-        seed=9,
-        d_model=16,
-        n_heads=2,
-        n_layers=1,
-        dropout=0.0,
+        max_steps=3, eval_interval=1, eval_batches=2, batch_size=2, block_size=8,
+        learning_rate=1e-3, validation_fraction=0.2, seed=9,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0,
     )
     result = train_model(corpus, checkpoint, config)
     assert result["step"] == 3
@@ -70,7 +52,7 @@ def test_training_writes_resumable_checkpoint_and_finite_metrics(tmp_path: Path)
     assert torch.isfinite(torch.tensor(resumed["validation_loss"]))
 
 
-def test_evaluate_loss_returns_finite_value():
+def test_evaluate_loss_returns_finite_validation_value():
     from frieren_neural import CharacterTokenizer, GPTConfig, GPTLanguageModel
 
     tokenizer = CharacterTokenizer.train(["Frieren and Fern"])
