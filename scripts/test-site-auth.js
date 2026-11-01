@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   validateSiteUsername, validateSiteEmail, hashSitePassword, verifySitePassword,
-  createSiteCsrfToken, verifySiteCsrfToken, handleSiteAuthRequest
+  createSiteCsrfToken, verifySiteCsrfToken, consumeSmtpBuffer, handleSiteAuthRequest
 } from '../site-auth.js';
 import { createPublicSiteSession, readPublicSiteSession } from '../owner-dashboard.js';
 
@@ -19,6 +19,15 @@ function fakeDb() {
   const calls = [];
   return { calls, async query(sql, params = []) { calls.push({ sql, params }); return { rows: [], rowCount: 0 }; } };
 }
+
+test('SMTP reply parser handles split CRLF chunks and multiline Gmail responses', () => {
+  const first = consumeSmtpBuffer('220-smtp.gmail.com ESMTP\r');
+  assert.equal(first.buffer, '220-smtp.gmail.com ESMTP\r');
+  assert.deepEqual(first.replies, []);
+  const second = consumeSmtpBuffer(first.buffer + '\n250-smtp.gmail.com at your service\r\n250 AUTH LOGIN PLAIN\r\n', first.lines);
+  assert.equal(second.buffer, '');
+  assert.deepEqual(second.replies, ['220-smtp.gmail.com ESMTP\n250-smtp.gmail.com at your service\n250 AUTH LOGIN PLAIN']);
+});
 
 test('username and email validation normalizes email and rejects malformed identifiers', () => {
   assert.equal(validateSiteUsername('Frieren_01'), 'Frieren_01');

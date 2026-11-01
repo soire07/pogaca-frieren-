@@ -96,6 +96,23 @@ function authPage(mode, secret, status = '', token = '') {
 }
 function mailReady() { return Boolean(process.env.SITE_SMTP_USER && process.env.SITE_SMTP_APP_PASSWORD && process.env.ADMIN_SESSION_SECRET?.length >= 32); }
 
+export function consumeSmtpBuffer(buffer, pendingLines = []) {
+  let remaining = String(buffer);
+  let lines = [...pendingLines];
+  const replies = [];
+  let at;
+  while ((at = remaining.indexOf('\r\n')) >= 0) {
+    const line = remaining.slice(0, at);
+    remaining = remaining.slice(at + 2);
+    lines.push(line);
+    if (/^\d{3} /.test(line)) {
+      replies.push(lines.join('\n'));
+      lines = [];
+    }
+  }
+  return { buffer: remaining, lines, replies };
+}
+
 async function sendGmail(to, subject, html, plain) {
   if (!mailReady()) throw new Error('SITE_MAIL_NOT_CONFIGURED');
   const from = String(process.env.SITE_EMAIL_FROM || process.env.SITE_SMTP_USER).trim();
@@ -107,12 +124,10 @@ async function sendGmail(to, subject, html, plain) {
   let buffer = '', lines = [], queue = [], waiters = [], socketError = null;
   const deliver = () => { if (queue.length && waiters.length) waiters.shift().resolve(queue.shift()); };
   socket.on('data', chunk => {
-    buffer += chunk.toString('utf8');
-    let at;
-    while ((at=buffer.indexOf('\\r\\n')) >= 0) {
-      const line=buffer.slice(0,at); buffer=buffer.slice(at+2); lines.push(line);
-      if (/^\\d{3} /.test(line)) { queue.push(lines.join('\\n')); lines=[]; deliver(); }
-    }
+    const parsed = consumeSmtpBuffer(buffer + chunk.toString('utf8'), lines);
+    buffer = parsed.buffer;
+    lines = parsed.lines;
+    for (const reply of parsed.replies) { queue.push(reply); deliver(); }
   });
   socket.on('error', error => { socketError=error; while(waiters.length) waiters.shift().reject(error); });
   const read = () => new Promise((resolve,reject) => { if(socketError) reject(socketError); else if(queue.length) resolve(queue.shift()); else waiters.push({resolve,reject}); });
