@@ -89,15 +89,21 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
     generation_started = time.perf_counter()
     for case_id, category, prompt, _hint in PROMPTS:
         started = time.perf_counter()
-        result = llm.create_chat_completion(
-            messages=[{"role": "user", "content": prompt + " /no_think"}],
+        formatted_prompt = (
+            "<|im_start|>user\\n"
+            + prompt
+            + "<|im_end|>\\n<|im_start|>assistant\\n<think>\\n\\n</think>\\n\\n"
+        )
+        result = llm.create_completion(
+            prompt=formatted_prompt,
             max_tokens=MAX_NEW_TOKENS,
             temperature=0.0,
             top_p=1.0,
+            stop=["<|im_end|>", "<|endoftext|>"],
         )
         elapsed = round(time.perf_counter() - started, 3)
         choice = result["choices"][0]
-        text = choice["message"]["content"] or ""
+        text = choice["text"] or ""
         outputs.append({
             "id": case_id,
             "category": category,
@@ -126,7 +132,7 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
         "threads": threads,
         "context_tokens": 1024,
         "max_new_tokens": MAX_NEW_TOKENS,
-        "thinking_mode": "Qwen3 /no_think prompt switch",
+        "thinking_mode": "Qwen3 template hard-disabled by explicit empty think block",
         "download_seconds": download_seconds,
         "model_load_seconds": load_seconds,
         "generation_total_seconds": round(time.perf_counter() - generation_started, 3),
