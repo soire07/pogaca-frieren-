@@ -501,6 +501,8 @@ def train_model(
         "validation_loss": validation_loss,
         "checkpoint": str(checkpoint),
         "device": str(selected_device),
+        "loss_objective_version": LOSS_OBJECTIVE_VERSION,
+        "training_objective": "assistant_response_tokens_plus_eos",
     }
 
 
@@ -522,7 +524,7 @@ def main() -> None:
 
 def load_checkpoint(
     checkpoint_path: str | Path, *, device: str | torch.device | None = None
-) -> tuple[GPTLanguageModel, BPETokenizer, dict[str, float | int | str]]:
+) -> tuple[GPTLanguageModel, BPETokenizer, dict[str, Any]]:
     """Load a versioned checkpoint using PyTorch's restricted weights-only loader."""
     selected_device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
     payload = torch.load(checkpoint_path, map_location=selected_device, weights_only=True)
@@ -541,13 +543,24 @@ def load_checkpoint(
     except (KeyError, TypeError, ValueError) as error:
         raise ValueError("Checkpoint is missing valid model or tokenizer data.") from error
     model.eval()
-    metadata: dict[str, float | int | str] = {
+    metadata: dict[str, Any] = {
+        "format_version": int(payload["format_version"]),
         "step": int(payload["step"]),
         "corpus_sha256": str(payload["corpus_sha256"]),
         "corpus_content_sha256": str(payload["corpus_content_sha256"]),
         "train_loss": float(payload["train_loss"]),
         "validation_loss": float(payload["validation_loss"]),
+        "dialogue_encoding_version": int(payload.get("dialogue_encoding_version", 1)),
         "loss_objective_version": int(payload.get("loss_objective_version", 0)),
+        "training_objective": (
+            "assistant_response_tokens_plus_eos"
+            if payload.get("loss_objective_version") == LOSS_OBJECTIVE_VERSION
+            else "legacy_full_stream"
+        ),
+        "model_config": dict(payload["model_config"]),
+        "training_config": dict(payload.get("training_config", {})),
+        "tokenizer_type": str(payload["tokenizer"].get("type", "unknown")),
+        "tokenizer_vocab_size": int(tokenizer.vocab_size),
     }
     return model, tokenizer, metadata
 
@@ -652,8 +665,11 @@ def evaluate_checkpoint(
     except OverflowError:
         perplexity = math.inf
     return {
-        "step": int(metadata["step"]), "loss": loss, "perplexity": perplexity,
-        "loss_objective_version": int(metadata["loss_objective_version"]),
+        "step": int(metadata["step"]),
+        "loss": loss,
+        "perplexity": perplexity,
+        "loss_objective_version": LOSS_OBJECTIVE_VERSION,
+        "checkpoint_training_loss_objective_version": int(metadata["loss_objective_version"]),
     }
 
 
