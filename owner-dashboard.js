@@ -6,7 +6,7 @@ import {
   sendOwnerAnnouncement, getRecentOwnerActivity
 } from './owner-admin.js';
 import { listOwnerPartnerLinks, saveOwnerPartnerLink, deleteOwnerPartnerLink, getOwnerRpgMetrics, updateGuildConfiguration, listGuildConfigurations, searchOwnerRpgPlayers, getOwnerRpgPlayerDetails, adjustOwnerRpgResources, adjustOwnerRpgInventory, setOwnerRpgEquipment } from './owner-platform.js';
-import { DEFAULT_GUILD_FEATURES, listGuildFeatureSettings, listGuildFeatureSettingsForGuilds, setGuildFeatureEnabled, resetGuildFeatureSetting } from './guild-feature-settings.js';
+import { DEFAULT_GUILD_FEATURES, listGuildFeatureSettingsForGuilds, setGuildFeatureEnabled, resetGuildFeatureSetting } from './guild-feature-settings.js';
 import { getOwnerDatabaseDiagnostics, getOwnerDatabaseTablePreview, renderOwnerWorkspace } from './owner-workspaces.js';
 import { getFrierenChatSettings, updateFrierenChatSettings } from './frieren-chat-settings.js';
 import { listOwnerDailyQuests, saveOwnerDailyQuest, setOwnerDailyQuestActive } from './owner-rpg-quests.js';
