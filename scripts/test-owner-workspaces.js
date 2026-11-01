@@ -201,3 +201,11 @@ test('AI workspace accepts free-text test goals and renders persisted run histor
   assert.match(html, /Ekipman HP geri dönüşü/);
   assert.match(html, /Tüm denetim ve test geçmişi/);
 });
+
+test('AI workspace explains when a sensitive scenario is rejected before execution', () => {
+  const html = renderOwnerWorkspace('ai', {
+    notice: 'test_target_sensitive',
+    aiReadiness: { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true }
+  });
+  assert.match(html, /hassas bilgi içerdiği için çalıştırılmadı veya kaydedilmedi/);
+});
