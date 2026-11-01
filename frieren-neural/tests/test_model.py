@@ -84,7 +84,6 @@ def test_model_rejects_sequences_longer_than_context():
         model(tokens)
 
 
-
 def test_bpe_tokenizer_round_trips_multilingual_unicode_and_unknown_bytes():
     from frieren_neural.tokenizer import BPETokenizer
 
@@ -111,3 +110,40 @@ def test_bpe_tokenizer_rejects_invalid_vocab_and_payload():
         BPETokenizer.train(["abc"], vocab_size=259)
     with pytest.raises(ValueError, match="merges"):
         BPETokenizer.from_dict({"version": 1, "merges": [["x", 1]]})
+
+
+def test_attention_uses_causal_sdpa_and_disables_dropout_during_evaluation(monkeypatch):
+    original = torch.nn.functional.scaled_dot_product_attention
+    calls = []
+
+    def observe(*args, **kwargs):
+        calls.append(kwargs.copy())
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(torch.nn.functional, "scaled_dot_product_attention", observe)
+    model = tiny_model().eval()
+    model(torch.randint(0, 12, (2, 7), dtype=torch.long))
+
+    assert len(calls) == 2
+    assert all(call.get("is_causal") is True for call in calls)
+    assert all(call.get("dropout_p") == 0.0 for call in calls)
+
+
+def test_attention_preserves_configured_dropout_during_training(monkeypatch):
+    original = torch.nn.functional.scaled_dot_product_attention
+    calls = []
+
+    def observe(*args, **kwargs):
+        calls.append(kwargs.copy())
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(torch.nn.functional, "scaled_dot_product_attention", observe)
+    model = GPTLanguageModel(GPTConfig(
+        vocab_size=12, d_model=32, n_heads=4, n_layers=1,
+        max_seq_len=16, dropout=0.25,
+    )).train()
+    model(torch.randint(0, 12, (2, 7), dtype=torch.long))
+
+    assert len(calls) == 1
+    assert calls[0].get("is_causal") is True
+    assert calls[0].get("dropout_p") == 0.25
