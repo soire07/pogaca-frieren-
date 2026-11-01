@@ -56,9 +56,9 @@ All measurements are from GitHub-hosted CPU runners with two threads. They are n
 - Upstream: [Unsloth Qwen3-0.6B-GGUF](https://huggingface.co/unsloth/Qwen3-0.6B-GGUF), pinned revision `060ae942940c11394cfb1a7313ddcb92c2c4db11`
 - File SHA-256: `dd4750858c52f1c040e9ff4f54ba9365e11e8e81021abffd9b9c02646cf334d7`
 - File size: 396,704,672 bytes
-- Model load: 0.318 s; 24-prompt generation: 39.966 s
+- Model load: 0.484 s; 24-prompt generation: 59.451 s
 - Median / p95 latency: 1.732 / 2.447 s
-- Peak process RSS: 1,039.03 MiB
+- Peak process RSS: 1,039.33 MiB
 - 11/24 answers reached the 160-token cap; reasoning leakage was detected and redacted in TR-008, TR-010, TR-021, and TR-022.
 - TR-018 correctly states port 8081, but other answers remain repetitive, inaccurate, or unsafe (TR-011). Q4 reduces the file size but only reduces measured process RSS by about 28 MiB compared with Q8. It does not make this candidate fit a low-memory free host or fix the quality gate.
 
