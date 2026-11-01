@@ -206,7 +206,8 @@ test('public command entries preserve option descriptions, required flags and ch
     description: 'Bir büyücüye düello daveti gönder.',
     options: [
       { name: 'rakip', description: 'Düello yapılacak büyücü.', required: true, type: 6 },
-      { name: 'tarz', description: 'Düello türünü seç.', required: false, type: 3, choices: [{ name: 'Dostça', value: 'friendly' }, { name: 'Dereceli', value: 'ranked' }] }
+      { name: 'tarz', description: 'Düello türünü seç.', required: false, type: 3, choices: [{ name: 'Dostça', value: 'friendly' }, { name: 'Dereceli', value: 'ranked' }] },
+      { name: 'gorev', description: 'Görev işlemleri.', type: 1, options: [{ name: 'kabul', description: 'Bekleyen görevi kabul et.', required: true, type: 5 }] }
     ]
   }) } }]]);
   const entries = buildPublicCommandEntries(commands);
@@ -214,9 +215,12 @@ test('public command entries preserve option descriptions, required flags and ch
   assert.equal(entries[0].name, 'duel');
   assert.deepEqual(entries[0].options.map(option => [option.name, option.description, option.required]), [
     ['rakip', 'Düello yapılacak büyücü.', true],
-    ['tarz', 'Düello türünü seç.', false]
+    ['tarz', 'Düello türünü seç.', false],
+    ['gorev', 'Görev işlemleri.', false],
+    ['gorev / kabul', 'Bekleyen görevi kabul et.', true]
   ]);
   assert.deepEqual(entries[0].options[1].choices, ['Dostça', 'Dereceli']);
+  assert.equal(entries[0].options[3].name, 'gorev / kabul');
 });
 
 test('public command catalogue renders escaped option help and includes it in search metadata', async () => {
