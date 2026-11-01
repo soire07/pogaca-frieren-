@@ -37,3 +37,11 @@ test('scenario report stores only bounded summaries and does not expose raw outp
   assert.equal(report.summary.fail, 1);
   assert.doesNotMatch(JSON.stringify(report), /private-token-value/);
 });
+
+test('memory privacy scenarios pass only when the live PostgreSQL test file reports success', () => {
+  const report = buildOwnerScenarioReport('bellek gizliliği', {
+    code: 0,
+    stdout: 'SEÇİLEN TEST DOSYALARI: ai-agent/memory-store.test.js (2 eşleşme)\n# tests 2\n# pass 2\n# fail 0\n--- scripts/test-live-memory.js | BAŞARILI ---\nCANLI POSTGRESQL TESTİ: BAŞARILI'
+  });
+  assert.equal(report.status, 'PASS');
+});
