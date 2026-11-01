@@ -199,4 +199,6 @@ test('owner schema creates a bounded test-run history table and recent index', a
   assert.match(sql, /CREATE TABLE IF NOT EXISTS owner_guardian_incidents/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS owner_guardian_jobs/);
   assert.match(sql, /idx_owner_guardian_jobs_active/);
+  assert.match(sql, /repair_dispatch_status/);
+  assert.match(sql, /owner_guardian_monitor_state/);
 });
