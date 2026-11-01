@@ -109,7 +109,7 @@ test('registration and login pages expose separate Discord OAuth actions', async
 test('site profile uses dedicated brand avatar and banner assets', async () => {
   const response = res();
   await handlePublicSiteRequest(request('/', visitor), response);
-  assert.match(response.body, /site-avatar\\.webp/);
+  assert.match(response.body, /site-avatar\.webp/);
   const stylesheet = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
   assert.match(String(stylesheet.body), /site-banner\.webp/);
