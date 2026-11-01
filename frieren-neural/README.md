@@ -34,13 +34,13 @@ pytest
 
 A reproducible importer is included for **Turkish Daily Dialogues 5K v1.0.0** by Enes Deniz. The source dataset contains synthetic Turkish multi-turn dialogues and is published under **CC BY 4.0**. The importer downloads only the train split (3,950 conversations), pins the upstream Git commit and verifies the published SHA-256 before parsing. It rejects unexpected language/split/provenance fields, malformed or non-alternating turns, and any changed download. It never downloads the validation or test split for training.
 
-\`\`\`bash
+```bash
 pip install -e .
 frieren-neural-prepare-turkish-dialogues --output ./corpus/turkish-daily-dialogues
 frieren-neural-train --data ./corpus/turkish-daily-dialogues --steps 1000 --batch-size 4 --block-size 64
 # More conservative CPU profile (smaller model and shorter evaluation batches):
 frieren-neural-train-small --data ./corpus/turkish-daily-dialogues --steps 1000
-\`\`\`
+```
 
 The generated manifest records the dataset source, version, CC BY 4.0 license, attribution requirement, and verified source digest. Keep the generated corpus out of Git. This small synthetic dialogue set is suitable for a Turkish conversational-format baseline; it is **not** broad pretraining data and cannot by itself produce a knowledgeable or fluent general-purpose assistant. Add separately licensed, diverse Turkish and English text before drawing conclusions about general language ability.
 
