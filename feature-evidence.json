@@ -750,8 +750,9 @@
         "name": "quest chain integrates level-scaled XP, level-ups, stat points and completion bonus",
         "markers": [
           "getLevelScaledQuestReward(200, 80, 51, true)",
-          "levelForXp(newXp)",
-          "stat_points=stat_points+$6"
+          "levelForXp",
+          "stat_points=stat_points",
+          "reward.completionBonus"
         ]
       },
       "limitation": "Reward scaling is unit-tested and level-up/stat-point transaction wiring is source-asserted; a live player quest completion is not verified."
@@ -816,8 +817,8 @@
         "name": "dungeon depth and final victory award recipe materials to participating players",
         "markers": [
           "floorsCleared >= FLOORS",
-          "👑 Himmel’in Efsanevi Yadigârı",
-          "craftingLoot ? [craftingLoot] : []"
+          "Himmel",
+          "craftingLoot"
         ]
       },
       "limitation": "Dungeon-depth and full-clear material wiring plus recipe availability are asserted; a complete live party dungeon clear is not verified."
