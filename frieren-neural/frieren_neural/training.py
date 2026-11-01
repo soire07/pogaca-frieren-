@@ -359,10 +359,6 @@ def main() -> None:
     print(json.dumps(metrics, ensure_ascii=False, indent=2))
 
 
-if __name__ == "__main__":
-    main()
-
-
 def load_checkpoint(
     checkpoint_path: str | Path, *, device: str | torch.device | None = None
 ) -> tuple[GPTLanguageModel, BPETokenizer, dict[str, float | int | str]]:
@@ -371,6 +367,9 @@ def load_checkpoint(
     payload = torch.load(checkpoint_path, map_location=selected_device, weights_only=True)
     if not isinstance(payload, dict) or payload.get("format_version") != 2:
         raise ValueError("Unsupported or invalid Frieren Neural checkpoint.")
+    required_fields = {"step", "corpus_sha256", "train_loss", "validation_loss", "model_state"}
+    if not required_fields.issubset(payload):
+        raise ValueError("Checkpoint is missing required training metadata or model weights.")
     try:
         if not isinstance(payload.get("tokenizer"), dict) or not isinstance(payload.get("model_config"), dict):
             raise ValueError("Checkpoint model/tokenizer payloads must be dictionaries.")
@@ -461,3 +460,7 @@ def evaluation_main() -> None:
         seed=args.seed, device=args.device
     )
     print(json.dumps(metrics, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()
