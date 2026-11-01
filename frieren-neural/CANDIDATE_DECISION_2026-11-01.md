@@ -16,7 +16,7 @@ All measurements are from GitHub-hosted CPU runners with two threads. They are n
 |---|---:|---:|---:|---:|---|
 | Scratch checkpoint, step 8,000 | 0.049 s | 0.777 s | 0.024 / 0.066 s | 329.37 MiB | Turkish output is incoherent; legacy loss objective v0 |
 | Qwen3-0.6B float32 | 14.851 s | 289.548 s | 12.643 / 20.746 s | 5,000.75 MiB | 8/24 reach 160 tokens; repetition, weak Turkish, role leakage |
-| Qwen3-0.6B GGUF Q8_0 | 0.266 s | 69.575 s | 3.272 / 4.163 s | 1,067.69 MiB | 11/24 reach 160 tokens; reasoning leakage in 3 cases; role leakage |
+| Qwen3-0.6B GGUF Q8_0 | 0.266 s | 69.575 s | 3.272 / 4.163 s | 1,067.69 MiB | 11/24 reach 160 tokens; reasoning leakage in 3 cases; role leakage |\n| Qwen3-0.6B GGUF Q4_K_M | 0.484 s | 59.451 s | 2.557 / 3.675 s | 1,039.33 MiB | 11/24 reach 160 tokens; reasoning leakage in 4 cases; role leakage resolved on TR-018 |
 
 ### Scratch checkpoint
 
@@ -51,8 +51,8 @@ All measurements are from GitHub-hosted CPU runners with two threads. They are n
 
 ### Qwen3-0.6B GGUF Q4_K_M
 
-- Source workflow: [41342351234](https://github.com/soire07/pogaca-frieren-/actions/runs/41342351234)
-- Artifact: `frieren-neural-qwen3-gguf-q4-cpu-benchmark` (ID `13097957279`)
+- Source workflow: [41342378762](https://github.com/soire07/pogaca-frieren-/actions/runs/41342378762)
+- Artifact: `frieren-neural-qwen3-gguf-q4-cpu-benchmark` (ID `13097962437`)
 - Upstream: [Unsloth Qwen3-0.6B-GGUF](https://huggingface.co/unsloth/Qwen3-0.6B-GGUF), pinned revision `060ae942940c11394cfb1a7313ddcb92c2c4db11`
 - File SHA-256: `dd4750858c52f1c040e9ff4f54ba9365e11e8e81021abffd9b9c02646cf334d7`
 - File size: 396,704,672 bytes
@@ -60,7 +60,7 @@ All measurements are from GitHub-hosted CPU runners with two threads. They are n
 - Median / p95 latency: 1.732 / 2.447 s
 - Peak process RSS: 1,039.03 MiB
 - 11/24 answers reached the 160-token cap; reasoning leakage was detected and redacted in TR-008, TR-010, TR-021, and TR-022.
-- TR-018 correctly states port 8081, but other answers remain repetitive, inaccurate, or unsafe (TR-011). Q4 reduces the file size but only reduces measured process RSS by about 29 MiB compared with Q8. It does not make this candidate fit a low-memory free host or fix the quality gate.
+- TR-018 correctly states port 8081, but other answers remain repetitive, inaccurate, or unsafe (TR-011). Q4 reduces the file size but only reduces measured process RSS by about 28 MiB compared with Q8. It does not make this candidate fit a low-memory free host or fix the quality gate.
 
 ## Comparable review protocol
 
