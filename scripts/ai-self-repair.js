@@ -110,12 +110,14 @@ export async function applyRepairProposal(rootDir, proposal, fileOps = { rename,
         await fileOps.rename(file.backup, file.target);
         file.backup = null;
       } catch (rollbackError) {
+        file.rollbackFailed = true;
         rollbackErrors.push(rollbackError);
       }
     }
     await Promise.all(staged.flatMap(file => [
       fileOps.unlink(file.temporary).catch(() => {}),
-      file.backup ? fileOps.unlink(file.backup).catch(() => {}) : Promise.resolve(),
+      // Never delete the only recovery copy when rollback itself failed.
+      file.backup && !file.rollbackFailed ? fileOps.unlink(file.backup).catch(() => {}) : Promise.resolve(),
     ]));
     if (rollbackErrors.length) {
       throw new AggregateError([error, ...rollbackErrors], 'REPAIR_ROLLBACK_FAILED');
