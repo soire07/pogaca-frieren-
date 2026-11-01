@@ -24,6 +24,7 @@ test('repair proposal parser rejects malformed and non-object responses', () => 
 test('repair proposals allow only existing-code JavaScript paths in approved source areas', () => {
   assert.equal(resolveRepairTarget('/repo', 'ai-agent/index.js'), path.resolve('/repo/ai-agent/index.js'));
   assert.equal(resolveRepairTarget('/repo', 'scripts/check.js'), path.resolve('/repo/scripts/check.js'));
+  assert.equal(resolveRepairTarget('/repo', 'commands/karakter.js'), path.resolve('/repo/commands/karakter.js'));
   assert.throws(() => resolveRepairTarget('/repo', '../secrets.js'), /REPAIR_PATH_NOT_ALLOWED/);
   assert.throws(() => resolveRepairTarget('/repo', 'package.json'), /REPAIR_PATH_NOT_ALLOWED/);
   assert.throws(() => resolveRepairTarget('/repo', '.github/workflows/ci.yml'), /REPAIR_PATH_NOT_ALLOWED/);
