@@ -15,6 +15,7 @@ import { createAiAgentChildEnv, AI_AGENT_HEALTH_PORT } from './ai-agent/render-s
 import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
+import { initOwnerCommandHelpSchema } from './owner-command-help.js';
 import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
@@ -305,6 +306,7 @@ client.on(Events.MessageCreate, async message => {
 await loadCommands();
 await initDatabase();
 await initOwnerAdminSchema(pool);
+await initOwnerCommandHelpSchema(pool);
 await initGuildFeatureSettingsSchema(pool);
 await client.login(process.env.DISCORD_TOKEN);
 
