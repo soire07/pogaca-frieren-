@@ -107,7 +107,15 @@ export function smtpFailureDetails(error) {
   };
 }
 
-function mailReady() { return Boolean(process.env.SITE_SMTP_USER && process.env.SITE_SMTP_APP_PASSWORD && process.env.ADMIN_SESSION_SECRET?.length >= 32); }
+function gmailApiReady() {
+  return Boolean(process.env.SITE_SMTP_USER && process.env.SITE_GMAIL_CLIENT_ID &&
+    process.env.SITE_GMAIL_CLIENT_SECRET && process.env.SITE_GMAIL_REFRESH_TOKEN);
+}
+function mailReady() {
+  const apiReady = gmailApiReady();
+  const smtpReady = Boolean(process.env.SITE_SMTP_USER && process.env.SITE_SMTP_APP_PASSWORD);
+  return (apiReady || smtpReady) && process.env.ADMIN_SESSION_SECRET?.length >= 32;
+}
 
 export function consumeSmtpBuffer(buffer, pendingLines = []) {
   let remaining = String(buffer);
@@ -126,8 +134,66 @@ export function consumeSmtpBuffer(buffer, pendingLines = []) {
   return { buffer: remaining, lines, replies };
 }
 
+export async function sendGmailApi(to, subject, html, plain) {
+  if (!gmailApiReady()) throw new Error('GMAIL_API_NOT_CONFIGURED');
+  const from = String(process.env.SITE_EMAIL_FROM || process.env.SITE_SMTP_USER).trim();
+  const user = String(process.env.SITE_SMTP_USER).trim();
+  const form = new URLSearchParams({
+    grant_type: 'refresh_token',
+    client_id: process.env.SITE_GMAIL_CLIENT_ID,
+    client_secret: process.env.SITE_GMAIL_CLIENT_SECRET,
+    refresh_token: process.env.SITE_GMAIL_REFRESH_TOKEN
+  });
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: form,
+    signal: AbortSignal.timeout(15000)
+  });
+  if (!tokenResponse.ok) throw Object.assign(new Error('GMAIL_OAUTH_HTTP_' + tokenResponse.status), { code: 'GMAIL_OAUTH_HTTP_' + tokenResponse.status });
+  const tokenData = await tokenResponse.json();
+  if (!tokenData.access_token) throw new Error('GMAIL_OAUTH_ACCESS_TOKEN_MISSING');
+
+  const boundary = 'frieren_' + randomBytes(12).toString('hex');
+  const encodedSubject = '=?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=';
+  const message = [
+    'From: Frieren Portal <' + from + '>',
+    'To: ' + to,
+    'Subject: ' + encodedSubject,
+    'MIME-Version: 1.0',
+    'Content-Type: multipart/alternative; boundary="' + boundary + '"',
+    '',
+    '--' + boundary,
+    'Content-Type: text/plain; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    Buffer.from(plain).toString('base64'),
+    '--' + boundary,
+    'Content-Type: text/html; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    Buffer.from(html).toString('base64'),
+    '--' + boundary + '--',
+    ''
+  ].join('\\r\\n').replace(/^\\./gm, '..');
+  const sendResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: {
+      authorization: 'Bearer ' + tokenData.access_token,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({ raw: Buffer.from(message).toString('base64url') }),
+    signal: AbortSignal.timeout(15000)
+  });
+  if (!sendResponse.ok) throw Object.assign(new Error('GMAIL_SEND_HTTP_' + sendResponse.status), { code: 'GMAIL_SEND_HTTP_' + sendResponse.status });
+  const result = await sendResponse.json();
+  if (!result.id) throw new Error('GMAIL_SEND_ID_MISSING');
+  return result.id;
+}
+
 async function sendGmail(to, subject, html, plain) {
   if (!mailReady()) throw new Error('SITE_MAIL_NOT_CONFIGURED');
+  if (gmailApiReady()) return sendGmailApi(to, subject, html, plain);
   const from = String(process.env.SITE_EMAIL_FROM || process.env.SITE_SMTP_USER).trim();
   const user = String(process.env.SITE_SMTP_USER).trim();
   const pass = String(process.env.SITE_SMTP_APP_PASSWORD).replace(/\s/g,'');
