@@ -205,3 +205,21 @@ The bot token and API token must be stored as host secrets, never in Git or clie
 6. **Scaling:** improve data, tokenizer, model size, and training only when suitable compute is available.
 
 A genuinely capable model requires substantial clean data and compute. This is a small research model, not a ChatGPT-equivalent system.
+
+## Candidate dataset review: Turkish Chat Max 25K (2026-11-01)
+
+A second candidate was reviewed: [cisimcik/Turkish Chat Max 25K](https://huggingface.co/datasets/cisimcik/turkish-chat-max-25k). Its published card describes 24,543 synthetic conversations across 16 task types, stored as Parquet, and declares Apache-2.0 licensing. The card reports 16,864 rows marked `tr_only`, 6,637 `tr_en`, 1,042 `en_source`, 921 rows with tool calls, and 18,056 rows with separate reasoning fields. It also states that the conversations were generated using third-party LLM services. See the [dataset card](https://huggingface.co/datasets/cisimcik/turkish-chat-max-25k) and [English card](https://huggingface.co/datasets/cisimcik/turkish-chat-max-25k/blob/main/README_en.md).
+
+**Decision: reviewed, not imported or used for training.** The public card establishes the claimed format and license, but this review has not yet pinned an immutable dataset revision, verified the exact Parquet file list and byte sizes, or recorded SHA-256 digests for the exact files to be consumed. The repository's current importer requires those integrity guarantees; therefore no mutable `main` download or unverified dataset library resolution is permitted.
+
+Before integration, a dedicated importer must:
+- Pin an immutable Hugging Face commit and exact Parquet paths, sizes, and SHA-256 digests; enforce a strict download-size cap and reject changed files.
+- Preserve the Apache-2.0 license and upstream attribution/notices in the generated corpus manifest after checking the repository's actual license file.
+- Parse only explicitly allowlisted Turkish records; exclude `tr_en` and `en_source`, tool-call conversations, tool messages, and all `reasoning` fields. Never train on hidden reasoning or serialized tool schemas.
+- Validate every message role/content, reject empty assistant turns and malformed conversations, and keep complete conversations intact.
+- Create a deterministic, ID-based train/validation/test partition because the dataset card exposes one `train` split; deduplicate IDs and normalized conversation content before partitioning.
+- Produce a corpus manifest with source revision, file digests, filtering rules, row counts, and attribution, and refuse to overwrite existing output.
+- Compare against the current baseline on a genuinely held-out set and inspect generated samples before considering any deployment.
+
+The current trainer is a next-token language-model baseline, not a chat-template supervised fine-tuner. A dataset import alone will not make this model a capable assistant. The model must continue to be treated as experimental until both quantitative evaluation and human-reviewed Turkish conversation tests show useful improvement.
+
