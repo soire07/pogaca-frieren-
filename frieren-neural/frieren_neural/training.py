@@ -12,7 +12,7 @@ import re
 import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence
 
 import torch
 from torch import Tensor
