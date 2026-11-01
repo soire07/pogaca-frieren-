@@ -66,3 +66,24 @@ test('Guardian resolution writes an audit record in the same SQL statement', asy
   assert.match(sql, /guardian\.incident\.resolve/);
   assert.match(sql, /WITH changed AS/);
 });
+
+test('Guardian repair workflow dispatch is reserved once and records its workflow link', async () => {
+  const calls = [];
+  const db = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    if (sql.includes('SET repair_dispatch_status=\'dispatching\'')) {
+      return { rows: [{ id: 8, status: 'completed', repair_dispatch_status: 'dispatching' }] };
+    }
+    if (sql.includes('SET repair_dispatch_status=$2')) return { rows: [{ id: 8 }] };
+    throw new Error('Unexpected Guardian dispatch query');
+  } };
+  const reserved = await reserveGuardianRepairDispatch(db, 8);
+  assert.equal(reserved.id, 8);
+  assert.match(calls[0].sql, /repair_dispatch_status IN/);
+  assert.equal(await finishGuardianRepairDispatch(db, {
+    jobId: 8, status: 'dispatched',
+    workflowUrl: 'https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml',
+  }), true);
+  assert.equal(calls[1].params[1], 'dispatched');
+  assert.match(calls[1].params[2], /frieren-ai-self-repair\.yml/);
+});
