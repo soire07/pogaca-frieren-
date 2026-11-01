@@ -53,15 +53,20 @@ export default {
       const db = await pool.connect();
       try {
         await db.query('BEGIN');
+        // Serialize slot changes before mutating equipment rows.
+        const baseStats = await db.query(
+          'SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+          [interaction.guildId, interaction.user.id]
+        );
         const removed = await db.query('DELETE FROM user_equipment WHERE guild_id=$1 AND user_id=$2 AND slot=$3 RETURNING item_key', [interaction.guildId, interaction.user.id, requestedSlot]);
         if (!removed.rowCount) {
           await db.query('ROLLBACK');
           return interaction.reply({ content: 'Bu yuvada takılı ekipman yok.', ephemeral: true });
         }
-        const [remaining, baseStats] = await Promise.all([
-          db.query('SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id]),
-          db.query('SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [interaction.guildId, interaction.user.id])
-        ]);
+        const remaining = await db.query(
+          'SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2',
+          [interaction.guildId, interaction.user.id]
+        );
         const gear = equipmentBonus(remaining.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean));
         const effectiveMaxHp = Math.min(2000, Number(baseStats.rows[0].max_hp) + gear.hp);
         const effectiveMaxMana = Math.min(2000, Number(baseStats.rows[0].max_mana) + gear.mana);
@@ -97,18 +102,27 @@ export default {
     const db = await pool.connect();
     try {
       await db.query('BEGIN');
+      // Keep lock ordering consistent with item consumption: inventory row, then player row.
       const owned = await db.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3 FOR UPDATE', [interaction.guildId, interaction.user.id, item.name]);
+      if (!owned.rowCount) {
+        await db.query('ROLLBACK');
+        return interaction.reply({ content: 'Bu ekipman envanterinde yeterli sayıda yok. Önce **/market** üzerinden satın al.', ephemeral: true });
+      }
+      const baseStats = await db.query(
+        'SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+        [interaction.guildId, interaction.user.id]
+      );
       const equipped = await db.query('SELECT slot FROM user_equipment WHERE guild_id=$1 AND user_id=$2 AND item_key=$3', [interaction.guildId, interaction.user.id, item.name]);
       const sameItemInTarget = equipped.rows.some(row => row.slot === slot);
-      if (!owned.rowCount || Number(owned.rows[0].quantity) < equipped.rowCount + (sameItemInTarget ? 0 : 1)) {
+      if (Number(owned.rows[0].quantity) < equipped.rowCount + (sameItemInTarget ? 0 : 1)) {
         await db.query('ROLLBACK');
         return interaction.reply({ content: 'Bu ekipman envanterinde yeterli sayıda yok. Önce **/market** üzerinden satın al.', ephemeral: true });
       }
       await db.query('INSERT INTO user_equipment(guild_id,user_id,slot,item_key) VALUES($1,$2,$3,$4) ON CONFLICT(guild_id,user_id,slot) DO UPDATE SET item_key=EXCLUDED.item_key,equipped_at=NOW()', [interaction.guildId, interaction.user.id, slot, item.name]);
-      const [allEquipped, baseStats] = await Promise.all([
-        db.query('SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2', [interaction.guildId, interaction.user.id]),
-        db.query('SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [interaction.guildId, interaction.user.id])
-      ]);
+      const allEquipped = await db.query(
+        'SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2',
+        [interaction.guildId, interaction.user.id]
+      );
       const gear = equipmentBonus(allEquipped.rows.map(row => equipmentItems.find(entry => entry.name === row.item_key)).filter(Boolean));
       const effectiveMaxHp = Math.min(2000, Number(baseStats.rows[0].max_hp) + gear.hp);
       const effectiveMaxMana = Math.min(2000, Number(baseStats.rows[0].max_mana) + gear.mana);
