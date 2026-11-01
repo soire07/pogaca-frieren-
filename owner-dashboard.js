@@ -891,7 +891,8 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         }
         const neuralLiveUrl = String(process.env.FRIEREN_NEURAL_LIVE_URL || '').trim();
         if (neuralLiveUrl) {
-          const parsed = new URL(neuralLiveUrl);
+          let parsed;
+          try { parsed = new URL(neuralLiveUrl); } catch { throw new Error('INVALID_FRIEREN_NEURAL_LIVE_URL'); }
           if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_NEURAL_LIVE_URL');
           try {
             const response = await fetch(parsed.toString(), { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(5000) });
@@ -977,7 +978,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
             },
             body: JSON.stringify({
               ref: 'frieren-neural-foundation',
-              inputs: { task, base_branch: 'frieren-neural-foundation' },
+              inputs: { task, base_branch: 'frieren-neural-foundation', incident_id: String(incident.id) },
             }),
             signal: AbortSignal.timeout(12_000),
           });
