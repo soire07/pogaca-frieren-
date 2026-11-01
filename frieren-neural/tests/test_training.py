@@ -54,6 +54,8 @@ def test_training_writes_resumable_checkpoint_and_finite_metrics(tmp_path: Path)
     )
     result = train_model(corpus, checkpoint, config)
     assert result["step"] == 3
+    assert result["loss_objective_version"] == 2
+    assert result["training_objective"] == "assistant_response_tokens_plus_eos"
     assert torch.isfinite(torch.tensor(result["train_loss"]))
     assert torch.isfinite(torch.tensor(result["validation_loss"]))
     assert checkpoint.is_file()
@@ -208,7 +210,7 @@ def test_saved_checkpoint_can_be_loaded_for_inference(tmp_path: Path):
     train_model(corpus, checkpoint, config, device="cpu")
     model, tokenizer, metadata = load_checkpoint(checkpoint, device="cpu")
     assert metadata["step"] == 1
-    assert metadata["loss_objective_version"] == 1
+    assert metadata["loss_objective_version"] == 2
     assert metadata["training_objective"] == "assistant_response_tokens_plus_eos"
     assert metadata["model_config"]["d_model"] == 16
     assert metadata["training_config"]["max_steps"] == 1
