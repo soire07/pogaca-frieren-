@@ -1,0 +1,244 @@
+{
+  "schemaVersion": 1,
+  "policy": "This map records manually inspected source-to-test links. It does not upgrade feature-inventory.json statuses. Static assertions and unit tests are not Discord runtime or production verification.",
+  "entries": [
+    {
+      "featureId": "RPG-022",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "market.js",
+          "markers": [
+            "await db.query('BEGIN')",
+            "UPDATE users SET coins=coins-$3",
+            "INSERT INTO inventory"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-economy-crafting-integrity.js",
+        "name": "market purchases serialize the player before charging and never allow a negative balance",
+        "markers": [
+          "coins >= \\\\$3 RETURNING coins",
+          "await db.query('ROLLBACK')"
+        ]
+      },
+      "limitation": "The test inspects transaction ordering and SQL guards; it does not execute a Discord market purchase."
+    },
+    {
+      "featureId": "RPG-040",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "takasteklif.js",
+          "markers": [
+            "NOW()+INTERVAL '5 minutes'",
+            "FOR UPDATE"
+          ]
+        },
+        {
+          "path": "trade-transaction.js",
+          "markers": [
+            "reservedForOthers",
+            "status='accepted'"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/check-gameplay-integrity.js",
+        "name": "trade offers are persistent, expiring and single-use",
+        "markers": [
+          "reservedAmount",
+          "reservedForOthers",
+          "status='accepted'"
+        ]
+      },
+      "limitation": "Static source assertions cover reservation and acceptance invariants; no live player-to-player Discord trade is performed."
+    },
+    {
+      "featureId": "RPG-015",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "claimSoloBossReward"
+          ]
+        },
+        {
+          "path": "rpg-reward-transactions.js",
+          "markers": [
+            "last_boss_battle_id IS DISTINCT FROM $7",
+            "await db.query('COMMIT')",
+            "await db.query('ROLLBACK')"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-boss-combat.js",
+        "name": "solo boss reward persistence is idempotent per battle session across duplicate handlers",
+        "markers": [
+          "last_boss_battle_id",
+          "claimSoloBossReward",
+          "randomUUID"
+        ]
+      },
+      "limitation": "The test checks the production transaction contract and duplicate-claim guard; it is not a live Discord boss victory."
+    },
+    {
+      "featureId": "RPG-113",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function applyEquipmentSetBonus"
+          ]
+        },
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "applyEquipmentSetBonus"
+          ]
+        },
+        {
+          "path": "katlizindan.js",
+          "markers": [
+            "applyEquipmentSetBonus"
+          ]
+        },
+        {
+          "path": "ortakboss.js",
+          "markers": [
+            "applyEquipmentSetBonus"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-gameplay-persistence.js",
+        "name": "legendary set bonus activates at two pieces and disappears when one is removed",
+        "markers": [
+          "applyEquipmentSetBonus",
+          "active.attack",
+          "inactive.attack"
+        ]
+      },
+      "limitation": "The unit test proves the shared set-bonus calculation and source wiring is present in combat handlers; it does not execute full solo, dungeon and raid encounters."
+    },
+    {
+      "featureId": "RPG-213",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "zanaat.js",
+          "markers": [
+            "await db.query('BEGIN')",
+            "FOR UPDATE",
+            "await db.query('ROLLBACK')"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-economy-crafting-integrity.js",
+        "name": "crafting validates bounded quantities and serializes the player before material locks",
+        "markers": [
+          "material row locking",
+          "await db.query('ROLLBACK')",
+          "INSERT INTO user_crafting_progress"
+        ]
+      },
+      "limitation": "The test checks lock ordering, quantity bounds and transaction structure; it does not perform a live Discord crafting action."
+    },
+    {
+      "featureId": "RPG-272",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "katlizindan.js",
+          "markers": [
+            "restoreResourceRatio",
+            "persistedHpNow"
+          ]
+        },
+        {
+          "path": "ortakboss.js",
+          "markers": [
+            "restoreResourceRatio",
+            "persistedHpNow"
+          ]
+        },
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function restoreResourceRatio"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/check-gameplay-integrity.js",
+        "name": "cooperative dungeon and raid scale current HP and mana proportionally with gear, talents, builds and roles",
+        "markers": [
+          "restoreResourceRatio",
+          "persistedHpNow"
+        ]
+      },
+      "limitation": "The test validates shared persistence conversion and handler wiring through source assertions; it does not run a live multi-player encounter."
+    },
+    {
+      "featureId": "RPG-274",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "katlizindan.js",
+          "markers": [
+            "spell_mastery",
+            "spellMastery"
+          ]
+        },
+        {
+          "path": "ortakboss.js",
+          "markers": [
+            "spell_mastery",
+            "spellMastery"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/check-gameplay-integrity.js",
+        "name": "successful Zoltraak casts in cooperative dungeon and boss raid advance persistent spell mastery",
+        "markers": [
+          "spell_mastery",
+          "spellMastery"
+        ]
+      },
+      "limitation": "The test checks the success-gated persistence path by source assertions; it does not verify Discord interaction behavior live."
+    },
+    {
+      "featureId": "RPG-300",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function getBossPhase"
+          ]
+        },
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "getBossPhase("
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-boss-combat.js",
+        "name": "boss phases use stable health thresholds and reject invalid maximum HP",
+        "markers": [
+          "getBossPhase(66, 100)",
+          "getBossPhase(33, 100)"
+        ]
+      },
+      "limitation": "The test proves phase threshold calculations, not the player-visible phase announcement or complete boss encounter."
+    }
+  ]
+}
