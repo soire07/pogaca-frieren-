@@ -1120,14 +1120,18 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     } catch (error) {
       const code = String(error?.message || '');
       console.error('Owner dashboard action failed:', code || 'unknown error');
-      const notice = code === 'SENSITIVE_TEST_TARGET_REJECTED' ? 'test_target_sensitive'
+      const guardianError = code.startsWith('GUARDIAN_') || code.startsWith('REVIEW_')
+        || code === 'INVALID_FRIEREN_AI_PUBLIC_URL' || code === 'INVALID_FRIEREN_NEURAL_LIVE_URL';
+      const notice = code === 'GUARDIAN_BRIDGE_NOT_CONFIGURED' ? 'guardian_not_configured'
+        : guardianError ? 'guardian_review_failed'
+        : code === 'SENSITIVE_TEST_TARGET_REJECTED' ? 'test_target_sensitive'
         : code === 'SENSITIVE_MEMORY_REJECTED' ? 'memory_sensitive_rejected'
         : code === 'RENDER_API_NOT_CONFIGURED' ? 'render_api_missing'
         : code === 'RENDER_ACTION_COOLDOWN' ? 'service_cooldown'
         : /^RENDER_API_HTTP_(401|403)$/.test(code) ? 'render_api_auth_error'
         : /^RENDER_API_HTTP_(404|429|5\d\d)$/.test(code) ? 'render_api_service_error'
         : 'invalid';
-      redirect(res, '/owner?notice=' + notice);
+      redirect(res, (guardianError ? '/owner/guardian?notice=' : '/owner?notice=') + notice);
     }
     return true;
   }
