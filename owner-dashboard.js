@@ -416,6 +416,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     approval_rejected: 'Talep reddedildi.',
     memory_deleted: 'Hafıza kaydı silindi.',
     memory_updated: 'Hafıza kaydı güncellendi ve denetim kaydına eklendi.',
+    memory_sensitive_rejected: 'Bu içerik hassas veri içerebileceği için hafızaya kaydedilmedi.',
     announcement_sent: 'Duyuru seçilen kanala gönderildi.',
     guild_config_saved: 'Sunucu ayarları kaydedildi.',
     feature_saved: 'Bot davranışı bu sunucu için kaydedildi.',
@@ -947,7 +948,8 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     } catch (error) {
       const code = String(error?.message || '');
       console.error('Owner dashboard action failed:', code || 'unknown error');
-      const notice = code === 'RENDER_API_NOT_CONFIGURED' ? 'render_api_missing'
+      const notice = code === 'SENSITIVE_MEMORY_REJECTED' ? 'memory_sensitive_rejected'
+        : code === 'RENDER_API_NOT_CONFIGURED' ? 'render_api_missing'
         : code === 'RENDER_ACTION_COOLDOWN' ? 'service_cooldown'
         : /^RENDER_API_HTTP_(401|403)$/.test(code) ? 'render_api_auth_error'
         : /^RENDER_API_HTTP_(404|429|5\d\d)$/.test(code) ? 'render_api_service_error'
