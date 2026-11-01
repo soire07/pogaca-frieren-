@@ -237,3 +237,13 @@ test('public command catalogue renders escaped option help and includes it in se
   assert.match(response.body, /rakip/);
   assert.doesNotMatch(response.body, /<img src=x onerror=alert\(1\)>/);
 });
+
+
+test('command option details stylesheet is responsive and keyboard accessible', async () => {
+  const response = res();
+  await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, response);
+  const css = String(response.body);
+  assert.match(css, /\.command-details/);
+  assert.match(css, /\.command-details summary:focus-visible/);
+  assert.match(css, /@media\(max-width:560px\)\{\.command-details li\{/);
+});
