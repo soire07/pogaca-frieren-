@@ -8,12 +8,16 @@ test('database diagnostics use one statistics query instead of scanning every ta
     calls += 1;
     assert.match(sql, /pg_stat_user_tables/);
     return { rows: [
-      { database_name: 'frieren', checked_at: '2026-10-31T00:00:00Z', table_name: 'users', row_count: '12' },
+      { database_name: 'frieren', checked_at: '2026-10-31T00:00:00Z', server_version: '18.0', database_size_bytes: '1048576', active_connections: 2, idle_connections: 1, table_name: 'users', row_count: '12' },
       { database_name: 'frieren', checked_at: '2026-10-31T00:00:00Z', table_name: 'inventory', row_count: '8' }
     ] };
   } };
   const result = await getOwnerDatabaseDiagnostics(db);
   assert.equal(result.connected, true);
+  assert.equal(result.serverVersion, '18.0');
+  assert.equal(result.databaseSizeBytes, 1048576);
+  assert.equal(result.activeConnections, 2);
+  assert.equal(result.idleConnections, 1);
   assert.deepEqual(result.tables, [{ name: 'users', rows: 12 }, { name: 'inventory', rows: 8 }]);
   assert.equal(calls, 1);
 });
@@ -169,4 +173,15 @@ test('Poğaça workspace escapes owner-managed boss and dungeon labels', () => {
   assert.doesNotMatch(html, /<script>/);
   assert.doesNotMatch(html, /<img src=x>/);
   assert.match(html, /&lt;script&gt;/);
+});
+
+test('database workspace explains free-tier restore limits and refuses to imply automated snapshots', () => {
+  const html = renderOwnerWorkspace('database', {
+    database: { connected: true, databaseName: 'frieren', tables: [], checkedAt: null },
+    backup: { consoleUrl: 'https://console.neon.tech/app/projects/project-id' }
+  });
+  assert.match(html, /otomatik snapshot zamanlaması kullanılamaz/);
+  assert.match(html, /6 saatlik Point-in-Time Restore/);
+  assert.match(html, /0,09 USD\/GB-ay/);
+  assert.match(html, /Neon yedekleme ve dalları aç/);
 });
