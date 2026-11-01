@@ -201,3 +201,16 @@ def test_saved_checkpoint_can_be_loaded_for_inference(tmp_path: Path):
     assert tokenizer.decode(tokenizer.encode("Frieren")) == "Frieren"
     generated = generate_text(model, tokenizer, "Frieren", max_new_tokens=2, top_k=1)
     assert generated.startswith("Frieren")
+
+
+def test_train_model_does_not_learn_bpe_merges_from_validation_text(tmp_path: Path):
+    corpus = ["a" * 80 + "z" * 20]
+    checkpoint = tmp_path / "no-leakage.pt"
+    config = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0,
+        validation_fraction=0.2, tokenizer_vocab_size=263, tokenizer_min_frequency=2,
+    )
+    train_model(corpus, checkpoint, config, device="cpu")
+    saved = torch.load(checkpoint, map_location="cpu", weights_only=True)
+    assert all(122 not in pair for pair in saved["tokenizer"]["merges"])
