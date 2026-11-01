@@ -56,6 +56,7 @@ const bridgeConfigured = Boolean(process.env.FRIEREN_BRIDGE_URL?.trim() && proce
 const port = Number(process.env.FRIEREN_AI_HEALTH_PORT) || Number(process.env.PORT) || 10000;
 const healthHost = process.env.FRIEREN_AI_HEALTH_HOST || '0.0.0.0';
 const ownerScenarioLocks = new Set();
+const runningGuilds = new Set();
 
 const healthServer = createServer(async (req, res) => {
   const privateHealthPaths = new Set(['/health', '/ready', '/live', '/bridge-health']);
@@ -182,7 +183,6 @@ if (memoryStore) {
 }
 if (!modelConfigured) console.error('Groq API anahtarı yapılandırılmamış; /frieren-ai yanıt veremez.');
 if (!bridgeConfigured) console.warn('Poğaça Frieren komut test köprüsü yapılandırılmamış; /frieren-komut-denetle kullanılamaz.');
-const runningGuilds = new Set();
 
 const commands = [
   new SlashCommandBuilder()
