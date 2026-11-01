@@ -108,7 +108,9 @@ test('site profile uses dedicated brand avatar and banner assets', async () => {
   const response = res();
   await handlePublicSiteRequest(request('/', visitor), response);
   assert.match(response.body, /site-avatar\.svg/);
-  assert.match(response.body, /site-banner\.svg/);
+  const stylesheet = res();
+  await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
+  assert.match(String(stylesheet.body), /site-banner\.svg/);
 });
 
 test('shared stylesheet is publicly cacheable for authenticated and auth pages', async () => {
@@ -147,7 +149,7 @@ test('mobile public pages keep card actions and hero media within the viewport',
   assert.match(response.body, /assets\/site\.css/);
   const stylesheet = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
-  assert.match(stylesheet.body, /max-width:560px/);
-  assert.match(stylesheet.body, /\.actions \.btn\{flex:1 1 100%;width:100%\}/);
-  assert.match(stylesheet.body, /focus-visible/);
+  assert.match(String(stylesheet.body), /max-width:560px/);
+  assert.match(String(stylesheet.body), /\.actions \.btn\{flex:1 1 100%;width:100%\}/);
+  assert.match(String(stylesheet.body), /focus-visible/);
 });
