@@ -15,7 +15,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from frieren_neural.quality_evaluation import DIMENSIONS, PROMPTS, PROMPT_SET_VERSION\nfrom frieren_neural.qwen3_decoding import build_qwen3_chat_request
+from frieren_neural.quality_evaluation import DIMENSIONS, PROMPTS, PROMPT_SET_VERSION
+from frieren_neural.qwen3_decoding import build_qwen3_chat_request
 
 MODEL_URL = "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf"
 MODEL_SHA256 = "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031"
