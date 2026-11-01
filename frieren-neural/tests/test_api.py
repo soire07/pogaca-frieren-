@@ -251,3 +251,46 @@ def test_session_token_rejects_malformed_and_oversized_fields(monkeypatch):
     assert not _valid_session_token("١٧٣٠٠٠٠٠٠٠٠٠٠. " + "a" * 64, secret)
     assert not _valid_session_token(str(int(time.time()) - 1) + "." + "a" * 64, secret)
     assert not _valid_session_token(valid.split(".", 1)[0] + "." + "g" * 64, secret)
+
+
+def test_generation_capacity_covers_checkpoint_loading(api_client, monkeypatch, tmp_path):
+    import time
+    from threading import Event
+
+    import frieren_neural.api as api
+
+    checkpoint = tmp_path / "placeholder.pt"
+    checkpoint.write_bytes(b"test")
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "a" * 40)
+    monkeypatch.setenv("FRIEREN_CHECKPOINT", str(checkpoint))
+    monkeypatch.setenv("FRIEREN_DEVICE", "cpu")
+
+    load_started = Event()
+    allow_load_to_finish = Event()
+
+    def blocked_load(*_args, **_kwargs):
+        load_started.set()
+        assert allow_load_to_finish.wait(timeout=5)
+        return object(), object(), {"step": 7}
+
+    monkeypatch.setattr(api, "_load_runtime", blocked_load)
+    monkeypatch.setattr(api, "generate_text", lambda *_args, **_kwargs: "Frieren")
+    headers = {"Authorization": "Bearer " + "a" * 40}
+    payload = {"prompt": "Frieren", "max_new_tokens": 1}
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        first = pool.submit(api_client.post, "/generate", json=payload, headers=headers)
+        assert load_started.wait(timeout=5)
+
+        second = pool.submit(api_client.post, "/generate", json=payload, headers=headers)
+        deadline = time.monotonic() + 5
+        while api._generation_slots._value != 0 and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert api._generation_slots._value == 0
+
+        rejected = api_client.post("/generate", json=payload, headers=headers)
+        assert rejected.status_code == 503
+
+        allow_load_to_finish.set()
+        assert first.result(timeout=5).status_code == 200
+        assert second.result(timeout=5).status_code == 200
