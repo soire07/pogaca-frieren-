@@ -50,7 +50,9 @@ def _authenticate(authorization: str | None) -> None:
     expected = os.environ.get("FRIEREN_API_TOKEN", "")
     if len(expected) < 32:
         raise HTTPException(status_code=503, detail="Generation API is not configured.")
-    supplied = authorization.removeprefix("Bearer ").strip() if authorization else ""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid bearer token.")
+    supplied = authorization.removeprefix("Bearer ").strip()
     if not secrets.compare_digest(supplied, expected):
         raise HTTPException(status_code=401, detail="Invalid bearer token.")
 
