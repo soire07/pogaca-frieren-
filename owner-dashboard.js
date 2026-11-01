@@ -632,6 +632,11 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       send(res, 400, page('Giriş reddedildi', '<h1>Giriş doğrulanamadı</h1><p>OAuth doğrulaması geçersiz veya süresi dolmuş. Yeniden giriş yap.</p>'));
       return true;
     }
+    if (flow !== 'owner') {
+      res.writeHead(302, { Location: flow === 'register' ? '/register' : '/login', 'Cache-Control': 'no-store', 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
+      res.end();
+      return true;
+    }
     try {
       const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
         method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -651,11 +656,6 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const userId = String(user?.id || '');
       const username = String(user?.username || 'Gezgin').slice(0, 64);
       const avatarHash = typeof user?.avatar === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(user.avatar) ? user.avatar : null;
-      if (flow === 'register' || flow === 'login') {
-        res.writeHead(302, { Location: flow === 'register' ? '/register' : '/login', 'Cache-Control': 'no-store', 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
-        res.end();
-        return true;
-      }
       if (userId !== OWNER_ID) {
         send(res, 403, page('Owner erişimi reddedildi', '<h1>Bu alan yalnızca site sahibine açıktır</h1><p>Siteye normal giriş yapmak için kayıt veya giriş sayfasını kullan.</p><a class="btn" href="/login">Siteye dön</a>'), { 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
         return true;
