@@ -77,12 +77,12 @@ function authPage(mode, secret, status = '', token = '') {
     '<label>E-posta adresi</label><input name="email" type="email" maxlength="254" autocomplete="email" required>' +
     '<label>Şifre</label><input name="password" type="password" minlength="10" maxlength="128" autocomplete="new-password" required>' +
     '<label>Şifreyi tekrar gir</label><input name="confirmPassword" type="password" minlength="10" maxlength="128" autocomplete="new-password" required><button class="btn">Hesap oluştur</button></form>' +
-    '<div class="auth-links"><a href="/login">Zaten hesabın var mı? Giriş yap</a></div><p class="auth-hint">E-posta doğrulaması, hesabının güvenliği ve şifre kurtarma için gereklidir.</p>';
+    '<div class="auth-links"><a href="/login">Zaten hesabın var mı? Giriş yap</a><a href="/resend-verification">Doğrulama e-postasını tekrar gönder</a></div><p class="auth-hint">E-posta doğrulaması, hesabının güvenliği ve şifre kurtarma için gereklidir.</p>';
   else if (mode === 'login') body = '<h1>Yolculuğuna dön</h1><p>Kullanıcı adın ve şifrenle giriş yap.</p>' + notice +
     '<form method="post" action="/login" autocomplete="on">' + formToken(secret) +
     '<label>Kullanıcı adı</label><input name="username" maxlength="24" autocomplete="username" required>' +
     '<label>Şifre</label><input name="password" type="password" maxlength="128" autocomplete="current-password" required><button class="btn">Giriş yap</button></form>' +
-    '<div class="auth-links"><a href="/register">Kayıt ol</a><a href="/forgot-password">Şifremi unuttum</a></div>';
+    '<div class="auth-links"><a href="/register">Kayıt ol</a><a href="/forgot-password">Şifremi unuttum</a><a href="/resend-verification">Doğrulama e-postasını tekrar gönder</a></div>';
   else if (mode === 'forgot') body = '<h1>Şifreni yenile</h1><p>Hesabına bağlı doğrulanmış e-posta adresini gir.</p>' + notice +
     '<form method="post" action="/forgot-password">' + formToken(secret) + '<label>E-posta adresi</label><input name="email" type="email" maxlength="254" required><button class="btn">Yenileme bağlantısı gönder</button></form><div class="auth-links"><a href="/login">Giriş sayfasına dön</a></div>';
   else if (mode === 'reset') body = '<h1>Yeni şifre oluştur</h1><p>Hesabın için yeni ve güçlü bir şifre belirle.</p>' + notice +
@@ -163,7 +163,7 @@ async function formBody(req) {
   return Object.fromEntries(new URLSearchParams(Buffer.concat(chunks).toString('utf8')));
 }
 function send(res,status,body,extra={}) {
-  res.writeHead(status,{ 'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Content-Security-Policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'",...extra });
+  res.writeHead(status,{ 'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'",...extra });
   res.end(body);
 }
 function tokenOk(token,stored) {
