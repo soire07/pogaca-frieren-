@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_GUILD_FEATURES, getGuildFeatureEnabled, initGuildFeatureSettingsSchema, isValidGuildFeatureKey, listGuildFeatureSettings, resetGuildFeatureSetting, setGuildFeatureEnabled } from '../guild-feature-settings.js';
+import { DEFAULT_GUILD_FEATURES, getGuildFeatureEnabled, initGuildFeatureSettingsSchema, isValidGuildFeatureKey, listGuildFeatureSettings, listGuildFeatureSettingsForGuilds, resetGuildFeatureSetting, setGuildFeatureEnabled } from '../guild-feature-settings.js';
 
 function fakeDb(rows = []) {
   const calls = [];
@@ -67,4 +67,29 @@ test('listing is restricted to the selected guild', async () => {
   const db = fakeDb([]);
   await listGuildFeatureSettings(db, '1564945192803639356');
   assert.deepEqual(db.calls[0].params, ['1564945192803639356']);
+});
+
+test('owner panel loads feature settings for all guilds with one query', async () => {
+  const db = fakeDb([
+    { guild_id: '1539562273197260860', feature_key: 'rpg', enabled: true },
+    { guild_id: '1564945192803639356', feature_key: 'economy', enabled: false }
+  ]);
+  const result = await listGuildFeatureSettingsForGuilds(db, ['1539562273197260860', '1564945192803639356', '1539562273197260860']);
+  assert.equal(db.calls.length, 1);
+  assert.deepEqual(db.calls[0].params, [['1539562273197260860', '1564945192803639356']]);
+  assert.equal(result.get('1539562273197260860')[0].feature_key, 'rpg');
+  assert.equal(result.get('1564945192803639356')[0].enabled, false);
+});
+
+test('bulk guild feature lookup returns an empty map without querying for no guilds', async () => {
+  const db = fakeDb();
+  const result = await listGuildFeatureSettingsForGuilds(db, []);
+  assert.equal(result.size, 0);
+  assert.equal(db.calls.length, 0);
+});
+
+test('bulk guild feature lookup validates all guild IDs before querying', async () => {
+  const db = fakeDb();
+  await assert.rejects(listGuildFeatureSettingsForGuilds(db, ['1539562273197260860', 'invalid']), /INVALID_GUILD_ID/);
+  assert.equal(db.calls.length, 0);
 });

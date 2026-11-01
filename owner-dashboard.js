@@ -6,7 +6,7 @@ import {
   sendOwnerAnnouncement, getRecentOwnerActivity
 } from './owner-admin.js';
 import { listOwnerPartnerLinks, saveOwnerPartnerLink, deleteOwnerPartnerLink, getOwnerRpgMetrics, updateGuildConfiguration, listGuildConfigurations, searchOwnerRpgPlayers, getOwnerRpgPlayerDetails, adjustOwnerRpgResources, adjustOwnerRpgInventory, setOwnerRpgEquipment } from './owner-platform.js';
-import { DEFAULT_GUILD_FEATURES, listGuildFeatureSettings, setGuildFeatureEnabled, resetGuildFeatureSetting } from './guild-feature-settings.js';
+import { DEFAULT_GUILD_FEATURES, listGuildFeatureSettingsForGuilds, setGuildFeatureEnabled, resetGuildFeatureSetting } from './guild-feature-settings.js';
 import { getOwnerDatabaseDiagnostics, getOwnerDatabaseTablePreview, renderOwnerWorkspace } from './owner-workspaces.js';
 import { getFrierenChatSettings, updateFrierenChatSettings } from './frieren-chat-settings.js';
 import { listOwnerDailyQuests, saveOwnerDailyQuest, setOwnerDailyQuestActive } from './owner-rpg-quests.js';
@@ -1156,10 +1156,12 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       getRenderBotServiceStatuses()
     ]);
     const frierenService = renderServices?.services?.frieren_ai;
-    const aiRenderMetrics = frierenService?.apiConfigured && !frierenService?.apiError && frierenService?.suspended !== true
-      ? await getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.frieren_ai.id, apiKey: process.env.RENDER_FRIEREN_AI_API_KEY })
-      : { status: 'unavailable', source: 'render', points: [], message: frierenService?.suspended ? 'Frieren AI askıda; metrik sorgusu yapılmadı.' : 'Frieren AI metrikleri için Render API bağlantısı gerekli.' };
-    const featureSettingsByGuild = new Map(await Promise.all([...client.guilds.cache.keys()].map(async guildId => [guildId, await listGuildFeatureSettings(db, guildId)])));
+    const [aiRenderMetrics, featureSettingsByGuild] = await Promise.all([
+      frierenService?.apiConfigured && !frierenService?.apiError && frierenService?.suspended !== true
+        ? getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.frieren_ai.id, apiKey: process.env.RENDER_FRIEREN_AI_API_KEY })
+        : Promise.resolve({ status: 'unavailable', source: 'render', points: [], message: frierenService?.suspended ? 'Frieren AI askıda; metrik sorgusu yapılmadı.' : 'Frieren AI metrikleri için Render API bağlantısı gerekli.' }),
+      listGuildFeatureSettingsForGuilds(db, [...(client?.guilds?.cache?.keys?.() || [])])
+    ]);
     const memoryUser = String(url.searchParams.get('memoryUser') || '').replace(/\D/g, '').slice(0, 24);
     const memories = memoryUser ? await listUserMemories(db, memoryUser, null, 30) : [];
     send(res, 200, renderDashboard({
