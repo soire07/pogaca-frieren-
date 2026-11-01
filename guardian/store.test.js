@@ -8,6 +8,7 @@ import {
   reserveGuardianRepairDispatch,
   finishGuardianRepairDispatch,
   updateGuardianRepairStatus,
+  getGuardianMonitorState,
 } from './store.js';
 
 test('Guardian incident upsert uses a stable fingerprint and increments occurrences atomically', async () => {
@@ -106,4 +107,14 @@ test('Guardian PR status refresh persists workflow and CI evidence only for disp
   }), true);
   assert.equal(params[1], 123);
   assert.equal(params[8], 'success');
+});
+
+test('Guardian monitor state can be read for independent heartbeat display', async () => {
+  const db = { query: async sql => {
+    assert.match(sql, /last_tick_at/);
+    return { rows: [{ monitor_key: 'owner_error_logs', last_seen_error_id: '22', last_tick_at: '2026-11-02T10:00:00Z', last_error: null }] };
+  } };
+  const state = await getGuardianMonitorState(db);
+  assert.equal(state.last_seen_error_id, '22');
+  assert.equal(state.last_error, null);
 });
