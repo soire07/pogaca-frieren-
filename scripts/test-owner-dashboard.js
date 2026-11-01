@@ -164,6 +164,35 @@ test('Guardian workspace shows dispatched workflow, PR and CI evidence with a re
   }
 });
 
+test('Guardian emergency stop hides AI review and new repair dispatch controls', () => {
+  const original = process.env.FRIEREN_GITHUB_TOKEN;
+  process.env.FRIEREN_GITHUB_TOKEN = 'x'.repeat(48);
+  try {
+    const html = renderOwnerGuardianWorkspace({
+      csrf: 'csrf-test',
+      emergencyStop: true,
+      incidents: [{
+        id: 7, title: 'RPG timeout', severity: 'high', system: 'pogaca_frieren',
+        code: 'TIMEOUT', status: 'open', occurrence_count: 1,
+        last_seen: '2026-11-02T10:00:00Z', summary: 'Test timeout', evidence: [],
+      }],
+      jobs: [{
+        id: 10, incident_id: 7, incident_title: 'RPG timeout', agent: 'frieren_ai',
+        system: 'pogaca_frieren', status: 'completed', repair_dispatch_status: 'not_requested',
+        created_at: '2026-11-02T10:01:00Z',
+        result: { status: 'proposal_only', rootCause: 'Missing guard.' },
+      }],
+    });
+    assert.match(html, /Acil durdurma etkin/);
+    assert.match(html, /guardian-emergency-stop/);
+    assert.doesNotMatch(html, /value="guardian-review"/);
+    assert.doesNotMatch(html, /value="guardian-create-pr"/);
+  } finally {
+    if (original === undefined) delete process.env.FRIEREN_GITHUB_TOKEN;
+    else process.env.FRIEREN_GITHUB_TOKEN = original;
+  }
+});
+
 test('Render metrics stay disabled without an API key and do not make network requests', async () => {
   const { getRenderServiceMetrics } = await import('../owner-metrics.js');
   let calls = 0;
