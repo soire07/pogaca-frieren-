@@ -1949,10 +1949,10 @@
         298,
         299
       ],
-      "featureLevelEvidenceLinks": 0,
+      "featureLevelEvidenceLinks": 24,
       "discordRuntimeVerified": 0,
       "productionVerified": 0,
-      "note": "The existing automated suites cover substantial gameplay domains, but do not yet emit a reliable feature-ID-to-test/source evidence map. Therefore no individual inventory item is upgraded to automated_tested or runtime_verified in this audit."
+      "note": "Twenty-four selected records now have manually inspected source-to-test traceability links in feature-evidence.json. The links include automated static assertions, partial handler wiring checks and direct unit assertions; they do not promote the inventory status or imply Discord/production verification for the other records."
     },
     "verifiedTestSuites": [
       {
