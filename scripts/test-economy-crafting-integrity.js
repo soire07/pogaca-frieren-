@@ -71,4 +71,7 @@ test('trade offers reserve only unexpired copies using the database clock', asyn
   assert.match(trade, /offer\.status !== 'pending'/);
   assert.match(trade, /status='accepted'/);
   assert.match(trade, /reservedForOthers/);
+  assert.match(trade, /SELECT expires_at <= NOW\(\) AS expired FROM trade_offers WHERE offer_id=\$1 AND guild_id=\$2/);
+  assert.match(trade, /if \(expiryResult\.rows\[0\]\.expired\)/);
+  assert.doesNotMatch(trade, /new Date\(offer\.expires_at\).*Date\.now\(\)/);
 });
