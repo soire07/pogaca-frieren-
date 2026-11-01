@@ -7,6 +7,7 @@ const read = path => readFile(new URL('../' + path, import.meta.url), 'utf8');
 test('trade offers are persistent, expiring and single-use', async () => {
   const schema = await read('database/db.js');
   const handler = await read('index.js');
+  const transaction = await read('trade-transaction.js');
   const command = await read('takasteklif.js');
   assert.match(schema, /CREATE TABLE IF NOT EXISTS trade_offers/);
   assert.ok(schema.includes("status IN ('pending','accepted','declined','expired','invalid')"), 'trade status constraint missing');
@@ -14,13 +15,13 @@ test('trade offers are persistent, expiring and single-use', async () => {
   assert.match(command, /setAutocomplete\(true\)/);
   assert.match(command, /FOR UPDATE/);
   assert.match(command, /reservedAmount/);
-  assert.match(handler, /reservedForOthers/);
+  assert.match(transaction, /reservedForOthers/);
   assert.match(command, /NOW\(\)\+INTERVAL '5 minutes'/);
-  assert.match(handler, /SELECT \* FROM trade_offers WHERE offer_id=\$1 AND guild_id=\$2 FOR UPDATE/);
-  assert.match(handler, /interaction\.user\.id !== offer\.to_user_id/);
-  assert.match(handler, /status='accepted'/);
-  assert.match(handler, /quantity=quantity-\$4/);
-  assert.match(handler, /quantity=anime_character_collection\.quantity\+EXCLUDED\.quantity/);
+  assert.match(transaction, /SELECT \* FROM trade_offers WHERE offer_id=\$1 AND guild_id=\$2 FOR UPDATE/);
+  assert.ok(transaction.includes('acceptingUserId !== offer.to_user_id'));
+  assert.match(transaction, /status='accepted'/);
+  assert.match(transaction, /quantity=quantity-\$4/);
+  assert.match(transaction, /quantity=anime_character_collection\.quantity\+EXCLUDED\.quantity/);
 });
 
 test('daily mission progress and reward claim stay in one transaction', async () => {
@@ -346,8 +347,10 @@ test('interaction dispatch catches component-handler and database-acquisition fa
   assert.ok(source.includes('async function sendPrivateInteractionError(interaction, content)'));
   assert.ok(source.includes('client.on(Events.InteractionCreate, async interaction => {\n  try {'));
   assert.ok(source.includes('if (interaction.deferred || interaction.replied) await interaction.followUp(payload)'));
-  assert.ok(source.includes('let db;\n    try {\n      db = await pool.connect()'));
-  assert.ok(source.includes('finally { db?.release(); }'));
+  const tradeTransaction = await read('trade-transaction.js');
+  assert.ok(source.includes('const result = await resolveTradeOffer(pool'));
+  assert.ok(tradeTransaction.includes("await db.query('ROLLBACK').catch(() => {})"));
+  assert.ok(tradeTransaction.includes('finally {\n    db.release();\n  }'));
 });
 
 
@@ -442,14 +445,15 @@ test('market purchases, item consumption and equipment changes use one player-fi
 
 test('trade acceptance serializes player, offer and collection rows in one stable lock order', async () => {
   const handler = await read('index.js');
+  const transaction = await read('trade-transaction.js');
   const command = await read('takasteklif.js');
-  const tradeHandler = handler.slice(handler.indexOf("trade_accept:"));
-  const playerLock = tradeHandler.indexOf('SELECT user_id FROM users');
-  const offerLock = tradeHandler.indexOf('SELECT * FROM trade_offers');
-  const collectionLock = tradeHandler.indexOf('FROM anime_character_collection');
+  assert.ok(handler.includes('resolveTradeOffer(pool'));
+  const playerLock = transaction.indexOf('SELECT user_id FROM users');
+  const offerLock = transaction.indexOf('SELECT * FROM trade_offers');
+  const collectionLock = transaction.indexOf('FROM anime_character_collection');
   assert.ok(playerLock >= 0 && offerLock > playerLock && collectionLock > offerLock,
-    'acceptance must lock player rows, then the offer, then the collection');
-  assert.ok(tradeHandler.includes('ORDER BY user_id FOR UPDATE'),
+    'production transaction must lock player rows, then the offer, then the collection');
+  assert.ok(transaction.includes('ORDER BY user_id FOR UPDATE'),
     'both participants must be locked in deterministic order');
   const createBegin = command.indexOf("await db.query('BEGIN')");
   const createPlayerLock = command.indexOf('SELECT user_id FROM users', createBegin);
