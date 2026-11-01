@@ -341,3 +341,30 @@ def test_resume_rejects_checkpoint_with_legacy_dialogue_encoding(tmp_path: Path)
 
     with pytest.raises(ValueError, match="dialogue encoding"):
         train_model(corpus, checkpoint, replace(config, max_steps=2), resume=True, device="cpu")
+
+
+def test_evaluate_checkpoint_uses_chat_aware_dialogue_encoding(tmp_path: Path, monkeypatch):
+    from frieren_neural import training
+
+    checkpoint = tmp_path / "chat-evaluation.pt"
+    config = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0,
+    )
+    training.train_model(["Frieren studies magic. Fern studies spells. " * 12], checkpoint, config, device="cpu")
+
+    observed = []
+    original = training.encode_dialogue_stream
+
+    def capture(text, tokenizer):
+        tokens = original(text, tokenizer)
+        observed.append((text, tokens.count(tokenizer.eos_id)))
+        return tokens
+
+    monkeypatch.setattr(training, "encode_dialogue_stream", capture)
+    evaluation_text = "Kullanıcı: Fern kim?\\nAsistan: Fern, Frieren'in çırağıdır."
+    training.evaluate_checkpoint(
+        checkpoint, [evaluation_text], batch_size=1, batches=1, device="cpu"
+    )
+
+    assert observed == [(evaluation_text, 1)]

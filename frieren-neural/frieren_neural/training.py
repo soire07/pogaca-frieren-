@@ -549,7 +549,9 @@ def evaluate_checkpoint(
             or content_fingerprint == metadata["corpus_content_sha256"]):
         raise ValueError("Evaluation corpus must be separate from the training corpus.")
     evaluation_text = "\n".join(item.strip() for item in documents)
-    tokens = torch.tensor(tokenizer.encode(evaluation_text) + [tokenizer.eos_id], dtype=torch.long)
+    # Use the same chat-aware BOS/EOS encoding as training so held-out
+    # perplexity measures the actual conversation stream format.
+    tokens = torch.tensor(encode_dialogue_stream(evaluation_text, tokenizer), dtype=torch.long)
     loss = evaluate_loss(
         model, tokens, batch_size=batch_size, block_size=model.config.max_seq_len,
         batches=batches, seed=seed
