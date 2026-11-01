@@ -124,6 +124,14 @@ def load_licensed_corpus(path: str | Path) -> list[str]:
         content = file_path.read_text(encoding="utf-8").strip()
         if not content:
             raise ValueError(f"Corpus file is empty: {canonical_path}")
+        expected_sha256 = entry.get("sha256")
+        if expected_sha256 is not None:
+            if (not isinstance(expected_sha256, str) or len(expected_sha256) != 64
+                    or any(character not in "0123456789abcdef" for character in expected_sha256)):
+                raise ValueError(f"Corpus SHA-256 must be 64 lowercase hexadecimal characters: {canonical_path}")
+            actual_sha256 = hashlib.sha256(content.encode("utf-8")).hexdigest()
+            if actual_sha256 != expected_sha256:
+                raise ValueError(f"Corpus SHA-256 mismatch: {canonical_path}")
         documents.append(content)
 
     actual_files: set[str] = set()
