@@ -505,6 +505,43 @@ def load_checkpoint(
     return model, tokenizer, metadata
 
 
+def encode_generation_prompt(prompt: str, tokenizer: BPETokenizer) -> list[int]:
+    """Encode chat history with EOS after completed assistant turns, leaving the final prefix open."""
+    normalized = prompt.rstrip()
+    if not normalized.startswith("Kullanıcı: ") or not normalized.endswith("Asistan:"):
+        return tokenizer.encode(prompt)
+
+    parts = [
+        part for part in re.split(r"(?m)(?=^(?:Kullanıcı|Asistan):(?: |$))", normalized)
+        if part
+    ]
+    if len(parts) < 2 or parts[-1].strip() != "Asistan:":
+        return tokenizer.encode(prompt)
+
+    token_ids = [tokenizer.bos_id]
+    expected_role = "Kullanıcı"
+    for part in parts[:-1]:
+        if part.startswith("Kullanıcı: "):
+            role = "Kullanıcı"
+        elif part.startswith("Asistan: "):
+            role = "Asistan"
+        else:
+            raise ValueError("Chat prompt contains a message without a recognized role label.")
+        if role != expected_role:
+            raise ValueError("Chat prompt messages must alternate between user and assistant roles.")
+        token_ids.extend(tokenizer.encode(part))
+        if role == "Asistan":
+            token_ids.append(tokenizer.eos_id)
+            expected_role = "Kullanıcı"
+        else:
+            expected_role = "Asistan"
+
+    if expected_role != "Asistan":
+        raise ValueError("Chat prompt must end with an open assistant prefix.")
+    token_ids.extend(tokenizer.encode(parts[-1]))
+    return token_ids
+
+
 @torch.no_grad()
 def generate_text(
     model: GPTLanguageModel,
@@ -519,7 +556,7 @@ def generate_text(
     if not prompt:
         raise ValueError("prompt must not be empty.")
     device = next(model.parameters()).device
-    prompt_ids = tokenizer.encode(prompt)
+    prompt_ids = encode_generation_prompt(prompt, tokenizer)
     input_ids = torch.tensor([prompt_ids], dtype=torch.long, device=device)
     generated = model.generate(
         input_ids, max_new_tokens=max_new_tokens, temperature=temperature, top_k=top_k
