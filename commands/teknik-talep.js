@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { createApprovalRequest } from '../owner-admin.js';
 import { pool } from '../database/db.js';
 
