@@ -1,4 +1,4 @@
-name: Frieren Neural CPU Baseline Training
+name: Frieren Neural CPU Candidate Training
 
 on:
   push:
@@ -18,7 +18,7 @@ concurrency:
 jobs:
   train:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: frieren-neural
@@ -37,13 +37,14 @@ jobs:
         run: pytest
       - name: Prepare pinned and checksum-verified Turkish training data
         run: frieren-neural-prepare-turkish-dialogues --output ./corpus/turkish-daily-dialogues
-      - name: Train the small CPU baseline
+      - name: Train the larger CPU candidate
         run: |
           set -o pipefail
           frieren-neural-train-small \
             --data ./corpus/turkish-daily-dialogues \
             --checkpoint ./checkpoints/frieren-neural-small.pt \
-            --steps 2000 --batch-size 4 --block-size 96 --d-model 96 --n-heads 4 --n-layers 3 --tokenizer-vocab-size 512 | tee ./training-metrics.json
+            --steps 8000 --batch-size 4 --block-size 128 --eval-interval 500 --eval-batches 5 \
+            --d-model 128 --n-heads 4 --n-layers 4 --tokenizer-vocab-size 1024 | tee ./training-metrics.json
       - name: Verify checkpoint can be loaded and generate a smoke sample
         run: |
           python - <<'PY'
@@ -52,10 +53,10 @@ jobs:
           from frieren_neural.training import generate_text, load_checkpoint
 
           model, tokenizer, metrics = load_checkpoint("./checkpoints/frieren-neural-small.pt", device="cpu")
-          assert metrics["step"] == 2000, metrics
+          assert metrics["step"] == 8000, metrics
           assert math.isfinite(metrics["train_loss"])
           assert math.isfinite(metrics["validation_loss"])
-          sample = generate_text(model, tokenizer, "Kullanıcı: Merhaba.\nAsistan:", max_new_tokens=24, top_k=8)
+          sample = generate_text(model, tokenizer, "Kullanıcı: Merhaba.\nAsistan:", max_new_tokens=48, top_k=8)
           print(json.dumps({"checkpoint": "loadable", "metrics": metrics, "sample": sample}, ensure_ascii=False, indent=2))
           PY
       - name: Prepare the separate, checksum-verified test split
@@ -74,10 +75,10 @@ jobs:
             --output-dir ./quality-reports/latest \
             --training-manifest ./corpus/turkish-daily-dialogues/corpus_manifest.json \
             --heldout-report ./heldout-metrics.json
-      - name: Upload model checkpoint and metrics
+      - name: Upload candidate checkpoint and evaluation evidence
         uses: actions/upload-artifact@v4
         with:
-          name: frieren-neural-cpu-baseline-${{ github.sha }}
+          name: frieren-neural-cpu-candidate-${{ github.sha }}
           path: |
             frieren-neural/checkpoints/frieren-neural-small.pt
             frieren-neural/training-metrics.json
