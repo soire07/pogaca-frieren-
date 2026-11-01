@@ -69,6 +69,17 @@ export async function initOwnerAdminSchema(db) {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_owner_partner_status ON owner_partner_links(status,created_at DESC);
+    CREATE TABLE IF NOT EXISTS owner_test_runs (
+      id BIGSERIAL PRIMARY KEY,
+      actor_id TEXT NOT NULL,
+      target VARCHAR(300) NOT NULL,
+      status VARCHAR(40) NOT NULL,
+      summary JSONB NOT NULL DEFAULT '{}'::jsonb,
+      details JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_owner_test_runs_recent ON owner_test_runs(created_at DESC);
+
   `);
 }
 
@@ -247,6 +258,191 @@ export async function sendOwnerAnnouncement(client, db, { guildId, channelId, me
     messageId: sent.id
   });
   return { guildName: guild.name, channelName: channel.name, messageId: sent.id };
+}
+
+
+export async function listOwnerAuditLogs(db, { action = '', target = '', page = 1, limit = 20 } = {}) {
+  const pageNumber = Number(page);
+  if (!Number.isSafeInteger(pageNumber) || pageNumber < 1) throw new Error('INVALID_AUDIT_PAGE');
+  const pageSize = Math.max(1, Math.min(Number(limit) || 20, 50));
+  const filters = [];
+  const params = [];
+  const addFilter = (column, value) => {
+    const term = String(value || '').trim().slice(0, 80);
+    if (!term) return;
+    params.push('%' + term.replace(/[\\%_]/g, '\\export function formatDuration(totalSeconds) {') + '%');
+    filters.push(column + ' ILIKE 
+  const value = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  const days = Math.floor(value / 86400);
+  const hours = Math.floor((value % 86400) / 3600);
+  const minutes = Math.floor((value % 3600) / 60);
+  const seconds = value % 60;
+  return [days ? days + 'g' : '', hours ? hours + 'sa' : '', minutes ? minutes + 'dk' : '', seconds + 'sn'].filter(Boolean).join(' ');
+}
+
+export function createOwnerEmbed(title, description, color = 0xD5E2FA) {
+  return new EmbedBuilder().setColor(color).setTitle(title).setDescription(description).setTimestamp();
+}
+ + params.length + " ESCAPE '\\\\'");
+  };
+  addFilter('action', action);
+  addFilter('COALESCE(target,\'\')', target);
+  params.push(pageSize);
+  const limitParam = params.length;
+  params.push((pageNumber - 1) * pageSize);
+  const offsetParam = params.length;
+  const where = filters.length ? 'WHERE ' + filters.join(' AND ') : '';
+  const result = await db.query(
+    'SELECT id,actor_id,action,target,details,created_at,COUNT(*) OVER()::int AS total_count ' +
+    'FROM owner_audit_logs ' + where + ' ORDER BY id DESC LIMIT 
+  const value = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  const days = Math.floor(value / 86400);
+  const hours = Math.floor((value % 86400) / 3600);
+  const minutes = Math.floor((value % 3600) / 60);
+  const seconds = value % 60;
+  return [days ? days + 'g' : '', hours ? hours + 'sa' : '', minutes ? minutes + 'dk' : '', seconds + 'sn'].filter(Boolean).join(' ');
+}
+
+export function createOwnerEmbed(title, description, color = 0xD5E2FA) {
+  return new EmbedBuilder().setColor(color).setTitle(title).setDescription(description).setTimestamp();
+}
+ + limitParam + ' OFFSET 
+  const value = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  const days = Math.floor(value / 86400);
+  const hours = Math.floor((value % 86400) / 3600);
+  const minutes = Math.floor((value % 3600) / 60);
+  const seconds = value % 60;
+  return [days ? days + 'g' : '', hours ? hours + 'sa' : '', minutes ? minutes + 'dk' : '', seconds + 'sn'].filter(Boolean).join(' ');
+}
+
+export function createOwnerEmbed(title, description, color = 0xD5E2FA) {
+  return new EmbedBuilder().setColor(color).setTitle(title).setDescription(description).setTimestamp();
+}
+ + offsetParam,
+    params
+  );
+  const rows = result.rows || [];
+  return { rows: rows.map(({ total_count, ...row }) => row), page: pageNumber, limit: pageSize, total: Number(rows[0]?.total_count || 0) };
+}
+
+export async function searchOwnerMemories(db, { userId = '', guildId = '', key = '', limit = 20 } = {}) {
+  const filters = [];
+  const params = [];
+  const addExact = (column, value, errorCode) => {
+    const term = String(value || '').trim();
+    if (!term) return;
+    if (!/^\\d{17,20}$/.test(term)) throw new Error(errorCode);
+    params.push(term);
+    filters.push(column + '=
+  const value = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  const days = Math.floor(value / 86400);
+  const hours = Math.floor((value % 86400) / 3600);
+  const minutes = Math.floor((value % 3600) / 60);
+  const seconds = value % 60;
+  return [days ? days + 'g' : '', hours ? hours + 'sa' : '', minutes ? minutes + 'dk' : '', seconds + 'sn'].filter(Boolean).join(' ');
+}
+
+export function createOwnerEmbed(title, description, color = 0xD5E2FA) {
+  return new EmbedBuilder().setColor(color).setTitle(title).setDescription(description).setTimestamp();
+}
+ + params.length);
+  };
+  addExact('user_id', userId, 'INVALID_MEMORY_USER');
+  addExact('guild_id', guildId, 'INVALID_MEMORY_GUILD');
+  const memoryKey = String(key || '').trim().slice(0, 60);
+  if (memoryKey) {
+    params.push('%' + memoryKey.replace(/[\\%_]/g, '\\export function formatDuration(totalSeconds) {') + '%');
+    filters.push("memory_key ILIKE $" + params.length + " ESCAPE '\\\\'");
+  }
+  const pageSize = Math.max(1, Math.min(Number(limit) || 20, 50));
+  params.push(pageSize);
+  const result = await db.query(
+    'SELECT id,guild_id,user_id,memory_key,memory_value,created_at,updated_at FROM frieren_chat_memories ' +
+    (filters.length ? 'WHERE ' + filters.join(' AND ') + ' ' : '') +
+    'ORDER BY updated_at DESC,id DESC LIMIT 
+  const value = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  const days = Math.floor(value / 86400);
+  const hours = Math.floor((value % 86400) / 3600);
+  const minutes = Math.floor((value % 3600) / 60);
+  const seconds = value % 60;
+  return [days ? days + 'g' : '', hours ? hours + 'sa' : '', minutes ? minutes + 'dk' : '', seconds + 'sn'].filter(Boolean).join(' ');
+}
+
+export function createOwnerEmbed(title, description, color = 0xD5E2FA) {
+  return new EmbedBuilder().setColor(color).setTitle(title).setDescription(description).setTimestamp();
+}
+ + params.length,
+    params
+  );
+  return result.rows || [];
+}
+
+export async function updateOwnerMemory(db, { id, value, actorId }) {
+  const memoryId = Number(id);
+  const memoryValue = String(value ?? '').trim();
+  const actor = String(actorId || '');
+  if (!Number.isSafeInteger(memoryId) || memoryId <= 0) throw new Error('INVALID_MEMORY_ID');
+  if (!memoryValue || memoryValue.length > 1000) throw new Error('INVALID_MEMORY_VALUE');
+  if (!/^\\d{17,20}$/.test(actor)) throw new Error('INVALID_MEMORY_ACTOR');
+  const result = await db.query(
+    `WITH changed AS (
+       UPDATE frieren_chat_memories
+       SET memory_value=$2,updated_at=NOW()
+       WHERE id=$1
+       RETURNING id,guild_id,user_id,memory_key
+     ), logged AS (
+       INSERT INTO owner_audit_logs(actor_id,action,target,details)
+       SELECT $3,'memory.update',$1::text,
+         jsonb_build_object('userId',user_id,'guildId',guild_id,'key',memory_key)
+       FROM changed RETURNING id
+     )
+     SELECT changed.id,changed.guild_id,changed.user_id,changed.memory_key
+     FROM changed JOIN logged ON TRUE`,
+    [memoryId, memoryValue, actor]
+  );
+  return result.rows?.[0] || null;
+}
+
+export async function recordOwnerTestRun(db, { actorId, target, report } = {}) {
+  const actor = String(actorId || '');
+  const testTarget = String(target || '').trim().slice(0, 300);
+  if (!/^\\d{17,20}$/.test(actor) || !testTarget) throw new Error('INVALID_TEST_RUN');
+  const summary = report?.summary && typeof report.summary === 'object' ? report.summary : {};
+  const safeSummary = {
+    total: Math.max(0, Number(summary.total ?? report?.total ?? 0) || 0),
+    pass: Math.max(0, Number(summary.pass ?? report?.passed ?? 0) || 0),
+    fail: Math.max(0, Number(summary.fail ?? report?.failed ?? 0) || 0),
+    skipped: Math.max(0, Number(summary.skipped ?? 0) || 0)
+  };
+  const details = {
+    status: String(report?.status || 'UNKNOWN').slice(0, 40),
+    failedStages: Array.isArray(report?.failedStages) ? report.failedStages.slice(0, 20).map(value => String(value).slice(0, 120)) : [],
+    testFiles: Array.isArray(report?.testFiles) ? report.testFiles.slice(0, 20).map(value => String(value).slice(0, 160)) : [],
+    checks: Array.isArray(report?.checks) ? report.checks.slice(0, 30).map(item => ({
+      status: String(item?.status || 'UNKNOWN').slice(0, 20),
+      name: String(item?.name || '').slice(0, 120),
+      detail: String(item?.detail || '').slice(0, 240)
+    })) : []
+  };
+  const result = await db.query(
+    `INSERT INTO owner_test_runs(actor_id,target,status,summary,details)
+     VALUES($1,$2,$3,$4::jsonb,$5::jsonb) RETURNING id,created_at`,
+    [actor, testTarget, details.status, JSON.stringify(safeSummary), JSON.stringify(details)]
+  );
+  return result.rows?.[0] || null;
+}
+
+export async function listOwnerTestRuns(db, { page = 1, limit = 20 } = {}) {
+  const pageNumber = Number(page);
+  if (!Number.isSafeInteger(pageNumber) || pageNumber < 1) throw new Error('INVALID_TEST_RUN_PAGE');
+  const pageSize = Math.max(1, Math.min(Number(limit) || 20, 50));
+  const result = await db.query(
+    `SELECT id,target,status,summary,details,created_at,COUNT(*) OVER()::int AS total_count
+     FROM owner_test_runs ORDER BY id DESC LIMIT $1 OFFSET $2`,
+    [pageSize, (pageNumber - 1) * pageSize]
+  );
+  const rows = result.rows || [];
+  return { rows: rows.map(({ total_count, ...row }) => row), page: pageNumber, limit: pageSize, total: Number(rows[0]?.total_count || 0) };
 }
 
 export function formatDuration(totalSeconds) {
