@@ -208,6 +208,12 @@ def test_saved_checkpoint_can_be_loaded_for_inference(tmp_path: Path):
     train_model(corpus, checkpoint, config, device="cpu")
     model, tokenizer, metadata = load_checkpoint(checkpoint, device="cpu")
     assert metadata["step"] == 1
+    assert metadata["loss_objective_version"] == 1
+    assert metadata["training_objective"] == "assistant_response_tokens_plus_eos"
+    assert metadata["model_config"]["d_model"] == 16
+    assert metadata["training_config"]["max_steps"] == 1
+    assert metadata["tokenizer_type"] == "byte_bpe"
+    assert metadata["tokenizer_vocab_size"] == tokenizer.vocab_size
     assert tokenizer.decode(tokenizer.encode("Frieren")) == "Frieren"
     generated = generate_text(model, tokenizer, "Frieren", max_new_tokens=2, top_k=1)
     assert generated.startswith("Frieren")
@@ -240,6 +246,8 @@ def test_evaluation_uses_separate_corpus_and_returns_perplexity(tmp_path: Path):
     metrics = evaluate_checkpoint(checkpoint, evaluation_corpus, batch_size=1, batches=2, device="cpu")
     assert metrics["loss"] > 0
     assert metrics["perplexity"] >= 1
+    assert metrics["loss_objective_version"] == 1
+    assert metrics["checkpoint_training_loss_objective_version"] == 1
 
 
 def test_evaluation_rejects_training_corpus_reuse(tmp_path: Path):
