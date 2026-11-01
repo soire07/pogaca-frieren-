@@ -324,7 +324,7 @@ def test_training_stream_ends_each_assistant_turn_before_next_user():
         elif token != tokenizer.bos_id:
             current.append(token)
     assert tokenizer.decode(chunks[0]).endswith("Asistan: ilk yanıt\n")
-    assert tokenizer.decode(chunks[1]).startswith("Kullanıcı: ikinci soru\\n")
+    assert tokenizer.decode(chunks[1]).startswith("Kullanıcı: ikinci soru\n")
 
 
 def test_resume_rejects_checkpoint_with_legacy_dialogue_encoding(tmp_path: Path):
