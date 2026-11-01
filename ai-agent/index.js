@@ -57,7 +57,7 @@ const healthHost = process.env.FRIEREN_AI_HEALTH_HOST || '0.0.0.0';
 const healthServer = createServer(async (req, res) => {
   const privateHealthPaths = new Set(['/health', '/ready', '/live', '/bridge-health']);
   if (privateHealthPaths.has(req.url)) {
-    const expected = process.env.FRIEREN_AI_HEALTH_SECRET || '';
+    const expected = process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
     const supplied = req.headers['x-frieren-health-secret'] || '';
     const valid = expected.length >= 32 && typeof supplied === 'string'
       && Buffer.byteLength(expected) === Buffer.byteLength(supplied)
