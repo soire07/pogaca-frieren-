@@ -403,10 +403,38 @@ test('same-player equipment mutations lock the player row before reading or writ
 
   const equipItem = source.indexOf('const item = equipmentItems.find(entry => entry.id === itemId)');
   const equipBegin = source.indexOf("await db.query('BEGIN')", equipItem);
-  const equipOwned = source.indexOf('SELECT quantity FROM inventory', equipBegin);
   const equipLock = source.indexOf('SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', equipBegin);
+  const equipOwned = source.indexOf('SELECT quantity FROM inventory', equipBegin);
   const equipSlots = source.indexOf('SELECT slot FROM user_equipment', equipBegin);
   const equipWrite = source.indexOf('INSERT INTO user_equipment', equipBegin);
-  assert.ok(equipItem >= 0 && equipBegin > equipItem && equipOwned > equipBegin && equipLock > equipOwned && equipLock < equipSlots && equipSlots < equipWrite,
-    'equip must lock inventory first, then serialize on the player row before reading or writing equipped slots');
+  assert.ok(equipItem >= 0 && equipBegin > equipItem && equipLock > equipBegin && equipLock < equipOwned && equipOwned < equipSlots && equipSlots < equipWrite,
+    'equip must lock the player first, then inventory, before reading or writing equipped slots');
+});
+
+
+test('market purchases, item consumption and equipment changes use one player-first lock order', async () => {
+  const market = await read('market.js');
+  const itemUse = await read('esyakullan.js');
+  const equipment = await read('ekipman.js');
+
+  const purchaseStart = market.indexOf('export async function buyMarketItem');
+  const purchaseBegin = market.indexOf("await db.query('BEGIN')", purchaseStart);
+  const purchasePlayerLock = market.indexOf('UPDATE users SET coins=coins-$3', purchaseBegin);
+  const purchaseInventoryWrite = market.indexOf('INSERT INTO inventory', purchaseBegin);
+  assert.ok(purchaseStart >= 0 && purchaseBegin > purchaseStart && purchasePlayerLock > purchaseBegin && purchaseInventoryWrite > purchasePlayerLock,
+    'market purchase must lock/debit the player before writing inventory');
+
+  const useBegin = itemUse.indexOf("await db.query('BEGIN')");
+  const usePlayerLock = itemUse.indexOf('SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', useBegin);
+  const useInventoryLock = itemUse.indexOf('SELECT quantity FROM inventory', useBegin);
+  const usePlayerUpdate = itemUse.indexOf('UPDATE users SET', useInventoryLock);
+  assert.ok(useBegin >= 0 && usePlayerLock > useBegin && usePlayerLock < useInventoryLock && useInventoryLock < usePlayerUpdate,
+    'item use must lock the player before inventory and apply effects inside the same transaction');
+
+  const equipBegin = equipment.indexOf("await db.query('BEGIN')", equipment.indexOf('const item = equipmentItems.find(entry => entry.id === itemId)'));
+  const equipPlayerLock = equipment.indexOf('SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', equipBegin);
+  const equipInventoryLock = equipment.indexOf('SELECT quantity FROM inventory', equipBegin);
+  const equipWrite = equipment.indexOf('INSERT INTO user_equipment', equipBegin);
+  assert.ok(equipBegin >= 0 && equipPlayerLock > equipBegin && equipPlayerLock < equipInventoryLock && equipInventoryLock < equipWrite,
+    'equipment changes must use the same player-first lock order');
 });
