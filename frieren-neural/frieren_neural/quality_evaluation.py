@@ -85,7 +85,7 @@ def _metrics(scores: dict[str, Any]) -> dict[str, Any]:
 def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[str,str]],scores:dict[str,Any]|None,baseline_report:dict[str,Any]|None=None)->dict[str,Any]:
     report={"schema_version":1,"prompt_set_version":PROMPT_SET_VERSION,"decoding_settings":dict(DECODING_SETTINGS),
       "checkpoint_sha256":checkpoint_sha256,"checkpoint_step":checkpoint_step,"outputs":outputs,
-      "human_review":{"completed":False,"reviewers_required":2},"metrics":None,
+      "human_review":{"completed":False,"reviewers_required":2},"review_template":{"reviewers":["reviewer_1","reviewer_2"]},"metrics":None,
       "baseline_comparison":{"available":False,"improved":False},"decision":"NOT READY","blocking_reasons":[]}
     if scores is None:
         report["blocking_reasons"]=["human_review_missing"]
