@@ -113,7 +113,7 @@ class FrierenDiscordClient(discord.Client):
         try:
             async with self.session.post(
                 self.api_url,
-                json={"prompt": prompt, "max_new_tokens": 100, "temperature": 0.8, "top_k": 40},
+                json={"prompt": prompt, "max_new_tokens": 256, "temperature": 0.3, "top_k": 40},
             ) as response:
                 if response.status != 200:
                     await interaction.followup.send("Frieren AI could not process the request right now.")
