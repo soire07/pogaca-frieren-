@@ -115,7 +115,15 @@ export async function initOwnerAdminSchema(db) {
       finished_at TIMESTAMPTZ,
       repair_dispatch_status VARCHAR(16) NOT NULL DEFAULT 'not_requested' CHECK (repair_dispatch_status IN ('not_requested','dispatching','dispatched','failed')),
       repair_dispatch_at TIMESTAMPTZ,
-      repair_workflow_url TEXT
+      repair_workflow_url TEXT,
+      repair_run_id BIGINT,
+      repair_run_url TEXT,
+      repair_run_status VARCHAR(24),
+      repair_run_conclusion VARCHAR(24),
+      repair_pr_number BIGINT,
+      repair_pr_url TEXT,
+      repair_pr_state VARCHAR(16),
+      repair_checks_status VARCHAR(16) NOT NULL DEFAULT 'unknown'
     );
     CREATE INDEX IF NOT EXISTS idx_owner_guardian_jobs_recent ON owner_guardian_jobs(created_at DESC);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_owner_guardian_jobs_active
