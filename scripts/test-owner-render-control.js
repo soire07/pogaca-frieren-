@@ -43,6 +43,33 @@ test('Render status can use public health endpoints without exposing or requirin
   assert.ok(requested.every(url => !url.includes('/v1/services/')));
 });
 
+test('Render service API and health checks start concurrently and expose the health payload', async () => {
+  const requested = [];
+  let releaseApi;
+  const apiGate = new Promise(resolve => { releaseApi = resolve; });
+  const pending = getRenderBotServiceStatuses({
+    apiKey: 'test-token',
+    fetchImpl: async (url) => {
+      const target = String(url);
+      requested.push(target);
+      if (target.includes('/v1/services/')) {
+        await apiGate;
+        const ai = target.includes(RENDER_BOT_SERVICES.frieren_ai.id);
+        return { ok: true, status: 200, json: async () => ({
+          id: ai ? RENDER_BOT_SERVICES.frieren_ai.id : RENDER_BOT_SERVICES.pogaca.id,
+          suspended: 'not_suspended', suspenders: [], serviceDetails: { plan: 'free' }
+        }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ status: 'ok', discordReady: true }) };
+    }
+  });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requested.length, 4, 'both API and health requests for both services should start before API responses resolve');
+  releaseApi();
+  const status = await pending;
+  assert.equal(status.services.frieren_ai.healthPayload.discordReady, true);
+});
+
 test('Render status reads suspension state and does not health-ping a suspended AI service', async () => {
   const requested = [];
   const status = await getRenderBotServiceStatuses({
