@@ -3,7 +3,8 @@ import { getRenderServiceMetrics, renderMetricBars } from './owner-metrics.js';
 import {
   auditOwnerAction, getOwnerOverview, getMaintenanceState, listPendingApprovals,
   reviewApproval, listUserMemories, deleteUserMemory, setMaintenanceState,
-  sendOwnerAnnouncement, getRecentOwnerActivity
+  sendOwnerAnnouncement, getRecentOwnerActivity, listOwnerAuditLogs, recordOwnerTestRun, listOwnerTestRuns,
+  searchOwnerMemories, updateOwnerMemory
 } from './owner-admin.js';
 import { listOwnerPartnerLinks, saveOwnerPartnerLink, deleteOwnerPartnerLink, getOwnerRpgMetrics, updateGuildConfiguration, listGuildConfigurations, searchOwnerRpgPlayers, getOwnerRpgPlayerDetails, adjustOwnerRpgResources, adjustOwnerRpgInventory, setOwnerRpgEquipment } from './owner-platform.js';
 import { DEFAULT_GUILD_FEATURES, listGuildFeatureSettingsForGuilds, setGuildFeatureEnabled, resetGuildFeatureSetting } from './guild-feature-settings.js';
@@ -62,6 +63,7 @@ export function renderOwnerNavigation() {
         }[section.id] || '✧') + '</span><span class="nav-link-copy"><strong>' + section.label + '</strong>'
           + (section.command ? '<small>' + section.command + '</small>' : '') + '</span></a>' : '';
       }).join('') + '</div>').join('')
+    + '<div class="nav-group"><div class="nav-group-title">İŞLEM GEÇMİŞİ</div><a href="/owner/activity"><span class="nav-icon">◷</span><span class="nav-link-copy"><strong>Denetim ve test geçmişi</strong></span></a></div>'
     + '<div class="nav-group"><div class="nav-group-title">ÇALIŞMA ALANLARI</div>'
     + '<a href="/owner/pogaca"><span class="nav-icon">✿</span><span class="nav-link-copy"><strong>Poğaça çalışma alanı</strong></span></a>'
     + '<a href="/owner/frieren-ai"><span class="nav-icon">✧</span><span class="nav-link-copy"><strong>Frieren AI merkezi</strong></span></a>'
@@ -354,7 +356,7 @@ export async function getFrierenAIReadiness({
   } catch { return null; }
 }
 
-function renderDashboard({ session, overview, client, approvals, memories, memoryUser, notice, activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild }) {
+function renderDashboard({ session, overview, client, approvals, memories, memoryUser, memoryGuild, memoryKey, memoryGuild, memoryKey, notice, activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild }) {
   const featureLabels = { commands: 'Tüm komutlar', rpg: 'RPG sistemi', character: 'Karakter sistemi', magic: 'Büyü ve yetenekler', equipment: 'Ekipman ve eşyalar', economy: 'Ekonomi ve mağaza', quests: 'Görevler', dungeons: 'Zindanlar', bosses: 'Boss sistemi', trading: 'Takas', messageXp: 'Mesaj XP kazanımı', aiChat: 'Frieren sohbet etkileşimi' };
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
@@ -373,9 +375,9 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
   const memoryHtml = memories.length ? memories.map(row => `
     <div class="rowitem"><strong>#${row.id} · ${escapeHtml(row.memory_key)}</strong>
       <div class="small">Kullanıcı ${escapeHtml(row.user_id)} · Sunucu ${escapeHtml(row.guild_id)}</div>
-      <p>${escapeHtml(row.memory_value)}</p>
+      <form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="id" value="${row.id}"><input type="hidden" name="action" value="memory-update"><label>Hafıza içeriği</label><textarea name="value" maxlength="1000" required>${escapeHtml(row.memory_value)}</textarea><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Düzenlemeyi onaylıyorum</label><button class="btn secondary">Hafızayı güncelle</button></form>
       <form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="id" value="${row.id}"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Kalıcı olarak silmeyi onaylıyorum</label><button class="btn danger" name="action" value="memory-delete">Bu kaydı sil</button></form>
-    </div>`).join('') : '<p class="muted">Arama için bir Discord kullanıcı ID gir veya eşleşen kayıt bulunmadı.</p>';
+    </div>`).join('') : '<p class="muted">Filtrelere uygun hafıza kaydı bulunamadı.</p>';
   const configByGuild = new Map(guildConfigurations.map(row => [String(row.guild_id), row]));
   const serverManagementHtml = guilds.map(guild => {
     const config = configByGuild.get(guild.id) || {};
@@ -413,6 +415,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     approval_approved: 'Talep onaylandı. Kod otomatik çalıştırılmadı.',
     approval_rejected: 'Talep reddedildi.',
     memory_deleted: 'Hafıza kaydı silindi.',
+    memory_updated: 'Hafıza kaydı güncellendi ve denetim kaydına eklendi.',
     announcement_sent: 'Duyuru seçilen kanala gönderildi.',
     guild_config_saved: 'Sunucu ayarları kaydedildi.',
     feature_saved: 'Bot davranışı bu sunucu için kaydedildi.',
@@ -466,7 +469,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     <div class="columns">
       <section class="panel" id="approvals"><h2>Teknik talep onayları</h2><p class="muted">Onay/ret yalnızca talebin durumunu değiştirir; hiçbir kod otomatik çalıştırılmaz.</p>${approvalHtml}</section>
       <section class="panel" id="memories"><h2>Kullanıcı hafızaları</h2><p class="muted">Yalnızca mevcut Frieren hafıza kayıtları listelenir. Silme işlemi kalıcıdır.</p>
-        <form method="get" action="/owner"><label>Discord kullanıcı ID</label><input name="memoryUser" value="${escapeHtml(memoryUser)}" inputmode="numeric" placeholder="Örn. 123456789012345678" required><button class="btn secondary">Hafızaları getir</button></form>
+        <form method="get" action="/owner"><label>Discord kullanıcı ID (isteğe bağlı)</label><input name="memoryUser" value="${escapeHtml(memoryUser)}" inputmode="numeric" placeholder="Kullanıcı ID"><label>Discord sunucu ID (isteğe bağlı)</label><input name="memoryGuild" value="${escapeHtml(memoryGuild)}" inputmode="numeric" placeholder="Sunucu ID"><label>Hafıza anahtarı (isteğe bağlı)</label><input name="memoryKey" value="${escapeHtml(memoryKey)}" maxlength="60" placeholder="Örn. cevap-tercihi"><button class="btn secondary">Hafızaları filtrele</button></form>
         ${memoryHtml}
       </section>
     </div>
@@ -832,6 +835,9 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       } else if (action === 'approval-approved' || action === 'approval-rejected') {
         const result = await reviewApproval(db, form.get('id'), action === 'approval-approved' ? 'approved' : 'rejected', OWNER_ID);
         notice = result ? action.replace('-', '_') : 'invalid';
+      } else if (action === 'memory-update' && form.get('confirm') === 'yes') {
+        const result = await updateOwnerMemory(db, { id: form.get('id'), value: form.get('value'), actorId: OWNER_ID });
+        notice = result ? 'memory_updated' : 'invalid';
       } else if (action === 'memory-delete' && form.get('confirm') === 'yes') {
         const result = await deleteUserMemory(db, form.get('id'), OWNER_ID);
         notice = result ? 'memory_deleted' : 'invalid';
@@ -923,8 +929,11 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         : Promise.resolve({ status: 'unavailable', source: 'render', points: [], message: frierenService?.suspended ? 'Frieren AI askıda; metrik sorgusu yapılmadı.' : 'Frieren AI servis durumu doğrulandıktan sonra metrikler alınacak.' }),
       { status: 'loading', source: 'render', points: [], message: 'Frieren AI metrikleri arka planda yenileniyor.' }
     );
-    const memoryUser = String(url.searchParams.get('memoryUser') || '').replace(/\D/g, '').slice(0, 24);
-    const memories = memoryUser ? await listUserMemories(db, memoryUser, null, 30) : [];
+    const memoryUser = String(url.searchParams.get('memoryUser') || '').trim().slice(0, 24);
+    const memoryGuild = String(url.searchParams.get('memoryGuild') || '').trim().slice(0, 24);
+    const memoryKey = String(url.searchParams.get('memoryKey') || '').trim().slice(0, 60);
+    const memories = memoryUser || memoryGuild || memoryKey
+      ? await searchOwnerMemories(db, { userId: memoryUser, guildId: memoryGuild, key: memoryKey, limit: 30 }) : [];
     send(res, 200, renderDashboard({
       session, overview, client, approvals, memories, memoryUser,
       notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild
