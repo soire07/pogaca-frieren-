@@ -657,7 +657,7 @@
         "name": "region mastery persists per selected exploration region and is displayed to players",
         "markers": [
           "exploration_region_mastery",
-          "explorationMasteryReward(regionVisits)",
+          "Bölge ustalığı ödülü",
           "CREATE TABLE IF NOT EXISTS exploration_region_mastery"
         ]
       },
