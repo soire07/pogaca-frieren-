@@ -883,8 +883,19 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         }
         await db.query('SELECT 1');
         const healthSecret = String(process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+        const aiBase = String(process.env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).replace(/\/$/, '');
+        try {
+          const liveResponse = await fetch(aiBase + '/live', { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(7000) });
+          const livePayload = await liveResponse.json().catch(() => ({}));
+          if (!liveResponse.ok || livePayload.status !== 'alive' || livePayload.readiness?.bridgeConfigured !== true) {
+            await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_LIVENESS_FAILED', title: 'Frieren AI canlılık kontrolü başarısız', summary: 'Frieren AI /live kontrolü başarısız veya test köprüsü yapılandırılmamış.', severity: 'high' });
+            found += 1;
+          }
+        } catch (error) {
+          await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_LIVENESS_UNREACHABLE', title: 'Frieren AI canlılık endpointine ulaşılamadı', summary: String(error?.name || 'NetworkError') + ': Frieren AI /live kontrolü başarısız.', severity: 'high' });
+          found += 1;
+        }
         if (healthSecret.length >= 32) {
-          const aiBase = String(process.env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).replace(/\/$/, '');
           try {
             const response = await fetch(aiBase + '/health', { headers: { Accept: 'application/json', 'x-frieren-health-secret': healthSecret }, signal: AbortSignal.timeout(7000) });
             const payload = await response.json().catch(() => ({}));
