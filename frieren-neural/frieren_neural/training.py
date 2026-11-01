@@ -267,13 +267,30 @@ def train_model(
     selected_device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
     corpus_fingerprint = _corpus_fingerprint(documents)
     train_text, validation_text = split_corpus_text(documents, settings.validation_fraction)
-    tokenizer = BPETokenizer.train(
-        [train_text], vocab_size=settings.tokenizer_vocab_size, min_frequency=settings.tokenizer_min_frequency
-    )
-    train_data = torch.tensor(tokenizer.encode(train_text) + [tokenizer.eos_id], dtype=torch.long)
-    validation_data = torch.tensor(tokenizer.encode(validation_text) + [tokenizer.eos_id], dtype=torch.long)
-    if min(len(train_data), len(validation_data)) <= settings.block_size:
-        raise ValueError("Both train and validation splits must be longer than block_size.")
+    # BPE can compress very small/repetitive validation splits below the
+    # context window. Reduce the merge budget deterministically until both
+    # splits retain enough tokens; byte-level fallback is lossless.
+    effective_vocab_size = settings.tokenizer_vocab_size
+    while True:
+        tokenizer = BPETokenizer.train(
+            [train_text], vocab_size=effective_vocab_size,
+            min_frequency=settings.tokenizer_min_frequency
+        )
+        train_ids = tokenizer.encode(train_text)
+        validation_ids = tokenizer.encode(validation_text)
+        if min(len(train_ids), len(validation_ids)) + 1 > settings.block_size:
+            break
+        if effective_vocab_size == BPETokenizer.BASE_VOCAB_SIZE:
+            raise ValueError(
+                "Corpus is too short for the configured block_size, even with byte-level tokenization."
+            )
+        effective_vocab_size = max(
+            BPETokenizer.BASE_VOCAB_SIZE,
+            BPETokenizer.BASE_VOCAB_SIZE
+            + (effective_vocab_size - BPETokenizer.BASE_VOCAB_SIZE) // 2,
+        )
+    train_data = torch.tensor(train_ids + [tokenizer.eos_id], dtype=torch.long)
+    validation_data = torch.tensor(validation_ids + [tokenizer.eos_id], dtype=torch.long)
 
     model_config = GPTConfig(
         vocab_size=tokenizer.vocab_size, d_model=settings.d_model, n_heads=settings.n_heads,
