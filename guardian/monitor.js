@@ -9,7 +9,7 @@ function systemForScope(scope) {
   return 'pogaca_frieren';
 }
 
-export async function scanNewOwnerErrors(db, lastSeenErrorId = 0, limit = 50) {
+export async function scanNewOwnerErrors(db, lastSeenErrorId = 0, limit = 50, onProgress = async () => {}) {
   const result = await db.query(
     'SELECT id,scope,error_type,error_message,created_at FROM owner_error_logs WHERE id>$1 ORDER BY id ASC LIMIT $2',
     [Math.max(0, Number(lastSeenErrorId) || 0), Math.max(1, Math.min(Number(limit) || 50, 100))]
@@ -26,6 +26,7 @@ export async function scanNewOwnerErrors(db, lastSeenErrorId = 0, limit = 50) {
       evidence: [{ message: 'Log ID ' + row.id + ' · ' + new Date(row.created_at).toISOString() }],
     });
     recorded += 1;
+    await onProgress(nextId);
   }
   return { lastSeenErrorId: nextId, recorded };
 }
@@ -41,7 +42,6 @@ export function startGuardianMonitor({
   if (!db?.query) throw new Error('GUARDIAN_DATABASE_REQUIRED');
   let stopped = false;
   let running = false;
-  let lastSeenErrorId = 0;
   let initialized = false;
   let discordFailureReported = false;
   const interval = Math.max(60_000, Math.min(Number(intervalMs) || 300_000, 1_800_000));
@@ -51,13 +51,24 @@ export function startGuardianMonitor({
     running = true;
     try {
       if (!initialized) {
-        const baseline = await db.query('SELECT COALESCE(MAX(id),0)::bigint AS last_id FROM owner_error_logs');
-        lastSeenErrorId = Number(baseline.rows?.[0]?.last_id || 0);
+        await db.query(
+          `INSERT INTO owner_guardian_monitor_state(monitor_key,last_seen_error_id)
+           SELECT 'owner_error_logs',COALESCE(MAX(id),0) FROM owner_error_logs
+           ON CONFLICT(monitor_key) DO NOTHING`
+        );
         initialized = true;
-      } else {
-        const result = await scanNewOwnerErrors(db, lastSeenErrorId);
-        lastSeenErrorId = result.lastSeenErrorId;
       }
+      const cursorResult = await db.query(
+        "SELECT last_seen_error_id FROM owner_guardian_monitor_state WHERE monitor_key='owner_error_logs'"
+      );
+      const cursor = Number(cursorResult.rows?.[0]?.last_seen_error_id || 0);
+      await scanNewOwnerErrors(db, cursor, 50, async nextId => {
+        await db.query(
+          `UPDATE owner_guardian_monitor_state SET last_seen_error_id=$1,updated_at=NOW()
+           WHERE monitor_key='owner_error_logs' AND last_seen_error_id < $1`,
+          [nextId]
+        );
+      });
       const ready = typeof client?.isReady === 'function' ? client.isReady() : null;
       if (ready === false && !discordFailureReported) {
         await upsertGuardianIncident(db, {
