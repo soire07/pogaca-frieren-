@@ -211,13 +211,17 @@ document.getElementById("send").addEventListener("click",async()=>{const prompt=
 document.getElementById("logout").addEventListener("click",async()=>{try{await request("/web/logout",{});}catch{}chat.hidden=true;loginForm.hidden=false;answer.textContent="";statusNode.textContent="Oturum kapatıldı.";});
 checkSession();
 </script></body></html>"""
+    nonce = secrets.token_urlsafe(18)
+    page = page.replace("<style>", f'<style nonce="{nonce}">', 1)
+    page = page.replace("<script>", f'<script nonce="{nonce}">', 1)
     return HTMLResponse(
         page,
         headers={
-            "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+            "Content-Security-Policy": f"default-src 'none'; style-src 'nonce-{nonce}'; script-src 'nonce-{nonce}'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
             "X-Content-Type-Options": "nosniff",
             "Referrer-Policy": "no-referrer",
             "Cache-Control": "no-store",
+            "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
         },
     )
 
