@@ -4,6 +4,7 @@ from .model import GPTConfig, GPTLanguageModel
 from .tokenizer import BPETokenizer, CharacterTokenizer
 from .training import (
     TrainingConfig,
+    evaluate_checkpoint,
     generate_text,
     load_checkpoint,
     load_licensed_corpus,
@@ -18,6 +19,7 @@ __all__ = [
     "GPTConfig",
     "GPTLanguageModel",
     "TrainingConfig",
+    "evaluate_checkpoint",
     "generate_text",
     "load_checkpoint",
     "load_licensed_corpus",
