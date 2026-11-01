@@ -145,6 +145,12 @@ def _corpus_fingerprint(documents: Sequence[str]) -> str:
     return digest.hexdigest()
 
 
+def _corpus_content_fingerprint(documents: Sequence[str]) -> str:
+    """Hash normalized text independent of how a caller groups documents."""
+    normalized = "\\n".join(document.strip() for document in documents).encode("utf-8")
+    return hashlib.sha256(normalized).hexdigest()
+
+
 def split_corpus_text(
     documents: Sequence[str], validation_fraction: float = 0.1
 ) -> tuple[str, str]:
@@ -266,6 +272,7 @@ def train_model(
     torch.manual_seed(settings.seed)
     selected_device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
     corpus_fingerprint = _corpus_fingerprint(documents)
+    corpus_content_fingerprint = _corpus_content_fingerprint(documents)
     train_text, validation_text = split_corpus_text(documents, settings.validation_fraction)
     # BPE can compress very small/repetitive validation splits below the
     # context window. Reduce the merge budget deterministically until both
@@ -353,6 +360,7 @@ def train_model(
                 "training_config": asdict(settings),
                 "tokenizer": tokenizer.to_dict(),
                 "corpus_sha256": corpus_fingerprint,
+                "corpus_content_sha256": corpus_content_fingerprint,
                 "model_state": model.state_dict(),
                 "optimizer_state": optimizer.state_dict(),
                 "batch_generator_state": batch_generator.get_state(),
@@ -395,7 +403,7 @@ def load_checkpoint(
     payload = torch.load(checkpoint_path, map_location=selected_device, weights_only=True)
     if not isinstance(payload, dict) or payload.get("format_version") != 2:
         raise ValueError("Unsupported or invalid Frieren Neural checkpoint.")
-    required_fields = {"step", "corpus_sha256", "train_loss", "validation_loss", "model_state"}
+    required_fields = {"step", "corpus_sha256", "corpus_content_sha256", "train_loss", "validation_loss", "model_state"}
     if not required_fields.issubset(payload):
         raise ValueError("Checkpoint is missing required training metadata or model weights.")
     try:
@@ -411,6 +419,7 @@ def load_checkpoint(
     metadata: dict[str, float | int | str] = {
         "step": int(payload["step"]),
         "corpus_sha256": str(payload["corpus_sha256"]),
+        "corpus_content_sha256": str(payload["corpus_content_sha256"]),
         "train_loss": float(payload["train_loss"]),
         "validation_loss": float(payload["validation_loss"]),
     }
@@ -455,8 +464,10 @@ def evaluate_checkpoint(
     if not documents or any(not isinstance(item, str) or not item.strip() for item in documents):
         raise ValueError("Evaluation documents must contain non-empty strings.")
     fingerprint = _corpus_fingerprint(documents)
+    content_fingerprint = _corpus_content_fingerprint(documents)
     model, tokenizer, metadata = load_checkpoint(checkpoint_path, device=device)
-    if fingerprint == metadata["corpus_sha256"]:
+    if (fingerprint == metadata["corpus_sha256"]
+            or content_fingerprint == metadata["corpus_content_sha256"]):
         raise ValueError("Evaluation corpus must be separate from the training corpus.")
     evaluation_text = "\n".join(item.strip() for item in documents)
     tokens = torch.tensor(tokenizer.encode(evaluation_text) + [tokenizer.eos_id], dtype=torch.long)
