@@ -1,9 +1,11 @@
+from concurrent.futures import ThreadPoolExecutor
+
 import pytest
 from fastapi.testclient import TestClient
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 
-from frieren_neural.api import app, clear_runtime_cache, _generation_capacity, _generation_slots
+from frieren_neural.api import (app, clear_runtime_cache, _generation_capacity, _generation_slots, _login_attempts, _login_attempts_lock, _login_rate_limit)
 
 
 @pytest.fixture
@@ -206,3 +208,31 @@ def test_generation_capacity_releases_slot_after_exception():
             raise RuntimeError("simulated generation failure")
     assert _generation_slots.acquire(blocking=False)
     _generation_slots.release()
+
+
+
+def test_login_rate_limit_is_atomic_under_concurrent_attempts():
+    scope = {
+        "type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
+        "method": "POST", "scheme": "https", "path": "/", "raw_path": b"/",
+        "query_string": b"", "headers": [], "client": ("198.51.100.42", 12345),
+        "server": ("testserver", 443),
+    }
+    request = Request(scope)
+    with _login_attempts_lock:
+        _login_attempts.pop("198.51.100.42", None)
+
+    def attempt():
+        try:
+            _login_rate_limit(request)
+            return "accepted"
+        except HTTPException as error:
+            return error.status_code
+
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        results = list(pool.map(lambda _: attempt(), range(12)))
+
+    assert results.count("accepted") == 5
+    assert results.count(429) == 7
+    with _login_attempts_lock:
+        _login_attempts.pop("198.51.100.42", None)
