@@ -58,6 +58,17 @@ Training automatically uses CUDA when available and otherwise CPU. CPU is suitab
 
 Checkpoints are written atomically and ignored by Git. Keep datasets and model weights in private storage, not Git.
 
+## Evaluate on held-out data
+
+Use a separate corpus directory with its own `corpus_manifest.json`; the evaluator rejects the exact training corpus fingerprint.
+
+```bash
+frieren-neural-evaluate --data ./held-out-corpus --checkpoint checkpoints/frieren-neural.pt --batches 50
+```
+
+The reported perplexity is a language-model metric, not a guarantee of factual accuracy or conversational quality.
+
+
 ## Load and generate
 
 ```python
