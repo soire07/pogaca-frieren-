@@ -635,7 +635,8 @@ def generate_text(
     prompt_ids = encode_generation_prompt(prompt, tokenizer)
     input_ids = torch.tensor([prompt_ids], dtype=torch.long, device=device)
     generated = model.generate(
-        input_ids, max_new_tokens=max_new_tokens, temperature=temperature, top_k=top_k
+        input_ids, max_new_tokens=max_new_tokens, temperature=temperature, top_k=top_k,
+        eos_token_id=tokenizer.eos_id,
     )[0].tolist()
     completion_ids = generated[len(prompt_ids):]
     if tokenizer.eos_id in completion_ids:
