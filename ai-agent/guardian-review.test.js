@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { normalizeGuardianReviewIncident, parseGuardianReview } from './guardian-review.js';
 
 test('Guardian review input accepts only known systems and redacts secrets', () => {
@@ -38,4 +39,16 @@ test('Guardian review parser rejects non-JSON model output', () => {
   assert.throws(() => parseGuardianReview('I think the bug is in a timeout.'), {
     message: 'GUARDIAN_REVIEW_INVALID_JSON',
   });
+});
+
+test('Guardian review busy lock is not set by ordinary scenario tests and is released by review finally', async () => {
+  const source = await readFile(new URL('./index.js', import.meta.url), 'utf8');
+  const scenarioStart = source.indexOf("if (req.url === '/internal/test-scenario'");
+  const guardianStart = source.indexOf("if (req.url === '/internal/guardian-review'");
+  assert.ok(scenarioStart >= 0 && guardianStart > scenarioStart);
+  const scenarioRoute = source.slice(scenarioStart, guardianStart);
+  const guardianRoute = source.slice(guardianStart);
+  assert.doesNotMatch(scenarioRoute, /guardianReviewInProgress\s*=\s*true/);
+  assert.match(guardianRoute, /guardianReviewInProgress\s*=\s*true/);
+  assert.match(guardianRoute, /finally\s*\{\s*guardianReviewInProgress\s*=\s*false/);
 });
