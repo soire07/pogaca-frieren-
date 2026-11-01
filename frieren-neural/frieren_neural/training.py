@@ -78,6 +78,76 @@ def load_text_corpus(path: str | Path) -> list[str]:
     return documents
 
 
+
+def load_licensed_corpus(path: str | Path) -> list[str]:
+    """Load a corpus only when every text file has explicit source/license metadata."""
+    root = Path(path)
+    if not root.is_dir():
+        raise ValueError("Licensed corpus path must be a directory.")
+    root_resolved = root.resolve()
+    manifest_path = root / "corpus_manifest.json"
+    if not manifest_path.is_file():
+        raise ValueError("A corpus_manifest.json file is required before CLI training.")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("corpus_manifest.json must be valid UTF-8 JSON.") from error
+    entries = manifest.get("documents") if isinstance(manifest, dict) else None
+    if not isinstance(manifest, dict) or manifest.get("schema_version") != 1 or not isinstance(entries, list) or not entries:
+        raise ValueError("Corpus manifest must use schema_version 1 and contain a non-empty documents list.")
+
+    declared: set[str] = set()
+    documents: list[str] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError("Each corpus manifest document must be an object.")
+        relative_path = entry.get("path")
+        metadata = (entry.get("source"), entry.get("license"), entry.get("usage"))
+        if (not isinstance(relative_path, str) or not relative_path.strip()
+                or any(not isinstance(value, str) or not value.strip() or "replace" in value.lower()
+                       for value in metadata)):
+            raise ValueError("Every corpus entry needs a path, source, license, and usage description.")
+        file_path = (root / relative_path).resolve()
+        if not file_path.is_relative_to(root_resolved):
+            raise ValueError(f"Corpus file must stay inside the corpus directory: {relative_path}")
+        if file_path.suffix.lower() not in SUPPORTED_SUFFIXES or not file_path.is_file():
+            raise ValueError(f"Corpus file must exist and end in .txt or .md: {relative_path}")
+        canonical_path = file_path.relative_to(root_resolved).as_posix()
+        if canonical_path in declared:
+            raise ValueError(f"Duplicate corpus manifest path: {canonical_path}")
+        declared.add(canonical_path)
+        content = file_path.read_text(encoding="utf-8").strip()
+        if not content:
+            raise ValueError(f"Corpus file is empty: {canonical_path}")
+        documents.append(content)
+
+    actual_files: set[str] = set()
+    for file_path in root.rglob("*"):
+        if file_path.is_file() and file_path.suffix.lower() in SUPPORTED_SUFFIXES:
+            resolved = file_path.resolve()
+            if not resolved.is_relative_to(root_resolved):
+                raise ValueError("Corpus symlinks must not point outside the corpus directory.")
+            actual_files.add(resolved.relative_to(root_resolved).as_posix())
+    if actual_files != declared:
+        raise ValueError("Manifest paths must exactly match all .txt/.md files in the corpus directory.")
+    return documents
+
+
+def split_corpus_text(
+    documents: Sequence[str], validation_fraction: float = 0.1
+) -> tuple[str, str]:
+    """Chronologically split raw text before tokenizer training to prevent validation leakage."""
+    if not documents or any(not isinstance(item, str) or not item.strip() for item in documents):
+        raise ValueError("documents must contain non-empty strings.")
+    if not 0.0 < validation_fraction < 0.5:
+        raise ValueError("validation_fraction must be between 0 and 0.5.")
+    combined = "\n".join(item.strip() for item in documents)
+    validation_size = max(1, int(len(combined) * validation_fraction))
+    training_size = len(combined) - validation_size
+    if training_size < 2 or validation_size < 2:
+        raise ValueError("Corpus text must contain at least four characters for a useful split.")
+    return combined[:training_size], combined[training_size:]
+
 def split_tokens(tokens: Tensor, validation_fraction: float = 0.1) -> tuple[Tensor, Tensor]:
     """Split a token stream chronologically to reduce train/validation leakage."""
     if tokens.ndim != 1:
@@ -184,15 +254,12 @@ def train_model(
     torch.manual_seed(settings.seed)
     selected_device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
     corpus_fingerprint = hashlib.sha256(json.dumps(list(documents), ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
+    train_text, validation_text = split_corpus_text(documents, settings.validation_fraction)
     tokenizer = BPETokenizer.train(
-        documents, vocab_size=settings.tokenizer_vocab_size, min_frequency=settings.tokenizer_min_frequency
+        [train_text], vocab_size=settings.tokenizer_vocab_size, min_frequency=settings.tokenizer_min_frequency
     )
-    encoded: list[int] = []
-    for document in documents:
-        encoded.extend(tokenizer.encode(document.strip()))
-        encoded.append(tokenizer.eos_id)
-    token_stream = torch.tensor(encoded, dtype=torch.long)
-    train_data, validation_data = split_tokens(token_stream, settings.validation_fraction)
+    train_data = torch.tensor(tokenizer.encode(train_text) + [tokenizer.eos_id], dtype=torch.long)
+    validation_data = torch.tensor(tokenizer.encode(validation_text) + [tokenizer.eos_id], dtype=torch.long)
     if min(len(train_data), len(validation_data)) <= settings.block_size:
         raise ValueError("Both train and validation splits must be longer than block_size.")
 
@@ -277,7 +344,7 @@ def train_model(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train the Frieren Neural language model.")
-    parser.add_argument("--data", required=True, help="UTF-8 .txt/.md file or directory of documents")
+    parser.add_argument("--data", required=True, help="Directory of UTF-8 .txt/.md files with corpus_manifest.json provenance")
     parser.add_argument("--checkpoint", default="checkpoints/frieren-neural.pt")
     parser.add_argument("--steps", type=int, default=1_000)
     parser.add_argument("--batch-size", type=int, default=16)
@@ -285,7 +352,7 @@ def main() -> None:
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--device", default=None, help="cpu, cuda, or omit for automatic selection")
     args = parser.parse_args()
-    documents = load_text_corpus(args.data)
+    documents = load_licensed_corpus(args.data)
     config = TrainingConfig(max_steps=args.steps, batch_size=args.batch_size, block_size=args.block_size)
     metrics = train_model(documents, args.checkpoint, config, resume=args.resume, device=args.device)
     print(json.dumps(metrics, ensure_ascii=False, indent=2))
