@@ -206,7 +206,8 @@
         "path": "scripts/check-gameplay-integrity.js",
         "name": "successful Zoltraak casts in cooperative dungeon and boss raid advance persistent spell mastery",
         "markers": [
-          "const spellCasts = new Map()",
+          "spellCasts",
+          "spell_mastery",
           "mastery_level=LEAST"
         ]
       },
