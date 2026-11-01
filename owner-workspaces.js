@@ -8,6 +8,10 @@ const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
 export async function getOwnerDatabaseDiagnostics(db) {
   const result = await db.query(`
     SELECT current_database() AS database_name, NOW() AS checked_at,
+      current_setting('server_version') AS server_version,
+      pg_database_size(current_database())::bigint AS database_size_bytes,
+      (SELECT COUNT(*)::int FROM pg_stat_activity WHERE datname=current_database() AND state='active') AS active_connections,
+      (SELECT COUNT(*)::int FROM pg_stat_activity WHERE datname=current_database() AND state='idle') AS idle_connections,
       tables.table_name, COALESCE(stats.n_live_tup,0)::bigint AS row_count
     FROM information_schema.tables AS tables
     LEFT JOIN pg_stat_user_tables AS stats
@@ -16,10 +20,15 @@ export async function getOwnerDatabaseDiagnostics(db) {
     ORDER BY tables.table_name LIMIT 40
   `);
   const rows = result.rows || [];
+  const first = rows[0] || {};
   return {
     connected: true,
-    databaseName: String(rows[0]?.database_name || ''),
-    checkedAt: rows[0]?.checked_at || null,
+    databaseName: String(first.database_name || ''),
+    checkedAt: first.checked_at || null,
+    serverVersion: String(first.server_version || ''),
+    databaseSizeBytes: Number(first.database_size_bytes || 0),
+    activeConnections: Number(first.active_connections || 0),
+    idleConnections: Number(first.idle_connections || 0),
     tables: rows.map(row => ({ name: String(row.table_name || ''), rows: Number(row.row_count || 0) }))
   };
 }
@@ -184,12 +193,20 @@ export function renderOwnerWorkspace(kind, data = {}) {
     return heading('PostgreSQL', 'Üretim verilerine zarar vermeden salt okunur veritabanı görünümü.')
       + '<div class="grid"><div class="stat"><small>Bağlantı</small><strong class="good">Bağlı</strong></div>'
       + '<div class="stat"><small>Veritabanı</small><strong>' + escapeHtml(db.databaseName) + '</strong></div>'
-      + '<div class="stat"><small>Tablo sayısı</small><strong>' + db.tables.length + '</strong></div></div>'
+      + '<div class="stat"><small>Tablo sayısı</small><strong>' + db.tables.length + '</strong></div>'
+      + '<div class="stat"><small>Veritabanı boyutu</small><strong>' + (Number(db.databaseSizeBytes || 0) / 1024 / 1024).toFixed(1) + ' MB</strong></div>'
+      + '<div class="stat"><small>PostgreSQL</small><strong>' + escapeHtml(db.serverVersion || '—') + '</strong></div>'
+      + '<div class="stat"><small>Aktif / boş bağlantı</small><strong>' + Number(db.activeConnections || 0) + ' / ' + Number(db.idleConnections || 0) + '</strong></div></div>'
       + '<section class="panel"><h2>Tablolar</h2><p class="muted">Kayıtlar salt okunur görüntülenir. Parola, token, anahtar, e-posta, mesaj ve hafıza içeriği gibi hassas alanlar listelenmez.</p>'
       + (db.tables.length ? '<div class="rowitem"><strong>Tablo</strong><strong style="float:right">Tahmini kayıt</strong></div>' + db.tables.map(row => '<div class="rowitem"><a href="/owner/database?table=' + encodeURIComponent(row.name) + '">' + escapeHtml(row.name) + '</a><strong style="float:right">' + Number(row.rows).toLocaleString('tr-TR') + '</strong></div>').join('') : '<p class="muted">Tablo bulunamadı.</p>')
       + '</section>'
       + (data.preview ? '<section class="panel"><h2>' + escapeHtml(data.preview.table) + ' · kayıt önizleme</h2><form method="get" action="/owner/database"><input type="hidden" name="table" value="' + escapeHtml(data.preview.table) + '"><label>Güvenli alanlarda ara</label><input name="search" maxlength="80" value="' + escapeHtml(data.preview.search) + '" placeholder="Arama terimi"><button class="btn secondary">Ara</button></form>'
         + (data.preview.rows.length && data.preview.columns.length ? '<div style="overflow:auto"><table class="data-table"><thead><tr>' + data.preview.columns.map(name => '<th>' + escapeHtml(name) + '</th>').join('') + '</tr></thead><tbody>' + data.preview.rows.map(row => '<tr>' + data.preview.columns.map(name => '<td>' + escapeHtml(row[name]) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>' : '<p class="muted">Gösterilecek kayıt bulunamadı veya bu tabloda güvenli alan yok.</p>') + '</section>' : '')
+      + '<section class="panel"><h2>Yedekleme ve geri yükleme</h2>'
+      + '<div class="notice warn">Neon Free planında otomatik snapshot zamanlaması kullanılamaz. Son doğrulanan üretim yapılandırmasında 6 saatlik Point-in-Time Restore (PITR) geçmişi bulunuyor. Manuel snapshot ücretsiz değildir: depolama yaklaşık 0,09 USD/GB-ay ve Free planında 1 manuel snapshot sınırı vardır. Bu panel ücretli snapshot veya üretim geri yüklemesi başlatmaz.</div>'
+      + '<p class="muted">Geri yükleme gerekirse Neon Console üzerinden önce ayrı bir kurtarma dalına (branch) geri yükle, verileri doğrula ve ancak bundan sonra üretim dalını değiştir. Doğrudan üretim dalının üzerine geri yükleme bu panelde özellikle kapalı tutulur.</p>'
+      + (data.backup?.consoleUrl ? '<a class="btn secondary" href="' + escapeHtml(data.backup.consoleUrl) + '" target="_blank" rel="noopener">Neon yedekleme ve dalları aç</a>' : '<p class="small">Neon proje bağlantısı için Render ortamında NEON_PROJECT_ID yapılandırılmamış.</p>')
+      + '</section>'
       + '<p class="small">Son kontrol: ' + escapeHtml(db.checkedAt ? new Date(db.checkedAt).toLocaleString('tr-TR') : 'bilinmiyor') + '</p>';
   }
   if (kind === 'settings') {
