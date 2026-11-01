@@ -117,3 +117,27 @@ def test_prepare_dataset_supports_a_separate_held_out_test_split(tmp_path, monke
 def test_prepare_dataset_rejects_unknown_split(tmp_path):
     with pytest.raises(ValueError, match="split must be one of"):
         datasets.prepare_turkish_daily_dialogues(tmp_path / "unknown", split="dev")
+
+
+def test_prepare_dataset_rolls_back_partial_output_when_manifest_commit_fails(
+    tmp_path, monkeypatch
+):
+    raw = (json.dumps(_record(), ensure_ascii=False) + "\\n").encode("utf-8")
+    _install_fake_download(monkeypatch, raw)
+    output = tmp_path / "prepared"
+    real_replace = datasets.os.replace
+    calls = 0
+
+    def fail_second_replace(source, destination):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("simulated manifest commit failure")
+        return real_replace(source, destination)
+
+    monkeypatch.setattr(datasets.os, "replace", fail_second_replace)
+
+    with pytest.raises(OSError, match="simulated manifest commit failure"):
+        datasets.prepare_turkish_daily_dialogues(output)
+
+    assert list(output.iterdir()) == []
