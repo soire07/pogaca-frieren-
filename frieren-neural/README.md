@@ -7,23 +7,21 @@ This directory is isolated from the existing Discord bot and its runtime. It doe
 ## Current scope
 
 - A compact decoder-only Transformer (GPT-style) implemented with PyTorch.
-- A deterministic byte-level BPE tokenizer that round-trips multilingual UTF-8 text without an unknown-byte fallback.
-- The original character tokenizer remains available for compatibility and simple unit tests.
-- Next-token language-model objective and autoregressive generation helper.
-- UTF-8 text corpus loader for `.txt` and `.md` files.
-- Chronological train/validation split, mini-batch sampling, AdamW, gradient clipping, and periodic loss evaluation.
-- Atomic checkpoints with optimizer state and guarded resume.
-- Unit tests and a CPU GitHub Actions test workflow.
+- A deterministic byte-level BPE tokenizer with lossless multilingual UTF-8 round-trips; the earlier character tokenizer remains for compatibility.
+- Next-token training with AdamW, gradient clipping, and train/validation loss measurement.
+- Tokenizer training uses only the training text; validation text is held out before BPE merges are learned.
+- CLI corpus loading requires a provenance manifest listing each file's source, license, and permitted usage.
+- Atomic, versioned checkpoints store model, optimizer, tokenizer, corpus fingerprint, and RNG states for deterministic resume.
+- Safe weights-only checkpoint loading and a small text-generation helper.
+- Unit tests and a CPU GitHub Actions workflow.
 
-The custom byte-level BPE implementation is a compact baseline, not a production-grade SentencePiece implementation. Its deterministic merge training is intentionally simple and should be benchmarked on a properly licensed multilingual corpus before serious training.
+This compact custom byte-BPE implementation is an experimental baseline, not a production-grade SentencePiece implementation. Benchmark it on a properly licensed multilingual corpus before serious training.
 
-## Requirements
+## Requirements and tests
 
 - Python 3.11+
 - PyTorch 2.x
 - pytest
-
-Install from this directory:
 
 ```bash
 python -m venv .venv
@@ -32,33 +30,22 @@ pip install -e ".[dev]"
 pytest
 ```
 
-## Minimal model smoke test
+## Prepare a licensed corpus
 
-```python
-import torch
-from frieren_neural import CharacterTokenizer, GPTConfig, GPTLanguageModel
+Create a corpus directory containing only UTF-8 `.txt` or `.md` files. Copy `corpus_manifest.example.json` into that directory as `corpus_manifest.json`, then replace every placeholder with accurate source, license, and usage information. The CLI refuses missing manifests, placeholder metadata, path traversal, symlinks escaping the corpus directory, empty files, and unlisted text files.
 
-tokenizer = CharacterTokenizer.train(["Merhaba Frieren."])
-tokens = torch.tensor([tokenizer.encode("Merhaba")], dtype=torch.long)
+The manifest is a provenance record, not legal advice or an automatic license verifier. Only include material you are authorized to use for model training. Do not include private messages, credentials, personal data, or scraped copyrighted books/anime scripts.
 
-model = GPTLanguageModel(
-    GPTConfig(
-        vocab_size=tokenizer.vocab_size,
-        d_model=64,
-        n_heads=4,
-        n_layers=2,
-        max_seq_len=64,
-    )
-)
-logits = model(tokens)
-print(logits.shape)
+Example layout:
+
+```text
+corpus/
+  corpus_manifest.json
+  texts/
+    permitted-text.txt
 ```
 
-## Training a small baseline
-
-Place UTF-8 `.txt` or `.md` files in a corpus directory. Only use text you have the right to use. Record each source, its license, and any usage restrictions before training; do not use private messages or personal data.
-
-The loader recursively reads supported files in sorted path order. The train/validation split is chronological to reduce leakage between neighboring text windows. The tokenizer learns byte-pair merges from the supplied corpus; its vocabulary size can be tuned in `TrainingConfig`.
+## Train a small baseline
 
 ```bash
 pip install -e ".[dev]"
@@ -67,25 +54,35 @@ frieren-neural-train --data ./corpus --steps 1000 --batch-size 8 --block-size 12
 frieren-neural-train --data ./corpus --steps 2000 --batch-size 8 --block-size 128 --resume
 ```
 
-Training automatically uses CUDA when available and otherwise CPU. CPU is suitable for smoke tests and very small experiments, not large-scale pretraining. Resume verifies the corpus fingerprint, tokenizer, model configuration, and training settings; only the total target step count may increase.
+Training automatically uses CUDA when available and otherwise CPU. CPU is suitable for smoke tests and very small experiments, not large-scale pretraining. Resume verifies corpus fingerprint, tokenizer, model configuration, and training settings; only the target step count may increase. It also restores RNG states so a split CPU run can reproduce an uninterrupted run.
 
-Checkpoints are written atomically and ignored by Git. Keep them in private storage; do not commit model weights or datasets.
+Checkpoints are written atomically and ignored by Git. Keep datasets and model weights in private storage, not Git.
+
+## Load and generate
+
+```python
+from frieren_neural import load_checkpoint, generate_text
+
+model, tokenizer, metrics = load_checkpoint("checkpoints/frieren-neural.pt")
+print(metrics)
+print(generate_text(model, tokenizer, "Frieren ", max_new_tokens=80))
+```
 
 ## Engineering constraints
 
 1. Never put credentials, Discord tokens, database URLs, or private user data in this directory.
 2. Do not connect this experimental model to production Discord or web traffic until quality, safety, load, and persistence tests exist.
 3. Keep model checkpoints and datasets out of Git.
-4. Training data must have a documented source and license/usage basis.
+4. Training data must have documented source and license/usage basis.
 5. A passing unit test proves implementation behavior only; it does not prove useful language ability.
 
 ## Roadmap
 
 1. **Foundation:** tokenizer, Transformer, and baseline tests.
-2. **Training:** baseline corpus loader, batching, optimizer, evaluation, and checkpoint-resume are implemented. Corpus provenance tooling and a scalable subword tokenizer remain.
+2. **Training:** BPE, provenance checks, leakage-free split, training, evaluation, and deterministic resume are implemented.
 3. **Evaluation:** held-out perplexity, Turkish/English quality sets, and regression benchmarks.
 4. **Memory and tools:** separate retrieval/memory and tool execution from model weights.
 5. **Serving:** a small inference API, then web and Discord adapters sharing the same core.
-6. **Scaling:** improve data, tokenizer, model size, and training only when compute is available.
+6. **Scaling:** improve data, tokenizer, model size, and training only when suitable compute is available.
 
 A genuinely capable model requires substantial clean data and compute. This is a small research model, not a ChatGPT-equivalent system.
