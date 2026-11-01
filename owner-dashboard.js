@@ -662,10 +662,8 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       }
       const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS;
       const setCookies = [clearOwnerCookie(STATE_COOKIE, '/owner')];
-      if (flow === 'register' || flow === 'login' || userId === OWNER_ID) {
-        const siteSession = createPublicSiteSession(sessionSecret, user, expiresAt);
-        setCookies.push(buildPublicSiteSessionCookie(siteSession, SESSION_TTL_SECONDS));
-      }
+      const siteSession = createPublicSiteSession(sessionSecret, user, expiresAt);
+      setCookies.push(buildPublicSiteSessionCookie(siteSession, SESSION_TTL_SECONDS));
       if (userId === OWNER_ID) {
         const config = await getOwnerTotpConfig(db);
         const setupRequired = config.enabled !== true || typeof config.secret !== 'string';
@@ -697,16 +695,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       }
     } catch (error) {
       console.error('Owner OAuth login failed:', error?.message || 'unknown error');
-      if (flow === 'register' || flow === 'login') {
-        res.writeHead(302, {
-          Location: '/' + flow + '?status=oauth_error',
-          'Cache-Control': 'no-store',
-          'Set-Cookie': [clearOwnerCookie(STATE_COOKIE, '/owner'), clearOwnerCookie(SESSION_COOKIE, '/owner')]
-        });
-        res.end();
-      } else {
-        send(res, 502, page('Discord bağlantı hatası', '<h1>Discord ile giriş tamamlanamadı</h1><p>Biraz sonra yeniden dene.</p><a class="btn secondary" href="/">Ana sayfaya dön</a>'), { 'Set-Cookie': [clearOwnerCookie(STATE_COOKIE, '/owner'), clearOwnerCookie(SESSION_COOKIE, '/owner')] });
-      }
+      send(res, 502, page('Discord bağlantı hatası', '<h1>Discord ile giriş tamamlanamadı</h1><p>Biraz sonra yeniden dene.</p><a class="btn secondary" href="/">Ana sayfaya dön</a>'), { 'Set-Cookie': [clearOwnerCookie(STATE_COOKIE, '/owner'), clearOwnerCookie(SESSION_COOKIE, '/owner')] });
     }
     return true;
   }
