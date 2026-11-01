@@ -15,7 +15,7 @@ import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } fr
 import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
-import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, reserveGuardianRepairDispatch, finishGuardianRepairDispatch } from './guardian/store.js';
+import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, reserveGuardianRepairDispatch, finishGuardianRepairDispatch, updateGuardianRepairStatus } from './guardian/store.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -549,6 +549,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
     guardian_pr_dispatched: 'Güvenli onarım workflow\'u başlatıldı. Testler geçerse ayrı bir PR açılacak; birleştirme ve dağıtım yapılmayacak.',
     guardian_github_not_configured: 'GitHub Actions tetikleme anahtarı eksik. Poğaça Render ortamına FRIEREN_GITHUB_TOKEN eklenmeli.',
     guardian_pr_dispatch_failed: 'Onarım workflow\'u başlatılamadı. Job kaydı korundu; hata ayrıntıları sırları açığa çıkarmadan kaydedildi.',
+    guardian_pr_status_updated: 'GitHub Actions ve PR durumu yenilendi.',
   })[notice] || '';
   const incidentHtml = incidents.length ? incidents.map(incident => {
     const evidence = Array.isArray(incident.evidence) ? incident.evidence : [];
@@ -579,6 +580,12 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + (result.status === 'insufficient_context' ? '<p class="notice warn">Kaynak bağlamı yetersiz; tahminle düzeltme hazırlanmadı.</p>' : '')
       + (result.status === 'proposal_only' && job.repair_dispatch_status === 'dispatched' ? '<p class="notice">Onarım workflow\'u başlatıldı. <a href="https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml" target="_blank" rel="noopener noreferrer">GitHub Actions sonuçlarını aç</a></p>' : '')
       + (result.status === 'proposal_only' && job.repair_dispatch_status === 'dispatching' ? '<p class="notice warn">Onarım workflow başlatma isteği gönderiliyor veya sonucu bekleniyor. Tekrar tetiklemek yerine önce GitHub Actions geçmişini kontrol et.</p>' : '')
+      + (job.repair_run_status ? '<p class="small">Workflow: ' + escapeHtml(job.repair_run_status) + (job.repair_run_conclusion ? ' · Sonuç: ' + escapeHtml(job.repair_run_conclusion) : '') + '</p>' : '')
+      + (job.repair_checks_status && job.repair_checks_status !== 'unknown' ? '<p class="small">PR kontrolleri: ' + escapeHtml(job.repair_checks_status) + '</p>' : '')
+      + (job.repair_run_url ? '<p><a href="' + escapeHtml(job.repair_run_url) + '" target="_blank" rel="noopener noreferrer">Workflow çalışmasını aç</a></p>' : '')
+      + (job.repair_pr_url ? '<p><a href="' + escapeHtml(job.repair_pr_url) + '" target="_blank" rel="noopener noreferrer">Onarım PR #' + Number(job.repair_pr_number || 0) + ' incele</a> · ' + escapeHtml(job.repair_pr_state || '') + '</p>' : '')
+      + (job.repair_dispatch_status === 'dispatched' && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-refresh-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> GitHub sonucunu sorgulamayı onaylıyorum</label><button class="btn secondary">Sonucu yenile</button></form>' : '')
+
       + (result.status === 'proposal_only' && !['dispatched','dispatching'].includes(job.repair_dispatch_status || 'not_requested') && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-create-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu analizden testli bir düzeltme PR\'si hazırlanmasını onaylıyorum</label><button class="btn">Düzeltme PR\'si hazırla</button></form>' : '')
       + (result.status === 'proposal_only' && !process.env.FRIEREN_GITHUB_TOKEN && job.repair_dispatch_status !== 'dispatched' ? '<p class="notice warn">PR oluşturma düğmesi için FRIEREN_GITHUB_TOKEN yapılandırılmalı.</p>' : '')
       + '</article>';
