@@ -50,6 +50,7 @@ _generation_lock = threading.Lock()
 # One active generation plus at most one admitted waiter per process.
 _generation_slots = threading.BoundedSemaphore(2)
 _login_attempts: dict[str, list[float]] = {}
+_login_attempts_lock = threading.Lock()
 _SESSION_COOKIE = "frieren_session"
 _SESSION_TTL_SECONDS = 3_600
 
@@ -171,15 +172,16 @@ def _valid_session_token(token: str | None, secret: str) -> bool:
 def _login_rate_limit(request: Request) -> str:
     client_ip = request.client.host if request.client else "unknown"
     now = time.monotonic()
-    recent = [attempt for attempt in _login_attempts.get(client_ip, []) if now - attempt < 300]
-    if len(recent) >= 5:
-        raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
-    recent.append(now)
-    _login_attempts[client_ip] = recent
-    if len(_login_attempts) > 2_000:
-        for ip, attempts in list(_login_attempts.items()):
-            if not attempts or now - attempts[-1] >= 300:
-                _login_attempts.pop(ip, None)
+    with _login_attempts_lock:
+        recent = [attempt for attempt in _login_attempts.get(client_ip, []) if now - attempt < 300]
+        if len(recent) >= 5:
+            raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
+        recent.append(now)
+        _login_attempts[client_ip] = recent
+        if len(_login_attempts) > 2_000:
+            for ip, attempts in list(_login_attempts.items()):
+                if not attempts or now - attempts[-1] >= 300:
+                    _login_attempts.pop(ip, None)
     return client_ip
 
 
@@ -256,7 +258,8 @@ def web_login(payload: LoginRequest, request: Request, response: Response) -> di
     client_ip = _login_rate_limit(request)
     if not secrets.compare_digest(payload.password, expected_password):
         raise HTTPException(status_code=401, detail="Invalid password.")
-    _login_attempts.pop(client_ip, None)
+    with _login_attempts_lock:
+        _login_attempts.pop(client_ip, None)
     response.set_cookie(
         _SESSION_COOKIE,
         _create_session_token(secret),
