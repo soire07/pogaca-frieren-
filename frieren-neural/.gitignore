@@ -10,3 +10,11 @@ checkpoints/
 *.pt
 *.pth
 *.safetensors
+
+# Training data and local credentials must never enter Git.
+/corpus/
+/data/
+/datasets/
+.env
+.env.*
+!.env.example
