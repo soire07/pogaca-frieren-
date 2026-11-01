@@ -1,5 +1,6 @@
 import pg from 'pg';
 import { safeDatabaseHostname } from './connection-diagnostics.js';
+import { configureIsolatedTestClient } from './isolated-test-schema.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 const { Pool } = pg;
@@ -18,15 +19,33 @@ const testContext = new AsyncLocalStorage();
 const isolatedTestPool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : undefined,
-  options: '-c search_path=frieren_test',
   max: 2,
   idleTimeoutMillis: 10_000,
   connectionTimeoutMillis: 10_000
 });
 export const pool = new Proxy(productionPool, {
   get(target, property) {
-    if (property === 'query') return (...args) => (testContext.getStore() ? isolatedTestPool : target).query(...args);
-    if (property === 'connect') return (...args) => (testContext.getStore() ? isolatedTestPool : target).connect(...args);
+    if (property === 'query') return async (...args) => {
+      if (!testContext.getStore()) return target.query(...args);
+      const client = await isolatedTestPool.connect();
+      try {
+        await configureIsolatedTestClient(client);
+        return await client.query(...args);
+      } finally {
+        client.release();
+      }
+    };
+    if (property === 'connect') return async (...args) => {
+      if (!testContext.getStore()) return target.connect(...args);
+      const client = await isolatedTestPool.connect(...args);
+      try {
+        await configureIsolatedTestClient(client);
+        return client;
+      } catch (error) {
+        client.release();
+        throw error;
+      }
+    };
     return Reflect.get(target, property, target);
   }
 });
