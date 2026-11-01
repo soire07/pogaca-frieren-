@@ -105,5 +105,5 @@ def test_api_serializes_plain_user_prompt_with_the_training_chat_template(
 
     assert response.status_code == 200
     assert captured["prompt"] == "Kullanıcı: Frieren kimdir?\nAsistan:"
-    assert response.json()["text"] == user_prompt + "Doğrudan yanıt."
+    assert response.json()["text"] == user_prompt + " Doğrudan yanıt."
     assert response.json()["completion"] == "Doğrudan yanıt."
