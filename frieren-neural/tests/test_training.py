@@ -80,7 +80,7 @@ def test_training_checkpoint_uses_byte_bpe_tokenizer(tmp_path: Path):
         tokenizer_vocab_size=280,
     )
     train_model(corpus, checkpoint, config)
-    saved = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    saved = torch.load(checkpoint, map_location="cpu", weights_only=True)
     assert saved["tokenizer"]["type"] == "byte_bpe"
     assert saved["model_config"]["vocab_size"] == 260 + len(saved["tokenizer"]["merges"])
 
