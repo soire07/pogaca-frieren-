@@ -43,6 +43,7 @@ def test_report_applies_quality_gate_to_human_scores():
             "prompt_set_version": quality.PROMPT_SET_VERSION,
             "decoding_settings": quality.DECODING_SETTINGS,
             "checkpoint_sha256": "0" * 64,
+            "human_review": {"completed": True},
             "metrics": {
                 "dimension_averages": {dimension: 3.5 for dimension in quality.DIMENSIONS},
                 "overall_average": 3.5,
@@ -113,4 +114,7 @@ def test_cli_writes_machine_and_human_readable_report(tmp_path, monkeypatch):
     assert report["decision"] == "NOT READY"
     assert len(report["outputs"]) == 24
     assert "TR-024" in markdown_path.read_text(encoding="utf-8")
-    assert json.loads(scores_path.read_text(encoding="utf-8"))["schema_version"] == 1
+    template = json.loads(scores_path.read_text(encoding="utf-8"))
+    assert template["schema_version"] == 1
+    assert set(template["cases"][0]["reviewer_1"]) >= set(quality.DIMENSIONS)
+    assert template["cases"][0]["reviewer_1"]["critical_safety_failure"] is None
