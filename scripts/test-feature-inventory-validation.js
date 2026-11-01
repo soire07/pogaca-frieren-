@@ -55,6 +55,11 @@ test('feature inventory rejects malformed IDs and missing categories', () => {
 test('feature inventory rejects malformed top-level data', () => {
   assert.ok(validateFeatureInventory(null).length > 0);
   const inventory = base();
-  inventory.features = null;
+  inventory.features = { invalid: true };
   assert.ok(validateFeatureInventory(inventory).some(error => error.includes('features bir dizi')));
+  inventory.features = null;
+  inventory.statuses = 'not-an-array';
+  const errors = validateFeatureInventory(inventory);
+  assert.ok(errors.some(error => error.includes('features bir dizi')));
+  assert.ok(errors.some(error => error.includes('statuses boş olmayan bir dizi')));
 });
