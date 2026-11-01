@@ -68,7 +68,7 @@ test('solo boss victory grants rewards in one transaction and guards duplicate b
   const source = await (await import('node:fs/promises')).readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
   const victory = source.indexOf('if (bossHp <= 0)');
   const begin = source.indexOf("await db.query('BEGIN')", victory);
-  const rewardUpdate = source.indexOf('coins=coins+$5, xp=xp+$6, boss_defeats=boss_defeats+1', begin);
+  const rewardUpdate = source.indexOf('coins=coins+$5, xp=xp+$6, last_boss_battle_id=$7', begin);
   const firstInventory = source.indexOf('INSERT INTO inventory', begin);
   const commit = source.indexOf("await db.query('COMMIT')", firstInventory);
   assert.ok(victory >= 0 && begin > victory && rewardUpdate > begin && firstInventory > rewardUpdate && commit > firstInventory,
