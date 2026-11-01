@@ -14,6 +14,18 @@ The original Qwen3 float32 and GGUF reports used greedy decoding (temperature=0.
 
 The benchmark harness has been corrected to use a reproducible non-thinking request and Qwen's recommended sampling profile: temperature=0.7, top_p=0.8, top_k=20, min_p=0.0, with a per-case fixed seed. The GGUF request now places /no_think in the user turn; the Transformers benchmark uses enable_thinking=False. A new Q4 benchmark is being run against this corrected harness. Historical measurements above remain unchanged and must not be presented as results from the corrected decoding profile.
 
+### Corrected Q4 profile with Turkish system prompt (run 41345716104)
+
+- Model SHA-256: `dd4750858c52f1c040e9ff4f54ba9365e11e8e81021abffd9b9c02646cf334d7`
+- Decode profile: 256-token budget, temperature 0.7, top_p 0.8, top_k 20, min_p 0.0, repeat_penalty 1.1, system prompt `tr-assistant-v1`, deterministic per-case seed.
+- Model load: 0.473 s; total generation: 31.901 s; median: 1.228 s; p95: 2.287 s; peak RSS: 1,042.23 MiB.
+- Reasoning leakage: 0/24. Token-cap hits: 0/24.
+- Still not acceptable for deployment: Turkish coherence and instruction-following remain weak; TR-003 echoes the question, TR-011 gives an unclear credential response, TR-012 fails to give actionable secret-rotation guidance, and TR-013 gives incorrect code guidance.
+
+### Fresh Turkish SFT candidate
+
+A new importer now creates deterministic train/held-out splits from the Apache-2.0 `cisimcik/turkish-chat-max-25k` dataset. It records the exact Hugging Face commit, checks the license and expected 24,543 source rows, filters to Turkish-only/no-tool conversations, excludes hidden reasoning, and hashes the generated corpus files. A fresh 8,000-step assistant-only objective-v2 training run is currently running in GitHub Actions (run `41346224560`). No new checkpoint or quality improvement is claimed until the run, held-out evaluation, and human review finish.
+
 ## Measured evidence
 
 All measurements are from GitHub-hosted CPU runners with two threads. They are not measurements on a target free host.
