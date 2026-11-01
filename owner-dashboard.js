@@ -15,6 +15,7 @@ import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } fr
 import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
+import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident } from './guardian/store.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -29,11 +30,19 @@ export function getFrierenAiScenarioEndpoint(env = process.env) {
   return new URL('/internal/test-scenario', parsed).toString();
 }
 
+export function getFrierenAiGuardianEndpoint(env = process.env) {
+  const base = String(env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).trim();
+  const parsed = new URL(base);
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_AI_PUBLIC_URL');
+  return new URL('/internal/guardian-review', parsed).toString();
+}
+
 
 export const OWNER_PANEL_SECTIONS = Object.freeze([
   { id: 'overview', label: 'Genel Bakış', command: '/owner' },
   { id: 'system', label: 'Sistem Durumu', command: '/owner-bilgi' },
   { id: 'bot-control', label: 'Bot Kontrol Merkezi', command: null },
+  { id: 'guardian', label: 'Neural Guardian', command: null },
   { id: 'memories', label: 'Hafıza Yönetimi', command: '/owner-bellek' },
   { id: 'approvals', label: 'Kod Talepleri', command: '/owner-onay' },
   { id: 'announcements', label: 'Duyuru Merkezi', command: '/owner-duyuru' },
@@ -55,6 +64,7 @@ export function renderOwnerNavigation() {
   const groups = [
     { label: 'GENEL', ids: ['overview', 'system'] },
     { label: 'BOT KONTROL', ids: ['bot-control'] },
+    { label: 'GUARDIAN', ids: ['guardian'] },
     { label: 'Frieren Poğaça', ids: ['servers', 'rpg', 'partners', 'behavior'] },
     { label: 'Frieren AI', ids: ['memories', 'approvals'] },
     { label: 'İŞLEMLER', ids: ['announcements', 'maintenance'] }
@@ -65,8 +75,9 @@ export function renderOwnerNavigation() {
     + groups.map(group => '<div class="nav-group"><div class="nav-group-title">' + group.label + '</div>'
       + group.ids.map(id => {
         const section = sections.get(id) || (id === 'behavior' ? { id: 'behavior', label: 'Komut ve davranışlar', command: null } : null);
-        return section ? '<a href="/owner#' + section.id + '" aria-label="' + section.label + '"><span class="nav-icon" aria-hidden="true">' + ({
-          overview: '⌂', system: '◈', servers: '⌘', rpg: '✧', partners: '◇',
+        const href = id === 'guardian' ? '/owner/guardian' : '/owner#' + section?.id;
+        return section ? '<a href="' + href + '" aria-label="' + section.label + '"><span class="nav-icon" aria-hidden="true">' + ({
+          overview: '⌂', system: '◈', servers: '⌘', rpg: '✧', partners: '◇', guardian: '◈',
           memories: '✦', approvals: '⚝', announcements: '➤', maintenance: '◉'
         }[section.id] || '✧') + '</span><span class="nav-link-copy"><strong>' + section.label + '</strong>'
           + (section.command ? '<small>' + section.command + '</small>' : '') + '</span></a>' : '';
