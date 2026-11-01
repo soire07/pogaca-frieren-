@@ -6,12 +6,12 @@ import { pathToFileURL } from 'node:url';
 const MAX_CONTEXT_CHARS = 22_000;
 const MAX_PATCH_CHARS = 12_000;
 const MAX_PATCH_FILES = 4;
-const ALLOWED_PATH = /^(?:[A-Za-z0-9_.-]+\.js|ai-agent\/[A-Za-z0-9_.-]+\.js|scripts\/[A-Za-z0-9_.-]+\.js|database\/[A-Za-z0-9_.-]+\.js)$/;
+const ALLOWED_PATH = /^(?:[A-Za-z0-9_.-]+\.js|ai-agent\/[A-Za-z0-9_.-]+\.js|scripts\/[A-Za-z0-9_.-]+\.js|database\/[A-Za-z0-9_.-]+\.js)$/;\nconst PROTECTED_PATHS = new Set(['index.js','owner-dashboard.js','owner-admin.js','owner-render-control.js','ai-agent/index.js','scripts/ai-self-repair.js','scripts/ai-self-repair.test.js','database/db.js']);
 const runGit = (args, options = {}) => execFileSync('git', args, options);
 
 export function isAllowedRepairPath(value) {
   const file = String(value || '');
-  return Boolean(file) && !file.startsWith('/') && !file.includes('\\')
+  return Boolean(file) && !PROTECTED_PATHS.has(file) && !file.startsWith('/') && !file.includes('\\')
     && !file.split('/').includes('..') && !file.split('/').includes('.')
     && !/(?:^|\/)(?:\.env|.*secret|.*token|.*credential|config|settings)(?:\.|\/)/i.test(file)
     && !/(?:^|\/)migrations?(?:\/|\.)/i.test(file)
