@@ -159,7 +159,7 @@ function unsign(token, secret) {
 }
 
 export function createOwnerSession(secret, expiresAt) {
-  return sign({ sub: OWNER_ID, exp: expiresAt, csrf: randomBytes(24).toString('base64url') }, secret);
+  return sign({ sub: OWNER_ID, mfa: true, exp: expiresAt, csrf: randomBytes(24).toString('base64url') }, secret);
 }
 
 
@@ -243,7 +243,7 @@ export function buildPublicSiteSessionCookie(session, maxAgeSeconds) {
 export function readOwnerSession(token, secret, nowSeconds = Math.floor(Date.now() / 1000)) {
   if (!secret || secret.length < 32) return null;
   const session = unsign(token, secret);
-  return session?.sub === OWNER_ID && Number.isInteger(session.exp) && session.exp > nowSeconds
+  return session?.sub === OWNER_ID && session.mfa === true && Number.isInteger(session.exp) && session.exp > nowSeconds
     && typeof session.csrf === 'string' && session.csrf.length >= 32 ? session : null;
 }
 
@@ -827,7 +827,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   const session = readOwnerSession(cookie[SESSION_COOKIE], sessionSecret);
   if (!session) {
     if (url.pathname === '/owner/logout' || url.pathname === '/owner/action') {
-      send(res, 401, page('Oturum gerekli', '<h1>Oturum süresi doldu</h1><a class="btn" href="/owner/login">Yeniden giriş yap</a>'), { 'Set-Cookie': clearOwnerCookie(SESSION_COOKIE, '/owner') });
+      send(res, 401, page('Oturum gerekli', '<h1>Oturum süresi doldu</h1><a class="btn" href="/owner/login">Yeniden giriş yap</a>'), { 'Set-Cookie': [clearOwnerCookie(SESSION_COOKIE, '/owner'), clearOwnerCookie(SECOND_FACTOR_COOKIE, '/owner')] });
     } else {
       send(res, 200, page('Frieren giriş', '<span class="tag">✧ FANTASTİK YOLCULUĞA GİRİŞ</span><h1>Frieren evrenine hoş geldin</h1><p>Siteye devam etmek için Discord hesabınla giriş yap. Girişten sonra ana sayfa, bot tanıtımı ve GIF galerisi açılır. Owner Panel yalnızca bot sahibine özeldir.</p><a class="btn" href="/owner/login">Discord ile devam et</a><p class="muted">Güvenli giriş · Discord kimlik doğrulaması</p>'));
     }
