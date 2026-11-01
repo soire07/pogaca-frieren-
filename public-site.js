@@ -54,13 +54,20 @@ export function buildPublicCommandEntries(commandCollection) {
       const data = typeof command?.data?.toJSON === 'function' ? command.data.toJSON() : command?.data;
       if (!data?.name) return null;
       const description = String(data.description || 'Komut açıklaması henüz eklenmemiş.');
-      const options = (Array.isArray(data.options) ? data.options : []).map(option => ({
-        name: String(option.name || ''),
-        description: String(option.description || 'Açıklama eklenmemiş.'),
-        required: option.required === true,
-        type: Number.isInteger(option.type) ? option.type : null,
-        choices: (Array.isArray(option.choices) ? option.choices : []).map(choice => String(choice.name || choice.value || ''))
-      })).filter(option => option.name);
+      const collectOptions = (items, prefix = '') => (Array.isArray(items) ? items : []).flatMap(option => {
+        if (!option?.name) return [];
+        const name = prefix ? prefix + ' / ' + String(option.name) : String(option.name);
+        const entry = {
+          name,
+          description: String(option.description || 'Açıklama eklenmemiş.'),
+          required: option.required === true,
+          type: Number.isInteger(option.type) ? option.type : null,
+          choices: (Array.isArray(option.choices) ? option.choices : []).map(choice => String(choice.name || choice.value || ''))
+        };
+        const nested = collectOptions(option.options, name);
+        return [entry, ...nested];
+      });
+      const options = collectOptions(data.options);
       return { name: String(data.name), description, category: getPublicCommandCategory(data.name, description), options };
     })
     .filter(Boolean)
