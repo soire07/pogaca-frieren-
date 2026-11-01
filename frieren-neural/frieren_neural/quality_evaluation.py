@@ -180,6 +180,8 @@ def build_parser()->argparse.ArgumentParser:
     parser.add_argument("--output-dir",default="quality-reports/latest",help="Report and reviewer-template directory")
     parser.add_argument("--scores",help="Completed human-scores JSON file")
     parser.add_argument("--baseline-report",help="Comparable prior human-scored quality-report.json")
+    parser.add_argument("--training-manifest",help="Training corpus provenance manifest")
+    parser.add_argument("--heldout-report",help="Separate held-out test metrics JSON")
     parser.add_argument("--device",default="cpu",choices=("cpu","cuda"))
     return parser
 
@@ -188,7 +190,18 @@ def main()->None:
     outputs,checkpoint_sha,step=evaluate_checkpoint_quality(args.checkpoint,device=args.device)
     scores=json.loads(Path(args.scores).read_text(encoding="utf-8")) if args.scores else None
     baseline=json.loads(Path(args.baseline_report).read_text(encoding="utf-8")) if args.baseline_report else None
-    report=build_report(checkpoint_sha256=checkpoint_sha,checkpoint_step=step,outputs=outputs,scores=scores,baseline_report=baseline)
+    provenance=None
+    if args.training_manifest:
+        raw=Path(args.training_manifest).read_bytes()
+        manifest=json.loads(raw.decode("utf-8"))
+        documents=manifest.get("documents") if isinstance(manifest,dict) else None
+        if not isinstance(manifest,dict) or manifest.get("schema_version") != 1 or not isinstance(documents,list) or not documents:
+            raise ValueError("Training manifest must use schema_version 1 and contain documents.")
+        if any(not isinstance(item,dict) or not all(isinstance(item.get(key),str) and item[key].strip() for key in ("source","license","usage")) for item in documents):
+            raise ValueError("Every training manifest document must declare source, license, and usage.")
+        provenance={"manifest_sha256":hashlib.sha256(raw).hexdigest(),"sources":sorted({item["source"] for item in documents}),"licenses":sorted({item["license"] for item in documents})}
+    heldout=json.loads(Path(args.heldout_report).read_text(encoding="utf-8")) if args.heldout_report else None
+    report=build_report(checkpoint_sha256=checkpoint_sha,checkpoint_step=step,outputs=outputs,scores=scores,baseline_report=baseline,training_provenance=provenance,heldout_metrics=heldout)
     out=Path(args.output_dir)
     out.mkdir(parents=True,exist_ok=True)
     (out/"quality-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
