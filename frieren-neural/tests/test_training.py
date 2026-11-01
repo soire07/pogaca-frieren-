@@ -83,3 +83,31 @@ def test_training_checkpoint_uses_byte_bpe_tokenizer(tmp_path: Path):
     saved = torch.load(checkpoint, map_location="cpu", weights_only=False)
     assert saved["tokenizer"]["type"] == "byte_bpe"
     assert saved["model_config"]["vocab_size"] == 260 + len(saved["tokenizer"]["merges"])
+
+
+
+def test_training_resume_matches_uninterrupted_cpu_run(tmp_path: Path):
+    corpus = ["Frieren studies magic. Fern studies spells. " * 10]
+    base = TrainingConfig(
+        max_steps=4, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        learning_rate=1e-3, validation_fraction=0.2, seed=31,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.1, tokenizer_vocab_size=280,
+    )
+    uninterrupted_path = tmp_path / "uninterrupted.pt"
+    split_path = tmp_path / "split.pt"
+    train_model(corpus, uninterrupted_path, base, device="cpu")
+    train_model(corpus, split_path, replace(base, max_steps=2), device="cpu")
+    train_model(corpus, split_path, base, resume=True, device="cpu")
+    uninterrupted = torch.load(uninterrupted_path, map_location="cpu", weights_only=True)
+    resumed = torch.load(split_path, map_location="cpu", weights_only=True)
+    assert uninterrupted["step"] == resumed["step"] == 4
+    assert uninterrupted["model_state"].keys() == resumed["model_state"].keys()
+    for name, tensor in uninterrupted["model_state"].items():
+        assert torch.equal(tensor, resumed["model_state"][name]), name
+
+
+def test_training_config_rejects_invalid_bpe_settings():
+    with pytest.raises(ValueError, match="BPE vocabulary"):
+        TrainingConfig(tokenizer_vocab_size=259)
+    with pytest.raises(ValueError, match="BPE vocabulary"):
+        TrainingConfig(tokenizer_min_frequency=0)
