@@ -163,3 +163,13 @@ test('mobile public pages keep card actions and hero media within the viewport',
   assert.match(String(stylesheet.body), /\.actions \.btn\{flex:1 1 100%;width:100%\}/);
   assert.match(String(stylesheet.body), /focus-visible/);
 });
+
+test('Owner Panel mobile rendering defers offscreen sections and avoids animated hero GIF decoding', async () => {
+  const response = res();
+  await handlePublicSiteRequest({ method: 'GET', url: '/assets/owner.css', headers: {} }, response);
+  const css = String(response.body);
+  assert.match(css, /content-visibility:auto/);
+  assert.match(css, /contain-intrinsic-size:auto 480px/);
+  assert.match(css, /\.hero:after\{[^}]*background-image:radial-gradient/);
+  assert.doesNotMatch(css, /\.hero:after\{[^}]*background:url\(['"]\/assets\/frieren\.gif/);
+});
