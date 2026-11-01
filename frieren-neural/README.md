@@ -42,6 +42,12 @@ frieren-neural-train --data ./corpus/turkish-daily-dialogues --steps 1000 --batc
 frieren-neural-train-small --data ./corpus/turkish-daily-dialogues --steps 1000
 ```
 
+The same pinned importer can prepare the validation or test split separately; the trainer only downloads the train split. To evaluate on the untouched test set, use:
+```bash
+frieren-neural-prepare-turkish-dialogues --split test --output ./corpus/turkish-daily-dialogues-test
+frieren-neural-evaluate --data ./corpus/turkish-daily-dialogues-test --checkpoint ./checkpoints/frieren-neural-small.pt --batch-size 4 --batches 25 --device cpu
+```
+
 The generated manifest records the dataset source, version, CC BY 4.0 license, attribution requirement, and verified source digest. Keep the generated corpus out of Git. This small synthetic dialogue set is suitable for a Turkish conversational-format baseline; it is **not** broad pretraining data and cannot by itself produce a knowledgeable or fluent general-purpose assistant. Add separately licensed, diverse Turkish and English text before drawing conclusions about general language ability.
 
 Dataset source and attribution: [Turkish Daily Dialogues 5K](https://github.com/3nesdeniz/turkish-daily-dialogues-5k), [Hugging Face dataset card](https://huggingface.co/datasets/3nesdeniz/turkish-daily-dialogues-5k), [CC BY 4.0 license](https://creativecommons.org/licenses/by/4.0/). Attribution to Enes Deniz and the dataset version is retained in `corpus_manifest.json`.
