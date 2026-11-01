@@ -925,6 +925,62 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         }
         return true;
       }
+      if (action === 'guardian-create-pr' && form.get('confirm') === 'yes') {
+        const token = String(process.env.FRIEREN_GITHUB_TOKEN || '').trim();
+        if (token.length < 32) throw new Error('GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED');
+        const incident = await getGuardianIncident(db, form.get('incidentId'));
+        if (!incident) throw new Error('GUARDIAN_INCIDENT_NOT_FOUND');
+        const job = await getLatestGuardianJob(db, incident.id);
+        if (!job || job.status !== 'completed' || job.result?.status !== 'proposal_only') {
+          throw new Error('GUARDIAN_REPAIR_REVIEW_REQUIRED');
+        }
+        if (job.repair_dispatch_status === 'dispatched') {
+          redirect(res, '/owner/guardian?notice=guardian_pr_dispatched');
+          return true;
+        }
+        const reserved = await reserveGuardianRepairDispatch(db, job.id);
+        if (!reserved) throw new Error('GUARDIAN_REPAIR_ALREADY_DISPATCHED_OR_RUNNING');
+        const review = job.result || {};
+        const task = [
+          'Guardian incident #' + incident.id + ' · ' + incident.system + ' · ' + incident.code,
+          'Başlık: ' + incident.title,
+          'Olay: ' + incident.summary,
+          'Frieren AI kök neden: ' + String(review.rootCause || '').slice(0, 300),
+          'Önerilen çözüm: ' + String(review.suggestedFix || '').slice(0, 300),
+          'İlgili dosyalar: ' + (Array.isArray(review.affectedFiles) ? review.affectedFiles.slice(0, 5).join(', ') : ''),
+          'Test planı: ' + (Array.isArray(review.tests) ? review.tests.slice(0, 4).join('; ') : ''),
+          'Riskler: ' + (Array.isArray(review.risks) ? review.risks.slice(0, 3).join('; ') : ''),
+          'Frieren AI yama önerisi: ' + String(review.proposedPatch || '').slice(0, 350),
+          'Öneriyi körlemesine uygulama; mevcut kodu tekrar incele, ilgili testleri kontrol et, en fazla 4 güvenli JavaScript dosyasında minimal patch hazırla.',
+        ].join('\n').slice(0, 1200);
+        try {
+          const workflowUrl = 'https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml';
+          const response = await fetch('https://api.github.com/repos/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml/dispatches', {
+            method: 'POST',
+            headers: {
+              Accept: 'application/vnd.github+json',
+              Authorization: 'Bearer ' + token,
+              'X-GitHub-Api-Version': '2022-11-28',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ref: 'frieren-neural-foundation',
+              inputs: { task, base_branch: 'frieren-neural-foundation' },
+            }),
+            signal: AbortSignal.timeout(12_000),
+          });
+          if (response.status !== 204) throw new Error('GUARDIAN_GITHUB_DISPATCH_HTTP_' + response.status);
+          await finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl });
+          await auditOwnerAction(db, OWNER_ID, 'guardian.repair.workflow_dispatched', String(incident.id), {
+            jobId: job.id, workflow: 'frieren-ai-self-repair.yml', baseBranch: 'frieren-neural-foundation',
+          });
+          redirect(res, '/owner/guardian?notice=guardian_pr_dispatched');
+        } catch (error) {
+          await finishGuardianRepairDispatch(db, { jobId: job.id, status: 'failed' }).catch(() => {});
+          throw error;
+        }
+        return true;
+      }
       if (action === 'guardian-resolve' && form.get('confirm') === 'yes') {
         const result = await resolveGuardianIncident(db, { incidentId: form.get('incidentId'), actorId: OWNER_ID });
         if (!result) throw new Error('GUARDIAN_INCIDENT_NOT_FOUND');
@@ -1129,7 +1185,8 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const guardianError = code.startsWith('GUARDIAN_') || code.startsWith('REVIEW_')
         || code === 'INVALID_FRIEREN_AI_PUBLIC_URL' || code === 'INVALID_FRIEREN_NEURAL_LIVE_URL';
       const notice = code === 'GUARDIAN_BRIDGE_NOT_CONFIGURED' ? 'guardian_not_configured'
-        : guardianError ? 'guardian_review_failed'
+        : code === 'GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED' ? 'guardian_github_not_configured'
+        : guardianError ? (code.startsWith('GUARDIAN_GITHUB_') ? 'guardian_pr_dispatch_failed' : 'guardian_review_failed')
         : code === 'SENSITIVE_TEST_TARGET_REJECTED' ? 'test_target_sensitive'
         : code === 'SENSITIVE_MEMORY_REJECTED' ? 'memory_sensitive_rejected'
         : code === 'RENDER_API_NOT_CONFIGURED' ? 'render_api_missing'
