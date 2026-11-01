@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import random
 import tempfile
@@ -411,3 +412,52 @@ def generate_text(
             generated = generated[:index]
             break
     return tokenizer.decode(generated)
+
+
+def evaluate_checkpoint(
+    checkpoint_path: str | Path,
+    documents: Sequence[str],
+    *,
+    batch_size: int = 16,
+    batches: int = 20,
+    seed: int = 1337,
+    device: str | torch.device | None = None,
+) -> dict[str, float | int]:
+    """Evaluate a checkpoint on a distinct, caller-supplied held-out corpus."""
+    if not documents or any(not isinstance(item, str) or not item.strip() for item in documents):
+        raise ValueError("Evaluation documents must contain non-empty strings.")
+    fingerprint = hashlib.sha256(
+        json.dumps(list(documents), ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    model, tokenizer, metadata = load_checkpoint(checkpoint_path, device=device)
+    payload = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+    if fingerprint == payload.get("corpus_sha256"):
+        raise ValueError("Evaluation corpus must be separate from the training corpus.")
+    evaluation_text = "\n".join(item.strip() for item in documents)
+    tokens = torch.tensor(tokenizer.encode(evaluation_text) + [tokenizer.eos_id], dtype=torch.long)
+    loss = evaluate_loss(
+        model, tokens, batch_size=batch_size, block_size=model.config.max_seq_len,
+        batches=batches, seed=seed
+    )
+    try:
+        perplexity = math.exp(loss)
+    except OverflowError:
+        perplexity = math.inf
+    return {"step": int(metadata["step"]), "loss": loss, "perplexity": perplexity}
+
+
+def evaluation_main() -> None:
+    parser = argparse.ArgumentParser(description="Evaluate a Frieren Neural checkpoint on a held-out corpus.")
+    parser.add_argument("--data", required=True, help="Separate licensed corpus directory with corpus_manifest.json")
+    parser.add_argument("--checkpoint", default="checkpoints/frieren-neural.pt")
+    parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument("--batches", type=int, default=20)
+    parser.add_argument("--seed", type=int, default=1337)
+    parser.add_argument("--device", default=None)
+    args = parser.parse_args()
+    documents = load_licensed_corpus(args.data)
+    metrics = evaluate_checkpoint(
+        args.checkpoint, documents, batch_size=args.batch_size, batches=args.batches,
+        seed=args.seed, device=args.device
+    )
+    print(json.dumps(metrics, ensure_ascii=False, indent=2))
