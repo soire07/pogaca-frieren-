@@ -549,6 +549,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
     guardian_pr_dispatched: 'Güvenli onarım workflow\'u başlatıldı. Testler geçerse ayrı bir PR açılacak; birleştirme ve dağıtım yapılmayacak.',
     guardian_github_not_configured: 'GitHub Actions tetikleme anahtarı eksik. Poğaça Render ortamına FRIEREN_GITHUB_TOKEN eklenmeli.',
     guardian_pr_dispatch_failed: 'Onarım workflow\'u başlatılamadı. Job kaydı korundu; hata ayrıntıları sırları açığa çıkarmadan kaydedildi.',
+    guardian_pr_status_failed: 'GitHub workflow veya PR durumu alınamadı. Token izinlerini ve Actions durumunu kontrol et.',
     guardian_pr_status_updated: 'GitHub Actions ve PR durumu yenilendi.',
   })[notice] || '';
   const incidentHtml = incidents.length ? incidents.map(incident => {
@@ -1001,6 +1002,78 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         }
         return true;
       }
+      if (action === 'guardian-refresh-pr' && form.get('confirm') === 'yes') {
+        const token = String(process.env.FRIEREN_GITHUB_TOKEN || '').trim();
+        if (token.length < 32) throw new Error('GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED');
+        const incident = await getGuardianIncident(db, form.get('incidentId'));
+        if (!incident) throw new Error('GUARDIAN_INCIDENT_NOT_FOUND');
+        const job = await getLatestGuardianJob(db, incident.id);
+        if (!job || job.repair_dispatch_status !== 'dispatched') throw new Error('GUARDIAN_REPAIR_NOT_DISPATCHED');
+        const headers = {
+          Accept: 'application/vnd.github+json',
+          Authorization: 'Bearer ' + token,
+          'X-GitHub-Api-Version': '2022-11-28',
+        };
+        const apiBase = 'https://api.github.com/repos/soire07/pogaca-frieren-';
+        const runsResponse = await fetch(apiBase + '/actions/workflows/frieren-ai-self-repair.yml/runs?branch=frieren-neural-foundation&event=workflow_dispatch&per_page=30', {
+          headers, signal: AbortSignal.timeout(10_000),
+        });
+        if (!runsResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + runsResponse.status);
+        const runsPayload = await runsResponse.json();
+        const run = (runsPayload.workflow_runs || []).find(item =>
+          String(item.display_title || item.name || '').includes('#' + incident.id)
+        ) || null;
+        let runId = run?.id || null;
+        let runUrl = run?.html_url || job.repair_workflow_url || null;
+        let runStatus = run?.status || null;
+        let runConclusion = run?.conclusion || null;
+        let pr = null;
+        const branchName = 'ai-repair/guardian-' + incident.id;
+        const query = new URLSearchParams({
+          state: 'all',
+          head: 'soire07:' + branchName,
+          base: 'frieren-neural-foundation',
+        });
+        const prResponse = await fetch(apiBase + '/pulls?' + query.toString(), {
+          headers, signal: AbortSignal.timeout(10_000),
+        });
+        if (!prResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + prResponse.status);
+        const prs = await prResponse.json();
+        pr = Array.isArray(prs) ? prs.find(item => item.head?.ref === branchName) || null : null;
+        let checksStatus = runConclusion === 'failure' ? 'failure' : 'unknown';
+        if (pr?.head?.sha) {
+          const checksResponse = await fetch(apiBase + '/commits/' + encodeURIComponent(pr.head.sha) + '/check-runs?per_page=100', {
+            headers, signal: AbortSignal.timeout(10_000),
+          });
+          if (checksResponse.ok) {
+            const checksPayload = await checksResponse.json();
+            const checkRuns = checksPayload.check_runs || [];
+            if (checkRuns.some(item => item.status !== 'completed')) checksStatus = 'pending';
+            else if (checkRuns.length && checkRuns.some(item => !['success','skipped','neutral'].includes(item.conclusion))) {
+              checksStatus = checkRuns.some(item => ['cancelled','timed_out'].includes(item.conclusion)) ? 'cancelled' : 'failure';
+            } else if (checkRuns.length) checksStatus = 'success';
+            else checksStatus = 'pending';
+          }
+        } else if (run && run.status !== 'completed') {
+          checksStatus = 'pending';
+        }
+        await updateGuardianRepairStatus(db, {
+          jobId: job.id,
+          runId,
+          runUrl,
+          runStatus,
+          runConclusion,
+          prNumber: pr?.number || null,
+          prUrl: pr?.html_url || null,
+          prState: pr?.state || null,
+          checksStatus,
+        });
+        await auditOwnerAction(db, OWNER_ID, 'guardian.repair.status_refreshed', String(incident.id), {
+          jobId: job.id, runStatus, runConclusion, prNumber: pr?.number || null, checksStatus,
+        }).catch(error => console.error('Guardian status audit failed:', error?.message || error));
+        redirect(res, '/owner/guardian?notice=guardian_pr_status_updated');
+        return true;
+      }
       if (action === 'guardian-resolve' && form.get('confirm') === 'yes') {
         const result = await resolveGuardianIncident(db, { incidentId: form.get('incidentId'), actorId: OWNER_ID });
         if (!result) throw new Error('GUARDIAN_INCIDENT_NOT_FOUND');
@@ -1206,7 +1279,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         || code === 'INVALID_FRIEREN_AI_PUBLIC_URL' || code === 'INVALID_FRIEREN_NEURAL_LIVE_URL';
       const notice = code === 'GUARDIAN_BRIDGE_NOT_CONFIGURED' ? 'guardian_not_configured'
         : code === 'GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED' ? 'guardian_github_not_configured'
-        : guardianError ? (code.startsWith('GUARDIAN_GITHUB_') ? 'guardian_pr_dispatch_failed' : 'guardian_review_failed')
+        : guardianError ? (code.startsWith('GUARDIAN_GITHUB_READ_') ? 'guardian_pr_status_failed' : code.startsWith('GUARDIAN_GITHUB_') ? 'guardian_pr_dispatch_failed' : 'guardian_review_failed')
         : code === 'SENSITIVE_TEST_TARGET_REJECTED' ? 'test_target_sensitive'
         : code === 'SENSITIVE_MEMORY_REJECTED' ? 'memory_sensitive_rejected'
         : code === 'RENDER_API_NOT_CONFIGURED' ? 'render_api_missing'
