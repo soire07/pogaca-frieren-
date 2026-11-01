@@ -51,6 +51,10 @@ export function getPublicHealthPayload({
   };
 }
 
+export function isPrivateHealthPath(path) {
+  return path === '/health' || path === '/ready' || path === '/bridge-health';
+}
+
 export function getPublicLivenessPayload(readiness = {}) {
   const health = getPublicHealthPayload(readiness);
   return {

@@ -8,7 +8,7 @@ import { isExplicitMemoryOverviewQuestion } from './memory-intent.js';
 import { containsSensitiveInformation, extractAutomaticMemories, isExplicitMemorySaveRequest } from './memory-extractor.js';
 import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, isTargetedTestFailure, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
 import { buildTestDiagnostics } from './test-diagnostics.js';
-import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, getPublicLivenessPayload, isAuthorizedAdmin, sendPrivateError, checkBridgeReachability } from './interaction-safety.js';
+import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, getPublicLivenessPayload, isPrivateHealthPath, isAuthorizedAdmin, sendPrivateError, checkBridgeReachability } from './interaction-safety.js';
 import { checkLiveRpgHealth } from './live-rpg-health.js';
 import { formatCommandTestResult } from './command-test-report.js';
 import { parseCommandNames } from './command-test-input.js';
@@ -59,8 +59,7 @@ const ownerScenarioLocks = new Set();
 const runningGuilds = new Set();
 
 const healthServer = createServer(async (req, res) => {
-  const privateHealthPaths = new Set(['/health', '/ready', '/live', '/bridge-health']);
-  if (privateHealthPaths.has(req.url)) {
+  if (isPrivateHealthPath(req.url)) {
     const expected = process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
     const supplied = req.headers['x-frieren-health-secret'] || '';
     const valid = expected.length >= 32 && typeof supplied === 'string'

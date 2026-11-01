@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, isAuthorizedAdmin, sendPrivateError } from './interaction-safety.js';
+import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, isAuthorizedAdmin, isPrivateHealthPath, sendPrivateError } from './interaction-safety.js';
 
 test('authorization accepts only exact non-empty IDs in the trusted allowlist', () => {
   const admins = new Set(['123', '456']);
@@ -142,4 +142,13 @@ test('bridge reachability fails closed on unauthorized or malformed catalog resp
     fetchImpl: async () => ({ ok: true, async json() { return { service: 'wrong', count: 1, commands: [] }; } }),
   });
   assert.deepEqual(malformed, { reachable: false, commandCount: 0, reason: 'invalid_response' });
+});
+
+
+test('public liveness route is not protected while readiness and bridge diagnostics stay private', () => {
+  assert.equal(isPrivateHealthPath('/live'), false);
+  assert.equal(isPrivateHealthPath('/health'), true);
+  assert.equal(isPrivateHealthPath('/ready'), true);
+  assert.equal(isPrivateHealthPath('/bridge-health'), true);
+  assert.equal(isPrivateHealthPath('/unknown'), false);
 });
