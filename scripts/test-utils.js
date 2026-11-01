@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { explorationMasteryReward } from '../rpg-mechanics.js';
 import assert from 'node:assert/strict';
 import { levelForXp, xpForNextLevel } from '../utils.js';
 
