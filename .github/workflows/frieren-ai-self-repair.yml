@@ -12,6 +12,11 @@ on:
         required: true
         default: "frieren-ai-agent"
         type: string
+      incident_id:
+        description: "Optional Guardian incident ID for traceability"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: write
@@ -56,9 +61,9 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: ${{ inputs.base_branch }}
-          branch: ai-repair/frieren-${{ github.run_id }}
+          branch: ai-repair/guardian-${{ inputs.incident_id || github.run_id }}
           delete-branch: true
-          title: "AI repair: ${{ inputs.task }}"
+          title: "AI repair: Guardian incident #${{ inputs.incident_id || github.run_id }}"
           body: |
             Automated Frieren AI repair proposal.
 
