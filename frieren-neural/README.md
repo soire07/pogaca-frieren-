@@ -10,6 +10,7 @@ This directory is isolated from the existing Discord bot and its runtime. It doe
 - A deterministic byte-level BPE tokenizer with lossless multilingual UTF-8 round-trips; the earlier character tokenizer remains for compatibility.
 - Next-token training with AdamW, gradient clipping, and train/validation loss measurement.
 - Tokenizer training uses only the training text; validation text is held out before BPE merges are learned.
+- Corpus splitting preserves complete source documents and the Turkish dialogue importer's conversation separators, preventing a single dialogue from crossing the train/validation boundary.
 - CLI corpus loading requires a provenance manifest listing each file's source, license, and permitted usage.
 - Atomic, versioned checkpoints store model, optimizer, tokenizer, corpus fingerprint, and RNG states for deterministic resume.
 - Safe weights-only checkpoint loading and a small text-generation helper.
@@ -42,7 +43,7 @@ frieren-neural-train --data ./corpus/turkish-daily-dialogues --steps 1000 --batc
 frieren-neural-train-small --data ./corpus/turkish-daily-dialogues --steps 1000
 ```
 
-The same pinned importer can prepare the validation or test split separately; the trainer only downloads the train split. To evaluate on the untouched test set, use:
+The importer stores each conversation as a separate section divided by `\\n\\n---\\n\\n`. Training uses those section boundaries when making its chronological train/validation split, so no conversation is divided between the two sets. The same pinned importer can prepare the validation or test split separately; the trainer only downloads the train split. To evaluate on the untouched test set, use:
 ```bash
 frieren-neural-prepare-turkish-dialogues --split test --output ./corpus/turkish-daily-dialogues-test
 frieren-neural-evaluate --data ./corpus/turkish-daily-dialogues-test --checkpoint ./checkpoints/frieren-neural-small.pt --batch-size 4 --batches 25 --device cpu
