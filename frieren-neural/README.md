@@ -223,3 +223,8 @@ Before integration, a dedicated importer must:
 
 The current trainer is a next-token language-model baseline, not a chat-template supervised fine-tuner. A dataset import alone will not make this model a capable assistant. The model must continue to be treated as experimental until both quantitative evaluation and human-reviewed Turkish conversation tests show useful improvement.
 
+
+
+### Additional content-safety gate (2026-11-01)
+
+A live inspection of the public dataset viewer exposed at least one `tr_only` casual-conversation row whose topic is adult sexual material. This means the language-mode allowlist alone is not a sufficient content filter, even when tool calls and reasoning are excluded. The dataset must remain blocked until an explicit topic/task allowlist and a conservative content-safety screening stage are implemented and tested; merely dropping `has_reasoning` or `has_tools` rows is insufficient. The dataset card declares Apache-2.0, but the repository's actual `LICENSE` file and immutable file digests still need independent verification. No dataset bytes have been imported and no training run has been started from this candidate.
