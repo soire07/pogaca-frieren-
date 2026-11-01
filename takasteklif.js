@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 
 export default {
