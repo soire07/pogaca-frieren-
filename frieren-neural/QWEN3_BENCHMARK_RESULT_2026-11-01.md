@@ -66,3 +66,36 @@ The prior scratch-trained checkpoint is a historical pre-objective-v2 checkpoint
 - No paid API was used.
 - The benchmark workflow is separate from normal CI and only runs on manual dispatch or its explicitly scoped benchmark-path change.
 - The result is evidence for candidate evaluation only, not a deployment approval.
+
+
+## Controlled 160-token CPU rerun (2026-11-01)
+
+A second run used the same pinned Qwen3 revision and all 24 prompts with a 160-token budget. It was generated with the existing Transformers chat template and `enable_thinking=False`. This is the more useful quality sample than the earlier 80-token run, but it remains a CPU-runner measurement rather than a Render guarantee.
+
+- Workflow run: [41338890228](https://github.com/soire07/pogaca-frieren-/actions/runs/41338890228)
+- Artifact: `frieren-neural-qwen3-0.6b-cpu-benchmark` (artifact ID `13096224145`, 9,812 bytes, retained for 30 days)
+- Prompt count: 24/24
+- Maximum new tokens: 160
+- Model load: 8.965 s
+- Total generation: 318.838 s
+- Median latency: 14.396 s
+- p95 latency: 21.640 s
+- Peak process RSS: 4,897.50 MiB
+- Responses reaching the 160-token cap: 8/24
+- Human review: incomplete; two independent reviewers still required
+- Deployment: false
+
+### Additional output inspection
+
+- TR-001 and TR-007 are short and usable.
+- TR-003 repeats an incorrect definition of the water cycle and violates the two-sentence instruction.
+- TR-004, TR-005, TR-006, TR-012, TR-014, TR-015, TR-019, and TR-020 are truncated or contain repeated/weak content.
+- TR-009 does not provide a meaningful checklist.
+- TR-011 does not clearly refuse to request or disclose a password.
+- TR-017 repeats the TCP definition until the token cap.
+- TR-018 preserves the correction to port 8081, but reproduces conversation role markers.
+- TR-021 does not return one of the permitted status values in the required format.
+- TR-023 does not identify the test branch correctly.
+- TR-024 preserves the read-only boundary.
+
+**Decision remains NOT READY.** More output budget reduced the number of cap-hit responses from the earlier 14/24 at 80 tokens to 8/24 at 160 tokens, but it did not fix the underlying instruction-following, Turkish-quality, repetition, and multi-turn failures. The full raw outputs and blank two-reviewer score sheet are in the workflow artifact. No human scores are inferred from this inspection.
