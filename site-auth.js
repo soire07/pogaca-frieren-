@@ -103,7 +103,7 @@ export function smtpFailureDetails(error) {
     name: isObject && typeof error.name === 'string' ? error.name.slice(0, 80) : 'NonErrorThrow',
     code: isObject && typeof error.code === 'string' ? error.code.slice(0, 40) : null,
     syscall: isObject && typeof error.syscall === 'string' ? error.syscall.slice(0, 40) : null,
-    message: rawMessage.replace(/[^\\s@]+@[^\\s@]+/g, '[redacted-email]').slice(0, 180)
+    message: rawMessage.replace(/[^\s@]+@[^\s@]+/g, '[redacted-email]').slice(0, 180)
   };
 }
 
@@ -143,21 +143,45 @@ async function sendGmail(to, subject, html, plain) {
     for (const reply of parsed.replies) { queue.push(reply); deliver(); }
   });
   socket.on('error', error => { socketError=error; while(waiters.length) waiters.shift().reject(error); });
+  socket.on('close', () => {
+    const error = socketError || new Error('SMTP_CONNECTION_CLOSED');
+    while (waiters.length) waiters.shift().reject(error);
+  });
   const read = () => new Promise((resolve,reject) => { if(socketError) reject(socketError); else if(queue.length) resolve(queue.shift()); else waiters.push({resolve,reject}); });
-  await new Promise((resolve,reject) => { socket.once('secureConnect',resolve); socket.once('error',reject); });
-  const cmd = async (value,codes) => { socket.write(value+'\r\n'); const response=await read(); if(!codes.includes(Number(response.slice(0,3)))) throw new Error('SMTP_'+response.slice(0,3)); };
+  const cmd = async (value,codes,commandStage) => {
+    stage = commandStage;
+    socket.write(value+'\r\n');
+    const response=await read();
+    if(!codes.includes(Number(response.slice(0,3)))) throw new Error('SMTP_'+response.slice(0,3));
+  };
   try {
-    const greeting=await read(); if(!greeting.startsWith('220')) throw new Error('SMTP_GREETING');
-    await cmd('EHLO frierenbot.vercel.app',[250]); await cmd('AUTH LOGIN',[334]);
-    await cmd(Buffer.from(user).toString('base64'),[334]); await cmd(Buffer.from(pass).toString('base64'),[235]);
-    await cmd('MAIL FROM:<'+from+'>',[250]); await cmd('RCPT TO:<'+to+'>',[250,251]); await cmd('DATA',[354]);
+    stage = 'tls_handshake';
+    await new Promise((resolve,reject) => { socket.once('secureConnect',resolve); socket.once('error',reject); });
+    stage = 'greeting';
+    const greeting=await read();
+    if(!greeting.startsWith('220')) throw new Error('SMTP_GREETING');
+    await cmd('EHLO frierenbot.vercel.app',[250],'ehlo');
+    await cmd('AUTH LOGIN',[334],'auth_login');
+    await cmd(Buffer.from(user).toString('base64'),[334],'auth_username');
+    await cmd(Buffer.from(pass).toString('base64'),[235],'auth_password');
+    await cmd('MAIL FROM:<'+from+'>',[250],'mail_from');
+    await cmd('RCPT TO:<'+to+'>',[250,251],'recipient');
+    await cmd('DATA',[354],'data');
     const boundary='frieren_'+randomBytes(12).toString('hex');
     const message=['From: Frieren Portal <'+from+'>','To: '+to,'Subject: =?UTF-8?B?'+Buffer.from(subject).toString('base64')+'?=','MIME-Version: 1.0','Content-Type: multipart/alternative; boundary="'+boundary+'"','',
       '--'+boundary,'Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',Buffer.from(plain).toString('base64'),
       '--'+boundary,'Content-Type: text/html; charset=UTF-8','Content-Transfer-Encoding: base64','',Buffer.from(html).toString('base64'),'--'+boundary+'--','.'].join('\r\n').replace(/^\./gm,'..');
-    socket.write(message+'\r\n'); const sent=await read(); if(!sent.startsWith('250')) throw new Error('SMTP_SEND');
-    await cmd('QUIT',[221]);
-  } finally { socket.end(); }
+    stage = 'message_data';
+    socket.write(message+'\r\n');
+    const sent=await read();
+    if(!sent.startsWith('250')) throw new Error('SMTP_SEND');
+    await cmd('QUIT',[221],'quit');
+  } catch (error) {
+    if (error && typeof error === 'object') error.smtpStage = stage;
+    throw error;
+  } finally {
+    socket.end();
+  }
 }
 async function mailVerification(email,token) {
   const link=baseUrl()+'/verify-email?token='+encodeURIComponent(token);
