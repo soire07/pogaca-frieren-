@@ -16,7 +16,7 @@ if (errors.length) {
   if (!inventory.auditComplete) {
     console.log('Not: İlk envanter henüz tüm eski özellikleri kapsamıyor; bu sayı toplam tamamlanma sayısı değildir.');
   }
-  const ids = new Set(inventory.features.map(feature => Number(feature.id.slice(4))));
+  const ids = new Set(inventory.features.filter(feature => feature.id.startsWith('RPG-')).map(feature => Number(feature.id.slice(4)));
   const gaps = [];
   for (let id = 1; id <= Math.max(...ids); id++) if (!ids.has(id)) gaps.push('RPG-' + String(id).padStart(3, '0'));
   if (gaps.length) console.log('Uzlaştırılmamış kimlik boşlukları (otomatik doldurulmadı): ' + gaps.join(', '));
