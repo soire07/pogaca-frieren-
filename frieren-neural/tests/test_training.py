@@ -249,7 +249,7 @@ def test_evaluation_uses_separate_corpus_and_returns_perplexity(tmp_path: Path):
     assert metrics["loss"] > 0
     assert metrics["perplexity"] >= 1
     assert metrics["loss_objective_version"] == 2
-    assert metrics["checkpoint_training_loss_objective_version"] == 1
+    assert metrics["checkpoint_training_loss_objective_version"] == 2
 
 
 def test_evaluation_rejects_training_corpus_reuse(tmp_path: Path):
