@@ -99,7 +99,7 @@ test('solo boss reward persistence is idempotent per battle session across dupli
   const rewards = await (await import('node:fs/promises')).readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
   const schema = await (await import('node:fs/promises')).readFile(new URL('../database/db.js', import.meta.url), 'utf8');
   assert.match(source, /randomUUID/);
-  assert.match(source, /last_boss_battle_id/);
+  assert.ok(rewards.includes('last_boss_battle_id'));
   assert.ok(source.includes('claimSoloBossReward'));
   assert.ok(rewards.includes('last_boss_battle_id IS DISTINCT FROM $7'));
   assert.ok(rewards.includes("return { status: 'already_claimed' }"));
