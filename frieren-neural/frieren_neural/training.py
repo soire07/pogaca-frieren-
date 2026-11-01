@@ -38,6 +38,8 @@ class TrainingConfig:
     n_layers: int = 4
     dropout: float = 0.1
     grad_clip: float = 1.0
+    tokenizer_vocab_size: int = 512
+    tokenizer_min_frequency: int = 2
 
     def __post_init__(self) -> None:
         if self.max_steps < 1 or self.eval_interval < 1 or self.eval_batches < 1:
@@ -52,6 +54,8 @@ class TrainingConfig:
             raise ValueError("Model dimensions must be positive and d_model divisible by n_heads.")
         if not 0.0 <= self.dropout < 1.0:
             raise ValueError("dropout must be in [0, 1).")
+        if self.tokenizer_vocab_size < BPETokenizer.BASE_VOCAB_SIZE or self.tokenizer_min_frequency < 1:
+            raise ValueError("BPE vocabulary must be at least 260 and minimum frequency must be positive.")
 
 
 def load_text_corpus(path: str | Path) -> list[str]:
@@ -180,7 +184,9 @@ def train_model(
     torch.manual_seed(settings.seed)
     selected_device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
     corpus_fingerprint = hashlib.sha256(json.dumps(list(documents), ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
-    tokenizer = BPETokenizer.train(\n        documents, vocab_size=settings.tokenizer_vocab_size, min_frequency=settings.tokenizer_min_frequency\n    )
+    tokenizer = BPETokenizer.train(
+        documents, vocab_size=settings.tokenizer_vocab_size, min_frequency=settings.tokenizer_min_frequency
+    )
     encoded: list[int] = []
     for document in documents:
         encoded.extend(tokenizer.encode(document.strip()))
