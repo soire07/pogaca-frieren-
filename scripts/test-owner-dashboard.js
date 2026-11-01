@@ -1,7 +1,7 @@
 import test from 'node:test';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerLayout, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderCommandHelpManager, renderOwnerLayout, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
 const ownerId = '1553794496234262641';
@@ -643,4 +643,35 @@ test('owner workspace layout places navigation and content in one balanced shell
   assert.ok(html.startsWith('<div class="owner-shell">'));
   assert.ok(html.includes('<nav class="nav">navigation</nav>'));
   assert.ok(html.endsWith('<div class="owner-content"><section class="owner-content">content</section></div></div>'));
+});
+
+
+test('command help manager lists loaded commands with bounded editable descriptions', () => {
+  const commands = new Map([
+    ['karakter', { data: { name: 'karakter', description: 'Karakter profilini görüntüle.' } }],
+    ['zindan', { data: { name: 'zindan', description: 'Zindan macerası başlat.' } }]
+  ]);
+  const html = renderCommandHelpManager(commands, [{
+    command_name: 'karakter', short_description: 'Özel kısa açıklama.',
+    long_description: 'Karakterinin ilerlemesini görüntüle.',
+    updated_at: '2026-11-01T12:00:00.000Z', version_count: 3, version_history: []
+  }], 'csrf-token');
+  assert.match(html, /\/karakter/);
+  assert.match(html, /\/zindan/);
+  assert.match(html, /maxlength="100"/);
+  assert.match(html, /maxlength="2000"/);
+  assert.match(html, /Özel kısa açıklama/);
+  assert.match(html, /3 sürüm/);
+  assert.match(html, /csrf-token/);
+});
+
+test('command help manager escapes stored owner content before rendering', () => {
+  const commands = new Map([['karakter', { data: { name: 'karakter', description: 'Kısa açıklama.' } }]]);
+  const html = renderCommandHelpManager(commands, [{
+    command_name: 'karakter', short_description: '<script>alert(1)</script>',
+    long_description: '<img src=x onerror=alert(1)>', version_count: 1, version_history: []
+  }], 'csrf');
+  assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
+  assert.doesNotMatch(html, /<img src=x onerror=alert\(1\)>/);
+  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
 });
