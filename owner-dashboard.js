@@ -201,6 +201,10 @@ export function buildOwnerSessionCookie(session, maxAgeSeconds) {
   return SESSION_COOKIE + '=' + encodeURIComponent(session) + '; Path=/owner; HttpOnly; Secure; SameSite=Lax; Max-Age=' + maxAgeSeconds;
 }
 
+export function renderOwnerLayout(navigation, content) {
+  return '<div class="owner-shell">' + navigation + '<div class="owner-content">' + content + '</div></div>';
+}
+
 function page(title, content) {
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · Frieren Owner</title><link rel="stylesheet" href="/assets/owner.css"></head><body><main>${content}</main></body></html>`;
 }
@@ -439,11 +443,10 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     partner_deleted: 'Partner kaydı silindi.',
     invalid: 'İşlem tamamlanamadı. Alanları ve bot izinlerini kontrol et.'
   })[notice] || '';
-  return page('Owner Kontrol Merkezi', `
+  return page('Owner Kontrol Merkezi', renderOwnerLayout(renderOwnerNavigation(), `
     <div class="top"><div><div class="brand">FRIEREN · PRIVATE OPERATIONS</div><div class="small">OWNER CONTROL CENTER</div></div>
       <form method="post" action="/owner/logout"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><button class="btn secondary">Güvenli çıkış</button></form>
     </div>
-    ${renderOwnerNavigation()}
     <section class="hero" id="overview"><span class="tag">OWNER · DOĞRULANDI</span><h1>Frieren Kontrol Merkezi</h1><p class="muted">Bu panel yalnızca yetkili Discord hesabına açıktır. İki botun sunucu içi davranışını tek merkezden yönet.</p>
       ${noticeText ? '<div class="notice">' + escapeHtml(noticeText) + '</div>' : ''}
       <div class="grid" id="system">
@@ -460,6 +463,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
         <div class="stat"><small>Bakım modu</small><strong class="${overview.maintenance ? 'warn' : 'good'}">${overview.maintenance ? 'Açık' : 'Kapalı'}</strong></div>
         <div class="stat"><small>Çalışma ortamı</small><strong>${escapeHtml(process.version)}</strong></div>
       </div>
+    </section>
       ${renderOwnerBotCards(overview, aiReadiness, renderServices)}
       ${renderOwnerControlCenter(renderServices, overview, session.csrf, renderMetrics, aiRenderMetrics)}
       <section class="panel" id="servers"><h2>Sunucu ve karşılama yönetimi</h2><p class="muted">Bağlı sunucuların karşılama ayarlarını ayrı ayrı yönet. Kaydetmeden önce bot izinleri doğrulanır.</p><div class="columns">${serverManagementHtml}</div></section>
@@ -468,7 +472,6 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
       <section class="panel" id="rpg"><h2>RPG sistem istatistikleri</h2>${rpgHtml}</section>
       ${renderRenderMetrics(renderMetrics, overview)}
       <div class="actions"><a class="btn secondary" href="/owner">Durumu yenile</a><span class="small">Canlı süreç ölçümleri · Son sayfa yüklemesi</span></div>
-    </section>
     <div class="columns">
       <section class="panel" id="maintenance"><h2>Bakım modu</h2><p class="muted">Açıldığında normal kullanıcı komutları ve Frieren sohbeti durdurulur. Owner komutları çalışmaya devam eder.</p>
         <form method="post" action="/owner/action" class="actions"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bakım modu değişikliğini onaylıyorum</label><button class="btn" name="action" value="maintenance-on">Bakımı aç</button><button class="btn secondary" name="action" value="maintenance-off">Bakımı kapat</button></form>
@@ -489,7 +492,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
       </section>
     </div>
 
-  `);
+  `));
 }
 
 export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limit: 20, total: 0 }, errors = { rows: [], page: 1, limit: 20, total: 0 }, testRuns = { rows: [], page: 1, limit: 10, total: 0 }, action = '', target = '', errorScope = '' } = {}) {
