@@ -598,6 +598,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
     + '<div class="stat"><small>Poğaça Frieren</small><strong>' + (serviceState.pogacaReady ? 'Bağlı' : 'Kontrol gerekli') + '</strong></div>'
     + '<div class="stat"><small>Frieren AI köprüsü</small><strong>' + (serviceState.frierenAiBridgeConfigured ? 'Yapılandırıldı' : 'Anahtar eksik') + '</strong></div>'
     + '<div class="stat"><small>Frieren Neural canlılık</small><strong>' + (serviceState.neuralLiveConfigured ? 'URL tanımlı' : 'Henüz bağlanmadı') + '</strong></div>'
+    + '<div class="stat"><small>GitHub onarım yetkisi</small><strong>' + (serviceState.githubTokenConfigured ? 'Token tanımlı' : 'Anahtar eksik') + '</strong></div>'
     + '<div class="stat"><small>Guardian izleyici</small><strong>' + monitorStatus + '</strong></div>'
     + '</div><p class="small">Kartlar bağlantı yapılandırmasını gösterir; harici servislerin gerçek sağlık durumu tarama düğmesiyle doğrulanır.</p>'
     + (monitorState?.last_tick_at ? '<p class="small">Son Guardian kontrolü: ' + escapeHtml(new Date(monitorState.last_tick_at).toLocaleString('tr-TR')) + (monitorState.last_error ? ' · Son hata: ' + escapeHtml(monitorState.last_error) : '') + '</p>' : '');
@@ -761,6 +762,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
           pogacaReady: Boolean(client?.isReady?.()),
           frierenAiBridgeConfigured: String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim().length >= 32,
           neuralLiveConfigured: Boolean(String(process.env.FRIEREN_NEURAL_LIVE_URL || '').trim()),
+          githubTokenConfigured: String(process.env.FRIEREN_GITHUB_TOKEN || '').trim().length >= 32,
         },
       }));
     } catch (error) {
