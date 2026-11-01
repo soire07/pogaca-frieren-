@@ -18,7 +18,7 @@ export const RENDER_BOT_SERVICES = Object.freeze({
     name: 'Frieren AI',
     id: process.env.RENDER_FRIEREN_AI_SERVICE_ID || 'srv-dbj192flk1mc73805ia0',
     url: process.env.RENDER_FRIEREN_AI_URL || 'https://pogaca-frieren-kltd.onrender.com',
-    healthPath: process.env.RENDER_FRIEREN_AI_HEALTH_PATH || '/health',
+    healthPath: process.env.RENDER_FRIEREN_AI_HEALTH_PATH || '/live',
     dashboardUrl: 'https://dashboard.render.com/web/' + (process.env.RENDER_FRIEREN_AI_SERVICE_ID || 'srv-dbj192flk1mc73805ia0'),
     canSuspend: true,
     allowedActions: Object.freeze(['restart', 'suspend', 'resume'])
@@ -43,7 +43,12 @@ async function readHealth(service, fetchImpl) {
     if (response.ok) {
       try { healthPayload = await response.json(); } catch { healthPayload = null; }
     }
-    return { health: response.ok ? 'healthy' : 'unhealthy', healthStatus: response.status, healthPayload };
+    const isAiReadinessResponse = service.key === 'frieren_ai' && typeof healthPayload?.ready === 'boolean';
+    const healthy = response.ok && (!isAiReadinessResponse || healthPayload.ready === true);
+    const exposedPayload = isAiReadinessResponse && healthPayload.readiness && typeof healthPayload.readiness === 'object'
+      ? healthPayload.readiness
+      : healthPayload;
+    return { health: healthy ? 'healthy' : 'unhealthy', healthStatus: response.status, healthPayload: exposedPayload };
   } catch {
     return { health: 'unavailable', healthStatus: null, healthPayload: null };
   }
