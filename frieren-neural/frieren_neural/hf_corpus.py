@@ -25,8 +25,8 @@ REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
 
 def _escape_training_controls(content: str) -> str:
     """Prevent message text from being parsed as chat roles or document boundaries."""
-    escaped = re.sub(r"(?m)^(Kullanıcı|Asistan): ", r"\\1： ", content)
-    return escaped.replace(DIALOGUE_SEPARATOR, "\\n\\n— — —\\n\\n")
+    escaped = re.sub(r"(?m)^(Kullanıcı|Asistan): ", r"\1： ", content)
+    return escaped.replace(DIALOGUE_SEPARATOR, "\n\n— — —\n\n")
 
 
 def _render_visible_dialogue(row: object) -> tuple[str, str] | None:
