@@ -911,9 +911,9 @@
         "path": "scripts/check-gameplay-integrity.js",
         "name": "item use persists base HP and mana without permanently adding temporary equipment bonuses",
         "markers": [
-          "max_mana + $8",
-          "max_hp + $7",
-          "Math.min(1, Number(user.hp) / Math.max(1, Number(user.max_hp)))"
+          "assert.match(source, /max_mana \\+ \\$8/);",
+          "assert.match(source, /max_hp \\+ \\$7/);",
+          "assert.match(source, /Math\\.min\\(1, Number\\(user\\.hp\\) \\/ Math\\.max\\(1, Number\\(user\\.max_hp\\)\\)\\)/);"
         ]
       },
       "limitation": "Item-use resource conversion and SQL update shape are source-asserted, including a separate bind-count regression test; no live inventory item is consumed."
