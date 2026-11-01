@@ -38,7 +38,8 @@ export function validatePatchPaths(patch) {
     if (!header || header[1] !== header[2] || !isAllowedRepairPath(header[1])) {
       throw new Error('REPAIR_PATH_NOT_ALLOWED');
     }
-    if (/^(?:new file mode 120000|old mode 120000|new mode 120000|deleted file mode 120000)$/m.test(section)
+    if (/^deleted file mode /m.test(section)
+      || /^(?:old mode|new mode|new file mode) (?:100755|120000|160000)$/m.test(section)
       || /^(?:GIT binary patch|Binary files )/m.test(section)
       || /^similarity index /m.test(section)
       || /^rename (?:from|to) /m.test(section)) {
