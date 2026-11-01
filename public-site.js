@@ -77,11 +77,6 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   const url = new URL(req.url, 'http://localhost');
   if (req.method !== 'GET') return false;
   const cookie = cookies(req);
-  if (url.pathname === '/logout') {
-    res.writeHead(302, { Location: '/login', 'Cache-Control': 'no-store', 'Set-Cookie': SITE_COOKIE + '=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0' });
-    res.end();
-    return true;
-  }
   if (url.pathname === '/owner' || url.pathname.startsWith('/owner/')) return false;
   if (assets.has(url.pathname) && ['site-avatar.svg', 'site-avatar.webp', 'site-banner.svg', 'site-banner.webp', 'site.css', 'owner.css'].includes(assets.get(url.pathname))) {
     try {
