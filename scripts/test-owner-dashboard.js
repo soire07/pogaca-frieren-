@@ -111,6 +111,28 @@ test('Guardian workspace shows review proposals as unapplied and requires owner 
   assert.match(html, /guardian-review/);
 });
 
+test('Guardian workspace exposes PR dispatch only after a completed review and with a token', () => {
+  const original = process.env.FRIEREN_GITHUB_TOKEN;
+  process.env.FRIEREN_GITHUB_TOKEN = 'x'.repeat(48);
+  try {
+    const html = renderOwnerGuardianWorkspace({
+      csrf: 'csrf-test',
+      incidents: [],
+      jobs: [{
+        id: 10, incident_id: 7, incident_title: 'RPG timeout', agent: 'frieren_ai',
+        system: 'pogaca_frieren', status: 'completed', repair_dispatch_status: 'not_requested',
+        created_at: '2026-11-02T10:01:00Z',
+        result: { status: 'proposal_only', rootCause: 'Missing retry guard.', applied: false },
+      }],
+    });
+    assert.match(html, /guardian-create-pr/);
+    assert.match(html, /Düzeltme PR'si hazırla/);
+  } finally {
+    if (original === undefined) delete process.env.FRIEREN_GITHUB_TOKEN;
+    else process.env.FRIEREN_GITHUB_TOKEN = original;
+  }
+});
+
 test('Render metrics stay disabled without an API key and do not make network requests', async () => {
   const { getRenderServiceMetrics } = await import('../owner-metrics.js');
   let calls = 0;
