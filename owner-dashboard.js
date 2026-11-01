@@ -705,8 +705,8 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         { label: 'Frieren AI köprü anahtarı', configured: Boolean(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET) },
         { label: 'Poğaça Render API anahtarı', configured: Boolean(process.env.RENDER_POGACA_API_KEY || process.env.RENDER_API_KEY) },
         { label: 'Frieren AI Render API anahtarı', configured: Boolean(process.env.RENDER_FRIEREN_AI_API_KEY) },
-        { label: 'Poğaça Render servis kimliği', configured: Boolean(process.env.RENDER_POGACA_SERVICE_ID || process.env.RENDER_SERVICE_ID) },
-        { label: 'Frieren AI Render servis kimliği', configured: Boolean(process.env.RENDER_FRIEREN_AI_SERVICE_ID) },
+        { label: 'Poğaça Render servis kimliği', configured: Boolean(RENDER_BOT_SERVICES.pogaca.id) },
+        { label: 'Frieren AI Render servis kimliği', configured: Boolean(RENDER_BOT_SERVICES.frieren_ai.id) },
         { label: 'Neon proje kimliği', configured: Boolean(process.env.NEON_PROJECT_ID) }
       ];
       const content = renderOwnerNavigation() + '<div class="top"><div><div class="brand">FRIEREN</div><div class="small">THE ARCANE SANCTUARY · OWNER WORKSPACE</div></div><a class="btn secondary" href="/owner">Genel bakış</a></div>'
