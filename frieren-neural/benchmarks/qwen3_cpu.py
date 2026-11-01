@@ -102,7 +102,10 @@ def run_benchmark(output_dir: Path, *, limit: int | None = None, threads: int = 
     with torch.inference_mode():
         for case_index, (case_id, category, prompt, _hint) in enumerate(cases):
             encoded = tokenizer.apply_chat_template(
-                [\n                    {"role": "system", "content": SYSTEM_PROMPT},\n                    {"role": "user", "content": prompt},\n                ],
+                [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
                 tokenize=True, add_generation_prompt=True,
                 enable_thinking=False, return_dict=True, return_tensors="pt",
             )
