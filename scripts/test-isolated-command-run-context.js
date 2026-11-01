@@ -23,3 +23,14 @@ test('isolated command test run identifiers are stable within one run and reject
   assert.throws(() => createIsolatedTestRunContext(1000, 'fixed-run'), /INVALID_TEST_COMMAND_COUNT/);
   assert.throws(() => createIsolatedTestRunContext(1, ''), /INVALID_TEST_RUN_ID/);
 });
+
+test('live command harness uses the generated run identity for guilds, users and co-op fixtures', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('./live-command-test.js', import.meta.url), 'utf8');
+
+  assert.match(source, /createIsolatedTestRunContext\(Math\.max\(1, commands\.length\)\)/);
+  assert.match(source, /const guildId = runContext\.guildIds\[index - 1\]/);
+  assert.match(source, /const userId = runContext\.userId\(index\)/);
+  assert.match(source, /buildCoopTestUserIds\(index, userId, runContext\.coopUserPrefix\)/);
+  assert.doesNotMatch(source, /const TEST_USER_PREFIX/);
+});
