@@ -43,7 +43,7 @@ frieren-neural-train --data ./corpus/turkish-daily-dialogues --steps 1000 --batc
 frieren-neural-train-small --data ./corpus/turkish-daily-dialogues --steps 1000
 ```
 
-The importer stores each conversation as a separate section divided by `\\n\\n---\\n\\n`. Training uses those section boundaries when making its chronological train/validation split, so no conversation is divided between the two sets. The same pinned importer can prepare the validation or test split separately; the trainer only downloads the train split. To evaluate on the untouched test set, use:
+The importer stores each conversation as a separate section divided by `\n\n---\n\n`. Training uses those section boundaries when making its chronological train/validation split, so no conversation is divided between the two sets. The same pinned importer can prepare the validation or test split separately; the trainer only downloads the train split. To evaluate on the untouched test set, use:
 ```bash
 frieren-neural-prepare-turkish-dialogues --split test --output ./corpus/turkish-daily-dialogues-test
 frieren-neural-evaluate --data ./corpus/turkish-daily-dialogues-test --checkpoint ./checkpoints/frieren-neural-small.pt --batch-size 4 --batches 25 --device cpu
