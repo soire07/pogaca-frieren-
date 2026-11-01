@@ -75,7 +75,7 @@ test('owner panel navigation exposes command workflows and the new activity cent
   for (const id of ['overview', 'system', 'bot-control', 'memories', 'approvals', 'announcements', 'maintenance']) {
     assert.match(navigation, new RegExp('href="/owner#' + id + '"'));
   }
-  assert.doesNotMatch(navigation, /Log Merkezi|href="\/owner#activity"/);
+  assert.match(navigation, /Denetim ve test geçmişi/);
 });
 
 
