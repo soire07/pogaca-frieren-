@@ -102,16 +102,16 @@ export default {
     const db = await pool.connect();
     try {
       await db.query('BEGIN');
-      // Keep lock ordering consistent with item consumption: inventory row, then player row.
+      // Match the market and item-use transaction order: player row before inventory/equipment rows.
+      const baseStats = await db.query(
+        'SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+        [interaction.guildId, interaction.user.id]
+      );
       const owned = await db.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3 FOR UPDATE', [interaction.guildId, interaction.user.id, item.name]);
       if (!owned.rowCount) {
         await db.query('ROLLBACK');
         return interaction.reply({ content: 'Bu ekipman envanterinde yeterli sayıda yok. Önce **/market** üzerinden satın al.', ephemeral: true });
       }
-      const baseStats = await db.query(
-        'SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
-        [interaction.guildId, interaction.user.id]
-      );
       const equipped = await db.query('SELECT slot FROM user_equipment WHERE guild_id=$1 AND user_id=$2 AND item_key=$3', [interaction.guildId, interaction.user.id, item.name]);
       const sameItemInTarget = equipped.rows.some(row => row.slot === slot);
       if (Number(owned.rows[0].quantity) < equipped.rowCount + (sameItemInTarget ? 0 : 1)) {

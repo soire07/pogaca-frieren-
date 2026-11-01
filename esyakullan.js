@@ -97,6 +97,12 @@ export default {
     const db = await pool.connect();
     try {
       await db.query('BEGIN');
+      // Match market/equipment transactions: serialize this player's economy before locking inventory.
+      const playerLock = await db.query(
+        'SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+        [interaction.guildId, interaction.user.id]
+      );
+      if (!playerLock.rowCount) throw new Error('Oyuncu kaydı bulunamadı.');
       const found = await db.query(
         'SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3 FOR UPDATE',
         [interaction.guildId, interaction.user.id, item.key]
