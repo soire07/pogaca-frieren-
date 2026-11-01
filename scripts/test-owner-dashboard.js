@@ -1,7 +1,7 @@
 import test from 'node:test';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerLayout, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
 const ownerId = '1553794496234262641';
@@ -635,4 +635,12 @@ test('owner scenario tests target the separately hosted Frieren AI service over 
 test('owner navigation provides a safe public-site preview shortcut', () => {
   assert.match(renderOwnerNavigation(), /Ana siteyi önizle/);
   assert.match(renderOwnerNavigation(), /href="\/" target="_blank" rel="noopener"/);
+});
+
+
+test('owner workspace layout places navigation and content in one balanced shell', () => {
+  const html = renderOwnerLayout('<nav class="nav">navigation</nav>', '<section class="owner-content">content</section>');
+  assert.match(html, /^<div class="owner-shell">/);
+  assert.match(html, /<nav class="nav">navigation<\\/nav>/);
+  assert.match(html, /<div class="owner-content"><section class="owner-content">content<\\/section><\\/div><\\/div>$/);
 });
