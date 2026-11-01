@@ -728,3 +728,17 @@ test('command help save rejects names that are not loaded slash commands without
   assert.equal(response.headers.Location, '/owner?notice=invalid');
   assert.equal(calls, 0);
 });
+
+test('command help save refuses an unchecked confirmation without touching persistence', async () => {
+  let databaseWrites = 0;
+  const db = { async query() { databaseWrites += 1; throw new Error('unconfirmed help save must not reach persistence'); } };
+  const client = { commands: new Map([['karakter', {}]]) };
+  const { response } = await runOwnerPost({
+    action: 'command-help-save', csrf: 'session',
+    commandName: 'karakter', shortDescription: 'Karakter profili.',
+    longDescription: 'Oyuncunun karakterini ve ilerlemesini gösterir.'
+  }, db, client);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner?notice=invalid');
+  assert.equal(databaseWrites, 0);
+});
