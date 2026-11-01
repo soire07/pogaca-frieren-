@@ -15,6 +15,12 @@
 - Production verified feature IDs in this audit: **0**
 - Audit complete: **No**
 
+## Historical ID-gap reconciliation
+
+- Checked the available historical inventory snapshot at commit `9555b7d` (2026-10-27): it contains RPG-280 followed by RPG-300; RPG-281–RPG-299 are absent there as well.
+- Reviewed the 2026-10-29 inventory-removal commits `7dc00d4` and `e73970f`: their inventory patches remove moderation/server-management IDs only; they do not show RPG-281–RPG-299 being removed or renumbered.
+- Therefore, the available history does not support reusing or restoring these RPG IDs as deleted features. They appear unallocated in the reviewed history, but older unqueried history may exist. The gap remains reserved until the full repository history is reconciled.
+
 The 317 records are an existing implementation catalogue, not 317 independently proven working features. The missing numeric suffixes may represent deleted, renumbered or never-added records; they must be reconciled against Git history before reuse. Do not silently fill the gap or inflate the feature count.
 
 ## Evidence policy
