@@ -4,8 +4,8 @@ import { equipmentItems, equipmentBonus } from '../equipment-data.js';
 import { applyEquipmentSetBonus } from '../rpg-mechanics.js';
 import { buildCoopTestUserIds } from './coop-test-users.js';
 import { handleCharacterPanelInteraction } from '../karakter.js';
+import { createIsolatedTestRunContext } from './isolated-test-run-context.js';
 
-const TEST_USER_PREFIX = '900000000000';
 
 export function buildIsolatedTestGuildId(index) {
   const sequence = Number(index);
@@ -238,13 +238,14 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
       return !command?.internalOnly && !name.startsWith('owner-') && name !== 'owner';
     });
   const unknown = requestedNames.filter(name => !commandMap.has(name));
+  const runContext = createIsolatedTestRunContext(Math.max(1, commands.length));
   return withIsolatedTestSchema(async () => {
     const results = [];
     let index = 0;
     for (const command of commands) {
       index++;
-      const guildId = buildIsolatedTestGuildId(index);
-      const userId = TEST_USER_PREFIX + String(index).padStart(6, '0');
+      const guildId = runContext.guildIds[index - 1];
+      const userId = runContext.userId(index);
       const effects = [];
       try {
         await ensureUser(guildId, userId);
@@ -578,7 +579,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           );
 
         } else if (commandName === 'katlizindan' || commandName === 'ortakboss') {
-          const teamUserIds = buildCoopTestUserIds(index, userId, TEST_USER_PREFIX);
+          const teamUserIds = buildCoopTestUserIds(index, userId, runContext.coopUserPrefix);
           const teamUsers = teamUserIds.map((id, offset) => ({
             id,
             username: 'FrierenTest' + (offset + 1),
@@ -1177,6 +1178,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
     return {
       title: 'Poğaça Frieren isolated command handler test report',
       generatedAt: new Date().toISOString(),
+      testRunId: runContext.runId,
       executionMode: 'synthetic Discord interaction; isolated PostgreSQL schema frieren_test',
       note: 'Bu rapor gerçek Discord kullanıcısının etkileşimi değildir. Yanıt kaydı tek başına INCONCLUSIVE sayılır. PASS yalnızca komuta özel davranış doğrulamaları ve yalıtılmış PostgreSQL durum kontrolleri geçtiğinde verilir. /buyupratik için altın, mana ve büyü ustalığı; /ekipman için kuşanma, çıkarma, envanter ve efsanevi set bonusu; /esyakullan için HP, mana ve eşya tüketimi yalıtılmış PostgreSQL üzerinde doğrulanır. /katlizindan ve /ortakboss için davet, rol, tur aksiyonları, ödül, HP/mana, oyuncu izolasyonu ve karşılaşma kilitleri yalıtılmış PostgreSQL üzerinde doğrulanır. /kesif için ödül, bölge ustalığı, kaynak sınırları ve bekleme süresi; /cantam için eşya listesi ve toplamlar; /buyular için başlangıç/öğrenilmiş büyü listesi; /buyuustaligi için kullanım ve ustalık seviyesi verileri yalıtılmış PostgreSQL üzerinde doğrulanır. /bakiye için altın/XP/seviye gösterimi ve salt okunur davranış; /istatistik için oyuncu sayısı, en yüksek seviye ve ping; /liderlik için sıralama verisi; /hedefler için altı hedefin görünümü ve DB ilerlemesi; /hazinegecmisi için ganimet geçmişi; /kesifdefteri için keşif özeti ve salt okunur davranış; /bossrehberi, /sinifrehberi, /dunya, /yardim, /buyu ve /evren için içerik ve oyuncu verisi değişmezliği yalıtılmış PostgreSQL üzerinde doğrulanır. Komut adı boş bırakıldığında tüm herkese açık oyuncu komutları çalıştırılır; internal-only ve owner komutları varsayılan toplu denetime dahil edilmez. Davranış testi henüz tanımlanmamış komutlar kesin değil olarak raporlanır.',
       summary: {
