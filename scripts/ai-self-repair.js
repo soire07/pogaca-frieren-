@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 const MAX_CONTEXT_CHARS = 22_000;
 const MAX_PATCH_CHARS = 12_000;
 const MAX_PATCH_FILES = 4;
-const ALLOWED_PATH = /^(?:[A-Za-z0-9_.-]+\.js|ai-agent\/[A-Za-z0-9_.-]+\.js|scripts\/[A-Za-z0-9_.-]+\.js|database\/[A-Za-z0-9_.-]+\.js)$/;\nconst PROTECTED_PATHS = new Set(['index.js','owner-dashboard.js','owner-admin.js','owner-render-control.js','ai-agent/index.js','scripts/ai-self-repair.js','scripts/ai-self-repair.test.js','database/db.js']);
+const ALLOWED_PATH = /^(?:[A-Za-z0-9_.-]+\.js|ai-agent\/[A-Za-z0-9_.-]+\.js|scripts\/[A-Za-z0-9_.-]+\.js|database\/[A-Za-z0-9_.-]+\.js)$/;\nconst PROTECTED_PATHS = new Set(['index.js','owner-dashboard.js','owner-admin.js','owner-render-control.js','owner-workspaces.js','owner-metrics.js','frieren-chat.js','ai-agent/index.js','ai-agent/memory-store.js','ai-agent/memory-extractor.js','ai-agent/guardian-review.js','scripts/ai-self-repair.js','scripts/ai-self-repair.test.js','scripts/check-commands.js','scripts/check-feature-inventory.js','scripts/check-gameplay-integrity.js','database/db.js']);
 const runGit = (args, options = {}) => execFileSync('git', args, options);
 
 export function isAllowedRepairPath(value) {
@@ -116,6 +116,7 @@ export function applyRepairPatch(patch, { execFile = runGit } = {}) {
   validatePatchPaths(patch);
   execFile(['apply', '--check', '--'], { input: patch, stdio: ['pipe', 'pipe', 'pipe'] });
   execFile(['apply', '--'], { input: patch, stdio: ['pipe', 'pipe', 'pipe'] });
+  execFile(['diff', '--check'], { stdio: ['ignore', 'pipe', 'pipe'] });
   const changed = execFile(['status', '--short'], { encoding: 'utf8' })
     .split('\n').filter(Boolean).map(line => line.slice(3).trim());
   if (!changed.length || changed.length > MAX_PATCH_FILES || changed.some(path => !isAllowedRepairPath(path))) {
