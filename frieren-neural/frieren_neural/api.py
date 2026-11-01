@@ -68,7 +68,7 @@ class LoginRequest(BaseModel):
 class GenerateRequest(BaseModel):
     prompt: str = Field(min_length=1, max_length=2_048)
     max_new_tokens: int = Field(default=80, ge=1, le=128)
-    temperature: float = Field(default=0.8, gt=0.0, le=2.0)
+    temperature: float = Field(default=0.3, gt=0.0, le=2.0)
     top_k: int = Field(default=40, ge=1, le=128)
 
 
@@ -117,6 +117,45 @@ def _generation_capacity():
 def clear_runtime_cache() -> None:
     """Clear the loaded model after checkpoint or environment changes."""
     _load_runtime.cache_clear()
+    try:
+        from .gguf_runtime import load_model
+        load_model.cache_clear()
+    except ImportError:
+        pass
+
+
+def _model_backend() -> str:
+    backend = os.environ.get("FRIEREN_MODEL_BACKEND", "scratch").strip().lower()
+    if backend not in {"scratch", "ufakzeka"}:
+        raise RuntimeError("FRIEREN_MODEL_BACKEND must be 'scratch' or 'ufakzeka'.")
+    return backend
+
+
+def _load_active_runtime():
+    if _model_backend() == "ufakzeka":
+        from .gguf_runtime import load_model
+        return load_model()
+    checkpoint = _checkpoint_path()
+    return _load_runtime(str(checkpoint.resolve()), os.environ.get("FRIEREN_DEVICE", "cpu"))
+
+
+def _generate_reply(prompt: str, *, max_new_tokens: int, temperature: float, top_k: int):
+    if _model_backend() == "ufakzeka":
+        from .gguf_runtime import MODEL_ID, generate_completion, load_model
+        completion = generate_completion(
+            load_model(), prompt, max_new_tokens=max_new_tokens,
+            temperature=temperature, top_k=top_k,
+        )
+        return completion, 0, MODEL_ID
+
+    model, tokenizer, metadata = _load_active_runtime()
+    generation_prompt = format_benchmark_prompt(prompt)
+    result = generate_text(
+        model, tokenizer, generation_prompt, max_new_tokens=max_new_tokens,
+        temperature=temperature, top_k=top_k,
+    )
+    raw_completion = result[len(generation_prompt):] if result.startswith(generation_prompt) else result
+    return raw_completion.lstrip(), int(metadata["step"]), "frieren-neural-scratch"
 
 
 def _checkpoint_path() -> Path:
@@ -136,19 +175,19 @@ def _authenticate(authorization: str | None) -> None:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    checkpoint = _checkpoint_path()
-    if not checkpoint.is_file():
+    if _model_backend() == "scratch" and not _checkpoint_path().is_file():
         return {"status": "model_unavailable"}
     try:
         with _generation_capacity(), _generation_lock:
-            _load_runtime(str(checkpoint.resolve()), os.environ.get("FRIEREN_DEVICE", "cpu"))
+            _load_active_runtime()
     except HTTPException as error:
         if error.status_code == 503:
             return {"status": "busy"}
         raise
-    except (OSError, RuntimeError, ValueError, KeyError, EOFError, pickle.UnpicklingError):
+    except (OSError, RuntimeError, ValueError, KeyError, EOFError, ImportError, pickle.UnpicklingError):
         return {"status": "model_unavailable"}
-    return {"status": "ready"}
+    model_name = "ufakai/ufakzeka-1" if _model_backend() == "ufakzeka" else "frieren-neural-scratch"
+    return {"status": "ready", "model": model_name}
 
 
 @app.post("/generate")
@@ -157,31 +196,21 @@ def generate(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, str | int]:
     _authenticate(authorization)
-    checkpoint = _checkpoint_path()
-    if not checkpoint.is_file():
+    if _model_backend() == "scratch" and not _checkpoint_path().is_file():
         raise HTTPException(status_code=503, detail="Model checkpoint is unavailable.")
-    device = os.environ.get("FRIEREN_DEVICE", "cpu")
     with _generation_capacity(), _generation_lock:
         try:
-            model, tokenizer, metadata = _load_runtime(str(checkpoint.resolve()), device)
-        except (OSError, RuntimeError, ValueError, KeyError, EOFError, pickle.UnpicklingError) as error:
-            raise HTTPException(status_code=503, detail="Model checkpoint could not be loaded.") from error
-        try:
-            generation_prompt = format_benchmark_prompt(request.prompt)
-            result = generate_text(
-                model, tokenizer, generation_prompt, max_new_tokens=request.max_new_tokens,
-                temperature=request.temperature, top_k=request.top_k
+            completion, step, model_name = _generate_reply(
+                request.prompt, max_new_tokens=request.max_new_tokens,
+                temperature=request.temperature, top_k=request.top_k,
             )
-        except (RuntimeError, ValueError) as error:
-            raise HTTPException(status_code=422, detail="The prompt could not be processed.") from error
-    raw_completion = result[len(generation_prompt):] if result.startswith(generation_prompt) else result
-    completion = raw_completion.lstrip()
+        except (OSError, RuntimeError, ValueError, KeyError, EOFError, ImportError, pickle.UnpicklingError) as error:
+            raise HTTPException(status_code=503, detail="Model could not be loaded or generate a response.") from error
     return {
-        # Preserve the public response contract while using the exact chat format
-        # shared by assistant-only training and the quality benchmark.
         "text": request.prompt + ((" " + completion) if completion else ""),
         "completion": completion,
-        "step": int(metadata["step"]),
+        "step": step,
+        "model": model_name,
     }
 
 
@@ -337,7 +366,7 @@ const loginForm=document.getElementById("login"),chat=document.getElementById("c
 async function request(path,body){const response=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"İstek başarısız.");return data;}
 async function checkSession(){try{const response=await fetch("/web/session");const data=await response.json();if(data.authenticated){loginForm.hidden=true;chat.hidden=false;}}catch{}}
 loginForm.addEventListener("submit",async event=>{event.preventDefault();statusNode.textContent="";try{await request("/web/login",{password:document.getElementById("password").value});document.getElementById("password").value="";loginForm.hidden=true;chat.hidden=false;}catch(error){statusNode.textContent=error.message;}});
-document.getElementById("send").addEventListener("click",async()=>{const prompt=document.getElementById("prompt").value.trim();if(!prompt)return;statusNode.textContent="Yanıt hazırlanıyor...";answer.textContent="";try{const data=await request("/web/generate",{prompt,max_new_tokens:100,temperature:0.8,top_k:40});answer.textContent=data.completion??data.text;statusNode.textContent="";}catch(error){statusNode.textContent=error.message;}});
+document.getElementById("send").addEventListener("click",async()=>{const prompt=document.getElementById("prompt").value.trim();if(!prompt)return;statusNode.textContent="Yanıt hazırlanıyor...";answer.textContent="";try{const data=await request("/web/generate",{prompt,max_new_tokens:100,temperature:0.3,top_k:40});answer.textContent=data.completion??data.text;statusNode.textContent="";}catch(error){statusNode.textContent=error.message;}});
 document.getElementById("logout").addEventListener("click",async()=>{try{await request("/web/logout",{});}catch{}chat.hidden=true;loginForm.hidden=false;answer.textContent="";statusNode.textContent="Oturum kapatıldı.";});
 checkSession();
 </script></body></html>"""
@@ -402,24 +431,19 @@ def web_generate(
     secret = os.environ.get("FRIEREN_SESSION_SECRET", "")
     if len(secret) < 32 or not _valid_session_token(request.cookies.get(_SESSION_COOKIE), secret):
         raise HTTPException(status_code=401, detail="A valid web session is required.")
-    checkpoint = _checkpoint_path()
-    if not checkpoint.is_file():
+    if _model_backend() == "scratch" and not _checkpoint_path().is_file():
         raise HTTPException(status_code=503, detail="Model checkpoint is unavailable.")
-    device = os.environ.get("FRIEREN_DEVICE", "cpu")
     try:
         with _generation_capacity(), _generation_lock:
-            model, tokenizer, metadata = _load_runtime(str(checkpoint.resolve()), device)
-            generation_prompt = format_benchmark_prompt(payload.prompt)
-            result = generate_text(
-                model, tokenizer, generation_prompt, max_new_tokens=payload.max_new_tokens,
-                temperature=payload.temperature, top_k=payload.top_k
+            completion, step, model_name = _generate_reply(
+                payload.prompt, max_new_tokens=payload.max_new_tokens,
+                temperature=payload.temperature, top_k=payload.top_k,
             )
-    except (OSError, RuntimeError, ValueError, KeyError, EOFError, pickle.UnpicklingError) as error:
+    except (OSError, RuntimeError, ValueError, KeyError, EOFError, ImportError, pickle.UnpicklingError) as error:
         raise HTTPException(status_code=503, detail="Model could not process the request.") from error
-    raw_completion = result[len(generation_prompt):] if result.startswith(generation_prompt) else result
-    completion = raw_completion.lstrip()
     return {
         "text": payload.prompt + ((" " + completion) if completion else ""),
         "completion": completion,
-        "step": int(metadata["step"]),
+        "step": step,
+        "model": model_name,
     }
