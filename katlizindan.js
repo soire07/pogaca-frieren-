@@ -1,7 +1,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder, ComponentType } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { getBossArtUrl } from './boss-art.js';
-import { recordJournalEntry } from './gameplay-journal.js';
+import { settleDungeonRewards } from './rpg-reward-transactions.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
 import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio } from './rpg-mechanics.js';
@@ -409,29 +409,7 @@ export default {
         }
       }
 
-      // Reacquire a short transaction only for the final save; never hold locks during combat collectors.
-      db = await pool.connect();
-      await db.query('BEGIN');
-      const lockedRows = await db.query(
-        'SELECT user_id,last_dungeon_at,xp,level FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE',
-        [interaction.guildId, ids]
-      );
-      const activeReservations = await db.query(
-        "SELECT user_id FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND encounter_id=$3 AND encounter_type='dungeon' AND expires_at > NOW() FOR UPDATE",
-        [interaction.guildId, ids, interaction.id]
-      );
-      if (activeReservations.rowCount !== ids.length) {
-        await db.query('ROLLBACK');
-        return interaction.editReply({ content: '⌛ Zindan oturumunun süresi doldu veya takım kilidi kayboldu; ödüller kaydedilmedi. Yeniden deneyebilirsin.', components: [] });
-      }
-      const concurrentRun = lockedRows.rows.find(p => p.last_dungeon_at && Date.now() - new Date(p.last_dungeon_at).getTime() < COOLDOWN_MS);
-      if (concurrentRun) {
-        const mins = Math.ceil((COOLDOWN_MS - (Date.now() - new Date(concurrentRun.last_dungeon_at).getTime())) / 60_000);
-        await db.query('ROLLBACK');
-        return interaction.editReply({ content: `⏳ <@${concurrentRun.user_id}> başka bir macerada bekleme süresine girdi; yaklaşık **${mins} dakika** sonra yeniden deneyin. Bu koşunun ödülleri kaydedilmedi.`, components: [] });
-      }
       const victory = floorsCleared === FLOORS;
-      if (victory) await recordJournalEntry(db, interaction.guildId, interaction.user.id, 'discoveries', 'ancient-elf-sanctuary');
       const loot = victory && Math.random() < 0.35 ? LOOT[Math.floor(Math.random() * LOOT.length)] : null;
       const craftingLoot = floorsCleared >= FLOORS
         ? '👑 Himmel’in Efsanevi Yadigârı'
@@ -442,41 +420,31 @@ export default {
             : null;
       const persistedHpNow = hpNow.map((hp, i) => restoreResourceRatio(hp, players[i].maxHp, players[i].max_hp));
       const persistedManaNow = players.map(p => restoreResourceRatio(p.mana, p.maxMana, p.max_mana));
-      for (const [userId, casts] of spellCasts) {
-        const mastery = await db.query(
-          `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
-           VALUES ($1,$2,'zoltraak',$3,LEAST(10,FLOOR($3/10.0)::int),NOW())
-           ON CONFLICT (guild_id,user_id,spell_key) DO UPDATE
-           SET casts=spell_mastery.casts+EXCLUDED.casts,
-               mastery_level=LEAST(10,FLOOR((spell_mastery.casts+EXCLUDED.casts)/10.0)::int),
-               updated_at=NOW()
-           RETURNING casts,mastery_level`,
-          [interaction.guildId, userId, casts]
-        );
-        log.push(`📈 <@${userId}> Zoltraak ustalığı: ${mastery.rows[0].casts} kullanım · Seviye ${mastery.rows[0].mastery_level}/10.`);
+      const settlement = await settleDungeonRewards(pool, {
+        guildId: interaction.guildId,
+        encounterId: interaction.id,
+        ids,
+        players,
+        persistedHpNow,
+        persistedManaNow,
+        victory,
+        totalXp,
+        totalCoins,
+        chestRewards,
+        loot,
+        craftingLoot,
+        spellCasts,
+        journalUserId: interaction.user.id
+      });
+      if (settlement.status === 'reservation_missing') {
+        return interaction.editReply({ content: '⌛ Zindan oturumunun süresi doldu veya takım kilidi kayboldu; ödüller kaydedilmedi. Yeniden deneyebilirsin.', components: [] });
       }
-      const currentProgress = new Map(lockedRows.rows.map(row => [row.user_id, row]));
-      for (let i = 0; i < players.length; i++) {
-        const p = players[i];
-        const current = currentProgress.get(p.user_id);
-        const newXp = Number(current.xp) + totalXp;
-        const newLevel = levelForXp(newXp);
-        await db.query(
-          `UPDATE users SET hp=$3, xp=$4, level=$5, coins=coins+$6,
-             stat_points=stat_points+$7, dungeon_wins=dungeon_wins+$8,
-             dungeon_runs=dungeon_runs+1, last_dungeon_at=NOW(), mana=$9
-           WHERE guild_id=$1 AND user_id=$2`,
-          [interaction.guildId, p.user_id, persistedHpNow[i], newXp, newLevel, totalCoins,
-            Math.max(0, newLevel - Number(current.level)), victory ? 1 : 0, persistedManaNow[i]]
-        );
-        for (const itemKey of [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])]) await db.query(
-          `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
-           ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
-          [interaction.guildId, p.user_id, itemKey]
-        );
+      if (settlement.status === 'cooldown') {
+        return interaction.editReply({ content: `⏳ <@${settlement.userId}> başka bir macerada bekleme süresine girdi; yaklaşık **${settlement.minutes} dakika** sonra yeniden deneyin. Bu koşunun ödülleri kaydedilmedi.`, components: [] });
       }
-      await db.query('DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2', [interaction.guildId, interaction.id]);
-      await db.query('COMMIT');
+      for (const mastery of settlement.masteryResults) {
+        log.push(`📈 <@${mastery.userId}> Zoltraak ustalığı: ${mastery.casts} kullanım · Seviye ${mastery.mastery_level}/10.`);
+      }
       const milestoneRows = await db.query('SELECT user_id,level,boss_defeats,dungeon_wins FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[interaction.guildId,ids]);
       const milestoneText = milestoneRows.rows.map(row => {
         const titles = progressionMilestone(Number(row.level), Number(row.boss_defeats), Number(row.dungeon_wins));
