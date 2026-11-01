@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from frieren_neural.quality_evaluation import PROMPTS, PROMPT_SET_VERSION, empty_score_template
+from frieren_neural.qwen3_decoding import SYSTEM_PROMPT, SYSTEM_PROMPT_VERSION
 
 MODEL_ID = "Qwen/Qwen3-0.6B"
 MODEL_REVISION = "c1899de289a04d12100db370d81485cdf75e47ca"
@@ -101,7 +102,7 @@ def run_benchmark(output_dir: Path, *, limit: int | None = None, threads: int = 
     with torch.inference_mode():
         for case_index, (case_id, category, prompt, _hint) in enumerate(cases):
             encoded = tokenizer.apply_chat_template(
-                [{"role": "user", "content": prompt}],
+                [\n                    {"role": "system", "content": SYSTEM_PROMPT},\n                    {"role": "user", "content": prompt},\n                ],
                 tokenize=True, add_generation_prompt=True,
                 enable_thinking=False, return_dict=True, return_tensors="pt",
             )
@@ -138,7 +139,7 @@ def run_benchmark(output_dir: Path, *, limit: int | None = None, threads: int = 
         "prompt_count": len(cases), "prompt_set_sha256": benchmark_prompt_digest(),
         "device": "cpu", "dtype": "float32", "threads": threads,
         "max_new_tokens": MAX_NEW_TOKENS,
-        "decoding_settings": {"do_sample": True, "temperature": 0.7, "top_p": 0.8, "top_k": 20, "repetition_penalty": 1.1, "seed_base": 20261101},
+        "decoding_settings": {"do_sample": True, "temperature": 0.7, "top_p": 0.8, "top_k": 20, "repetition_penalty": 1.1, "seed_base": 20261101, "system_prompt_version": SYSTEM_PROMPT_VERSION},
         "model_load_seconds": load_seconds,
         "generation_total_seconds": round(time.perf_counter() - generation_started, 3),
         "latency_median_seconds": round(statistics.median(latencies), 3),
