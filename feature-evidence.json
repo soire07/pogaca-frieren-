@@ -886,9 +886,10 @@
         "path": "scripts/test-utils.js",
         "name": "quest chain integrates level-scaled XP, level-ups, stat points and completion bonus",
         "markers": [
-          "levelForXp(newXp)",
-          "stat_points=stat_points+$6",
-          "getLevelScaledQuestReward(200, 80, 51, true)"
+          "assert.match(quest, /getLevelScaledQuestReward\\(step\\.reward, step\\.xpReward, player\\.level, step\\.step === 3\\)/);",
+          "assert.match(quest, /levelForXp\\(newXp\\)/);",
+          "assert.match(quest, /stat_points=stat_points\\+\\$6/);",
+          "assert.match(quest, /reward\\.completionBonus/);"
         ]
       },
       "limitation": "Quest completion source is checked for level and stat-point writes; no live player quest claim is executed."
