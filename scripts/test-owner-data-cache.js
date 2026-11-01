@@ -59,6 +59,9 @@ test('owner data cache coalesces the first load and returns the cached result', 
 
 test('owner data cache serves stale data while one expired entry refreshes in background', async () => {
   clearOwnerDataCacheForTests();
+  const realNow = Date.now;
+  let now = 1_000;
+  Date.now = () => now;
   let calls = 0;
   let release;
   const gate = new Promise(resolve => { release = resolve; });
@@ -69,14 +72,19 @@ test('owner data cache serves stale data while one expired entry refreshes in ba
     return 'second';
   };
 
-  assert.equal(await getOwnerData('dashboard:activity', loader, 1), 'first');
-  await new Promise(resolve => setTimeout(resolve, 5));
-  assert.equal(await getOwnerData('dashboard:activity', loader, 1), 'first');
-  assert.equal(await getOwnerData('dashboard:activity', loader, 1), 'first');
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(calls, 2);
-  release();
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(await getOwnerData('dashboard:activity', loader, 1), 'second');
-  assert.equal(calls, 2);
+  try {
+    assert.equal(await getOwnerData('dashboard:activity', loader, 1), 'first');
+    now += 2;
+    assert.equal(await getOwnerData('dashboard:activity', loader, 1), 'first');
+    assert.equal(await getOwnerData('dashboard:activity', loader, 1), 'first');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(calls, 2);
+    release();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(await getOwnerData('dashboard:activity', loader, 1), 'second');
+    assert.equal(calls, 2);
+  } finally {
+    Date.now = realNow;
+    clearOwnerDataCacheForTests();
+  }
 });
