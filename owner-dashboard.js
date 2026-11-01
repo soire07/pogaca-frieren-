@@ -22,6 +22,13 @@ const SESSION_COOKIE = 'frieren_owner_session';
 const STATE_COOKIE = 'frieren_owner_oauth_state';
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
 const MAX_BODY_BYTES = 24_576;
+export function getFrierenAiScenarioEndpoint(env = process.env) {
+  const base = String(env.FRIEREN_AI_PUBLIC_URL || 'https://pogaca-frieren-kltd.onrender.com').trim();
+  const parsed = new URL(base);
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_AI_PUBLIC_URL');
+  return new URL('/internal/test-scenario', parsed).toString();
+}
+
 
 export const OWNER_PANEL_SECTIONS = Object.freeze([
   { id: 'overview', label: 'Genel Bakış', command: '/owner' },
@@ -888,7 +895,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         let response;
         if (target) {
           if (secret.length < 32) throw new Error('AI_TEST_BRIDGE_NOT_CONFIGURED');
-          response = await fetch('http://127.0.0.1:10001/internal/test-scenario', {
+          response = await fetch(getFrierenAiScenarioEndpoint(), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + secret },
             body: JSON.stringify({ target }),
