@@ -1,6 +1,7 @@
 
 import { readFile } from 'node:fs/promises';
-import { readPublicSiteSession } from './owner-dashboard.js';
+import { readPublicSiteSession, createPublicSiteSession } from './owner-dashboard.js';
+import { handleSiteAuthRequest } from './site-auth.js';
 
 const SITE_COOKIE = 'frieren_site_session';
 const OWNER_ID = '1553794496234262641';
@@ -25,7 +26,7 @@ function page(title, content, user) {
 function home(client, user) {
   const ready = client?.isReady?.() === true;
   return page('Büyülü Ana Sayfa', '<main><section class="wrap home-banner" aria-label="Frieren site banner"><img src="/assets/site-banner.webp" alt="Poğaça Frieren — Sonsuz bir macera, unutulmaz bir yolculuk" fetchpriority="high" decoding="async" width="1000" height="353"></section><section class="wrap hero"><div><div class="eyebrow">✧ FANTASTİK BİR YOLCULUK BAŞLIYOR ✧</div><h1>Bin yıllık bir<br><em>büyü yolculuğu.</em></h1><p class="lead">Frieren evreninden ilham alan, keşiflerle dolu bir Discord RPG dünyası. Büyüler öğren, dostlar edin, zindanlara in ve kendi hikâyeni yaz.</p><div class="actions"><a class="btn" href="/pogaca">Poğaça Frieren’i keşfet ✧</a><a class="btn ghost" href="/frieren-ai">Frieren AI’ı tanı</a></div><p class="muted">Poğaça Frieren · ' + (ready ? 'Discord bağlantısı aktif' : 'Discord bağlantısı bekleniyor') + '</p></div><div class="hero-art"><img src="/assets/frieren.gif" alt="Frieren büyü yolculuğunda" fetchpriority="high" decoding="async" width="390" height="390"></div></section>' +
-  '<section class="section"><div class="wrap"><div class="section-head"><div class="eyebrow">YOL ARKADAŞLARIN</div><h2>Bir evren, iki ayrı uzmanlık</h2><p>RPG macerası ve teknik zekâ aynı büyülü dünyada buluşuyor.</p></div><div class="grid"><article class="card"><div class="icon">✧</div><h3>Poğaça Frieren</h3><p>Karakter, büyü, zindan, boss, ekonomi, görevler ve anime eğlencesiyle dolu RPG botu.</p><a class="btn ghost" href="/pogaca">Macerayı keşfet →</a></article><article class="card"><div class="icon">⌘</div><h3>Frieren AI</h3><p>Hafıza, sohbet, kod denetimi, test senaryoları ve hata raporları için ayrı asistan.</p><a class="btn ghost" href="/frieren-ai">AI’ı tanı →</a></article><article class="card"><div class="icon">☾</div><h3>Kişisel alanın</h3><p>Discord hesabınla giriş yaptığın alan ve sayfada seninle gezen minik Frieren.</p><a class="btn ghost" href="#profil">Profiline göz at →</a></article></div></div></section>' +
+  '<section class="section"><div class="wrap"><div class="section-head"><div class="eyebrow">YOL ARKADAŞLARIN</div><h2>Bir evren, iki ayrı uzmanlık</h2><p>RPG macerası ve teknik zekâ aynı büyülü dünyada buluşuyor.</p></div><div class="grid"><article class="card"><div class="icon">✧</div><h3>Poğaça Frieren</h3><p>Karakter, büyü, zindan, boss, ekonomi, görevler ve anime eğlencesiyle dolu RPG botu.</p><a class="btn ghost" href="/pogaca">Macerayı keşfet →</a></article><article class="card"><div class="icon">⌘</div><h3>Frieren AI</h3><p>Hafıza, sohbet, kod denetimi, test senaryoları ve hata raporları için ayrı asistan.</p><a class="btn ghost" href="/frieren-ai">AI’ı tanı →</a></article><article class="card"><div class="icon">☾</div><h3>Kişisel alanın</h3><p>Frieren hesabınla giriş yaptığın kişisel alan ve sayfada seninle gezen minik Frieren.</p><a class="btn ghost" href="#profil">Profiline göz at →</a></article></div></div></section>' +
   '<section class="section"><div class="wrap split"><div class="profile"><div class="profile-banner"><img src="/assets/site-banner.webp" alt="Poğaça Frieren tanıtım bannerı" loading="lazy" decoding="async"></div><div class="profile-info"><img class="profile-avatar" src="/assets/site-avatar.webp" loading="lazy" decoding="async" alt="Frieren platform profil fotoğrafı"><div><h3>Poğaça Frieren</h3><p>✧ RPG · Anime · Büyü · Macera</p></div></div><div class="profile-body">Kendi hikâyeni yazacağın, arkadaşlarınla zindanlara gireceğin ve her gün yeni şeyler keşfedeceğin büyülü bir Discord yol arkadaşı.</div></div><div id="profil"><div class="eyebrow">BİRLİKTE BİRİKTİRİLEN HATIRALAR</div><h2>Her karede başka bir hikâye.</h2><p class="lead">Frieren’in yolculuğundan küçük anlar, yuvarlak GIF galerisi ve sayfanın etrafında dolaşan minik bir büyücü.</p><p class="muted">Hoş geldin, ' + esc(user.username || 'gezgin') + '. Frieren evrenindeki yolculuğuna buradan devam edebilirsin.</p></div></div></section>' +
   '<section class="section"><div class="wrap"><div class="section-head"><div class="eyebrow">BÜYÜLÜ ALBÜM</div><h2>Yolculuktan küçük anlar</h2><p>Yuvarlak GIF’ler; her biri ayrı bir karakter, ayrı bir anı.</p></div><div class="gif-gallery"><div class="gif-item"><img loading="lazy" decoding="async" src="/assets/frieren.gif" alt="Frieren GIF"><span>Frieren</span></div><div class="gif-item"><img loading="lazy" decoding="async" src="/assets/fern.gif" alt="Fern GIF"><span>Fern</span></div><div class="gif-item"><img loading="lazy" decoding="async" src="/assets/stark.gif" alt="Stark GIF"><span>Stark</span></div><div class="gif-item"><img loading="lazy" decoding="async" src="/assets/eisen.gif" alt="Eisen GIF"><span>Eisen</span></div><div class="gif-item"><img loading="lazy" decoding="async" src="/assets/himmel.gif" alt="Himmel GIF"><span>Himmel</span></div><div class="gif-item"><img loading="lazy" decoding="async" src="/assets/heiter.gif" alt="Heiter GIF"><span>Heiter</span></div><div class="gif-item"><img loading="lazy" decoding="async" src="/assets/macera.gif" alt="Macera GIF"><span>Macera</span></div><div class="gif-item"><img loading="lazy" decoding="async" src="/assets/profil.gif" alt="Profil GIF"><span>Karakter profili</span></div><div class="gif-item"><img loading="lazy" decoding="async" src="/assets/envanter.gif" alt="Envanter GIF"><span>Envanter</span></div><div class="gif-item"><img loading="lazy" decoding="async" src="/assets/buyusavasi.gif" alt="Büyü savaşı GIF"><span>Büyü savaşı</span></div><div class="gif-item"><img loading="lazy" decoding="async" src="/assets/buyusavasi_vurus.gif" alt="Büyü darbesi GIF"><span>Büyü darbesi</span></div><div class="gif-item"><img loading="lazy" decoding="async" src="/assets/buyusavasi_kazandi.gif" alt="Zafer GIF"><span>Zafer</span></div><div class="gif-item"><img loading="lazy" decoding="async" src="/assets/animequiz.gif" alt="Anime quiz GIF"><span>Anime zamanı</span></div><div class="gif-item"><img loading="lazy" decoding="async" src="/assets/quizdogru.gif" alt="Doğru cevap GIF"><span>Doğru cevap</span></div><div class="gif-item"><img loading="lazy" decoding="async" src="/assets/quizyanlis.gif" alt="Yanlış cevap GIF"><span>Yanlış cevap</span></div><div class="gif-item"><img loading="lazy" decoding="async" src="/assets/yardim.gif" alt="Yardım GIF"><span>Yardım</span></div></div></div></section>' +
   '<section class="section"><div class="wrap stats"><div class="stat"><b>' + (client?.guilds?.cache?.size ?? '—') + '</b><span>Bağlı sunucu</span></div><div class="stat"><b>' + (client?.commands?.size ?? '—') + '</b><span>Yüklenmiş komut</span></div><div class="stat"><b>2</b><span>Bağımsız bot</span></div><div class="stat"><b>' + (ready ? 'Aktif' : 'Kontrol') + '</b><span>Poğaça bağlantısı</span></div></div></section>' +
@@ -70,31 +71,12 @@ function aiPage(user) {
   return page('Frieren AI', '<main><section class="wrap" style="padding:65px 0 42px;text-align:center"><div class="eyebrow">AKILLI ASİSTAN · TEST · TEKNİK ANALİZ</div><h1 class="hero-title">Frieren <em>AI</em></h1><p class="lead" style="margin:auto">Poğaça Frieren’in teknik yol arkadaşı. Sohbet ve hafızadan kod denetimine, test senaryolarından hata raporlarına uzanan ayrı bir AI servisi.</p><div class="actions" style="justify-content:center"><a class="btn" href="/owner">AI kontrol merkezine git ↗</a>' + healthLink + '</div></section><section class="section"><div class="wrap grid"><article class="card"><div class="icon">✧</div><h3>Frieren sohbeti</h3><p>Karakter odaklı sohbet akışı ve izinli kullanıcı hafızası.</p></article><article class="card"><div class="icon">⌘</div><h3>Teknik denetim</h3><p>Komut sözleşmeleri, kod incelemesi ve hata teşhisi.</p></article><article class="card"><div class="icon">✓</div><h3>Test sistemi</h3><p>Senaryo bazlı testler, PASS/FAIL raporları ve kanıt odaklı doğrulama.</p></article></div></section><section class="section"><div class="wrap cta"><h2>İki bot, tek büyülü platform.</h2><p>RPG macerası ve teknik asistan birbirinden bağımsız servislerde çalışır.</p><a class="btn" href="/pogaca">Poğaça Frieren’i keşfet</a></div></section></main>', user);
 }
 
-function authPage(mode, status = '') {
-  const registering = mode === 'register';
-  const title = registering ? 'Yolculuğa katıl' : 'Yolculuğuna dön';
-  const action = registering ? 'Discord ile kayıt ol' : 'Discord ile giriş yap';
-  const alternate = registering
-    ? '<p>Zaten hesabın var mı? <a href="/login">Giriş yap</a></p>'
-    : '<p>İlk kez mi geliyorsun? <a href="/register">Kayıt ol</a></p>';
-  const notice = status === 'not_registered'
-    ? '<p class="auth-notice">Bu Discord hesabı henüz kayıtlı değil. Önce kayıt oluştur.</p>'
-    : status === 'already_registered'
-      ? '<p class="auth-notice">Bu Discord hesabı zaten kayıtlı. Giriş yapabilirsin.</p>'
-      : status === 'oauth_error'
-        ? '<p class="auth-notice">Discord doğrulaması tamamlanamadı. Yeniden dene; sorun sürerse site yöneticisi OAuth ayarlarını kontrol etmelidir.</p>' : '';
-  return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><title>' + title + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css"><style>.auth-wrap{min-height:100vh;display:grid;place-items:center;padding:28px 18px}.auth-card{width:min(100%,520px);padding:34px;border:1px solid #e8dafa55;border-radius:26px;background:linear-gradient(145deg,#34294cdd,#17152eee);box-shadow:0 24px 80px #05030d88;text-align:center}.auth-mark{width:90px;height:90px;border-radius:50%;object-fit:cover;border:2px solid #e8dafa88;box-shadow:0 0 45px #d8bdff55}.auth-card h1{font:38px Georgia,serif;margin:18px 0 8px}.auth-card p{color:var(--muted)}.auth-card .btn{margin:14px 0}.auth-notice{max-width:100%;margin:16px auto!important;padding:12px 14px;border:1px solid #f0c8a866;border-radius:12px;background:#a8793918;color:#ffe3b4!important;text-align:center}.auth-back{display:inline-flex;margin-top:12px;padding:9px 14px;border:1px solid #e8dafa55;border-radius:12px;color:#f0e6ff;background:#ffffff0b}.auth-back:hover{background:#ffffff18}</style></head><body><main class="auth-wrap"><section class="auth-card"><img class="auth-mark" src="/assets/site-avatar.svg" alt="Frieren site simgesi"><div class="eyebrow">✧ FRIEREN · THE ARCANE JOURNEY ✧</div><h1>' + title + '</h1><p>' + (registering ? 'Site hesabını Discord kimliğinle ücretsiz oluştur. Ayrı bir şifre belirlemen gerekmez.' : 'Kayıtlı Discord hesabınla güvenli şekilde devam et.') + '</p>' + notice + '<a class="btn" href="/owner/login?flow=' + (registering ? 'register' : 'login') + '">' + action + '</a>' + alternate + '<p class="muted">Kimlik doğrulaması Discord üzerinden yapılır. Şifreni bu siteyle paylaşmazsın.</p></section></main></body></html>';
-}
-
-export async function handlePublicSiteRequest(req, res, { client } = {}) {
+export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
+  const authHandled = await handleSiteAuthRequest(req, res, { db, sessionSecret: process.env.ADMIN_SESSION_SECRET, createSession: createPublicSiteSession });
+  if (authHandled) return true;
   const url = new URL(req.url, 'http://localhost');
   if (req.method !== 'GET') return false;
   const cookie = cookies(req);
-  if (url.pathname === '/logout') {
-    res.writeHead(302, { Location: '/login', 'Cache-Control': 'no-store', 'Set-Cookie': SITE_COOKIE + '=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0' });
-    res.end();
-    return true;
-  }
   if (url.pathname === '/owner' || url.pathname.startsWith('/owner/')) return false;
   if (assets.has(url.pathname) && ['site-avatar.svg', 'site-avatar.webp', 'site-banner.svg', 'site-banner.webp', 'site.css', 'owner.css'].includes(assets.get(url.pathname))) {
     try {
@@ -106,17 +88,6 @@ export async function handlePublicSiteRequest(req, res, { client } = {}) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('Asset bulunamadı.');
     }
-    return true;
-  }
-  if (url.pathname === '/login' || url.pathname === '/register') {
-    const user = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
-    if (user) {
-      res.writeHead(302, { Location: '/', 'Cache-Control': 'no-store' });
-      res.end();
-      return true;
-    }
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });
-    res.end(authPage(url.pathname === '/register' ? 'register' : 'login', url.searchParams.get('status') || ''));
     return true;
   }
   const publicPaths = new Set(['/', '/pogaca', '/komutlar', '/frieren-ai']);
