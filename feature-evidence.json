@@ -238,6 +238,182 @@
         ]
       },
       "limitation": "The test proves phase threshold calculations, not the player-visible phase announcement or complete boss encounter."
+    },
+    {
+      "featureId": "RPG-301",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "const nextBossPhase = getBossPhase(bossHp, boss.maxHp)",
+            "son aşamasına geçti"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-boss-combat.js",
+        "name": "solo boss handler announces each phase, scales damage and lets freeze cancel special attacks",
+        "markers": [
+          "getBossPhase(33, 100)",
+          "son aşamasına geçti"
+        ]
+      },
+      "limitation": "The regression test inspects the real production handler wiring and phase calculations, but does not execute a complete Discord encounter with live players."
+    },
+    {
+      "featureId": "RPG-302",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "calculateBossIncomingDamage(rawBossDamage, defense, bossPhase)",
+            "bossPhase = nextBossPhase"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-boss-combat.js",
+        "name": "solo boss handler announces each phase, scales damage and lets freeze cancel special attacks",
+        "markers": [
+          "calculateBossIncomingDamage(rawBossDamage, defense, bossPhase)",
+          "if (nextBossPhase > bossPhase)"
+        ]
+      },
+      "limitation": "The regression test inspects the real production handler wiring and phase calculations, but does not execute a complete Discord encounter with live players."
+    },
+    {
+      "featureId": "RPG-303",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "bossPhaseSpecialBonus(bossPhase)",
+            "turnCount % 3 === 0 && !frozenBoss"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-boss-combat.js",
+        "name": "solo boss handler announces each phase, scales damage and lets freeze cancel special attacks",
+        "markers": [
+          "bossPhaseSpecialBonus(bossPhase)",
+          "turnCount % 3 === 0 && !frozenBoss"
+        ]
+      },
+      "limitation": "The regression test inspects the real production handler wiring and phase calculations, but does not execute a complete Discord encounter with live players."
+    },
+    {
+      "featureId": "RPG-304",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "Donma etkisi bossun özel saldırısını da durdurdu",
+            "if (frozenBoss) bossDamage = 0"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-boss-combat.js",
+        "name": "solo boss handler announces each phase, scales damage and lets freeze cancel special attacks",
+        "markers": [
+          "Donma etkisi bossun özel saldırısını da durdurdu",
+          "if (frozenBoss) bossDamage = 0"
+        ]
+      },
+      "limitation": "The regression test inspects the real production handler wiring and phase calculations, but does not execute a complete Discord encounter with live players."
+    },
+    {
+      "featureId": "RPG-305",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "ortakboss.js",
+          "markers": [
+            "const currentPhase = getBossPhase(bossHp, maxBossHp)",
+            "ikinci evreye geçti"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-boss-combat.js",
+        "name": "cooperative raid announces second and final boss phases and scales incoming damage",
+        "markers": [
+          "const currentPhase = getBossPhase(bossHp, maxBossHp)",
+          "ikinci evreye geçti"
+        ]
+      },
+      "limitation": "The regression test inspects the real production handler wiring and phase calculations, but does not execute a complete Discord encounter with live players."
+    },
+    {
+      "featureId": "RPG-306",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "ortakboss.js",
+          "markers": [
+            "son evreye geçti",
+            "bossPhaseSpecialBonus(bossPhase)"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-boss-combat.js",
+        "name": "cooperative raid announces second and final boss phases and scales incoming damage",
+        "markers": [
+          "son evreye geçti",
+          "bossPhaseSpecialBonus(bossPhase)"
+        ]
+      },
+      "limitation": "The regression test inspects the real production handler wiring and phase calculations, but does not execute a complete Discord encounter with live players."
+    },
+    {
+      "featureId": "RPG-307",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "katlizindan.js",
+          "markers": [
+            "const currentPhase = finalBoss ? getBossPhase(enemyHp, maxEnemyHp) : 1",
+            "İblis Lordu ikinci evreye geçti"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-boss-combat.js",
+        "name": "final layered dungeon boss announces both phases and applies phase-scaled damage",
+        "markers": [
+          "const currentPhase = finalBoss ? getBossPhase(enemyHp, maxEnemyHp) : 1",
+          "İblis Lordu ikinci evreye geçti"
+        ]
+      },
+      "limitation": "The regression test inspects the real production handler wiring and phase calculations, but does not execute a complete Discord encounter with live players."
+    },
+    {
+      "featureId": "RPG-308",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "katlizindan.js",
+          "markers": [
+            "İblis Lordu son evreye geçti",
+            "bossPhaseSpecialBonus(enemyPhase)"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-boss-combat.js",
+        "name": "final layered dungeon boss announces both phases and applies phase-scaled damage",
+        "markers": [
+          "İblis Lordu son evreye geçti",
+          "bossPhaseSpecialBonus(enemyPhase)"
+        ]
+      },
+      "limitation": "The regression test inspects the real production handler wiring and phase calculations, but does not execute a complete Discord encounter with live players."
     }
   ]
 }
