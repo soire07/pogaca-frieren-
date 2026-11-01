@@ -136,8 +136,13 @@ def load_licensed_corpus(path: str | Path) -> list[str]:
 
 
 def _corpus_fingerprint(documents: Sequence[str]) -> str:
-    normalized = "\n".join(item.strip() for item in documents)
-    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+    """Hash normalized documents with length-prefix framing to avoid boundary collisions."""
+    digest = hashlib.sha256(b"frieren-neural-corpus-v2\\0")
+    for document in documents:
+        encoded = document.strip().encode("utf-8")
+        digest.update(len(encoded).to_bytes(8, byteorder="big"))
+        digest.update(encoded)
+    return digest.hexdigest()
 
 
 def split_corpus_text(
