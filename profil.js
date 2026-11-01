@@ -1,5 +1,5 @@
 
-import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { xpForNextLevel } from './utils.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
