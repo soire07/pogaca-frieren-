@@ -13,6 +13,7 @@ import { checkLiveRpgHealth } from './live-rpg-health.js';
 import { formatCommandTestResult } from './command-test-report.js';
 import { parseCommandNames } from './command-test-input.js';
 import { splitDiscordMessage } from './discord-message-chunks.js';
+import { buildOwnerScenarioReport } from './owner-scenario-report.js';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createServer } from 'node:http';
@@ -54,6 +55,8 @@ const bridgeConfigured = Boolean(process.env.FRIEREN_BRIDGE_URL?.trim() && proce
 // Render Web Services require an HTTP port. This lightweight endpoint does not expose bot controls.
 const port = Number(process.env.FRIEREN_AI_HEALTH_PORT) || Number(process.env.PORT) || 10000;
 const healthHost = process.env.FRIEREN_AI_HEALTH_HOST || '0.0.0.0';
+const ownerScenarioLocks = new Set();
+
 const healthServer = createServer(async (req, res) => {
   const privateHealthPaths = new Set(['/health', '/ready', '/live', '/bridge-health']);
   if (privateHealthPaths.has(req.url)) {
@@ -67,6 +70,55 @@ const healthServer = createServer(async (req, res) => {
       res.end(JSON.stringify({ error: 'not_found' }));
       return;
     }
+  }
+  if (req.url === '/internal/test-scenario' && req.method === 'POST') {
+    const expected = String(process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+    const authorization = String(req.headers.authorization || '');
+    const supplied = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+    const authorized = expected.length >= 32 && supplied.length === expected.length
+      && timingSafeEqual(Buffer.from(expected), Buffer.from(supplied));
+    if (!authorized) {
+      res.writeHead(404, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'not_found' }));
+      return;
+    }
+    if (ownerScenarioLocks.has('owner')) {
+      res.writeHead(409, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'scenario_already_running' }));
+      return;
+    }
+    let raw = '';
+    try {
+      for await (const chunk of req) {
+        raw += chunk.toString('utf8');
+        if (Buffer.byteLength(raw, 'utf8') > 6000) {
+          res.writeHead(413, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ error: 'payload_too_large' }));
+          return;
+        }
+      }
+      const body = raw ? JSON.parse(raw) : {};
+      const target = typeof body.target === 'string' ? body.target.trim() : '';
+      if (!target || target.length > 4000) {
+        res.writeHead(400, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: 'invalid_test_target' }));
+        return;
+      }
+      ownerScenarioLocks.add('owner');
+      try {
+        const result = await runTargetedTests(target);
+        const report = buildOwnerScenarioReport(target, result);
+        res.writeHead(200, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(report));
+      } finally {
+        ownerScenarioLocks.delete('owner');
+      }
+    } catch (error) {
+      ownerScenarioLocks.delete('owner');
+      res.writeHead(500, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'scenario_runner_failed', message: String(error?.message || error).slice(0, 180) }));
+    }
+    return;
   }
   if (req.url === '/bridge-health') {
     const result = await checkBridgeReachability({
