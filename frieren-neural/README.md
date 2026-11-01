@@ -81,7 +81,7 @@ print(generate_text(model, tokenizer, "Frieren ", max_new_tokens=80))
 
 ## Shared inference API
 
-The optional FastAPI service exposes one health route and one authenticated generation route. Both the future web client and Discord adapter should call this same API rather than loading separate model copies.
+The optional FastAPI service exposes health, authenticated server-to-server generation, and a same-origin browser chat. The Discord adapter calls the same inference core; neither client loads a separate model copy.
 
 Install the serving extra and start the service:
 
@@ -101,6 +101,17 @@ uvicorn frieren_neural.api:app --host 0.0.0.0 --port 8000
 
 This API is a single shared service, not a collection of serverless functions. It is not deployed by this change; hosting and the web/Discord clients remain separate milestones.
 
+
+## Browser chat
+
+The FastAPI service also serves a small responsive chat page at `/`. It uses a server-side password login and an HttpOnly, Secure, SameSite=Strict signed session cookie; the shared API token is never placed in browser JavaScript.
+
+Configure these additional host secrets:
+
+- `FRIEREN_WEB_PASSWORD`: a strong password of at least 16 characters.
+- `FRIEREN_SESSION_SECRET`: a random secret of at least 32 characters, used to sign one-hour sessions.
+
+Login and generation POST requests must be same-origin. The service rejects cross-origin browser requests, limits login attempts, and requires HTTPS outside localhost. The web interface displays generated text with `textContent`, not HTML.
 
 ## Discord adapter
 
