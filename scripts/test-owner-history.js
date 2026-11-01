@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  listOwnerAuditLogs, listOwnerErrorLogs, recordOwnerTestRun, listOwnerTestRuns,
+  listOwnerAuditLogs, listOwnerErrorLogs, recordOwnerError, recordOwnerTestRun, listOwnerTestRuns,
   searchOwnerMemories, updateOwnerMemory
 } from '../owner-admin.js';
 
@@ -107,4 +107,15 @@ test('test history refuses to persist scenarios containing credentials', async (
     report: { status: 'PASS', summary: { total: 1, pass: 1, fail: 0 } }
   }), /SENSITIVE_TEST_TARGET_REJECTED/);
   assert.equal(called, false);
+});
+
+test('error logging stores short safe messages and redacts sensitive diagnostics', async () => {
+  const calls = [];
+  const db = { query: async (sql, params) => { calls.push({ sql, params }); return { rows: [] }; } };
+  await recordOwnerError(db, 'discord', 'GatewayError', 'Gateway connection timed out');
+  await recordOwnerError(db, 'database', 'DatabaseError', 'password=secret-value');
+  assert.match(calls[0].sql, /error_message/);
+  assert.equal(calls[0].params[2], 'Gateway connection timed out');
+  assert.equal(calls[1].params[2], '[hassas hata ayrıntıları gizlendi]');
+  assert.doesNotMatch(JSON.stringify(calls[1].params), /secret-value/);
 });
