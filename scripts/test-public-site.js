@@ -259,3 +259,27 @@ test('command option details stylesheet is responsive and keyboard accessible', 
   assert.match(css, /\.command-details summary:focus-visible/);
   assert.match(css, /@media\(max-width:560px\)\{\.command-details li\{/);
 });
+
+
+test('anonymous command catalogue requests redirect before reading owner-managed help', async () => {
+  let databaseReads = 0;
+  const response = res();
+  const db = { async query() { databaseReads += 1; throw new Error('private help must not be queried'); } };
+  await handlePublicSiteRequest({ method: 'GET', url: '/komutlar', headers: {} }, response, {
+    client: { commands: new Map() }, db
+  });
+  assert.equal(response.status, 302);
+  assert.equal(response.headers.Location, '/login');
+  assert.equal(databaseReads, 0);
+});
+
+test('command catalogue degrades to live slash metadata when owner-help storage is unavailable', async () => {
+  const response = res();
+  const commands = new Map([['karakter', { data: { name: 'karakter', description: 'Canlı komut açıklaması.' } }]]);
+  const db = { async query() { throw new Error('database connection details must stay private'); } };
+  await handlePublicSiteRequest(request('/komutlar'), response, { client: { commands }, db });
+  assert.equal(response.status, 200);
+  assert.match(response.body, /Canlı komut açıklaması/);
+  assert.match(response.body, /1\/1 komut gösteriliyor/);
+  assert.doesNotMatch(response.body, /database connection details/);
+});
