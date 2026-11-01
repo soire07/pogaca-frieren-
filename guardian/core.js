@@ -26,7 +26,9 @@ const SECRET_PATTERNS = [
 
 export function redactGuardianText(value, maxLength = 1600) {
   let text = String(value ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, ' ').trim();
-  for (const pattern of SECRET_PATTERNS) text = text.replace(pattern, '$1[REDACTED]');
+  for (const pattern of SECRET_PATTERNS) {
+    text = text.replace(pattern, (match, prefix) => (prefix || '') + '[REDACTED]');
+  }
   text = text.replace(/\b\d{17,20}\b/g, '[ID]').replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[EMAIL]');
   return text.slice(0, Math.max(0, maxLength));
 }
