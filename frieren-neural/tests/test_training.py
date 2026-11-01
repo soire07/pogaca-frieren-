@@ -235,7 +235,7 @@ def test_evaluation_uses_separate_corpus_and_returns_perplexity(tmp_path: Path):
 def test_evaluation_rejects_training_corpus_reuse(tmp_path: Path):
     from frieren_neural.training import evaluate_checkpoint
 
-    corpus = ["Frieren studies magic. " * 12]
+    corpus = ["Frieren studies magic. " * 6, "Frieren studies magic. " * 6]
     checkpoint = tmp_path / "evaluation-guard.pt"
     config = TrainingConfig(
         max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
@@ -243,4 +243,4 @@ def test_evaluation_rejects_training_corpus_reuse(tmp_path: Path):
     )
     train_model(corpus, checkpoint, config, device="cpu")
     with pytest.raises(ValueError, match="separate from the training corpus"):
-        evaluate_checkpoint(checkpoint, corpus, batch_size=1, batches=1, device="cpu")
+        evaluate_checkpoint(checkpoint, ["\n".join(corpus)], batch_size=1, batches=1, device="cpu")
