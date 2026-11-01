@@ -6,7 +6,7 @@ This repository remains the single source repository for Poğaça Frieren, Frier
 
 - Vercel serves the Frieren site hostname and reverse-proxies requests to the existing Poğaça Frieren HTTP service.
 - The public homepage, bot introduction pages, and site assets require a signed Discord member session. `/register` creates a persistent site membership for a Discord account; `/login` accepts only an account already present in `frieren_site_members`.
-- `/owner` remains a separate owner-only area. A second signed owner session is issued only when the Discord user ID matches the configured owner ID.
+- `/owner` remains a separate owner-only area. A signed owner session is issued only after Discord OAuth identity verification and a second TOTP factor. First-time setup uses an encrypted pending secret; active TOTP secrets are encrypted with a key derived from `ADMIN_SESSION_SECRET` and stored in the existing `owner_settings` row. Eight single-use recovery codes are displayed once and stored only as hashes. Legacy owner sessions without the second-factor marker are rejected.
 - The main Node.js service continues to run the persistent Poğaça Frieren Discord client and supervises the Frieren AI child process.
 - Neon PostgreSQL remains the database. The site-membership table is created additively on the first registration or login; existing RPG tables and records are not altered.
 - Vercel does not run either persistent Discord Gateway client.
@@ -31,7 +31,7 @@ The existing OAuth callback is shared by the member site and Owner Panel. Add th
 
 `https://frierenbot.vercel.app/owner/callback`
 
-Keep `CLIENT_ID`, `DISCORD_CLIENT_SECRET`, and `ADMIN_SESSION_SECRET` only in the main service's private environment. `ADMIN_SESSION_SECRET` must be at least 32 characters. Do not add secrets to Vercel client-side variables or commit them to Git.
+Keep `CLIENT_ID`, `DISCORD_CLIENT_SECRET`, and `ADMIN_SESSION_SECRET` only in the main service's private environment. `ADMIN_SESSION_SECRET` must be at least 32 characters and must remain stable: the Owner Panel TOTP secret is encrypted using a key derived from it. Back up the one-time recovery codes during initial TOTP enrollment; they cannot be retrieved later. Losing both the authenticator and recovery codes requires an owner-controlled recovery procedure. Do not add secrets to Vercel client-side variables or commit them to Git.
 
 If the Vercel project has not yet been assigned `frierenbot.vercel.app`, replace the hostname in both environment variables and the Discord redirect list with the actual assigned hostname.
 
