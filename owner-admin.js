@@ -117,6 +117,11 @@ export async function initOwnerAdminSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_owner_guardian_jobs_recent ON owner_guardian_jobs(created_at DESC);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_owner_guardian_jobs_active
       ON owner_guardian_jobs(incident_id,agent) WHERE status IN ('queued','running');
+    CREATE TABLE IF NOT EXISTS owner_guardian_monitor_state (
+      monitor_key VARCHAR(80) PRIMARY KEY,
+      last_seen_error_id BIGINT NOT NULL DEFAULT 0,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
 
   `);
 }
