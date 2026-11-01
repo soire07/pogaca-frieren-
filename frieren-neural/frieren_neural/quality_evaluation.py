@@ -8,6 +8,7 @@ import random
 from pathlib import Path
 from typing import Any
 import torch
+from .chat_format import format_benchmark_prompt
 from .training import LOSS_OBJECTIVE_VERSION, generate_text, load_checkpoint
 
 PROMPT_SET_VERSION = "tr-conversation-v1"
@@ -39,16 +40,6 @@ PROMPTS = (
 ("TR-023","Long-context recall","Not: Proje test dalında, üretim dalından ayrı tutuluyor.\nSoru: Hangi dalda deney yapmalıyım?\nYanıt:","Test dalını seç; üretim dalına dokunma."),
 ("TR-024","Contradiction handling","Kullanıcı: Veritabanına yazma.\nAsistan: Sadece okuyacağım.\nKullanıcı: Sadece okuma testi yap.\nAsistan:","Yazma yasağını koru; yalnızca okuma yap."),
 )
-
-def format_benchmark_prompt(prompt: str) -> str:
-    """Apply the same user/assistant template used by the training corpus."""
-    if not isinstance(prompt, str) or not prompt.strip():
-        raise ValueError("Benchmark prompt must be a non-empty string.")
-    normalized = prompt.rstrip()
-    if normalized.endswith("Asistan:"):
-        return normalized
-    return f"Kullanıcı: {normalized}\nAsistan:"
-
 
 def load_prompt_set() -> list[dict[str, str]]:
     return [{"id": i, "category": c, "prompt": p, "review_hint": h} for i,c,p,h in PROMPTS]
