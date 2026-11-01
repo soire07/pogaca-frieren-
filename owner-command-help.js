@@ -52,7 +52,7 @@ export async function listOwnerCommandHelp(db) {
 export async function saveOwnerCommandHelp(db,input={}) {
   const value=validateOwnerCommandHelp(input);
   const actorId=String(input.actorId||'').trim();
-  if(!/^\\d{17,20}$/.test(actorId)) throw new Error('INVALID_COMMAND_HELP_ACTOR');
+  if(!/^\d{17,20}$/.test(actorId)) throw new Error('INVALID_COMMAND_HELP_ACTOR');
   const connection=typeof db.connect==='function'?await db.connect():db;
   const ownsConnection=connection!==db;
   try {
