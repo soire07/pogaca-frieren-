@@ -42,6 +42,7 @@ export function startGuardianMonitor({
   let stopped = false;
   let running = false;
   let lastSeenErrorId = 0;
+  let initialized = false;
   let discordFailureReported = false;
   const interval = Math.max(60_000, Math.min(Number(intervalMs) || 300_000, 1_800_000));
 
@@ -49,9 +50,10 @@ export function startGuardianMonitor({
     if (stopped || running) return;
     running = true;
     try {
-      if (lastSeenErrorId === 0) {
+      if (!initialized) {
         const baseline = await db.query('SELECT COALESCE(MAX(id),0)::bigint AS last_id FROM owner_error_logs');
         lastSeenErrorId = Number(baseline.rows?.[0]?.last_id || 0);
+        initialized = true;
       } else {
         const result = await scanNewOwnerErrors(db, lastSeenErrorId);
         lastSeenErrorId = result.lastSeenErrorId;
