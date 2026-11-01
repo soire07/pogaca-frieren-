@@ -578,6 +578,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + (result.proposedPatch ? '<details><summary>Önerilen yama taslağı (uygulanmadı)</summary><pre>' + escapeHtml(result.proposedPatch) + '</pre></details>' : '')
       + (result.status === 'insufficient_context' ? '<p class="notice warn">Kaynak bağlamı yetersiz; tahminle düzeltme hazırlanmadı.</p>' : '')
       + (result.status === 'proposal_only' && job.repair_dispatch_status === 'dispatched' ? '<p class="notice">Onarım workflow\'u başlatıldı. <a href="https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml" target="_blank" rel="noopener noreferrer">GitHub Actions sonuçlarını aç</a></p>' : '')
+      + (result.status === 'proposal_only' && job.repair_dispatch_status === 'dispatching' ? '<p class="notice warn">Onarım workflow başlatma isteği gönderiliyor veya sonucu bekleniyor. Tekrar tetiklemek yerine önce GitHub Actions geçmişini kontrol et.</p>' : '')
       + (result.status === 'proposal_only' && !['dispatched','dispatching'].includes(job.repair_dispatch_status || 'not_requested') && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-create-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu analizden testli bir düzeltme PR\'si hazırlanmasını onaylıyorum</label><button class="btn">Düzeltme PR\'si hazırla</button></form>' : '')
       + (result.status === 'proposal_only' && !process.env.FRIEREN_GITHUB_TOKEN && job.repair_dispatch_status !== 'dispatched' ? '<p class="notice warn">PR oluşturma düğmesi için FRIEREN_GITHUB_TOKEN yapılandırılmalı.</p>' : '')
       + '</article>';
@@ -973,7 +974,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
           await finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl });
           await auditOwnerAction(db, OWNER_ID, 'guardian.repair.workflow_dispatched', String(incident.id), {
             jobId: job.id, workflow: 'frieren-ai-self-repair.yml', baseBranch: 'frieren-neural-foundation',
-          });
+          }).catch(error => console.error('Guardian dispatch audit failed:', error?.message || error));
           redirect(res, '/owner/guardian?notice=guardian_pr_dispatched');
         } catch (error) {
           await finishGuardianRepairDispatch(db, { jobId: job.id, status: 'failed' }).catch(() => {});
