@@ -114,6 +114,8 @@ test('site profile uses dedicated brand avatar and banner assets', async () => {
   const stylesheet = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
   assert.match(String(stylesheet.body), /site-banner\.webp/);
+  assert.match(String(stylesheet.body), /\.profile-banner img\{display:block;width:100%;height:100%;max-width:none;object-fit:cover/);
+  assert.doesNotMatch(String(stylesheet.body), /\.profile-banner\{[^}]*url\(['"]?\/assets\/site-banner\.webp/);
 });
 
 test('shared stylesheet is publicly cacheable for authenticated and auth pages', async () => {
