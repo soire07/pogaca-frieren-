@@ -362,7 +362,7 @@ def test_evaluate_checkpoint_uses_chat_aware_dialogue_encoding(tmp_path: Path, m
         return tokens
 
     monkeypatch.setattr(training, "encode_dialogue_stream", capture)
-    evaluation_text = "Kullanıcı: Fern kim?\nAsistan: Fern, Frieren'in çırağıdır."
+    evaluation_text = "Kullanıcı: Fern kimdir? Bana iki cümleyle açıklar mısın?\nAsistan: Fern, Frieren'in çırağıdır. Fern sakin, dikkatli ve güçlü bir büyücüdür."
     training.evaluate_checkpoint(
         checkpoint, [evaluation_text], batch_size=1, batches=1, device="cpu"
     )
