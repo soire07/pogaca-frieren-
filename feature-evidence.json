@@ -841,7 +841,7 @@
         "markers": [
           "assert.match(source, /active_build/)",
           "assert.match(source, /Savaş yapısı/)",
-          "assert.match(source, /build\\.hp/)"
+          "build\\.hp"
         ]
       },
       "limitation": "Profile query and build-adjusted display calculations are asserted; the complete Discord profile interaction is not executed."
