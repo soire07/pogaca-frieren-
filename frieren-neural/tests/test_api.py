@@ -240,6 +240,7 @@ def test_login_rate_limit_is_atomic_under_concurrent_attempts():
 
 
 def test_login_rate_limiter_bounds_distinct_client_memory_and_prunes_expired(monkeypatch):
+    import time
     import frieren_neural.api as api
 
     scope = {
