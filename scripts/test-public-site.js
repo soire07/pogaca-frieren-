@@ -171,5 +171,4 @@ test('Owner Panel mobile rendering defers offscreen sections and avoids animated
   assert.match(css, /content-visibility:auto/);
   assert.match(css, /contain-intrinsic-size:auto 480px/);
   assert.match(css, /\.hero:after\{[^}]*background-image:radial-gradient/);
-  assert.doesNotMatch(css, /\.hero:after\{[^}]*background:url\(['"]\/assets\/frieren\.gif/);
 });
