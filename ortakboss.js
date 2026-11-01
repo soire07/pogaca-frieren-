@@ -359,7 +359,7 @@ export default {
       for (const mastery of settlement.masteryResults) {
         log.push(`📈 <@${mastery.userId}> Zoltraak ustalığı: ${mastery.casts} kullanım · Seviye ${mastery.mastery_level}/10.`);
       }
-      const milestoneRows = await db.query('SELECT user_id,level,boss_defeats,dungeon_wins FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[interaction.guildId,ids]);
+      const milestoneRows = await pool.query('SELECT user_id,level,boss_defeats,dungeon_wins FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[interaction.guildId,ids]);
       const milestoneText = milestoneRows.rows.map(row => {
         const titles = progressionMilestone(Number(row.level), Number(row.boss_defeats), Number(row.dungeon_wins));
         return `<@${row.user_id}>: ${titles.length ? titles.join(', ') : 'Henüz unvan açılmadı'}`;
