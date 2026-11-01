@@ -20,8 +20,9 @@ export function buildOwnerScenarioReport(target, result = {}) {
   if (!testFiles.length) failedStages.push('Hedefe uygun mevcut test dosyası bulunamadı.');
   if (result.code !== 0 && testFiles.length) failedStages.push('Seçilen test paketlerinden en az biri başarısız oldu veya tamamlanamadı.');
   if (memoryPrivacyTarget && !liveMemoryProof) failedStages.push('Canlı PostgreSQL bellek gizliliği kanıtı alınamadı.');
-  const status = !testFiles.length ? 'NOT_TESTED'
-    : result.code === 0 && !(memoryPrivacyTarget && !liveMemoryProof) ? 'PASS' : 'FAIL';
+  const hasCountedTests = summary.total > 0 && summary.pass + summary.fail + summary.skipped === summary.total;
+  const status = !testFiles.length || !hasCountedTests || summary.pass + summary.fail === 0 ? 'NOT_TESTED'
+    : result.code === 0 && summary.fail === 0 && !(memoryPrivacyTarget && !liveMemoryProof) ? 'PASS' : 'FAIL';
   return {
     target: String(target || '').trim().slice(0, 300),
     status,
