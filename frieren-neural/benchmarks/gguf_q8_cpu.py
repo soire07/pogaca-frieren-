@@ -107,13 +107,14 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
         text = (
             "[REASONING LEAKAGE REDACTED]"
             if reasoning_leakage
-            else re.sub(r"<think>\\s*</think>\\s*", "", raw_text).strip()
+            else re.sub(r"<think>\s*</think>\s*", "", raw_text).strip()
         )
         outputs.append({
             "id": case_id,
             "category": category,
             "prompt": prompt,
-            "output": text,\n            "reasoning_leakage": reasoning_leakage,
+            "output": text,
+            "reasoning_leakage": reasoning_leakage,
             "latency_seconds": elapsed,
             "completion_tokens": result.get("usage", {}).get("completion_tokens"),
             "finish_reason": choice.get("finish_reason"),
