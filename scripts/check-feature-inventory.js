@@ -10,6 +10,9 @@ if (!Number.isInteger(inventory.targetFeatures) || inventory.targetFeatures < 1)
   errors.push('targetFeatures pozitif bir tam sayı olmalı.');
 }
 if (new Set(ids).size !== ids.length) errors.push('Özellik kimlikleri benzersiz olmalı.');
+const normalizedNames = inventory.features.map(feature => String(feature.name || '').trim().toLocaleLowerCase('en-US'));
+if (new Set(normalizedNames).size !== normalizedNames.length) errors.push('Özellik adları büyük/küçük harf ve kenar boşlukları normalize edildiğinde benzersiz olmalı.');
+if (inventory.count !== inventory.features.length) errors.push(`count alanı (${inventory.count}) kayıt sayısıyla (${inventory.features.length}) eşleşmeli.`);
 for (const feature of inventory.features) {
   if (!feature.id || !feature.name || !feature.category) {
     errors.push('Her özellik id, name ve category alanlarına sahip olmalı.');
