@@ -69,6 +69,10 @@ export function startGuardianMonitor({
           [nextId]
         );
       });
+      await db.query(
+        `UPDATE owner_guardian_monitor_state SET last_tick_at=NOW(),last_error=NULL,updated_at=NOW()
+         WHERE monitor_key='owner_error_logs'`
+      );
       const ready = typeof client?.isReady === 'function' ? client.isReady() : null;
       if (ready === false && !discordFailureReported) {
         await upsertGuardianIncident(db, {
@@ -84,6 +88,11 @@ export function startGuardianMonitor({
       }
     } catch (error) {
       onError(error);
+      await db.query(
+        `UPDATE owner_guardian_monitor_state SET last_tick_at=NOW(),last_error=$1,updated_at=NOW()
+         WHERE monitor_key='owner_error_logs'`,
+        [String(error?.code || error?.name || 'MONITOR_FAILED').slice(0,80)]
+      ).catch(() => {});
     } finally {
       running = false;
     }
