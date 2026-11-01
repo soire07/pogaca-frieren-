@@ -21,11 +21,13 @@ def test_dialogue_loss_mask_supervises_assistant_turn_and_eos_only():
     assert sum(loss_mask) > 0
     supervised = tokenizer.decode([token for token, enabled in zip(token_ids, loss_mask) if enabled and token != tokenizer.eos_id])
     unsupervised = tokenizer.decode([token for token, enabled in zip(token_ids, loss_mask) if not enabled and token not in (tokenizer.bos_id, tokenizer.eos_id)])
-    assert "Asistan: Selam dünya" in supervised
-    assert "Asistan: İyiyim" in supervised
+    assert "Selam dünya" in supervised
+    assert "İyiyim" in supervised
+    assert "Asistan:" not in supervised
     assert sum(enabled and token == tokenizer.eos_id for token, enabled in zip(token_ids, loss_mask)) == 2
     assert "Kullanıcı: Merhaba" in unsupervised
     assert "Kullanıcı: Nasılsın" in unsupervised
+    assert "Asistan:" in unsupervised
 
 
 def test_non_chat_corpus_keeps_legacy_full_token_supervision():
