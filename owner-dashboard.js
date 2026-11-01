@@ -356,7 +356,7 @@ export async function getFrierenAIReadiness({
   } catch { return null; }
 }
 
-function renderDashboard({ session, overview, client, approvals, memories, memoryUser, memoryGuild, memoryKey, memoryGuild, memoryKey, notice, activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild }) {
+function renderDashboard({ session, overview, client, approvals, memories, memoryUser, memoryGuild, memoryKey, notice, activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild }) {
   const featureLabels = { commands: 'Tüm komutlar', rpg: 'RPG sistemi', character: 'Karakter sistemi', magic: 'Büyü ve yetenekler', equipment: 'Ekipman ve eşyalar', economy: 'Ekonomi ve mağaza', quests: 'Görevler', dungeons: 'Zindanlar', bosses: 'Boss sistemi', trading: 'Takas', messageXp: 'Mesaj XP kazanımı', aiChat: 'Frieren sohbet etkileşimi' };
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
