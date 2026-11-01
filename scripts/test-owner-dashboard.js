@@ -742,3 +742,24 @@ test('command help save refuses an unchecked confirmation without touching persi
   assert.equal(response.headers.Location, '/owner?notice=invalid');
   assert.equal(databaseWrites, 0);
 });
+
+test('command help save reports failure and rolls back when current help persistence fails', async () => {
+  const statements = [];
+  const db = { async query(sql, params) {
+    statements.push({ sql, params });
+    if (sql.includes('INSERT INTO owner_command_help(')) throw new Error('private database failure');
+    return { rows: [] };
+  } };
+  const client = { commands: new Map([['karakter', {}]]) };
+  const { response } = await runOwnerPost({
+    action: 'command-help-save', csrf: 'session', confirm: 'yes',
+    commandName: 'karakter', shortDescription: 'Karakter profili.',
+    longDescription: 'Oyuncunun karakterini ve ilerlemesini gösterir.'
+  }, db, client);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner?notice=invalid');
+  assert.equal(statements[0].sql, 'BEGIN');
+  assert.ok(statements.some(row => row.sql.includes('INSERT INTO owner_command_help_versions')));
+  assert.equal(statements.at(-1).sql, 'ROLLBACK');
+  assert.doesNotMatch(response.body, /private database failure/);
+});
