@@ -1,7 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from frieren_neural.api import app, clear_runtime_cache
+from fastapi import HTTPException
+
+from frieren_neural.api import app, clear_runtime_cache, _generation_capacity, _generation_slots
 
 
 @pytest.fixture
@@ -182,3 +184,25 @@ def test_web_login_rate_limits_repeated_failures(api_client, monkeypatch):
         headers=headers,
     )
     assert response.status_code == 429
+
+
+
+def test_generation_capacity_rejects_excess_waiters_and_releases_slots():
+    assert _generation_slots.acquire(blocking=False)
+    assert _generation_slots.acquire(blocking=False)
+    try:
+        with pytest.raises(HTTPException) as error:
+            with _generation_capacity():
+                pass
+        assert error.value.status_code == 503
+    finally:
+        _generation_slots.release()
+        _generation_slots.release()
+
+
+def test_generation_capacity_releases_slot_after_exception():
+    with pytest.raises(RuntimeError):
+        with _generation_capacity():
+            raise RuntimeError("simulated generation failure")
+    assert _generation_slots.acquire(blocking=False)
+    _generation_slots.release()
