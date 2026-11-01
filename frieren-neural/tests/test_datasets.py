@@ -86,3 +86,34 @@ def test_prepare_dataset_rejects_unexpected_records(tmp_path, monkeypatch, chang
 
     with pytest.raises(ValueError):
         datasets.prepare_turkish_daily_dialogues(tmp_path / "prepared")
+
+
+def test_prepare_dataset_supports_a_separate_held_out_test_split(tmp_path, monkeypatch):
+    row = _record()
+    row["split"] = "test"
+    raw = (json.dumps(row, ensure_ascii=False) + "\n").encode("utf-8")
+    digest = hashlib.sha256(raw).hexdigest()
+    monkeypatch.setattr(
+        datasets,
+        "DATASET_SPLITS",
+        {"test": {"url": "https://example.invalid/test.jsonl", "sha256": digest, "records": 1}},
+    )
+    monkeypatch.setattr(
+        datasets.urllib.request,
+        "urlopen",
+        lambda request, timeout: io.BytesIO(raw),
+    )
+    output = tmp_path / "test-corpus"
+
+    result = datasets.prepare_turkish_daily_dialogues(output, split="test")
+
+    assert result["split"] == "test"
+    assert result["records"] == 1
+    assert (output / "turkish-daily-dialogues-test.txt").is_file()
+    manifest = json.loads((output / "corpus_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["documents"][0]["path"] == "turkish-daily-dialogues-test.txt"
+
+
+def test_prepare_dataset_rejects_unknown_split(tmp_path):
+    with pytest.raises(ValueError, match="split must be one of"):
+        datasets.prepare_turkish_daily_dialogues(tmp_path / "unknown", split="dev")
