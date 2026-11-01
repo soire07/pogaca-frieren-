@@ -115,6 +115,7 @@ test('error logging stores short safe messages and redacts sensitive diagnostics
   await recordOwnerError(db, 'discord', 'GatewayError', 'Gateway connection timed out');
   await recordOwnerError(db, 'database', 'DatabaseError', 'password=secret-value');
   assert.match(calls[0].sql, /error_message/);
+  assert.match(calls[0].sql, /LIMIT 2000/);
   assert.equal(calls[0].params[2], 'Gateway connection timed out');
   assert.equal(calls[1].params[2], '[hassas hata ayrıntıları gizlendi]');
   assert.doesNotMatch(JSON.stringify(calls[1].params), /secret-value/);
