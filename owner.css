@@ -256,3 +256,17 @@
     .feature-setting{grid-template-columns:minmax(0,1fr)}
     .feature-setting .btn{justify-self:start}
   }
+
+/* Mobile rendering budget: keep off-screen dashboard panels out of the initial paint. */
+@media(max-width:760px){
+  #servers,#partners,#behavior,#rpg,#maintenance,#announcements,#approvals,#memories,.metrics-panel{
+    content-visibility:auto;
+    contain-intrinsic-size:auto 480px;
+  }
+  body{background-attachment:scroll}
+}
+/* The hero illustration is decorative; avoid decoding a large animated GIF on owner entry. */
+.hero:after{
+  background-image:radial-gradient(ellipse at 75% 40%,rgba(151,181,255,.2),transparent 68%);
+  mask-image:none;
+}
