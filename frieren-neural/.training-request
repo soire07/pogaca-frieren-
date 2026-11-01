@@ -1,1 +1,1 @@
-Run one isolated CPU baseline training job. Dataset and checkpoint remain workflow artifacts, never Git files.\n
+Run one isolated CPU baseline training job. Dataset and checkpoint remain workflow artifacts, never Git files.\nRetry baseline training only after the latest CI fix: f2bd7d50110036b382f429b63b3e52e446371341
