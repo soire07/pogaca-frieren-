@@ -490,7 +490,8 @@ export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limi
   const errorRows = errors.rows || [];
   const errorHtml = errorRows.length ? errorRows.map(row =>
     '<div class="rowitem"><div class="actions"><strong>#' + Number(row.id) + ' · ' + escapeHtml(row.error_type) + '</strong><span class="small">' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</span></div>'
-    + '<div class="small">Bölüm: ' + escapeHtml(row.scope) + '</div></div>'
+    + '<div class="small">Bölüm: ' + escapeHtml(row.scope) + '</div>'
+    + (row.error_message ? '<p class="small">' + escapeHtml(String(row.error_message).slice(0, 240)) + '</p>' : '') + '</div>'
   ).join('') : '<p class="muted">Kaydedilmiş hata kaydı bulunamadı.</p>';
   const errorQuery = page => '/owner/activity?' + new URLSearchParams({ action, target, page: String(audit.page), errorScope, errorPage: String(page), testPage: String(testRuns.page) }).toString();
   const errorPrevious = errors.page > 1 ? '<a class="btn secondary" href="' + errorQuery(errors.page - 1) + '">Önceki hatalar</a>' : '';
