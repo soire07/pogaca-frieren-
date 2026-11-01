@@ -300,31 +300,40 @@ export async function listOwnerErrorLogs(db, { scope = '', page = 1, limit = 20 
   params.push(pageSize);
   const limitParam = params.length;
   params.push((pageNumber - 1) * pageSize);
+  const dollar = String.fromCharCode(36);
   const result = await db.query(
     'SELECT id,scope,error_type,created_at,COUNT(*) OVER()::int AS total_count FROM owner_error_logs ' +
-    where + ' ORDER BY id DESC LIMIT  { userId = '', guildId = '', key = '', limit = 20 } = {}) {
+    where + ' ORDER BY id DESC LIMIT ' + dollar + limitParam + ' OFFSET ' + dollar + params.length,
+    params
+  );
+  const rows = result.rows || [];
+  return { rows: rows.map(({ total_count, ...row }) => row), page: pageNumber, limit: pageSize, total: Number(rows[0]?.total_count || 0) };
+}
+
+export async function searchOwnerMemories(db, { userId = '', guildId = '', key = '', limit = 20 } = {}) {
   const filters = [];
   const params = [];
+  const dollar = String.fromCharCode(36);
   const addExact = (column, value, errorCode) => {
     const term = String(value || '').trim();
     if (!term) return;
     if (!/^[0-9]{17,20}$/.test(term)) throw new Error(errorCode);
     params.push(term);
-    filters.push(column + '=$' + params.length);
+    filters.push(column + '=' + dollar + params.length);
   };
   addExact('user_id', userId, 'INVALID_MEMORY_USER');
   addExact('guild_id', guildId, 'INVALID_MEMORY_GUILD');
   const memoryKey = String(key || '').trim().slice(0, 60).replace(/[%_]/g, '');
   if (memoryKey) {
     params.push('%' + memoryKey + '%');
-    filters.push('memory_key ILIKE $' + params.length);
+    filters.push('memory_key ILIKE ' + dollar + params.length);
   }
   const pageSize = Math.max(1, Math.min(Number(limit) || 20, 50));
   params.push(pageSize);
   const result = await db.query(
     'SELECT id,guild_id,user_id,memory_key,memory_value,created_at,updated_at FROM frieren_chat_memories ' +
     (filters.length ? 'WHERE ' + filters.join(' AND ') + ' ' : '') +
-    'ORDER BY updated_at DESC,id DESC LIMIT $' + params.length,
+    'ORDER BY updated_at DESC,id DESC LIMIT ' + dollar + params.length,
     params
   );
   return result.rows || [];
