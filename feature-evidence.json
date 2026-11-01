@@ -255,7 +255,7 @@
         "path": "scripts/test-boss-combat.js",
         "name": "solo boss handler announces each phase, scales damage and lets freeze cancel special attacks",
         "markers": [
-          "getBossPhase(33, 100)",
+          "const nextBossPhase",
           "son aşamasına geçti"
         ]
       },
@@ -277,8 +277,8 @@
         "path": "scripts/test-boss-combat.js",
         "name": "solo boss handler announces each phase, scales damage and lets freeze cancel special attacks",
         "markers": [
-          "calculateBossIncomingDamage(rawBossDamage, defense, bossPhase)",
-          "if (nextBossPhase > bossPhase)"
+          "calculateBossIncomingDamage",
+          "nextBossPhase > bossPhase"
         ]
       },
       "limitation": "The regression test inspects the real production handler wiring and phase calculations, but does not execute a complete Discord encounter with live players."
@@ -299,8 +299,8 @@
         "path": "scripts/test-boss-combat.js",
         "name": "solo boss handler announces each phase, scales damage and lets freeze cancel special attacks",
         "markers": [
-          "bossPhaseSpecialBonus(bossPhase)",
-          "turnCount % 3 === 0 && !frozenBoss"
+          "bossPhaseSpecialBonus",
+          "turnCount % 3 === 0"
         ]
       },
       "limitation": "The regression test inspects the real production handler wiring and phase calculations, but does not execute a complete Discord encounter with live players."
@@ -321,8 +321,8 @@
         "path": "scripts/test-boss-combat.js",
         "name": "solo boss handler announces each phase, scales damage and lets freeze cancel special attacks",
         "markers": [
-          "Donma etkisi bossun özel saldırısını da durdurdu",
-          "if (frozenBoss) bossDamage = 0"
+          "frozenBoss",
+          "Donma etkisi bossun özel saldırısını da durdurdu"
         ]
       },
       "limitation": "The regression test inspects the real production handler wiring and phase calculations, but does not execute a complete Discord encounter with live players."
@@ -343,7 +343,7 @@
         "path": "scripts/test-boss-combat.js",
         "name": "cooperative raid announces second and final boss phases and scales incoming damage",
         "markers": [
-          "const currentPhase = getBossPhase(bossHp, maxBossHp)",
+          "currentPhase = getBossPhase",
           "ikinci evreye geçti"
         ]
       },
@@ -366,7 +366,7 @@
         "name": "cooperative raid announces second and final boss phases and scales incoming damage",
         "markers": [
           "son evreye geçti",
-          "bossPhaseSpecialBonus(bossPhase)"
+          "bossPhaseSpecialBonus"
         ]
       },
       "limitation": "The regression test inspects the real production handler wiring and phase calculations, but does not execute a complete Discord encounter with live players."
@@ -387,7 +387,7 @@
         "path": "scripts/test-boss-combat.js",
         "name": "final layered dungeon boss announces both phases and applies phase-scaled damage",
         "markers": [
-          "const currentPhase = finalBoss ? getBossPhase(enemyHp, maxEnemyHp) : 1",
+          "finalBoss",
           "İblis Lordu ikinci evreye geçti"
         ]
       },
@@ -410,7 +410,7 @@
         "name": "final layered dungeon boss announces both phases and applies phase-scaled damage",
         "markers": [
           "İblis Lordu son evreye geçti",
-          "bossPhaseSpecialBonus(enemyPhase)"
+          "bossPhaseSpecialBonus"
         ]
       },
       "limitation": "The regression test inspects the real production handler wiring and phase calculations, but does not execute a complete Discord encounter with live players."
