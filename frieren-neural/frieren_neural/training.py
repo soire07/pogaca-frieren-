@@ -208,7 +208,7 @@ def train_model(
     if resume:
         if not checkpoint.is_file():
             raise FileNotFoundError(f"Cannot resume; checkpoint not found: {checkpoint}")
-        saved = torch.load(checkpoint, map_location=selected_device, weights_only=False)
+        saved = torch.load(checkpoint, map_location=selected_device, weights_only=True)
         saved_training_config = dict(saved.get("training_config", {}))
         current_training_config = asdict(settings)
         saved_training_config.pop("max_steps", None)
@@ -225,6 +225,11 @@ def train_model(
         validation_loss = float(saved["validation_loss"])
 
     batch_generator = torch.Generator(device="cpu").manual_seed(settings.seed + start_step)
+    if resume:
+        batch_generator.set_state(saved["batch_generator_state"].cpu())
+        torch.set_rng_state(saved["torch_rng_state"].cpu())
+        if selected_device.type == "cuda" and saved.get("cuda_rng_states") is not None:
+            torch.cuda.set_rng_state_all(saved["cuda_rng_states"])
     final_step = start_step
     for step in range(start_step + 1, settings.max_steps + 1):
         final_step = step
@@ -250,6 +255,9 @@ def train_model(
                 "corpus_sha256": corpus_fingerprint,
                 "model_state": model.state_dict(),
                 "optimizer_state": optimizer.state_dict(),
+                "batch_generator_state": batch_generator.get_state(),
+                "torch_rng_state": torch.get_rng_state(),
+                "cuda_rng_states": torch.cuda.get_rng_state_all() if selected_device.type == "cuda" else None,
                 "train_loss": train_loss,
                 "validation_loss": validation_loss,
             }, checkpoint)
