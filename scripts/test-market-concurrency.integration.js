@@ -270,7 +270,7 @@ test('production solo boss reward transaction grants a battle only once under co
     assert.equal(Number(player.rows[0].xp),100);
     assert.equal(Number(player.rows[0].boss_defeats),1);
     assert.equal(player.rows[0].last_boss_battle_id,battleId);
-    assert.deepEqual(items.map(x=>[x.item_key,Number(x.quantity)]),[
+    assert.deepEqual(items.rows.map(x=>[x.item_key,Number(x.quantity)]),[
       ['solo-fixture-bonus',1],['solo-fixture-material',1],['💎 Mana Kristali',1]
     ]);
   });
