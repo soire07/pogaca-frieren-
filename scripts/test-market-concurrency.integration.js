@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { ensureUser, pool, withIsolatedTestSchema } from '../database/db.js';
 import { buyMarketItem } from '../market.js';
 
