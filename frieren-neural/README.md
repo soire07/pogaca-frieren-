@@ -70,6 +70,23 @@ The checkpoint loaded successfully and text generation executed, but the generat
 
 [GitHub Actions run and 30-day checkpoint artifact](https://github.com/soire07/pogaca-frieren-/actions/runs/41306097844).
 
+## Dialogue-boundary-safe retraining (2026-11-01)
+
+After correcting the internal split to preserve complete conversations, the baseline was retrained from scratch on the same pinned 3,950-conversation training split. The independent 525-conversation test split remained untouched and was checksum-verified again.
+
+| Metric | Result |
+| --- | ---: |
+| Training loss | 3.4484 |
+| Internal validation loss | 3.5376 |
+| Held-out test loss | 3.4980 |
+| Held-out test perplexity | 33.0493 |
+| Optimizer steps | 1,000 |
+| Device | CPU |
+
+The new checkpoint loads and generates text, but the smoke sample remains incoherent Turkish. The held-out test loss is slightly worse than the earlier run, so this change improves split integrity rather than proving improved language quality. Keep the model experimental and do not deploy it to users.
+
+[GitHub Actions run and 30-day checkpoint artifact](https://github.com/soire07/pogaca-frieren-/actions/runs/41307444879).
+
 ## Prepare a licensed corpus
 
 Create a corpus directory containing only UTF-8 `.txt` or `.md` files. Copy `corpus_manifest.example.json` into that directory as `corpus_manifest.json`, then replace every placeholder with accurate source, license, and usage information. The CLI refuses missing manifests, placeholder metadata, path traversal, symlinks escaping the corpus directory, empty files, and unlisted text files.
