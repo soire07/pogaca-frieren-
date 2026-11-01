@@ -598,6 +598,229 @@
         ]
       },
       "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
+    },
+    {
+      "featureId": "RPG-317",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function shouldGuaranteeRareDiscovery"
+          ]
+        },
+        {
+          "path": "macera.js",
+          "markers": [
+            "const pityReady = shouldGuaranteeRareDiscovery(",
+            "const undiscoveredRare = rareOutcomes.filter"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "rare exploration pity guarantees a new rare location at each 20-adventure milestone",
+        "markers": [
+          "shouldGuaranteeRareDiscovery(19, 0)",
+          "shouldGuaranteeRareDiscovery(39, 1)",
+          "shouldGuaranteeRareDiscovery(999, 3)"
+        ]
+      },
+      "limitation": "Pity thresholds and rare-discovery selection wiring are tested; a complete live exploration interaction is not verified."
+    },
+    {
+      "featureId": "RPG-318",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function explorationMasteryReward"
+          ]
+        },
+        {
+          "path": "commands/rpg/kesif.js",
+          "markers": [
+            "INSERT INTO exploration_region_mastery",
+            "explorationMasteryReward(regionVisits)"
+          ]
+        },
+        {
+          "path": "database/db.js",
+          "markers": [
+            "CREATE TABLE IF NOT EXISTS exploration_region_mastery"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "region mastery persists per selected exploration region and is displayed to players",
+        "markers": [
+          "exploration_region_mastery",
+          "explorationMasteryReward(regionVisits)",
+          "CREATE TABLE IF NOT EXISTS exploration_region_mastery"
+        ]
+      },
+      "limitation": "Milestone reward calculations and persistence wiring are asserted; multi-region persistence is not executed against a live Discord interaction."
+    },
+    {
+      "featureId": "RPG-319",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "commands/rpg/kesif.js",
+          "markers": [
+            "const craftingMaterials = {",
+            "const foundCraftingMaterial = Math.random() < 0.4"
+          ]
+        },
+        {
+          "path": "zanaat.js",
+          "markers": [
+            "📜 Frieren’in Kayıp Notları"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "exploration can find region-specific materials used by equipment crafting recipes",
+        "markers": [
+          "const craftingMaterials = {",
+          "foundCraftingMaterial",
+          "no crafting recipe consumes exploration material"
+        ]
+      },
+      "limitation": "The test checks the region-specific drop catalogue and recipe consumption wiring; random drop rates are not exercised statistically."
+    },
+    {
+      "featureId": "RPG-320",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "gorevzinciri.js",
+          "markers": [
+            "🥐 Büyülü Poğaça Kutusu",
+            "💎 Mana Kristali",
+            "🐉 Ejderha Pulu",
+            "INSERT INTO inventory",
+            "step.material"
+          ]
+        },
+        {
+          "path": "zanaat.js",
+          "markers": [
+            "🥐 Büyülü Poğaça Kutusu",
+            "💎 Mana Kristali",
+            "🐉 Ejderha Pulu"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "daily quest chain awards recipe materials transactionally for all three stages",
+        "markers": [
+          "step.material",
+          "INSERT INTO inventory",
+          "COMMIT"
+        ]
+      },
+      "limitation": "All three stage material rewards, inventory insertion and transaction markers are checked statically; no live quest claim is run."
+    },
+    {
+      "featureId": "RPG-321",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function getLevelScaledQuestReward"
+          ]
+        },
+        {
+          "path": "gorevzinciri.js",
+          "markers": [
+            "getLevelScaledQuestReward(step.reward, step.xpReward, player.level, step.step === 3)",
+            "levelForXp(newXp)",
+            "stat_points=stat_points+$6"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "quest chain integrates level-scaled XP, level-ups, stat points and completion bonus",
+        "markers": [
+          "getLevelScaledQuestReward(200, 80, 51, true)",
+          "levelForXp(newXp)",
+          "stat_points=stat_points+$6"
+        ]
+      },
+      "limitation": "Reward scaling is unit-tested and level-up/stat-point transaction wiring is source-asserted; a live player quest completion is not verified."
+    },
+    {
+      "featureId": "RPG-322",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "boss.craftingMaterial",
+            "claimSoloBossReward"
+          ]
+        },
+        {
+          "path": "rpg-reward-transactions.js",
+          "markers": [
+            "craftingMaterial",
+            "INSERT INTO inventory"
+          ]
+        },
+        {
+          "path": "rpg-content-catalog.js",
+          "markers": [
+            "👑 Himmel’in Efsanevi Yadigârı"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "solo boss victories grant recipe materials matched to boss tier",
+        "markers": [
+          "boss.craftingMaterial",
+          "claimSoloBossReward",
+          "craftingMaterial"
+        ]
+      },
+      "limitation": "Boss-tier material catalogue, reward transaction handoff and recipe availability are asserted; no live boss victory is performed."
+    },
+    {
+      "featureId": "RPG-323",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "katlizindan.js",
+          "markers": [
+            "const craftingLoot = floorsCleared >= FLOORS",
+            "👑 Himmel’in Efsanevi Yadigârı",
+            "craftingLoot ? [craftingLoot] : []"
+          ]
+        },
+        {
+          "path": "zanaat.js",
+          "markers": [
+            "👑 Himmel’in Efsanevi Yadigârı"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "dungeon depth and final victory award recipe materials to participating players",
+        "markers": [
+          "floorsCleared >= FLOORS",
+          "👑 Himmel’in Efsanevi Yadigârı",
+          "craftingLoot ? [craftingLoot] : []"
+        ]
+      },
+      "limitation": "Dungeon-depth and full-clear material wiring plus recipe availability are asserted; a complete live party dungeon clear is not verified."
     }
   ]
 }
