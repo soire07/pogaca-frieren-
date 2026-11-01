@@ -64,9 +64,10 @@ test('Render service API and health checks start concurrently and expose the hea
     }
   });
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(requested.length, 4, 'both API and health requests for both services should start before API responses resolve');
+  assert.equal(requested.length, 3, 'Poğaça API and health plus Frieren AI API should start before API responses resolve');
   releaseApi();
   const status = await pending;
+  assert.equal(requested.length, 4, 'Frieren AI health should start after its API confirms it is not suspended');
   assert.equal(status.services.frieren_ai.healthPayload.discordReady, true);
 });
 
