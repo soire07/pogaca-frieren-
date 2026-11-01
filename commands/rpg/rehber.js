@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
 
 const pages = [
   { title: '📖 I. İlk adımlar — Yolculuğa başla', description: 'Frieren’in dünyasında güçlenmek; karakterini seçmek, büyü öğrenmek, ekipman toplamak ve düzenli maceraya çıkmakla mümkün.', fields: [
