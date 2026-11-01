@@ -211,8 +211,10 @@ function secondFactorForm(title, description, action, csrf, extra = '') {
 
 export function createPublicSiteSession(secret, user, expiresAt) {
   const id = String(user?.id || '');
-  if (!/^\d{17,20}$/.test(id)) throw new Error('Invalid Discord user for site session');
-  const avatarHash = typeof user?.avatar === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(user.avatar) ? user.avatar : null;
+  const discordId = /^\d{17,20}$/.test(id);
+  const siteAccountId = /^site_[0-9a-f-]{36}$/i.test(id);
+  if (!discordId && !siteAccountId) throw new Error('Invalid public site account for site session');
+  const avatarHash = discordId && typeof user?.avatar === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(user.avatar) ? user.avatar : null;
   return sign({
     purpose: 'frieren-site-session',
     sub: id,
@@ -225,14 +227,15 @@ export function createPublicSiteSession(secret, user, expiresAt) {
 export function readPublicSiteSession(token, secret, nowSeconds = Math.floor(Date.now() / 1000)) {
   if (!secret || secret.length < 32 || !token) return null;
   const session = unsign(token, secret);
-  if (session?.purpose !== 'frieren-site-session' || !/^\d{17,20}$/.test(String(session.sub || ''))
+  const subject = String(session?.sub || '');
+  if (session?.purpose !== 'frieren-site-session' || (!/^\d{17,20}$/.test(subject) && !/^site_[0-9a-f-]{36}$/i.test(subject))
       || !Number.isInteger(session.exp) || session.exp <= nowSeconds) return null;
-  const avatarHash = typeof session.avatarHash === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(session.avatarHash)
+  const avatarHash = /^\d{17,20}$/.test(subject) && typeof session.avatarHash === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(session.avatarHash)
     ? session.avatarHash : null;
   return {
-    id: String(session.sub),
+    id: subject,
     username: String(session.username || 'Gezgin').slice(0, 64),
-    avatarUrl: avatarHash ? 'https://cdn.discordapp.com/avatars/' + session.sub + '/' + avatarHash + '.png?size=128' : null
+    avatarUrl: avatarHash ? 'https://cdn.discordapp.com/avatars/' + subject + '/' + avatarHash + '.png?size=128' : null
   };
 }
 
@@ -605,7 +608,12 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
 
   if (url.pathname === '/owner/login' && req.method === 'GET') {
     const requestedFlow = url.searchParams.get('flow');
-    const flow = ['register', 'login'].includes(requestedFlow) ? requestedFlow : 'owner';
+    if (requestedFlow === 'register' || requestedFlow === 'login') {
+      res.writeHead(302, { Location: requestedFlow === 'register' ? '/register' : '/login', 'Cache-Control': 'no-store' });
+      res.end();
+      return true;
+    }
+    const flow = 'owner';
     const state = createOwnerOAuthState(sessionSecret, Date.now(), flow);
     const location = new URL('https://discord.com/oauth2/authorize');
     location.search = new URLSearchParams({
@@ -622,6 +630,11 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     const flow = getOwnerOAuthFlow(receivedState, sessionSecret);
     if (!verifyOwnerOAuthState(receivedState, sessionSecret) || !flow || !code) {
       send(res, 400, page('Giriş reddedildi', '<h1>Giriş doğrulanamadı</h1><p>OAuth doğrulaması geçersiz veya süresi dolmuş. Yeniden giriş yap.</p>'));
+      return true;
+    }
+    if (flow !== 'owner') {
+      res.writeHead(302, { Location: flow === 'register' ? '/register' : '/login', 'Cache-Control': 'no-store', 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
+      res.end();
       return true;
     }
     try {
@@ -643,49 +656,14 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const userId = String(user?.id || '');
       const username = String(user?.username || 'Gezgin').slice(0, 64);
       const avatarHash = typeof user?.avatar === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(user.avatar) ? user.avatar : null;
-      if (flow === 'register' || flow === 'login') {
-        if (!/^\d{17,20}$/.test(userId)) throw new Error('INVALID_DISCORD_USER_ID');
-        await db.query(`
-          CREATE TABLE IF NOT EXISTS frieren_site_members (
-            discord_user_id TEXT PRIMARY KEY CHECK (discord_user_id ~ '^[0-9]{17,20}$'),
-            username VARCHAR(64) NOT NULL,
-            avatar_hash TEXT,
-            registered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            last_login_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-          )
-        `);
-        if (flow === 'register') {
-          const created = await db.query(
-            'INSERT INTO frieren_site_members (discord_user_id, username, avatar_hash) VALUES ($1,$2,$3) ON CONFLICT (discord_user_id) DO NOTHING RETURNING discord_user_id',
-            [userId, username, avatarHash]
-          );
-          if (!created.rowCount) {
-            res.writeHead(302, { Location: '/login?status=already_registered', 'Cache-Control': 'no-store', 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
-            res.end();
-            return true;
-          }
-        } else {
-          const existing = await db.query('SELECT discord_user_id FROM frieren_site_members WHERE discord_user_id=$1', [userId]);
-          if (!existing.rowCount) {
-            res.writeHead(302, { Location: '/register?status=not_registered', 'Cache-Control': 'no-store', 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
-            res.end();
-            return true;
-          }
-          await db.query(
-            'UPDATE frieren_site_members SET username=$2, avatar_hash=$3, last_login_at=NOW() WHERE discord_user_id=$1',
-            [userId, username, avatarHash]
-          );
-        }
-      } else if (userId !== OWNER_ID) {
+      if (userId !== OWNER_ID) {
         send(res, 403, page('Owner erişimi reddedildi', '<h1>Bu alan yalnızca site sahibine açıktır</h1><p>Siteye normal giriş yapmak için kayıt veya giriş sayfasını kullan.</p><a class="btn" href="/login">Siteye dön</a>'), { 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
         return true;
       }
       const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS;
       const setCookies = [clearOwnerCookie(STATE_COOKIE, '/owner')];
-      if (flow === 'register' || flow === 'login' || userId === OWNER_ID) {
-        const siteSession = createPublicSiteSession(sessionSecret, user, expiresAt);
-        setCookies.push(buildPublicSiteSessionCookie(siteSession, SESSION_TTL_SECONDS));
-      }
+      const siteSession = createPublicSiteSession(sessionSecret, user, expiresAt);
+      setCookies.push(buildPublicSiteSessionCookie(siteSession, SESSION_TTL_SECONDS));
       if (userId === OWNER_ID) {
         const config = await getOwnerTotpConfig(db);
         const setupRequired = config.enabled !== true || typeof config.secret !== 'string';
@@ -717,16 +695,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       }
     } catch (error) {
       console.error('Owner OAuth login failed:', error?.message || 'unknown error');
-      if (flow === 'register' || flow === 'login') {
-        res.writeHead(302, {
-          Location: '/' + flow + '?status=oauth_error',
-          'Cache-Control': 'no-store',
-          'Set-Cookie': [clearOwnerCookie(STATE_COOKIE, '/owner'), clearOwnerCookie(SESSION_COOKIE, '/owner')]
-        });
-        res.end();
-      } else {
-        send(res, 502, page('Discord bağlantı hatası', '<h1>Discord ile giriş tamamlanamadı</h1><p>Biraz sonra yeniden dene.</p><a class="btn secondary" href="/">Ana sayfaya dön</a>'), { 'Set-Cookie': [clearOwnerCookie(STATE_COOKIE, '/owner'), clearOwnerCookie(SESSION_COOKIE, '/owner')] });
-      }
+      send(res, 502, page('Discord bağlantı hatası', '<h1>Discord ile giriş tamamlanamadı</h1><p>Biraz sonra yeniden dene.</p><a class="btn secondary" href="/">Ana sayfaya dön</a>'), { 'Set-Cookie': [clearOwnerCookie(STATE_COOKIE, '/owner'), clearOwnerCookie(SESSION_COOKIE, '/owner')] });
     }
     return true;
   }
