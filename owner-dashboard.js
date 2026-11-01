@@ -366,8 +366,11 @@ export async function getFrierenAIReadiness({
   healthPath = RENDER_BOT_SERVICES.frieren_ai.healthPath
 } = {}) {
   try {
+    const healthSecret = String(process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+    const headers = { Accept: 'application/json' };
+    if (healthSecret.length >= 32) headers['x-frieren-health-secret'] = healthSecret;
     const response = await fetchImpl(String(serviceUrl).replace(/\/$/, '') + healthPath, {
-      headers: { Accept: 'application/json' },
+      headers,
       signal: AbortSignal.timeout(5000)
     });
     if (!response.ok) return null;
@@ -715,6 +718,22 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       send(res, 401, page('Oturum gerekli', '<h1>Oturum süresi doldu</h1><a class="btn" href="/owner/login">Yeniden giriş yap</a>'), { 'Set-Cookie': clearOwnerCookie(SESSION_COOKIE, '/owner') });
     } else {
       send(res, 200, page('Frieren giriş', '<span class="tag">✧ FANTASTİK YOLCULUĞA GİRİŞ</span><h1>Frieren evrenine hoş geldin</h1><p>Siteye devam etmek için Discord hesabınla giriş yap. Girişten sonra ana sayfa, bot tanıtımı ve GIF galerisi açılır. Owner Panel yalnızca bot sahibine özeldir.</p><a class="btn" href="/owner/login">Discord ile devam et</a><p class="muted">Güvenli giriş · Discord kimlik doğrulaması</p>'));
+    }
+    return true;
+  }
+
+  if (url.pathname === '/owner/guardian' && req.method === 'GET') {
+    try {
+      const [incidents, jobs] = await Promise.all([
+        listGuardianIncidents(db, 30),
+        listGuardianJobs(db, 20),
+      ]);
+      send(res, 200, renderOwnerGuardianWorkspace({
+        incidents, jobs, csrf: session.csrf, notice: url.searchParams.get('notice') || '',
+      }));
+    } catch (error) {
+      console.error('Guardian workspace load failed:', error?.message || error);
+      send(res, 503, page('Guardian yüklenemedi', '<h1>Neural Guardian verileri alınamadı</h1><a class="btn" href="/owner">Panele dön</a>'));
     }
     return true;
   }
