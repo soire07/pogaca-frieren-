@@ -39,6 +39,15 @@ def test_report_applies_quality_gate_to_human_scores():
         checkpoint_step=100,
         outputs=[{"id": f"TR-{number:03d}", "output": "örnek yanıt"} for number in range(1, 25)],
         scores=scores,
+        baseline_report={
+            "prompt_set_version": quality.PROMPT_SET_VERSION,
+            "decoding_settings": quality.DECODING_SETTINGS,
+            "checkpoint_sha256": "0" * 64,
+            "metrics": {
+                "dimension_averages": {dimension: 3.5 for dimension in quality.DIMENSIONS},
+                "overall_average": 3.5,
+            },
+        },
     )
     assert report["decision"] == "READY FOR STAGED TEST"
     assert report["metrics"]["overall_average"] == 4.0
