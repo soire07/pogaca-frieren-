@@ -160,10 +160,19 @@ def _create_session_token(secret: str) -> str:
 
 
 def _valid_session_token(token: str | None, secret: str) -> bool:
-    if not token or "." not in token:
+    if not token or len(token) > 77 or "." not in token:
         return False
     expires_at, signature = token.split(".", 1)
-    if not expires_at.isdigit() or int(expires_at) < int(time.time()):
+    if (
+        not expires_at
+        or len(expires_at) > 12
+        or not expires_at.isascii()
+        or not expires_at.isdigit()
+        or len(signature) != 64
+        or any(character not in "0123456789abcdef" for character in signature)
+    ):
+        return False
+    if int(expires_at) < int(time.time()):
         return False
     expected = _session_signature(expires_at, secret)
     return secrets.compare_digest(signature, expected)
