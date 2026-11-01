@@ -539,7 +539,7 @@ export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limi
     + '<section class="panel"><h2>Frieren AI test geçmişi · ' + Number(testRuns.total) + '</h2>' + testHtml + '<div class="actions">' + testPrevious + testNext + '<span class="small">Sayfa ' + Number(testRuns.page) + '</span></div></section>');
 }
 
-export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf = '', notice = '' } = {}) {
+export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf = '', notice = '', serviceState = {} } = {}) {
   const noticeText = ({
     guardian_scan_complete: 'Tarama tamamlandı. Yeni bulgular ve servis durumları aşağıda listeleniyor.',
     guardian_review_complete: 'Frieren AI incelemesini tamamladı. Öneri yalnızca taslaktır; kod değiştirilmedi.',
@@ -583,12 +583,18 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + (result.status === 'proposal_only' && !process.env.FRIEREN_GITHUB_TOKEN && job.repair_dispatch_status !== 'dispatched' ? '<p class="notice warn">PR oluşturma düğmesi için FRIEREN_GITHUB_TOKEN yapılandırılmalı.</p>' : '')
       + '</article>';
   }).join('') : '<p class="muted">Henüz Frieren AI inceleme görevi yok.</p>';
+  const systemCards = '<div class="grid">'
+    + '<div class="stat"><small>Poğaça Frieren</small><strong>' + (serviceState.pogacaReady ? 'Bağlı' : 'Kontrol gerekli') + '</strong></div>'
+    + '<div class="stat"><small>Frieren AI köprüsü</small><strong>' + (serviceState.frierenAiBridgeConfigured ? 'Yapılandırıldı' : 'Anahtar eksik') + '</strong></div>'
+    + '<div class="stat"><small>Frieren Neural canlılık</small><strong>' + (serviceState.neuralLiveConfigured ? 'URL tanımlı' : 'Henüz bağlanmadı') + '</strong></div>'
+    + '</div><p class="small">Kartlar bağlantı yapılandırmasını gösterir; harici servislerin gerçek sağlık durumu tarama düğmesiyle doğrulanır.</p>';
   const critical = incidents.filter(item => item.severity === 'critical').length;
   const open = incidents.filter(item => !['resolved','ignored'].includes(item.status)).length;
   return page('Neural Guardian', renderOwnerNavigation()
     + '<div class="top"><div><div class="brand">FRIEREN · NEURAL GUARDIAN</div><div class="small">INCIDENT CONTROL & ENGINEERING REVIEW</div></div><a class="btn secondary" href="/owner">Kontrol merkezine dön</a></div>'
     + '<section class="hero"><span class="tag">OWNER · PRIVATE</span><h1>Neural Guardian</h1><p class="muted">Frieren Neural, Frieren AI ve Poğaça Frieren için hata tespiti, olay geçmişi ve mühendislik incelemesi.</p>'
     + (noticeText ? '<div class="notice">' + escapeHtml(noticeText) + '</div>' : '')
+    + systemCards
     + '<div class="grid"><div class="stat"><small>Açık olay</small><strong>' + open + '</strong></div><div class="stat"><small>Kritik olay</small><strong>' + critical + '</strong></div><div class="stat"><small>İnceleme görevi</small><strong>' + jobs.length + '</strong></div></div>'
     + '<section class="panel"><h2>Sağlık taraması</h2><p class="muted">Yerel Discord/DB durumu ve yapılandırılmış AI sağlık kontrolü incelenir. Neural için yalnızca ayrı, hafif bir canlılık URL\'si tanımlanmışsa istek gönderilir; model yükleyen /health endpoint\'i otomatik çağrılmaz.</p>'
     + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-scan"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Sağlık taramasını başlatmayı onaylıyorum</label><button class="btn">Sistemleri tara</button></form></section>'
@@ -737,6 +743,11 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       ]);
       send(res, 200, renderOwnerGuardianWorkspace({
         incidents, jobs, csrf: session.csrf, notice: url.searchParams.get('notice') || '',
+        serviceState: {
+          pogacaReady: Boolean(client?.isReady?.()),
+          frierenAiBridgeConfigured: String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim().length >= 32,
+          neuralLiveConfigured: Boolean(String(process.env.FRIEREN_NEURAL_LIVE_URL || '').trim()),
+        },
       }));
     } catch (error) {
       console.error('Guardian workspace load failed:', error?.message || error);
