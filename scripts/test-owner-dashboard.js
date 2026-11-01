@@ -675,3 +675,56 @@ test('command help manager escapes stored owner content before rendering', () =>
   assert.doesNotMatch(html, /<img src=x onerror=alert\(1\)>/);
   assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
 });
+
+
+test('command help save requires owner CSRF confirmation before touching persistence', async () => {
+  let calls = 0;
+  const db = { query: async () => { calls += 1; return { rows: [] }; } };
+  const client = { commands: new Map([['karakter', {}]]) };
+  const { response } = await runOwnerPost({
+    action: 'command-help-save', csrf: 'wrong-token', confirm: 'yes',
+    commandName: 'karakter', shortDescription: 'Karakter profili.',
+    longDescription: 'Oyuncunun karakterini ve ilerlemesini gösterir.'
+  }, db, client);
+  assert.equal(response.status, 403);
+  assert.match(response.body, /CSRF doğrulaması başarısız/);
+  assert.equal(calls, 0);
+});
+
+test('command help save validates the loaded slash command and commits version plus current text atomically', async () => {
+  const statements = [];
+  const db = { async query(sql, params) { statements.push({ sql, params }); return { rows: [] }; } };
+  const client = { commands: new Map([['karakter', {}]]) };
+  const { response } = await runOwnerPost({
+    action: 'command-help-save', csrf: 'session', confirm: 'yes',
+    commandName: 'karakter', shortDescription: 'Karakter profilini görüntüle.',
+    longDescription: 'Oyuncunun karakterini, seviyesini ve savaş yapısını görüntüler.'
+  }, db, client);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner?notice=command_help_saved#command-help');
+  assert.equal(statements[0].sql, 'BEGIN');
+  assert.ok(statements.some(row => row.sql.includes('INSERT INTO owner_command_help_versions')));
+  const current = statements.find(row => row.sql.includes('INSERT INTO owner_command_help('));
+  assert.deepEqual(current.params, [
+    'karakter',
+    'Karakter profilini görüntüle.',
+    'Oyuncunun karakterini, seviyesini ve savaş yapısını görüntüler.',
+    '1553794496234262641'
+  ]);
+  assert.ok(statements.some(row => row.sql.includes('LIMIT 30')));
+  assert.equal(statements.at(-1).sql, 'COMMIT');
+});
+
+test('command help save rejects names that are not loaded slash commands without database writes', async () => {
+  let calls = 0;
+  const db = { async query() { calls += 1; throw new Error('database must not be touched'); } };
+  const client = { commands: new Map([['karakter', {}]]) };
+  const { response } = await runOwnerPost({
+    action: 'command-help-save', csrf: 'session', confirm: 'yes',
+    commandName: 'unknown-command', shortDescription: 'Geçersiz komut.',
+    longDescription: 'Bu komut botta yüklü değil.'
+  }, db, client);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/owner?notice=invalid');
+  assert.equal(calls, 0);
+});
