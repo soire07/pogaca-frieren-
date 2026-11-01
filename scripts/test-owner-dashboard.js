@@ -1,7 +1,7 @@
 import test from 'node:test';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
 const ownerId = '1553794496234262641';
@@ -78,6 +78,38 @@ test('owner panel navigation exposes command workflows and the new activity cent
   assert.match(navigation, /Denetim ve test geçmişi/);
 });
 
+
+test('Guardian is exposed as a dedicated Owner Panel workspace', () => {
+  const navigation = renderOwnerNavigation();
+  assert.match(navigation, /href="\/owner\/guardian"/);
+  assert.ok(OWNER_PANEL_SECTIONS.some(section => section.id === 'guardian'));
+});
+
+test('Guardian AI endpoint is HTTPS-only and points to the private review route', () => {
+  assert.equal(getFrierenAiGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.example/' }), 'https://frieren-ai.example/internal/guardian-review');
+  assert.throws(() => getFrierenAiGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'http://frieren-ai.example' }), { message: 'INVALID_FRIEREN_AI_PUBLIC_URL' });
+});
+
+test('Guardian workspace shows review proposals as unapplied and requires owner review', () => {
+  const html = renderOwnerGuardianWorkspace({
+    csrf: 'csrf-test',
+    incidents: [{
+      id: 7, title: 'RPG timeout', severity: 'high', system: 'pogaca_frieren',
+      code: 'TIMEOUT', status: 'open', occurrence_count: 2,
+      last_seen: '2026-11-02T10:00:00Z', summary: 'Boss test timeout', evidence: [],
+    }],
+    jobs: [{
+      id: 9, incident_title: 'RPG timeout', agent: 'frieren_ai', system: 'pogaca_frieren',
+      status: 'completed', created_at: '2026-11-02T10:01:00Z',
+      result: { rootCause: 'A missing timeout guard.', confidence: 'medium', suggestedFix: 'Add a bounded timeout.', proposedPatch: 'diff --git a/file b/file', applied: false, tests: ['Add regression test.'], risks: [] },
+    }],
+  });
+  assert.match(html, /Neural Guardian/);
+  assert.match(html, /A missing timeout guard/);
+  assert.match(html, /Önerilen yama taslağı \(uygulanmadı\)/);
+  assert.match(html, /İnsan incelemesi gerekli/);
+  assert.match(html, /guardian-review/);
+});
 
 test('Render metrics stay disabled without an API key and do not make network requests', async () => {
   const { getRenderServiceMetrics } = await import('../owner-metrics.js');
