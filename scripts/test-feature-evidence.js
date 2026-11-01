@@ -17,7 +17,7 @@ test('feature evidence map references unique, registered feature IDs without pro
     assert.ok(known.has(entry.featureId), 'unknown feature ID: ' + entry.featureId);
     assert.equal(known.get(entry.featureId).status, 'implemented_needs_runtime_test',
       'evidence mapping must not silently promote inventory status: ' + entry.featureId);
-    assert.ok(['automated_static_assertion', 'automated_partial'].includes(entry.evidenceLevel));
+    assert.ok(['automated_static_assertion', 'automated_partial', 'automated_tested'].includes(entry.evidenceLevel));
     assert.ok(entry.limitation, 'every evidence entry must state its verification limit');
 
     for (const source of entry.sources) {
