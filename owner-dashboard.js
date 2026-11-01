@@ -3,7 +3,7 @@ import { getRenderServiceMetrics, renderMetricBars } from './owner-metrics.js';
 import {
   auditOwnerAction, getOwnerOverview, getMaintenanceState, listPendingApprovals,
   reviewApproval, listUserMemories, deleteUserMemory, setMaintenanceState,
-  sendOwnerAnnouncement, getRecentOwnerActivity, listOwnerAuditLogs, recordOwnerTestRun, listOwnerTestRuns,
+  sendOwnerAnnouncement, getRecentOwnerActivity, listOwnerAuditLogs, listOwnerErrorLogs, recordOwnerTestRun, listOwnerTestRuns,
   searchOwnerMemories, updateOwnerMemory
 } from './owner-admin.js';
 import { listOwnerPartnerLinks, saveOwnerPartnerLink, deleteOwnerPartnerLink, getOwnerRpgMetrics, updateGuildConfiguration, listGuildConfigurations, searchOwnerRpgPlayers, getOwnerRpgPlayerDetails, adjustOwnerRpgResources, adjustOwnerRpgInventory, setOwnerRpgEquipment } from './owner-platform.js';
@@ -477,13 +477,18 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
   `);
 }
 
-export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limit: 20, total: 0 }, testRuns = { rows: [], page: 1, limit: 10, total: 0 }, action = '', target = '' } = {}) {
+export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limit: 20, total: 0 }, errors = { rows: [], page: 1, limit: 20, total: 0 }, testRuns = { rows: [], page: 1, limit: 10, total: 0 }, action = '', target = '' } = {}) {
   const auditRows = audit.rows || [];
   const testRows = testRuns.rows || [];
   const auditHtml = auditRows.length ? auditRows.map(row =>
     '<div class="rowitem"><div class="actions"><strong>#' + Number(row.id) + ' · ' + escapeHtml(row.action) + '</strong><span class="small">' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</span></div>'
     + '<div class="small">İşlemi yapan: ' + escapeHtml(row.actor_id) + ' · Hedef: ' + escapeHtml(row.target || '—') + '</div></div>'
   ).join('') : '<p class="muted">Bu filtrelerle eşleşen işlem bulunamadı.</p>';
+  const errorRows = errors.rows || [];
+  const errorHtml = errorRows.length ? errorRows.map(row =>
+    '<div class="rowitem"><div class="actions"><strong>#' + Number(row.id) + ' · ' + escapeHtml(row.error_type) + '</strong><span class="small">' + escapeHtml(new Date(row.created_at).toLocaleString('tr-TR')) + '</span></div>'
+    + '<div class="small">Bölüm: ' + escapeHtml(row.scope) + '</div></div>'
+  ).join('') : '<p class="muted">Kaydedilmiş hata kaydı bulunamadı.</p>';
   const testHtml = testRows.length ? testRows.map(run =>
     '<div class="rowitem"><div class="actions"><strong>#' + Number(run.id) + ' · ' + escapeHtml(run.target) + '</strong><span class="' + (run.status === 'PASS' ? 'good' : run.status === 'FAIL' ? 'bad' : 'warn') + '">' + escapeHtml(run.status) + '</span></div>'
     + '<div class="small">' + Number(run.summary?.total || 0) + ' test · ' + Number(run.summary?.pass || 0) + ' PASS · ' + Number(run.summary?.fail || 0) + ' FAIL · ' + escapeHtml(new Date(run.created_at).toLocaleString('tr-TR')) + '</div>'
@@ -499,6 +504,7 @@ export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limi
     + '<section class="hero"><span class="tag">OWNER · PRIVATE</span><h1>Denetim ve test geçmişi</h1><p class="muted">İşlemler, test sonuçları ve başarısız aşamalar. Hassas kayıt içerikleri bu listede gösterilmez.</p></section>'
     + '<section class="panel"><h2>İşlem kayıtları · ' + Number(audit.total) + '</h2><form method="get" action="/owner/activity"><label>İşlem türü</label><input name="action" maxlength="80" value="' + escapeHtml(action) + '" placeholder="Örn. memory.update"><label>Hedef</label><input name="target" maxlength="80" value="' + escapeHtml(target) + '" placeholder="Kayıt veya servis ID"><button class="btn secondary">Filtrele</button></form>'
     + auditHtml + '<div class="actions">' + previous + next + '<span class="small">Sayfa ' + Number(audit.page) + ' · En fazla ' + Number(audit.limit) + ' kayıt</span></div></section>'
+    + '<section class="panel"><h2>Hata kayıtları · ' + Number(errors.total) + '</h2>' + errorHtml + '</section>'
     + '<section class="panel"><h2>Frieren AI test geçmişi · ' + Number(testRuns.total) + '</h2>' + testHtml + '</section>');
 }
 
@@ -715,11 +721,12 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const actionFilter = String(url.searchParams.get('action') || '').slice(0, 80);
       const targetFilter = String(url.searchParams.get('target') || '').slice(0, 80);
       const pageNumber = Math.max(1, Math.min(Number(url.searchParams.get('page')) || 1, 100000));
-      const [audit, testRuns] = await Promise.all([
+      const [audit, errors, testRuns] = await Promise.all([
         listOwnerAuditLogs(db, { action: actionFilter, target: targetFilter, page: pageNumber, limit: 20 }),
+        listOwnerErrorLogs(db, { page: 1, limit: 20 }),
         listOwnerTestRuns(db, { page: 1, limit: 20 })
       ]);
-      send(res, 200, renderOwnerActivityWorkspace({ audit, testRuns, action: actionFilter, target: targetFilter }));
+      send(res, 200, renderOwnerActivityWorkspace({ audit, errors, testRuns, action: actionFilter, target: targetFilter }));
     } catch (error) {
       console.error('Owner activity history failed:', error?.message || error);
       send(res, 503, page('Geçmiş yüklenemedi', '<h1>Denetim geçmişi yüklenemedi</h1><a class="btn" href="/owner">Panele dön</a>'));
