@@ -81,6 +81,7 @@ export async function initDatabase() {
       last_adventure_at TIMESTAMPTZ,
       last_boss_at TIMESTAMPTZ,
       last_boss_win_at TIMESTAMPTZ,
+      last_boss_battle_id TEXT,
       last_rest_at TIMESTAMPTZ,
       last_exploration_at TIMESTAMPTZ,
       last_item_used_at TIMESTAMPTZ,
@@ -113,6 +114,7 @@ export async function initDatabase() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS character_name TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_boss_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_boss_win_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_boss_battle_id TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_rest_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_exploration_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_item_used_at TIMESTAMPTZ;
