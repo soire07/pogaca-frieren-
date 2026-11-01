@@ -12,7 +12,7 @@ dependencies = [
   "torch>=2.2",
 ]
 
-[project.optional-dependencies]
+[project.scripts]\nfrieren-neural-train = "frieren_neural.training:main"\n\n[project.optional-dependencies]
 dev = [
   "pytest>=8.0",
 ]
