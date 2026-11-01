@@ -274,3 +274,13 @@ The fixed, human-reviewed benchmark, scoring rubric, and release thresholds are 
 ### Baseline artifact audit (2026-11-01)
 
 The CPU baseline artifact from workflow run [41307444879](https://github.com/soire07/pogaca-frieren-/actions/runs/41307444879) was downloaded and inspected without deploying or modifying any service. Its checkpoint confirms a deliberately small configuration: 2 Transformer layers, 2 attention heads, 64-dimensional embeddings, 64-token context, vocabulary size 384, batch size 4, and 1,000 optimizer steps. The held-out metrics file reports loss 3.4980 and perplexity 33.0493. The training workflow used only 3 evaluation batches for this small CPU run, so these metrics are useful as a smoke/baseline signal but are too noisy and too narrow to establish conversational quality. A future comparison must use identical, larger held-out evaluation settings, fixed prompts, reviewed generations, and preferably multiple seeds. Do not treat this artifact as a deployable assistant checkpoint.
+
+
+
+## Assistant-only loss objective v2
+
+The trainer keeps user turns and role markers in the context window but excludes them from the loss. Only assistant response bodies and assistant-turn EOS boundaries are supervised. Role-marker tokenization is kept consistent between training history and inference prompts. The checkpoint stores the objective version; resuming an older full-stream or earlier assistant-mask checkpoint is rejected, while inference loading remains backward-compatible. Held-out metrics explicitly distinguish the evaluation objective from the checkpoint's training objective.
+
+## Additional dataset candidate: TFLai Turkish-Alpaca
+
+The [TFLai Turkish-Alpaca dataset card](https://huggingface.co/datasets/TFLai/Turkish-Alpaca) declares Apache-2.0 and reports 51,914 rows / 24.2 MB. Its public examples show mixed response quality, including incorrect arithmetic reasoning and weak/unsafe password-generation examples. **It is not imported or used for training.** The current public file listing exposes a mutable main path and an LFS digest, but the exact immutable revision, complete license notice, file digest, and row-level safety/quality filtering have not been verified together. Before use, pin a full immutable revision, verify all consumed bytes, inspect license notices, and add deterministic allowlist-based task filtering plus independent human spot checks. A larger dataset must not be assumed to be a better dataset.
