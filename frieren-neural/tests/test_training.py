@@ -256,6 +256,38 @@ def test_evaluation_rejects_training_corpus_reuse(tmp_path: Path):
         evaluate_checkpoint(checkpoint, ["\n".join(corpus)], batch_size=1, batches=1, device="cpu")
 
 
+
+def test_training_stream_marks_each_dialogue_with_bos_and_eos():
+    from frieren_neural.tokenizer import BPETokenizer
+    from frieren_neural.training import encode_dialogue_stream
+
+    separator = "\\n\\n---\\n\\n"
+    text = "Kullanıcı: Merhaba.\\nAsistan: Selam." + separator + "Kullanıcı: Nasılsın?\\nAsistan: İyiyim."
+    tokenizer = BPETokenizer.train([text], vocab_size=280)
+    encoded = encode_dialogue_stream(text, tokenizer)
+    assert encoded.count(tokenizer.bos_id) == 2
+    assert encoded.count(tokenizer.eos_id) == 2
+    assert encoded[0] == tokenizer.bos_id
+    assert encoded[-1] == tokenizer.eos_id
+
+
+def test_generate_text_returns_prompt_plus_only_generated_tokens_before_eos(monkeypatch):
+    from frieren_neural.tokenizer import BPETokenizer
+    from frieren_neural.training import generate_text
+    from frieren_neural import GPTConfig, GPTLanguageModel
+
+    tokenizer = BPETokenizer.train(["Merhaba cevap sonrasındaki"], vocab_size=280)
+    model = GPTLanguageModel(GPTConfig(
+        vocab_size=tokenizer.vocab_size, d_model=16, n_heads=2,
+        n_layers=1, max_seq_len=16, dropout=0.0,
+    ))
+    prompt = "Merhaba"
+    prompt_ids = torch.tensor([tokenizer.encode(prompt)], dtype=torch.long)
+    completion_ids = tokenizer.encode(" cevap") + [tokenizer.eos_id] + tokenizer.encode("sonrasındaki")
+    generated = torch.tensor([prompt_ids[0].tolist() + completion_ids], dtype=torch.long)
+    monkeypatch.setattr(model, "generate", lambda *_args, **_kwargs: generated)
+    assert generate_text(model, tokenizer, prompt, max_new_tokens=8) == prompt + " cevap"
+
 def test_corpus_split_keeps_dialogues_intact_at_importer_boundaries():
     from frieren_neural.training import split_corpus_text
 
