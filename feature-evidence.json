@@ -19,8 +19,8 @@
         "path": "scripts/test-economy-crafting-integrity.js",
         "name": "market purchases serialize the player before charging and never allow a negative balance",
         "markers": [
-          "coins >= \\\\$3 RETURNING coins",
-          "await db.query('ROLLBACK')"
+          "purchase must lock the player",
+          "coins >= "
         ]
       },
       "limitation": "The test inspects transaction ordering and SQL guards; it does not execute a Discord market purchase."
@@ -142,9 +142,8 @@
         "path": "scripts/test-economy-crafting-integrity.js",
         "name": "crafting validates bounded quantities and serializes the player before material locks",
         "markers": [
-          "material row locking",
-          "await db.query('ROLLBACK')",
-          "INSERT INTO user_crafting_progress"
+          "crafting must lock the player before reading/locking materials",
+          "material consumption, output, crafting XP and daily progress must be one transaction"
         ]
       },
       "limitation": "The test checks lock ordering, quantity bounds and transaction structure; it does not perform a live Discord crafting action."
