@@ -2,7 +2,7 @@ name: Validate bot code and slash commands
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
 
 permissions:

@@ -37,7 +37,6 @@ on:
   push:
     branches:
       - main
-      - 'feat/**'
     paths:
       - 'owner-dashboard.js'
       - 'owner-admin.js'
