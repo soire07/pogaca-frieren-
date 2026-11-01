@@ -7,7 +7,8 @@ This directory is isolated from the existing Discord bot and its runtime. It doe
 ## Current scope
 
 - A compact decoder-only Transformer (GPT-style) implemented with PyTorch.
-- A deterministic byte-level BPE tokenizer that round-trips multilingual UTF-8 text without an unknown-byte fallback.\n- The original character tokenizer remains available for compatibility and simple unit tests.
+- A deterministic byte-level BPE tokenizer that round-trips multilingual UTF-8 text without an unknown-byte fallback.
+- The original character tokenizer remains available for compatibility and simple unit tests.
 - Next-token language-model objective and autoregressive generation helper.
 - UTF-8 text corpus loader for `.txt` and `.md` files.
 - Chronological train/validation split, mini-batch sampling, AdamW, gradient clipping, and periodic loss evaluation.
