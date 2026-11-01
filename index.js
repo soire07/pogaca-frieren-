@@ -382,7 +382,7 @@ let uptimeRobotCache = null;
 
 createServer(async (req, res) => {
   if (await handleOwnerDashboardRequest(req, res, { client, db: pool })) return;
-  if (await handlePublicSiteRequest(req, res, { client })) return;
+  if (await handlePublicSiteRequest(req, res, { client, db: pool })) return;
   const sendJson = (status, payload) => {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(payload));
