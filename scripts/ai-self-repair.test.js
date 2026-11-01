@@ -84,3 +84,37 @@ test('repair application refuses symlink targets and validates every file before
     await rm(outside, { force: true });
   }
 });
+
+test('multi-file repair rolls back earlier replacements when a later rename fails', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'frieren-repair-rollback-'));
+  const firstPath = path.join(root, 'first.js');
+  const secondPath = path.join(root, 'second.js');
+  try {
+    await writeFile(firstPath, 'const first = "original";\\n');
+    await writeFile(secondPath, 'const second = "original";\\n');
+    let replacementRenames = 0;
+    const fileOps = {
+      writeFile,
+      copyFile: (source, destination) => import('node:fs/promises').then(fs => fs.copyFile(source, destination)),
+      unlink: (target) => import('node:fs/promises').then(fs => fs.unlink(target)),
+      rename: async (source, destination) => {
+        if (source.endsWith('.tmp')) {
+          replacementRenames += 1;
+          if (replacementRenames === 2) throw new Error('SIMULATED_RENAME_FAILURE');
+        }
+        return import('node:fs/promises').then(fs => fs.rename(source, destination));
+      },
+    };
+    await assert.rejects(
+      applyRepairProposal(root, { files: [
+        { path: 'first.js', content: 'const first = "changed";\\n' },
+        { path: 'second.js', content: 'const second = "changed";\\n' },
+      ] }, fileOps),
+      /SIMULATED_RENAME_FAILURE/
+    );
+    assert.equal(await readFile(firstPath, 'utf8'), 'const first = "original";\\n');
+    assert.equal(await readFile(secondPath, 'utf8'), 'const second = "original";\\n');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
