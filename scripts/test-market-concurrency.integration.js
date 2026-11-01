@@ -4,6 +4,7 @@ import { randomInt, randomUUID } from 'node:crypto';
 import { ensureUser, pool, withIsolatedTestSchema } from '../database/db.js';
 import { buyMarketItem } from '../market.js';
 import { resolveTradeOffer } from '../trade-transaction.js';
+import { claimSoloBossReward, settleRaidRewards, settleDungeonRewards } from '../rpg-reward-transactions.js';
 
 const dedicatedAuditDatabase = /^postgres(?:ql)?:\/\/postgres:postgres@localhost:5432\/frieren_audit(?:\?|$)/.test(
   process.env.DATABASE_URL || ''
@@ -243,31 +244,221 @@ test('the same trade offer can be accepted concurrently only once', {
   });
 });
 
-test('a boss battle reward claim is idempotent under concurrent requests', {
+test('production solo boss reward transaction grants a battle only once under concurrency', {
   skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
 }, async () => {
   await withIsolatedTestSchema(async () => {
     const guildId=testSnowflake('91'), userId=testSnowflake('90'), battleId=randomUUID();
     await ensureUser(guildId,userId);
-    const claim=()=>pool.query(
-      `UPDATE users SET coins=coins+250,xp=xp+100,last_boss_battle_id=$3,
-       boss_defeats=boss_defeats+1,last_boss_win_at=NOW()
-       WHERE guild_id=$1 AND user_id=$2 AND last_boss_battle_id IS DISTINCT FROM $3
-       RETURNING user_id`,
-      [guildId,userId,battleId]
-    );
-    const outcomes=await Promise.all([claim(),claim()]);
+    const reward=()=>claimSoloBossReward(pool,{
+      guildId,userId,battleId,hp:80,mana:65,coins:250,xp:100,
+      bonusLoot:'solo-fixture-bonus',craftingMaterial:'solo-fixture-material',
+      journalBossKey:null,spellUsed:null
+    });
+    const outcomes=await Promise.all([reward(),reward()]);
     const player=await pool.query(
       'SELECT coins,xp,boss_defeats,last_boss_battle_id FROM users WHERE guild_id=$1 AND user_id=$2',
       [guildId,userId]
     );
-    assert.equal(outcomes.reduce((n,r)=>n+r.rowCount,0),1,'only one concurrent claim may update the player');
+    const items=await pool.query(
+      'SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 ORDER BY item_key',
+      [guildId,userId]
+    );
+    assert.equal(outcomes.filter(x=>x.status==='claimed').length,1);
+    assert.equal(outcomes.filter(x=>x.status==='already_claimed').length,1);
     assert.equal(Number(player.rows[0].coins),250);
     assert.equal(Number(player.rows[0].xp),100);
     assert.equal(Number(player.rows[0].boss_defeats),1);
     assert.equal(player.rows[0].last_boss_battle_id,battleId);
+    assert.deepEqual(items.map(x=>[x.item_key,Number(x.quantity)]),[
+      ['solo-fixture-bonus',1],['solo-fixture-material',1],['💎 Mana Kristali',1]
+    ]);
   });
 });
+
+test('production solo boss reward transaction rolls back player progression and all loot on inventory failure', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId=testSnowflake('91'), userId=testSnowflake('90'), battleId=randomUUID();
+    await ensureUser(guildId,userId);
+    await pool.query(`CREATE OR REPLACE FUNCTION reject_solo_boss_reward_fixture() RETURNS trigger AS $$
+      BEGIN RAISE EXCEPTION 'forced solo boss reward failure'; END;
+      $$ LANGUAGE plpgsql`);
+    await pool.query(`CREATE TRIGGER reject_solo_boss_reward_fixture BEFORE INSERT ON inventory
+      FOR EACH ROW EXECUTE FUNCTION reject_solo_boss_reward_fixture()`);
+    try {
+      await assert.rejects(claimSoloBossReward(pool,{
+        guildId,userId,battleId,hp:80,mana:65,coins:250,xp:100,
+        bonusLoot:null,craftingMaterial:'solo-fixture-material',journalBossKey:null,spellUsed:null
+      }),/forced solo boss reward failure/);
+      const player=await pool.query(
+        'SELECT coins,xp,boss_defeats,last_boss_battle_id FROM users WHERE guild_id=$1 AND user_id=$2',
+        [guildId,userId]
+      );
+      assert.equal(Number(player.rows[0].coins),0);
+      assert.equal(Number(player.rows[0].xp),0);
+      assert.equal(Number(player.rows[0].boss_defeats),0);
+      assert.equal(player.rows[0].last_boss_battle_id,null);
+      assert.equal((await pool.query('SELECT 1 FROM inventory WHERE guild_id=$1 AND user_id=$2',[guildId,userId])).rowCount,0);
+    } finally {
+      await pool.query('DROP TRIGGER IF EXISTS reject_solo_boss_reward_fixture ON inventory');
+      await pool.query('DROP FUNCTION IF EXISTS reject_solo_boss_reward_fixture()');
+    }
+  });
+});
+
+test('production co-op boss settlement is single-use for the whole party under concurrent completion', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId=testSnowflake('91'), ids=[testSnowflake('90'),testSnowflake('92')], encounterId=randomUUID();
+    for(const id of ids) await ensureUser(guildId,id);
+    await pool.query(
+      `INSERT INTO active_rpg_encounters(guild_id,user_id,encounter_id,encounter_type,expires_at)
+       SELECT $1,user_id,$3,'raid',NOW()+INTERVAL '30 minutes' FROM unnest($2::text[]) AS user_id`,
+      [guildId,ids,encounterId]
+    );
+    const fighters=ids.map(userId=>({userId,maxHp:100,baseMaxHp:100,mana:70,maxMana:100,baseMaxMana:100}));
+    const settle=()=>settleRaidRewards(pool,{
+      guildId,encounterId,ids,fighters,persistedHpNow:[80,75],persistedManaNow:[70,65],
+      win:true,xpReward:200,coinReward:150,loot:'raid-fixture-loot',spellCasts:new Map()
+    });
+    const outcomes=await Promise.all([settle(),settle()]);
+    assert.equal(outcomes.filter(x=>x.status==='settled').length,1);
+    assert.equal(outcomes.filter(x=>x.status==='reservation_missing').length,1);
+    const players=await pool.query(
+      'SELECT user_id,coins,xp,boss_defeats FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id',
+      [guildId,ids]
+    );
+    assert.equal(players.rows.length,2);
+    for(const p of players.rows){
+      assert.equal(Number(p.coins),150);
+      assert.equal(Number(p.xp),200);
+      assert.equal(Number(p.boss_defeats),1);
+    }
+    assert.equal((await pool.query('SELECT 1 FROM inventory WHERE guild_id=$1 AND item_key=$2',[guildId,'raid-fixture-loot'])).rowCount,2);
+    assert.equal((await pool.query('SELECT 1 FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2',[guildId,encounterId])).rowCount,0);
+  });
+});
+
+test('production co-op boss settlement rolls back every participant when loot persistence fails', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId=testSnowflake('91'), ids=[testSnowflake('90'),testSnowflake('92')], encounterId=randomUUID();
+    for(const id of ids) await ensureUser(guildId,id);
+    await pool.query(
+      `INSERT INTO active_rpg_encounters(guild_id,user_id,encounter_id,encounter_type,expires_at)
+       SELECT $1,user_id,$3,'raid',NOW()+INTERVAL '30 minutes' FROM unnest($2::text[]) AS user_id`,
+      [guildId,ids,encounterId]
+    );
+    await pool.query(`CREATE OR REPLACE FUNCTION reject_raid_reward_fixture() RETURNS trigger AS $$
+      BEGIN RAISE EXCEPTION 'forced raid reward failure'; END;
+      $$ LANGUAGE plpgsql`);
+    await pool.query(`CREATE TRIGGER reject_raid_reward_fixture BEFORE INSERT ON inventory
+      FOR EACH ROW WHEN (NEW.item_key='raid-fixture-fail')
+      EXECUTE FUNCTION reject_raid_reward_fixture()`);
+    try {
+      const fighters=ids.map(userId=>({userId,maxHp:100,baseMaxHp:100,mana:70,maxMana:100,baseMaxMana:100}));
+      await assert.rejects(settleRaidRewards(pool,{
+        guildId,encounterId,ids,fighters,persistedHpNow:[80,75],persistedManaNow:[70,65],
+        win:true,xpReward:200,coinReward:150,loot:'raid-fixture-fail',spellCasts:new Map()
+      }),/forced raid reward failure/);
+      const players=await pool.query(
+        'SELECT coins,xp,boss_defeats FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',
+        [guildId,ids]
+      );
+      for(const p of players.rows){
+        assert.equal(Number(p.coins),0);
+        assert.equal(Number(p.xp),0);
+        assert.equal(Number(p.boss_defeats),0);
+      }
+      assert.equal((await pool.query('SELECT 1 FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2',[guildId,encounterId])).rowCount,2);
+    } finally {
+      await pool.query('DROP TRIGGER IF EXISTS reject_raid_reward_fixture ON inventory');
+      await pool.query('DROP FUNCTION IF EXISTS reject_raid_reward_fixture()');
+    }
+  });
+});
+
+test('production layered dungeon settlement is single-use for the whole party under concurrent completion', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId=testSnowflake('91'), ids=[testSnowflake('90'),testSnowflake('92')], encounterId=randomUUID();
+    for(const id of ids) await ensureUser(guildId,id);
+    await pool.query(
+      `INSERT INTO active_rpg_encounters(guild_id,user_id,encounter_id,encounter_type,expires_at)
+       SELECT $1,user_id,$3,'dungeon',NOW()+INTERVAL '30 minutes' FROM unnest($2::text[]) AS user_id`,
+      [guildId,ids,encounterId]
+    );
+    const players=ids.map(user_id=>({user_id,maxHp:100,max_hp:100,mana:70,maxMana:100,max_mana:100}));
+    const settle=()=>settleDungeonRewards(pool,{
+      guildId,encounterId,ids,players,persistedHpNow:[80,75],persistedManaNow:[70,65],
+      victory:true,totalXp:180,totalCoins:120,chestRewards:['dungeon-fixture-chest'],
+      loot:'dungeon-fixture-rare',craftingLoot:'dungeon-fixture-craft',spellCasts:new Map(),journalUserId:ids[0]
+    });
+    const outcomes=await Promise.all([settle(),settle()]);
+    assert.equal(outcomes.filter(x=>x.status==='settled').length,1);
+    assert.equal(outcomes.filter(x=>x.status==='reservation_missing').length,1);
+    const saved=await pool.query(
+      'SELECT user_id,coins,xp,dungeon_wins,dungeon_runs FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',
+      [guildId,ids]
+    );
+    for(const p of saved.rows){
+      assert.equal(Number(p.coins),120);
+      assert.equal(Number(p.xp),180);
+      assert.equal(Number(p.dungeon_wins),1);
+      assert.equal(Number(p.dungeon_runs),1);
+    }
+    assert.equal((await pool.query('SELECT 1 FROM inventory WHERE guild_id=$1 AND item_key LIKE $2',[guildId,'dungeon-fixture-%'])).rowCount,6);
+    assert.equal((await pool.query('SELECT 1 FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2',[guildId,encounterId])).rowCount,0);
+  });
+});
+
+test('production layered dungeon settlement rolls back all players and reservations when loot persistence fails', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId=testSnowflake('91'), ids=[testSnowflake('90'),testSnowflake('92')], encounterId=randomUUID();
+    for(const id of ids) await ensureUser(guildId,id);
+    await pool.query(
+      `INSERT INTO active_rpg_encounters(guild_id,user_id,encounter_id,encounter_type,expires_at)
+       SELECT $1,user_id,$3,'dungeon',NOW()+INTERVAL '30 minutes' FROM unnest($2::text[]) AS user_id`,
+      [guildId,ids,encounterId]
+    );
+    await pool.query(`CREATE OR REPLACE FUNCTION reject_dungeon_reward_fixture() RETURNS trigger AS $$
+      BEGIN RAISE EXCEPTION 'forced dungeon reward failure'; END;
+      $$ LANGUAGE plpgsql`);
+    await pool.query(`CREATE TRIGGER reject_dungeon_reward_fixture BEFORE INSERT ON inventory
+      FOR EACH ROW WHEN (NEW.item_key='dungeon-fixture-fail')
+      EXECUTE FUNCTION reject_dungeon_reward_fixture()`);
+    try {
+      const players=ids.map(user_id=>({user_id,maxHp:100,max_hp:100,mana:70,maxMana:100,max_mana:100}));
+      await assert.rejects(settleDungeonRewards(pool,{
+        guildId,encounterId,ids,players,persistedHpNow:[80,75],persistedManaNow:[70,65],
+        victory:true,totalXp:180,totalCoins:120,chestRewards:['dungeon-fixture-fail'],
+        loot:null,craftingLoot:null,spellCasts:new Map(),journalUserId:ids[0]
+      }),/forced dungeon reward failure/);
+      const saved=await pool.query(
+        'SELECT coins,xp,dungeon_wins,dungeon_runs FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',
+        [guildId,ids]
+      );
+      for(const p of saved.rows){
+        assert.equal(Number(p.coins),0);
+        assert.equal(Number(p.xp),0);
+        assert.equal(Number(p.dungeon_wins),0);
+        assert.equal(Number(p.dungeon_runs),0);
+      }
+      assert.equal((await pool.query('SELECT 1 FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2',[guildId,encounterId])).rowCount,2);
+    } finally {
+      await pool.query('DROP TRIGGER IF EXISTS reject_dungeon_reward_fixture ON inventory');
+      await pool.query('DROP FUNCTION IF EXISTS reject_dungeon_reward_fixture()');
+    }
+  });
+});
+
 
 test('overlapping co-op encounters cannot reserve the same player twice', {
   skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
