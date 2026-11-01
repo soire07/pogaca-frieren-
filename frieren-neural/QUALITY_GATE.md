@@ -88,3 +88,9 @@ For every candidate, record:
 - Explicit decision: `NOT READY` or `READY FOR STAGED TEST`
 
 The current baseline has not been human-scored against this protocol and therefore remains **NOT READY**.
+
+
+
+## Assistant-only objective metadata (2026-11-01)
+
+Training objective version 2 preserves user turns and role markers as context, but masks them from loss. Only assistant response bodies and assistant-turn EOS tokens contribute to training, validation, and held-out loss. Generation prompt encoding must use the same token boundaries as training history. Checkpoint and quality reports record model configuration, training configuration, tokenizer type/size, dialogue encoding version, training objective version, and the evaluation objective version. Metrics from different objective versions must not be compared as if they were equivalent.
