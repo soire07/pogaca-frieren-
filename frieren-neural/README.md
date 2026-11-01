@@ -228,3 +228,7 @@ The current trainer is a next-token language-model baseline, not a chat-template
 ### Additional content-safety gate (2026-11-01)
 
 A live inspection of the public dataset viewer exposed at least one `tr_only` casual-conversation row whose topic is adult sexual material. This means the language-mode allowlist alone is not a sufficient content filter, even when tool calls and reasoning are excluded. The dataset must remain blocked until an explicit topic/task allowlist and a conservative content-safety screening stage are implemented and tested; merely dropping `has_reasoning` or `has_tools` rows is insufficient. The dataset card declares Apache-2.0, but the repository's actual `LICENSE` file and immutable file digests still need independent verification. No dataset bytes have been imported and no training run has been started from this candidate.
+
+## Turkish conversation quality gate
+
+The fixed, human-reviewed benchmark, scoring rubric, and release thresholds are defined in [QUALITY_GATE.md](QUALITY_GATE.md). The current checkpoint has not passed that review and remains experimental.
