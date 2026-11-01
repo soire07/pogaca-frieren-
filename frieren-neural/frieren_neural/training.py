@@ -360,3 +360,52 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+def load_checkpoint(
+    checkpoint_path: str | Path, *, device: str | torch.device | None = None
+) -> tuple[GPTLanguageModel, BPETokenizer, dict[str, float | int]]:
+    """Load a versioned checkpoint using PyTorch's restricted weights-only loader."""
+    selected_device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
+    payload = torch.load(checkpoint_path, map_location=selected_device, weights_only=True)
+    if not isinstance(payload, dict) or payload.get("format_version") != 2:
+        raise ValueError("Unsupported or invalid Frieren Neural checkpoint.")
+    try:
+        tokenizer = BPETokenizer.from_dict(payload["tokenizer"])
+        model_config = GPTConfig(**payload["model_config"])
+        model = GPTLanguageModel(model_config).to(selected_device)
+        model.load_state_dict(payload["model_state"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError("Checkpoint is missing valid model or tokenizer data.") from error
+    model.eval()
+    metadata: dict[str, float | int] = {
+        "step": int(payload["step"]),
+        "train_loss": float(payload["train_loss"]),
+        "validation_loss": float(payload["validation_loss"]),
+    }
+    return model, tokenizer, metadata
+
+
+@torch.no_grad()
+def generate_text(
+    model: GPTLanguageModel,
+    tokenizer: BPETokenizer,
+    prompt: str,
+    *,
+    max_new_tokens: int = 80,
+    temperature: float = 0.8,
+    top_k: int = 40,
+) -> str:
+    """Generate text from a prompt and stop decoding at the first generated EOS."""
+    if not prompt:
+        raise ValueError("prompt must not be empty.")
+    device = next(model.parameters()).device
+    input_ids = torch.tensor([tokenizer.encode(prompt)], dtype=torch.long, device=device)
+    generated = model.generate(
+        input_ids, max_new_tokens=max_new_tokens, temperature=temperature, top_k=top_k
+    )[0].tolist()
+    for index in range(len(input_ids[0]), len(generated)):
+        if generated[index] == tokenizer.eos_id:
+            generated = generated[:index]
+            break
+    return tokenizer.decode(generated)
