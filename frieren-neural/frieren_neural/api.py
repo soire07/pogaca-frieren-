@@ -78,6 +78,31 @@ def _load_runtime(
 
 @contextmanager
 def _generation_capacity():
+    database_url = os.environ.get("FRIEREN_DATABASE_URL", "").strip()
+    if database_url:
+        try:
+            import psycopg
+
+            # Hold a PostgreSQL session lock throughout inference. PostgreSQL
+            # releases it automatically if this worker or connection dies.
+            with psycopg.connect(database_url, connect_timeout=3, autocommit=True) as connection:
+                for lock_id in (7_349_201, 7_349_202):
+                    acquired = connection.execute(
+                        "SELECT pg_try_advisory_lock(%s)", (lock_id,)
+                    ).fetchone()[0]
+                    if acquired:
+                        yield
+                        return
+                raise HTTPException(status_code=503, detail="Generation capacity is busy. Try again shortly.")
+        except HTTPException:
+            raise
+        except Exception as error:
+            # Configured shared protection must fail closed, never fall back
+            # silently to a weaker process-local limit.
+            raise HTTPException(status_code=503, detail="Shared generation capacity is temporarily unavailable.") from error
+        return
+
+    # Local development fallback. Production must use one worker and one instance.
     if not _generation_slots.acquire(blocking=False):
         raise HTTPException(status_code=503, detail="Generation capacity is busy. Try again shortly.")
     try:
@@ -188,26 +213,73 @@ def _valid_session_token(token: str | None, secret: str) -> bool:
 
 def _login_rate_limit(request: Request) -> str:
     client_ip = request.client.host if request.client else "unknown"
+    database_url = os.environ.get("FRIEREN_DATABASE_URL", "").strip()
+    if database_url:
+        client_key = hashlib.sha256(client_ip.encode("utf-8")).hexdigest()
+        try:
+            import psycopg
+
+            with psycopg.connect(database_url, connect_timeout=3) as connection:
+                with connection.transaction():
+                    # Serialize the small login transaction globally so both
+                    # limits remain atomic across multiple API workers.
+                    connection.execute("SELECT pg_advisory_xact_lock(%s)", (7_349_203,))
+                    connection.execute(
+                        "DELETE FROM neural_login_attempts WHERE attempted_at < now() - interval '5 minutes'"
+                    )
+                    count = connection.execute(
+                        "SELECT count(*) FROM neural_login_attempts WHERE client_key = %s",
+                        (client_key,),
+                    ).fetchone()[0]
+                    if count >= _MAX_LOGIN_ATTEMPTS:
+                        raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
+                    if count == 0:
+                        distinct_clients = connection.execute(
+                            "SELECT count(DISTINCT client_key) FROM neural_login_attempts"
+                        ).fetchone()[0]
+                        if distinct_clients >= _MAX_LOGIN_CLIENTS:
+                            raise HTTPException(status_code=429, detail="Login capacity is temporarily full. Try again later.")
+                    connection.execute("INSERT INTO neural_login_attempts (client_key) VALUES (%s)", (client_key,))
+            return "db:" + client_key
+        except HTTPException:
+            raise
+        except Exception as error:
+            raise HTTPException(status_code=503, detail="Shared login protection is temporarily unavailable.") from error
+
     now = time.monotonic()
     with _login_attempts_lock:
-        recent = [
-            attempt for attempt in _login_attempts.get(client_ip, [])
-            if now - attempt < _LOGIN_WINDOW_SECONDS
-        ]
+        recent = [attempt for attempt in _login_attempts.get(client_ip, []) if now - attempt < _LOGIN_WINDOW_SECONDS]
         if len(recent) >= _MAX_LOGIN_ATTEMPTS:
             raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
-
         if client_ip not in _login_attempts and len(_login_attempts) >= _MAX_LOGIN_CLIENTS:
-            # Bound memory even if requests arrive from many distinct source addresses.
             for ip, attempts in list(_login_attempts.items()):
                 if not attempts or now - attempts[-1] >= _LOGIN_WINDOW_SECONDS:
                     _login_attempts.pop(ip, None)
             if len(_login_attempts) >= _MAX_LOGIN_CLIENTS:
                 raise HTTPException(status_code=429, detail="Login capacity is temporarily full. Try again later.")
-
         recent.append(now)
         _login_attempts[client_ip] = recent
     return client_ip
+
+
+def _clear_login_attempts(client_key: str) -> None:
+    if client_key.startswith("db:"):
+        database_url = os.environ.get("FRIEREN_DATABASE_URL", "").strip()
+        if not database_url:
+            raise HTTPException(status_code=503, detail="Shared login protection is temporarily unavailable.")
+        try:
+            import psycopg
+
+            with psycopg.connect(database_url, connect_timeout=3) as connection:
+                connection.execute(
+                    "DELETE FROM neural_login_attempts WHERE client_key = %s",
+                    (client_key.removeprefix("db:"),),
+                )
+            return
+        except Exception as error:
+            raise HTTPException(status_code=503, detail="Shared login protection is temporarily unavailable.") from error
+    with _login_attempts_lock:
+        _login_attempts.pop(client_key, None)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -283,8 +355,7 @@ def web_login(payload: LoginRequest, request: Request, response: Response) -> di
     client_ip = _login_rate_limit(request)
     if not secrets.compare_digest(payload.password, expected_password):
         raise HTTPException(status_code=401, detail="Invalid password.")
-    with _login_attempts_lock:
-        _login_attempts.pop(client_ip, None)
+    _clear_login_attempts(client_ip)
     response.set_cookie(
         _SESSION_COOKIE,
         _create_session_token(secret),
