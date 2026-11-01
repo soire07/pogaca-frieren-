@@ -261,8 +261,8 @@ def test_training_stream_marks_each_dialogue_with_bos_and_eos():
     from frieren_neural.tokenizer import BPETokenizer
     from frieren_neural.training import encode_dialogue_stream
 
-    separator = "\\n\\n---\\n\\n"
-    text = "Kullanıcı: Merhaba.\\nAsistan: Selam." + separator + "Kullanıcı: Nasılsın?\\nAsistan: İyiyim."
+    separator = "\n\n---\n\n"
+    text = "Kullanıcı: Merhaba.\nAsistan: Selam." + separator + "Kullanıcı: Nasılsın?\nAsistan: İyiyim."
     tokenizer = BPETokenizer.train([text], vocab_size=280)
     encoded = encode_dialogue_stream(text, tokenizer)
     assert encoded.count(tokenizer.bos_id) == 2
