@@ -69,8 +69,8 @@ test('trade offers reserve only unexpired copies using the database clock', asyn
   const collection = trade.indexOf('FROM anime_character_collection', offer);
   assert.ok(snapshot >= 0 && players > snapshot && offer > players && collection > offer,
     'production acceptance must lock participant rows, then the offer, then the collection');
-  assert.match(trade, /offer\\.status !== 'pending'/);
+  assert.ok(trade.includes("offer.status !== 'pending'"));
   assert.match(trade, /status='accepted'/);
   assert.match(trade, /reservedForOthers/);
-  assert.match(handler, /resolveTradeOffer\\(pool/);
+  assert.ok(handler.includes('resolveTradeOffer(pool'));
 });
