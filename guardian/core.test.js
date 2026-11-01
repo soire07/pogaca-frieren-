@@ -70,5 +70,5 @@ test('merge and deployment remain blocked until checks and separate owner approv
 
 test('secret redaction never returns the raw credential', () => {
   const value = redactGuardianText('DATABASE_URL=postgres://user:secret@host/db');
-  assert.doesNotMatch(value, /postgres://user:secret/);
+  assert.doesNotMatch(value, /postgres:\/\/user:secret/);
 });
