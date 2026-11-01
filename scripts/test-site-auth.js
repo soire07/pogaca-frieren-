@@ -92,3 +92,37 @@ test('login and registration pages are served by the password account handler', 
     assert.match(res.body, new RegExp(field));
   }
 });
+
+test('invalid CSRF token blocks account registration before database writes', async () => {
+  const db = fakeDb();
+  const req = post('/register', {
+    csrf: 'forged-token', username: 'Gezgin02', email: 'gezgin2@example.com',
+    password: 'a-secure-password', confirmPassword: 'a-secure-password'
+  });
+  const res = response();
+  assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret, createSession: createPublicSiteSession }), true);
+  assert.equal(res.status, 403);
+  assert.match(res.body, /Formun süresi doldu/);
+  assert.equal(db.calls.filter(call => call.sql.includes('INSERT INTO frieren_site_accounts')).length, 0);
+});
+
+test('password reset request returns the same generic response without exposing account existence', async () => {
+  const db = fakeDb();
+  const req = post('/forgot-password', { csrf: createSiteCsrfToken(secret), email: 'unknown@example.com' });
+  const res = response();
+  const previousUser = process.env.SITE_SMTP_USER;
+  const previousPassword = process.env.SITE_SMTP_APP_PASSWORD;
+  delete process.env.SITE_SMTP_USER;
+  delete process.env.SITE_SMTP_APP_PASSWORD;
+  try {
+    assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret, createSession: createPublicSiteSession }), true);
+    assert.equal(res.status, 200);
+    assert.match(res.body, /Adres sistemde kayıtlıysa gerekli bağlantı gönderildi/);
+    assert.doesNotMatch(res.body, /unknown@example\.com/);
+  } finally {
+    if (previousUser === undefined) delete process.env.SITE_SMTP_USER;
+    else process.env.SITE_SMTP_USER = previousUser;
+    if (previousPassword === undefined) delete process.env.SITE_SMTP_APP_PASSWORD;
+    else process.env.SITE_SMTP_APP_PASSWORD = previousPassword;
+  }
+});
