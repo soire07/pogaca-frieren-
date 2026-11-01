@@ -48,7 +48,7 @@ jobs:
         with:
           name: frieren-neural-qwen3-gguf-q4-cpu-benchmark
           path: |
-            frieren-neural/benchmark-results/gguf-q4/gguf-q8-quality-report.json
+            frieren-neural/benchmark-results/gguf-q4/gguf-q4-quality-report.json
             frieren-neural/benchmark-results/gguf-q4/human-scores.template.json
           if-no-files-found: error
           retention-days: 30
