@@ -184,3 +184,20 @@ def test_corpus_split_keeps_validation_text_out_of_tokenizer_training(tmp_path: 
     train_text, validation_text = split_corpus_text(["a" * 80 + "z" * 20], 0.2)
     assert train_text == "a" * 80
     assert validation_text == "z" * 20
+
+
+def test_saved_checkpoint_can_be_loaded_for_inference(tmp_path: Path):
+    from frieren_neural.training import generate_text, load_checkpoint
+
+    corpus = ["Frieren learns magic. Fern studies spells. " * 10]
+    checkpoint = tmp_path / "inference.pt"
+    config = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0, tokenizer_vocab_size=280,
+    )
+    train_model(corpus, checkpoint, config, device="cpu")
+    model, tokenizer, metadata = load_checkpoint(checkpoint, device="cpu")
+    assert metadata["step"] == 1
+    assert tokenizer.decode(tokenizer.encode("Frieren")) == "Frieren"
+    generated = generate_text(model, tokenizer, "Frieren", max_new_tokens=2, top_k=1)
+    assert generated.startswith("Frieren")
