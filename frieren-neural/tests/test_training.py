@@ -307,8 +307,8 @@ def test_training_stream_ends_each_assistant_turn_before_next_user():
     from frieren_neural.training import encode_dialogue_stream
 
     text = (
-        "Kullanıcı: ilk soru\\nAsistan: ilk yanıt\\n"
-        "Kullanıcı: ikinci soru\\nAsistan: ikinci yanıt"
+        "Kullanıcı: ilk soru\nAsistan: ilk yanıt\n"
+        "Kullanıcı: ikinci soru\nAsistan: ikinci yanıt"
     )
     tokenizer = BPETokenizer.train([text], vocab_size=280)
     encoded = encode_dialogue_stream(text, tokenizer)
@@ -362,7 +362,7 @@ def test_evaluate_checkpoint_uses_chat_aware_dialogue_encoding(tmp_path: Path, m
         return tokens
 
     monkeypatch.setattr(training, "encode_dialogue_stream", capture)
-    evaluation_text = "Kullanıcı: Fern kim?\\nAsistan: Fern, Frieren'in çırağıdır."
+    evaluation_text = "Kullanıcı: Fern kim?\nAsistan: Fern, Frieren'in çırağıdır."
     training.evaluate_checkpoint(
         checkpoint, [evaluation_text], batch_size=1, batches=1, device="cpu"
     )
