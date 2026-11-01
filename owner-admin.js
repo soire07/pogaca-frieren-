@@ -44,8 +44,10 @@ export async function initOwnerAdminSchema(db) {
       id BIGSERIAL PRIMARY KEY,
       scope TEXT NOT NULL,
       error_type TEXT NOT NULL,
+      error_message TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE owner_error_logs ADD COLUMN IF NOT EXISTS error_message TEXT NOT NULL DEFAULT '';
     CREATE INDEX IF NOT EXISTS idx_owner_errors_recent ON owner_error_logs(created_at DESC);
     CREATE TABLE IF NOT EXISTS owner_approval_requests (
       id BIGSERIAL PRIMARY KEY,
@@ -112,8 +114,10 @@ export async function recordCommandUsage(db, commandName, guildId = null) {
   );
 }
 
-export async function recordOwnerError(db, scope, errorType) {
-  await db.query('INSERT INTO owner_error_logs(scope,error_type) VALUES($1,$2)', [String(scope).slice(0,80), String(errorType || 'Error').slice(0,80)]);
+export async function recordOwnerError(db, scope, errorType, errorMessage = '') {
+  const message = String(errorMessage || '').trim().slice(0, 500);
+  const safeMessage = message && !containsSensitiveInformation(message) ? message : message ? '[hassas hata ayrıntıları gizlendi]' : '';
+  await db.query('INSERT INTO owner_error_logs(scope,error_type,error_message) VALUES($1,$2,$3)', [String(scope).slice(0,80), String(errorType || 'Error').slice(0,80), safeMessage]);
 }
 
 export async function getRecentOwnerActivity(db) {
@@ -302,7 +306,7 @@ export async function listOwnerErrorLogs(db, { scope = '', page = 1, limit = 20 
   params.push((pageNumber - 1) * pageSize);
   const dollar = String.fromCharCode(36);
   const result = await db.query(
-    'SELECT id,scope,error_type,created_at,COUNT(*) OVER()::int AS total_count FROM owner_error_logs ' +
+    'SELECT id,scope,error_type,error_message,created_at,COUNT(*) OVER()::int AS total_count FROM owner_error_logs ' +
     where + ' ORDER BY id DESC LIMIT ' + dollar + limitParam + ' OFFSET ' + dollar + params.length,
     params
   );
