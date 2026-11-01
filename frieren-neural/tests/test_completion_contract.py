@@ -48,7 +48,13 @@ def test_authenticated_web_chat_exposes_completion_without_prompt_echo(
     _stub_generation(monkeypatch, tmp_path)
     monkeypatch.setenv("FRIEREN_WEB_PASSWORD", "p" * 24)
     monkeypatch.setenv("FRIEREN_SESSION_SECRET", "s" * 48)
+    captured = {}
 
+    def capture_prompt(_model, _tokenizer, prompt, **_kwargs):
+        captured["prompt"] = prompt
+        return prompt + " Cevap burada."
+
+    monkeypatch.setattr(api, "generate_text", capture_prompt)
     headers = {"Origin": "https://testserver"}
     login = client.post("/web/login", json={"password": "p" * 24}, headers=headers)
     assert login.status_code == 200
@@ -60,6 +66,7 @@ def test_authenticated_web_chat_exposes_completion_without_prompt_echo(
     )
 
     assert response.status_code == 200
+    assert captured["prompt"] == "Kullanıcı: Frieren kimdir?\nAsistan:"
     assert response.json()["completion"] == "Cevap burada."
 
 
