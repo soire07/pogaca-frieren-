@@ -117,7 +117,17 @@ export async function recordCommandUsage(db, commandName, guildId = null) {
 export async function recordOwnerError(db, scope, errorType, errorMessage = '') {
   const message = String(errorMessage || '').trim().slice(0, 500);
   const safeMessage = message && !containsSensitiveInformation(message) ? message : message ? '[hassas hata ayrıntıları gizlendi]' : '';
-  await db.query('INSERT INTO owner_error_logs(scope,error_type,error_message) VALUES($1,$2,$3)', [String(scope).slice(0,80), String(errorType || 'Error').slice(0,80), safeMessage]);
+  await db.query(
+    `WITH inserted AS (
+       INSERT INTO owner_error_logs(scope,error_type,error_message) VALUES($1,$2,$3) RETURNING id
+     ), pruned AS (
+       DELETE FROM owner_error_logs
+       WHERE id NOT IN (SELECT id FROM owner_error_logs ORDER BY id DESC LIMIT 2000)
+       RETURNING id
+     )
+     SELECT id FROM inserted`,
+    [String(scope).slice(0,80), String(errorType || 'Error').slice(0,80), safeMessage]
+  );
 }
 
 export async function getRecentOwnerActivity(db) {
