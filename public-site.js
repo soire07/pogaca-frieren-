@@ -71,22 +71,6 @@ function aiPage(user) {
   return page('Frieren AI', '<main><section class="wrap" style="padding:65px 0 42px;text-align:center"><div class="eyebrow">AKILLI ASİSTAN · TEST · TEKNİK ANALİZ</div><h1 class="hero-title">Frieren <em>AI</em></h1><p class="lead" style="margin:auto">Poğaça Frieren’in teknik yol arkadaşı. Sohbet ve hafızadan kod denetimine, test senaryolarından hata raporlarına uzanan ayrı bir AI servisi.</p><div class="actions" style="justify-content:center"><a class="btn" href="/owner">AI kontrol merkezine git ↗</a>' + healthLink + '</div></section><section class="section"><div class="wrap grid"><article class="card"><div class="icon">✧</div><h3>Frieren sohbeti</h3><p>Karakter odaklı sohbet akışı ve izinli kullanıcı hafızası.</p></article><article class="card"><div class="icon">⌘</div><h3>Teknik denetim</h3><p>Komut sözleşmeleri, kod incelemesi ve hata teşhisi.</p></article><article class="card"><div class="icon">✓</div><h3>Test sistemi</h3><p>Senaryo bazlı testler, PASS/FAIL raporları ve kanıt odaklı doğrulama.</p></article></div></section><section class="section"><div class="wrap cta"><h2>İki bot, tek büyülü platform.</h2><p>RPG macerası ve teknik asistan birbirinden bağımsız servislerde çalışır.</p><a class="btn" href="/pogaca">Poğaça Frieren’i keşfet</a></div></section></main>', user);
 }
 
-function authPage(mode, status = '') {
-  const registering = mode === 'register';
-  const title = registering ? 'Yolculuğa katıl' : 'Yolculuğuna dön';
-  const action = registering ? 'Discord ile kayıt ol' : 'Discord ile giriş yap';
-  const alternate = registering
-    ? '<p>Zaten hesabın var mı? <a href="/login">Giriş yap</a></p>'
-    : '<p>İlk kez mi geliyorsun? <a href="/register">Kayıt ol</a></p>';
-  const notice = status === 'not_registered'
-    ? '<p class="auth-notice">Bu Discord hesabı henüz kayıtlı değil. Önce kayıt oluştur.</p>'
-    : status === 'already_registered'
-      ? '<p class="auth-notice">Bu Discord hesabı zaten kayıtlı. Giriş yapabilirsin.</p>'
-      : status === 'oauth_error'
-        ? '<p class="auth-notice">Discord doğrulaması tamamlanamadı. Yeniden dene; sorun sürerse site yöneticisi OAuth ayarlarını kontrol etmelidir.</p>' : '';
-  return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><title>' + title + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css"><style>.auth-wrap{min-height:100vh;display:grid;place-items:center;padding:28px 18px}.auth-card{width:min(100%,520px);padding:34px;border:1px solid #e8dafa55;border-radius:26px;background:linear-gradient(145deg,#34294cdd,#17152eee);box-shadow:0 24px 80px #05030d88;text-align:center}.auth-mark{width:90px;height:90px;border-radius:50%;object-fit:cover;border:2px solid #e8dafa88;box-shadow:0 0 45px #d8bdff55}.auth-card h1{font:38px Georgia,serif;margin:18px 0 8px}.auth-card p{color:var(--muted)}.auth-card .btn{margin:14px 0}.auth-notice{max-width:100%;margin:16px auto!important;padding:12px 14px;border:1px solid #f0c8a866;border-radius:12px;background:#a8793918;color:#ffe3b4!important;text-align:center}.auth-back{display:inline-flex;margin-top:12px;padding:9px 14px;border:1px solid #e8dafa55;border-radius:12px;color:#f0e6ff;background:#ffffff0b}.auth-back:hover{background:#ffffff18}</style></head><body><main class="auth-wrap"><section class="auth-card"><img class="auth-mark" src="/assets/site-avatar.svg" alt="Frieren site simgesi"><div class="eyebrow">✧ FRIEREN · THE ARCANE JOURNEY ✧</div><h1>' + title + '</h1><p>' + (registering ? 'Site hesabını Discord kimliğinle ücretsiz oluştur. Ayrı bir şifre belirlemen gerekmez.' : 'Kayıtlı Discord hesabınla güvenli şekilde devam et.') + '</p>' + notice + '<a class="btn" href="/owner/login?flow=' + (registering ? 'register' : 'login') + '">' + action + '</a>' + alternate + '<p class="muted">Kimlik doğrulaması Discord üzerinden yapılır. Şifreni bu siteyle paylaşmazsın.</p></section></main></body></html>';
-}
-
 export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   const authHandled = await handleSiteAuthRequest(req, res, { db, sessionSecret: process.env.ADMIN_SESSION_SECRET, createSession: createPublicSiteSession });
   if (authHandled) return true;
@@ -109,17 +93,6 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('Asset bulunamadı.');
     }
-    return true;
-  }
-  if (url.pathname === '/login' || url.pathname === '/register') {
-    const user = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
-    if (user) {
-      res.writeHead(302, { Location: '/', 'Cache-Control': 'no-store' });
-      res.end();
-      return true;
-    }
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });
-    res.end(authPage(url.pathname === '/register' ? 'register' : 'login', url.searchParams.get('status') || ''));
     return true;
   }
   const publicPaths = new Set(['/', '/pogaca', '/komutlar', '/frieren-ai']);
