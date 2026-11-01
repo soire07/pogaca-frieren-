@@ -294,3 +294,29 @@ def test_generation_capacity_covers_checkpoint_loading(api_client, monkeypatch, 
         allow_load_to_finish.set()
         assert first.result(timeout=5).status_code == 200
         assert second.result(timeout=5).status_code == 200
+
+
+def test_health_check_does_not_bypass_generation_capacity(api_client, monkeypatch, tmp_path):
+    import frieren_neural.api as api
+
+    checkpoint = tmp_path / "health-model.pt"
+    checkpoint.write_bytes(b"placeholder")
+    monkeypatch.setenv("FRIEREN_CHECKPOINT", str(checkpoint))
+    load_called = False
+
+    def unexpected_load(*_args, **_kwargs):
+        nonlocal load_called
+        load_called = True
+        raise AssertionError("health check must not load while capacity is full")
+
+    monkeypatch.setattr(api, "_load_runtime", unexpected_load)
+    assert api._generation_slots.acquire(blocking=False)
+    assert api._generation_slots.acquire(blocking=False)
+    try:
+        response = api_client.get("/health")
+        assert response.status_code == 200
+        assert response.json() == {"status": "busy"}
+        assert not load_called
+    finally:
+        api._generation_slots.release()
+        api._generation_slots.release()
