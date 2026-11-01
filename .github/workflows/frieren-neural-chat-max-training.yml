@@ -1,22 +1,6 @@
 name: Frieren Neural Turkish Chat Max Candidate Training
 
 on:
-  pull_request:
-    paths:
-      - "frieren-neural/frieren_neural/hf_corpus.py"
-      - "frieren-neural/frieren_neural/training.py"
-      - "frieren-neural/tests/test_hf_corpus.py"
-      - "frieren-neural/pyproject.toml"
-      - ".github/workflows/frieren-neural-chat-max-training.yml"
-  push:
-    branches:
-      - frieren-neural-foundation
-    paths:
-      - "frieren-neural/frieren_neural/hf_corpus.py"
-      - "frieren-neural/frieren_neural/training.py"
-      - "frieren-neural/tests/test_hf_corpus.py"
-      - "frieren-neural/pyproject.toml"
-      - ".github/workflows/frieren-neural-chat-max-training.yml"
   workflow_dispatch:
 
 permissions:

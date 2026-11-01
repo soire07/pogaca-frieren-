@@ -29,6 +29,7 @@ serve = [
   "fastapi>=0.110",
   "uvicorn[standard]>=0.27",
   "psycopg[binary]>=3.2",
+  "llama-cpp-python==0.3.16",
 ]
 discord = [
   "discord.py>=2.4",
