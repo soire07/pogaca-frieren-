@@ -105,7 +105,12 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
     if metrics["multi_turn_failures"]: reasons.append("multi_turn_consistency_failure")
     if baseline_report is None:
         reasons.append("baseline_comparison_missing")
-    elif baseline_report.get("prompt_set_version") != PROMPT_SET_VERSION or baseline_report.get("decoding_settings") != DECODING_SETTINGS or not isinstance(baseline_report.get("metrics"),dict):
+    elif (baseline_report.get("prompt_set_version") != PROMPT_SET_VERSION
+          or baseline_report.get("decoding_settings") != DECODING_SETTINGS
+          or not isinstance(baseline_report.get("metrics"),dict)
+          or baseline_report.get("human_review",{}).get("completed") is not True
+          or not isinstance(baseline_report.get("checkpoint_sha256"),str)
+          or baseline_report.get("checkpoint_sha256") == checkpoint_sha256):
         reasons.append("baseline_not_comparable")
     else:
         bm=baseline_report["metrics"]
