@@ -20,6 +20,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from .model import GPTLanguageModel
+from .quality_evaluation import format_benchmark_prompt
 from .tokenizer import BPETokenizer
 from .training import generate_text, load_checkpoint
 
@@ -166,15 +167,19 @@ def generate(
         except (OSError, RuntimeError, ValueError, KeyError, EOFError, pickle.UnpicklingError) as error:
             raise HTTPException(status_code=503, detail="Model checkpoint could not be loaded.") from error
         try:
+            generation_prompt = format_benchmark_prompt(request.prompt)
             result = generate_text(
-                model, tokenizer, request.prompt, max_new_tokens=request.max_new_tokens,
+                model, tokenizer, generation_prompt, max_new_tokens=request.max_new_tokens,
                 temperature=request.temperature, top_k=request.top_k
             )
         except (RuntimeError, ValueError) as error:
             raise HTTPException(status_code=422, detail="The prompt could not be processed.") from error
+    completion = _completion_only(generation_prompt, result)
     return {
-        "text": result,
-        "completion": _completion_only(request.prompt, result),
+        # Preserve the public response contract while using the exact chat format
+        # shared by assistant-only training and the quality benchmark.
+        "text": request.prompt + completion,
+        "completion": completion,
         "step": int(metadata["step"]),
     }
 
@@ -403,14 +408,16 @@ def web_generate(
     try:
         with _generation_capacity(), _generation_lock:
             model, tokenizer, metadata = _load_runtime(str(checkpoint.resolve()), device)
+            generation_prompt = format_benchmark_prompt(payload.prompt)
             result = generate_text(
-                model, tokenizer, payload.prompt, max_new_tokens=payload.max_new_tokens,
+                model, tokenizer, generation_prompt, max_new_tokens=payload.max_new_tokens,
                 temperature=payload.temperature, top_k=payload.top_k
             )
     except (OSError, RuntimeError, ValueError, KeyError, EOFError, pickle.UnpicklingError) as error:
         raise HTTPException(status_code=503, detail="Model could not process the request.") from error
+    completion = _completion_only(generation_prompt, result)
     return {
-        "text": result,
-        "completion": _completion_only(payload.prompt, result),
+        "text": payload.prompt + completion,
+        "completion": completion,
         "step": int(metadata["step"]),
     }
