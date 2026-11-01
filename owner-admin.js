@@ -131,6 +131,8 @@ export async function initOwnerAdminSchema(db) {
     CREATE TABLE IF NOT EXISTS owner_guardian_monitor_state (
       monitor_key VARCHAR(80) PRIMARY KEY,
       last_seen_error_id BIGINT NOT NULL DEFAULT 0,
+      last_tick_at TIMESTAMPTZ,
+      last_error TEXT,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
