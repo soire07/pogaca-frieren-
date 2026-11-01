@@ -125,15 +125,18 @@ def generate(
     if not checkpoint.is_file():
         raise HTTPException(status_code=503, detail="Model checkpoint is unavailable.")
     device = os.environ.get("FRIEREN_DEVICE", "cpu")
-    try:
-        with _generation_capacity(), _generation_lock:
+    with _generation_capacity(), _generation_lock:
+        try:
             model, tokenizer, metadata = _load_runtime(str(checkpoint.resolve()), device)
+        except (OSError, RuntimeError, ValueError, KeyError, EOFError, pickle.UnpicklingError) as error:
+            raise HTTPException(status_code=503, detail="Model checkpoint could not be loaded.") from error
+        try:
             result = generate_text(
                 model, tokenizer, request.prompt, max_new_tokens=request.max_new_tokens,
                 temperature=request.temperature, top_k=request.top_k
             )
-    except (OSError, RuntimeError, ValueError, KeyError, EOFError, pickle.UnpicklingError) as error:
-        raise HTTPException(status_code=503, detail="Model could not process the request.") from error
+        except (RuntimeError, ValueError) as error:
+            raise HTTPException(status_code=422, detail="The prompt could not be processed.") from error
     return {"text": result, "step": int(metadata["step"])}
 
 
