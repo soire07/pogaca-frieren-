@@ -1,4 +1,5 @@
 name: Frieren AI Safe Self-Repair
+run-name: Frieren AI Repair · Guardian #${{ inputs.incident_id || github.run_id }}
 
 on:
   workflow_dispatch:
