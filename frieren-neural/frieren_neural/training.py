@@ -611,7 +611,7 @@ def generate_text(
     if tokenizer.eos_id in completion_ids:
         completion_ids = completion_ids[:completion_ids.index(tokenizer.eos_id)]
     completion = tokenizer.decode(completion_ids)
-    role_boundary = re.search(r"(?:^|\\n)(?:Kullanıcı|Asistan):(?: |$)", completion)
+    role_boundary = re.search(r"(?:^|\n)(?:Kullanıcı|Asistan):(?: |$)", completion)
     if role_boundary:
         completion = completion[:role_boundary.start()]
     return prompt + completion
