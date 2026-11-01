@@ -177,8 +177,8 @@
         "path": "scripts/check-gameplay-integrity.js",
         "name": "cooperative dungeon and raid scale current HP and mana proportionally with gear, talents, builds and roles",
         "markers": [
-          "restoreResourceRatio",
-          "persistedHpNow"
+          "persistedHpNow",
+          "persistedManaNow"
         ]
       },
       "limitation": "The test validates shared persistence conversion and handler wiring through source assertions; it does not run a live multi-player encounter."
@@ -206,8 +206,8 @@
         "path": "scripts/check-gameplay-integrity.js",
         "name": "successful Zoltraak casts in cooperative dungeon and boss raid advance persistent spell mastery",
         "markers": [
-          "spell_mastery",
-          "spellMastery"
+          "const spellCasts = new Map()",
+          "mastery_level=LEAST"
         ]
       },
       "limitation": "The test checks the success-gated persistence path by source assertions; it does not verify Discord interaction behavior live."
@@ -749,10 +749,10 @@
         "path": "scripts/test-utils.js",
         "name": "quest chain integrates level-scaled XP, level-ups, stat points and completion bonus",
         "markers": [
-          "getLevelScaledQuestReward(200, 80, 51, true)",
-          "levelForXp",
+          "getLevelScaledQuestReward(step.reward, step.xpReward, player.level, step.step === 3)",
+          "levelForXp(newXp)",
           "stat_points=stat_points",
-          "completionBonus"
+          "reward.completionBonus"
         ]
       },
       "limitation": "Reward scaling is unit-tested and level-up/stat-point transaction wiring is source-asserted; a live player quest completion is not verified."

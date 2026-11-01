@@ -144,6 +144,8 @@ test('cooperative dungeon and raid scale current HP and mana proportionally with
   assert.match(raid, /Number\(p\.mana\) \/ Math\.max\(1, Number\(p\.max_mana\)\)\) \* maxMana/);
   assert.match(dungeon, /persistedHpNow/);
   assert.match(raid, /persistedHpNow/);
+  assert.match(dungeon, /persistedManaNow/);
+  assert.match(raid, /persistedManaNow/);
 });
 
 

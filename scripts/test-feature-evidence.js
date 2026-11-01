@@ -29,11 +29,14 @@ test('feature evidence map references unique, registered feature IDs without pro
     }
 
     const testContent = await readText(entry.test.path);
-    assert.ok(testContent.includes("test('" + entry.test.name + "'"),
-      entry.featureId + ': named test not found: ' + entry.test.name);
+    const testDeclaration = "test('" + entry.test.name + "'";
+    const testStart = testContent.indexOf(testDeclaration);
+    assert.ok(testStart >= 0, entry.featureId + ': named test not found: ' + entry.test.name);
+    const nextTestStart = testContent.indexOf("\\ntest(", testStart + testDeclaration.length);
+    const namedTestBody = testContent.slice(testStart, nextTestStart < 0 ? testContent.length : nextTestStart);
     for (const marker of entry.test.markers) {
-      assert.ok(testContent.includes(marker),
-        entry.featureId + ': test assertion marker missing: ' + marker);
+      assert.ok(namedTestBody.includes(marker),
+        entry.featureId + ': test assertion marker must exist inside its named test: ' + marker);
     }
   }
   console.log('Feature evidence traceability: ' + evidence.entries.length + ' manually mapped records; inventory statuses unchanged.');
