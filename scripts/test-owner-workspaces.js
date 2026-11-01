@@ -51,7 +51,7 @@ test('AI workspace exposes an authenticated test form and safely renders its rep
     aiReadiness: { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true },
     chatSettings: { enabled: true, style: 'warm', responseLength: 'balanced', loreFocus: true },
     csrf: 'csrf-token',
-    testReport: { summary: { total: 4, pass: 3, fail: 1 }, detail: '<script>alert(1)</script>' }
+    testRuns: { rows: [{ id: 2, target: '<script>alert(1)</script>', status: 'FAIL', summary: { total: 4, pass: 3, fail: 1 }, details: { testFiles: [], failedStages: [] }, created_at: '2026-11-01T00:00:00Z' }] }
   });
   assert.match(html, /ai-test-run/);
   assert.match(html, /csrf-token/);
