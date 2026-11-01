@@ -133,6 +133,34 @@ test('Guardian workspace exposes PR dispatch only after a completed review and w
   }
 });
 
+test('Guardian workspace shows dispatched workflow, PR and CI evidence with a refresh control', () => {
+  const original = process.env.FRIEREN_GITHUB_TOKEN;
+  process.env.FRIEREN_GITHUB_TOKEN = 'x'.repeat(48);
+  try {
+    const html = renderOwnerGuardianWorkspace({
+      csrf: 'csrf-test',
+      incidents: [],
+      jobs: [{
+        id: 11, incident_id: 8, incident_title: 'AI timeout', agent: 'frieren_ai',
+        system: 'frieren_ai', status: 'completed', repair_dispatch_status: 'dispatched',
+        repair_run_status: 'completed', repair_run_conclusion: 'success',
+        repair_run_url: 'https://github.com/soire07/pogaca-frieren-/actions/runs/123',
+        repair_pr_number: 44, repair_pr_url: 'https://github.com/soire07/pogaca-frieren-/pull/44',
+        repair_pr_state: 'open', repair_checks_status: 'success',
+        created_at: '2026-11-02T10:01:00Z',
+        result: { status: 'proposal_only', rootCause: 'Timeout.' },
+      }],
+    });
+    assert.match(html, /Workflow: completed/);
+    assert.match(html, /PR kontrolleri: success/);
+    assert.match(html, /Onarım PR #44 incele/);
+    assert.match(html, /guardian-refresh-pr/);
+  } finally {
+    if (original === undefined) delete process.env.FRIEREN_GITHUB_TOKEN;
+    else process.env.FRIEREN_GITHUB_TOKEN = original;
+  }
+});
+
 test('Render metrics stay disabled without an API key and do not make network requests', async () => {
   const { getRenderServiceMetrics } = await import('../owner-metrics.js');
   let calls = 0;
