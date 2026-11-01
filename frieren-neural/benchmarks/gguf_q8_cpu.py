@@ -102,7 +102,6 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
         elapsed = round(time.perf_counter() - started, 3)
         choice = result["choices"][0]
         raw_text = choice["message"]["content"] or ""
-        text = re.sub(r"^<think>\\s*</think>\\s*", "", text, count=1).strip()
         think_start = raw_text.find("<think>")
         think_end = raw_text.find("</think>", think_start + len("<think>")) if think_start >= 0 else -1
         reasoning_leakage = (
