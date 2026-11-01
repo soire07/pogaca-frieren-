@@ -22,8 +22,10 @@ test('partner deletion rejects invalid identifiers and audits valid removal', as
 });
 
 test('RPG dashboard metrics are aggregated from live gameplay tables', async () => {
-  const db={query:async sql=>({rows:[sql.includes('FROM users')&&sql.includes('AVG(level)')?{players:12,average_level:'4.5',total_coins:'900'}:sql.includes('FROM inventory')?{inventory_stacks:6,item_count:'14'}:{boss_wins:'3',dungeon_wins:'8'}]})};
+  let calls=0;
+  const db={query:async sql=>{calls++; assert.match(sql,/FROM users/); assert.match(sql,/FROM inventory/); return {rows:[{players:12,average_level:'4.5',total_coins:'900',inventory_stacks:6,item_count:'14',boss_wins:'3',dungeon_wins:'8'}]};}};
   const metrics=await getOwnerRpgMetrics(db);
+  assert.equal(calls,1);
   assert.deepEqual(metrics,{players:12,averageLevel:4.5,totalCoins:900,inventoryStacks:6,itemCount:14,bossWins:3,dungeonWins:8});
 });
 
