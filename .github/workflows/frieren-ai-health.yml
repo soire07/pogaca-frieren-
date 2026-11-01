@@ -21,38 +21,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
-      - name: Check Frieren AI liveness
+      - name: Check Frieren AI liveness and readiness
         shell: bash
         env:
           HEALTH_URL: https://pogaca-frieren-kltd.onrender.com/live
         run: |
-          response_file="$RUNNER_TEMP/frieren-live.json"
+          response_file="$RUNNER_TEMP/frieren-health.json"
           for attempt in {1..8}; do
             http_code="$(curl --silent --show-error --connect-timeout 10 --max-time 20 -o "$response_file" -w '%{http_code}' "$HEALTH_URL" 2>&1)" || true
-            if [[ "$http_code" == "200" ]] && node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status==='alive' && j.readiness?.bridgeConfigured===true?0:1)}catch{process.exit(1)}})" < "$response_file"; then
-              echo "Frieren AI liveness passed (HTTP 200; bridge configured)."
+            if [[ "$http_code" == "200" ]] && node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);const r=j.readiness||{};process.exit(j.status==='alive' && j.ready===true && r.status==='ok' && r.discordReady===true && r.memoryDatabaseReady===true && r.modelConfigured===true && r.bridgeConfigured===true ? 0 : 1)}catch{process.exit(1)}})" < "$response_file"; then
+              echo "Frieren AI liveness and readiness passed (Discord, memory DB, model, and test bridge ready)."
               exit 0
             fi
-            echo "::warning::Liveness attempt $attempt/8 failed; HTTP $http_code."
+            echo "::warning::Health attempt $attempt/8 failed; HTTP $http_code."
             if [[ "$attempt" -lt 8 ]]; then sleep 5; fi
           done
-          echo "::error::Frieren AI liveness failed after 8 attempts."
-          exit 1
-
-      - name: Check Frieren AI readiness and Discord connection
-        shell: bash
-        env:
-          READY_URL: https://pogaca-frieren-kltd.onrender.com/health
-        run: |
-          response_file="$RUNNER_TEMP/frieren-ready.json"
-          for attempt in {1..8}; do
-            http_code="$(curl --silent --show-error --connect-timeout 10 --max-time 20 -o "$response_file" -w '%{http_code}' "$READY_URL" 2>&1)" || true
-            if [[ "$http_code" == "200" ]] && node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);process.exit(j.status==='ok' && j.discordReady===true && j.memoryDatabaseReady===true && j.modelConfigured===true && j.bridgeConfigured===true ? 0 : 1)}catch{process.exit(1)}})" < "$response_file"; then
-              echo "Frieren AI readiness passed (HTTP 200; Discord, memory DB, model, and test bridge ready)."
-              exit 0
-            fi
-            echo "::warning::Readiness attempt $attempt/8 failed; HTTP $http_code."
-            if [[ "$attempt" -lt 8 ]]; then sleep 5; fi
-          done
-          echo "::error::Frieren AI readiness failed after 8 attempts."
+          echo "::error::Frieren AI is not fully ready after 8 attempts."
           exit 1
