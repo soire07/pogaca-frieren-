@@ -137,7 +137,11 @@ class GPTLanguageModel(nn.Module):
             return logits
         if targets.shape != input_ids.shape or targets.dtype != torch.long:
             raise ValueError("targets must be torch.long and match input_ids shape.")
-        loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
+        if not torch.any(targets != -100):
+            raise ValueError("targets must contain at least one supervised token.")
+        loss = F.cross_entropy(
+            logits.reshape(-1, logits.size(-1)), targets.reshape(-1), ignore_index=-100
+        )
         return logits, loss
 
     @torch.no_grad()
