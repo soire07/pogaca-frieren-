@@ -111,3 +111,15 @@ def test_training_config_rejects_invalid_bpe_settings():
         TrainingConfig(tokenizer_vocab_size=259)
     with pytest.raises(ValueError, match="BPE vocabulary"):
         TrainingConfig(tokenizer_min_frequency=0)
+
+
+def test_resume_rejects_a_lower_target_step(tmp_path: Path):
+    corpus = ["Frieren learns magic. Fern studies spells. " * 8]
+    checkpoint = tmp_path / "model.pt"
+    config = TrainingConfig(
+        max_steps=3, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0,
+    )
+    train_model(corpus, checkpoint, config)
+    with pytest.raises(ValueError, match="max_steps cannot be lower"):
+        train_model(corpus, checkpoint, replace(config, max_steps=2), resume=True)
