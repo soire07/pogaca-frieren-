@@ -12,6 +12,7 @@ import { getFrierenChatSettings, updateFrierenChatSettings } from './frieren-cha
 import { listOwnerDailyQuests, saveOwnerDailyQuest, setOwnerDailyQuestActive } from './owner-rpg-quests.js';
 import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } from './owner-rpg-content.js';
 import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
+import { getStaleOwnerData } from './owner-data-cache.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -76,7 +77,7 @@ function send(res, status, body, headers = {}) {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'no-referrer',
-    'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+    'Content-Security-Policy': "default-src 'none'; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
     ...headers
   });
   res.end(body);
@@ -190,267 +191,7 @@ export function buildOwnerSessionCookie(session, maxAgeSeconds) {
 }
 
 function page(title, content) {
-  return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · Frieren Owner</title><style>
-  :root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#070d1c;color:#edf3ff;--line:rgba(143,178,235,.23);--muted:#9eb0d0}
-  *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:22px}
-  body{margin:0;min-height:100vh;padding:24px;background:radial-gradient(ellipse at 68% -8%,rgba(83,109,190,.38),transparent 39%),radial-gradient(ellipse at 12% 45%,rgba(38,100,158,.19),transparent 38%),linear-gradient(145deg,#070d1c,#0b1530 55%,#0a1022);overflow-x:hidden}
-  body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.42;background-image:radial-gradient(1px 1px at 12% 18%,#e4efff 99%,transparent),radial-gradient(1px 1px at 72% 12%,#d4e6ff 99%,transparent),radial-gradient(1.5px 1.5px at 88% 42%,#c6d9ff 99%,transparent),radial-gradient(1px 1px at 32% 72%,#e4efff 99%,transparent);background-size:420px 360px}
-  main{position:relative;width:min(100%,1440px);margin:0 auto;padding-left:260px}
-  .top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px;padding:10px 2px}
-  .brand{font-family:Georgia,serif;font-size:22px;letter-spacing:.18em;color:#d9e9ff;text-shadow:0 0 24px #8ebeff66}.top .small{margin-top:5px;letter-spacing:.2em;font-size:9px;color:#849cc4}
-  .hero,.panel{position:relative;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,rgba(15,31,64,.94),rgba(7,17,39,.94));padding:22px;box-shadow:0 18px 55px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.04);backdrop-filter:blur(15px)}
-  .hero{margin-bottom:16px;overflow:hidden}.hero:before{content:"✧";position:absolute;right:25px;top:8px;font-size:100px;color:rgba(185,214,255,.08);pointer-events:none}
-  .hero h1{margin:8px 0;font-family:Georgia,serif;font-weight:500;font-size:clamp(27px,3vw,38px);color:#f1f6ff;text-shadow:0 0 28px #9dc9ff44}
-  .muted{color:var(--muted);font-size:13px;line-height:1.65}.tag{display:inline-block;padding:6px 10px;border:1px solid rgba(155,195,255,.32);border-radius:999px;background:rgba(101,150,222,.09);color:#cce5ff;font-size:10px;letter-spacing:.12em}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:16px 0}.stat{background:linear-gradient(145deg,rgba(20,42,82,.88),rgba(10,24,52,.9));border:1px solid rgba(123,165,230,.24);border-radius:13px;padding:15px}.stat small{display:block;color:#aabedc;margin-bottom:7px}.stat strong{font-size:21px;color:#f0f5ff}
-  .columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px;margin:14px 0}
-  .bot-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.bot-card{display:flex;align-items:center;gap:18px;min-height:150px;overflow:hidden}.bot-card.ai{background:radial-gradient(circle at 12% 50%,rgba(108,151,225,.28),transparent 42%),linear-gradient(140deg,rgba(18,39,79,.96),rgba(8,19,44,.96))}.bot-card.pogaca{background:radial-gradient(circle at 12% 50%,rgba(171,120,222,.24),transparent 42%),linear-gradient(140deg,rgba(38,29,73,.94),rgba(12,19,47,.96))}.bot-symbol{flex:0 0 64px;width:64px;height:64px;display:grid;place-items:center;border-radius:50%;font-size:34px;color:#d7e9ff;background:radial-gradient(circle,rgba(127,178,255,.3),rgba(53,86,155,.1));border:1px solid rgba(166,205,255,.36);box-shadow:0 0 30px rgba(106,158,255,.16)}.bot-card.pogaca .bot-symbol{color:#f1d8ff;background:radial-gradient(circle,rgba(194,147,255,.3),rgba(94,60,143,.1));border-color:rgba(205,166,255,.35)}.bot-card h2{margin:7px 0 4px}.bot-card p{margin:0 0 8px}
-  .panel h2{font-family:Georgia,serif;font-size:18px;font-weight:500;color:#e4efff;margin:0 0 14px}.panel h3{font-size:14px;margin:18px 0 8px;color:#dceaff}
-  .btn{display:inline-block;background:linear-gradient(120deg,#c4ddff,#a8b8ff);color:#101d3a;padding:10px 15px;border-radius:9px;text-decoration:none;font-weight:700;border:0;cursor:pointer}.btn.danger{background:#63364d;color:#ffe3ed}.btn.secondary{background:#1c3158;color:#e0eaff;border:1px solid #45618f}
-  form{margin:9px 0}label{display:block;font-size:12px;color:#afc2e1;margin:9px 0 5px}input,select,textarea{display:block;width:100%;border:1px solid #334d79;border-radius:8px;background:#08152d;color:#f2f6ff;padding:10px;font:inherit}textarea{min-height:90px;resize:vertical}
-  .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.rowitem{border-top:1px solid rgba(125,162,220,.2);padding:12px 0}.rowitem:first-of-type{border-top:0}.mono{font-family:ui-monospace,monospace;font-size:12px;overflow-wrap:anywhere}
-  .data-table{width:100%;border-collapse:collapse;min-width:520px;font-size:12px}.data-table th,.data-table td{text-align:left;padding:10px;border-bottom:1px solid rgba(125,162,220,.2);vertical-align:top}.data-table th{color:#bcd2f4;background:rgba(85,122,184,.12)}.data-table td{color:#e1ebfc;max-width:280px;overflow-wrap:anywhere}
-  .notice{border:1px solid #526e9c;background:#152b50;border-radius:10px;padding:11px;margin:12px 0}.good{color:#72e7b8}.warn{color:#f4ce83}.bad{color:#ff9aa8}.small{font-size:12px;color:#91a8ca}
-  .metric-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:12px 0}.metric-charts{margin-top:10px}.metric-bars{height:84px;display:flex;align-items:flex-end;gap:4px;padding:8px 0;border-bottom:1px solid #405a85}.metric-bars i{display:block;flex:1;min-width:3px;max-width:18px;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#c2dfff,#657dce);opacity:.9}.metrics-panel{margin:14px 0}
-  .nav{position:fixed;left:max(18px,calc((100vw - 1440px)/2));top:22px;bottom:22px;width:232px;z-index:5;display:flex;flex-direction:column;gap:7px;overflow-y:auto;padding:14px;border:1px solid var(--line);border-radius:17px;background:linear-gradient(180deg,rgba(5,15,35,.96),rgba(8,21,47,.94));box-shadow:0 18px 55px #0006;backdrop-filter:blur(18px)}
-  .nav:before{content:"✧ F R I E R E N";font-family:Georgia,serif;font-size:17px;letter-spacing:.08em;color:#d8eaff;padding:8px 8px 16px;border-bottom:1px solid rgba(135,174,231,.2);margin-bottom:7px}
-  .nav a{display:flex;flex-direction:column;gap:4px;padding:11px 12px;border-radius:9px;text-decoration:none;color:#c6d8f4;font-size:13px;border:1px solid transparent}.nav a:hover,.nav a:focus{background:linear-gradient(100deg,rgba(38,91,164,.52),rgba(71,62,135,.22));border-color:rgba(133,179,247,.25);outline:none}.nav span{font:10px ui-monospace,monospace;color:#829dc6}
-  .hero,.panel{scroll-margin-top:24px}
-  @media(max-width:760px){body{padding:12px}main{padding-left:0}.bot-cards{grid-template-columns:1fr}.nav{position:sticky;top:6px;bottom:auto;left:auto;width:100%;max-height:190px;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;margin:0 0 14px;padding:8px}.nav:before{display:none}.nav a{flex:0 0 auto;min-width:116px}.hero,.panel{padding:16px}.hero h1{font-size:25px}}
-  @media(prefers-reduced-motion:no-preference){.panel,.stat{transition:border-color .2s ease,transform .2s ease}.panel:hover{border-color:rgba(165,199,255,.38)}.stat:hover{transform:translateY(-2px)}}
-
-  /* FRIEREN OWNER EXPERIENCE */
-  body{background:radial-gradient(ellipse at 78% 0%,rgba(110,139,218,.25),transparent 34%),radial-gradient(ellipse at 4% 58%,rgba(69,112,181,.18),transparent 38%),linear-gradient(145deg,#050a18,#0b1530 52%,#080e21)}
-  body:after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.2;background-image:radial-gradient(2px 2px at 18% 34%,#d9e9ff 99%,transparent),radial-gradient(1px 1px at 62% 64%,#fff 99%,transparent),radial-gradient(1px 1px at 91% 13%,#b9d6ff 99%,transparent);background-size:520px 460px;animation:owner-stars 11s ease-in-out infinite alternate}
-  @keyframes owner-stars{from{opacity:.12;transform:translateY(0)}to{opacity:.34;transform:translateY(-8px)}}
-  main{width:min(100%,1520px);padding-left:270px}
-  .top{padding:16px 20px;border:1px solid rgba(171,199,255,.18);border-radius:17px;background:linear-gradient(100deg,rgba(19,36,74,.72),rgba(9,18,42,.52));box-shadow:0 12px 40px #0003}
-  .brand{font-size:24px;letter-spacing:.24em;text-shadow:0 0 28px #b8d5ff88}
-  .hero{background:radial-gradient(ellipse at 90% 15%,rgba(120,154,232,.24),transparent 40%),linear-gradient(145deg,rgba(18,35,73,.96),rgba(7,16,38,.97));border-color:rgba(180,207,255,.3);box-shadow:0 25px 80px #0005,inset 0 1px #fff1}
-  .hero:after{content:"";position:absolute;right:0;top:0;width:42%;height:100%;pointer-events:none;opacity:.22;background:url('/assets/frieren.gif') right center/contain no-repeat;mask-image:linear-gradient(90deg,transparent,#000 32%)}
-  .hero>*{position:relative;z-index:1}
-  .hero h1{font-size:clamp(30px,4vw,46px);letter-spacing:.01em}
-  .panel{background:linear-gradient(145deg,rgba(18,33,68,.94),rgba(7,16,37,.96));border-color:rgba(154,188,246,.2);box-shadow:0 16px 48px #0004,inset 0 1px #fff1;transition:transform .22s,border-color .22s,box-shadow .22s}
-  .panel:hover{transform:translateY(-2px);border-color:rgba(178,207,255,.42);box-shadow:0 20px 55px #0005,0 0 25px #9fc7ff0c}
-  .stat{position:relative;overflow:hidden;background:linear-gradient(145deg,rgba(28,52,99,.88),rgba(10,24,53,.95));border-color:rgba(148,186,248,.24);box-shadow:inset 0 1px #fff1}
-  .stat:after{content:"✧";position:absolute;right:12px;top:5px;color:#d9eaff22;font-size:28px}
-  .stat strong{font-family:Georgia,serif;font-size:24px;letter-spacing:.01em}
-  .nav{width:244px;border-radius:20px;background:linear-gradient(180deg,rgba(7,17,40,.98),rgba(10,23,51,.96));border-color:rgba(173,202,255,.22);box-shadow:0 20px 70px #0008}
-  .nav:before{font-size:18px;letter-spacing:.2em;padding:12px 8px 19px}
-  .nav a{position:relative;overflow:hidden;border-radius:11px;padding:12px 13px;background:rgba(255,255,255,.015);transition:background .2s,border-color .2s,transform .2s}
-  .nav a:hover,.nav a:focus{transform:translateX(3px);background:linear-gradient(100deg,rgba(57,111,190,.38),rgba(94,81,157,.2));border-color:rgba(161,198,255,.35);box-shadow:inset 3px 0 #bcd8ff}
-  .btn{position:relative;overflow:hidden;box-shadow:0 7px 24px #8ebeff24;transition:transform .18s,filter .18s,box-shadow .18s}
-  .btn:after{content:"";position:absolute;inset:-60% auto -60% -40%;width:28%;transform:rotate(24deg);background:linear-gradient(90deg,transparent,#fff8,transparent);transition:left .45s}
-  .btn:hover{transform:translateY(-2px);filter:brightness(1.08);box-shadow:0 10px 30px #9fc5ff40}
-  .btn:hover:after{left:125%}
-  input:focus,select:focus,textarea:focus{outline:2px solid #9fc5ff99;outline-offset:2px;border-color:#b8d5ff}
-  .tag{box-shadow:0 0 22px #8ebeff12}
-  .notice{border-color:#9cbfff66;background:linear-gradient(100deg,#172f56,#172747)}
-  .rowitem{border-color:rgba(154,190,249,.17)}
-  @media(max-width:760px){main{padding-left:0}.hero:after{width:100%;opacity:.12;background-position:right bottom;background-size:auto 65%}.nav{max-height:160px}.nav a{min-width:126px}.top{padding:12px}.hero h1{font-size:28px}}
-  @media(prefers-reduced-motion:reduce){body:after{animation:none}.panel,.btn,.nav a{transition:none}}
-
-  /* Arcane Sanctuary — reference-matched owner interface */
-  :root{--line:rgba(126,164,238,.28);--muted:#a9badb;--ice:#dceaff;--blue:#315fca;--violet:#8e82e8}
-  body{padding:14px;background:#030918 url('/assets/frieren.gif') center top/cover fixed no-repeat}
-  body:before{opacity:.68;background:linear-gradient(180deg,rgba(3,8,25,.48),rgba(3,8,25,.9)),radial-gradient(ellipse at 50% 0%,rgba(83,125,231,.3),transparent 52%),radial-gradient(1px 1px at 20% 28%,#fff 99%,transparent);background-size:cover,cover,360px 320px}
-  main{width:min(100%,1580px);padding-left:258px}
-  .nav{left:max(14px,calc((100vw - 1580px)/2));top:14px;bottom:14px;width:230px;padding:13px 11px;border-radius:15px;background:linear-gradient(180deg,rgba(3,10,29,.97),rgba(5,15,38,.95));border-color:rgba(144,177,247,.32)}
-  .nav:before{content:"✧  Frieren  ✧\\A Owner Panel\\A The Arcane Sanctuary";white-space:pre-line;line-height:1.65;letter-spacing:.04em;font-size:18px;text-align:center;padding:12px 6px 17px}
-  .nav a{flex-direction:row;align-items:center;gap:10px;min-height:39px;padding:9px 11px;border-radius:8px;font-size:12px}
-  .nav a:before{content:"✧";color:#8fb5ff;font-size:14px}
-  .nav a:hover,.nav a:focus{transform:none;background:linear-gradient(90deg,rgba(29,83,174,.68),rgba(56,69,137,.22));box-shadow:inset 3px 0 #8cb7ff}
-  .top{margin-bottom:12px;padding:12px 18px;background:rgba(4,13,34,.7);border-color:rgba(148,181,247,.27);border-radius:12px}
-  .brand{font-size:24px;letter-spacing:.06em}
-  .hero{min-height:180px;padding:28px 30px;background:linear-gradient(90deg,rgba(4,13,36,.97) 0%,rgba(5,17,45,.88) 42%,rgba(5,17,45,.2) 100%),url('/assets/frieren.gif') right 42%/auto 155% no-repeat,linear-gradient(120deg,#0b1d4a,#111b45);border-radius:13px;border-color:rgba(142,177,246,.38)}
-  .hero:before{content:"";right:0;top:0;width:100%;height:100%;font-size:0;background:linear-gradient(90deg,transparent 58%,rgba(7,16,42,.06));}
-  .hero:after{display:none}
-  .hero h1{font-size:clamp(28px,3vw,40px);margin:8px 0 5px}
-  .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}
-  .stat{min-height:88px;padding:13px 14px;border-radius:11px;background:linear-gradient(145deg,rgba(9,27,66,.96),rgba(4,15,39,.96));border-color:rgba(111,153,229,.3)}
-  .stat small{font-size:11px;letter-spacing:.01em}
-  .stat strong{font-size:21px}
-  .bot-cards{gap:12px}
-  .bot-card{min-height:116px;padding:17px 20px}
-  .bot-symbol{width:54px;height:54px;flex-basis:54px;font-size:28px}
-  .panel{border-radius:12px;background:linear-gradient(145deg,rgba(8,23,56,.96),rgba(4,13,34,.97));border-color:rgba(112,153,225,.28);padding:19px}
-  .panel h2{font-family:Georgia,serif;font-size:19px}
-  .columns{gap:12px}
-  .btn{background:linear-gradient(110deg,#426cf0,#6478e9);color:white;border:1px solid rgba(180,201,255,.22);border-radius:7px}
-  .btn.secondary{background:rgba(19,42,86,.92);color:#dceaff}
-  .tag{border-radius:5px;background:rgba(43,78,150,.28);letter-spacing:.08em}
-  .notice{border-radius:8px}
-  @media(max-width:980px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media(max-width:760px){
-    body{padding:8px;background-position:62% top;background-size:auto 420px}
-    main{padding-left:0}
-    .nav{position:sticky;top:5px;left:auto;width:100%;max-height:128px;bottom:auto;margin-bottom:10px;padding:7px;background:rgba(3,10,29,.97)}
-    .nav:before{display:none}
-    .nav a{min-width:max-content;min-height:34px;padding:8px 10px}
-    .nav a:before{display:none}
-    .top{padding:10px 12px}
-    .brand{font-size:18px}
-    .hero{min-height:165px;padding:20px 17px;background-position:center,right 35%;background-size:auto,auto 115%,cover}
-    .hero h1{font-size:26px}
-    .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-    .stat{min-height:78px;padding:11px}
-    .stat strong{font-size:18px}
-    .panel{padding:14px}
-    .bot-card{min-height:100px}
-  }
-  @media(prefers-reduced-motion:reduce){body:after{animation:none}.panel,.btn,.nav a{transition:none}}
-
-
-  /* Owner sanctuary v2 — structured workspace, responsive navigation and usable controls */
-  :root{--surface:#09152f;--surface-raised:#102247;--stroke:rgba(145,177,241,.22);--text:#edf4ff;--muted:#a8bad9;--accent:#9dbdff;--accent-violet:#b5a2ff}
-  body{padding:18px;background:radial-gradient(ellipse at 82% 4%,rgba(90,119,205,.2),transparent 32%),radial-gradient(ellipse at 12% 72%,rgba(58,108,170,.16),transparent 36%),linear-gradient(145deg,#030817 0%,#08152f 48%,#080d20 100%)}
-  body:before{opacity:.34;background-size:480px 410px}
-  main{width:min(100%,1600px);padding-left:278px}
-  .nav{left:max(18px,calc((100vw - 1600px)/2));top:18px;bottom:18px;width:242px;gap:14px;padding:15px 12px;border-radius:18px;border:1px solid rgba(149,181,242,.25);background:linear-gradient(180deg,rgba(5,14,34,.98),rgba(8,20,47,.97));box-shadow:0 22px 70px rgba(0,0,0,.48)}
-  .nav:before{display:none}
-  .nav-brand{display:grid;grid-template-columns:34px 1fr;align-items:center;column-gap:9px;padding:8px 8px 17px;border-bottom:1px solid var(--stroke)}
-  .nav-brand-mark{grid-row:span 2;display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(164,195,255,.38);border-radius:11px;background:linear-gradient(145deg,#263f7b,#17274f);color:#e5efff;font-size:20px}
-  .nav-brand strong{font:600 16px Georgia,serif;letter-spacing:.18em;color:#e8f1ff}
-  .nav-brand small{font-size:8px;letter-spacing:.16em;color:#839dc8}
-  .nav-group{display:grid;gap:5px}
-  .nav-group-title{padding:2px 10px 5px;color:#718bb9;font-size:9px;font-weight:800;letter-spacing:.18em}
-  .nav a{display:flex;flex-direction:row;align-items:center;gap:10px;min-height:44px;padding:8px 10px;border:1px solid transparent;border-radius:10px;background:transparent;color:#c8d8f2}
-  .nav a:before{display:none}
-  .nav a:hover,.nav a:focus{transform:translateX(2px);background:linear-gradient(100deg,rgba(57,102,183,.3),rgba(106,91,173,.12));border-color:rgba(148,185,250,.25);box-shadow:inset 3px 0 #a9c7ff}
-  .nav-icon{display:grid;place-items:center;flex:0 0 28px;height:28px;border-radius:8px;background:rgba(110,151,225,.11);color:#b9d2ff;font-size:15px}
-  .nav-link-copy{display:grid;gap:3px;min-width:0}
-  .nav-link-copy strong{font-size:12px;font-weight:600;color:#dce8fc}
-  .nav-link-copy small{font:9px ui-monospace,monospace;color:#8199c2}
-  .nav-footer{margin-top:auto;padding:12px 9px 5px;border-top:1px solid var(--stroke);font-size:9px;letter-spacing:.1em;color:#8299bd}
-  .nav-status-dot{display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;background:#73ddb0;box-shadow:0 0 10px #73ddb088}
-  .top{position:relative;margin-bottom:16px;padding:13px 18px;border-radius:14px;background:rgba(9,22,49,.78);border-color:var(--stroke)}
-  .brand{font-size:20px;letter-spacing:.14em}
-  .hero{min-height:205px;padding:30px 32px;margin-bottom:17px;border-radius:16px;border-color:rgba(151,184,246,.3);background:linear-gradient(90deg,rgba(5,14,36,.98) 0%,rgba(7,20,49,.88) 52%,rgba(7,20,49,.34) 100%),url('/assets/frieren.gif') right center/auto 150% no-repeat,linear-gradient(120deg,#10295b,#121c43);box-shadow:0 24px 70px #0005}
-  .hero h1{font-size:clamp(30px,3.6vw,44px)}
-  .hero .muted{max-width:660px}
-  .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin:15px 0 18px}
-  .stat{min-height:92px;border-radius:13px;padding:14px;background:linear-gradient(145deg,rgba(17,39,81,.95),rgba(7,20,48,.98));border-color:rgba(127,164,232,.23)}
-  .stat small{font-size:11px;color:#a9bddf}
-  .stat strong{font:600 23px Georgia,serif}
-  .bot-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-  .bot-card{align-items:flex-start;min-height:220px;padding:20px;gap:15px;border-radius:15px}
-  .bot-card.ai{background:radial-gradient(circle at 10% 12%,rgba(102,157,238,.25),transparent 45%),linear-gradient(145deg,#102a58,#091833)}
-  .bot-card.pogaca{background:radial-gradient(circle at 10% 12%,rgba(176,127,232,.23),transparent 45%),linear-gradient(145deg,#28234f,#111a3a)}
-  .bot-card-content{min-width:0;flex:1}
-  .bot-card h2{font:500 23px Georgia,serif;color:#edf4ff}
-  .bot-card p{min-height:42px;margin:5px 0 10px}
-  .bot-card-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:13px}
-  .bot-card-actions .btn{font-size:11px;padding:8px 10px}
-  .panel{padding:21px;border-radius:15px;background:linear-gradient(145deg,rgba(12,29,64,.97),rgba(5,15,37,.98));border-color:rgba(135,169,232,.22)}
-  .panel h2{font-size:20px;margin-bottom:8px}
-  .panel h3{font-size:14px}
-  .panel>.muted{margin:0 0 15px}
-  .columns{gap:14px;margin:15px 0}
-  .feature-setting{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:8px;padding:13px 0}
-  .feature-setting>div{min-width:0}
-  .feature-setting .small{margin-top:4px}
-  .inline-toggle{display:flex;align-items:center;gap:7px;white-space:nowrap;margin:0}
-  .inline-toggle input{width:17px;height:17px;accent-color:#9bbcff}
-  form{margin:12px 0}
-  input,select,textarea{border-color:rgba(121,157,221,.34);background:rgba(3,12,31,.82);border-radius:9px;padding:11px 12px}
-  input[type=checkbox]{width:auto;accent-color:#9bbcff}
-  label{font-size:12px;color:#b8c9e6}
-  .btn{border-radius:9px;background:linear-gradient(115deg,#527ff0,#786fe0);box-shadow:0 6px 20px rgba(75,112,208,.2)}
-  .btn.secondary{background:rgba(29,51,94,.9);border:1px solid rgba(133,169,232,.25);color:#dceaff;box-shadow:none}
-  .btn.danger{background:linear-gradient(115deg,#813f61,#62304f);color:#ffe8f0}
-  .rowitem{padding:14px 0;border-color:rgba(134,169,231,.18)}
-  .notice{border-radius:11px;background:rgba(33,62,111,.72);border-color:rgba(149,185,247,.32)}
-  .metrics-panel{margin:15px 0}
-  .hero,.panel{scroll-margin-top:18px}
-  @media(max-width:1100px){main{padding-left:250px}.nav{width:218px}.grid{grid-template-columns:repeat(3,minmax(0,1fr))}.feature-setting{grid-template-columns:minmax(0,1fr) auto auto}}
-  @media(max-width:760px){
-    body{padding:9px}
-    main{padding-left:0}
-    .nav{position:sticky;top:5px;left:auto;bottom:auto;width:100%;max-height:none;display:flex;flex-direction:row;align-items:stretch;gap:8px;overflow-x:auto;margin:0 0 11px;padding:8px;border-radius:12px}
-    .nav-brand{display:none}
-    .nav-group{display:flex;flex:0 0 auto;align-items:center;gap:5px}
-    .nav-group-title{display:none}
-    .nav a{flex:0 0 auto;min-height:38px;padding:7px 9px;gap:7px}
-    .nav a:hover,.nav a:focus{transform:none}
-    .nav-icon{flex-basis:22px;height:22px;font-size:12px}
-    .nav-link-copy strong{font-size:11px;white-space:nowrap}
-    .nav-link-copy small{display:none}
-    .nav-footer{display:none}
-    .top{padding:10px 12px}
-    .hero{min-height:175px;padding:21px 17px;background-position:center,right 35%;background-size:auto,auto 120%,cover}
-    .hero h1{font-size:27px}
-    .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-    .stat{min-height:78px;padding:11px}
-    .stat strong{font-size:18px}
-    .bot-cards{grid-template-columns:1fr}
-    .bot-card{min-height:0;padding:15px}
-    .bot-card p{min-height:0}
-    .panel{padding:15px}
-    .feature-setting{grid-template-columns:minmax(0,1fr) auto;gap:8px}
-    .feature-setting .btn{grid-column:auto}
-    .feature-setting .btn.secondary{font-size:10px;padding:8px}
-    .columns{grid-template-columns:1fr}
-  }
-  @media(max-width:390px){.nav a{padding:6px 7px}.nav-icon{display:none}.nav-link-copy strong{font-size:10px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-
-
-  /* Soft Moonlit Sanctuary — refreshed owner-panel skin */
-  :root{--line:rgba(220,198,255,.25);--muted:#c6bddb}
-  body{background:radial-gradient(ellipse at 12% 0%,rgba(188,158,232,.24),transparent 34%),radial-gradient(ellipse at 92% 35%,rgba(232,181,211,.13),transparent 38%),linear-gradient(145deg,#100f23,#201a35 55%,#14152b)}
-  body:before{opacity:.25}
-  .nav{background:linear-gradient(180deg,rgba(27,22,48,.98),rgba(32,25,52,.96));border-color:rgba(224,203,255,.32);box-shadow:0 18px 55px #09071388}
-  .nav a{border-radius:14px}
-  .nav a:hover,.nav a:focus{background:linear-gradient(100deg,rgba(170,139,220,.24),rgba(221,168,204,.16));border-color:rgba(229,203,255,.38);box-shadow:inset 3px 0 #e8d2ff}
-  .panel,.hero,.top,.stat,.notice{border-radius:20px}
-  .panel{background:linear-gradient(145deg,rgba(38,31,61,.96),rgba(20,21,44,.97));border-color:rgba(215,192,248,.23)}
-  .hero{background:radial-gradient(ellipse at 90% 15%,rgba(216,186,250,.18),transparent 40%),linear-gradient(145deg,rgba(45,36,69,.97),rgba(21,22,45,.98));border-color:rgba(224,202,255,.32)}
-  .top{background:linear-gradient(100deg,rgba(45,36,70,.85),rgba(24,24,48,.8));border-color:rgba(220,199,255,.23)}
-  .btn{border-radius:13px;background:linear-gradient(120deg,#f0dff1,#d4c6f7);color:#29203b;box-shadow:0 7px 22px #d9c1f622}
-  .btn.secondary{background:#352c51;color:#f0e8ff;border-color:#76658e}
-  input,select,textarea{background:#15152d;border-color:#594b70;border-radius:12px}
-  .notice{background:linear-gradient(100deg,#392c50,#292440);border-color:#9d82b8}
-  .stat{background:linear-gradient(145deg,rgba(57,44,79,.85),rgba(30,27,53,.96));border-color:rgba(221,197,255,.23)}
-  @media(max-width:760px){.nav{background:rgba(27,22,48,.98)}}
-
-  /* Responsive layout safeguards */
-  main,.panel,.hero,.columns,.grid,.bot-card,.bot-card-content{min-width:0}
-  .data-table{display:block;width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
-  .data-table th,.data-table td{white-space:normal}
-  .actions .btn,button.btn{min-height:40px}
-  a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #ead8ff;outline-offset:3px}
-  .bot-card-actions .btn{white-space:normal;line-height:1.35}
-  .metric-bars{min-width:0}
-  @media(max-width:1100px){
-    .columns,.metric-charts{min-width:0}
-    .bot-card{min-width:0}
-  }
-  @media(max-width:760px){
-    body{padding:8px; padding-bottom:max(8px,env(safe-area-inset-bottom))}
-    .nav{scroll-snap-type:x proximity;overscroll-behavior-x:contain}
-    .nav-group{scroll-snap-align:start}
-    .top{gap:8px}
-    .top>*{min-width:0}
-    .hero{background-size:auto,auto 105%,cover;background-position:center,right bottom}
-    .hero h1{overflow-wrap:anywhere}
-    .grid,.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .columns,.metric-charts{grid-template-columns:minmax(0,1fr)}
-    .feature-setting{grid-template-columns:minmax(0,1fr) auto}
-    .data-table{font-size:11px}
-    .data-table th,.data-table td{padding:8px}
-    .btn{max-width:100%;white-space:normal;line-height:1.35}
-  }
-  @media(max-width:390px){
-    .grid,.metric-grid{grid-template-columns:minmax(0,1fr)}
-    .hero,.panel{padding:13px}
-    .nav a{min-width:max-content}
-    .bot-card{gap:10px}
-    .bot-symbol{flex-basis:42px;width:42px;height:42px;font-size:22px}
-    .bot-card h2{font-size:19px}
-    .feature-setting{grid-template-columns:minmax(0,1fr)}
-    .feature-setting .btn{justify-self:start}
-  }
-
-</style></head><body><main>${content}</main></body></html>`;
+  return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · Frieren Owner</title><link rel="stylesheet" href="/assets/owner.css"></head><body><main>${content}</main></body></html>`;
 }
 
 function safeStringEqual(leftValue, rightValue) {
@@ -1144,24 +885,42 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   }
 
   try {
-    const [overview, approvals, activity, renderMetrics, partners, rpgMetrics, guildConfigurations, renderServices] = await Promise.all([
+    const [overview, approvals, activity, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild] = await Promise.all([
       getOwnerOverview(client, db),
       listPendingApprovals(db, 15),
       getRecentOwnerActivity(db),
-      getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.pogaca.id }),
       listOwnerPartnerLinks(db),
       getOwnerRpgMetrics(db),
       listGuildConfigurations(db),
-      getRenderBotServiceStatuses()
-    ]);
-    const frierenService = renderServices?.services?.frieren_ai;
-    const aiReadiness = frierenService?.healthPayload || null;
-    const [aiRenderMetrics, featureSettingsByGuild] = await Promise.all([
-      frierenService?.apiConfigured && !frierenService?.apiError && frierenService?.suspended !== true
-        ? getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.frieren_ai.id, apiKey: process.env.RENDER_FRIEREN_AI_API_KEY })
-        : Promise.resolve({ status: 'unavailable', source: 'render', points: [], message: frierenService?.suspended ? 'Frieren AI askıda; metrik sorgusu yapılmadı.' : 'Frieren AI metrikleri için Render API bağlantısı gerekli.' }),
       listGuildFeatureSettingsForGuilds(db, [...(client?.guilds?.cache?.keys?.() || [])])
     ]);
+    const renderMetrics = getStaleOwnerData(
+      'render-metrics:pogaca',
+      () => getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.pogaca.id }),
+      { status: 'loading', source: 'render', points: [], message: 'Render metrikleri arka planda yenileniyor.' }
+    );
+    const renderServices = getStaleOwnerData(
+      'render-services',
+      () => getRenderBotServiceStatuses(),
+      {
+        status: 'loading',
+        apiConfigured: Boolean(process.env.RENDER_POGACA_API_KEY || process.env.RENDER_API_KEY || process.env.RENDER_FRIEREN_AI_API_KEY),
+        services: {
+          pogaca: { status: 'checking', url: RENDER_BOT_SERVICES.pogaca.url, apiConfigured: Boolean(process.env.RENDER_POGACA_API_KEY || process.env.RENDER_API_KEY) },
+          frieren_ai: { status: 'checking', url: RENDER_BOT_SERVICES.frieren_ai.url, apiConfigured: Boolean(process.env.RENDER_FRIEREN_AI_API_KEY) }
+        },
+        updatedAt: null
+      }
+    );
+    const frierenService = renderServices?.services?.frieren_ai;
+    const aiReadiness = frierenService?.healthPayload || null;
+    const aiRenderMetrics = getStaleOwnerData(
+      'render-metrics:frieren-ai',
+      () => frierenService?.status === 'running' && frierenService?.apiConfigured && !frierenService?.apiError
+        ? getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.frieren_ai.id, apiKey: process.env.RENDER_FRIEREN_AI_API_KEY })
+        : Promise.resolve({ status: 'unavailable', source: 'render', points: [], message: frierenService?.suspended ? 'Frieren AI askıda; metrik sorgusu yapılmadı.' : 'Frieren AI servis durumu doğrulandıktan sonra metrikler alınacak.' }),
+      { status: 'loading', source: 'render', points: [], message: 'Frieren AI metrikleri arka planda yenileniyor.' }
+    );
     const memoryUser = String(url.searchParams.get('memoryUser') || '').replace(/\D/g, '').slice(0, 24);
     const memories = memoryUser ? await listUserMemories(db, memoryUser, null, 30) : [];
     send(res, 200, renderDashboard({

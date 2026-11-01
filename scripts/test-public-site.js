@@ -123,6 +123,16 @@ test('shared stylesheet is publicly cacheable for authenticated and auth pages',
   assert.match(String(response.body), /\.hero-art/);
 });
 
+test('Owner Panel stylesheet is served as a cacheable static asset', async () => {
+  const response = res();
+  await handlePublicSiteRequest({ method: 'GET', url: '/assets/owner.css', headers: {} }, response);
+  assert.equal(response.status, 200);
+  assert.match(response.headers['Content-Type'], /text\/css/);
+  assert.match(response.headers['Cache-Control'], /public,max-age=86400/);
+  assert.match(String(response.body), /\.bot-cards/);
+  assert.match(String(response.body), /@media\(max-width:760px\)/);
+});
+
 test('dedicated site avatar asset is public so auth screens can render it', async () => {
   const response = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-avatar.svg', headers: {} }, response);

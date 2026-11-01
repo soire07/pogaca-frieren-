@@ -6,24 +6,21 @@ const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
 })[char]);
 
 export async function getOwnerDatabaseDiagnostics(db) {
-  const health = await db.query('SELECT current_database() AS database_name, current_user AS database_user, NOW() AS checked_at');
-  const tables = await db.query(
-    `SELECT table_name FROM information_schema.tables
-     WHERE table_schema='public' AND table_type='BASE TABLE'
-     ORDER BY table_name LIMIT 40`
-  );
-  const counts = [];
-  for (const row of tables.rows || []) {
-    const name = String(row.table_name || '');
-    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) continue;
-    const result = await db.query('SELECT COUNT(*)::bigint AS row_count FROM public."' + name + '"');
-    counts.push({ name, rows: Number(result.rows?.[0]?.row_count || 0) });
-  }
+  const result = await db.query(`
+    SELECT current_database() AS database_name, NOW() AS checked_at,
+      tables.table_name, COALESCE(stats.n_live_tup,0)::bigint AS row_count
+    FROM information_schema.tables AS tables
+    LEFT JOIN pg_stat_user_tables AS stats
+      ON stats.schemaname=tables.table_schema AND stats.relname=tables.table_name
+    WHERE tables.table_schema='public' AND tables.table_type='BASE TABLE'
+    ORDER BY tables.table_name LIMIT 40
+  `);
+  const rows = result.rows || [];
   return {
     connected: true,
-    databaseName: String(health.rows?.[0]?.database_name || ''),
-    checkedAt: health.rows?.[0]?.checked_at || null,
-    tables: counts
+    databaseName: String(rows[0]?.database_name || ''),
+    checkedAt: rows[0]?.checked_at || null,
+    tables: rows.map(row => ({ name: String(row.table_name || ''), rows: Number(row.row_count || 0) }))
   };
 }
 
@@ -187,7 +184,7 @@ export function renderOwnerWorkspace(kind, data = {}) {
       + '<div class="stat"><small>Veritabanı</small><strong>' + escapeHtml(db.databaseName) + '</strong></div>'
       + '<div class="stat"><small>Tablo sayısı</small><strong>' + db.tables.length + '</strong></div></div>'
       + '<section class="panel"><h2>Tablolar</h2><p class="muted">Kayıtlar salt okunur görüntülenir. Parola, token, anahtar, e-posta, mesaj ve hafıza içeriği gibi hassas alanlar listelenmez.</p>'
-      + (db.tables.length ? '<div class="rowitem"><strong>Tablo</strong><strong style="float:right">Kayıt</strong></div>' + db.tables.map(row => '<div class="rowitem"><a href="/owner/database?table=' + encodeURIComponent(row.name) + '">' + escapeHtml(row.name) + '</a><strong style="float:right">' + Number(row.rows).toLocaleString('tr-TR') + '</strong></div>').join('') : '<p class="muted">Tablo bulunamadı.</p>')
+      + (db.tables.length ? '<div class="rowitem"><strong>Tablo</strong><strong style="float:right">Tahmini kayıt</strong></div>' + db.tables.map(row => '<div class="rowitem"><a href="/owner/database?table=' + encodeURIComponent(row.name) + '">' + escapeHtml(row.name) + '</a><strong style="float:right">' + Number(row.rows).toLocaleString('tr-TR') + '</strong></div>').join('') : '<p class="muted">Tablo bulunamadı.</p>')
       + '</section>'
       + (data.preview ? '<section class="panel"><h2>' + escapeHtml(data.preview.table) + ' · kayıt önizleme</h2><form method="get" action="/owner/database"><input type="hidden" name="table" value="' + escapeHtml(data.preview.table) + '"><label>Güvenli alanlarda ara</label><input name="search" maxlength="80" value="' + escapeHtml(data.preview.search) + '" placeholder="Arama terimi"><button class="btn secondary">Ara</button></form>'
         + (data.preview.rows.length && data.preview.columns.length ? '<div style="overflow:auto"><table class="data-table"><thead><tr>' + data.preview.columns.map(name => '<th>' + escapeHtml(name) + '</th>').join('') + '</tr></thead><tbody>' + data.preview.rows.map(row => '<tr>' + data.preview.columns.map(name => '<td>' + escapeHtml(row[name]) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>' : '<p class="muted">Gösterilecek kayıt bulunamadı veya bu tabloda güvenli alan yok.</p>') + '</section>' : '')

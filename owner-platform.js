@@ -53,19 +53,25 @@ export async function deleteOwnerPartnerLink(db, partnerId, actorId = OWNER) {
 }
 
 export async function getOwnerRpgMetrics(db) {
-  const [users, inventory, activity] = await Promise.all([
-    db.query('SELECT COUNT(*)::int AS players,COALESCE(AVG(level),0)::numeric(10,1) AS average_level,COALESCE(SUM(coins),0)::bigint AS total_coins FROM users'),
-    db.query('SELECT COUNT(*)::int AS inventory_stacks,COALESCE(SUM(quantity),0)::bigint AS item_count FROM inventory'),
-    db.query('SELECT COALESCE(SUM(boss_defeats),0)::bigint AS boss_wins,COALESCE(SUM(dungeon_wins),0)::bigint AS dungeon_wins FROM users')
-  ]);
+  const result = await db.query(`
+    SELECT
+      (SELECT COUNT(*)::int FROM users) AS players,
+      (SELECT COALESCE(AVG(level),0)::numeric(10,1) FROM users) AS average_level,
+      (SELECT COALESCE(SUM(coins),0)::bigint FROM users) AS total_coins,
+      (SELECT COUNT(*)::int FROM inventory) AS inventory_stacks,
+      (SELECT COALESCE(SUM(quantity),0)::bigint FROM inventory) AS item_count,
+      (SELECT COALESCE(SUM(boss_defeats),0)::bigint FROM users) AS boss_wins,
+      (SELECT COALESCE(SUM(dungeon_wins),0)::bigint FROM users) AS dungeon_wins
+  `);
+  const row = result.rows?.[0] || {};
   return {
-    players: Number(users.rows?.[0]?.players || 0),
-    averageLevel: Number(users.rows?.[0]?.average_level || 0),
-    totalCoins: Number(users.rows?.[0]?.total_coins || 0),
-    inventoryStacks: Number(inventory.rows?.[0]?.inventory_stacks || 0),
-    itemCount: Number(inventory.rows?.[0]?.item_count || 0),
-    bossWins: Number(activity.rows?.[0]?.boss_wins || 0),
-    dungeonWins: Number(activity.rows?.[0]?.dungeon_wins || 0)
+    players: Number(row.players || 0),
+    averageLevel: Number(row.average_level || 0),
+    totalCoins: Number(row.total_coins || 0),
+    inventoryStacks: Number(row.inventory_stacks || 0),
+    itemCount: Number(row.item_count || 0),
+    bossWins: Number(row.boss_wins || 0),
+    dungeonWins: Number(row.dungeon_wins || 0)
   };
 }
 
