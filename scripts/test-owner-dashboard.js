@@ -640,7 +640,7 @@ test('owner navigation provides a safe public-site preview shortcut', () => {
 
 test('owner workspace layout places navigation and content in one balanced shell', () => {
   const html = renderOwnerLayout('<nav class="nav">navigation</nav>', '<section class="owner-content">content</section>');
-  assert.match(html, /^<div class="owner-shell">/);
-  assert.match(html, /<nav class="nav">navigation<\\/nav>/);
-  assert.match(html, /<div class="owner-content"><section class="owner-content">content<\\/section><\\/div><\\/div>$/);
+  assert.ok(html.startsWith('<div class="owner-shell">'));
+  assert.ok(html.includes('<nav class="nav">navigation</nav>'));
+  assert.ok(html.endsWith('<div class="owner-content"><section class="owner-content">content</section></div></div>'));
 });
