@@ -92,7 +92,7 @@ const healthServer = createServer(async (req, res) => {
     try {
       for await (const chunk of req) {
         raw += chunk.toString('utf8');
-        if (Buffer.byteLength(raw, 'utf8') > 6000) {
+        if (Buffer.byteLength(raw, 'utf8') > 20000) {
           res.writeHead(413, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({ error: 'payload_too_large' }));
           return;
