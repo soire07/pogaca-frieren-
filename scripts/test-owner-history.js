@@ -41,6 +41,7 @@ test('test reports are stored with bounded metadata and listed newest first', as
   });
   assert.equal(saved.id, 7);
   assert.ok(calls[0].params[3].length <= 24000);
+  assert.match(calls[0].sql, /LIMIT 500/);
   const history = await listOwnerTestRuns(db, { page: 1, limit: 10 });
   assert.equal(history.rows[0].target, 'boss hasarı');
   assert.match(calls[1].sql, /ORDER BY id DESC/);
