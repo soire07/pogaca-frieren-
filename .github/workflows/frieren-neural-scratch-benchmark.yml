@@ -45,8 +45,8 @@ jobs:
       - name: Run all 24 prompts with greedy 160-token decoding
         working-directory: frieren-neural
         run: |
-          python benchmarks/scratch_greedy_cpu.py \\
-            --checkpoint ../scratch-artifact/checkpoints/frieren-neural-small.pt \\
+          python benchmarks/scratch_greedy_cpu.py \
+            --checkpoint ../scratch-artifact/checkpoints/frieren-neural-small.pt \
             --output-dir benchmark-results/scratch-greedy --threads 2
       - name: Upload scratch benchmark and review sheet
         uses: actions/upload-artifact@v4
