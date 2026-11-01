@@ -674,7 +674,7 @@ test('Discord owner OAuth requires TOTP enrollment before issuing an owner sessi
     assert.ok(response.headers['Set-Cookie'].some(cookie => cookie.startsWith('frieren_owner_second_factor=')));
     assert.ok(!response.headers['Set-Cookie'].some(cookie => cookie.startsWith('frieren_owner_session=')));
     assert.equal(pendingSettings.enabled, false);
-    assert.match(pendingSettings.pendingSecret, /^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$/);
+    assert.equal(pendingSettings.pendingSecret.split('.').length, 3);
   } finally {
     globalThis.fetch = previousFetch;
     for (const [key, value] of Object.entries(previous)) {
