@@ -236,3 +236,18 @@ def test_login_rate_limit_is_atomic_under_concurrent_attempts():
     assert results.count(429) == 7
     with _login_attempts_lock:
         _login_attempts.pop("198.51.100.42", None)
+
+
+
+def test_session_token_rejects_malformed_and_oversized_fields(monkeypatch):
+    import time
+    from frieren_neural.api import _create_session_token, _valid_session_token
+
+    secret = "s" * 48
+    valid = _create_session_token(secret)
+    assert _valid_session_token(valid, secret)
+    assert not _valid_session_token(None, secret)
+    assert not _valid_session_token("9" * 5_000 + "." + "a" * 64, secret)
+    assert not _valid_session_token("١٧٣٠٠٠٠٠٠٠٠٠٠. " + "a" * 64, secret)
+    assert not _valid_session_token(str(int(time.time()) - 1) + "." + "a" * 64, secret)
+    assert not _valid_session_token(valid.split(".", 1)[0] + "." + "g" * 64, secret)
