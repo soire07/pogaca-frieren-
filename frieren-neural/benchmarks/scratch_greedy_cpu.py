@@ -106,10 +106,10 @@ def run(checkpoint: Path, output_dir: Path, threads: int = 2) -> dict[str, Any]:
     }
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "scratch-greedy-quality-report.json").write_text(
-        json.dumps(report, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8"
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     (output_dir / "human-scores.template.json").write_text(
-        json.dumps(empty_score_template(), ensure_ascii=False, indent=2) + "\\n", encoding="utf-8"
+        json.dumps(empty_score_template(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     return report
 
