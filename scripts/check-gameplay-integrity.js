@@ -438,3 +438,22 @@ test('market purchases, item consumption and equipment changes use one player-fi
   assert.ok(equipBegin >= 0 && equipPlayerLock > equipBegin && equipPlayerLock < equipInventoryLock && equipInventoryLock < equipWrite,
     'equipment changes must use the same player-first lock order');
 });
+
+
+test('trade acceptance serializes player, offer and collection rows in one stable lock order', async () => {
+  const handler = await read('index.js');
+  const command = await read('takasteklif.js');
+  const tradeHandler = handler.slice(handler.indexOf("trade_accept:"));
+  const playerLock = tradeHandler.indexOf('SELECT user_id FROM users');
+  const offerLock = tradeHandler.indexOf('SELECT * FROM trade_offers');
+  const collectionLock = tradeHandler.indexOf('FROM anime_character_collection');
+  assert.ok(playerLock >= 0 && offerLock > playerLock && collectionLock > offerLock,
+    'acceptance must lock player rows, then the offer, then the collection');
+  assert.ok(tradeHandler.includes('ORDER BY user_id FOR UPDATE'),
+    'both participants must be locked in deterministic order');
+  const createBegin = command.indexOf("await db.query('BEGIN')");
+  const createPlayerLock = command.indexOf('SELECT user_id FROM users', createBegin);
+  const createCollectionLock = command.indexOf('FROM anime_character_collection', createPlayerLock);
+  assert.ok(createBegin >= 0 && createPlayerLock > createBegin && createCollectionLock > createPlayerLock,
+    'offer creation must use the same player-before-collection order');
+});

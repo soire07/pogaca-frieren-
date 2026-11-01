@@ -207,6 +207,32 @@ client.on(Events.InteractionCreate, async interaction => {
     try {
       db = await pool.connect();
       await db.query('BEGIN');
+      // Read participant IDs without a lock; all accepting trade paths then lock
+      // both player rows in stable order before locking the offer or collection.
+      const snapshotResult = await db.query(
+        'SELECT from_user_id,to_user_id FROM trade_offers WHERE offer_id=$1 AND guild_id=$2',
+        [offerId, interaction.guildId]
+      );
+      const snapshot = snapshotResult.rows[0];
+      if (!snapshot) {
+        await db.query('ROLLBACK');
+        return interaction.reply({ content: 'Bu takas teklifi bulunamadı veya artık geçerli değil.', flags: MessageFlags.Ephemeral });
+      }
+      if (interaction.user.id !== snapshot.to_user_id) {
+        await db.query('ROLLBACK');
+        return interaction.reply({ content: 'Bu teklife yalnızca teklif gönderilen kullanıcı yanıt verebilir.', flags: MessageFlags.Ephemeral });
+      }
+      if (action === 'trade_accept') {
+        const playerLocks = await db.query(
+          'SELECT user_id FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE',
+          [interaction.guildId, [snapshot.from_user_id, snapshot.to_user_id].sort()]
+        );
+        if (playerLocks.rowCount !== 2) {
+          await db.query('ROLLBACK');
+          return interaction.update({ content: 'Takas katılımcılarından birinin RPG profili bulunamadı; teklif geçersiz sayıldı.', embeds: [], components: [] });
+        }
+      }
+
       const offerResult = await db.query(
         'SELECT * FROM trade_offers WHERE offer_id=$1 AND guild_id=$2 FOR UPDATE',
         [offerId, interaction.guildId]
