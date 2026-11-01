@@ -8,7 +8,7 @@
 - Duplicate names after trimming and case normalization: **0**
 - Highest RPG numeric suffix: **323**
 - Missing RPG numeric suffixes: **RPG-281 through RPG-299**
-- Individual feature IDs with manually inspected source + behavior-test traceability links: **24**
+- Individual feature IDs with manually inspected source + behavior-test traceability links: **31**
 - Of those, eight mastery-10 spell capstones have direct numeric unit-test assertions; boss phase entries use handler-level regression assertions.
 - Inventory statuses promoted based on this map: **0**
 - Discord test-guild verified feature IDs in this audit: **0**
@@ -38,7 +38,7 @@ The 317 records are an existing implementation catalogue, not 317 independently 
 | `scripts/test-command-interaction-coverage.js` | Command module discovery/import and valid interaction contracts |
 | `scripts/test-command-test-evidence.js` | A command cannot be marked PASS without a Discord response and command-specific behavioral assertions |
 
-A manually inspected traceability map now links 24 selected feature IDs to concrete source markers, named tests and explicit limitations in `feature-evidence.json`. The mapping is intentionally selective; it does not imply that the other 293 records have been individually verified, and it does not promote any inventory status.
+A manually inspected traceability map now links 31 selected feature IDs to concrete source markers, named tests and explicit limitations in `feature-evidence.json`. The mapping is intentionally selective; it does not imply that the other 293 records have been individually verified, and it does not promote any inventory status.
 
 ## Highest-risk follow-up audit areas
 
