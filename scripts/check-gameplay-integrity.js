@@ -403,9 +403,10 @@ test('same-player equipment mutations lock the player row before reading or writ
 
   const equipItem = source.indexOf('const item = equipmentItems.find');
   const equipBegin = source.indexOf("await db.query('BEGIN')", equipItem);
-  const equipLock = source.indexOf('SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', equipBegin);
   const equipOwned = source.indexOf('SELECT quantity FROM inventory', equipBegin);
+  const equipLock = source.indexOf('SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', equipBegin);
+  const equipSlots = source.indexOf('SELECT slot FROM user_equipment', equipBegin);
   const equipWrite = source.indexOf('INSERT INTO user_equipment', equipBegin);
-  assert.ok(equipItem >= 0 && equipBegin > equipItem && equipLock > equipBegin && equipLock < equipOwned && equipOwned < equipWrite,
-    'equip must serialize on the player row before inventory validation and equipped-slot writes');
+  assert.ok(equipItem >= 0 && equipBegin > equipItem && equipOwned > equipBegin && equipLock > equipOwned && equipLock < equipSlots && equipSlots < equipWrite,
+    'equip must lock inventory first, then serialize on the player row before reading or writing equipped slots');
 });
