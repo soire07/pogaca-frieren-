@@ -323,7 +323,7 @@ def test_training_stream_ends_each_assistant_turn_before_next_user():
             current = []
         elif token != tokenizer.bos_id:
             current.append(token)
-    assert tokenizer.decode(chunks[0]).endswith("Asistan: ilk yanıt\\n")
+    assert tokenizer.decode(chunks[0]).endswith("Asistan: ilk yanıt\n")
     assert tokenizer.decode(chunks[1]).startswith("Kullanıcı: ikinci soru\\n")
 
 
@@ -351,7 +351,7 @@ def test_evaluate_checkpoint_uses_chat_aware_dialogue_encoding(tmp_path: Path, m
         max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
         d_model=16, n_heads=2, n_layers=1, dropout=0.0,
     )
-    training.train_model(["Frieren studies magic. Fern studies spells. " * 12], checkpoint, config, device="cpu")
+    training.train_model(["Frieren studies magic. Fern studies spells. " * 60], checkpoint, config, device="cpu")
 
     observed = []
     original = training.encode_dialogue_stream
