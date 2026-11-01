@@ -1,0 +1,70 @@
+name: Frieren Neural CPU Baseline Training
+
+on:
+  push:
+    branches:
+      - frieren-neural-foundation
+    paths:
+      - "frieren-neural/.training-request"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frieren-neural-baseline-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: frieren-neural
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: frieren-neural/pyproject.toml
+      - name: Install CPU-only PyTorch
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+      - name: Install Frieren Neural
+        run: python -m pip install -e ".[dev,serve,discord]"
+      - name: Run complete test suite before training
+        run: pytest
+      - name: Prepare pinned and checksum-verified Turkish training data
+        run: frieren-neural-prepare-turkish-dialogues --output ./corpus/turkish-daily-dialogues
+      - name: Train the small CPU baseline
+        run: |
+          set -o pipefail
+          frieren-neural-train-small \
+            --data ./corpus/turkish-daily-dialogues \
+            --checkpoint ./checkpoints/frieren-neural-small.pt \
+            --steps 1000 | tee ./training-metrics.json
+      - name: Verify checkpoint can be loaded and generate a smoke sample
+        run: |
+          python - <<'PY'
+          import json
+          import math
+          from frieren_neural.training import generate_text, load_checkpoint
+
+          model, tokenizer, metrics = load_checkpoint("./checkpoints/frieren-neural-small.pt", device="cpu")
+          assert metrics["step"] == 1000, metrics
+          assert math.isfinite(metrics["train_loss"])
+          assert math.isfinite(metrics["validation_loss"])
+          sample = generate_text(model, tokenizer, "Kullanıcı: Merhaba.\nAsistan:", max_new_tokens=24, top_k=8)
+          print(json.dumps({"checkpoint": "loadable", "metrics": metrics, "sample": sample}, ensure_ascii=False, indent=2))
+          PY
+      - name: Upload model checkpoint and metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: frieren-neural-cpu-baseline-${{ github.sha }}
+          path: |
+            frieren-neural/checkpoints/frieren-neural-small.pt
+            frieren-neural/training-metrics.json
+            frieren-neural/corpus/turkish-daily-dialogues/corpus_manifest.json
+          if-no-files-found: error
+          retention-days: 30
