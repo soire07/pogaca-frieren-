@@ -18,11 +18,12 @@ const validPatch = [
 
 test('repair path allowlist accepts ordinary source and test files only', () => {
   assert.equal(isAllowedRepairPath('rpg-mechanics.js'), true);
-  assert.equal(isAllowedRepairPath('ai-agent/guardian-review.js'), true);
+  assert.equal(isAllowedRepairPath('ai-agent/owner-scenario-report.js'), true);
   assert.equal(isAllowedRepairPath('scripts/test-owner-dashboard.js'), true);
   assert.equal(isAllowedRepairPath('scripts/ai-self-repair.js'), false);
   assert.equal(isAllowedRepairPath('owner-dashboard.js'), false);
   assert.equal(isAllowedRepairPath('ai-agent/index.js'), false);
+  assert.equal(isAllowedRepairPath('ai-agent/memory-store.js'), false);
   assert.equal(isAllowedRepairPath('package.json'), false);
   assert.equal(isAllowedRepairPath('.env.js'), false);
   assert.equal(isAllowedRepairPath('ai-agent/config.js'), false);
@@ -51,7 +52,7 @@ test('repair diff rejects package, workflow, migration and path traversal change
 });
 
 test('repair diff is bounded to four files and rejects binary or rename patches', () => {
-  const binary = validPatch + '\ndiff --git a/ai-agent/guardian-review.js b/ai-agent/guardian-review.js\nGIT binary patch\n';
+  const binary = validPatch + '\ndiff --git a/ai-agent/owner-scenario-report.js b/ai-agent/owner-scenario-report.js\nGIT binary patch\n';
   assert.throws(() => validatePatchPaths(binary), { message: 'REPAIR_PATCH_FEATURE_NOT_ALLOWED' });
   const many = Array.from({ length: 5 }, (_, i) =>
     'diff --git a/file' + i + '.js b/file' + i + '.js\n--- a/file' + i + '.js\n+++ b/file' + i + '.js\n@@ -1 +1 @@\n-a\n+b'
