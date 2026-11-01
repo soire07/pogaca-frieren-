@@ -20,7 +20,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from .model import GPTLanguageModel
-from .quality_evaluation import format_benchmark_prompt
+from .chat_format import format_benchmark_prompt
 from .tokenizer import BPETokenizer
 from .training import generate_text, load_checkpoint
 
