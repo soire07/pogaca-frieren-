@@ -60,5 +60,5 @@ def test_evaluate_loss_returns_finite_validation_value():
         GPTConfig(vocab_size=tokenizer.vocab_size, d_model=16, n_heads=2, n_layers=1, max_seq_len=8, dropout=0.0)
     )
     data = torch.tensor(tokenizer.encode("Frieren and Fern " * 3), dtype=torch.long)
-    loss = evaluate_loss(model, data, data, batch_size=2, block_size=8, batches=2, seed=1)
+    loss = evaluate_loss(model, data, batch_size=2, block_size=8, batches=2, seed=1)
     assert torch.isfinite(torch.tensor(loss))
