@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
 
 const names = {
@@ -10,7 +10,7 @@ const names = {
 export default {
   data: new SlashCommandBuilder().setName('buyuustaligi').setDescription('Savaş büyülerinin ustalık seviyelerini göster.'),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     await ensureUser(interaction.guildId, interaction.user.id);
     const result = await pool.query(
       `SELECT l.spell_key, COALESCE(m.casts,0)::int AS casts, COALESCE(m.mastery_level,0)::int AS mastery_level
@@ -32,6 +32,6 @@ export default {
       .setDescription(lines.length ? lines.join('\n\n') : 'Henüz savaş büyüsü öğrenmedin. /buyuogren komutunu kullan.')
       .addFields({ name: '✨ Nasıl gelişir?', value: 'Her 10 kullanımda bir ustalık seviyesi kazanırsın. Seviye 10’da büyüne özel Uyanış açılır: Zoltraak +8 hasar, Alev Küresi +10, Buz Mızrağı +10 puan donma ihtimali, Koruyucu Bariyer +5 puan engelleme, Şifa Işığı +10 iyileştirme, Yıldırım Zinciri +12 hasar, Taş Duvar +5 puan engelleme, Mana Patlaması +15 hasar.' })
       .setFooter({ text: 'Poğaça Frieren • /iblisavasi' });
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 };

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 const shardValue={Yaygın:5,Nadir:12,Destansı:300,Efsanevi:500,Gizemli:2000};
 export default {
@@ -8,7 +8,7 @@ export default {
   .addStringOption(o=>o.setName('karakter').setDescription('Dönüştürülecek karakterin tam adı').setRequired(true))
   .addIntegerOption(o=>o.setName('miktar').setDescription('Kaç kopya parçalamak istiyorsun?').setMinValue(1).setRequired(true)),
  async execute(interaction){
-  if(!interaction.guildId)return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',ephemeral:true});
+  if(!interaction.guildId)return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',flags: MessageFlags.Ephemeral});
   const name=interaction.options.getString('karakter',true).trim();
   const amount=interaction.options.getInteger('miktar',true);
   await ensureUser(interaction.guildId,interaction.user.id);
@@ -21,13 +21,13 @@ export default {
    `,[interaction.guildId,interaction.user.id,name]);
    if(!found.rowCount){
     await client.query('ROLLBACK');
-    return interaction.reply({content:'Koleksiyonunda **'+name+'** bulunamadı. Karakter adını tam yaz.',ephemeral:true});
+    return interaction.reply({content:'Koleksiyonunda **'+name+'** bulunamadı. Karakter adını tam yaz.',flags: MessageFlags.Ephemeral});
    }
    const c=found.rows[0];
    const owned=Number(c.quantity);
    if(amount>=owned){
     await client.query('ROLLBACK');
-    return interaction.reply({content:'**'+c.character_name+'** karakterinden **'+owned+'** kopyan var. Koleksiyonundaki son kopyayı korumak için en fazla **'+(owned-1)+'** kopya parçalayabilirsin.',ephemeral:true});
+    return interaction.reply({content:'**'+c.character_name+'** karakterinden **'+owned+'** kopyan var. Koleksiyonundaki son kopyayı korumak için en fazla **'+(owned-1)+'** kopya parçalayabilirsin.',flags: MessageFlags.Ephemeral});
    }
    const rewardPerCopy=shardValue[c.rarity]??5;
    const reward=rewardPerCopy*amount;
@@ -41,7 +41,7 @@ export default {
   }catch(error){
    await client.query('ROLLBACK').catch(()=>{});
    console.error('Parçala komutu hatası:',error);
-   return interaction.reply({content:'Karakter kopyaları dönüştürülemedi. Daha sonra tekrar dene.',ephemeral:true}).catch(()=>{});
+   return interaction.reply({content:'Karakter kopyaları dönüştürülemedi. Daha sonra tekrar dene.',flags: MessageFlags.Ephemeral}).catch(()=>{});
   }finally{client.release();}
  }
 };

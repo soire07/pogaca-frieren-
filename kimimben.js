@@ -1,11 +1,9 @@
-import {
-  SlashCommandBuilder,
+import { SlashCommandBuilder,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType
-} from 'discord.js';
+  ComponentType, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { drawCharacter } from './character-data.js';
 
@@ -162,7 +160,7 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
     await interaction.deferReply();
     await ensureUser(interaction.guildId, interaction.user.id);
@@ -195,14 +193,14 @@ export default {
       if (button.user.id !== interaction.user.id) {
         return button.reply({
           content: 'Bu karakteri yalnızca komutu kullanan kişi yenileyebilir.',
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         }).catch(() => {});
       }
 
       try {
         const drawClaim = await claimDrawCooldown(interaction.guildId, interaction.user.id);
         if (!drawClaim.ok) {
-          return button.reply({ content: cooldownMessage(drawClaim), ephemeral: true }).catch(() => {});
+          return button.reply({ content: cooldownMessage(drawClaim), flags: MessageFlags.Ephemeral }).catch(() => {});
         }
         const nextCharacter = await drawForUser(interaction.guildId, interaction.user.id, character.name);
         const nextQuantity = await saveCharacter(interaction.guildId, interaction.user.id, nextCharacter);
@@ -216,7 +214,7 @@ export default {
         if (!button.replied && !button.deferred) {
           await button.reply({
             content: 'Karakter kaydedilirken bir hata oluştu. Tekrar deneyebilirsin.',
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
           }).catch(() => {});
         }
       }

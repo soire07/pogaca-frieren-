@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
@@ -20,12 +20,12 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Zindan yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Zindan yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
 
     const teammate = interaction.options.getUser('takim_arkadasi', true);
     if (teammate.bot || teammate.id === interaction.user.id) {
-      return interaction.reply({ content: 'Zindana girmek için kendin dışında gerçek bir oyuncu seçmelisin.', ephemeral: true });
+      return interaction.reply({ content: 'Zindana girmek için kendin dışında gerçek bir oyuncu seçmelisin.', flags: MessageFlags.Ephemeral });
     }
 
     await ensureUser(interaction.guildId, interaction.user.id);

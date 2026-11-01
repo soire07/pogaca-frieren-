@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { levelForXp } from './utils.js';
 
@@ -22,7 +22,7 @@ export default {
     .addIntegerOption(option => option.setName('adet').setDescription('Açılacak sandık sayısı (1–5).')
       .setRequired(false).setMinValue(1).setMaxValue(5)),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     await ensureUser(interaction.guildId, interaction.user.id);
     await interaction.deferReply();
     const amount = interaction.options.getInteger('adet') || 1;

@@ -700,7 +700,7 @@ client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
   const allowedGuildId = process.env.DISCORD_GUILD_ID?.trim() || '1564945192803639356';
   if (!interaction.guildId || !allowedGuildId || interaction.guildId !== allowedGuildId) {
-    if (interaction.isRepliable()) await interaction.reply({ content: 'Frieren AI yalnızca yapılandırılmış test sunucusunda kullanılabilir.', ephemeral: true }).catch(() => {});
+    if (interaction.isRepliable()) await interaction.reply({ content: 'Frieren AI yalnızca yapılandırılmış test sunucusunda kullanılabilir.', flags: MessageFlags.Ephemeral }).catch(() => {});
     return;
   }
 
@@ -783,7 +783,7 @@ client.on(Events.InteractionCreate, async interaction => {
       return;
     }
     try {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const action = interaction.options.getSubcommand();
       if (action === 'kaydet') {
         const key = interaction.options.getString('anahtar', true).trim();

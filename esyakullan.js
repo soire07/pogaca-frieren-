@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 
@@ -87,7 +87,7 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
 
     const itemId = interaction.options.getString('esya', true);
@@ -112,7 +112,7 @@ export default {
         await db.query('ROLLBACK');
         return interaction.reply({
           content: 'Bu eşya envanterinde yok. Önce /market üzerinden satın alman gerekiyor.',
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -178,11 +178,11 @@ export default {
         .setFooter({ text: 'Poğaça Frieren • Eşyalar kalıcı envanterinden düşülür' })
         .setTimestamp();
 
-      return interaction.reply({ embeds: [embed], ephemeral: true });
+      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     } catch (error) {
       await db.query('ROLLBACK').catch(() => {});
       console.error('Eşya kullanma hatası:', error);
-      return interaction.reply({ content: 'Eşya kullanılırken bir sorun oluştu. Daha sonra tekrar dene.', ephemeral: true }).catch(() => {});
+      return interaction.reply({ content: 'Eşya kullanılırken bir sorun oluştu. Daha sonra tekrar dene.', flags: MessageFlags.Ephemeral }).catch(() => {});
     } finally {
       db.release();
     }

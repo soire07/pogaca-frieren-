@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
 import { JOURNAL_COLLECTIONS } from '../../gameplay-depth.js';
 import { getJournalEntries, getClaimedJournalCollections, recordJournalEntry, claimJournalCollection } from '../../gameplay-journal.js';
@@ -18,11 +18,11 @@ export default {
     if (!interaction.guildId) {
       return interaction.reply({
         content: 'Macera günlüğü yalnızca bir Discord sunucusunda kullanılabilir.',
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
       await ensureUser(interaction.guildId, interaction.user.id);

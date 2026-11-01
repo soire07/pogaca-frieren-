@@ -1,4 +1,4 @@
-import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { EmbedBuilder, SlashCommandBuilder, MessageFlags } from 'discord.js';
 
 function formatUptime(milliseconds) {
   const totalSeconds = Math.floor(Math.max(0, milliseconds) / 1000);
@@ -31,6 +31,6 @@ export default {
       )
       .setTimestamp()
       .setFooter({ text: 'Durum bilgisi canlı bot sürecinden alınır.' });
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   },
 };

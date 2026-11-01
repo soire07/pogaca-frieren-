@@ -1,5 +1,5 @@
 
-import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentSlots, formatEquipmentBonus } from './equipment-data.js';
 
@@ -10,11 +10,11 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
 
     // Acknowledge immediately so inventory/equipment queries cannot expire the interaction.
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     await ensureUser(interaction.guildId, interaction.user.id);
 
     const { rows } = await pool.query(
@@ -55,7 +55,7 @@ export default {
       embeds: [embed],
       files: [gif],
       components: [row],
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 };

@@ -1,5 +1,5 @@
 
-import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { xpForNextLevel } from './utils.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
@@ -18,7 +18,7 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
 
     const target =
@@ -39,7 +39,7 @@ export default {
     if (!u) {
       return interaction.reply({
         content: 'Profil bilgileri bulunamadı. Lütfen tekrar dene.',
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 

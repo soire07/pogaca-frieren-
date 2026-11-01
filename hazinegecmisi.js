@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 
 export default {
@@ -6,7 +6,7 @@ export default {
     .setName('hazinegecmisi')
     .setDescription('Son açtığın 10 Kadim Hazine Sandığı ve ganimetlerini görüntüle.'),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     await ensureUser(interaction.guildId, interaction.user.id);
     const { rows } = await pool.query(
       'SELECT loot_item, coins, xp, opened_at FROM treasure_openings WHERE guild_id=$1 AND user_id=$2 ORDER BY opened_at DESC, id DESC LIMIT 10',
@@ -20,6 +20,6 @@ export default {
       .setTitle('📜 Hazine Açma Geçmişi')
       .setDescription(description)
       .setFooter({ text: 'Poğaça Frieren • En son 10 sandığın kaydı gösterilir.' });
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 };

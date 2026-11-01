@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
 import { recordJournalEntry } from '../../gameplay-journal.js';
 
@@ -33,7 +33,7 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Büyüler yalnızca sunucularda öğrenilebilir.', ephemeral: true });
+      return interaction.reply({ content: 'Büyüler yalnızca sunucularda öğrenilebilir.', flags: MessageFlags.Ephemeral });
     }
 
     const spellKey = interaction.options.getString('buyu', true);
@@ -50,12 +50,12 @@ export default {
       );
       if (!player.rowCount) {
         await db.query('ROLLBACK');
-        return interaction.reply({ content: 'Maceracı kaydın bulunamadı. Lütfen komutu yeniden dene.', ephemeral: true });
+        return interaction.reply({ content: 'Maceracı kaydın bulunamadı. Lütfen komutu yeniden dene.', flags: MessageFlags.Ephemeral });
       }
 
       if ((spell.level && Number(player.rows[0].level) < spell.level) || (spell.bossDefeats && Number(player.rows[0].boss_defeats) < spell.bossDefeats)) {
         await db.query('ROLLBACK');
-        return interaction.reply({ content: `**${spell.name}** henüz kilitli. Gereksinimler: seviye **${spell.level}** ve **${spell.bossDefeats} boss zaferi**. Şu an: seviye **${player.rows[0].level}**, boss zaferi **${player.rows[0].boss_defeats}**.`, ephemeral: true });
+        return interaction.reply({ content: `**${spell.name}** henüz kilitli. Gereksinimler: seviye **${spell.level}** ve **${spell.bossDefeats} boss zaferi**. Şu an: seviye **${player.rows[0].level}**, boss zaferi **${player.rows[0].boss_defeats}**.`, flags: MessageFlags.Ephemeral });
       }
 
       const already = await db.query(
@@ -64,7 +64,7 @@ export default {
       );
       if (already.rowCount) {
         await db.query('ROLLBACK');
-        return interaction.reply({ content: `Bu büyüyü zaten öğrendin: **${spell.name}**. /buyular ile büyü arşivini görebilirsin.`, ephemeral: true });
+        return interaction.reply({ content: `Bu büyüyü zaten öğrendin: **${spell.name}**. /buyular ile büyü arşivini görebilirsin.`, flags: MessageFlags.Ephemeral });
       }
 
       const purchase = await db.query(
@@ -73,7 +73,7 @@ export default {
       );
       if (!purchase.rowCount) {
         await db.query('ROLLBACK');
-        return interaction.reply({ content: `**${spell.name}** öğrenmek için ${spell.cost} altın gerekiyor. Bakiyeni /bakiye ile kontrol et.`, ephemeral: true });
+        return interaction.reply({ content: `**${spell.name}** öğrenmek için ${spell.cost} altın gerekiyor. Bakiyeni /bakiye ile kontrol et.`, flags: MessageFlags.Ephemeral });
       }
 
       await db.query(
@@ -98,7 +98,7 @@ export default {
     } catch (error) {
       await db.query('ROLLBACK').catch(() => {});
       console.error('/buyuogren hatası:', error);
-      return interaction.reply({ content: 'Büyü öğrenilirken bir hata oluştu. Lütfen daha sonra tekrar dene.', ephemeral: true }).catch(() => {});
+      return interaction.reply({ content: 'Büyü öğrenilirken bir hata oluştu. Lütfen daha sonra tekrar dene.', flags: MessageFlags.Ephemeral }).catch(() => {});
     } finally {
       db.release();
     }

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { drawCharacter } from './character-data.js';
 
@@ -19,7 +19,7 @@ async function saveCharacter(db, guildId, userId, c) {
 export default {
   data: new SlashCommandBuilder().setName('karaktercek').setDescription('Her 24 saatte bir ücretsiz anime karakteri keşfet.'),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',ephemeral:true});
+    if (!interaction.guildId) return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',flags: MessageFlags.Ephemeral});
     await interaction.deferReply();
     const { guildId, user } = interaction;
     try {

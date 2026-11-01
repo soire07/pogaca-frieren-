@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems } from './equipment-data.js';
 
@@ -24,9 +24,9 @@ export default {
     .addIntegerOption(option => option.setName('adet').setDescription('Parçalanacak adet (1–5).')
       .setRequired(false).setMinValue(1).setMaxValue(5)),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     await ensureUser(interaction.guildId, interaction.user.id);
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const itemId = interaction.options.getString('esya');
     const amount = interaction.options.getInteger('adet') || 1;
     if (!itemId) {

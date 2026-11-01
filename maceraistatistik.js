@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { ADVENTURE_DISCOVERIES } from './adventure-data.js';
 
@@ -7,7 +7,7 @@ export default {
     .setName('maceraistatistik')
     .setDescription('Macera geçmişini, keşiflerini, seri ve hazine ilerlemeni tek yerde gör.'),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     await ensureUser(interaction.guildId, interaction.user.id);
     const { rows: [stats] } = await pool.query(
       `SELECT u.level, u.xp, u.coins, u.last_adventure_at,

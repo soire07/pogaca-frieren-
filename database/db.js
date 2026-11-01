@@ -1,5 +1,5 @@
 import pg from 'pg';
-import { safeDatabaseHostname } from './connection-diagnostics.js';
+import { safeDatabaseHostname, normalizePostgresConnectionString } from './connection-diagnostics.js';
 import { configureIsolatedTestClient } from './isolated-test-schema.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
@@ -8,17 +8,25 @@ if (!process.env.DATABASE_URL) {
   console.warn('UYARI: DATABASE_URL ayarlı değil. Bot veritabanı olmadan başlatılamaz.');
 }
 
-const productionPool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : undefined,
+const databaseConnectionString = normalizePostgresConnectionString(process.env.DATABASE_URL);
+const databaseHasExplicitSslMode = (() => {
+  try { return new URL(databaseConnectionString).searchParams.has('sslmode'); } catch { return false; }
+})();
+const databasePoolOptions = {
+  connectionString: databaseConnectionString,
   max: 5,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 10_000
-});
+};
+// An explicit URL sslmode takes precedence over config.ssl in node-postgres.
+// Retain PGSSL behavior for URLs that do not specify an SSL mode.
+if (!databaseHasExplicitSslMode && process.env.PGSSL === 'true') {
+  databasePoolOptions.ssl = { rejectUnauthorized: false };
+}
+const productionPool = new Pool(databasePoolOptions);
 const testContext = new AsyncLocalStorage();
 const isolatedTestPool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : undefined,
+  ...databasePoolOptions,
   max: 2,
   idleTimeoutMillis: 10_000,
   connectionTimeoutMillis: 10_000

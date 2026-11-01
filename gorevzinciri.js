@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { levelForXp } from './utils.js';
 import { getLevelScaledQuestReward } from './rpg-mechanics.js';
@@ -14,8 +14,8 @@ export default {
     .addStringOption(option => option.setName('odul').setDescription('Sıradaki tamamlanmış aşamanın ödülünü almak için seç.')
       .addChoices({ name: '1. Aşama ödülünü al', value: '1' }, { name: '2. Aşama ödülünü al', value: '2' }, { name: '3. Aşama ödülünü al', value: '3' }).setRequired(false)),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
-    await interaction.deferReply({ ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     try {
       await ensureUser(interaction.guildId, interaction.user.id);
       const requestedStep = interaction.options.getString('odul');

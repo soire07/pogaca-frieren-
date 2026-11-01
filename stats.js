@@ -1,11 +1,11 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool } from './database/db.js';
 
 export default {
   data: new SlashCommandBuilder().setName('istatistik').setDescription('Bot ve sunucu istatistiklerini gösterir.'),
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
     const result = await pool.query('SELECT COUNT(*)::int AS players, COALESCE(MAX(level), 1)::int AS max_level FROM users WHERE guild_id = $1', [interaction.guildId]);
     const row = result.rows[0];
@@ -16,6 +16,6 @@ export default {
         { name: 'En yüksek seviye', value: String(row.max_level), inline: true },
         { name: 'Ping', value: `${interaction.client.ws.ping} ms`, inline: true }
       );
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 };

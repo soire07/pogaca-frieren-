@@ -1,11 +1,9 @@
 
-import {
-  SlashCommandBuilder,
+import { SlashCommandBuilder,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle
-} from 'discord.js';
+  ButtonStyle, MessageFlags } from 'discord.js';
 
 const spells = [
   { name: 'Zoltraak', type: 'Saldırı büyüsü', description: 'Hedefe yoğun büyü enerjisi göndererek doğrudan hasar verir.', emoji: '⚡' },
@@ -101,7 +99,7 @@ export default {
       if (button.user.id !== interaction.user.id) {
         await button.reply({
           content: 'Bu büyü kitabını yalnızca komutu kullanan kişi kontrol edebilir. 🪄',
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
         return;
       }

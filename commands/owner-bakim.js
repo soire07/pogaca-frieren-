@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { ownerOnly, setMaintenanceState } from '../owner-admin.js';
 import { pool } from '../database/db.js';
 
@@ -9,6 +9,6 @@ export default {
     if (!await ownerOnly(interaction)) return;
     const enabled = interaction.options.getBoolean('aktif', true);
     await setMaintenanceState(pool, enabled, interaction.user.id);
-    await interaction.reply({ content: enabled ? 'Bakım modu açıldı. Owner dışındaki kullanıcı komutları geçici olarak durduruldu.' : 'Bakım modu kapatıldı. Bot normal çalışmaya döndü.', ephemeral: true });
+    await interaction.reply({ content: enabled ? 'Bakım modu açıldı. Owner dışındaki kullanıcı komutları geçici olarak durduruldu.' : 'Bakım modu kapatıldı. Bot normal çalışmaya döndü.', flags: MessageFlags.Ephemeral });
   }
 };

@@ -1,5 +1,5 @@
 
-import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { levelForXp } from './utils.js';
 import { ADVENTURE_DISCOVERIES, ADVENTURE_DISCOVERY_REWARD, COMPLETE_ADVENTURE_JOURNAL_REWARD } from './adventure-data.js';
@@ -32,7 +32,7 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
     await ensureUser(interaction.guildId, interaction.user.id);
 
@@ -51,7 +51,7 @@ export default {
         await client.query('ROLLBACK');
         return interaction.reply({
           content: '⏳ Yeni maceraya çıkmadan önce 10 dakika beklemelisin.',
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
 

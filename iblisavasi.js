@@ -5,8 +5,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType
-} from 'discord.js';
+  ComponentType, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { claimSoloBossReward } from './rpg-reward-transactions.js';
 import { getGuildRpgContent } from './owner-rpg-content.js';
@@ -72,7 +71,7 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'İblis avı yalnızca sunucularda yapılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'İblis avı yalnızca sunucularda yapılabilir.', flags: MessageFlags.Ephemeral });
     }
 
     await interaction.deferReply();
@@ -194,7 +193,7 @@ export default {
 
     collector.on('collect', async button => {
       if (button.user.id !== interaction.user.id) {
-        return button.reply({ content: 'Bu iblis avı yalnızca komutu başlatan gezgine ait.', ephemeral: true });
+        return button.reply({ content: 'Bu iblis avı yalnızca komutu başlatan gezgine ait.', flags: MessageFlags.Ephemeral });
       }
       if (finished || busy) return button.deferUpdate().catch(() => {});
       busy = true;
@@ -224,7 +223,7 @@ export default {
           };
           return button.reply({
             content: `Bu büyüyü henüz öğrenmedin. ${spellNames[requiredSpell] ? `**${spellNames[requiredSpell]}** için /buyuogren komutunu kullan.` : 'Başlangıç büyün hazır.'}`,
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
           });
         }
 
@@ -236,7 +235,7 @@ export default {
           const spellCost = applyClassManaCost(8, stats.class_name);
           if (playerMana < spellCost) {
             busy = false;
-            return button.reply({ content: `Zoltraak için en az **${spellCost} Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.`, ephemeral: true });
+            return button.reply({ content: `Zoltraak için en az **${spellCost} Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.`, flags: MessageFlags.Ephemeral });
           }
           playerMana -= spellCost;
           spellUsed = 'zoltraak';
@@ -247,7 +246,7 @@ export default {
           const spellCost = applyClassManaCost(14, stats.class_name);
           if (playerMana < spellCost) {
             busy = false;
-            return button.reply({ content: `Alev Küresi için en az **${spellCost} Mana** gerekiyor.`, ephemeral: true });
+            return button.reply({ content: `Alev Küresi için en az **${spellCost} Mana** gerekiyor.`, flags: MessageFlags.Ephemeral });
           }
           playerMana -= spellCost;
           spellUsed = 'alev_kuresi';
@@ -258,7 +257,7 @@ export default {
           const spellCost = applyClassManaCost(12, stats.class_name);
           if (playerMana < spellCost) {
             busy = false;
-            return button.reply({ content: `Buz Mızrağı için en az **${spellCost} Mana** gerekiyor.`, ephemeral: true });
+            return button.reply({ content: `Buz Mızrağı için en az **${spellCost} Mana** gerekiyor.`, flags: MessageFlags.Ephemeral });
           }
           playerMana -= spellCost;
           spellUsed = 'buz_mizragi';
@@ -271,7 +270,7 @@ export default {
           const spellCost = applyClassManaCost(6, stats.class_name);
           if (playerMana < spellCost) {
             busy = false;
-            return button.reply({ content: `Savunma büyüsü için en az **${spellCost} Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.`, ephemeral: true });
+            return button.reply({ content: `Savunma büyüsü için en az **${spellCost} Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.`, flags: MessageFlags.Ephemeral });
           }
           playerMana -= spellCost;
           spellUsed = 'koruyucu_bariyer';
@@ -281,12 +280,12 @@ export default {
         } else if (button.customId === 'demon_heal') {
           if (healUsed) {
             busy = false;
-            return button.reply({ content: 'İyileşme büyünü bu savaşta zaten kullandın.', ephemeral: true });
+            return button.reply({ content: 'İyileşme büyünü bu savaşta zaten kullandın.', flags: MessageFlags.Ephemeral });
           }
           const spellCost = applyClassManaCost(20, stats.class_name);
           if (playerMana < spellCost) {
             busy = false;
-            return button.reply({ content: `İyileşme büyüsü için en az **${spellCost} Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.`, ephemeral: true });
+            return button.reply({ content: `İyileşme büyüsü için en az **${spellCost} Mana** gerekiyor. /dinlen ile mananı yenileyebilirsin.`, flags: MessageFlags.Ephemeral });
           }
           playerMana -= spellCost;
           spellUsed = 'sifa_isigi';
@@ -299,19 +298,19 @@ export default {
 
         if (button.customId === 'demon_chain') {
           const spellCost = applyClassManaCost(22, stats.class_name);
-          if (playerMana < spellCost) { busy = false; return button.reply({ content: `Yıldırım Zinciri için en az **${spellCost} Mana** gerekiyor.`, ephemeral: true }); }
+          if (playerMana < spellCost) { busy = false; return button.reply({ content: `Yıldırım Zinciri için en az **${spellCost} Mana** gerekiyor.`, flags: MessageFlags.Ephemeral }); }
           playerMana -= spellCost; spellUsed = 'yildirim_zinciri';
           const damage = applyClassDamage(Math.floor(Math.random() * 16) + 42 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 2 + getSpellMasteryAwakening(spellUsed, spellMastery.get(spellUsed)).damage, stats.class_name);
           bossHp = Math.max(0, bossHp - damage); actionText = `⚡ **Yıldırım Zinciri** hedefi sardı ve **${damage} hasar** verdi. (Mana: −${spellCost})`;
         } else if (button.customId === 'demon_wall') {
           const spellCost = applyClassManaCost(12, stats.class_name);
-          if (playerMana < spellCost) { busy = false; return button.reply({ content: `Taş Duvar için en az **${spellCost} Mana** gerekiyor.`, ephemeral: true }); }
+          if (playerMana < spellCost) { busy = false; return button.reply({ content: `Taş Duvar için en az **${spellCost} Mana** gerekiyor.`, flags: MessageFlags.Ephemeral }); }
           playerMana -= spellCost; spellUsed = 'tas_duvar'; fortified = true;
           fortifiedReduction = Math.min(0.95, 0.75 + (spellMastery.get(spellUsed) || 0) * 0.015 + getSpellMasteryAwakening(spellUsed, spellMastery.get(spellUsed)).wallReduction);
           actionText = `🪨 **Taş Duvar** yükseldi. Bu tur boss hasarının **%${Math.round(fortifiedReduction * 100)}** kadarını engelleyecek. (Mana: −${spellCost})`;
         } else if (button.customId === 'demon_burst') {
           const spellCost = applyClassManaCost(30, stats.class_name);
-          if (playerMana < spellCost) { busy = false; return button.reply({ content: `Mana Patlaması için en az **${spellCost} Mana** gerekiyor.`, ephemeral: true }); }
+          if (playerMana < spellCost) { busy = false; return button.reply({ content: `Mana Patlaması için en az **${spellCost} Mana** gerekiyor.`, flags: MessageFlags.Ephemeral }); }
           playerMana -= spellCost; spellUsed = 'mana_patlamasi';
           const damage = applyClassDamage(Math.floor(Math.random() * 21) + 65 + attack + upgradeBonus + (spellMastery.get(spellUsed) || 0) * 3 + getSpellMasteryAwakening(spellUsed, spellMastery.get(spellUsed)).damage, stats.class_name);
           bossHp = Math.max(0, bossHp - damage); actionText = `🌌 **Mana Patlaması** büyük bir enerji dalgası oluşturdu: **${damage} hasar**! (Mana: −${spellCost})`;
@@ -449,7 +448,7 @@ export default {
         });
       } catch (error) {
         console.error('/iblisavasi hatası:', error);
-        if (!button.replied && !button.deferred) await button.reply({ content: 'Savaş sırasında bir hata oluştu. Lütfen daha sonra tekrar dene.', ephemeral: true }).catch(() => {});
+        if (!button.replied && !button.deferred) await button.reply({ content: 'Savaş sırasında bir hata oluştu. Lütfen daha sonra tekrar dene.', flags: MessageFlags.Ephemeral }).catch(() => {});
       } finally {
         busy = false;
       }

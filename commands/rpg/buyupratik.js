@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
 
 const spellChoices = [
@@ -26,8 +26,8 @@ export default {
     .setDescription('Başlangıç büyün veya öğrendiğin bir büyü için ücretli ustalık pratiği yap.')
     .addStringOption(option => option.setName('buyu').setDescription('Pratik yapacağın büyü').setRequired(true).addChoices(...spellChoices)),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: 'Büyü pratiği yalnızca sunucularda kullanılabilir.', ephemeral: true });
-    await interaction.deferReply({ ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: 'Büyü pratiği yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const spellKey = interaction.options.getString('buyu', true);
     const spellName = spellNames[spellKey];
     if (!spellName) return interaction.editReply('Bu büyü kataloğunda bulunamadı.');

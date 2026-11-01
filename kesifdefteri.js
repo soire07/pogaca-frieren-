@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { ADVENTURE_DISCOVERIES, COMPLETE_ADVENTURE_JOURNAL_REWARD } from './adventure-data.js';
 
@@ -7,7 +7,7 @@ export default {
     .setName('kesifdefteri')
     .setDescription('Maceralarda bulduğun yerleri, keşif ödüllerini ve tamamlanma durumunu gör.'),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     await ensureUser(interaction.guildId, interaction.user.id);
     const { rows } = await pool.query(
       'SELECT discovery_key, discovered_at FROM adventure_discoveries WHERE guild_id=$1 AND user_id=$2 ORDER BY discovered_at',

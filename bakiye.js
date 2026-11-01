@@ -1,10 +1,10 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 export default {
  data:new SlashCommandBuilder().setName('bakiye').setDescription('Poğaça altını bakiyeni göster.')
   .addUserOption(o=>o.setName('kullanici').setDescription('Bakiyesini görmek istediğin kullanıcı').setRequired(false)),
  async execute(interaction){
-  if(!interaction.guildId)return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',ephemeral:true});
+  if(!interaction.guildId)return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',flags: MessageFlags.Ephemeral});
   const target=interaction.options.getUser('kullanici')??interaction.user;
   await ensureUser(interaction.guildId,target.id);
   const result=await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2',[interaction.guildId,target.id]);

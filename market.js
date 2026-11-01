@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, formatEquipmentBonus } from './equipment-data.js';
 
@@ -147,8 +147,8 @@ export async function renderMarketInventory(guildId, userId) {
 export default {
  data:new SlashCommandBuilder().setName('market').setDescription('Butonlu, görsel anime temalı eşyalar marketini aç.'),
  async execute(interaction){
-  if(!interaction.guildId)return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',ephemeral:true});
+  if(!interaction.guildId)return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',flags: MessageFlags.Ephemeral});
   const panel=await renderMarket(interaction.guildId,interaction.user.id);
-  return interaction.reply({...panel,ephemeral:true});
+  return interaction.reply({...panel,flags: MessageFlags.Ephemeral});
  }
 };

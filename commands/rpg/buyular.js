@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
 
 const spellDetails = {
@@ -19,7 +19,7 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Büyü arşivi yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Büyü arşivi yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
     await ensureUser(interaction.guildId, interaction.user.id);
     const result = await pool.query(
@@ -39,6 +39,6 @@ export default {
       .setTitle('📚 Öğrendiğin Savaş Büyüleri')
       .setDescription(lines.length ? lines.join('\n') : 'Henüz savaş büyüsü öğrenmedin. /buyuogren komutunu kullan.')
       .setFooter({ text: `Poğaça Frieren • ${lines.length} kullanılabilir büyü · Zoltraak başlangıç büyüsüdür` });
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 };

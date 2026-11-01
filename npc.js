@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { levelForXp } from './utils.js';
 
@@ -81,10 +81,10 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'NPC sistemi yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'NPC sistemi yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const guildId = interaction.guildId;
     const userId = interaction.user.id;
     const npcKey = interaction.options.getString('karakter');

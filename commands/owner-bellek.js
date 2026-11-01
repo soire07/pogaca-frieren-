@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { ownerOnly, listUserMemories, deleteUserMemory, createOwnerEmbed } from '../owner-admin.js';
 import { pool } from '../database/db.js';
 
@@ -18,11 +18,11 @@ export default {
       const guildId = interaction.options.getString('sunucu');
       const rows = await listUserMemories(pool, userId, guildId, 8);
       const description = rows.length ? rows.map(row => '**#' + row.id + ' · ' + row.memory_key + '** (sunucu ' + row.guild_id + ')\n' + row.memory_value).join('\n\n') : 'Bu kullanıcı için kayıtlı hafıza bulunamadı.';
-      return interaction.reply({ embeds: [createOwnerEmbed('Kullanıcı hafızaları', description)], ephemeral: true });
+      return interaction.reply({ embeds: [createOwnerEmbed('Kullanıcı hafızaları', description)], flags: MessageFlags.Ephemeral });
     }
-    if (!interaction.options.getBoolean('onay', true)) return interaction.reply({ content: 'Silme işlemi için onay=true seçmelisin.', ephemeral: true });
+    if (!interaction.options.getBoolean('onay', true)) return interaction.reply({ content: 'Silme işlemi için onay=true seçmelisin.', flags: MessageFlags.Ephemeral });
     const id = interaction.options.getInteger('kayit', true);
     const deleted = await deleteUserMemory(pool, id, interaction.user.id);
-    return interaction.reply({ content: deleted ? '#' + deleted.id + ' numaralı hafıza kaydı silindi.' : 'Bu kayıt bulunamadı.', ephemeral: true });
+    return interaction.reply({ content: deleted ? '#' + deleted.id + ' numaralı hafıza kaydı silindi.' : 'Bu kayıt bulunamadı.', flags: MessageFlags.Ephemeral });
   }
 };

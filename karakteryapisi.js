@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { CHARACTER_BUILDS, getCharacterBuild } from './rpg-mechanics.js';
 
@@ -18,7 +18,7 @@ export default {
         { name: '🔮 Büyücü — +%25 mana, +%10 saldırı, -%10 savunma', value: 'buyucu' }
       )),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: 'Karakter yapıları yalnızca sunucularda kullanılabilir.', ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: 'Karakter yapıları yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     await ensureUser(interaction.guildId, interaction.user.id);
     const selected = interaction.options.getString('yapi');
     if (selected) {
@@ -40,6 +40,6 @@ export default {
         }))
       )
       .setFooter({ text: 'Poğaça Frieren • Tarzını seç, Kuzey yolculuğuna hazırlan.' });
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 };

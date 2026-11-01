@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { safeDatabaseHostname } from '../database/connection-diagnostics.js';
+import { safeDatabaseHostname, normalizePostgresConnectionString } from '../database/connection-diagnostics.js';
 import { configureIsolatedTestClient } from '../database/isolated-test-schema.js';
 
 test('database diagnostics expose only the endpoint hostname', () => {
@@ -34,4 +34,27 @@ test('isolated test client schema setup runs only once per pooled connection', a
   await configureIsolatedTestClient(client);
 
   assert.equal(calls, 1);
+});
+
+
+test('legacy PostgreSQL SSL aliases are made explicitly verify-full without changing unrelated connection fields', () => {
+  for (const sslmode of ['prefer', 'require', 'verify-ca']) {
+    const source = 'postgresql://user:password@db.example.test:5432/app?sslmode=' + sslmode + '&application_name=frieren';
+    const normalized = normalizePostgresConnectionString(source);
+    const parsed = new URL(normalized);
+    assert.equal(parsed.searchParams.get('sslmode'), 'verify-full');
+    assert.equal(parsed.searchParams.get('application_name'), 'frieren');
+    assert.equal(parsed.hostname, 'db.example.test');
+    assert.equal(parsed.pathname, '/app');
+  }
+});
+
+test('PostgreSQL SSL normalization leaves strict, disabled, invalid and non-PostgreSQL URLs unchanged', () => {
+  for (const source of [
+    'postgres://db.example.test/app?sslmode=verify-full',
+    'postgres://db.example.test/app?sslmode=disable',
+    'not-a-database-url?sslmode=require',
+    'https://example.test/path?sslmode=require',
+  ]) assert.equal(normalizePostgresConnectionString(source), source);
+  assert.equal(normalizePostgresConnectionString(null), null);
 });

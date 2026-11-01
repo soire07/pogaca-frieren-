@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { createApprovalRequest } from '../owner-admin.js';
 import { pool } from '../database/db.js';
 
@@ -19,12 +19,12 @@ export default {
         title,
         details
       });
-      await interaction.reply({ content: 'Talebin Owner inceleme kuyruğuna eklendi. Talep numarası: **#' + id + '**. Lütfen parola, token veya API anahtarı paylaşma.', ephemeral: true });
+      await interaction.reply({ content: 'Talebin Owner inceleme kuyruğuna eklendi. Talep numarası: **#' + id + '**. Lütfen parola, token veya API anahtarı paylaşma.', flags: MessageFlags.Ephemeral });
     } catch (error) {
       const message = error.message === 'POSSIBLE_SECRET_IN_REQUEST'
         ? 'Açıklamada parola veya anahtar olabilecek bir ifade var. Gizli bilgileri paylaşmadan yeniden gönder.'
         : 'Talep kaydedilemedi. Başlığı ve açıklamayı kontrol et.';
-      await interaction.reply({ content: message, ephemeral: true });
+      await interaction.reply({ content: message, flags: MessageFlags.Ephemeral });
     }
   }
 };

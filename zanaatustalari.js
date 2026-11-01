@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool } from './database/db.js';
 
 const BOARDS = {
@@ -20,7 +20,7 @@ export default {
         { name: '♻️ Parçalanan ekipman', value: 'salvage' }
       )),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     const key = interaction.options.getString('kategori') || 'level';
     const board = BOARDS[key] || BOARDS.level;
     const { rows } = await pool.query(

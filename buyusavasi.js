@@ -1,13 +1,11 @@
 
-import {
-  SlashCommandBuilder,
+import { SlashCommandBuilder,
   EmbedBuilder,
   AttachmentBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType
-} from 'discord.js';
+  ComponentType, MessageFlags } from 'discord.js';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pool, ensureUser } from './database/db.js';
@@ -85,7 +83,7 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Büyü düellosu yalnızca sunucularda yapılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Büyü düellosu yalnızca sunucularda yapılabilir.', flags: MessageFlags.Ephemeral });
     }
     const opponent = interaction.options.getUser('rakip', true);
     const challenger = interaction.user;
@@ -93,14 +91,14 @@ export default {
     if (opponent.bot || opponent.id === challenger.id) {
       return interaction.reply({
         content: 'Kendinle veya bir botla düello yapamazsın! 🪄',
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 
     if (!interaction.channel?.isTextBased()) {
       return interaction.reply({
         content: 'Bu komut bir metin kanalında kullanılmalı.',
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 
@@ -148,7 +146,7 @@ export default {
       if (button.user.id !== opponent.id) {
         return button.reply({
           content: 'Bu daveti yalnızca seçilen rakip yanıtlayabilir.',
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -284,14 +282,14 @@ export default {
         if (![challenger.id, opponent.id].includes(move.user.id)) {
           return move.reply({
             content: 'Bu düelloda oyuncu olmadığın için hamle yapamazsın.',
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
           });
         }
 
         if (move.user.id !== currentPlayer) {
           return move.reply({
             content: 'Şu anda sıra rakibinde. Biraz bekle! ⏳',
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
           });
         }
 
@@ -337,7 +335,7 @@ export default {
 
             return move.reply({
               content: 'Bu düelloda iyileşme hakkını zaten kullandın. Başka bir hamle seç!',
-              ephemeral: true
+              flags: MessageFlags.Ephemeral
             });
           }
 

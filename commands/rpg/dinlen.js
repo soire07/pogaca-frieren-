@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
 import { equipmentItems, equipmentBonus } from '../../equipment-data.js';
 
@@ -11,7 +11,7 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Dinlenme yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Dinlenme yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
 
     await ensureUser(interaction.guildId, interaction.user.id);
@@ -26,7 +26,7 @@ export default {
     const effectiveMaxMana = Math.min(2000, Number(stats.max_mana) + gear.mana);
 
     if (Number(stats.hp) >= effectiveMaxHp && Number(stats.mana) >= effectiveMaxMana) {
-      return interaction.reply({ content: '✨ HP ve Mana değerlerin zaten tamamen dolu.', ephemeral: true });
+      return interaction.reply({ content: '✨ HP ve Mana değerlerin zaten tamamen dolu.', flags: MessageFlags.Ephemeral });
     }
 
     const restored = await pool.query(
@@ -43,7 +43,7 @@ export default {
       const next = lastRestAt + REST_COOLDOWN_MS;
       return interaction.reply({
         content: `⏳ Biraz daha dinlenmelisin. Yeniden dinlenebilirsin: <t:${Math.ceil(next / 1000)}:R>`,
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 

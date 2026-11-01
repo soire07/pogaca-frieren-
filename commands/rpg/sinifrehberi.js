@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { characterClassGuide } from '../../rpg-mechanics.js';
 
 const classAdvice = {
@@ -34,6 +34,6 @@ export default {
         { name: '✨ Sonraki adım', value: '**/sinifsec** ile sınıfını seç; ardından **/profil** ile karakterini kontrol et ve **/rehber** üzerinden macera rotanı takip et.', inline: false }
       )
       .setFooter({ text: 'Frieren’in yolculuğu • En güçlü sınıf, oyun tarzına en çok uyan sınıftır.' });
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 };

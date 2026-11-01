@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { ownerOnly, getOwnerOverview, createOwnerEmbed, formatDuration } from '../owner-admin.js';
 import { pool } from '../database/db.js';
 
@@ -6,7 +6,7 @@ export default {
   data: new SlashCommandBuilder().setName('owner-bilgi').setDescription('Frieren botunun çalışma ve bağlantı durumunu gösterir.'),
   async execute(interaction) {
     if (!await ownerOnly(interaction)) return;
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const s = await getOwnerOverview(interaction.client, pool);
     const embed = createOwnerEmbed('Frieren · Sistem Durumu', 'Canlı bot sürecinden alınan teknik bilgiler.', s.ready ? 0x57F287 : 0xED4245)
       .addFields(
