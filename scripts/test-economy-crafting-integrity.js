@@ -62,13 +62,15 @@ test('trade offers reserve only unexpired copies using the database clock', asyn
   assert.doesNotMatch(create, /Date\.now\(\)\s*\+\s*5\s*\*\s*60\s*\*\s*1000/);
   assert.match(schema, /status IN \('pending','accepted','declined','expired','invalid'\)/);
 
-  const trade = handler.slice(handler.indexOf("trade_accept:"));
-  const players = trade.indexOf('ORDER BY user_id FOR UPDATE');
-  const offer = trade.indexOf('SELECT * FROM trade_offers WHERE offer_id=$1 AND guild_id=$2 FOR UPDATE');
+  const trade = await read('trade-transaction.js');
+  const snapshot = trade.indexOf('SELECT from_user_id,to_user_id FROM trade_offers');
+  const players = trade.indexOf('ORDER BY user_id FOR UPDATE', snapshot);
+  const offer = trade.indexOf('SELECT * FROM trade_offers WHERE offer_id=$1 AND guild_id=$2 FOR UPDATE', players);
   const collection = trade.indexOf('FROM anime_character_collection', offer);
-  assert.ok(players >= 0 && offer > players && collection > offer,
-    'acceptance must lock participant rows, then the offer, then the collection');
-  assert.match(trade, /offer\.status !== 'pending'/);
+  assert.ok(snapshot >= 0 && players > snapshot && offer > players && collection > offer,
+    'production acceptance must lock participant rows, then the offer, then the collection');
+  assert.match(trade, /offer\\.status !== 'pending'/);
   assert.match(trade, /status='accepted'/);
   assert.match(trade, /reservedForOthers/);
+  assert.match(handler, /resolveTradeOffer\\(pool/);
 });
