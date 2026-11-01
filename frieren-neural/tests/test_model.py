@@ -82,3 +82,32 @@ def test_model_rejects_sequences_longer_than_context():
     tokens = torch.randint(0, 12, (1, 17), dtype=torch.long)
     with pytest.raises(ValueError, match="sequence length"):
         model(tokens)
+
+
+
+def test_bpe_tokenizer_round_trips_multilingual_unicode_and_unknown_bytes():
+    from frieren_neural.tokenizer import BPETokenizer
+
+    tokenizer = BPETokenizer.train(["Merhaba dünya! Привет мир! 日本語", "Merhaba dünya!"], vocab_size=280)
+    text = "Merhaba dünya! Привет мир! 日本語 🐈"
+    assert tokenizer.decode(tokenizer.encode(text)) == text
+
+
+def test_bpe_tokenizer_learns_merges_and_serializes_deterministically():
+    from frieren_neural.tokenizer import BPETokenizer
+
+    corpus = ["abababab", "abababab"]
+    tokenizer = BPETokenizer.train(corpus, vocab_size=264, min_frequency=2)
+    restored = BPETokenizer.from_dict(tokenizer.to_dict())
+    assert tokenizer.vocab_size > 260
+    assert restored.to_dict() == tokenizer.to_dict()
+    assert restored.decode(restored.encode("abab")) == "abab"
+
+
+def test_bpe_tokenizer_rejects_invalid_vocab_and_payload():
+    from frieren_neural.tokenizer import BPETokenizer
+
+    with pytest.raises(ValueError, match="vocab_size"):
+        BPETokenizer.train(["abc"], vocab_size=259)
+    with pytest.raises(ValueError, match="merges"):
+        BPETokenizer.from_dict({"version": 1, "merges": [["x", 1]]})
