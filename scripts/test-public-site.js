@@ -227,7 +227,7 @@ test('public command catalogue renders escaped option help and includes it in se
   await handlePublicSiteRequest(request('/komutlar'), response, { client: { commands } });
   assert.equal(response.status, 200);
   assert.match(response.body, /Kullanım ayrıntıları \(1\)/);
-  assert.match(response.body, /Düello yapılacak|<img src=x onerror=alert\(1\)>/);
+  assert.match(response.body, /Zorunlu/);
   assert.match(response.body, /&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.match(response.body, /Dostça/);
   assert.match(response.body, /rakip/);
