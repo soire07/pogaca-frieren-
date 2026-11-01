@@ -54,6 +54,8 @@ _login_attempts_lock = threading.Lock()
 _MAX_LOGIN_CLIENTS = 2_000
 _LOGIN_WINDOW_SECONDS = 300
 _MAX_LOGIN_ATTEMPTS = 5
+# One global inference lock prevents multiple workers from loading/running duplicate model copies.
+_GENERATION_LOCK_IDS = (7_349_201,)
 _SESSION_COOKIE = "frieren_session"
 _SESSION_TTL_SECONDS = 3_600
 
@@ -86,7 +88,7 @@ def _generation_capacity():
             # Hold a PostgreSQL session lock throughout inference. PostgreSQL
             # releases it automatically if this worker or connection dies.
             with psycopg.connect(database_url, connect_timeout=3, autocommit=True) as connection:
-                for lock_id in (7_349_201, 7_349_202):
+                for lock_id in _GENERATION_LOCK_IDS:
                     acquired = connection.execute(
                         "SELECT pg_try_advisory_lock(%s)", (lock_id,)
                     ).fetchone()[0]
