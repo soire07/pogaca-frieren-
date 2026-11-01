@@ -1,5 +1,5 @@
 
-import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { levelForXp } from './utils.js';
 import { ADVENTURE_DISCOVERIES, ADVENTURE_DISCOVERY_REWARD, COMPLETE_ADVENTURE_JOURNAL_REWARD } from './adventure-data.js';
