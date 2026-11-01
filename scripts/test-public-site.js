@@ -95,14 +95,14 @@ test('unknown routes and non-GET requests are not intercepted', async () => {
 
 test('registration and login pages expose username and password forms', async () => {
   const registration = res();
-  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/register', headers: {} }, registration), true);
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/register', headers: {} }, registration, { db: { query: async () => ({ rows: [], rowCount: 0 }) } }), true);
   assert.equal(registration.status, 200);
   assert.match(registration.body, /name="username"/);
   assert.match(registration.body, /name="email"/);
   assert.match(registration.body, /name="confirmPassword"/);
   assert.match(registration.body, /action="\/register"/);
   const login = res();
-  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/login', headers: {} }, login), true);
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/login', headers: {} }, login, { db: { query: async () => ({ rows: [], rowCount: 0 }) }), true);
   assert.equal(login.status, 200);
   assert.match(login.body, /name="username"/);
   assert.match(login.body, /name="password"/);
