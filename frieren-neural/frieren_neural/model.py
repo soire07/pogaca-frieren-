@@ -45,16 +45,32 @@ class CausalSelfAttention(nn.Module):
         )
 
     def forward(self, hidden: Tensor) -> Tensor:
-        sequence_length = hidden.size(1)
-        mask = self.causal_mask[:sequence_length, :sequence_length]
-        attended, _ = self.attention(
+        batch_size, sequence_length, channels = hidden.shape
+        heads = self.attention.num_heads
+        head_dim = channels // heads
+
+        # Keep nn.MultiheadAttention's parameter layout so existing checkpoints
+        # remain strictly loadable while using PyTorch's optimized SDPA kernels.
+        query, key, value = F.linear(
             hidden,
-            hidden,
-            hidden,
-            attn_mask=mask,
-            need_weights=False,
+            self.attention.in_proj_weight,
+            self.attention.in_proj_bias,
+        ).chunk(3, dim=-1)
+        query = query.view(batch_size, sequence_length, heads, head_dim).transpose(1, 2)
+        key = key.view(batch_size, sequence_length, heads, head_dim).transpose(1, 2)
+        value = value.view(batch_size, sequence_length, heads, head_dim).transpose(1, 2)
+
+        attended = F.scaled_dot_product_attention(
+            query,
+            key,
+            value,
+            is_causal=True,
+            dropout_p=self.attention.dropout if self.training else 0.0,
         )
-        return attended
+        attended = attended.transpose(1, 2).contiguous().view(
+            batch_size, sequence_length, channels
+        )
+        return self.attention.out_proj(attended)
 
 
 class TransformerBlock(nn.Module):

@@ -47,7 +47,7 @@ def format_benchmark_prompt(prompt: str) -> str:
     normalized = prompt.rstrip()
     if normalized.endswith("Asistan:"):
         return normalized
-    return f"Kullanıcı: {normalized}\\nAsistan:"
+    return f"Kullanıcı: {normalized}\nAsistan:"
 
 
 def load_prompt_set() -> list[dict[str, str]]:
