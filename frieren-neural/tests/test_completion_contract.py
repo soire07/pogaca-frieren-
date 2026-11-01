@@ -73,3 +73,30 @@ def test_discord_answer_extractor_prefers_completion_and_supports_legacy_api():
         "Frieren kimdir?",
     ) == "Cevap burada."
     assert extract_answer({"text": "  "}, "Frieren kimdir?") is None
+
+
+
+def test_api_serializes_plain_user_prompt_with_the_training_chat_template(
+    client, monkeypatch, tmp_path
+):
+    _stub_generation(monkeypatch, tmp_path)
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "a" * 40)
+    captured = {}
+
+    def capture_prompt(_model, _tokenizer, prompt, **_kwargs):
+        captured["prompt"] = prompt
+        return prompt + "Doğrudan yanıt."
+
+    monkeypatch.setattr(api, "generate_text", capture_prompt)
+    user_prompt = "Frieren kimdir?"
+
+    response = client.post(
+        "/generate",
+        json={"prompt": user_prompt},
+        headers={"Authorization": "Bearer " + "a" * 40},
+    )
+
+    assert response.status_code == 200
+    assert captured["prompt"] == "Kullanıcı: Frieren kimdir?\\nAsistan:"
+    assert response.json()["text"] == user_prompt + "Doğrudan yanıt."
+    assert response.json()["completion"] == "Doğrudan yanıt."
