@@ -94,3 +94,18 @@ test('boss defeat and expired combat persist survival state without granting vic
   assert.match(source, /UPDATE users SET hp=\$3, mana=\$4 WHERE guild_id=\$1 AND user_id=\$2/);
 });
 
+
+test('solo boss reward persistence is idempotent per battle session across duplicate handlers', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const schema = await (await import('node:fs/promises')).readFile(new URL('../database/db.js', import.meta.url), 'utf8');
+  assert.match(source, /randomUUID/);
+  assert.match(source, /last_boss_battle_id/);
+  assert.match(source, /last_boss_battle_id IS DISTINCT FROM \\$7/);
+  const victory = source.indexOf('if (bossHp <= 0)');
+  const begin = source.indexOf("await db.query('BEGIN')", victory);
+  const reward = source.indexOf('last_boss_battle_id=$7', begin);
+  const commit = source.indexOf("await db.query('COMMIT')", reward);
+  assert.ok(victory >= 0 && begin > victory && reward > begin && commit > reward,
+    'the battle session must be claimed atomically before rewards commit');
+  assert.match(schema, /last_boss_battle_id TEXT/);
+});
