@@ -78,10 +78,14 @@ export async function getRenderBotServiceStatuses({
           }
         })()
       : Promise.resolve({ details: null, serviceApiError: null });
-    const healthRequest = readHealth(service, fetchImpl);
-    const [{ details, serviceApiError }, healthResult] = await Promise.all([apiRequest, healthRequest]);
+    const deferAiHealth = key === 'frieren_ai' && Boolean(token);
+    const healthRequest = deferAiHealth ? Promise.resolve(null) : readHealth(service, fetchImpl);
+    const [{ details, serviceApiError }, initialHealth] = await Promise.all([apiRequest, healthRequest]);
     const suspended = details?.suspended === 'suspended';
-    const finalHealth = suspended ? { health: 'suspended', healthStatus: null, healthPayload: null } : healthResult;
+    const healthResult = suspended
+      ? { health: 'suspended', healthStatus: null, healthPayload: null }
+      : initialHealth || await readHealth(service, fetchImpl);
+    const finalHealth = healthResult;
     const status = suspended ? 'suspended' : finalHealth.health === 'healthy' ? 'running'
       : finalHealth.health === 'unhealthy' ? 'unhealthy' : 'unknown';
     return {
