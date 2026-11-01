@@ -73,7 +73,7 @@ test('solo boss victory grants rewards in one transaction and guards duplicate b
   const commit = source.indexOf("await db.query('COMMIT')", firstInventory);
   assert.ok(victory >= 0 && begin > victory && rewardUpdate > begin && firstInventory > rewardUpdate && commit > firstInventory,
     'victory rewards and inventory must be committed in one transaction');
-  assert.equal((source.match(/coins=coins\+\$5, xp=xp\+\$6, boss_defeats=boss_defeats\+1/g) || []).length, 1,
+  assert.equal((source.match(/last_boss_battle_id=\$7/g) || []).length, 1,
     'boss victory reward update must have a single code path');
   assert.match(source, /if \(finished \|\| busy\) return button\.deferUpdate\(\)/);
   assert.match(source, /finished = true;\s*collector\.stop\('victory'\)/);
