@@ -53,13 +53,14 @@ function sanitizeEvidence(items) {
     const file = String(entry.file || entry.path || '');
     const safeFile = file && !file.startsWith('/') && !file.split(/[\\/]/).includes('..')
       ? redactGuardianText(file, 180) : '';
+    if (file && !safeFile) return null;
     const line = Number(entry.line);
     return {
       ...(safeFile ? { file: safeFile } : {}),
       ...(Number.isSafeInteger(line) && line > 0 ? { line } : {}),
       message: redactGuardianText(entry.message || entry.excerpt || entry.status || '', 500),
     };
-  }).filter(item => item.message || item.file);
+  }).filter(item => item && (item.message || item.file));
 }
 
 export function createGuardianIncident(input = {}) {
