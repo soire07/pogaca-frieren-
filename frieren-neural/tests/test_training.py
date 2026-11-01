@@ -375,9 +375,9 @@ def test_generation_prompt_inserts_eos_between_completed_assistant_turns():
     from frieren_neural.training import encode_generation_prompt
 
     prompt = (
-        "Kullanıcı: Bana kısa yanıt ver.\\n"
-        "Asistan: Elbette, kısa yanıt vereceğim.\\n"
-        "Kullanıcı: TCP nedir?\\n"
+        "Kullanıcı: Bana kısa yanıt ver.\n"
+        "Asistan: Elbette, kısa yanıt vereceğim.\n"
+        "Kullanıcı: TCP nedir?\n"
         "Asistan:"
     )
     tokenizer = BPETokenizer.train([prompt], vocab_size=280)
@@ -386,8 +386,8 @@ def test_generation_prompt_inserts_eos_between_completed_assistant_turns():
     assert encoded.count(tokenizer.bos_id) == 1
     assert encoded.count(tokenizer.eos_id) == 1
     eos_index = encoded.index(tokenizer.eos_id)
-    assert tokenizer.decode(encoded[1:eos_index]).endswith("Asistan: Elbette, kısa yanıt vereceğim.\\n")
+    assert tokenizer.decode(encoded[1:eos_index]).endswith("Asistan: Elbette, kısa yanıt vereceğim.\n")
     assert tokenizer.decode(encoded[eos_index + 1:]).endswith("Asistan:")
 
-    single_turn = encode_generation_prompt("Kullanıcı: Merhaba.\\nAsistan:", tokenizer)
+    single_turn = encode_generation_prompt("Kullanıcı: Merhaba.\nAsistan:", tokenizer)
     assert single_turn.count(tokenizer.eos_id) == 0
