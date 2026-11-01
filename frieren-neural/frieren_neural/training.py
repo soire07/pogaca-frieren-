@@ -371,6 +371,8 @@ def load_checkpoint(
     if not isinstance(payload, dict) or payload.get("format_version") != 2:
         raise ValueError("Unsupported or invalid Frieren Neural checkpoint.")
     try:
+        if not isinstance(payload.get("tokenizer"), dict) or not isinstance(payload.get("model_config"), dict):
+            raise ValueError("Checkpoint model/tokenizer payloads must be dictionaries.")
         tokenizer = BPETokenizer.from_dict(payload["tokenizer"])
         model_config = GPTConfig(**payload["model_config"])
         model = GPTLanguageModel(model_config).to(selected_device)
