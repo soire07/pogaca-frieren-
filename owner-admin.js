@@ -378,7 +378,7 @@ export async function recordOwnerTestRun(db, { actorId, target, report } = {}) {
     skipped: Math.max(0, Number(summary.skipped ?? 0) || 0)
   };
   const details = {
-    status: String(report?.status || 'UNKNOWN').slice(0, 40),
+    status: String(report?.status || (safeSummary.fail > 0 ? 'FAIL' : safeSummary.total > 0 && safeSummary.pass === safeSummary.total ? 'PASS' : 'NOT_TESTED')).slice(0, 40),
     failedStages: Array.isArray(report?.failedStages) ? report.failedStages.slice(0, 20).map(value => String(value).slice(0, 120)) : [],
     testFiles: Array.isArray(report?.testFiles) ? report.testFiles.slice(0, 20).map(value => String(value).slice(0, 160)) : [],
     checks: Array.isArray(report?.checks) ? report.checks.slice(0, 30).map(item => ({
