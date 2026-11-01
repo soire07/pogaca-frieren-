@@ -139,7 +139,7 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
         "context_tokens": 1024,
         "max_new_tokens": MAX_NEW_TOKENS,
         "thinking_mode": "Qwen3 /no_think user-turn switch; non-empty reasoning redacted",
-        "decoding_settings": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "min_p": 0.0, "repeat_penalty": 1.1, "seed_base": 20261101},
+        "decoding_settings": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "min_p": 0.0, "repeat_penalty": 1.1, "seed_base": 20261101, "system_prompt_version": "tr-assistant-v1"},
         "download_seconds": download_seconds,
         "model_load_seconds": load_seconds,
         "generation_total_seconds": round(time.perf_counter() - generation_started, 3),
