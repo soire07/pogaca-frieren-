@@ -93,6 +93,7 @@ test('Guardian AI endpoint is HTTPS-only and points to the private review route'
 test('Guardian workspace shows review proposals as unapplied and requires owner review', () => {
   const html = renderOwnerGuardianWorkspace({
     csrf: 'csrf-test',
+    monitorState: { last_tick_at: '2026-11-02T10:00:00Z', last_error: null },
     incidents: [{
       id: 7, title: 'RPG timeout', severity: 'high', system: 'pogaca_frieren',
       code: 'TIMEOUT', status: 'open', occurrence_count: 2,
@@ -109,6 +110,8 @@ test('Guardian workspace shows review proposals as unapplied and requires owner 
   assert.match(html, /Önerilen yama taslağı \(uygulanmadı\)/);
   assert.match(html, /İnsan incelemesi gerekli/);
   assert.match(html, /guardian-review/);
+  assert.match(html, /Guardian izleyici/);
+  assert.match(html, /Son Guardian kontrolü/);
 });
 
 test('Guardian workspace exposes PR dispatch only after a completed review and with a token', () => {
