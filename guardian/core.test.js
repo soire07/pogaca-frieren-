@@ -84,3 +84,28 @@ test('secret redaction never returns the raw credential', () => {
   const value = redactGuardianText('DATABASE_URL=postgres://user:secret@host/db');
   assert.doesNotMatch(value, /postgres:\/\/user:secret/);
 });
+
+test('secret redaction covers bearer/basic auth, common credential variables and database URLs', () => {
+  const samples = [
+    'Authorization: Bearer bearer-secret-123456',
+    'Authorization: Basic YWRtaW46c2VjcmV0',
+    'SERVICE_TOKEN=service-secret-123456',
+    'PRIVATE_API_KEY=api-secret-123456',
+    'mysql://dbuser:mysql-secret@db.example.test/app',
+    'mongodb+srv://dbuser:mongo-secret@cluster.example.test/app',
+    'https://panel-user:panel-secret@example.test/private',
+  ];
+  for (const sample of samples) {
+    const redacted = redactGuardianText(sample);
+    assert.notEqual(redacted, sample);
+    for (const secret of [
+      'bearer-secret-123456',
+      'YWRtaW46c2VjcmV0',
+      'service-secret-123456',
+      'api-secret-123456',
+      'mysql-secret',
+      'mongo-secret',
+      'panel-secret',
+    ]) assert.equal(redacted.includes(secret), false, 'credential leaked: ' + secret);
+  }
+});
