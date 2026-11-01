@@ -52,7 +52,7 @@ def test_report_applies_quality_gate_to_human_scores():
         checkpoint_metadata={
             "format_version": 2,
             "dialogue_encoding_version": 2,
-            "loss_objective_version": 1,
+            "loss_objective_version": 2,
             "training_objective": "assistant_response_tokens_plus_eos",
             "model_config": {"d_model": 16, "n_layers": 1},
             "training_config": {"max_steps": 10},
@@ -61,7 +61,7 @@ def test_report_applies_quality_gate_to_human_scores():
         },
         heldout_metrics={
             "loss":2.0, "perplexity":7.39,
-            "loss_objective_version": 1,
+            "loss_objective_version": 2,
             "checkpoint_training_loss_objective_version": 1,
         },
         baseline_report={
@@ -122,7 +122,7 @@ def test_cli_writes_machine_and_human_readable_report(tmp_path, monkeypatch):
         lambda *_args, **_kwargs: (
             object(), object(), {
                 "step": 123, "format_version": 2, "dialogue_encoding_version": 2,
-                "loss_objective_version": 1, "training_objective": "assistant_response_tokens_plus_eos",
+                "loss_objective_version": 2, "training_objective": "assistant_response_tokens_plus_eos",
                 "model_config": {"d_model": 16}, "training_config": {"max_steps": 123},
                 "tokenizer_type": "byte_bpe", "tokenizer_vocab_size": 280,
             }
@@ -173,14 +173,14 @@ def test_report_blocks_mismatched_heldout_objective():
         scores=scores,
         checkpoint_metadata={
             "format_version": 2, "dialogue_encoding_version": 2,
-            "loss_objective_version": 1, "model_config": {"d_model": 16},
+            "loss_objective_version": 2, "model_config": {"d_model": 16},
             "training_config": {"max_steps": 100}, "tokenizer_type": "byte_bpe",
             "tokenizer_vocab_size": 280,
         },
         training_provenance={"manifest_sha256": "f" * 64, "licenses": ["CC BY 4.0"]},
         heldout_metrics={
             "loss": 2.0, "perplexity": 7.39,
-            "loss_objective_version": 0,
+            "loss_objective_version": 1,
             "checkpoint_training_loss_objective_version": 1,
         },
         baseline_report={
@@ -207,7 +207,7 @@ def test_report_blocks_missing_checkpoint_metadata():
         scores=None,
         heldout_metrics={
             "loss": 2.0, "perplexity": 7.39,
-            "loss_objective_version": 1,
+            "loss_objective_version": 2,
             "checkpoint_training_loss_objective_version": 0,
         },
     )
