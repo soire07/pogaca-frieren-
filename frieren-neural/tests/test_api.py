@@ -239,6 +239,36 @@ def test_login_rate_limit_is_atomic_under_concurrent_attempts():
 
 
 
+def test_login_rate_limiter_bounds_distinct_client_memory_and_prunes_expired(monkeypatch):
+    import frieren_neural.api as api
+
+    scope = {
+        "type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
+        "method": "POST", "scheme": "https", "path": "/", "raw_path": b"/",
+        "query_string": b"", "headers": [], "client": ("203.0.113.250", 12345),
+        "server": ("testserver", 443),
+    }
+    request = Request(scope)
+    now = time.monotonic()
+    with api._login_attempts_lock:
+        api._login_attempts.clear()
+        api._login_attempts.update({f"192.0.2.{index}": [now] for index in range(api._MAX_LOGIN_CLIENTS)})
+
+    with pytest.raises(HTTPException) as error:
+        api._login_rate_limit(request)
+    assert error.value.status_code == 429
+    assert len(api._login_attempts) == api._MAX_LOGIN_CLIENTS
+    assert "203.0.113.250" not in api._login_attempts
+
+    with api._login_attempts_lock:
+        api._login_attempts.clear()
+        api._login_attempts.update({f"192.0.2.{index}": [now - 301] for index in range(api._MAX_LOGIN_CLIENTS)})
+    assert api._login_rate_limit(request) == "203.0.113.250"
+    assert len(api._login_attempts) == 1
+    with api._login_attempts_lock:
+        api._login_attempts.clear()
+
+
 def test_session_token_rejects_malformed_and_oversized_fields(monkeypatch):
     import time
     from frieren_neural.api import _create_session_token, _valid_session_token
