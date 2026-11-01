@@ -94,6 +94,19 @@ function authPage(mode, secret, status = '', token = '') {
     '<form method="post" action="/resend-verification">' + formToken(secret) + '<label>E-posta adresi</label><input name="email" type="email" maxlength="254" required><button class="btn">Yeni bağlantı gönder</button></form><div class="auth-links"><a href="/login">Giriş yap</a></div>';
   return page('Hesap güvenliği', body);
 }
+export function smtpFailureDetails(error) {
+  const isObject = error !== null && typeof error === 'object';
+  const rawMessage = isObject && typeof error.message === 'string'
+    ? error.message
+    : typeof error === 'string' ? error : 'Unknown SMTP failure';
+  return {
+    name: isObject && typeof error.name === 'string' ? error.name.slice(0, 80) : 'NonErrorThrow',
+    code: isObject && typeof error.code === 'string' ? error.code.slice(0, 40) : null,
+    syscall: isObject && typeof error.syscall === 'string' ? error.syscall.slice(0, 40) : null,
+    message: rawMessage.replace(/[^\\s@]+@[^\\s@]+/g, '[redacted-email]').slice(0, 180)
+  };
+}
+
 function mailReady() { return Boolean(process.env.SITE_SMTP_USER && process.env.SITE_SMTP_APP_PASSWORD && process.env.ADMIN_SESSION_SECRET?.length >= 32); }
 
 export function consumeSmtpBuffer(buffer, pendingLines = []) {
@@ -121,7 +134,7 @@ async function sendGmail(to, subject, html, plain) {
   if (![from,user,to].every(v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) || pass.length < 12) throw new Error('SITE_MAIL_CONFIG_INVALID');
   const socket = tls.connect({host:'smtp.gmail.com',port:465,servername:'smtp.gmail.com',rejectUnauthorized:true});
   socket.setTimeout(20000, () => socket.destroy(new Error('SMTP_TIMEOUT')));
-  let buffer = '', lines = [], queue = [], waiters = [], socketError = null;
+  let buffer = '', lines = [], queue = [], waiters = [], socketError = null, stage = 'tls_connect';
   const deliver = () => { if (queue.length && waiters.length) waiters.shift().resolve(queue.shift()); };
   socket.on('data', chunk => {
     const parsed = consumeSmtpBuffer(buffer + chunk.toString('utf8'), lines);
@@ -226,7 +239,7 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
       const token=randomBytes(32).toString('hex'),passwordHash=await hashSitePassword(password);
       try { await db.query("INSERT INTO frieren_site_accounts(username,email,password_hash,verification_token_hash,verification_expires_at) VALUES($1,$2,$3,$4,NOW()+INTERVAL '24 hours')",[username,email,passwordHash,hash(token)]); }
       catch(e){if(e?.code==='23505'){send(res,409,authPage('register',sessionSecret,'duplicate'));return true;}throw e;}
-      try{await mailVerification(email,token);}catch(e){console.error('Site verification email failed:',e?.message||'unknown');send(res,503,authPage('register',sessionSecret,'mail_error'));return true;}
+      try{await mailVerification(email,token);}catch(e){console.error('Site verification email failed:',JSON.stringify({stage:e?.smtpStage||'mail_setup',...smtpFailureDetails(e)}));send(res,503,authPage('register',sessionSecret,'mail_error'));return true;}
       send(res,201,authPage('login',sessionSecret,'registered'));return true;
     }
     if(path==='/login'){
@@ -262,7 +275,7 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
         if(account){
           const token=randomBytes(32).toString('hex');
           await db.query("UPDATE frieren_site_accounts SET verification_token_hash=$2,verification_expires_at=NOW()+INTERVAL '24 hours',updated_at=NOW() WHERE id=$1",[account.id,hash(token)]);
-          try{await mailVerification(account.email,token);}catch(e){console.error('Site verification resend failed:',e?.message||'unknown');}
+          try{await mailVerification(account.email,token);}catch(e){console.error('Site verification resend failed:',JSON.stringify({stage:e?.smtpStage||'mail_setup',...smtpFailureDetails(e)}));}
         }
       }
       send(res,200,authPage('resend',sessionSecret,'email_sent'));return true;
