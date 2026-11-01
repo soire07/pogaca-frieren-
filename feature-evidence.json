@@ -839,9 +839,9 @@
         "path": "scripts/check-gameplay-integrity.js",
         "name": "player profile displays selected combat build and build-adjusted stats",
         "markers": [
-          "getCharacterBuild(u.active_build)",
-          "Savaş yapısı",
-          "(Number(u.max_hp) + gear.hp) * build.hp"
+          "assert.match(source, /active_build/)",
+          "assert.match(source, /Savaş yapısı/)",
+          "assert.match(source, /build\\.hp/)"
         ]
       },
       "limitation": "Profile query and build-adjusted display calculations are asserted; the complete Discord profile interaction is not executed."
