@@ -1,11 +1,9 @@
 
-import {
-  SlashCommandBuilder,
+import { SlashCommandBuilder,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle
-} from 'discord.js';
+  ButtonStyle, MessageFlags } from 'discord.js';
 
 const spells = [
   { name: 'Zoltraak', type: 'Saldırı büyüsü', description: 'Hedefe yoğun büyü enerjisi göndererek doğrudan hasar verir.', emoji: '⚡' },
