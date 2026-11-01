@@ -766,7 +766,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
 
   if (url.pathname === '/owner/frieren-ai/health' && req.method === 'GET') {
     const aiBase = (process.env.FRIEREN_AI_PUBLIC_URL || 'https://pogaca-frieren-kltd.onrender.com').replace(/\/$/, '');
-    const healthSecret = process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
+    const healthSecret = process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
     if (healthSecret.length < 32) {
       res.writeHead(503, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
       res.end(JSON.stringify({ status: 'unconfigured', error: 'Owner sağlık kontrolü henüz yapılandırılmadı.' }));
