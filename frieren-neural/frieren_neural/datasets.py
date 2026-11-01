@@ -18,13 +18,31 @@ DATASET_URL = (
 )
 DATASET_SHA256 = "4e11cb6e311b355235a8b3174ecc3c6569d48e32f487bb199853035b7389047f"
 EXPECTED_RECORDS = 3950
+DATASET_SPLITS = {
+    "validation": {
+        "url": (
+            "https://raw.githubusercontent.com/3nesdeniz/turkish-daily-dialogues-5k/"
+            f"{DATASET_COMMIT}/data/validation.jsonl"
+        ),
+        "sha256": "3fbab155a66359f9bb32278cd0e638d5bea37a274ed06a1c24a4220c7bba5962",
+        "records": 525,
+    },
+    "test": {
+        "url": (
+            "https://raw.githubusercontent.com/3nesdeniz/turkish-daily-dialogues-5k/"
+            f"{DATASET_COMMIT}/data/test.jsonl"
+        ),
+        "sha256": "d3907c86283d894e45220501b6848e7cd0befc7a711fe62cbe8cad8533495ad2",
+        "records": 525,
+    },
+}
 MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024
 
 
-def _render_dialogue(record: object, line_number: int) -> str:
+def _render_dialogue(record: object, line_number: int, *, expected_split: str = "train") -> str:
     if not isinstance(record, dict):
         raise ValueError(f"Dataset row {line_number} must be a JSON object.")
-    if record.get("split") != "train" or record.get("language") != "tr" or record.get("synthetic") is not True:
+    if record.get("split") != expected_split or record.get("language") != "tr" or record.get("synthetic") is not True:
         raise ValueError(f"Dataset row {line_number} has unexpected split, language, or provenance metadata.")
     messages = record.get("messages")
     if not isinstance(messages, list) or len(messages) not in {4, 6, 8}:
@@ -61,14 +79,25 @@ def _atomic_write(path: Path, content: str) -> Path:
         raise
 
 
-def prepare_turkish_daily_dialogues(output_dir: str | Path) -> dict[str, str | int]:
-    """Download the pinned train split, verify its digest, and create a licensed corpus."""
+def prepare_turkish_daily_dialogues(
+    output_dir: str | Path, *, split: str = "train"
+) -> dict[str, str | int]:
+    """Download one pinned dataset split, verify its digest, and create a licensed corpus."""
+    if split == "train":
+        source_url, expected_sha256, expected_records = DATASET_URL, DATASET_SHA256, EXPECTED_RECORDS
+    elif split in DATASET_SPLITS:
+        split_config = DATASET_SPLITS[split]
+        source_url = split_config["url"]
+        expected_sha256 = split_config["sha256"]
+        expected_records = split_config["records"]
+    else:
+        raise ValueError("split must be one of: train, validation, test.")
     destination = Path(output_dir)
     if destination.exists() and (not destination.is_dir() or any(destination.iterdir())):
         raise FileExistsError("Output directory must be new or empty; existing files are never overwritten.")
 
     request = urllib.request.Request(
-        DATASET_URL,
+        source_url,
         headers={"User-Agent": "Frieren-Neural/0.1 dataset-preparation"},
     )
     with urllib.request.urlopen(request, timeout=60) as response:
@@ -76,7 +105,7 @@ def prepare_turkish_daily_dialogues(output_dir: str | Path) -> dict[str, str | i
     if len(raw) > MAX_DOWNLOAD_BYTES:
         raise ValueError("Dataset download exceeded the 20 MiB safety limit.")
     digest = hashlib.sha256(raw).hexdigest()
-    if digest != DATASET_SHA256:
+    if digest != expected_sha256:
         raise ValueError("Dataset SHA-256 mismatch; refusing to use changed or corrupted training data.")
 
     documents: list[str] = []
@@ -87,19 +116,19 @@ def prepare_turkish_daily_dialogues(output_dir: str | Path) -> dict[str, str | i
             record = json.loads(raw_line)
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
             raise ValueError(f"Dataset row {line_number} is not valid UTF-8 JSONL.") from error
-        documents.append(_render_dialogue(record, line_number))
+        documents.append(_render_dialogue(record, line_number, expected_split=split))
 
-    if len(documents) != EXPECTED_RECORDS:
-        raise ValueError(f"Expected {EXPECTED_RECORDS} training dialogues; received {len(documents)}.")
+    if len(documents) != expected_records:
+        raise ValueError(f"Expected {expected_records} {split} dialogues; received {len(documents)}.")
 
     text_content = "\n\n---\n\n".join(documents) + "\n"
     manifest = {
         "schema_version": 1,
         "documents": [{
-            "path": "turkish-daily-dialogues-train.txt",
+            "path": f"turkish-daily-dialogues-{split}.txt",
             "source": (
                 "Turkish Daily Dialogues 5K v1.0.0 by Enes Deniz; "
-                f"pinned source: {DATASET_URL}"
+                f"pinned source: {source_url}"
             ),
             "license": "CC BY 4.0",
             "usage": (
@@ -111,7 +140,7 @@ def prepare_turkish_daily_dialogues(output_dir: str | Path) -> dict[str, str | i
     manifest_content = json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
 
     destination.mkdir(parents=True, exist_ok=True)
-    text_path = destination / "turkish-daily-dialogues-train.txt"
+    text_path = destination / f"turkish-daily-dialogues-{split}.txt"
     manifest_path = destination / "corpus_manifest.json"
     temporary_paths: list[Path] = []
     try:
@@ -127,6 +156,7 @@ def prepare_turkish_daily_dialogues(output_dir: str | Path) -> dict[str, str | i
     return {
         "dataset": "Turkish Daily Dialogues 5K",
         "version": DATASET_VERSION,
+        "split": split,
         "records": len(documents),
         "characters": len(text_content),
         "sha256": digest,
@@ -139,8 +169,9 @@ def main() -> None:
         description="Prepare the pinned, CC BY 4.0 Turkish Daily Dialogues training corpus."
     )
     parser.add_argument("--output", default="corpus/turkish-daily-dialogues")
+    parser.add_argument("--split", choices=("train", "validation", "test"), default="train")
     args = parser.parse_args()
-    result = prepare_turkish_daily_dialogues(args.output)
+    result = prepare_turkish_daily_dialogues(args.output, split=args.split)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
