@@ -2,22 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getOwnerDatabaseDiagnostics, getOwnerDatabaseTablePreview, renderOwnerWorkspace } from '../owner-workspaces.js';
 
-test('database diagnostics only count validated public table identifiers', async () => {
-  const calls = [];
-  const db = { query: async (sql) => {
-    calls.push(sql);
-    if (sql.includes('current_database')) return { rows: [{ database_name: 'frieren', checked_at: '2026-10-31T00:00:00Z' }] };
-    if (sql.includes('information_schema.tables')) return { rows: [{ table_name: 'users' }, { table_name: 'inventory' }, { table_name: 'unsafe"; DROP TABLE users;--' }] };
-    if (sql.includes('COUNT(*)')) return { rows: [{ row_count: '12' }] };
-    throw new Error('unexpected query');
+test('database diagnostics use one statistics query instead of scanning every table', async () => {
+  let calls = 0;
+  const db = { query: async sql => {
+    calls += 1;
+    assert.match(sql, /pg_stat_user_tables/);
+    return { rows: [
+      { database_name: 'frieren', checked_at: '2026-10-31T00:00:00Z', table_name: 'users', row_count: '12' },
+      { database_name: 'frieren', checked_at: '2026-10-31T00:00:00Z', table_name: 'inventory', row_count: '8' }
+    ] };
   } };
   const result = await getOwnerDatabaseDiagnostics(db);
   assert.equal(result.connected, true);
-  assert.deepEqual(result.tables, [{ name: 'users', rows: 12 }, { name: 'inventory', rows: 12 }]);
-  assert.equal(calls.filter(sql => sql.includes('COUNT(*)')).length, 2);
-  assert.ok(calls.every(sql => !sql.includes('DROP TABLE')));
+  assert.deepEqual(result.tables, [{ name: 'users', rows: 12 }, { name: 'inventory', rows: 8 }]);
+  assert.equal(calls, 1);
 });
-
 test('AI workspace does not claim readiness when a dependency is missing', () => {
   const html = renderOwnerWorkspace('ai', { aiReadiness: { status: 'ok', discordReady: true, memoryDatabaseReady: false, modelConfigured: true } });
   assert.match(html, /Kontrol gerekli/);
