@@ -50,6 +50,13 @@ export function startGuardianMonitor({
     if (stopped || running) return;
     running = true;
     try {
+      if (/^(1|true|yes|on)$/i.test(String(process.env.GUARDIAN_EMERGENCY_STOP || '').trim())) {
+        await db.query(
+          `UPDATE owner_guardian_monitor_state SET last_tick_at=NOW(),last_error='EMERGENCY_STOP_ENABLED',updated_at=NOW()
+           WHERE monitor_key='owner_error_logs'`
+        ).catch(() => {});
+        return;
+      }
       if (!initialized) {
         await db.query(
           `INSERT INTO owner_guardian_monitor_state(monitor_key,last_seen_error_id)
