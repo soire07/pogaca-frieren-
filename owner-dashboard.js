@@ -14,6 +14,7 @@ import { listOwnerDailyQuests, saveOwnerDailyQuest, setOwnerDailyQuestActive } f
 import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } from './owner-rpg-content.js';
 import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
+import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -417,6 +418,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     memory_deleted: 'Hafıza kaydı silindi.',
     memory_updated: 'Hafıza kaydı güncellendi ve denetim kaydına eklendi.',
     memory_sensitive_rejected: 'Bu içerik hassas veri içerebileceği için hafızaya kaydedilmedi.',
+    test_target_sensitive: 'Test senaryosu hassas bilgi içerdiği için çalıştırılmadı veya kaydedilmedi.',
     announcement_sent: 'Duyuru seçilen kanala gönderildi.',
     guild_config_saved: 'Sunucu ayarları kaydedildi.',
     feature_saved: 'Bot davranışı bu sunucu için kaydedildi.',
@@ -494,7 +496,7 @@ export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limi
   const errorPrevious = errors.page > 1 ? '<a class="btn secondary" href="' + errorQuery(errors.page - 1) + '">Önceki hatalar</a>' : '';
   const errorNext = errors.page * errors.limit < errors.total ? '<a class="btn secondary" href="' + errorQuery(errors.page + 1) + '">Sonraki hatalar</a>' : '';
   const testHtml = testRows.length ? testRows.map(run =>
-    '<div class="rowitem"><div class="actions"><strong>#' + Number(run.id) + ' · ' + escapeHtml(run.target) + '</strong><span class="' + (run.status === 'PASS' ? 'good' : run.status === 'FAIL' ? 'bad' : 'warn') + '">' + escapeHtml(run.status) + '</span></div>'
+    '<div class="rowitem"><div class="actions"><strong>#' + Number(run.id) + ' · ' + escapeHtml(String(run.target || '').slice(0, 180)) + '</strong><span class="' + (run.status === 'PASS' ? 'good' : run.status === 'FAIL' ? 'bad' : 'warn') + '">' + escapeHtml(run.status) + '</span></div>'
     + '<div class="small">' + Number(run.summary?.total || 0) + ' test · ' + Number(run.summary?.pass || 0) + ' PASS · ' + Number(run.summary?.fail || 0) + ' FAIL · ' + escapeHtml(new Date(run.created_at).toLocaleString('tr-TR')) + '</div>'
     + (Array.isArray(run.details?.testFiles) && run.details.testFiles.length ? '<div class="small">Test dosyaları: ' + escapeHtml(run.details.testFiles.join(', ')) + '</div>' : '')
     + (Array.isArray(run.details?.failedStages) && run.details.failedStages.length ? '<p class="notice warn">' + escapeHtml(run.details.failedStages.join(' · ')) + '</p>' : '')
@@ -878,6 +880,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       }
       if (action === 'ai-test-run' && form.get('confirm') === 'yes') {
         const target = String(form.get('target') || '').trim().slice(0, 4000);
+        if (target && containsSensitiveInformation(target)) throw new Error('SENSITIVE_TEST_TARGET_REJECTED');
         const rawCommands = String(form.get('commands') || '');
         const commands = rawCommands.split(/[\x09-\x0d ,;]+/).map(value => value.trim()).filter(Boolean).slice(0, 80);
         const secret = String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
@@ -953,7 +956,8 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     } catch (error) {
       const code = String(error?.message || '');
       console.error('Owner dashboard action failed:', code || 'unknown error');
-      const notice = code === 'SENSITIVE_MEMORY_REJECTED' ? 'memory_sensitive_rejected'
+      const notice = code === 'SENSITIVE_TEST_TARGET_REJECTED' ? 'test_target_sensitive'
+        : code === 'SENSITIVE_MEMORY_REJECTED' ? 'memory_sensitive_rejected'
         : code === 'RENDER_API_NOT_CONFIGURED' ? 'render_api_missing'
         : code === 'RENDER_ACTION_COOLDOWN' ? 'service_cooldown'
         : /^RENDER_API_HTTP_(401|403)$/.test(code) ? 'render_api_auth_error'
