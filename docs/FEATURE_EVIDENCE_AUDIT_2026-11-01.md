@@ -38,7 +38,7 @@ The 317 records are an existing implementation catalogue, not 317 independently 
 | `scripts/test-command-interaction-coverage.js` | Command module discovery/import and valid interaction contracts |
 | `scripts/test-command-test-evidence.js` | A command cannot be marked PASS without a Discord response and command-specific behavioral assertions |
 
-A manually inspected traceability map now links 31 selected feature IDs to concrete source markers, named tests and explicit limitations in `feature-evidence.json`. The mapping is intentionally selective; it does not imply that the other 293 records have been individually verified, and it does not promote any inventory status.
+A manually inspected traceability map now links 31 selected feature IDs to concrete source markers, named tests and explicit limitations in `feature-evidence.json`. The latest expansion adds RPG-317–RPG-323 for exploration pity, region mastery, crafting drops, quest materials and rewards, boss-tier materials, and dungeon relic rewards. The mapping is intentionally selective; it does not imply that the other 293 records have been individually verified, and it does not promote any inventory status.
 
 ## Highest-risk follow-up audit areas
 
