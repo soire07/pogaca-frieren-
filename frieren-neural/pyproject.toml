@@ -14,7 +14,7 @@ dependencies = [
 
 [project.scripts]
 frieren-neural-train = "frieren_neural.training:main"
-frieren-neural-evaluate = "frieren_neural.training:evaluation_main"
+frieren-neural-evaluate = "frieren_neural.training:evaluation_main"\nfrieren-neural-prepare-turkish-dialogues = "frieren_neural.datasets:main"
 
 [project.optional-dependencies]
 dev = [
