@@ -22,6 +22,7 @@ def test_dialogue_loss_mask_supervises_assistant_turn_and_eos_only():
     unsupervised = tokenizer.decode([token for token, enabled in zip(token_ids, loss_mask) if not enabled and token not in (tokenizer.bos_id, tokenizer.eos_id)])
     assert "Asistan: Selam dünya" in supervised
     assert "Asistan: İyiyim" in supervised
+    assert sum(enabled and token == tokenizer.eos_id for token, enabled in zip(token_ids, loss_mask)) == 2
     assert "Kullanıcı: Merhaba" in unsupervised
     assert "Kullanıcı: Nasılsın" in unsupervised
 
@@ -86,3 +87,23 @@ def test_generation_stops_before_leaked_role_labels(monkeypatch):
     monkeypatch.setattr(model, "generate", lambda *_args, **_kwargs: generated)
 
     assert generate_text(model, tokenizer, prompt, max_new_tokens=16).endswith("Merhaba, dünya!")
+
+
+
+def test_resume_rejects_checkpoint_trained_with_full_stream_loss(tmp_path):
+    from frieren_neural.training import TrainingConfig, train_model
+
+    corpus = ["Kullanıcı: soru 1\\nAsistan: cevap 1", "Kullanıcı: soru 2\\nAsistan: cevap 2"]
+    checkpoint = tmp_path / "old-objective.pt"
+    config = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1,
+        block_size=8, validation_fraction=0.2, d_model=16, n_heads=2,
+        n_layers=1, dropout=0.0, tokenizer_vocab_size=280,
+    )
+    train_model(corpus, checkpoint, config, device="cpu")
+    saved = torch.load(checkpoint, map_location="cpu", weights_only=True)
+    saved.pop("loss_objective_version")
+    torch.save(saved, checkpoint)
+
+    with pytest.raises(ValueError, match="loss objective"):
+        train_model(corpus, checkpoint, config, resume=True, device="cpu")
