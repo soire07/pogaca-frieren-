@@ -291,7 +291,7 @@ def web_generate(
     device = os.environ.get("FRIEREN_DEVICE", "cpu")
     try:
         model, tokenizer, metadata = _load_runtime(str(checkpoint.resolve()), device)
-        with _generation_lock:
+        with _generation_capacity(), _generation_lock:
             result = generate_text(
                 model, tokenizer, payload.prompt, max_new_tokens=payload.max_new_tokens,
                 temperature=payload.temperature, top_k=payload.top_k
