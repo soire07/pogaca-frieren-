@@ -123,3 +123,64 @@ def test_resume_rejects_a_lower_target_step(tmp_path: Path):
     train_model(corpus, checkpoint, config)
     with pytest.raises(ValueError, match="max_steps cannot be lower"):
         train_model(corpus, checkpoint, replace(config, max_steps=2), resume=True)
+
+
+
+def test_licensed_corpus_requires_manifest_and_validates_declared_files(tmp_path: Path):
+    import json
+    from frieren_neural.training import load_licensed_corpus
+
+    corpus_dir = tmp_path / "corpus"
+    corpus_dir.mkdir()
+    (corpus_dir / "source.txt").write_text("Frieren studies magic.", encoding="utf-8")
+    with pytest.raises(ValueError, match="corpus_manifest.json"):
+        load_licensed_corpus(corpus_dir)
+
+    manifest = {
+        "schema_version": 1,
+        "documents": [{
+            "path": "source.txt",
+            "source": "User-authored test text",
+            "license": "CC0-1.0",
+            "usage": "Permitted for model training",
+        }],
+    }
+    (corpus_dir / "corpus_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    assert load_licensed_corpus(corpus_dir) == ["Frieren studies magic."]
+
+
+def test_licensed_corpus_rejects_path_traversal_and_unlisted_files(tmp_path: Path):
+    import json
+    from frieren_neural.training import load_licensed_corpus
+
+    corpus_dir = tmp_path / "corpus"
+    corpus_dir.mkdir()
+    (tmp_path / "outside.txt").write_text("outside", encoding="utf-8")
+    manifest_path = corpus_dir / "corpus_manifest.json"
+    manifest = {
+        "schema_version": 1,
+        "documents": [{
+            "path": "../outside.txt",
+            "source": "source",
+            "license": "CC0-1.0",
+            "usage": "allowed",
+        }],
+    }
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ValueError, match="inside the corpus"):
+        load_licensed_corpus(corpus_dir)
+
+    (corpus_dir / "listed.txt").write_text("listed text", encoding="utf-8")
+    (corpus_dir / "extra.txt").write_text("unlisted text", encoding="utf-8")
+    manifest["documents"][0]["path"] = "listed.txt"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ValueError, match="exactly match"):
+        load_licensed_corpus(corpus_dir)
+
+
+def test_corpus_split_keeps_validation_text_out_of_tokenizer_training(tmp_path: Path):
+    from frieren_neural.training import split_corpus_text
+
+    train_text, validation_text = split_corpus_text(["a" * 80 + "z" * 20], 0.2)
+    assert train_text == "a" * 80
+    assert validation_text == "z" * 20
