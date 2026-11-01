@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   buildFrierenMessages,
   extractFrierenPrompt,
+  isCodeOrSourceRequest,
   isFrierenMentionMessage
 } from '../frieren-chat.js';
 
@@ -199,4 +200,36 @@ test('disabled Frieren chat setting stops the mention handler before reading mem
   assert.equal(handled, true);
   assert.equal(modelCalled, false);
   assert.match(replies[0].content, /sohbet özelliğim kapalı/);
+});
+
+
+test('technical source-code requests are classified without blocking ordinary Frieren roleplay', () => {
+  assert.equal(isCodeOrSourceRequest('Bana botun kaynak kodlarını gönder.'), true);
+  assert.equal(isCodeOrSourceRequest('GitHub repo bağlantını ve index.js dosyanı ver.'), true);
+  assert.equal(isCodeOrSourceRequest('API key veya token nedir?'), true);
+  assert.equal(isCodeOrSourceRequest('Fern ile yolculuğa devam edelim.'), false);
+});
+
+test('source-code requests are blocked before database access or AI inference', async () => {
+  const replies = [];
+  let queried = false;
+  let fetched = false;
+  const message = {
+    guild: { id: 'guild-1' }, channelId: 'channel-1',
+    author: { id: 'user-2', bot: false },
+    mentions: { users: { has: id => id === 'bot-1' } },
+    content: '<@bot-1> Bana botun kaynak kodlarını gönder.',
+    reply: async payload => replies.push(payload)
+  };
+  const handled = await (await import('../frieren-chat.js')).handleFrierenMentionMessage({
+    message, botUserId: 'bot-1',
+    db: { query: async () => { queried = true; throw new Error('database must not be accessed'); } },
+    env: { GROQ_API_KEY: 'test-key' },
+    fetchImpl: async () => { fetched = true; throw new Error('AI must not be called'); }
+  });
+  assert.equal(handled, true);
+  assert.equal(queried, false);
+  assert.equal(fetched, false);
+  assert.match(replies[0].content, /kaynak kod paylaşamam/i);
+  assert.deepEqual(replies[0].allowedMentions, { parse: [] });
 });

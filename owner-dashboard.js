@@ -77,6 +77,7 @@ export function renderOwnerNavigation() {
     + '<a href="/owner/frieren-ai"><span class="nav-icon">✧</span><span class="nav-link-copy"><strong>Frieren AI merkezi</strong></span></a>'
     + '<a href="/owner/database"><span class="nav-icon">◈</span><span class="nav-link-copy"><strong>Veritabanı</strong></span></a>'
     + '<a href="/owner/settings"><span class="nav-icon">⚙</span><span class="nav-link-copy"><strong>Owner ayarları</strong></span></a></div>'
+    + '<div class="nav-group"><div class="nav-group-title">WEB SİTESİ</div><a href="/" target="_blank" rel="noopener"><span class="nav-icon">↗</span><span class="nav-link-copy"><strong>Ana siteyi önizle</strong><small>Yeni sekmede aç</small></span></a></div>'
     + '<div class="nav-footer"><span class="nav-status-dot"></span> OWNER ACCESS · PRIVATE</div></nav>';
 }
 

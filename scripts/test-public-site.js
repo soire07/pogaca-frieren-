@@ -172,3 +172,29 @@ test('Owner Panel mobile rendering defers offscreen sections and avoids animated
   assert.match(css, /contain-intrinsic-size:auto 480px/);
   assert.match(css, /\.hero:after\{[^}]*background-image:radial-gradient/);
 });
+
+test('command catalogue is authenticated, dynamic, searchable and safely escapes command metadata', async () => {
+  const response = res();
+  const commands = new Map([
+    ['karakter', { data: { name: 'karakter', description: 'RPG karakterini görüntüle.' } }],
+    ['animequiz', { data: { name: 'animequiz', description: 'Anime quizlerine katıl.' } }],
+    ['hazine', { data: { name: 'hazine', description: '<script>alert(1)</script>' } }],
+  ]);
+  await handlePublicSiteRequest(request('/komutlar'), response, { client: { commands } });
+  assert.equal(response.status, 200);
+  assert.match(response.body, /Bütün <em>komutlar/);
+  assert.match(response.body, /3\/3 komut gösteriliyor/);
+  assert.match(response.body, /command-search/);
+  assert.match(response.body, /RPG &amp; Macera/);
+  assert.match(response.body, /Anime &amp; Eğlence/);
+  assert.doesNotMatch(response.body, /<script>alert\(1\)<\/script>/);
+  assert.match(response.body, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+});
+
+test('command catalogue handles an unavailable command collection without throwing', async () => {
+  const response = res();
+  await handlePublicSiteRequest(request('/komutlar'), response, { client: {} });
+  assert.equal(response.status, 200);
+  assert.match(response.body, /0\/0 komut gösteriliyor/);
+  assert.match(response.body, /Komut kataloğu şu anda yüklenemiyor/);
+});
