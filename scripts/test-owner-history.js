@@ -70,6 +70,7 @@ test('memory updates validate input and audit only metadata, never memory conten
   assert.equal(result.id, 8);
   assert.match(call.sql, /UPDATE frieren_chat_memories/);
   assert.match(call.sql, /INSERT INTO owner_audit_logs/);
-  assert.doesNotMatch(JSON.stringify(call.params), /Daha kısa yanıtlar/);
+  assert.equal(call.params[1], 'Daha kısa yanıtlar');
+  assert.match(call.sql, /jsonb_build_object\('userId',user_id,'guildId',guild_id,'key',memory_key\)/);
   await assert.rejects(updateOwnerMemory(db, { id: 8, value: '   ', actorId: '1553794496234262641' }), /INVALID_MEMORY_VALUE/);
 });
