@@ -106,3 +106,37 @@ test('solo boss reward persistence is idempotent per battle session across dupli
   assert.match(schema, /last_boss_battle_id TEXT/);
 });
 
+
+
+test('solo boss handler announces each phase, scales damage and lets freeze cancel special attacks', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  assert.match(source, /const nextBossPhase = getBossPhase\(bossHp, boss\.maxHp\)/);
+  assert.match(source, /if \(nextBossPhase > bossPhase\)/);
+  assert.match(source, /ikinci aşamaya girdi/);
+  assert.match(source, /son aşamasına geçti/);
+  assert.match(source, /calculateBossIncomingDamage\(rawBossDamage, defense, bossPhase\)/);
+  assert.match(source, /bossPhaseSpecialBonus\(bossPhase\)/);
+  assert.match(source, /turnCount % 3 === 0 && !frozenBoss/);
+  assert.match(source, /Donma etkisi bossun özel saldırısını da durdurdu/);
+  assert.match(source, /if \(frozenBoss\) bossDamage = 0/);
+});
+
+test('cooperative raid announces second and final boss phases and scales incoming damage', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /const currentPhase = getBossPhase\(bossHp, maxBossHp\)/);
+  assert.match(source, /if \(currentPhase > bossPhase\)/);
+  assert.match(source, /ikinci evreye geçti/);
+  assert.match(source, /son evreye geçti/);
+  assert.match(source, /calculateBossIncomingDamage\(rawDamage, Math\.round\(target\.defense \* 0\.56\), bossPhase\)/);
+  assert.match(source, /bossPhaseSpecialBonus\(bossPhase\)/);
+});
+
+test('final layered dungeon boss announces both phases and applies phase-scaled damage', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  assert.match(source, /const currentPhase = finalBoss \? getBossPhase\(enemyHp, maxEnemyHp\) : 1/);
+  assert.match(source, /if \(currentPhase > enemyPhase\)/);
+  assert.match(source, /İblis Lordu ikinci evreye geçti/);
+  assert.match(source, /İblis Lordu son evreye geçti/);
+  assert.match(source, /calculateBossIncomingDamage\(rawIncoming, Math\.round\(target\.defense \* 0\.6\), enemyPhase\)/);
+  assert.match(source, /bossPhaseSpecialBonus\(enemyPhase\)/);
+});
