@@ -100,7 +100,7 @@ test('solo boss reward persistence is idempotent per battle session across dupli
   const schema = await (await import('node:fs/promises')).readFile(new URL('../database/db.js', import.meta.url), 'utf8');
   assert.match(source, /randomUUID/);
   assert.match(source, /last_boss_battle_id/);
-  assert.match(source, /last_boss_battle_id IS DISTINCT FROM \\$7/);
+  assert.ok(source.includes('last_boss_battle_id IS DISTINCT FROM $7'));
   const victory = source.indexOf('if (bossHp <= 0)');
   const begin = source.indexOf("await db.query('BEGIN')", victory);
   const reward = source.indexOf('last_boss_battle_id=$7', begin);
