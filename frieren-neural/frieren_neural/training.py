@@ -209,6 +209,8 @@ def train_model(
         if not checkpoint.is_file():
             raise FileNotFoundError(f"Cannot resume; checkpoint not found: {checkpoint}")
         saved = torch.load(checkpoint, map_location=selected_device, weights_only=True)
+        if saved.get("format_version") != 2:
+            raise ValueError("Unsupported checkpoint format; start a fresh run with the current trainer.")
         saved_training_config = dict(saved.get("training_config", {}))
         current_training_config = asdict(settings)
         saved_training_config.pop("max_steps", None)
@@ -221,6 +223,8 @@ def train_model(
         model.load_state_dict(saved["model_state"])
         optimizer.load_state_dict(saved["optimizer_state"])
         start_step = int(saved["step"])
+        if settings.max_steps < start_step:
+            raise ValueError("max_steps cannot be lower than the checkpoint step when resuming.")
         train_loss = float(saved["train_loss"])
         validation_loss = float(saved["validation_loss"])
 
@@ -247,7 +251,7 @@ def train_model(
                 model, train_data, validation_data, settings, selected_device, settings.seed + step
             )
             _atomic_save({
-                "format_version": 1,
+                "format_version": 2,
                 "step": step,
                 "model_config": asdict(model_config),
                 "training_config": asdict(settings),
