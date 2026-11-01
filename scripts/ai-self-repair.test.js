@@ -19,7 +19,7 @@ const validPatch = [
 test('repair path allowlist accepts ordinary source and test files only', () => {
   assert.equal(isAllowedRepairPath('owner-dashboard.js'), true);
   assert.equal(isAllowedRepairPath('ai-agent/index.js'), true);
-  assert.equal(isAllowedRepairPath('scripts/test-owner-dashboard.js'), true);
+  assert.equal(isAllowedRepairPath('scripts/test-owner-dashboard.js'), true);\n  assert.equal(isAllowedRepairPath('scripts/ai-self-repair.js'), false);\n  assert.equal(isAllowedRepairPath('owner-dashboard.js'), false);\n  assert.equal(isAllowedRepairPath('ai-agent/index.js'), false);
   assert.equal(isAllowedRepairPath('package.json'), false);
   assert.equal(isAllowedRepairPath('.env.js'), false);
   assert.equal(isAllowedRepairPath('ai-agent/config.js'), false);
