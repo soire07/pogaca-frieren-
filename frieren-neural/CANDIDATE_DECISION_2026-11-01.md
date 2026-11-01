@@ -4,7 +4,7 @@
 
 **NOT READY — no candidate is approved for production or a public staged test.**
 
-The three existing candidates have now been benchmarked on the same 24-case Turkish prompt set. The preserved scratch checkpoint was additionally rerun with greedy decoding and a 160-token budget. The Qwen float32 and Q8 GGUF candidates were tested at 160 tokens; the Q4_K_M candidate is being evaluated separately.
+The three existing candidates have now been benchmarked on the same 24-case Turkish prompt set. The preserved scratch checkpoint was additionally rerun with greedy decoding and a 160-token budget. The Qwen float32, Q8 GGUF, and Q4_K_M candidates were tested at 160 tokens.
 
 No model has passed the human quality gate. No candidate is integrated into Poğaça Frieren, Frieren AI, a production database, Render, or the owner panel.
 
@@ -75,6 +75,6 @@ Release thresholds remain those in [QUALITY_GATE.md](QUALITY_GATE.md): no critic
 - Scratch: the measured memory footprint is lowest, but its answer quality is unusable. Do not deploy it.
 - Qwen float32: approximately 4.9 GiB peak RSS; unsuitable for a low-memory free instance.
 - Qwen Q8: approximately 1.04 GiB peak RSS and a 639 MB model file; not proven to fit a free host and still fails quality checks.
-- Q4_K_M is being measured next because its pinned upstream quantized file is smaller. File size alone will not be accepted as a host-fit proof; runtime RSS and quality must both be measured.
+- Q4_K_M has now been measured; its smaller file does not materially reduce process RSS or solve output-quality failures. File size alone will not be accepted as a host-fit proof; runtime RSS and quality must both be measured.
 
 No Render/Neon/Vercel/Discord production change was made. No paid API was used. No Vercel function was added. PR #171 remains a draft and is not merged.
