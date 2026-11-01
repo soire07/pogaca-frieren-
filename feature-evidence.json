@@ -685,7 +685,7 @@
         "path": "scripts/test-utils.js",
         "name": "exploration can find region-specific materials used by equipment crafting recipes",
         "markers": [
-          "const craftingMaterials = {",
+          "craftingMaterials",
           "foundCraftingMaterial",
           "no crafting recipe consumes exploration material"
         ]
