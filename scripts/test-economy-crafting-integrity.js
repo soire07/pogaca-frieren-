@@ -75,3 +75,56 @@ test('trade offers reserve only unexpired copies using the database clock', asyn
   assert.match(trade, /if \(expiryResult\.rows\[0\]\.expired\)/);
   assert.doesNotMatch(trade, /new Date\(offer\.expires_at\).*Date\.now\(\)/);
 });
+
+
+test('treasure chest consumption, loot history, inventory and currency rewards commit atomically', async () => {
+  const source = await read('hazineac.js');
+  const begin = source.indexOf("await db.query('BEGIN')");
+  const playerLock = source.indexOf('SELECT xp, level FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', begin);
+  const bagLock = source.indexOf("SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='🗝️ Kadim Hazine Sandığı' FOR UPDATE", playerLock);
+  const consume = source.indexOf("DELETE FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='🗝️ Kadim Hazine Sandığı'", bagLock);
+  const history = source.indexOf('INSERT INTO treasure_openings', bagLock);
+  const inventoryReward = source.indexOf('INSERT INTO inventory', history);
+  const currencyReward = source.indexOf('UPDATE users SET coins=coins+$3, xp=$4', inventoryReward);
+  const commit = source.indexOf("await db.query('COMMIT')", currencyReward);
+
+  assert.ok(begin >= 0 && playerLock > begin && bagLock > playerLock && consume > bagLock &&
+    history > bagLock && inventoryReward > history && currencyReward > inventoryReward && commit > currencyReward,
+    'chest count, loot history, item rewards, XP and coins must remain in one ordered transaction');
+  assert.match(source, /if \(available < amount\)/);
+  assert.match(source, /if \(available === amount\)/);
+  assert.match(source, /await db\.query\('ROLLBACK'\)/);
+});
+
+test('daily quest claims serialize the player and atomically validate progress before paying once', async () => {
+  const source = await read('gunlukgorev.js');
+  const begin = source.indexOf("await db.query('BEGIN')");
+  const playerLock = source.indexOf('SELECT class_name FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', begin);
+  const progress = source.indexOf('getDailyQuestObjectiveSql(mission.objective_type)', playerLock);
+  const claim = source.indexOf('INSERT INTO daily_mission_claims', progress);
+  const reward = source.indexOf('UPDATE users SET coins=coins+$3', claim);
+  const commit = source.indexOf("await db.query('COMMIT')", reward);
+
+  assert.ok(begin >= 0 && playerLock > begin && progress > playerLock && claim > progress && reward > claim && commit > reward,
+    'player lock, progress validation, unique claim, currency reward and commit must be ordered');
+  assert.match(source, /ON CONFLICT DO NOTHING RETURNING mission_key/);
+  assert.match(source, /VALUES\(\$1,\$2,CURRENT_DATE,'__class_daily_reward__'\)/);
+  assert.match(source, /await db\.query\('ROLLBACK'\)/);
+});
+
+test('character stat spending locks available points and atomically enforces permanent stat caps', async () => {
+  const source = await read('commands/rpg/gelisim.js');
+  const begin = source.indexOf("await client.query('BEGIN')");
+  const playerLock = source.indexOf('SELECT stat_points, hp, max_hp, mana, max_mana, attack, defense FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', begin);
+  const balanceCheck = source.indexOf('player.stat_points < points', playerLock);
+  const capCheck = source.indexOf('current + increase > cap', balanceCheck);
+  const statUpdate = source.indexOf('UPDATE users SET', capCheck);
+  const reread = source.indexOf('SELECT stat_points, hp, max_hp, mana, max_mana, attack, defense FROM users', statUpdate);
+  const commit = source.indexOf("await client.query('COMMIT')", reread);
+
+  assert.ok(begin >= 0 && playerLock > begin && balanceCheck > playerLock && capCheck > balanceCheck &&
+    statUpdate > capCheck && reread > statUpdate && commit > reread,
+    'stat points must be locked, validated, spent, reread and committed in one transaction');
+  assert.match(source, /const cap = stat === 'hp' \|\| stat === 'mana' \? 2000 : stat === 'attack' \? 500 : 250/);
+  assert.match(source, /await client\.query\('ROLLBACK'\)/);
+});
