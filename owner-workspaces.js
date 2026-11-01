@@ -6,24 +6,21 @@ const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
 })[char]);
 
 export async function getOwnerDatabaseDiagnostics(db) {
-  const health = await db.query('SELECT current_database() AS database_name, current_user AS database_user, NOW() AS checked_at');
-  const tables = await db.query(
-    `SELECT table_name FROM information_schema.tables
-     WHERE table_schema='public' AND table_type='BASE TABLE'
-     ORDER BY table_name LIMIT 40`
-  );
-  const counts = [];
-  for (const row of tables.rows || []) {
-    const name = String(row.table_name || '');
-    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) continue;
-    const result = await db.query('SELECT COUNT(*)::bigint AS row_count FROM public."' + name + '"');
-    counts.push({ name, rows: Number(result.rows?.[0]?.row_count || 0) });
-  }
+  const result = await db.query(`
+    SELECT current_database() AS database_name, NOW() AS checked_at,
+      tables.table_name, COALESCE(stats.n_live_tup,0)::bigint AS row_count
+    FROM information_schema.tables AS tables
+    LEFT JOIN pg_stat_user_tables AS stats
+      ON stats.schemaname=tables.table_schema AND stats.relname=tables.table_name
+    WHERE tables.table_schema='public' AND tables.table_type='BASE TABLE'
+    ORDER BY tables.table_name LIMIT 40
+  `);
+  const rows = result.rows || [];
   return {
     connected: true,
-    databaseName: String(health.rows?.[0]?.database_name || ''),
-    checkedAt: health.rows?.[0]?.checked_at || null,
-    tables: counts
+    databaseName: String(rows[0]?.database_name || ''),
+    checkedAt: rows[0]?.checked_at || null,
+    tables: rows.map(row => ({ name: String(row.table_name || ''), rows: Number(row.row_count || 0) }))
   };
 }
 
