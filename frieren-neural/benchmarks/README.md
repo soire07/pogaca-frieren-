@@ -30,6 +30,22 @@ Run on GitHub: **Actions → Frieren Neural — Qwen3 GGUF Q8 CPU Benchmark → 
 The workflow is isolated, CPU-only, and stores evidence for 30 days. It is not part of
 production CI and adds no application or Vercel functions.
 
+## Qwen3-0.6B GGUF Q4_K_M candidate
+
+- Upstream conversion: [unsloth/Qwen3-0.6B-GGUF](https://huggingface.co/unsloth/Qwen3-0.6B-GGUF)
+- Pinned revision: `060ae942940c11394cfb1a7313ddcb92c2c4db11`
+- File: `Qwen3-0.6B-Q4_K_M.gguf`, SHA-256:
+  `dd4750858c52f1c040e9ff4f54ba9365e11e8e81021abffd9b9c02646cf334d7`
+- Declared upstream license: Apache-2.0.
+- Workflow: [41342378762](https://github.com/soire07/pogaca-frieren-/actions/runs/41342378762)
+- Runtime: `llama-cpp-python==0.3.16`, CPU, two threads, 1,024-token context,
+  greedy decoding, 160-token cap.
+- Latest measured peak process RSS: 1,039.33 MiB. The smaller 396.7 MB model file
+  did not materially reduce total process memory compared with Q8_0.
+
+The benchmark writes `gguf-q4-quality-report.json` and a blank reviewer sheet.
+It remains a separate experimental candidate, not an application dependency.
+
 ## Review protocol
 
 Two reviewers must independently complete the generated `human-scores.template.json`
