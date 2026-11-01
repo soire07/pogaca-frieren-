@@ -48,6 +48,20 @@ All measurements are from GitHub-hosted CPU runners with two threads. They are n
 - 11/24 responses reached the token cap; TR-018 still emits conversation role markers.
 - 1,067.69 MiB peak RSS is materially lower than float32, but still does not prove compatibility with any specific free host.
 
+
+### Qwen3-0.6B GGUF Q4_K_M
+
+- Source workflow: [41342351234](https://github.com/soire07/pogaca-frieren-/actions/runs/41342351234)
+- Artifact: `frieren-neural-qwen3-gguf-q4-cpu-benchmark` (ID `13097957279`)
+- Upstream: [Unsloth Qwen3-0.6B-GGUF](https://huggingface.co/unsloth/Qwen3-0.6B-GGUF), pinned revision `060ae942940c11394cfb1a7313ddcb92c2c4db11`
+- File SHA-256: `dd4750858c52f1c040e9ff4f54ba9365e11e8e81021abffd9b9c02646cf334d7`
+- File size: 396,704,672 bytes
+- Model load: 0.318 s; 24-prompt generation: 39.966 s
+- Median / p95 latency: 1.732 / 2.447 s
+- Peak process RSS: 1,039.03 MiB
+- 11/24 answers reached the 160-token cap; reasoning leakage was detected and redacted in TR-008, TR-010, TR-021, and TR-022.
+- TR-018 correctly states port 8081, but other answers remain repetitive, inaccurate, or unsafe (TR-011). Q4 reduces the file size but only reduces measured process RSS by about 29 MiB compared with Q8. It does not make this candidate fit a low-memory free host or fix the quality gate.
+
 ## Comparable review protocol
 
 The scratch, float32, and Q8 runs use the same 24 prompt IDs, greedy decoding, two CPU threads, and 160-token budget. Prompt serialization and tokenizers differ by model, and the scratch checkpoint uses a legacy training objective; therefore this is a controlled *human response evaluation set*, not a claim of identical token-level conditions.
