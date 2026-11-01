@@ -133,7 +133,7 @@ The reported perplexity is a language-model metric, not a guarantee of factual a
 
 ## Candidate comparison and deployment decision (2026-11-01)
 
-See [CANDIDATE_DECISION_2026-11-01.md](CANDIDATE_DECISION_2026-11-01.md) for measured results from the scratch checkpoint, Qwen3 float32, and Qwen3 Q8 GGUF candidates. All remain **NOT READY**. The separate Q4_K_M benchmark is in progress; none of these experiments deploys a model or changes production services.
+See [CANDIDATE_DECISION_2026-11-01.md](CANDIDATE_DECISION_2026-11-01.md) for measured results from the scratch checkpoint, Qwen3 float32, Q8, and Q4 GGUF candidates. All remain **NOT READY**. [HUMAN_REVIEW_INSTRUCTIONS.md](HUMAN_REVIEW_INSTRUCTIONS.md) explains the two-reviewer release gate and how to download score sheets. None of these experiments deploys a model or changes production services.
 
 ## Automated Turkish conversation quality report
 
