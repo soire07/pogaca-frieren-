@@ -21,6 +21,7 @@ async function collectJavaScript(directory, files = []) {
 test('runtime Discord interactions do not use deprecated ephemeral boolean options', async () => {
   const files = await collectJavaScript(root.pathname);
   const violations = [];
+  // Check both deprecated options and missing enum imports in every runtime module.
   for (const file of files) {
     const source = await readFile(file, 'utf8');
     if (/\bephemeral\s*:\s*true\b/.test(source)) {
