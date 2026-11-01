@@ -19,6 +19,11 @@ frieren-neural-evaluate = "frieren_neural.training:evaluation_main"
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0",
+  "httpx>=0.27",
+]
+serve = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
 ]
 
 [tool.setuptools.packages.find]
