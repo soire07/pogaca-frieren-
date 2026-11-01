@@ -109,12 +109,12 @@ def run_benchmark(output_dir: Path, *, limit: int | None = None, threads: int = 
             attention_mask = encoded.get("attention_mask")
             if attention_mask is not None:
                 attention_mask = attention_mask.to("cpu")
+            torch.manual_seed(20261101 + case_index)
             started_case = time.perf_counter()
             generated = model.generate(
                 input_ids=input_ids, attention_mask=attention_mask,
                 max_new_tokens=MAX_NEW_TOKENS, do_sample=True,
                 temperature=0.7, top_p=0.8, top_k=20,
-                generator=torch.Generator(device="cpu").manual_seed(20261101 + case_index),
                 use_cache=True, pad_token_id=tokenizer.eos_token_id,
                 eos_token_id=tokenizer.eos_token_id,
             )
