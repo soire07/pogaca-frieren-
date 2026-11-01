@@ -2,6 +2,11 @@ name: Frieren Neural — Qwen3 GGUF Q4 CPU Benchmark
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "frieren-neural/benchmarks/gguf_q4_cpu.py"
+      - "frieren-neural/frieren_neural/qwen3_decoding.py"
+      - ".github/workflows/frieren-neural-gguf-q4-benchmark.yml"
   push:
     branches:
       - frieren-neural-foundation
@@ -22,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: frieren-neural-foundation
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
