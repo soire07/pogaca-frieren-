@@ -8,7 +8,7 @@ import random
 from pathlib import Path
 from typing import Any
 import torch
-from .training import generate_text, load_checkpoint
+from .training import LOSS_OBJECTIVE_VERSION, generate_text, load_checkpoint
 
 PROMPT_SET_VERSION = "tr-conversation-v1"
 DECODING_SETTINGS = {"seed": 20261101, "temperature": 0.7, "top_k": 40, "max_new_tokens": 80}
@@ -104,6 +104,19 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
     actual_ids=[item.get("id") for item in outputs if isinstance(item,dict)]
     if actual_ids != expected_ids:
         reasons.append("benchmark_outputs_incomplete_or_out_of_order")
+    if not isinstance(checkpoint_metadata, dict):
+        reasons.append("checkpoint_metadata_missing")
+    else:
+        model_config = checkpoint_metadata.get("model_config")
+        training_config = checkpoint_metadata.get("training_config")
+        if (checkpoint_metadata.get("format_version") != 2
+                or not isinstance(model_config, dict) or not model_config
+                or not isinstance(training_config, dict) or not training_config
+                or not checkpoint_metadata.get("tokenizer_type")
+                or not isinstance(checkpoint_metadata.get("tokenizer_vocab_size"), int)
+                or checkpoint_metadata.get("dialogue_encoding_version") != 2
+                or checkpoint_metadata.get("loss_objective_version") not in (0, LOSS_OBJECTIVE_VERSION)):
+            reasons.append("checkpoint_metadata_incomplete")
     if not isinstance(training_provenance,dict) or not training_provenance.get("manifest_sha256") or not training_provenance.get("licenses"):
         reasons.append("training_provenance_missing")
     if (not isinstance(heldout_metrics,dict) or not isinstance(heldout_metrics.get("loss"),(int,float))
@@ -112,6 +125,11 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
             or isinstance(heldout_metrics.get("perplexity"),bool) or not math.isfinite(heldout_metrics["perplexity"])
             or heldout_metrics["perplexity"] < 1):
         reasons.append("held_out_metrics_missing_or_invalid")
+    elif (heldout_metrics.get("loss_objective_version") != LOSS_OBJECTIVE_VERSION
+          or not isinstance(checkpoint_metadata, dict)
+          or heldout_metrics.get("checkpoint_training_loss_objective_version")
+             != checkpoint_metadata.get("loss_objective_version")):
+        reasons.append("held_out_objective_mismatch")
     if scores is None:
         report["blocking_reasons"]=reasons+["human_review_missing"]
         return report
@@ -168,7 +186,7 @@ def render_markdown(report:dict[str,Any])->str:
       "A comparable, previously human-scored baseline report is required before a READY decision.",""])
     return "\n".join(lines)
 
-def evaluate_checkpoint_quality(checkpoint_path:str|Path,*,device:str="cpu")->tuple[list[dict[str,str]],str,int]:
+def evaluate_checkpoint_quality(checkpoint_path:str|Path,*,device:str="cpu")->tuple[list[dict[str,str]],str,int,dict[str,Any]]:
     checkpoint=Path(checkpoint_path)
     if not checkpoint.is_file(): raise FileNotFoundError(f"Checkpoint not found: {checkpoint}")
     checkpoint_sha=hashlib.sha256(checkpoint.read_bytes()).hexdigest()
@@ -183,7 +201,7 @@ def evaluate_checkpoint_quality(checkpoint_path:str|Path,*,device:str="cpu")->tu
         generated=full[len(model_prompt):] if full.startswith(model_prompt) else full
         outputs.append({"id":item["id"],"category":item["category"],"prompt":item["prompt"],
           "model_prompt":model_prompt,"review_hint":item["review_hint"],"output":generated.strip()})
-    return outputs,checkpoint_sha,int(metadata["step"])
+    return outputs,checkpoint_sha,int(metadata["step"]),metadata
 
 def build_parser()->argparse.ArgumentParser:
     parser=argparse.ArgumentParser(description="Generate the fixed Turkish human-review benchmark report.")
@@ -198,7 +216,7 @@ def build_parser()->argparse.ArgumentParser:
 
 def main()->None:
     args=build_parser().parse_args()
-    outputs,checkpoint_sha,step=evaluate_checkpoint_quality(args.checkpoint,device=args.device)
+    outputs,checkpoint_sha,step,checkpoint_metadata=evaluate_checkpoint_quality(args.checkpoint,device=args.device)
     scores=json.loads(Path(args.scores).read_text(encoding="utf-8")) if args.scores else None
     baseline=json.loads(Path(args.baseline_report).read_text(encoding="utf-8")) if args.baseline_report else None
     provenance=None
@@ -212,7 +230,7 @@ def main()->None:
             raise ValueError("Every training manifest document must declare source, license, and usage.")
         provenance={"manifest_sha256":hashlib.sha256(raw).hexdigest(),"sources":sorted({item["source"] for item in documents}),"licenses":sorted({item["license"] for item in documents})}
     heldout=json.loads(Path(args.heldout_report).read_text(encoding="utf-8")) if args.heldout_report else None
-    report=build_report(checkpoint_sha256=checkpoint_sha,checkpoint_step=step,outputs=outputs,scores=scores,baseline_report=baseline,training_provenance=provenance,heldout_metrics=heldout)
+    report=build_report(checkpoint_sha256=checkpoint_sha,checkpoint_step=step,outputs=outputs,scores=scores,baseline_report=baseline,checkpoint_metadata=checkpoint_metadata,training_provenance=provenance,heldout_metrics=heldout)
     out=Path(args.output_dir)
     out.mkdir(parents=True,exist_ok=True)
     (out/"quality-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
