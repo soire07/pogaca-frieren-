@@ -9,6 +9,7 @@ import pickle
 import secrets
 import time
 import threading
+from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
@@ -46,6 +47,8 @@ if _allowed_origins:
         allow_credentials=False,
     )
 _generation_lock = threading.Lock()
+# One active generation plus at most one admitted waiter per process.
+_generation_slots = threading.BoundedSemaphore(2)
 _login_attempts: dict[str, list[float]] = {}
 _SESSION_COOKIE = "frieren_session"
 _SESSION_TTL_SECONDS = 3_600
@@ -67,6 +70,16 @@ def _load_runtime(
     checkpoint_path: str, device: str
 ) -> tuple[GPTLanguageModel, BPETokenizer, dict[str, float | int | str]]:
     return load_checkpoint(checkpoint_path, device=device)
+
+
+@contextmanager
+def _generation_capacity():
+    if not _generation_slots.acquire(blocking=False):
+        raise HTTPException(status_code=503, detail="Generation capacity is busy. Try again shortly.")
+    try:
+        yield
+    finally:
+        _generation_slots.release()
 
 
 def clear_runtime_cache() -> None:
@@ -116,7 +129,7 @@ def generate(
     except (OSError, RuntimeError, ValueError, KeyError, EOFError, pickle.UnpicklingError) as error:
         raise HTTPException(status_code=503, detail="Model checkpoint could not be loaded.") from error
     try:
-        with _generation_lock:
+        with _generation_capacity(), _generation_lock:
             result = generate_text(
                 model, tokenizer, request.prompt, max_new_tokens=request.max_new_tokens,
                 temperature=request.temperature, top_k=request.top_k
