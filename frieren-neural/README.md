@@ -102,6 +102,23 @@ uvicorn frieren_neural.api:app --host 0.0.0.0 --port 8000
 This API is a single shared service, not a collection of serverless functions. It is not deployed by this change; hosting and the web/Discord clients remain separate milestones.
 
 
+## Discord adapter
+
+The optional Discord client exposes one `/ask` slash command and forwards requests to the same authenticated inference API. It does not load a second model or request privileged Discord intents.
+
+```bash
+pip install -e ".[discord]"
+export FRIEREN_DISCORD_TOKEN="your-discord-bot-token"
+export FRIEREN_API_TOKEN="the-same-strong-server-to-server-token"
+export FRIEREN_API_URL="https://your-inference-host.example"
+# Optional: sync the slash command to one test server immediately
+export FRIEREN_DISCORD_GUILD_ID="your-test-server-id"
+python -m frieren_neural.discord_adapter
+```
+
+The bot token and API token must be stored as host secrets, never in Git or client-side code. The adapter sends only the prompt to the model API, limits output to Discord-safe chunks, and disables mention parsing on generated replies. Conversation memory is not implemented yet.
+
+
 ## Engineering constraints
 
 1. Never put credentials, Discord tokens, database URLs, or private user data in this directory.
