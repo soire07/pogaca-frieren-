@@ -1149,13 +1149,13 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       listPendingApprovals(db, 15),
       getRecentOwnerActivity(db),
       getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.pogaca.id }),
-      getFrierenAIReadiness(),
       listOwnerPartnerLinks(db),
       getOwnerRpgMetrics(db),
       listGuildConfigurations(db),
       getRenderBotServiceStatuses()
     ]);
     const frierenService = renderServices?.services?.frieren_ai;
+    const aiReadiness = frierenService?.healthPayload || null;
     const [aiRenderMetrics, featureSettingsByGuild] = await Promise.all([
       frierenService?.apiConfigured && !frierenService?.apiError && frierenService?.suspended !== true
         ? getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.frieren_ai.id, apiKey: process.env.RENDER_FRIEREN_AI_API_KEY })
