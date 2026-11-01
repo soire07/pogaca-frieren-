@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { handlePublicSiteRequest } from '../public-site.js';
+import { buildPublicCommandEntries, handlePublicSiteRequest } from '../public-site.js';
 import { createPublicSiteSession, buildPublicSiteSessionCookie } from '../owner-dashboard.js';
 
 const secret = 'test-public-site-session-secret-at-least-32-characters';
@@ -197,4 +197,39 @@ test('command catalogue handles an unavailable command collection without throwi
   assert.equal(response.status, 200);
   assert.match(response.body, /0\/0 komut gösteriliyor/);
   assert.match(response.body, /Komut kataloğu şu anda yüklenemiyor/);
+});
+
+
+test('public command entries preserve option descriptions, required flags and choices', () => {
+  const commands = new Map([['duel', { data: { toJSON: () => ({
+    name: 'duel',
+    description: 'Bir büyücüye düello daveti gönder.',
+    options: [
+      { name: 'rakip', description: 'Düello yapılacak büyücü.', required: true, type: 6 },
+      { name: 'tarz', description: 'Düello türünü seç.', required: false, type: 3, choices: [{ name: 'Dostça', value: 'friendly' }, { name: 'Dereceli', value: 'ranked' }] }
+    ]
+  }) } }]]);
+  const entries = buildPublicCommandEntries(commands);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].name, 'duel');
+  assert.deepEqual(entries[0].options.map(option => [option.name, option.description, option.required]), [
+    ['rakip', 'Düello yapılacak büyücü.', true],
+    ['tarz', 'Düello türünü seç.', false]
+  ]);
+  assert.deepEqual(entries[0].options[1].choices, ['Dostça', 'Dereceli']);
+});
+
+test('public command catalogue renders escaped option help and includes it in search metadata', async () => {
+  const response = res();
+  const commands = new Map([['duel', { data: { name: 'duel', description: 'Büyücü düellosu başlat.', options: [
+    { name: 'rakip', description: '<img src=x onerror=alert(1)>', required: true, type: 6, choices: [{ name: 'Dostça', value: 'friendly' }] }
+  ] } }]]);
+  await handlePublicSiteRequest(request('/komutlar'), response, { client: { commands } });
+  assert.equal(response.status, 200);
+  assert.match(response.body, /Kullanım ayrıntıları \(1\)/);
+  assert.match(response.body, /Düello yapılacak|<img src=x onerror=alert\(1\)>/);
+  assert.match(response.body, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.match(response.body, /Dostça/);
+  assert.match(response.body, /rakip/);
+  assert.doesNotMatch(response.body, /<img src=x onerror=alert\(1\)>/);
 });
