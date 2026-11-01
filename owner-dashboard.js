@@ -15,11 +15,22 @@ import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } fr
 import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
+import {
+  generateTotpSecret, encryptTotpSecret, decryptTotpSecret, verifyTotpCode,
+  createTotpUri, generateTotpRecoveryCodes, hashTotpRecoveryCode
+} from './owner-totp.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
 const SESSION_COOKIE = 'frieren_owner_session';
 const STATE_COOKIE = 'frieren_owner_oauth_state';
+const SECOND_FACTOR_COOKIE = 'frieren_owner_second_factor';
+const SECOND_FACTOR_SETUP_TTL_SECONDS = 10 * 60;
+const SECOND_FACTOR_LOGIN_TTL_SECONDS = 5 * 60;
+const SECOND_FACTOR_MAX_ATTEMPTS = 5;
+const SECOND_FACTOR_LOCK_MS = 15 * 60 * 1000;
+let secondFactorAttempts = { count: 0, resetAt: 0 };
+const consumedSecondFactorNonces = new Set();
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
 const MAX_BODY_BYTES = 24_576;
 export function getFrierenAiScenarioEndpoint(env = process.env) {
@@ -149,6 +160,53 @@ function unsign(token, secret) {
 
 export function createOwnerSession(secret, expiresAt) {
   return sign({ sub: OWNER_ID, exp: expiresAt, csrf: randomBytes(24).toString('base64url') }, secret);
+}
+
+
+function createOwnerSecondFactorChallenge(secret, flow, now = Date.now()) {
+  if (!['setup', 'login'].includes(flow)) throw new Error('INVALID_OWNER_2FA_FLOW');
+  const ttl = flow === 'setup' ? SECOND_FACTOR_SETUP_TTL_SECONDS : SECOND_FACTOR_LOGIN_TTL_SECONDS;
+  return sign({ purpose: 'frieren-owner-second-factor', sub: OWNER_ID, flow, nonce: randomBytes(24).toString('base64url'), csrf: randomBytes(24).toString('base64url'), exp: Math.floor(now / 1000) + ttl }, secret);
+}
+function readOwnerSecondFactorChallenge(token, secret, nowSeconds = Math.floor(Date.now() / 1000)) {
+  if (!secret || secret.length < 32) return null;
+  const challenge = unsign(token, secret);
+  if (challenge?.purpose !== 'frieren-owner-second-factor' || challenge.sub !== OWNER_ID || !['setup', 'login'].includes(challenge.flow)
+      || typeof challenge.nonce !== 'string' || challenge.nonce.length < 24 || typeof challenge.csrf !== 'string' || challenge.csrf.length < 24
+      || !Number.isInteger(challenge.exp) || challenge.exp <= nowSeconds || challenge.exp > nowSeconds + SECOND_FACTOR_SETUP_TTL_SECONDS + 1
+      || consumedSecondFactorNonces.has(challenge.nonce)) return null;
+  return challenge;
+}
+function buildSecondFactorCookie(token, maxAgeSeconds) {
+  return SECOND_FACTOR_COOKIE + '=' + encodeURIComponent(token) + '; Path=/owner; HttpOnly; Secure; SameSite=Strict; Max-Age=' + maxAgeSeconds;
+}
+async function getOwnerTotpConfig(db) {
+  const result = await db.query("SELECT setting_value FROM owner_settings WHERE setting_key='owner_totp' LIMIT 1");
+  return result.rows?.[0]?.setting_value || {};
+}
+async function saveOwnerTotpConfig(db, config, action, details = {}) {
+  await db.query(`
+    WITH changed AS (
+      INSERT INTO owner_settings(setting_key,setting_value,updated_by,updated_at)
+      VALUES('owner_totp',$1::jsonb,$2,NOW())
+      ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_by=EXCLUDED.updated_by,updated_at=NOW()
+      RETURNING setting_key
+    )
+    INSERT INTO owner_audit_logs(actor_id,action,target,details)
+    SELECT $2,$3,'owner_totp',$4::jsonb FROM changed
+  `, [JSON.stringify(config), OWNER_ID, action, JSON.stringify(details)]);
+}
+function secondFactorRateLimited(now = Date.now()) {
+  if (secondFactorAttempts.resetAt <= now) secondFactorAttempts = { count: 0, resetAt: now + SECOND_FACTOR_LOCK_MS };
+  return secondFactorAttempts.count >= SECOND_FACTOR_MAX_ATTEMPTS;
+}
+function recordSecondFactorFailure(now = Date.now()) {
+  if (secondFactorAttempts.resetAt <= now) secondFactorAttempts = { count: 0, resetAt: now + SECOND_FACTOR_LOCK_MS };
+  secondFactorAttempts.count += 1;
+}
+function secondFactorForm(title, description, action, csrf, extra = '') {
+  return page(title, '<section class="hero"><span class="tag">FRIEREN · OWNER SECURITY</span><h1>' + title + '</h1><p class="muted">' + description + '</p>' + extra
+    + '<form method="post" action="' + action + '"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><label>6 haneli doğrulama kodu</label><input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" required autofocus><button class="btn">Doğrula ve devam et</button></form></section>');
 }
 
 export function createPublicSiteSession(secret, user, expiresAt) {
@@ -629,14 +687,34 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         setCookies.push(buildPublicSiteSessionCookie(siteSession, SESSION_TTL_SECONDS));
       }
       if (userId === OWNER_ID) {
-        const ownerSession = createOwnerSession(sessionSecret, expiresAt);
-        setCookies.push(buildOwnerSessionCookie(ownerSession, SESSION_TTL_SECONDS));
+        const config = await getOwnerTotpConfig(db);
+        const setupRequired = config.enabled !== true || typeof config.secret !== 'string';
+        let challengeCookie;
+        let challengeTtl;
+        let destination;
+        if (setupRequired) {
+          const pendingSecret = generateTotpSecret();
+          const pendingExpiresAt = Date.now() + SECOND_FACTOR_SETUP_TTL_SECONDS * 1000;
+          await db.query(`
+            INSERT INTO owner_settings(setting_key,setting_value,updated_by,updated_at)
+            VALUES('owner_totp',$1::jsonb,$2,NOW())
+            ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_by=EXCLUDED.updated_by,updated_at=NOW()
+          `, [JSON.stringify({ enabled: false, pendingSecret: encryptTotpSecret(pendingSecret, sessionSecret), pendingExpiresAt }), OWNER_ID]);
+          challengeCookie = createOwnerSecondFactorChallenge(sessionSecret, 'setup');
+          challengeTtl = SECOND_FACTOR_SETUP_TTL_SECONDS;
+          destination = '/owner/setup-2fa';
+        } else {
+          challengeCookie = createOwnerSecondFactorChallenge(sessionSecret, 'login');
+          challengeTtl = SECOND_FACTOR_LOGIN_TTL_SECONDS;
+          destination = '/owner/verify-2fa';
+        }
+        setCookies.push(buildSecondFactorCookie(challengeCookie, challengeTtl));
+        res.writeHead(302, { Location: destination, 'Cache-Control': 'no-store', 'Set-Cookie': setCookies });
+        res.end();
+      } else {
+        res.writeHead(302, { Location: '/', 'Cache-Control': 'no-store', 'Set-Cookie': setCookies });
+        res.end();
       }
-      res.writeHead(302, {
-        Location: '/', 'Cache-Control': 'no-store',
-        'Set-Cookie': setCookies
-      });
-      res.end();
     } catch (error) {
       console.error('Owner OAuth login failed:', error?.message || 'unknown error');
       if (flow === 'register' || flow === 'login') {
@@ -649,6 +727,99 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       } else {
         send(res, 502, page('Discord bağlantı hatası', '<h1>Discord ile giriş tamamlanamadı</h1><p>Biraz sonra yeniden dene.</p><a class="btn secondary" href="/">Ana sayfaya dön</a>'), { 'Set-Cookie': [clearOwnerCookie(STATE_COOKIE, '/owner'), clearOwnerCookie(SESSION_COOKIE, '/owner')] });
       }
+    }
+    return true;
+  }
+
+
+  const secondFactorChallenge = readOwnerSecondFactorChallenge(cookie[SECOND_FACTOR_COOKIE], sessionSecret);
+  if (url.pathname === '/owner/setup-2fa' && req.method === 'GET') {
+    if (!secondFactorChallenge || secondFactorChallenge.flow !== 'setup') return redirect(res, '/owner/login');
+    try {
+      const config = await getOwnerTotpConfig(db);
+      if (!config.pendingSecret || Number(config.pendingExpiresAt) <= Date.now()) throw new Error('OWNER_2FA_SETUP_EXPIRED');
+      const secret = decryptTotpSecret(config.pendingSecret, sessionSecret);
+      const uri = createTotpUri(secret, 'owner');
+      const extra = '<div class="notice">Authenticator uygulamasında hesap ekle bölümünü açıp aşağıdaki anahtarı manuel gir. Bu anahtar yalnızca kurulum sırasında gösterilir.</div><div class="rowitem"><strong>Kurulum anahtarı</strong><p><code>' + escapeHtml(secret) + '</code></p></div><div class="rowitem"><strong>Authenticator URI</strong><p class="small">' + escapeHtml(uri) + '</p></div>';
+      send(res, 200, secondFactorForm('İki aşamalı doğrulamayı kur', 'Owner Panel için TOTP tabanlı ikinci doğrulamayı etkinleştir.', '/owner/setup-2fa', secondFactorChallenge.csrf, extra));
+    } catch { redirect(res, '/owner/login'); }
+    return true;
+  }
+  if (url.pathname === '/owner/verify-2fa' && req.method === 'GET') {
+    if (!secondFactorChallenge || secondFactorChallenge.flow !== 'login') return redirect(res, '/owner/login');
+    const config = await getOwnerTotpConfig(db);
+    if (config.enabled !== true || !config.secret) return redirect(res, '/owner/login');
+    send(res, 200, page('İki aşamalı doğrulama', '<section class="hero"><span class="tag">FRIEREN · OWNER SECURITY</span><h1>İkinci doğrulama</h1><p class="muted">Discord kimliği doğrulandı. Owner Panel oturumu açılmadan önce ikinci faktör gerekiyor.</p><div class="notice">Authenticator kodunu gir. Telefonuna erişemiyorsan kurulumda sakladığın tek kullanımlık kurtarma kodlarından birini kullanabilirsin.</div><form method="post" action="/owner/verify-2fa"><input type="hidden" name="csrf" value="' + escapeHtml(secondFactorChallenge.csrf) + '"><label>Authenticator kodu veya kurtarma kodu</label><input name="code" autocomplete="one-time-code" inputmode="text" minlength="6" maxlength="32" required autofocus><button class="btn">Giriş yap</button></form></section>'));
+    return true;
+  }
+  if ((url.pathname === '/owner/setup-2fa' || url.pathname === '/owner/verify-2fa') && req.method === 'POST') {
+    const expectedFlow = url.pathname === '/owner/setup-2fa' ? 'setup' : 'login';
+    if (!secondFactorChallenge || secondFactorChallenge.flow !== expectedFlow) return redirect(res, '/owner/login');
+    if (secondFactorRateLimited()) return send(res, 429, page('Geçici kilit', '<h1>Doğrulama geçici olarak kilitlendi</h1><p>Çok fazla hatalı kod denemesi yapıldı. 15 dakika sonra yeniden dene.</p>'));
+    let form;
+    try { form = await readForm(req); } catch { return send(res, 400, page('Geçersiz istek', '<h1>İstek okunamadı</h1>')); }
+    if (!safeStringEqual(form.get('csrf'), secondFactorChallenge.csrf)) return send(res, 403, page('İstek reddedildi', '<h1>İkinci doğrulama isteği geçersiz</h1>'));
+    const code = String(form.get('code') || '').trim();
+    try {
+      const config = await getOwnerTotpConfig(db);
+      if (expectedFlow === 'setup') {
+        if (!config.pendingSecret || Number(config.pendingExpiresAt) <= Date.now()) throw new Error('OWNER_2FA_SETUP_EXPIRED');
+        const secret = decryptTotpSecret(config.pendingSecret, sessionSecret);
+        if (!verifyTotpCode(secret, code)) {
+          recordSecondFactorFailure();
+          return send(res, 401, secondFactorForm('Kod doğrulanamadı', 'Güncel authenticator kodunu tekrar gir.', '/owner/setup-2fa', secondFactorChallenge.csrf));
+        }
+        const recoveryCodes = generateTotpRecoveryCodes(8);
+        await saveOwnerTotpConfig(db, { enabled: true, secret: encryptTotpSecret(secret, sessionSecret), recoveryCodeHashes: recoveryCodes.map(hashTotpRecoveryCode), lastAcceptedStep: Math.floor(Date.now() / 30_000), enabledAt: new Date().toISOString() }, 'owner.totp.enabled', { recoveryCodesIssued: recoveryCodes.length });
+        consumedSecondFactorNonces.add(secondFactorChallenge.nonce);
+        const ownerSession = createOwnerSession(sessionSecret, Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS);
+        const recoveryHtml = '<section class="panel"><h2>Tek kullanımlık kurtarma kodları</h2><p>Bu kodları şimdi güvenli bir yere kaydet. Her kod yalnızca bir kez kullanılabilir; sayfadan ayrıldıktan sonra tekrar gösterilmez.</p><pre>' + escapeHtml(recoveryCodes.join('\n')) + '</pre></section><a class="btn" href="/owner">Owner Paneli aç</a>';
+        send(res, 200, page('İki aşamalı doğrulama etkin', '<section class="hero"><span class="tag">GÜVENLİK ETKİN</span><h1>İkinci doğrulama kuruldu</h1><p class="muted">Owner Panel artık Discord OAuth ve TOTP doğrulaması gerektiriyor.</p>' + recoveryHtml + '</section>'), { 'Set-Cookie': [buildOwnerSessionCookie(ownerSession, SESSION_TTL_SECONDS), clearOwnerCookie(SECOND_FACTOR_COOKIE, '/owner')] });
+        return true;
+      }
+      if (config.enabled !== true || !config.secret) throw new Error('OWNER_2FA_NOT_CONFIGURED');
+      const secret = decryptTotpSecret(config.secret, sessionSecret);
+      let authenticated = false;
+      const recoveryHash = hashTotpRecoveryCode(code);
+      if (recoveryHash && Array.isArray(config.recoveryCodeHashes) && config.recoveryCodeHashes.includes(recoveryHash)) {
+        const consumed = await db.query(`
+          WITH changed AS (
+            UPDATE owner_settings SET setting_value=jsonb_set(setting_value,'{recoveryCodeHashes}',
+              COALESCE((SELECT jsonb_agg(recovery.code) FROM jsonb_array_elements_text(setting_value->'recoveryCodeHashes') AS recovery(code) WHERE recovery.code <> $1),'[]'::jsonb),true),
+              updated_by=$2,updated_at=NOW()
+            WHERE setting_key='owner_totp' AND setting_value->'recoveryCodeHashes' ? $1
+            RETURNING setting_key
+          )
+          INSERT INTO owner_audit_logs(actor_id,action,target,details)
+          SELECT $2,'owner.totp.recovery_used','owner_totp','{}'::jsonb FROM changed RETURNING id
+        `, [recoveryHash, OWNER_ID]);
+        authenticated = Boolean(consumed.rowCount);
+      } else if (verifyTotpCode(secret, code)) {
+        const currentStep = Math.floor(Date.now() / 30_000);
+        const accepted = await db.query(`
+          WITH changed AS (
+            UPDATE owner_settings SET setting_value=jsonb_set(setting_value,'{lastAcceptedStep}',to_jsonb($1::bigint),true),updated_at=NOW()
+            WHERE setting_key='owner_totp' AND setting_value->>'enabled'='true'
+              AND COALESCE((setting_value->>'lastAcceptedStep')::bigint,-1) < $1
+            RETURNING setting_key
+          )
+          INSERT INTO owner_audit_logs(actor_id,action,target,details)
+          SELECT $2,'owner.totp.login','owner_totp','{}'::jsonb FROM changed RETURNING id
+        `, [currentStep, OWNER_ID]);
+        authenticated = Boolean(accepted.rowCount);
+      }
+      if (!authenticated) {
+        recordSecondFactorFailure();
+        return send(res, 401, page('Kod doğrulanamadı', '<h1>Doğrulama başarısız</h1><p>Kod hatalı, süresi dolmuş veya daha önce kullanılmış olabilir. Yeniden dene.</p><a class="btn secondary" href="/owner/verify-2fa">Tekrar dene</a>'));
+      }
+      secondFactorAttempts = { count: 0, resetAt: 0 };
+      consumedSecondFactorNonces.add(secondFactorChallenge.nonce);
+      const ownerSession = createOwnerSession(sessionSecret, Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS);
+      res.writeHead(303, { Location: '/owner', 'Cache-Control': 'no-store', 'Set-Cookie': [buildOwnerSessionCookie(ownerSession, SESSION_TTL_SECONDS), clearOwnerCookie(SECOND_FACTOR_COOKIE, '/owner')] });
+      res.end();
+    } catch (error) {
+      console.error('Owner second-factor verification failed:', error?.message || 'unknown error');
+      return send(res, 503, page('Doğrulama tamamlanamadı', '<h1>Güvenlik doğrulaması tamamlanamadı</h1><p>Veritabanı bağlantısını kontrol edip yeniden giriş yap.</p><a class="btn" href="/owner/login">Yeniden giriş</a>'));
     }
     return true;
   }
