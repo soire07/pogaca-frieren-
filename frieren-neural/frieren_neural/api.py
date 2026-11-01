@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import pickle
 import secrets
 import threading
 from functools import lru_cache
@@ -84,7 +85,7 @@ def health() -> dict[str, str]:
         return {"status": "model_unavailable"}
     try:
         _load_runtime(str(checkpoint.resolve()), os.environ.get("FRIEREN_DEVICE", "cpu"))
-    except (OSError, RuntimeError, ValueError, KeyError):
+    except (OSError, RuntimeError, ValueError, KeyError, EOFError, pickle.UnpicklingError):
         return {"status": "model_unavailable"}
     return {"status": "ready"}
 
