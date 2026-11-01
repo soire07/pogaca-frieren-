@@ -401,7 +401,7 @@ test('same-player equipment mutations lock the player row before reading or writ
   assert.ok(unequipAction >= 0 && unequipBegin > unequipAction && unequipLock > unequipBegin && unequipLock < unequipDelete,
     'unequip must serialize on the player row before deleting an equipped slot');
 
-  const equipItem = source.indexOf('const item = equipmentItems.find');
+  const equipItem = source.indexOf('const item = equipmentItems.find(entry => entry.id === itemId)');
   const equipBegin = source.indexOf("await db.query('BEGIN')", equipItem);
   const equipOwned = source.indexOf('SELECT quantity FROM inventory', equipBegin);
   const equipLock = source.indexOf('SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', equipBegin);
