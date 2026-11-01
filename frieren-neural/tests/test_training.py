@@ -300,3 +300,44 @@ def test_corpus_split_keeps_dialogues_intact_at_importer_boundaries():
     assert train_dialogues == dialogues[:8]
     assert validation_dialogues == dialogues[8:]
     assert set(train_dialogues).isdisjoint(validation_dialogues)
+
+
+def test_training_stream_ends_each_assistant_turn_before_next_user():
+    from frieren_neural.tokenizer import BPETokenizer
+    from frieren_neural.training import encode_dialogue_stream
+
+    text = (
+        "Kullanıcı: ilk soru\\nAsistan: ilk yanıt\\n"
+        "Kullanıcı: ikinci soru\\nAsistan: ikinci yanıt"
+    )
+    tokenizer = BPETokenizer.train([text], vocab_size=280)
+    encoded = encode_dialogue_stream(text, tokenizer)
+
+    assert encoded.count(tokenizer.bos_id) == 1
+    assert encoded.count(tokenizer.eos_id) == 2
+    chunks = []
+    current = []
+    for token in encoded:
+        if token == tokenizer.eos_id:
+            chunks.append(current)
+            current = []
+        elif token != tokenizer.bos_id:
+            current.append(token)
+    assert tokenizer.decode(chunks[0]).endswith("Asistan: ilk yanıt\\n")
+    assert tokenizer.decode(chunks[1]).startswith("Kullanıcı: ikinci soru\\n")
+
+
+def test_resume_rejects_checkpoint_with_legacy_dialogue_encoding(tmp_path: Path):
+    corpus = ["Kullanıcı: Merhaba.\\nAsistan: Selam. " * 8]
+    checkpoint = tmp_path / "legacy-dialogue.pt"
+    config = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0,
+    )
+    train_model(corpus, checkpoint, config, device="cpu")
+    saved = torch.load(checkpoint, map_location="cpu", weights_only=True)
+    saved.pop("dialogue_encoding_version", None)
+    torch.save(saved, checkpoint)
+
+    with pytest.raises(ValueError, match="dialogue encoding"):
+        train_model(corpus, checkpoint, replace(config, max_steps=2), resume=True, device="cpu")
