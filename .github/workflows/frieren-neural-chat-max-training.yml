@@ -1,0 +1,102 @@
+name: Frieren Neural Turkish Chat Max Candidate Training
+
+on:
+  pull_request:
+    paths:
+      - "frieren-neural/frieren_neural/hf_corpus.py"
+      - "frieren-neural/frieren_neural/training.py"
+      - "frieren-neural/tests/test_hf_corpus.py"
+      - "frieren-neural/pyproject.toml"
+      - ".github/workflows/frieren-neural-chat-max-training.yml"
+  push:
+    branches:
+      - frieren-neural-foundation
+    paths:
+      - "frieren-neural/frieren_neural/hf_corpus.py"
+      - "frieren-neural/frieren_neural/training.py"
+      - "frieren-neural/tests/test_hf_corpus.py"
+      - "frieren-neural/pyproject.toml"
+      - ".github/workflows/frieren-neural-chat-max-training.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frieren-neural-chat-max-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        working-directory: frieren-neural
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: frieren-neural/pyproject.toml
+      - name: Install CPU-only PyTorch
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+      - name: Install Frieren Neural with dataset import support
+        run: python -m pip install -e ".[dev,serve,discord,data]"
+      - name: Run complete test suite before downloading or training
+        run: pytest
+      - name: Import pinned Apache-2.0 Turkish SFT corpus
+        run: frieren-neural-import-chat-max --output ./corpus/turkish-chat-max-25k
+      - name: Train fresh assistant-only Turkish candidate
+        run: |
+          set -o pipefail
+          frieren-neural-train-small \
+            --data ./corpus/turkish-chat-max-25k/train \
+            --checkpoint ./checkpoints/frieren-neural-chat-max-25k.pt \
+            --steps 8000 --batch-size 4 --block-size 128 --eval-interval 500 --eval-batches 10 \
+            --d-model 128 --n-heads 4 --n-layers 4 --tokenizer-vocab-size 1024 --seed 1337 | tee ./training-metrics.json
+      - name: Verify the new checkpoint and generate a smoke sample
+        run: |
+          python - <<'PY'
+          import json
+          import math
+          from frieren_neural.training import generate_text, load_checkpoint
+
+          model, tokenizer, metadata = load_checkpoint("./checkpoints/frieren-neural-chat-max-25k.pt", device="cpu")
+          assert metadata["step"] == 8000, metadata
+          assert metadata["loss_objective_version"] == 2, metadata
+          assert math.isfinite(metadata["train_loss"])
+          assert math.isfinite(metadata["validation_loss"])
+          sample = generate_text(model, tokenizer, "Kullanıcı: Merhaba.\nAsistan:", max_new_tokens=64, top_k=20)
+          print(json.dumps({"checkpoint": "loadable", "metadata": metadata, "sample": sample}, ensure_ascii=False, indent=2))
+          PY
+      - name: Evaluate on the separate deterministic held-out split
+        run: |
+          set -o pipefail
+          frieren-neural-evaluate \
+            --data ./corpus/turkish-chat-max-25k/heldout \
+            --checkpoint ./checkpoints/frieren-neural-chat-max-25k.pt \
+            --batch-size 4 --batches 25 --device cpu | tee ./heldout-metrics.json
+      - name: Generate the fixed Turkish human-review report
+        run: |
+          frieren-neural-evaluate-quality \
+            --checkpoint ./checkpoints/frieren-neural-chat-max-25k.pt \
+            --output-dir ./quality-reports/turkish-chat-max-25k \
+            --training-manifest ./corpus/turkish-chat-max-25k/train/corpus_manifest.json \
+            --heldout-report ./heldout-metrics.json
+      - name: Upload fresh checkpoint and evaluation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: frieren-neural-chat-max-25k-candidate-${{ github.sha }}
+          path: |
+            frieren-neural/checkpoints/frieren-neural-chat-max-25k.pt
+            frieren-neural/training-metrics.json
+            frieren-neural/heldout-metrics.json
+            frieren-neural/quality-reports/turkish-chat-max-25k/quality-report.json
+            frieren-neural/quality-reports/turkish-chat-max-25k/quality-report.md
+            frieren-neural/quality-reports/turkish-chat-max-25k/human-scores.template.json
+            frieren-neural/corpus/turkish-chat-max-25k/train/corpus_manifest.json
+            frieren-neural/corpus/turkish-chat-max-25k/heldout/corpus_manifest.json
+          if-no-files-found: error
+          retention-days: 30
