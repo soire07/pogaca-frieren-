@@ -17,11 +17,11 @@ test('trade offers are persistent, expiring and single-use', async () => {
   assert.match(command, /reservedAmount/);
   assert.match(transaction, /reservedForOthers/);
   assert.match(command, /NOW\(\)\+INTERVAL '5 minutes'/);
-  assert.match(handler, /SELECT \* FROM trade_offers WHERE offer_id=\$1 AND guild_id=\$2 FOR UPDATE/);
-  assert.match(handler, /interaction\.user\.id !== offer\.to_user_id/);
+  assert.match(transaction, /SELECT \* FROM trade_offers WHERE offer_id=\$1 AND guild_id=\$2 FOR UPDATE/);
+  assert.match(transaction, /interaction\.user\.id !== offer\.to_user_id/);
   assert.match(transaction, /status='accepted'/);
-  assert.match(handler, /quantity=quantity-\$4/);
-  assert.match(handler, /quantity=anime_character_collection\.quantity\+EXCLUDED\.quantity/);
+  assert.match(transaction, /quantity=quantity-\$4/);
+  assert.match(transaction, /quantity=anime_character_collection\.quantity\+EXCLUDED\.quantity/);
 });
 
 test('daily mission progress and reward claim stay in one transaction', async () => {
