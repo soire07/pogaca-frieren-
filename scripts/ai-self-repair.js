@@ -7,11 +7,14 @@ const MAX_CONTEXT_CHARS = 22_000;
 const MAX_PATCH_CHARS = 12_000;
 const MAX_PATCH_FILES = 4;
 const ALLOWED_PATH = /^(?:[A-Za-z0-9_.-]+\.js|ai-agent\/[A-Za-z0-9_.-]+\.js|scripts\/[A-Za-z0-9_.-]+\.js|database\/[A-Za-z0-9_.-]+\.js)$/;
+const runGit = (args, options = {}) => execFileSync('git', args, options);
 
 export function isAllowedRepairPath(value) {
   const file = String(value || '');
   return Boolean(file) && !file.startsWith('/') && !file.includes('\\')
     && !file.split('/').includes('..') && !file.split('/').includes('.')
+    && !/(?:^|\/)(?:\.env|.*secret|.*token|.*credential|config|settings)(?:\.|\/)/i.test(file)
+    && !/(?:^|\/)migrations?(?:\/|\.)/i.test(file)
     && ALLOWED_PATH.test(file);
 }
 
@@ -58,9 +61,9 @@ function scoreFile(path, content, tokens) {
 export async function collectRepairContext(task, {
   readFileImpl = readFile,
   statImpl = stat,
-  execFile = execFileSync,
+  execFile = runGit,
 } = {}) {
-  const tracked = execFile(['git', 'ls-files', '-z'], { encoding: 'utf8' })
+  const tracked = execFile(['ls-files', '-z'], { encoding: 'utf8' })
     .split('\0').filter(path => isAllowedRepairPath(path));
   const tokens = [...new Set(String(task).toLocaleLowerCase('tr-TR')
     .split(/[^a-z0-9ğüşöçıİ]+/i).filter(token => token.length >= 3))].slice(0, 40);
@@ -109,11 +112,11 @@ export async function generateRepairPatch({ task, apiKey, model = 'openai/gpt-os
   return { patch, files };
 }
 
-export function applyRepairPatch(patch, { execFile = execFileSync } = {}) {
+export function applyRepairPatch(patch, { execFile = runGit } = {}) {
   validatePatchPaths(patch);
-  execFile(['git', 'apply', '--check', '--'], { input: patch, stdio: ['pipe', 'pipe', 'pipe'] });
-  execFile(['git', 'apply', '--'], { input: patch, stdio: ['pipe', 'pipe', 'pipe'] });
-  const changed = execFile(['git', 'status', '--short'], { encoding: 'utf8' })
+  execFile(['apply', '--check', '--'], { input: patch, stdio: ['pipe', 'pipe', 'pipe'] });
+  execFile(['apply', '--'], { input: patch, stdio: ['pipe', 'pipe', 'pipe'] });
+  const changed = execFile(['status', '--short'], { encoding: 'utf8' })
     .split('\n').filter(Boolean).map(line => line.slice(3).trim());
   if (!changed.length || changed.length > MAX_PATCH_FILES || changed.some(path => !isAllowedRepairPath(path))) {
     throw new Error('REPAIR_WORKTREE_VALIDATION_FAILED');
