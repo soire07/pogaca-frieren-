@@ -7,6 +7,7 @@ import {
   resolveGuardianIncident,
   reserveGuardianRepairDispatch,
   finishGuardianRepairDispatch,
+  updateGuardianRepairStatus,
 } from './store.js';
 
 test('Guardian incident upsert uses a stable fingerprint and increments occurrences atomically', async () => {
@@ -88,4 +89,21 @@ test('Guardian repair workflow dispatch is reserved once and records its workflo
   }), true);
   assert.equal(calls[1].params[1], 'dispatched');
   assert.match(calls[1].params[2], /frieren-ai-self-repair\.yml/);
+});
+
+test('Guardian PR status refresh persists workflow and CI evidence only for dispatched jobs', async () => {
+  let params;
+  const db = { query: async (sql, values) => {
+    params = values;
+    assert.match(sql, /repair_dispatch_status='dispatched'/);
+    return { rows: [{ id: 8 }] };
+  } };
+  assert.equal(await updateGuardianRepairStatus(db, {
+    jobId: 8, runId: 123, runUrl: 'https://github.com/actions/runs/123',
+    runStatus: 'completed', runConclusion: 'success',
+    prNumber: 44, prUrl: 'https://github.com/soire07/pogaca-frieren-/pull/44',
+    prState: 'open', checksStatus: 'success',
+  }), true);
+  assert.equal(params[1], 123);
+  assert.equal(params[8], 'success');
 });
