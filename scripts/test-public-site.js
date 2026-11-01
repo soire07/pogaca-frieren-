@@ -36,7 +36,7 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /gif-gallery/);
   assert.match(response.body, /href="\/assets\/site\.css"/);
   assert.match(response.body, /profile-avatar/);
-  assert.equal((response.body.match(/loading="lazy"/g) || []).length, 17);
+  assert.equal((response.body.match(/loading="lazy"/g) || []).length, 18);
   assert.equal((response.body.match(/class="gif-item"/g) || []).length, 16);
   assert.match(response.body, /68/);
 });
