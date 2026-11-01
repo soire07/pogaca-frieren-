@@ -15,5 +15,6 @@ def build_qwen3_chat_request(prompt: str, *, seed: int) -> dict[str, object]:
         "top_p": 0.8,
         "top_k": 20,
         "min_p": 0.0,
+        "repeat_penalty": 1.1,
         "seed": seed,
     }
