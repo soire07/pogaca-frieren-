@@ -1,9 +1,41 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  OWNER_ID, isOwner, formatDuration, getMaintenanceState, setMaintenanceState,
+  OWNER_ID, isOwner, formatDuration, getMaintenanceState, setMaintenanceState, getOwnerOverview, getRecentOwnerActivity,
   createApprovalRequest, reviewApproval, listUserMemories, deleteUserMemory
 } from '../owner-admin.js';
+
+test('owner overview loads database health and counters with one query', async () => {
+  let calls = 0;
+  const client = { isReady: () => true, guilds: { cache: new Map() }, commands: { size: 68 }, ws: { ping: 42 }, uptime: 60000 };
+  const db = { query: async sql => {
+    calls += 1;
+    assert.match(sql, /frieren_chat_memories/);
+    assert.match(sql, /owner_approval_requests/);
+    assert.match(sql, /owner_settings/);
+    return { rows: [{ ok: 1, memory_count: 9, pending_count: 2, maintenance_value: { enabled: true } }] };
+  } };
+  const result = await getOwnerOverview(client, db);
+  assert.equal(calls, 1);
+  assert.equal(result.databaseReady, true);
+  assert.equal(result.memoryCount, 9);
+  assert.equal(result.pendingApprovals, 2);
+  assert.equal(result.maintenance, true);
+});
+
+test('owner activity dashboard reads all three feeds in one SQL round trip', async () => {
+  let calls = 0;
+  const expected = { commands: [{ command_name: 'ping' }], errors: [], audit: [{ action: 'login' }] };
+  const db = { query: async sql => {
+    calls += 1;
+    assert.match(sql, /owner_command_metrics/);
+    assert.match(sql, /owner_error_logs/);
+    assert.match(sql, /owner_audit_logs/);
+    return { rows: [expected] };
+  } };
+  assert.deepEqual(await getRecentOwnerActivity(db), expected);
+  assert.equal(calls, 1);
+});
 
 test('owner access is restricted to the configured owner ID', () => {
   assert.equal(isOwner(OWNER_ID), true);
