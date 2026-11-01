@@ -8,6 +8,7 @@ import json
 import math
 import os
 import random
+import re
 import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -22,6 +23,7 @@ from .tokenizer import BPETokenizer
 
 SUPPORTED_SUFFIXES = {".txt", ".md"}
 DIALOGUE_SEPARATOR = "\n\n---\n\n"
+DIALOGUE_ENCODING_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -137,15 +139,45 @@ def load_licensed_corpus(path: str | Path) -> list[str]:
 
 
 def encode_dialogue_stream(text: str, tokenizer: BPETokenizer) -> list[int]:
-    """Encode each imported dialogue with explicit BOS/EOS boundaries."""
+    """Encode conversations with BOS per dialogue and EOS after every assistant turn."""
     if not isinstance(text, str) or not text.strip():
         raise ValueError("Dialogue text must be a non-empty string.")
     dialogues = [part.strip() for part in text.split(DIALOGUE_SEPARATOR) if part.strip()]
     if not dialogues:
         raise ValueError("Dialogue text must contain at least one non-empty dialogue.")
+
     token_ids: list[int] = []
     for dialogue in dialogues:
-        token_ids.extend(tokenizer.encode(dialogue, add_bos=True, add_eos=True))
+        # Preserve the legacy raw-text path for non-chat corpora. Imported
+        # Turkish chat rows use explicit role labels and are split per turn.
+        parts = [
+            part for part in re.split(r"(?m)(?=^(?:Kullanıcı|Asistan): )", dialogue)
+            if part
+        ]
+        if not parts or not parts[0].startswith("Kullanıcı: "):
+            token_ids.extend(tokenizer.encode(dialogue, add_bos=True, add_eos=True))
+            continue
+
+        token_ids.append(tokenizer.bos_id)
+        expected_role = "Kullanıcı"
+        for part in parts:
+            if part.startswith("Kullanıcı: "):
+                role = "Kullanıcı"
+            elif part.startswith("Asistan: "):
+                role = "Asistan"
+            else:
+                raise ValueError("Dialogue contains a message without a recognized role label.")
+            if role != expected_role:
+                raise ValueError("Dialogue messages must alternate between user and assistant roles.")
+            token_ids.extend(tokenizer.encode(part))
+            if role == "Asistan":
+                # Generation stops here, before the following user's turn.
+                token_ids.append(tokenizer.eos_id)
+                expected_role = "Kullanıcı"
+            else:
+                expected_role = "Asistan"
+        if expected_role == "Asistan":
+            token_ids.append(tokenizer.eos_id)
     return token_ids
 
 
@@ -356,6 +388,10 @@ def train_model(
         saved = torch.load(checkpoint, map_location=selected_device, weights_only=True)
         if saved.get("format_version") != 2:
             raise ValueError("Unsupported checkpoint format; start a fresh run with the current trainer.")
+        if saved.get("dialogue_encoding_version", 1) != DIALOGUE_ENCODING_VERSION:
+            raise ValueError(
+                "Checkpoint uses an incompatible dialogue encoding; start a fresh training run."
+            )
         saved_training_config = dict(saved.get("training_config", {}))
         current_training_config = asdict(settings)
         saved_training_config.pop("max_steps", None)
@@ -397,6 +433,7 @@ def train_model(
             )
             _atomic_save({
                 "format_version": 2,
+                "dialogue_encoding_version": DIALOGUE_ENCODING_VERSION,
                 "step": step,
                 "model_config": asdict(model_config),
                 "training_config": asdict(settings),
