@@ -1952,7 +1952,24 @@
       "featureLevelEvidenceLinks": 36,
       "discordRuntimeVerified": 0,
       "productionVerified": 0,
-      "note": "Thirty-six selected records have manually inspected source-to-test traceability links in feature-evidence.json. The map mixes direct unit assertions and static source assertions; it does not promote inventory status or imply Discord/production verification for the remaining records."
+      "note": "Thirty-six selected records have manually inspected source-to-test traceability links in feature-evidence.json. The map mixes direct unit assertions and static source assertions; it does not promote inventory status or imply Discord/production verification for the remaining records.",
+      "historyChecked": [
+        {
+          "ref": "9555b7dc326dc2291e24000d439243a5d676ae12",
+          "date": "2026-10-27",
+          "finding": "RPG-281 through RPG-299 are absent from the historical 323-record inventory snapshot; RPG-280 is followed by RPG-300."
+        },
+        {
+          "ref": "7dc00d4b82f9c3efd141cbcd32abc0a5b17ca5d5",
+          "date": "2026-10-29",
+          "finding": "The inventory diff removes MOD-002 and MOD-003; it does not restore or renumber RPG-281 through RPG-299."
+        },
+        {
+          "ref": "e73970f31adccb2764dc3ad63504d6697fa4f394",
+          "date": "2026-10-29",
+          "finding": "The inventory diff removes MOD-001, MOD-004, SRV-001 and SRV-002; no RPG-281 through RPG-299 entries appear in the patch."
+        }
+      ]
     },
     "verifiedTestSuites": [
       {
