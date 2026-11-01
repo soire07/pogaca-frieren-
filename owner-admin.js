@@ -73,7 +73,7 @@ export async function initOwnerAdminSchema(db) {
     CREATE TABLE IF NOT EXISTS owner_test_runs (
       id BIGSERIAL PRIMARY KEY,
       actor_id TEXT NOT NULL,
-      target VARCHAR(300) NOT NULL,
+      target TEXT NOT NULL,
       status VARCHAR(40) NOT NULL,
       summary JSONB NOT NULL DEFAULT '{}'::jsonb,
       details JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -368,8 +368,9 @@ export async function updateOwnerMemory(db, { id, value, actorId }) {
 
 export async function recordOwnerTestRun(db, { actorId, target, report } = {}) {
   const actor = String(actorId || '');
-  const testTarget = String(target || '').trim().slice(0, 300);
+  const testTarget = String(target || '').trim().slice(0, 4000);
   if (!/^[0-9]{17,20}$/.test(actor) || !testTarget) throw new Error('INVALID_TEST_RUN');
+  if (containsSensitiveInformation(testTarget)) throw new Error('SENSITIVE_TEST_TARGET_REJECTED');
   const summary = report?.summary && typeof report.summary === 'object' ? report.summary : {};
   const safeSummary = {
     total: Math.max(0, Number(summary.total ?? report?.total ?? 0) || 0),
@@ -380,12 +381,7 @@ export async function recordOwnerTestRun(db, { actorId, target, report } = {}) {
   const details = {
     status: String(report?.status || (safeSummary.fail > 0 ? 'FAIL' : safeSummary.total > 0 && safeSummary.pass === safeSummary.total ? 'PASS' : 'NOT_TESTED')).slice(0, 40),
     failedStages: Array.isArray(report?.failedStages) ? report.failedStages.slice(0, 20).map(value => String(value).slice(0, 120)) : [],
-    testFiles: Array.isArray(report?.testFiles) ? report.testFiles.slice(0, 20).map(value => String(value).slice(0, 160)) : [],
-    checks: Array.isArray(report?.checks) ? report.checks.slice(0, 30).map(item => ({
-      status: String(item?.status || 'UNKNOWN').slice(0, 20),
-      name: String(item?.name || '').slice(0, 120),
-      detail: String(item?.detail || '').slice(0, 240)
-    })) : []
+    testFiles: Array.isArray(report?.testFiles) ? report.testFiles.slice(0, 20).map(value => String(value).slice(0, 160)) : []
   };
   const result = await db.query(
     `WITH inserted AS (
