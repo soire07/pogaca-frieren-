@@ -155,6 +155,9 @@ def run_benchmark(output_dir: Path, *, limit: int | None = None, threads: int = 
     (output_dir / "qwen3-quality-report.md").write_text(
         build_markdown(report), encoding="utf-8",
     )
+    (output_dir / "human-scores.template.json").write_text(
+        json.dumps(empty_score_template(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
+    )
     return report
 
 
