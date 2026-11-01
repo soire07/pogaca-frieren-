@@ -22,6 +22,16 @@ def test_load_text_corpus_rejects_missing_or_empty_corpus(tmp_path: Path):
         load_text_corpus(tmp_path)
 
 
+def test_corpus_fingerprint_preserves_document_boundaries():
+    from frieren_neural.training import _corpus_fingerprint
+
+    # A newline inside one document must not collide with two separate documents.
+    assert _corpus_fingerprint(["alpha\\nbeta"]) != _corpus_fingerprint(["alpha", "beta"])
+    # Trimming remains canonical, but document order remains significant.
+    assert _corpus_fingerprint(["  alpha  ", "beta"]) == _corpus_fingerprint(["alpha", "beta"])
+    assert _corpus_fingerprint(["alpha", "beta"]) != _corpus_fingerprint(["beta", "alpha"])
+
+
 def test_split_tokens_is_chronological_and_preserves_all_tokens():
     tokens = torch.arange(100)
     train, validation = split_tokens(tokens, validation_fraction=0.2)
