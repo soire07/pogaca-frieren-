@@ -1056,6 +1056,10 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
           }
         } else if (run && run.status !== 'completed') {
           checksStatus = 'pending';
+        } else if (run?.status === 'completed' && run.conclusion === 'success') {
+          checksStatus = 'success';
+        } else if (run?.status === 'completed' && run.conclusion === 'cancelled') {
+          checksStatus = 'cancelled';
         }
         await updateGuardianRepairStatus(db, {
           jobId: job.id,
