@@ -1,7 +1,7 @@
 import test from 'node:test';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
 const ownerId = '1553794496234262641';
@@ -636,4 +636,50 @@ test('owner scenario tests target the separately hosted Frieren AI service over 
 test('owner navigation provides a safe public-site preview shortcut', () => {
   assert.match(renderOwnerNavigation(), /Ana siteyi önizle/);
   assert.match(renderOwnerNavigation(), /href="\/" target="_blank" rel="noopener"/);
+});
+
+
+test('Discord owner OAuth requires TOTP enrollment before issuing an owner session', async () => {
+  const previous = {
+    CLIENT_ID: process.env.CLIENT_ID,
+    DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
+    ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET
+  };
+  const previousFetch = globalThis.fetch;
+  process.env.CLIENT_ID = 'test-client-id';
+  process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
+  process.env.ADMIN_SESSION_SECRET = secret;
+  globalThis.fetch = async url => String(url).includes('/oauth2/token')
+    ? { ok: true, json: async () => ({ access_token: 'temporary-discord-access-token' }) }
+    : { ok: true, json: async () => ({ id: ownerId, username: 'owner', avatar: null }) };
+  let pendingSettings = null;
+  const db = { query: async (sql, params = []) => {
+    if (sql.includes("SELECT setting_value FROM owner_settings")) return { rows: [] };
+    if (sql.includes("INSERT INTO owner_settings") && sql.includes("'owner_totp'")) {
+      pendingSettings = JSON.parse(params[0]);
+      return { rows: [], rowCount: 1 };
+    }
+    throw new Error('Unexpected database query in owner OAuth test');
+  } };
+  const req = new EventEmitter();
+  req.method = 'GET';
+  req.url = '/owner/callback?state=' + encodeURIComponent(createOwnerOAuthState(secret)) + '&code=oauth-test-code';
+  req.headers = {};
+  const response = { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body = '') { this.body = body; } };
+  try {
+    await handleOwnerDashboardRequest(req, response, { client: {}, db });
+    assert.equal(response.status, 302);
+    assert.equal(response.headers.Location, '/owner/setup-2fa');
+    assert.ok(Array.isArray(response.headers['Set-Cookie']));
+    assert.ok(response.headers['Set-Cookie'].some(cookie => cookie.startsWith('frieren_owner_second_factor=')));
+    assert.ok(!response.headers['Set-Cookie'].some(cookie => cookie.startsWith('frieren_owner_session=')));
+    assert.equal(pendingSettings.enabled, false);
+    assert.match(pendingSettings.pendingSecret, /^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$/);
+  } finally {
+    globalThis.fetch = previousFetch;
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
 });
