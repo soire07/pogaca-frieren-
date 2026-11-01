@@ -238,7 +238,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
       return !command?.internalOnly && !name.startsWith('owner-') && name !== 'owner';
     });
   const unknown = requestedNames.filter(name => !commandMap.has(name));
-  const runContext = createIsolatedTestRunContext(commands.length);
+  const runContext = createIsolatedTestRunContext(Math.max(1, commands.length));
   return withIsolatedTestSchema(async () => {
     const results = [];
     let index = 0;
