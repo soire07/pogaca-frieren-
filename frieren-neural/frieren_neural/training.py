@@ -206,10 +206,13 @@ def train_model(
         model.load_state_dict(saved["model_state"])
         optimizer.load_state_dict(saved["optimizer_state"])
         start_step = int(saved["step"])
+        train_loss = float(saved["train_loss"])
+        validation_loss = float(saved["validation_loss"])
 
     batch_generator = torch.Generator(device="cpu").manual_seed(settings.seed + start_step)
-    train_loss = validation_loss = float("nan")
+    final_step = start_step
     for step in range(start_step + 1, settings.max_steps + 1):
+        final_step = step
         model.train()
         x, y = _sample_batch(train_data, batch_size=settings.batch_size, block_size=settings.block_size,
                              device=selected_device, generator=batch_generator)
