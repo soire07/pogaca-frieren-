@@ -8,6 +8,12 @@ The three existing candidates have now been benchmarked on the same 24-case Turk
 
 No model has passed the human quality gate. No candidate is integrated into Poğaça Frieren, Frieren AI, a production database, Render, or the owner panel.
 
+### Benchmark methodology correction
+
+The original Qwen3 float32 and GGUF reports used greedy decoding (temperature=0.0). Qwen's published Qwen3 guidance explicitly warns that greedy decoding can cause performance degradation and endless repetition, and recommends non-greedy settings for non-thinking responses. Those historical repetition and token-cap counts are therefore not a fair final assessment of Qwen3 response quality.
+
+The benchmark harness has been corrected to use a reproducible non-thinking request and Qwen's recommended sampling profile: temperature=0.7, top_p=0.8, top_k=20, min_p=0.0, with a per-case fixed seed. The GGUF request now places /no_think in the user turn; the Transformers benchmark uses enable_thinking=False. A new Q4 benchmark is being run against this corrected harness. Historical measurements above remain unchanged and must not be presented as results from the corrected decoding profile.
+
 ## Measured evidence
 
 All measurements are from GitHub-hosted CPU runners with two threads. They are not measurements on a target free host.
@@ -16,7 +22,8 @@ All measurements are from GitHub-hosted CPU runners with two threads. They are n
 |---|---:|---:|---:|---:|---|
 | Scratch checkpoint, step 8,000 | 0.049 s | 0.777 s | 0.024 / 0.066 s | 329.37 MiB | Turkish output is incoherent; legacy loss objective v0 |
 | Qwen3-0.6B float32 | 14.851 s | 289.548 s | 12.643 / 20.746 s | 5,000.75 MiB | 8/24 reach 160 tokens; repetition, weak Turkish, role leakage |
-| Qwen3-0.6B GGUF Q8_0 | 0.266 s | 69.575 s | 3.272 / 4.163 s | 1,067.69 MiB | 11/24 reach 160 tokens; reasoning leakage in 3 cases; role leakage |\n| Qwen3-0.6B GGUF Q4_K_M | 0.484 s | 59.451 s | 2.557 / 3.675 s | 1,039.33 MiB | 11/24 reach 160 tokens; reasoning leakage in 4 cases; role leakage resolved on TR-018 |
+| Qwen3-0.6B GGUF Q8_0 | 0.266 s | 69.575 s | 3.272 / 4.163 s | 1,067.69 MiB | 11/24 reach 160 tokens; reasoning leakage in 3 cases; role leakage |
+| Qwen3-0.6B GGUF Q4_K_M | 0.484 s | 59.451 s | 2.557 / 3.675 s | 1,039.33 MiB | 11/24 reach 160 tokens; reasoning leakage in 4 cases; role leakage resolved on TR-018 |
 
 ### Scratch checkpoint
 
@@ -64,7 +71,7 @@ All measurements are from GitHub-hosted CPU runners with two threads. They are n
 
 ## Comparable review protocol
 
-The scratch, float32, and Q8 runs use the same 24 prompt IDs, greedy decoding, two CPU threads, and 160-token budget. Prompt serialization and tokenizers differ by model, and the scratch checkpoint uses a legacy training objective; therefore this is a controlled *human response evaluation set*, not a claim of identical token-level conditions.
+The historical scratch, float32, Q8, and Q4 runs used the same 24 prompt IDs, two CPU threads, and 160-token budget, but decoding modes and tokenizers differ. The corrected Qwen3 rerun uses non-greedy decoding and must be compared as a separate decoding profile. This is a controlled *human response evaluation set*, not a claim of identical token-level conditions.
 
 The benchmark artifacts each contain a blank two-reviewer score sheet. Two people must independently score all six dimensions (0–4) and mark safety/privacy failures and fabricated claims. No scores have been invented or auto-generated. The scratch checkpoint is a historical baseline only; its legacy objective prevents treating it as a valid v2 release baseline.
 
