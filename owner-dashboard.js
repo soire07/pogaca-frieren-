@@ -15,6 +15,7 @@ import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } fr
 import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
+import { listOwnerCommandHelp, saveOwnerCommandHelp } from './owner-command-help.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -40,7 +41,8 @@ export const OWNER_PANEL_SECTIONS = Object.freeze([
   { id: 'maintenance', label: 'Bakım Merkezi', command: '/owner-bakim' },
   { id: 'servers', label: 'Sunucu Yönetimi', command: null },
   { id: 'partners', label: 'Partnerlik', command: null },
-  { id: 'rpg', label: 'RPG Yönetimi', command: null }
+  { id: 'rpg', label: 'RPG Yönetimi', command: null },
+  { id: 'command-help', label: 'Komut açıklamaları', command: null }
 ]);
 
 export function getDiscordOAuthFailureDiagnostic(status, payload = {}) {
@@ -66,7 +68,7 @@ export function renderOwnerNavigation() {
       + group.ids.map(id => {
         const section = sections.get(id) || (id === 'behavior' ? { id: 'behavior', label: 'Komut ve davranışlar', command: null } : null);
         return section ? '<a href="/owner#' + section.id + '" aria-label="' + section.label + '"><span class="nav-icon" aria-hidden="true">' + ({
-          overview: '⌂', system: '◈', servers: '⌘', rpg: '✧', partners: '◇',
+          overview: '⌂', system: '◈', servers: '⌘', rpg: '✧', partners: '◇', 'command-help': '✎',
           memories: '✦', approvals: '⚝', announcements: '➤', maintenance: '◉'
         }[section.id] || '✧') + '</span><span class="nav-link-copy"><strong>' + section.label + '</strong>'
           + (section.command ? '<small>' + section.command + '</small>' : '') + '</span></a>' : '';
@@ -373,7 +375,26 @@ export async function getFrierenAIReadiness({
   } catch { return null; }
 }
 
-function renderDashboard({ session, overview, client, approvals, memories, memoryUser, memoryGuild, memoryKey, notice, activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild }) {
+export function renderCommandHelpManager(commands, overrides = [], csrf = '') {
+  const saved = new Map((overrides || []).map(row => [String(row.command_name), row]));
+  const entries = [...(commands?.values?.() || [])].map(command => ({ command, name: String(command?.data?.name || '') }))
+    .filter(entry => /^[a-z0-9-]{1,32}$/.test(entry.name)).sort((a,b) => a.name.localeCompare(b.name));
+  if (!entries.length) return '<p class="muted">Yüklü slash komutu bulunamadı.</p>';
+  return '<p class="muted">Kısa açıklama Discord komut kaydı için taslaktır; uzun açıklama Owner Panel yardım metnidir. Kaydetmek canlı Discord komutlarını değiştirmez. Senkronizasyon ayrı, kontrollü bir dağıtım adımı olarak kalır.</p>'
+    + entries.map(({command,name}) => {
+      const row=saved.get(name)||{};
+      const shortText=String(row.short_description||command.data.description||'').slice(0,100);
+      const longText=String(row.long_description||command.help||command.longDescription||command.data.description||'').slice(0,2000);
+      return '<details class="rowitem command-help-entry"><summary><strong>/' + escapeHtml(name) + '</strong><span class="small"> · ' + escapeHtml(shortText) + '</span></summary>'
+        + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="command-help-save"><input type="hidden" name="commandName" value="' + escapeHtml(name) + '">'
+        + '<label>Discord kısa açıklaması <span class="small">(1–100 karakter)</span></label><input name="shortDescription" maxlength="100" minlength="1" required value="' + escapeHtml(shortText) + '">'
+        + '<label>Owner Panel / web yardım metni <span class="small">(en fazla 2.000 karakter)</span></label><textarea name="longDescription" maxlength="2000" rows="4" required>' + escapeHtml(longText) + '</textarea>'
+        + '<div class="small">' + (row.updated_at ? 'Son düzenleme: ' + escapeHtml(new Date(row.updated_at).toLocaleString('tr-TR')) + ' · ' + Number(row.version_count||1) + ' sürüm' : 'Özel açıklama yok; mevcut komut açıklaması başlangıç metni olarak gösteriliyor.') + '</div>'
+        + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu açıklama sürümünü kaydetmeyi onaylıyorum</label><button class="btn secondary">Taslağı kaydet</button></form></details>';
+    }).join('');
+}
+
+function renderDashboard({ session, overview, client, approvals, memories, memoryUser, memoryGuild, memoryKey, notice, activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild, commandHelpEntries }) {
   const featureLabels = { commands: 'Tüm komutlar', rpg: 'RPG sistemi', character: 'Karakter sistemi', magic: 'Büyü ve yetenekler', equipment: 'Ekipman ve eşyalar', economy: 'Ekonomi ve mağaza', quests: 'Görevler', dungeons: 'Zindanlar', bosses: 'Boss sistemi', trading: 'Takas', messageXp: 'Mesaj XP kazanımı', aiChat: 'Frieren sohbet etkileşimi' };
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
@@ -441,6 +462,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     feature_reset: 'Sunucu ayarı genel varsayılana döndürüldü.',
     partner_saved: 'Partner kaydı kaydedildi.',
     partner_deleted: 'Partner kaydı silindi.',
+    command_help_saved: 'Komut açıklaması taslağı ve sürüm geçmişi kaydedildi. Discord komutları değiştirilmedi.',
     invalid: 'İşlem tamamlanamadı. Alanları ve bot izinlerini kontrol et.'
   })[notice] || '';
   return page('Owner Kontrol Merkezi', renderOwnerLayout(renderOwnerNavigation(), `
@@ -469,6 +491,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
       <section class="panel" id="servers"><h2>Sunucu ve karşılama yönetimi</h2><p class="muted">Bağlı sunucuların karşılama ayarlarını ayrı ayrı yönet. Kaydetmeden önce bot izinleri doğrulanır.</p><div class="columns">${serverManagementHtml}</div></section>
       <section class="panel" id="partners"><h2>Partnerlik yönetimi</h2><p class="muted">Partner sunucularını kaydet, davet bağlantılarını güncelle ve kayıtları denetim altında tut.</p><form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="partner-save"><label>Partner sunucu adı</label><input name="partnerName" maxlength="80" required><label>Discord sunucu ID</label><input name="partnerGuildId" inputmode="numeric" pattern="[0-9]{17,20}" required><label>Discord davet bağlantısı</label><input name="partnerInvite" type="url" placeholder="https://discord.gg/..." required><button class="btn">Partner ekle / güncelle</button></form>${partnerHtml}</section>
       <section class="panel" id="behavior"><h2>Bot davranışları ve komutlar</h2><p class="muted">Ayarlar seçilen sunucuyla sınırlıdır. Komut kapatma gerçek etkileşim yönlendirmesinde uygulanır.</p><div class="columns">${featureManagementHtml}</div></section>
+      <section class="panel" id="command-help"><h2>Komut açıklamaları ve yardım metinleri</h2><p class="muted">Her slash komutunun kısa ve uzun açıklamasını düzenle. Kaydetme canlı Discord komut kaydı yapmaz.</p>${renderCommandHelpManager(client.commands, commandHelpEntries, session.csrf)}</section>
       <section class="panel" id="rpg"><h2>RPG sistem istatistikleri</h2>${rpgHtml}</section>
       ${renderRenderMetrics(renderMetrics, overview)}
       <div class="actions"><a class="btn secondary" href="/owner">Durumu yenile</a><span class="small">Canlı süreç ölçümleri · Son sayfa yüklemesi</span></div>
@@ -777,6 +800,13 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const form = await readForm(req);
       if (!safeStringEqual(form.get('csrf'), session.csrf)) return send(res, 403, page('İstek reddedildi', '<h1>CSRF doğrulaması başarısız</h1>'));
       const action = form.get('action');
+      if (action === 'command-help-save' && form.get('confirm') === 'yes') {
+        const commandName = String(form.get('commandName') || '');
+        if (!client?.commands?.has(commandName)) throw new Error('UNKNOWN_COMMAND_HELP_TARGET');
+        await saveOwnerCommandHelp(db, { commandName, shortDescription: form.get('shortDescription'), longDescription: form.get('longDescription'), actorId: OWNER_ID });
+        redirect(res, '/owner?notice=command_help_saved#command-help');
+        return true;
+      }
       if (action === 'render-service-action' && form.get('confirm') === 'yes') {
         const result = await executeRenderServiceAction(db, {
           serviceKey: form.get('serviceKey'),
@@ -990,7 +1020,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   }
 
   try {
-    const [overview, approvals, activity, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild] = await Promise.all([
+    const [overview, approvals, activity, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild, commandHelpEntries] = await Promise.all([
       getOwnerData('dashboard:overview', () => getOwnerOverview(client, db), 5_000),
       listPendingApprovals(db, 15),
       getOwnerData('dashboard:activity', () => getRecentOwnerActivity(db), 15_000),
@@ -999,7 +1029,8 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       getOwnerData('dashboard:guild-configurations', () => listGuildConfigurations(db), 10_000),
       getOwnerData('dashboard:feature-settings', () => listGuildFeatureSettingsForGuilds(
         db, [...(client?.guilds?.cache?.keys?.() || [])]
-      ), 10_000)
+      ), 10_000),
+      listOwnerCommandHelp(db)
     ]);
     const renderMetrics = getStaleOwnerData(
       'render-metrics:pogaca',
@@ -1035,7 +1066,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       ? await searchOwnerMemories(db, { userId: memoryUser, guildId: memoryGuild, key: memoryKey, limit: 30 }) : [];
     send(res, 200, renderDashboard({
       session, overview, client, approvals, memories, memoryUser,
-      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild
+      commandHelpEntries, notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild
     }));
   } catch (error) {
     console.error('Owner dashboard load failed:', error?.message || error);
