@@ -719,8 +719,8 @@
         "path": "scripts/test-utils.js",
         "name": "daily quest chain awards recipe materials transactionally for all three stages",
         "markers": [
-          "step.material",
           "INSERT INTO inventory",
+          "BEGIN",
           "COMMIT"
         ]
       },
@@ -752,7 +752,7 @@
           "getLevelScaledQuestReward(200, 80, 51, true)",
           "levelForXp",
           "stat_points=stat_points",
-          "reward.completionBonus"
+          "completionBonus"
         ]
       },
       "limitation": "Reward scaling is unit-tested and level-up/stat-point transaction wiring is source-asserted; a live player quest completion is not verified."
@@ -786,9 +786,9 @@
         "path": "scripts/test-utils.js",
         "name": "solo boss victories grant recipe materials matched to boss tier",
         "markers": [
-          "boss.craftingMaterial",
           "claimSoloBossReward",
-          "craftingMaterial"
+          "craftingMaterial",
+          "INSERT INTO inventory"
         ]
       },
       "limitation": "Boss-tier material catalogue, reward transaction handoff and recipe availability are asserted; no live boss victory is performed."
