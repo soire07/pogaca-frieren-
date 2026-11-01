@@ -13,7 +13,7 @@ test('audit history applies validated filters, stable pagination and bounded pag
   } };
   const result = await listOwnerAuditLogs(db, { action: 'memory.delete', target: '42', page: 2, limit: 500 });
   assert.match(call.sql, /action ILIKE/);
-  assert.match(call.sql, /target ILIKE/);
+  assert.match(call.sql, /COALESCE\\(target/);
   assert.match(call.sql, /ORDER BY id DESC/);
   assert.deepEqual(call.params, ['%memory.delete%', '%42%', 50, 50]);
   assert.equal(result.page, 2);
