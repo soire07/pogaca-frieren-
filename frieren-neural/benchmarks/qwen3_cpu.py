@@ -16,11 +16,12 @@ from pathlib import Path
 from typing import Any
 
 from frieren_neural.quality_evaluation import PROMPTS, PROMPT_SET_VERSION, empty_score_template
+from frieren_neural.qwen3_decoding import SYSTEM_PROMPT, SYSTEM_PROMPT_VERSION
 
 MODEL_ID = "Qwen/Qwen3-0.6B"
 MODEL_REVISION = "c1899de289a04d12100db370d81485cdf75e47ca"
 MODEL_LICENSE = "Apache-2.0"
-MAX_NEW_TOKENS = 160
+MAX_NEW_TOKENS = 256
 
 
 def benchmark_prompt_digest() -> str:
@@ -99,9 +100,12 @@ def run_benchmark(output_dir: Path, *, limit: int | None = None, threads: int = 
     outputs: list[dict[str, Any]] = []
     generation_started = time.perf_counter()
     with torch.inference_mode():
-        for case_id, category, prompt, _hint in cases:
+        for case_index, (case_id, category, prompt, _hint) in enumerate(cases):
             encoded = tokenizer.apply_chat_template(
-                [{"role": "user", "content": prompt}],
+                [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
                 tokenize=True, add_generation_prompt=True,
                 enable_thinking=False, return_dict=True, return_tensors="pt",
             )
@@ -109,10 +113,12 @@ def run_benchmark(output_dir: Path, *, limit: int | None = None, threads: int = 
             attention_mask = encoded.get("attention_mask")
             if attention_mask is not None:
                 attention_mask = attention_mask.to("cpu")
+            torch.manual_seed(20261101 + case_index)
             started_case = time.perf_counter()
             generated = model.generate(
                 input_ids=input_ids, attention_mask=attention_mask,
-                max_new_tokens=MAX_NEW_TOKENS, do_sample=False,
+                max_new_tokens=MAX_NEW_TOKENS, do_sample=True,
+                temperature=0.7, top_p=0.8, top_k=20, repetition_penalty=1.1,
                 use_cache=True, pad_token_id=tokenizer.eos_token_id,
                 eos_token_id=tokenizer.eos_token_id,
             )
@@ -136,6 +142,7 @@ def run_benchmark(output_dir: Path, *, limit: int | None = None, threads: int = 
         "prompt_count": len(cases), "prompt_set_sha256": benchmark_prompt_digest(),
         "device": "cpu", "dtype": "float32", "threads": threads,
         "max_new_tokens": MAX_NEW_TOKENS,
+        "decoding_settings": {"do_sample": True, "temperature": 0.7, "top_p": 0.8, "top_k": 20, "repetition_penalty": 1.1, "seed_base": 20261101, "system_prompt_version": SYSTEM_PROMPT_VERSION},
         "model_load_seconds": load_seconds,
         "generation_total_seconds": round(time.perf_counter() - generation_started, 3),
         "latency_median_seconds": round(statistics.median(latencies), 3),
