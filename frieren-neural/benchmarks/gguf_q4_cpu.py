@@ -129,7 +129,7 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
     report = {
         "schema_version": 1,
         "decision": "HUMAN REVIEW REQUIRED — NOT APPROVED FOR DEPLOYMENT",
-        "model_id": "Qwen/Qwen3-0.6B-GGUF",
+        "model_id": "unsloth/Qwen3-0.6B-GGUF",
         "model_file": "Qwen3-0.6B-Q4_K_M.gguf",
         "model_url": MODEL_URL,
         "model_sha256": MODEL_SHA256,
@@ -158,7 +158,7 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
         "production_deployed": False,
     }
     output_dir.mkdir(parents=True, exist_ok=True)
-    (output_dir / "gguf-q8-quality-report.json").write_text(
+    (output_dir / "gguf-q4-quality-report.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     (output_dir / "human-scores.template.json").write_text(
@@ -170,7 +170,7 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output-dir", type=Path, default=Path("benchmark-results/gguf-q8"))
+    parser.add_argument("--output-dir", type=Path, default=Path("benchmark-results/gguf-q4"))
     parser.add_argument("--model-path", type=Path, default=Path("benchmark-cache/Qwen3-0.6B-Q4_K_M.gguf"))
     parser.add_argument("--threads", type=int, default=2)
     args = parser.parse_args()
