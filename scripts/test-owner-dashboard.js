@@ -26,6 +26,7 @@ test('Discord OAuth state is self-verifying without a browser cookie', async () 
 test('owner session accepts a valid signed session for the configured owner', () => {
   const token = createOwnerSession(secret, 2_000);
   assert.equal(verifyOwnerSession(token, secret, 1_000), true);
+  assert.equal(JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString()).mfa, true);
 });
 
 test('owner session rejects expired sessions', () => {
