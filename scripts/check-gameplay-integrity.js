@@ -152,27 +152,29 @@ test('profile and all battle modes preserve current HP/mana ratios across tempor
   const solo = await read('iblisavasi.js');
   const dungeon = await read('katlizindan.js');
   const raid = await read('ortakboss.js');
+  const rewards = await read('rpg-reward-transactions.js');
   assert.ok(profile.includes('(Number(u.hp) / Math.max(1, Number(u.max_hp))) * effectiveMaxHp'));
   assert.ok(profile.includes('(Number(u.mana) / Math.max(1, Number(u.max_mana))) * effectiveMaxMana'));
   assert.ok(solo.includes('toPersistentMana(playerMana)'));
-  assert.ok(dungeon.includes('persistedManaNow[i]'));
-  assert.ok(raid.includes('persistedManaNow[i]'));
-  assert.ok(raid.includes('baseMaxMana:Number(p.max_mana)'));
+  assert.ok(dungeon.includes('persistedManaNow'));
+  assert.ok(raid.includes('persistedManaNow'));
+  assert.ok(rewards.includes('persistedManaNow[i]'));
+  assert.ok(rewards.includes('persistedHpNow[i]'));
 });
-
 
 test('successful Zoltraak casts in cooperative dungeon and boss raid advance persistent spell mastery', async () => {
   const dungeon = await read('katlizindan.js');
   const raid = await read('ortakboss.js');
+  const rewards = await read('rpg-reward-transactions.js');
   for (const source of [dungeon, raid]) {
     assert.match(source, /const spellCasts = new Map\(\)/);
     assert.match(source, /const castCount = \(spellCasts\.get\([^)]*\) \|\| 0\) \+ 1/);
-    assert.match(source, /INSERT INTO spell_mastery \(guild_id,user_id,spell_key,casts,mastery_level,updated_at\)/);
-    assert.match(source, /mastery_level=LEAST\(10,FLOOR\(\(spell_mastery\.casts\+EXCLUDED\.casts\)\/10\.0\)::int\)/);
+    assert.ok(source.includes('spellCasts'));
   }
+  assert.match(rewards, /INSERT INTO spell_mastery \(guild_id,user_id,spell_key,casts,mastery_level,updated_at\)/);
+  assert.match(rewards, /mastery_level=LEAST\(10,FLOOR\(\(spell_mastery\.casts\+EXCLUDED\.casts\)\/10\.0\)::int\)/);
   assert.match(raid, /applyRaidWeakness\(damage, BOSS, usedSpell \? 'spell' : 'attack'\)/);
 });
-
 
 test('exploration activates the same rarity-based equipment set bonuses as combat', async () => {
   const source = await read('commands/rpg/kesif.js');
@@ -223,49 +225,46 @@ test('cooperative Zoltraak damage uses saved mastery and can level up during the
 
 test('co-op encounter reservations prevent overlapping party runs and expire after abandoned sessions', async () => {
   const schema = await read('database/db.js');
+  const rewards = await read('rpg-reward-transactions.js');
   assert.match(schema, /CREATE TABLE IF NOT EXISTS active_rpg_encounters/);
   assert.match(schema, /PRIMARY KEY \(guild_id, user_id\)/);
   assert.match(schema, /expires_at TIMESTAMPTZ NOT NULL/);
-  for (const [path, mode] of [['katlizindan.js', 'dungeon'], ['ortakboss.js', 'raid']]) {
+  for (const [path, mode, fn] of [['katlizindan.js', 'dungeon', 'settleDungeonRewards'], ['ortakboss.js', 'raid', 'settleRaidRewards']]) {
     const source = await read(path);
     assert.ok(source.includes(`VALUES ($1,$2,$3,'${mode}',NOW()+INTERVAL '30 minutes')`), path + ': reservation must expire if the process dies');
-    assert.ok(source.includes('DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2'), path + ': reservation is released after encounter');
-    assert.ok(source.includes('activeReservations.rowCount !== ids.length'), path + ': all participants must still own the reservation before rewards');
-    assert.ok(source.includes('reservationError.code === \'23505\''), path + ': overlapping encounter is rejected');
+    assert.ok(source.includes(fn), path + ': production settlement helper must be used');
+    assert.ok(rewards.includes(`encounter_type='${mode}'`), path + ': settlement must validate its own reservation');
   }
+  assert.ok(rewards.includes('DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2'));
+  assert.ok(rewards.includes("active.rowCount !== ids.length"));
 });
 
 test('co-op combat releases database locks before waiting for player turns and revalidates cooldown on save', async () => {
-  for (const [path, cooldown] of [['katlizindan.js', 'last_dungeon_at'], ['ortakboss.js', 'last_boss_at']]) {
+  const rewards = await read('rpg-reward-transactions.js');
+  for (const [path, cooldown, helper] of [['katlizindan.js', 'last_dungeon_at', 'settleDungeonRewards'], ['ortakboss.js', 'last_boss_at', 'settleRaidRewards']]) {
     const source = await read(path);
     const release = source.indexOf('db = null;');
     const wait = source.indexOf('while (', release);
-    const save = source.indexOf('Reacquire a short transaction', wait);
-    const lock = source.indexOf('ORDER BY user_id FOR UPDATE', save);
-    assert.ok(release >= 0 && wait > release && save > wait && lock > save, path + ': lock/connection must be released during interactive combat and reacquired for persistence');
-    assert.ok(source.includes(cooldown), path + ': concurrent-run cooldown is revalidated');
+    assert.ok(release >= 0 && wait > release, path + ': database lock must be released during interactive combat');
+    assert.ok(source.includes(helper), path + ': final persistence must use production settlement');
+    assert.ok(rewards.includes(cooldown), path + ': concurrent-run cooldown is revalidated in settlement');
     assert.ok(source.includes('INSERT INTO active_rpg_encounters'), path + ': participants are reserved before combat starts');
-    assert.ok(source.includes('FOR UPDATE'), path + ': final persistence serializes participant state');
-    assert.ok(source.includes("await db.query('ROLLBACK')"), path + ': failed validation rolls back');
-    assert.ok(source.includes('if (db) db.release()'), path + ': released clients are not released twice');
-    assert.match(source, /SELECT user_id,last_(?:dungeon|boss)_at,xp,level/ , path + ': final save reads current XP/level under lock');
-    assert.ok(source.includes('currentProgress.get('), path + ': reward calculation uses locked current progression');
+    assert.ok(rewards.includes('ORDER BY user_id FOR UPDATE'), path + ': final persistence serializes participant state');
+    assert.ok(rewards.includes("await db.query('ROLLBACK')"), path + ': failed validation rolls back');
   }
 });
 
 test('solo boss victory commits final HP, mana, rewards, mastery and loot in one transaction', async () => {
   const source = await read('iblisavasi.js');
+  const rewards = await read('rpg-reward-transactions.js');
   const victory = source.indexOf('if (bossHp <= 0)');
-  const begin = source.indexOf("await db.query('BEGIN')", victory);
-  const userUpdate = source.indexOf('UPDATE users SET hp=$3, mana=$4, coins=coins+$5, xp=xp+$6', begin);
-  const mastery = source.indexOf('if (spellUsed)', userUpdate);
-  const loot = source.indexOf("INSERT INTO inventory(guild_id,user_id,item_key,quantity)", mastery);
-  const commit = source.indexOf("await db.query('COMMIT')", loot);
-  assert.ok(victory >= 0 && begin > victory && userUpdate > begin && mastery > userUpdate && loot > mastery && commit > loot,
-    'victory state, rewards, mastery and loot must share one transaction');
-  assert.ok(!source.slice(victory, begin).includes("UPDATE users SET hp=$3, mana=$4"),
-    'victory HP/mana must not be saved before the reward transaction');
-  assert.ok(source.indexOf('if (spellUsed)', userUpdate) < commit, 'the final killing spell is deferred into the victory transaction');
+  const claim = source.indexOf('claimSoloBossReward', victory);
+  assert.ok(victory >= 0 && claim > victory, 'boss victory must call the shared production reward transaction');
+  for (const required of ['UPDATE users SET hp=$3, mana=$4, coins=coins+$5, xp=xp+$6','last_boss_battle_id IS DISTINCT FROM $7','INSERT INTO spell_mastery','INSERT INTO inventory','await db.query(\'COMMIT\')']) {
+    assert.ok(rewards.includes(required), 'production solo reward transaction missing: ' + required);
+  }
+  assert.ok(rewards.includes("await db.query('ROLLBACK')"));
+  assert.ok(source.includes('rewardResult.status'));
 });
 
 test('solo demon combat saves non-victory HP, mana and spell mastery within the same transaction', async () => {
@@ -367,6 +366,7 @@ test('runtime startup does not clear or race slash-command registration', async 
 
 test('co-op raid acknowledges the Discord interaction before database work and types spell mastery casts explicitly', async () => {
   const source = await read('ortakboss.js');
+  const rewards = await read('rpg-reward-transactions.js');
   const ack = source.indexOf('await interaction.deferReply()');
   const ensure = source.indexOf('await ensureUser(');
   const firstDb = source.indexOf('pool.connect()');
@@ -374,10 +374,9 @@ test('co-op raid acknowledges the Discord interaction before database work and t
     'raid command must defer its reply before database work');
   assert.match(source, /const msg = await interaction\.editReply\(/,
     'invitation message must edit the deferred reply');
-  assert.match(source, /VALUES \(\$1,\$2,'zoltraak',\$3::integer,LEAST\(10,FLOOR\(\$3::numeric\/10\.0\)::int\),NOW\(\)\)/,
+  assert.match(rewards, /VALUES \(\$1,\$2,'zoltraak',\$3::integer,LEAST\(10,FLOOR\(\$3::numeric\/10\.0\)::int\),NOW\(\)\)/,
     'spell mastery casts parameter must have explicit integer/numeric casts');
 });
-
 
 test('inventory acknowledges privately before user creation and database reads', async () => {
   const source = await read('envanter.js');

@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { explorationMasteryReward } from '../rpg-mechanics.js';
 import assert from 'node:assert/strict';
 import { levelForXp, xpForNextLevel } from '../utils.js';
 
@@ -55,20 +56,22 @@ import { readFile } from 'node:fs/promises';
 
 test('cooperative raid defines player-facing roles and a persistent cooldown', async () => {
   const source = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  const rewards = await readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
   assert.match(source, /setName\('ortakboss'\)/);
   for (const role of ['tank', 'healer', 'damage']) assert.ok(source.includes(role), `missing raid role: ${role}`);
-  assert.match(source, /FOR UPDATE/);
-  assert.match(source, /last_boss_at=NOW\(\)/);
-  assert.match(source, /boss_defeats=boss_defeats\+\$8/);
+  assert.match(rewards, /FOR UPDATE/);
+  assert.match(rewards, /last_boss_at=NOW\(\)/);
+  assert.match(rewards, /boss_defeats=boss_defeats\+\$8/);
   assert.match(source, /c\.user\.id/);
 });
 
 test('multi-floor dungeon includes traps, chests and persistent player rewards', async () => {
   const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  const rewards = await readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
   assert.match(source, /setName\('katlizindan'\)/);
   assert.match(source, /gizli sandık/);
   assert.match(source, /tuzak/);
-  assert.match(source, /dungeon_runs=dungeon_runs\+1/);
+  assert.match(rewards, /dungeon_runs=dungeon_runs\+1/);
   assert.match(source, /chestRewards/);
   assert.match(source, /PARTY_ROLES/);
   assert.match(source, /healerIndex/);
@@ -79,18 +82,17 @@ test('multi-floor dungeon includes traps, chests and persistent player rewards',
   assert.match(source, /yıldız biçimli mana patlaması/);
 });
 
-
 test('multi-floor dungeon offers turn-based attack, spell and defense choices', async () => {
   const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  const rewards = await readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
   assert.match(source, /katlizindan:act:attack/);
   assert.match(source, /katlizindan:act:spell/);
   assert.match(source, /katlizindan:act:defend/);
   assert.match(source, /p\.mana >= spellCost/);
   assert.match(source, /p\.mana\s*-=\s*spellCost/);
   assert.match(source, /incoming \* 0\.45/);
-  assert.match(source, /mana=\$9/);
+  assert.match(rewards, /mana=\$9/);
 });
-
 
 test('dungeon and boss raid let each accepted player choose their own role', async () => {
   const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
@@ -108,16 +110,16 @@ test('dungeon and boss raid let each accepted player choose their own role', asy
 
 test('cooperative boss raid supports attack, mana spell, defense and mana persistence', async () => {
   const source = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  const rewards = await readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
   assert.match(source, /raid:act:attack/);
   assert.match(source, /raid:act:spell/);
   assert.match(source, /raid:act:defend/);
   assert.match(source, /f\.mana >= spellCost/);
   assert.match(source, /f\.mana -= spellCost/);
   assert.match(source, /incoming\*0\.45/);
-  assert.match(source, /mana=\$9/);
+  assert.match(rewards, /mana=\$9/);
   assert.match(source, /ComponentType\.Button/);
 });
-
 
 test('cooperative boss raid includes an area mana-star burst and a mana-draining curse', async () => {
   const source = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
@@ -410,16 +412,13 @@ test('solo boss combat applies the same equipment set bonuses as profile and gro
 
 test('daily quest chain requires a successful boss victory, not merely starting a boss fight', async () => {
   const quest = await readFile(new URL('../gorevzinciri.js', import.meta.url), 'utf8');
-  const combat = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const rewards = await readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
   const database = await readFile(new URL('../database/db.js', import.meta.url), 'utf8');
   assert.match(quest, /last_boss_win_at::date\s*=\s*CURRENT_DATE/);
   assert.doesNotMatch(quest, /last_boss_at::date\s*=\s*CURRENT_DATE/);
-  assert.match(combat, /boss_defeats=boss_defeats\+1, last_boss_win_at=NOW\(\)/);
+  assert.match(rewards, /boss_defeats=boss_defeats\+1, last_boss_win_at=NOW\(\)/);
   assert.match(database, /ADD COLUMN IF NOT EXISTS last_boss_win_at TIMESTAMPTZ/);
 });
-
-
-import { explorationMasteryReward } from '../rpg-mechanics.js';
 
 test('region mastery pays bonus rewards at each third successful exploration', () => {
   assert.deepEqual(explorationMasteryReward(0), { level: 0, coins: 0, xp: 0, milestone: false });
@@ -504,6 +503,7 @@ test('quest chain integrates level-scaled XP, level-ups, stat points and complet
 
 test('solo boss victories grant recipe materials matched to boss tier', async () => {
   const combat = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const rewards = await readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
   const catalog = await readFile(new URL('../rpg-content-catalog.js', import.meta.url), 'utf8');
   const crafting = await readFile(new URL('../zanaat.js', import.meta.url), 'utf8');
   for (const material of [
@@ -517,9 +517,10 @@ test('solo boss victories grant recipe materials matched to boss tier', async ()
     assert.ok(crafting.includes(material), `boss crafting material has no recipe: ${material}`);
   }
   assert.match(combat, /boss\.craftingMaterial/);
-  assert.match(combat, /INSERT INTO inventory\(guild_id,user_id,item_key,quantity\) VALUES\(\$1,\$2,\$3,1\)/);
+  assert.match(combat, /claimSoloBossReward/);
+  assert.match(rewards, /craftingMaterial/);
+  assert.match(rewards, /INSERT INTO inventory/);
 });
-
 
 test('dungeon depth and final victory award recipe materials to participating players', async () => {
   const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');

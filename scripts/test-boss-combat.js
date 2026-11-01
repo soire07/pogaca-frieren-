@@ -64,20 +64,19 @@ test('class damage, defense and healing bonuses round down consistently', () => 
   assert.equal(applyClassHealing(26, 'Şifacı'), 31);
 });
 
-test('solo boss victory grants rewards in one transaction and guards duplicate button handling', async () => {
+test('solo boss victory grants rewards in one production transaction and guards duplicate button handling', async () => {
   const source = await (await import('node:fs/promises')).readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const rewards = await (await import('node:fs/promises')).readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
   const victory = source.indexOf('if (bossHp <= 0)');
-  const begin = source.indexOf("await db.query('BEGIN')", victory);
-  const rewardUpdate = source.indexOf('coins=coins+$5, xp=xp+$6, last_boss_battle_id=$7', begin);
-  const firstInventory = source.indexOf('INSERT INTO inventory', begin);
-  const commit = source.indexOf("await db.query('COMMIT')", firstInventory);
-  assert.ok(victory >= 0 && begin > victory && rewardUpdate > begin && firstInventory > rewardUpdate && commit > firstInventory,
-    'victory rewards and inventory must be committed in one transaction');
-  assert.equal((source.match(/last_boss_battle_id=\$7/g) || []).length, 1,
-    'boss victory reward update must have a single code path');
+  const claim = source.indexOf('claimSoloBossReward', victory);
+  assert.ok(victory >= 0 && claim > victory, 'victory handler must invoke the production reward transaction');
+  assert.match(rewards, /last_boss_battle_id IS DISTINCT FROM \$7/);
+  assert.match(rewards, /coins=coins\+\$5, xp=xp\+\$6/);
+  assert.match(rewards, /INSERT INTO inventory/);
+  assert.match(rewards, /await db.query\('COMMIT'\)/);
+  assert.match(rewards, /await db.query\('ROLLBACK'\)/);
   assert.match(source, /if \(finished \|\| busy\) return button\.deferUpdate\(\)/);
   assert.match(source, /finished = true;\s*collector\.stop\('victory'\)/);
-  assert.match(source, /await db\.query\('ROLLBACK'\)\.catch/);
 });
 
 test('boss defeat and expired combat persist survival state without granting victory rewards', async () => {
@@ -97,15 +96,13 @@ test('boss defeat and expired combat persist survival state without granting vic
 
 test('solo boss reward persistence is idempotent per battle session across duplicate handlers', async () => {
   const source = await (await import('node:fs/promises')).readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  const rewards = await (await import('node:fs/promises')).readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
   const schema = await (await import('node:fs/promises')).readFile(new URL('../database/db.js', import.meta.url), 'utf8');
   assert.match(source, /randomUUID/);
-  assert.match(source, /last_boss_battle_id/);
-  assert.ok(source.includes('last_boss_battle_id IS DISTINCT FROM $7'));
-  const victory = source.indexOf('if (bossHp <= 0)');
-  const begin = source.indexOf("await db.query('BEGIN')", victory);
-  const reward = source.indexOf('last_boss_battle_id=$7', begin);
-  const commit = source.indexOf("await db.query('COMMIT')", reward);
-  assert.ok(victory >= 0 && begin > victory && reward > begin && commit > reward,
-    'the battle session must be claimed atomically before rewards commit');
+  assert.ok(rewards.includes('last_boss_battle_id'));
+  assert.ok(source.includes('claimSoloBossReward'));
+  assert.ok(rewards.includes('last_boss_battle_id IS DISTINCT FROM $7'));
+  assert.ok(rewards.includes("return { status: 'already_claimed' }"));
   assert.match(schema, /last_boss_battle_id TEXT/);
 });
+

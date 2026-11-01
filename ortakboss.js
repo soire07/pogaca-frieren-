@@ -1,5 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder, ComponentType } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
+import { settleRaidRewards } from './rpg-reward-transactions.js';
 import { getBossArtUrl } from './boss-art.js';
 import { getGuildRpgContent } from './owner-rpg-content.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
@@ -330,64 +331,35 @@ export default {
           log.push(`💥 ${BOSS.name} ${target.username} oyuncusuna ${incoming} hasar verdi${defending.has(targetIndex)?' (savunma azaltımı uygulandı)':''}.`);
         }
       }
-      // Reacquire a short transaction for persistence; validate cooldowns against concurrent raids.
-      db = await pool.connect();
-      await db.query('BEGIN');
-      const lockedRows = await db.query(
-        'SELECT user_id,last_boss_at,xp,level FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE',
-        [interaction.guildId, ids]
-      );
-      const activeReservations = await db.query(
-        "SELECT user_id FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND encounter_id=$3 AND encounter_type='raid' AND expires_at > NOW() FOR UPDATE",
-        [interaction.guildId, ids, interaction.id]
-      );
-      if (activeReservations.rowCount !== ids.length) {
-        await db.query('ROLLBACK');
-        return interaction.editReply({ content: '⌛ Baskın oturumunun süresi doldu veya takım kilidi kayboldu; ödüller kaydedilmedi. Yeniden deneyebilirsin.', components: [] });
-      }
-      const concurrentRun = lockedRows.rows.find(p => p.last_boss_at && Date.now() - new Date(p.last_boss_at).getTime() < COOLDOWN_MS);
-      if (concurrentRun) {
-        const remaining = Math.ceil((COOLDOWN_MS - (Date.now() - new Date(concurrentRun.last_boss_at).getTime())) / 60_000);
-        await db.query('ROLLBACK');
-        return interaction.editReply({ content: `⏳ <@${concurrentRun.user_id}> başka bir baskın nedeniyle bekleme süresine girdi; yaklaşık ${remaining} dakika sonra yeniden deneyin. Bu baskının ödülleri kaydedilmedi.`, components: [] });
-      }
       const win=bossHp<=0;
       const persistedHpNow=hpNow.map((hp,i)=>restoreResourceRatio(hp, fighters[i].maxHp, fighters[i].baseMaxHp));
       const persistedManaNow=fighters.map(f=>restoreResourceRatio(f.mana, f.maxMana, f.baseMaxMana));
-      for (const [userId, casts] of spellCasts) {
-        const mastery = await db.query(
-          `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
-           VALUES ($1,$2,'zoltraak',$3::integer,LEAST(10,FLOOR($3::numeric/10.0)::int),NOW())
-           ON CONFLICT (guild_id,user_id,spell_key) DO UPDATE
-           SET casts=spell_mastery.casts+EXCLUDED.casts,
-               mastery_level=LEAST(10,FLOOR((spell_mastery.casts+EXCLUDED.casts)/10.0)::int),
-               updated_at=NOW()
-           RETURNING casts,mastery_level`,
-          [interaction.guildId, userId, casts]
-        );
-        log.push(`📈 <@${userId}> Zoltraak ustalığı: ${mastery.rows[0].casts} kullanım · Seviye ${mastery.rows[0].mastery_level}/10.`);
-      }
       const xpReward=win?BOSS.xp:Math.floor(BOSS.xp*0.25);
       const coinReward=win?BOSS.coins:Math.floor(BOSS.coins*0.2);
       const loot=win && Math.random()<0.4 ? BOSS.loot : null;
-      const currentProgress = new Map(lockedRows.rows.map(row => [row.user_id, row]));
-      for (let i=0;i<fighters.length;i++) {
-        const f=fighters[i]; const current=currentProgress.get(f.userId); const newXp=Number(current.xp)+xpReward; const newLevel=levelForXp(newXp);
-        await db.query(
-          `UPDATE users SET hp=$3,xp=$4,level=$5,coins=coins+$6,
-           stat_points=stat_points+$7,boss_defeats=boss_defeats+$8,last_boss_at=NOW(),mana=$9
-           WHERE guild_id=$1 AND user_id=$2`,
-          [interaction.guildId,f.userId,persistedHpNow[i],newXp,newLevel,coinReward,Math.max(0,newLevel-Number(current.level)),win?1:0,persistedManaNow[i]]
-        );
-        if (loot) await db.query(
-          `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
-           ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
-          [interaction.guildId,f.userId,loot]
-        );
+      const settlement = await settleRaidRewards(pool, {
+        guildId: interaction.guildId,
+        encounterId: interaction.id,
+        ids,
+        fighters,
+        persistedHpNow,
+        persistedManaNow,
+        win,
+        xpReward,
+        coinReward,
+        loot,
+        spellCasts
+      });
+      if (settlement.status === 'reservation_missing') {
+        return interaction.editReply({ content: '⌛ Baskın oturumunun süresi doldu veya takım kilidi kayboldu; ödüller kaydedilmedi. Yeniden deneyebilirsin.', components: [] });
       }
-      await db.query('DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2', [interaction.guildId, interaction.id]);
-      await db.query('COMMIT');
-      const milestoneRows = await db.query('SELECT user_id,level,boss_defeats,dungeon_wins FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[interaction.guildId,ids]);
+      if (settlement.status === 'cooldown') {
+        return interaction.editReply({ content: `⏳ <@${settlement.userId}> başka bir baskın nedeniyle bekleme süresine girdi; yaklaşık ${settlement.minutes} dakika sonra yeniden deneyin. Bu baskının ödülleri kaydedilmedi.`, components: [] });
+      }
+      for (const mastery of settlement.masteryResults) {
+        log.push(`📈 <@${mastery.userId}> Zoltraak ustalığı: ${mastery.casts} kullanım · Seviye ${mastery.mastery_level}/10.`);
+      }
+      const milestoneRows = await pool.query('SELECT user_id,level,boss_defeats,dungeon_wins FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[interaction.guildId,ids]);
       const milestoneText = milestoneRows.rows.map(row => {
         const titles = progressionMilestone(Number(row.level), Number(row.boss_defeats), Number(row.dungeon_wins));
         return `<@${row.user_id}>: ${titles.length ? titles.join(', ') : 'Henüz unvan açılmadı'}`;

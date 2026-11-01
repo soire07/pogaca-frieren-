@@ -8,7 +8,7 @@ import {
   ComponentType
 } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
-import { recordJournalEntry } from './gameplay-journal.js';
+import { claimSoloBossReward } from './rpg-reward-transactions.js';
 import { getGuildRpgContent } from './owner-rpg-content.js';
 import { equipmentItems, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
 import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, applyEquipmentSetBonus, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening, restoreResourceRatio } from './rpg-mechanics.js';
@@ -323,68 +323,33 @@ export default {
           const bonusLoot = Math.random() < boss.lootChance
             ? boss.loot[Math.floor(Math.random() * boss.loot.length)]
             : null;
-          const db = await pool.connect();
-          try {
-            await db.query('BEGIN');
-            const rewardClaim = await db.query(
-              `UPDATE users SET hp=$3, mana=$4, coins=coins+$5, xp=xp+$6, last_boss_battle_id=$7,
-                boss_defeats=boss_defeats+1, last_boss_win_at=NOW(),
-                stat_points=stat_points+GREATEST(0,(FLOOR(SQRT((xp+$6)::numeric / 100))::int + 1)-level),
-                level=FLOOR(SQRT((xp+$6)::numeric / 100))::int + 1
-               WHERE guild_id=$1 AND user_id=$2 AND last_boss_battle_id IS DISTINCT FROM $7
-               RETURNING user_id`,
-              [interaction.guildId, interaction.user.id, toPersistentHp(playerHp), toPersistentMana(playerMana), rewardCoins, rewardXp, battleId]
-            );
-            if (rewardClaim.rowCount !== 1) {
-              await db.query('ROLLBACK');
-              finished = true;
-              collector.stop('duplicate-victory');
-              return button.update({ content: 'Bu savaşın ödülü daha önce işlendi; tekrar ödül verilmedi.', embeds: [], components: [] });
-            }
-            const journalBossKey = boss.name.includes('Schattenwolf') ? 'schattenwolf'
-              : boss.name.includes('Harabe Muhafızı') ? 'ruinGuardian'
-                : boss.name.includes('Kuzey İblisi') ? 'northDemon'
-                  : boss.name.includes('Komutanı') ? 'demonCommander'
-                    : boss.name.includes('Äußerst') || boss.name.includes('Außerst') || boss.name.includes('Ausserst') ? 'ausserstLord'
-                      : null;
-            if (journalBossKey) await recordJournalEntry(db, interaction.guildId, interaction.user.id, 'bosses', journalBossKey);
-            if (spellUsed) {
-              const masteryUpdate = await db.query(
-                `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
-                 VALUES ($1,$2,$3,1,0,NOW())
-                 ON CONFLICT (guild_id,user_id,spell_key) DO UPDATE
-                 SET casts=spell_mastery.casts+1,
-                     mastery_level=LEAST(10,FLOOR((spell_mastery.casts+1)/10.0)::int),
-                     updated_at=NOW()
-                 RETURNING casts,mastery_level`,
-                [interaction.guildId, interaction.user.id, spellUsed]
-              );
-              spellMastery.set(spellUsed, Number(masteryUpdate.rows[0].mastery_level));
-              actionText += `\n📈 **${spellUsed.replaceAll('_', ' ')} ustalığı:** ${masteryUpdate.rows[0].casts} kullanım · Seviye ${masteryUpdate.rows[0].mastery_level}/10`;
-            }
-            await db.query(
-              `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'💎 Mana Kristali',1)
-               ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
-              [interaction.guildId, interaction.user.id]
-            );
-            if (bonusLoot) {
-              await db.query(
-                `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
-                 ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
-                [interaction.guildId, interaction.user.id, bonusLoot]
-              );
-            }
-            await db.query(
-              `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
-               ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
-              [interaction.guildId, interaction.user.id, boss.craftingMaterial]
-            );
-            await db.query('COMMIT');
-          } catch (error) {
-            await db.query('ROLLBACK').catch(() => {});
-            throw error;
-          } finally {
-            db.release();
+          const journalBossKey = boss.name.includes('Schattenwolf') ? 'schattenwolf'
+            : boss.name.includes('Harabe Muhafızı') ? 'ruinGuardian'
+              : boss.name.includes('Kuzey İblisi') ? 'northDemon'
+                : boss.name.includes('Komutanı') ? 'demonCommander'
+                  : boss.name.includes('Äußerst') || boss.name.includes('Außerst') || boss.name.includes('Ausserst') ? 'ausserstLord'
+                    : null;
+          const rewardResult = await claimSoloBossReward(pool, {
+            guildId: interaction.guildId,
+            userId: interaction.user.id,
+            battleId,
+            hp: toPersistentHp(playerHp),
+            mana: toPersistentMana(playerMana),
+            coins: rewardCoins,
+            xp: rewardXp,
+            bonusLoot,
+            craftingMaterial: boss.craftingMaterial,
+            journalBossKey,
+            spellUsed
+          });
+          if (rewardResult.status !== 'claimed') {
+            finished = true;
+            collector.stop('duplicate-victory');
+            return button.update({ content: 'Bu savaşın ödülü daha önce işlendi; tekrar ödül verilmedi.', embeds: [], components: [] });
+          }
+          if (rewardResult.mastery) {
+            spellMastery.set(spellUsed, Number(rewardResult.mastery.mastery_level));
+            actionText += `\\n📈 **${spellUsed.replaceAll('_', ' ')} ustalığı:** ${rewardResult.mastery.casts} kullanım · Seviye ${rewardResult.mastery.mastery_level}/10`;
           }
 
           finished = true;
