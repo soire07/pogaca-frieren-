@@ -104,19 +104,19 @@ async function sendGmail(to, subject, html, plain) {
   if (![from,user,to].every(v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) || pass.length < 12) throw new Error('SITE_MAIL_CONFIG_INVALID');
   const socket = tls.connect({host:'smtp.gmail.com',port:465,servername:'smtp.gmail.com',rejectUnauthorized:true});
   socket.setTimeout(20000, () => socket.destroy(new Error('SMTP_TIMEOUT')));
-  await new Promise((resolve,reject) => { socket.once('secureConnect',resolve); socket.once('error',reject); });
-  let buffer = '', lines = [], queue = [], waiters = [];
+  let buffer = '', lines = [], queue = [], waiters = [], socketError = null;
   const deliver = () => { if (queue.length && waiters.length) waiters.shift().resolve(queue.shift()); };
   socket.on('data', chunk => {
     buffer += chunk.toString('utf8');
     let at;
-    while ((at=buffer.indexOf('\r\n')) >= 0) {
+    while ((at=buffer.indexOf('\\r\\n')) >= 0) {
       const line=buffer.slice(0,at); buffer=buffer.slice(at+2); lines.push(line);
-      if (/^\d{3} /.test(line)) { queue.push(lines.join('\n')); lines=[]; deliver(); }
+      if (/^\\d{3} /.test(line)) { queue.push(lines.join('\\n')); lines=[]; deliver(); }
     }
   });
-  socket.on('error', error => { while(waiters.length) waiters.shift().reject(error); });
-  const read = () => new Promise((resolve,reject) => { if(queue.length) resolve(queue.shift()); else waiters.push({resolve,reject}); });
+  socket.on('error', error => { socketError=error; while(waiters.length) waiters.shift().reject(error); });
+  const read = () => new Promise((resolve,reject) => { if(socketError) reject(socketError); else if(queue.length) resolve(queue.shift()); else waiters.push({resolve,reject}); });
+  await new Promise((resolve,reject) => { socket.once('secureConnect',resolve); socket.once('error',reject); });
   const cmd = async (value,codes) => { socket.write(value+'\r\n'); const response=await read(); if(!codes.includes(Number(response.slice(0,3)))) throw new Error('SMTP_'+response.slice(0,3)); };
   try {
     const greeting=await read(); if(!greeting.startsWith('220')) throw new Error('SMTP_GREETING');
