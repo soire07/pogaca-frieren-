@@ -7,7 +7,7 @@ def test_qwen3_chat_request_uses_non_thinking_non_greedy_settings():
     assert request["messages"][0]["role"] == "system"
     assert "Parola, API anahtarı" in request["messages"][0]["content"]
     assert request["messages"][1] == {
-        "role": "user", "content": "/no_think\\n\\nTürkçe yanıt ver."
+        "role": "user", "content": "/no_think\n\nTürkçe yanıt ver."
     }
     assert request["temperature"] == 0.7
     assert request["top_p"] == 0.8
