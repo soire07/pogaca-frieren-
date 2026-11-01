@@ -15,7 +15,7 @@ function request(path = '/', user = visitor) {
   return { method: 'GET', url: path, headers: { cookie } };
 }
 
-test('anonymous visitors must authenticate with Discord before viewing the homepage', async () => {
+test('anonymous visitors must authenticate before viewing the homepage', async () => {
   const response = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/', headers: {} }, response), true);
   assert.equal(response.status, 302);
@@ -30,13 +30,13 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /Bin yıllık/);
   assert.match(response.body, /Gezgin/);
   assert.match(response.body, /class="profile-banner"/);
-  assert.match(response.body, /profile-banner[\\s\\S]*?src="\\/assets\\/site-banner\\.webp"/);
+  assert.match(response.body, /profile-banner[\s\S]*?src="\/assets\/site-banner\.webp"/);
   assert.match(response.body, /class="wrap home-banner"/);
   assert.match(response.body, /assets\/site-banner\.webp/);
   assert.match(response.body, /gif-gallery/);
   assert.match(response.body, /href="\/assets\/site\.css"/);
   assert.match(response.body, /profile-avatar/);
-  assert.equal((response.body.match(/loading="lazy"/g) || []).length, 17);
+  assert.equal((response.body.match(/loading="lazy"/g) || []).length, 18);
   assert.equal((response.body.match(/class="gif-item"/g) || []).length, 16);
   assert.match(response.body, /68/);
 });
@@ -94,30 +94,34 @@ test('unknown routes and non-GET requests are not intercepted', async () => {
 
 
 
-test('registration and login pages expose separate Discord OAuth actions', async () => {
+test('registration and login pages expose username and password forms', async () => {
   const registration = res();
-  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/register', headers: {} }, registration), true);
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/register', headers: {} }, registration, { db: { query: async () => ({ rows: [], rowCount: 0 }) } }), true);
   assert.equal(registration.status, 200);
-  assert.match(registration.body, /Discord ile kayıt ol/);
-  assert.match(registration.body, /flow=register/);
+  assert.match(registration.body, /name="username"/);
+  assert.match(registration.body, /name="email"/);
+  assert.match(registration.body, /name="confirmPassword"/);
+  assert.match(registration.body, /action="\/register"/);
   const login = res();
-  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/login', headers: {} }, login), true);
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/login', headers: {} }, login, { db: { query: async () => ({ rows: [], rowCount: 0 }) } }), true);
   assert.equal(login.status, 200);
-  assert.match(login.body, /Discord ile giriş yap/);
-  assert.match(login.body, /flow=login/);
+  assert.match(login.body, /name="username"/);
+  assert.match(login.body, /name="password"/);
+  assert.match(login.body, /href="\/forgot-password"/);
+  assert.match(login.body, /action="\/login"/);
 });
 
 test('site profile uses dedicated brand avatar and banner assets', async () => {
   const response = res();
   await handlePublicSiteRequest(request('/', visitor), response);
   assert.match(response.body, /site-avatar\.webp/);
+  assert.match(response.body, /profile-banner[\s\S]*?src="\/assets\/site-banner\.webp"/);
   const stylesheet = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
-  assert.match(String(stylesheet.body), /site-banner\.webp/);
   assert.match(String(stylesheet.body), /\.profile-banner img\{display:block;width:100%;height:100%;max-width:none;object-fit:cover/);
-  assert.match(String(stylesheet.body), /\.home-banner\{[^}]*aspect-ratio:640\\/177/);
+  assert.match(String(stylesheet.body), /\.home-banner\{[^}]*aspect-ratio:640\/177/);
   assert.match(String(stylesheet.body), /\.home-banner img\{display:block;width:100%;height:100%;object-fit:contain/);
-  assert.doesNotMatch(String(stylesheet.body), /\.home-banner\{[^}]*aspect-ratio:16\\/5/);
+  assert.doesNotMatch(String(stylesheet.body), /\.home-banner\{[^}]*aspect-ratio:16\/5/);
   assert.doesNotMatch(String(stylesheet.body), /\.profile-banner\{[^}]*url\(['"]?\/assets\/site-banner\.webp/);
 });
 
@@ -149,15 +153,12 @@ test('dedicated site avatar asset is public so auth screens can render it', asyn
   assert.ok(Buffer.isBuffer(response.body) && response.body.length > 1000);
 });
 
-test('registration and login error pages show centered recovery messaging without a home link', async () => {
-  for (const path of ['/register?status=oauth_error', '/login?status=oauth_error']) {
-    const response = res();
-    await handlePublicSiteRequest({ method: 'GET', url: path, headers: {} }, response);
-    assert.equal(response.status, 200);
-    assert.match(response.body, /Discord doğrulaması tamamlanamadı/);
-    assert.doesNotMatch(response.body, /class="auth-back"|Ana sayfaya dön/);
-    assert.match(response.body, /href="\/assets\/site\.css"/);
-  }
+test('registration page reports that email delivery must be configured before signup', async () => {
+  const response = res();
+  await handlePublicSiteRequest({ method: 'GET', url: '/register?status=mail_unavailable', headers: {} }, response, { db: { query: async () => ({ rows: [], rowCount: 0 }) } });
+  assert.equal(response.status, 200);
+  assert.match(response.body, /Gmail SMTP ayarlarını tamamlamalı/);
+  assert.match(response.body, /href="\/assets\/site\.css"/);
 });
 
 
