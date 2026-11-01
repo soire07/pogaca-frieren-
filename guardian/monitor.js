@@ -78,6 +78,7 @@ export function startGuardianMonitor({
 
   const timer = setIntervalImpl(tick, interval);
   timer?.unref?.();
+  void tick();
   return () => {
     stopped = true;
     clearIntervalImpl(timer);
