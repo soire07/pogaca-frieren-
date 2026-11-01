@@ -1,0 +1,54 @@
+name: Frieren Neural — Qwen3 GGUF Q4 CPU Benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - frieren-neural-foundation
+    paths:
+      - "frieren-neural/benchmarks/gguf_q4_cpu.py"
+      - ".github/workflows/frieren-neural-gguf-q4-benchmark.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  gguf-q4-cpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        working-directory: frieren-neural
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: frieren-neural-foundation
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: frieren-neural/pyproject.toml
+      - name: Install CPU-only PyTorch and project package
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+          python -m pip install -e .
+      - name: Build pinned llama-cpp-python CPU runtime
+        env:
+          CMAKE_ARGS: "-DGGML_NATIVE=OFF"
+          FORCE_CMAKE: "1"
+        run: python -m pip install --no-binary=llama-cpp-python "llama-cpp-python==0.3.16"
+      - name: Compile benchmark
+        run: python -m compileall -q benchmarks/gguf_q4_cpu.py
+      - name: Run checksum-verified 24-prompt Q4 benchmark
+        env:
+          HF_HUB_DISABLE_TELEMETRY: "1"
+        run: python benchmarks/gguf_q4_cpu.py --output-dir benchmark-results/gguf-q4 --model-path benchmark-cache/Qwen3-0.6B-Q4_K_M.gguf --threads 2
+      - name: Upload Q4 benchmark and human-review template
+        uses: actions/upload-artifact@v4
+        with:
+          name: frieren-neural-qwen3-gguf-q4-cpu-benchmark
+          path: |
+            frieren-neural/benchmark-results/gguf-q4/gguf-q8-quality-report.json
+            frieren-neural/benchmark-results/gguf-q4/human-scores.template.json
+          if-no-files-found: error
+          retention-days: 30
