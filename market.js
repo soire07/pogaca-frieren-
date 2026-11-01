@@ -89,10 +89,22 @@ export async function renderMarket(guildId,userId,page=0,category='Hepsi') {
 export async function buyMarketItem(guildId,userId,itemId) {
  const item=marketItems.find(x=>x.id===itemId);
  if(!item) return {ok:false,message:'Bu eşya markette bulunamadı.'};
+ if(!Number.isSafeInteger(item.price)||item.price<=0) return {ok:false,message:'Bu eşyanın fiyatı geçersiz; satın alma güvenlik nedeniyle durduruldu.'};
  const db=await pool.connect();
  try {
   await db.query('BEGIN');
-  const charged=await db.query('UPDATE users SET coins=coins-$3 WHERE guild_id=$1 AND user_id=$2 AND coins >= $3 RETURNING coins',[guildId,userId,item.price]);
+  const player=await db.query(
+   'SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+   [guildId,userId]
+  );
+  if(!player.rowCount){
+   await db.query('ROLLBACK');
+   return {ok:false,message:'RPG profilin bulunamadı. Marketi yeniden açıp tekrar dene.'};
+  }
+  const charged=await db.query(
+   'UPDATE users SET coins=coins-$3 WHERE guild_id=$1 AND user_id=$2 AND coins >= $3 RETURNING coins',
+   [guildId,userId,item.price]
+  );
   if(!charged.rowCount){await db.query('ROLLBACK');return {ok:false,message:'Yeterli altının yok! **'+item.price+'** altın gerekiyor.'};}
   await db.query('INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1) ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1',[guildId,userId,item.name]);
   await db.query('COMMIT');
