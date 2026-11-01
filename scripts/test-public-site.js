@@ -30,7 +30,7 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /Bin yıllık/);
   assert.match(response.body, /Gezgin/);
   assert.match(response.body, /class="profile-banner"/);
-  assert.match(response.body, /profile-banner[\s\S]*?src="\/assets\/site-banner\.webp"/);
+  assert.match(response.body, /profile-banner[\\s\\S]*?src="https:\\/\\/images\\.wallpapersden\\.com\\/image\\/download\\/frieren-hd-frieren-beyond-journey-s-end_bmdoamyUmZqaraWkpJRpZW1lrWZlbWU\\.jpg"/);
   assert.match(response.body, /class="wrap home-banner"/);
   assert.match(response.body, /assets\/site-banner\.webp/);
   assert.match(response.body, /gif-gallery/);
