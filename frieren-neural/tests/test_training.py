@@ -214,3 +214,33 @@ def test_train_model_does_not_learn_bpe_merges_from_validation_text(tmp_path: Pa
     train_model(corpus, checkpoint, config, device="cpu")
     saved = torch.load(checkpoint, map_location="cpu", weights_only=True)
     assert all(122 not in pair for pair in saved["tokenizer"]["merges"])
+
+
+def test_evaluation_uses_separate_corpus_and_returns_perplexity(tmp_path: Path):
+    from frieren_neural.training import evaluate_checkpoint
+
+    training_corpus = ["Frieren studies magic. " * 12]
+    evaluation_corpus = ["Fern practices spells. " * 12]
+    checkpoint = tmp_path / "evaluation.pt"
+    config = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0, tokenizer_vocab_size=280,
+    )
+    train_model(training_corpus, checkpoint, config, device="cpu")
+    metrics = evaluate_checkpoint(checkpoint, evaluation_corpus, batch_size=1, batches=2, device="cpu")
+    assert metrics["loss"] > 0
+    assert metrics["perplexity"] >= 1
+
+
+def test_evaluation_rejects_training_corpus_reuse(tmp_path: Path):
+    from frieren_neural.training import evaluate_checkpoint
+
+    corpus = ["Frieren studies magic. " * 12]
+    checkpoint = tmp_path / "evaluation-guard.pt"
+    config = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0,
+    )
+    train_model(corpus, checkpoint, config, device="cpu")
+    with pytest.raises(ValueError, match="separate from the training corpus"):
+        evaluate_checkpoint(checkpoint, corpus, batch_size=1, batches=1, device="cpu")
