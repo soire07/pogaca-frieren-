@@ -93,7 +93,7 @@ def test_generation_stops_before_leaked_role_labels(monkeypatch):
 def test_resume_rejects_checkpoint_trained_with_full_stream_loss(tmp_path):
     from frieren_neural.training import TrainingConfig, train_model
 
-    corpus = ["Kullanıcı: soru 1\\nAsistan: cevap 1", "Kullanıcı: soru 2\\nAsistan: cevap 2"]
+    corpus = ["Kullanıcı: soru 1\nAsistan: cevap 1", "Kullanıcı: soru 2\nAsistan: cevap 2"]
     checkpoint = tmp_path / "old-objective.pt"
     config = TrainingConfig(
         max_steps=1, eval_interval=1, eval_batches=1, batch_size=1,
