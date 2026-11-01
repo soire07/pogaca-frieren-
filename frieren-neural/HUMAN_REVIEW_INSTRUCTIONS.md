@@ -13,7 +13,7 @@ Open each GitHub Actions run, scroll to **Artifacts**, and download the named ZI
 | Scratch checkpoint, greedy 160 | [41342108074](https://github.com/soire07/pogaca-frieren-/actions/runs/41342108074) | `frieren-neural-scratch-greedy-cpu-benchmark` |
 | Qwen3 float32, greedy 160 | [41341508314](https://github.com/soire07/pogaca-frieren-/actions/runs/41341508314) | `frieren-neural-qwen3-0.6b-cpu-benchmark` |
 | Qwen3 GGUF Q8_0, greedy 160 | [41341675128](https://github.com/soire07/pogaca-frieren-/actions/runs/41341675128) | `frieren-neural-qwen3-gguf-q8-cpu-benchmark` |
-| Qwen3 GGUF Q4_K_M | In progress | `frieren-neural-qwen3-gguf-q4-cpu-benchmark` |
+| Qwen3 GGUF Q4_K_M | [41342351234](https://github.com/soire07/pogaca-frieren-/actions/runs/41342351234) | `frieren-neural-qwen3-gguf-q4-cpu-benchmark` (ID `13097957279`) |
 
 Each ZIP contains a JSON report with all 24 raw outputs and a blank `human-scores.template.json`.
 
