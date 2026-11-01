@@ -21,7 +21,7 @@ from frieren_neural.qwen3_decoding import build_qwen3_chat_request
 MODEL_URL = "https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/060ae942940c11394cfb1a7313ddcb92c2c4db11/Qwen3-0.6B-Q4_K_M.gguf"
 MODEL_SHA256 = "dd4750858c52f1c040e9ff4f54ba9365e11e8e81021abffd9b9c02646cf334d7"
 MODEL_MAX_SIZE_BYTES = 450 * 1024 * 1024
-MAX_NEW_TOKENS = 160
+MAX_NEW_TOKENS = 256
 
 
 def peak_rss_mib() -> float:
@@ -140,7 +140,7 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
         "context_tokens": 1024,
         "max_new_tokens": MAX_NEW_TOKENS,
         "thinking_mode": "Qwen3 /no_think user-turn switch; non-empty reasoning redacted",
-        "decoding_settings": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "min_p": 0.0, "seed_base": 20261101},
+        "decoding_settings": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "min_p": 0.0, "repeat_penalty": 1.1, "seed_base": 20261101},
         "download_seconds": download_seconds,
         "model_load_seconds": load_seconds,
         "generation_total_seconds": round(time.perf_counter() - generation_started, 3),
