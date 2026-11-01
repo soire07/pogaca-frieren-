@@ -143,15 +143,34 @@ def prepare_turkish_daily_dialogues(
     text_path = destination / f"turkish-daily-dialogues-{split}.txt"
     manifest_path = destination / "corpus_manifest.json"
     temporary_paths: list[Path] = []
+    committed_paths: list[Path] = []
     try:
         temporary_paths.append(_atomic_write(text_path, text_content))
         temporary_paths.append(_atomic_write(manifest_path, manifest_content))
-        os.replace(temporary_paths[0], text_path)
-        os.replace(temporary_paths[1], manifest_path)
+        # Publish the corpus only after both files are fully staged. If the
+        # second rename fails, remove the first file so a retry is not blocked
+        # by an incomplete output directory.
+        for temporary_path, final_path in zip(
+            temporary_paths, (text_path, manifest_path), strict=True
+        ):
+            if final_path.exists():
+                raise FileExistsError(
+                    f"Refusing to overwrite concurrently-created file: {final_path.name}"
+                )
+            os.replace(temporary_path, final_path)
+            committed_paths.append(final_path)
+    except Exception:
+        for committed_path in reversed(committed_paths):
+            try:
+                committed_path.unlink(missing_ok=True)
+            except OSError:
+                # Preserve the original write error; a leftover file is safer
+                # than hiding the failure that prevented a complete corpus.
+                pass
+        raise
     finally:
         for temporary_path in temporary_paths:
-            if temporary_path.exists():
-                temporary_path.unlink()
+            temporary_path.unlink(missing_ok=True)
 
     return {
         "dataset": "Turkish Daily Dialogues 5K",
