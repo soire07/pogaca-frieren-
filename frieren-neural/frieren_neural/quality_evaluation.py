@@ -166,8 +166,19 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
 def render_markdown(report:dict[str,Any])->str:
     lines=["# Frieren Neural — Turkish conversation quality report","",f"- Decision: **{report['decision']}**",
       f"- Prompt set: {report['prompt_set_version']}",f"- Checkpoint SHA-256: {report['checkpoint_sha256']}",
-      f"- Checkpoint step: {report['checkpoint_step']}",f"- Human review completed: **{report['human_review']['completed']}**",
-      "","## Blocking reasons",""]
+      f"- Checkpoint step: {report['checkpoint_step']}",f"- Human review completed: **{report['human_review']['completed']}**"]
+    metadata=report.get("checkpoint_metadata") or {}
+    if metadata:
+        lines.extend(["", "## Checkpoint configuration", "",
+          f"- Model config: `{json.dumps(metadata.get('model_config', {}), ensure_ascii=False, sort_keys=True)}`",
+          f"- Training config: `{json.dumps(metadata.get('training_config', {}), ensure_ascii=False, sort_keys=True)}`",
+          f"- Tokenizer: {metadata.get('tokenizer_type')} / {metadata.get('tokenizer_vocab_size')} tokens",
+          f"- Dialogue encoding: v{metadata.get('dialogue_encoding_version')}",
+          f"- Training objective: {metadata.get('training_objective')} (v{metadata.get('loss_objective_version')})"])
+    heldout = report.get("heldout_metrics") or {}
+    if heldout:
+        lines.append(f"- Evaluation objective: v{heldout.get('loss_objective_version')}")
+    lines.extend(["", "## Blocking reasons", ""])
     lines.extend([f"- {x}" for x in report["blocking_reasons"]] or ["- None"])
     if report["metrics"]:
         lines.extend(["","## Human-scored metrics","","| Dimension | Average / 4 |","|---|---:|"])
