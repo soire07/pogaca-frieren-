@@ -1,3 +1,5 @@
 Run one isolated CPU baseline training job. Dataset and checkpoint remain workflow artifacts, never Git files.\nRetry baseline training only after the latest CI fix: f2bd7d50110036b382f429b63b3e52e446371341
 Add independent 525-record test-split evaluation. Revision: f25ba4a24ef4f6939a29d2ecb1b279aca961c855
 Retrain after dialogue-boundary-safe train/validation split; keep the 525-record held-out test set untouched. Revision: 0c9660b03c3a43d994c11d60b3929596e80bee78
+
+Quality improvement cycle 2026-11-01: train 2,000 steps with 96-dimension, 3-layer CPU model; evaluate untouched 525-dialogue test split and archive fixed 24-prompt reviewer report. Do not deploy or connect production services.
