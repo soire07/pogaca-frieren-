@@ -24,7 +24,7 @@ from .tokenizer import BPETokenizer
 SUPPORTED_SUFFIXES = {".txt", ".md"}
 DIALOGUE_SEPARATOR = "\n\n---\n\n"
 DIALOGUE_ENCODING_VERSION = 2
-LOSS_OBJECTIVE_VERSION = 1
+LOSS_OBJECTIVE_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -176,14 +176,25 @@ def encode_dialogue_stream_with_loss_mask(
                 raise ValueError("Dialogue contains a message without a recognized role label.")
             if role != expected_role:
                 raise ValueError("Dialogue messages must alternate between user and assistant roles.")
-            encoded = tokenizer.encode(part)
-            token_ids.extend(encoded)
-            loss_mask.extend([role == "Asistan"] * len(encoded))
             if role == "Asistan":
+                # The assistant role marker is supplied by the inference prompt;
+                # supervise only the response body and its EOS boundary.
+                marker = "Asistan:"
+                if not part.startswith(marker):
+                    raise ValueError("Assistant message is missing its exact role marker.")
+                marker_ids = tokenizer.encode(marker)
+                body_ids = tokenizer.encode(part[len(marker):])
+                token_ids.extend(marker_ids)
+                loss_mask.extend([False] * len(marker_ids))
+                token_ids.extend(body_ids)
+                loss_mask.extend([True] * len(body_ids))
                 token_ids.append(tokenizer.eos_id)
                 loss_mask.append(True)
                 expected_role = "Kullanıcı"
             else:
+                encoded = tokenizer.encode(part)
+                token_ids.extend(encoded)
+                loss_mask.extend([False] * len(encoded))
                 expected_role = "Asistan"
         if expected_role == "Asistan":
             token_ids.append(tokenizer.eos_id)
@@ -589,11 +600,16 @@ def encode_generation_prompt(prompt: str, tokenizer: BPETokenizer) -> list[int]:
             raise ValueError("Chat prompt contains a message without a recognized role label.")
         if role != expected_role:
             raise ValueError("Chat prompt messages must alternate between user and assistant roles.")
-        token_ids.extend(tokenizer.encode(part))
         if role == "Asistan":
+            marker = "Asistan:"
+            if not part.startswith(marker):
+                raise ValueError("Assistant history is missing its exact role marker.")
+            token_ids.extend(tokenizer.encode(marker))
+            token_ids.extend(tokenizer.encode(part[len(marker):]))
             token_ids.append(tokenizer.eos_id)
             expected_role = "Kullanıcı"
         else:
+            token_ids.extend(tokenizer.encode(part))
             expected_role = "Asistan"
 
     if expected_role != "Asistan":
