@@ -62,6 +62,7 @@ export function renderOwnerWorkspace(kind, data = {}) {
       + [['concise','Kısa'],['balanced','Dengeli'],['detailed','Ayrıntılı']].map(([value,label]) => '<option value="' + value + '"' + (data.chatSettings?.responseLength === value ? ' selected' : '') + '>' + label + '</option>').join('')
       + '</select><label><input type="checkbox" name="loreFocus" value="yes"' + (data.chatSettings?.loreFocus !== false ? ' checked' : '') + ' style="display:inline;width:auto"> Frieren anime evrenine öncelik ver</label>'
       + '<button class="btn">Sohbet tercihlerini kaydet</button></form></section>'
+      + (data.notice === 'test_saved' ? '<p class="notice">Test sonucu kaydedildi. PASS, FAIL veya TEST EDİLMEDİ durumunu geçmişten inceleyebilirsin.</p>' : '')
       + '<section class="panel"><h2>Komut test çalıştırıcısı</h2><p class="muted">Boş bırakılırsa tüm komutlar denetlenir. Belirli komutları virgül veya satırla ayırarak girebilirsin. Testler sentetik etkileşim kullanır; gerçek Discord kullanıcısı adına işlem yapmaz.</p>'
       + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="ai-test-run">'
       + '<label>Yazdığın test senaryosu veya hedef (isteğe bağlı)</label><textarea name="target" maxlength="4000" placeholder="Örn. Ekipman kuşanıldığında temel HP/Mana değerleri kalıcı değişmemeli; çıkarıldığında eski değerler geri gelmeli."></textarea>'
