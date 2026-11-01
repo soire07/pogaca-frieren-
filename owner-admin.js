@@ -1,4 +1,5 @@
 import { EmbedBuilder, MessageFlags } from 'discord.js';
+import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
 
 export const OWNER_ID = '1553794496234262641';
 export const OWNER_PANEL_URL = 'https://pogaca-frieren.onrender.com/owner';
@@ -323,6 +324,7 @@ export async function updateOwnerMemory(db, { id, value, actorId }) {
   const actor = String(actorId || '');
   if (!Number.isSafeInteger(memoryId) || memoryId <= 0) throw new Error('INVALID_MEMORY_ID');
   if (!memoryValue || memoryValue.length > 1000) throw new Error('INVALID_MEMORY_VALUE');
+  if (containsSensitiveInformation(memoryValue)) throw new Error('SENSITIVE_MEMORY_REJECTED');
   if (!/^[0-9]{17,20}$/.test(actor)) throw new Error('INVALID_MEMORY_ACTOR');
   const result = await db.query(
     `WITH changed AS (
