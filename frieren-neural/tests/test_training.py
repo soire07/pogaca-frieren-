@@ -66,3 +66,20 @@ def test_evaluate_loss_returns_finite_validation_value():
     data = torch.tensor(tokenizer.encode("Frieren and Fern " * 3), dtype=torch.long)
     loss = evaluate_loss(model, data, batch_size=2, block_size=8, batches=2, seed=1)
     assert torch.isfinite(torch.tensor(loss))
+
+
+
+def test_training_checkpoint_uses_byte_bpe_tokenizer(tmp_path: Path):
+    import json
+
+    corpus = ["Frieren studies magic. " * 10]
+    checkpoint = tmp_path / "bpe.pt"
+    config = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        validation_fraction=0.2, d_model=16, n_heads=2, n_layers=1, dropout=0.0,
+        tokenizer_vocab_size=280,
+    )
+    train_model(corpus, checkpoint, config)
+    saved = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    assert saved["tokenizer"]["type"] == "byte_bpe"
+    assert saved["model_config"]["vocab_size"] == 260 + len(saved["tokenizer"]["merges"])
