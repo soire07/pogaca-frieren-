@@ -134,6 +134,12 @@ def load_licensed_corpus(path: str | Path) -> list[str]:
     return documents
 
 
+
+def _corpus_fingerprint(documents: Sequence[str]) -> str:
+    normalized = "\n".join(item.strip() for item in documents)
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
 def split_corpus_text(
     documents: Sequence[str], validation_fraction: float = 0.1
 ) -> tuple[str, str]:
@@ -254,7 +260,7 @@ def train_model(
     random.seed(settings.seed)
     torch.manual_seed(settings.seed)
     selected_device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
-    corpus_fingerprint = hashlib.sha256(json.dumps(list(documents), ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
+    corpus_fingerprint = _corpus_fingerprint(documents)
     train_text, validation_text = split_corpus_text(documents, settings.validation_fraction)
     tokenizer = BPETokenizer.train(
         [train_text], vocab_size=settings.tokenizer_vocab_size, min_frequency=settings.tokenizer_min_frequency
@@ -426,9 +432,7 @@ def evaluate_checkpoint(
     """Evaluate a checkpoint on a distinct, caller-supplied held-out corpus."""
     if not documents or any(not isinstance(item, str) or not item.strip() for item in documents):
         raise ValueError("Evaluation documents must contain non-empty strings.")
-    fingerprint = hashlib.sha256(
-        json.dumps(list(documents), ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    ).hexdigest()
+    fingerprint = _corpus_fingerprint(documents)
     model, tokenizer, metadata = load_checkpoint(checkpoint_path, device=device)
     if fingerprint == metadata["corpus_sha256"]:
         raise ValueError("Evaluation corpus must be separate from the training corpus.")
