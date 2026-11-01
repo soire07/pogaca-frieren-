@@ -24,7 +24,6 @@ export default {
   await ensureUser(interaction.guildId,interaction.user.id);
   await ensureUser(interaction.guildId,target.id);
   const offerId=randomUUID();
-  const expiresAt=new Date(Date.now()+5*60*1000);
   const db=await pool.connect();
   let characterName;
   try {
@@ -59,8 +58,8 @@ export default {
    }
    await db.query(
     `INSERT INTO trade_offers(offer_id,guild_id,from_user_id,to_user_id,character_name,amount,expires_at)
-     VALUES($1,$2,$3,$4,$5,$6,$7)`,
-    [offerId,interaction.guildId,interaction.user.id,target.id,characterName,amount,expiresAt]
+     VALUES($1,$2,$3,$4,$5,$6,NOW()+INTERVAL '5 minutes')`,
+    [offerId,interaction.guildId,interaction.user.id,target.id,characterName,amount]
    );
    await db.query('COMMIT');
   } catch(error) {

@@ -40,6 +40,9 @@ export default {
     await interaction.deferReply({ ephemeral: true });
     const recipeId = interaction.options.getString('tarif');
     const amount = interaction.options.getInteger('adet') || 1;
+    if (!Number.isInteger(amount) || amount < 1 || amount > 5) {
+      return interaction.editReply('Üretim adedi 1 ile 5 arasında olmalıdır.');
+    }
     if (!recipeId) {
       const lines = Object.entries(RECIPES).map(([id, recipe]) => {
         const item = equipmentItems.find(entry => entry.id === id);
@@ -56,7 +59,14 @@ export default {
     const db = await pool.connect();
     try {
       await db.query('BEGIN');
-      await db.query('SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [interaction.guildId, interaction.user.id]);
+      const playerLock = await db.query(
+        'SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+        [interaction.guildId, interaction.user.id]
+      );
+      if (!playerLock.rowCount) {
+        await db.query('ROLLBACK');
+        return interaction.editReply('RPG profilin bulunamadı. İşlem yapılmadı.');
+      }
       const { rows: [profession] } = await db.query(
         'SELECT level FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2',
         [interaction.guildId, interaction.user.id]
@@ -82,15 +92,16 @@ export default {
       }
       for (const material of recipe.materials) {
         const required = material.quantity * amount;
-        const { rows: [row] } = await db.query(
-          'SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3 FOR UPDATE',
-          [interaction.guildId, interaction.user.id, material.item]
+        const removed = await db.query(
+          'DELETE FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3 AND quantity=$4 RETURNING item_key',
+          [interaction.guildId, interaction.user.id, material.item, required]
         );
-        const available = Number(row.quantity);
-        if (available === required) {
-          await db.query('DELETE FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3', [interaction.guildId, interaction.user.id, material.item]);
-        } else {
-          await db.query('UPDATE inventory SET quantity=quantity-$4 WHERE guild_id=$1 AND user_id=$2 AND item_key=$3', [interaction.guildId, interaction.user.id, material.item, required]);
+        if (!removed.rowCount) {
+          const consumed = await db.query(
+            'UPDATE inventory SET quantity=quantity-$4 WHERE guild_id=$1 AND user_id=$2 AND item_key=$3 AND quantity>$4 RETURNING quantity',
+            [interaction.guildId, interaction.user.id, material.item, required]
+          );
+          if (!consumed.rowCount) throw new Error('Zanaat malzemesi işlem sırasında değişti; üretim geri alındı.');
         }
       }
       await db.query(
