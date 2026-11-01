@@ -172,8 +172,18 @@ def generate(
             )
         except (RuntimeError, ValueError) as error:
             raise HTTPException(status_code=422, detail="The prompt could not be processed.") from error
-    return {"text": result, "step": int(metadata["step"])}
+    return {
+        "text": result,
+        "completion": _completion_only(request.prompt, result),
+        "step": int(metadata["step"]),
+    }
 
+
+def _completion_only(prompt: str, generated: str) -> str:
+    """Remove the echoed prompt for chat clients while preserving legacy text output."""
+    if generated.startswith(prompt):
+        return generated[len(prompt):].lstrip()
+    return generated
 
 
 def _same_origin(request: Request) -> None:
@@ -321,7 +331,7 @@ const loginForm=document.getElementById("login"),chat=document.getElementById("c
 async function request(path,body){const response=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"İstek başarısız.");return data;}
 async function checkSession(){try{const response=await fetch("/web/session");const data=await response.json();if(data.authenticated){loginForm.hidden=true;chat.hidden=false;}}catch{}}
 loginForm.addEventListener("submit",async event=>{event.preventDefault();statusNode.textContent="";try{await request("/web/login",{password:document.getElementById("password").value});document.getElementById("password").value="";loginForm.hidden=true;chat.hidden=false;}catch(error){statusNode.textContent=error.message;}});
-document.getElementById("send").addEventListener("click",async()=>{const prompt=document.getElementById("prompt").value.trim();if(!prompt)return;statusNode.textContent="Yanıt hazırlanıyor...";answer.textContent="";try{const data=await request("/web/generate",{prompt,max_new_tokens:100,temperature:0.8,top_k:40});answer.textContent=data.text;statusNode.textContent="";}catch(error){statusNode.textContent=error.message;}});
+document.getElementById("send").addEventListener("click",async()=>{const prompt=document.getElementById("prompt").value.trim();if(!prompt)return;statusNode.textContent="Yanıt hazırlanıyor...";answer.textContent="";try{const data=await request("/web/generate",{prompt,max_new_tokens:100,temperature:0.8,top_k:40});answer.textContent=data.completion??data.text;statusNode.textContent="";}catch(error){statusNode.textContent=error.message;}});
 document.getElementById("logout").addEventListener("click",async()=>{try{await request("/web/logout",{});}catch{}chat.hidden=true;loginForm.hidden=false;answer.textContent="";statusNode.textContent="Oturum kapatıldı.";});
 checkSession();
 </script></body></html>"""
@@ -399,4 +409,8 @@ def web_generate(
             )
     except (OSError, RuntimeError, ValueError, KeyError, EOFError, pickle.UnpicklingError) as error:
         raise HTTPException(status_code=503, detail="Model could not process the request.") from error
-    return {"text": result, "step": int(metadata["step"])}
+    return {
+        "text": result,
+        "completion": _completion_only(payload.prompt, result),
+        "step": int(metadata["step"]),
+    }
