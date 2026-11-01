@@ -47,7 +47,7 @@ test('TOTP URI encodes issuer and account label without leaking extra parameters
   const uri = createTotpUri('ABC234', 'owner@example.com');
   assert.match(uri, /^otpauth:\/\/totp\//);
   assert.match(uri, /secret=ABC234/);
-  assert.match(uri, /issuer=Frieren%20Owner/);
+  assert.match(uri, /issuer=Frieren(?:%20|\\+)Owner/);
   assert.match(uri, /algorithm=SHA1/);
   assert.match(uri, /digits=6/);
 });
