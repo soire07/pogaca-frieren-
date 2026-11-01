@@ -5,6 +5,15 @@ import pytest
 from frieren_neural import quality_evaluation as quality
 
 
+
+def test_benchmark_prompt_uses_the_training_chat_template():
+    assert quality.format_benchmark_prompt("Merhaba. Bugün nasılsın?") == (
+        "Kullanıcı: Merhaba. Bugün nasılsın?\\nAsistan:"
+    )
+    transcript = "Kullanıcı: TCP nedir?\\nAsistan:"
+    assert quality.format_benchmark_prompt(transcript) == transcript
+
+
 def test_fixed_prompt_set_contains_24_unique_cases():
     prompts = quality.load_prompt_set()
     assert len(prompts) == 24
