@@ -152,3 +152,31 @@ def test_web_login_and_generation_use_server_side_session(api_client, monkeypatc
     )
     assert response.status_code == 200
     assert response.json()["text"].startswith("Frieren")
+
+
+def test_web_home_is_same_origin_and_does_not_embed_api_credentials(api_client):
+    response = api_client.get("/")
+    assert response.status_code == 200
+    assert "Frieren Neural" in response.text
+    assert "Content-Security-Policy" in response.headers
+    assert response.headers["Cache-Control"] == "no-store"
+    assert "FRIEREN_API_TOKEN" not in response.text
+
+
+def test_web_login_rate_limits_repeated_failures(api_client, monkeypatch):
+    monkeypatch.setenv("FRIEREN_WEB_PASSWORD", "p" * 24)
+    monkeypatch.setenv("FRIEREN_SESSION_SECRET", "s" * 48)
+    headers = {"Origin": "https://testserver"}
+    for _ in range(5):
+        response = api_client.post(
+            "/web/login",
+            json={"password": "wrong-password-long"},
+            headers=headers,
+        )
+        assert response.status_code == 401
+    response = api_client.post(
+        "/web/login",
+        json={"password": "wrong-password-long"},
+        headers=headers,
+    )
+    assert response.status_code == 429
