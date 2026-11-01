@@ -39,7 +39,11 @@ export async function initOwnerCommandHelpSchema(db) {
 export async function listOwnerCommandHelp(db) {
   const result=await db.query(`
     SELECT h.command_name,h.short_description,h.long_description,h.updated_by,h.updated_at,
-      (SELECT COUNT(*)::int FROM owner_command_help_versions v WHERE v.command_name=h.command_name) AS version_count
+      (SELECT COUNT(*)::int FROM owner_command_help_versions v WHERE v.command_name=h.command_name) AS version_count,
+      (SELECT COALESCE(json_agg(row_to_json(history_rows)), '[]'::json) FROM (
+        SELECT short_description,long_description,actor_id,created_at FROM owner_command_help_versions v
+        WHERE v.command_name=h.command_name ORDER BY created_at DESC,id DESC LIMIT 5
+      ) history_rows) AS version_history
     FROM owner_command_help h ORDER BY h.command_name
   `);
   return result.rows||[];
