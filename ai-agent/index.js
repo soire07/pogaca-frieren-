@@ -82,7 +82,7 @@ const healthServer = createServer(async (req, res) => {
       res.end(JSON.stringify({ error: 'not_found' }));
       return;
     }
-    if (ownerScenarioLocks.has('owner')) {
+    if (ownerScenarioLocks.has('owner') || runningGuilds.size > 0) {
       res.writeHead(409, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ error: 'scenario_already_running' }));
       return;
@@ -839,7 +839,7 @@ client.on(Events.InteractionCreate, async interaction => {
     const target = interaction.options.getString('hedef', true).trim();
     const targetGroups = classifyTestTarget(target);
     const lockKey = getTestLockKey(interaction.guildId, interaction.user.id);
-    if (runningGuilds.has(lockKey)) {
+    if (runningGuilds.has(lockKey) || ownerScenarioLocks.has('owner')) {
       await interaction.reply({ content: 'Bu ortamda bir test zaten çalışıyor. Lütfen bitmesini bekle.' });
       return;
     }
