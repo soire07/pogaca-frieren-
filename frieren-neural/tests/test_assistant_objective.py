@@ -82,7 +82,7 @@ def test_generation_stops_before_leaked_role_labels(monkeypatch):
         n_layers=1, max_seq_len=32, dropout=0.0,
     ))
     prompt = "Kullanıcı: Merhaba\nAsistan:"
-    prompt_ids = torch.tensor([tokenizer.encode(prompt)], dtype=torch.long)
+    prompt_ids = torch.tensor([encode_generation_prompt(prompt, tokenizer)], dtype=torch.long)
     completion = tokenizer.encode("Merhaba, dünya!\nAsistan: başka cevap")
     generated = torch.tensor([prompt_ids[0].tolist() + completion], dtype=torch.long)
     monkeypatch.setattr(model, "generate", lambda *_args, **_kwargs: generated)
