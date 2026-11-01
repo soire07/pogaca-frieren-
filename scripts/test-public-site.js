@@ -31,7 +31,7 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /Gezgin/);
   assert.match(response.body, /profile-banner/);
   assert.match(response.body, /class="wrap home-banner"/);
-  assert.match(response.body, /assets\\/site-banner\\.webp/);
+  assert.match(response.body, /assets\/site-banner\.webp/);
   assert.match(response.body, /gif-gallery/);
   assert.match(response.body, /href="\/assets\/site\.css"/);
   assert.match(response.body, /profile-avatar/);
