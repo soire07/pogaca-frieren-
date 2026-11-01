@@ -259,12 +259,12 @@ def test_evaluation_rejects_training_corpus_reuse(tmp_path: Path):
 def test_corpus_split_keeps_dialogues_intact_at_importer_boundaries():
     from frieren_neural.training import split_corpus_text
 
-    dialogues = [f"Kullanıcı: soru {index}\\nAsistan: yanıt {index}" for index in range(10)]
-    corpus = "\\n\\n---\\n\\n".join(dialogues)
+    dialogues = [f"Kullanıcı: soru {index}\nAsistan: yanıt {index}" for index in range(10)]
+    corpus = "\n\n---\n\n".join(dialogues)
     train_text, validation_text = split_corpus_text([corpus], 0.2)
 
-    train_dialogues = train_text.split("\\n\\n---\\n\\n")
-    validation_dialogues = validation_text.split("\\n\\n---\\n\\n")
+    train_dialogues = train_text.split("\n\n---\n\n")
+    validation_dialogues = validation_text.split("\n\n---\n\n")
     assert train_dialogues == dialogues[:8]
     assert validation_dialogues == dialogues[8:]
     assert set(train_dialogues).isdisjoint(validation_dialogues)
