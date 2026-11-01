@@ -52,6 +52,10 @@ def test_assistant_masked_batch_never_contains_an_empty_loss_window():
     assert inputs.shape == targets.shape == (8, 6)
     assert torch.all((targets != -100).any(dim=1))
     assert torch.all((targets[targets != -100] >= 0))
+    for row in range(targets.size(0)):
+        for column in range(targets.size(1)):
+            source_index = int(inputs[row, column]) + 1
+            assert (targets[row, column].item() != -100) == bool(mask[source_index])
 
 
 def test_masked_batch_rejects_corpus_without_assistant_targets():
@@ -111,3 +115,32 @@ def test_resume_rejects_checkpoint_trained_with_full_stream_loss(tmp_path):
 
     with pytest.raises(ValueError, match="loss objective"):
         train_model(corpus, checkpoint, config, resume=True, device="cpu")
+
+
+
+def test_generation_prompt_tokenization_matches_training_history():
+    from frieren_neural.training import encode_dialogue_stream
+
+    text = (
+        "Kullanıcı: İlk soru\nAsistan: Önceki yanıt\n"
+        "Kullanıcı: İkinci soru\nAsistan: Son yanıt"
+    )
+    prompt = (
+        "Kullanıcı: İlk soru\nAsistan: Önceki yanıt\n"
+        "Kullanıcı: İkinci soru\nAsistan:"
+    )
+    tokenizer = BPETokenizer.train([text], vocab_size=300)
+    full_stream = encode_dialogue_stream(text, tokenizer)
+    prompt_stream = encode_generation_prompt(prompt, tokenizer)
+    assert full_stream[:len(prompt_stream)] == prompt_stream
+
+
+def test_assistant_role_marker_is_context_not_a_prediction_target():
+    text = "Kullanıcı: soru\nAsistan: yanıt"
+    tokenizer = BPETokenizer.train([text], vocab_size=280)
+    token_ids, loss_mask = encode_dialogue_stream_with_loss_mask(text, tokenizer)
+    decoded_masked = tokenizer.decode([
+        token for token, enabled in zip(token_ids, loss_mask)
+        if enabled and token != tokenizer.eos_id
+    ])
+    assert decoded_masked == " yanıt"
