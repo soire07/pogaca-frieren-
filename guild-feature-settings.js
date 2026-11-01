@@ -56,6 +56,22 @@ export async function listGuildFeatureSettings(db, guildId) {
   return result.rows || [];
 }
 
+export async function listGuildFeatureSettingsForGuilds(db, guildIds) {
+  const ids = [...new Set((Array.isArray(guildIds) ? guildIds : []).map(value => String(value || '')))];
+  if (ids.some(id => !SNOWFLAKE.test(id))) throw new Error('INVALID_GUILD_ID');
+  const settings = new Map(ids.map(id => [id, []]));
+  if (!ids.length) return settings;
+  const result = await db.query(
+    'SELECT guild_id,feature_key,enabled,updated_by,updated_at FROM guild_feature_settings WHERE guild_id = ANY($1::text[]) ORDER BY guild_id,feature_key',
+    [ids]
+  );
+  for (const row of result.rows || []) {
+    const rows = settings.get(String(row.guild_id));
+    if (rows) rows.push(row);
+  }
+  return settings;
+}
+
 export async function setGuildFeatureEnabled(db, { guildId, featureKey, enabled, actorId }) {
   const id = String(guildId || '');
   const actor = String(actorId || '');
