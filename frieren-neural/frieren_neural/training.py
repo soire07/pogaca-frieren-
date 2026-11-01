@@ -547,6 +547,7 @@ def load_checkpoint(
         "corpus_content_sha256": str(payload["corpus_content_sha256"]),
         "train_loss": float(payload["train_loss"]),
         "validation_loss": float(payload["validation_loss"]),
+        "loss_objective_version": int(payload.get("loss_objective_version", 0)),
     }
     return model, tokenizer, metadata
 
@@ -650,7 +651,10 @@ def evaluate_checkpoint(
         perplexity = math.exp(loss)
     except OverflowError:
         perplexity = math.inf
-    return {"step": int(metadata["step"]), "loss": loss, "perplexity": perplexity}
+    return {
+        "step": int(metadata["step"]), "loss": loss, "perplexity": perplexity,
+        "loss_objective_version": int(metadata["loss_objective_version"]),
+    }
 
 
 def evaluation_main() -> None:
