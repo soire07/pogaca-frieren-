@@ -21,6 +21,7 @@ from .tokenizer import BPETokenizer
 
 
 SUPPORTED_SUFFIXES = {".txt", ".md"}
+DIALOGUE_SEPARATOR = "\n\n---\n\n"
 
 
 @dataclass(frozen=True)
@@ -133,6 +134,19 @@ def load_licensed_corpus(path: str | Path) -> list[str]:
         raise ValueError("Manifest paths must exactly match all .txt/.md files in the corpus directory.")
     return documents
 
+
+
+def encode_dialogue_stream(text: str, tokenizer: BPETokenizer) -> list[int]:
+    """Encode each imported dialogue with explicit BOS/EOS boundaries."""
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("Dialogue text must be a non-empty string.")
+    dialogues = [part.strip() for part in text.split(DIALOGUE_SEPARATOR) if part.strip()]
+    if not dialogues:
+        raise ValueError("Dialogue text must contain at least one non-empty dialogue.")
+    token_ids: list[int] = []
+    for dialogue in dialogues:
+        token_ids.extend(tokenizer.encode(dialogue, add_bos=True, add_eos=True))
+    return token_ids
 
 
 def _corpus_fingerprint(documents: Sequence[str]) -> str:
@@ -311,8 +325,8 @@ def train_model(
             [train_text], vocab_size=effective_vocab_size,
             min_frequency=settings.tokenizer_min_frequency
         )
-        train_ids = tokenizer.encode(train_text)
-        validation_ids = tokenizer.encode(validation_text)
+        train_ids = encode_dialogue_stream(train_text, tokenizer)
+        validation_ids = encode_dialogue_stream(validation_text, tokenizer)
         if min(len(train_ids), len(validation_ids)) + 1 > settings.block_size:
             break
         if effective_vocab_size == BPETokenizer.BASE_VOCAB_SIZE:
@@ -324,8 +338,8 @@ def train_model(
             BPETokenizer.BASE_VOCAB_SIZE
             + (effective_vocab_size - BPETokenizer.BASE_VOCAB_SIZE) // 2,
         )
-    train_data = torch.tensor(train_ids + [tokenizer.eos_id], dtype=torch.long)
-    validation_data = torch.tensor(validation_ids + [tokenizer.eos_id], dtype=torch.long)
+    train_data = torch.tensor(train_ids, dtype=torch.long)
+    validation_data = torch.tensor(validation_ids, dtype=torch.long)
 
     model_config = GPTConfig(
         vocab_size=tokenizer.vocab_size, d_model=settings.d_model, n_heads=settings.n_heads,
@@ -464,19 +478,19 @@ def generate_text(
     temperature: float = 0.8,
     top_k: int = 40,
 ) -> str:
-    """Generate text from a prompt and stop decoding at the first generated EOS."""
+    """Return the exact prompt plus generated completion, stopping at EOS."""
     if not prompt:
         raise ValueError("prompt must not be empty.")
     device = next(model.parameters()).device
-    input_ids = torch.tensor([tokenizer.encode(prompt)], dtype=torch.long, device=device)
+    prompt_ids = tokenizer.encode(prompt)
+    input_ids = torch.tensor([prompt_ids], dtype=torch.long, device=device)
     generated = model.generate(
         input_ids, max_new_tokens=max_new_tokens, temperature=temperature, top_k=top_k
     )[0].tolist()
-    for index in range(len(input_ids[0]), len(generated)):
-        if generated[index] == tokenizer.eos_id:
-            generated = generated[:index]
-            break
-    return tokenizer.decode(generated)
+    completion_ids = generated[len(prompt_ids):]
+    if tokenizer.eos_id in completion_ids:
+        completion_ids = completion_ids[:completion_ids.index(tokenizer.eos_id)]
+    return prompt + tokenizer.decode(completion_ids)
 
 
 def evaluate_checkpoint(
