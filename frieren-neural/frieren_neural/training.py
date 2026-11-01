@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import random
@@ -178,6 +179,7 @@ def train_model(
     random.seed(settings.seed)
     torch.manual_seed(settings.seed)
     selected_device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
+    corpus_fingerprint = hashlib.sha256(json.dumps(list(documents), ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
     tokenizer = CharacterTokenizer.train(documents)
     encoded: list[int] = []
     for document in documents:
@@ -201,8 +203,15 @@ def train_model(
         if not checkpoint.is_file():
             raise FileNotFoundError(f"Cannot resume; checkpoint not found: {checkpoint}")
         saved = torch.load(checkpoint, map_location=selected_device, weights_only=False)
-        if saved.get("model_config") != asdict(model_config) or saved.get("tokenizer") != tokenizer.to_dict():
-            raise ValueError("Checkpoint model/tokenizer does not match the current corpus or configuration.")
+        saved_training_config = dict(saved.get("training_config", {}))
+        current_training_config = asdict(settings)
+        saved_training_config.pop("max_steps", None)
+        current_training_config.pop("max_steps", None)
+        if (saved.get("model_config") != asdict(model_config)
+                or saved.get("tokenizer") != tokenizer.to_dict()
+                or saved.get("corpus_sha256") != corpus_fingerprint
+                or saved_training_config != current_training_config):
+            raise ValueError("Checkpoint corpus/model/training settings do not match this run (max_steps may increase).")
         model.load_state_dict(saved["model_state"])
         optimizer.load_state_dict(saved["optimizer_state"])
         start_step = int(saved["step"])
@@ -232,6 +241,7 @@ def train_model(
                 "model_config": asdict(model_config),
                 "training_config": asdict(settings),
                 "tokenizer": tokenizer.to_dict(),
+                "corpus_sha256": corpus_fingerprint,
                 "model_state": model.state_dict(),
                 "optimizer_state": optimizer.state_dict(),
                 "train_loss": train_loss,
