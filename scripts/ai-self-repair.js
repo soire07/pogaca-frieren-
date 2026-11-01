@@ -9,7 +9,7 @@ const MAX_FILE_BYTES = 100_000;
 const MAX_TOTAL_BYTES = 250_000;
 const MAX_CONTEXT_CHARS = 45_000;
 const MAX_CONTEXT_FILES = 12;
-const ALLOWED_PATH = /^(?:[a-zA-Z0-9_-]+\.js|(?:ai-agent|scripts|database)\/[a-zA-Z0-9._-]+\.js)$/;
+const ALLOWED_PATH = /^(?:[a-zA-Z0-9_-]+\.js|(?:ai-agent|scripts|database|commands)\/[a-zA-Z0-9._-]+\.js)$/;
 
 export function parseRepairProposal(raw) {
   if (typeof raw !== 'string' || !raw.trim()) throw new Error('INVALID_REPAIR_JSON');
