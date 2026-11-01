@@ -8,7 +8,7 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Envanter yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Envanter yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
 
     await ensureUser(interaction.guildId, interaction.user.id);
@@ -32,6 +32,6 @@ export default {
       )
       .setFooter({ text: 'Poğaça Frieren RPG • Eşyaların veritabanında saklanır' });
 
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 };

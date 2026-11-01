@@ -13,10 +13,10 @@ export default {
       .addChoices(...options)),
 
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: 'Sınıfını yalnızca sunucuda seçebilirsin.', ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: 'Sınıfını yalnızca sunucuda seçebilirsin.', flags: MessageFlags.Ephemeral });
     const key = interaction.options.getString('sinif', true);
     const profile = CHARACTER_CLASSES[key];
-    if (!profile) return interaction.reply({ content: 'Bu sınıf seçeneği geçerli değil.', ephemeral: true });
+    if (!profile) return interaction.reply({ content: 'Bu sınıf seçeneği geçerli değil.', flags: MessageFlags.Ephemeral });
     await ensureUser(interaction.guildId, interaction.user.id);
     const db = await pool.connect();
     try {
@@ -33,7 +33,7 @@ export default {
       const embed = new EmbedBuilder().setColor(0x9b8cff).setTitle('🧭 Sınıfın belirlendi: ' + profile.label)
         .setDescription(profile.description + '\n\n' + details)
         .setFooter({ text: 'Poğaça Frieren • Sınıfını istediğin zaman yeniden seçebilirsin.' });
-      return interaction.reply({ embeds: [embed], ephemeral: true });
+      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     } catch (error) {
       await db.query('ROLLBACK').catch(() => {});
       throw error;

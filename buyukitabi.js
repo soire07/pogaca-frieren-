@@ -101,7 +101,7 @@ export default {
       if (button.user.id !== interaction.user.id) {
         await button.reply({
           content: 'Bu büyü kitabını yalnızca komutu kullanan kişi kontrol edebilir. 🪄',
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
         return;
       }

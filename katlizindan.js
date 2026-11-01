@@ -29,10 +29,10 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId || !interaction.channel) {
-      return interaction.reply({ content: 'Katlı zindan yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Katlı zindan yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
     if (interaction.options.getUser('takim_arkadasi_3') && !interaction.options.getUser('takim_arkadasi_2')) {
-      return interaction.reply({ content: 'Üçüncü takım arkadaşını eklemek için ikinci takım arkadaşını da seçmelisin.', ephemeral: true });
+      return interaction.reply({ content: 'Üçüncü takım arkadaşını eklemek için ikinci takım arkadaşını da seçmelisin.', flags: MessageFlags.Ephemeral });
     }
     const team = [
       interaction.user,
@@ -41,7 +41,7 @@ export default {
       interaction.options.getUser('takim_arkadasi_3')
     ].filter(Boolean);
     if (new Set(team.map(u => u.id)).size !== team.length || team.some((u, i) => i > 0 && u.bot)) {
-      return interaction.reply({ content: 'Takımda bot veya tekrar eden oyuncu olamaz.', ephemeral: true });
+      return interaction.reply({ content: 'Takımda bot veya tekrar eden oyuncu olamaz.', flags: MessageFlags.Ephemeral });
     }
     for (const user of team) await ensureUser(interaction.guildId, user.id);
 
@@ -113,11 +113,11 @@ export default {
           userId !== c.user.id && selected === role && (role === 'tank' || role === 'healer')
         );
         if (conflict) {
-          await c.reply({ content: role === 'tank' ? 'Bu takımda Muhafız rolü zaten seçildi. Şifacı veya Hasar Ustası seç.' : 'Bu takımda Şifacı rolü zaten seçildi. Muhafız veya Hasar Ustası seç.', ephemeral: true }).catch(() => {});
+          await c.reply({ content: role === 'tank' ? 'Bu takımda Muhafız rolü zaten seçildi. Şifacı veya Hasar Ustası seç.' : 'Bu takımda Şifacı rolü zaten seçildi. Muhafız veya Hasar Ustası seç.', flags: MessageFlags.Ephemeral }).catch(() => {});
           return;
         }
         chosenRoles.set(c.user.id, role);
-        await c.reply({ content: `Rolün: ${PARTY_ROLES[role].label}`, ephemeral: true }).catch(() => {});
+        await c.reply({ content: `Rolün: ${PARTY_ROLES[role].label}`, flags: MessageFlags.Ephemeral }).catch(() => {});
         if (chosenRoles.size === team.length) collector.stop('roles-ready');
       });
       collector.once('end', (_all, reason) => resolve(reason === 'roles-ready'));
@@ -264,7 +264,7 @@ export default {
           const collected = new Promise(resolve => {
             collector.on('collect', async c => {
               if (choices.has(c.user.id)) {
-                await c.reply({ content: 'Bu tur için seçimini zaten yaptın.', ephemeral: true }).catch(() => {});
+                await c.reply({ content: 'Bu tur için seçimini zaten yaptın.', flags: MessageFlags.Ephemeral }).catch(() => {});
                 return;
               }
               const action = c.customId.split(':')[2];

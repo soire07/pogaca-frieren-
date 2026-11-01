@@ -35,9 +35,9 @@ export default {
     .addIntegerOption(option => option.setName('adet').setDescription('Üretilecek adet (1–5).')
       .setRequired(false).setMinValue(1).setMaxValue(5)),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: 'Zanaat yalnızca sunucularda kullanılabilir.', ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: 'Zanaat yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     await ensureUser(interaction.guildId, interaction.user.id);
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const recipeId = interaction.options.getString('tarif');
     const amount = interaction.options.getInteger('adet') || 1;
     if (!Number.isInteger(amount) || amount < 1 || amount > 5) {

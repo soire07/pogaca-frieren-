@@ -14,8 +14,8 @@ export default {
   await interaction.respond(rows.map(r=>({name:r.character_name,value:r.character_name})));
  },
  async execute(interaction){
-  if(!interaction.guildId)return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',ephemeral:true});
-  await interaction.deferReply({ephemeral:true});
+  if(!interaction.guildId)return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',flags: MessageFlags.Ephemeral});
+  await interaction.deferReply({flags: MessageFlags.Ephemeral});
   const name=interaction.options.getString('karakter');
   const doUpgrade=interaction.options.getBoolean('yukselt')===true;
   await ensureUser(interaction.guildId,interaction.user.id);

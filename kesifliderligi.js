@@ -37,7 +37,7 @@ export default {
       )),
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
     const selected = interaction.options.getString('kategori') || 'kesif';
     const board = BOARDS[selected] || BOARDS.kesif;

@@ -93,10 +93,10 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Ana hikâye yalnızca Discord sunucularında kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Ana hikâye yalnızca Discord sunucularında kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const guildId = interaction.guildId;
     const userId = interaction.user.id;
     const decision = interaction.options.getString('karar');

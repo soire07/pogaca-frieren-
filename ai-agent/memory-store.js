@@ -1,5 +1,6 @@
 import pg from 'pg';
 import { containsSensitiveInformation } from './memory-extractor.js';
+import { normalizePostgresConnectionString } from '../database/connection-diagnostics.js';
 
 const { Pool } = pg;
 
@@ -85,13 +86,19 @@ export function createMemoryStore(connectionString, { PoolClass = Pool } = {}) {
     throw new TypeError('A PostgreSQL connection string is required.');
   }
 
-  const pool = new PoolClass({
-    connectionString,
+  const normalizedConnectionString = normalizePostgresConnectionString(connectionString);
+  const poolOptions = {
+    connectionString: normalizedConnectionString,
     max: 3,
     idleTimeoutMillis: 10_000,
     connectionTimeoutMillis: 8_000,
-    ssl: { rejectUnauthorized: false },
-  });
+  };
+  // A URL sslmode is authoritative in node-postgres and replaces config.ssl.
+  // Preserve the existing explicit fallback only when the URL has no sslmode.
+  let hasExplicitSslMode = false;
+  try { hasExplicitSslMode = new URL(normalizedConnectionString).searchParams.has('sslmode'); } catch {}
+  if (!hasExplicitSslMode) poolOptions.ssl = { rejectUnauthorized: false };
+  const pool = new PoolClass(poolOptions);
 
   let schemaPromise;
   async function ensureSchema() {

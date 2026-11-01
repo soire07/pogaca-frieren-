@@ -18,7 +18,7 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
 
     await interaction.deferReply();

@@ -96,7 +96,7 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
 
     await interaction.deferReply();
@@ -135,7 +135,7 @@ export default {
           return button.deferUpdate().catch(() => {});
         }
         if (button.user.id !== interaction.user.id) {
-          return button.reply({ content: 'Bu koleksiyon sayfalarını yalnızca komutu kullanan kişi değiştirebilir.', ephemeral: true }).catch(() => {});
+          return button.reply({ content: 'Bu koleksiyon sayfalarını yalnızca komutu kullanan kişi değiştirebilir.', flags: MessageFlags.Ephemeral }).catch(() => {});
         }
         page = button.customId === 'collection_next'
           ? Math.min(page + 1, pageCount - 1)

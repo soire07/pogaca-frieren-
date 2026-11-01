@@ -16,11 +16,11 @@ export default {
   await interaction.respond(rows.map(row => ({ name: row.character_name, value: row.character_name })));
  },
  async execute(interaction){
-  if(!interaction.guildId)return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',ephemeral:true});
+  if(!interaction.guildId)return interaction.reply({content:'Bu komut yalnızca sunucularda kullanılabilir.',flags: MessageFlags.Ephemeral});
   const target=interaction.options.getUser('kullanici',true);
   const name=interaction.options.getString('karakter',true).trim();
   const amount=interaction.options.getInteger('miktar',true);
-  if(target.bot||target.id===interaction.user.id)return interaction.reply({content:'Kendine veya botlara takas teklifi gönderemezsin.',ephemeral:true});
+  if(target.bot||target.id===interaction.user.id)return interaction.reply({content:'Kendine veya botlara takas teklifi gönderemezsin.',flags: MessageFlags.Ephemeral});
   await ensureUser(interaction.guildId,interaction.user.id);
   await ensureUser(interaction.guildId,target.id);
   const offerId=randomUUID();
@@ -34,7 +34,7 @@ export default {
    );
    if (!playerLock.rowCount) {
     await db.query('ROLLBACK');
-    return interaction.reply({content:'RPG profilin bulunamadı. Tekrar dene.',ephemeral:true});
+    return interaction.reply({content:'RPG profilin bulunamadı. Tekrar dene.',flags: MessageFlags.Ephemeral});
    }
    const owned=await db.query(
     'SELECT character_name,quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND LOWER(character_name)=LOWER($3) FOR UPDATE',
@@ -42,7 +42,7 @@ export default {
    );
    if(!owned.rowCount) {
     await db.query('ROLLBACK');
-    return interaction.reply({content:'Koleksiyonunda **'+name+'** bulunamadı.',ephemeral:true});
+    return interaction.reply({content:'Koleksiyonunda **'+name+'** bulunamadı.',flags: MessageFlags.Ephemeral});
    }
    characterName=owned.rows[0].character_name;
    const reserved=await db.query(
@@ -54,7 +54,7 @@ export default {
    const reservedAmount=Number(reserved.rows[0].amount);
    if(quantity-reservedAmount-amount<1) {
     await db.query('ROLLBACK');
-    return interaction.reply({content:'Bu kadar kopya teklif edemezsin: son kopyan korunur ve mevcut bekleyen teklifler de hesaba katılır. Kullanılabilir kopya: **'+Math.max(0,quantity-reservedAmount-1)+'**.',ephemeral:true});
+    return interaction.reply({content:'Bu kadar kopya teklif edemezsin: son kopyan korunur ve mevcut bekleyen teklifler de hesaba katılır. Kullanılabilir kopya: **'+Math.max(0,quantity-reservedAmount-1)+'**.',flags: MessageFlags.Ephemeral});
    }
    await db.query(
     `INSERT INTO trade_offers(offer_id,guild_id,from_user_id,to_user_id,character_name,amount,expires_at)

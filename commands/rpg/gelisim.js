@@ -29,7 +29,7 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
 
     const stat = interaction.options.getString('ozellik', true);
@@ -48,7 +48,7 @@ export default {
         await client.query('ROLLBACK');
         return interaction.reply({
           content: `Yeterli gelişim puanın yok. Kullanılabilir puanın: **${player?.stat_points ?? 0}**.`,
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -59,7 +59,7 @@ export default {
         await client.query('ROLLBACK');
         return interaction.reply({
           content: `Bu geliştirme üst sınırı aşar. ${stat === 'hp' ? 'Maksimum can' : stat === 'mana' ? 'Maksimum mana' : stat === 'attack' ? 'Saldırı' : 'Savunma'} sınırı: **${cap}**.`,
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -109,7 +109,7 @@ export default {
       await client.query('ROLLBACK').catch(() => {});
       console.error('/gelisim hatası:', error);
       if (!interaction.replied) {
-        return interaction.reply({ content: 'Geliştirme sırasında bir hata oluştu. Lütfen tekrar dene.', ephemeral: true });
+        return interaction.reply({ content: 'Geliştirme sırasında bir hata oluştu. Lütfen tekrar dene.', flags: MessageFlags.Ephemeral });
       }
     } finally {
       client.release();

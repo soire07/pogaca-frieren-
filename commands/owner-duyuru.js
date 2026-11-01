@@ -10,8 +10,8 @@ export default {
     .addBooleanOption(option => option.setName('onay').setDescription('Bu sunucu ve kanala gönderimi onayla').setRequired(true)),
   async execute(interaction) {
     if (!await ownerOnly(interaction)) return;
-    if (!interaction.options.getBoolean('onay', true)) return interaction.reply({ content: 'Duyuru gönderimi için onay=true seçmelisin.', ephemeral: true });
-    await interaction.deferReply({ ephemeral: true });
+    if (!interaction.options.getBoolean('onay', true)) return interaction.reply({ content: 'Duyuru gönderimi için onay=true seçmelisin.', flags: MessageFlags.Ephemeral });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     try {
       const result = await sendOwnerAnnouncement(interaction.client, pool, {
         guildId: interaction.options.getString('sunucu', true),

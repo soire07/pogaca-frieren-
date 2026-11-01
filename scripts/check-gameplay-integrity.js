@@ -380,7 +380,7 @@ test('co-op raid acknowledges the Discord interaction before database work and t
 
 test('inventory acknowledges privately before user creation and database reads', async () => {
   const source = await read('envanter.js');
-  const ack = source.indexOf('await interaction.deferReply({ ephemeral: true })');
+  const ack = source.indexOf('await interaction.deferReply({ flags: MessageFlags.Ephemeral })');
   const ensure = source.indexOf('await ensureUser(');
   const firstQuery = source.indexOf('await pool.query(');
   assert.ok(ack >= 0 && ensure > ack && firstQuery > ack,

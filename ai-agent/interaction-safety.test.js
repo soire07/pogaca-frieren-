@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { MessageFlags } from 'discord.js';
 import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, isAuthorizedAdmin, isPrivateHealthPath, sendPrivateError } from './interaction-safety.js';
 
 test('authorization accepts only exact non-empty IDs in the trusted allowlist', () => {
@@ -38,7 +39,7 @@ test('private error replies respond ephemerally when deferReply failed before ac
     async reply(payload) { calls.push(['reply', payload]); },
   };
   assert.equal(await sendPrivateError(interaction, 'safe error'), true);
-  assert.deepEqual(calls, [['reply', { content: 'safe error', ephemeral: true }]]);
+  assert.deepEqual(calls, [['reply', { content: 'safe error', flags: MessageFlags.Ephemeral }]]);
 });
 
 test('failed error replies are swallowed and reported without causing another unhandled rejection', async () => {

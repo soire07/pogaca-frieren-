@@ -9,7 +9,7 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
 
     await ensureUser(interaction.guildId, interaction.user.id);
@@ -49,7 +49,7 @@ export default {
     if (!result.rowCount) {
       return interaction.reply({
         content: '⏳ Günlük ödülünü yakın zamanda aldın. Yeniden almak için 20 saat geçmesi gerekiyor.',
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 

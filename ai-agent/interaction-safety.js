@@ -1,3 +1,4 @@
+import { MessageFlags } from 'discord.js';
 export function isAuthorizedAdmin(userId, adminIds) {
   return typeof userId === 'string'
     && userId.length > 0
@@ -16,7 +17,7 @@ export async function sendPrivateError(interaction, content, onError = () => {})
     if (interaction.deferred || interaction.replied) {
       await interaction.editReply({ content });
     } else {
-      await interaction.reply({ content, ephemeral: true });
+      await interaction.reply({ content, flags: MessageFlags.Ephemeral });
     }
     return true;
   } catch (error) {

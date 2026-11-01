@@ -57,12 +57,12 @@ export default {
   async execute(interaction) {
     let index = 0;
     const ownerId = interaction.user.id;
-    await interaction.reply({ embeds: [makeEmbed(pages[index], index)], components: [makeButtons(index, ownerId)], ephemeral: true });
+    await interaction.reply({ embeds: [makeEmbed(pages[index], index)], components: [makeButtons(index, ownerId)], flags: MessageFlags.Ephemeral });
     const reply = await interaction.fetchReply();
     const collector = reply.createMessageComponentCollector({ time: 10 * 60 * 1000 });
     collector.on('collect', async component => {
       if (component.user.id !== ownerId) {
-        await component.reply({ content: 'Bu el kitabı başka bir gezginin. Kendi rehberini açmak için /rehber yaz.', ephemeral: true });
+        await component.reply({ content: 'Bu el kitabı başka bir gezginin. Kendi rehberini açmak için /rehber yaz.', flags: MessageFlags.Ephemeral });
         return;
       }
       const action = component.customId.split(':')[0];

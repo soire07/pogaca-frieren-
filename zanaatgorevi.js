@@ -11,7 +11,7 @@ export default {
     .setDescription('Günlük zanaat görevinde 3 ekipman üret ve ödülünü al.')
     .addBooleanOption(option => option.setName('odul_al').setDescription('Görev tamamlandıysa günlük ödülü al.').setRequired(false)),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     await ensureUser(interaction.guildId, interaction.user.id);
     const claim = interaction.options.getBoolean('odul_al') || false;
     const db = await pool.connect();
@@ -34,16 +34,16 @@ export default {
         const embed = new EmbedBuilder().setColor(0x9b8cff).setTitle('📋 Günlük Zanaat Görevi')
           .setDescription(`Hedef: **${TARGET} ekipman**\nBugünkü üretimin: **${count}/${TARGET}**\nÖdül: **+${REWARD.coins} altın · +${REWARD.xp} XP**\n\n${status}`)
           .setFooter({ text: 'Poğaça Frieren • İlerleme her gün yenilenir.' });
-        return interaction.reply({ embeds: [embed], ephemeral: true });
+        return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
       }
       if (count < TARGET) {
         // Keep the initialized progress row; no reward is granted before the target is met.
         await db.query('COMMIT');
-        return interaction.reply({ content: `Günlük görev için **${TARGET}** ekipman üretmelisin. Şu an: **${count}/${TARGET}**.`, ephemeral: true });
+        return interaction.reply({ content: `Günlük görev için **${TARGET}** ekipman üretmelisin. Şu an: **${count}/${TARGET}**.`, flags: MessageFlags.Ephemeral });
       }
       if (progress.claimed_at) {
         await db.query('ROLLBACK');
-        return interaction.reply({ content: 'Günlük zanaat ödülünü bugün zaten aldın.', ephemeral: true });
+        return interaction.reply({ content: 'Günlük zanaat ödülünü bugün zaten aldın.', flags: MessageFlags.Ephemeral });
       }
       await db.query(
         'UPDATE daily_crafting_progress SET claimed_at=NOW(), updated_at=NOW() WHERE guild_id=$1 AND user_id=$2 AND mission_date=CURRENT_DATE',
@@ -60,11 +60,11 @@ export default {
         [interaction.guildId, interaction.user.id, REWARD.coins, newXp, newLevel]
       );
       await db.query('COMMIT');
-      return interaction.reply({ content: `🎉 Günlük zanaat görevi tamamlandı! **+${REWARD.coins} altın**, **+${REWARD.xp} XP** kazandın. Yeni seviye: **${newLevel}**.`, ephemeral: true });
+      return interaction.reply({ content: `🎉 Günlük zanaat görevi tamamlandı! **+${REWARD.coins} altın**, **+${REWARD.xp} XP** kazandın. Yeni seviye: **${newLevel}**.`, flags: MessageFlags.Ephemeral });
     } catch (error) {
       await db.query('ROLLBACK').catch(() => {});
       console.error('Günlük zanaat görevi hatası:', error);
-      return interaction.reply({ content: 'Günlük zanaat görevi işlenemedi. Biraz sonra tekrar dene.', ephemeral: true });
+      return interaction.reply({ content: 'Günlük zanaat görevi işlenemedi. Biraz sonra tekrar dene.', flags: MessageFlags.Ephemeral });
     } finally {
       db.release();
     }

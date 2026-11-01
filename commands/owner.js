@@ -7,6 +7,6 @@ export default {
   async execute(interaction) {
     if (!await ownerOnly(interaction)) return;
     await auditOwnerAction(pool, interaction.user.id, 'panel.open');
-    await interaction.reply({ content: '**Frieren Owner Panel**\n' + OWNER_PANEL_URL + '\n\nBu bağlantı yalnızca senin Discord hesabınla açılır.', ephemeral: true });
+    await interaction.reply({ content: '**Frieren Owner Panel**\n' + OWNER_PANEL_URL + '\n\nBu bağlantı yalnızca senin Discord hesabınla açılır.', flags: MessageFlags.Ephemeral });
   }
 };

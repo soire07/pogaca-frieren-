@@ -18,7 +18,7 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', ephemeral: true });
+      return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
 
     const target =
@@ -39,7 +39,7 @@ export default {
     if (!u) {
       return interaction.reply({
         content: 'Profil bilgileri bulunamadı. Lütfen tekrar dene.',
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 

@@ -18,11 +18,11 @@ export default {
     if (!interaction.guildId) {
       return interaction.reply({
         content: 'Macera günlüğü yalnızca bir Discord sunucusunda kullanılabilir.',
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
       await ensureUser(interaction.guildId, interaction.user.id);

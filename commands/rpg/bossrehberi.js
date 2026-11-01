@@ -16,7 +16,7 @@ export default {
 
   async execute(interaction) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: '📜 Bu kayıt yalnızca bir sunucudaki maceracı ilerlemesini gösterebilir.', ephemeral: true });
+      return interaction.reply({ content: '📜 Bu kayıt yalnızca bir sunucudaki maceracı ilerlemesini gösterebilir.', flags: MessageFlags.Ephemeral });
     }
 
     await ensureUser(interaction.guildId, interaction.user.id);
@@ -56,6 +56,6 @@ export default {
       )
       .setFooter({ text: 'Frieren’in kuzey seferi • Ödüller ve ganimet ihtimalleri boss kademesine göre değişir.' });
 
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 };

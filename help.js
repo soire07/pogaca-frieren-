@@ -52,6 +52,6 @@ export default {
       .addFields(sections)
       .setFooter({ text: 'Poğaça Frieren • Acele etme, hazırlan, keşfet ve yolculuğuna kendi izini bırak.' });
 
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 };

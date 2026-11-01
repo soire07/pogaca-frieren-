@@ -31,6 +31,6 @@ export default {
       )
       .setTimestamp()
       .setFooter({ text: 'Durum bilgisi canlı bot sürecinden alınır.' });
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   },
 };

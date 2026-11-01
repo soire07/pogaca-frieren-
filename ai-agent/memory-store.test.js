@@ -500,3 +500,16 @@ test('explicit natural-language save persists the extracted fact only for the re
   ]);
   assert.deepEqual(await store.list('discord-user-2'), []);
 });
+
+
+test('memory pool normalizes legacy SSL aliases and preserves certificate verification', () => {
+  createMemoryStore('postgres://test/db?sslmode=require', { PoolClass: FakePool });
+  const options = FakePool.instance.options;
+  assert.equal(new URL(options.connectionString).searchParams.get('sslmode'), 'verify-full');
+  assert.equal(Object.hasOwn(options, 'ssl'), false);
+});
+
+test('memory pool retains the existing explicit TLS fallback when no sslmode is present', () => {
+  createMemoryStore('postgres://test/db', { PoolClass: FakePool });
+  assert.deepEqual(FakePool.instance.options.ssl, { rejectUnauthorized: false });
+});
