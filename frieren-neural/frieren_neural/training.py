@@ -160,6 +160,34 @@ def split_corpus_text(
     if not 0.0 < validation_fraction < 0.5:
         raise ValueError("validation_fraction must be between 0 and 0.5.")
     combined = "\n".join(item.strip() for item in documents)
+    # Preserve natural document boundaries whenever the corpus provides them.
+    # The Turkish dialogue importer separates each conversation with this marker.
+    separator = "\n\n---\n\n"
+    if len(documents) > 1:
+        units = [item.strip() for item in documents]
+        joiner = "\n"
+    elif separator in combined:
+        units = [item.strip() for item in combined.split(separator) if item.strip()]
+        joiner = separator
+    else:
+        units = []
+        joiner = ""
+
+    if units:
+        if len(units) < 2:
+            raise ValueError("Corpus must contain at least two complete documents for a boundary-safe split.")
+        target_validation_size = max(1, int(sum(map(len, units)) * validation_fraction))
+        validation_units: list[str] = []
+        validation_characters = 0
+        while len(units) - len(validation_units) > 1 and validation_characters < target_validation_size:
+            item = units.pop()
+            validation_units.insert(0, item)
+            validation_characters += len(item)
+        if not units or not validation_units:
+            raise ValueError("Corpus must contain non-empty training and validation documents.")
+        return joiner.join(units), joiner.join(validation_units)
+
+    # Retain the legacy chronological character split for a single unstructured text.
     validation_size = max(1, int(len(combined) * validation_fraction))
     training_size = len(combined) - validation_size
     if training_size < 2 or validation_size < 2:
