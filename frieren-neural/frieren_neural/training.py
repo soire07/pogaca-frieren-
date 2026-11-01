@@ -100,15 +100,14 @@ def _sample_batch(
 @torch.no_grad()
 def evaluate_loss(
     model: GPTLanguageModel,
-    train_data: Tensor,
-    validation_data: Tensor,
+    data: Tensor,
     *,
     batch_size: int,
     block_size: int,
     batches: int = 20,
     seed: int = 1337,
 ) -> float:
-    """Return mean train/validation loss while preserving the model's mode."""
+    """Return mean next-token loss over deterministic random windows."""
     if batches < 1:
         raise ValueError("batches must be positive.")
     was_training = model.training
@@ -116,20 +115,16 @@ def evaluate_loss(
     losses: list[float] = []
     generator = torch.Generator(device="cpu").manual_seed(seed)
     try:
-        for data in (train_data, validation_data):
-            split_losses = []
-            for _ in range(batches):
-                inputs, targets = _sample_batch(
-                    data, batch_size=batch_size, block_size=block_size,
-                    device=next(model.parameters()).device, generator=generator
-                )
-                _, loss = model(inputs, targets=targets)
-                split_losses.append(float(loss.item()))
-            losses.append(sum(split_losses) / len(split_losses))
+        for _ in range(batches):
+            inputs, targets = _sample_batch(
+                data, batch_size=batch_size, block_size=block_size,
+                device=next(model.parameters()).device, generator=generator
+            )
+            _, loss = model(inputs, targets=targets)
+            losses.append(float(loss.item()))
     finally:
         model.train(was_training)
-    # This function is used for both splits; callers needing the pair can use _evaluate_pair.
-    return losses[1]
+    return sum(losses) / len(losses)
 
 
 @torch.no_grad()
@@ -241,7 +236,7 @@ def train_model(
             }, checkpoint)
 
     return {
-        "step": min(settings.max_steps, max(start_step, 0)),
+        "step": final_step,
         "train_loss": train_loss,
         "validation_loss": validation_loss,
         "checkpoint": str(checkpoint),
