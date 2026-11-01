@@ -99,3 +99,25 @@ A second run used the same pinned Qwen3 revision and all 24 prompts with a 160-t
 - TR-024 preserves the read-only boundary.
 
 **Decision remains NOT READY.** More output budget reduced the number of cap-hit responses from the earlier 14/24 at 80 tokens to 8/24 at 160 tokens, but it did not fix the underlying instruction-following, Turkish-quality, repetition, and multi-turn failures. The full raw outputs and blank two-reviewer score sheet are in the workflow artifact. No human scores are inferred from this inspection.
+
+
+## Reproducible 160-token rerun (2026-11-01, later runner)
+
+A subsequent run of the same immutable revision and 24-case prompt set completed successfully with the same CPU/float32/2-thread/greedy configuration and 160-token cap.
+
+- Workflow run: [41339195851](https://github.com/soire07/pogaca-frieren-/actions/runs/41339195851)
+- Artifact: `frieren-neural-qwen3-0.6b-cpu-benchmark` (ID `13096982095`)
+- Model load: 15.118 s
+- Total generation: 366.027 s
+- Median / p95 latency: 16.380 / 24.874 s
+- Peak process RSS: 4,933.04 MiB
+- Responses reaching 160 generated tokens: 8/24
+- Empty responses: 0/24
+- Explicit role-label leakage: TR-018
+- Human review: incomplete; deployment: false
+
+Runner-to-runner variation is visible, so latency is not a service-level guarantee. The quality findings remain materially unchanged: several long responses are truncated, repetitive, inaccurate, or violate the requested format. The candidate remains **NOT READY**.
+
+The scratch checkpoint artifact was also recovered for review. It is step 8,000 with SHA-256 `1f29fa42d0a98722181b37d24903385774b49eb52cc439696113a9574da672b7`, but its historical quality report used temperature 0.7 and an 80-token cap, while the Qwen runs use greedy decoding and 160 tokens. The scratch checkpoint also predates assistant-only loss objective v2. Its report is therefore a historical reference, not a controlled comparison baseline. The scratch responses are visibly incoherent and the report is NOT READY.
+
+No human scores have been entered for any candidate. The two-reviewer requirement remains a hard blocker.
