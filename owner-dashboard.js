@@ -501,6 +501,9 @@ export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limi
     + '</div>'
   ).join('') : '<p class="muted">Henüz kaydedilmiş test çalıştırması yok.</p>';
   const auditQuery = page => '/owner/activity?' + new URLSearchParams({ action, target, page: String(page), errorScope, errorPage: String(errors.page) }).toString();
+  const testQuery = page => '/owner/activity?' + new URLSearchParams({ action, target, page: String(audit.page), errorScope, errorPage: String(errors.page), testPage: String(page) }).toString();
+  const testPrevious = testRuns.page > 1 ? '<a class="btn secondary" href="' + testQuery(testRuns.page - 1) + '">Önceki testler</a>' : '';
+  const testNext = testRuns.page * testRuns.limit < testRuns.total ? '<a class="btn secondary" href="' + testQuery(testRuns.page + 1) + '">Sonraki testler</a>' : '';
   const previous = audit.page > 1 ? '<a class="btn secondary" href="' + auditQuery(audit.page - 1) + '">Önceki</a>' : '';
   const next = audit.page * audit.limit < audit.total ? '<a class="btn secondary" href="' + auditQuery(audit.page + 1) + '">Sonraki</a>' : '';
   return page('Denetim ve test geçmişi', renderOwnerNavigation()
@@ -509,7 +512,7 @@ export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limi
     + '<section class="panel"><h2>İşlem kayıtları · ' + Number(audit.total) + '</h2><form method="get" action="/owner/activity"><label>İşlem türü</label><input name="action" maxlength="80" value="' + escapeHtml(action) + '" placeholder="Örn. memory.update"><label>Hedef</label><input name="target" maxlength="80" value="' + escapeHtml(target) + '" placeholder="Kayıt veya servis ID"><button class="btn secondary">Filtrele</button></form>'
     + auditHtml + '<div class="actions">' + previous + next + '<span class="small">Sayfa ' + Number(audit.page) + ' · En fazla ' + Number(audit.limit) + ' kayıt</span></div></section>'
     + '<section class="panel"><h2>Hata kayıtları · ' + Number(errors.total) + '</h2><form method="get" action="/owner/activity"><input type="hidden" name="action" value="' + escapeHtml(action) + '"><input type="hidden" name="target" value="' + escapeHtml(target) + '"><input type="hidden" name="page" value="' + Number(audit.page) + '"><label>Hata bölümü</label><input name="errorScope" maxlength="80" value="' + escapeHtml(errorScope) + '" placeholder="Örn. discord"><button class="btn secondary">Hataları filtrele</button></form>' + errorHtml + '<div class="actions">' + errorPrevious + errorNext + '<span class="small">Sayfa ' + Number(errors.page) + '</span></div></section>'
-    + '<section class="panel"><h2>Frieren AI test geçmişi · ' + Number(testRuns.total) + '</h2>' + testHtml + '</section>');
+    + '<section class="panel"><h2>Frieren AI test geçmişi · ' + Number(testRuns.total) + '</h2>' + testHtml + '<div class="actions">' + testPrevious + testNext + '<span class="small">Sayfa ' + Number(testRuns.page) + '</span></div></section>');
 }
 
 export async function handleOwnerDashboardRequest(req, res, { client, db }) {
@@ -726,11 +729,12 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const targetFilter = String(url.searchParams.get('target') || '').slice(0, 80);
       const pageNumber = Math.max(1, Math.min(Number(url.searchParams.get('page')) || 1, 100000));
       const errorPage = Math.max(1, Math.min(Number(url.searchParams.get('errorPage')) || 1, 100000));
+      const testPage = Math.max(1, Math.min(Number(url.searchParams.get('testPage')) || 1, 100000));
       const errorScope = String(url.searchParams.get('errorScope') || '').slice(0, 80);
       const [audit, errors, testRuns] = await Promise.all([
         listOwnerAuditLogs(db, { action: actionFilter, target: targetFilter, page: pageNumber, limit: 20 }),
         listOwnerErrorLogs(db, { scope: errorScope, page: errorPage, limit: 20 }),
-        listOwnerTestRuns(db, { page: 1, limit: 20 })
+        listOwnerTestRuns(db, { page: testPage, limit: 20 })
       ]);
       send(res, 200, renderOwnerActivityWorkspace({ audit, errors, testRuns, action: actionFilter, target: targetFilter, errorScope }));
     } catch (error) {
