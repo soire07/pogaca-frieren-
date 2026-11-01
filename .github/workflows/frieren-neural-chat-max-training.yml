@@ -48,6 +48,21 @@ jobs:
         run: pytest
       - name: Import pinned Apache-2.0 Turkish SFT corpus
         run: frieren-neural-import-chat-max --output ./corpus/turkish-chat-max-25k
+      - name: Validate every imported dialogue before expensive training
+        run: |
+          python - <<'PY'
+          from frieren_neural.tokenizer import BPETokenizer
+          from frieren_neural.training import encode_dialogue_stream_with_loss_mask, load_licensed_corpus
+
+          for split in ("train", "heldout"):
+              documents = load_licensed_corpus(f"./corpus/turkish-chat-max-25k/{split}")
+              tokenizer = BPETokenizer.train(documents, vocab_size=260)
+              for index, document in enumerate(documents):
+                  token_ids, loss_mask = encode_dialogue_stream_with_loss_mask(document, tokenizer)
+                  if not token_ids or len(token_ids) != len(loss_mask) or not any(loss_mask):
+                      raise SystemExit(f"Invalid {split} dialogue at index {index}")
+              print(f"{split}: validated {len(documents)} dialogues")
+          PY
       - name: Train fresh assistant-only Turkish candidate
         run: |
           set -o pipefail
