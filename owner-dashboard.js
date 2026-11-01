@@ -19,7 +19,7 @@ import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, cre
 
 const OWNER_ID = '1553794496234262641';
 
-async function assertGuardianAutomationEnabled(db) {
+export async function assertGuardianAutomationEnabled(db) {
   const result = await db.query("SELECT setting_value FROM owner_settings WHERE setting_key='guardian_emergency_stop' LIMIT 1");
   if (result.rows?.[0]?.setting_value?.enabled === true) throw new Error('GUARDIAN_EMERGENCY_STOP_ENABLED');
 }
@@ -971,6 +971,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
             redirect(res, '/owner/guardian?notice=guardian_review_complete');
             return true;
           }
+          await assertGuardianAutomationEnabled(db);
           const response = await fetch(getFrierenAiGuardianEndpoint(), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + secret },
@@ -1019,6 +1020,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         ].join('\n').slice(0, 1200);
         try {
           const workflowUrl = 'https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml';
+          await assertGuardianAutomationEnabled(db);
           const response = await fetch('https://api.github.com/repos/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml/dispatches', {
             method: 'POST',
             headers: {
@@ -1324,7 +1326,8 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       console.error('Owner dashboard action failed:', code || 'unknown error');
       const guardianError = code.startsWith('GUARDIAN_') || code.startsWith('REVIEW_')
         || code === 'INVALID_FRIEREN_AI_PUBLIC_URL' || code === 'INVALID_FRIEREN_NEURAL_LIVE_URL';
-      const notice = code === 'GUARDIAN_BRIDGE_NOT_CONFIGURED' ? 'guardian_not_configured'
+      const notice = code === 'GUARDIAN_EMERGENCY_STOP_ENABLED' ? 'guardian_emergency_stop_active'
+        : code === 'GUARDIAN_BRIDGE_NOT_CONFIGURED' ? 'guardian_not_configured'
         : code === 'GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED' ? 'guardian_github_not_configured'
         : guardianError ? (code.startsWith('GUARDIAN_GITHUB_READ_') ? 'guardian_pr_status_failed' : code.startsWith('GUARDIAN_GITHUB_') ? 'guardian_pr_dispatch_failed' : 'guardian_review_failed')
         : code === 'SENSITIVE_TEST_TARGET_REJECTED' ? 'test_target_sensitive'

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest, assertGuardianAutomationEnabled } from '../owner-dashboard.js';
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
 const ownerId = '1553794496234262641';
@@ -88,6 +88,15 @@ test('Guardian is exposed as a dedicated Owner Panel workspace', () => {
 test('Guardian AI endpoint is HTTPS-only and points to the private review route', () => {
   assert.equal(getFrierenAiGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.example/' }), 'https://frieren-ai.example/internal/guardian-review');
   assert.throws(() => getFrierenAiGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'http://frieren-ai.example' }), { message: 'INVALID_FRIEREN_AI_PUBLIC_URL' });
+});
+
+test('Guardian automation emergency stop blocks server-side review and repair actions', async () => {
+  const stoppedDb = { query: async () => ({ rows: [{ setting_value: { enabled: true } }] }) };
+  await assert.rejects(() => assertGuardianAutomationEnabled(stoppedDb), { message: 'GUARDIAN_EMERGENCY_STOP_ENABLED' });
+  const activeDb = { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) };
+  assert.equal(await assertGuardianAutomationEnabled(activeDb), undefined);
+  const missingDb = { query: async () => ({ rows: [] }) };
+  assert.equal(await assertGuardianAutomationEnabled(missingDb), undefined);
 });
 
 test('Guardian workspace shows review proposals as unapplied and requires owner review', () => {
