@@ -1,53 +1,50 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
-<title id="title">Frieren — büyücü portresi</title>
-<desc id="desc">Uzun beyaz saçlı, sivri elf kulaklı, yeşil gözlü ve beyaz altın işlemeli giysili Frieren portresi.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="t d">
+<title id="t">Frieren portrait</title><desc id="d">Silver-haired elf mage Frieren with green eyes, long pointed ears and a white cloak, framed by violet magic.</desc>
 <defs>
- <radialGradient id="night"><stop stop-color="#6d568f"/><stop offset=".58" stop-color="#302444"/><stop offset="1" stop-color="#100f20"/></radialGradient>
- <linearGradient id="silver" x1=".08" y1="0" x2=".9" y2="1"><stop stop-color="#fff"/><stop offset=".38" stop-color="#edf0fb"/><stop offset=".72" stop-color="#c7d1e8"/><stop offset="1" stop-color="#8f9dbd"/></linearGradient>
- <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff0e9"/><stop offset="1" stop-color="#e8c9c5"/></linearGradient>
- <linearGradient id="cloth" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".55" stop-color="#e9e8f2"/><stop offset="1" stop-color="#b8c3da"/></linearGradient>
- <radialGradient id="aura"><stop stop-color="#d8b8ff" stop-opacity=".55"/><stop offset="1" stop-color="#d8b8ff" stop-opacity="0"/></radialGradient>
- <clipPath id="circle"><circle cx="256" cy="256" r="246"/></clipPath>
+ <radialGradient id="bg"><stop stop-color="#66517f"/><stop offset=".62" stop-color="#302642"/><stop offset="1" stop-color="#100f20"/></radialGradient>
+ <linearGradient id="hair" x1=".1" y1="0" x2=".9" y2="1"><stop stop-color="#fff"/><stop offset=".32" stop-color="#eef1fb"/><stop offset=".7" stop-color="#c7d1e7"/><stop offset="1" stop-color="#8798b8"/></linearGradient>
+ <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff1eb"/><stop offset="1" stop-color="#e8c8c4"/></linearGradient>
+ <linearGradient id="robe" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".6" stop-color="#e6e8f2"/><stop offset="1" stop-color="#aab8d2"/></linearGradient>
+ <radialGradient id="aura"><stop stop-color="#d7b9ff" stop-opacity=".5"/><stop offset="1" stop-color="#bca0ff" stop-opacity="0"/></radialGradient>
+ <clipPath id="clip"><circle cx="256" cy="256" r="246"/></clipPath>
+ <filter id="soft"><feGaussianBlur stdDeviation="15"/></filter>
 </defs>
-<g clip-path="url(#circle)">
- <rect width="512" height="512" fill="url(#night)"/>
- <circle cx="256" cy="240" r="225" fill="url(#aura)"/>
- <g fill="#f5e8ff" opacity=".9"><path d="M88 100l7 17 18 2-14 12 4 18-15-10-15 10 4-18-14-12 18-2z"/><path d="M405 118l5 12 13 1-10 9 3 13-11-7-11 7 3-13-10-9 13-1z"/><circle cx="111" cy="276" r="3"/><circle cx="420" cy="300" r="2.5"/><circle cx="365" cy="65" r="2"/></g>
- <circle cx="256" cy="242" r="208" fill="none" stroke="#eadbff" stroke-opacity=".28" stroke-width="2"/>
- <!-- long silver hair behind shoulders -->
- <path d="M128 220Q85 105 174 48Q248 2 327 40Q431 73 421 207L450 512H64Z" fill="url(#silver)" stroke="#9ba9c6" stroke-width="5"/>
- <path d="M157 190Q100 240 113 414L142 512H185L204 315M352 177Q424 235 393 421L373 512H330L313 310" fill="url(#silver)" stroke="#9ba9c6" stroke-width="4"/>
- <!-- pointed ears -->
- <path d="M159 203Q89 169 40 183Q89 241 165 254Z" fill="url(#skin)" stroke="#c9b9c5" stroke-width="5"/>
- <path d="M352 203Q423 169 472 183Q423 241 346 254Z" fill="url(#skin)" stroke="#c9b9c5" stroke-width="5"/>
- <path d="M144 214L83 194 151 237M368 214L429 194 361 237" fill="none" stroke="#d6aeb5" stroke-width="4"/>
- <!-- outfit -->
- <path d="M104 512Q111 386 170 344Q207 319 256 319Q307 319 345 344Q402 386 408 512Z" fill="url(#cloth)" stroke="#9ba9c6" stroke-width="5"/>
- <path d="M205 336L256 398 307 336L291 512H221Z" fill="#29263e"/>
- <path d="M173 359L209 345 256 398 303 345 339 359 316 414 256 437 196 414Z" fill="#f7f3fb" stroke="#c7c4d8" stroke-width="4"/>
- <path d="M185 373L207 367 226 400M327 373L305 367 286 400" fill="none" stroke="#c49b5e" stroke-width="6"/>
- <path d="M251 401L256 422 261 401" fill="none" stroke="#d5b36e" stroke-width="5"/>
- <!-- hair framing face -->
- <path d="M144 157Q147 62 242 49Q342 36 375 130Q394 194 359 294L339 344Q319 293 326 227Q291 203 269 151Q239 211 179 226Q184 291 165 347L139 291Q119 218 144 157Z" fill="url(#silver)" stroke="#a4b2cc" stroke-width="5"/>
+<g clip-path="url(#clip)">
+ <rect width="512" height="512" fill="url(#bg)"/><circle cx="256" cy="230" r="225" fill="url(#aura)"/>
+ <circle cx="256" cy="250" r="185" fill="none" stroke="#e9ddff" stroke-opacity=".16"/>
+ <g fill="#fff2ff"><circle cx="92" cy="135" r="3"/><circle cx="405" cy="108" r="2.5"/><circle cx="80" cy="300" r="2"/><circle cx="420" cy="330" r="3"/><path d="M118 70v25m-12-12h24M388 190v20m-10-10h20" stroke="#f4eaff" stroke-width="2"/></g>
+ <ellipse cx="256" cy="476" rx="180" ry="70" fill="#0a0914" opacity=".45" filter="url(#soft)"/>
+ <!-- long hair behind -->
+ <path d="M130 207Q89 93 175 42Q251 -4 337 40Q433 89 410 220L457 530H54Z" fill="url(#hair)" stroke="#a4b2cc" stroke-width="4"/>
+ <path d="M143 200Q95 270 117 420L145 520H190L204 315M365 198Q416 264 394 421L367 520H322L309 315" fill="url(#hair)" stroke="#a4b2cc" stroke-width="4"/>
+ <!-- ears -->
+ <path d="M163 195Q83 153 24 175Q86 248 174 257Z" fill="url(#skin)" stroke="#d5bdc7" stroke-width="4"/>
+ <path d="M349 195Q429 153 488 175Q426 248 338 257Z" fill="url(#skin)" stroke="#d5bdc7" stroke-width="4"/>
+ <path d="M151 215L77 186 151 239M361 215L435 186 361 239" fill="none" stroke="#d8aeb6" stroke-width="3"/>
+ <!-- robe -->
+ <path d="M87 530Q103 382 166 344Q205 316 256 316Q307 316 346 344Q409 382 425 530Z" fill="url(#robe)" stroke="#a5b2ca" stroke-width="4"/>
+ <path d="M200 334L256 410 312 334 296 530H216Z" fill="#28243c"/>
+ <path d="M164 362L207 344 256 410 305 344 348 362 319 422 256 446 193 422Z" fill="#faf8ff" stroke="#c4c8dc" stroke-width="3"/>
+ <path d="M184 371l25-8 20 34m99-34-25-8-20 34" fill="none" stroke="#c6a56e" stroke-width="5"/>
+ <path d="M249 410l7 25 7-25" fill="none" stroke="#d4b36f" stroke-width="4"/>
+ <!-- face framing hair -->
+ <path d="M138 156Q149 57 245 43Q341 37 375 132Q397 204 360 300L337 357Q315 294 326 222Q293 200 270 146Q239 210 179 228Q187 296 160 357L135 296Q115 220 138 156Z" fill="url(#hair)" stroke="#a7b5ce" stroke-width="4"/>
  <!-- face -->
- <path d="M174 154Q201 101 258 104Q319 102 344 157L337 252Q327 316 258 333Q190 317 179 252Z" fill="url(#skin)" stroke="#d7c2c7" stroke-width="4"/>
- <!-- crown fringe -->
- <path d="M147 167Q152 78 245 56Q328 44 369 133Q345 125 321 142Q297 159 279 188Q266 153 250 123Q221 167 181 184L166 231Z" fill="url(#silver)" stroke="#a5b3cd" stroke-width="5"/>
- <path d="M183 137Q219 77 286 80M293 95Q344 104 358 155" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" opacity=".85"/>
- <path d="M183 221Q204 206 228 219M286 219Q311 205 333 221" fill="none" stroke="#7b829f" stroke-width="6" stroke-linecap="round"/>
- <!-- green eyes -->
- <path d="M194 234Q215 216 237 234Q216 255 194 234Z" fill="#789b83"/><path d="M280 234Q302 216 324 234Q302 255 280 234Z" fill="#789b83"/>
- <ellipse cx="216" cy="235" rx="5" ry="10" fill="#344d4a"/><ellipse cx="302" cy="235" rx="5" ry="10" fill="#344d4a"/>
- <circle cx="218" cy="230" r="3" fill="#fff"/><circle cx="304" cy="230" r="3" fill="#fff"/>
- <path d="M253 247L248 274Q256 279 264 274" fill="none" stroke="#d5a6a6" stroke-width="3" stroke-linecap="round"/>
- <path d="M239 294Q257 303 276 292" fill="none" stroke="#b87f8b" stroke-width="4" stroke-linecap="round"/>
- <path d="M194 273Q208 281 223 274M291 274Q307 281 321 272" fill="none" stroke="#e5aaa8" stroke-width="5" opacity=".4"/>
- <!-- signature hair ornaments -->
- <path d="M145 123Q122 107 112 129Q126 150 150 145M367 123Q390 107 400 129Q386 150 362 145" fill="#b58cce" stroke="#f0d9ff" stroke-width="4"/>
- <path d="M121 137L108 166M391 137L404 166" stroke="#d7b6e8" stroke-width="5" stroke-linecap="round"/>
- <path d="M360 281Q379 301 362 323" fill="none" stroke="#c7a16b" stroke-width="4"/>
- <circle cx="363" cy="325" r="9" fill="#a94f73" stroke="#f0d7dc" stroke-width="3"/>
+ <path d="M174 153Q200 101 258 101Q319 101 343 155L337 254Q327 318 258 338Q189 318 178 254Z" fill="url(#skin)" stroke="#ddc5c8" stroke-width="3"/>
+ <!-- fringe -->
+ <path d="M143 168Q148 76 243 53Q331 39 371 132Q345 124 319 144Q297 161 278 190Q264 151 249 122Q220 166 180 187L164 232Z" fill="url(#hair)" stroke="#a7b5ce" stroke-width="4"/>
+ <path d="M181 130Q218 72 286 78M292 91Q344 103 359 155" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".8"/>
+ <!-- eyes -->
+ <path d="M191 233Q214 211 239 233Q215 257 191 233Z" fill="#82a58b"/><path d="M275 233Q300 211 325 233Q301 257 275 233Z" fill="#82a58b"/>
+ <ellipse cx="216" cy="234" rx="5" ry="10" fill="#344d49"/><ellipse cx="300" cy="234" rx="5" ry="10" fill="#344d49"/>
+ <circle cx="218" cy="229" r="3" fill="#fff"/><circle cx="302" cy="229" r="3" fill="#fff"/>
+ <path d="M185 216Q213 201 240 215M276 215Q303 201 331 216" fill="none" stroke="#7b829d" stroke-width="4" stroke-linecap="round"/>
+ <path d="M254 247L249 275Q256 280 264 275" fill="none" stroke="#d5a6a6" stroke-width="3" stroke-linecap="round"/>
+ <path d="M239 297Q257 305 276 296" fill="none" stroke="#b77f8b" stroke-width="3" stroke-linecap="round"/>
+ <!-- hair ornaments -->
+ <path d="M145 119Q122 103 111 128Q125 151 151 145M367 119Q390 103 401 128Q387 151 361 145" fill="#a985c6" stroke="#f2e3ff" stroke-width="4"/>
+ <path d="M121 137L108 166M391 137L404 166" stroke="#d9bce9" stroke-width="4" stroke-linecap="round"/>
+ <path d="M357 291Q380 310 362 331" fill="none" stroke="#c7a16b" stroke-width="4"/><circle cx="363" cy="333" r="8" fill="#a94f73" stroke="#f0d7dc" stroke-width="3"/>
 </g>
-<circle cx="256" cy="256" r="246" fill="none" stroke="#ead9ff" stroke-width="9" stroke-opacity=".85"/>
-<circle cx="256" cy="256" r="235" fill="none" stroke="#b99bdf" stroke-width="2" stroke-opacity=".65"/>
+<circle cx="256" cy="256" r="246" fill="none" stroke="#f0e5ff" stroke-width="10" stroke-opacity=".9"/><circle cx="256" cy="256" r="234" fill="none" stroke="#c2a7e5" stroke-width="2" stroke-opacity=".8"/>
 </svg>
