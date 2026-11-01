@@ -115,6 +115,9 @@ test('site profile uses dedicated brand avatar and banner assets', async () => {
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
   assert.match(String(stylesheet.body), /site-banner\.webp/);
   assert.match(String(stylesheet.body), /\.profile-banner img\{display:block;width:100%;height:100%;max-width:none;object-fit:cover/);
+  assert.match(String(stylesheet.body), /\.home-banner\{[^}]*aspect-ratio:640\\/177/);
+  assert.match(String(stylesheet.body), /\.home-banner img\{display:block;width:100%;height:100%;object-fit:contain/);
+  assert.doesNotMatch(String(stylesheet.body), /\.home-banner\{[^}]*aspect-ratio:16\\/5/);
   assert.doesNotMatch(String(stylesheet.body), /\.profile-banner\{[^}]*url\(['"]?\/assets\/site-banner\.webp/);
 });
 
