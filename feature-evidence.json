@@ -414,6 +414,190 @@
         ]
       },
       "limitation": "The regression test inspects the real production handler wiring and phase calculations, but does not execute a complete Discord encounter with live players."
+    },
+    {
+      "featureId": "RPG-309",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "zoltraak",
+            "damage: 8"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-discord-scenarios.js",
+        "name": "all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten",
+        "markers": [
+          "zoltraak",
+          "damage: 8",
+          "getSpellMasteryAwakening(spell, 10)"
+        ]
+      },
+      "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
+    },
+    {
+      "featureId": "RPG-310",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "alev_kuresi",
+            "damage: 10"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-discord-scenarios.js",
+        "name": "all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten",
+        "markers": [
+          "alev_kuresi",
+          "damage: 10",
+          "getSpellMasteryAwakening(spell, 10)"
+        ]
+      },
+      "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
+    },
+    {
+      "featureId": "RPG-311",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "buz_mizragi",
+            "freezeChance: 0.1"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-discord-scenarios.js",
+        "name": "all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten",
+        "markers": [
+          "buz_mizragi",
+          "freezeChance: 0.1",
+          "getSpellMasteryAwakening(spell, 10)"
+        ]
+      },
+      "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
+    },
+    {
+      "featureId": "RPG-312",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "koruyucu_bariyer",
+            "shieldReduction: 0.05"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-discord-scenarios.js",
+        "name": "all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten",
+        "markers": [
+          "koruyucu_bariyer",
+          "shieldReduction: 0.05",
+          "getSpellMasteryAwakening(spell, 10)"
+        ]
+      },
+      "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
+    },
+    {
+      "featureId": "RPG-313",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "sifa_isigi",
+            "healing: 10"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-discord-scenarios.js",
+        "name": "all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten",
+        "markers": [
+          "sifa_isigi",
+          "healing: 10",
+          "getSpellMasteryAwakening(spell, 10)"
+        ]
+      },
+      "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
+    },
+    {
+      "featureId": "RPG-314",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "yildirim_zinciri",
+            "damage: 12"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-discord-scenarios.js",
+        "name": "all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten",
+        "markers": [
+          "yildirim_zinciri",
+          "damage: 12",
+          "getSpellMasteryAwakening(spell, 10)"
+        ]
+      },
+      "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
+    },
+    {
+      "featureId": "RPG-315",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "tas_duvar",
+            "wallReduction: 0.05"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-discord-scenarios.js",
+        "name": "all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten",
+        "markers": [
+          "tas_duvar",
+          "wallReduction: 0.05",
+          "getSpellMasteryAwakening(spell, 10)"
+        ]
+      },
+      "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
+    },
+    {
+      "featureId": "RPG-316",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "mana_patlamasi",
+            "damage: 15"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-discord-scenarios.js",
+        "name": "all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten",
+        "markers": [
+          "mana_patlamasi",
+          "damage: 15",
+          "getSpellMasteryAwakening(spell, 10)"
+        ]
+      },
+      "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
     }
   ]
 }
