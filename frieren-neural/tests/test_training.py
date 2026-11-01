@@ -328,7 +328,7 @@ def test_training_stream_ends_each_assistant_turn_before_next_user():
 
 
 def test_resume_rejects_checkpoint_with_legacy_dialogue_encoding(tmp_path: Path):
-    corpus = ["Kullanıcı: Merhaba.\\nAsistan: Selam. " * 8]
+    corpus = ["Frieren studies magic. Fern studies spells. " * 50]
     checkpoint = tmp_path / "legacy-dialogue.pt"
     config = TrainingConfig(
         max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
