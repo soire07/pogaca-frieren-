@@ -8,7 +8,7 @@ production bot, database, Render service, Vercel deployment, or Vercel function.
 
 - Model: [Qwen/Qwen3-0.6B](https://huggingface.co/Qwen/Qwen3-0.6B)
 - Immutable revision: `c1899de289a04d12100db370d81485cdf75e47ca`
-- Runtime: CPU, float32, two threads, greedy decoding, 80-token output cap.
+- Runtime: CPU, float32, two threads, greedy decoding, 160-token output cap.
 - Prompts: fixed 24-case Turkish quality benchmark.
 
 The completed run is recorded in `../QWEN3_BENCHMARK_RESULT_2026-11-01.md`.
