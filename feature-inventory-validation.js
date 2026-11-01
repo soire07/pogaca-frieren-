@@ -25,7 +25,7 @@ export function validateFeatureInventory(inventory) {
     const id = String(feature.id || '').trim();
     const name = String(feature.name || '').trim();
     const category = String(feature.category || '').trim();
-    if (!/^RPG-\d{3,}$/.test(id)) errors.push(`Geçersiz özellik kimliği: ${feature.id ?? '(boş)'}`);
+    if (!/^[A-Z]{3}-\d{3,}$/.test(id)) errors.push(`Geçersiz özellik kimliği: ${feature.id ?? '(boş)'}`);
     if (!name) errors.push(`Özellik adı boş: ${id || 'kayıt ' + (index + 1)}`);
     if (!category) errors.push(`Özellik kategorisi boş: ${id || 'kayıt ' + (index + 1)}`);
     ids.push(id);
