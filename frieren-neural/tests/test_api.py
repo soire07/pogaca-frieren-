@@ -158,7 +158,9 @@ def test_web_home_is_same_origin_and_does_not_embed_api_credentials(api_client):
     response = api_client.get("/")
     assert response.status_code == 200
     assert "Frieren Neural" in response.text
-    assert "Content-Security-Policy" in response.headers
+    csp = response.headers["Content-Security-Policy"]
+    assert "nonce-" in csp
+    assert "unsafe-inline" not in csp
     assert response.headers["Cache-Control"] == "no-store"
     assert "FRIEREN_API_TOKEN" not in response.text
 
