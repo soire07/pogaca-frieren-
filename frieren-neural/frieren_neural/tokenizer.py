@@ -245,7 +245,7 @@ class BPETokenizer:
     def from_dict(cls, payload: dict[str, object]) -> "BPETokenizer":
         raw_merges = payload.get("merges")
         if payload.get("version") != 1 or payload.get("type") != "byte_bpe" or not isinstance(raw_merges, list):
-            raise ValueError("Invalid BPE tokenizer payload.")
+            raise ValueError("Invalid BPE tokenizer payload: expected version, type, and merges.")
         merges: list[tuple[int, int]] = []
         for pair in raw_merges:
             if (not isinstance(pair, list) or len(pair) != 2
