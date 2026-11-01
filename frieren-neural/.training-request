@@ -1,0 +1,1 @@
+Run one isolated CPU baseline training job. Dataset and checkpoint remain workflow artifacts, never Git files.\n
