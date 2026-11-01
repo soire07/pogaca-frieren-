@@ -52,6 +52,23 @@ The generated manifest records the dataset source, version, CC BY 4.0 license, a
 
 Dataset source and attribution: [Turkish Daily Dialogues 5K](https://github.com/3nesdeniz/turkish-daily-dialogues-5k), [Hugging Face dataset card](https://huggingface.co/datasets/3nesdeniz/turkish-daily-dialogues-5k), [CC BY 4.0 license](https://creativecommons.org/licenses/by/4.0/). Attribution to Enes Deniz and the dataset version is retained in `corpus_manifest.json`.
 
+## First CPU baseline (2026-11-01)
+
+The first reproducible CPU run completed 1,000 optimizer steps on 3,950 training conversations. It used the source-provided training split only; the source-provided 525-conversation test split was downloaded separately and checksum-verified after training.
+
+| Metric | Result |
+| --- | ---: |
+| Training loss | 3.4826 |
+| Internal validation loss | 3.5467 |
+| Held-out test loss | 3.4835 |
+| Held-out test perplexity | 32.5736 |
+| Optimizer steps | 1,000 |
+| Device | CPU |
+
+The checkpoint loaded successfully and text generation executed, but the generated Turkish sample was not coherent. These metrics confirm that the pipeline runs and the model learns token patterns; they do **not** establish conversational usefulness. Do not deploy this checkpoint to real users. Improve the corpus, increase model capacity/training carefully, and add human-rated quality tests first.
+
+[GitHub Actions run and 30-day checkpoint artifact](https://github.com/soire07/pogaca-frieren-/actions/runs/41306097844).
+
 ## Prepare a licensed corpus
 
 Create a corpus directory containing only UTF-8 `.txt` or `.md` files. Copy `corpus_manifest.example.json` into that directory as `corpus_manifest.json`, then replace every placeholder with accurate source, license, and usage information. The CLI refuses missing manifests, placeholder metadata, path traversal, symlinks escaping the corpus directory, empty files, and unlisted text files.
