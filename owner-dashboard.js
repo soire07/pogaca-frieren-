@@ -866,6 +866,26 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     return true;
   }
 
+  if (url.pathname === '/owner/frieren-ai/health' && req.method === 'GET') {
+    const aiBase = (process.env.FRIEREN_AI_PUBLIC_URL || 'https://pogaca-frieren-kltd.onrender.com').replace(/\/$/, '');
+    const healthSecret = process.env.FRIEREN_AI_HEALTH_SECRET || '';
+    if (healthSecret.length < 32) {
+      res.writeHead(503, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ status: 'unconfigured', error: 'Owner sağlık kontrolü henüz yapılandırılmadı.' }));
+      return true;
+    }
+    try {
+      const response = await fetch(aiBase + '/health', { headers: { 'x-frieren-health-secret': healthSecret }, signal: AbortSignal.timeout(10000) });
+      const payload = await response.json().catch(() => ({ status: 'invalid_response' }));
+      res.writeHead(response.status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
+      res.end(JSON.stringify(payload));
+    } catch {
+      res.writeHead(502, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ status: 'unreachable', error: 'Frieren AI sağlık bilgisine şu anda ulaşılamıyor.' }));
+    }
+    return true;
+  }
+
   const workspaceKinds = {
     '/owner/frieren-ai': 'ai',
     '/owner/pogaca': 'pogaca',
