@@ -15,7 +15,7 @@ import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } fr
 import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
-import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, reserveGuardianRepairDispatch, finishGuardianRepairDispatch, updateGuardianRepairStatus } from './guardian/store.js';
+import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, reserveGuardianRepairDispatch, finishGuardianRepairDispatch, updateGuardianRepairStatus, getGuardianMonitorState } from './guardian/store.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -539,7 +539,7 @@ export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limi
     + '<section class="panel"><h2>Frieren AI test geçmişi · ' + Number(testRuns.total) + '</h2>' + testHtml + '<div class="actions">' + testPrevious + testNext + '<span class="small">Sayfa ' + Number(testRuns.page) + '</span></div></section>');
 }
 
-export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf = '', notice = '', serviceState = {} } = {}) {
+export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf = '', notice = '', serviceState = {}, monitorState = null } = {}) {
   const noticeText = ({
     guardian_scan_complete: 'Tarama tamamlandı. Yeni bulgular ve servis durumları aşağıda listeleniyor.',
     guardian_review_complete: 'Frieren AI incelemesini tamamladı. Öneri yalnızca taslaktır; kod değiştirilmedi.',
@@ -591,11 +591,16 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + (result.status === 'proposal_only' && !process.env.FRIEREN_GITHUB_TOKEN && job.repair_dispatch_status !== 'dispatched' ? '<p class="notice warn">PR oluşturma düğmesi için FRIEREN_GITHUB_TOKEN yapılandırılmalı.</p>' : '')
       + '</article>';
   }).join('') : '<p class="muted">Henüz Frieren AI inceleme görevi yok.</p>';
+  const monitorInterval = Math.max(60_000, Math.min(Number(process.env.GUARDIAN_SCAN_INTERVAL_MS) || 300_000, 1_800_000));
+  const monitorAge = monitorState?.last_tick_at ? Date.now() - new Date(monitorState.last_tick_at).getTime() : Infinity;
+  const monitorStatus = monitorAge <= monitorInterval * 2 + 30_000 ? 'Aktif' : monitorState?.last_tick_at ? 'Gecikmiş' : 'Başlatılıyor';
   const systemCards = '<div class="grid">'
     + '<div class="stat"><small>Poğaça Frieren</small><strong>' + (serviceState.pogacaReady ? 'Bağlı' : 'Kontrol gerekli') + '</strong></div>'
     + '<div class="stat"><small>Frieren AI köprüsü</small><strong>' + (serviceState.frierenAiBridgeConfigured ? 'Yapılandırıldı' : 'Anahtar eksik') + '</strong></div>'
     + '<div class="stat"><small>Frieren Neural canlılık</small><strong>' + (serviceState.neuralLiveConfigured ? 'URL tanımlı' : 'Henüz bağlanmadı') + '</strong></div>'
-    + '</div><p class="small">Kartlar bağlantı yapılandırmasını gösterir; harici servislerin gerçek sağlık durumu tarama düğmesiyle doğrulanır.</p>';
+    + '<div class="stat"><small>Guardian izleyici</small><strong>' + monitorStatus + '</strong></div>'
+    + '</div><p class="small">Kartlar bağlantı yapılandırmasını gösterir; harici servislerin gerçek sağlık durumu tarama düğmesiyle doğrulanır.</p>'
+    + (monitorState?.last_tick_at ? '<p class="small">Son Guardian kontrolü: ' + escapeHtml(new Date(monitorState.last_tick_at).toLocaleString('tr-TR')) + (monitorState.last_error ? ' · Son hata: ' + escapeHtml(monitorState.last_error) : '') + '</p>' : '');
   const critical = incidents.filter(item => item.severity === 'critical').length;
   const open = incidents.filter(item => !['resolved','ignored'].includes(item.status)).length;
   return page('Neural Guardian', renderOwnerNavigation()
@@ -745,12 +750,13 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
 
   if (url.pathname === '/owner/guardian' && req.method === 'GET') {
     try {
-      const [incidents, jobs] = await Promise.all([
+      const [incidents, jobs, monitorState] = await Promise.all([
         listGuardianIncidents(db, 30),
         listGuardianJobs(db, 20),
+        getGuardianMonitorState(db),
       ]);
       send(res, 200, renderOwnerGuardianWorkspace({
-        incidents, jobs, csrf: session.csrf, notice: url.searchParams.get('notice') || '',
+        incidents, jobs, monitorState, csrf: session.csrf, notice: url.searchParams.get('notice') || '',
         serviceState: {
           pogacaReady: Boolean(client?.isReady?.()),
           frierenAiBridgeConfigured: String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim().length >= 32,
