@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { lstat, readFile, readdir, realpath, rename, writeFile } from 'node:fs/promises';
+import { lstat, readFile, readdir, realpath, rename, writeFile, copyFile, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -56,12 +56,12 @@ export function validateRepairProposal(proposal) {
   return proposal;
 }
 
-export async function applyRepairProposal(rootDir, proposal) {
+export async function applyRepairProposal(rootDir, proposal, fileOps = { rename, writeFile, copyFile, unlink }) {
   validateRepairProposal(proposal);
   const root = await realpath(rootDir);
   const prepared = [];
 
-  // Validate every target before writing any file. Only regular existing files are mutable.
+  // Validate every target before staging any replacement.
   for (const file of proposal.files) {
     const target = resolveRepairTarget(root, file.path);
     const parent = path.dirname(target);
@@ -81,21 +81,47 @@ export async function applyRepairProposal(rootDir, proposal) {
     if (actual !== target || !actual.startsWith(root + path.sep)) {
       throw new Error('REPAIR_PATH_OUTSIDE_ROOT');
     }
-    prepared.push({ target, content: file.content, relativePath: file.path });
+    prepared.push({ target, content: file.content, relativePath: file.path, mode: info.mode & 0o777 });
   }
 
   const staged = [];
   try {
     for (const file of prepared) {
-      const temporary = file.target + '.frieren-' + randomBytes(8).toString('hex') + '.tmp';
-      await writeFile(temporary, file.content, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
-      staged.push({ ...file, temporary });
+      const suffix = randomBytes(8).toString('hex');
+      const temporary = file.target + '.frieren-' + suffix + '.tmp';
+      const backup = file.target + '.frieren-' + suffix + '.bak';
+      const entry = { ...file, temporary, backup, replaced: false };
+      staged.push(entry);
+      await fileOps.writeFile(temporary, file.content, { encoding: 'utf8', flag: 'wx', mode: file.mode });
+      await fileOps.copyFile(file.target, backup);
     }
-    for (const file of staged) await rename(file.temporary, file.target);
+
+    for (const file of staged) {
+      await fileOps.rename(file.temporary, file.target);
+      file.replaced = true;
+    }
   } catch (error) {
-    await Promise.all(staged.map(file => import('node:fs/promises').then(fs => fs.unlink(file.temporary).catch(() => {}))));
+    const rollbackErrors = [];
+    for (const file of [...staged].reverse()) {
+      if (!file.replaced) continue;
+      try {
+        await fileOps.rename(file.backup, file.target);
+        file.backup = null;
+      } catch (rollbackError) {
+        rollbackErrors.push(rollbackError);
+      }
+    }
+    await Promise.all(staged.flatMap(file => [
+      fileOps.unlink(file.temporary).catch(() => {}),
+      file.backup ? fileOps.unlink(file.backup).catch(() => {}) : Promise.resolve(),
+    ]));
+    if (rollbackErrors.length) {
+      throw new AggregateError([error, ...rollbackErrors], 'REPAIR_ROLLBACK_FAILED');
+    }
     throw error;
   }
+
+  await Promise.all(staged.map(file => fileOps.unlink(file.backup)));
   return { updated: prepared.map(file => file.relativePath) };
 }
 
@@ -152,8 +178,8 @@ async function main() {
         content: [
           'You are a cautious software repair assistant. Return one JSON object with keys summary and files.',
           'files must be an array of objects with path and complete replacement content.',
-          'Only modify existing JavaScript files at repository root or one level inside ai-agent/, scripts/, or database/.',
-          'Never create files, delete files, change workflows, package manifests, lockfiles, secrets, environment files, or deployment configuration.',
+          'Only modify existing JavaScript files at repository root or one level inside ai-agent/, scripts/, database/, or commands/.',
+          'Never create source files or delete files; temporary staging and backup files are allowed and must be cleaned up. Never change workflows, package manifests, lockfiles, secrets, environment files, or deployment configuration.',
           'Never run or request shell commands. Never include credentials. Never claim tests passed.',
           'Make the smallest coherent repair. If the task cannot be solved from the supplied context, return files: [].',
           'Do not invent unavailable APIs. Preserve existing behavior and exports.'
