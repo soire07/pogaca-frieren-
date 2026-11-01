@@ -18,6 +18,11 @@ import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
 import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, reserveGuardianRepairDispatch, finishGuardianRepairDispatch, updateGuardianRepairStatus, getGuardianMonitorState } from './guardian/store.js';
 
 const OWNER_ID = '1553794496234262641';
+
+async function assertGuardianAutomationEnabled(db) {
+  const result = await db.query("SELECT setting_value FROM owner_settings WHERE setting_key='guardian_emergency_stop' LIMIT 1");
+  if (result.rows?.[0]?.setting_value?.enabled === true) throw new Error('GUARDIAN_EMERGENCY_STOP_ENABLED');
+}
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
 const SESSION_COOKIE = 'frieren_owner_session';
 const STATE_COOKIE = 'frieren_owner_oauth_state';
@@ -455,6 +460,8 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     ${renderOwnerNavigation()}
     <section class="hero" id="overview"><span class="tag">OWNER · DOĞRULANDI</span><h1>Frieren Kontrol Merkezi</h1><p class="muted">Bu panel yalnızca yetkili Discord hesabına açıktır. İki botun sunucu içi davranışını tek merkezden yönet.</p>
       ${noticeText ? '<div class="notice">' + escapeHtml(noticeText) + '</div>' : ''}
+      ${emergencyStop ? '<div class="notice warn">Acil durdurma etkin: Frieren AI incelemesi ve yeni GitHub onarım workflow gönderimi engellendi. Hata tespiti ve kayıt devam eder.</div>' : ''}
+      <section class="panel"><h2>Guardian otomasyon acil durdurma</h2><p class="muted">${emergencyStop ? 'Etkin · AI incelemesi ve yeni onarım workflow gönderimi kapalı.' : 'Devre dışı · Owner onaylı inceleme ve onarım akışları kullanılabilir.'}</p><form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="action" value="guardian-emergency-stop"><input type="hidden" name="enabled" value="${emergencyStop ? 'false' : 'true'}"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu değişikliği onaylıyorum</label><button class="btn secondary">${emergencyStop ? 'Otomasyonu yeniden etkinleştir' : 'Guardian otomasyonunu durdur'}</button></form></section>
       <div class="grid" id="system">
         <div class="stat"><small>Bot bağlantısı</small><strong class="${overview.ready ? 'good' : 'bad'}">${overview.ready ? 'Çevrimiçi' : 'Çevrimdışı'}</strong></div>
         <div class="stat"><small>Discord gecikmesi</small><strong>${overview.ping === null ? '—' : overview.ping + ' ms'}</strong></div>
@@ -539,7 +546,7 @@ export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limi
     + '<section class="panel"><h2>Frieren AI test geçmişi · ' + Number(testRuns.total) + '</h2>' + testHtml + '<div class="actions">' + testPrevious + testNext + '<span class="small">Sayfa ' + Number(testRuns.page) + '</span></div></section>');
 }
 
-export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf = '', notice = '', serviceState = {}, monitorState = null } = {}) {
+export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf = '', notice = '', serviceState = {}, monitorState = null, emergencyStop = false } = {}) {
   const noticeText = ({
     guardian_scan_complete: 'Tarama tamamlandı. Yeni bulgular ve servis durumları aşağıda listeleniyor.',
     guardian_review_complete: 'Frieren AI incelemesini tamamladı. Öneri yalnızca taslaktır; kod değiştirilmedi.',
@@ -560,7 +567,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + '<p>' + escapeHtml(incident.summary) + '</p>'
       + (evidence.length ? '<details><summary>Kanıt kayıtları (' + evidence.length + ')</summary>' + evidence.map(item => '<div class="small">' + escapeHtml(item.file || '') + (item.line ? ':' + Number(item.line) : '') + ' ' + escapeHtml(item.message || '') + '</div>').join('') + '</details>' : '')
       + '<div class="actions">'
-      + (canReview ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-review"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Frieren AI incelemesini başlat</label><button class="btn">AI ile analiz et</button></form>' : '')
+      + (canReview && !emergencyStop ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-review"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Frieren AI incelemesini başlat</label><button class="btn">AI ile analiz et</button></form>' : '')
       + (!['resolved','ignored'].includes(incident.status) ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-resolve"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Sorunu kontrol ettim</label><button class="btn secondary">Çözüldü işaretle</button></form>' : '')
       + '</div></article>';
   }).join('') : '<p class="muted">Henüz Guardian olayı kaydedilmedi. İlk taramayı başlatabilirsin.</p>';
@@ -587,7 +594,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + (job.repair_pr_url ? '<p><a href="' + escapeHtml(job.repair_pr_url) + '" target="_blank" rel="noopener noreferrer">Onarım PR #' + Number(job.repair_pr_number || 0) + ' incele</a> · ' + escapeHtml(job.repair_pr_state || '') + '</p>' : '')
       + (job.repair_dispatch_status === 'dispatched' && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-refresh-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> GitHub sonucunu sorgulamayı onaylıyorum</label><button class="btn secondary">Sonucu yenile</button></form>' : '')
 
-      + (result.status === 'proposal_only' && !['dispatched','dispatching'].includes(job.repair_dispatch_status || 'not_requested') && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-create-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu analizden testli bir düzeltme PR\'si hazırlanmasını onaylıyorum</label><button class="btn">Düzeltme PR\'si hazırla</button></form>' : '')
+      + (result.status === 'proposal_only' && !emergencyStop && !['dispatched','dispatching'].includes(job.repair_dispatch_status || 'not_requested') && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-create-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu analizden testli bir düzeltme PR\'si hazırlanmasını onaylıyorum</label><button class="btn">Düzeltme PR\'si hazırla</button></form>' : '')
       + (result.status === 'proposal_only' && !process.env.FRIEREN_GITHUB_TOKEN && job.repair_dispatch_status !== 'dispatched' ? '<p class="notice warn">PR oluşturma düğmesi için FRIEREN_GITHUB_TOKEN yapılandırılmalı.</p>' : '')
       + '</article>';
   }).join('') : '<p class="muted">Henüz Frieren AI inceleme görevi yok.</p>';
@@ -751,13 +758,15 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
 
   if (url.pathname === '/owner/guardian' && req.method === 'GET') {
     try {
-      const [incidents, jobs, monitorState] = await Promise.all([
+      const [incidents, jobs, monitorState, stopResult] = await Promise.all([
         listGuardianIncidents(db, 30),
         listGuardianJobs(db, 20),
         getGuardianMonitorState(db),
+        db.query("SELECT setting_value FROM owner_settings WHERE setting_key='guardian_emergency_stop' LIMIT 1"),
       ]);
+      const emergencyStop = stopResult.rows?.[0]?.setting_value?.enabled === true;
       send(res, 200, renderOwnerGuardianWorkspace({
-        incidents, jobs, monitorState, csrf: session.csrf, notice: url.searchParams.get('notice') || '',
+        incidents, jobs, monitorState, emergencyStop, csrf: session.csrf, notice: url.searchParams.get('notice') || '',
         serviceState: {
           pogacaReady: Boolean(client?.isReady?.()),
           frierenAiBridgeConfigured: String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim().length >= 32,
@@ -883,6 +892,19 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const form = await readForm(req);
       if (!safeStringEqual(form.get('csrf'), session.csrf)) return send(res, 403, page('İstek reddedildi', '<h1>CSRF doğrulaması başarısız</h1>'));
       const action = form.get('action');
+      if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
+        const enabled = form.get('enabled') === 'true';
+        await db.query(`WITH changed AS (
+          INSERT INTO owner_settings(setting_key,setting_value,updated_by,updated_at)
+          VALUES('guardian_emergency_stop',$1::jsonb,$2,NOW())
+          ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_by=EXCLUDED.updated_by,updated_at=NOW()
+          RETURNING setting_key
+        ) INSERT INTO owner_audit_logs(actor_id,action,target,details)
+          SELECT $2,'guardian.emergency_stop.update',NULL,$3::jsonb FROM changed`,
+          [JSON.stringify({ enabled }), OWNER_ID, JSON.stringify({ enabled })]);
+        redirect(res, '/owner/guardian?notice=guardian_emergency_stop_updated');
+        return true;
+      }
       if (action === 'guardian-scan' && form.get('confirm') === 'yes') {
         let found = 0;
         if (!client?.isReady?.()) {
@@ -937,6 +959,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         return true;
       }
       if (action === 'guardian-review' && form.get('confirm') === 'yes') {
+        await assertGuardianAutomationEnabled(db);
         let job = null;
         try {
           const incident = await getGuardianIncident(db, form.get('incidentId'));
@@ -966,6 +989,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         return true;
       }
       if (action === 'guardian-create-pr' && form.get('confirm') === 'yes') {
+        await assertGuardianAutomationEnabled(db);
         const token = String(process.env.FRIEREN_GITHUB_TOKEN || '').trim();
         if (token.length < 32) throw new Error('GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED');
         const incident = await getGuardianIncident(db, form.get('incidentId'));
