@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   validateSiteUsername, validateSiteEmail, hashSitePassword, verifySitePassword,
-  createSiteCsrfToken, verifySiteCsrfToken, consumeSmtpBuffer, handleSiteAuthRequest
+  createSiteCsrfToken, verifySiteCsrfToken, consumeSmtpBuffer, smtpFailureDetails, handleSiteAuthRequest
 } from '../site-auth.js';
 import { createPublicSiteSession, readPublicSiteSession } from '../owner-dashboard.js';
 
@@ -19,6 +19,19 @@ function fakeDb() {
   const calls = [];
   return { calls, async query(sql, params = []) { calls.push({ sql, params }); return { rows: [], rowCount: 0 }; } };
 }
+
+
+test('SMTP failure diagnostics normalize unusual thrown values without exposing email addresses', () => {
+  assert.deepEqual(smtpFailureDetails(Object.assign(new Error('connect failed for user@example.com'), { code: 'ECONNRESET', syscall: 'connect' })), {
+    name: 'Error', code: 'ECONNRESET', syscall: 'connect', message: 'connect failed for [redacted-email]'
+  });
+  assert.deepEqual(smtpFailureDetails('unexpected transport failure'), {
+    name: 'NonErrorThrow', code: null, syscall: null, message: 'unexpected transport failure'
+  });
+  assert.deepEqual(smtpFailureDetails(undefined), {
+    name: 'NonErrorThrow', code: null, syscall: null, message: 'Unknown SMTP failure'
+  });
+});
 
 test('SMTP reply parser handles split CRLF chunks and multiline Gmail responses', () => {
   const first = consumeSmtpBuffer('220-smtp.gmail.com ESMTP\r');
