@@ -118,3 +118,19 @@ test('multi-file repair rolls back earlier replacements when a later rename fail
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('repair application preserves the exact executable permission bits despite process umask', async () => {
+  const { chmod, stat } = await import('node:fs/promises');
+  const root = await mkdtemp(path.join(tmpdir(), 'frieren-repair-mode-'));
+  const target = path.join(root, 'mode.js');
+  try {
+    await writeFile(target, 'const original = true;\\n');
+    await chmod(target, 0o660);
+    await applyRepairProposal(root, {
+      files: [{ path: 'mode.js', content: 'const repaired = true;\\n' }],
+    });
+    assert.equal((await stat(target)).mode & 0o777, 0o660);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
