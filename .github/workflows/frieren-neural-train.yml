@@ -58,6 +58,15 @@ jobs:
           sample = generate_text(model, tokenizer, "Kullanıcı: Merhaba.\nAsistan:", max_new_tokens=24, top_k=8)
           print(json.dumps({"checkpoint": "loadable", "metrics": metrics, "sample": sample}, ensure_ascii=False, indent=2))
           PY
+      - name: Prepare the separate, checksum-verified test split
+        run: frieren-neural-prepare-turkish-dialogues --split test --output ./corpus/turkish-daily-dialogues-test
+      - name: Evaluate on held-out test conversations
+        run: |
+          set -o pipefail
+          frieren-neural-evaluate \
+            --data ./corpus/turkish-daily-dialogues-test \
+            --checkpoint ./checkpoints/frieren-neural-small.pt \
+            --batch-size 4 --batches 25 --device cpu | tee ./heldout-metrics.json
       - name: Upload model checkpoint and metrics
         uses: actions/upload-artifact@v4
         with:
@@ -65,6 +74,8 @@ jobs:
           path: |
             frieren-neural/checkpoints/frieren-neural-small.pt
             frieren-neural/training-metrics.json
+            frieren-neural/heldout-metrics.json
             frieren-neural/corpus/turkish-daily-dialogues/corpus_manifest.json
+            frieren-neural/corpus/turkish-daily-dialogues-test/corpus_manifest.json
           if-no-files-found: error
           retention-days: 30
