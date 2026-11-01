@@ -127,6 +127,7 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
         "context_tokens": 1024,
         "max_new_tokens": MAX_NEW_TOKENS,
         "thinking_mode": "Qwen3 /no_think prompt switch",
+        "thinking_mode": "Qwen3 /no_think prompt switch",
         "download_seconds": download_seconds,
         "model_load_seconds": load_seconds,
         "generation_total_seconds": round(time.perf_counter() - generation_started, 3),
