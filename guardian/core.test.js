@@ -98,6 +98,7 @@ test('secret redaction covers bearer/basic auth, common credential variables and
   for (const sample of samples) {
     const redacted = redactGuardianText(sample);
     assert.notEqual(redacted, sample);
+    assert.doesNotMatch(redacted, /\\$1\\[REDACTED\\]/, 'replacement backreference leaked into sanitized text');
     for (const secret of [
       'bearer-secret-123456',
       'YWRtaW46c2VjcmV0',
