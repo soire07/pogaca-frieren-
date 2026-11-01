@@ -90,7 +90,6 @@ const healthServer = createServer(async (req, res) => {
       res.end(JSON.stringify({ error: 'scenario_already_running' }));
       return;
     }
-    guardianReviewInProgress = true;
     let raw = '';
     try {
       for await (const chunk of req) {
@@ -145,6 +144,7 @@ const healthServer = createServer(async (req, res) => {
       res.end(JSON.stringify({ error: 'agent_busy' }));
       return;
     }
+    guardianReviewInProgress = true;
     let raw = '';
     try {
       for await (const chunk of req) {
