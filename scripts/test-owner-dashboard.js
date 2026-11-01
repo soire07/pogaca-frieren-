@@ -187,21 +187,21 @@ test('owner dashboard does not label the AI bot online when readiness is incompl
 });
 
 
-test('Frieren AI readiness is fetched from its separate Render health endpoint', async () => {
+test('Frieren AI readiness uses public liveness endpoint and extracts dependency readiness', async () => {
   let requestedUrl = '';
-  const expected = { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true };
+  const expected = { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true, bridgeConfigured: true };
+  const livePayload = { status: 'alive', ready: true, readiness: expected };
   const result = await getFrierenAIReadiness({
     serviceUrl: 'https://frieren-ai.example',
-    healthPath: '/health',
+    healthPath: '/live',
     fetchImpl: async url => {
       requestedUrl = url;
-      return { ok: true, json: async () => expected };
+      return { ok: true, json: async () => livePayload };
     }
   });
-  assert.equal(requestedUrl, 'https://frieren-ai.example/health');
+  assert.equal(requestedUrl, 'https://frieren-ai.example/live');
   assert.deepEqual(result, expected);
 });
-
 test('Frieren AI readiness fails closed when its separate Render health endpoint is unavailable', async () => {
   const result = await getFrierenAIReadiness({
     serviceUrl: 'https://frieren-ai.example',
