@@ -23,6 +23,12 @@ DIALOGUE_SEPARATOR = "\n\n---\n\n"
 REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
+def _escape_training_controls(content: str) -> str:
+    """Prevent message text from being parsed as chat roles or document boundaries."""
+    escaped = re.sub(r"(?m)^(Kullanıcı|Asistan): ", r"\\1： ", content)
+    return escaped.replace(DIALOGUE_SEPARATOR, "\\n\\n— — —\\n\\n")
+
+
 def _render_visible_dialogue(row: object) -> tuple[str, str] | None:
     """Return (row id, dialogue), dropping non-Turkish, tool and malformed rows."""
     if not isinstance(row, dict):
@@ -45,7 +51,7 @@ def _render_visible_dialogue(row: object) -> tuple[str, str] | None:
         content = message.get("content")
         if role == "system":
             if isinstance(content, str) and content.strip() and not turns:
-                system_parts.append(content.strip())
+                system_parts.append(_escape_training_controls(content.strip()))
             continue
         if role not in {"user", "assistant"}:
             return None
@@ -53,7 +59,7 @@ def _render_visible_dialogue(row: object) -> tuple[str, str] | None:
             return None
         if not isinstance(content, str) or not content.strip():
             continue
-        visible = content.strip()
+        visible = _escape_training_controls(content.strip())
         if role == "user" and not turns and system_parts:
             visible = "Talimat: " + "\n".join(system_parts) + "\nKullanıcı isteği: " + visible
         if turns and turns[-1][0] == role:
