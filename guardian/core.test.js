@@ -68,6 +68,18 @@ test('merge and deployment remain blocked until checks and separate owner approv
   }).canDeploy, true);
 });
 
+test('incident summaries redact Discord IDs and email addresses before persistence', () => {
+  const incident = createGuardianIncident({
+    system: 'pogaca_frieren',
+    title: 'Command error',
+    summary: 'User 1539562273197260860 contact user@example.com failed.',
+  });
+  assert.doesNotMatch(incident.summary, /1539562273197260860/);
+  assert.doesNotMatch(incident.summary, /user@example.com/);
+  assert.match(incident.summary, /\[ID\]/);
+  assert.match(incident.summary, /\[EMAIL\]/);
+});
+
 test('secret redaction never returns the raw credential', () => {
   const value = redactGuardianText('DATABASE_URL=postgres://user:secret@host/db');
   assert.doesNotMatch(value, /postgres:\/\/user:secret/);
