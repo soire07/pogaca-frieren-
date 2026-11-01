@@ -79,9 +79,14 @@ def _authenticate(authorization: str | None) -> None:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    if _checkpoint_path().is_file():
-        return {"status": "ready"}
-    return {"status": "model_unavailable"}
+    checkpoint = _checkpoint_path()
+    if not checkpoint.is_file():
+        return {"status": "model_unavailable"}
+    try:
+        _load_runtime(str(checkpoint.resolve()), os.environ.get("FRIEREN_DEVICE", "cpu"))
+    except (OSError, RuntimeError, ValueError, KeyError):
+        return {"status": "model_unavailable"}
+    return {"status": "ready"}
 
 
 @app.post("/generate")
