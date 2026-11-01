@@ -90,7 +90,7 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
     for case_id, category, prompt, _hint in PROMPTS:
         started = time.perf_counter()
         result = llm.create_chat_completion(
-            messages=[{"role": "user", "content": prompt + "\\n/no_think"}],
+            messages=[{"role": "user", "content": prompt + " /no_think"}],
             max_tokens=MAX_NEW_TOKENS,
             temperature=0.0,
             top_p=1.0,
@@ -125,7 +125,8 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
         "quantization": "Q8_0",
         "threads": threads,
         "context_tokens": 1024,
-        "max_new_tokens": MAX_NEW_TOKENS,\n        "thinking_mode": "Qwen3 /no_think prompt switch",
+        "max_new_tokens": MAX_NEW_TOKENS,
+        "thinking_mode": "Qwen3 /no_think prompt switch",
         "download_seconds": download_seconds,
         "model_load_seconds": load_seconds,
         "generation_total_seconds": round(time.perf_counter() - generation_started, 3),
