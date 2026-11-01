@@ -29,6 +29,14 @@ export default {
   let characterName;
   try {
    await db.query('BEGIN');
+   const playerLock = await db.query(
+    'SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+    [interaction.guildId, interaction.user.id]
+   );
+   if (!playerLock.rowCount) {
+    await db.query('ROLLBACK');
+    return interaction.reply({content:'RPG profilin bulunamadı. Tekrar dene.',ephemeral:true});
+   }
    const owned=await db.query(
     'SELECT character_name,quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND LOWER(character_name)=LOWER($3) FOR UPDATE',
     [interaction.guildId,interaction.user.id,name]
