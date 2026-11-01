@@ -1,4 +1,4 @@
-"""Pinned Turkish-first GGUF chat model runtime for Frieren Neural.
+""""Pinned Turkish-first GGUF chat model runtime for Frieren Neural.
 
 The model is distributed under Apache-2.0 by ufakai/ufakzeka-1-GGUF.
 Its published chat template is user/assistant only; do not add a system role.
@@ -107,7 +107,7 @@ def generate_completion(
     user_content = (
         "Sen Frieren Neural'sın. Türkçe, doğal, açık ve doğrudan yanıt ver. "
         "Gereksiz tekrar yapma; bilmediğin bilgiyi uydurma ve emin olmadığında belirt. "
-        "Kullanıcının isteğini yerine getir:\\n\\n"
+        "Kullanıcının isteğini yerine getir:\n\n"
         + prompt.strip()
     )
     result = model.create_chat_completion(
