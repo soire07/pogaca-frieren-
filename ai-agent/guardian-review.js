@@ -8,11 +8,15 @@ export function normalizeGuardianReviewIncident(value = {}) {
   const summary = redactGuardianText(value.summary, 1600);
   const code = /^[A-Z0-9_.:-]{1,80}$/i.test(String(value.code || '')) ? String(value.code).toUpperCase() : 'UNKNOWN';
   if (!system || !title || !summary) throw new Error('INVALID_GUARDIAN_INCIDENT');
-  const evidence = Array.isArray(value.evidence) ? value.evidence.slice(0, 8).map(item => ({
-    file: redactGuardianText(item?.file || '', 180),
-    line: Number.isSafeInteger(Number(item?.line)) && Number(item.line) > 0 ? Number(item.line) : null,
-    message: redactGuardianText(item?.message || '', 400),
-  })) : [];
+  const evidence = Array.isArray(value.evidence) ? value.evidence.slice(0, 8).map(item => {
+    const file = String(item?.file || '');
+    if (file && (file.startsWith('/') || file.split(/[\\/]/).includes('..'))) return null;
+    return {
+      file: redactGuardianText(file, 180),
+      line: Number.isSafeInteger(Number(item?.line)) && Number(item.line) > 0 ? Number(item.line) : null,
+      message: redactGuardianText(item?.message || '', 400),
+    };
+  }).filter(Boolean) : [];
   return { system, code, title, summary, evidence };
 }
 
