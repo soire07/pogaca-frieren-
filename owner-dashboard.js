@@ -15,7 +15,7 @@ import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } fr
 import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
-import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, reserveGuardianRepairDispatch, finishGuardianRepairDispatch, updateGuardianRepairStatus, getGuardianMonitorState } from './guardian/store.js';
+import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, reserveGuardianRepairDispatch, finishGuardianRepairDispatch, updateGuardianRepairStatus, getGuardianMonitorState, getLatestGuardianQualityReport } from './guardian/store.js';
 
 const OWNER_ID = '1553794496234262641';
 
@@ -546,7 +546,7 @@ export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limi
     + '<section class="panel"><h2>Frieren AI test geçmişi · ' + Number(testRuns.total) + '</h2>' + testHtml + '<div class="actions">' + testPrevious + testNext + '<span class="small">Sayfa ' + Number(testRuns.page) + '</span></div></section>');
 }
 
-export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf = '', notice = '', serviceState = {}, monitorState = null, emergencyStop = false } = {}) {
+export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf = '', notice = '', serviceState = {}, monitorState = null, emergencyStop = false, qualityReport = null } = {}) {
   const noticeText = ({
     guardian_scan_complete: 'Tarama tamamlandı. Yeni bulgular ve servis durumları aşağıda listeleniyor.',
     guardian_review_complete: 'Frieren AI incelemesini tamamladı. Öneri yalnızca taslaktır; kod değiştirilmedi.',
@@ -630,6 +630,15 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
     + systemCards
      + auditHtml
     + '<div class="grid"><div class="stat"><small>Açık olay</small><strong>' + open + '</strong></div><div class="stat"><small>Kritik olay</small><strong>' + critical + '</strong></div><div class="stat"><small>İnceleme görevi</small><strong>' + jobs.length + '</strong></div></div>'
+    + '<section class="panel"><h2>Frieren Neural kalite raporu</h2>'
+    + (qualityReport ? '<div class="actions"><span class="tag ' + (qualityReport.decision === 'READY FOR STAGED TEST' ? '' : 'warn') + '">' + escapeHtml(qualityReport.decision) + '</span><span class="small">' + escapeHtml(new Date(qualityReport.submitted_at).toLocaleString('tr-TR')) + '</span></div>'
+      + '<p class="small">Backend: ' + escapeHtml(qualityReport.model_backend) + ' · Rapor SHA-256: <code>' + escapeHtml(qualityReport.report_sha256) + '</code></p>'
+      + '<p class="small">Model dosyası SHA-256: <code>' + escapeHtml(qualityReport.artifact_sha256) + '</code></p>'
+      + ((Array.isArray(qualityReport.blocking_reasons) ? qualityReport.blocking_reasons : []).length
+        ? '<p class="notice warn">Engeller: ' + qualityReport.blocking_reasons.map(escapeHtml).join(' · ') + '</p>'
+        : '<p class="notice warn">Kalite raporunda engel görünmüyor; bu tek başına CI, hafıza izolasyonu, güvenlik veya dağıtım onayı değildir.</p>')
+      : '<p class="muted">Henüz Frieren Neural kalite raporu alınmadı. Rapor aktarımı için Neural servisinde FRIEREN_NEURAL_GUARDIAN_URL ve FRIEREN_NEURAL_GUARDIAN_SECRET yapılandırılmalı.</p>')
+    + '<p class="small">Guardian raporları model backend kimliği ve SHA-256 parmak iziyle saklar. Son 50 rapor tutulur. Eksik bağımsız kanıtlar otomatik olarak başarılı sayılmaz.</p></section>'
     + '<section class="panel"><h2>Sağlık taraması</h2><p class="muted">Yerel Discord/DB durumu ve yapılandırılmış AI sağlık kontrolü incelenir. Neural için yalnızca ayrı, hafif bir canlılık URL\'si tanımlanmışsa istek gönderilir; model yükleyen /health endpoint\'i otomatik çağrılmaz.</p>'
     + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-scan"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Sağlık taramasını başlatmayı onaylıyorum</label><button class="btn">Sistemleri tara</button></form></section>'
     + '<section class="panel"><h2>Hata ve olay kayıtları</h2>' + incidentHtml + '</section>'
@@ -771,15 +780,16 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
 
   if (url.pathname === '/owner/guardian' && req.method === 'GET') {
     try {
-      const [incidents, jobs, monitorState, stopResult] = await Promise.all([
+      const [incidents, jobs, monitorState, stopResult, qualityReport] = await Promise.all([
         listGuardianIncidents(db, 30),
         listGuardianJobs(db, 20),
         getGuardianMonitorState(db),
         db.query("SELECT setting_value FROM owner_settings WHERE setting_key='guardian_emergency_stop' LIMIT 1"),
+        getLatestGuardianQualityReport(db),
       ]);
       const emergencyStop = stopResult.rows?.[0]?.setting_value?.enabled === true;
       send(res, 200, renderOwnerGuardianWorkspace({
-        incidents, jobs, monitorState, emergencyStop, csrf: session.csrf, notice: url.searchParams.get('notice') || '',
+        incidents, jobs, monitorState, emergencyStop, qualityReport, csrf: session.csrf, notice: url.searchParams.get('notice') || '',
         serviceState: {
           pogacaReady: Boolean(client?.isReady?.()),
           frierenAiBridgeConfigured: String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim().length >= 32,
