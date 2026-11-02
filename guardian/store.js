@@ -185,16 +185,18 @@ export async function reserveGuardianRepairDispatch(db, jobId) {
   const id = Number(jobId);
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error('INVALID_GUARDIAN_JOB_ID');
   const result = await db.query(
-    `UPDATE owner_guardian_jobs SET
+    `UPDATE owner_guardian_jobs AS j SET
        repair_dispatch_status='dispatching',
        repair_dispatch_at=NOW(),
        repair_dispatch_attempts=repair_dispatch_attempts+1
-     WHERE id=$1 AND status='completed' AND repair_dispatch_attempts < 3
+     FROM owner_guardian_incidents AS i
+     WHERE j.id=$1 AND i.id=j.incident_id AND i.status='awaiting_approval'
+       AND j.status='completed' AND j.repair_dispatch_attempts < 3
        AND (
          repair_dispatch_status IN ('not_requested','failed')
          OR (repair_dispatch_status='dispatching' AND repair_dispatch_at < NOW()-INTERVAL '15 minutes')
        )
-     RETURNING *`,
+     RETURNING j.*`,
     [id]
   );
   return result.rows?.[0] || null;
