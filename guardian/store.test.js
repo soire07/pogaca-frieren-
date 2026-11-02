@@ -136,6 +136,10 @@ test('Guardian resolution writes an audit record in the same SQL statement', asy
   assert.equal(result.id, 4);
   assert.match(sql, /guardian\.incident\.resolve/);
   assert.match(sql, /WITH changed AS/);
+  assert.match(sql, /cancelled_jobs AS/);
+  assert.match(sql, /UPDATE owner_guardian_jobs/);
+  assert.match(sql, /status IN \\('queued','running'\\)/);
+  assert.match(sql, /GUARDIAN_INCIDENT_RESOLVED/);
 });
 
 test('Guardian repair workflow dispatch is reserved once and records its workflow link', async () => {
