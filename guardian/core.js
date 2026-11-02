@@ -161,6 +161,9 @@ export function evaluateNeuralQualityGate({
   if (report.decision !== 'READY FOR STAGED TEST') reasons.push('NEURAL_QUALITY_REPORT_NOT_READY');
   if (report.prompt_set_version !== 'tr-conversation-v1') reasons.push('NEURAL_PROMPT_SET_MISMATCH');
   if (!/^[a-f0-9]{64}$/i.test(String(report.checkpoint_sha256 || ''))) reasons.push('NEURAL_CHECKPOINT_FINGERPRINT_MISSING');
+  if (report.model_backend !== 'ufakzeka') reasons.push('NEURAL_ACTIVE_BACKEND_NOT_EVALUATED');
+  if (!/^[a-f0-9]{64}$/i.test(String(report.artifact_sha256 || ''))
+      || report.artifact_sha256 !== report.checkpoint_sha256) reasons.push('NEURAL_ACTIVE_ARTIFACT_FINGERPRINT_MISSING');
   const reviewerIds = report.review_template?.reviewers;
   if (human.completed !== true || human.reviewers_required !== 2
       || !Array.isArray(reviewerIds) || reviewerIds.length !== 2

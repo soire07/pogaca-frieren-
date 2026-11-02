@@ -119,6 +119,8 @@ function readyNeuralReport() {
     decision: 'READY FOR STAGED TEST',
     prompt_set_version: 'tr-conversation-v1',
     checkpoint_sha256: 'a'.repeat(64),
+    model_backend: 'ufakzeka',
+    artifact_sha256: 'a'.repeat(64),
     outputs: Array.from({ length: 24 }, (_, index) => ({ id: 'TR-' + String(index + 1).padStart(3, '0'), output: 'Yanıt ' + index })),
     blocking_reasons: [],
     human_review: { completed: true, reviewers_required: 2 },
@@ -240,4 +242,15 @@ test('Neural Guardian rejects incomplete reviewer identities and invalid trainin
   assert.equal(result.canStage, false);
   assert.ok(result.reasons.includes('NEURAL_INDEPENDENT_HUMAN_REVIEW_REQUIRED'));
   assert.ok(result.reasons.includes('NEURAL_TRAINING_PROVENANCE_MISSING'));
+});
+
+
+test('Neural Guardian rejects scratch reports even when every other quality metric looks ready', () => {
+  const report = readyNeuralReport();
+  report.model_backend = 'scratch';
+  const result = evaluateNeuralQualityGate({ qualityReport: report, stagedTestsPassed: true, memoryIsolationPassed: true, securityChecksPassed: true, resourceChecksPassed: true, ownerApproved: true, deploymentApproved: true });
+  assert.equal(result.canStage, false);
+  assert.equal(result.canMerge, false);
+  assert.equal(result.canDeploy, false);
+  assert.ok(result.reasons.includes('NEURAL_ACTIVE_BACKEND_NOT_EVALUATED'));
 });
