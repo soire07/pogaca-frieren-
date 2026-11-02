@@ -64,7 +64,7 @@ const messages = {
   duplicate:'Bu kullanıcı adı veya e-posta zaten kullanılıyor.',
   csrf:'Formun süresi doldu. Sayfayı yenileyip tekrar dene.',
   rate_limited:'Çok fazla deneme yapıldı. Bir süre sonra yeniden dene.',
-  mail_unavailable:'E-posta gönderimi henüz yapılandırılmadı. Site yöneticisi Gmail SMTP ayarlarını tamamlamalı.',
+  mail_unavailable:'E-posta gönderimi henüz yapılandırılmadı. Site yöneticisi Gmail API bağlantısını tamamlamalı.',
   mail_error:'E-posta gönderilemedi. Biraz sonra yeniden dene.'
 };
 function formToken(secret) { return '<input type="hidden" name="csrf" value="' + createSiteCsrfToken(secret) + '">'; }
@@ -107,7 +107,18 @@ export function smtpFailureDetails(error) {
   };
 }
 
-function mailReady() { return Boolean(process.env.SITE_SMTP_USER && process.env.SITE_SMTP_APP_PASSWORD && process.env.ADMIN_SESSION_SECRET?.length >= 32); }
+function gmailApiReady() {
+  const endpoint = String(process.env.SITE_GMAIL_SCRIPT_URL || '');
+  return Boolean(
+    /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint) &&
+    process.env.SITE_GMAIL_SCRIPT_SECRET
+  );
+}
+function mailReady() {
+  const apiReady = gmailApiReady();
+  const smtpReady = Boolean(process.env.SITE_SMTP_USER && process.env.SITE_SMTP_APP_PASSWORD);
+  return (apiReady || smtpReady) && process.env.ADMIN_SESSION_SECRET?.length >= 32;
+}
 
 export function consumeSmtpBuffer(buffer, pendingLines = []) {
   let remaining = String(buffer);
@@ -126,8 +137,29 @@ export function consumeSmtpBuffer(buffer, pendingLines = []) {
   return { buffer: remaining, lines, replies };
 }
 
+export async function sendGmailApi(to, subject, html, plain) {
+  if (!gmailApiReady()) throw new Error('GMAIL_SCRIPT_NOT_CONFIGURED');
+  const response = await fetch(process.env.SITE_GMAIL_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      secret: process.env.SITE_GMAIL_SCRIPT_SECRET,
+      to, subject, html, plain,
+      senderName: 'Frieren Portal'
+    }),
+    redirect: 'follow',
+    signal: AbortSignal.timeout(20000)
+  });
+  if (!response.ok) throw Object.assign(new Error('GMAIL_SCRIPT_HTTP_' + response.status), { code: 'GMAIL_SCRIPT_HTTP_' + response.status });
+  let result;
+  try { result = await response.json(); } catch { throw new Error('GMAIL_SCRIPT_INVALID_RESPONSE'); }
+  if (result?.ok !== true) throw Object.assign(new Error('GMAIL_SCRIPT_REJECTED'), { code: 'GMAIL_SCRIPT_REJECTED' });
+  return result.messageId || 'accepted';
+}
+
 async function sendGmail(to, subject, html, plain) {
   if (!mailReady()) throw new Error('SITE_MAIL_NOT_CONFIGURED');
+  if (gmailApiReady()) return sendGmailApi(to, subject, html, plain);
   const from = String(process.env.SITE_EMAIL_FROM || process.env.SITE_SMTP_USER).trim();
   const user = String(process.env.SITE_SMTP_USER).trim();
   const pass = String(process.env.SITE_SMTP_APP_PASSWORD).replace(/\s/g,'');
@@ -285,7 +317,7 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
         if(account){
           const token=randomBytes(32).toString('hex');
           await db.query("UPDATE frieren_site_accounts SET reset_token_hash=$2,reset_expires_at=NOW()+INTERVAL '30 minutes',updated_at=NOW() WHERE id=$1",[account.id,hash(token)]);
-          try{await mailReset(account.email,token);}catch(e){console.error('Site reset email failed:',e?.message||'unknown');}
+          try{await mailReset(account.email,token);}catch(e){console.error('Site reset email failed:',JSON.stringify({stage:e?.smtpStage||'gmail_api',...smtpFailureDetails(e)}));}
         }
       }
       send(res,200,authPage('forgot',sessionSecret,'email_sent'));return true;

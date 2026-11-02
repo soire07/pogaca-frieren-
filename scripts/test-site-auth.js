@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   validateSiteUsername, validateSiteEmail, hashSitePassword, verifySitePassword,
-  createSiteCsrfToken, verifySiteCsrfToken, consumeSmtpBuffer, smtpFailureDetails, handleSiteAuthRequest
+  createSiteCsrfToken, verifySiteCsrfToken, consumeSmtpBuffer, smtpFailureDetails, sendGmailApi, handleSiteAuthRequest
 } from '../site-auth.js';
 import { createPublicSiteSession, readPublicSiteSession } from '../owner-dashboard.js';
 
@@ -31,6 +31,54 @@ test('SMTP failure diagnostics normalize unusual thrown values without exposing 
   assert.deepEqual(smtpFailureDetails(undefined), {
     name: 'NonErrorThrow', code: null, syscall: null, message: 'Unknown SMTP failure'
   });
+});
+
+test('Gmail Apps Script HTTPS relay sends verification mail without blocked SMTP ports', async () => {
+  const keys = ['SITE_GMAIL_SCRIPT_URL','SITE_GMAIL_SCRIPT_SECRET'];
+  const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+  const originalFetch = globalThis.fetch;
+  let call;
+  process.env.SITE_GMAIL_SCRIPT_URL = 'https://script.google.com/macros/s/test-deployment-id/exec';
+  process.env.SITE_GMAIL_SCRIPT_SECRET = 'test-script-secret';
+  globalThis.fetch = async (url, options) => {
+    call = { url, options };
+    const payload = JSON.parse(options.body);
+    assert.equal(payload.secret, 'test-script-secret');
+    assert.equal(payload.to, 'receiver@example.com');
+    assert.equal(payload.subject, 'Frieren doğrulama');
+    assert.match(payload.html, /Doğrula/);
+    assert.equal(options.redirect, 'follow');
+    return { ok: true, async json() { return { ok: true, messageId: 'apps-script-message-id' }; } };
+  };
+  try {
+    assert.equal(await sendGmailApi('receiver@example.com','Frieren doğrulama','<p>Doğrula</p>','Doğrula'),'apps-script-message-id');
+    assert.equal(call.url, process.env.SITE_GMAIL_SCRIPT_URL);
+    assert.equal(call.options.method, 'POST');
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const key of keys) {
+      if (previous[key] === undefined) delete process.env[key];
+      else process.env[key] = previous[key];
+    }
+  }
+});
+
+test('Gmail HTTPS relay rejects failed delivery without logging response secrets', async () => {
+  const keys = ['SITE_GMAIL_SCRIPT_URL','SITE_GMAIL_SCRIPT_SECRET'];
+  const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+  const originalFetch = globalThis.fetch;
+  process.env.SITE_GMAIL_SCRIPT_URL = 'https://script.google.com/macros/s/test-deployment-id/exec';
+  process.env.SITE_GMAIL_SCRIPT_SECRET = 'test-script-secret';
+  globalThis.fetch = async () => ({ ok: true, async json() { return { ok: false, error: 'private-detail' }; } });
+  try {
+    await assert.rejects(() => sendGmailApi('receiver@example.com','Subject','<p>HTML</p>','Text'), /GMAIL_SCRIPT_REJECTED/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const key of keys) {
+      if (previous[key] === undefined) delete process.env[key];
+      else process.env[key] = previous[key];
+    }
+  }
 });
 
 test('SMTP reply parser handles split CRLF chunks and multiline Gmail responses', () => {
@@ -94,7 +142,7 @@ test('registration form does not write account data before Gmail SMTP is configu
       createSession: createPublicSiteSession
     }), true);
     assert.equal(res.status, 503);
-    assert.match(res.body, /Gmail SMTP ayarlarını tamamlamalı/);
+    assert.match(res.body, /Gmail API bağlantısını tamamlamalı/);
     assert.equal(db.calls.filter(call => call.sql.includes('INSERT INTO frieren_site_accounts')).length, 0);
   } finally {
     if (previousUser === undefined) delete process.env.SITE_SMTP_USER;
