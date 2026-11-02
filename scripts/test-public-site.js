@@ -233,10 +233,11 @@ test('homepage advertises an installable Frieren web app manifest and brand icon
   assert.equal(manifest.name, 'Frieren Platform');
   assert.equal(manifest.short_name, 'Frieren');
   assert.equal(manifest.display, 'standalone');
-  assert.ok(manifest.icons.some(icon => icon.src === '/assets/site-avatar.webp' && icon.sizes === '192x192' && icon.purpose === 'any maskable'));
+  assert.deepEqual(manifest.icons, [{ src: '/assets/site-shortcut.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }]);
   const icon = res();
-  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-avatar.webp', headers: {} }, icon), true);
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-shortcut.svg', headers: {} }, icon), true);
   assert.equal(icon.status, 200);
-  assert.match(icon.headers['Content-Type'], /image\/webp/);
-  assert.ok(Buffer.isBuffer(icon.body) && icon.body.length > 1000);
+  assert.match(icon.headers['Content-Type'], /image\/svg\+xml/);
+  assert.match(String(icon.body), /<clipPath id="clip"><circle cx="256" cy="256" r="246"/);
+  assert.ok(String(icon.body).startsWith('<svg'), 'shortcut icon must be a scalable circular SVG');
 });
