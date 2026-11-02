@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGuardianRepairTask, processGuardianIncident, processPendingGuardianRepairDispatch } from './automation.js';
+import { buildGuardianRepairTask, processGuardianIncident, processPendingGuardianRepairDispatch, classifyGuardianWorkflowConclusion } from './automation.js';
 
 const incident = {
   id: 42,
@@ -21,6 +21,17 @@ const review = {
   tests: ['Add a timeout regression test.'],
   risks: ['The upstream call may still finish after cancellation.'],
 };
+
+test('Guardian workflow conclusion classification distinguishes all terminal outcomes', () => {
+  assert.equal(classifyGuardianWorkflowConclusion('success'), 'success');
+  assert.equal(classifyGuardianWorkflowConclusion('failure'), 'failure');
+  assert.equal(classifyGuardianWorkflowConclusion('cancelled'), 'cancelled');
+  assert.equal(classifyGuardianWorkflowConclusion('timed_out'), 'cancelled');
+  assert.equal(classifyGuardianWorkflowConclusion('action_required'), 'failure');
+  assert.equal(classifyGuardianWorkflowConclusion('startup_failure'), 'failure');
+  assert.equal(classifyGuardianWorkflowConclusion(null), 'unknown');
+  assert.equal(classifyGuardianWorkflowConclusion('in_progress'), 'unknown');
+});
 
 test('repair task is bounded and excludes raw incident summaries and credentials', () => {
   const task = buildGuardianRepairTask(incident, review);
