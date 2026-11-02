@@ -72,11 +72,12 @@ function isRepairableProposal(review) {
 }
 
 async function persistDispatchedState(store, db, jobId, workflowUrl) {
-  return store.finishGuardianRepairDispatch(db, {
+  const saved = await store.finishGuardianRepairDispatch(db, {
     jobId,
     status: 'dispatched',
     workflowUrl,
-  }) === true;
+  });
+  return saved === true;
 }
 
 function getReviewEndpoint(env) {
