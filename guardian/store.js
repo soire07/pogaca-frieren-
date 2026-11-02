@@ -16,7 +16,27 @@ export async function upsertGuardianIncident(db, input) {
        status=CASE WHEN owner_guardian_incidents.status='resolved' THEN 'open' ELSE owner_guardian_incidents.status END,
        summary=EXCLUDED.summary,
        evidence=EXCLUDED.evidence,
-       occurrence_count=owner_guardian_incidents.occurrence_count+1,
+       occurrence_count=owner_guardian_incidents.occurrence_count + CASE
+         WHEN EXCLUDED.evidence <> '[]'::jsonb
+           AND owner_guardian_incidents.evidence @> EXCLUDED.evidence THEN 0
+         ELSE 1
+       END,
+       evidence=CASE
+         WHEN EXCLUDED.evidence <> '[]'::jsonb
+           AND owner_guardian_incidents.evidence @> EXCLUDED.evidence
+         THEN owner_guardian_incidents.evidence
+         ELSE (
+           SELECT COALESCE(jsonb_agg(item ORDER BY ordinal), '[]'::jsonb)
+           FROM (
+             SELECT value AS item, ordinality AS ordinal
+             FROM jsonb_array_elements(
+               COALESCE(owner_guardian_incidents.evidence, '[]'::jsonb) || EXCLUDED.evidence
+             ) WITH ORDINALITY
+             ORDER BY ordinality DESC
+             LIMIT 8
+           ) recent_evidence
+         )
+       END,
        last_seen=NOW(),
        updated_at=NOW()
      RETURNING *`,

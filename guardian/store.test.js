@@ -15,7 +15,10 @@ test('Guardian incident upsert uses a stable fingerprint and increments occurren
   let call;
   const db = { query: async (sql, params) => {
     call = { sql, params };
-    return { rows: [{ id: 12, fingerprint: params[0], occurrence_count: 2 }] };
+  assert.match(call.sql, /owner_guardian_incidents\\.evidence @> EXCLUDED\\.evidence/);
+  assert.match(call.sql, /occurrence_count=owner_guardian_incidents\\.occurrence_count \\+ CASE/);
+  assert.match(call.sql, /LIMIT 8/);
+  assert.match(call.sql, /jsonb_array_elements/);
   } };
   const result = await upsertGuardianIncident(db, {
     system: 'pogaca_frieren', code: 'RPG_TIMEOUT',
