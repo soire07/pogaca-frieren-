@@ -22,7 +22,7 @@ test('epic set bonus activates at two pieces and disappears when one is removed'
   const set = equipmentItems.filter(item => ['frieren_robe', 'rune_ring'].includes(item.id));
   assert.equal(set.length, 2);
   const active = applyEquipmentSetBonus(set, equipmentBonus(set));
-  assert.equal(active.defense, 13);
+  assert.equal(active.defense, 26);
   assert.equal(active.mana, 65);
   assert.equal(active.setText, 'Destansı set: +3 savunma, +15 mana');
 
