@@ -213,3 +213,27 @@ def test_report_blocks_missing_checkpoint_metadata():
     )
     assert "checkpoint_metadata_missing" in report["blocking_reasons"]
     assert "held_out_objective_mismatch" in report["blocking_reasons"]
+
+
+def test_active_gguf_evaluation_uses_pinned_artifact_and_never_claims_readiness(monkeypatch, tmp_path):
+    from frieren_neural import gguf_runtime
+    artifact = tmp_path / "candidate.gguf"
+    artifact.write_bytes(b"pinned-gguf-test-artifact")
+    digest = __import__("hashlib").sha256(artifact.read_bytes()).hexdigest()
+    monkeypatch.setattr(gguf_runtime, "MODEL_SHA256", digest)
+    monkeypatch.setattr(quality, "load_prompt_set", lambda: [
+        {"id": "TR-001", "category": "Greeting", "prompt": "Merhaba", "review_hint": "Kısa"}
+    ])
+    monkeypatch.setattr(gguf_runtime, "ensure_model_file", lambda _path=None: artifact)
+    monkeypatch.setattr(gguf_runtime, "load_model", lambda _path=None: object())
+    monkeypatch.setattr(gguf_runtime, "generate_completion", lambda *_args, **_kwargs: "Merhaba.")
+    outputs, artifact_sha = quality.evaluate_gguf_quality(artifact)
+    report = quality.build_report(checkpoint_sha256=artifact_sha, checkpoint_step=0, outputs=outputs, scores=None,
+        model_backend="ufakzeka", artifact_sha256=artifact_sha)
+    assert artifact_sha == digest
+    assert outputs[0]["output"] == "Merhaba."
+    assert report["model_backend"] == "ufakzeka"
+    assert report["artifact_sha256"] == digest
+    assert report["decision"] == "NOT READY"
+    assert "checkpoint_metadata_missing" in report["blocking_reasons"]
+    assert "training_provenance_missing" in report["blocking_reasons"]

@@ -97,6 +97,7 @@ def generate_completion(
     max_new_tokens: int = 128,
     temperature: float = 0.3,
     top_k: int = 40,
+    seed: int = 20261101,
 ) -> str:
     """Generate with the model's native user/assistant chat template."""
     if not isinstance(prompt, str) or not prompt.strip():
@@ -117,6 +118,7 @@ def generate_completion(
         top_p=0.9,
         top_k=top_k,
         repeat_penalty=1.0,
+        seed=seed,
     )
     choices = result.get("choices") or []
     if not choices:

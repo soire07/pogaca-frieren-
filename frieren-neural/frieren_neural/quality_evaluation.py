@@ -7,6 +7,7 @@ import math
 import random
 from pathlib import Path
 from typing import Any
+import os
 import torch
 from .chat_format import format_benchmark_prompt
 from .training import LOSS_OBJECTIVE_VERSION, generate_text, load_checkpoint
@@ -85,8 +86,8 @@ def _metrics(scores: dict[str, Any]) -> dict[str, Any]:
       "turkish_quality_3_or_4_rate":sum(e["turkish_quality"]>=3 for _,e in entries)/len(entries),
       "critical_safety_failures":critical,"fabricated_claims":fabricated,"multi_turn_failures":mt_fail}
 
-def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[str,str]],scores:dict[str,Any]|None,baseline_report:dict[str,Any]|None=None,checkpoint_metadata:dict[str,Any]|None=None,training_provenance:dict[str,Any]|None=None,heldout_metrics:dict[str,Any]|None=None)->dict[str,Any]:
-    report={"schema_version":1,"prompt_set_version":PROMPT_SET_VERSION,"decoding_settings":dict(DECODING_SETTINGS),
+def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[str,str]],scores:dict[str,Any]|None,baseline_report:dict[str,Any]|None=None,checkpoint_metadata:dict[str,Any]|None=None,training_provenance:dict[str,Any]|None=None,heldout_metrics:dict[str,Any]|None=None,model_backend:str="scratch",artifact_sha256:str|None=None)->dict[str,Any]:
+    report={"schema_version":1,"prompt_set_version":PROMPT_SET_VERSION,"model_backend":model_backend,"artifact_sha256":artifact_sha256 or checkpoint_sha256,"decoding_settings":dict(DECODING_SETTINGS),
       "checkpoint_sha256":checkpoint_sha256,"checkpoint_step":checkpoint_step,"outputs":outputs,"checkpoint_metadata":checkpoint_metadata,"training_provenance":training_provenance,"heldout_metrics":heldout_metrics,
       "human_review":{"completed":False,"reviewers_required":2},"review_template":{"reviewers":["reviewer_1","reviewer_2"]},"metrics":None,
       "baseline_comparison":{"available":False,"improved":False},"decision":"NOT READY","blocking_reasons":[]}
@@ -205,9 +206,30 @@ def evaluate_checkpoint_quality(checkpoint_path:str|Path,*,device:str="cpu")->tu
           "model_prompt":model_prompt,"review_hint":item["review_hint"],"output":generated.strip()})
     return outputs,checkpoint_sha,int(metadata["step"]),metadata
 
+def evaluate_gguf_quality(model_path:str|Path|None=None)->tuple[list[dict[str,str]],str]:
+    """Evaluate the deployed Turkish GGUF artifact itself, never a scratch checkpoint."""
+    from .gguf_runtime import MODEL_SHA256, ensure_model_file, generate_completion, load_model
+    target=ensure_model_file(Path(model_path) if model_path else None)
+    digest=hashlib.sha256()
+    with target.open("rb") as source:
+        for chunk in iter(lambda:source.read(1024*1024),b""):
+            digest.update(chunk)
+    artifact_sha=digest.hexdigest()
+    if artifact_sha != MODEL_SHA256:
+        raise ValueError("Active GGUF artifact fingerprint does not match the pinned model.")
+    model=load_model(str(target))
+    outputs=[]
+    for index,item in enumerate(load_prompt_set()):
+        completion=generate_completion(model,item["prompt"],max_new_tokens=DECODING_SETTINGS["max_new_tokens"],temperature=DECODING_SETTINGS["temperature"],top_k=DECODING_SETTINGS["top_k"],seed=DECODING_SETTINGS["seed"]+index)
+        outputs.append({"id":item["id"],"category":item["category"],"prompt":item["prompt"],"model_prompt":item["prompt"],"review_hint":item["review_hint"],"output":completion.strip()})
+    return outputs,artifact_sha
+
+
 def build_parser()->argparse.ArgumentParser:
-    parser=argparse.ArgumentParser(description="Generate the fixed Turkish human-review benchmark report.")
-    parser.add_argument("--checkpoint",required=True,help="Model checkpoint path")
+    parser=argparse.ArgumentParser(description="Generate the fixed Turkish human-review benchmark report for the selected model backend.")
+    parser.add_argument("--backend",choices=("scratch","ufakzeka"),default=None,help="Backend to evaluate; defaults to FRIEREN_MODEL_BACKEND or scratch")
+    parser.add_argument("--model-path",help="Optional pinned GGUF artifact path for ufakzeka")
+    parser.add_argument("--checkpoint",help="Scratch checkpoint path (required only for --backend scratch)")
     parser.add_argument("--output-dir",default="quality-reports/latest",help="Report and reviewer-template directory")
     parser.add_argument("--scores",help="Completed human-scores JSON file")
     parser.add_argument("--baseline-report",help="Comparable prior human-scored quality-report.json")
@@ -218,7 +240,15 @@ def build_parser()->argparse.ArgumentParser:
 
 def main()->None:
     args=build_parser().parse_args()
-    outputs,checkpoint_sha,step,checkpoint_metadata=evaluate_checkpoint_quality(args.checkpoint,device=args.device)
+    backend=(args.backend or os.environ.get("FRIEREN_MODEL_BACKEND","scratch")).strip().lower()
+    if backend=="ufakzeka":
+        outputs,artifact_sha=evaluate_gguf_quality(args.model_path)
+        checkpoint_sha,step,checkpoint_metadata=artifact_sha,0,None
+    else:
+        if not args.checkpoint:
+            raise SystemExit("--checkpoint is required when evaluating the scratch backend.")
+        outputs,checkpoint_sha,step,checkpoint_metadata=evaluate_checkpoint_quality(args.checkpoint,device=args.device)
+        artifact_sha=checkpoint_sha
     scores=json.loads(Path(args.scores).read_text(encoding="utf-8")) if args.scores else None
     baseline=json.loads(Path(args.baseline_report).read_text(encoding="utf-8")) if args.baseline_report else None
     provenance=None
@@ -232,7 +262,7 @@ def main()->None:
             raise ValueError("Every training manifest document must declare source, license, and usage.")
         provenance={"manifest_sha256":hashlib.sha256(raw).hexdigest(),"sources":sorted({item["source"] for item in documents}),"licenses":sorted({item["license"] for item in documents})}
     heldout=json.loads(Path(args.heldout_report).read_text(encoding="utf-8")) if args.heldout_report else None
-    report=build_report(checkpoint_sha256=checkpoint_sha,checkpoint_step=step,outputs=outputs,scores=scores,baseline_report=baseline,checkpoint_metadata=checkpoint_metadata,training_provenance=provenance,heldout_metrics=heldout)
+    report=build_report(checkpoint_sha256=checkpoint_sha,checkpoint_step=step,outputs=outputs,scores=scores,baseline_report=baseline,checkpoint_metadata=checkpoint_metadata,training_provenance=provenance,heldout_metrics=heldout,model_backend=backend,artifact_sha256=artifact_sha)
     out=Path(args.output_dir)
     out.mkdir(parents=True,exist_ok=True)
     (out/"quality-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")

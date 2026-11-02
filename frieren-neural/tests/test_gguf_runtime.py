@@ -18,3 +18,9 @@ def test_persona_prompt_uses_real_line_breaks_before_user_message():
     user_content = model.request["messages"][0]["content"]
     assert "Kullanıcının isteğini yerine getir:\n\nMerhaba" in user_content
     assert answer == "Merhaba, nasıl yardımcı olabilirim?"
+
+
+def test_generation_uses_a_reproducible_seed():
+    model = FakeChatModel()
+    generate_completion(model, "Merhaba", seed=1234)
+    assert model.request["seed"] == 1234
