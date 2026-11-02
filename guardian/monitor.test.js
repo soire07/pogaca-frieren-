@@ -74,15 +74,16 @@ test('monitor starts before Discord Ready without reporting a false startup outa
     },
   };
   let stop;
+  let tick;
   try {
-    stop = startGuardianMonitor({ db, client: { isReady: () => ready }, setIntervalImpl: () => ({ unref() {} }), clearIntervalImpl: () => {} });
+    stop = startGuardianMonitor({ db, client: { isReady: () => ready }, setIntervalImpl: callback => { tick = callback; return { unref() {} }; }, clearIntervalImpl: () => {} });
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(calls.some(call => call.sql.includes('INSERT INTO owner_guardian_incidents')), false,
       'initial Discord login must not be reported as a failure');
     ready = true;
-    await new Promise(resolve => setImmediate(resolve));
+    await tick();
     ready = false;
-    await new Promise(resolve => setImmediate(resolve));
+    await tick();
     assert.equal(calls.some(call => call.sql.includes('INSERT INTO owner_guardian_incidents')), true,
       'a disconnect after a successful Ready state must be reported');
   } finally { stop?.(); }
