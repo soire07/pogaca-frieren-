@@ -268,9 +268,30 @@ export async function processPendingGuardianRepairDispatch({
     const existingRun = (Array.isArray(existingData.workflow_runs) ? existingData.workflow_runs : [])
       .find(run => marker.test(String(run.display_title || run.name || run.run_name || '')));
     if (existingRun) {
-      const existingUrl = String(existingRun.html_url || workflowUrl);
-      await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl: existingUrl });
-      return { status: 'already_dispatched', jobId: Number(job.id), workflowUrl: existingUrl };
+      const terminalFailure = existingRun.status === 'completed'
+        && ['failure', 'cancelled', 'timed_out', 'action_required', 'startup_failure'].includes(existingRun.conclusion);
+      if (terminalFailure) {
+        const branchName = 'ai-repair/guardian-' + Number(incident.id);
+        const query = new URLSearchParams({ state: 'all', head: 'soire07:' + branchName, base: REPAIR_BRANCH });
+        const prResponse = await fetchImpl('https://api.github.com/repos/' + REPOSITORY + '/pulls?' + query.toString(), {
+          method: 'GET', headers, signal: AbortSignal.timeout(12_000),
+        });
+        if (!prResponse.ok) {
+          await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'failed' }).catch(() => {});
+          return { status: 'reconciliation_unavailable', jobId: Number(job.id), reason: 'GITHUB_PR_LIST_HTTP_' + prResponse.status };
+        }
+        const prs = await prResponse.json().catch(() => []);
+        if (Array.isArray(prs) && prs.some(pr => pr.head?.ref === branchName)) {
+          const existingUrl = String(existingRun.html_url || workflowUrl);
+          await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl: existingUrl });
+          return { status: 'already_dispatched', jobId: Number(job.id), workflowUrl: existingUrl };
+        }
+        // Terminal failure with no PR is eligible for the bounded retry below.
+      } else {
+        const existingUrl = String(existingRun.html_url || workflowUrl);
+        await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl: existingUrl });
+        return { status: 'already_dispatched', jobId: Number(job.id), workflowUrl: existingUrl };
+      }
     }
 
     const latestEmergencyState = await db.query(
