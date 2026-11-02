@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import OpenAI from 'openai';
+import { createAiModelProvider } from './model-provider.js';
 import { resolveAiModel } from './config.js';
 import { findRelevantExcerpt, scoreCodeCandidate } from './code-context.js';
 import { createMemoryStore, shouldUseConversationHistory } from './memory-store.js';
@@ -45,12 +45,11 @@ const admins = new Set(process.env.FRIEREN_ADMIN_IDS.split(',').map(value => val
 const rootDir = fileURLToPath(new URL('../', import.meta.url));
 const timeoutMs = Math.max(30_000, Math.min(Number(process.env.FRIEREN_TEST_TIMEOUT_MS) || 240_000, 300_000));
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-// Free provider runtime is configured in this file.
-const groqKey = process.env.GROQ_API_KEY?.trim();
-const groq = groqKey ? new OpenAI({ apiKey: groqKey, baseURL: 'https://api.groq.com/openai/v1', timeout: 45_000, maxRetries: 1 }) : null;
+const modelProvider = createAiModelProvider();
+const groq = modelProvider.client;
 const memoryStore = process.env.DATABASE_URL?.trim() ? createMemoryStore(process.env.DATABASE_URL.trim()) : null;
 let memoryDatabaseReady = false;
-const modelConfigured = Boolean(groq);
+const modelConfigured = modelProvider.configured;
 const bridgeConfigured = Boolean(process.env.FRIEREN_BRIDGE_URL?.trim() && process.env.FRIEREN_BRIDGE_SECRET?.trim());
 
 // Render Web Services require an HTTP port. This lightweight endpoint does not expose bot controls.
@@ -233,7 +232,7 @@ if (memoryStore) {
 } else {
   console.error('Frieren AI hafıza veritabanı yapılandırılmamış; FRIEREN_AI_DATABASE_URL kontrol edilmeli.');
 }
-if (!modelConfigured) console.error('Groq API anahtarı yapılandırılmamış; /frieren-ai yanıt veremez.');
+if (!modelConfigured) console.error('Yapay zekâ sağlayıcısı kullanılamıyor: ' + modelProvider.reason + '; /frieren-ai ve Guardian incelemesi devre dışı.');
 if (!bridgeConfigured) console.warn('Poğaça Frieren komut test köprüsü yapılandırılmamış; /frieren-komut-denetle kullanılamaz.');
 
 const commands = [
@@ -773,7 +772,7 @@ client.on(Events.InteractionCreate, async interaction => {
     const hours = Math.floor(uptimeSeconds / 3600);
     const minutes = Math.floor((uptimeSeconds % 3600) / 60);
     const seconds = uptimeSeconds % 60;
-    const provider = process.env.FRIEREN_MODEL_PROVIDER || 'groq';
+    const provider = modelProvider.name;
     const model = process.env.FRIEREN_MODEL || 'openai/gpt-oss-20b';
     const embed = new EmbedBuilder()
       .setTitle('Frieren AI — Servis Durumu')
@@ -783,7 +782,7 @@ client.on(Events.InteractionCreate, async interaction => {
         { name: 'Gateway gecikmesi', value: client.ws.ping >= 0 ? client.ws.ping + ' ms' : 'Ölçülemiyor', inline: true },
         { name: 'Çalışma süresi', value: hours + ' sa ' + minutes + ' dk ' + seconds + ' sn', inline: true },
         { name: 'Bağlı sunucu sayısı', value: String(client.guilds.cache.size), inline: true },
-        { name: 'Yapay zekâ sağlayıcısı', value: provider + (groq ? ' — API hazır' : ' — GROQ_API_KEY eksik'), inline: true },
+        { name: 'Yapay zekâ sağlayıcısı', value: provider + (modelProvider.configured ? ' — API hazır' : ' — ' + modelProvider.reason), inline: true },
         { name: 'Model', value: model, inline: true },
         { name: 'Kalıcı bellek', value: memoryStore ? 'Yapılandırılmış' : 'Yapılandırılmamış', inline: true }
       )
