@@ -137,7 +137,6 @@ export function consumeSmtpBuffer(buffer, pendingLines = []) {
 export async function sendGmailApi(to, subject, html, plain) {
   if (!gmailApiReady()) throw new Error('GMAIL_API_NOT_CONFIGURED');
   const from = String(process.env.SITE_EMAIL_FROM || process.env.SITE_SMTP_USER).trim();
-  const user = String(process.env.SITE_SMTP_USER).trim();
   const form = new URLSearchParams({
     grant_type: 'refresh_token',
     client_id: process.env.SITE_GMAIL_CLIENT_ID,
