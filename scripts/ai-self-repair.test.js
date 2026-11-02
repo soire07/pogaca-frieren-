@@ -87,7 +87,7 @@ test('repair patch generation uses the injected client and validates the returne
     context: 'const ready = false;',
   });
   assert.deepEqual(result.files, ['rpg-mechanics.js']);
-  assert.equal(result.patch, validPatch + '\\n');
+  assert.equal(result.patch, validPatch + '\n');
   assert.equal(request.model, 'openai/gpt-oss-20b');
   assert.equal(request.temperature, 0.1);
   assert.equal(request.messages[1].content.includes('fix the readiness check'), true);
