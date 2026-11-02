@@ -1,4 +1,3 @@
-import OpenAI from 'openai';
 import { createAiModelProvider } from '../ai-agent/model-provider.js';
 import { execFileSync } from 'node:child_process';
 import { readFile, stat } from 'node:fs/promises';
@@ -95,8 +94,10 @@ export async function collectRepairContext(task, {
 }
 
 export async function generateRepairPatch({ task, apiKey, model = 'openai/gpt-oss-20b', client, context }) {
-  const groq = client || new OpenAI({ apiKey, baseURL: 'https://api.groq.com/openai/v1' });
-  const response = await groq.chat.completions.create({
+  if (!client || typeof client.chat?.completions?.create !== 'function') {
+    throw new Error('AI_MODEL_CLIENT_REQUIRED');
+  }
+  const response = await client.chat.completions.create({
     model,
     temperature: 0.1,
     max_completion_tokens: 1800,

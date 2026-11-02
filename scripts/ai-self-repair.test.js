@@ -4,6 +4,7 @@ import {
   isAllowedRepairPath,
   extractUnifiedDiff,
   validatePatchPaths,
+  generateRepairPatch,
 } from './ai-self-repair.js';
 
 const validPatch = [
@@ -58,4 +59,11 @@ test('repair diff is bounded to four files and rejects binary or rename patches'
     'diff --git a/file' + i + '.js b/file' + i + '.js\n--- a/file' + i + '.js\n+++ b/file' + i + '.js\n@@ -1 +1 @@\n-a\n+b'
   ).join('\n');
   assert.throws(() => validatePatchPaths(many), { message: 'REPAIR_FILE_COUNT_INVALID' });
+});
+
+test('repair patch generation requires the shared configured model client', async () => {
+  await assert.rejects(
+    generateRepairPatch({ task: 'repair a bug', apiKey: 'should-not-enable-fallback', context: 'source' }),
+    { message: 'AI_MODEL_CLIENT_REQUIRED' },
+  );
 });
