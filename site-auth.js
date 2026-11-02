@@ -293,6 +293,7 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
   const routes=['/login','/register','/forgot-password','/reset-password','/verify-email','/resend-verification','/logout'];
   if(!routes.includes(path))return false;
   if(path==='/logout'&&req.method==='GET'){
+    if(!sessionSecret||sessionSecret.length<32){send(res,503,page('Kurulum gerekli','<h1>Oturum güvenlik ayarı eksik.</h1>'));return true;}
     send(res,200,page('Çıkış yap','<h1>Oturumu kapatmak istiyor musun?</h1><p>Site hesabından güvenli şekilde çıkış yap.</p><form method="post" action="/logout">'+formToken(sessionSecret || '')+'<button class="btn">Çıkış yap</button></form><div class="auth-links"><a href="/">Vazgeç</a></div>'));
     return true;
   }
