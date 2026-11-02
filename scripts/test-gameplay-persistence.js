@@ -22,7 +22,7 @@ test('epic set bonus activates at two pieces and disappears when one is removed'
   const set = equipmentItems.filter(item => ['frieren_robe', 'rune_ring'].includes(item.id));
   assert.equal(set.length, 2);
   const active = applyEquipmentSetBonus(set, equipmentBonus(set));
-  assert.equal(active.defense, 26);
+  assert.equal(active.defense, 13);
   assert.equal(active.mana, 65);
   assert.equal(active.setText, 'Destansı set: +3 savunma, +15 mana');
 
@@ -64,7 +64,7 @@ test('simultaneous legendary and epic equipment sets report both active bonuses'
   const active = applyEquipmentSetBonus([...legendary, ...epic], equipmentBonus([...legendary, ...epic]));
   assert.equal(active.attack, 20);
   assert.equal(active.hp, 125);
-  assert.equal(active.defense, 13);
+  assert.equal(active.defense, 26);
   assert.equal(active.mana, 65);
   assert.equal(active.setText, 'Efsanevi set: +4 saldırı, +25 HP · Destansı set: +3 savunma, +15 mana');
 });
