@@ -21,14 +21,20 @@ const validPatch = [
   '+const ready = true;',
 ].join('\n');
 
-test('repair path allowlist accepts ordinary source and test files only', () => {
+test('repair path allowlist accepts approved source, AI review, Guardian and test files only', () => {
   assert.equal(isAllowedRepairPath('rpg-mechanics.js'), true);
   assert.equal(isAllowedRepairPath('ai-agent/owner-scenario-report.js'), true);
+  assert.equal(isAllowedRepairPath('ai-agent/guardian-review.js'), true);
+  assert.equal(isAllowedRepairPath('guardian/automation.js'), true);
+  assert.equal(isAllowedRepairPath('guardian/automation.test.js'), true);
+  assert.equal(isAllowedRepairPath('guardian/core.js'), true);
   assert.equal(isAllowedRepairPath('scripts/test-owner-dashboard.js'), true);
   assert.equal(isAllowedRepairPath('scripts/ai-self-repair.js'), false);
   assert.equal(isAllowedRepairPath('owner-dashboard.js'), false);
   assert.equal(isAllowedRepairPath('ai-agent/index.js'), false);
   assert.equal(isAllowedRepairPath('ai-agent/memory-store.js'), false);
+  assert.equal(isAllowedRepairPath('guardian/../index.js'), false);
+  assert.equal(isAllowedRepairPath('guardian/.env.js'), false);
   assert.equal(isAllowedRepairPath('package.json'), false);
   assert.equal(isAllowedRepairPath('.env.js'), false);
   assert.equal(isAllowedRepairPath('ai-agent/config.js'), false);
