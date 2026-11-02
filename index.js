@@ -182,7 +182,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const result = await claimCreature(pool, { guildId: interaction.guildId, userId: interaction.user.id, spawnId });
         if (result.status === 'caught') return interaction.update({
           embeds: [new EmbedBuilder().setColor(0x9a8bd2).setTitle('✨ Yaratık yakalandı!')
-            .setDescription(interaction.user.username + ', **' + result.creature.name + '** yaratığını arşivine ekledi.')], components: []
+            .setDescription(interaction.user.username + ', **' + (result.creature.variant === 'shiny' ? 'Parlak ' : '') + result.creature.name + '** yaratığını arşivine ekledi.')], components: []
         });
         return interaction.reply({ content: result.status === 'expired' ? 'Bu yaratığın yakalama süresi doldu.' : 'Bu yaratık başka bir maceracı tarafından yakalandı veya artık aktif değil.', flags: MessageFlags.Ephemeral });
       } catch (error) {
@@ -317,7 +317,7 @@ client.on(Events.MessageCreate, async message => {
         if (spawn.status === 'spawned') {
           const row = new ActionRowBuilder().addComponents(new ButtonBuilder()
             .setCustomId('creature_catch:' + spawn.spawnId).setLabel('Yaratığı yakala').setStyle(ButtonStyle.Success));
-          const embed = new EmbedBuilder().setColor(0x9a8bd2).setTitle(spawn.creature.emoji + ' Vahşi bir yaratık belirdi!')
+          const embed = new EmbedBuilder().setColor(0x9a8bd2).setTitle((spawn.creature.variant === 'shiny' ? '✨ Parlak ' : '') + spawn.creature.emoji + ' Vahşi bir yaratık belirdi!')
             .setDescription('**' + spawn.creature.name + '** burada dolaşıyor. İlk yakalayan, yaratığı arşivine ekler.\n\nYakalamak için **3 dakikan** var.');
           try {
             const notifyUserIds = (spawn.notifyUserIds || []).slice(0, 10);

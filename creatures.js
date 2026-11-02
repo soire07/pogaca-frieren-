@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { ensureUser } from './database/db.js';
-export const CREATURE_SPAWN_CHANCE=.005,CREATURE_SPAWN_COOLDOWN_MS=1800000;
+export const CREATURE_SPAWN_CHANCE=.005,CREATURE_SPAWN_COOLDOWN_MS=1800000,CREATURE_SHINY_CHANCE=.01;
 export const CREATURE_CATALOG=Object.freeze([
  {key:'mana_slime',name:'Mana Slime',emoji:'🫧',rarity:'Yaygın',weight:60},
  {key:'forest_sprite',name:'Orman Perisi',emoji:'🧚',rarity:'Yaygın',weight:25},
@@ -11,6 +11,12 @@ export const CREATURE_CATALOG=Object.freeze([
 export function rollCreature(random=Math.random){
  const total=CREATURE_CATALOG.reduce((n,x)=>n+x.weight,0),point=Math.min(.999999999,Math.max(0,Number(random())||0))*total;
  let cursor=0;for(const item of CREATURE_CATALOG){cursor+=item.weight;if(point<cursor)return item;}return CREATURE_CATALOG.at(-1);
+}
+export function rollCreatureVariant(random=Math.random){return random()<CREATURE_SHINY_CHANCE?'shiny':'normal';}
+function creatureFromStorageKey(key){
+ const shiny=String(key).endsWith('_shiny'),baseKey=shiny?String(key).slice(0,-6):String(key);
+ const base=CREATURE_CATALOG.find(item=>item.key===baseKey);
+ return base?{...base,variant:shiny?'shiny':'normal',storageKey:key}:null;
 }
 export async function initCreatureSchema(db){
  await db.query('CREATE TABLE IF NOT EXISTS guild_creature_spawn_state(guild_id TEXT PRIMARY KEY,last_spawn_at TIMESTAMPTZ)');
@@ -24,10 +30,7 @@ export async function initCreatureSchema(db){
 export async function setCreatureWishlist(db,{guildId,userId,creatureKey,enabled}){
  if(!CREATURE_CATALOG.some(x=>x.key===creatureKey)||!guildId||!userId||typeof enabled!=='boolean')return{status:'invalid_creature'};
  await ensureUser(guildId,userId);
- if(enabled){
-  const result=await db.query('INSERT INTO user_creature_wishlist(guild_id,user_id,creature_key) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING creature_key',[guildId,userId,creatureKey]);
-  return{status:result.rowCount?'added':'already_listed'};
- }
+ if(enabled){const result=await db.query('INSERT INTO user_creature_wishlist(guild_id,user_id,creature_key) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING creature_key',[guildId,userId,creatureKey]);return{status:result.rowCount?'added':'already_listed'};}
  const result=await db.query('DELETE FROM user_creature_wishlist WHERE guild_id=$1 AND user_id=$2 AND creature_key=$3 RETURNING creature_key',[guildId,userId,creatureKey]);
  return{status:result.rowCount?'removed':'not_listed'};
 }
@@ -45,11 +48,11 @@ export async function maybeSpawnCreature(dbPool,{guildId,channelId},{random=Math
   const active=await db.query('SELECT spawn_id FROM active_creature_spawns WHERE guild_id=$1 AND active=TRUE',[guildId]);
   const last=state.rows[0]?.last_spawn_at?new Date(state.rows[0].last_spawn_at).getTime():0;
   if(active.rowCount||Date.now()-last<CREATURE_SPAWN_COOLDOWN_MS){await db.query('ROLLBACK');return{status:'spawn_blocked'};}
-  const creature=rollCreature(random),spawnId=randomUUID();
-  await db.query("INSERT INTO active_creature_spawns(spawn_id,guild_id,channel_id,creature_key,expires_at) VALUES($1,$2,$3,$4,NOW()+INTERVAL '3 minutes')",[spawnId,guildId,channelId,creature.key]);
-  const wishers=await db.query('SELECT user_id FROM user_creature_wishlist WHERE guild_id=$1 AND creature_key=$2 ORDER BY created_at LIMIT 10',[guildId,creature.key]);
+  const base=rollCreature(random),variant=rollCreatureVariant(random),storedKey=variant==='shiny'?base.key+'_shiny':base.key,spawnId=randomUUID();
+  await db.query("INSERT INTO active_creature_spawns(spawn_id,guild_id,channel_id,creature_key,expires_at) VALUES($1,$2,$3,$4,NOW()+INTERVAL '3 minutes')",[spawnId,guildId,channelId,storedKey]);
+  const wishers=await db.query('SELECT user_id FROM user_creature_wishlist WHERE guild_id=$1 AND creature_key=$2 ORDER BY created_at LIMIT 10',[guildId,base.key]);
   await db.query('UPDATE guild_creature_spawn_state SET last_spawn_at=NOW() WHERE guild_id=$1',[guildId]);
-  await db.query('COMMIT');return{status:'spawned',spawnId,creature,notifyUserIds:(wishers.rows||[]).map(row=>row.user_id)};
+  await db.query('COMMIT');return{status:'spawned',spawnId,creature:{...base,variant},notifyUserIds:(wishers.rows||[]).map(row=>row.user_id)};
  }catch(error){await db.query('ROLLBACK').catch(()=>{});throw error;}finally{db.release();}
 }
 export async function setCreatureSpawnMessageId(db,spawnId,messageId){await db.query('UPDATE active_creature_spawns SET message_id=$2 WHERE spawn_id=$1 AND active=TRUE',[spawnId,messageId]);}
@@ -62,10 +65,12 @@ export async function claimCreature(dbPool,{guildId,userId,spawnId}){
   if(!spawn.not_expired){await db.query('UPDATE active_creature_spawns SET active=FALSE WHERE spawn_id=$1',[spawnId]);await db.query('COMMIT');return{status:'expired'};}
   await db.query('UPDATE active_creature_spawns SET active=FALSE,caught_by=$2,caught_at=NOW() WHERE spawn_id=$1',[spawnId,userId]);
   await db.query('INSERT INTO user_creature_collection(guild_id,user_id,creature_key,quantity) VALUES($1,$2,$3,1) ON CONFLICT(guild_id,user_id,creature_key) DO UPDATE SET quantity=user_creature_collection.quantity+1,last_caught_at=NOW()',[guildId,userId,spawn.creature_key]);
-  await db.query('COMMIT');return{status:'caught',creature:CREATURE_CATALOG.find(x=>x.key===spawn.creature_key)||null};
+  await db.query('COMMIT');return{status:'caught',creature:creatureFromStorageKey(spawn.creature_key)};
  }catch(error){await db.query('ROLLBACK').catch(()=>{});throw error;}finally{db.release();}
 }
-export async function getCreatureCollection(db,guildId,userId){
+export async function getCreatureCollection(db,guildId,userId,{rarity=null,query=''}={}){
  const result=await db.query('SELECT creature_key,quantity FROM user_creature_collection WHERE guild_id=$1 AND user_id=$2 ORDER BY quantity DESC,creature_key',[guildId,userId]);
- const rows=result.rows||[];return{total:rows.reduce((n,x)=>n+Number(x.quantity||0),0),unique:rows.length,entries:rows.map(row=>({...row,creature:CREATURE_CATALOG.find(x=>x.key===row.creature_key)||null}))};
+ const rows=(result.rows||[]).map(row=>({...row,creature:creatureFromStorageKey(row.creature_key)}));
+ const filtered=rows.filter(row=>(!rarity||row.creature?.rarity===rarity)&&(!query||row.creature?.name.toLocaleLowerCase('tr-TR').includes(String(query).toLocaleLowerCase('tr-TR'))));
+ return{total:rows.reduce((n,x)=>n+Number(x.quantity||0),0),unique:rows.length,filteredCount:filtered.length,totalSpecies:CREATURE_CATALOG.length*2,entries:filtered};
 }

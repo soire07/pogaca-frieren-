@@ -23,14 +23,16 @@ test('one active spawn can be claimed by only one player',async()=>{
  ]);
  assert.equal(claims.filter(x=>x.status==='caught').length,1);
  assert.equal(claims.filter(x=>x.status==='already_caught').length,1);
+ assert.equal(claims.find(x=>x.status==='caught').creature.variant,'shiny');
  const winner=claims[0].status==='caught'?userA:userB;
- const book=await getCreatureCollection(pool,guild,winner);assert.equal(book.total,1);
+ const book=await getCreatureCollection(pool,guild,winner);assert.equal(book.total,1);assert.equal(book.entries[0].creature.variant,'shiny');
+ const filtered=await getCreatureCollection(pool,guild,winner,{rarity:'Yaygın',query:'Mana'});assert.equal(filtered.filteredCount,1);
 });
 test('creature wishlist is opt-in and matching spawns return only opted-in users',async()=>{
  const added=await setCreatureWishlist(pool,{guildId:wishlistGuild,userId:userA,creatureKey:'mana_slime',enabled:true});
  assert.equal(added.status,'added');
  const spawn=await maybeSpawnCreature(pool,{guildId:wishlistGuild,channelId:channel},{force:true,random:()=>0});
- assert.equal(spawn.status,'spawned');assert.deepEqual(spawn.notifyUserIds,[userA]);
+ assert.equal(spawn.status,'spawned');assert.deepEqual(spawn.notifyUserIds,[userA]);assert.equal(spawn.creature.variant,'shiny');
  const list=await getCreatureWishlist(pool,wishlistGuild,userA);assert.equal(list.length,1);assert.equal(list[0].key,'mana_slime');
  const removed=await setCreatureWishlist(pool,{guildId:wishlistGuild,userId:userA,creatureKey:'mana_slime',enabled:false});
  assert.equal(removed.status,'removed');assert.equal((await getCreatureWishlist(pool,wishlistGuild,userA)).length,0);
