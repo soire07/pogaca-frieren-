@@ -122,8 +122,10 @@ function readyNeuralReport() {
     outputs: Array.from({ length: 24 }, (_, index) => ({ id: 'TR-' + String(index + 1).padStart(3, '0'), output: 'Yanıt ' + index })),
     blocking_reasons: [],
     human_review: { completed: true, reviewers_required: 2 },
+    review_template: { reviewers: ['reviewer_1', 'reviewer_2'] },
+    checkpoint_metadata: { loss_objective_version: 2 },
     training_provenance: { manifest_sha256: 'b'.repeat(64), licenses: ['Apache-2.0'] },
-    heldout_metrics: { loss: 1.2, perplexity: 3.32 },
+    heldout_metrics: { loss: 1.2, perplexity: 3.32, loss_objective_version: 2, checkpoint_training_loss_objective_version: 2 },
     baseline_comparison: { available: true, improved: true, baseline_checkpoint_sha256: 'c'.repeat(64) },
     metrics: {
       dimension_averages: Object.fromEntries(dimensions.map(key => [key, 3.8])),
@@ -209,4 +211,33 @@ test('Neural Guardian blocks safety failures, low dimensions and baseline regres
   assert.ok(result.reasons.includes('NEURAL_CRITICAL_SAFETY_FAILURE'));
   assert.ok(result.reasons.includes('NEURAL_DIMENSION_THRESHOLD_FAILED'));
   assert.ok(result.reasons.includes('NEURAL_COMPARABLE_IMPROVED_BASELINE_REQUIRED'));
+});
+
+test('Neural Guardian requires the exact ordered benchmark IDs and objective provenance', () => {
+  const report = readyNeuralReport();
+  report.outputs[0].id = 'TR-002';
+  report.outputs[1].id = 'TR-001';
+  report.checkpoint_metadata.loss_objective_version = 1;
+  const result = evaluateNeuralQualityGate({
+    qualityReport: report,
+    stagedTestsPassed: true,
+    memoryIsolationPassed: true,
+    securityChecksPassed: true,
+    resourceChecksPassed: true,
+    ownerApproved: true,
+    deploymentApproved: true,
+  });
+  assert.equal(result.canDeploy, false);
+  assert.ok(result.reasons.includes('NEURAL_BENCHMARK_OUTPUTS_INCOMPLETE'));
+  assert.ok(result.reasons.includes('NEURAL_EVALUATION_OBJECTIVE_MISMATCH'));
+});
+
+test('Neural Guardian rejects incomplete reviewer identities and invalid training provenance', () => {
+  const report = readyNeuralReport();
+  report.review_template.reviewers = ['reviewer_1', 'reviewer_1'];
+  report.training_provenance.manifest_sha256 = 'not-a-sha256';
+  const result = evaluateNeuralQualityGate({ qualityReport: report });
+  assert.equal(result.canStage, false);
+  assert.ok(result.reasons.includes('NEURAL_INDEPENDENT_HUMAN_REVIEW_REQUIRED'));
+  assert.ok(result.reasons.includes('NEURAL_TRAINING_PROVENANCE_MISSING'));
 });

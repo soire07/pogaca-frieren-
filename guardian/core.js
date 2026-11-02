@@ -161,15 +161,34 @@ export function evaluateNeuralQualityGate({
   if (report.decision !== 'READY FOR STAGED TEST') reasons.push('NEURAL_QUALITY_REPORT_NOT_READY');
   if (report.prompt_set_version !== 'tr-conversation-v1') reasons.push('NEURAL_PROMPT_SET_MISMATCH');
   if (!/^[a-f0-9]{64}$/i.test(String(report.checkpoint_sha256 || ''))) reasons.push('NEURAL_CHECKPOINT_FINGERPRINT_MISSING');
-  if (human.completed !== true || human.reviewers_required !== 2) reasons.push('NEURAL_INDEPENDENT_HUMAN_REVIEW_REQUIRED');
-  if (outputs.length !== 24 || outputs.some(item => !item || typeof item.output !== 'string' || !item.output.trim())
-      || new Set(outputs.map(item => item?.id)).size !== 24) reasons.push('NEURAL_BENCHMARK_OUTPUTS_INCOMPLETE');
+  const reviewerIds = report.review_template?.reviewers;
+  if (human.completed !== true || human.reviewers_required !== 2
+      || !Array.isArray(reviewerIds) || reviewerIds.length !== 2
+      || new Set(reviewerIds).size !== 2
+      || reviewerIds.some(id => !['reviewer_1', 'reviewer_2'].includes(id))) {
+    reasons.push('NEURAL_INDEPENDENT_HUMAN_REVIEW_REQUIRED');
+  }
+  const expectedOutputIds = Array.from({ length: 24 }, (_, index) => 'TR-' + String(index + 1).padStart(3, '0'));
+  const actualOutputIds = outputs.map(item => item?.id);
+  if (outputs.length !== expectedOutputIds.length
+      || actualOutputIds.some((id, index) => id !== expectedOutputIds[index])
+      || outputs.some(item => !item || typeof item.output !== 'string' || !item.output.trim())) {
+    reasons.push('NEURAL_BENCHMARK_OUTPUTS_INCOMPLETE');
+  }
   if (!Array.isArray(report.blocking_reasons) || report.blocking_reasons.length) reasons.push('NEURAL_QUALITY_BLOCKERS_PRESENT');
-  if (!provenance.manifest_sha256 || !Array.isArray(provenance.licenses) || !provenance.licenses.length) {
+  if (!/^[a-f0-9]{64}$/i.test(String(provenance.manifest_sha256 || ''))
+      || !Array.isArray(provenance.licenses) || !provenance.licenses.length
+      || provenance.licenses.some(license => typeof license !== 'string' || !license.trim())) {
     reasons.push('NEURAL_TRAINING_PROVENANCE_MISSING');
   }
-  if (!finiteNumber(heldout.loss) || !finiteNumber(heldout.perplexity) || heldout.perplexity < 1) {
+  if (!finiteNumber(heldout.loss) || heldout.loss < 0
+      || !finiteNumber(heldout.perplexity) || heldout.perplexity < 1) {
     reasons.push('NEURAL_HELDOUT_METRICS_INVALID');
+  }
+  const checkpointMetadata = report.checkpoint_metadata || {};
+  if (checkpointMetadata.loss_objective_version !== heldout.loss_objective_version
+      || checkpointMetadata.loss_objective_version !== heldout.checkpoint_training_loss_objective_version) {
+    reasons.push('NEURAL_EVALUATION_OBJECTIVE_MISMATCH');
   }
   if (!baseline.available || baseline.improved !== true
       || !/^[a-f0-9]{64}$/i.test(String(baseline.baseline_checkpoint_sha256 || ''))) {
