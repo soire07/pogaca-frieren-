@@ -40,7 +40,8 @@ export function validatePatchPaths(patch) {
       throw new Error('REPAIR_PATH_NOT_ALLOWED');
     }
     if (/^deleted file mode /m.test(section)
-      || /^(?:old mode|new mode|new file mode) (?:100755|120000|160000)$/m.test(section)
+      || /^new file mode /m.test(section)
+      || /^(?:old mode|new mode) (?:100755|120000|160000)$/m.test(section)
       || /^(?:GIT binary patch|Binary files )/m.test(section)
       || /^similarity index /m.test(section)
       || /^rename (?:from|to) /m.test(section)) {
@@ -48,8 +49,9 @@ export function validatePatchPaths(patch) {
     }
     const oldPath = section.match(/^--- a\/([^\s]+)$/m);
     const newPath = section.match(/^\+\+\+ b\/([^\s]+)$/m);
-    if (oldPath && oldPath[1] !== header[1]) throw new Error('REPAIR_PATH_MISMATCH');
-    if (newPath && newPath[1] !== header[2]) throw new Error('REPAIR_PATH_MISMATCH');
+    if (!oldPath || !newPath) throw new Error('REPAIR_PATCH_MUST_UPDATE_EXISTING_FILE');
+    if (oldPath[1] !== header[1]) throw new Error('REPAIR_PATH_MISMATCH');
+    if (newPath[1] !== header[2]) throw new Error('REPAIR_PATH_MISMATCH');
     files.push(header[1]);
   }
   return [...new Set(files)];
