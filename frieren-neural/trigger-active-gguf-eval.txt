@@ -1,1 +1,1 @@
-One-time validation trigger. This file does not change runtime behavior.
+One-time validation trigger. The workflow must evaluate the exact pushed commit and keep readiness blocked without human review and held-out evidence.
