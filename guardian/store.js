@@ -15,7 +15,6 @@ export async function upsertGuardianIncident(db, input) {
        END,
        status=CASE WHEN owner_guardian_incidents.status='resolved' THEN 'open' ELSE owner_guardian_incidents.status END,
        summary=EXCLUDED.summary,
-       evidence=EXCLUDED.evidence,
        occurrence_count=owner_guardian_incidents.occurrence_count + CASE
          WHEN EXCLUDED.evidence <> '[]'::jsonb
            AND owner_guardian_incidents.evidence @> EXCLUDED.evidence THEN 0
