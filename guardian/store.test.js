@@ -25,6 +25,7 @@ test('Guardian incident upsert deduplicates repeated evidence and bounds evidenc
   assert.equal(result.id, 12);
   assert.match(call.sql, /ON CONFLICT\(fingerprint\) DO UPDATE/);
   assert.match(call.sql, /owner_guardian_incidents\.evidence @> EXCLUDED\.evidence/);
+  assert.equal((call.sql.match(/\bevidence\s*=/g) || []).length, 1, 'Guardian upsert must assign evidence exactly once');
   assert.match(call.sql, /occurrence_count=owner_guardian_incidents\.occurrence_count \+ CASE/);
   assert.match(call.sql, /LIMIT 8/);
   assert.match(call.sql, /jsonb_array_elements/);
