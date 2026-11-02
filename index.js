@@ -240,6 +240,9 @@ client.on(Events.InteractionCreate, async interaction => {
   if (interaction.isAutocomplete()) {
     const command = client.commands.get(interaction.commandName);
     if (!command?.autocomplete) return interaction.respond([]).catch(() => {});
+    if (interaction.guildId && !await isGuildCommandEnabled(pool, interaction.guildId, interaction.commandName)) {
+      return interaction.respond([]).catch(() => {});
+    }
     try { await command.autocomplete(interaction); }
     catch (error) { console.error('Otomatik tamamlama hatası:', error); await interaction.respond([]).catch(() => {}); }
     return;
