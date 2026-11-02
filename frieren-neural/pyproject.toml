@@ -17,6 +17,7 @@ frieren-neural-train = "frieren_neural.training:main"
 frieren-neural-evaluate = "frieren_neural.training:evaluation_main"
 frieren-neural-evaluate-quality = "frieren_neural.quality_evaluation:main"
 frieren-neural-prepare-turkish-dialogues = "frieren_neural.datasets:main"
+frieren-neural-import-chat-max = "frieren_neural.hf_corpus:main"
 frieren-neural-train-small = "frieren_neural.quickstart:main"
 
 [project.optional-dependencies]
@@ -28,10 +29,14 @@ serve = [
   "fastapi>=0.110",
   "uvicorn[standard]>=0.27",
   "psycopg[binary]>=3.2",
+  "llama-cpp-python==0.3.16",
 ]
 discord = [
   "discord.py>=2.4",
   "aiohttp>=3.9",
+]
+data = [
+  "datasets>=3.6,<5",
 ]
 
 [tool.setuptools.packages.find]

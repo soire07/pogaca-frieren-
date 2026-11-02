@@ -14,6 +14,21 @@ from discord import app_commands
 DISCORD_MESSAGE_LIMIT = 1_900
 
 
+def extract_answer(payload: object, prompt: str) -> str | None:
+    """Prefer the completion-only API field and safely support older prompt-prefixed responses."""
+    if not isinstance(payload, dict):
+        return None
+    answer = payload.get("completion")
+    if not isinstance(answer, str) or not answer.strip():
+        answer = payload.get("text")
+        if not isinstance(answer, str):
+            return None
+        if answer.startswith(prompt):
+            answer = answer[len(prompt):]
+    answer = answer.strip()
+    return answer or None
+
+
 def split_message(text: str, *, limit: int = DISCORD_MESSAGE_LIMIT) -> list[str]:
     """Split long output without losing characters or exceeding Discord limits."""
     if limit < 1:
@@ -98,14 +113,14 @@ class FrierenDiscordClient(discord.Client):
         try:
             async with self.session.post(
                 self.api_url,
-                json={"prompt": prompt, "max_new_tokens": 100, "temperature": 0.8, "top_k": 40},
+                json={"prompt": prompt, "max_new_tokens": 256, "temperature": 0.3, "top_k": 40},
             ) as response:
                 if response.status != 200:
                     await interaction.followup.send("Frieren AI could not process the request right now.")
                     return
                 payload = await response.json()
-            answer = payload.get("text") if isinstance(payload, dict) else None
-            if not isinstance(answer, str) or not answer:
+            answer = extract_answer(payload, prompt)
+            if answer is None:
                 await interaction.followup.send("Frieren AI returned an empty response.")
                 return
             for chunk in split_message(answer):

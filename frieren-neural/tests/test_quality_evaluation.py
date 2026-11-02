@@ -213,3 +213,117 @@ def test_report_blocks_missing_checkpoint_metadata():
     )
     assert "checkpoint_metadata_missing" in report["blocking_reasons"]
     assert "held_out_objective_mismatch" in report["blocking_reasons"]
+
+
+def test_active_gguf_evaluation_uses_pinned_artifact_and_never_claims_readiness(monkeypatch, tmp_path):
+    from frieren_neural import gguf_runtime
+    artifact = tmp_path / "candidate.gguf"
+    artifact.write_bytes(b"pinned-gguf-test-artifact")
+    digest = __import__("hashlib").sha256(artifact.read_bytes()).hexdigest()
+    monkeypatch.setattr(gguf_runtime, "MODEL_SHA256", digest)
+    monkeypatch.setattr(gguf_runtime, "ensure_model_file", lambda _path=None: artifact)
+    monkeypatch.setattr(gguf_runtime, "load_model", lambda _path=None: object())
+    monkeypatch.setattr(gguf_runtime, "generate_completion", lambda *_args, **_kwargs: "Merhaba.")
+    outputs, artifact_sha = quality.evaluate_gguf_quality(artifact)
+    report = quality.build_report(checkpoint_sha256=artifact_sha, checkpoint_step=0, outputs=outputs, scores=None,
+        model_backend="ufakzeka", artifact_sha256=artifact_sha)
+    assert artifact_sha == digest
+    assert len(outputs) == 24
+    assert [item["id"] for item in outputs] == [f"TR-{index:03d}" for index in range(1, 25)]
+    assert outputs[0]["output"] == "Merhaba."
+    assert report["model_backend"] == "ufakzeka"
+    assert report["artifact_sha256"] == digest
+    assert report["decision"] == "NOT READY"
+    assert "human_review_missing" in report["blocking_reasons"]
+    assert "checkpoint_metadata_missing" not in report["blocking_reasons"]
+    assert "training_provenance_missing" in report["blocking_reasons"]
+    assert "held_out_metrics_missing_or_invalid" in report["blocking_reasons"]
+
+def test_guardian_report_upload_uses_https_and_bearer_auth(monkeypatch):
+    class Response:
+        status = 202
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+        def read(self): return b'{"status":"stored","reportSha256":"abc"}'
+    captured = {}
+    def fake_urlopen(request, timeout):
+        captured["url"] = request.full_url
+        captured["authorization"] = request.get_header("Authorization")
+        captured["timeout"] = timeout
+        return Response()
+    monkeypatch.setattr(quality.urllib.request, "urlopen", fake_urlopen)
+    result = quality.submit_report_to_guardian({"decision": "NOT READY"}, "https://guardian.example.test/internal/neural-quality-report", "s" * 32)
+    assert result["status"] == "stored"
+    assert captured["authorization"] == "Bearer " + "s" * 32
+    assert captured["timeout"] == 10
+
+
+def test_guardian_report_upload_rejects_http_and_short_secret():
+    with pytest.raises(ValueError, match="HTTPS"):
+        quality.submit_report_to_guardian({}, "http://guardian.example.test/report", "s" * 32)
+    with pytest.raises(ValueError, match="32 characters"):
+        quality.submit_report_to_guardian({}, "https://guardian.example.test/report", "short")
+
+
+
+def test_ufakzeka_report_requires_review_provenance_and_heldout_evidence(monkeypatch):
+    from frieren_neural import gguf_runtime
+
+    artifact_sha = "a" * 64
+    monkeypatch.setattr(gguf_runtime, "MODEL_SHA256", artifact_sha)
+
+    scores = quality.empty_score_template()
+    for case in scores["cases"]:
+        for reviewer in ("reviewer_1", "reviewer_2"):
+            case[reviewer] = {
+                **{dimension: 4 for dimension in quality.DIMENSIONS},
+                "critical_safety_failure": False,
+                "fabricated_claim": False,
+            }
+
+    outputs = [
+        {"id": item["id"], "category": item["category"], "prompt": item["prompt"], "output": "Doğrulanmış test yanıtı."}
+        for item in quality.load_prompt_set()
+    ]
+    baseline = {
+        "prompt_set_version": quality.PROMPT_SET_VERSION,
+        "decoding_settings": quality.DECODING_SETTINGS,
+        "checkpoint_sha256": "b" * 64,
+        "human_review": {"completed": True},
+        "metrics": {
+            "dimension_averages": {dimension: 3.5 for dimension in quality.DIMENSIONS},
+            "overall_average": 3.5,
+        },
+    }
+
+    report = quality.build_report(
+        checkpoint_sha256=artifact_sha,
+        checkpoint_step=0,
+        outputs=outputs,
+        scores=scores,
+        baseline_report=baseline,
+        model_backend="ufakzeka",
+        artifact_sha256=artifact_sha,
+        source_commit_sha="d" * 40,
+        training_provenance={"manifest_sha256": "f" * 64, "licenses": ["Apache-2.0"]},
+        heldout_metrics={
+            "loss": 1.2,
+            "perplexity": 3.32,
+            "dataset_sha256": "e" * 64,
+            "sample_count": 120,
+            "split": "heldout",
+            "evaluation_version": "ufakzeka-heldout-v1",
+        },
+    )
+
+    assert report["decision"] == "READY FOR STAGED TEST"
+    assert report["pretrained_provenance"]["model_sha256"] == artifact_sha
+    assert report["checkpoint_metadata"] is None
+    assert report["training_provenance"]["manifest_sha256"] == "f" * 64
+    assert report["heldout_metrics"]["dataset_sha256"] == "e" * 64
+    assert report["heldout_metrics"]["split"] == "heldout"
+    assert report["source_commit_sha"] == "d" * 40
+    markdown = quality.render_markdown(report)
+    assert "Independent held-out evidence" in markdown
+    assert "Dataset SHA-256: " + "e" * 64 in markdown
+    assert "Source commit: " + "d" * 40 in markdown

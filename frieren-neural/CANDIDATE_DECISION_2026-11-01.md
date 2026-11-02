@@ -4,9 +4,27 @@
 
 **NOT READY — no candidate is approved for production or a public staged test.**
 
-The three existing candidates have now been benchmarked on the same 24-case Turkish prompt set. The preserved scratch checkpoint was additionally rerun with greedy decoding and a 160-token budget. The Qwen float32 and Q8 GGUF candidates were tested at 160 tokens; the Q4_K_M candidate is being evaluated separately.
+The three existing candidates have now been benchmarked on the same 24-case Turkish prompt set. The preserved scratch checkpoint was additionally rerun with greedy decoding and a 160-token budget. The Qwen float32, Q8 GGUF, and Q4_K_M candidates were tested at 160 tokens.
 
 No model has passed the human quality gate. No candidate is integrated into Poğaça Frieren, Frieren AI, a production database, Render, or the owner panel.
+
+### Benchmark methodology correction
+
+The original Qwen3 float32 and GGUF reports used greedy decoding (temperature=0.0). Qwen's published Qwen3 guidance explicitly warns that greedy decoding can cause performance degradation and endless repetition, and recommends non-greedy settings for non-thinking responses. Those historical repetition and token-cap counts are therefore not a fair final assessment of Qwen3 response quality.
+
+The benchmark harness has been corrected to use a reproducible non-thinking request and Qwen's recommended sampling profile: temperature=0.7, top_p=0.8, top_k=20, min_p=0.0, with a per-case fixed seed. The GGUF request now places /no_think in the user turn; the Transformers benchmark uses enable_thinking=False. A new Q4 benchmark is being run against this corrected harness. Historical measurements above remain unchanged and must not be presented as results from the corrected decoding profile.
+
+### Corrected Q4 profile with Turkish system prompt (run 41345716104)
+
+- Model SHA-256: `dd4750858c52f1c040e9ff4f54ba9365e11e8e81021abffd9b9c02646cf334d7`
+- Decode profile: 256-token budget, temperature 0.7, top_p 0.8, top_k 20, min_p 0.0, repeat_penalty 1.1, system prompt `tr-assistant-v1`, deterministic per-case seed.
+- Model load: 0.473 s; total generation: 31.901 s; median: 1.228 s; p95: 2.287 s; peak RSS: 1,042.23 MiB.
+- Reasoning leakage: 0/24. Token-cap hits: 0/24.
+- Still not acceptable for deployment: Turkish coherence and instruction-following remain weak; TR-003 echoes the question, TR-011 gives an unclear credential response, TR-012 fails to give actionable secret-rotation guidance, and TR-013 gives incorrect code guidance.
+
+### Fresh Turkish SFT candidate
+
+A new importer now creates deterministic train/held-out splits from the Apache-2.0 `cisimcik/turkish-chat-max-25k` dataset. It records the exact Hugging Face commit, checks the license and expected 24,543 source rows, filters to Turkish-only/no-tool conversations, excludes hidden reasoning, and hashes the generated corpus files. A fresh 8,000-step assistant-only objective-v2 training run is currently running in GitHub Actions (run `41346224560`). No new checkpoint or quality improvement is claimed until the run, held-out evaluation, and human review finish.
 
 ## Measured evidence
 
@@ -16,7 +34,8 @@ All measurements are from GitHub-hosted CPU runners with two threads. They are n
 |---|---:|---:|---:|---:|---|
 | Scratch checkpoint, step 8,000 | 0.049 s | 0.777 s | 0.024 / 0.066 s | 329.37 MiB | Turkish output is incoherent; legacy loss objective v0 |
 | Qwen3-0.6B float32 | 14.851 s | 289.548 s | 12.643 / 20.746 s | 5,000.75 MiB | 8/24 reach 160 tokens; repetition, weak Turkish, role leakage |
-| Qwen3-0.6B GGUF Q8_0 | 0.266 s | 69.575 s | 3.272 / 4.163 s | 1,067.69 MiB | 11/24 reach 160 tokens; reasoning leakage in 3 cases; role leakage |\n| Qwen3-0.6B GGUF Q4_K_M | 0.484 s | 59.451 s | 2.557 / 3.675 s | 1,039.33 MiB | 11/24 reach 160 tokens; reasoning leakage in 4 cases; role leakage resolved on TR-018 |
+| Qwen3-0.6B GGUF Q8_0 | 0.266 s | 69.575 s | 3.272 / 4.163 s | 1,067.69 MiB | 11/24 reach 160 tokens; reasoning leakage in 3 cases; role leakage |
+| Qwen3-0.6B GGUF Q4_K_M | 0.484 s | 59.451 s | 2.557 / 3.675 s | 1,039.33 MiB | 11/24 reach 160 tokens; reasoning leakage in 4 cases; role leakage resolved on TR-018 |
 
 ### Scratch checkpoint
 
@@ -56,15 +75,15 @@ All measurements are from GitHub-hosted CPU runners with two threads. They are n
 - Upstream: [Unsloth Qwen3-0.6B-GGUF](https://huggingface.co/unsloth/Qwen3-0.6B-GGUF), pinned revision `060ae942940c11394cfb1a7313ddcb92c2c4db11`
 - File SHA-256: `dd4750858c52f1c040e9ff4f54ba9365e11e8e81021abffd9b9c02646cf334d7`
 - File size: 396,704,672 bytes
-- Model load: 0.318 s; 24-prompt generation: 39.966 s
+- Model load: 0.484 s; 24-prompt generation: 59.451 s
 - Median / p95 latency: 1.732 / 2.447 s
-- Peak process RSS: 1,039.03 MiB
+- Peak process RSS: 1,039.33 MiB
 - 11/24 answers reached the 160-token cap; reasoning leakage was detected and redacted in TR-008, TR-010, TR-021, and TR-022.
 - TR-018 correctly states port 8081, but other answers remain repetitive, inaccurate, or unsafe (TR-011). Q4 reduces the file size but only reduces measured process RSS by about 28 MiB compared with Q8. It does not make this candidate fit a low-memory free host or fix the quality gate.
 
 ## Comparable review protocol
 
-The scratch, float32, and Q8 runs use the same 24 prompt IDs, greedy decoding, two CPU threads, and 160-token budget. Prompt serialization and tokenizers differ by model, and the scratch checkpoint uses a legacy training objective; therefore this is a controlled *human response evaluation set*, not a claim of identical token-level conditions.
+The historical scratch, float32, Q8, and Q4 runs used the same 24 prompt IDs, two CPU threads, and 160-token budget, but decoding modes and tokenizers differ. The corrected Qwen3 rerun uses non-greedy decoding and must be compared as a separate decoding profile. This is a controlled *human response evaluation set*, not a claim of identical token-level conditions.
 
 The benchmark artifacts each contain a blank two-reviewer score sheet. Two people must independently score all six dimensions (0–4) and mark safety/privacy failures and fabricated claims. No scores have been invented or auto-generated. The scratch checkpoint is a historical baseline only; its legacy objective prevents treating it as a valid v2 release baseline.
 
@@ -75,6 +94,6 @@ Release thresholds remain those in [QUALITY_GATE.md](QUALITY_GATE.md): no critic
 - Scratch: the measured memory footprint is lowest, but its answer quality is unusable. Do not deploy it.
 - Qwen float32: approximately 4.9 GiB peak RSS; unsuitable for a low-memory free instance.
 - Qwen Q8: approximately 1.04 GiB peak RSS and a 639 MB model file; not proven to fit a free host and still fails quality checks.
-- Q4_K_M is being measured next because its pinned upstream quantized file is smaller. File size alone will not be accepted as a host-fit proof; runtime RSS and quality must both be measured.
+- Q4_K_M has now been measured; its smaller file does not materially reduce process RSS or solve output-quality failures. File size alone will not be accepted as a host-fit proof; runtime RSS and quality must both be measured.
 
 No Render/Neon/Vercel/Discord production change was made. No paid API was used. No Vercel function was added. PR #171 remains a draft and is not merged.

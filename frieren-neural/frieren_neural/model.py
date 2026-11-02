@@ -152,6 +152,7 @@ class GPTLanguageModel(nn.Module):
         max_new_tokens: int = 40,
         temperature: float = 1.0,
         top_k: int | None = None,
+        eos_token_id: int | None = None,
     ) -> Tensor:
         if max_new_tokens < 0:
             raise ValueError("max_new_tokens cannot be negative.")
@@ -159,12 +160,15 @@ class GPTLanguageModel(nn.Module):
             raise ValueError("temperature must be greater than zero.")
         if top_k is not None and top_k <= 0:
             raise ValueError("top_k must be greater than zero.")
+        if eos_token_id is not None and not 0 <= eos_token_id < self.config.vocab_size:
+            raise ValueError("eos_token_id must be inside the model vocabulary.")
         if input_ids.ndim != 2 or input_ids.size(1) == 0:
             raise ValueError("input_ids must be a non-empty [batch, sequence] tensor.")
 
         was_training = self.training
         self.eval()
         generated = input_ids
+        finished = torch.zeros(input_ids.size(0), dtype=torch.bool, device=input_ids.device)
         try:
             for _ in range(max_new_tokens):
                 context = generated[:, -self.config.max_seq_len :]
@@ -175,7 +179,17 @@ class GPTLanguageModel(nn.Module):
                     logits = logits.masked_fill(logits < threshold, float("-inf"))
                 probabilities = F.softmax(logits, dim=-1)
                 next_token = torch.multinomial(probabilities, num_samples=1)
+                if eos_token_id is not None:
+                    # Keep completed batch items at EOS while unfinished items continue.
+                    next_token = torch.where(
+                        finished.unsqueeze(1),
+                        torch.full_like(next_token, eos_token_id),
+                        next_token,
+                    )
+                    finished |= next_token.squeeze(1).eq(eos_token_id)
                 generated = torch.cat((generated, next_token), dim=1)
+                if eos_token_id is not None and bool(finished.all()):
+                    break
         finally:
             self.train(was_training)
         return generated
