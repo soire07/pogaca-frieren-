@@ -154,6 +154,16 @@ export function verifyGuildOAuthState(state, accountId, secret, now = Date.now()
   } catch { return false; }
 }
 
+export async function consumeGuildOAuthState(db, state, accountId, secret, now = Date.now()) {
+  if (!verifyGuildOAuthState(state, accountId, secret, now)) return false;
+  const stateHash = createHash('sha256').update(String(state)).digest('hex');
+  const result = await db.query(
+    'DELETE FROM frieren_site_oauth_states WHERE state_hash=$1 AND account_id=$2 AND expires_at>NOW() RETURNING account_id',
+    [stateHash, String(accountId)]
+  );
+  return result.rowCount === 1;
+}
+
 function tokenKey(secret) {
   if (typeof secret !== 'string' || secret.length < 32) throw new Error('INVALID_DISCORD_TOKEN_SECRET');
   return createHash('sha256').update('frieren-guild-dashboard:' + secret).digest();
@@ -198,6 +208,13 @@ export async function initGuildDashboardSchema(db) {
     )
   `);
   await db.query('CREATE INDEX IF NOT EXISTS frieren_site_discord_links_user_idx ON frieren_site_discord_links(discord_user_id)');
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS frieren_site_oauth_states (
+      state_hash CHAR(64) PRIMARY KEY,
+      account_id VARCHAR(64) NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL
+    )
+  `);
 }
 
 async function saveDiscordLink(db, accountId, profile, tokenData, secret) {
@@ -372,6 +389,11 @@ export async function handleGuildDashboardRequest(req, res, { client, db, env = 
         return true;
       }
       const state = createGuildOAuthState(user.id, secret);
+      await db.query('DELETE FROM frieren_site_oauth_states WHERE expires_at<=NOW()');
+      await db.query(
+        'INSERT INTO frieren_site_oauth_states(state_hash,account_id,expires_at) VALUES($1,$2,NOW()+INTERVAL \'10 minutes\')',
+        [createHash('sha256').update(state).digest('hex'), user.id]
+      );
       const location = new URL('https://discord.com/oauth2/authorize');
       location.search = new URLSearchParams({
         client_id: config.clientId, response_type: 'code', redirect_uri: config.redirectUri,
@@ -385,8 +407,8 @@ export async function handleGuildDashboardRequest(req, res, { client, db, env = 
       const config = oauthConfig(env);
       const state = url.searchParams.get('state');
       const code = url.searchParams.get('code');
-      if (!config || !code || !verifyGuildOAuthState(state, user.id, secret)) {
-        send(res, 400, basePage('Discord bağlantısı doğrulanamadı', '<main class="guild-wrap"><h1>OAuth doğrulaması başarısız.</h1><p>Bağlantı süresi dolmuş veya oturum eşleşmiyor. Yeniden dene.</p><a class="guild-btn" href="/lonca">Lonca paneline dön</a></main>'));
+      if (!config || !code || !await consumeGuildOAuthState(db, state, user.id, secret)) {
+        send(res, 400, basePage('Discord bağlantısı doğrulanamadı', '<main class="guild-wrap"><h1>OAuth doğrulaması başarısız.</h1><p>Bağlantı süresi dolmuş, daha önce kullanılmış veya oturum eşleşmiyor. Yeniden dene.</p><a class="guild-btn" href="/lonca">Lonca paneline dön</a></main>'));
         return true;
       }
       const tokenData = await exchangeCode(code, config, fetchImpl);
