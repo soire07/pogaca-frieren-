@@ -22,7 +22,7 @@ test('Guardian review parser returns a proposal that is never marked applied', (
   const result = parseGuardianReview(JSON.stringify({
     rootCause: 'Missing timeout guard.',
     confidence: 'medium',
-    affectedFiles: ['ai-agent/index.js', '../.env', '/etc/passwd', 'C:\\Windows\\system.ini', '\\\\server\\share\\secret.txt'],
+    affectedFiles: ['ai-agent/index.js', '../.env', '/etc/passwd', 'C:\\\\Windows\\\\system.ini', '\\\\\\\\server\\\\share\\\\secret.txt'],
     suggestedFix: 'Add a bounded timeout.',
     proposedPatch: 'diff --git a/ai-agent/index.js b/ai-agent/index.js',
     tests: ['Add timeout regression test.'],
@@ -36,8 +36,8 @@ test('Guardian review parser returns a proposal that is never marked applied', (
     system: 'frieren_ai', title: 'Path test', summary: 'Evidence paths',
     evidence: [
       { file: 'src/guardian.js', message: 'safe' },
-      { file: 'C:\\Windows\\system.ini', message: 'absolute Windows path' },
-      { file: '\\\\server\\share\\secret.txt', message: 'UNC path' },
+      { file: 'C:\\\\Windows\\\\system.ini', message: 'absolute Windows path' },
+      { file: '\\\\\\\\server\\\\share\\\\secret.txt', message: 'UNC path' },
     ],
   });
   assert.deepEqual(incident.evidence.map(item => item.file), ['src/guardian.js']);
@@ -50,6 +50,14 @@ test('Guardian review parser rejects non-JSON model output', () => {
   });
 });
 
+test('Guardian review parser rejects JSON null and arrays instead of crashing or accepting them', () => {
+  for (const output of ['null', '[]']) {
+    assert.throws(() => parseGuardianReview(output), {
+      message: 'GUARDIAN_REVIEW_INVALID_JSON_SHAPE',
+    });
+  }
+});
+
 test('Guardian review busy lock is not set by ordinary scenario tests and is released by review finally', async () => {
   const source = await readFile(new URL('./index.js', import.meta.url), 'utf8');
   const scenarioStart = source.indexOf("if (req.url === '/internal/test-scenario'");
@@ -57,7 +65,7 @@ test('Guardian review busy lock is not set by ordinary scenario tests and is rel
   assert.ok(scenarioStart >= 0 && guardianStart > scenarioStart);
   const scenarioRoute = source.slice(scenarioStart, guardianStart);
   const guardianRoute = source.slice(guardianStart);
-  assert.doesNotMatch(scenarioRoute, /guardianReviewInProgress\s*=\s*true/);
-  assert.match(guardianRoute, /guardianReviewInProgress\s*=\s*true/);
-  assert.match(guardianRoute, /finally\s*\{\s*guardianReviewInProgress\s*=\s*false/);
+  assert.doesNotMatch(scenarioRoute, /guardianReviewInProgress\\s*=\\s*true/);
+  assert.match(guardianRoute, /guardianReviewInProgress\\s*=\\s*true/);
+  assert.match(guardianRoute, /finally\\s*\\{\\s*guardianReviewInProgress\\s*=\\s*false/);
 });
