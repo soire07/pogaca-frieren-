@@ -217,7 +217,9 @@ export async function reserveGuardianRepairDispatch(db, jobId) {
 }
 
 export async function listPendingGuardianRepairDispatches(db, limit = 5) {
-  const safeLimit = Math.max(1, Math.min(Number(limit) || 5, 25));
+  const parsedLimit = Number(limit);
+  const safeLimit = !Number.isFinite(parsedLimit) || parsedLimit === 0
+    ? 5 : Math.max(1, Math.min(Math.floor(parsedLimit), 25));
   const result = await db.query(
     `SELECT j.id,j.incident_id,j.result,j.repair_dispatch_status,j.repair_dispatch_at,
             j.repair_dispatch_attempts,j.created_at AS job_created_at,
