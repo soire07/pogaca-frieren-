@@ -157,7 +157,7 @@ test('registration page reports that email delivery must be configured before si
   const response = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/register?status=mail_unavailable', headers: {} }, response, { db: { query: async () => ({ rows: [], rowCount: 0 }) } });
   assert.equal(response.status, 200);
-  assert.match(response.body, /Gmail SMTP ayarlarını tamamlamalı/);
+  assert.match(response.body, /Gmail API bağlantısını tamamlamalı/);
   assert.match(response.body, /href="\/assets\/site\.css"/);
 });
 
