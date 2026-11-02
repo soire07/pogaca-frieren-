@@ -202,3 +202,82 @@ export async function processGuardianIncident({
     return { status: 'dispatch_failed', jobId: Number(job.id), reason };
   }
 }
+
+
+export async function processPendingGuardianRepairDispatch({
+  db,
+  job,
+  incident,
+  env = process.env,
+  fetchImpl = globalThis.fetch,
+  store = { reserveGuardianRepairDispatch, finishGuardianRepairDispatch },
+  actorId = 'guardian-auto',
+} = {}) {
+  if (!db || !job || !Number.isSafeInteger(Number(job.id)) || Number(job.id) <= 0
+      || !incident || !Number.isSafeInteger(Number(incident.id)) || Number(incident.id) <= 0) {
+    throw new Error('INVALID_GUARDIAN_DISPATCH_RETRY_INPUT');
+  }
+  const review = job.result && typeof job.result === 'object' ? job.result : {};
+  if (!isRepairableProposal(review)) return { status: 'retry_skipped', reason: 'SAVED_PROPOSAL_NOT_REPAIRABLE' };
+  const githubToken = String(env.FRIEREN_GITHUB_TOKEN || '').trim();
+  if (githubToken.length < 32) return { status: 'not_configured', reason: 'GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED' };
+
+  const reserved = await store.reserveGuardianRepairDispatch(db, job.id);
+  if (!reserved) return { status: 'dispatch_not_reserved', jobId: Number(job.id) };
+  const workflowUrl = 'https://github.com/' + REPOSITORY + '/actions/workflows/' + REPAIR_WORKFLOW;
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    Authorization: 'Bearer ' + githubToken,
+    'X-GitHub-Api-Version': '2022-11-28',
+    'Content-Type': 'application/json',
+  };
+  const runsUrl = 'https://api.github.com/repos/' + REPOSITORY + '/actions/workflows/' + REPAIR_WORKFLOW
+    + '/runs?branch=' + encodeURIComponent(REPAIR_BRANCH) + '&event=workflow_dispatch&per_page=100';
+
+  try {
+    const existingResponse = await fetchImpl(runsUrl, {
+      method: 'GET', headers, signal: AbortSignal.timeout(12_000),
+    });
+    if (!existingResponse.ok) {
+      await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'failed' }).catch(() => {});
+      return { status: 'reconciliation_unavailable', jobId: Number(job.id), reason: 'GITHUB_RUN_LIST_HTTP_' + existingResponse.status };
+    }
+    const existingData = await existingResponse.json().catch(() => ({}));
+    const marker = 'Guardian #' + Number(incident.id);
+    const existingRun = (Array.isArray(existingData.workflow_runs) ? existingData.workflow_runs : [])
+      .find(run => String(run.display_title || run.name || run.run_name || '').includes(marker));
+    if (existingRun) {
+      const existingUrl = String(existingRun.html_url || workflowUrl);
+      await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl: existingUrl });
+      return { status: 'already_dispatched', jobId: Number(job.id), workflowUrl: existingUrl };
+    }
+
+    const response = await fetchImpl(
+      'https://api.github.com/repos/' + REPOSITORY + '/actions/workflows/' + REPAIR_WORKFLOW + '/dispatches',
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          ref: REPAIR_BRANCH,
+          inputs: {
+            task: buildGuardianRepairTask(incident, review),
+            base_branch: REPAIR_BRANCH,
+            incident_id: String(incident.id),
+          },
+        }),
+        signal: AbortSignal.timeout(12_000),
+      }
+    );
+    if (response.status !== 204) throw new Error('GUARDIAN_GITHUB_DISPATCH_HTTP_' + response.status);
+    await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl });
+    await db.query(
+      'INSERT INTO owner_audit_logs(actor_id,action,target,details) VALUES($1,$2,$3,$4::jsonb)',
+      [actorId, 'guardian.repair.workflow_redispatched', String(incident.id), JSON.stringify({ jobId: job.id, workflow: REPAIR_WORKFLOW, baseBranch: REPAIR_BRANCH })]
+    ).catch(() => {});
+    return { status: 'dispatched', jobId: Number(job.id), workflowUrl };
+  } catch (error) {
+    const reason = safeErrorCode(error);
+    await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'failed' }).catch(() => {});
+    return { status: 'dispatch_failed', jobId: Number(job.id), reason };
+  }
+}
