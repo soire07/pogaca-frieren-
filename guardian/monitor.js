@@ -9,7 +9,7 @@ function systemForScope(scope) {
   return 'pogaca_frieren';
 }
 
-export async function scanNewOwnerErrors(db, lastSeenErrorId = 0, limit = 50, onProgress = async () => {}) {
+export async function scanNewOwnerErrors(db, lastSeenErrorId = 0, limit = 50, onProgress = async () => {}, onIncident = async () => {}, onIncidentError = async () => {}) {
   const result = await db.query(
     'SELECT id,scope,error_type,error_message,created_at FROM owner_error_logs WHERE id>$1 ORDER BY id ASC LIMIT $2',
     [Math.max(0, Number(lastSeenErrorId) || 0), Math.max(1, Math.min(Number(limit) || 50, 100))]
@@ -18,13 +18,20 @@ export async function scanNewOwnerErrors(db, lastSeenErrorId = 0, limit = 50, on
   let recorded = 0;
   for (const row of result.rows || []) {
     nextId = Math.max(nextId, Number(row.id) || 0);
-    await upsertGuardianIncident(db, {
+    const incident = await upsertGuardianIncident(db, {
       system: systemForScope(row.scope),
       code: row.error_type,
       title: String(row.scope || 'Sistem') + ': ' + String(row.error_type || 'Error'),
       summary: row.error_message || row.error_type || 'Kayıtlı hata olayı',
       evidence: [{ message: 'Log ID ' + row.id + ' · ' + new Date(row.created_at).toISOString() }],
     });
+    if (incident) {
+      try {
+        await onIncident(incident);
+      } catch (error) {
+        await onIncidentError(error, incident);
+      }
+    }
     recorded += 1;
     await onProgress(nextId);
   }
@@ -37,6 +44,7 @@ export function startGuardianMonitor({
   intervalMs = Number(process.env.GUARDIAN_SCAN_INTERVAL_MS) || 300_000,
   setIntervalImpl = setInterval,
   clearIntervalImpl = clearInterval,
+  onIncident = async () => {},
   onError = error => console.error('Neural Guardian monitor failed:', error?.message || error),
 } = {}) {
   if (!db?.query) throw new Error('GUARDIAN_DATABASE_REQUIRED');
@@ -69,7 +77,7 @@ export function startGuardianMonitor({
            WHERE monitor_key='owner_error_logs' AND last_seen_error_id < $1`,
           [nextId]
         );
-      });
+      }, onIncident, onError);
       await db.query(
         `UPDATE owner_guardian_monitor_state SET last_tick_at=NOW(),last_error=NULL,updated_at=NOW()
          WHERE monitor_key='owner_error_logs'`
