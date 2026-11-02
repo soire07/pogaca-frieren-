@@ -23,9 +23,9 @@ test('Guardian incident upsert deduplicates repeated evidence and bounds evidenc
     evidence: [{ message: 'Owner error log ID 17' }],
   });
   assert.equal(result.id, 12);
-  assert.match(call.sql, /ON CONFLICT\\(fingerprint\\) DO UPDATE/);
-  assert.match(call.sql, /owner_guardian_incidents\\.evidence @> EXCLUDED\\.evidence/);
-  assert.match(call.sql, /occurrence_count=owner_guardian_incidents\\.occurrence_count \\+ CASE/);
+  assert.match(call.sql, /ON CONFLICT\(fingerprint\) DO UPDATE/);
+  assert.match(call.sql, /owner_guardian_incidents\.evidence @> EXCLUDED\.evidence/);
+  assert.match(call.sql, /occurrence_count=owner_guardian_incidents\.occurrence_count \+ CASE/);
   assert.match(call.sql, /LIMIT 8/);
   assert.match(call.sql, /jsonb_array_elements/);
   assert.equal(call.params[1], 'pogaca_frieren');
