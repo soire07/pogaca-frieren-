@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
 import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest, assertGuardianAutomationEnabled } from '../owner-dashboard.js';
@@ -149,6 +150,19 @@ test('Guardian workspace shows review proposals as unapplied and requires owner 
   assert.match(html, /Guardian öz denetimi/);
   assert.match(html, /Frieren AI köprü anahtarı/);
   assert.match(html, /NOT TESTED|BLOCKED|PASS|FAIL/);
+});
+
+test('Guardian self-repair dispatch targets the active PR branch and uses a supported workflow choice', () => {
+  const dashboard = readFileSync(new URL('../owner-dashboard.js', import.meta.url), 'utf8');
+  const workflow = readFileSync(new URL('../.github/workflows/frieren-ai-self-repair.yml', import.meta.url), 'utf8');
+  const target = 'feat/neural-guardian-control-center';
+  assert.match(dashboard, /ref: 'feat\\/neural-guardian-control-center'/);
+  assert.match(dashboard, /base_branch: 'feat\\/neural-guardian-control-center'/);
+  assert.match(dashboard, /runs\\?branch=feat%2Fneural-guardian-control-center/);
+  assert.match(workflow, /- feat\\/neural-guardian-control-center/);
+  assert.match(workflow, /feat\\/neural-guardian-control-center\\|frieren-ai-agent/);
+  assert.ok(!dashboard.includes("base_branch: 'frieren-neural-foundation'"), 'repair input must match the workflow allowlist');
+  assert.ok(target.length > 0);
 });
 
 test('Guardian workspace exposes PR dispatch only after a completed review and with a token', () => {
