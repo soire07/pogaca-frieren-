@@ -368,3 +368,51 @@ test('automatic dispatch retry respects the emergency stop before reserving or c
   assert.equal(requests, 0);
   assert.equal(reservations, 0);
 });
+
+
+test('successful GitHub dispatch is not reported as persisted when Guardian state update returns false', async () => {
+  const result = await processGuardianIncident({
+    db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
+    incident,
+    env: {
+      FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
+      FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
+    },
+    fetchImpl: async url => String(url).includes('/internal/guardian-review')
+      ? { ok: true, status: 200, json: async () => review }
+      : { ok: true, status: 204, json: async () => ({}) },
+    store: {
+      createGuardianReviewJob: async () => ({ id: 90, status: 'queued' }),
+      finishGuardianReviewJob: async () => true,
+      reserveGuardianRepairDispatch: async () => ({ id: 90 }),
+      finishGuardianRepairDispatch: async () => false,
+    },
+  });
+  assert.equal(result.status, 'dispatch_state_unconfirmed');
+  assert.equal(result.jobId, 90);
+  assert.match(result.workflowUrl, /frieren-ai-self-repair\.yml/);
+});
+
+test('retry reports an existing workflow without claiming persistence when state update returns false', async () => {
+  let posts = 0;
+  const result = await processPendingGuardianRepairDispatch({
+    db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
+    job: { id: 91, result: review },
+    incident,
+    env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
+    fetchImpl: async (_url, options) => {
+      if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({
+        workflow_runs: [{ display_title: 'Frieren AI Repair · Guardian #42', html_url: 'https://github.com/example/actions/runs/420' }],
+      }) };
+      posts += 1;
+      return { ok: true, status: 204, json: async () => ({}) };
+    },
+    store: {
+      reserveGuardianRepairDispatch: async () => ({ id: 91 }),
+      finishGuardianRepairDispatch: async () => false,
+    },
+  });
+  assert.equal(result.status, 'dispatch_state_unconfirmed');
+  assert.equal(result.workflowUrl, 'https://github.com/example/actions/runs/420');
+  assert.equal(posts, 0, 'an existing workflow must never be duplicated');
+});
