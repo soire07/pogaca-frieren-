@@ -9,10 +9,13 @@ on:
         required: true
         type: string
       base_branch:
-        description: "Branch to test against"
+        description: "Allowed repair target branch"
         required: true
         default: "frieren-ai-agent"
-        type: string
+        type: choice
+        options:
+          - frieren-ai-agent
+          - feat/neural-guardian-control-center
       incident_id:
         description: "Optional Guardian incident ID for traceability"
         required: false
@@ -32,6 +35,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Validate repair target branch
+        env:
+          BASE_BRANCH: ${{ inputs.base_branch }}
+        run: |
+          case "$BASE_BRANCH" in
+            frieren-ai-agent|feat/neural-guardian-control-center) ;;
+            *) echo "Unsupported repair target branch"; exit 1 ;;
+          esac
+
       - name: Checkout requested base branch
         uses: actions/checkout@v4
         with:
