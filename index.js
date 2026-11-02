@@ -15,6 +15,8 @@ import { createAiAgentChildEnv, AI_AGENT_HEALTH_PORT } from './ai-agent/render-s
 import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
+import { handleNeuralQualityReportRequest } from './guardian/neural-quality-report-route.js';
+import { saveGuardianQualityReport } from './guardian/quality-report-store.js';
 import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
@@ -381,6 +383,14 @@ const PORT = process.env.PORT || 3000;
 let uptimeRobotCache = null;
 
 createServer(async (req, res) => {
+  if (req.method === 'POST' && req.url === '/internal/neural-quality-report') {
+    const result = await handleNeuralQualityReportRequest(req, {
+      saveReport: input => saveGuardianQualityReport(pool, input),
+    });
+    res.writeHead(result.status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(result.payload));
+    return;
+  }
   if (await handleOwnerDashboardRequest(req, res, { client, db: pool })) return;
   if (await handlePublicSiteRequest(req, res, { client, db: pool })) return;
   const sendJson = (status, payload) => {

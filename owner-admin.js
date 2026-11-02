@@ -82,6 +82,17 @@ export async function initOwnerAdminSchema(db) {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_owner_test_runs_recent ON owner_test_runs(created_at DESC);
+    CREATE TABLE IF NOT EXISTS owner_guardian_quality_reports (
+      id BIGSERIAL PRIMARY KEY,
+      report_sha256 CHAR(64) NOT NULL UNIQUE,
+      artifact_sha256 CHAR(64) NOT NULL,
+      model_backend VARCHAR(80) NOT NULL,
+      decision VARCHAR(40) NOT NULL,
+      report JSONB NOT NULL,
+      blocking_reasons JSONB NOT NULL DEFAULT '[]'::jsonb,
+      submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_owner_guardian_quality_recent ON owner_guardian_quality_reports(submitted_at DESC,id DESC);
 
   `);
 }
