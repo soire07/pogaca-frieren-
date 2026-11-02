@@ -7,6 +7,9 @@ on:
       - 'commands/rpg/**'
       - 'database/**'
       - 'market.js'
+      - 'fishing.js'
+      - 'balik.js'
+      - 'scripts/test-fishing.integration.js'
       - 'trade.js'
       - 'crafting.js'
       - 'rpg-mechanics.js'
@@ -50,6 +53,8 @@ jobs:
       - run: node scripts/run-isolated-command-audit.js
       - name: Run real PostgreSQL market concurrency and rollback tests
         run: node --test scripts/test-market-concurrency.integration.js
+      - name: Run real PostgreSQL fishing concurrency and collection tests
+        run: node --test scripts/test-fishing.integration.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
