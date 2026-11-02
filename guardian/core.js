@@ -135,7 +135,7 @@ const EXPECTED_NEURAL_MODEL = Object.freeze({
 });
 
 export function extractGuardianBearerToken(header) {
-  const match = /^Bearer\\s+(.+)$/i.exec(String(header ?? '').trim());
+  const match = /^Bearer\s+(.+)$/i.exec(String(header ?? '').trim());
   return match ? match[1].trim() : '';
 }
 
