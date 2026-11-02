@@ -37,7 +37,7 @@ test('Render status can use public health endpoints without exposing or requirin
   assert.equal(status.apiConfigured, false);
   assert.equal(status.services.pogaca.health, 'healthy');
   assert.equal(status.services.frieren_ai.health, 'healthy');
-  assert.equal(status.services.frieren_ai.url, 'https://frieren-ai-agent.onrender.com');
+  assert.equal(status.services.frieren_ai.url, 'https://pogaca-frieren-kltd.onrender.com');
   assert.equal(status.services.frieren_ai.id, 'srv-dbj192flk1mc73805ia0');
   assert.equal(requested.length, 2);
   assert.ok(requested.every(url => !url.includes('/v1/services/')));
