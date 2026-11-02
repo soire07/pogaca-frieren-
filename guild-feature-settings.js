@@ -124,7 +124,7 @@ export function getCommandFeatureKeys(commandName) {
   if (/koleksiyon|karakterarsivi|karakter-arşivi|kesifdefteri/.test(name)) keys.push('collection');
   if (/basarim|başarım|achievement/.test(name)) keys.push('achievements');
   if (/gunlukodul|günlüködül|dailyreward/.test(name)) keys.push('dailyRewards');
-  if (/kesif|keşif|explor|maceragecmisi|maceraistatistik/.test(name)) keys.push('exploration');
+  if (/kesif|keşif|explor|macera|maceragecmisi|maceraistatistik/.test(name)) keys.push('exploration');
   if (/zanaat|craft|uret|üret/.test(name)) keys.push('crafting');
   if (/hikaye|hikâye|story/.test(name)) keys.push('story');
   if (/rpg|savas|savaş|dovus|dövüş|arena|siralama/.test(name)) keys.push('rpg');
