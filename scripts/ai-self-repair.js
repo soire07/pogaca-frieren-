@@ -119,14 +119,19 @@ export async function generateRepairPatch({ task, apiKey, model = 'openai/gpt-os
 }
 
 export function applyRepairPatch(patch, { execFile = runGit } = {}) {
-  validatePatchPaths(patch);
+  const expectedFiles = validatePatchPaths(patch).sort();
+  const before = execFile(['status', '--porcelain', '--untracked-files=all'], { encoding: 'utf8' });
+  if (String(before || '').trim()) throw new Error('REPAIR_WORKTREE_NOT_CLEAN');
   execFile(['apply', '--check', '--'], { input: patch, stdio: ['pipe', 'pipe', 'pipe'] });
   execFile(['apply', '--'], { input: patch, stdio: ['pipe', 'pipe', 'pipe'] });
   execFile(['diff', '--check'], { stdio: ['ignore', 'pipe', 'pipe'] });
-  const changed = execFile(['status', '--short'], { encoding: 'utf8' })
-    .split('\n').filter(Boolean).map(line => line.slice(3).trim());
+  const changed = execFile(['status', '--short', '--untracked-files=all'], { encoding: 'utf8' })
+    .split('\n').filter(Boolean).map(line => line.slice(3).trim()).sort();
   if (!changed.length || changed.length > MAX_PATCH_FILES || changed.some(path => !isAllowedRepairPath(path))) {
     throw new Error('REPAIR_WORKTREE_VALIDATION_FAILED');
+  }
+  if (JSON.stringify(changed) !== JSON.stringify(expectedFiles)) {
+    throw new Error('REPAIR_CHANGED_FILE_SET_MISMATCH');
   }
   return changed;
 }
