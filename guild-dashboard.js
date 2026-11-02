@@ -178,6 +178,11 @@ async function accessTokenFor(db, connection, secret, fetchImpl) {
   }, secret);
   return String(data.access_token);
 }
+async function requestDiscordJson(fetchImpl, url, options = {}) {
+  const response = await fetchImpl(url, { ...options, signal: AbortSignal.timeout(10_000) });
+  if (!response.ok) throw new Error('DISCORD_API_' + response.status);
+  return response.json();
+}
 async function fetchUserGuilds(fetchImpl, token) {
   const guilds = [];
   let after = '';
