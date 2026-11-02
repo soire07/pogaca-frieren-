@@ -1,4 +1,4 @@
-import { createGuardianIncident, canRequestGuardianReview } from './core.js';
+import { createGuardianIncident } from './core.js';
 
 export async function upsertGuardianIncident(db, input) {
   const incident = createGuardianIncident(input);
@@ -63,6 +63,7 @@ export async function listGuardianIncidents(db, limit = 30) {
 export async function createGuardianReviewJob(db, { incidentId, actorId }) {
   const id = Number(incidentId);
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error('INVALID_GUARDIAN_INCIDENT_ID');
+
   const active = await db.query(
     `SELECT * FROM owner_guardian_jobs
      WHERE incident_id=$1 AND agent='frieren_ai' AND status IN ('queued','running')
@@ -71,47 +72,44 @@ export async function createGuardianReviewJob(db, { incidentId, actorId }) {
   );
   if (active.rows?.[0]) return { ...active.rows[0], reused: true };
 
-  const incidentResult = await db.query(
-    `SELECT id,review_attempts,last_review_at,status
-     FROM owner_guardian_incidents WHERE id=$1 LIMIT 1`,
-    [id]
-  );
-  const incident = incidentResult.rows?.[0];
-  if (!incident || ['resolved','ignored'].includes(incident.status)) throw new Error('GUARDIAN_INCIDENT_NOT_REVIEWABLE');
-  const eligibility = canRequestGuardianReview({
-    attempts: incident.review_attempts,
-    lastReviewAt: incident.last_review_at,
-  });
-  if (!eligibility.allowed) throw new Error(eligibility.reason);
-
-  const updated = await db.query(
-    `UPDATE owner_guardian_incidents
-     SET review_attempts=review_attempts+1,last_review_at=NOW(),status='in_review',updated_at=NOW()
-     WHERE id=$1 AND status NOT IN ('resolved','ignored')
-       AND review_attempts < 3
-       AND (last_review_at IS NULL OR last_review_at < NOW()-INTERVAL '15 minutes')
-     RETURNING id`,
-    [id]
-  );
-  if (!updated.rowCount) throw new Error('GUARDIAN_REVIEW_COOLDOWN');
-
+  // Reserve the incident and create its job in one statement. If the insert fails,
+  // PostgreSQL rolls back the attempt counter and in_review transition as well.
   const inserted = await db.query(
-    `INSERT INTO owner_guardian_jobs(incident_id,agent,status,attempt,input,created_by,created_at)
-     VALUES($1,'frieren_ai','queued',1,jsonb_build_object('incidentId',$1),$2,NOW())
+    `WITH reserved AS (
+       UPDATE owner_guardian_incidents
+       SET review_attempts=review_attempts+1,last_review_at=NOW(),status='in_review',updated_at=NOW()
+       WHERE id=$1 AND status NOT IN ('resolved','ignored')
+         AND review_attempts < 3
+         AND (last_review_at IS NULL OR last_review_at < NOW()-INTERVAL '15 minutes')
+       RETURNING id
+     )
+     INSERT INTO owner_guardian_jobs(incident_id,agent,status,attempt,input,created_by,created_at)
+     SELECT id,'frieren_ai','queued',1,jsonb_build_object('incidentId',id),$2,NOW()
+     FROM reserved
      ON CONFLICT (incident_id,agent) WHERE status IN ('queued','running') DO NOTHING
      RETURNING *`,
     [id, String(actorId)]
   );
   if (inserted.rows?.[0]) return inserted.rows[0];
 
-  const existing = await db.query(
+  // A concurrent request may have won the reservation. Reuse its active job
+  // rather than incrementing attempts or reporting a false queue failure.
+  const concurrent = await db.query(
     `SELECT * FROM owner_guardian_jobs
      WHERE incident_id=$1 AND agent='frieren_ai' AND status IN ('queued','running')
      ORDER BY id DESC LIMIT 1`,
     [id]
   );
-  if (existing.rows?.[0]) return { ...existing.rows[0], reused: true };
-  throw new Error('GUARDIAN_REVIEW_QUEUE_FAILED');
+  if (concurrent.rows?.[0]) return { ...concurrent.rows[0], reused: true };
+
+  const incident = await db.query(
+    'SELECT id,status,review_attempts,last_review_at FROM owner_guardian_incidents WHERE id=$1 LIMIT 1',
+    [id]
+  );
+  const row = incident.rows?.[0];
+  if (!row || ['resolved','ignored'].includes(row.status)) throw new Error('GUARDIAN_INCIDENT_NOT_REVIEWABLE');
+  if (Number(row.review_attempts) >= 3) throw new Error('GUARDIAN_REVIEW_ATTEMPTS_EXHAUSTED');
+  throw new Error('GUARDIAN_REVIEW_COOLDOWN');
 }
 
 export async function finishGuardianReviewJob(db, { jobId, status, result, error }) {
@@ -119,20 +117,22 @@ export async function finishGuardianReviewJob(db, { jobId, status, result, error
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error('INVALID_GUARDIAN_JOB_ID');
   if (!['completed', 'failed'].includes(status)) throw new Error('INVALID_GUARDIAN_JOB_STATUS');
   const safeResult = status === 'completed' ? result : { error: String(error || 'REVIEW_FAILED').slice(0, 180) };
+  // Job completion and incident transition must commit or roll back together.
   const updated = await db.query(
-    `UPDATE owner_guardian_jobs SET status=$2,result=$3::jsonb,finished_at=NOW()
-     WHERE id=$1 AND status IN ('queued','running') RETURNING incident_id`,
-    [id, status, JSON.stringify(safeResult || {})]
+    `WITH changed AS (
+       UPDATE owner_guardian_jobs SET status=$2,result=$3::jsonb,finished_at=NOW()
+       WHERE id=$1 AND status IN ('queued','running') RETURNING incident_id
+     ), incident_update AS (
+       UPDATE owner_guardian_incidents i
+       SET status=$4,updated_at=NOW()
+       FROM changed c
+       WHERE i.id=c.incident_id AND i.status='in_review'
+       RETURNING i.id
+     )
+     SELECT incident_id FROM changed`,
+    [id, status, JSON.stringify(safeResult || {}), status === 'completed' ? 'awaiting_approval' : 'open']
   );
-  const incidentId = updated.rows?.[0]?.incident_id;
-  if (incidentId) {
-    await db.query(
-      `UPDATE owner_guardian_incidents SET status=$2,updated_at=NOW()
-       WHERE id=$1 AND status='in_review'`,
-      [incidentId, status === 'completed' ? 'awaiting_approval' : 'open']
-    );
-  }
-  return Boolean(incidentId);
+  return Boolean(updated.rows?.[0]?.incident_id);
 }
 
 export async function resolveGuardianIncident(db, { incidentId, actorId }) {
