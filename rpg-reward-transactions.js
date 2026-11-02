@@ -65,7 +65,10 @@ export async function settleRaidRewards(dbPool, {
   try {
     await db.query('BEGIN');
     const lockedRows = await db.query(
-      'SELECT user_id,last_boss_at,xp,level FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE',
+      `SELECT user_id,last_boss_at,xp,level,
+       (last_boss_at IS NOT NULL AND last_boss_at > NOW() - INTERVAL '45 minutes') AS on_cooldown,
+       GREATEST(0, CEIL(EXTRACT(EPOCH FROM (last_boss_at + INTERVAL '45 minutes' - NOW())) / 60))::int AS cooldown_minutes
+       FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE`,
       [guildId, ids]
     );
     const active = await db.query(
@@ -76,9 +79,9 @@ export async function settleRaidRewards(dbPool, {
       await db.query('ROLLBACK');
       return { status: 'reservation_missing' };
     }
-    const concurrent = lockedRows.rows.find(p => p.last_boss_at && Date.now() - new Date(p.last_boss_at).getTime() < 45 * 60_000);
+    const concurrent = lockedRows.rows.find(p => p.on_cooldown);
     if (concurrent) {
-      const minutes = Math.ceil((45 * 60_000 - (Date.now() - new Date(concurrent.last_boss_at).getTime())) / 60_000);
+      const minutes = Number(concurrent.cooldown_minutes);
       await db.query('ROLLBACK');
       return { status: 'cooldown', userId: concurrent.user_id, minutes };
     }
@@ -137,7 +140,10 @@ export async function settleDungeonRewards(dbPool, {
   try {
     await db.query('BEGIN');
     const lockedRows = await db.query(
-      'SELECT user_id,last_dungeon_at,xp,level FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE',
+      `SELECT user_id,last_dungeon_at,xp,level,
+       (last_dungeon_at IS NOT NULL AND last_dungeon_at > NOW() - INTERVAL '30 minutes') AS on_cooldown,
+       GREATEST(0, CEIL(EXTRACT(EPOCH FROM (last_dungeon_at + INTERVAL '30 minutes' - NOW())) / 60))::int AS cooldown_minutes
+       FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE`,
       [guildId, ids]
     );
     const active = await db.query(
@@ -148,9 +154,9 @@ export async function settleDungeonRewards(dbPool, {
       await db.query('ROLLBACK');
       return { status: 'reservation_missing' };
     }
-    const concurrent = lockedRows.rows.find(p => p.last_dungeon_at && Date.now() - new Date(p.last_dungeon_at).getTime() < 30 * 60_000);
+    const concurrent = lockedRows.rows.find(p => p.on_cooldown);
     if (concurrent) {
-      const minutes = Math.ceil((30 * 60_000 - (Date.now() - new Date(concurrent.last_dungeon_at).getTime())) / 60_000);
+      const minutes = Number(concurrent.cooldown_minutes);
       await db.query('ROLLBACK');
       return { status: 'cooldown', userId: concurrent.user_id, minutes };
     }
