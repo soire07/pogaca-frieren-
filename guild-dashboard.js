@@ -2,7 +2,7 @@ import {
   createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual
 } from 'node:crypto';
 import { readPublicSiteSession } from './owner-dashboard.js';
-import { createSiteCsrfToken, verifySiteCsrfToken } from './site-auth.js';
+import { createSiteCsrfToken, isSameOriginRequest, verifySiteCsrfToken } from './site-auth.js';
 import {
   DEFAULT_GUILD_FEATURES, listGuildFeatureSettings, setGuildFeatureEnabled
 } from './guild-feature-settings.js';
@@ -379,6 +379,10 @@ export async function handleGuildDashboardRequest(req, res, { client, db, env = 
   }
   if (!db || secret.length < 32) {
     send(res, 503, basePage('Kurulum gerekli', '<main class="guild-wrap"><h1>Lonca paneli şu anda kullanılamıyor.</h1><p>Veritabanı veya oturum güvenlik ayarı eksik.</p></main>'));
+    return true;
+  }
+  if (req.method === 'POST' && !isSameOriginRequest(req, env.SITE_BASE_URL)) {
+    send(res, 403, basePage('İstek reddedildi', '<main class="guild-wrap"><h1>Bu form yalnızca Frieren sitesinden gönderilebilir.</h1></main>'));
     return true;
   }
   try {
