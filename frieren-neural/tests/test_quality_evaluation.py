@@ -324,3 +324,7 @@ def test_ufakzeka_report_requires_review_provenance_and_heldout_evidence(monkeyp
     assert report["heldout_metrics"]["dataset_sha256"] == "e" * 64
     assert report["heldout_metrics"]["split"] == "heldout"
     assert report["source_commit_sha"] == "d" * 40
+    markdown = quality.render_markdown(report)
+    assert "Independent held-out evidence" in markdown
+    assert "Dataset SHA-256: " + "e" * 64 in markdown
+    assert "Source commit: " + "d" * 40 in markdown
