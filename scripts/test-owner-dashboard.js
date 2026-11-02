@@ -107,7 +107,11 @@ test('Guardian workspace shows the latest stored Neural quality report and exact
       report_sha256: 'b'.repeat(64),
       artifact_sha256: 'a'.repeat(64),
       submitted_at: '2026-11-02T10:00:00Z',
-      blocking_reasons: ['training_provenance_missing', 'heldout_metrics_invalid'],
+      report: {
+        source_commit_sha: 'd'.repeat(40),
+        ci_evidence: { status: 'verified', run_url: 'https://github.com/soire07/pogaca-frieren-/actions/runs/42' },
+      },
+      blocking_reasons: ['NEURAL_CI_EVIDENCE_NOT_VERIFIED'],
     },
   });
   assert.match(html, /Frieren Neural kalite raporu/);
@@ -115,8 +119,11 @@ test('Guardian workspace shows the latest stored Neural quality report and exact
   assert.match(html, /ufakzeka/);
   assert.match(html, new RegExp('b'.repeat(64)));
   assert.match(html, new RegExp('a'.repeat(64)));
-  assert.match(html, /training_provenance_missing/);
-  assert.match(html, /heldout_metrics_invalid/);
+  assert.match(html, /Kaynak commit/);
+  assert.match(html, new RegExp('d'.repeat(40)));
+  assert.match(html, /Neural CI kanıtı: verified/);
+  assert.match(html, /Doğrulanan GitHub Actions çalışmasını aç/);
+  assert.match(html, /NEURAL_CI_EVIDENCE_NOT_VERIFIED/);
 });
 test('Guardian workspace shows review proposals as unapplied and requires owner review', () => {
   const html = renderOwnerGuardianWorkspace({
