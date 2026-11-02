@@ -6,6 +6,7 @@ import {
   validatePatchPaths,
   generateRepairPatch,
   applyRepairPatch,
+  formatRepairFilesOutput,
 } from './ai-self-repair.js';
 
 const validPatch = [
@@ -164,5 +165,21 @@ test('repair patch rejects additional allowed files changed outside the proposal
   };
   assert.throws(() => applyRepairPatch(validPatch, { execFile }), {
     message: 'REPAIR_CHANGED_FILE_SET_MISMATCH',
+  });
+});
+
+test('repair workflow output contains only the exact validated file paths', () => {
+  assert.equal(
+    formatRepairFilesOutput(['scripts/repair-a.js', 'rpg-mechanics.js']),
+    'repair_files<<REPAIR_FILES\\nrpg-mechanics.js\\nscripts/repair-a.js\\nREPAIR_FILES\\n',
+  );
+  assert.throws(() => formatRepairFilesOutput(['rpg-mechanics.js', '../package.json']), {
+    message: 'REPAIR_OUTPUT_FILE_SET_INVALID',
+  });
+  assert.throws(() => formatRepairFilesOutput(['rpg-mechanics.js', 'rpg-mechanics.js']), {
+    message: 'REPAIR_OUTPUT_FILE_SET_INVALID',
+  });
+  assert.throws(() => formatRepairFilesOutput([]), {
+    message: 'REPAIR_OUTPUT_FILE_SET_INVALID',
   });
 });
