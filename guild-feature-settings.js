@@ -126,3 +126,12 @@ export async function isGuildCommandEnabled(db, guildId, commandName) {
   const states = await Promise.all(keys.map(key => getGuildFeatureEnabled(db, guildId, key)));
   return states.every(enabled => enabled === true);
 }
+
+
+export function getComponentCommandName(customId) {
+  const id = String(customId || '');
+  if (id.startsWith('charpanel:')) return 'karakter';
+  if (id.startsWith('market_')) return 'market';
+  if (id.startsWith('trade_accept:') || id.startsWith('trade_decline:')) return 'takasteklif';
+  return null;
+}
