@@ -1,3 +1,5 @@
 One-time validation trigger. The workflow must evaluate the exact pushed commit and keep readiness blocked without human review and held-out evidence.
 
 Retry after upgrading llama-cpp-python to the release containing upstream ufakzeka pre-tokenizer support.
+
+Retry with Neural CI enabled on this validation branch; both Neural CI and the pinned GGUF evaluation must report against the same pushed commit.
