@@ -118,6 +118,6 @@ test('Neural report endpoint forces NOT READY when exact CI evidence is unavaila
 test('Neural report endpoint fails closed when Guardian storage is unavailable', async () => {
   const deps = dependencies({ saveReport: async () => { throw new Error('database unavailable'); } });
   const result = await handleNeuralQualityReportRequest(request(validReport()), deps.options);
-  assert.equal(result.status, 400);
-  assert.equal(result.payload.error, 'invalid_quality_report_payload');
+  assert.equal(result.status, 500);
+  assert.equal(result.payload.error, 'guardian_report_storage_failed');
 });
