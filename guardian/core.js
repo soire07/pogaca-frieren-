@@ -146,7 +146,7 @@ export function evaluateNeuralCiEvidence({ sourceCommitSha, workflowRuns = [] } 
   const matching = (Array.isArray(workflowRuns) ? workflowRuns : []).filter(run => {
     const path = String(run?.path || '').split('@')[0];
     return run?.head_sha === sha
-      && (path.endsWith('/frieren-neural-ci.yml') || run?.name === 'Frieren Neural CI');
+      && path === '.github/workflows/frieren-neural-ci.yml';
   });
   const successful = matching.find(run => run.status === 'completed' && run.conclusion === 'success');
   if (successful) {
