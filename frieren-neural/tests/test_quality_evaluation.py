@@ -267,7 +267,7 @@ def test_guardian_report_upload_rejects_http_and_short_secret():
 
 
 
-def test_ufakzeka_report_can_pass_model_specific_gate_after_human_review(monkeypatch):
+def test_ufakzeka_report_requires_review_provenance_and_heldout_evidence(monkeypatch):
     from frieren_neural import gguf_runtime
 
     artifact_sha = "a" * 64
@@ -320,6 +320,7 @@ def test_ufakzeka_report_can_pass_model_specific_gate_after_human_review(monkeyp
     assert report["decision"] == "READY FOR STAGED TEST"
     assert report["pretrained_provenance"]["model_sha256"] == artifact_sha
     assert report["checkpoint_metadata"] is None
-    assert report["training_provenance"] is None
-    assert report["heldout_metrics"] is None
+    assert report["training_provenance"]["manifest_sha256"] == "f" * 64
+    assert report["heldout_metrics"]["dataset_sha256"] == "e" * 64
+    assert report["heldout_metrics"]["split"] == "heldout"
     assert report["source_commit_sha"] == "d" * 40
