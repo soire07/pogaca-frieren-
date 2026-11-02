@@ -326,6 +326,34 @@ test('failed repair dispatch does not send when workflow reconciliation is unava
 });
 
 
+test('repair retry fails closed when GitHub workflow reconciliation is truncated', async () => {
+  const finished = [];
+  let posts = 0;
+  const result = await processPendingGuardianRepairDispatch({
+    db: { query: async () => ({ rows: [] }) },
+    job: { id: 19, result: review },
+    incident: { ...incident, id: 45 },
+    env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
+    fetchImpl: async (_url, options) => {
+      if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({
+        total_count: 101,
+        workflow_runs: Array.from({ length: 100 }, (_, index) => ({
+          display_title: 'Unrelated workflow #' + index,
+        })),
+      }) };
+      posts += 1;
+      return { ok: true, status: 204, json: async () => ({}) };
+    },
+    store: {
+      reserveGuardianRepairDispatch: async () => ({ id: 19 }),
+      finishGuardianRepairDispatch: async (_db, args) => { finished.push(args); return true; },
+    },
+  });
+  assert.equal(result.status, 'reconciliation_incomplete');
+  assert.equal(posts, 0, 'an incomplete workflow list must never authorize a duplicate dispatch');
+  assert.equal(finished.at(-1).status, 'failed');
+});
+
 test('automatic dispatch retry rechecks emergency stop after workflow reconciliation', async () => {
   let stateReads = 0;
   let posts = 0;
