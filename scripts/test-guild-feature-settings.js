@@ -104,6 +104,7 @@ test('entertainment and progression commands map to their guild dashboard module
   assert.deepEqual(getCommandFeatureKeys('hikaye'), ['story', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('takasteklif'), ['economy', 'trading', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('trade'), ['economy', 'trading', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('siralama'), ['rpg'], 'leaderboards must not be gated by the economy module');
 });
 
 
