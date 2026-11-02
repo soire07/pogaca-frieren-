@@ -161,6 +161,7 @@ test('Guardian self-repair dispatch targets the active PR branch and uses a supp
   assert.ok(dashboard.includes('runs?branch=' + encodeURIComponent(target) + '&event=workflow_dispatch'));
   assert.ok(workflow.includes('- ' + target));
   assert.ok(workflow.includes('frieren-ai-agent|' + target), 'workflow shell allowlist must accept only the two supported branches');
+  assert.ok(workflow.includes('if [ "$GITHUB_REF_NAME" != "$BASE_BRANCH" ]'), 'workflow execution ref must equal its repair target');
   assert.ok(!dashboard.includes("base_branch: 'frieren-neural-foundation'"), 'repair input must match the workflow allowlist');
   assert.ok(target.length > 0);
 });
