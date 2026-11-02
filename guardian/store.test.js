@@ -64,6 +64,7 @@ test('Guardian review recovers abandoned queued jobs after the bounded request t
   assert.match(calls[0].sql, /status='failed'/);
   assert.match(calls[0].sql, /COALESCE\(started_at,created_at\) < NOW\(\)-INTERVAL '5 minutes'/);
   assert.match(calls[0].sql, /status='open'/);
+  assert.match(calls[0].sql, /last_review_at=NULL/, 'stale recovery must clear the cooldown so a retry can be reserved');
   assert.equal(calls.length, 2);
 });
 
