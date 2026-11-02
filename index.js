@@ -170,7 +170,9 @@ client.on(Events.InteractionCreate, async interaction => {
         ? 'Karakter modülü bu sunucuda devre dışı bırakılmış.'
         : componentCommandName === 'market'
           ? 'Market ve ekonomi modülü bu sunucuda devre dışı bırakılmış.'
-          : 'Takas modülü bu sunucuda devre dışı bırakılmış.';
+          : componentCommandName === 'yaratik'
+            ? 'Yaratık Arşivi bu sunucuda devre dışı bırakılmış.'
+            : 'Takas modülü bu sunucuda devre dışı bırakılmış.';
       return sendPrivateInteractionError(interaction, message);
     }
     if (await handleCharacterPanelInteraction(interaction)) return;
