@@ -49,7 +49,10 @@ function dependencies(overrides = {}) {
     saved,
     options: {
       env: {},
-      verifyOidcToken: async () => ({ sha: SOURCE_SHA }),
+      verifyOidcToken: async token => {
+        if (token !== OIDC) throw new Error('invalid test token');
+        return { sha: SOURCE_SHA };
+      },
       fetchImpl: async () => ({
         ok: true,
         json: async () => ({ workflow_runs: [{
@@ -67,6 +70,14 @@ test('Neural report endpoint rejects unauthorized requests before reading or sto
   const deps = dependencies();
   const result = await handleNeuralQualityReportRequest(request(validReport(), { authorization: 'Bearer invalid' }), deps.options);
   assert.equal(result.status, 401);
+  assert.equal(deps.saved.length, 0);
+});
+
+test('Neural report endpoint rejects a valid OIDC identity when its commit differs from the report', async () => {
+  const deps = dependencies({ verifyOidcToken: async () => ({ sha: 'e'.repeat(40) }) });
+  const result = await handleNeuralQualityReportRequest(request(validReport()), deps.options);
+  assert.equal(result.status, 401);
+  assert.equal(result.payload.error, 'oidc_commit_mismatch');
   assert.equal(deps.saved.length, 0);
 });
 
