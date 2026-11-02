@@ -1,7 +1,37 @@
 import test from 'node:test';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
+
+
+test('Guardian has a dedicated private Owner Panel section', () => {
+  assert.ok(OWNER_PANEL_SECTIONS.some(section => section.id === 'guardian'));
+  assert.match(renderOwnerNavigation(), /href="\/owner\/guardian"/);
+});
+
+test('Guardian AI bridge endpoint requires HTTPS and targets the private review route', () => {
+  assert.equal(getFrierenAiGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.example/' }), 'https://frieren-ai.example/internal/guardian-review');
+  assert.throws(() => getFrierenAiGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'http://frieren-ai.example' }), { message: 'INVALID_FRIEREN_AI_PUBLIC_URL' });
+});
+
+test('Guardian emergency stop is enforced server-side', async () => {
+  await assert.rejects(() => assertGuardianAutomationEnabled({ query: async () => ({ rows: [{ setting_value: { enabled: true } }] }) }), { message: 'GUARDIAN_EMERGENCY_STOP_ENABLED' });
+  assert.equal(await assertGuardianAutomationEnabled({ query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) }), undefined);
+});
+
+test('Guardian workspace renders incidents and review proposals as unapplied', () => {
+  const html = renderOwnerGuardianWorkspace({
+    csrf: 'csrf-test',
+    monitorState: { last_tick_at: '2026-11-02T10:00:00Z', last_error: null },
+    incidents: [{ id: 7, title: 'RPG timeout', severity: 'high', system: 'pogaca_frieren', code: 'TIMEOUT', status: 'open', occurrence_count: 2, last_seen: '2026-11-02T10:00:00Z', summary: 'Boss test timeout', evidence: [] }],
+    jobs: [{ id: 9, incident_title: 'RPG timeout', agent: 'frieren_ai', system: 'pogaca_frieren', status: 'completed', created_at: '2026-11-02T10:01:00Z', result: { rootCause: 'A missing timeout guard.', confidence: 'medium', suggestedFix: 'Add a bounded timeout.', proposedPatch: 'diff --git a/file b/file', applied: false, tests: ['Add regression test.'], risks: [] } }],
+  });
+  assert.match(html, /Neural Guardian/);
+  assert.match(html, /A missing timeout guard/);
+  assert.match(html, /Önerilen yama taslağı \(uygulanmadı\)/);
+  assert.match(html, /İnsan incelemesi gerekli/);
+  assert.match(html, /guardian-review/);
+});
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
 const ownerId = '1553794496234262641';

@@ -196,6 +196,9 @@ test('owner schema creates a bounded test-run history table and recent index', a
   assert.match(sql, /idx_owner_test_runs_recent/);
   assert.match(sql, /summary JSONB NOT NULL/);
   assert.match(sql, /details JSONB NOT NULL/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS owner_guardian_incidents/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS owner_guardian_jobs/);
+  assert.match(sql, /owner_guardian_monitor_state/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS owner_guardian_quality_reports/);
   assert.match(sql, /report_sha256 CHAR\(64\) NOT NULL UNIQUE/);
   assert.match(sql, /idx_owner_guardian_quality_recent/);
