@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   upsertGuardianIncident,
+  listGuardianIncidents,
+  listGuardianJobs,
   createGuardianReviewJob,
   finishGuardianReviewJob,
   resolveGuardianIncident,
@@ -11,6 +13,14 @@ import {
   updateGuardianRepairStatus,
   getGuardianMonitorState,
 } from './store.js';
+
+test('Guardian list endpoints floor fractional limits and enforce their hard caps', async () => {
+  const limits = [];
+  const db = { query: async (sql, values) => { limits.push(values[0]); return { rows: [] }; } };
+  await listGuardianIncidents(db, 3.9);
+  await listGuardianJobs(db, 4.9);
+  assert.deepEqual(limits, [3, 4]);
+});
 
 test('Guardian incident upsert deduplicates repeated evidence and bounds evidence history', async () => {
   let call;
