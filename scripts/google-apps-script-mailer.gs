@@ -11,6 +11,19 @@
  * Run testGmailPermission() once from the editor to authorize Gmail.
  */
 
+/**
+ * Public health check. Browser navigation sends GET; mail delivery uses POST.
+ * This endpoint never exposes configuration or accepts mail instructions.
+ */
+function doGet(e) {
+  return jsonResponse({
+    ok: true,
+    service: 'Frieren Portal mail relay',
+    method: 'GET',
+    message: 'Endpoint is reachable. Authenticated POST is required to send mail.'
+  });
+}
+
 function doPost(e) {
   var stage = 'START';
 
