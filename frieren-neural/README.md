@@ -299,3 +299,19 @@ The trainer keeps user turns and role markers in the context window but excludes
 ## Additional dataset candidate: TFLai Turkish-Alpaca
 
 The [TFLai Turkish-Alpaca dataset card](https://huggingface.co/datasets/TFLai/Turkish-Alpaca) declares Apache-2.0 and reports 51,914 rows / 24.2 MB. Its public examples show mixed response quality, including incorrect arithmetic reasoning and weak/unsafe password-generation examples. **It is not imported or used for training.** The current public file listing exposes a mutable main path and an LFS digest, but the exact immutable revision, complete license notice, file digest, and row-level safety/quality filtering have not been verified together. Before use, pin a full immutable revision, verify all consumed bytes, inspect license notices, and add deterministic allowlist-based task filtering plus independent human spot checks. A larger dataset must not be assumed to be a better dataset.
+
+
+## Send quality reports to Neural Guardian
+
+The evaluator can optionally submit its generated report to the Poğaça Owner Panel's authenticated Guardian endpoint. This does not make a report ready: missing human scores, training provenance, held-out metrics, or independent CI evidence remain blockers.
+
+Configure these environment variables on the **Frieren Neural Render service**:
+
+- `FRIEREN_NEURAL_GUARDIAN_URL=https://pogaca-frieren.onrender.com/internal/neural-quality-report`
+- `FRIEREN_NEURAL_GUARDIAN_SECRET`: a newly generated random secret with at least 32 characters.
+
+Set the exact same secret as `FRIEREN_NEURAL_GUARDIAN_SECRET` on the **Poğaça Frieren Render service**. Do not reuse Discord, database, or Frieren AI bridge credentials. Keep the secret in Render environment settings only; never commit it.
+
+When both variables are configured, running `frieren-neural-evaluate-quality` submits the report over HTTPS with bearer authentication. The Guardian endpoint rejects scratch-backend reports, mismatched artifact fingerprints, malformed benchmark IDs, and payloads over 1 MiB. It stores at most the 50 most recent reports. A successful upload means only that the report was stored; it is not CI, security, memory-isolation, merge, or deployment approval.
+
+If either variable is absent, the evaluator writes local JSON/Markdown reports without uploading. If only one is present, evaluation fails clearly instead of silently skipping the configured integration.
