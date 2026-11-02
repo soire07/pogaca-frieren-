@@ -135,17 +135,26 @@ export async function finishGuardianReviewJob(db, { jobId, status, result, error
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error('INVALID_GUARDIAN_JOB_ID');
   if (!['completed', 'failed'].includes(status)) throw new Error('INVALID_GUARDIAN_JOB_STATUS');
   const safeResult = status === 'completed' ? result : { error: String(error || 'REVIEW_FAILED').slice(0, 180) };
-  // Job completion and incident transition must commit or roll back together.
+  // Lock the active job first, then transition its incident before marking the job
+  // finished. This prevents a stale/resolved incident from leaving a completed job
+  // whose review state was never advanced.
   const updated = await db.query(
-    `WITH changed AS (
-       UPDATE owner_guardian_jobs SET status=$2,result=$3::jsonb,finished_at=NOW()
-       WHERE id=$1 AND status IN ('queued','running') RETURNING incident_id
+    `WITH target AS MATERIALIZED (
+       SELECT id,incident_id FROM owner_guardian_jobs
+       WHERE id=$1 AND status IN ('queued','running')
+       FOR UPDATE
      ), incident_update AS (
        UPDATE owner_guardian_incidents i
        SET status=$4,updated_at=NOW()
-       FROM changed c
-       WHERE i.id=c.incident_id AND i.status='in_review'
+       FROM target t
+       WHERE i.id=t.incident_id AND i.status='in_review'
        RETURNING i.id
+     ), changed AS (
+       UPDATE owner_guardian_jobs j
+       SET status=$2,result=$3::jsonb,finished_at=NOW()
+       FROM incident_update iu
+       WHERE j.id=$1 AND j.incident_id=iu.id AND j.status IN ('queued','running')
+       RETURNING j.incident_id
      )
      SELECT incident_id FROM changed`,
     [id, status, JSON.stringify(safeResult || {}), status === 'completed' ? 'awaiting_approval' : 'open']
