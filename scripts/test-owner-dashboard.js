@@ -206,7 +206,9 @@ test('Guardian workspace shows dispatched workflow, PR and CI evidence with a re
         result: { status: 'proposal_only', rootCause: 'Timeout.' },
       }],
     });
-    assert.match(html, /Workflow: completed/);
+    assert.match(html, /Son kaydedilen workflow \(geçmiş kanıt\): completed/);
+    assert.match(html, /Son kaydedilen workflow kanıtını aç/);
+    assert.match(html, /Son kaydedilen onarım PR #44 kanıtını aç/);
     assert.match(html, /PR kontrolleri: success/);
     assert.match(html, /Onarım PR #44 incele/);
     assert.match(html, /guardian-refresh-pr/);
