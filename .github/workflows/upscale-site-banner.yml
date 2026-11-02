@@ -1,0 +1,79 @@
+name: Upscale site banner asset
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/upscale-site-banner.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: site-banner-upscale
+  cancel-in-progress: false
+
+jobs:
+  upscale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install image processor
+        run: python -m pip install --disable-pip-version-check Pillow
+
+      - name: Upscale and sharpen the existing banner
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageFilter
+
+          path = Path("site-banner.webp")
+          with Image.open(path) as source:
+              source = source.convert("RGB")
+              original_size = source.size
+              target_size = (source.width * 4, source.height * 4)
+              enlarged = source.resize(target_size, Image.Resampling.LANCZOS)
+              enhanced = enlarged.filter(
+                  ImageFilter.UnsharpMask(radius=1.35, percent=115, threshold=3)
+              )
+              enhanced.save(
+                  path,
+                  "WEBP",
+                  quality=95,
+                  method=6,
+                  exact=True,
+              )
+
+          with Image.open(path) as result:
+              if result.size != target_size or result.format != "WEBP":
+                  raise SystemExit("Banner output validation failed")
+              print(
+                  f"Banner processed: {original_size[0]}x{original_size[1]} "
+                  f"-> {result.width}x{result.height}; format={result.format}; "
+                  f"bytes={path.stat().st_size}"
+              )
+          PY
+
+      - name: Commit the processed asset
+        run: |
+          if git diff --quiet -- site-banner.webp; then
+            echo "Banner output is unchanged; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site-banner.webp
+          git commit -m "assets: upscale and sharpen site banner"
+          git push origin HEAD:main
