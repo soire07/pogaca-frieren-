@@ -237,7 +237,8 @@ def test_active_gguf_evaluation_uses_pinned_artifact_and_never_claims_readiness(
     assert report["decision"] == "NOT READY"
     assert "human_review_missing" in report["blocking_reasons"]
     assert "checkpoint_metadata_missing" not in report["blocking_reasons"]
-    assert "training_provenance_missing" not in report["blocking_reasons"]
+    assert "training_provenance_missing" in report["blocking_reasons"]
+    assert "held_out_metrics_missing_or_invalid" in report["blocking_reasons"]
 
 def test_guardian_report_upload_uses_https_and_bearer_auth(monkeypatch):
     class Response:
@@ -305,6 +306,15 @@ def test_ufakzeka_report_can_pass_model_specific_gate_after_human_review(monkeyp
         model_backend="ufakzeka",
         artifact_sha256=artifact_sha,
         source_commit_sha="d" * 40,
+        training_provenance={"manifest_sha256": "f" * 64, "licenses": ["Apache-2.0"]},
+        heldout_metrics={
+            "loss": 1.2,
+            "perplexity": 3.32,
+            "dataset_sha256": "e" * 64,
+            "sample_count": 120,
+            "split": "heldout",
+            "evaluation_version": "ufakzeka-heldout-v1",
+        },
     )
 
     assert report["decision"] == "READY FOR STAGED TEST"
