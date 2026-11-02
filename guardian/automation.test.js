@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGuardianRepairTask, processGuardianIncident } from './automation.js';
+import { buildGuardianRepairTask, processGuardianIncident, processPendingGuardianRepairDispatch } from './automation.js';
 
 const incident = {
   id: 42,
@@ -110,4 +110,83 @@ test('low-confidence or incomplete AI proposals never dispatch a repair workflow
   });
   assert.equal(result.status, 'reviewed_only');
   assert.equal(requests, 1);
+});
+
+
+test('failed repair dispatch retries from the saved AI proposal without repeating the AI review', async () => {
+  const calls = [];
+  const store = {
+    reserveGuardianRepairDispatch: async (_db, id) => { calls.push(['reserve', id]); return { id, repair_dispatch_attempts: 2 }; },
+    finishGuardianRepairDispatch: async (_db, args) => { calls.push(['finish', args]); return true; },
+  };
+  const requests = [];
+  const fetchImpl = async (url, options) => {
+    requests.push({ url: String(url), options });
+    if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({ workflow_runs: [] }) };
+    return { ok: true, status: 204, json: async () => ({}) };
+  };
+  const result = await processPendingGuardianRepairDispatch({
+    db: { query: async () => ({ rows: [] }) },
+    job: { id: 9, result: review, repair_dispatch_attempts: 1 },
+    incident,
+    env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
+    fetchImpl,
+    store,
+  });
+  assert.equal(result.status, 'dispatched');
+  assert.equal(requests.length, 2);
+  assert.equal(requests[0].options.method, 'GET');
+  assert.equal(requests[1].options.method, 'POST');
+  assert.equal(requests[1].url.endsWith('/dispatches'), true);
+  assert.equal(calls[0][0], 'reserve');
+  assert.equal(calls[1][1].status, 'dispatched');
+});
+
+test('failed repair dispatch detects an already-started workflow and does not dispatch a duplicate', async () => {
+  const calls = [];
+  const store = {
+    reserveGuardianRepairDispatch: async (_db, id) => ({ id }),
+    finishGuardianRepairDispatch: async (_db, args) => { calls.push(args); return true; },
+  };
+  let posts = 0;
+  const result = await processPendingGuardianRepairDispatch({
+    db: { query: async () => ({ rows: [] }) },
+    job: { id: 9, result: review },
+    incident,
+    env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
+    fetchImpl: async (_url, options) => {
+      if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({
+        workflow_runs: [{ display_title: 'Frieren AI Repair · Guardian #42', html_url: 'https://github.com/example/actions/runs/123' }],
+      }) };
+      posts += 1;
+      return { ok: true, status: 204, json: async () => ({}) };
+    },
+    store,
+  });
+  assert.equal(result.status, 'already_dispatched');
+  assert.equal(posts, 0);
+  assert.equal(calls[0].status, 'dispatched');
+  assert.match(calls[0].workflowUrl, /actions\/runs\/123/);
+});
+
+test('failed repair dispatch does not send when workflow reconciliation is unavailable', async () => {
+  let posts = 0;
+  const store = {
+    reserveGuardianRepairDispatch: async (_db, id) => ({ id }),
+    finishGuardianRepairDispatch: async () => true,
+  };
+  const result = await processPendingGuardianRepairDispatch({
+    db: { query: async () => ({ rows: [] }) },
+    job: { id: 9, result: review },
+    incident,
+    env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
+    fetchImpl: async (_url, options) => {
+      if (options.method === 'GET') return { ok: false, status: 503, json: async () => ({}) };
+      posts += 1;
+      return { ok: true, status: 204, json: async () => ({}) };
+    },
+    store,
+  });
+  assert.equal(result.status, 'reconciliation_unavailable');
+  assert.equal(posts, 0);
 });
