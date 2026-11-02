@@ -59,3 +59,31 @@ test('emergency stop does not disable incident monitoring or error-log scanning'
     else process.env.GUARDIAN_EMERGENCY_STOP = original;
   }
 });
+
+
+test('monitor starts before Discord Ready without reporting a false startup outage', async () => {
+  const calls = [];
+  let ready = false;
+  const db = {
+    query: async (sql, values) => {
+      calls.push({sql,values});
+      if (sql.includes('SELECT last_seen_error_id')) return { rows: [{ last_seen_error_id: 0 }] };
+      if (sql.includes('SELECT id,scope,error_type')) return { rows: [] };
+      if (sql.includes('INSERT INTO owner_guardian_incidents')) return { rows: [{ id: 1 }] };
+      return { rows: [], rowCount: 1 };
+    },
+  };
+  let stop;
+  try {
+    stop = startGuardianMonitor({ db, client: { isReady: () => ready }, setIntervalImpl: () => ({ unref() {} }), clearIntervalImpl: () => {} });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(calls.some(call => call.sql.includes('INSERT INTO owner_guardian_incidents')), false,
+      'initial Discord login must not be reported as a failure');
+    ready = true;
+    await new Promise(resolve => setImmediate(resolve));
+    ready = false;
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(calls.some(call => call.sql.includes('INSERT INTO owner_guardian_incidents')), true,
+      'a disconnect after a successful Ready state must be reported');
+  } finally { stop?.(); }
+});
