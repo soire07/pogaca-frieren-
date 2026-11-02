@@ -204,6 +204,31 @@ test('failed repair dispatch detects an already-started workflow and does not di
   assert.match(calls[0].workflowUrl, /actions\/runs\/123/);
 });
 
+test('repair retry does not confuse incident 4 with a workflow for incident 42', async () => {
+  const finished = [];
+  let posts = 0;
+  const result = await processPendingGuardianRepairDispatch({
+    db: { query: async () => ({ rows: [] }) },
+    job: { id: 14, result: review },
+    incident: { ...incident, id: 4 },
+    env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
+    fetchImpl: async (_url, options) => {
+      if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({
+        workflow_runs: [{ display_title: 'Frieren AI Repair · Guardian #42', html_url: 'https://github.com/example/actions/runs/142' }],
+      }) };
+      posts += 1;
+      return { ok: true, status: 204, json: async () => ({}) };
+    },
+    store: {
+      reserveGuardianRepairDispatch: async () => ({ id: 14 }),
+      finishGuardianRepairDispatch: async (_db, args) => { finished.push(args); return true; },
+    },
+  });
+  assert.equal(result.status, 'dispatched');
+  assert.equal(posts, 1);
+  assert.equal(finished[0].status, 'dispatched');
+});
+
 test('failed repair dispatch does not send when workflow reconciliation is unavailable', async () => {
   let posts = 0;
   const store = {
