@@ -33,33 +33,27 @@ test('SMTP failure diagnostics normalize unusual thrown values without exposing 
   });
 });
 
-test('Gmail HTTPS API refreshes OAuth credentials and sends MIME content without SMTP', async () => {
-  const keys = ['SITE_SMTP_USER','SITE_GMAIL_CLIENT_ID','SITE_GMAIL_CLIENT_SECRET','SITE_GMAIL_REFRESH_TOKEN'];
+test('Gmail Apps Script HTTPS relay sends verification mail without blocked SMTP ports', async () => {
+  const keys = ['SITE_GMAIL_SCRIPT_URL','SITE_GMAIL_SCRIPT_SECRET'];
   const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]));
   const originalFetch = globalThis.fetch;
-  const calls = [];
-  process.env.SITE_SMTP_USER = 'frieren.portal@gmail.com';
-  process.env.SITE_GMAIL_CLIENT_ID = 'test-client-id';
-  process.env.SITE_GMAIL_CLIENT_SECRET = 'test-client-secret';
-  process.env.SITE_GMAIL_REFRESH_TOKEN = 'test-refresh-token';
+  let call;
+  process.env.SITE_GMAIL_SCRIPT_URL = 'https://script.google.com/macros/s/test-deployment-id/exec';
+  process.env.SITE_GMAIL_SCRIPT_SECRET = 'test-script-secret';
   globalThis.fetch = async (url, options) => {
-    calls.push({ url, options });
-    if (url === 'https://oauth2.googleapis.com/token') {
-      assert.match(String(options.body), /grant_type=refresh_token/);
-      return { ok: true, async json() { return { access_token: 'test-access-token' }; } };
-    }
-    assert.equal(url, 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send');
-    assert.equal(options.headers.authorization, 'Bearer test-access-token');
+    call = { url, options };
     const payload = JSON.parse(options.body);
-    assert.match(payload.raw, /^[A-Za-z0-9_-]+$/);
-    const decoded = Buffer.from(payload.raw, 'base64url').toString('utf8');
-    assert.match(decoded, /To: receiver@example.com/);
-    assert.match(decoded, new RegExp(Buffer.from('Frieren doğrulama').toString('base64')));
-    return { ok: true, async json() { return { id: 'gmail-message-id' }; } };
+    assert.equal(payload.secret, 'test-script-secret');
+    assert.equal(payload.to, 'receiver@example.com');
+    assert.equal(payload.subject, 'Frieren doğrulama');
+    assert.match(payload.html, /Doğrula/);
+    assert.equal(options.redirect, 'follow');
+    return { ok: true, async json() { return { ok: true, messageId: 'apps-script-message-id' }; } };
   };
   try {
-    assert.equal(await sendGmailApi('receiver@example.com','Frieren doğrulama','<p>Doğrula</p>','Doğrula'),'gmail-message-id');
-    assert.equal(calls.length, 2);
+    assert.equal(await sendGmailApi('receiver@example.com','Frieren doğrulama','<p>Doğrula</p>','Doğrula'),'apps-script-message-id');
+    assert.equal(call.url, process.env.SITE_GMAIL_SCRIPT_URL);
+    assert.equal(call.options.method, 'POST');
   } finally {
     globalThis.fetch = originalFetch;
     for (const key of keys) {
@@ -69,17 +63,15 @@ test('Gmail HTTPS API refreshes OAuth credentials and sends MIME content without
   }
 });
 
-test('Gmail HTTPS API reports HTTP failures without exposing response bodies', async () => {
-  const keys = ['SITE_SMTP_USER','SITE_GMAIL_CLIENT_ID','SITE_GMAIL_CLIENT_SECRET','SITE_GMAIL_REFRESH_TOKEN'];
+test('Gmail HTTPS relay rejects failed delivery without logging response secrets', async () => {
+  const keys = ['SITE_GMAIL_SCRIPT_URL','SITE_GMAIL_SCRIPT_SECRET'];
   const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]));
   const originalFetch = globalThis.fetch;
-  process.env.SITE_SMTP_USER = 'frieren.portal@gmail.com';
-  process.env.SITE_GMAIL_CLIENT_ID = 'test-client-id';
-  process.env.SITE_GMAIL_CLIENT_SECRET = 'test-client-secret';
-  process.env.SITE_GMAIL_REFRESH_TOKEN = 'test-refresh-token';
-  globalThis.fetch = async () => ({ ok: false, status: 401, async json() { return { error: 'invalid_grant', secret: 'must-not-log' }; } });
+  process.env.SITE_GMAIL_SCRIPT_URL = 'https://script.google.com/macros/s/test-deployment-id/exec';
+  process.env.SITE_GMAIL_SCRIPT_SECRET = 'test-script-secret';
+  globalThis.fetch = async () => ({ ok: true, async json() { return { ok: false, error: 'private-detail' }; } });
   try {
-    await assert.rejects(() => sendGmailApi('receiver@example.com','Subject','<p>HTML</p>','Text'), /GMAIL_OAUTH_HTTP_401/);
+    await assert.rejects(() => sendGmailApi('receiver@example.com','Subject','<p>HTML</p>','Text'), /GMAIL_SCRIPT_REJECTED/);
   } finally {
     globalThis.fetch = originalFetch;
     for (const key of keys) {
