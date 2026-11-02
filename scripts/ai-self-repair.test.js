@@ -5,6 +5,7 @@ import {
   extractUnifiedDiff,
   validatePatchPaths,
   generateRepairPatch,
+  applyRepairPatch,
 } from './ai-self-repair.js';
 
 const validPatch = [
@@ -127,4 +128,41 @@ test('repair patch generation rejects model output without a safe diff', async (
     generateRepairPatch({ task: 'fix a bug', client, context: 'limited context' }),
     { message: 'REPAIR_CONTEXT_INSUFFICIENT' },
   );
+});
+
+
+test('repair patch refuses to run when the isolated worktree is already dirty', () => {
+  const calls = [];
+  const execFile = (args) => {
+    calls.push(args);
+    if (args[0] === 'status') return ' M unrelated.js\\n';
+    throw new Error('PATCH_MUST_NOT_BE_APPLIED');
+  };
+  assert.throws(() => applyRepairPatch(validPatch, { execFile }), {
+    message: 'REPAIR_WORKTREE_NOT_CLEAN',
+  });
+  assert.deepEqual(calls, [['status', '--porcelain', '--untracked-files=all']]);
+});
+
+test('repair patch accepts only the exact validated file set', () => {
+  const calls = [];
+  const execFile = (args) => {
+    calls.push(args);
+    if (args[0] === 'status' && args[1] === '--porcelain') return '';
+    if (args[0] === 'status') return ' M rpg-mechanics.js\\n';
+    return '';
+  };
+  assert.deepEqual(applyRepairPatch(validPatch, { execFile }), ['rpg-mechanics.js']);
+  assert.deepEqual(calls.map(args => args[0]), ['status', 'apply', 'apply', 'diff', 'status']);
+});
+
+test('repair patch rejects additional allowed files changed outside the proposal', () => {
+  const execFile = (args) => {
+    if (args[0] === 'status' && args[1] === '--porcelain') return '';
+    if (args[0] === 'status') return ' M rpg-mechanics.js\\n M unrelated.js\\n';
+    return '';
+  };
+  assert.throws(() => applyRepairPatch(validPatch, { execFile }), {
+    message: 'REPAIR_CHANGED_FILE_SET_MISMATCH',
+  });
 });
