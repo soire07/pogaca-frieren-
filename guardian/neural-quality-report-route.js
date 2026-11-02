@@ -1,4 +1,5 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash } from 'node:crypto';
+import { verifyGithubActionsOidcToken } from './github-oidc.js';
 import {
   validateNeuralQualityReport,
   evaluateNeuralCiEvidence,
@@ -16,16 +17,17 @@ export async function handleNeuralQualityReportRequest(req, {
   fetchImpl = fetch,
   saveReport,
   logger = () => {},
+  verifyOidcToken = verifyGithubActionsOidcToken,
 } = {}) {
   if (req.method !== 'POST' || req.url !== '/internal/neural-quality-report') {
     return response(404, { error: 'not_found' });
   }
 
-  const configuredSecret = String(env.FRIEREN_NEURAL_GUARDIAN_SECRET || '');
-  const suppliedSecret = extractGuardianBearerToken(req.headers?.authorization);
-  const expected = Buffer.from(configuredSecret);
-  const supplied = Buffer.from(suppliedSecret);
-  if (expected.length < 32 || expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) {
+  const oidcToken = extractGuardianBearerToken(req.headers?.authorization);
+  let oidcClaims;
+  try {
+    oidcClaims = await verifyOidcToken(oidcToken, { fetchImpl });
+  } catch {
     return response(401, { error: 'unauthorized' });
   }
   if (!String(req.headers?.['content-type'] || '').toLowerCase().startsWith('application/json')) {
@@ -54,8 +56,11 @@ export async function handleNeuralQualityReportRequest(req, {
     if (!validation.valid) return response(422, { error: 'invalid_quality_report', reasons: validation.reasons });
 
     const sourceCommitSha = String(report.source_commit_sha || '');
+    if (!/^[a-f0-9]{40}$/i.test(sourceCommitSha) || sourceCommitSha !== oidcClaims.sha) {
+      return response(401, { error: 'oidc_commit_mismatch' });
+    }
     let ciEvidence = evaluateNeuralCiEvidence({ sourceCommitSha });
-    const githubToken = String(env.FRIEREN_GITHUB_TOKEN || '').trim();
+    const githubToken = String(req.headers?.['x-github-token'] || '').trim();
     if (/^[a-f0-9]{40}$/i.test(sourceCommitSha) && githubToken.length >= 32) {
       try {
         const ciResponse = await fetchImpl(
