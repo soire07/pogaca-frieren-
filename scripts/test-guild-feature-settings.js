@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_GUILD_FEATURES, areGuildCommandFeaturesEnabled, getCommandFeatureKeys, getGuildFeatureEnabled, initGuildFeatureSettingsSchema, isValidGuildFeatureKey, listGuildFeatureSettings, listGuildFeatureSettingsForGuilds, resetGuildFeatureSetting, setGuildFeatureEnabled } from '../guild-feature-settings.js';
+import { DEFAULT_GUILD_FEATURES, areGuildCommandFeaturesEnabled, getCommandFeatureKeys, getGuildFeatureEnabled, guardGuildCommandComponent, initGuildFeatureSettingsSchema, isValidGuildFeatureKey, listGuildFeatureSettings, listGuildFeatureSettingsForGuilds, resetGuildFeatureSetting, setGuildFeatureEnabled } from '../guild-feature-settings.js';
 
 function fakeDb(rows = []) {
   const calls = [];
@@ -126,4 +126,46 @@ test('guild command feature gate rejects invalid command or guild identifiers', 
   assert.equal(await areGuildCommandFeaturesEnabled(db, 'invalid', 'takasteklif'), false);
   assert.equal(await areGuildCommandFeaturesEnabled(db, '1539562273197260860', 'bad command'), false);
   assert.equal(db.calls.length, 0);
+});
+
+
+test('collector component guard stops active sessions when a guild feature is disabled', async () => {
+  const db = fakeDb([{ enabled: false }]);
+  let stoppedWith = null;
+  let replied = null;
+  const collector = { stop(reason) { stoppedWith = reason; } };
+  const component = {
+    deferred: false,
+    replied: false,
+    async reply(payload) { replied = payload; }
+  };
+  const allowed = await guardGuildCommandComponent(db, component, 'ortakboss', collector);
+  assert.equal(allowed, false);
+  assert.equal(stoppedWith, 'feature-disabled');
+  assert.match(replied.content, /bu sunucuda devre dışı/i);
+  assert.equal(replied.flags, 64);
+});
+
+test('collector component guard leaves enabled sessions and components untouched', async () => {
+  const db = fakeDb([]);
+  let stopped = false;
+  let replied = false;
+  const collector = { stop() { stopped = true; } };
+  const component = { async reply() { replied = true; } };
+  const allowed = await guardGuildCommandComponent(db, component, 'katlizindan', collector);
+  assert.equal(allowed, true);
+  assert.equal(stopped, false);
+  assert.equal(replied, false);
+});
+
+test('collector component guard uses follow-up for an already acknowledged component', async () => {
+  const db = fakeDb([{ enabled: false }]);
+  let followedUp = null;
+  const component = {
+    deferred: true,
+    async followUp(payload) { followedUp = payload; }
+  };
+  const allowed = await guardGuildCommandComponent(db, component, 'buyusavasi', null);
+  assert.equal(allowed, false);
+  assert.match(followedUp.content, /bu sunucuda devre dışı/i);
 });
