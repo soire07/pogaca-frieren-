@@ -191,6 +191,11 @@ export async function reserveGuardianRepairDispatch(db, jobId) {
        repair_dispatch_attempts=repair_dispatch_attempts+1
      FROM owner_guardian_incidents AS i
      WHERE j.id=$1 AND i.id=j.incident_id AND i.status='awaiting_approval'
+       AND NOT EXISTS (
+         SELECT 1 FROM owner_settings s
+         WHERE s.setting_key='guardian_emergency_stop'
+           AND s.setting_value->>'enabled'='true'
+       )
        AND j.status='completed' AND j.repair_dispatch_attempts < 3
        AND (
          repair_dispatch_status IN ('not_requested','failed')
