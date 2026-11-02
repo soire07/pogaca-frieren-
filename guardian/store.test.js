@@ -5,7 +5,7 @@ import {
   createGuardianReviewJob,
   finishGuardianReviewJob,
   resolveGuardianIncident,
-  reserveGuardianRepairDispatch,
+  reserveGuardianRepairDispatch,\n  listPendingGuardianRepairDispatches,
   finishGuardianRepairDispatch,
   updateGuardianRepairStatus,
   getGuardianMonitorState,
@@ -176,4 +176,30 @@ test('Guardian quality report storage is idempotent and keeps bounded history', 
   assert.match(calls[0].sql, /ON CONFLICT\(report_sha256\) DO UPDATE/);
   assert.match(calls[1].sql, /LIMIT 50/);
   assert.equal(calls[0].params[0], 'b'.repeat(64));
+});
+
+
+test('Guardian repair dispatch reservation is bounded and reclaims stale dispatch leases', async () => {
+  let sql = '';
+  const db = { query: async statement => { sql = statement; return { rows: [{ id: 8, repair_dispatch_attempts: 2 }] }; } };
+  const reserved = await reserveGuardianRepairDispatch(db, 8);
+  assert.equal(reserved.repair_dispatch_attempts, 2);
+  assert.match(sql, /repair_dispatch_attempts=repair_dispatch_attempts\+1/);
+  assert.match(sql, /repair_dispatch_attempts < 3/);
+  assert.match(sql, /repair_dispatch_status='dispatching'.*INTERVAL '15 minutes'/s);
+});
+
+test('Guardian retry scan selects only bounded failed or stale dispatches with saved proposals', async () => {
+  let params;
+  const db = { query: async (sql, values) => {
+    params = values;
+    assert.match(sql, /repair_dispatch_status IN \('failed','dispatching'\)/);
+    assert.match(sql, /repair_dispatch_attempts < 3/);
+    assert.match(sql, /status='awaiting_approval'/);
+    assert.match(sql, /j\.result/);
+    return { rows: [{ id: 8, result: { status: 'proposal_only' }, incident_id: 4 }] };
+  } };
+  const rows = await listPendingGuardianRepairDispatches(db, 100);
+  assert.deepEqual(params, [25]);
+  assert.equal(rows[0].id, 8);
 });
