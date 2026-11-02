@@ -109,29 +109,43 @@ export async function resetGuildFeatureSetting(db, { guildId, featureKey }) {
   return Boolean(result.rowCount);
 }
 
+const RPG_COMMAND_NAMES = new Set([
+  'basarimlar', 'cantam', 'dinlen', 'dunya', 'gelisim', 'gunluk', 'gunlukgorev',
+  'hazineac', 'hazinegecmisi', 'hedefler', 'kesif', 'kesifdefteri', 'kesifliderligi',
+  'koleksiyon', 'liderlik', 'macera', 'maceragecmisi', 'maceraistatistik', 'mimic',
+  'npc', 'siralama', 'zanaat', 'zanaatustalari'
+]);
+
 export function getCommandFeatureKeys(commandName) {
   const name = String(commandName || '').toLocaleLowerCase('tr-TR');
   const keys = [];
-  if (/karakter|sinif|class|profil/.test(name)) keys.push('character');
+  if (/karakter|sinif|class|profil/.test(name) || name === 'parcala') keys.push('character');
   if (/buyu|büyü|spell|yetenek/.test(name)) keys.push('magic');
-  if (/ekipman|envanter|esya|eşya|item|setbonus/.test(name)) keys.push('equipment');
-  if (/bakiye|market|magaza|mağaza|ekonomi|takas|trade/.test(name)) keys.push('economy');
+  if (/ekipman|envanter|esya|eşya|item|setbonus/.test(name) || name === 'cantam' || name.startsWith('zanaat')) keys.push('equipment');
+  if (/bakiye|market|magaza|mağaza|ekonomi|takas|trade/.test(name) || ['hazineac', 'hazinegecmisi', 'parcala'].includes(name)) keys.push('economy');
   if (/takas|trade/.test(name)) keys.push('trading');
-  if (/gorev|görev|quest/.test(name)) keys.push('quests');
+  if (/gorev|görev|quest/.test(name) || ['hedefler', 'gunlukgorev', 'npc'].includes(name)) keys.push('quests');
   if (/zindan|dungeon/.test(name)) keys.push('dungeons');
-  if (/boss/.test(name)) keys.push('bosses');
+  if (/boss/.test(name) || name === 'iblisavasi') keys.push('bosses');
   if (/animequiz|anime-quiz|quiz/.test(name)) keys.push('animeQuiz');
-  if (/koleksiyon|karakterarsivi|karakter-arşivi|kesifdefteri/.test(name)) keys.push('collection');
+  if (/koleksiyon|karakterarsivi|karakter-arşivi|kesifdefteri/.test(name) || name === 'parcala') keys.push('collection');
   if (/basarim|başarım|achievement/.test(name)) keys.push('achievements');
   if (/gunlukodul|günlüködül|dailyreward/.test(name)) keys.push('dailyRewards');
   if (/kesif|keşif|explor|macera|maceragecmisi|maceraistatistik/.test(name)) keys.push('exploration');
   if (/zanaat|craft|uret|üret/.test(name)) keys.push('crafting');
-  if (/hikaye|hikâye|story/.test(name)) keys.push('story');
-  if (/rpg|savas|savaş|dovus|dövüş|arena|siralama/.test(name)) keys.push('rpg');
+  if (/hikaye|hikâye|story/.test(name) || name === 'npc') keys.push('story');
+  if (/rpg|savas|savaş|dovus|dövüş|arena|siralama|liderlik/.test(name) || RPG_COMMAND_NAMES.has(name)) keys.push('rpg');
   if (keys.some(key => key !== 'animeQuiz')) keys.push('rpg');
   return [...new Set(keys)];
 }
 
+export function getComponentCommandName(customId) {
+  const id = String(customId || '');
+  if (id.startsWith('charpanel:')) return 'karakter';
+  if (id.startsWith('market_')) return 'market';
+  if (id.startsWith('trade_accept:') || id.startsWith('trade_decline:')) return 'takasteklif';
+  return null;
+}
 
 export async function areGuildCommandFeaturesEnabled(db, guildId, commandName) {
   const id = String(guildId || '');
