@@ -64,7 +64,7 @@ const messages = {
   duplicate:'Bu kullanıcı adı veya e-posta zaten kullanılıyor.',
   csrf:'Formun süresi doldu. Sayfayı yenileyip tekrar dene.',
   rate_limited:'Çok fazla deneme yapıldı. Bir süre sonra yeniden dene.',
-  mail_unavailable:'E-posta gönderimi henüz yapılandırılmadı. Site yöneticisi Gmail SMTP ayarlarını tamamlamalı.',
+  mail_unavailable:'E-posta gönderimi henüz yapılandırılmadı. Site yöneticisi Gmail API bağlantısını tamamlamalı.',
   mail_error:'E-posta gönderilemedi. Biraz sonra yeniden dene.'
 };
 function formToken(secret) { return '<input type="hidden" name="csrf" value="' + createSiteCsrfToken(secret) + '">'; }
@@ -351,7 +351,7 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
         if(account){
           const token=randomBytes(32).toString('hex');
           await db.query("UPDATE frieren_site_accounts SET reset_token_hash=$2,reset_expires_at=NOW()+INTERVAL '30 minutes',updated_at=NOW() WHERE id=$1",[account.id,hash(token)]);
-          try{await mailReset(account.email,token);}catch(e){console.error('Site reset email failed:',e?.message||'unknown');}
+          try{await mailReset(account.email,token);}catch(e){console.error('Site reset email failed:',JSON.stringify({stage:e?.smtpStage||'gmail_api',...smtpFailureDetails(e)}));}
         }
       }
       send(res,200,authPage('forgot',sessionSecret,'email_sent'));return true;
