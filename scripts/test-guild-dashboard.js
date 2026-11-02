@@ -76,12 +76,13 @@ const sessionToken = () => createPublicSiteSession(secret, {
 function response() {
   return { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body = '') { this.body = body; } };
 }
-function siteRequest(path, method = 'GET', body = '') {
+function siteRequest(path, method = 'GET', body = '', extraHeaders = {}) {
   const cookie = buildPublicSiteSessionCookie(sessionToken(), 3600).split(';')[0];
   return {
     method, url: path, headers: {
       cookie,
-      ...(method === 'POST' ? { 'content-type': 'application/x-www-form-urlencoded' } : {})
+      ...(method === 'POST' ? { 'content-type': 'application/x-www-form-urlencoded' } : {}),
+      ...extraHeaders
     },
     async *[Symbol.asyncIterator]() { if (body) yield Buffer.from(body); }
   };
@@ -310,4 +311,22 @@ test('Discord OAuth callback consumes the stored state before exchanging the cod
   assert.equal(replayResponse.status, 400);
   assert.equal(tokenExchanges, 2);
   assert.equal(linkWrites, 1);
+});
+
+
+test('cross-origin guild feature changes are rejected before writing settings', async () => {
+  process.env.ADMIN_SESSION_SECRET = secret;
+  const csrf = createSiteCsrfToken(secret);
+  const body = new URLSearchParams({
+    csrf, guildId: '1539562273197260860', featureKey: 'animeQuiz', enabled: 'false'
+  }).toString();
+  const db = linkedDb();
+  const res = response();
+  await handleGuildDashboardRequest(siteRequest('/api/lonca/features', 'POST', body, {
+    origin: 'https://attacker.example',
+    'sec-fetch-site': 'cross-site',
+    host: 'frierenbot.vercel.app'
+  }), res, { db, env, client: discordClient, fetchImpl: discordFetch });
+  assert.equal(res.status, 403);
+  assert.equal(db.writes.length, 0);
 });
