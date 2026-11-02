@@ -29,7 +29,7 @@ const STATE_COOKIE = 'frieren_owner_oauth_state';
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
 const MAX_BODY_BYTES = 24_576;
 export function getFrierenAiScenarioEndpoint(env = process.env) {
-  const base = String(env.FRIEREN_AI_PUBLIC_URL || 'https://pogaca-frieren-kltd.onrender.com').trim();
+  const base = String(env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).trim();
   const parsed = new URL(base);
   if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_AI_PUBLIC_URL');
   return new URL('/internal/test-scenario', parsed).toString();
@@ -808,7 +808,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   }
 
   if (url.pathname === '/owner/frieren-ai/health' && req.method === 'GET') {
-    const aiBase = (process.env.FRIEREN_AI_PUBLIC_URL || 'https://pogaca-frieren-kltd.onrender.com').replace(/\/$/, '');
+    const aiBase = (process.env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).replace(/\/$/, '');
     const healthSecret = process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
     if (healthSecret.length < 32) {
       res.writeHead(503, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
