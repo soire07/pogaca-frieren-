@@ -175,9 +175,20 @@ export async function resolveGuardianIncident(db, { incidentId, actorId }) {
     `WITH changed AS (
        UPDATE owner_guardian_incidents SET status='resolved',updated_at=NOW()
        WHERE id=$1 AND status NOT IN ('resolved','ignored') RETURNING id,fingerprint
+     ), cancelled_jobs AS (
+       UPDATE owner_guardian_jobs j
+       SET status='failed',
+           result=jsonb_build_object('error','GUARDIAN_INCIDENT_RESOLVED'),
+           finished_at=NOW()
+       FROM changed
+       WHERE j.incident_id=changed.id AND j.status IN ('queued','running')
+       RETURNING j.id
      ), logged AS (
        INSERT INTO owner_audit_logs(actor_id,action,target,details)
-       SELECT $2,'guardian.incident.resolve',id::text,jsonb_build_object('fingerprint',fingerprint) FROM changed
+       SELECT $2,'guardian.incident.resolve',id::text,jsonb_build_object(
+         'fingerprint',fingerprint,
+         'cancelledReviewJobs',(SELECT COUNT(*) FROM cancelled_jobs)
+       ) FROM changed
        RETURNING id
      )
      SELECT changed.id FROM changed JOIN logged ON TRUE`,
