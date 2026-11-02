@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {
   isAllowedRepairPath,
@@ -204,4 +205,15 @@ test('Groq validation rejects malformed or empty completion responses', async ()
     const client = { chat: { completions: { async create() { return response; } } } };
     await assert.rejects(verifyGroqConnection({ client }), { message: 'GROQ_VALIDATION_RESPONSE_INVALID' });
   }
+});
+
+
+test('repair workflow rejects an empty task before checkout and dependency installation', async () => {
+  const workflow = await readFile(new URL('../.github/workflows/frieren-ai-self-repair.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /name: Require a repair task when repair mode is selected/);
+  assert.match(workflow, /if: inputs\.mode == 'repair'/);
+  assert.match(workflow, /REPAIR_TASK: \$\{\{ inputs\.task \}\}/);
+  assert.match(workflow, /tr -d '\[:space:\]+'/);
+  assert.ok(workflow.indexOf('name: Require a repair task') < workflow.indexOf('name: Checkout requested base branch'));
+  assert.ok(workflow.indexOf('name: Require a repair task') < workflow.indexOf('name: Install dependencies'));
 });
