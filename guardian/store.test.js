@@ -239,3 +239,44 @@ test('Guardian retry scan selects only bounded failed or stale dispatches with s
   assert.deepEqual(params, [25]);
   assert.equal(rows[0].id, 8);
 });
+
+test('Guardian status refresh preserves historical run and PR evidence when GitHub omits them', async () => {
+  let sql = '';
+  let params;
+  const db = { query: async (statement, values) => {
+    sql = statement;
+    params = values;
+    return { rows: [{ id: 8 }] };
+  } };
+  assert.equal(await updateGuardianRepairStatus(db, {
+    jobId: 8,
+    runId: null, runUrl: null, runStatus: null, runConclusion: null,
+    prNumber: null, prUrl: null, prState: null,
+    checksStatus: 'unknown',
+  }), true);
+  for (const field of [
+    'repair_run_id', 'repair_run_url', 'repair_run_status', 'repair_run_conclusion',
+    'repair_pr_number', 'repair_pr_url', 'repair_pr_state',
+  ]) {
+    assert.match(sql, new RegExp(field + '=COALESCE\\(\\$'));
+  }
+  assert.match(sql, /repair_checks_status=\$9/);
+  assert.equal(params[1], null);
+  assert.equal(params[6], null);
+  assert.equal(params[8], 'unknown', 'a failed refresh must not report stale checks as current success');
+});
+
+test('Guardian failed dispatch retains a previously recorded workflow URL', async () => {
+  let sql = '';
+  let params;
+  const db = { query: async (statement, values) => {
+    sql = statement;
+    params = values;
+    return { rows: [{ id: 8 }] };
+  } };
+  assert.equal(await finishGuardianRepairDispatch(db, {
+    jobId: 8, status: 'failed',
+  }), true);
+  assert.match(sql, /repair_workflow_url=COALESCE\(\$3,repair_workflow_url\)/);
+  assert.equal(params[2], null);
+});
