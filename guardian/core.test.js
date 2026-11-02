@@ -6,6 +6,8 @@ import {
   canRequestGuardianReview,
   evaluateGuardianApprovalGate,
   evaluateNeuralQualityGate,
+  evaluateNeuralCiEvidence,
+  extractGuardianBearerToken,
   redactGuardianText,
 } from './core.js';
 
@@ -118,9 +120,17 @@ function readyNeuralReport() {
   return {
     decision: 'READY FOR STAGED TEST',
     prompt_set_version: 'tr-conversation-v1',
-    checkpoint_sha256: 'a'.repeat(64),
+    checkpoint_sha256: '6a06fbffe77b8c70ee084ce8901edaaaeec4c23fd7360296259a78111facdf5e',
     model_backend: 'ufakzeka',
-    artifact_sha256: 'a'.repeat(64),
+    artifact_sha256: '6a06fbffe77b8c70ee084ce8901edaaaeec4c23fd7360296259a78111facdf5e',
+    pretrained_provenance: {
+      model_id: 'ufakai/ufakzeka-1',
+      model_repository: 'ufakai/ufakzeka-1-GGUF',
+      model_filename: 'ufakzeka-1-q8_0.gguf',
+      license: 'Apache-2.0',
+      model_sha256: '6a06fbffe77b8c70ee084ce8901edaaaeec4c23fd7360296259a78111facdf5e',
+    },
+    source_commit_sha: 'd'.repeat(40),
     outputs: Array.from({ length: 24 }, (_, index) => ({ id: 'TR-' + String(index + 1).padStart(3, '0'), output: 'Yanıt ' + index })),
     blocking_reasons: [],
     human_review: { completed: true, reviewers_required: 2 },
@@ -153,6 +163,7 @@ test('Neural Guardian fails closed when complete independent quality evidence is
 test('Neural Guardian requires all quality and operational gates plus separate approvals', () => {
   const input = {
     qualityReport: readyNeuralReport(),
+    ciEvidenceVerified: true,
     stagedTestsPassed: true,
     memoryIsolationPassed: true,
     securityChecksPassed: true,
@@ -219,7 +230,7 @@ test('Neural Guardian requires the exact ordered benchmark IDs and objective pro
   const report = readyNeuralReport();
   report.outputs[0].id = 'TR-002';
   report.outputs[1].id = 'TR-001';
-  report.checkpoint_metadata.loss_objective_version = 1;
+  report.pretrained_provenance.model_sha256 = 'e'.repeat(64);
   const result = evaluateNeuralQualityGate({
     qualityReport: report,
     stagedTestsPassed: true,
@@ -231,17 +242,17 @@ test('Neural Guardian requires the exact ordered benchmark IDs and objective pro
   });
   assert.equal(result.canDeploy, false);
   assert.ok(result.reasons.includes('NEURAL_BENCHMARK_OUTPUTS_INCOMPLETE'));
-  assert.ok(result.reasons.includes('NEURAL_EVALUATION_OBJECTIVE_MISMATCH'));
+  assert.ok(result.reasons.includes('NEURAL_PRETRAINED_PROVENANCE_INVALID'));
 });
 
 test('Neural Guardian rejects incomplete reviewer identities and invalid training provenance', () => {
   const report = readyNeuralReport();
   report.review_template.reviewers = ['reviewer_1', 'reviewer_1'];
-  report.training_provenance.manifest_sha256 = 'not-a-sha256';
+  report.pretrained_provenance.license = 'Unverified-License';
   const result = evaluateNeuralQualityGate({ qualityReport: report });
   assert.equal(result.canStage, false);
   assert.ok(result.reasons.includes('NEURAL_INDEPENDENT_HUMAN_REVIEW_REQUIRED'));
-  assert.ok(result.reasons.includes('NEURAL_TRAINING_PROVENANCE_MISSING'));
+  assert.ok(result.reasons.includes('NEURAL_PRETRAINED_PROVENANCE_INVALID'));
 });
 
 
@@ -260,7 +271,14 @@ test('Guardian report ingestion accepts only pinned active-backend reports with 
   const { validateNeuralQualityReport } = await import('./core.js');
   const report = {
     model_backend: 'ufakzeka', prompt_set_version: 'tr-conversation-v1',
-    checkpoint_sha256: 'a'.repeat(64), artifact_sha256: 'a'.repeat(64),
+    checkpoint_sha256: '6a06fbffe77b8c70ee084ce8901edaaaeec4c23fd7360296259a78111facdf5e', artifact_sha256: '6a06fbffe77b8c70ee084ce8901edaaaeec4c23fd7360296259a78111facdf5e',
+    pretrained_provenance: {
+      model_id: 'ufakai/ufakzeka-1',
+      model_repository: 'ufakai/ufakzeka-1-GGUF',
+      model_filename: 'ufakzeka-1-q8_0.gguf',
+      license: 'Apache-2.0',
+      model_sha256: '6a06fbffe77b8c70ee084ce8901edaaaeec4c23fd7360296259a78111facdf5e',
+    },
     decision: 'NOT READY',
     outputs: Array.from({ length: 24 }, (_, i) => ({ id: 'TR-' + String(i + 1).padStart(3, '0'), output: 'Yanıt' })),
   };
@@ -273,4 +291,44 @@ test('Guardian report ingestion accepts only pinned active-backend reports with 
   report.outputs[4].id = 'TR-005';
   report.outputs[0].output = 'x'.repeat(8001);
   assert.ok(validateNeuralQualityReport(report).reasons.includes('BENCHMARK_OUTPUTS_INVALID'));
+});
+
+
+
+test('Guardian bearer parsing accepts the standard Authorization header', () => {
+  assert.equal(extractGuardianBearerToken('Bearer secret-value'), 'secret-value');
+  assert.equal(extractGuardianBearerToken('bearer   secret-value  '), 'secret-value');
+  assert.equal(extractGuardianBearerToken('Basic secret-value'), '');
+});
+
+test('Guardian CI evidence requires a successful Neural workflow for the exact source commit', () => {
+  const sha = 'd'.repeat(40);
+  const matchingRun = {
+    id: 42,
+    name: 'Frieren Neural CI',
+    path: '.github/workflows/frieren-neural-ci.yml@refs/pull/173/merge',
+    head_sha: sha,
+    status: 'completed',
+    conclusion: 'success',
+    html_url: 'https://github.com/soire07/pogaca-frieren-/actions/runs/42',
+  };
+  const verified = evaluateNeuralCiEvidence({ sourceCommitSha: sha, workflowRuns: [matchingRun] });
+  assert.equal(verified.verified, true);
+  assert.equal(verified.status, 'verified');
+  assert.equal(verified.run_id, 42);
+
+  const wrongCommit = evaluateNeuralCiEvidence({
+    sourceCommitSha: sha,
+    workflowRuns: [{ ...matchingRun, head_sha: 'e'.repeat(40) }],
+  });
+  assert.equal(wrongCommit.verified, false);
+  assert.equal(wrongCommit.status, 'pending');
+
+  const failed = evaluateNeuralCiEvidence({
+    sourceCommitSha: sha,
+    workflowRuns: [{ ...matchingRun, conclusion: 'failure' }],
+  });
+  assert.equal(failed.verified, false);
+  assert.equal(failed.status, 'failed');
+  assert.equal(evaluateNeuralCiEvidence({ sourceCommitSha: 'bad' }).status, 'missing');
 });
