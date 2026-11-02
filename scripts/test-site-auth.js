@@ -54,11 +54,11 @@ test('Gmail HTTPS API refreshes OAuth credentials and sends MIME content without
     assert.match(payload.raw, /^[A-Za-z0-9_-]+$/);
     const decoded = Buffer.from(payload.raw, 'base64url').toString('utf8');
     assert.match(decoded, /To: receiver@example.com/);
-    assert.match(decoded, /Frieren doğrulama/);
+    assert.match(decoded, new RegExp(Buffer.from('Frieren doğrulama').toString('base64')));
     return { ok: true, async json() { return { id: 'gmail-message-id' }; } };
   };
   try {
-    assert.equal(await sendGmailApi('receiver@example.com','Frieren doğrulama','<p>Doğrula</p>','Doğrula'));
+    assert.equal(await sendGmailApi('receiver@example.com','Frieren doğrulama','<p>Doğrula</p>','Doğrula'),'gmail-message-id');
     assert.equal(calls.length, 2);
   } finally {
     globalThis.fetch = originalFetch;
