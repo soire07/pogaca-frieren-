@@ -241,6 +241,13 @@ test('Guardian repair reservation requires the incident to remain awaiting appro
   assert.match(sql, /s\.setting_value->>'enabled'='true'/);
 });
 
+test('Guardian repair scan floors fractional limits before applying its hard cap', async () => {
+  let params;
+  const db = { query: async (sql, values) => { params = values; return { rows: [] }; } };
+  await listPendingGuardianRepairDispatches(db, 3.9);
+  assert.deepEqual(params, [3]);
+});
+
 test('Guardian retry scan selects only bounded failed or stale dispatches with saved proposals', async () => {
   let params;
   const db = { query: async (sql, values) => {
