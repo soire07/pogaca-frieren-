@@ -25,6 +25,22 @@ test('incident fingerprints are stable across timestamps and Discord IDs', () =>
   assert.equal(first.fingerprint, second.fingerprint);
 });
 
+test('incident evidence rejects Windows drive and network-share absolute paths', () => {
+  const slash = String.fromCharCode(92);
+  const drivePath = 'C:' + slash + 'Windows' + slash + 'system.ini';
+  const networkPath = slash + slash + 'server' + slash + 'share' + slash + 'private.txt';
+  const incident = createGuardianIncident({
+    system: 'frieren_ai',
+    title: 'Unsafe evidence paths',
+    evidence: [
+      { file: drivePath, message: 'drive path' },
+      { file: networkPath, message: 'network path' },
+      { file: 'guardian' + slash + 'monitor.js', message: 'relative path' },
+    ],
+  });
+  assert.deepEqual(incident.evidence.map(item => item.file), ['guardian' + slash + 'monitor.js']);
+});
+
 test('incident evidence redacts secrets and rejects unsafe file paths', () => {
   const incident = createGuardianIncident({
     system: 'frieren_ai',
