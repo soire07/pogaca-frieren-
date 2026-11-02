@@ -21,6 +21,8 @@ jobs:
     env:
       FRIEREN_MODEL_BACKEND: ufakzeka
       FRIEREN_MODEL_THREADS: "2"
+      FRIEREN_NEURAL_GUARDIAN_URL: ${{ secrets.FRIEREN_NEURAL_GUARDIAN_URL }}
+      FRIEREN_NEURAL_GUARDIAN_SECRET: ${{ secrets.FRIEREN_NEURAL_GUARDIAN_SECRET }}
     steps:
       - name: Check out validation commit
         uses: actions/checkout@v4
@@ -34,6 +36,17 @@ jobs:
         run: python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
       - name: Install Neural runtime and test dependencies
         run: python -m pip install -e ".[dev,serve,discord]"
+      - name: Check optional Guardian upload configuration
+        shell: bash
+        run: |
+          if [[ -n "${FRIEREN_NEURAL_GUARDIAN_URL}" && -n "${FRIEREN_NEURAL_GUARDIAN_SECRET}" ]]; then
+            echo "GUARDIAN_UPLOAD=CONFIGURED"
+          elif [[ -z "${FRIEREN_NEURAL_GUARDIAN_URL}" && -z "${FRIEREN_NEURAL_GUARDIAN_SECRET}" ]]; then
+            echo "GUARDIAN_UPLOAD=SKIPPED_CONFIGURATION_MISSING"
+          else
+            echo "::error::Both FRIEREN_NEURAL_GUARDIAN_URL and FRIEREN_NEURAL_GUARDIAN_SECRET must be configured together."
+            exit 1
+          fi
       - name: Run the real pinned GGUF through all 24 prompts
         run: |
           python -m frieren_neural.quality_evaluation \
