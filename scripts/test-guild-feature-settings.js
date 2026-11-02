@@ -102,9 +102,10 @@ test('command category mapping does not infer economy from incidental sat or al 
 
 test('known economy command names retain their economy and RPG category gates', async () => {
   const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
-  for (const commandName of ['bakiye', 'market', 'magaza', 'ekonomi', 'takasteklif', 'trade']) {
+  for (const commandName of ['bakiye', 'market', 'magaza', 'ekonomi', 'trade']) {
     assert.deepEqual(getCommandFeatureKeys(commandName), ['economy', 'rpg'], commandName);
   }
+  assert.deepEqual(getCommandFeatureKeys('takasteklif'), ['economy', 'trading', 'rpg']);
 });
 
 
@@ -189,4 +190,11 @@ test('character duplicate dismantling is gated by character, economy and RPG set
 test('crafting daily quest is gated by equipment, quests and RPG settings', async () => {
   const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
   assert.deepEqual(getCommandFeatureKeys('zanaatgorevi'), ['equipment', 'quests', 'rpg']);
+});
+
+
+test('player trade command is gated by the dedicated trading feature as well as economy and RPG', async () => {
+  const { isGuildCommandEnabled } = await import('../guild-feature-settings.js');
+  const db = { async query(sql, params) { return { rows: [{ enabled: params[1] !== 'trading' }], rowCount: 1 }; } };
+  assert.equal(await isGuildCommandEnabled(db, '1539562273197260860', 'takasteklif'), false);
 });
