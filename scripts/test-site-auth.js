@@ -71,7 +71,12 @@ test('Gmail HTTPS relay rejects failed delivery without logging response secrets
   process.env.SITE_GMAIL_SCRIPT_SECRET = 'test-script-secret';
   globalThis.fetch = async () => ({ ok: true, async json() { return { ok: false, error: 'private-detail' }; } });
   try {
-    await assert.rejects(() => sendGmailApi('receiver@example.com','Subject','<p>HTML</p>','Text'), /GMAIL_SCRIPT_REJECTED/);
+    await assert.rejects(
+      () => sendGmailApi('receiver@example.com','Subject','<p>HTML</p>','Text'),
+      error => error.message === 'GMAIL_SCRIPT_REJECTED' &&
+        error.relayStage === 'UNKNOWN' &&
+        error.relayError === 'private-detail'
+    );
   } finally {
     globalThis.fetch = originalFetch;
     for (const key of keys) {
