@@ -23,7 +23,8 @@ function fakeDb() {
 
 test('SMTP failure diagnostics normalize unusual thrown values without exposing email addresses', () => {
   assert.deepEqual(smtpFailureDetails(Object.assign(new Error('connect failed for user@example.com'), { code: 'ECONNRESET', syscall: 'connect' })), {
-    name: 'Error', code: 'ECONNRESET', syscall: 'connect', message: 'connect failed for [redacted-email]'
+    name: 'Error', code: 'ECONNRESET', syscall: 'connect', message: 'connect failed for [redacted-email]',
+    relayStage: null, relayError: null
   });
   assert.deepEqual(smtpFailureDetails('unexpected transport failure'), {
     name: 'NonErrorThrow', code: null, syscall: null, message: 'unexpected transport failure'
