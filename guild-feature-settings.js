@@ -16,6 +16,7 @@ export const DEFAULT_GUILD_FEATURES = Object.freeze({
   aiChat: true,
   animeQuiz: true,
   collection: true,
+  characterWishlist: true,
   companions: true,
   fishing: true,
   farming: true,
@@ -124,6 +125,7 @@ export function getCommandFeatureKeys(commandName) {
   const name = String(commandName || '').toLocaleLowerCase('tr-TR');
   const keys = [];
   if (/karakter|sinif|class|profil/.test(name) || name === 'parcala') keys.push('character');
+  if (/karakteristek|characterwishlist/.test(name)) keys.push('characterWishlist', 'collection');
   if (/yoldas|yoldaş|companion|pet/.test(name)) keys.push('companions');
   if (/^balik$|balık|fishing/.test(name)) keys.push('fishing');
   if (/^sera$|sera|farming/.test(name)) keys.push('farming');

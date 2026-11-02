@@ -23,6 +23,7 @@ test('feature keys are validated and defaults preserve existing behavior', () =>
   assert.equal(DEFAULT_GUILD_FEATURES.rpg, true);
   assert.equal(DEFAULT_GUILD_FEATURES.aiChat, true);
   assert.equal(DEFAULT_GUILD_FEATURES.companions, true);
+  assert.equal(DEFAULT_GUILD_FEATURES.characterWishlist, true);
   assert.equal(DEFAULT_GUILD_FEATURES.fishing, true);
   assert.equal(DEFAULT_GUILD_FEATURES.farming, true);
   assert.equal(DEFAULT_GUILD_FEATURES.creatures, false);
@@ -101,6 +102,7 @@ test('bulk guild feature lookup validates all guild IDs before querying', async 
 test('entertainment and progression commands map to their guild dashboard modules', () => {
   assert.deepEqual(getCommandFeatureKeys('animequiz'), ['animeQuiz']);
   assert.deepEqual(getCommandFeatureKeys('yoldas'), ['companions', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('karakteristek'), ['character', 'characterWishlist', 'collection', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('balik'), ['fishing', 'rpg']);
   assert.equal(getComponentCommandName('creature_catch:123e4567-e89b-12d3-a456-426614174000'),'yaratik');
   assert.deepEqual(getCommandFeatureKeys('sera'), ['farming', 'rpg']);

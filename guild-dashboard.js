@@ -30,6 +30,7 @@ const FEATURE_DETAILS = {
   aiChat: ['Frieren sohbeti', 'Sunucuda Frieren karakter sohbeti ve hafıza ayarları.', 'Sosyal'],
   animeQuiz: ['Anime bilgi yarışması', 'Anime quizleri ve doğru cevap serileri.', 'Eğlence'],
   collection: ['Karakter koleksiyonu', 'Karakter arşivi, koleksiyon ve keşif defteri.', 'Koleksiyon'],
+  characterWishlist: ['Karakter İstek Listesi', 'Anime karakter hedefleri, favori istekler ve liste yönetimi.', 'Koleksiyon'],
   companions: ['Yoldaş Akademisi', 'Yoldaş sahiplenme, bakım, eğitim ve seviye ilerlemesi.', 'Macera'],
   fishing: ['Kuzey Denizi', 'Bölgeye göre balık avı, nadir türler ve koleksiyon defteri.', 'Keşif'],
   farming: ['Büyülü Sera', 'Tohum ekimi, zamanlı yetiştirme, mevsim bonusu ve hasat.', 'Üretim'],
@@ -44,7 +45,6 @@ const FEATURE_DETAILS = {
 const PLANNED_FEATURES = [
   { id: 'miniGames', title: 'Mini oyun salonu', description: 'Blackjack dışı beceri oyunları, yarışlar, kelime ve hafıza oyunları.' },
   { id: 'profileCards', title: 'Özelleştirilebilir profil kartları', description: 'Rozet, arka plan, çerçeve, unvan ve istatistik kartları.' },
-  { id: 'characterWishlist', title: 'Karakter dilek listesi', description: 'İstediğin Frieren karakterlerini listene ekle; karşılaşma ve koleksiyon hedeflerini takip et.' },
   { id: 'guildRewardStore', title: 'Lonca ödül mağazası', description: 'Sunucuya özel kozmetik, unvan, rozet ve etkinlik ödülleri için yapılandırılabilir lonca mağazası.' },
   { id: 'guildEvents', title: 'Lonca etkinlikleri', description: 'Takvimli etkinlikler, turnuvalar, sezonlar ve ortak hedefler.' },
   { id: 'playerMarket', title: 'Oyuncu pazarı ve açık artırma', description: 'Teklif, açık artırma, pazar geçmişi ve güvenli alışveriş.' },

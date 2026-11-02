@@ -63,6 +63,7 @@ test('guild dashboard catalog only exposes working toggles and labels future ent
   const planned = GUILD_FEATURE_CATALOG.filter(feature => feature.status === 'planned');
   assert.ok(active.some(feature => feature.key === 'animeQuiz'));
   assert.ok(active.some(feature => feature.key === 'collection'));
+  assert.ok(active.some(feature => feature.key === 'characterWishlist'));
   assert.ok(active.some(feature => feature.key === 'companions'));
   assert.ok(active.some(feature => feature.key === 'fishing'));
   assert.ok(active.some(feature => feature.key === 'dailyRewards'));
@@ -218,13 +219,12 @@ test('guild settings explain that disabling a module blocks new sessions but let
 });
 
 
-test('competitor-inspired wishlist and guild rewards remain roadmap-only until implemented', () => {
-  for (const id of ['characterWishlist', 'guildRewardStore']) {
-    const feature = GUILD_FEATURE_CATALOG.find(item => item.id === id);
-    assert.ok(feature, id + ' should be visible in the roadmap');
-    assert.equal(feature.status, 'planned');
-    assert.equal(feature.key, null, id + ' must not expose a live toggle before implementation');
-  }
+test('character wishlist is active while guild reward store remains roadmap-only', () => {
+  const wishlist = GUILD_FEATURE_CATALOG.find(item => item.key === 'characterWishlist');
+  const rewards = GUILD_FEATURE_CATALOG.find(item => item.id === 'guildRewardStore');
+  assert.equal(wishlist.status, 'ready');
+  assert.equal(rewards.status, 'planned');
+  assert.equal(rewards.key, null);
 });
 
 
