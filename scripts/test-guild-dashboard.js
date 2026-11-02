@@ -207,3 +207,43 @@ test('Discord account connection redirects through the existing owner OAuth call
   assert.equal(res.headers.Location, '/owner/login?flow=guilds');
   assert.match(res.headers['Cache-Control'], /no-store/);
 });
+
+
+test('connected guild page shows only bot-installed servers the Discord user can manage', async () => {
+  const db = {
+    async query(sql) {
+      if (String(sql).includes('SELECT account_key,discord_user_id,access_token_enc,refresh_token_enc,expires_at')) {
+        return { rows: [{
+          account_key: accountId,
+          discord_user_id: '123456789012345678',
+          access_token_enc: encryptGuildOAuthToken('private-access-token', secret),
+          refresh_token_enc: encryptGuildOAuthToken('private-refresh-token', secret),
+          expires_at: new Date(Date.now() + 60 * 60 * 1000)
+        }], rowCount: 1 };
+      }
+      return { rows: [], rowCount: 0 };
+    }
+  };
+  const res = response();
+  const user = { id: accountId, username: 'Gezgin' };
+  const fetchImpl = async (url, options) => {
+    assert.match(String(url), /discord\.com\/api\/users\/@me\/guilds/);
+    assert.equal(options.headers.Authorization, 'Bearer private-access-token');
+    return { ok: true, async json() {
+      return [
+        { id: guildA, name: 'Yetkili Frieren Loncası', owner: true, permissions: '0' },
+        { id: guildB, name: 'Yetkisiz Lonca', owner: false, permissions: '0' },
+        { id: '1564945192803639357', name: 'Bot olmayan lonca', owner: true, permissions: '0' }
+      ];
+    } };
+  };
+  await handleGuildDashboardRequest(request('GET', '/guilds'), res, {
+    db, user, sessionSecret: secret,
+    client: { guilds: { cache: new Map([[guildA, {}]]) } }, fetchImpl
+  });
+  assert.equal(res.status, 200);
+  assert.match(res.body, /Yetkili Frieren Loncası/);
+  assert.doesNotMatch(res.body, /Yetkisiz Lonca/);
+  assert.doesNotMatch(res.body, /Bot olmayan lonca/);
+  assert.doesNotMatch(res.body, /private-access-token|private-refresh-token/);
+});
