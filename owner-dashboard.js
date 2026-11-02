@@ -1277,15 +1277,15 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              ref: 'feat/guardian-autonomous-repair-v2',
-              inputs: { task, base_branch: 'feat/guardian-autonomous-repair-v2', incident_id: String(incident.id) },
+              ref: 'main',
+              inputs: { task, base_branch: 'main', incident_id: String(incident.id) },
             }),
             signal: AbortSignal.timeout(12_000),
           });
           if (response.status !== 204) throw new Error('GUARDIAN_GITHUB_DISPATCH_HTTP_' + response.status);
           await finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl });
           await auditOwnerAction(db, OWNER_ID, 'guardian.repair.workflow_dispatched', String(incident.id), {
-            jobId: job.id, workflow: 'frieren-ai-self-repair.yml', baseBranch: 'feat/guardian-autonomous-repair-v2',
+            jobId: job.id, workflow: 'frieren-ai-self-repair.yml', baseBranch: 'main',
           }).catch(error => console.error('Guardian dispatch audit failed:', error?.message || error));
           redirect(res, '/owner/guardian?notice=guardian_pr_dispatched');
         } catch (error) {
@@ -1325,7 +1325,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         const query = new URLSearchParams({
           state: 'all',
           head: 'soire07:' + branchName,
-          base: 'feat/guardian-autonomous-repair-v2',
+          base: 'main',
         });
         const prResponse = await fetch(apiBase + '/pulls?' + query.toString(), {
           headers, signal: AbortSignal.timeout(10_000),

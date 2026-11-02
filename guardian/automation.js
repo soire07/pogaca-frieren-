@@ -6,7 +6,7 @@ import {
 } from './store.js';
 import { redactGuardianText } from './core.js';
 
-const REPAIR_BRANCH = 'feat/guardian-autonomous-repair-v2';
+const REPAIR_BRANCH = 'main';
 const REPAIR_WORKFLOW = 'frieren-ai-self-repair.yml';
 const REPOSITORY = 'soire07/pogaca-frieren-';
 

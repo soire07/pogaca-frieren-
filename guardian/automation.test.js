@@ -103,8 +103,8 @@ test('high-severity incidents are reviewed and dispatched to the isolated repair
   assert.equal(requests[1].url, 'https://api.github.com/repos/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml/dispatches');
   assert.equal(requests[1].options.headers.Authorization, 'Bearer ' + 'y'.repeat(48));
   const payload = JSON.parse(requests[1].options.body);
-  assert.equal(payload.ref, 'feat/guardian-autonomous-repair-v2');
-  assert.equal(payload.inputs.base_branch, 'feat/guardian-autonomous-repair-v2');
+  assert.equal(payload.ref, 'main');
+  assert.equal(payload.inputs.base_branch, 'main');
   assert.equal(payload.inputs.incident_id, '42');
   assert.ok(calls.some(([name]) => name === 'finishReview'));
   assert.ok(calls.some(([name]) => name === 'finishDispatch'));
