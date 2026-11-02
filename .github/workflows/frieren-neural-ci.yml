@@ -4,7 +4,10 @@ on:
   push:
     branches:
       - frieren-neural-foundation
+      - validation/ufakzeka-real-gguf
     paths:
+      - ".github/workflows/frieren-neural-ci.yml"
+      - "frieren-neural/trigger-active-gguf-eval.txt"
       - "frieren-neural/frieren_neural/**"
       - "frieren-neural/benchmarks/**"
       - "frieren-neural/tests/**"
