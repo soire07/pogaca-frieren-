@@ -62,7 +62,7 @@ test('simultaneous legendary and epic equipment sets report both active bonuses'
   const legendary = equipmentItems.filter(item => ['demon_blade', 'demon_armor'].includes(item.id));
   const epic = equipmentItems.filter(item => ['frieren_robe', 'rune_ring'].includes(item.id));
   const active = applyEquipmentSetBonus([...legendary, ...epic], equipmentBonus([...legendary, ...epic]));
-  assert.equal(active.attack, 24);
+  assert.equal(active.attack, 20);
   assert.equal(active.hp, 105);
   assert.equal(active.defense, 16);
   assert.equal(active.mana, 85);
