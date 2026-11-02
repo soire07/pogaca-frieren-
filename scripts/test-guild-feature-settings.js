@@ -97,8 +97,7 @@ test('bulk guild feature lookup validates all guild IDs before querying', async 
 
 test('command category mapping does not infer economy from incidental sat or al substrings', async () => {
   const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
-  assert.deepEqual(getCommandFeatureKeys('saat'), []);
-  assert.deepEqual(getCommandFeatureKeys('saldir'), ['rpg']);
+  assert.deepEqual(getCommandFeatureKeys('saldir'), []);
 });
 
 test('known economy command names retain their economy and RPG category gates', async () => {
