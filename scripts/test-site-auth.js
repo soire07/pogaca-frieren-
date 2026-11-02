@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  validateSiteUsername, validateSiteEmail, hashSitePassword, verifySitePassword,
+  validateSiteUsername, validateSiteEmail, validateSiteLoginIdentifier, hashSitePassword, verifySitePassword,
   createSiteCsrfToken, verifySiteCsrfToken, consumeSmtpBuffer, smtpFailureDetails, sendGmailApi, handleSiteAuthRequest
 } from '../site-auth.js';
 import { createPublicSiteSession, readPublicSiteSession } from '../owner-dashboard.js';
@@ -102,6 +102,9 @@ test('username and email validation normalizes email and rejects malformed ident
   assert.equal(validateSiteUsername('Frieren_01'), 'Frieren_01');
   assert.equal(validateSiteUsername('ab'), null);
   assert.equal(validateSiteUsername('bad name'), null);
+  assert.equal(validateSiteLoginIdentifier('  Owner '), 'owner');
+  assert.equal(validateSiteLoginIdentifier(' User@Example.com '), 'user@example.com');
+  assert.equal(validateSiteLoginIdentifier('bad identifier!'), null);
   assert.equal(validateSiteEmail('  User@Example.com '), 'user@example.com');
   assert.equal(validateSiteEmail('not-an-email'), null);
 });
@@ -111,7 +114,8 @@ test('password hashing uses salted scrypt and verifies only the matching passwor
   assert.match(stored, /^scrypt\$16384\$8\$1\$/);
   assert.equal(await verifySitePassword('correct horse battery staple', stored), true);
   assert.equal(await verifySitePassword('incorrect password', stored), false);
-  await assert.rejects(() => hashSitePassword('short'), /INVALID_PASSWORD_LENGTH/);
+  assert.match(await hashSitePassword('Abcdef8!'), /^scrypt\\$16384\\$8\\$1\\$/);
+  await assert.rejects(() => hashSitePassword('Abcdef7'), /INVALID_PASSWORD_LENGTH/);
 });
 
 test('CSRF token is signed, time bounded and cannot be modified', () => {
@@ -168,6 +172,7 @@ test('login and registration pages are served by the password account handler', 
     assert.equal(res.status, 200);
     assert.match(res.body, /Frieren/);
     assert.match(res.body, new RegExp(field));
+    if (path === '/login') assert.match(res.body, /Kullanıcı adı veya e-mail/);
   }
 });
 
