@@ -238,8 +238,20 @@ export function evaluateNeuralQualityGate({
   }
   if (!Array.isArray(report.blocking_reasons) || report.blocking_reasons.length) reasons.push('NEURAL_QUALITY_BLOCKERS_PRESENT');
   if (report.model_backend === 'ufakzeka') {
-    // The pinned pretrained GGUF is not a locally trained checkpoint: scratch
-    // training manifests and objective-specific perplexity do not apply to it.
+    if (!/^[a-f0-9]{64}$/i.test(String(provenance.manifest_sha256 || ''))
+        || !Array.isArray(provenance.licenses) || !provenance.licenses.length
+        || provenance.licenses.some(license => typeof license !== 'string' || !license.trim())) {
+      reasons.push('NEURAL_TRAINING_PROVENANCE_MISSING');
+    }
+    const heldoutDatasetSha = String(heldout.dataset_sha256 || '');
+    if (!finiteNumber(heldout.loss) || heldout.loss < 0
+        || !finiteNumber(heldout.perplexity) || heldout.perplexity < 1
+        || !/^[a-f0-9]{64}$/i.test(heldoutDatasetSha)
+        || !Number.isInteger(heldout.sample_count) || heldout.sample_count <= 0
+        || heldout.split !== 'heldout'
+        || typeof heldout.evaluation_version !== 'string' || !heldout.evaluation_version.trim()) {
+      reasons.push('NEURAL_HELDOUT_METRICS_INVALID');
+    }
   } else {
     if (!/^[a-f0-9]{64}$/i.test(String(provenance.manifest_sha256 || ''))
         || !Array.isArray(provenance.licenses) || !provenance.licenses.length
@@ -255,7 +267,6 @@ export function evaluateNeuralQualityGate({
         || checkpointMetadata.loss_objective_version !== heldout.checkpoint_training_loss_objective_version) {
       reasons.push('NEURAL_EVALUATION_OBJECTIVE_MISMATCH');
     }
-
   }
   if (!baseline.available || baseline.improved !== true
       || !/^[a-f0-9]{64}$/i.test(String(baseline.baseline_checkpoint_sha256 || ''))) {
