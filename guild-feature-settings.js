@@ -127,7 +127,7 @@ export function getCommandFeatureKeys(commandName) {
   if (/kesif|keşif|explor|maceragecmisi|maceraistatistik/.test(name)) keys.push('exploration');
   if (/zanaat|craft|uret|üret/.test(name)) keys.push('crafting');
   if (/hikaye|hikâye|story/.test(name)) keys.push('story');
-  if (/rpg|savas|savaş|dovus|dövüş|arena/.test(name)) keys.push('rpg');
+  if (/rpg|savas|savaş|dovus|dövüş|arena|siralama/.test(name)) keys.push('rpg');
   if (keys.some(key => key !== 'animeQuiz')) keys.push('rpg');
   return [...new Set(keys)];
 }
