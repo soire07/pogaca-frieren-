@@ -33,7 +33,7 @@ test('companion care serializes cooldowns, bounds stats and charges training ato
  assert.ok(pet.energy>=0&&pet.energy<=100);
  assert.ok(pet.hunger>=0&&pet.hunger<=100);
  const balance=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);
- assert.equal(Number(balance.rows[0].coins),1000-trained.find(x=>x.status==='cared').companion.level*0-100);
+ assert.equal(Number(balance.rows[0].coins),1000-500-100);
 });
 test('insufficient funds and missing companion do not mutate player state',async()=>{
  const noPet=await careForCompanion(pool,{guildId:guild,userId:poorUser,action:'feed'});
