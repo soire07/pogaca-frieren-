@@ -8,6 +8,9 @@ import random
 from pathlib import Path
 from typing import Any
 import os
+import urllib.error
+import urllib.request
+from urllib.parse import urlparse
 import torch
 from .chat_format import format_benchmark_prompt
 from .training import LOSS_OBJECTIVE_VERSION, generate_text, load_checkpoint
@@ -225,6 +228,33 @@ def evaluate_gguf_quality(model_path:str|Path|None=None)->tuple[list[dict[str,st
     return outputs,artifact_sha
 
 
+def submit_report_to_guardian(report: dict[str, Any], endpoint: str, secret: str) -> dict[str, Any]:
+    """Send a bounded quality report to the separately authenticated Guardian endpoint."""
+    parsed = urlparse(endpoint)
+    if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
+        raise ValueError("Guardian report endpoint must be a credential-free HTTPS URL.")
+    if len(secret) < 32:
+        raise ValueError("FRIEREN_NEURAL_GUARDIAN_SECRET must contain at least 32 characters.")
+    payload = json.dumps(report, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    if len(payload) > 1_048_576:
+        raise ValueError("Guardian quality report exceeds the 1 MiB upload limit.")
+    request = urllib.request.Request(
+        endpoint, data=payload,
+        headers={"Content-Type": "application/json", "Authorization": "Bearer " + secret},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            if response.status != 202 or result.get("status") != "stored":
+                raise RuntimeError("Guardian rejected the quality report.")
+            return result
+    except urllib.error.HTTPError as error:
+        raise RuntimeError("Guardian report upload failed with HTTP " + str(error.code) + ".") from error
+    except urllib.error.URLError as error:
+        raise RuntimeError("Guardian report endpoint could not be reached.") from error
+
+
 def build_parser()->argparse.ArgumentParser:
     parser=argparse.ArgumentParser(description="Generate the fixed Turkish human-review benchmark report for the selected model backend.")
     parser.add_argument("--backend",choices=("scratch","ufakzeka"),default=None,help="Backend to evaluate; defaults to FRIEREN_MODEL_BACKEND or scratch")
@@ -268,7 +298,14 @@ def main()->None:
     (out/"quality-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     (out/"quality-report.md").write_text(render_markdown(report),encoding="utf-8")
     (out/"human-scores.template.json").write_text(json.dumps(empty_score_template(),ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-    print(json.dumps({"decision":report["decision"],"checkpoint_sha256":checkpoint_sha,"checkpoint_step":step,
+    guardian_url=os.environ.get("FRIEREN_NEURAL_GUARDIAN_URL","").strip()
+    guardian_secret=os.environ.get("FRIEREN_NEURAL_GUARDIAN_SECRET","")
+    guardian_upload=None
+    if guardian_url or guardian_secret:
+        if not guardian_url or not guardian_secret:
+            raise ValueError("Both FRIEREN_NEURAL_GUARDIAN_URL and FRIEREN_NEURAL_GUARDIAN_SECRET are required.")
+        guardian_upload=submit_report_to_guardian(report,guardian_url,guardian_secret)
+    print(json.dumps({"decision":report["decision"],"checkpoint_sha256":checkpoint_sha,"checkpoint_step":step,"guardian_upload":guardian_upload,
       "prompt_count":len(outputs),"report_json":str(out/"quality-report.json"),"report_markdown":str(out/"quality-report.md"),
       "review_template":str(out/"human-scores.template.json"),"blocking_reasons":report["blocking_reasons"]},ensure_ascii=False,indent=2))
 

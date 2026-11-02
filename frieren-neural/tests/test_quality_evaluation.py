@@ -237,3 +237,28 @@ def test_active_gguf_evaluation_uses_pinned_artifact_and_never_claims_readiness(
     assert report["decision"] == "NOT READY"
     assert "checkpoint_metadata_missing" in report["blocking_reasons"]
     assert "training_provenance_missing" in report["blocking_reasons"]
+
+def test_guardian_report_upload_uses_https_and_bearer_auth(monkeypatch):
+    class Response:
+        status = 202
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+        def read(self): return b'{"status":"stored","reportSha256":"abc"}'
+    captured = {}
+    def fake_urlopen(request, timeout):
+        captured["url"] = request.full_url
+        captured["authorization"] = request.get_header("Authorization")
+        captured["timeout"] = timeout
+        return Response()
+    monkeypatch.setattr(quality.urllib.request, "urlopen", fake_urlopen)
+    result = quality.submit_report_to_guardian({"decision": "NOT READY"}, "https://guardian.example.test/internal/neural-quality-report", "s" * 32)
+    assert result["status"] == "stored"
+    assert captured["authorization"] == "Bearer " + "s" * 32
+    assert captured["timeout"] == 10
+
+
+def test_guardian_report_upload_rejects_http_and_short_secret():
+    with pytest.raises(ValueError, match="HTTPS"):
+        quality.submit_report_to_guardian({}, "http://guardian.example.test/report", "s" * 32)
+    with pytest.raises(ValueError, match="32 characters"):
+        quality.submit_report_to_guardian({}, "https://guardian.example.test/report", "short")
