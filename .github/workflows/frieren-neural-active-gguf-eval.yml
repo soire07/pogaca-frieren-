@@ -6,6 +6,7 @@ on:
       - validation/ufakzeka-real-gguf
     paths:
       - "frieren-neural/trigger-active-gguf-eval.txt"
+      - ".github/workflows/frieren-neural-active-gguf-eval.yml"
   workflow_dispatch:
 
 permissions:
