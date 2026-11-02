@@ -15,6 +15,7 @@ import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } fr
 import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
+import { classifyGuardianWorkflowConclusion } from './guardian/automation.js';
 import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, reserveGuardianRepairDispatch, finishGuardianRepairDispatch, updateGuardianRepairStatus, getGuardianMonitorState, getLatestGuardianQualityReport } from './guardian/store.js';
 
 const OWNER_ID = '1553794496234262641';
@@ -1112,7 +1113,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         if (!prResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + prResponse.status);
         const prs = await prResponse.json();
         pr = Array.isArray(prs) ? prs.find(item => item.head?.ref === branchName) || null : null;
-        let checksStatus = runConclusion === 'failure' ? 'failure' : 'unknown';
+        let checksStatus = classifyGuardianWorkflowConclusion(runConclusion);
         if (pr?.head?.sha) {
           const checksResponse = await fetch(apiBase + '/commits/' + encodeURIComponent(pr.head.sha) + '/check-runs?per_page=100', {
             headers, signal: AbortSignal.timeout(10_000),
