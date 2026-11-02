@@ -37,8 +37,9 @@ function doPost(e) {
     var input = JSON.parse(rawBody);
 
     stage = 'AUTH';
-    var expected = PropertiesService.getScriptProperties().getProperty('API_SECRET');
-    if (!expected || !constantTimeEquals(String(input.secret || ''), String(expected))) {
+    var expected = String(PropertiesService.getScriptProperties().getProperty('API_SECRET') || '').trim();
+    var supplied = String(input.secret || '').trim();
+    if (!expected || !constantTimeEquals(supplied, expected)) {
       console.warn('[Frieren Mail] Request rejected: authentication failed');
       return jsonResponse({ ok: false, stage: stage, error: 'AUTH_FAILED' });
     }
