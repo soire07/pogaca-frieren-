@@ -139,3 +139,69 @@ Yeni test yazmadan önce:
 ### Tamamlanma ölçütü
 
 Bir özellik yalnızca “kod eklendi” diye tamamlanmış sayılmaz. Kod karşılığı, test kanıtı, yetki/veri güvenliği, gerçek kullanıcı akışı ve gerekiyorsa canlı dağıtım doğrulaması birlikte değerlendirilir. Ücretli servise geçiş, üretim verisini silme, otomatik merge ve plansız deploy yapılmaz.
+
+
+## 9. Eğlence, koleksiyon ve oyun botları — genişletilmiş karşılaştırma
+
+Bu grup, Poğaça Frieren'in ana ürün yönünü belirler. Genel moderasyon/ceza özellikleri burada kapsam dışıdır; yalnızca oyun, topluluk, profil, koleksiyon ve web deneyimi değerlendirilir.
+
+| Bot / ürün | Doğrulanmış oyun özellikleri | Frieren uyarlaması | Web tarafında incelenecek deneyim |
+|---|---|---|---|
+| Dank Memer | Para kazanma, 300+ koleksiyon eşyası, balıkçılık, 15 bölge, NPC, görev/başarımlar, çiftçilik, 40+ evcil hayvan türü, evcil hayvan odası ve oyuncu pazarı | Kuzey kıtası balıkçılığı, yaratık/ruh yoldaşları, büyülü sera, malzeme çiftliği, NPC görev zincirleri ve lonca pazarı | Wiki, eşya kataloğu, balık/yaratık rehberi, pet koleksiyonu ve pazar sayfaları |
+| Pokétwo | Sohbette rastgele yaratık çıkması, yakalama, Pokédex, nadir/efsanevi varyantlar, takas, global pazar, 3v3 savaş, filtreler, hava/zaman ve shiny hunting | Sohbetten keşfedilen büyülü yaratıklar, Frieren yaratık arşivi, nadir varyantlar, 3 kişilik takım savaşları ve yaratık takası | Koleksiyon indeksi, yaratık detayları, arama/filtre, takım oluşturma ve pazar akışları |
+| Mudae | Karakter ruleti, süreli sahiplenme, koleksiyon/harem, takas/hediye, wishlist, karakter/seri arama, kişisel profil, rozetler, görsel/alias/not özelleştirme, günlük haklar ve arena | Anime karakter kartları, istek listesi, seri arşivi, nadirlik, sahiplenme/takas, kart rozetleri ve karakter arenaları | Komut yardım kataloğu, karakter/seri arama, koleksiyon profili, rozet ve wishlist sayfaları |
+| OwO Bot | Yüzlerce hayvan avlama/toplama, takım kurma, PvP savaş, seviye/XP, liderlik, lootbox ve meme/görsel üretimi | Canavar avı, yoldaş takımı, element uyumlu savaş, ganimet sandığı, maceracı XP ve Frieren temalı görsel kartları | Hayvan/yaratık kataloğu, takım ve liderlik sayfaları, rehber ve komut dizini |
+| Karuta | 70.000+ anime karakter kartı, kart toplama, takas, yükseltme ve küresel ekonomi | Frieren evreniyle uyumlu kart albümü, baskı/nadirlik, kart yükseltme, takas ve koleksiyon serileri | Kart galerisi, koleksiyon arşivi, takas rehberi ve ekonomi açıklamaları |
+| Tatsu | Küresel para ve sunucu puanı, mağaza ödülleri, kişisel cüzdan kartı, profil ve sıralama | Altın + sunucuya özel lonca puanı, kişisel cüzdan, lonca mağazası, rütbe ve profil kartları | Kullanıcı profili, cüzdan, mağaza, sunucu sıralaması ve kişiselleştirme |
+| UnbelievaBoat | İş/gelir, günlük ödül, mağaza, eşya, para transferi ve mini oyunlar | Meslek/iş rotaları, günlük lonca maaşı, eşya pazarı, güvenli oyuncu takası ve lonca oyunları | Komut kataloğu, ekonomi rehberi, mağaza ve sunucu bazlı ayarların görsel sunumu |
+| Epic RPG / Gaius Play | Macera, avlanma, savaş, görev, XP ve ekonomi/ilerleme sistemleri | Keşif rotaları, rastlantısal karşılaşmalar, görev serileri ve savaş ilerlemesi | Komut rehberi, oyun wiki'si, ilerleme/ödül açıklamaları |
+| Jockie Music / FredBoat | Ses kanalı müzik oynatma, kuyruk, playlist ve oynatma kontrolleri | İsteğe bağlı lonca müzik odası, Frieren temalı ambient/royalty-free ses listeleri | Kuyruk/playlist yönetimi ve kullanım rehberi; yalnızca ücretsiz ve telif açısından uygun kaynaklar |
+| Sesh / Apollo | Etkinlik oluşturma, katılım, hatırlatma ve takvim | Lonca etkinlik takvimi, ortak boss saatleri, zindan buluşmaları ve anime geceleri | Takvim görünümü, katılım listesi, zaman dilimi ve hatırlatma ayarları |
+
+### 9.1. Eğlence botlarından alınacak özellik aileleri
+
+| Aile | Aday özellikler | Frieren adı / deneyimi | Öncelik |
+|---|---|---|---|
+| Canlı koleksiyon | Rastgele yaratık/karakter keşfi, yakalama, nadirlik, varyant, koleksiyon tamamlama | Büyülü Yaratıklar Arşivi | P0 |
+| Kart sistemi | Karakter kartı, baskı numarası, çerçeve/kozmetik, wishlist, kart yükseltme | Maceracı ve Karakter Kartları | P1 |
+| Yoldaşlar | Evcil hayvan/yaratık sahiplenme, besleme, bakım, eğitim, evrim ve oda | Yoldaş Akademisi | P0 |
+| Balıkçılık | Bölgeye göre balık, ekipman, nadir tür, koleksiyon defteri, görev | Kuzey Denizi Balıkçılığı | P1 |
+| Çiftçilik | Tohum, büyü, hasat, üretim döngüsü, mevsim ve satış | Büyülü Sera | P1 |
+| Avcılık/keşif | Bölge, nadir karşılaşma, yaratık izi, malzeme ve NPC | Kıta Keşifleri | P0 |
+| Takım savaşları | 1v1/3v3, sıra tabanlı savaş, element/rol uyumu, durum etkileri | Büyücü Arenası | P0 |
+| Ekonomi | Günlük ödül, iş/meslek, mağaza, oyuncu pazarı, teklif/takas, para transferi | Kuzey Pazarı | P0 |
+| Mini oyunlar | Trivia, hafıza, kelime, tahmin, şans ve takım oyunu | Lonca Oyun Salonu | P0 |
+| Sosyal | Profil, rozet, unvan, wishlist, arkadaş/ekip, paylaşılabilir başarı | Maceracı Kimliği | P1 |
+| Etkinlik | Takvim, RSVP, boss/raid saati, hatırlatma, sezonluk yarışma | Lonca Takvimi | P0 |
+| Medya | Meme, görsel kart, avatar/rozet üretimi, paylaşılabilir özet | Büyü Tasarım Atölyesi | P2 |
+| Müzik | Kuyruk, playlist, ses kontrolü, etkinlik odası | Lonca Dinlenme Salonu | P2; kaynak/telif ve barındırma doğrulanacak |
+
+### 9.2. Mevcut 317 kayıtla çakışma kontrolü
+
+Mevcut envanterde RPG, seviye/ilerleme, keşif, savaş, büyü, envanter, ekonomi, ekipman, görev, koleksiyon, sosyal sıralama, mini oyun, co-op, zindan, boss, ganimet ve crafting kategorileri zaten bulunuyor. Bunları ikinci kez yeni komut olarak yazmayacağız.
+
+İlk envanter karşılaştırmasında aşağıdaki rakip özellik aileleri ayrı eksik/kanıtsız aday olarak işaretlendi:
+- Yoldaş/pet bakım döngüsü, evcil hayvan odası ve evrim.
+- Balıkçılık, bölgeye bağlı balık indeksi ve nadir varyant.
+- Çiftçilik, ekim/hasat ve mevsimsel üretim.
+- Rastgele sohbet spawn'ı ve hızlı yakalama yarışı.
+- Koleksiyon wishlist, baskı/seri/eksik kart kontrolü ve koleksiyon dışa aktarımı.
+- Kart kozmetiği, çerçeve, profil rozeti ve paylaşılabilir kart albümü.
+- 3v3 yaratık/karakter takım savaşı ve savaş öncesi takım kurucu.
+- Oyuncu pazarı için arama, teklif, fiyat geçmişi ve güvenli takas onayı.
+- Web üzerinde oyuncu profili, envanter, koleksiyon, cüzdan ve etkinlik takvimi.
+- Web üzerinden görsel/mesaj şablonu ve canlı önizleme.
+
+Bunlar henüz kodda yok hükmü değildir; ilgili modüller ve testler tek tek taranıp durumları mevcut, kısmi, eksik, test edilmemiş veya kapsam dışı olarak kesinleştirilecektir.
+
+### 9.3. Eğlence özellikleri için kalite ve ekonomi kuralları
+
+- Her ödül, drop, yakalama, takas ve üretim işlemi sunucu + oyuncu kimliği kapsamında kalıcı ve atomik olmalı.
+- Aynı etkileşimin tekrar gönderilmesi çift ödül veya çift eşya üretmemeli (idempotency).
+- Pazar/takas iki taraflı onay ve işlem kilidi kullanmalı; eşya ve para aynı transaction içinde hareket etmeli.
+- Nadirlik oranları, pity/koruma sayaçları ve etkinlik bonusları denetlenebilir olmalı; gizli ücretli güç avantajı yaratılmamalı.
+- Günlük/haftalık sayaçlar sunucunun saat dilimi ve UTC saklama standardıyla çakışmamalı.
+- Her koleksiyon veya pet işlemi için sahiplik, kapasite, durum ve işlem geçmişi doğrulanmalı.
+- Görsel üretimi için mevcut görsel varlıklar ve ücretsiz kaynaklar tercih edilmeli; telifli anime müziği/görseli izinsiz çoğaltılmamalı.
+- Web paneli sadece kullanıcının Discord OAuth üzerinden doğrulanmış sunucu yetkisine sahip olduğu sunuculara erişmeli.
+- Ücretli özellikler rakiplerden referans alınabilir, ancak Frieren'de ücretli API/servis gerektiren bağımlılık eklenmez.
