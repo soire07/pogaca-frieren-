@@ -231,3 +231,25 @@ Resmî kaynaklar:
 - YAGPDB: https://yagpdb.havensedgemc.com/
 
 Fiyatlandırma, ücretsiz plan limitleri, güncel kullanılabilirlik ve her özelliğin gerçek davranışı ayrıca doğrulanmadan hiçbir ücretli bağımlılık eklenmez. Bu tablo, “rakipte olmayan özellik” iddiası değildir.
+
+
+## 11. Ek resmî dashboard ve ekonomi kaynakları — 2026-11-03
+
+| Ürün | Kaynakta doğrulanan işlev | Frieren için güvenli uyarlama |
+|---|---|---|
+| Dyno | Dashboard üzerinden modül/komut açma-kapama; autorole, custom command, announcement, reminder, reaction role, ticket, form, tag ve sosyal feed modülleri | Moderasyon/rol yönetimi kapsam dışı. Güvenli özel komut, hatırlatıcı, öneri/başvuru ve içerik feed'i incelenecek |
+| MEE6 | Plugin tabanlı dashboard; custom command, sohbet XP/level, economy game, welcome ve zamanlanmış mesajlar | Var olan RPG XP/ekonomi korunacak; eksik otomasyon, bildirim ve kullanıcıya özel panel UX'i değerlendirilecek |
+| UnbelievaBoat | Sunucu ekonomisi, özel mağaza/eşyalar, birden fazla gelir akışı, liderlik, blackjack/roulette, hayvan yarışı ve oyuncular arası eşya teklifi | Ücretsiz limitler ayrıca gözetilecek; mevcut pazar/takas altyapısı tekrar yazılmayacak. Hayvan yarışı/yoldaş sistemleri ayrı aday |
+| Apollo | Dashboard'dan etkinlik oluşturma, Discord içinde tek tık RSVP, kapasite, bekleme listesi, role göre katılım ve hatırlatıcı | Boss/raid buluşmaları, zindan partileri ve anime etkinlikleri için Lonca Takvimi |
+
+Resmî kaynaklar:
+- Dyno modülleri: https://docs.dyno.gg/en/modules
+- Dyno dashboard: https://dyno.gg/bot
+- MEE6 dashboard ve plugin rehberi: https://mee6bot.freshdesk.com/support/solutions/articles/101000385394-getting-started-with-mee6
+- UnbelievaBoat: https://unbelievaboat.com/
+- UnbelievaBoat mağaza dokümanı: https://faq.unbelievaboat.com/dashboard/store/
+- UnbelievaBoat ücretsiz/Premium sınırları: https://unbelievaboat.com/premium
+- Apollo: https://apollo.fyi/
+- Apollo etkinlik başlangıç rehberi: https://docs.apollo.fyi/
+
+Bu kaynaklar işlevleri doğrular; Frieren'e eklenecek her modül için ücretsiz kullanım, telif, veri güvenliği ve gerçek test kapsamı ayrıca incelenmelidir.
