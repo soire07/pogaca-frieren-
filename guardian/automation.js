@@ -264,9 +264,9 @@ export async function processPendingGuardianRepairDispatch({
       return { status: 'reconciliation_unavailable', jobId: Number(job.id), reason: 'GITHUB_RUN_LIST_HTTP_' + existingResponse.status };
     }
     const existingData = await existingResponse.json().catch(() => ({}));
-    const marker = 'Guardian #' + Number(incident.id);
+    const marker = new RegExp('(?:^|[^A-Za-z0-9])Guardian #' + Number(incident.id) + '(?!\\d)', 'i');
     const existingRun = (Array.isArray(existingData.workflow_runs) ? existingData.workflow_runs : [])
-      .find(run => String(run.display_title || run.name || run.run_name || '').includes(marker));
+      .find(run => marker.test(String(run.display_title || run.name || run.run_name || '')));
     if (existingRun) {
       const existingUrl = String(existingRun.html_url || workflowUrl);
       await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl: existingUrl });
