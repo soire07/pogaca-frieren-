@@ -20,9 +20,14 @@ export function validateSiteEmail(value) {
   const email = String(value || '').trim().toLowerCase();
   return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) ? email : null;
 }
+export function validateSiteLoginIdentifier(value) {
+  const identifier = String(value || '').trim();
+  if (identifier.includes('@')) return validateSiteEmail(identifier);
+  return validateSiteUsername(identifier)?.toLowerCase() || null;
+}
 export async function hashSitePassword(password, salt = randomBytes(16).toString('hex')) {
   const value = String(password || '');
-  if (value.length < 10 || value.length > 128) throw new Error('INVALID_PASSWORD_LENGTH');
+  if (value.length < 8 || value.length > 128) throw new Error('INVALID_PASSWORD_LENGTH');
   const result = await scrypt(value, salt, 64, {N:16384,r:8,p:1,maxmem:64*1024*1024});
   return 'scrypt$16384$8$1$' + salt + '$' + Buffer.from(result).toString('hex');
 }
@@ -60,7 +65,7 @@ const messages = {
   verified:'E-posta adresin doğrulandı. Şimdi giriş yapabilirsin.',
   invalid_token:'Bağlantı geçersiz veya süresi dolmuş. Yeni bağlantı iste.',
   password_reset:'Şifren güncellendi. Yeni şifrenle giriş yapabilirsin.',
-  invalid_input:'Bilgileri kontrol et. Kullanıcı adı 3–24 karakter, şifre en az 10 karakter olmalı.',
+  invalid_input:'Bilgileri kontrol et. Kullanıcı adı 3–24 karakter, şifre en az 8 karakter olmalı.',
   duplicate:'Bu kullanıcı adı veya e-posta zaten kullanılıyor.',
   csrf:'Formun süresi doldu. Sayfayı yenileyip tekrar dene.',
   rate_limited:'Çok fazla deneme yapıldı. Bir süre sonra yeniden dene.',
@@ -75,20 +80,20 @@ function authPage(mode, secret, status = '', token = '') {
     '<form method="post" action="/register" autocomplete="on">' + formToken(secret) +
     '<label>Kullanıcı adı</label><input name="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9_.-]{3,24}" autocomplete="username" required>' +
     '<label>E-posta adresi</label><input name="email" type="email" maxlength="254" autocomplete="email" required>' +
-    '<label>Şifre</label><input name="password" type="password" minlength="10" maxlength="128" autocomplete="new-password" required>' +
-    '<label>Şifreyi tekrar gir</label><input name="confirmPassword" type="password" minlength="10" maxlength="128" autocomplete="new-password" required><button class="btn">Hesap oluştur</button></form>' +
+    '<label>Şifre</label><input name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>' +
+    '<label>Şifreyi tekrar gir</label><input name="confirmPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" required><button class="btn">Hesap oluştur</button></form>' +
     '<div class="auth-links"><a href="/login">Zaten hesabın var mı? Giriş yap</a><a href="/resend-verification">Doğrulama e-postasını tekrar gönder</a></div><p class="auth-hint">E-posta doğrulaması, hesabının güvenliği ve şifre kurtarma için gereklidir.</p>';
   else if (mode === 'login') body = '<h1>Yolculuğuna dön</h1><p>Kullanıcı adın ve şifrenle giriş yap.</p>' + notice +
     '<form method="post" action="/login" autocomplete="on">' + formToken(secret) +
-    '<label>Kullanıcı adı</label><input name="username" maxlength="24" autocomplete="username" required>' +
+    '<label>Kullanıcı adı veya e-mail</label><input name="username" maxlength="254" autocomplete="username" required>' +
     '<label>Şifre</label><input name="password" type="password" maxlength="128" autocomplete="current-password" required><button class="btn">Giriş yap</button></form>' +
     '<div class="auth-links"><a href="/register">Kayıt ol</a><a href="/forgot-password">Şifremi unuttum</a><a href="/resend-verification">Doğrulama e-postasını tekrar gönder</a></div>';
   else if (mode === 'forgot') body = '<h1>Şifreni yenile</h1><p>Hesabına bağlı doğrulanmış e-posta adresini gir.</p>' + notice +
     '<form method="post" action="/forgot-password">' + formToken(secret) + '<label>E-posta adresi</label><input name="email" type="email" maxlength="254" required><button class="btn">Yenileme bağlantısı gönder</button></form><div class="auth-links"><a href="/login">Giriş sayfasına dön</a></div>';
   else if (mode === 'reset') body = '<h1>Yeni şifre oluştur</h1><p>Hesabın için yeni ve güçlü bir şifre belirle.</p>' + notice +
     '<form method="post" action="/reset-password">' + formToken(secret) + '<input type="hidden" name="token" value="' + esc(token) + '">' +
-    '<label>Yeni şifre</label><input name="password" type="password" minlength="10" maxlength="128" autocomplete="new-password" required>' +
-    '<label>Yeni şifreyi tekrar gir</label><input name="confirmPassword" type="password" minlength="10" maxlength="128" autocomplete="new-password" required><button class="btn">Şifreyi yenile</button></form><div class="auth-links"><a href="/login">Giriş sayfasına dön</a></div>';
+    '<label>Yeni şifre</label><input name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>' +
+    '<label>Yeni şifreyi tekrar gir</label><input name="confirmPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" required><button class="btn">Şifreyi yenile</button></form><div class="auth-links"><a href="/login">Giriş sayfasına dön</a></div>';
   else if (mode === 'verify') body = '<h1>E-posta doğrulama</h1><p>' + esc(messages[status] || messages.invalid_token) + '</p><div class="auth-links"><a href="/login">Giriş yap</a><a href="/resend-verification">Yeni bağlantı iste</a></div>';
   else body = '<h1>Doğrulama bağlantısı</h1><p>Hesabına bağlı e-posta adresini gir.</p>' + notice +
     '<form method="post" action="/resend-verification">' + formToken(secret) + '<label>E-posta adresi</label><input name="email" type="email" maxlength="254" required><button class="btn">Yeni bağlantı gönder</button></form><div class="auth-links"><a href="/login">Giriş yap</a></div>';
@@ -300,7 +305,7 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
     if(path==='/register'){
       if(limited('reg:'+addr,5)){send(res,429,authPage('register',sessionSecret,'rate_limited'));return true;}
       const username=validateSiteUsername(f.username),email=validateSiteEmail(f.email),password=String(f.password||'');
-      if(!username||!email||password!==String(f.confirmPassword||'')||password.length<10||password.length>128){send(res,400,authPage('register',sessionSecret,'invalid_input'));return true;}
+      if(!username||!email||password!==String(f.confirmPassword||'')||password.length<8||password.length>128){send(res,400,authPage('register',sessionSecret,'invalid_input'));return true;}
       if(!mailReady()){send(res,503,authPage('register',sessionSecret,'mail_unavailable'));return true;}
       const token=randomBytes(32).toString('hex'),passwordHash=await hashSitePassword(password);
       try { await db.query("INSERT INTO frieren_site_accounts(username,email,password_hash,verification_token_hash,verification_expires_at) VALUES($1,$2,$3,$4,NOW()+INTERVAL '24 hours')",[username,email,passwordHash,hash(token)]); }
@@ -310,8 +315,8 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
     }
     if(path==='/login'){
       if(limited('login:'+addr,10)){send(res,429,authPage('login',sessionSecret,'rate_limited'));return true;}
-      const username=validateSiteUsername(f.username),password=String(f.password||'');
-      const found=username?await db.query('SELECT id,username,password_hash,email_verified_at FROM frieren_site_accounts WHERE LOWER(username)=LOWER($1) LIMIT 1',[username]):{rows:[]};
+      const identifier=validateSiteLoginIdentifier(f.username),password=String(f.password||'');
+      const found=identifier?await db.query('SELECT id,username,password_hash,email_verified_at FROM frieren_site_accounts WHERE LOWER(username)=LOWER($1) OR LOWER(email)=LOWER($1) LIMIT 1',[identifier]):{rows:[]};
       const account=found.rows?.[0],valid=await verifySitePassword(password,account?.password_hash||'invalid');
       if(!account||!valid){send(res,401,authPage('login',sessionSecret,'invalid_login'));return true;}
       if(!account.email_verified_at){send(res,403,authPage('login',sessionSecret,'unverified'));return true;}
@@ -349,7 +354,7 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
     if(path==='/reset-password'){
       if(limited('reset:'+addr,8)){send(res,429,authPage('reset',sessionSecret,'rate_limited'));return true;}
       const token=String(f.token||''),password=String(f.password||'');
-      if(!/^[a-f0-9]{64}$/.test(token)||password!==String(f.confirmPassword||'')||password.length<10||password.length>128){send(res,400,authPage('reset',sessionSecret,'invalid_input',token));return true;}
+      if(!/^[a-f0-9]{64}$/.test(token)||password!==String(f.confirmPassword||'')||password.length<8||password.length>128){send(res,400,authPage('reset',sessionSecret,'invalid_input',token));return true;}
       const passwordHash=await hashSitePassword(password);
       const updated=await db.query("UPDATE frieren_site_accounts SET password_hash=$2,reset_token_hash=NULL,reset_expires_at=NULL,updated_at=NOW() WHERE reset_token_hash=$1 AND reset_expires_at>NOW() AND email_verified_at IS NOT NULL RETURNING id",[hash(token),passwordHash]);
       send(res,updated.rowCount?200:400,authPage(updated.rowCount?'login':'reset',sessionSecret,updated.rowCount?'password_reset':'invalid_token'));return true;
