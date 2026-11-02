@@ -1114,12 +1114,16 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         const prs = await prResponse.json();
         pr = Array.isArray(prs) ? prs.find(item => item.head?.ref === branchName) || null : null;
         let checksStatus = classifyGuardianWorkflowConclusion(runConclusion);
-        if (pr?.head?.sha) {
-          const checksResponse = await fetch(apiBase + '/commits/' + encodeURIComponent(pr.head.sha) + '/check-runs?per_page=100', {
-            headers, signal: AbortSignal.timeout(10_000),
-          });
-          const checksPayload = checksResponse.ok ? await checksResponse.json().catch(() => null) : null;
-          checksStatus = classifyGuardianPullRequestChecks({ ok: checksResponse.ok, payload: checksPayload });
+        if (pr) {
+          if (!pr.head?.sha) {
+            checksStatus = 'unknown';
+          } else {
+            const checksResponse = await fetch(apiBase + '/commits/' + encodeURIComponent(pr.head.sha) + '/check-runs?per_page=100', {
+              headers, signal: AbortSignal.timeout(10_000),
+            });
+            const checksPayload = checksResponse.ok ? await checksResponse.json().catch(() => null) : null;
+            checksStatus = classifyGuardianPullRequestChecks({ ok: checksResponse.ok, payload: checksPayload });
+          }
         } else if (run && run.status !== 'completed') {
           checksStatus = 'pending';
         } else if (run?.status === 'completed' && run.conclusion === 'success') {
