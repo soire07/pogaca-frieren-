@@ -205,8 +205,24 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
 
 def render_markdown(report:dict[str,Any])->str:
     lines=["# Frieren Neural — Turkish conversation quality report","",f"- Decision: **{report['decision']}**",
-      f"- Prompt set: {report['prompt_set_version']}",f"- Checkpoint SHA-256: {report['checkpoint_sha256']}",
+      f"- Prompt set: {report['prompt_set_version']}",f"- Backend: {report.get('model_backend', 'scratch')}",
+      f"- Checkpoint / artifact SHA-256: {report['checkpoint_sha256']}",
+      f"- Source commit: {report.get('source_commit_sha') or 'missing'}",
       f"- Checkpoint step: {report['checkpoint_step']}",f"- Human review completed: **{report['human_review']['completed']}**"]
+    pretrained = report.get("pretrained_provenance") or {}
+    if pretrained:
+        lines.extend(["", "## Pretrained model provenance", "",
+          f"- Model ID: {pretrained.get('model_id')}",
+          f"- Repository: {pretrained.get('model_repository')}",
+          f"- File: {pretrained.get('model_filename')}",
+          f"- License: {pretrained.get('license')}",
+          f"- Pinned SHA-256: {pretrained.get('model_sha256')}"])
+    training = report.get("training_provenance") or {}
+    if training:
+        lines.extend(["", "## Training provenance", "",
+          f"- Manifest SHA-256: {training.get('manifest_sha256')}",
+          f"- Sources: {', '.join(training.get('sources') or [])}",
+          f"- Licenses: {', '.join(training.get('licenses') or [])}"])
     metadata=report.get("checkpoint_metadata") or {}
     if metadata:
         lines.extend(["", "## Checkpoint configuration", "",
@@ -216,7 +232,15 @@ def render_markdown(report:dict[str,Any])->str:
           f"- Dialogue encoding: v{metadata.get('dialogue_encoding_version')}",
           f"- Training objective: {metadata.get('training_objective')} (v{metadata.get('loss_objective_version')})"])
     heldout = report.get("heldout_metrics") or {}
-    if heldout:
+    if heldout and report.get("model_backend") == "ufakzeka":
+        lines.extend(["", "## Independent held-out evidence", "",
+          f"- Split: {heldout.get('split')}",
+          f"- Dataset SHA-256: {heldout.get('dataset_sha256')}",
+          f"- Samples: {heldout.get('sample_count')}",
+          f"- Evaluation version: {heldout.get('evaluation_version')}",
+          f"- Loss: {heldout.get('loss')}",
+          f"- Perplexity: {heldout.get('perplexity')}"])
+    elif heldout:
         lines.append(f"- Evaluation objective: v{heldout.get('loss_objective_version')}")
     lines.extend(["", "## Blocking reasons", ""])
     lines.extend([f"- {x}" for x in report["blocking_reasons"]] or ["- None"])
