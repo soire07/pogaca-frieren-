@@ -999,6 +999,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           const payloadText = JSON.stringify(effects.map(effect => effect.payload));
           behavioralChecks.push(
             { name: 'Macera istatistikleri', expected: 'toplam macera 3 ve seviye/XP/altın paneli gösterilmeli', actual: payloadText.includes('Toplam macera') && payloadText.includes('3') ? 'istatistik paneli doğru' : payloadText.slice(0, 400), passed: Number(state.rows[0]?.visits) === 3 && payloadText.includes('Toplam macera') && payloadText.includes('3') },
+            { name: 'Yeni oyuncu hazine ve seri sayaçları', expected: 'kayıt bulunmadığında harita parçaları, tamamlanan harita, sandık ve seri değerleri 0 görünmeli', actual: ['Harita parçaları: **0/5**','Tamamlanan harita: **0**','Sandık: **0**','Günlük seri: **0 gün** · Rekor: **0 gün**'].filter(value => payloadText.includes(value)).join(' | ') || payloadText.slice(0, 500), passed: ['Harita parçaları: **0/5**','Tamamlanan harita: **0**','Sandık: **0**','Günlük seri: **0 gün** · Rekor: **0 gün**'].every(value => payloadText.includes(value)) },
             { name: 'Macera istatistiği salt okunur', expected: 'rota ziyareti sayısı değişmemeli', actual: String(state.rows[0]?.visits ?? 0), passed: Number(state.rows[0]?.visits) === 3 }
           );
         } else if (['frieren','mimic','pogaca','sans','saril'].includes(commandName)) {
