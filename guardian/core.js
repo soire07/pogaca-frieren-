@@ -112,7 +112,6 @@ export function evaluateGuardianApprovalGate({
   dataIntegrityPassed = false,
   ownerApproved = false,
   deploymentApproved = false,
-  ciEvidenceVerified = false,
 } = {}) {
   const checksPassed = testsPassed === true && securityPassed === true && dataIntegrityPassed === true;
   const canMerge = checksPassed && ownerApproved === true;
@@ -195,6 +194,7 @@ export function evaluateNeuralQualityGate({
   resourceChecksPassed = false,
   ownerApproved = false,
   deploymentApproved = false,
+  ciEvidenceVerified = false,
 } = {}) {
   const reasons = [];
   const report = qualityReport && typeof qualityReport === 'object' ? qualityReport : {};
