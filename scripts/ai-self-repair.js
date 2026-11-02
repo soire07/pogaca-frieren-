@@ -1,6 +1,6 @@
 import { createAiModelProvider } from '../ai-agent/model-provider.js';
 import { execFileSync } from 'node:child_process';
-import { readFile, stat } from 'node:fs/promises';
+import { appendFile, readFile, stat } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 const MAX_CONTEXT_CHARS = 22_000;
@@ -118,6 +118,17 @@ export async function generateRepairPatch({ task, apiKey, model = 'openai/gpt-os
   return { patch, files };
 }
 
+export function formatRepairFilesOutput(files) {
+  if (!Array.isArray(files) || files.length === 0 || files.length > MAX_PATCH_FILES) {
+    throw new Error('REPAIR_OUTPUT_FILE_SET_INVALID');
+  }
+  const normalized = [...new Set(files.map(file => String(file)))].sort();
+  if (normalized.length !== files.length || normalized.some(file => !isAllowedRepairPath(file))) {
+    throw new Error('REPAIR_OUTPUT_FILE_SET_INVALID');
+  }
+  return 'repair_files<<REPAIR_FILES\n' + normalized.join('\n') + '\nREPAIR_FILES\n';
+}
+
 export function applyRepairPatch(patch, { execFile = runGit } = {}) {
   const expectedFiles = validatePatchPaths(patch).sort();
   const before = execFile(['status', '--porcelain', '--untracked-files=all'], { encoding: 'utf8' });
@@ -147,6 +158,7 @@ export async function main(env = process.env) {
   });
   const changed = applyRepairPatch(proposal.patch);
   if (changed.some(path => !proposal.files.includes(path))) throw new Error('REPAIR_CHANGED_UNEXPECTED_FILE');
+  if (env.GITHUB_OUTPUT) await appendFile(env.GITHUB_OUTPUT, formatRepairFilesOutput(changed), 'utf8');
   process.stdout.write('Repair patch applied in isolated workflow workspace. Files: ' + changed.join(', ') + '\n');
 }
 
