@@ -251,7 +251,7 @@ test('Neural Guardian requires the exact ordered benchmark IDs and objective pro
   });
   assert.equal(result.canDeploy, false);
   assert.ok(result.reasons.includes('NEURAL_BENCHMARK_OUTPUTS_INCOMPLETE'));
-  assert.ok(result.reasons.includes('NEURAL_TRAINING_PROVENANCE_MISSING'));
+  assert.ok(result.reasons.includes('NEURAL_PRETRAINED_PROVENANCE_INVALID'));
 });
 
 test('Neural Guardian rejects incomplete reviewer identities and invalid training provenance', () => {
@@ -261,7 +261,7 @@ test('Neural Guardian rejects incomplete reviewer identities and invalid trainin
   const result = evaluateNeuralQualityGate({ qualityReport: report });
   assert.equal(result.canStage, false);
   assert.ok(result.reasons.includes('NEURAL_INDEPENDENT_HUMAN_REVIEW_REQUIRED'));
-  assert.ok(result.reasons.includes('NEURAL_PRETRAINED_PROVENANCE_INVALID'));
+  assert.ok(result.reasons.includes('NEURAL_TRAINING_PROVENANCE_MISSING'));
 });
 
 
