@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  createGuildOAuthState, verifyGuildOAuthState, encryptGuildOAuthToken, decryptGuildOAuthToken,
+  encryptGuildOAuthToken, decryptGuildOAuthToken,
   filterManageableBotGuilds, handleGuildDashboardRequest, createGuildDashboardCsrf,
   verifyGuildDashboardCsrf, saveGuildDiscordConnection
 } from '../guild-dashboard.js';
@@ -25,17 +25,6 @@ function fakeDb() {
   const calls = [];
   return { calls, async query(sql, params = []) { calls.push({ sql, params }); return { rows: [], rowCount: 0 }; } };
 }
-
-test('guild OAuth state is signed, account-bound and expires after ten minutes', () => {
-  const now = 1_800_000_000_000;
-  const state = createGuildOAuthState(secret, accountId, now, 'nonce-for-guild-oauth-state');
-  assert.equal(verifyGuildOAuthState(state, secret, accountId, now + 1000), true);
-  assert.equal(verifyGuildOAuthState(state, secret, 'site_223e4567-e89b-12d3-a456-426614174000', now + 1000), false);
-  assert.equal(verifyGuildOAuthState(state, 'another-secret-with-at-least-32-characters', accountId, now + 1000), false);
-  assert.equal(verifyGuildOAuthState(state, secret, accountId, now + 11 * 60 * 1000), false);
-  assert.equal(verifyGuildOAuthState(state + 'x', secret, accountId, now + 1000), false);
-  assert.throws(() => createGuildOAuthState(secret, 'not-an-account', now));
-});
 
 test('Discord OAuth tokens use authenticated encryption and reject tampering', () => {
   const encrypted = encryptGuildOAuthToken('discord-access-token', secret, Buffer.alloc(12, 9));
@@ -142,60 +131,6 @@ test('guild dashboard refuses oversized form bodies', async () => {
   assert.equal(db.calls.length, 0);
 });
 
-test('OAuth callback stores encrypted tokens and is bound to the active site account', async () => {
-  const db = fakeDb();
-  const connectResponse = response();
-  const user = { id: accountId, username: 'Gezgin' };
-  const oldClient = process.env.CLIENT_ID;
-  const oldSecret = process.env.DISCORD_CLIENT_SECRET;
-  process.env.CLIENT_ID = '123456789012345678';
-  process.env.DISCORD_CLIENT_SECRET = 'discord-oauth-client-secret';
-  try {
-    await handleGuildDashboardRequest(request('GET', '/guilds/connect'), connectResponse, { db, user, sessionSecret: secret });
-    assert.equal(connectResponse.status, 302);
-    const authorization = new URL(connectResponse.headers.Location);
-    assert.equal(authorization.searchParams.get('scope'), 'identify guilds');
-    const state = authorization.searchParams.get('state');
-    assert.equal(verifyGuildOAuthState(state, secret, accountId), true);
-    const cookieHeader = connectResponse.headers['Set-Cookie'].split(';')[0];
-    const callback = response();
-    const calls = [];
-    const fetchImpl = async (url) => {
-      calls.push(String(url));
-      if (String(url).includes('/oauth2/token')) return { ok: true, async json() {
-        return { access_token: 'discord-access-secret', refresh_token: 'discord-refresh-secret', expires_in: 3600 };
-      } };
-      return { ok: true, async json() { return { id: '123456789012345678' }; } };
-    };
-    await handleGuildDashboardRequest(request('GET', '/guilds/callback?code=oauth-code&state=' + encodeURIComponent(state), {}, cookieHeader), callback, {
-      db, user, sessionSecret: secret, fetchImpl
-    });
-    assert.equal(callback.status, 303);
-    assert.equal(callback.headers.Location, '/guilds');
-    assert.equal(calls.length, 2);
-    const insert = db.calls.find(call => call.sql.includes('INSERT INTO frieren_site_discord_connections'));
-    assert.ok(insert);
-    assert.equal(decryptGuildOAuthToken(insert.params[2], secret), 'discord-access-secret');
-    assert.equal(decryptGuildOAuthToken(insert.params[3], secret), 'discord-refresh-secret');
-  } finally {
-    if (oldClient === undefined) delete process.env.CLIENT_ID; else process.env.CLIENT_ID = oldClient;
-    if (oldSecret === undefined) delete process.env.DISCORD_CLIENT_SECRET; else process.env.DISCORD_CLIENT_SECRET = oldSecret;
-  }
-});
-
-test('OAuth callback rejects another account state before contacting Discord', async () => {
-  const res = response();
-  const user = { id: accountId, username: 'Gezgin' };
-  const other = 'site_223e4567-e89b-12d3-a456-426614174000';
-  const state = createGuildOAuthState(secret, other);
-  let called = false;
-  await handleGuildDashboardRequest(request('GET', '/guilds/callback?code=oauth-code&state=' + encodeURIComponent(state), {}, 'frieren_guild_oauth_state=' + encodeURIComponent(state)), res, {
-    db: fakeDb(), user, sessionSecret: secret, fetchImpl: async () => { called = true; throw new Error('unexpected network request'); }
-  });
-  assert.equal(res.status, 400);
-  assert.equal(called, false);
-});
-
 test('feature setting changes require a freshly verified Discord-managed guild', async () => {
   const db = {
     calls: [],
@@ -260,4 +195,15 @@ test('feature settings cannot be changed for a server without the bot or Manage 
   }), res, { db, user, sessionSecret: secret, client: { guilds: { cache: new Map([[guildA, {}]]) } }, fetchImpl });
   assert.equal(res.status, 403);
   assert.equal(db.calls.some(call => call.sql.includes('INSERT INTO guild_feature_settings')), false);
+});
+
+test('Discord account connection redirects through the existing owner OAuth callback', async () => {
+  const res = response();
+  const user = { id: accountId, username: 'Gezgin' };
+  await handleGuildDashboardRequest(request('GET', '/guilds/connect'), res, {
+    db: fakeDb(), user, sessionSecret: secret
+  });
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.Location, '/owner/login?flow=guilds');
+  assert.match(res.headers['Cache-Control'], /no-store/);
 });

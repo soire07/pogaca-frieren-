@@ -7,7 +7,6 @@ import {
 
 const ACCOUNT_KEY = /^(?:site_[0-9a-f-]{36}|[0-9]{17,20})$/i;
 const SNOWFLAKE = /^[0-9]{17,20}$/;
-const STATE_COOKIE = 'frieren_guild_oauth_state';
 const schemaReady = new WeakMap();
 const FEATURE_LABELS = Object.freeze({
   commands: 'Komutlar',
@@ -45,21 +44,6 @@ function safeEqual(left, right) {
   const b = Buffer.from(String(right || ''));
   return a.length === b.length && timingSafeEqual(a, b);
 }
-function parseCookies(req) {
-  return Object.fromEntries(String(req.headers?.cookie || '').split(';').map(part => {
-    const index = part.indexOf('=');
-    if (index < 0) return ['', ''];
-    try { return [part.slice(0, index).trim(), decodeURIComponent(part.slice(index + 1).trim())]; }
-    catch { return ['', '']; }
-  }).filter(([key]) => key));
-}
-function cookie(name, value, maxAge, path = '/guilds') {
-  return name + '=' + encodeURIComponent(value) + '; Path=' + path + '; HttpOnly; Secure; SameSite=Lax; Max-Age=' + maxAge;
-}
-function clearStateCookie() {
-  return STATE_COOKIE + '=; Path=/guilds; HttpOnly; Secure; SameSite=Lax; Max-Age=0';
-}
-
 export function encryptGuildOAuthToken(value, secret, iv = randomBytes(12)) {
   if (!Buffer.isBuffer(iv) || iv.length !== 12) throw new Error('INVALID_GUILD_TOKEN_IV');
   const cipher = createCipheriv('aes-256-gcm', deriveKey(secret), iv);
@@ -76,28 +60,6 @@ export function decryptGuildOAuthToken(value, secret) {
   const decipher = createDecipheriv('aes-256-gcm', deriveKey(secret), iv);
   decipher.setAuthTag(tag);
   return Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8');
-}
-export function createGuildOAuthState(secret, accountId, now = Date.now(), nonce = randomBytes(18).toString('base64url')) {
-  accountKey(accountId);
-  if (typeof secret !== 'string' || secret.length < 32) throw new Error('INVALID_GUILD_OAUTH_SECRET');
-  if (!/^[A-Za-z0-9_-]{20,64}$/.test(nonce)) throw new Error('INVALID_GUILD_OAUTH_NONCE');
-  const payload = Buffer.from(JSON.stringify({
-    purpose: 'frieren-guild-oauth', accountId: String(accountId), nonce, exp: now + 10 * 60 * 1000
-  })).toString('base64url');
-  return payload + '.' + signature(payload, secret);
-}
-export function verifyGuildOAuthState(token, secret, accountId, now = Date.now()) {
-  if (typeof secret !== 'string' || secret.length < 32) return false;
-  try { accountKey(accountId); } catch { return false; }
-  const parts = String(token || '').split('.');
-  if (parts.length !== 2 || !parts[0] || !parts[1] || !safeEqual(signature(parts[0], secret), parts[1])) return false;
-  try {
-    const payload = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
-    return payload?.purpose === 'frieren-guild-oauth'
-      && payload.accountId === String(accountId)
-      && typeof payload.nonce === 'string' && /^[A-Za-z0-9_-]{20,64}$/.test(payload.nonce)
-      && Number.isFinite(payload.exp) && payload.exp > now && payload.exp <= now + 10 * 60 * 1000 + 1000;
-  } catch { return false; }
 }
 export function createGuildDashboardCsrf(secret, accountId, now = Date.now(), nonce = randomBytes(18).toString('base64url')) {
   accountKey(accountId);
@@ -187,11 +149,6 @@ async function loadConnection(db, accountId) {
 async function removeConnection(db, accountId) {
   await ensureSchema(db);
   await db.query('DELETE FROM frieren_site_discord_connections WHERE account_key=$1', [accountKey(accountId)]);
-}
-async function requestDiscordJson(fetchImpl, url, options = {}) {
-  const response = await fetchImpl(url, { ...options, signal: AbortSignal.timeout(10_000) });
-  if (!response.ok) throw new Error('DISCORD_API_' + response.status);
-  return response.json();
 }
 async function accessTokenFor(db, connection, secret, fetchImpl) {
   if (new Date(connection.expires_at).getTime() > Date.now() + 60_000) {
@@ -313,22 +270,6 @@ async function renderGuildSettings(user, guild, db, status, csrf) {
   const notice = status === 'saved' ? '<p role="status">Ayar kaydedildi.</p>' : status === 'reset' ? '<p role="status">Genel varsayılana döndürüldü.</p>' : '';
   return shell(guild.name + ' · Lonca Ayarları', '<main class="wrap" style="padding:48px 0"><a href="/guilds">← Loncalarına dön</a><div class="eyebrow">✧ SUNUCUYA ÖZEL FRIEREN AYARLARI</div><h1 class="hero-title">' + esc(guild.name) + '</h1><p class="lead">Bu ayarlar yalnızca seçilen Discord sunucusuna uygulanır.</p>' + notice + '<div class="grid">' + rows + '</div></main>', user);
 }
-async function exchangeOAuthCode(fetchImpl, { code, redirectUri }) {
-  const clientId = String(process.env.CLIENT_ID || '');
-  const clientSecret = String(process.env.DISCORD_CLIENT_SECRET || '');
-  if (!clientId || !clientSecret) throw new Error('DISCORD_OAUTH_NOT_CONFIGURED');
-  const response = await fetchImpl('https://discord.com/api/oauth2/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: clientId, client_secret: clientSecret, grant_type: 'authorization_code', code, redirect_uri: redirectUri
-    }),
-    signal: AbortSignal.timeout(10_000)
-  });
-  if (!response.ok) throw new Error('DISCORD_OAUTH_CODE_EXCHANGE_FAILED');
-  return response.json();
-}
-
 export async function handleGuildDashboardRequest(req, res, {
   client, db, user, sessionSecret, fetchImpl = fetch
 } = {}) {
@@ -344,34 +285,10 @@ export async function handleGuildDashboardRequest(req, res, {
     send(res, 503, '<h1>Lonca paneli şu anda kullanılamıyor.</h1>');
     return true;
   }
-  const redirectUri = process.env.SITE_DISCORD_REDIRECT_URI || baseUrl() + '/guilds/callback';
   try {
     if (path === '/guilds/connect' && req.method === 'GET') {
       res.writeHead(302, { Location: '/owner/login?flow=guilds', 'Cache-Control': 'no-store' });
       res.end();
-      return true;
-    }
-    if (path === '/guilds/callback' && req.method === 'GET') {
-      const state = url.searchParams.get('state');
-      const cookies = parseCookies(req);
-      if (url.searchParams.has('error') || !url.searchParams.get('code')
-          || !verifyGuildOAuthState(state, sessionSecret, user.id)
-          || !safeEqual(state, cookies[STATE_COOKIE])) {
-        send(res, 400, '<h1>Discord bağlantısı doğrulanamadı.</h1><p>Lonca paneline dönüp yeniden bağlan.</p>', { 'Set-Cookie': clearStateCookie() });
-        return true;
-      }
-      const token = await exchangeOAuthCode(fetchImpl, { code: url.searchParams.get('code'), redirectUri });
-      const identity = await requestDiscordJson(fetchImpl, 'https://discord.com/api/users/@me', {
-        headers: { Authorization: 'Bearer ' + token.access_token }
-      });
-      await saveGuildDiscordConnection(db, {
-        accountId: user.id,
-        discordUserId: identity.id,
-        accessToken: token.access_token,
-        refreshToken: token.refresh_token,
-        expiresIn: token.expires_in
-      }, sessionSecret);
-      redirect(res, '/guilds', { 'Set-Cookie': clearStateCookie() });
       return true;
     }
     if (req.method === 'POST') {
@@ -412,7 +329,7 @@ export async function handleGuildDashboardRequest(req, res, {
       send(res, 405, '<h1>Bu istek yöntemi desteklenmiyor.</h1>', { Allow: 'GET, POST' });
       return true;
     }
-    if (path !== '/guilds' && path !== '/guilds/' && path !== '/guilds/connect' && path !== '/guilds/callback'
+    if (path !== '/guilds' && path !== '/guilds/' && path !== '/guilds/connect'
         && !/^\/guilds\/\d{17,20}$/.test(path)) {
       send(res, 404, '<h1>Lonca paneli sayfası bulunamadı.</h1>');
       return true;
