@@ -330,3 +330,84 @@ test('cross-origin guild feature changes are rejected before writing settings', 
   assert.equal(res.status, 403);
   assert.equal(db.writes.length, 0);
 });
+
+
+test('concurrent guild dashboard requests serialize Discord refresh-token rotation', async () => {
+  process.env.ADMIN_SESSION_SECRET = secret;
+  let row = {
+    discord_user_id: '111111111111111111',
+    discord_username: 'GezginDiscord',
+    avatar_hash: null,
+    access_token_encrypted: encryptDiscordOAuthToken('expired-access', secret),
+    refresh_token_encrypted: encryptDiscordOAuthToken('single-use-refresh', secret),
+    expires_at: new Date(Date.now() - 60_000)
+  };
+  let lockTail = Promise.resolve();
+  let refreshExchanges = 0;
+  let guildReads = 0;
+  const db = {
+    async query(sql) {
+      if (sql.includes('SELECT discord_user_id')) return { rows: [{ ...row }], rowCount: 1 };
+      return { rows: [], rowCount: 0 };
+    },
+    async connect() {
+      let releaseLock = null;
+      return {
+        async query(sql, params = []) {
+          if (sql === 'BEGIN') return { rows: [], rowCount: 0 };
+          if (sql === 'COMMIT' || sql === 'ROLLBACK') {
+            releaseLock?.();
+            releaseLock = null;
+            return { rows: [], rowCount: 0 };
+          }
+          if (sql.includes('FOR UPDATE')) {
+            const previous = lockTail;
+            let unlock;
+            lockTail = new Promise(resolve => { unlock = resolve; });
+            await previous;
+            releaseLock = unlock;
+            return { rows: [{ ...row }], rowCount: 1 };
+          }
+          if (sql.includes('INSERT INTO frieren_site_discord_links')) {
+            row = {
+              ...row,
+              access_token_encrypted: params[4],
+              refresh_token_encrypted: params[5],
+              expires_at: new Date(Date.now() + Number(params[6]) * 1000)
+            };
+            return { rows: [], rowCount: 1 };
+          }
+          throw new Error('Unexpected transaction query: ' + sql);
+        },
+        release() { releaseLock?.(); releaseLock = null; }
+      };
+    }
+  };
+  const fetchImpl = async (url, options = {}) => {
+    if (String(url).includes('/oauth2/token')) {
+      refreshExchanges++;
+      await new Promise(resolve => setTimeout(resolve, 10));
+      assert.equal(new URLSearchParams(options.body).get('refresh_token'), 'single-use-refresh');
+      return { ok: true, async json() {
+        return { access_token: 'rotated-access', refresh_token: 'rotated-refresh', expires_in: 3600 };
+      } };
+    }
+    if (String(url).includes('/users/@me/guilds')) {
+      guildReads++;
+      assert.equal(options.headers.Authorization, 'Bearer rotated-access');
+      return { ok: true, async json() { return []; } };
+    }
+    throw new Error('Unexpected Discord endpoint: ' + url);
+  };
+  const invoke = async () => {
+    const res = response();
+    await handleGuildDashboardRequest(siteRequest('/lonca'), res, { db, env, fetchImpl });
+    return res;
+  };
+  const [first, second] = await Promise.all([invoke(), invoke()]);
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(refreshExchanges, 1, 'the one-time refresh token must be exchanged only once');
+  assert.equal(guildReads, 2, 'both requests must use the rotated access token');
+  assert.equal(decryptDiscordOAuthToken(row.refresh_token_encrypted, secret), 'rotated-refresh');
+});
