@@ -15,7 +15,7 @@ on:
         type: choice
         options:
           - frieren-ai-agent
-          - feat/neural-guardian-control-center
+          - feat/guardian-autonomous-repair-v2
       incident_id:
         description: "Optional Guardian incident ID for traceability"
         required: false
@@ -40,7 +40,7 @@ jobs:
           BASE_BRANCH: ${{ inputs.base_branch }}
         run: |
           case "$BASE_BRANCH" in
-            frieren-ai-agent|feat/neural-guardian-control-center) ;;
+            frieren-ai-agent|feat/guardian-autonomous-repair-v2) ;;
             *) echo "Unsupported repair target branch"; exit 1 ;;
           esac
           if [ "$GITHUB_REF_NAME" != "$BASE_BRANCH" ]; then
