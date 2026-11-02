@@ -108,8 +108,11 @@ export function smtpFailureDetails(error) {
 }
 
 function gmailApiReady() {
-  return Boolean(process.env.SITE_SMTP_USER && process.env.SITE_GMAIL_CLIENT_ID &&
-    process.env.SITE_GMAIL_CLIENT_SECRET && process.env.SITE_GMAIL_REFRESH_TOKEN);
+  const endpoint = String(process.env.SITE_GMAIL_SCRIPT_URL || '');
+  return Boolean(
+    /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint) &&
+    process.env.SITE_GMAIL_SCRIPT_SECRET
+  );
 }
 function mailReady() {
   const apiReady = gmailApiReady();
@@ -135,59 +138,23 @@ export function consumeSmtpBuffer(buffer, pendingLines = []) {
 }
 
 export async function sendGmailApi(to, subject, html, plain) {
-  if (!gmailApiReady()) throw new Error('GMAIL_API_NOT_CONFIGURED');
-  const from = String(process.env.SITE_EMAIL_FROM || process.env.SITE_SMTP_USER).trim();
-  const form = new URLSearchParams({
-    grant_type: 'refresh_token',
-    client_id: process.env.SITE_GMAIL_CLIENT_ID,
-    client_secret: process.env.SITE_GMAIL_CLIENT_SECRET,
-    refresh_token: process.env.SITE_GMAIL_REFRESH_TOKEN
-  });
-  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+  if (!gmailApiReady()) throw new Error('GMAIL_SCRIPT_NOT_CONFIGURED');
+  const response = await fetch(process.env.SITE_GMAIL_SCRIPT_URL, {
     method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: form,
-    signal: AbortSignal.timeout(15000)
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      secret: process.env.SITE_GMAIL_SCRIPT_SECRET,
+      to, subject, html, plain,
+      senderName: 'Frieren Portal'
+    }),
+    redirect: 'follow',
+    signal: AbortSignal.timeout(20000)
   });
-  if (!tokenResponse.ok) throw Object.assign(new Error('GMAIL_OAUTH_HTTP_' + tokenResponse.status), { code: 'GMAIL_OAUTH_HTTP_' + tokenResponse.status });
-  const tokenData = await tokenResponse.json();
-  if (!tokenData.access_token) throw new Error('GMAIL_OAUTH_ACCESS_TOKEN_MISSING');
-
-  const boundary = 'frieren_' + randomBytes(12).toString('hex');
-  const encodedSubject = '=?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=';
-  const message = [
-    'From: Frieren Portal <' + from + '>',
-    'To: ' + to,
-    'Subject: ' + encodedSubject,
-    'MIME-Version: 1.0',
-    'Content-Type: multipart/alternative; boundary="' + boundary + '"',
-    '',
-    '--' + boundary,
-    'Content-Type: text/plain; charset=UTF-8',
-    'Content-Transfer-Encoding: base64',
-    '',
-    Buffer.from(plain).toString('base64'),
-    '--' + boundary,
-    'Content-Type: text/html; charset=UTF-8',
-    'Content-Transfer-Encoding: base64',
-    '',
-    Buffer.from(html).toString('base64'),
-    '--' + boundary + '--',
-    ''
-  ].join('\\r\\n').replace(/^\\./gm, '..');
-  const sendResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-    method: 'POST',
-    headers: {
-      authorization: 'Bearer ' + tokenData.access_token,
-      'content-type': 'application/json'
-    },
-    body: JSON.stringify({ raw: Buffer.from(message).toString('base64url') }),
-    signal: AbortSignal.timeout(15000)
-  });
-  if (!sendResponse.ok) throw Object.assign(new Error('GMAIL_SEND_HTTP_' + sendResponse.status), { code: 'GMAIL_SEND_HTTP_' + sendResponse.status });
-  const result = await sendResponse.json();
-  if (!result.id) throw new Error('GMAIL_SEND_ID_MISSING');
-  return result.id;
+  if (!response.ok) throw Object.assign(new Error('GMAIL_SCRIPT_HTTP_' + response.status), { code: 'GMAIL_SCRIPT_HTTP_' + response.status });
+  let result;
+  try { result = await response.json(); } catch { throw new Error('GMAIL_SCRIPT_INVALID_RESPONSE'); }
+  if (result?.ok !== true) throw Object.assign(new Error('GMAIL_SCRIPT_REJECTED'), { code: 'GMAIL_SCRIPT_REJECTED' });
+  return result.messageId || 'accepted';
 }
 
 async function sendGmail(to, subject, html, plain) {
