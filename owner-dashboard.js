@@ -1056,15 +1056,15 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              ref: 'feat/neural-guardian-control-center',
-              inputs: { task, base_branch: 'feat/neural-guardian-control-center', incident_id: String(incident.id) },
+              ref: 'feat/guardian-autonomous-repair-v2',
+              inputs: { task, base_branch: 'feat/guardian-autonomous-repair-v2', incident_id: String(incident.id) },
             }),
             signal: AbortSignal.timeout(12_000),
           });
           if (response.status !== 204) throw new Error('GUARDIAN_GITHUB_DISPATCH_HTTP_' + response.status);
           await finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl });
           await auditOwnerAction(db, OWNER_ID, 'guardian.repair.workflow_dispatched', String(incident.id), {
-            jobId: job.id, workflow: 'frieren-ai-self-repair.yml', baseBranch: 'feat/neural-guardian-control-center',
+            jobId: job.id, workflow: 'frieren-ai-self-repair.yml', baseBranch: 'feat/guardian-autonomous-repair-v2',
           }).catch(error => console.error('Guardian dispatch audit failed:', error?.message || error));
           redirect(res, '/owner/guardian?notice=guardian_pr_dispatched');
         } catch (error) {
@@ -1103,7 +1103,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         const query = new URLSearchParams({
           state: 'all',
           head: 'soire07:' + branchName,
-          base: 'feat/neural-guardian-control-center',
+          base: 'feat/guardian-autonomous-repair-v2',
         });
         const prResponse = await fetch(apiBase + '/pulls?' + query.toString(), {
           headers, signal: AbortSignal.timeout(10_000),
