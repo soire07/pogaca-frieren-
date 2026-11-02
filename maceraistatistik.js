@@ -14,11 +14,11 @@ export default {
         (SELECT COUNT(*)::int FROM adventure_discoveries d WHERE d.guild_id=u.guild_id AND d.user_id=u.user_id) AS discoveries,
         (SELECT COALESCE(SUM(r.visits),0)::int FROM adventure_route_mastery r WHERE r.guild_id=u.guild_id AND r.user_id=u.user_id) AS adventures,
         (SELECT COALESCE(MAX(r.visits),0)::int FROM adventure_route_mastery r WHERE r.guild_id=u.guild_id AND r.user_id=u.user_id) AS best_route_visits,
-        (SELECT COALESCE(s.daily_streak,0)::int FROM adventure_streaks s WHERE s.guild_id=u.guild_id AND s.user_id=u.user_id) AS daily_streak,
-        (SELECT COALESCE(s.best_streak,0)::int FROM adventure_streaks s WHERE s.guild_id=u.guild_id AND s.user_id=u.user_id) AS best_streak,
-        (SELECT COALESCE(t.fragments,0)::int FROM adventure_treasure_progress t WHERE t.guild_id=u.guild_id AND t.user_id=u.user_id) AS fragments,
-        (SELECT COALESCE(t.treasures_opened,0)::int FROM adventure_treasure_progress t WHERE t.guild_id=u.guild_id AND t.user_id=u.user_id) AS treasures_opened,
-        (SELECT COALESCE(i.quantity,0)::int FROM inventory i WHERE i.guild_id=u.guild_id AND i.user_id=u.user_id AND i.item_key='🗝️ Kadim Hazine Sandığı') AS chests
+        COALESCE((SELECT s.daily_streak::int FROM adventure_streaks s WHERE s.guild_id=u.guild_id AND s.user_id=u.user_id),0) AS daily_streak,
+        COALESCE((SELECT s.best_streak::int FROM adventure_streaks s WHERE s.guild_id=u.guild_id AND s.user_id=u.user_id),0) AS best_streak,
+        COALESCE((SELECT t.fragments::int FROM adventure_treasure_progress t WHERE t.guild_id=u.guild_id AND t.user_id=u.user_id),0) AS fragments,
+        COALESCE((SELECT t.treasures_opened::int FROM adventure_treasure_progress t WHERE t.guild_id=u.guild_id AND t.user_id=u.user_id),0) AS treasures_opened,
+        COALESCE((SELECT i.quantity::int FROM inventory i WHERE i.guild_id=u.guild_id AND i.user_id=u.user_id AND i.item_key='🗝️ Kadim Hazine Sandığı'),0) AS chests
        FROM users u WHERE u.guild_id=$1 AND u.user_id=$2`,
       [interaction.guildId, interaction.user.id]
     );
