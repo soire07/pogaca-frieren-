@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_GUILD_FEATURES, getCommandFeatureKeys, getGuildFeatureEnabled, initGuildFeatureSettingsSchema, isValidGuildFeatureKey, listGuildFeatureSettings, listGuildFeatureSettingsForGuilds, resetGuildFeatureSetting, setGuildFeatureEnabled } from '../guild-feature-settings.js';
+import { DEFAULT_GUILD_FEATURES, areGuildCommandFeaturesEnabled, getCommandFeatureKeys, getGuildFeatureEnabled, initGuildFeatureSettingsSchema, isValidGuildFeatureKey, listGuildFeatureSettings, listGuildFeatureSettingsForGuilds, resetGuildFeatureSetting, setGuildFeatureEnabled } from '../guild-feature-settings.js';
 
 function fakeDb(rows = []) {
   const calls = [];
@@ -104,4 +104,26 @@ test('entertainment and progression commands map to their guild dashboard module
   assert.deepEqual(getCommandFeatureKeys('hikaye'), ['story', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('takasteklif'), ['economy', 'trading', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('trade'), ['economy', 'trading', 'rpg']);
+});
+
+
+test('guild command feature gate checks global, command-specific, and mapped modules', async () => {
+  const db = fakeDb([]);
+  assert.equal(await areGuildCommandFeaturesEnabled(db, '1539562273197260860', 'takasteklif'), true);
+  assert.deepEqual(db.calls[0].params, ['1539562273197260860', 'commands']);
+  assert.deepEqual(db.calls.map(call => call.params[1]), [
+    'commands', 'command_takasteklif', 'economy', 'trading', 'rpg'
+  ]);
+});
+
+test('guild command feature gate blocks a disabled mapped module', async () => {
+  const db = fakeDb([{ enabled: false }]);
+  assert.equal(await areGuildCommandFeaturesEnabled(db, '1539562273197260860', 'takasteklif'), false);
+});
+
+test('guild command feature gate rejects invalid command or guild identifiers', async () => {
+  const db = fakeDb();
+  assert.equal(await areGuildCommandFeaturesEnabled(db, 'invalid', 'takasteklif'), false);
+  assert.equal(await areGuildCommandFeaturesEnabled(db, '1539562273197260860', 'bad command'), false);
+  assert.equal(db.calls.length, 0);
 });
