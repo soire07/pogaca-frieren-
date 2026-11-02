@@ -30,6 +30,7 @@ const FEATURE_DETAILS = {
   aiChat: ['Frieren sohbeti', 'Sunucuda Frieren karakter sohbeti ve hafıza ayarları.', 'Sosyal'],
   animeQuiz: ['Anime bilgi yarışması', 'Anime quizleri ve doğru cevap serileri.', 'Eğlence'],
   collection: ['Karakter koleksiyonu', 'Karakter arşivi, koleksiyon ve keşif defteri.', 'Koleksiyon'],
+  companions: ['Yoldaş Akademisi', 'Yoldaş sahiplenme, bakım, eğitim ve seviye ilerlemesi.', 'Macera'],
   achievements: ['Başarımlar', 'Oyuncu başarımları ve ilerleme hedefleri.', 'İlerleme'],
   dailyRewards: ['Günlük ödüller', 'Günlük giriş ödülleri ve devam serileri.', 'İlerleme'],
   exploration: ['Keşif ve macera', 'Bölgeler, keşif karşılaşmaları ve macera kayıtları.', 'Macera'],
