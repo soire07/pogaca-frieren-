@@ -102,4 +102,6 @@ test('entertainment and progression commands map to their guild dashboard module
   assert.deepEqual(getCommandFeatureKeys('kesifdefteri'), ['collection', 'exploration', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('zanaat'), ['crafting', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('hikaye'), ['story', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('takasteklif'), ['economy', 'trading', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('trade'), ['economy', 'trading', 'rpg']);
 });
