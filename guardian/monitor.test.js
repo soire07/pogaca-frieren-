@@ -116,6 +116,18 @@ test('monitor forwards each persisted incident to the autonomous handler before 
 });
 
 
+test('error and incident scan limits are normalized to whole bounded rows', async () => {
+  const limits = [];
+  const db = { query: async (sql, values) => {
+    if (sql.includes('SELECT id,scope,error_type')) { limits.push(values[1]); return { rows: [] }; }
+    if (sql.includes("WHERE status='open'")) { limits.push(values[0]); return { rows: [] }; }
+    return { rows: [] };
+  } };
+  await scanNewOwnerErrors(db, 0, 3.9);
+  await scanPendingGuardianIncidents(db, async () => {}, async () => {}, 4.9);
+  assert.deepEqual(limits, [3, 4]);
+});
+
 test('pending high-severity incidents are retried in a bounded batch', async () => {
   let params;
   const attempted = [];
