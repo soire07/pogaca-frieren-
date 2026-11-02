@@ -141,3 +141,14 @@ test('runtime command gate validates guild IDs and rejects empty command names',
   await assert.rejects(isGuildCommandEnabled(db, '1539562273197260860', ''), /INVALID_GUILD_COMMAND/);
   assert.equal(db.calls, 0);
 });
+
+
+test('component custom IDs map to their owning slash command feature gates', async () => {
+  const { getComponentCommandName } = await import('../guild-feature-settings.js');
+  assert.equal(getComponentCommandName('charpanel:class:123456789012345678'), 'karakter');
+  assert.equal(getComponentCommandName('market_buy:item:123456789012345678'), 'market');
+  assert.equal(getComponentCommandName('trade_accept:offer-id'), 'takasteklif');
+  assert.equal(getComponentCommandName('trade_decline:offer-id'), 'takasteklif');
+  assert.equal(getComponentCommandName('unrelated:action'), null);
+  assert.equal(getComponentCommandName(''), null);
+});
