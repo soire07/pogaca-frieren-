@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scanNewOwnerErrors, startGuardianMonitor } from './monitor.js';
+import { scanNewOwnerErrors, scanPendingGuardianIncidents, startGuardianMonitor } from './monitor.js';
 
 test('local monitor processes only unseen error rows and advances its cursor', async () => {
   let selectParams;
@@ -113,4 +113,44 @@ test('monitor forwards each persisted incident to the autonomous handler before 
   assert.deepEqual(handled, [saved]);
   assert.deepEqual(progress, [1]);
   assert.equal(result.lastSeenErrorId, 1);
+});
+
+
+test('pending high-severity incidents are retried in a bounded batch', async () => {
+  let params;
+  const attempted = [];
+  const db = {
+    query: async (sql, values) => {
+      assert.match(sql, /status='open'/);
+      assert.match(sql, /severity IN \('critical','high'\)/);
+      assert.match(sql, /review_attempts/);
+      assert.match(sql, /last_review_at/);
+      params = values;
+      return { rows: [
+        { id: 21, severity: 'critical', status: 'open' },
+        { id: 22, severity: 'high', status: 'open' },
+      ] };
+    },
+  };
+  const result = await scanPendingGuardianIncidents(db, async incident => attempted.push(incident.id), async () => {}, 100);
+  assert.deepEqual(params, [25], 'retry query must enforce its hard upper bound');
+  assert.deepEqual(attempted, [21, 22]);
+  assert.deepEqual(result, { attempted: 2 });
+});
+
+test('pending incident retry isolates handler failures and continues the batch', async () => {
+  const failures = [];
+  const attempted = [];
+  const db = { query: async () => ({ rows: [{ id: 31 }, { id: 32 }] }) };
+  const result = await scanPendingGuardianIncidents(
+    db,
+    async incident => {
+      attempted.push(incident.id);
+      if (incident.id === 31) throw new Error('temporary AI outage');
+    },
+    async (error, incident) => failures.push([error.message, incident.id]),
+  );
+  assert.deepEqual(attempted, [31, 32]);
+  assert.deepEqual(failures, [['temporary AI outage', 31]]);
+  assert.deepEqual(result, { attempted: 2 });
 });
