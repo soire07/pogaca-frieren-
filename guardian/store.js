@@ -74,7 +74,7 @@ export async function createGuardianReviewJob(db, { incidentId, actorId }) {
          AND COALESCE(started_at,created_at) < NOW()-INTERVAL '5 minutes'
        RETURNING incident_id
      ), reopened AS (
-       UPDATE owner_guardian_incidents i SET status='open',updated_at=NOW()
+       UPDATE owner_guardian_incidents i SET status='open',last_review_at=NULL,updated_at=NOW()
        FROM stale s WHERE i.id=s.incident_id AND i.status='in_review'
        RETURNING i.id
      )
