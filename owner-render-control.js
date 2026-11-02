@@ -17,7 +17,7 @@ export const RENDER_BOT_SERVICES = Object.freeze({
     key: 'frieren_ai',
     name: 'Frieren AI',
     id: process.env.RENDER_FRIEREN_AI_SERVICE_ID || 'srv-dbj192flk1mc73805ia0',
-    url: process.env.RENDER_FRIEREN_AI_URL || 'https://pogaca-frieren-kltd.onrender.com',
+    url: process.env.RENDER_FRIEREN_AI_URL || 'https://frieren-ai-agent.onrender.com',
     healthPath: process.env.RENDER_FRIEREN_AI_HEALTH_PATH || '/live',
     dashboardUrl: 'https://dashboard.render.com/web/' + (process.env.RENDER_FRIEREN_AI_SERVICE_ID || 'srv-dbj192flk1mc73805ia0'),
     canSuspend: true,
