@@ -156,11 +156,11 @@ test('Guardian self-repair dispatch targets the active PR branch and uses a supp
   const dashboard = readFileSync(new URL('../owner-dashboard.js', import.meta.url), 'utf8');
   const workflow = readFileSync(new URL('../.github/workflows/frieren-ai-self-repair.yml', import.meta.url), 'utf8');
   const target = 'feat/neural-guardian-control-center';
-  assert.match(dashboard, /ref: 'feat\\/neural-guardian-control-center'/);
-  assert.match(dashboard, /base_branch: 'feat\\/neural-guardian-control-center'/);
-  assert.match(dashboard, /runs\\?branch=feat%2Fneural-guardian-control-center/);
-  assert.match(workflow, /- feat\\/neural-guardian-control-center/);
-  assert.match(workflow, /feat\\/neural-guardian-control-center\\|frieren-ai-agent/);
+  assert.ok(dashboard.includes("ref: '" + target + "'"));
+  assert.ok(dashboard.includes("base_branch: '" + target + "'"));
+  assert.ok(dashboard.includes('runs?branch=' + encodeURIComponent(target) + '&event=workflow_dispatch'));
+  assert.ok(workflow.includes('- ' + target));
+  assert.ok(workflow.includes(target + '|frieren-ai-agent'));
   assert.ok(!dashboard.includes("base_branch: 'frieren-neural-foundation'"), 'repair input must match the workflow allowlist');
   assert.ok(target.length > 0);
 });
