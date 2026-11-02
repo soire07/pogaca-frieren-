@@ -152,3 +152,25 @@ test('component custom IDs map to their owning slash command feature gates', asy
   assert.equal(getComponentCommandName('unrelated:action'), null);
   assert.equal(getComponentCommandName(''), null);
 });
+
+
+test('all known standalone RPG commands inherit the RPG feature gate', async () => {
+  const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
+  const names = [
+    'basarimlar', 'cantam', 'dinlen', 'dunya', 'gelisim', 'gunluk', 'gunlukodul',
+    'hazineac', 'hazinegecmisi', 'hedefler', 'kesif', 'kesifdefteri', 'kesifliderligi',
+    'koleksiyon', 'liderlik', 'macera', 'maceragecmisi', 'maceraistatistik', 'mimic',
+    'npc', 'siralama', 'zanaat', 'zanaatustalari'
+  ];
+  for (const name of names) {
+    assert.ok(getCommandFeatureKeys(name).includes('rpg'), name + ' must be controlled by the RPG category');
+  }
+});
+
+test('standalone RPG subcategories map to their specific feature gates', async () => {
+  const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
+  assert.deepEqual(getCommandFeatureKeys('cantam'), ['equipment', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('zanaat'), ['equipment', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('hedefler'), ['quests', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('kesifdefteri'), ['quests', 'rpg']);
+});
