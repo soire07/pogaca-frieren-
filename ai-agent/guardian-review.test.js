@@ -22,7 +22,7 @@ test('Guardian review parser returns a proposal that is never marked applied', (
   const result = parseGuardianReview(JSON.stringify({
     rootCause: 'Missing timeout guard.',
     confidence: 'medium',
-    affectedFiles: ['ai-agent/index.js', '../.env', '/etc/passwd'],
+    affectedFiles: ['ai-agent/index.js', '../.env', '/etc/passwd', 'C:\\Windows\\system.ini', '\\\\server\\share\\secret.txt'],
     suggestedFix: 'Add a bounded timeout.',
     proposedPatch: 'diff --git a/ai-agent/index.js b/ai-agent/index.js',
     tests: ['Add timeout regression test.'],
@@ -32,6 +32,15 @@ test('Guardian review parser returns a proposal that is never marked applied', (
   assert.equal(result.applied, false);
   assert.equal(result.requiresHumanReview, true);
   assert.deepEqual(result.affectedFiles, ['ai-agent/index.js']);
+  const incident = normalizeGuardianReviewIncident({
+    system: 'frieren_ai', title: 'Path test', summary: 'Evidence paths',
+    evidence: [
+      { file: 'src/guardian.js', message: 'safe' },
+      { file: 'C:\\Windows\\system.ini', message: 'absolute Windows path' },
+      { file: '\\\\server\\share\\secret.txt', message: 'UNC path' },
+    ],
+  });
+  assert.deepEqual(incident.evidence.map(item => item.file), ['src/guardian.js']);
   assert.equal(result.confidence, 'medium');
 });
 
