@@ -17,7 +17,7 @@ test('trade offers are persistent, expiring and single-use', async () => {
   assert.match(command, /reservedAmount/);
   assert.match(transaction, /reservedForOthers/);
   assert.match(command, /NOW\(\)\+INTERVAL '5 minutes'/);
-  assert.match(transaction, /SELECT \* FROM trade_offers WHERE offer_id=\$1 AND guild_id=\$2 FOR UPDATE/);
+  assert.match(transaction, /SELECT \*, expires_at <= NOW\(\) AS is_expired FROM trade_offers WHERE offer_id=\$1 AND guild_id=\$2 FOR UPDATE/);
   assert.ok(transaction.includes('acceptingUserId !== offer.to_user_id'));
   assert.match(transaction, /status='accepted'/);
   assert.match(transaction, /quantity=quantity-\$4/);
