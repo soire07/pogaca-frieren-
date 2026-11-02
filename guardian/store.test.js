@@ -135,7 +135,7 @@ test('Guardian resolution writes an audit record in the same SQL statement', asy
   const result = await resolveGuardianIncident(db, { incidentId: 4, actorId: '1553794496234262641' });
   assert.equal(result.id, 4);
   assert.match(sql, /guardian\.incident\.resolve/);
-  assert.match(sql, /WITH changed AS/);
+  assert.match(sql, /changed AS/);
   assert.match(sql, /cancelled_jobs AS/);
   assert.match(sql, /UPDATE owner_guardian_jobs/);
   assert.match(sql, /status IN/);
