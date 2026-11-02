@@ -1,10 +1,10 @@
-const FEATURE_ID = /^(?:RPG|SRV|FUN|SOC)-\\d{3}$/;
+const FEATURE_ID = /^(?:RPG|SRV|FUN|SOC)-\d{3}$/;
 
 function normalizeFeatureName(value) {
   return String(value ?? '')
     .normalize('NFKC')
     .toLocaleLowerCase('tr-TR')
-    .replace(/\\s+/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
@@ -55,7 +55,7 @@ export function inspectFeatureInventory(inventory) {
       byStatus[feature.status] = (byStatus[feature.status] || 0) + 1;
     }
 
-    const match = id.match(/^RPG-(\\d{3})$/);
+    const match = id.match(/^RPG-(\d{3})$/);
     if (match) rpgNumbers.push(Number(match[1]));
   }
 
