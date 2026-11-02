@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { createAiModelProvider } from '../ai-agent/model-provider.js';
 import { execFileSync } from 'node:child_process';
 import { readFile, stat } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -129,12 +130,12 @@ export function applyRepairPatch(patch, { execFile = runGit } = {}) {
 
 export async function main(env = process.env) {
   const task = String(env.FRIEREN_REPAIR_TASK || '').trim();
-  const apiKey = String(env.GROQ_API_KEY || '').trim();
   if (!task || task.length > 1200) throw new Error('REPAIR_TASK_REQUIRED');
-  if (!apiKey) throw new Error('GROQ_API_KEY_REQUIRED');
+  const provider = createAiModelProvider({ env });
+  if (!provider.configured) throw new Error(provider.reason || 'AI_PROVIDER_NOT_CONFIGURED');
   const context = await collectRepairContext(task);
   const proposal = await generateRepairPatch({
-    task, apiKey, model: String(env.FRIEREN_MODEL || 'openai/gpt-oss-20b'), context,
+    task, client: provider.client, model: String(env.FRIEREN_MODEL || 'openai/gpt-oss-20b'), context,
   });
   const changed = applyRepairPatch(proposal.patch);
   if (changed.some(path => !proposal.files.includes(path))) throw new Error('REPAIR_CHANGED_UNEXPECTED_FILE');
