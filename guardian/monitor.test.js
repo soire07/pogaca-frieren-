@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scanNewOwnerErrors, scanPendingGuardianIncidents, startGuardianMonitor } from './monitor.js';
+import { scanNewOwnerErrors, scanPendingGuardianIncidents, scanPendingGuardianRepairDispatches, startGuardianMonitor } from './monitor.js';
 
 test('local monitor processes only unseen error rows and advances its cursor', async () => {
   let selectParams;
@@ -186,4 +186,19 @@ test('monitor automatically retries eligible open incidents on its scheduled sca
   } finally {
     stop?.();
   }
+});
+
+
+test('monitor scans bounded retryable repair dispatches independently of AI incident reviews', async () => {
+  let params;
+  const handled = [];
+  const db = { query: async (sql, values) => {
+    assert.match(sql, /repair_dispatch_attempts/);
+    params = values;
+    return { rows: [{ id: 91, incident_id: 42, result: { status: 'proposal_only' } }] };
+  } };
+  const result = await scanPendingGuardianRepairDispatches(db, async job => handled.push(job.id), 100);
+  assert.deepEqual(params, [25]);
+  assert.deepEqual(handled, [91]);
+  assert.deepEqual(result, { attempted: 1 });
 });
