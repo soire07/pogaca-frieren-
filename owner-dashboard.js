@@ -15,6 +15,7 @@ import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } fr
 import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
+import { saveGuildDiscordConnection } from './guild-dashboard.js';
 import {
   generateTotpSecret, encryptTotpSecret, decryptTotpSecret, verifyTotpCode,
   createTotpUri, generateTotpRecoveryCodes, hashTotpRecoveryCode
@@ -126,10 +127,11 @@ function sign(value, secret) {
   return payload + '.' + signature;
 }
 
-export function createOwnerOAuthState(secret, now = Date.now(), flow = 'owner') {
+export function createOwnerOAuthState(secret, now = Date.now(), flow = 'owner', accountId = null) {
   if (!secret || secret.length < 32) throw new Error('Owner OAuth signing secret is invalid');
-  if (!['owner', 'register', 'login'].includes(flow)) throw new Error('Invalid site OAuth flow');
-  return sign({ purpose: 'discord-owner-oauth', flow, nonce: randomBytes(32).toString('base64url'), exp: now + 10 * 60 * 1000 }, secret);
+  if (!['owner', 'register', 'login', 'guilds'].includes(flow)) throw new Error('Invalid site OAuth flow');
+  if (flow === 'guilds' && !/^(?:site_[0-9a-f-]{36}|[0-9]{17,20})$/i.test(String(accountId || ''))) throw new Error('Invalid guild dashboard account');
+  return sign({ purpose: 'discord-owner-oauth', flow, ...(flow === 'guilds' ? { accountId: String(accountId) } : {}), nonce: randomBytes(32).toString('base64url'), exp: now + 10 * 60 * 1000 }, secret);
 }
 
 export function verifyOwnerOAuthState(token, secret, now = Date.now()) {
@@ -138,13 +140,20 @@ export function verifyOwnerOAuthState(token, secret, now = Date.now()) {
   return payload?.purpose === 'discord-owner-oauth'
     && typeof payload.nonce === 'string' && payload.nonce.length >= 32
     && Number.isFinite(payload.exp) && payload.exp > now && payload.exp <= now + 10 * 60 * 1000 + 1000
-    && (payload.flow === undefined || ['owner', 'register', 'login'].includes(payload.flow));
+    && (payload.flow === undefined || ['owner', 'register', 'login', 'guilds'].includes(payload.flow))
+    && (payload.flow !== 'guilds' || /^(?:site_[0-9a-f-]{36}|[0-9]{17,20})$/i.test(String(payload.accountId || '')));
 }
 
 export function getOwnerOAuthFlow(token, secret, now = Date.now()) {
   if (!verifyOwnerOAuthState(token, secret, now)) return null;
   const payload = unsign(token, secret);
   return payload.flow || 'owner';
+}
+
+export function getOwnerOAuthAccountId(token, secret, now = Date.now()) {
+  if (!verifyOwnerOAuthState(token, secret, now)) return null;
+  const payload = unsign(token, secret);
+  return payload.flow === 'guilds' ? String(payload.accountId || '') : null;
 }
 
 function unsign(token, secret) {
@@ -613,11 +622,20 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       res.end();
       return true;
     }
-    const flow = 'owner';
-    const state = createOwnerOAuthState(sessionSecret, Date.now(), flow);
+    const flow = requestedFlow === 'guilds' ? 'guilds' : 'owner';
+    const siteSession = flow === 'guilds'
+      ? readPublicSiteSession(cookie['frieren_site_session'], sessionSecret)
+      : null;
+    if (flow === 'guilds' && !siteSession) {
+      res.writeHead(302, { Location: '/login', 'Cache-Control': 'no-store' });
+      res.end();
+      return true;
+    }
+    const state = createOwnerOAuthState(sessionSecret, Date.now(), flow, siteSession?.id);
     const location = new URL('https://discord.com/oauth2/authorize');
     location.search = new URLSearchParams({
-      client_id: clientId, response_type: 'code', redirect_uri: redirectUri, scope: 'identify', state
+      client_id: clientId, response_type: 'code', redirect_uri: redirectUri,
+      scope: flow === 'guilds' ? 'identify guilds' : 'identify', state
     }).toString();
     res.writeHead(302, { Location: location.toString(), 'Cache-Control': 'no-store' });
     res.end();
@@ -632,7 +650,15 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       send(res, 400, page('Giriş reddedildi', '<h1>Giriş doğrulanamadı</h1><p>OAuth doğrulaması geçersiz veya süresi dolmuş. Yeniden giriş yap.</p>'));
       return true;
     }
-    if (flow !== 'owner') {
+    const guildAccountId = flow === 'guilds' ? getOwnerOAuthAccountId(receivedState, sessionSecret) : null;
+    const linkedSiteSession = flow === 'guilds'
+      ? readPublicSiteSession(cookie['frieren_site_session'], sessionSecret)
+      : null;
+    if (flow === 'guilds' && (!linkedSiteSession || linkedSiteSession.id !== guildAccountId)) {
+      send(res, 403, page('Discord bağlantısı reddedildi', '<h1>Site oturumun değişti veya süresi doldu</h1><p>Lonca paneline dönüp Discord hesabını yeniden bağla.</p><a class="btn" href="/guilds">Lonca paneline dön</a>'), { 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
+      return true;
+    }
+    if (flow !== 'owner' && flow !== 'guilds') {
       res.writeHead(302, { Location: flow === 'register' ? '/register' : '/login', 'Cache-Control': 'no-store', 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
       res.end();
       return true;
@@ -656,6 +682,18 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const userId = String(user?.id || '');
       const username = String(user?.username || 'Gezgin').slice(0, 64);
       const avatarHash = typeof user?.avatar === 'string' && /^[a-zA-Z0-9_]{2,128}$/.test(user.avatar) ? user.avatar : null;
+      if (flow === 'guilds') {
+        await saveGuildDiscordConnection(db, {
+          accountId: guildAccountId,
+          discordUserId: userId,
+          accessToken: tokenData.access_token,
+          refreshToken: tokenData.refresh_token,
+          expiresIn: tokenData.expires_in
+        }, sessionSecret);
+        res.writeHead(302, { Location: '/guilds', 'Cache-Control': 'no-store', 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
+        res.end();
+        return true;
+      }
       if (userId !== OWNER_ID) {
         send(res, 403, page('Owner erişimi reddedildi', '<h1>Bu alan yalnızca site sahibine açıktır</h1><p>Siteye normal giriş yapmak için kayıt veya giriş sayfasını kullan.</p><a class="btn" href="/login">Siteye dön</a>'), { 'Set-Cookie': clearOwnerCookie(STATE_COOKIE, '/owner') });
         return true;

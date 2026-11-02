@@ -555,6 +555,13 @@ test('site OAuth state supports separate registration and login modes', async ()
     const state = createOwnerOAuthState(secret, now, flow);
     assert.equal(getOwnerOAuthFlow(state, secret, now + 1000), flow);
   }
+  const accountId = 'site_123e4567-e89b-12d3-a456-426614174000';
+  const guildState = createOwnerOAuthState(secret, now, 'guilds', accountId);
+  const { getOwnerOAuthAccountId } = await import('../owner-dashboard.js');
+  assert.equal(getOwnerOAuthFlow(guildState, secret, now + 1000), 'guilds');
+  assert.equal(getOwnerOAuthAccountId(guildState, secret, now + 1000), accountId);
+  assert.equal(getOwnerOAuthAccountId(guildState, 'wrong-secret-that-is-also-at-least-32-chars', now + 1000), null);
+  assert.throws(() => createOwnerOAuthState(secret, now, 'guilds', 'invalid-account'));
 });
 
 test('legacy public Discord OAuth callbacks redirect to password registration before token exchange', async () => {

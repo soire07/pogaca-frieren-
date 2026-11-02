@@ -347,22 +347,7 @@ export async function handleGuildDashboardRequest(req, res, {
   const redirectUri = process.env.SITE_DISCORD_REDIRECT_URI || baseUrl() + '/guilds/callback';
   try {
     if (path === '/guilds/connect' && req.method === 'GET') {
-      const clientId = String(process.env.CLIENT_ID || '');
-      if (!clientId || !process.env.DISCORD_CLIENT_SECRET) {
-        send(res, 503, '<h1>Discord bağlantısı yapılandırılmamış.</h1>');
-        return true;
-      }
-      const state = createGuildOAuthState(sessionSecret, user.id);
-      const location = new URL('https://discord.com/oauth2/authorize');
-      location.search = new URLSearchParams({
-        client_id: clientId, response_type: 'code', redirect_uri: redirectUri,
-        scope: 'identify guilds', state
-      }).toString();
-      res.writeHead(302, {
-        Location: location.toString(), 'Cache-Control': 'no-store',
-        'Set-Cookie': cookie(STATE_COOKIE, state, 600)
-      });
-      res.end();
+      redirect(res, '/owner/login?flow=guilds');
       return true;
     }
     if (path === '/guilds/callback' && req.method === 'GET') {
