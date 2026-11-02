@@ -115,7 +115,7 @@ test('Guardian repair workflow dispatch is reserved once and records its workflo
   const calls = [];
   const db = { query: async (sql, params) => {
     calls.push({ sql, params });
-    if (sql.includes('SET repair_dispatch_status=\'dispatching\'')) {
+    if (sql.includes("repair_dispatch_status='dispatching'")) {
       return { rows: [{ id: 8, status: 'completed', repair_dispatch_status: 'dispatching' }] };
     }
     if (sql.includes('SET repair_dispatch_status=$2')) return { rows: [{ id: 8 }] };
