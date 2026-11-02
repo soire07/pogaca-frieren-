@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   validateSiteUsername, validateSiteEmail, hashSitePassword, verifySitePassword,
-  createSiteCsrfToken, verifySiteCsrfToken, consumeSmtpBuffer, smtpFailureDetails, handleSiteAuthRequest
+  createSiteCsrfToken, verifySiteCsrfToken, consumeSmtpBuffer, smtpFailureDetails, sendGmailApi, handleSiteAuthRequest
 } from '../site-auth.js';
 import { createPublicSiteSession, readPublicSiteSession } from '../owner-dashboard.js';
 
@@ -31,6 +31,62 @@ test('SMTP failure diagnostics normalize unusual thrown values without exposing 
   assert.deepEqual(smtpFailureDetails(undefined), {
     name: 'NonErrorThrow', code: null, syscall: null, message: 'Unknown SMTP failure'
   });
+});
+
+test('Gmail HTTPS API refreshes OAuth credentials and sends MIME content without SMTP', async () => {
+  const keys = ['SITE_SMTP_USER','SITE_GMAIL_CLIENT_ID','SITE_GMAIL_CLIENT_SECRET','SITE_GMAIL_REFRESH_TOKEN'];
+  const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  process.env.SITE_SMTP_USER = 'frieren.portal@gmail.com';
+  process.env.SITE_GMAIL_CLIENT_ID = 'test-client-id';
+  process.env.SITE_GMAIL_CLIENT_SECRET = 'test-client-secret';
+  process.env.SITE_GMAIL_REFRESH_TOKEN = 'test-refresh-token';
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    if (url === 'https://oauth2.googleapis.com/token') {
+      assert.match(String(options.body), /grant_type=refresh_token/);
+      return { ok: true, async json() { return { access_token: 'test-access-token' }; } };
+    }
+    assert.equal(url, 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send');
+    assert.equal(options.headers.authorization, 'Bearer test-access-token');
+    const payload = JSON.parse(options.body);
+    assert.match(payload.raw, /^[A-Za-z0-9_-]+$/);
+    const decoded = Buffer.from(payload.raw, 'base64url').toString('utf8');
+    assert.match(decoded, /To: receiver@example.com/);
+    assert.match(decoded, /Frieren doğrulama/);
+    return { ok: true, async json() { return { id: 'gmail-message-id' }; } };
+  };
+  try {
+    assert.equal(await sendGmailApi('receiver@example.com','Frieren doğrulama','<p>Doğrula</p>','Doğrula'));
+    assert.equal(calls.length, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const key of keys) {
+      if (previous[key] === undefined) delete process.env[key];
+      else process.env[key] = previous[key];
+    }
+  }
+});
+
+test('Gmail HTTPS API reports HTTP failures without exposing response bodies', async () => {
+  const keys = ['SITE_SMTP_USER','SITE_GMAIL_CLIENT_ID','SITE_GMAIL_CLIENT_SECRET','SITE_GMAIL_REFRESH_TOKEN'];
+  const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+  const originalFetch = globalThis.fetch;
+  process.env.SITE_SMTP_USER = 'frieren.portal@gmail.com';
+  process.env.SITE_GMAIL_CLIENT_ID = 'test-client-id';
+  process.env.SITE_GMAIL_CLIENT_SECRET = 'test-client-secret';
+  process.env.SITE_GMAIL_REFRESH_TOKEN = 'test-refresh-token';
+  globalThis.fetch = async () => ({ ok: false, status: 401, async json() { return { error: 'invalid_grant', secret: 'must-not-log' }; } });
+  try {
+    await assert.rejects(() => sendGmailApi('receiver@example.com','Subject','<p>HTML</p>','Text'), /GMAIL_OAUTH_HTTP_401/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const key of keys) {
+      if (previous[key] === undefined) delete process.env[key];
+      else process.env[key] = previous[key];
+    }
+  }
 });
 
 test('SMTP reply parser handles split CRLF chunks and multiline Gmail responses', () => {
