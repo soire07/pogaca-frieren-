@@ -292,6 +292,10 @@ test('Guardian report ingestion accepts only pinned active-backend reports with 
     outputs: Array.from({ length: 24 }, (_, i) => ({ id: 'TR-' + String(i + 1).padStart(3, '0'), output: 'Yanıt' })),
   };
   assert.equal(validateNeuralQualityReport(report).valid, true);
+  const readyReport = readyNeuralReport();
+  assert.equal(validateNeuralQualityReport(readyReport).valid, true);
+  readyReport.heldout_metrics = null;
+  assert.ok(validateNeuralQualityReport(readyReport).reasons.includes('NEURAL_HELDOUT_METRICS_INVALID'));
   report.model_backend = 'scratch';
   assert.ok(validateNeuralQualityReport(report).reasons.includes('ACTIVE_BACKEND_REQUIRED'));
   report.model_backend = 'ufakzeka';
