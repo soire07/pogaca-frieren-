@@ -95,8 +95,14 @@ export async function handleNeuralQualityReportRequest(req, {
     }
     report.blocking_reasons = [...new Set(blockers)];
     const reportSha256 = createHash('sha256').update(JSON.stringify(report)).digest('hex');
-    const saved = await saveReport({ report, reportSha256 });
-    if (!saved?.report_sha256) throw new Error('GUARDIAN_REPORT_STORAGE_FAILED');
+    let saved;
+    try {
+      saved = await saveReport({ report, reportSha256 });
+      if (!saved?.report_sha256) throw new Error('GUARDIAN_REPORT_STORAGE_FAILED');
+    } catch (error) {
+      logger('Neural quality report storage failed:', error?.message || 'unknown error');
+      return response(500, { error: 'guardian_report_storage_failed' });
+    }
     return response(202, {
       status: 'stored',
       reportSha256: saved.report_sha256,
