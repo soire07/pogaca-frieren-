@@ -25,4 +25,4 @@ jobs:
         run: |
           find . -type f -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -n1 node --check
       - name: Validate slash command modules and schemas
-        run: npm run check
+        run: node scripts/check-commands.js
