@@ -200,3 +200,15 @@ test('guild dashboard refuses to expose planned entertainment modules as active 
   assert.equal(GUILD_FEATURE_CATALOG.find(feature => feature.id === 'pets').key, null);
   assert.equal(GUILD_FEATURE_CATALOG.find(feature => feature.id === 'miniGames').key, null);
 });
+
+
+test('guild settings explain that disabling a module blocks new sessions but lets active encounters settle safely', async () => {
+  process.env.ADMIN_SESSION_SECRET = secret;
+  const res = response();
+  await handleGuildDashboardRequest(siteRequest('/lonca/1539562273197260860'), res, {
+    db: linkedDb(), env, client: discordClient, fetchImpl: discordFetch
+  });
+  assert.equal(res.status, 200);
+  assert.match(res.body, /Yeni oturumları engeller/i);
+  assert.match(res.body, /devam eden.*tamamlanır/i);
+});
