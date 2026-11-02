@@ -161,6 +161,13 @@ export async function processGuardianIncident({
 
   const workflowUrl = 'https://github.com/' + REPOSITORY + '/actions/workflows/' + REPAIR_WORKFLOW;
   try {
+    const latestEmergencyState = await db.query(
+      "SELECT setting_value FROM owner_settings WHERE setting_key='guardian_emergency_stop' LIMIT 1"
+    );
+    if (latestEmergencyState.rows?.[0]?.setting_value?.enabled === true) {
+      await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'failed' });
+      return { status: 'emergency_stop' };
+    }
     const response = await fetchImpl(
       'https://api.github.com/repos/' + REPOSITORY + '/actions/workflows/' + REPAIR_WORKFLOW + '/dispatches',
       {
@@ -264,6 +271,14 @@ export async function processPendingGuardianRepairDispatch({
       const existingUrl = String(existingRun.html_url || workflowUrl);
       await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl: existingUrl });
       return { status: 'already_dispatched', jobId: Number(job.id), workflowUrl: existingUrl };
+    }
+
+    const latestEmergencyState = await db.query(
+      "SELECT setting_value FROM owner_settings WHERE setting_key='guardian_emergency_stop' LIMIT 1"
+    );
+    if (latestEmergencyState.rows?.[0]?.setting_value?.enabled === true) {
+      await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'failed' });
+      return { status: 'emergency_stop' };
     }
 
     const response = await fetchImpl(
