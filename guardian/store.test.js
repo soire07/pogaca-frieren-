@@ -123,7 +123,8 @@ test('Guardian repair workflow dispatch is reserved once and records its workflo
   } };
   const reserved = await reserveGuardianRepairDispatch(db, 8);
   assert.equal(reserved.id, 8);
-    assert.ok(sql.includes('not_requested') && sql.includes('failed') && sql.includes('dispatching'));
+  assert.match(calls[0].sql, /repair_dispatch_attempts=repair_dispatch_attempts\+1/);
+  assert.match(calls[0].sql, /repair_dispatch_attempts < 3/);
   assert.equal(await finishGuardianRepairDispatch(db, {
     jobId: 8, status: 'dispatched',
     workflowUrl: 'https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml',
