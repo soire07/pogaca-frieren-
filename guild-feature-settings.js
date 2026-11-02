@@ -116,3 +116,13 @@ export function getCommandFeatureKeys(commandName) {
   if (keys.length) keys.push('rpg');
   return [...new Set(keys)];
 }
+
+
+export async function isGuildCommandEnabled(db, guildId, commandName) {
+  const normalizedName = String(commandName || '').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+  if (!normalizedName) throw new Error('INVALID_GUILD_COMMAND');
+  const featureKeys = getCommandFeatureKeys(commandName);
+  const keys = ['commands', 'command_' + normalizedName, ...featureKeys];
+  const states = await Promise.all(keys.map(key => getGuildFeatureEnabled(db, guildId, key)));
+  return states.every(enabled => enabled === true);
+}
