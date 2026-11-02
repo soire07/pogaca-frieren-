@@ -146,7 +146,7 @@ test('legacy RPG commands are assigned to their actual guild dashboard modules',
   assert.deepEqual(getCommandFeatureKeys('mimic'), ['rpg']);
   assert.deepEqual(getCommandFeatureKeys('parcala'), ['character', 'economy', 'collection', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('gunluk'), ['rpg']);
-  assert.deepEqual(getCommandFeatureKeys('gunlukgorev'), ['quests', 'story', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('gunlukgorev'), ['quests', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('npc'), ['quests', 'story', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('liderlik'), ['rpg']);
 });
