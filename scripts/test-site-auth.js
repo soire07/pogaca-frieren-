@@ -38,8 +38,8 @@ test('Gmail Apps Script HTTPS relay sends verification mail without blocked SMTP
   const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]));
   const originalFetch = globalThis.fetch;
   let call;
-  process.env.SITE_GMAIL_SCRIPT_URL = 'https://script.google.com/macros/s/test-deployment-id/exec';
-  process.env.SITE_GMAIL_SCRIPT_SECRET = 'test-script-secret';
+  process.env.SITE_GMAIL_SCRIPT_URL = '  https://script.google.com/macros/s/test-deployment-id/exec  ';
+  process.env.SITE_GMAIL_SCRIPT_SECRET = '  test-script-secret\n';
   globalThis.fetch = async (url, options) => {
     call = { url, options };
     const payload = JSON.parse(options.body);
@@ -52,7 +52,7 @@ test('Gmail Apps Script HTTPS relay sends verification mail without blocked SMTP
   };
   try {
     assert.equal(await sendGmailApi('receiver@example.com','Frieren doğrulama','<p>Doğrula</p>','Doğrula'),'apps-script-message-id');
-    assert.equal(call.url, process.env.SITE_GMAIL_SCRIPT_URL);
+    assert.equal(call.url, 'https://script.google.com/macros/s/test-deployment-id/exec');
     assert.equal(call.options.method, 'POST');
   } finally {
     globalThis.fetch = originalFetch;
