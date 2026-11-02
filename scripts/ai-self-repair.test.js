@@ -83,7 +83,8 @@ test('repair patch rejects incomplete file headers without both existing-file si
   ].join('\n');
   assert.throws(() => validatePatchPaths(incomplete), { message: 'REPAIR_PATCH_MUST_UPDATE_EXISTING_FILE' });
 });
-\ntest('repair patch generation requires the shared configured model client', async () => {
+
+test('repair patch generation requires the shared configured model client', async () => {
   await assert.rejects(
     generateRepairPatch({ task: 'repair a bug', apiKey: 'should-not-enable-fallback', context: 'source' }),
     { message: 'AI_MODEL_CLIENT_REQUIRED' },
