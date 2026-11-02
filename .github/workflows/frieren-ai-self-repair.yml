@@ -12,7 +12,7 @@ on:
           - validate
           - repair
       task:
-        description: "Specific bug to repair (required in repair mode)"
+        description: "Repair task (required only when mode is repair)"
         required: false
         type: string
       incident_id:
@@ -52,6 +52,16 @@ jobs:
           esac
           if [ "$GITHUB_REF_NAME" != "$BASE_BRANCH" ]; then
             echo "Workflow ref must match the requested repair target branch"
+            exit 1
+          fi
+
+      - name: Require a repair task when repair mode is selected
+        if: inputs.mode == 'repair'
+        env:
+          REPAIR_TASK: ${{ inputs.task }}
+        run: |
+          if [ -z "$(printf '%s' "$REPAIR_TASK" | tr -d '[:space:]')" ]; then
+            echo "::error title=Repair task is required::Enter a specific bug or behavior to repair when mode=repair."
             exit 1
           fi
 
