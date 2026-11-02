@@ -2,7 +2,7 @@ import {
   createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual
 } from 'node:crypto';
 import {
-  DEFAULT_GUILD_FEATURES, listGuildFeatureSettings, setGuildFeatureEnabled, resetGuildFeatureSetting
+  DEFAULT_GUILD_FEATURES, getCommandFeatureKeys, listGuildFeatureSettings, setGuildFeatureEnabled, resetGuildFeatureSetting
 } from './guild-feature-settings.js';
 
 const ACCOUNT_KEY = /^(?:site_[0-9a-f-]{36}|[0-9]{17,20})$/i;
@@ -264,6 +264,38 @@ function renderGuildList(user, guilds, status, csrf) {
   const empty = '<p class="muted">Poğaça Frieren’in bulunduğu ve yönetme yetkin olan sunucu bulunamadı.</p>';
   return shell('Maceracı Loncası', '<main class="wrap" style="padding:48px 0"><div class="eyebrow">✧ FRIEREN · GUILD SELECTOR</div><h1 class="hero-title">Loncaların</h1><p class="lead">Yönetebildiğin ve Poğaça Frieren’in bulunduğu sunucuyu seç.</p>' + notice + '<div class="grid">' + (cards || empty) + '</div><form method="post" action="/guilds/disconnect" style="margin-top:24px"><input type="hidden" name="csrf" value="' + esc(csrf) + '"><button class="btn ghost">Discord bağlantısını kaldır</button></form></main>', user);
 }
+
+function registeredSlashCommands(client) {
+  const entries = client?.commands instanceof Map ? [...client.commands.entries()] : [];
+  return entries.map(([key, command]) => {
+    const name = String(command?.data?.name || command?.name || key || '');
+    if (!/^[a-z0-9_-]{1,32}$/.test(name)) return null;
+    return {
+      name,
+      description: String(command?.data?.description || command?.description || 'Komut açıklaması bulunmuyor.').slice(0, 180)
+    };
+  }).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+}
+function renderGuildCommands(user, guild, dbSettings, commands, query, status, csrf) {
+  const saved = new Map(dbSettings.map(row => [row.feature_key, row.enabled === true]));
+  const globalEnabled = saved.has('commands') ? saved.get('commands') : true;
+  const normalizedQuery = String(query || '').trim().toLocaleLowerCase('tr-TR').slice(0, 64);
+  const filtered = commands.filter(command => !normalizedQuery
+    || command.name.includes(normalizedQuery)
+    || command.description.toLocaleLowerCase('tr-TR').includes(normalizedQuery));
+  const cards = filtered.map(command => {
+    const key = 'command_' + command.name;
+    const commandEnabled = saved.has(key) ? saved.get(key) : true;
+    const groups = getCommandFeatureKeys(command.name);
+    const groupsEnabled = groups.every(group => saved.has(group) ? saved.get(group) : true);
+    const effective = globalEnabled && commandEnabled && groupsEnabled;
+    return '<article class="card"><div class="eyebrow">SLASH KOMUTU</div><h3>/' + esc(command.name) + '</h3><p>' + esc(command.description) + '</p><p class="muted">Etkin durum: <strong>' + (effective ? 'Açık' : 'Kapalı') + '</strong></p><form method="post" action="/guilds/settings"><input type="hidden" name="csrf" value="' + esc(csrf) + '"><input type="hidden" name="guildId" value="' + esc(guild.id) + '"><input type="hidden" name="featureKey" value="' + esc(key) + '"><input type="hidden" name="commandName" value="' + esc(command.name) + '"><input type="hidden" name="returnTo" value="commands"><label><input type="checkbox" name="enabled" value="yes"' + (commandEnabled ? ' checked' : '') + '> Bu komutu kullanıma aç</label><div class="actions"><button class="btn">Kaydet</button><button class="btn ghost" name="featureAction" value="reset">Varsayılana döndür</button></div></form></article>';
+  }).join('');
+  const notice = status === 'saved' ? '<p role="status">Komut ayarı kaydedildi.</p>' : status === 'reset' ? '<p role="status">Komut varsayılan ayarına döndürüldü.</p>' : '';
+  const search = '<form method="get" action="/guilds/' + esc(guild.id) + '/commands" class="card"><label for="command-search">Komut ara</label><input id="command-search" name="q" type="search" maxlength="64" value="' + esc(query) + '" placeholder="Örn. karakter, market, zindan"><button class="btn">Ara</button><a class="btn ghost" href="/guilds/' + esc(guild.id) + '/commands">Temizle</a></form>';
+  const empty = '<p class="muted">Aramana uygun komut bulunamadı.</p>';
+  return shell(guild.name + ' · Komut kataloğu', '<main class="wrap" style="padding:48px 0"><a href="/guilds/' + esc(guild.id) + '">← Lonca ayarlarına dön</a><div class="eyebrow">✧ FRIEREN · KOMUT KATALOĞU</div><h1 class="hero-title">Komut kataloğu</h1><p class="lead">Bu sunucuda kayıtlı ' + commands.length + ' slash komutunu ara ve tek tek yönet. Genel Komutlar ayarı kapalıysa hiçbir komut çalışmaz.</p>' + notice + '<section class="card"><strong>Genel komut erişimi: ' + (globalEnabled ? 'Açık' : 'Kapalı') + '</strong><p class="muted">Karakter, büyü, ekonomi ve RPG gibi kategori ayarları da komutların etkin durumunu etkiler.</p></section>' + search + '<div class="grid">' + (cards || empty) + '</div></main>', user);
+}
 async function renderGuildSettings(user, guild, db, status, csrf) {
   const settings = await listGuildFeatureSettings(db, guild.id);
   const saved = new Map(settings.map(row => [row.feature_key, row]));
@@ -273,7 +305,7 @@ async function renderGuildSettings(user, guild, db, status, csrf) {
     return '<article class="card"><form method="post" action="/guilds/settings"><input type="hidden" name="csrf" value="' + esc(csrf) + '"><input type="hidden" name="guildId" value="' + esc(guild.id) + '"><input type="hidden" name="featureKey" value="' + esc(key) + '"><h3>' + esc(FEATURE_LABELS[key] || key) + '</h3><label><input type="checkbox" name="enabled" value="yes"' + (enabled ? ' checked' : '') + '> Etkin</label><div class="actions"><button class="btn">Kaydet</button><button class="btn ghost" name="featureAction" value="reset">Varsayılana döndür</button></div></form></article>';
   }).join('');
   const notice = status === 'saved' ? '<p role="status">Ayar kaydedildi.</p>' : status === 'reset' ? '<p role="status">Genel varsayılana döndürüldü.</p>' : '';
-  return shell(guild.name + ' · Lonca Ayarları', '<main class="wrap" style="padding:48px 0"><a href="/guilds">← Loncalarına dön</a><div class="eyebrow">✧ SUNUCUYA ÖZEL FRIEREN AYARLARI</div><h1 class="hero-title">' + esc(guild.name) + '</h1><p class="lead">Bu ayarlar yalnızca seçilen Discord sunucusuna uygulanır.</p>' + notice + '<div class="grid">' + rows + '</div></main>', user);
+  return shell(guild.name + ' · Lonca Ayarları', '<main class="wrap" style="padding:48px 0"><a href="/guilds">← Loncalarına dön</a><p><a class="btn" href="/guilds/' + esc(guild.id) + '/commands">Slash komutlarını yönet ↗</a></p><div class="eyebrow">✧ SUNUCUYA ÖZEL FRIEREN AYARLARI</div><h1 class="hero-title">' + esc(guild.name) + '</h1><p class="lead">Bu ayarlar yalnızca seçilen Discord sunucusuna uygulanır.</p>' + notice + '<div class="grid">' + rows + '</div></main>', user);
 }
 export async function handleGuildDashboardRequest(req, res, {
   client, db, user, sessionSecret, fetchImpl = fetch
@@ -310,7 +342,11 @@ export async function handleGuildDashboardRequest(req, res, {
       if (path === '/guilds/settings') {
         const featureKey = String(form.featureKey || '');
         const guildId = String(form.guildId || '');
-        if (!Object.hasOwn(DEFAULT_GUILD_FEATURES, featureKey) || !SNOWFLAKE.test(guildId)) {
+        const commandName = String(form.commandName || '');
+        const isCommandSetting = /^command_[a-z0-9_-]{1,32}$/.test(featureKey)
+          && commandName === featureKey.slice('command_'.length)
+          && registeredSlashCommands(client).some(command => command.name === commandName);
+        if ((!Object.hasOwn(DEFAULT_GUILD_FEATURES, featureKey) && !isCommandSetting) || !SNOWFLAKE.test(guildId)) {
           send(res, 400, '<h1>Geçersiz sunucu ayarı.</h1>');
           return true;
         }
@@ -324,7 +360,8 @@ export async function handleGuildDashboardRequest(req, res, {
         else await setGuildFeatureEnabled(db, {
           guildId, featureKey, enabled: form.enabled === 'yes', actorId: dashboard.discordUserId
         });
-        redirect(res, '/guilds/' + guildId + '?status=' + (form.featureAction === 'reset' ? 'reset' : 'saved'));
+        const returnPath = isCommandSetting && form.returnTo === 'commands' ? '/commands' : '';
+        redirect(res, '/guilds/' + guildId + returnPath + '?status=' + (form.featureAction === 'reset' ? 'reset' : 'saved'));
         return true;
       }
       send(res, 404, '<h1>Lonca paneli sayfası bulunamadı.</h1>');
@@ -357,6 +394,12 @@ export async function handleGuildDashboardRequest(req, res, {
     const guild = dashboard.guilds.find(item => item.id === guildId);
     if (!guild) {
       send(res, 403, '<h1>Bu sunucuya erişim yetkin yok veya bot bu sunucuda bulunmuyor.</h1>');
+      return true;
+    }
+    if (path.endsWith('/commands')) {
+      const settings = await listGuildFeatureSettings(db, guild.id);
+      const commands = registeredSlashCommands(client);
+      send(res, 200, renderGuildCommands(user, guild, settings, commands, url.searchParams.get('q') || '', url.searchParams.get('status') || '', csrf));
       return true;
     }
     send(res, 200, await renderGuildSettings(user, guild, db, url.searchParams.get('status') || '', csrf));
