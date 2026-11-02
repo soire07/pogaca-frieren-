@@ -7,6 +7,10 @@ on:
         description: "Describe the specific bug or missing behavior to repair"
         required: true
         type: string
+      incident_id:
+        description: "Guardian incident ID; leave empty for manual runs"
+        required: false
+        type: string
       base_branch:
         description: "Branch to test against"
         required: true
