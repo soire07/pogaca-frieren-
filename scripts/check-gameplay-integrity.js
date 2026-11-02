@@ -460,3 +460,11 @@ test('trade acceptance serializes player, offer and collection rows in one stabl
   assert.ok(createBegin >= 0 && createPlayerLock > createBegin && createCollectionLock > createPlayerLock,
     'offer creation must use the same player-before-collection order');
 });
+
+
+test('equipment status view displays derived rarity set bonuses as well as item bonuses', async () => {
+  const source = await read('ekipman.js');
+  assert.match(source, /applyEquipmentSetBonus\(total, equipmentBonus\(total\)\)/);
+  assert.match(source, /setTotals\.setText/);
+  assert.match(source, /Ekipman set bonusu/);
+});
