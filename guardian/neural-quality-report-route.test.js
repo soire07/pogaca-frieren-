@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { handleNeuralQualityReportRequest } from './neural-quality-report-route.js';
 
-const SECRET = 'test-only-guardian-secret-with-more-than-32-chars';
+const OIDC = 'test-only-oidc-token-with-more-than-100-characters-'.padEnd(120, 'x');
 const TOKEN = 'test-only-github-token-with-more-than-32-chars';
 const SOURCE_SHA = 'd'.repeat(40);
 const ARTIFACT_SHA = '6a06fbffe77b8c70ee084ce8901edaaaeec4c23fd7360296259a78111facdf5e';
@@ -35,10 +35,10 @@ function validReport() {
   };
 }
 
-function request(body, { authorization = 'Bearer ' + SECRET, contentType = 'application/json', url = '/internal/neural-quality-report' } = {}) {
+function request(body, { authorization = 'Bearer ' + OIDC, githubToken = TOKEN, contentType = 'application/json', url = '/internal/neural-quality-report' } = {}) {
   const bytes = Buffer.isBuffer(body) ? body : Buffer.from(typeof body === 'string' ? body : JSON.stringify(body));
   return {
-    method: 'POST', url, headers: { authorization, 'content-type': contentType },
+    method: 'POST', url, headers: { authorization, 'content-type': contentType, 'x-github-token': githubToken },
     async *[Symbol.asyncIterator]() { yield bytes; },
   };
 }
@@ -48,7 +48,8 @@ function dependencies(overrides = {}) {
   return {
     saved,
     options: {
-      env: { FRIEREN_NEURAL_GUARDIAN_SECRET: SECRET, FRIEREN_GITHUB_TOKEN: TOKEN },
+      env: {},
+      verifyOidcToken: async () => ({ sha: SOURCE_SHA }),
       fetchImpl: async () => ({
         ok: true,
         json: async () => ({ workflow_runs: [{
@@ -64,7 +65,7 @@ function dependencies(overrides = {}) {
 
 test('Neural report endpoint rejects unauthorized requests before reading or storing payload', async () => {
   const deps = dependencies();
-  const result = await handleNeuralQualityReportRequest(request(validReport(), { authorization: 'Bearer wrong' }), deps.options);
+  const result = await handleNeuralQualityReportRequest(request(validReport(), { authorization: 'Bearer invalid' }), deps.options);
   assert.equal(result.status, 401);
   assert.equal(deps.saved.length, 0);
 });
