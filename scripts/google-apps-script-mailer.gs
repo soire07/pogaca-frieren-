@@ -2,47 +2,84 @@
  * Frieren Portal transactional mail relay.
  *
  * Deploy as a Web App:
- *   Execute as: Me
+ *   Execute as: Me (frieren.portal@gmail.com)
  *   Who has access: Anyone
  *
- * Before deployment, set Script Property API_SECRET to the same random
- * secret stored in Render as SITE_GMAIL_SCRIPT_SECRET.
- * Run once as the Gmail account frieren.portal@gmail.com to authorize Gmail.
+ * Script Property:
+ *   API_SECRET = same value as Render SITE_GMAIL_SCRIPT_SECRET
+ *
+ * Run testGmailPermission() once from the editor to authorize Gmail.
  */
+
 function doPost(e) {
+  var stage = 'START';
+
   try {
-    var expected = PropertiesService.getScriptProperties().getProperty('API_SECRET');
-    var input = JSON.parse(e && e.postData && e.postData.contents || '{}');
-    if (!expected || !constantTimeEquals(String(input.secret || ''), expected)) {
-      return jsonResponse({ ok: false });
+    stage = 'READ_REQUEST';
+    var rawBody = e && e.postData && e.postData.contents;
+    if (!rawBody) {
+      return jsonResponse({ ok: false, stage: stage, error: 'EMPTY_REQUEST' });
     }
 
+    var input = JSON.parse(rawBody);
+
+    stage = 'AUTH';
+    var expected = PropertiesService.getScriptProperties().getProperty('API_SECRET');
+    if (!expected || !constantTimeEquals(String(input.secret || ''), String(expected))) {
+      console.warn('[Frieren Mail] Request rejected: authentication failed');
+      return jsonResponse({ ok: false, stage: stage, error: 'AUTH_FAILED' });
+    }
+
+    stage = 'VALIDATION';
     var to = String(input.to || '').trim();
     var subject = String(input.subject || '').trim();
     var html = String(input.html || '');
     var plain = String(input.plain || '');
     var senderName = String(input.senderName || 'Frieren Portal').slice(0, 80);
 
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(to) ||
+    // IMPORTANT: use single backslashes in JavaScript regex literals.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to) ||
         !subject || subject.length > 200 ||
         html.length > 20000 || plain.length > 10000) {
-      return jsonResponse({ ok: false });
+      console.warn('[Frieren Mail] Request rejected: invalid email payload');
+      return jsonResponse({ ok: false, stage: stage, error: 'INVALID_EMAIL_PAYLOAD' });
     }
 
+    stage = 'GMAIL_SEND';
+    console.log('[Frieren Mail] Sending message; recipient=' +
+      to.replace(/^(.).+(@.+)$/, '$1***$2'));
+
     GmailApp.sendEmail(to, subject, plain || 'Frieren Portal', {
-      htmlBody: html,
+      htmlBody: html || undefined,
       name: senderName
     });
-    return jsonResponse({ ok: true });
+
+    console.log('[Frieren Mail] GmailApp.sendEmail completed');
+    return jsonResponse({ ok: true, stage: 'SENT' });
+
   } catch (error) {
-    console.error('Frieren mail relay failed: ' +
-      String(error && error.name || 'Error').slice(0, 60));
-    return jsonResponse({ ok: false });
+    var message = String(error && error.message || error || 'Unknown error');
+    console.error('[Frieren Mail] Failed at ' + stage + ': ' + message);
+    return jsonResponse({
+      ok: false,
+      stage: stage,
+      error: 'MAIL_DELIVERY_FAILED'
+    });
   }
 }
 
+function testGmailPermission() {
+  console.log('[Frieren Mail Test] Started');
+  GmailApp.sendEmail(
+    'frieren.portal@gmail.com',
+    'Frieren Portal - Gmail Test',
+    'Gmail gönderim izni başarıyla doğrulandı.'
+  );
+  console.log('[Frieren Mail Test] GmailApp.sendEmail completed');
+}
+
 function constantTimeEquals(a, b) {
-  if (!a || a.length !== b.length) return false;
+  if (!a || !b || a.length !== b.length) return false;
   var mismatch = 0;
   for (var i = 0; i < a.length; i++) {
     mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
