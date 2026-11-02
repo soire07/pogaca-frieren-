@@ -212,7 +212,7 @@ export async function listPendingGuardianRepairDispatches(db, limit = 5) {
        AND j.result->>'status'='proposal_only'
        AND j.repair_dispatch_attempts < 3
        AND (
-         j.repair_dispatch_status='failed'
+         j.repair_dispatch_status IN ('not_requested','failed')
          OR (j.repair_dispatch_status='dispatching'
              AND j.repair_dispatch_at < NOW()-INTERVAL '15 minutes')
        )
