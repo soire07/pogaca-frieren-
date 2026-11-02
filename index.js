@@ -15,6 +15,7 @@ import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
 import { startGuardianMonitor } from './guardian/monitor.js';
+import { processGuardianIncident } from './guardian/automation.js';
 import { handleNeuralQualityReportRequest } from './guardian/neural-quality-report-route.js';
 import { saveGuardianQualityReport } from './guardian/store.js';
 import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
@@ -353,7 +354,16 @@ await loadCommands();
 await initDatabase();
 await initOwnerAdminSchema(pool);
 await initGuildFeatureSettingsSchema(pool);
-const stopGuardianMonitor = startGuardianMonitor({ db: pool, client });
+const stopGuardianMonitor = startGuardianMonitor({
+  db: pool,
+  client,
+  onIncident: async incident => {
+    const result = await processGuardianIncident({ db: pool, incident });
+    if (['blocked', 'review_failed', 'dispatch_failed'].includes(result.status)) {
+      console.warn('Guardian autonomous handler:', result.status, result.reason || 'no additional details');
+    }
+  },
+});
 await client.login(process.env.DISCORD_TOKEN);
 
 let aiAgentChild = null;
