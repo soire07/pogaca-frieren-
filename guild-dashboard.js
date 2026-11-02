@@ -465,7 +465,7 @@ export async function handleGuildDashboardRequest(req, res, { client, db, env = 
         ? 'Discord bağlantısının süresi dolmuş. Discord hesabını yeniden bağla.'
         : 'İşlem tamamlanamadı. Bağlantını ve sunucu izinlerini kontrol edip tekrar dene.';
     console.error('Guild dashboard request failed:', error?.message || 'unknown');
-    send(res, 503, basePage('Lonca paneli', '<main class="guild-wrap"><h1>Lonca kapısı şu anda açılamadı.</h1><p>' + esc(message) + '</p><a class="guild-btn" href="/lonca">Yeniden dene</a></main>'));
+    send(res, 503, basePage('Lonca paneli', '<main class="guild-wrap"><h1>Lonca kapısı şu anda açılamadı.</h1><p>' + esc(message) + '</p><div class="guild-actions"><a class="guild-btn" href="/discord/connect">Discord hesabını yeniden bağla</a><a class="guild-btn secondary" href="/lonca">Yeniden dene</a></div></main>'));
     return true;
   }
 }
