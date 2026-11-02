@@ -236,7 +236,8 @@ export async function finishGuardianRepairDispatch(db, { jobId, status, workflow
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error('INVALID_GUARDIAN_JOB_ID');
   if (!['dispatched','failed'].includes(status)) throw new Error('INVALID_GUARDIAN_DISPATCH_STATUS');
   const result = await db.query(
-    `UPDATE owner_guardian_jobs SET repair_dispatch_status=$2,repair_workflow_url=$3
+    `UPDATE owner_guardian_jobs SET repair_dispatch_status=$2,
+       repair_workflow_url=COALESCE($3,repair_workflow_url)
      WHERE id=$1 AND repair_dispatch_status='dispatching' RETURNING id`,
     [id, status, status === 'dispatched' ? workflowUrl : null]
   );
@@ -250,8 +251,14 @@ export async function updateGuardianRepairStatus(db, { jobId, runId = null, runU
   if (!allowedChecks.includes(checksStatus)) throw new Error('INVALID_GUARDIAN_CHECK_STATUS');
   const result = await db.query(
     `UPDATE owner_guardian_jobs SET
-       repair_run_id=$2,repair_run_url=$3,repair_run_status=$4,repair_run_conclusion=$5,
-       repair_pr_number=$6,repair_pr_url=$7,repair_pr_state=$8,repair_checks_status=$9,
+       repair_run_id=COALESCE($2,repair_run_id),
+       repair_run_url=COALESCE($3,repair_run_url),
+       repair_run_status=COALESCE($4,repair_run_status),
+       repair_run_conclusion=COALESCE($5,repair_run_conclusion),
+       repair_pr_number=COALESCE($6,repair_pr_number),
+       repair_pr_url=COALESCE($7,repair_pr_url),
+       repair_pr_state=COALESCE($8,repair_pr_state),
+       repair_checks_status=$9,
        repair_dispatch_status=CASE WHEN $10::boolean THEN 'failed' ELSE repair_dispatch_status END
      WHERE id=$1 AND repair_dispatch_status='dispatched' RETURNING id`,
     [id, runId, runUrl, runStatus, runConclusion, prNumber, prUrl, prState, checksStatus, retryable === true]
