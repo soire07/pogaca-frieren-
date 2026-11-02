@@ -411,3 +411,58 @@ test('concurrent guild dashboard requests serialize Discord refresh-token rotati
   assert.equal(guildReads, 2, 'both requests must use the rotated access token');
   assert.equal(decryptDiscordOAuthToken(row.refresh_token_encrypted, secret), 'rotated-refresh');
 });
+
+test('guild feature changes are rejected when Discord membership or management permission has been revoked', async () => {
+  process.env.ADMIN_SESSION_SECRET = secret;
+  const csrf = createSiteCsrfToken(secret);
+  const body = new URLSearchParams({
+    csrf, guildId: '1539562273197260860', featureKey: 'animeQuiz', enabled: 'false'
+  }).toString();
+  const cases = [
+    { name: 'membership revoked', fetchImpl: async () => ({ ok: true, async json() { return []; } }) },
+    { name: 'management permission revoked', fetchImpl: async () => ({ ok: true, async json() { return [{
+      id: '1539562273197260860', name: 'Goose Goose Duck Türkiye', permissions: '4'
+    }]; } }) }
+  ];
+  for (const scenario of cases) {
+    const db = linkedDb();
+    const res = response();
+    await handleGuildDashboardRequest(siteRequest('/api/lonca/features', 'POST', body), res, {
+      db, env, client: discordClient, fetchImpl: scenario.fetchImpl
+    });
+    assert.equal(res.status, 403, scenario.name);
+    assert.equal(db.writes.length, 0, scenario.name + ' must not write settings');
+  }
+});
+
+test('guild feature changes are rejected when Poğaça Frieren is no longer installed in the guild', async () => {
+  process.env.ADMIN_SESSION_SECRET = secret;
+  const csrf = createSiteCsrfToken(secret);
+  const body = new URLSearchParams({
+    csrf, guildId: '1539562273197260860', featureKey: 'animeQuiz', enabled: 'false'
+  }).toString();
+  const db = linkedDb();
+  const res = response();
+  await handleGuildDashboardRequest(siteRequest('/api/lonca/features', 'POST', body), res, {
+    db, env,
+    client: { guilds: { cache: { keys: () => [] } } },
+    fetchImpl: discordFetch
+  });
+  assert.equal(res.status, 403);
+  assert.equal(db.writes.length, 0);
+});
+
+test('guild feature changes reject a tampered or malformed guild ID without writing', async () => {
+  process.env.ADMIN_SESSION_SECRET = secret;
+  const csrf = createSiteCsrfToken(secret);
+  const body = new URLSearchParams({
+    csrf, guildId: '1539562273197260860/attacker', featureKey: 'animeQuiz', enabled: 'false'
+  }).toString();
+  const db = linkedDb();
+  const res = response();
+  await handleGuildDashboardRequest(siteRequest('/api/lonca/features', 'POST', body), res, {
+    db, env, client: discordClient, fetchImpl: discordFetch
+  });
+  assert.equal(res.status, 403);
+  assert.equal(db.writes.length, 0);
+});
