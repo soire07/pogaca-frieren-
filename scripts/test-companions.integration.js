@@ -21,6 +21,7 @@ test('concurrent adoption charges once and persists exactly one companion',async
  assert.ok(await getCompanion(pool,guild,user));
 });
 test('companion care serializes cooldowns, bounds stats and charges training atomically',async()=>{
+ const beforeBalance=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);
  const trained=await Promise.all([
   careForCompanion(pool,{guildId:guild,userId:user,action:'train'}),
   careForCompanion(pool,{guildId:guild,userId:user,action:'train'})
@@ -33,7 +34,7 @@ test('companion care serializes cooldowns, bounds stats and charges training ato
  assert.ok(pet.energy>=0&&pet.energy<=100);
  assert.ok(pet.hunger>=0&&pet.hunger<=100);
  const balance=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);
- assert.equal(Number(balance.rows[0].coins),1000-500-100);
+ assert.equal(Number(balance.rows[0].coins),Number(beforeBalance.rows[0].coins)-100);
 });
 test('insufficient funds and missing companion do not mutate player state',async()=>{
  const noPet=await careForCompanion(pool,{guildId:guild,userId:poorUser,action:'feed'});
