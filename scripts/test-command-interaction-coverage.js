@@ -151,3 +151,17 @@ test('autocomplete interactions honor the same per-guild command settings as sla
   assert.match(autocompleteHandler, /interaction\.guildId && !await isGuildCommandEnabled\(pool, interaction\.guildId, interaction\.commandName\)/);
   assert.match(autocompleteHandler, /return interaction\.respond\(\[\]\)/);
 });
+
+
+test('component interactions are gated before any component handler can mutate state', async () => {
+  const source = await readFile(path.join(root, 'index.js'), 'utf8');
+  const gate = source.indexOf('const componentCommandName =');
+  const enforcement = source.indexOf('!await isGuildCommandEnabled(pool, interaction.guildId, componentCommandName)');
+  const characterHandler = source.indexOf('handleCharacterPanelInteraction(interaction)');
+  const marketHandler = source.indexOf("interaction.customId.startsWith('market_')");
+  const tradeHandler = source.indexOf("interaction.customId.startsWith('trade_accept:')");
+  assert.ok(gate >= 0 && enforcement > gate, 'Component gate must resolve and enforce the owning command');
+  for (const handler of [characterHandler, marketHandler, tradeHandler]) {
+    assert.ok(handler > enforcement, 'All component handlers must execute after the feature gate');
+  }
+});
