@@ -454,6 +454,10 @@ export async function handleGuildDashboardRequest(req, res, {
     send(res, 200, await renderGuildSettings(user, guild, db, url.searchParams.get('status') || '', csrf));
     return true;
   } catch (error) {
+    if (error?.message === 'BODY_TOO_LARGE') {
+      send(res, 413, '<h1>Form çok büyük.</h1>');
+      return true;
+    }
     console.error('Guild dashboard request failed:', error?.message || 'unknown error');
     send(res, 503, '<h1>Lonca paneli geçici olarak kullanılamıyor.</h1><p>Discord bağlantısını yenileyip tekrar dene.</p>');
     return true;
