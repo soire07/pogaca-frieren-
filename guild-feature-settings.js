@@ -121,7 +121,7 @@ export function getCommandFeatureKeys(commandName) {
   const keys = [];
   if (/karakter|sinif|class|profil/.test(name) || name === 'parcala') keys.push('character');
   if (/buyu|büyü|spell|yetenek/.test(name)) keys.push('magic');
-  if (/ekipman|envanter|esya|eşya|item|setbonus/.test(name) || name === 'cantam' || name.startsWith('zanaat')) keys.push('equipment');
+  if (/ekipman|envanter|esya|eşya|item|setbonus/.test(name) || name === 'cantam' || name === 'zanaatustalari') keys.push('equipment');
   if (/bakiye|market|magaza|mağaza|ekonomi|takas|trade/.test(name) || ['hazineac', 'hazinegecmisi', 'parcala'].includes(name)) keys.push('economy');
   if (/takas|trade/.test(name)) keys.push('trading');
   if (/gorev|görev|quest/.test(name) || ['hedefler', 'gunlukgorev', 'npc'].includes(name)) keys.push('quests');
