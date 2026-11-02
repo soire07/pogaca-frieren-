@@ -15,7 +15,7 @@ import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
 import { startGuardianMonitor } from './guardian/monitor.js';
-import { processGuardianIncident } from './guardian/automation.js';
+import { processGuardianIncident, processPendingGuardianRepairDispatch } from './guardian/automation.js';
 import { handleNeuralQualityReportRequest } from './guardian/neural-quality-report-route.js';
 import { saveGuardianQualityReport } from './guardian/store.js';
 import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
@@ -361,6 +361,16 @@ const stopGuardianMonitor = startGuardianMonitor({
     const result = await processGuardianIncident({ db: pool, incident });
     if (['blocked', 'review_failed', 'dispatch_failed'].includes(result.status)) {
       console.warn('Guardian autonomous handler:', result.status, result.reason || 'no additional details');
+    }
+  },
+  onRepairDispatch: async job => {
+    const result = await processPendingGuardianRepairDispatch({
+      db: pool,
+      job,
+      incident: { id: job.incident_id, system: job.system, code: job.code, severity: job.severity, title: job.title, summary: job.summary, evidence: job.evidence },
+    });
+    if (['dispatch_failed', 'reconciliation_unavailable'].includes(result.status)) {
+      console.warn('Guardian repair dispatch retry:', result.status, result.reason || 'no additional details');
     }
   },
 });
