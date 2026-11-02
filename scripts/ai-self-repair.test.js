@@ -61,7 +61,29 @@ test('repair diff is bounded to four files and rejects binary or rename patches'
   assert.throws(() => validatePatchPaths(many), { message: 'REPAIR_FILE_COUNT_INVALID' });
 });
 
-test('repair patch generation requires the shared configured model client', async () => {
+
+test('repair patch rejects newly created files because proposals may only update existing files', () => {
+  const newFile = [
+    'diff --git a/ai-agent/new-helper.js b/ai-agent/new-helper.js',
+    'new file mode 100644',
+    '--- /dev/null',
+    '+++ b/ai-agent/new-helper.js',
+    '@@ -0,0 +1 @@',
+    '+export const helper = true;',
+  ].join('\\n');
+  assert.throws(() => validatePatchPaths(newFile), { message: 'REPAIR_PATCH_FEATURE_NOT_ALLOWED' });
+});
+
+test('repair patch rejects incomplete file headers without both existing-file sides', () => {
+  const incomplete = [
+    'diff --git a/rpg-mechanics.js b/rpg-mechanics.js',
+    '+++ b/rpg-mechanics.js',
+    '@@ -1 +1 @@',
+    '+const ready = true;',
+  ].join('\\n');
+  assert.throws(() => validatePatchPaths(incomplete), { message: 'REPAIR_PATCH_MUST_UPDATE_EXISTING_FILE' });
+});
+\ntest('repair patch generation requires the shared configured model client', async () => {
   await assert.rejects(
     generateRepairPatch({ task: 'repair a bug', apiKey: 'should-not-enable-fallback', context: 'source' }),
     { message: 'AI_MODEL_CLIENT_REQUIRED' },
