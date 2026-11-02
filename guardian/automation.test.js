@@ -204,6 +204,58 @@ test('failed repair dispatch detects an already-started workflow and does not di
   assert.match(calls[0].workflowUrl, /actions\/runs\/123/);
 });
 
+test('repair retry replaces a terminal failed workflow when no PR was created', async () => {
+  const finished = [];
+  const requests = [];
+  const result = await processPendingGuardianRepairDispatch({
+    db: { query: async () => ({ rows: [] }) },
+    job: { id: 15, result: review },
+    incident: { ...incident, id: 43 },
+    env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
+    fetchImpl: async (url, options) => {
+      requests.push({ url, method: options.method });
+      if (options.method === 'GET' && url.includes('/actions/workflows/')) return { ok: true, status: 200, json: async () => ({
+        workflow_runs: [{ display_title: 'Frieren AI Repair · Guardian #43', status: 'completed', conclusion: 'failure', html_url: 'https://github.com/example/actions/runs/143' }],
+      }) };
+      if (options.method === 'GET' && url.includes('/pulls?')) return { ok: true, status: 200, json: async () => [] };
+      return { ok: true, status: 204, json: async () => ({}) };
+    },
+    store: {
+      reserveGuardianRepairDispatch: async () => ({ id: 15 }),
+      finishGuardianRepairDispatch: async (_db, args) => { finished.push(args); return true; },
+    },
+  });
+  assert.equal(result.status, 'dispatched');
+  assert.equal(requests.filter(item => item.method === 'POST').length, 1);
+  assert.equal(finished.at(-1).status, 'dispatched');
+});
+
+test('repair retry does not duplicate a terminal failed workflow that already created a PR', async () => {
+  const finished = [];
+  let posts = 0;
+  const result = await processPendingGuardianRepairDispatch({
+    db: { query: async () => ({ rows: [] }) },
+    job: { id: 16, result: review },
+    incident: { ...incident, id: 44 },
+    env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
+    fetchImpl: async (url, options) => {
+      if (options.method === 'GET' && url.includes('/actions/workflows/')) return { ok: true, status: 200, json: async () => ({
+        workflow_runs: [{ display_title: 'Frieren AI Repair · Guardian #44', status: 'completed', conclusion: 'cancelled', html_url: 'https://github.com/example/actions/runs/144' }],
+      }) };
+      if (options.method === 'GET' && url.includes('/pulls?')) return { ok: true, status: 200, json: async () => [{ head: { ref: 'ai-repair/guardian-44' } }] };
+      posts += 1;
+      return { ok: true, status: 204, json: async () => ({}) };
+    },
+    store: {
+      reserveGuardianRepairDispatch: async () => ({ id: 16 }),
+      finishGuardianRepairDispatch: async (_db, args) => { finished.push(args); return true; },
+    },
+  });
+  assert.equal(result.status, 'already_dispatched');
+  assert.equal(posts, 0);
+  assert.equal(finished[0].status, 'dispatched');
+});
+
 test('repair retry does not confuse incident 4 with a workflow for incident 42', async () => {
   const finished = [];
   let posts = 0;
