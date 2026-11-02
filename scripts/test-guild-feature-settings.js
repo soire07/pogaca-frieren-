@@ -93,3 +93,17 @@ test('bulk guild feature lookup validates all guild IDs before querying', async 
   await assert.rejects(listGuildFeatureSettingsForGuilds(db, ['1539562273197260860', 'invalid']), /INVALID_GUILD_ID/);
   assert.equal(db.calls.length, 0);
 });
+
+
+test('command category mapping does not infer economy from incidental sat or al substrings', async () => {
+  const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
+  assert.deepEqual(getCommandFeatureKeys('saat'), []);
+  assert.deepEqual(getCommandFeatureKeys('saldir'), ['rpg']);
+});
+
+test('known economy command names retain their economy and RPG category gates', async () => {
+  const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
+  for (const commandName of ['bakiye', 'market', 'magaza', 'ekonomi', 'takasteklif', 'trade']) {
+    assert.deepEqual(getCommandFeatureKeys(commandName), ['economy', 'rpg'], commandName);
+  }
+});
