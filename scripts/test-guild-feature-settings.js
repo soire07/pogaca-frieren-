@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_GUILD_FEATURES, areGuildCommandFeaturesEnabled, getCommandFeatureKeys, getGuildFeatureEnabled, initGuildFeatureSettingsSchema, isValidGuildFeatureKey, listGuildFeatureSettings, listGuildFeatureSettingsForGuilds, resetGuildFeatureSetting, setGuildFeatureEnabled } from '../guild-feature-settings.js';
+import { DEFAULT_GUILD_FEATURES, areGuildCommandFeaturesEnabled, getCommandFeatureKeys, getComponentCommandName, getGuildFeatureEnabled, initGuildFeatureSettingsSchema, isValidGuildFeatureKey, listGuildFeatureSettings, listGuildFeatureSettingsForGuilds, resetGuildFeatureSetting, setGuildFeatureEnabled } from '../guild-feature-settings.js';
 
 function fakeDb(rows = []) {
   const calls = [];
@@ -135,4 +135,24 @@ test('boss, dungeon, and magic duel commands map to their actual guild feature s
   assert.deepEqual(getCommandFeatureKeys('ortakboss'), ['bosses', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('katlizindan'), ['dungeons', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('buyusavasi'), ['magic', 'rpg']);
+});
+
+
+test('legacy RPG commands are assigned to their actual guild dashboard modules', () => {
+  assert.deepEqual(getCommandFeatureKeys('cantam'), ['equipment', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('zanaatustalari'), ['crafting', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('hazineac'), ['rpg']);
+  assert.deepEqual(getCommandFeatureKeys('hazinegecmisi'), ['rpg']);
+  assert.deepEqual(getCommandFeatureKeys('mimic'), ['rpg']);
+  assert.deepEqual(getCommandFeatureKeys('parcala'), ['character', 'economy', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('gunluk'), ['rpg']);
+  assert.deepEqual(getCommandFeatureKeys('liderlik'), ['rpg']);
+});
+
+test('interactive component IDs resolve to the same command feature gate as slash commands', () => {
+  assert.equal(getComponentCommandName('charpanel:open:123'), 'karakter');
+  assert.equal(getComponentCommandName('market_buy:123'), 'market');
+  assert.equal(getComponentCommandName('trade_accept:offer-1:123'), 'takasteklif');
+  assert.equal(getComponentCommandName('trade_decline:offer-1:123'), 'takasteklif');
+  assert.equal(getComponentCommandName('unrelated-component'), null);
 });
