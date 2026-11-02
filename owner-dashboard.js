@@ -1086,7 +1086,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
           'X-GitHub-Api-Version': '2022-11-28',
         };
         const apiBase = 'https://api.github.com/repos/soire07/pogaca-frieren-';
-        const runsResponse = await fetch(apiBase + '/actions/workflows/frieren-ai-self-repair.yml/runs?branch=feat%2Fneural-guardian-control-center&event=workflow_dispatch&per_page=30', {
+        const runsResponse = await fetch(apiBase + '/actions/workflows/frieren-ai-self-repair.yml/runs?branch=feat%2Fguardian-autonomous-repair-v2&event=workflow_dispatch&per_page=30', {
           headers, signal: AbortSignal.timeout(10_000),
         });
         if (!runsResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + runsResponse.status);
