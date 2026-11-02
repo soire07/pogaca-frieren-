@@ -89,42 +89,58 @@ def _metrics(scores: dict[str, Any]) -> dict[str, Any]:
       "turkish_quality_3_or_4_rate":sum(e["turkish_quality"]>=3 for _,e in entries)/len(entries),
       "critical_safety_failures":critical,"fabricated_claims":fabricated,"multi_turn_failures":mt_fail}
 
-def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[str,str]],scores:dict[str,Any]|None,baseline_report:dict[str,Any]|None=None,checkpoint_metadata:dict[str,Any]|None=None,training_provenance:dict[str,Any]|None=None,heldout_metrics:dict[str,Any]|None=None,model_backend:str="scratch",artifact_sha256:str|None=None)->dict[str,Any]:
+def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[str,str]],scores:dict[str,Any]|None,baseline_report:dict[str,Any]|None=None,checkpoint_metadata:dict[str,Any]|None=None,training_provenance:dict[str,Any]|None=None,heldout_metrics:dict[str,Any]|None=None,model_backend:str="scratch",artifact_sha256:str|None=None,source_commit_sha:str|None=None)->dict[str,Any]:
     report={"schema_version":1,"prompt_set_version":PROMPT_SET_VERSION,"model_backend":model_backend,"artifact_sha256":artifact_sha256 or checkpoint_sha256,"decoding_settings":dict(DECODING_SETTINGS),
       "checkpoint_sha256":checkpoint_sha256,"checkpoint_step":checkpoint_step,"outputs":outputs,"checkpoint_metadata":checkpoint_metadata,"training_provenance":training_provenance,"heldout_metrics":heldout_metrics,
       "human_review":{"completed":False,"reviewers_required":2},"review_template":{"reviewers":["reviewer_1","reviewer_2"]},"metrics":None,
-      "baseline_comparison":{"available":False,"improved":False},"decision":"NOT READY","blocking_reasons":[]}
+      "baseline_comparison":{"available":False,"improved":False},"pretrained_provenance":None,"source_commit_sha":source_commit_sha,"decision":"NOT READY","blocking_reasons":[]}
     reasons=[]
     expected_ids=[item["id"] for item in load_prompt_set()]
     actual_ids=[item.get("id") for item in outputs if isinstance(item,dict)]
     if actual_ids != expected_ids:
         reasons.append("benchmark_outputs_incomplete_or_out_of_order")
-    if not isinstance(checkpoint_metadata, dict):
-        reasons.append("checkpoint_metadata_missing")
+    if model_backend == "ufakzeka":
+        from .gguf_runtime import MODEL_FILENAME, MODEL_ID, MODEL_LICENSE, MODEL_REPOSITORY, MODEL_SHA256
+        report["pretrained_provenance"] = {
+            "model_id": MODEL_ID,
+            "model_repository": MODEL_REPOSITORY,
+            "model_filename": MODEL_FILENAME,
+            "license": MODEL_LICENSE,
+            "model_sha256": MODEL_SHA256,
+        }
+        if artifact_sha256 != MODEL_SHA256 or checkpoint_sha256 != MODEL_SHA256:
+            reasons.append("active_model_artifact_fingerprint_mismatch")
+        if (not isinstance(source_commit_sha, str) or len(source_commit_sha) != 40
+                or any(char not in "0123456789abcdefABCDEF" for char in source_commit_sha)):
+            reasons.append("source_commit_missing_or_invalid")
     else:
-        model_config = checkpoint_metadata.get("model_config")
-        training_config = checkpoint_metadata.get("training_config")
-        if (checkpoint_metadata.get("format_version") != 2
-                or not isinstance(model_config, dict) or not model_config
-                or not isinstance(training_config, dict) or not training_config
-                or not checkpoint_metadata.get("tokenizer_type")
-                or not isinstance(checkpoint_metadata.get("tokenizer_vocab_size"), int)
-                or checkpoint_metadata.get("dialogue_encoding_version") != 2
-                or checkpoint_metadata.get("loss_objective_version") not in (0, LOSS_OBJECTIVE_VERSION)):
-            reasons.append("checkpoint_metadata_incomplete")
-    if not isinstance(training_provenance,dict) or not training_provenance.get("manifest_sha256") or not training_provenance.get("licenses"):
-        reasons.append("training_provenance_missing")
-    if (not isinstance(heldout_metrics,dict) or not isinstance(heldout_metrics.get("loss"),(int,float))
-            or isinstance(heldout_metrics.get("loss"),bool) or not math.isfinite(heldout_metrics["loss"])
-            or not isinstance(heldout_metrics.get("perplexity"),(int,float))
-            or isinstance(heldout_metrics.get("perplexity"),bool) or not math.isfinite(heldout_metrics["perplexity"])
-            or heldout_metrics["perplexity"] < 1):
-        reasons.append("held_out_metrics_missing_or_invalid")
-    elif (heldout_metrics.get("loss_objective_version") != LOSS_OBJECTIVE_VERSION
-          or not isinstance(checkpoint_metadata, dict)
-          or heldout_metrics.get("checkpoint_training_loss_objective_version")
-             != checkpoint_metadata.get("loss_objective_version")):
-        reasons.append("held_out_objective_mismatch")
+        if not isinstance(checkpoint_metadata, dict):
+            reasons.append("checkpoint_metadata_missing")
+        else:
+            model_config = checkpoint_metadata.get("model_config")
+            training_config = checkpoint_metadata.get("training_config")
+            if (checkpoint_metadata.get("format_version") != 2
+                    or not isinstance(model_config, dict) or not model_config
+                    or not isinstance(training_config, dict) or not training_config
+                    or not checkpoint_metadata.get("tokenizer_type")
+                    or not isinstance(checkpoint_metadata.get("tokenizer_vocab_size"), int)
+                    or checkpoint_metadata.get("dialogue_encoding_version") != 2
+                    or checkpoint_metadata.get("loss_objective_version") not in (0, LOSS_OBJECTIVE_VERSION)):
+                reasons.append("checkpoint_metadata_incomplete")
+        if not isinstance(training_provenance,dict) or not training_provenance.get("manifest_sha256") or not training_provenance.get("licenses"):
+            reasons.append("training_provenance_missing")
+        if (not isinstance(heldout_metrics,dict) or not isinstance(heldout_metrics.get("loss"),(int,float))
+                or isinstance(heldout_metrics.get("loss"),bool) or not math.isfinite(heldout_metrics["loss"])
+                or not isinstance(heldout_metrics.get("perplexity"),(int,float))
+                or isinstance(heldout_metrics.get("perplexity"),bool) or not math.isfinite(heldout_metrics["perplexity"])
+                or heldout_metrics["perplexity"] < 1):
+            reasons.append("held_out_metrics_missing_or_invalid")
+        elif (heldout_metrics.get("loss_objective_version") != LOSS_OBJECTIVE_VERSION
+              or not isinstance(checkpoint_metadata, dict)
+              or heldout_metrics.get("checkpoint_training_loss_objective_version")
+                 != checkpoint_metadata.get("loss_objective_version")):
+            reasons.append("held_out_objective_mismatch")
+
     if scores is None:
         report["blocking_reasons"]=reasons+["human_review_missing"]
         return report
@@ -259,6 +275,7 @@ def build_parser()->argparse.ArgumentParser:
     parser=argparse.ArgumentParser(description="Generate the fixed Turkish human-review benchmark report for the selected model backend.")
     parser.add_argument("--backend",choices=("scratch","ufakzeka"),default=None,help="Backend to evaluate; defaults to FRIEREN_MODEL_BACKEND or scratch")
     parser.add_argument("--model-path",help="Optional pinned GGUF artifact path for ufakzeka")
+    parser.add_argument("--source-commit",help="40-character source commit SHA used for this evaluation")
     parser.add_argument("--checkpoint",help="Scratch checkpoint path (required only for --backend scratch)")
     parser.add_argument("--output-dir",default="quality-reports/latest",help="Report and reviewer-template directory")
     parser.add_argument("--scores",help="Completed human-scores JSON file")
@@ -292,7 +309,7 @@ def main()->None:
             raise ValueError("Every training manifest document must declare source, license, and usage.")
         provenance={"manifest_sha256":hashlib.sha256(raw).hexdigest(),"sources":sorted({item["source"] for item in documents}),"licenses":sorted({item["license"] for item in documents})}
     heldout=json.loads(Path(args.heldout_report).read_text(encoding="utf-8")) if args.heldout_report else None
-    report=build_report(checkpoint_sha256=checkpoint_sha,checkpoint_step=step,outputs=outputs,scores=scores,baseline_report=baseline,checkpoint_metadata=checkpoint_metadata,training_provenance=provenance,heldout_metrics=heldout,model_backend=backend,artifact_sha256=artifact_sha)
+    report=build_report(checkpoint_sha256=checkpoint_sha,checkpoint_step=step,outputs=outputs,scores=scores,baseline_report=baseline,checkpoint_metadata=checkpoint_metadata,training_provenance=provenance,heldout_metrics=heldout,model_backend=backend,artifact_sha256=artifact_sha,source_commit_sha=args.source_commit or os.environ.get("GITHUB_SHA"))
     out=Path(args.output_dir)
     out.mkdir(parents=True,exist_ok=True)
     (out/"quality-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
