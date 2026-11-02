@@ -64,9 +64,9 @@ test('guild dashboard catalog only exposes working toggles and labels future ent
   assert.ok(active.some(feature => feature.key === 'animeQuiz'));
   assert.ok(active.some(feature => feature.key === 'collection'));
   assert.ok(active.some(feature => feature.key === 'companions'));
+  assert.ok(active.some(feature => feature.key === 'fishing'));
   assert.ok(active.some(feature => feature.key === 'dailyRewards'));
   assert.ok(!planned.some(feature => /yoldaş|evcil ruh/i.test(feature.title + ' ' + feature.description)));
-  assert.ok(planned.some(feature => feature.id === 'fishing'));
   assert.ok(planned.some(feature => feature.id === 'miniGames'));
   assert.ok(planned.every(feature => !feature.key));
 });
