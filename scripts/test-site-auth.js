@@ -222,3 +222,29 @@ test('cross-site form submissions are rejected before account database access', 
   assert.equal(res.status, 403);
   assert.equal(db.calls.length, 0);
 });
+
+
+test('logout requires a same-origin POST confirmation and clears only after valid CSRF', async () => {
+  const db = fakeDb();
+  const pageRes = response();
+  await handleSiteAuthRequest({ method: 'GET', url: '/logout', headers: {} }, pageRes, {
+    db, sessionSecret: secret, createSession: createPublicSiteSession
+  });
+  assert.equal(pageRes.status, 200);
+  const token = pageRes.body.match(/name="csrf" value="([^"]+)"/)?.[1];
+  assert.ok(token);
+
+  const forged = response();
+  await handleSiteAuthRequest(post('/logout', { csrf: token }, {
+    origin: 'https://attacker.example', 'sec-fetch-site': 'cross-site', host: 'frierenbot.vercel.app'
+  }), forged, { db, sessionSecret: secret, createSession: createPublicSiteSession });
+  assert.equal(forged.status, 403);
+  assert.equal(forged.headers['Set-Cookie'], undefined);
+
+  const valid = response();
+  await handleSiteAuthRequest(post('/logout', { csrf: token }, {
+    origin: 'https://frierenbot.vercel.app', 'sec-fetch-site': 'same-origin', host: 'frierenbot.vercel.app'
+  }), valid, { db, sessionSecret: secret, createSession: createPublicSiteSession });
+  assert.equal(valid.status, 302);
+  assert.match(valid.headers['Set-Cookie'], /Max-Age=0/);
+});
