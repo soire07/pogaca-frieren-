@@ -123,8 +123,9 @@ const discordClient = { guilds: { cache: { keys: () => ['1539562273197260860'] }
 test('guild dashboard schema is additive and does not touch RPG tables', async () => {
   const calls = [];
   await initGuildDashboardSchema({ async query(sql) { calls.push(sql); return { rows: [], rowCount: 0 }; } });
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
   assert.match(calls[0], /CREATE TABLE IF NOT EXISTS frieren_site_discord_links/);
+  assert.match(calls[2], /CREATE TABLE IF NOT EXISTS frieren_site_oauth_states/);
   assert.doesNotMatch(calls.join(' '), /DROP TABLE|DELETE FROM users|ALTER TABLE users/i);
 });
 
@@ -245,4 +246,68 @@ test('Discord OAuth state is consumed atomically once and cannot be replayed', a
   assert.equal(await consumeGuildOAuthState(db, state, owner, secret), false);
   assert.equal(await consumeGuildOAuthState(db, state, 'site_other-account', secret), false);
   assert.equal(calls.length, 2);
+});
+
+
+test('Discord OAuth callback consumes the stored state before exchanging the code and rejects replay', async () => {
+  process.env.ADMIN_SESSION_SECRET = secret;
+  let storedHash = null;
+  let consumed = false;
+  let tokenExchanges = 0;
+  let linkWrites = 0;
+  const db = {
+    async query(sql, params = []) {
+      if (sql.includes('DELETE FROM frieren_site_oauth_states WHERE expires_at')) return { rows: [], rowCount: 0 };
+      if (sql.includes('INSERT INTO frieren_site_oauth_states')) {
+        storedHash = params[0];
+        assert.match(storedHash, /^[a-f0-9]{64}$/);
+        assert.notEqual(params[0], params[1]);
+        return { rows: [], rowCount: 1 };
+      }
+      if (sql.includes('DELETE FROM frieren_site_oauth_states WHERE state_hash')) {
+        if (!consumed && params[0] === storedHash && params[1] === owner) {
+          consumed = true;
+          return { rows: [{ account_id: owner }], rowCount: 1 };
+        }
+        return { rows: [], rowCount: 0 };
+      }
+      if (sql.includes('INSERT INTO frieren_site_discord_links')) {
+        linkWrites++;
+        return { rows: [], rowCount: 1 };
+      }
+      return { rows: [], rowCount: 0 };
+    }
+  };
+  const connectResponse = response();
+  await handleGuildDashboardRequest(siteRequest('/discord/connect'), connectResponse, { db, env });
+  assert.equal(connectResponse.status, 302);
+  const authorization = new URL(connectResponse.headers.Location);
+  const state = authorization.searchParams.get('state');
+  assert.ok(state);
+  assert.equal(storedHash, (await import('node:crypto')).createHash('sha256').update(state).digest('hex'));
+
+  const fetchImpl = async (url, options) => {
+    if (String(url).includes('/oauth2/token')) {
+      tokenExchanges++;
+      assert.equal(options.method, 'POST');
+      return { ok: true, async json() { return { access_token: 'fresh-access', refresh_token: 'fresh-refresh', expires_in: 3600 }; } };
+    }
+    if (String(url).includes('/users/@me')) {
+      tokenExchanges++;
+      return { ok: true, async json() { return { id: '333333333333333333', username: 'GezginDiscord', avatar: null }; } };
+    }
+    throw new Error('Unexpected Discord endpoint');
+  };
+  const callbackUrl = '/discord/callback?code=one-time-code&state=' + encodeURIComponent(state);
+  const callbackResponse = response();
+  await handleGuildDashboardRequest(siteRequest(callbackUrl), callbackResponse, { db, env, fetchImpl });
+  assert.equal(callbackResponse.status, 302);
+  assert.equal(linkWrites, 1);
+  assert.equal(tokenExchanges, 2);
+
+  const replayResponse = response();
+  await handleGuildDashboardRequest(siteRequest(callbackUrl), replayResponse, { db, env, fetchImpl });
+  assert.equal(replayResponse.status, 400);
+  assert.equal(tokenExchanges, 2);
+  assert.equal(linkWrites, 1);
 });
