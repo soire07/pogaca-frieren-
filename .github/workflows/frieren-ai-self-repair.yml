@@ -1,4 +1,5 @@
 name: Frieren AI Safe Self-Repair
+run-name: Frieren AI Repair · Guardian #${{ inputs.incident_id || github.run_id }}
 
 on:
   workflow_dispatch:
@@ -8,9 +9,17 @@ on:
         required: true
         type: string
       base_branch:
-        description: "Branch to test against"
+        description: "Allowed repair target branch"
         required: true
         default: "frieren-ai-agent"
+        type: choice
+        options:
+          - frieren-ai-agent
+          - feat/guardian-autonomous-repair-v2
+      incident_id:
+        description: "Optional Guardian incident ID for traceability"
+        required: false
+        default: ""
         type: string
 
 permissions:
@@ -26,6 +35,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Validate repair target branch
+        env:
+          BASE_BRANCH: ${{ inputs.base_branch }}
+        run: |
+          case "$BASE_BRANCH" in
+            frieren-ai-agent|feat/guardian-autonomous-repair-v2) ;;
+            *) echo "Unsupported repair target branch"; exit 1 ;;
+          esac
+          if [ "$GITHUB_REF_NAME" != "$BASE_BRANCH" ]; then
+            echo "Workflow ref must match the requested repair target branch"
+            exit 1
+          fi
+
       - name: Checkout requested base branch
         uses: actions/checkout@v4
         with:
@@ -36,12 +58,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --package-lock=false
 
       - name: Generate a constrained repair proposal with free Groq API
+        id: repair
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           FRIEREN_MODEL: openai/gpt-oss-20b
@@ -56,18 +78,14 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: ${{ inputs.base_branch }}
-          branch: ai-repair/frieren-${{ github.run_id }}
+          branch: ai-repair/guardian-${{ inputs.incident_id || github.run_id }}
           delete-branch: true
-          title: "AI repair: ${{ inputs.task }}"
+          title: "AI repair: Guardian incident #${{ inputs.incident_id || github.run_id }}"
           body: |
             Automated Frieren AI repair proposal.
 
-            **Requested task:** ${{ inputs.task }}
+            **Guardian incident:** #${{ inputs.incident_id || 'manual' }}
 
-            The workflow generated a constrained patch and ran `npm run check` before opening this pull request. This PR is not automatically merged or deployed.
+            The private task description is intentionally not copied into this public pull request body. The workflow generated a constrained patch and ran `npm run check` before opening this pull request. This PR is not automatically merged or deployed.
           commit-message: "fix: AI-assisted Frieren repair proposal"
-          add-paths: |
-            *.js
-            ai-agent/*.js
-            scripts/*.js
-            database/*.js
+          add-paths: ${{ steps.repair.outputs.repair_files }}

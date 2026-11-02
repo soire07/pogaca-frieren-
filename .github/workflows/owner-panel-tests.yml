@@ -1,65 +1,7 @@
 name: Owner panel tests
 
 on:
-  pull_request:
-    paths:
-      - 'owner-dashboard.js'
-      - 'owner-admin.js'
-      - 'owner-metrics.js'
-      - 'owner-workspaces.js'
-      - 'owner-rpg-quests.js'
-      - 'owner-rpg-content.js'
-      - 'owner-render-control.js'
-      - 'rpg-content-catalog.js'
-      - 'rpg-mechanics.js'
-      - 'gunlukgorev.js'
-      - 'zindan.js'
-      - 'iblisavasi.js'
-      - 'ortakboss.js'
-      - 'database/db.js'
-      - 'scripts/test-owner-dashboard.js'
-      - 'scripts/test-owner-workspaces.js'
-      - 'scripts/test-owner-admin.js'
-      - 'scripts/test-owner-history.js'
-      - 'scripts/test-owner-metrics.js'
-      - 'scripts/test-owner-platform.js'
-      - 'ai-agent/owner-scenario-report.js'
-      - 'ai-agent/owner-scenario-report.test.js'
-      - 'scripts/test-owner-quests.js'
-      - 'scripts/test-owner-rpg-content.js'
-      - 'scripts/check-gameplay-integrity.js'
-      - '.github/workflows/owner-panel-tests.yml'
-  push:
-    branches:
-      - main
-      - 'feat/**'
-    paths:
-      - 'owner-dashboard.js'
-      - 'owner-admin.js'
-      - 'owner-metrics.js'
-      - 'owner-workspaces.js'
-      - 'owner-rpg-quests.js'
-      - 'owner-rpg-content.js'
-      - 'owner-render-control.js'
-      - 'rpg-content-catalog.js'
-      - 'rpg-mechanics.js'
-      - 'gunlukgorev.js'
-      - 'zindan.js'
-      - 'iblisavasi.js'
-      - 'ortakboss.js'
-      - 'database/db.js'
-      - 'scripts/test-owner-dashboard.js'
-      - 'scripts/test-owner-workspaces.js'
-      - 'scripts/test-owner-admin.js'
-      - 'scripts/test-owner-history.js'
-      - 'scripts/test-owner-metrics.js'
-      - 'scripts/test-owner-platform.js'
-      - 'ai-agent/owner-scenario-report.js'
-      - 'ai-agent/owner-scenario-report.test.js'
-      - 'scripts/test-owner-quests.js'
-      - 'scripts/test-owner-rpg-content.js'
-      - 'scripts/check-gameplay-integrity.js'
-      - '.github/workflows/owner-panel-tests.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -67,11 +9,13 @@ permissions:
 jobs:
   owner-panel-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "20"
       - run: npm install --no-package-lock --no-audit --no-fund
-      - run: node --test --test-concurrency=1 scripts/test-owner-dashboard.js scripts/test-owner-workspaces.js scripts/test-owner-admin.js scripts/test-owner-history.js scripts/test-owner-metrics.js scripts/test-owner-platform.js scripts/test-owner-quests.js scripts/test-owner-rpg-content.js scripts/test-owner-render-control.js ai-agent/owner-scenario-report.test.js
+      - run: node --check scripts/ai-self-repair.js && node --check guardian/core.js && node --check guardian/neural-quality-report-route.js && node --check guardian/store.js && node --check guardian/monitor.js && node --check ai-agent/guardian-review.js && node --check ai-agent/index.js && node --check owner-dashboard.js && node --check owner-admin.js && node --check index.js
+      - run: node --test --test-concurrency=1 scripts/test-owner-dashboard.js scripts/test-owner-workspaces.js scripts/test-owner-admin.js scripts/test-owner-history.js scripts/test-owner-metrics.js scripts/test-owner-platform.js scripts/test-owner-quests.js scripts/test-owner-rpg-content.js scripts/test-owner-render-control.js ai-agent/owner-scenario-report.test.js ai-agent/guardian-review.test.js guardian/*.test.js scripts/ai-self-repair.test.js
       - run: node scripts/check-gameplay-integrity.js

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   OWNER_ID, isOwner, formatDuration, initOwnerAdminSchema, getMaintenanceState, setMaintenanceState, getOwnerOverview, getRecentOwnerActivity,
   createApprovalRequest, reviewApproval, listUserMemories, deleteUserMemory
@@ -196,4 +197,31 @@ test('owner schema creates a bounded test-run history table and recent index', a
   assert.match(sql, /idx_owner_test_runs_recent/);
   assert.match(sql, /summary JSONB NOT NULL/);
   assert.match(sql, /details JSONB NOT NULL/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS owner_guardian_incidents/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS owner_guardian_jobs/);
+  assert.match(sql, /idx_owner_guardian_jobs_active/);
+  assert.match(sql, /repair_dispatch_status/);
+  assert.match(sql, /ALTER TABLE owner_guardian_jobs ADD COLUMN IF NOT EXISTS repair_dispatch_attempts/);
+  assert.match(sql, /repair_run_url/);
+  assert.match(sql, /repair_pr_url/);
+  assert.match(sql, /repair_checks_status/);
+  assert.match(sql, /owner_guardian_monitor_state/);
+  assert.match(sql, /last_tick_at/);
+  assert.match(sql, /last_error TEXT/);
+});
+
+
+test('Guardian monitor starts after database schema initialization and before Discord login', () => {
+  const source = readFileSync(new URL('../index.js', import.meta.url), 'utf8');
+  const schemaReady = source.indexOf('await initGuildFeatureSettingsSchema(pool);');
+  const monitorStart = source.indexOf('const stopGuardianMonitor = startGuardianMonitor({');
+  const discordLogin = source.indexOf('await client.login(process.env.DISCORD_TOKEN);');
+  assert.ok(schemaReady >= 0 && monitorStart > schemaReady && discordLogin > monitorStart,
+    'Guardian must start after its tables exist, without waiting for Discord Ready');
+  assert.ok(source.includes('onIncident: async incident => {') && source.includes('processGuardianIncident({ db: pool, incident })'),
+    'persisted incidents must be handed to the autonomous repair pipeline');
+  assert.ok(source.includes('onRepairDispatch: async job => {') && source.includes('processPendingGuardianRepairDispatch({'),
+    'failed repair dispatches must be retried from the scheduled monitor');
+  assert.equal(source.includes('client.once(Events.ClientReady, () => {\n  stopGuardianMonitor = startGuardianMonitor'), false,
+    'Guardian monitor must not be gated on Discord Ready');
 });

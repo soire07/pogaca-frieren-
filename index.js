@@ -8,12 +8,16 @@ import { renderMarket, renderMarketItem, buyMarketItem, renderPurchaseResult, re
 import { levelForXp } from './utils.js';
 import { handleCharacterPanelInteraction } from './karakter.js';
 import { createServer } from 'node:http';
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { createAiAgentChildEnv, AI_AGENT_HEALTH_PORT } from './ai-agent/render-supervisor.js';
 import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
+import { startGuardianMonitor } from './guardian/monitor.js';
+import { processGuardianIncident, processPendingGuardianRepairDispatch } from './guardian/automation.js';
+import { handleNeuralQualityReportRequest } from './guardian/neural-quality-report-route.js';
+import { saveGuardianQualityReport } from './guardian/store.js';
 import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
@@ -350,6 +354,26 @@ await loadCommands();
 await initDatabase();
 await initOwnerAdminSchema(pool);
 await initGuildFeatureSettingsSchema(pool);
+const stopGuardianMonitor = startGuardianMonitor({
+  db: pool,
+  client,
+  onIncident: async incident => {
+    const result = await processGuardianIncident({ db: pool, incident });
+    if (['blocked', 'review_failed', 'dispatch_failed'].includes(result.status)) {
+      console.warn('Guardian autonomous handler:', result.status, result.reason || 'no additional details');
+    }
+  },
+  onRepairDispatch: async job => {
+    const result = await processPendingGuardianRepairDispatch({
+      db: pool,
+      job,
+      incident: { id: job.incident_id, system: job.system, code: job.code, severity: job.severity, title: job.title, summary: job.summary, evidence: job.evidence },
+    });
+    if (['dispatch_failed', 'reconciliation_unavailable'].includes(result.status)) {
+      console.warn('Guardian repair dispatch retry:', result.status, result.reason || 'no additional details');
+    }
+  },
+});
 await client.login(process.env.DISCORD_TOKEN);
 
 let aiAgentChild = null;
@@ -380,6 +404,7 @@ function startAiAgent() {
     aiAgentChild = null;
     if (shuttingDown) return;
     console.error('Frieren AI Agent kapandı (code=' + code + ', signal=' + signal + '). 5 saniye sonra yeniden başlatılacak.');
+    recordOwnerError(pool, 'frieren-ai-agent', 'ChildExit', 'code=' + code + '; signal=' + signal).catch(() => {});
     aiAgentRestartTimer = setTimeout(startAiAgent, 5_000);
     aiAgentRestartTimer.unref();
   });
@@ -414,6 +439,7 @@ process.once('SIGTERM', async () => {
   if (aiAgentRestartTimer) clearTimeout(aiAgentRestartTimer);
   console.log('Kapatılıyor...');
 
+  stopGuardianMonitor?.();
   await Promise.allSettled([
     client.destroy(),
     pool.end(),
@@ -425,12 +451,20 @@ const PORT = process.env.PORT || 3000;
 let uptimeRobotCache = null;
 
 createServer(async (req, res) => {
-  if (await handleOwnerDashboardRequest(req, res, { client, db: pool })) return;
-  if (await handlePublicSiteRequest(req, res, { client })) return;
   const sendJson = (status, payload) => {
-    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
     res.end(JSON.stringify(payload));
   };
+  if (req.method === 'POST' && req.url === '/internal/neural-quality-report') {
+    const result = await handleNeuralQualityReportRequest(req, {
+      env: process.env,
+      saveReport: ({ report, reportSha256 }) => saveGuardianQualityReport(pool, { report, reportSha256 }),
+      logger: (...args) => console.error(...args),
+    });
+    return sendJson(result.status, result.payload);
+  }
+  if (await handleOwnerDashboardRequest(req, res, { client, db: pool })) return;
+  if (await handlePublicSiteRequest(req, res, { client })) return;
   if (req.method === 'GET' && (req.url === '/ai-health' || req.url === '/ai-ready')) {
     try {
       const childPath = req.url === '/ai-health' ? '/live' : '/health';

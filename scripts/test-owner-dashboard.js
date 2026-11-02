@@ -1,7 +1,8 @@
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, getDiscordOAuthFailureDiagnostic, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest, assertGuardianAutomationEnabled } from '../owner-dashboard.js';
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
 const ownerId = '1553794496234262641';
@@ -78,6 +79,173 @@ test('owner panel navigation exposes command workflows and the new activity cent
   assert.match(navigation, /Denetim ve test geçmişi/);
 });
 
+
+test('Guardian is exposed as a dedicated Owner Panel workspace', () => {
+  const navigation = renderOwnerNavigation();
+  assert.match(navigation, /href="\/owner\/guardian"/);
+  assert.ok(OWNER_PANEL_SECTIONS.some(section => section.id === 'guardian'));
+});
+
+test('Guardian AI endpoint is HTTPS-only and points to the private review route', () => {
+  assert.equal(getFrierenAiGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.example/' }), 'https://frieren-ai.example/internal/guardian-review');
+  assert.throws(() => getFrierenAiGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'http://frieren-ai.example' }), { message: 'INVALID_FRIEREN_AI_PUBLIC_URL' });
+});
+
+test('Guardian automation emergency stop blocks server-side review and repair actions', async () => {
+  const stoppedDb = { query: async () => ({ rows: [{ setting_value: { enabled: true } }] }) };
+  await assert.rejects(() => assertGuardianAutomationEnabled(stoppedDb), { message: 'GUARDIAN_EMERGENCY_STOP_ENABLED' });
+  const activeDb = { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) };
+  assert.equal(await assertGuardianAutomationEnabled(activeDb), undefined);
+  const missingDb = { query: async () => ({ rows: [] }) };
+  assert.equal(await assertGuardianAutomationEnabled(missingDb), undefined);
+});
+
+test('Guardian workspace shows the latest stored Neural quality report and exact artifact fingerprint', () => {
+  const html = renderOwnerGuardianWorkspace({
+    qualityReport: {
+      decision: 'NOT READY',
+      model_backend: 'ufakzeka',
+      report_sha256: 'b'.repeat(64),
+      artifact_sha256: 'a'.repeat(64),
+      submitted_at: '2026-11-02T10:00:00Z',
+      report: {
+        source_commit_sha: 'd'.repeat(40),
+        ci_evidence: { status: 'verified', run_url: 'https://github.com/soire07/pogaca-frieren-/actions/runs/42' },
+      },
+      blocking_reasons: [],
+    },
+  });
+  assert.match(html, /Frieren Neural kalite raporu/);
+  assert.match(html, /NOT READY/);
+  assert.match(html, /ufakzeka/);
+  assert.match(html, new RegExp('b'.repeat(64)));
+  assert.match(html, new RegExp('a'.repeat(64)));
+  assert.match(html, /Kaynak commit/);
+  assert.match(html, new RegExp('d'.repeat(40)));
+  assert.match(html, /Neural CI kanıtı: verified/);
+  assert.match(html, /Doğrulanan GitHub Actions çalışmasını aç/);
+});
+test('Guardian workspace shows review proposals as unapplied and requires owner review', () => {
+  const html = renderOwnerGuardianWorkspace({
+    csrf: 'csrf-test',
+    monitorState: { last_tick_at: '2026-11-02T10:00:00Z', last_error: null },
+    incidents: [{
+      id: 7, title: 'RPG timeout', severity: 'high', system: 'pogaca_frieren',
+      code: 'TIMEOUT', status: 'open', occurrence_count: 2,
+      last_seen: '2026-11-02T10:00:00Z', summary: 'Boss test timeout', evidence: [],
+    }],
+    jobs: [{
+      id: 9, incident_title: 'RPG timeout', agent: 'frieren_ai', system: 'pogaca_frieren',
+      status: 'completed', created_at: '2026-11-02T10:01:00Z',
+      result: { rootCause: 'A missing timeout guard.', confidence: 'medium', suggestedFix: 'Add a bounded timeout.', proposedPatch: 'diff --git a/file b/file', applied: false, tests: ['Add regression test.'], risks: [] },
+    }],
+  });
+  assert.match(html, /Neural Guardian/);
+  assert.match(html, /A missing timeout guard/);
+  assert.match(html, /Önerilen yama taslağı \(uygulanmadı\)/);
+  assert.match(html, /İnsan incelemesi gerekli/);
+  assert.match(html, /guardian-review/);
+  assert.match(html, /Guardian izleyici/);
+  assert.match(html, /Son Guardian kontrolü/);
+  assert.match(html, /Guardian öz denetimi/);
+  assert.match(html, /Frieren AI köprü anahtarı/);
+  assert.match(html, /NOT TESTED|BLOCKED|PASS|FAIL/);
+});
+
+test('Guardian self-repair dispatch targets the isolated repair branch and uses a supported workflow choice', () => {
+  const dashboard = readFileSync(new URL('../owner-dashboard.js', import.meta.url), 'utf8');
+  const workflow = readFileSync(new URL('../.github/workflows/frieren-ai-self-repair.yml', import.meta.url), 'utf8');
+  const target = 'feat/guardian-autonomous-repair-v2';
+  assert.ok(dashboard.includes("ref: '" + target + "'"));
+  assert.ok(dashboard.includes("base_branch: '" + target + "'"));
+  assert.ok(dashboard.includes('runs?branch=' + encodeURIComponent(target) + '&event=workflow_dispatch'));
+  assert.ok(workflow.includes('- ' + target));
+  assert.ok(workflow.includes('frieren-ai-agent|' + target), 'workflow shell allowlist must accept only the supported AI and isolated repair branches');
+  assert.ok(workflow.includes('if [ "$GITHUB_REF_NAME" != "$BASE_BRANCH" ]'), 'workflow execution ref must equal its repair target');
+  assert.ok(!dashboard.includes("base_branch: 'frieren-neural-foundation'"), 'repair input must match the workflow allowlist');
+  assert.ok(target.length > 0);
+});
+
+test('Guardian workspace exposes PR dispatch only after a completed review and with a token', () => {
+  const original = process.env.FRIEREN_GITHUB_TOKEN;
+  process.env.FRIEREN_GITHUB_TOKEN = 'x'.repeat(48);
+  try {
+    const html = renderOwnerGuardianWorkspace({
+      csrf: 'csrf-test',
+      incidents: [],
+      jobs: [{
+        id: 10, incident_id: 7, incident_title: 'RPG timeout', agent: 'frieren_ai',
+        system: 'pogaca_frieren', status: 'completed', repair_dispatch_status: 'not_requested',
+        created_at: '2026-11-02T10:01:00Z',
+        result: { status: 'proposal_only', rootCause: 'Missing retry guard.', applied: false },
+      }],
+    });
+    assert.match(html, /guardian-create-pr/);
+    assert.match(html, /Düzeltme PR'si hazırla/);
+  } finally {
+    if (original === undefined) delete process.env.FRIEREN_GITHUB_TOKEN;
+    else process.env.FRIEREN_GITHUB_TOKEN = original;
+  }
+});
+
+test('Guardian workspace shows dispatched workflow, PR and CI evidence with a refresh control', () => {
+  const original = process.env.FRIEREN_GITHUB_TOKEN;
+  process.env.FRIEREN_GITHUB_TOKEN = 'x'.repeat(48);
+  try {
+    const html = renderOwnerGuardianWorkspace({
+      csrf: 'csrf-test',
+      incidents: [],
+      jobs: [{
+        id: 11, incident_id: 8, incident_title: 'AI timeout', agent: 'frieren_ai',
+        system: 'frieren_ai', status: 'completed', repair_dispatch_status: 'dispatched',
+        repair_run_status: 'completed', repair_run_conclusion: 'success',
+        repair_run_url: 'https://github.com/soire07/pogaca-frieren-/actions/runs/123',
+        repair_pr_number: 44, repair_pr_url: 'https://github.com/soire07/pogaca-frieren-/pull/44',
+        repair_pr_state: 'open', repair_checks_status: 'success',
+        created_at: '2026-11-02T10:01:00Z',
+        result: { status: 'proposal_only', rootCause: 'Timeout.' },
+      }],
+    });
+    assert.match(html, /Son kaydedilen workflow \(geçmiş kanıt\): completed/);
+    assert.match(html, /Son kaydedilen workflow kanıtını aç/);
+    assert.match(html, /Son kaydedilen onarım PR #44 kanıtını aç/);
+    assert.match(html, /PR kontrolleri: success/);
+    assert.match(html, /href="https:\/\/github\.com\/soire07\/pogaca-frieren-\/pull\/44"/);
+    assert.match(html, /guardian-refresh-pr/);
+  } finally {
+    if (original === undefined) delete process.env.FRIEREN_GITHUB_TOKEN;
+    else process.env.FRIEREN_GITHUB_TOKEN = original;
+  }
+});
+
+test('Guardian emergency stop hides AI review and new repair dispatch controls', () => {
+  const original = process.env.FRIEREN_GITHUB_TOKEN;
+  process.env.FRIEREN_GITHUB_TOKEN = 'x'.repeat(48);
+  try {
+    const html = renderOwnerGuardianWorkspace({
+      csrf: 'csrf-test',
+      emergencyStop: true,
+      incidents: [{
+        id: 7, title: 'RPG timeout', severity: 'high', system: 'pogaca_frieren',
+        code: 'TIMEOUT', status: 'open', occurrence_count: 1,
+        last_seen: '2026-11-02T10:00:00Z', summary: 'Test timeout', evidence: [],
+      }],
+      jobs: [{
+        id: 10, incident_id: 7, incident_title: 'RPG timeout', agent: 'frieren_ai',
+        system: 'pogaca_frieren', status: 'completed', repair_dispatch_status: 'not_requested',
+        created_at: '2026-11-02T10:01:00Z',
+        result: { status: 'proposal_only', rootCause: 'Missing guard.' },
+      }],
+    });
+    assert.match(html, /Acil durdurma etkin/);
+    assert.match(html, /guardian-emergency-stop/);
+    assert.doesNotMatch(html, /value="guardian-review"/);
+    assert.doesNotMatch(html, /value="guardian-create-pr"/);
+  } finally {
+    if (original === undefined) delete process.env.FRIEREN_GITHUB_TOKEN;
+    else process.env.FRIEREN_GITHUB_TOKEN = original;
+  }
+});
 
 test('Render metrics stay disabled without an API key and do not make network requests', async () => {
   const { getRenderServiceMetrics } = await import('../owner-metrics.js');
@@ -623,7 +791,7 @@ test('owner activity workspace renders paginated audit and test history safely',
 test('owner scenario tests target the separately hosted Frieren AI service over HTTPS', () => {
   assert.equal(
     getFrierenAiScenarioEndpoint({}),
-    'https://pogaca-frieren-kltd.onrender.com/internal/test-scenario'
+    'https://frieren-ai-agent.onrender.com/internal/test-scenario'
   );
   assert.equal(
     getFrierenAiScenarioEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://ai.example.test/base/' }),

@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import OpenAI from 'openai';
+import { createAiModelProvider } from './model-provider.js';
 import { resolveAiModel } from './config.js';
 import { findRelevantExcerpt, scoreCodeCandidate } from './code-context.js';
 import { createMemoryStore, shouldUseConversationHistory } from './memory-store.js';
@@ -14,6 +14,7 @@ import { formatCommandTestResult } from './command-test-report.js';
 import { parseCommandNames } from './command-test-input.js';
 import { splitDiscordMessage } from './discord-message-chunks.js';
 import { buildOwnerScenarioReport } from './owner-scenario-report.js';
+import { normalizeGuardianReviewIncident, reviewGuardianIncident } from './guardian-review.js';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createServer } from 'node:http';
@@ -44,12 +45,11 @@ const admins = new Set(process.env.FRIEREN_ADMIN_IDS.split(',').map(value => val
 const rootDir = fileURLToPath(new URL('../', import.meta.url));
 const timeoutMs = Math.max(30_000, Math.min(Number(process.env.FRIEREN_TEST_TIMEOUT_MS) || 240_000, 300_000));
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-// Free provider runtime is configured in this file.
-const groqKey = process.env.GROQ_API_KEY?.trim();
-const groq = groqKey ? new OpenAI({ apiKey: groqKey, baseURL: 'https://api.groq.com/openai/v1', timeout: 45_000, maxRetries: 1 }) : null;
+const modelProvider = createAiModelProvider();
+const groq = modelProvider.client;
 const memoryStore = process.env.DATABASE_URL?.trim() ? createMemoryStore(process.env.DATABASE_URL.trim()) : null;
 let memoryDatabaseReady = false;
-const modelConfigured = Boolean(groq);
+const modelConfigured = modelProvider.configured;
 const bridgeConfigured = Boolean(process.env.FRIEREN_BRIDGE_URL?.trim() && process.env.FRIEREN_BRIDGE_SECRET?.trim());
 
 // Render Web Services require an HTTP port. This lightweight endpoint does not expose bot controls.
@@ -57,11 +57,12 @@ const port = Number(process.env.FRIEREN_AI_HEALTH_PORT) || Number(process.env.PO
 const healthHost = process.env.FRIEREN_AI_HEALTH_HOST || '0.0.0.0';
 const ownerScenarioLocks = new Set();
 const runningGuilds = new Set();
+let guardianReviewInProgress = false;
 
 const healthServer = createServer(async (req, res) => {
   const privateHealthPaths = new Set(['/health', '/ready', '/live', '/bridge-health']);
   if (privateHealthPaths.has(req.url)) {
-    const expected = process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
+    const expected = process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
     const supplied = req.headers['x-frieren-health-secret'] || '';
     const valid = expected.length >= 32 && typeof supplied === 'string'
       && Buffer.byteLength(expected) === Buffer.byteLength(supplied)
@@ -118,6 +119,56 @@ const healthServer = createServer(async (req, res) => {
       ownerScenarioLocks.delete('owner');
       res.writeHead(500, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ error: 'scenario_runner_failed', message: String(error?.message || error).slice(0, 180) }));
+    }
+    return;
+  }
+  if (req.url === '/internal/guardian-review' && req.method === 'POST') {
+    const expected = String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+    const authorization = String(req.headers.authorization || '');
+    const supplied = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+    const authorized = expected.length >= 32 && supplied.length === expected.length
+      && timingSafeEqual(Buffer.from(expected), Buffer.from(supplied));
+    if (!authorized) {
+      res.writeHead(404, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'not_found' }));
+      return;
+    }
+    if (!groq) {
+      res.writeHead(503, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'model_not_configured' }));
+      return;
+    }
+    if (guardianReviewInProgress || ownerScenarioLocks.has('owner') || runningGuilds.size > 0) {
+      res.writeHead(409, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'agent_busy' }));
+      return;
+    }
+    guardianReviewInProgress = true;
+    let raw = '';
+    try {
+      for await (const chunk of req) {
+        raw += chunk.toString('utf8');
+        if (Buffer.byteLength(raw, 'utf8') > 16_384) {
+          res.writeHead(413, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ error: 'payload_too_large' }));
+          return;
+        }
+      }
+      const body = raw ? JSON.parse(raw) : {};
+      const incident = normalizeGuardianReviewIncident(body.incident);
+      const review = await reviewGuardianIncident({
+        groq,
+        model: resolveAiModel(process.env),
+        incident,
+        collectCodeContext,
+      });
+      res.writeHead(200, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ...review, reviewedAt: new Date().toISOString() }));
+    } catch (error) {
+      res.writeHead(400, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: String(error?.message || 'guardian_review_failed').slice(0, 100) }));
+    } finally {
+      guardianReviewInProgress = false;
     }
     return;
   }
@@ -181,7 +232,7 @@ if (memoryStore) {
 } else {
   console.error('Frieren AI hafıza veritabanı yapılandırılmamış; FRIEREN_AI_DATABASE_URL kontrol edilmeli.');
 }
-if (!modelConfigured) console.error('Groq API anahtarı yapılandırılmamış; /frieren-ai yanıt veremez.');
+if (!modelConfigured) console.error('Yapay zekâ sağlayıcısı kullanılamıyor: ' + modelProvider.reason + '; /frieren-ai ve Guardian incelemesi devre dışı.');
 if (!bridgeConfigured) console.warn('Poğaça Frieren komut test köprüsü yapılandırılmamış; /frieren-komut-denetle kullanılamaz.');
 
 const commands = [
@@ -265,7 +316,10 @@ async function collectCodeContext(question) {
     if (budget <= 0) break;
     const remaining = Math.max(0, budget - relative.length - 20);
     if (!remaining) continue;
-    const safe = source.replace(/(DISCORD_TOKEN|GROQ_API_KEY|OPENAI_API_KEY|DATABASE_URL|PASSWORD|SECRET)\s*[:=]\s*['"`]?[^\s,'"`]+/gi, '$1=[REDACTED]');
+    const safe = source
+      .replace(/([A-Z0-9_]*(?:TOKEN|API_KEY|SECRET|PASSWORD)|DATABASE_URL)\s*[:=]\s*['"`]?[^\s,'"`]+/gi, '$1=[REDACTED]')
+      .replace(/(authorization\s*:\s*bearer\s+)[A-Za-z0-9._~+\/-]+/gi, '$1[REDACTED]')
+      .replace(/postgres(?:ql)?:\/\/[^\s'"<>]+/gi, 'postgres://[REDACTED]');
     const excerpt = findRelevantExcerpt(safe, terms, Math.min(safe.length, 1_800, remaining));
     if (excerpt) snippets.push('FILE: ' + relative + '\n' + excerpt);
     budget -= excerpt.length + relative.length + 20;
@@ -718,7 +772,7 @@ client.on(Events.InteractionCreate, async interaction => {
     const hours = Math.floor(uptimeSeconds / 3600);
     const minutes = Math.floor((uptimeSeconds % 3600) / 60);
     const seconds = uptimeSeconds % 60;
-    const provider = process.env.FRIEREN_MODEL_PROVIDER || 'groq';
+    const provider = modelProvider.name;
     const model = process.env.FRIEREN_MODEL || 'openai/gpt-oss-20b';
     const embed = new EmbedBuilder()
       .setTitle('Frieren AI — Servis Durumu')
@@ -728,7 +782,7 @@ client.on(Events.InteractionCreate, async interaction => {
         { name: 'Gateway gecikmesi', value: client.ws.ping >= 0 ? client.ws.ping + ' ms' : 'Ölçülemiyor', inline: true },
         { name: 'Çalışma süresi', value: hours + ' sa ' + minutes + ' dk ' + seconds + ' sn', inline: true },
         { name: 'Bağlı sunucu sayısı', value: String(client.guilds.cache.size), inline: true },
-        { name: 'Yapay zekâ sağlayıcısı', value: provider + (groq ? ' — API hazır' : ' — GROQ_API_KEY eksik'), inline: true },
+        { name: 'Yapay zekâ sağlayıcısı', value: provider + (modelProvider.configured ? ' — API hazır' : ' — ' + modelProvider.reason), inline: true },
         { name: 'Model', value: model, inline: true },
         { name: 'Kalıcı bellek', value: memoryStore ? 'Yapılandırılmış' : 'Yapılandırılmamış', inline: true }
       )

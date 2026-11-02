@@ -15,18 +15,32 @@ import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } fr
 import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
+import { classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks } from './guardian/automation.js';
+import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, reserveGuardianRepairDispatch, finishGuardianRepairDispatch, updateGuardianRepairStatus, getGuardianMonitorState, getLatestGuardianQualityReport } from './guardian/store.js';
 
 const OWNER_ID = '1553794496234262641';
+
+export async function assertGuardianAutomationEnabled(db) {
+  const result = await db.query("SELECT setting_value FROM owner_settings WHERE setting_key='guardian_emergency_stop' LIMIT 1");
+  if (result.rows?.[0]?.setting_value?.enabled === true) throw new Error('GUARDIAN_EMERGENCY_STOP_ENABLED');
+}
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
 const SESSION_COOKIE = 'frieren_owner_session';
 const STATE_COOKIE = 'frieren_owner_oauth_state';
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
 const MAX_BODY_BYTES = 24_576;
 export function getFrierenAiScenarioEndpoint(env = process.env) {
-  const base = String(env.FRIEREN_AI_PUBLIC_URL || 'https://pogaca-frieren-kltd.onrender.com').trim();
+  const base = String(env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).trim();
   const parsed = new URL(base);
   if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_AI_PUBLIC_URL');
   return new URL('/internal/test-scenario', parsed).toString();
+}
+
+export function getFrierenAiGuardianEndpoint(env = process.env) {
+  const base = String(env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).trim();
+  const parsed = new URL(base);
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_AI_PUBLIC_URL');
+  return new URL('/internal/guardian-review', parsed).toString();
 }
 
 
@@ -34,6 +48,7 @@ export const OWNER_PANEL_SECTIONS = Object.freeze([
   { id: 'overview', label: 'Genel Bakış', command: '/owner' },
   { id: 'system', label: 'Sistem Durumu', command: '/owner-bilgi' },
   { id: 'bot-control', label: 'Bot Kontrol Merkezi', command: null },
+  { id: 'guardian', label: 'Neural Guardian', command: null },
   { id: 'memories', label: 'Hafıza Yönetimi', command: '/owner-bellek' },
   { id: 'approvals', label: 'Kod Talepleri', command: '/owner-onay' },
   { id: 'announcements', label: 'Duyuru Merkezi', command: '/owner-duyuru' },
@@ -55,6 +70,7 @@ export function renderOwnerNavigation() {
   const groups = [
     { label: 'GENEL', ids: ['overview', 'system'] },
     { label: 'BOT KONTROL', ids: ['bot-control'] },
+    { label: 'GUARDIAN', ids: ['guardian'] },
     { label: 'Frieren Poğaça', ids: ['servers', 'rpg', 'partners', 'behavior'] },
     { label: 'Frieren AI', ids: ['memories', 'approvals'] },
     { label: 'İŞLEMLER', ids: ['announcements', 'maintenance'] }
@@ -65,8 +81,9 @@ export function renderOwnerNavigation() {
     + groups.map(group => '<div class="nav-group"><div class="nav-group-title">' + group.label + '</div>'
       + group.ids.map(id => {
         const section = sections.get(id) || (id === 'behavior' ? { id: 'behavior', label: 'Komut ve davranışlar', command: null } : null);
-        return section ? '<a href="/owner#' + section.id + '" aria-label="' + section.label + '"><span class="nav-icon" aria-hidden="true">' + ({
-          overview: '⌂', system: '◈', servers: '⌘', rpg: '✧', partners: '◇',
+        const href = id === 'guardian' ? '/owner/guardian' : '/owner#' + section?.id;
+        return section ? '<a href="' + href + '" aria-label="' + section.label + '"><span class="nav-icon" aria-hidden="true">' + ({
+          overview: '⌂', system: '◈', servers: '⌘', rpg: '✧', partners: '◇', guardian: '◈',
           memories: '✦', approvals: '⚝', announcements: '➤', maintenance: '◉'
         }[section.id] || '✧') + '</span><span class="nav-link-copy"><strong>' + section.label + '</strong>'
           + (section.command ? '<small>' + section.command + '</small>' : '') + '</span></a>' : '';
@@ -355,8 +372,11 @@ export async function getFrierenAIReadiness({
   healthPath = RENDER_BOT_SERVICES.frieren_ai.healthPath
 } = {}) {
   try {
+    const healthSecret = String(process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+    const headers = { Accept: 'application/json' };
+    if (healthSecret.length >= 32) headers['x-frieren-health-secret'] = healthSecret;
     const response = await fetchImpl(String(serviceUrl).replace(/\/$/, '') + healthPath, {
-      headers: { Accept: 'application/json' },
+      headers,
       signal: AbortSignal.timeout(5000)
     });
     if (!response.ok) return null;
@@ -441,6 +461,8 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     ${renderOwnerNavigation()}
     <section class="hero" id="overview"><span class="tag">OWNER · DOĞRULANDI</span><h1>Frieren Kontrol Merkezi</h1><p class="muted">Bu panel yalnızca yetkili Discord hesabına açıktır. İki botun sunucu içi davranışını tek merkezden yönet.</p>
       ${noticeText ? '<div class="notice">' + escapeHtml(noticeText) + '</div>' : ''}
+      ${emergencyStop ? '<div class="notice warn">Acil durdurma etkin: Frieren AI incelemesi ve yeni GitHub onarım workflow gönderimi engellendi. Hata tespiti ve kayıt devam eder.</div>' : ''}
+      <section class="panel"><h2>Guardian otomasyon acil durdurma</h2><p class="muted">${emergencyStop ? 'Etkin · AI incelemesi ve yeni onarım workflow gönderimi kapalı.' : 'Devre dışı · Owner onaylı inceleme ve onarım akışları kullanılabilir.'}</p><form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="action" value="guardian-emergency-stop"><input type="hidden" name="enabled" value="${emergencyStop ? 'false' : 'true'}"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu değişikliği onaylıyorum</label><button class="btn secondary">${emergencyStop ? 'Otomasyonu yeniden etkinleştir' : 'Guardian otomasyonunu durdur'}</button></form></section>
       <div class="grid" id="system">
         <div class="stat"><small>Bot bağlantısı</small><strong class="${overview.ready ? 'good' : 'bad'}">${overview.ready ? 'Çevrimiçi' : 'Çevrimdışı'}</strong></div>
         <div class="stat"><small>Discord gecikmesi</small><strong>${overview.ping === null ? '—' : overview.ping + ' ms'}</strong></div>
@@ -525,6 +547,108 @@ export function renderOwnerActivityWorkspace({ audit = { rows: [], page: 1, limi
     + '<section class="panel"><h2>Frieren AI test geçmişi · ' + Number(testRuns.total) + '</h2>' + testHtml + '<div class="actions">' + testPrevious + testNext + '<span class="small">Sayfa ' + Number(testRuns.page) + '</span></div></section>');
 }
 
+export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf = '', notice = '', serviceState = {}, monitorState = null, emergencyStop = false, qualityReport = null } = {}) {
+  const noticeText = ({
+    guardian_scan_complete: 'Tarama tamamlandı. Yeni bulgular ve servis durumları aşağıda listeleniyor.',
+    guardian_review_complete: 'Frieren AI incelemesini tamamladı. Öneri yalnızca taslaktır; kod değiştirilmedi.',
+    guardian_resolved: 'Olay çözüldü olarak işaretlendi.',
+    guardian_not_configured: 'Frieren AI köprüsü yapılandırılmamış. Gerekli gizli anahtar Owner Panel sunucu ortamında bulunamadı.',
+    guardian_review_failed: 'Frieren AI incelemesi tamamlanamadı. Olay ve hata kaydı korundu.',
+    guardian_pr_dispatched: 'Güvenli onarım workflow\'u başlatıldı. Testler geçerse ayrı bir PR açılacak; birleştirme ve dağıtım yapılmayacak.',
+    guardian_github_not_configured: 'GitHub Actions tetikleme anahtarı eksik. Poğaça Render ortamına FRIEREN_GITHUB_TOKEN eklenmeli.',
+    guardian_pr_dispatch_failed: 'Onarım workflow\'u başlatılamadı. Job kaydı korundu; hata ayrıntıları sırları açığa çıkarmadan kaydedildi.',
+    guardian_pr_status_failed: 'GitHub workflow veya PR durumu alınamadı. Token izinlerini ve Actions durumunu kontrol et.',
+    guardian_pr_status_updated: 'GitHub Actions ve PR durumu yenilendi.',
+  })[notice] || '';
+  const incidentHtml = incidents.length ? incidents.map(incident => {
+    const evidence = Array.isArray(incident.evidence) ? incident.evidence : [];
+    const canReview = !['in_review','resolved','ignored'].includes(incident.status);
+    return '<article class="rowitem"><div class="actions"><strong>#' + Number(incident.id) + ' · ' + escapeHtml(incident.title) + '</strong><span class="tag ' + (incident.severity === 'critical' || incident.severity === 'high' ? 'warn' : '') + '">' + escapeHtml(incident.severity) + '</span></div>'
+      + '<div class="small">' + escapeHtml(incident.system) + ' · ' + escapeHtml(incident.code) + ' · ' + escapeHtml(incident.status) + ' · ' + Number(incident.occurrence_count) + ' tekrar · Son görülme ' + escapeHtml(new Date(incident.last_seen).toLocaleString('tr-TR')) + '</div>'
+      + '<p>' + escapeHtml(incident.summary) + '</p>'
+      + (evidence.length ? '<details><summary>Kanıt kayıtları (' + evidence.length + ')</summary>' + evidence.map(item => '<div class="small">' + escapeHtml(item.file || '') + (item.line ? ':' + Number(item.line) : '') + ' ' + escapeHtml(item.message || '') + '</div>').join('') + '</details>' : '')
+      + '<div class="actions">'
+      + (canReview && !emergencyStop ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-review"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Frieren AI incelemesini başlat</label><button class="btn">AI ile analiz et</button></form>' : '')
+      + (!['resolved','ignored'].includes(incident.status) ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-resolve"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Sorunu kontrol ettim</label><button class="btn secondary">Çözüldü işaretle</button></form>' : '')
+      + '</div></article>';
+  }).join('') : '<p class="muted">Henüz Guardian olayı kaydedilmedi. İlk taramayı başlatabilirsin.</p>';
+  const jobHtml = jobs.length ? jobs.map(job => {
+    const result = job.result && typeof job.result === 'object' ? job.result : {};
+    const affected = Array.isArray(result.affectedFiles) ? result.affectedFiles : [];
+    const tests = Array.isArray(result.tests) ? result.tests : [];
+    const risks = Array.isArray(result.risks) ? result.risks : [];
+    return '<article class="rowitem"><div class="actions"><strong>İş #' + Number(job.id) + ' · ' + escapeHtml(job.incident_title || 'Guardian incelemesi') + '</strong><span class="tag">' + escapeHtml(job.status) + '</span></div>'
+      + '<div class="small">' + escapeHtml(job.agent) + ' · ' + escapeHtml(job.system) + ' · ' + escapeHtml(new Date(job.created_at).toLocaleString('tr-TR')) + '</div>'
+      + (result.rootCause ? '<p><strong>Kök neden değerlendirmesi:</strong> ' + escapeHtml(result.rootCause) + '</p>' : '')
+      + (result.confidence ? '<p class="small">Güven: ' + escapeHtml(result.confidence) + ' · Uygulandı: hayır · İnsan incelemesi gerekli</p>' : '')
+      + (result.suggestedFix ? '<p><strong>Önerilen çözüm:</strong> ' + escapeHtml(result.suggestedFix) + '</p>' : '')
+      + (affected.length ? '<p class="small">İlgili dosyalar: ' + affected.map(escapeHtml).join(', ') + '</p>' : '')
+      + (tests.length ? '<p class="small">Test planı: ' + tests.map(escapeHtml).join(' · ') + '</p>' : '')
+      + (risks.length ? '<p class="small">Riskler: ' + risks.map(escapeHtml).join(' · ') + '</p>' : '')
+      + (result.proposedPatch ? '<details><summary>Önerilen yama taslağı (uygulanmadı)</summary><pre>' + escapeHtml(result.proposedPatch) + '</pre></details>' : '')
+      + (result.status === 'insufficient_context' ? '<p class="notice warn">Kaynak bağlamı yetersiz; tahminle düzeltme hazırlanmadı.</p>' : '')
+      + (result.status === 'proposal_only' && job.repair_dispatch_status === 'dispatched' ? '<p class="notice">Onarım workflow\'u başlatıldı. <a href="https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml" target="_blank" rel="noopener noreferrer">GitHub Actions sonuçlarını aç</a></p>' : '')
+      + (result.status === 'proposal_only' && job.repair_dispatch_status === 'dispatching' ? '<p class="notice warn">Onarım workflow başlatma isteği gönderiliyor veya sonucu bekleniyor. Tekrar tetiklemek yerine önce GitHub Actions geçmişini kontrol et.</p>' : '')
+      + (job.repair_run_status ? '<p class="small">Son kaydedilen workflow (geçmiş kanıt): ' + escapeHtml(job.repair_run_status) + (job.repair_run_conclusion ? ' · Sonuç: ' + escapeHtml(job.repair_run_conclusion) : '') + '</p>' : '')
+      + (job.repair_checks_status && job.repair_checks_status !== 'unknown' ? '<p class="small">PR kontrolleri: ' + escapeHtml(job.repair_checks_status) + '</p>' : '')
+      + (job.repair_run_url ? '<p><a href="' + escapeHtml(job.repair_run_url) + '" target="_blank" rel="noopener noreferrer">Son kaydedilen workflow kanıtını aç</a></p>' : '')
+      + (job.repair_pr_url ? '<p><a href="' + escapeHtml(job.repair_pr_url) + '" target="_blank" rel="noopener noreferrer">Son kaydedilen onarım PR #' + Number(job.repair_pr_number || 0) + ' kanıtını aç</a> · ' + escapeHtml(job.repair_pr_state || '') + '</p>' : '')
+      + (job.repair_dispatch_status === 'dispatched' && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-refresh-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> GitHub sonucunu sorgulamayı onaylıyorum</label><button class="btn secondary">Sonucu yenile</button></form>' : '')
+
+      + (result.status === 'proposal_only' && !emergencyStop && !['dispatched','dispatching'].includes(job.repair_dispatch_status || 'not_requested') && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-create-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu analizden testli bir düzeltme PR\'si hazırlanmasını onaylıyorum</label><button class="btn">Düzeltme PR\'si hazırla</button></form>' : '')
+      + (result.status === 'proposal_only' && !process.env.FRIEREN_GITHUB_TOKEN && job.repair_dispatch_status !== 'dispatched' ? '<p class="notice warn">PR oluşturma düğmesi için FRIEREN_GITHUB_TOKEN yapılandırılmalı.</p>' : '')
+      + '</article>';
+  }).join('') : '<p class="muted">Henüz Frieren AI inceleme görevi yok.</p>';
+  const monitorInterval = Math.max(60_000, Math.min(Number(process.env.GUARDIAN_SCAN_INTERVAL_MS) || 300_000, 1_800_000));
+  const monitorAge = monitorState?.last_tick_at ? Date.now() - new Date(monitorState.last_tick_at).getTime() : Infinity;
+  const monitorStatus = monitorAge <= monitorInterval * 2 + 30_000 ? 'Aktif' : monitorState?.last_tick_at ? 'Gecikmiş' : 'Başlatılıyor';
+  const systemCards = '<div class="grid">'
+    + '<div class="stat"><small>Poğaça Frieren</small><strong>' + (serviceState.pogacaReady ? 'Bağlı' : 'Kontrol gerekli') + '</strong></div>'
+    + '<div class="stat"><small>Frieren AI köprüsü</small><strong>' + (serviceState.frierenAiBridgeConfigured ? 'Yapılandırıldı' : 'Anahtar eksik') + '</strong></div>'
+    + '<div class="stat"><small>Frieren Neural canlılık</small><strong>' + (serviceState.neuralLiveConfigured ? 'URL tanımlı' : 'Henüz bağlanmadı') + '</strong></div>'
+    + '<div class="stat"><small>GitHub onarım yetkisi</small><strong>' + (serviceState.githubTokenConfigured ? 'Token tanımlı' : 'Anahtar eksik') + '</strong></div>'
+    + '<div class="stat"><small>Guardian izleyici</small><strong>' + monitorStatus + '</strong></div>'
+    + '</div><p class="small">Kartlar bağlantı yapılandırmasını gösterir; harici servislerin gerçek sağlık durumu tarama düğmesiyle doğrulanır.</p>'
+    + (monitorState?.last_tick_at ? '<p class="small">Son Guardian kontrolü: ' + escapeHtml(new Date(monitorState.last_tick_at).toLocaleString('tr-TR')) + (monitorState.last_error ? ' · Son hata: ' + escapeHtml(monitorState.last_error) : '') + '</p>' : '');
+  const auditChecks = [
+    { name: 'Poğaça Discord bağlantısı', status: serviceState.pogacaReady === true ? 'PASS' : 'FAIL', detail: serviceState.pogacaReady === true ? 'Discord istemcisi hazır.' : 'Discord istemcisi hazır değil; bağlantı/oturum kontrol edilmeli.' },
+    { name: 'Frieren AI köprü anahtarı', status: serviceState.frierenAiBridgeConfigured === true ? 'PASS' : 'FAIL', detail: serviceState.frierenAiBridgeConfigured === true ? 'Gerekli anahtar uzunluk kontrolünü geçti; değer gösterilmez.' : 'Köprü anahtarı eksik veya beklenen uzunlukta değil.' },
+    { name: 'Frieren Neural canlılık URL\'si', status: serviceState.neuralLiveConfigured === true ? 'PASS' : 'NOT TESTED', detail: serviceState.neuralLiveConfigured === true ? 'URL tanımlı; bu kontrol uç noktaya istek göndermez.' : 'Ayrı canlılık URL\'si tanımlı değil; servis sağlığı doğrulanmadı.' },
+    { name: 'GitHub onarım tokenı', status: serviceState.githubTokenConfigured === true ? 'PASS' : 'BLOCKED', detail: serviceState.githubTokenConfigured === true ? 'Token uzunluk kontrolünü geçti; değer gösterilmez.' : 'Onarım PR akışı token olmadan kullanılamaz.' },
+    { name: 'Guardian izleyici', status: monitorStatus === 'Aktif' && !monitorState?.last_error ? 'PASS' : monitorStatus === 'Başlatılıyor' ? 'NOT TESTED' : 'FAIL', detail: monitorStatus === 'Aktif' && !monitorState?.last_error ? 'Son heartbeat zamanında ve hata kaydı yok.' : monitorState?.last_error ? 'Son izleyici hatası: ' + String(monitorState.last_error) : monitorStatus === 'Gecikmiş' ? 'Heartbeat gecikmiş; izleyici çalışma durumu incelenmeli.' : 'Henüz heartbeat kaydı yok; ilk kontrol bekleniyor.' },
+  ];
+  const auditHtml = '<section class="panel"><h2>Guardian öz denetimi</h2><p class="muted">Yapılandırma ve yerel heartbeat kontrolleri. PASS harici servislerin canlı olduğunu tek başına kanıtlamaz; bu bölüm ağ isteği veya onarım başlatmaz.</p>'
+    + auditChecks.map(check => '<div class="rowitem"><div class="actions"><strong>' + escapeHtml(check.name) + '</strong><span class="tag ' + (check.status === 'FAIL' || check.status === 'BLOCKED' ? 'warn' : '') + '">' + check.status + '</span></div><p class="small">' + escapeHtml(check.detail) + '</p></div>').join('')
+    + '</section>';
+  const critical = incidents.filter(item => item.severity === 'critical').length;
+  const open = incidents.filter(item => !['resolved','ignored'].includes(item.status)).length;
+  return page('Neural Guardian', renderOwnerNavigation()
+    + '<div class="top"><div><div class="brand">FRIEREN · NEURAL GUARDIAN</div><div class="small">INCIDENT CONTROL & ENGINEERING REVIEW</div></div><a class="btn secondary" href="/owner">Kontrol merkezine dön</a></div>'
+    + '<section class="hero"><span class="tag">OWNER · PRIVATE</span><h1>Neural Guardian</h1><p class="muted">Frieren Neural, Frieren AI ve Poğaça Frieren için hata tespiti, olay geçmişi ve mühendislik incelemesi.</p>'
+    + (noticeText ? '<div class="notice">' + escapeHtml(noticeText) + '</div>' : '')
+    + (emergencyStop ? '<div class="notice warn">Acil durdurma etkin: Frieren AI incelemesi ve yeni GitHub onarım workflow gönderimi engellendi. Hata tespiti ve kayıt devam eder.</div>' : '')
+    + '<section class="panel"><h2>Guardian otomasyon acil durdurma</h2><p class="muted">' + (emergencyStop ? 'Etkin · AI incelemesi ve yeni onarım workflow gönderimi kapalı.' : 'Devre dışı · Owner onaylı inceleme ve onarım akışları kullanılabilir.') + '</p><form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-emergency-stop"><input type="hidden" name="enabled" value="' + (emergencyStop ? 'false' : 'true') + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu değişikliği onaylıyorum</label><button class="btn secondary">' + (emergencyStop ? 'Otomasyonu yeniden etkinleştir' : 'Guardian otomasyonunu durdur') + '</button></form></section>'
+    + systemCards
+     + auditHtml
+    + '<div class="grid"><div class="stat"><small>Açık olay</small><strong>' + open + '</strong></div><div class="stat"><small>Kritik olay</small><strong>' + critical + '</strong></div><div class="stat"><small>İnceleme görevi</small><strong>' + jobs.length + '</strong></div></div>'
+    + '<section class="panel"><h2>Frieren Neural kalite raporu</h2>'
+    + (qualityReport ? '<div class="actions"><span class="tag ' + (qualityReport.decision === 'READY FOR STAGED TEST' ? '' : 'warn') + '">' + escapeHtml(qualityReport.decision) + '</span><span class="small">' + escapeHtml(new Date(qualityReport.submitted_at).toLocaleString('tr-TR')) + '</span></div>'
+      + '<p class="small">Backend: ' + escapeHtml(qualityReport.model_backend) + ' · Rapor SHA-256: <code>' + escapeHtml(qualityReport.report_sha256) + '</code></p>'
+      + '<p class="small">Model dosyası SHA-256: <code>' + escapeHtml(qualityReport.artifact_sha256) + '</code></p>'
+      + '<p class="small">Kaynak commit: <code>' + escapeHtml(qualityReport.report?.source_commit_sha || 'missing') + '</code></p>'
+      + '<p class="small">Neural CI kanıtı: ' + escapeHtml(qualityReport.report?.ci_evidence?.status || 'missing') + '</p>'
+      + (qualityReport.report?.ci_evidence?.run_url ? '<p class="small"><a href="' + escapeHtml(qualityReport.report.ci_evidence.run_url) + '" target="_blank" rel="noopener noreferrer">Doğrulanan GitHub Actions çalışmasını aç</a></p>' : '')
+      + ((Array.isArray(qualityReport.blocking_reasons) ? qualityReport.blocking_reasons : []).length
+        ? '<p class="notice warn">Engeller: ' + qualityReport.blocking_reasons.map(escapeHtml).join(' · ') + '</p>'
+        : '<p class="notice warn">Kalite raporunda engel görünmüyor; bu tek başına CI, hafıza izolasyonu, güvenlik veya dağıtım onayı değildir.</p>')
+      : '<p class="muted">Henüz Frieren Neural kalite raporu alınmadı. Rapor aktarımı için Neural servisinde FRIEREN_NEURAL_GUARDIAN_URL ve FRIEREN_NEURAL_GUARDIAN_SECRET yapılandırılmalı.</p>')
+    + '<p class="small">Guardian raporları model backend kimliği ve SHA-256 parmak iziyle saklar. Son 50 rapor tutulur. Eksik bağımsız kanıtlar otomatik olarak başarılı sayılmaz.</p></section>'
+    + '<section class="panel"><h2>Sağlık taraması</h2><p class="muted">Yerel Discord/DB durumu ve yapılandırılmış AI sağlık kontrolü incelenir. Neural için yalnızca ayrı, hafif bir canlılık URL\'si tanımlanmışsa istek gönderilir; model yükleyen /health endpoint\'i otomatik çağrılmaz.</p>'
+    + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-scan"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Sağlık taramasını başlatmayı onaylıyorum</label><button class="btn">Sistemleri tara</button></form></section>'
+    + '<section class="panel"><h2>Hata ve olay kayıtları</h2>' + incidentHtml + '</section>'
+    + '<section class="panel"><h2>Frieren AI mühendislik incelemeleri</h2><p class="muted">Frieren AI kök neden ve yama önerisi hazırlar. Öneriler otomatik uygulanmaz; birleştirme ve dağıtım için ayrıca Owner onayı gerekir.</p>' + jobHtml + '</section>'
+    + '<p class="small">Guardian yeni yerel hata kayıtlarını izler. Harici servis kontrolleri bu ekrandaki tarama düğmesiyle yapılır; ücretsiz Render servislerini sürekli uyandıran keep-alive sorguları çalıştırılmaz.</p></section>');
+}
 export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   const url = new URL(req.url, BASE_URL);
   if (!url.pathname.startsWith('/owner')) return false;
@@ -658,9 +782,35 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     return true;
   }
 
+  if (url.pathname === '/owner/guardian' && req.method === 'GET') {
+    try {
+      const [incidents, jobs, monitorState, stopResult, qualityReport] = await Promise.all([
+        listGuardianIncidents(db, 30),
+        listGuardianJobs(db, 20),
+        getGuardianMonitorState(db),
+        db.query("SELECT setting_value FROM owner_settings WHERE setting_key='guardian_emergency_stop' LIMIT 1"),
+        getLatestGuardianQualityReport(db),
+      ]);
+      const emergencyStop = stopResult.rows?.[0]?.setting_value?.enabled === true;
+      send(res, 200, renderOwnerGuardianWorkspace({
+        incidents, jobs, monitorState, emergencyStop, qualityReport, csrf: session.csrf, notice: url.searchParams.get('notice') || '',
+        serviceState: {
+          pogacaReady: Boolean(client?.isReady?.()),
+          frierenAiBridgeConfigured: String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim().length >= 32,
+          neuralLiveConfigured: Boolean(String(process.env.FRIEREN_NEURAL_LIVE_URL || '').trim()),
+          githubTokenConfigured: String(process.env.FRIEREN_GITHUB_TOKEN || '').trim().length >= 32,
+        },
+      }));
+    } catch (error) {
+      console.error('Guardian workspace load failed:', error?.message || error);
+      send(res, 503, page('Guardian yüklenemedi', '<h1>Neural Guardian verileri alınamadı</h1><a class="btn" href="/owner">Panele dön</a>'));
+    }
+    return true;
+  }
+
   if (url.pathname === '/owner/frieren-ai/health' && req.method === 'GET') {
-    const aiBase = (process.env.FRIEREN_AI_PUBLIC_URL || 'https://pogaca-frieren-kltd.onrender.com').replace(/\/$/, '');
-    const healthSecret = process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
+    const aiBase = (process.env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).replace(/\/$/, '');
+    const healthSecret = process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
     if (healthSecret.length < 32) {
       res.writeHead(503, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
       res.end(JSON.stringify({ status: 'unconfigured', error: 'Owner sağlık kontrolü henüz yapılandırılmadı.' }));
@@ -769,6 +919,243 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const form = await readForm(req);
       if (!safeStringEqual(form.get('csrf'), session.csrf)) return send(res, 403, page('İstek reddedildi', '<h1>CSRF doğrulaması başarısız</h1>'));
       const action = form.get('action');
+      if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
+        const enabled = form.get('enabled') === 'true';
+        await db.query(`WITH changed AS (
+          INSERT INTO owner_settings(setting_key,setting_value,updated_by,updated_at)
+          VALUES('guardian_emergency_stop',$1::jsonb,$2,NOW())
+          ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_by=EXCLUDED.updated_by,updated_at=NOW()
+          RETURNING setting_key
+        ) INSERT INTO owner_audit_logs(actor_id,action,target,details)
+          SELECT $2,'guardian.emergency_stop.update',NULL,$3::jsonb FROM changed`,
+          [JSON.stringify({ enabled }), OWNER_ID, JSON.stringify({ enabled })]);
+        redirect(res, '/owner/guardian?notice=guardian_emergency_stop_updated');
+        return true;
+      }
+      if (action === 'guardian-scan' && form.get('confirm') === 'yes') {
+        let found = 0;
+        if (!client?.isReady?.()) {
+          await upsertGuardianIncident(db, { system: 'pogaca_frieren', code: 'DISCORD_CLIENT_NOT_READY', title: 'Poğaça Discord bağlantısı hazır değil', summary: 'Owner Panel taramasında Discord istemcisi hazır görünmüyor.', severity: 'high' });
+          found += 1;
+        }
+        await db.query('SELECT 1');
+        const healthSecret = String(process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+        const aiBase = String(process.env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).replace(/\/$/, '');
+        try {
+          const liveResponse = await fetch(aiBase + '/live', { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(7000) });
+          const livePayload = await liveResponse.json().catch(() => ({}));
+          if (!liveResponse.ok || livePayload.status !== 'alive' || livePayload.readiness?.bridgeConfigured !== true) {
+            await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_LIVENESS_FAILED', title: 'Frieren AI canlılık kontrolü başarısız', summary: 'Frieren AI /live kontrolü başarısız veya test köprüsü yapılandırılmamış.', severity: 'high' });
+            found += 1;
+          }
+        } catch (error) {
+          await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_LIVENESS_UNREACHABLE', title: 'Frieren AI canlılık endpointine ulaşılamadı', summary: String(error?.name || 'NetworkError') + ': Frieren AI /live kontrolü başarısız.', severity: 'high' });
+          found += 1;
+        }
+        if (healthSecret.length >= 32) {
+          try {
+            const response = await fetch(aiBase + '/health', { headers: { Accept: 'application/json', 'x-frieren-health-secret': healthSecret }, signal: AbortSignal.timeout(7000) });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok || !['ok','ready'].includes(String(payload.status || '').toLowerCase())) {
+              await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_HEALTH_CHECK_FAILED', title: 'Frieren AI sağlık kontrolü başarısız', summary: 'Frieren AI sağlık endpoint HTTP ' + response.status + ' döndürdü; payload durumu: ' + String(payload.status || 'bilinmiyor'), severity: 'high' });
+              found += 1;
+            }
+          } catch (error) {
+            await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_HEALTH_UNREACHABLE', title: 'Frieren AI sağlık endpointine ulaşılamadı', summary: String(error?.name || 'NetworkError') + ': Frieren AI sağlık kontrolü zaman aşımına uğradı veya bağlantı kurulamadı.', severity: 'high' });
+            found += 1;
+          }
+        }
+        const neuralLiveUrl = String(process.env.FRIEREN_NEURAL_LIVE_URL || '').trim();
+        if (neuralLiveUrl) {
+          let parsed;
+          try { parsed = new URL(neuralLiveUrl); } catch { throw new Error('INVALID_FRIEREN_NEURAL_LIVE_URL'); }
+          if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_NEURAL_LIVE_URL');
+          try {
+            const response = await fetch(parsed.toString(), { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(5000) });
+            if (!response.ok) {
+              await upsertGuardianIncident(db, { system: 'frieren_neural', code: 'NEURAL_LIVENESS_FAILED', title: 'Frieren Neural canlılık kontrolü başarısız', summary: 'Yapılandırılmış hafif canlılık endpointi HTTP ' + response.status + ' döndürdü.', severity: 'high' });
+              found += 1;
+            }
+          } catch (error) {
+            await upsertGuardianIncident(db, { system: 'frieren_neural', code: 'NEURAL_LIVENESS_UNREACHABLE', title: 'Frieren Neural canlılık endpointine ulaşılamadı', summary: String(error?.name || 'NetworkError') + ': Canlılık kontrolü başarısız.', severity: 'high' });
+            found += 1;
+          }
+        }
+        await auditOwnerAction(db, OWNER_ID, 'guardian.scan', null, { findings: found, neuralConfigured: Boolean(neuralLiveUrl), frierenAiHealthConfigured: healthSecret.length >= 32 });
+        redirect(res, '/owner/guardian?notice=guardian_scan_complete');
+        return true;
+      }
+      if (action === 'guardian-review' && form.get('confirm') === 'yes') {
+        await assertGuardianAutomationEnabled(db);
+        let job = null;
+        try {
+          const incident = await getGuardianIncident(db, form.get('incidentId'));
+          if (!incident) throw new Error('GUARDIAN_INCIDENT_NOT_FOUND');
+          const secret = String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+          if (secret.length < 32) throw new Error('GUARDIAN_BRIDGE_NOT_CONFIGURED');
+          job = await createGuardianReviewJob(db, { incidentId: incident.id, actorId: OWNER_ID });
+          if (job.reused && ['queued','running'].includes(job.status)) {
+            redirect(res, '/owner/guardian?notice=guardian_review_complete');
+            return true;
+          }
+          await assertGuardianAutomationEnabled(db);
+          const response = await fetch(getFrierenAiGuardianEndpoint(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + secret },
+            body: JSON.stringify({ incident: { system: incident.system, code: incident.code, title: incident.title, summary: incident.summary, evidence: incident.evidence } }),
+            signal: AbortSignal.timeout(60_000),
+          });
+          const review = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error('GUARDIAN_AI_HTTP_' + response.status);
+          await finishGuardianReviewJob(db, { jobId: job.id, status: 'completed', result: review });
+          await auditOwnerAction(db, OWNER_ID, 'guardian.review.completed', String(incident.id), { jobId: job.id, resultStatus: review.status || 'proposal_only', applied: false });
+          redirect(res, '/owner/guardian?notice=guardian_review_complete');
+        } catch (error) {
+          if (job?.id && !job.reused) await finishGuardianReviewJob(db, { jobId: job.id, status: 'failed', error: error?.message || 'REVIEW_FAILED' }).catch(() => {});
+          throw error;
+        }
+        return true;
+      }
+      if (action === 'guardian-create-pr' && form.get('confirm') === 'yes') {
+        await assertGuardianAutomationEnabled(db);
+        const token = String(process.env.FRIEREN_GITHUB_TOKEN || '').trim();
+        if (token.length < 32) throw new Error('GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED');
+        const incident = await getGuardianIncident(db, form.get('incidentId'));
+        if (!incident) throw new Error('GUARDIAN_INCIDENT_NOT_FOUND');
+        const job = await getLatestGuardianJob(db, incident.id);
+        if (!job || job.status !== 'completed' || job.result?.status !== 'proposal_only') {
+          throw new Error('GUARDIAN_REPAIR_REVIEW_REQUIRED');
+        }
+        if (job.repair_dispatch_status === 'dispatched') {
+          redirect(res, '/owner/guardian?notice=guardian_pr_dispatched');
+          return true;
+        }
+        const reserved = await reserveGuardianRepairDispatch(db, job.id);
+        if (!reserved) throw new Error('GUARDIAN_REPAIR_ALREADY_DISPATCHED_OR_RUNNING');
+        const review = job.result || {};
+        const task = [
+          'Guardian incident #' + incident.id + ' · ' + incident.system + ' · ' + incident.code,
+          'Başlık: ' + incident.title,
+          'Olay: ' + incident.summary,
+          'Frieren AI kök neden: ' + String(review.rootCause || '').slice(0, 300),
+          'Önerilen çözüm: ' + String(review.suggestedFix || '').slice(0, 300),
+          'İlgili dosyalar: ' + (Array.isArray(review.affectedFiles) ? review.affectedFiles.slice(0, 5).join(', ') : ''),
+          'Test planı: ' + (Array.isArray(review.tests) ? review.tests.slice(0, 4).join('; ') : ''),
+          'Riskler: ' + (Array.isArray(review.risks) ? review.risks.slice(0, 3).join('; ') : ''),
+          'Frieren AI yama önerisi: ' + String(review.proposedPatch || '').slice(0, 350),
+          'Öneriyi körlemesine uygulama; mevcut kodu tekrar incele, ilgili testleri kontrol et, en fazla 4 güvenli JavaScript dosyasında minimal patch hazırla.',
+        ].join('\n').slice(0, 1200);
+        try {
+          const workflowUrl = 'https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml';
+          await assertGuardianAutomationEnabled(db);
+          const response = await fetch('https://api.github.com/repos/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml/dispatches', {
+            method: 'POST',
+            headers: {
+              Accept: 'application/vnd.github+json',
+              Authorization: 'Bearer ' + token,
+              'X-GitHub-Api-Version': '2022-11-28',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ref: 'feat/guardian-autonomous-repair-v2',
+              inputs: { task, base_branch: 'feat/guardian-autonomous-repair-v2', incident_id: String(incident.id) },
+            }),
+            signal: AbortSignal.timeout(12_000),
+          });
+          if (response.status !== 204) throw new Error('GUARDIAN_GITHUB_DISPATCH_HTTP_' + response.status);
+          await finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl });
+          await auditOwnerAction(db, OWNER_ID, 'guardian.repair.workflow_dispatched', String(incident.id), {
+            jobId: job.id, workflow: 'frieren-ai-self-repair.yml', baseBranch: 'feat/guardian-autonomous-repair-v2',
+          }).catch(error => console.error('Guardian dispatch audit failed:', error?.message || error));
+          redirect(res, '/owner/guardian?notice=guardian_pr_dispatched');
+        } catch (error) {
+          await finishGuardianRepairDispatch(db, { jobId: job.id, status: 'failed' }).catch(() => {});
+          throw error;
+        }
+        return true;
+      }
+      if (action === 'guardian-refresh-pr' && form.get('confirm') === 'yes') {
+        const token = String(process.env.FRIEREN_GITHUB_TOKEN || '').trim();
+        if (token.length < 32) throw new Error('GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED');
+        const incident = await getGuardianIncident(db, form.get('incidentId'));
+        if (!incident) throw new Error('GUARDIAN_INCIDENT_NOT_FOUND');
+        const job = await getLatestGuardianJob(db, incident.id);
+        if (!job || job.repair_dispatch_status !== 'dispatched') throw new Error('GUARDIAN_REPAIR_NOT_DISPATCHED');
+        const headers = {
+          Accept: 'application/vnd.github+json',
+          Authorization: 'Bearer ' + token,
+          'X-GitHub-Api-Version': '2022-11-28',
+        };
+        const apiBase = 'https://api.github.com/repos/soire07/pogaca-frieren-';
+        const runsResponse = await fetch(apiBase + '/actions/workflows/frieren-ai-self-repair.yml/runs?branch=feat%2Fguardian-autonomous-repair-v2&event=workflow_dispatch&per_page=30', {
+          headers, signal: AbortSignal.timeout(10_000),
+        });
+        if (!runsResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + runsResponse.status);
+        const runsPayload = await runsResponse.json();
+        const runMarker = new RegExp('(?:^|[^A-Za-z0-9])#' + Number(incident.id) + '(?!\\d)', 'i');
+        const run = (runsPayload.workflow_runs || []).find(item =>
+          runMarker.test(String(item.display_title || item.name || ''))
+        ) || null;
+        let runId = run?.id || null;
+        let runUrl = run?.html_url || job.repair_workflow_url || null;
+        let runStatus = run?.status || null;
+        let runConclusion = run?.conclusion || null;
+        let pr = null;
+        const branchName = 'ai-repair/guardian-' + incident.id;
+        const query = new URLSearchParams({
+          state: 'all',
+          head: 'soire07:' + branchName,
+          base: 'feat/guardian-autonomous-repair-v2',
+        });
+        const prResponse = await fetch(apiBase + '/pulls?' + query.toString(), {
+          headers, signal: AbortSignal.timeout(10_000),
+        });
+        if (!prResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + prResponse.status);
+        const prs = await prResponse.json();
+        pr = Array.isArray(prs) ? prs.find(item => item.head?.ref === branchName) || null : null;
+        let checksStatus = classifyGuardianWorkflowConclusion(runConclusion);
+        if (pr) {
+          if (!pr.head?.sha) {
+            checksStatus = 'unknown';
+          } else {
+            const checksResponse = await fetch(apiBase + '/commits/' + encodeURIComponent(pr.head.sha) + '/check-runs?per_page=100', {
+              headers, signal: AbortSignal.timeout(10_000),
+            });
+            const checksPayload = checksResponse.ok ? await checksResponse.json().catch(() => null) : null;
+            checksStatus = classifyGuardianPullRequestChecks({ ok: checksResponse.ok, payload: checksPayload });
+          }
+        } else if (run && run.status !== 'completed') {
+          checksStatus = 'pending';
+        } else if (run?.status === 'completed' && run.conclusion === 'success') {
+          checksStatus = 'success';
+        } else if (run?.status === 'completed' && run.conclusion === 'cancelled') {
+          checksStatus = 'cancelled';
+        }
+        await updateGuardianRepairStatus(db, {
+          jobId: job.id,
+          runId,
+          runUrl,
+          runStatus,
+          runConclusion,
+          prNumber: pr?.number || null,
+          prUrl: pr?.html_url || null,
+          prState: pr ? (pr.merged_at ? 'merged' : pr.state || null) : null,
+          checksStatus,
+          retryable: Boolean(!pr && run?.status === 'completed'
+            && ['failure','cancelled','timed_out','action_required','startup_failure'].includes(run?.conclusion)),
+        });
+        await auditOwnerAction(db, OWNER_ID, 'guardian.repair.status_refreshed', String(incident.id), {
+          jobId: job.id, runStatus, runConclusion, prNumber: pr?.number || null, prState: pr ? (pr.merged_at ? 'merged' : pr.state || null) : null, checksStatus,
+        }).catch(error => console.error('Guardian status audit failed:', error?.message || error));
+        redirect(res, '/owner/guardian?notice=guardian_pr_status_updated');
+        return true;
+      }
+      if (action === 'guardian-resolve' && form.get('confirm') === 'yes') {
+        const result = await resolveGuardianIncident(db, { incidentId: form.get('incidentId'), actorId: OWNER_ID });
+        if (!result) throw new Error('GUARDIAN_INCIDENT_NOT_FOUND');
+        redirect(res, '/owner/guardian?notice=guardian_resolved');
+        return true;
+      }
       if (action === 'render-service-action' && form.get('confirm') === 'yes') {
         const result = await executeRenderServiceAction(db, {
           serviceKey: form.get('serviceKey'),
@@ -964,14 +1351,20 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     } catch (error) {
       const code = String(error?.message || '');
       console.error('Owner dashboard action failed:', code || 'unknown error');
-      const notice = code === 'SENSITIVE_TEST_TARGET_REJECTED' ? 'test_target_sensitive'
+      const guardianError = code.startsWith('GUARDIAN_') || code.startsWith('REVIEW_')
+        || code === 'INVALID_FRIEREN_AI_PUBLIC_URL' || code === 'INVALID_FRIEREN_NEURAL_LIVE_URL';
+      const notice = code === 'GUARDIAN_EMERGENCY_STOP_ENABLED' ? 'guardian_emergency_stop_active'
+        : code === 'GUARDIAN_BRIDGE_NOT_CONFIGURED' ? 'guardian_not_configured'
+        : code === 'GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED' ? 'guardian_github_not_configured'
+        : guardianError ? (code.startsWith('GUARDIAN_GITHUB_READ_') ? 'guardian_pr_status_failed' : code.startsWith('GUARDIAN_GITHUB_') ? 'guardian_pr_dispatch_failed' : 'guardian_review_failed')
+        : code === 'SENSITIVE_TEST_TARGET_REJECTED' ? 'test_target_sensitive'
         : code === 'SENSITIVE_MEMORY_REJECTED' ? 'memory_sensitive_rejected'
         : code === 'RENDER_API_NOT_CONFIGURED' ? 'render_api_missing'
         : code === 'RENDER_ACTION_COOLDOWN' ? 'service_cooldown'
         : /^RENDER_API_HTTP_(401|403)$/.test(code) ? 'render_api_auth_error'
         : /^RENDER_API_HTTP_(404|429|5\d\d)$/.test(code) ? 'render_api_service_error'
         : 'invalid';
-      redirect(res, '/owner?notice=' + notice);
+      redirect(res, (guardianError ? '/owner/guardian?notice=' : '/owner?notice=') + notice);
     }
     return true;
   }
