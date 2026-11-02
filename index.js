@@ -249,6 +249,10 @@ client.on(Events.InteractionCreate, async interaction => {
       return sendPrivateInteractionError(interaction, 'Takas sırasında hata oluştu. Daha sonra tekrar dene.');
     }
   }
+  if (interaction.isAutocomplete() && interaction.guildId &&
+      !(await areGuildCommandFeaturesEnabled(pool, interaction.guildId, interaction.commandName))) {
+    return interaction.respond([]).catch(() => {});
+  }
   if (interaction.isAutocomplete()) {
     const command = client.commands.get(interaction.commandName);
     if (!command?.autocomplete) return interaction.respond([]).catch(() => {});
