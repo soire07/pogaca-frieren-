@@ -372,7 +372,8 @@ export async function handleGuildDashboardRequest(req, res, {
       return true;
     }
     if (path !== '/guilds' && path !== '/guilds/' && path !== '/guilds/connect'
-        && !/^\/guilds\/\d{17,20}$/.test(path)) {
+        && !/^\\/guilds\\/\\d{17,20}$/.test(path)
+        && !/^\\/guilds\\/\\d{17,20}\\/commands$/.test(path)) {
       send(res, 404, '<h1>Lonca paneli sayfası bulunamadı.</h1>');
       return true;
     }
@@ -386,7 +387,7 @@ export async function handleGuildDashboardRequest(req, res, {
       send(res, 200, renderGuildList(user, dashboard.guilds, url.searchParams.get('status') || '', csrf));
       return true;
     }
-    const guildId = path.slice('/guilds/'.length);
+    const guildId = path.slice('/guilds/'.length).split('/')[0];
     if (!SNOWFLAKE.test(guildId)) {
       send(res, 404, '<h1>Lonca bulunamadı.</h1>');
       return true;
