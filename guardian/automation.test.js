@@ -190,3 +190,20 @@ test('failed repair dispatch does not send when workflow reconciliation is unava
   assert.equal(result.status, 'reconciliation_unavailable');
   assert.equal(posts, 0);
 });
+
+
+test('automatic dispatch retry respects the emergency stop before reserving or contacting GitHub', async () => {
+  let requests = 0;
+  let reservations = 0;
+  const result = await processPendingGuardianRepairDispatch({
+    db: { query: async () => ({ rows: [{ setting_value: { enabled: true } }] }) },
+    job: { id: 9, result: review },
+    incident,
+    env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
+    fetchImpl: async () => { requests += 1; throw new Error('must not request'); },
+    store: { reserveGuardianRepairDispatch: async () => { reservations += 1; return { id: 9 }; } },
+  });
+  assert.equal(result.status, 'emergency_stop');
+  assert.equal(requests, 0);
+  assert.equal(reservations, 0);
+});
