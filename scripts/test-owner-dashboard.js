@@ -210,7 +210,7 @@ test('Guardian workspace shows dispatched workflow, PR and CI evidence with a re
     assert.match(html, /Son kaydedilen workflow kanıtını aç/);
     assert.match(html, /Son kaydedilen onarım PR #44 kanıtını aç/);
     assert.match(html, /PR kontrolleri: success/);
-    assert.match(html, /Onarım PR #44 incele/);
+    assert.match(html, /href="https:\/\/github\.com\/soire07\/pogaca-frieren-\/pull\/44"/);
     assert.match(html, /guardian-refresh-pr/);
   } finally {
     if (original === undefined) delete process.env.FRIEREN_GITHUB_TOKEN;
