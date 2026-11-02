@@ -202,6 +202,9 @@ test('Guardian repair reservation requires the incident to remain awaiting appro
   assert.match(sql, /FROM owner_guardian_incidents AS i/);
   assert.match(sql, /i\.status='awaiting_approval'/);
   assert.match(sql, /i\.id=j\.incident_id/);
+  assert.match(sql, /NOT EXISTS \([\s\S]*owner_settings s/);
+  assert.match(sql, /s\.setting_key='guardian_emergency_stop'/);
+  assert.match(sql, /s\.setting_value->>'enabled'='true'/);
 });
 
 test('Guardian retry scan selects only bounded failed or stale dispatches with saved proposals', async () => {
