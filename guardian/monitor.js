@@ -110,8 +110,16 @@ export function startGuardianMonitor({
         "SELECT last_seen_error_id FROM owner_guardian_monitor_state WHERE monitor_key='owner_error_logs'"
       );
       const cursor = Number(cursorResult.rows?.[0]?.last_seen_error_id || 0);
-      await scanPendingGuardianIncidents(db, onIncident, onError, 10);
-      await scanPendingGuardianRepairDispatches(db, onRepairDispatch, 5, onError);
+      try {
+        await scanPendingGuardianIncidents(db, onIncident, onError, 10);
+      } catch (error) {
+        onError(error);
+      }
+      try {
+        await scanPendingGuardianRepairDispatches(db, onRepairDispatch, 5, onError);
+      } catch (error) {
+        onError(error);
+      }
       await scanNewOwnerErrors(db, cursor, 50, async nextId => {
         await db.query(
           `UPDATE owner_guardian_monitor_state SET last_seen_error_id=$1,updated_at=NOW()
