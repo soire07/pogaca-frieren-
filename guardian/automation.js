@@ -106,7 +106,7 @@ export async function processGuardianIncident({
     }
     throw error;
   }
-  if (job?.reused || ['queued', 'running'].includes(job?.status)) {
+  if (job?.reused || job?.status === 'running') {
     return { status: 'already_running', jobId: Number(job.id) || null };
   }
   if (!job?.id) return { status: 'review_skipped', reason: 'GUARDIAN_REVIEW_JOB_NOT_CREATED' };
