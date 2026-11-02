@@ -233,7 +233,7 @@ test('homepage advertises an installable Frieren web app manifest and brand icon
   assert.equal(manifest.name, 'Frieren Platform');
   assert.equal(manifest.short_name, 'Frieren');
   assert.equal(manifest.display, 'standalone');
-  assert.ok(manifest.icons.some(icon => icon.src === '/assets/site-avatar.webp' && icon.sizes === '512x512' && icon.purpose === 'any maskable'));
+  assert.ok(manifest.icons.some(icon => icon.src === '/assets/site-avatar.webp' && icon.sizes === '192x192' && icon.purpose === 'any maskable'));
   const icon = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-avatar.webp', headers: {} }, icon), true);
   assert.equal(icon.status, 200);
