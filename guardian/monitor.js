@@ -1,4 +1,4 @@
-import { upsertGuardianIncident } from './store.js';
+import { upsertGuardianIncident, listPendingGuardianRepairDispatches } from './store.js';
 
 function systemForScope(scope) {
   const value = String(scope || '').toLocaleLowerCase('tr-TR');
@@ -62,6 +62,20 @@ export async function scanPendingGuardianIncidents(db, onIncident = async () => 
   return { attempted };
 }
 
+export async function scanPendingGuardianRepairDispatches(db, onDispatch = async () => {}, limit = 5, onDispatchError = async () => {}) {
+  const jobs = await listPendingGuardianRepairDispatches(db, limit);
+  let attempted = 0;
+  for (const job of jobs) {
+    try {
+      await onDispatch(job);
+    } catch (error) {
+      await onDispatchError(error, job);
+    }
+    attempted += 1;
+  }
+  return { attempted };
+}
+
 export function startGuardianMonitor({
   db,
   client,
@@ -69,6 +83,7 @@ export function startGuardianMonitor({
   setIntervalImpl = setInterval,
   clearIntervalImpl = clearInterval,
   onIncident = async () => {},
+  onRepairDispatch = async () => {},
   onError = error => console.error('Neural Guardian monitor failed:', error?.message || error),
 } = {}) {
   if (!db?.query) throw new Error('GUARDIAN_DATABASE_REQUIRED');
@@ -96,6 +111,7 @@ export function startGuardianMonitor({
       );
       const cursor = Number(cursorResult.rows?.[0]?.last_seen_error_id || 0);
       await scanPendingGuardianIncidents(db, onIncident, onError, 10);
+      await scanPendingGuardianRepairDispatches(db, onRepairDispatch, 5, onError);
       await scanNewOwnerErrors(db, cursor, 50, async nextId => {
         await db.query(
           `UPDATE owner_guardian_monitor_state SET last_seen_error_id=$1,updated_at=NOW()
