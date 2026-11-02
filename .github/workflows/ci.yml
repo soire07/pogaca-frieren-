@@ -1,10 +1,7 @@
-name: Poğaça Frieren checks
+name: Manual full validation (legacy entry point)
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,15 +9,15 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: "22"
       - name: Install dependencies
-        run: npm install
-      - name: Run syntax, command, RPG integrity, and regression tests
+        run: npm install --no-audit --no-fund
+      - name: Run the canonical full check
         run: npm run check
