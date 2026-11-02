@@ -110,10 +110,10 @@ export function smtpFailureDetails(error) {
 }
 
 function gmailApiReady() {
-  const endpoint = String(process.env.SITE_GMAIL_SCRIPT_URL || '');
+  const endpoint = String(process.env.SITE_GMAIL_SCRIPT_URL || '').trim();
   return Boolean(
     /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint) &&
-    process.env.SITE_GMAIL_SCRIPT_SECRET
+    String(process.env.SITE_GMAIL_SCRIPT_SECRET || '').trim()
   );
 }
 function mailReady() {
@@ -141,11 +141,11 @@ export function consumeSmtpBuffer(buffer, pendingLines = []) {
 
 export async function sendGmailApi(to, subject, html, plain) {
   if (!gmailApiReady()) throw new Error('GMAIL_SCRIPT_NOT_CONFIGURED');
-  const response = await fetch(process.env.SITE_GMAIL_SCRIPT_URL, {
+  const response = await fetch(String(process.env.SITE_GMAIL_SCRIPT_URL || '').trim(), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      secret: process.env.SITE_GMAIL_SCRIPT_SECRET,
+      secret: String(process.env.SITE_GMAIL_SCRIPT_SECRET || '').trim(),
       to, subject, html, plain,
       senderName: 'Frieren Portal'
     }),
