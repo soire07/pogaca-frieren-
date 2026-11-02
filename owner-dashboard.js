@@ -1091,8 +1091,9 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         });
         if (!runsResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + runsResponse.status);
         const runsPayload = await runsResponse.json();
+        const runMarker = new RegExp('(?:^|[^A-Za-z0-9])#' + Number(incident.id) + '(?!\\d)', 'i');
         const run = (runsPayload.workflow_runs || []).find(item =>
-          String(item.display_title || item.name || '').includes('#' + incident.id)
+          runMarker.test(String(item.display_title || item.name || ''))
         ) || null;
         let runId = run?.id || null;
         let runUrl = run?.html_url || job.repair_workflow_url || null;
@@ -1142,6 +1143,8 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
           prUrl: pr?.html_url || null,
           prState: pr?.state || null,
           checksStatus,
+          retryable: Boolean(!pr && run?.status === 'completed'
+            && ['failure','cancelled','timed_out','action_required','startup_failure'].includes(run?.conclusion)),
         });
         await auditOwnerAction(db, OWNER_ID, 'guardian.repair.status_refreshed', String(incident.id), {
           jobId: job.id, runStatus, runConclusion, prNumber: pr?.number || null, checksStatus,
