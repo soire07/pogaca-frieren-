@@ -217,6 +217,20 @@ export async function processPendingGuardianRepairDispatch({
       || !incident || !Number.isSafeInteger(Number(incident.id)) || Number(incident.id) <= 0) {
     throw new Error('INVALID_GUARDIAN_DISPATCH_RETRY_INPUT');
   }
+  if (!['critical', 'high'].includes(String(incident.severity || '').toLowerCase())) {
+    return { status: 'below_threshold' };
+  }
+  let emergencyState;
+  try {
+    emergencyState = await db.query(
+      "SELECT setting_value FROM owner_settings WHERE setting_key='guardian_emergency_stop' LIMIT 1"
+    );
+  } catch {
+    return { status: 'blocked', reason: 'EMERGENCY_STOP_STATE_UNAVAILABLE' };
+  }
+  if (emergencyState.rows?.[0]?.setting_value?.enabled === true) {
+    return { status: 'emergency_stop' };
+  }
   const review = job.result && typeof job.result === 'object' ? job.result : {};
   if (!isRepairableProposal(review)) return { status: 'retry_skipped', reason: 'SAVED_PROPOSAL_NOT_REPAIRABLE' };
   const githubToken = String(env.FRIEREN_GITHUB_TOKEN || '').trim();
