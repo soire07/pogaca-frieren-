@@ -131,3 +131,18 @@ export function getCommandFeatureKeys(commandName) {
   if (keys.some(key => key !== 'animeQuiz')) keys.push('rpg');
   return [...new Set(keys)];
 }
+
+
+export async function areGuildCommandFeaturesEnabled(db, guildId, commandName) {
+  const id = String(guildId || '');
+  const name = String(commandName || '').toLowerCase();
+  if (!SNOWFLAKE.test(id) || !/^[a-z0-9_-]{1,32}$/.test(name)) return false;
+  const commandFeatureKey = 'command_' + name.replace(/[^a-z0-9_-]/g, '_');
+  const featureKeys = getCommandFeatureKeys(name);
+  const states = await Promise.all([
+    getGuildFeatureEnabled(db, id, 'commands'),
+    getGuildFeatureEnabled(db, id, commandFeatureKey),
+    ...featureKeys.map(key => getGuildFeatureEnabled(db, id, key)),
+  ]);
+  return states.every(enabled => enabled === true);
+}
