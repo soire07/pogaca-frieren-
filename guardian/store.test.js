@@ -32,7 +32,7 @@ test('Guardian incident upsert deduplicates repeated evidence and bounds evidenc
   assert.equal(call.params[1], 'pogaca_frieren');
 });
 
-test('Guardian review reservation and queue insertion are atomic and reuse concurrent active jobs', async () => {
+test('Guardian review reservation and queue insertion are atomic', async () => {
   const statements = [];
   const db = { query: async (sql, params) => {
     statements.push({ sql, params });
@@ -51,6 +51,37 @@ test('Guardian review reservation and queue insertion are atomic and reuse concu
   assert.match(statements[1].sql, /ON CONFLICT \(incident_id,agent\)/);
   assert.doesNotMatch(statements[1].sql, /SELECT id,review_attempts/);
   assert.equal(statements.length, 2);
+});
+
+test('Guardian review recovers abandoned queued jobs after the bounded request timeout', async () => {
+  const calls = [];
+  const db = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    if (sql.includes('WITH stale AS')) return { rows: [] };
+    if (sql.includes('SELECT * FROM owner_guardian_jobs')) return { rows: [{ id: 9, incident_id: 4, status: 'queued' }] };
+    throw new Error('Unexpected Guardian query');
+  } };
+  const job = await createGuardianReviewJob(db, { incidentId: 4, actorId: 'owner' });
+  assert.equal(job.id, 9);
+  assert.equal(job.reused, true);
+  assert.match(calls[0].sql, /status='failed'/);
+  assert.match(calls[0].sql, /COALESCE\(started_at,created_at\) < NOW\(\)-INTERVAL '5 minutes'/);
+  assert.match(calls[0].sql, /status='open'/);
+  assert.equal(calls.length, 2);
+});
+
+test('Guardian review reuses a current active job without consuming another attempt', async () => {
+  let calls = 0;
+  const db = { query: async sql => {
+    calls += 1;
+    if (sql.includes('WITH stale AS')) return { rows: [] };
+    assert.match(sql, /SELECT \* FROM owner_guardian_jobs/);
+    return { rows: [{ id: 10, incident_id: 4, status: 'running' }] };
+  } };
+  const job = await createGuardianReviewJob(db, { incidentId: 4, actorId: 'owner' });
+  assert.equal(job.id, 10);
+  assert.equal(job.reused, true);
+  assert.equal(calls, 2);
 });
 
 test('Guardian review completion atomically stores proposal and advances incident status', async () => {
