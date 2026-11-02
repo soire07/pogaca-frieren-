@@ -88,3 +88,29 @@ test('monitor starts before Discord Ready without reporting a false startup outa
       'a disconnect after a successful Ready state must be reported');
   } finally { stop?.(); }
 });
+
+
+test('monitor forwards each persisted incident to the autonomous handler before advancing the cursor', async () => {
+  const saved = { id: 11, system: 'pogaca_frieren', severity: 'high', code: 'TIMEOUT' };
+  const handled = [];
+  const progress = [];
+  const db = {
+    query: async sql => {
+      if (sql.includes('SELECT id,scope,error_type')) {
+        return { rows: [{ id: 1, scope: '/frieren-ai', error_type: 'TimeoutError', error_message: 'AI timed out', created_at: '2026-11-02T10:00:00Z' }] };
+      }
+      if (sql.includes('INSERT INTO owner_guardian_incidents')) return { rows: [saved] };
+      return { rows: [] };
+    },
+  };
+  const result = await scanNewOwnerErrors(
+    db,
+    0,
+    50,
+    async id => progress.push(id),
+    async incident => handled.push(incident),
+  );
+  assert.deepEqual(handled, [saved]);
+  assert.deepEqual(progress, [1]);
+  assert.equal(result.lastSeenErrorId, 1);
+});
