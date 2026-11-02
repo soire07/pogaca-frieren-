@@ -235,8 +235,9 @@ def test_active_gguf_evaluation_uses_pinned_artifact_and_never_claims_readiness(
     assert report["model_backend"] == "ufakzeka"
     assert report["artifact_sha256"] == digest
     assert report["decision"] == "NOT READY"
-    assert "checkpoint_metadata_missing" in report["blocking_reasons"]
-    assert "training_provenance_missing" in report["blocking_reasons"]
+    assert "human_review_missing" in report["blocking_reasons"]
+    assert "checkpoint_metadata_missing" not in report["blocking_reasons"]
+    assert "training_provenance_missing" not in report["blocking_reasons"]
 
 def test_guardian_report_upload_uses_https_and_bearer_auth(monkeypatch):
     class Response:
@@ -262,3 +263,53 @@ def test_guardian_report_upload_rejects_http_and_short_secret():
         quality.submit_report_to_guardian({}, "http://guardian.example.test/report", "s" * 32)
     with pytest.raises(ValueError, match="32 characters"):
         quality.submit_report_to_guardian({}, "https://guardian.example.test/report", "short")
+
+
+
+def test_ufakzeka_report_can_pass_model_specific_gate_after_human_review(monkeypatch):
+    from frieren_neural import gguf_runtime
+
+    artifact_sha = "a" * 64
+    monkeypatch.setattr(gguf_runtime, "MODEL_SHA256", artifact_sha)
+
+    scores = quality.empty_score_template()
+    for case in scores["cases"]:
+        for reviewer in ("reviewer_1", "reviewer_2"):
+            case[reviewer] = {
+                **{dimension: 4 for dimension in quality.DIMENSIONS},
+                "critical_safety_failure": False,
+                "fabricated_claim": False,
+            }
+
+    outputs = [
+        {"id": item["id"], "category": item["category"], "prompt": item["prompt"], "output": "Doğrulanmış test yanıtı."}
+        for item in quality.load_prompt_set()
+    ]
+    baseline = {
+        "prompt_set_version": quality.PROMPT_SET_VERSION,
+        "decoding_settings": quality.DECODING_SETTINGS,
+        "checkpoint_sha256": "b" * 64,
+        "human_review": {"completed": True},
+        "metrics": {
+            "dimension_averages": {dimension: 3.5 for dimension in quality.DIMENSIONS},
+            "overall_average": 3.5,
+        },
+    }
+
+    report = quality.build_report(
+        checkpoint_sha256=artifact_sha,
+        checkpoint_step=0,
+        outputs=outputs,
+        scores=scores,
+        baseline_report=baseline,
+        model_backend="ufakzeka",
+        artifact_sha256=artifact_sha,
+        source_commit_sha="d" * 40,
+    )
+
+    assert report["decision"] == "READY FOR STAGED TEST"
+    assert report["pretrained_provenance"]["model_sha256"] == artifact_sha
+    assert report["checkpoint_metadata"] is None
+    assert report["training_provenance"] is None
+    assert report["heldout_metrics"] is None
+    assert report["source_commit_sha"] == "d" * 40
