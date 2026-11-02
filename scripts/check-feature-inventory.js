@@ -1,33 +1,26 @@
 import { readFile } from 'node:fs/promises';
+import { inspectFeatureInventory } from '../feature-inventory-validator.js';
 
 const inventory = JSON.parse(await readFile(new URL('../feature-inventory.json', import.meta.url), 'utf8'));
-const errors = [];
-const ids = inventory.features.map(feature => feature.id);
-if (inventory.count !== inventory.features.length) {
-  errors.push(`count alanı (${inventory.count}) kayıt sayısıyla (${inventory.features.length}) eşleşmeli.`);
-}
-if (!Number.isInteger(inventory.targetFeatures) || inventory.targetFeatures < 1) {
-  errors.push('targetFeatures pozitif bir tam sayı olmalı.');
-}
-if (new Set(ids).size !== ids.length) errors.push('Özellik kimlikleri benzersiz olmalı.');
-for (const feature of inventory.features) {
-  if (!feature.id || !feature.name || !feature.category) {
-    errors.push('Her özellik id, name ve category alanlarına sahip olmalı.');
-  }
-  if (!inventory.statuses.includes(feature.status)) {
-    errors.push(`Geçersiz durum: ${feature.id} → ${feature.status}`);
-  }
-}
-if (errors.length) {
-  console.error(errors.join('\\n'));
+const result = inspectFeatureInventory(inventory);
+
+if (result.errors.length) {
+  console.error(result.errors.join('\\n'));
   process.exitCode = 1;
 } else {
-  const byStatus = Object.fromEntries(inventory.statuses.map(status => [
-    status,
-    inventory.features.filter(feature => feature.status === status).length
-  ]));
-  console.log(`Özellik envanteri geçerli: ${inventory.features.length} kayıtlı özellik; hedef ${inventory.targetFeatures}. Durumlar: ${JSON.stringify(byStatus)}.`);
-  if (!inventory.auditComplete) {
-    console.log('Not: İlk envanter henüz tüm eski özellikleri kapsamıyor; bu sayı toplam tamamlanma sayısı değildir.');
+  console.log(
+    'Özellik envanteri geçerli: ' + result.featureCount +
+    ' kayıt; hedef ' + inventory.targetFeatures +
+    '; durumlar: ' + JSON.stringify(result.byStatus) + '.'
+  );
+  if (result.missingRpgIds.length) {
+    console.log(
+      'Uyarı: Eksik RPG kimlikleri: ' +
+      result.missingRpgIds.map(number => 'RPG-' + String(number).padStart(3, '0')).join(', ') +
+      '. Bu kimlikler otomatik doldurulmadı.'
+    );
+  }
+  if (!result.auditComplete) {
+    console.log('Not: Envanter kanıt denetimi tamamlanmadı; kayıtlar canlı doğrulanmış sayılmaz.');
   }
 }
