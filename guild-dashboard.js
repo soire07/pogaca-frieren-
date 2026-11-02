@@ -257,29 +257,58 @@ async function linkedGuildAccess(db, accountId, secret, env = process.env, fetch
     'SELECT discord_user_id,discord_username,avatar_hash,access_token_encrypted,refresh_token_encrypted,expires_at FROM frieren_site_discord_links WHERE account_id=$1',
     [accountId]
   );
-  const link = result.rows?.[0];
+  let link = result.rows?.[0];
   if (!link) return null;
   const config = oauthConfig(env);
   if (!config) throw new Error('GUILD_OAUTH_NOT_CONFIGURED');
   let accessToken = decryptDiscordOAuthToken(link.access_token_encrypted, secret);
+
   if (new Date(link.expires_at).getTime() <= Date.now() + 60_000) {
-    const refreshToken = decryptDiscordOAuthToken(link.refresh_token_encrypted, secret);
-    const response = await fetchImpl('https://discord.com/api/oauth2/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: config.clientId, client_secret: config.clientSecret,
-        grant_type: 'refresh_token', refresh_token: refreshToken
-      }),
-      signal: AbortSignal.timeout(10000)
-    });
-    if (!response.ok) throw new Error('DISCORD_TOKEN_REFRESH_FAILED');
-    const renewed = await response.json();
-    const profile = { id: link.discord_user_id, username: link.discord_username, avatar: link.avatar_hash };
-    await saveDiscordLink(db, accountId, profile, renewed, secret);
-    accessToken = String(renewed.access_token || '');
-    if (!accessToken) throw new Error('DISCORD_TOKEN_REFRESH_INVALID');
+    // Discord rotates refresh tokens. Serialize refreshes per account with a row lock,
+    // then re-read the row so concurrent requests reuse the newly issued access token.
+    if (typeof db.connect !== 'function') throw new Error('GUILD_OAUTH_REFRESH_LOCK_UNAVAILABLE');
+    const connection = await db.connect();
+    let transactionOpen = false;
+    try {
+      await connection.query('BEGIN');
+      transactionOpen = true;
+      const lockedResult = await connection.query(
+        'SELECT discord_user_id,discord_username,avatar_hash,access_token_encrypted,refresh_token_encrypted,expires_at FROM frieren_site_discord_links WHERE account_id=$1 FOR UPDATE',
+        [accountId]
+      );
+      link = lockedResult.rows?.[0];
+      if (!link) throw new Error('DISCORD_LINK_NOT_FOUND');
+
+      if (new Date(link.expires_at).getTime() <= Date.now() + 60_000) {
+        const refreshToken = decryptDiscordOAuthToken(link.refresh_token_encrypted, secret);
+        const response = await fetchImpl('https://discord.com/api/oauth2/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: config.clientId, client_secret: config.clientSecret,
+            grant_type: 'refresh_token', refresh_token: refreshToken
+          }),
+          signal: AbortSignal.timeout(10000)
+        });
+        if (!response.ok) throw new Error('DISCORD_TOKEN_REFRESH_FAILED');
+        const renewed = await response.json();
+        const profile = { id: link.discord_user_id, username: link.discord_username, avatar: link.avatar_hash };
+        await saveDiscordLink(connection, accountId, profile, renewed, secret);
+        accessToken = String(renewed.access_token || '');
+        if (!accessToken) throw new Error('DISCORD_TOKEN_REFRESH_INVALID');
+      } else {
+        accessToken = decryptDiscordOAuthToken(link.access_token_encrypted, secret);
+      }
+      await connection.query('COMMIT');
+      transactionOpen = false;
+    } catch (error) {
+      if (transactionOpen) await connection.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
+
   const guilds = await discordRequest('/users/@me/guilds', accessToken, fetchImpl);
   if (!Array.isArray(guilds)) throw new Error('DISCORD_GUILD_LIST_INVALID');
   return {
