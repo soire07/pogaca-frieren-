@@ -15,7 +15,7 @@ import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
 import { startGuardianMonitor } from './guardian/monitor.js';
-import { validateNeuralQualityReport, evaluateNeuralCiEvidence, extractGuardianBearerToken } from './guardian/core.js';
+import { handleNeuralQualityReportRequest } from './guardian/neural-quality-report-route.js';
 import { saveGuardianQualityReport } from './guardian/store.js';
 import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
@@ -439,72 +439,12 @@ createServer(async (req, res) => {
     res.end(JSON.stringify(payload));
   };
   if (req.method === 'POST' && req.url === '/internal/neural-quality-report') {
-    const configuredSecret = String(process.env.FRIEREN_NEURAL_GUARDIAN_SECRET || '');
-    const suppliedSecret = extractGuardianBearerToken(req.headers.authorization);
-    const expected = Buffer.from(configuredSecret);
-    const supplied = Buffer.from(suppliedSecret);
-    if (expected.length < 32 || expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) {
-      return sendJson(401, { error: 'unauthorized' });
-    }
-    if (!String(req.headers['content-type'] || '').toLowerCase().startsWith('application/json')) {
-      return sendJson(415, { error: 'application_json_required' });
-    }
-    let raw = '';
-    try {
-      for await (const chunk of req) {
-        raw += chunk.toString('utf8');
-        if (Buffer.byteLength(raw, 'utf8') > 1_048_576) return sendJson(413, { error: 'payload_too_large' });
-      }
-      const report = JSON.parse(raw);
-      const validation = validateNeuralQualityReport(report);
-      if (!validation.valid) return sendJson(422, { error: 'invalid_quality_report', reasons: validation.reasons });
-      const sourceCommitSha = String(report.source_commit_sha || '');
-      let ciEvidence = evaluateNeuralCiEvidence({ sourceCommitSha });
-      const githubToken = String(process.env.FRIEREN_GITHUB_TOKEN || '').trim();
-      if (/^[a-f0-9]{40}$/i.test(sourceCommitSha) && githubToken.length >= 32) {
-        try {
-          const ciResponse = await fetch(
-            'https://api.github.com/repos/soire07/pogaca-frieren-/actions/runs?head_sha='
-              + encodeURIComponent(sourceCommitSha) + '&status=completed&per_page=100',
-            {
-              headers: {
-                Authorization: 'Bearer ' + githubToken,
-                Accept: 'application/vnd.github+json',
-                'X-GitHub-Api-Version': '2022-11-28',
-              },
-              signal: AbortSignal.timeout(8000),
-            },
-          );
-          if (ciResponse.ok) {
-            const ciPayload = await ciResponse.json();
-            ciEvidence = evaluateNeuralCiEvidence({
-              sourceCommitSha,
-              workflowRuns: ciPayload.workflow_runs,
-            });
-          } else {
-            ciEvidence = { verified: false, status: 'unverified', reason: 'GITHUB_ACTIONS_API_UNAVAILABLE' };
-          }
-        } catch {
-          ciEvidence = { verified: false, status: 'unverified', reason: 'GITHUB_ACTIONS_API_UNAVAILABLE' };
-        }
-      } else if (/^[a-f0-9]{40}$/i.test(sourceCommitSha)) {
-        ciEvidence = { verified: false, status: 'unverified', reason: 'GITHUB_ACTIONS_TOKEN_MISSING' };
-      }
-      report.ci_evidence = ciEvidence;
-      const blockers = Array.isArray(report.blocking_reasons)
-        ? report.blocking_reasons.filter(reason => reason !== 'NEURAL_CI_EVIDENCE_NOT_VERIFIED') : [];
-      if (ciEvidence.verified !== true) {
-        blockers.push('NEURAL_CI_EVIDENCE_NOT_VERIFIED');
-        if (report.decision === 'READY FOR STAGED TEST') report.decision = 'NOT READY';
-      }
-      report.blocking_reasons = [...new Set(blockers)];
-      const reportSha256 = createHash('sha256').update(JSON.stringify(report)).digest('hex');
-      const saved = await saveGuardianQualityReport(pool, { report, reportSha256 });
-      return sendJson(202, { status: 'stored', reportSha256: saved.report_sha256, artifactSha256: saved.artifact_sha256, decision: saved.decision });
-    } catch (error) {
-      console.error('Neural quality report ingestion failed:', error?.message || 'unknown error');
-      return sendJson(400, { error: 'invalid_quality_report_payload' });
-    }
+    const result = await handleNeuralQualityReportRequest(req, {
+      env: process.env,
+      saveReport: ({ report, reportSha256 }) => saveGuardianQualityReport(pool, { report, reportSha256 }),
+      logger: (...args) => console.error(...args),
+    });
+    return sendJson(result.status, result.payload);
   }
   if (await handleOwnerDashboardRequest(req, res, { client, db: pool })) return;
   if (await handlePublicSiteRequest(req, res, { client })) return;
