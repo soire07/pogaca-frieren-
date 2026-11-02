@@ -112,6 +112,7 @@ export function evaluateGuardianApprovalGate({
   dataIntegrityPassed = false,
   ownerApproved = false,
   deploymentApproved = false,
+  ciEvidenceVerified = false,
 } = {}) {
   const checksPassed = testsPassed === true && securityPassed === true && dataIntegrityPassed === true;
   const canMerge = checksPassed && ownerApproved === true;
@@ -122,6 +123,54 @@ export function evaluateGuardianApprovalGate({
     reason: !checksPassed ? 'REQUIRED_CHECKS_NOT_PASSED'
       : !ownerApproved ? 'OWNER_APPROVAL_REQUIRED'
         : !deploymentApproved ? 'DEPLOYMENT_APPROVAL_REQUIRED' : null,
+  };
+}
+
+const EXPECTED_NEURAL_ARTIFACT_SHA256 = "6a06fbffe77b8c70ee084ce8901edaaaeec4c23fd7360296259a78111facdf5e";
+const EXPECTED_NEURAL_MODEL = Object.freeze({
+  model_id: 'ufakai/ufakzeka-1',
+  model_repository: 'ufakai/ufakzeka-1-GGUF',
+  model_filename: 'ufakzeka-1-q8_0.gguf',
+  license: 'Apache-2.0',
+});
+
+export function extractGuardianBearerToken(header) {
+  const match = /^Bearer\\s+(.+)$/i.exec(String(header ?? '').trim());
+  return match ? match[1].trim() : '';
+}
+
+export function evaluateNeuralCiEvidence({ sourceCommitSha, workflowRuns = [] } = {}) {
+  const sha = String(sourceCommitSha || '');
+  if (!/^[a-f0-9]{40}$/i.test(sha)) {
+    return { verified: false, status: 'missing', reason: 'SOURCE_COMMIT_MISSING' };
+  }
+  const matching = (Array.isArray(workflowRuns) ? workflowRuns : []).filter(run => {
+    const path = String(run?.path || '').split('@')[0];
+    return run?.head_sha === sha
+      && (path.endsWith('/frieren-neural-ci.yml') || run?.name === 'Frieren Neural CI');
+  });
+  const successful = matching.find(run => run.status === 'completed' && run.conclusion === 'success');
+  if (successful) {
+    return {
+      verified: true,
+      status: 'verified',
+      source_commit_sha: sha,
+      workflow: 'Frieren Neural CI',
+      run_id: Number(successful.id),
+      run_url: String(successful.html_url || ''),
+      conclusion: 'success',
+    };
+  }
+  const failed = matching.find(run => run.status === 'completed' && run.conclusion !== 'success');
+  return {
+    verified: false,
+    status: failed ? 'failed' : 'pending',
+    reason: failed ? 'NEURAL_CI_FAILED' : 'NEURAL_CI_NOT_FOUND_OR_PENDING',
+    source_commit_sha: sha,
+    workflow: 'Frieren Neural CI',
+    run_id: failed ? Number(failed.id) : null,
+    run_url: failed ? String(failed.html_url || '') : '',
+    conclusion: failed ? String(failed.conclusion || 'failure') : null,
   };
 }
 
@@ -162,6 +211,15 @@ export function evaluateNeuralQualityGate({
   if (report.prompt_set_version !== 'tr-conversation-v1') reasons.push('NEURAL_PROMPT_SET_MISMATCH');
   if (!/^[a-f0-9]{64}$/i.test(String(report.checkpoint_sha256 || ''))) reasons.push('NEURAL_CHECKPOINT_FINGERPRINT_MISSING');
   if (report.model_backend !== 'ufakzeka') reasons.push('NEURAL_ACTIVE_BACKEND_NOT_EVALUATED');
+  const pretrained = report.pretrained_provenance || {};
+  if (report.artifact_sha256 !== EXPECTED_NEURAL_ARTIFACT_SHA256
+      || report.checkpoint_sha256 !== EXPECTED_NEURAL_ARTIFACT_SHA256
+      || pretrained.model_sha256 !== EXPECTED_NEURAL_ARTIFACT_SHA256
+      || Object.entries(EXPECTED_NEURAL_MODEL).some(([key, value]) => pretrained[key] !== value)) {
+    reasons.push('NEURAL_PRETRAINED_PROVENANCE_INVALID');
+  }
+  if (!/^[a-f0-9]{40}$/i.test(String(report.source_commit_sha || ''))) reasons.push('NEURAL_SOURCE_COMMIT_MISSING');
+  if (ciEvidenceVerified !== true) reasons.push('NEURAL_CI_EVIDENCE_NOT_VERIFIED');
   if (!/^[a-f0-9]{64}$/i.test(String(report.artifact_sha256 || ''))
       || report.artifact_sha256 !== report.checkpoint_sha256) reasons.push('NEURAL_ACTIVE_ARTIFACT_FINGERPRINT_MISSING');
   const reviewerIds = report.review_template?.reviewers;
@@ -179,19 +237,25 @@ export function evaluateNeuralQualityGate({
     reasons.push('NEURAL_BENCHMARK_OUTPUTS_INCOMPLETE');
   }
   if (!Array.isArray(report.blocking_reasons) || report.blocking_reasons.length) reasons.push('NEURAL_QUALITY_BLOCKERS_PRESENT');
-  if (!/^[a-f0-9]{64}$/i.test(String(provenance.manifest_sha256 || ''))
-      || !Array.isArray(provenance.licenses) || !provenance.licenses.length
-      || provenance.licenses.some(license => typeof license !== 'string' || !license.trim())) {
-    reasons.push('NEURAL_TRAINING_PROVENANCE_MISSING');
-  }
-  if (!finiteNumber(heldout.loss) || heldout.loss < 0
-      || !finiteNumber(heldout.perplexity) || heldout.perplexity < 1) {
-    reasons.push('NEURAL_HELDOUT_METRICS_INVALID');
-  }
-  const checkpointMetadata = report.checkpoint_metadata || {};
-  if (checkpointMetadata.loss_objective_version !== heldout.loss_objective_version
-      || checkpointMetadata.loss_objective_version !== heldout.checkpoint_training_loss_objective_version) {
-    reasons.push('NEURAL_EVALUATION_OBJECTIVE_MISMATCH');
+  if (report.model_backend === 'ufakzeka') {
+    // The pinned pretrained GGUF is not a locally trained checkpoint: scratch
+    // training manifests and objective-specific perplexity do not apply to it.
+  } else {
+    if (!/^[a-f0-9]{64}$/i.test(String(provenance.manifest_sha256 || ''))
+        || !Array.isArray(provenance.licenses) || !provenance.licenses.length
+        || provenance.licenses.some(license => typeof license !== 'string' || !license.trim())) {
+      reasons.push('NEURAL_TRAINING_PROVENANCE_MISSING');
+    }
+    if (!finiteNumber(heldout.loss) || heldout.loss < 0
+        || !finiteNumber(heldout.perplexity) || heldout.perplexity < 1) {
+      reasons.push('NEURAL_HELDOUT_METRICS_INVALID');
+    }
+    const checkpointMetadata = report.checkpoint_metadata || {};
+    if (checkpointMetadata.loss_objective_version !== heldout.loss_objective_version
+        || checkpointMetadata.loss_objective_version !== heldout.checkpoint_training_loss_objective_version) {
+      reasons.push('NEURAL_EVALUATION_OBJECTIVE_MISMATCH');
+    }
+
   }
   if (!baseline.available || baseline.improved !== true
       || !/^[a-f0-9]{64}$/i.test(String(baseline.baseline_checkpoint_sha256 || ''))) {
@@ -237,6 +301,13 @@ export function validateNeuralQualityReport(report) {
   const reasons = [];
   if (!report || typeof report !== 'object' || Array.isArray(report)) return { valid: false, reasons: ['REPORT_NOT_OBJECT'] };
   if (report.model_backend !== 'ufakzeka') reasons.push('ACTIVE_BACKEND_REQUIRED');
+  const pretrained = report.pretrained_provenance || {};
+  if (report.artifact_sha256 !== EXPECTED_NEURAL_ARTIFACT_SHA256
+      || report.checkpoint_sha256 !== EXPECTED_NEURAL_ARTIFACT_SHA256
+      || pretrained.model_sha256 !== EXPECTED_NEURAL_ARTIFACT_SHA256
+      || Object.entries(EXPECTED_NEURAL_MODEL).some(([key, value]) => pretrained[key] !== value)) {
+    reasons.push('PRETRAINED_PROVENANCE_INVALID');
+  }
   if (report.prompt_set_version !== 'tr-conversation-v1') reasons.push('PROMPT_SET_MISMATCH');
   const sha = value => typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
   if (!sha(report.artifact_sha256) || !sha(report.checkpoint_sha256)
