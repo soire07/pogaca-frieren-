@@ -185,12 +185,43 @@ export async function reserveGuardianRepairDispatch(db, jobId) {
   const id = Number(jobId);
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error('INVALID_GUARDIAN_JOB_ID');
   const result = await db.query(
-    `UPDATE owner_guardian_jobs SET repair_dispatch_status='dispatching',repair_dispatch_at=NOW()
-     WHERE id=$1 AND status='completed' AND repair_dispatch_status IN ('not_requested','failed')
+    `UPDATE owner_guardian_jobs SET
+       repair_dispatch_status='dispatching',
+       repair_dispatch_at=NOW(),
+       repair_dispatch_attempts=repair_dispatch_attempts+1
+     WHERE id=$1 AND status='completed' AND repair_dispatch_attempts < 3
+       AND (
+         repair_dispatch_status IN ('not_requested','failed')
+         OR (repair_dispatch_status='dispatching' AND repair_dispatch_at < NOW()-INTERVAL '15 minutes')
+       )
      RETURNING *`,
     [id]
   );
   return result.rows?.[0] || null;
+}
+
+export async function listPendingGuardianRepairDispatches(db, limit = 5) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 5, 25));
+  const result = await db.query(
+    `SELECT j.id,j.incident_id,j.result,j.repair_dispatch_status,j.repair_dispatch_at,
+            j.repair_dispatch_attempts,j.created_at AS job_created_at,
+            i.system,i.code,i.severity,i.title,i.summary,i.evidence
+     FROM owner_guardian_jobs j
+     JOIN owner_guardian_incidents i ON i.id=j.incident_id
+     WHERE j.status='completed' AND i.status='awaiting_approval'
+       AND j.result->>'status'='proposal_only'
+       AND j.repair_dispatch_attempts < 3
+       AND (
+         j.repair_dispatch_status='failed'
+         OR (j.repair_dispatch_status='dispatching'
+             AND j.repair_dispatch_at < NOW()-INTERVAL '15 minutes')
+       )
+     ORDER BY CASE i.severity WHEN 'critical' THEN 0 ELSE 1 END,
+              j.repair_dispatch_at ASC NULLS FIRST,j.id ASC
+     LIMIT $1`,
+    [safeLimit]
+  );
+  return result.rows || [];
 }
 
 export async function finishGuardianRepairDispatch(db, { jobId, status, workflowUrl = null }) {
