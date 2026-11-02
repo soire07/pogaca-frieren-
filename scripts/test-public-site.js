@@ -207,3 +207,14 @@ test('command catalogue handles an unavailable command collection without throwi
   assert.match(response.body, /0\/0 komut gösteriliyor/);
   assert.match(response.body, /Komut kataloğu şu anda yüklenemiyor/);
 });
+
+test('homepage declares the existing Frieren brand favicon and serves the SVG asset publicly', async () => {
+  const homepage = res();
+  await handlePublicSiteRequest(request('/'), homepage);
+  assert.match(homepage.body, /<link rel="icon" type="image\/svg\+xml" href="\/assets\/site-avatar\.svg">/);
+  const favicon = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-avatar.svg', headers: {} }, favicon), true);
+  assert.equal(favicon.status, 200);
+  assert.match(favicon.headers['Content-Type'], /image\/svg\+xml/);
+  assert.match(String(favicon.body), /^<svg[\\s>]/);
+});
