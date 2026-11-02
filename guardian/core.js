@@ -230,3 +230,22 @@ export function evaluateNeuralQualityGate({
         : canStage ? 'READY_FOR_OWNER_APPROVAL' : 'BLOCKED',
   };
 }
+
+
+/** Validate report identity and bounded benchmark payload before persistent Guardian storage. */
+export function validateNeuralQualityReport(report) {
+  const reasons = [];
+  if (!report || typeof report !== 'object' || Array.isArray(report)) return { valid: false, reasons: ['REPORT_NOT_OBJECT'] };
+  if (report.model_backend !== 'ufakzeka') reasons.push('ACTIVE_BACKEND_REQUIRED');
+  if (report.prompt_set_version !== 'tr-conversation-v1') reasons.push('PROMPT_SET_MISMATCH');
+  const sha = value => typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
+  if (!sha(report.artifact_sha256) || !sha(report.checkpoint_sha256)
+      || report.artifact_sha256 !== report.checkpoint_sha256) reasons.push('ARTIFACT_FINGERPRINT_MISMATCH');
+  if (!['READY FOR STAGED TEST', 'NOT READY'].includes(report.decision)) reasons.push('INVALID_REPORT_DECISION');
+  const expected = Array.from({ length: 24 }, (_, i) => 'TR-' + String(i + 1).padStart(3, '0'));
+  const outputs = Array.isArray(report.outputs) ? report.outputs : [];
+  if (outputs.length !== 24 || outputs.some((item, i) =>
+    !item || item.id !== expected[i] || typeof item.output !== 'string'
+    || !item.output.trim() || item.output.length > 8000)) reasons.push('BENCHMARK_OUTPUTS_INVALID');
+  return { valid: reasons.length === 0, reasons };
+}

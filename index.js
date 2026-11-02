@@ -8,13 +8,15 @@ import { renderMarket, renderMarketItem, buyMarketItem, renderPurchaseResult, re
 import { levelForXp } from './utils.js';
 import { handleCharacterPanelInteraction } from './karakter.js';
 import { createServer } from 'node:http';
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { createAiAgentChildEnv, AI_AGENT_HEALTH_PORT } from './ai-agent/render-supervisor.js';
 import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
 import { startGuardianMonitor } from './guardian/monitor.js';
+import { validateNeuralQualityReport } from './guardian/core.js';
+import { saveGuardianQualityReport } from './guardian/store.js';
 import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
@@ -432,6 +434,38 @@ const PORT = process.env.PORT || 3000;
 let uptimeRobotCache = null;
 
 createServer(async (req, res) => {
+  const sendJson = (status, payload) => {
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+    res.end(JSON.stringify(payload));
+  };
+  if (req.method === 'POST' && req.url === '/internal/neural-quality-report') {
+    const configuredSecret = String(process.env.FRIEREN_NEURAL_GUARDIAN_SECRET || '');
+    const suppliedSecret = String(req.headers.authorization || '').replace(/^Bearer\\s+/i, '');
+    const expected = Buffer.from(configuredSecret);
+    const supplied = Buffer.from(suppliedSecret);
+    if (expected.length < 32 || expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) {
+      return sendJson(401, { error: 'unauthorized' });
+    }
+    if (!String(req.headers['content-type'] || '').toLowerCase().startsWith('application/json')) {
+      return sendJson(415, { error: 'application_json_required' });
+    }
+    let raw = '';
+    try {
+      for await (const chunk of req) {
+        raw += chunk.toString('utf8');
+        if (Buffer.byteLength(raw, 'utf8') > 1_048_576) return sendJson(413, { error: 'payload_too_large' });
+      }
+      const report = JSON.parse(raw);
+      const validation = validateNeuralQualityReport(report);
+      if (!validation.valid) return sendJson(422, { error: 'invalid_quality_report', reasons: validation.reasons });
+      const reportSha256 = createHash('sha256').update(JSON.stringify(report)).digest('hex');
+      const saved = await saveGuardianQualityReport(pool, { report, reportSha256 });
+      return sendJson(202, { status: 'stored', reportSha256: saved.report_sha256, artifactSha256: saved.artifact_sha256, decision: saved.decision });
+    } catch (error) {
+      console.error('Neural quality report ingestion failed:', error?.message || 'unknown error');
+      return sendJson(400, { error: 'invalid_quality_report_payload' });
+    }
+  }
   if (await handleOwnerDashboardRequest(req, res, { client, db: pool })) return;
   if (await handlePublicSiteRequest(req, res, { client })) return;
   const sendJson = (status, payload) => {

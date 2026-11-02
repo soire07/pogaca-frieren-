@@ -254,3 +254,23 @@ test('Neural Guardian rejects scratch reports even when every other quality metr
   assert.equal(result.canDeploy, false);
   assert.ok(result.reasons.includes('NEURAL_ACTIVE_BACKEND_NOT_EVALUATED'));
 });
+
+
+test('Guardian report ingestion accepts only pinned active-backend reports with 24 bounded outputs', async () => {
+  const { validateNeuralQualityReport } = await import('./core.js');
+  const report = {
+    model_backend: 'ufakzeka', prompt_set_version: 'tr-conversation-v1',
+    checkpoint_sha256: 'a'.repeat(64), artifact_sha256: 'a'.repeat(64),
+    decision: 'NOT READY',
+    outputs: Array.from({ length: 24 }, (_, i) => ({ id: 'TR-' + String(i + 1).padStart(3, '0'), output: 'Yanıt' })),
+  };
+  assert.equal(validateNeuralQualityReport(report).valid, true);
+  report.model_backend = 'scratch';
+  assert.ok(validateNeuralQualityReport(report).reasons.includes('ACTIVE_BACKEND_REQUIRED'));
+  report.model_backend = 'ufakzeka';
+  report.outputs[4].id = 'TR-006';
+  assert.ok(validateNeuralQualityReport(report).reasons.includes('BENCHMARK_OUTPUTS_INVALID'));
+  report.outputs[4].id = 'TR-005';
+  report.outputs[0].output = 'x'.repeat(8001);
+  assert.ok(validateNeuralQualityReport(report).reasons.includes('BENCHMARK_OUTPUTS_INVALID'));
+});

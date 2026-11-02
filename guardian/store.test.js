@@ -122,3 +122,23 @@ test('Guardian monitor state can be read for independent heartbeat display', asy
   assert.equal(state.last_seen_error_id, '22');
   assert.equal(state.last_error, null);
 });
+
+
+test('Guardian quality report storage is idempotent and keeps bounded history', async () => {
+  const calls = [];
+  const db = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    if (sql.includes('INSERT INTO owner_guardian_quality_reports')) {
+      return { rows: [{ id: 7, report_sha256: params[0], artifact_sha256: params[1], decision: params[3] }] };
+    }
+    if (sql.includes('DELETE FROM owner_guardian_quality_reports')) return { rowCount: 0, rows: [] };
+    throw new Error('Unexpected Guardian quality query');
+  } };
+  const { saveGuardianQualityReport } = await import('./store.js');
+  const report = { model_backend: 'ufakzeka', artifact_sha256: 'a'.repeat(64), decision: 'NOT READY', blocking_reasons: ['missing_scores'] };
+  const saved = await saveGuardianQualityReport(db, { report, reportSha256: 'b'.repeat(64) });
+  assert.equal(saved.id, 7);
+  assert.match(calls[0].sql, /ON CONFLICT\(report_sha256\) DO UPDATE/);
+  assert.match(calls[1].sql, /LIMIT 50/);
+  assert.equal(calls[0].params[0], 'b'.repeat(64));
+});

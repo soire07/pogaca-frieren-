@@ -128,6 +128,17 @@ export async function initOwnerAdminSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_owner_guardian_jobs_recent ON owner_guardian_jobs(created_at DESC);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_owner_guardian_jobs_active
       ON owner_guardian_jobs(incident_id,agent) WHERE status IN ('queued','running');
+    CREATE TABLE IF NOT EXISTS owner_guardian_quality_reports (
+      id BIGSERIAL PRIMARY KEY,
+      report_sha256 CHAR(64) NOT NULL UNIQUE,
+      artifact_sha256 CHAR(64) NOT NULL,
+      model_backend VARCHAR(40) NOT NULL,
+      decision VARCHAR(40) NOT NULL CHECK (decision IN ('READY FOR STAGED TEST','NOT READY')),
+      report JSONB NOT NULL,
+      blocking_reasons JSONB NOT NULL DEFAULT '[]'::jsonb,
+      submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_guardian_quality_latest ON owner_guardian_quality_reports(submitted_at DESC,id DESC);
     CREATE TABLE IF NOT EXISTS owner_guardian_monitor_state (
       monitor_key VARCHAR(80) PRIMARY KEY,
       last_seen_error_id BIGINT NOT NULL DEFAULT 0,
