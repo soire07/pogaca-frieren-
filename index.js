@@ -14,6 +14,7 @@ import { createAiAgentChildEnv, AI_AGENT_HEALTH_PORT } from './ai-agent/render-s
 import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
+import { startGuardianMonitor } from './guardian/monitor.js';
 import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
@@ -350,6 +351,10 @@ await loadCommands();
 await initDatabase();
 await initOwnerAdminSchema(pool);
 await initGuildFeatureSettingsSchema(pool);
+let stopGuardianMonitor = null;
+client.once(Events.ClientReady, () => {
+  stopGuardianMonitor = startGuardianMonitor({ db: pool, client });
+});
 await client.login(process.env.DISCORD_TOKEN);
 
 let aiAgentChild = null;
@@ -380,6 +385,7 @@ function startAiAgent() {
     aiAgentChild = null;
     if (shuttingDown) return;
     console.error('Frieren AI Agent kapandı (code=' + code + ', signal=' + signal + '). 5 saniye sonra yeniden başlatılacak.');
+    recordOwnerError(pool, 'frieren-ai-agent', 'ChildExit', 'code=' + code + '; signal=' + signal).catch(() => {});
     aiAgentRestartTimer = setTimeout(startAiAgent, 5_000);
     aiAgentRestartTimer.unref();
   });
@@ -414,6 +420,7 @@ process.once('SIGTERM', async () => {
   if (aiAgentRestartTimer) clearTimeout(aiAgentRestartTimer);
   console.log('Kapatılıyor...');
 
+  stopGuardianMonitor?.();
   await Promise.allSettled([
     client.destroy(),
     pool.end(),

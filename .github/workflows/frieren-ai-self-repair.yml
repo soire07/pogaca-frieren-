@@ -1,4 +1,5 @@
 name: Frieren AI Safe Self-Repair
+run-name: Frieren AI Repair · Guardian #${{ inputs.incident_id || github.run_id }}
 
 on:
   workflow_dispatch:
@@ -11,6 +12,11 @@ on:
         description: "Branch to test against"
         required: true
         default: "frieren-ai-agent"
+        type: string
+      incident_id:
+        description: "Optional Guardian incident ID for traceability"
+        required: false
+        default: ""
         type: string
 
 permissions:
@@ -56,15 +62,15 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: ${{ inputs.base_branch }}
-          branch: ai-repair/frieren-${{ github.run_id }}
+          branch: ai-repair/guardian-${{ inputs.incident_id || github.run_id }}
           delete-branch: true
-          title: "AI repair: ${{ inputs.task }}"
+          title: "AI repair: Guardian incident #${{ inputs.incident_id || github.run_id }}"
           body: |
             Automated Frieren AI repair proposal.
 
-            **Requested task:** ${{ inputs.task }}
+            **Guardian incident:** #${{ inputs.incident_id || 'manual' }}
 
-            The workflow generated a constrained patch and ran `npm run check` before opening this pull request. This PR is not automatically merged or deployed.
+            The private task description is intentionally not copied into this public pull request body. The workflow generated a constrained patch and ran `npm run check` before opening this pull request. This PR is not automatically merged or deployed.
           commit-message: "fix: AI-assisted Frieren repair proposal"
           add-paths: |
             *.js

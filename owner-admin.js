@@ -82,6 +82,59 @@ export async function initOwnerAdminSchema(db) {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_owner_test_runs_recent ON owner_test_runs(created_at DESC);
+    CREATE TABLE IF NOT EXISTS owner_guardian_incidents (
+      id BIGSERIAL PRIMARY KEY,
+      fingerprint CHAR(64) NOT NULL UNIQUE,
+      system VARCHAR(40) NOT NULL CHECK (system IN ('frieren_neural','frieren_ai','pogaca_frieren','owner_panel','guardian')),
+      code VARCHAR(80) NOT NULL,
+      severity VARCHAR(10) NOT NULL CHECK (severity IN ('critical','high','medium','low')),
+      status VARCHAR(24) NOT NULL DEFAULT 'open' CHECK (status IN ('open','in_review','awaiting_approval','resolved','ignored')),
+      title VARCHAR(160) NOT NULL,
+      summary TEXT NOT NULL,
+      evidence JSONB NOT NULL DEFAULT '[]'::jsonb,
+      occurrence_count INTEGER NOT NULL DEFAULT 1 CHECK (occurrence_count >= 1),
+      review_attempts INTEGER NOT NULL DEFAULT 0 CHECK (review_attempts >= 0),
+      last_review_at TIMESTAMPTZ,
+      first_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_owner_guardian_incidents_status ON owner_guardian_incidents(status,severity,last_seen DESC);
+    CREATE TABLE IF NOT EXISTS owner_guardian_jobs (
+      id BIGSERIAL PRIMARY KEY,
+      incident_id BIGINT NOT NULL REFERENCES owner_guardian_incidents(id) ON DELETE RESTRICT,
+      agent VARCHAR(40) NOT NULL CHECK (agent IN ('frieren_ai')),
+      status VARCHAR(16) NOT NULL CHECK (status IN ('queued','running','completed','failed')),
+      attempt INTEGER NOT NULL DEFAULT 1 CHECK (attempt >= 1),
+      input JSONB NOT NULL DEFAULT '{}'::jsonb,
+      result JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_by TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      started_at TIMESTAMPTZ,
+      finished_at TIMESTAMPTZ,
+      repair_dispatch_status VARCHAR(16) NOT NULL DEFAULT 'not_requested' CHECK (repair_dispatch_status IN ('not_requested','dispatching','dispatched','failed')),
+      repair_dispatch_at TIMESTAMPTZ,
+      repair_workflow_url TEXT,
+      repair_run_id BIGINT,
+      repair_run_url TEXT,
+      repair_run_status VARCHAR(24),
+      repair_run_conclusion VARCHAR(24),
+      repair_pr_number BIGINT,
+      repair_pr_url TEXT,
+      repair_pr_state VARCHAR(16),
+      repair_checks_status VARCHAR(16) NOT NULL DEFAULT 'unknown'
+    );
+    CREATE INDEX IF NOT EXISTS idx_owner_guardian_jobs_recent ON owner_guardian_jobs(created_at DESC);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_owner_guardian_jobs_active
+      ON owner_guardian_jobs(incident_id,agent) WHERE status IN ('queued','running');
+    CREATE TABLE IF NOT EXISTS owner_guardian_monitor_state (
+      monitor_key VARCHAR(80) PRIMARY KEY,
+      last_seen_error_id BIGINT NOT NULL DEFAULT 0,
+      last_tick_at TIMESTAMPTZ,
+      last_error TEXT,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
 
   `);
 }
