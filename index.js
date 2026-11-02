@@ -17,7 +17,7 @@ import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
 import { handleNeuralQualityReportRequest } from './guardian/neural-quality-report-route.js';
 import { saveGuardianQualityReport } from './guardian/quality-report-store.js';
-import { getGuildFeatureEnabled, isGuildCommandEnabled, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
+import { getGuildFeatureEnabled, isGuildCommandEnabled, getComponentCommandName, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
 
@@ -151,6 +151,12 @@ client.on(Events.InteractionCreate, async interaction => {
     }
     if (!interaction.isChatInputCommand() && await getMaintenanceState(pool)) {
       return sendPrivateInteractionError(interaction, 'Frieren şu anda bakım modunda. İşlemler kısa süreliğine durduruldu.');
+    }
+    const componentCommandName = interaction.isButton?.() || interaction.isStringSelectMenu?.() || interaction.isModalSubmit?.()
+      ? getComponentCommandName(interaction.customId)
+      : null;
+    if (interaction.guildId && componentCommandName && !await isGuildCommandEnabled(pool, interaction.guildId, componentCommandName)) {
+      return sendPrivateInteractionError(interaction, 'Bu komut bu sunucuda Owner Panel ayarlarıyla devre dışı bırakılmış.');
     }
     if (await handleCharacterPanelInteraction(interaction)) return;
   if (interaction.isButton() && interaction.customId.startsWith('market_')) {
