@@ -22,6 +22,7 @@ test('feature keys are validated and defaults preserve existing behavior', () =>
   assert.equal(isValidGuildFeatureKey('bad key'), false);
   assert.equal(DEFAULT_GUILD_FEATURES.rpg, true);
   assert.equal(DEFAULT_GUILD_FEATURES.aiChat, true);
+  assert.equal(DEFAULT_GUILD_FEATURES.companions, true);
 });
 
 test('feature setting schema is isolated and safe to initialize', async () => {
@@ -96,6 +97,7 @@ test('bulk guild feature lookup validates all guild IDs before querying', async 
 
 test('entertainment and progression commands map to their guild dashboard modules', () => {
   assert.deepEqual(getCommandFeatureKeys('animequiz'), ['animeQuiz']);
+  assert.deepEqual(getCommandFeatureKeys('yoldas'), ['companions', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('koleksiyon'), ['collection', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('basarimlar'), ['achievements', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('gunlukodul'), ['dailyRewards', 'rpg']);
