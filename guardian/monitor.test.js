@@ -154,3 +154,36 @@ test('pending incident retry isolates handler failures and continues the batch',
   assert.deepEqual(failures, [['temporary AI outage', 31]]);
   assert.deepEqual(result, { attempted: 2 });
 });
+
+
+test('monitor automatically retries eligible open incidents on its scheduled scan', async () => {
+  const calls = [];
+  const handled = [];
+  let stop;
+  const db = {
+    query: async (sql, values) => {
+      calls.push(sql);
+      if (sql.includes('SELECT last_seen_error_id')) return { rows: [{ last_seen_error_id: 7 }] };
+      if (sql.includes('FROM owner_guardian_incidents')) {
+        assert.deepEqual(values, [10]);
+        return { rows: [{ id: 81, system: 'frieren_ai', severity: 'high', status: 'open' }] };
+      }
+      if (sql.includes('SELECT id,scope,error_type')) return { rows: [] };
+      return { rows: [], rowCount: 1 };
+    },
+  };
+  try {
+    stop = startGuardianMonitor({
+      db,
+      onIncident: async incident => handled.push(incident.id),
+      setIntervalImpl: () => ({ unref() {} }),
+      clearIntervalImpl: () => {},
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(handled, [81]);
+    assert.ok(calls.some(sql => sql.includes('FROM owner_guardian_incidents')));
+    assert.ok(calls.some(sql => sql.includes('SELECT id,scope,error_type')));
+  } finally {
+    stop?.();
+  }
+});
