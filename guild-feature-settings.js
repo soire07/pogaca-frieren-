@@ -14,6 +14,13 @@ export const DEFAULT_GUILD_FEATURES = Object.freeze({
   trading: true,
   messageXp: true,
   aiChat: true,
+  animeQuiz: true,
+  collection: true,
+  achievements: true,
+  dailyRewards: true,
+  exploration: true,
+  crafting: true,
+  story: true,
 });
 
 export function isValidGuildFeatureKey(value) {
@@ -112,7 +119,14 @@ export function getCommandFeatureKeys(commandName) {
   if (/gorev|görev|quest/.test(name)) keys.push('quests');
   if (/zindan|dungeon/.test(name)) keys.push('dungeons');
   if (/boss/.test(name)) keys.push('bosses');
+  if (/animequiz|anime-quiz|quiz/.test(name)) keys.push('animeQuiz');
+  if (/koleksiyon|karakterarsivi|karakter-arşivi|kesifdefteri/.test(name)) keys.push('collection');
+  if (/basarim|başarım|achievement/.test(name)) keys.push('achievements');
+  if (/gunlukodul|günlüködül|dailyreward/.test(name)) keys.push('dailyRewards');
+  if (/kesif|keşif|explor|maceragecmisi|maceraistatistik/.test(name)) keys.push('exploration');
+  if (/zanaat|craft|uret|üret/.test(name)) keys.push('crafting');
+  if (/hikaye|hikâye|story/.test(name)) keys.push('story');
   if (/rpg|savas|savaş|dovus|dövüş|arena/.test(name)) keys.push('rpg');
-  if (keys.length) keys.push('rpg');
+  if (keys.some(key => key !== 'animeQuiz')) keys.push('rpg');
   return [...new Set(keys)];
 }

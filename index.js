@@ -19,6 +19,7 @@ import { handleNeuralQualityReportRequest } from './guardian/neural-quality-repo
 import { saveGuardianQualityReport } from './guardian/quality-report-store.js';
 import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
+import { initGuildDashboardSchema } from './guild-dashboard.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -308,6 +309,7 @@ await loadCommands();
 await initDatabase();
 await initOwnerAdminSchema(pool);
 await initGuildFeatureSettingsSchema(pool);
+await initGuildDashboardSchema(pool);
 await client.login(process.env.DISCORD_TOKEN);
 
 let aiAgentChild = null;

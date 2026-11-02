@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_GUILD_FEATURES, getGuildFeatureEnabled, initGuildFeatureSettingsSchema, isValidGuildFeatureKey, listGuildFeatureSettings, listGuildFeatureSettingsForGuilds, resetGuildFeatureSetting, setGuildFeatureEnabled } from '../guild-feature-settings.js';
+import { DEFAULT_GUILD_FEATURES, getCommandFeatureKeys, getGuildFeatureEnabled, initGuildFeatureSettingsSchema, isValidGuildFeatureKey, listGuildFeatureSettings, listGuildFeatureSettingsForGuilds, resetGuildFeatureSetting, setGuildFeatureEnabled } from '../guild-feature-settings.js';
 
 function fakeDb(rows = []) {
   const calls = [];
@@ -92,4 +92,14 @@ test('bulk guild feature lookup validates all guild IDs before querying', async 
   const db = fakeDb();
   await assert.rejects(listGuildFeatureSettingsForGuilds(db, ['1539562273197260860', 'invalid']), /INVALID_GUILD_ID/);
   assert.equal(db.calls.length, 0);
+});
+
+test('entertainment and progression commands map to their guild dashboard modules', () => {
+  assert.deepEqual(getCommandFeatureKeys('animequiz'), ['animeQuiz']);
+  assert.deepEqual(getCommandFeatureKeys('koleksiyon'), ['collection', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('basarimlar'), ['achievements', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('gunlukodul'), ['dailyRewards', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('kesifdefteri'), ['collection', 'exploration', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('zanaat'), ['crafting', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('hikaye'), ['story', 'rpg']);
 });
