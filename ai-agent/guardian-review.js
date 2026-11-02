@@ -2,6 +2,13 @@ import { redactGuardianText } from '../guardian/core.js';
 
 const ALLOWED_SYSTEMS = new Set(['frieren_neural', 'frieren_ai', 'pogaca_frieren', 'owner_panel', 'guardian']);
 
+function isSafeRelativePath(value) {
+  const path = String(value || '');
+  return Boolean(path) && !path.startsWith('/') && !path.startsWith('\\')
+    && !/^[a-z]:/i.test(path)
+    && !path.split(/[\\/]/).some(segment => segment === '..' || segment === '.');
+}
+
 export function normalizeGuardianReviewIncident(value = {}) {
   const system = ALLOWED_SYSTEMS.has(value.system) ? value.system : '';
   const title = redactGuardianText(value.title, 160);
@@ -10,7 +17,7 @@ export function normalizeGuardianReviewIncident(value = {}) {
   if (!system || !title || !summary) throw new Error('INVALID_GUARDIAN_INCIDENT');
   const evidence = Array.isArray(value.evidence) ? value.evidence.slice(0, 8).map(item => {
     const file = String(item?.file || '');
-    if (file && (file.startsWith('/') || file.split(/[\\/]/).includes('..'))) return null;
+    if (file && !isSafeRelativePath(file)) return null;
     return {
       file: redactGuardianText(file, 180),
       line: Number.isSafeInteger(Number(item?.line)) && Number(item.line) > 0 ? Number(item.line) : null,
@@ -32,7 +39,7 @@ export function parseGuardianReview(content) {
   const confidence = ['low', 'medium', 'high'].includes(value.confidence) ? value.confidence : 'low';
   const list = (items, max = 8) => Array.isArray(items)
     ? items.slice(0, max).map(item => redactGuardianText(item, 300)).filter(Boolean) : [];
-  const affectedFiles = list(value.affectedFiles).filter(file => !file.startsWith('/') && !file.split(/[\\/]/).includes('..'));
+  const affectedFiles = list(value.affectedFiles).filter(isSafeRelativePath);
   const proposedPatch = typeof value.proposedPatch === 'string'
     ? redactGuardianText(value.proposedPatch, 10000) : '';
   return {
