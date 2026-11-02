@@ -27,10 +27,12 @@ test('SMTP failure diagnostics normalize unusual thrown values without exposing 
     relayStage: null, relayError: null
   });
   assert.deepEqual(smtpFailureDetails('unexpected transport failure'), {
-    name: 'NonErrorThrow', code: null, syscall: null, message: 'unexpected transport failure'
+    name: 'NonErrorThrow', code: null, syscall: null, message: 'unexpected transport failure',
+    relayStage: null, relayError: null
   });
   assert.deepEqual(smtpFailureDetails(undefined), {
-    name: 'NonErrorThrow', code: null, syscall: null, message: 'Unknown SMTP failure'
+    name: 'NonErrorThrow', code: null, syscall: null, message: 'Unknown SMTP failure',
+    relayStage: null, relayError: null
   });
 });
 
