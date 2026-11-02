@@ -2,6 +2,7 @@
 import { readFile } from 'node:fs/promises';
 import { readPublicSiteSession, createPublicSiteSession } from './owner-dashboard.js';
 import { handleSiteAuthRequest } from './site-auth.js';
+import { handleGuildDashboardRequest } from './guild-dashboard.js';
 
 const SITE_COOKIE = 'frieren_site_session';
 const OWNER_ID = '1553794496234262641';
@@ -76,9 +77,15 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   const authHandled = await handleSiteAuthRequest(req, res, { db, sessionSecret: process.env.ADMIN_SESSION_SECRET, createSession: createPublicSiteSession });
   if (authHandled) return true;
   const url = new URL(req.url, 'http://localhost');
-  if (req.method !== 'GET') return false;
   const cookie = cookies(req);
   if (url.pathname === '/owner' || url.pathname.startsWith('/owner/')) return false;
+  if (url.pathname === '/guilds' || url.pathname.startsWith('/guilds/')) {
+    const user = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
+    return handleGuildDashboardRequest(req, res, {
+      client, db, user, sessionSecret: process.env.ADMIN_SESSION_SECRET
+    });
+  }
+  if (req.method !== 'GET') return false;
   if (assets.has(url.pathname) && ['site-avatar.svg', 'site-avatar.webp', 'site-shortcut.svg', 'site.webmanifest', 'site-banner.svg', 'site-banner.webp', 'site.css', 'owner.css'].includes(assets.get(url.pathname))) {
     try {
       const file = assets.get(url.pathname);
