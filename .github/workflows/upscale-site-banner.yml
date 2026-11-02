@@ -1,4 +1,5 @@
 name: Upscale site banner asset
+# Triggered only when this workflow definition changes; output commits cannot loop.
 
 on:
   push:
