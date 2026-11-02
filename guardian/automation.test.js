@@ -88,6 +88,41 @@ test('high-severity incidents are reviewed and dispatched to the isolated repair
   assert.ok(calls.some(([name]) => name === 'finishDispatch'));
 });
 
+test('emergency stop enabled during AI review blocks the later workflow POST', async () => {
+  let stateReads = 0;
+  let posts = 0;
+  let reservations = 0;
+  const finished = [];
+  const result = await processGuardianIncident({
+    db: { query: async () => ({
+      rows: [{ setting_value: { enabled: ++stateReads > 1 } }],
+    }) },
+    incident,
+    env: {
+      FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
+      FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
+    },
+    fetchImpl: async (url) => {
+      if (String(url).includes('/internal/guardian-review')) {
+        return { ok: true, status: 200, json: async () => review };
+      }
+      posts += 1;
+      return { ok: true, status: 204, json: async () => ({}) };
+    },
+    store: {
+      createGuardianReviewJob: async () => ({ id: 11, status: 'queued' }),
+      finishGuardianReviewJob: async () => true,
+      reserveGuardianRepairDispatch: async () => { reservations += 1; return { id: 11 }; },
+      finishGuardianRepairDispatch: async (_db, args) => { finished.push(args); return true; },
+    },
+  });
+  assert.equal(result.status, 'emergency_stop');
+  assert.equal(stateReads, 2);
+  assert.equal(reservations, 1);
+  assert.equal(posts, 0);
+  assert.equal(finished[0].status, 'failed');
+});
+
 test('low-confidence or incomplete AI proposals never dispatch a repair workflow', async () => {
   let requests = 0;
   const store = {
@@ -191,6 +226,33 @@ test('failed repair dispatch does not send when workflow reconciliation is unava
   assert.equal(posts, 0);
 });
 
+
+test('automatic dispatch retry rechecks emergency stop after workflow reconciliation', async () => {
+  let stateReads = 0;
+  let posts = 0;
+  const finished = [];
+  const result = await processPendingGuardianRepairDispatch({
+    db: { query: async () => ({
+      rows: [{ setting_value: { enabled: ++stateReads > 1 } }],
+    }) },
+    job: { id: 12, result: review },
+    incident,
+    env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
+    fetchImpl: async (_url, options) => {
+      if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({ workflow_runs: [] }) };
+      posts += 1;
+      return { ok: true, status: 204, json: async () => ({}) };
+    },
+    store: {
+      reserveGuardianRepairDispatch: async () => ({ id: 12 }),
+      finishGuardianRepairDispatch: async (_db, args) => { finished.push(args); return true; },
+    },
+  });
+  assert.equal(result.status, 'emergency_stop');
+  assert.equal(stateReads, 2);
+  assert.equal(posts, 0);
+  assert.equal(finished[0].status, 'failed');
+});
 
 test('automatic dispatch retry respects the emergency stop before reserving or contacting GitHub', async () => {
   let requests = 0;
