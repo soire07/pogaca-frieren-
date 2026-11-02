@@ -99,6 +99,25 @@ test('Guardian automation emergency stop blocks server-side review and repair ac
   assert.equal(await assertGuardianAutomationEnabled(missingDb), undefined);
 });
 
+test('Guardian workspace shows the latest stored Neural quality report and exact artifact fingerprint', () => {
+  const html = renderOwnerGuardianWorkspace({
+    qualityReport: {
+      decision: 'NOT READY',
+      model_backend: 'ufakzeka',
+      report_sha256: 'b'.repeat(64),
+      artifact_sha256: 'a'.repeat(64),
+      submitted_at: '2026-11-02T10:00:00Z',
+      blocking_reasons: ['training_provenance_missing', 'heldout_metrics_invalid'],
+    },
+  });
+  assert.match(html, /Frieren Neural kalite raporu/);
+  assert.match(html, /NOT READY/);
+  assert.match(html, /ufakzeka/);
+  assert.match(html, new RegExp('b'.repeat(64)));
+  assert.match(html, new RegExp('a'.repeat(64)));
+  assert.match(html, /training_provenance_missing/);
+  assert.match(html, /heldout_metrics_invalid/);
+});
 test('Guardian workspace shows review proposals as unapplied and requires owner review', () => {
   const html = renderOwnerGuardianWorkspace({
     csrf: 'csrf-test',
