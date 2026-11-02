@@ -634,6 +634,9 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
     + (qualityReport ? '<div class="actions"><span class="tag ' + (qualityReport.decision === 'READY FOR STAGED TEST' ? '' : 'warn') + '">' + escapeHtml(qualityReport.decision) + '</span><span class="small">' + escapeHtml(new Date(qualityReport.submitted_at).toLocaleString('tr-TR')) + '</span></div>'
       + '<p class="small">Backend: ' + escapeHtml(qualityReport.model_backend) + ' · Rapor SHA-256: <code>' + escapeHtml(qualityReport.report_sha256) + '</code></p>'
       + '<p class="small">Model dosyası SHA-256: <code>' + escapeHtml(qualityReport.artifact_sha256) + '</code></p>'
+      + '<p class="small">Kaynak commit: <code>' + escapeHtml(qualityReport.report?.source_commit_sha || 'missing') + '</code></p>'
+      + '<p class="small">Neural CI kanıtı: ' + escapeHtml(qualityReport.report?.ci_evidence?.status || 'missing') + '</p>'
+      + (qualityReport.report?.ci_evidence?.run_url ? '<p class="small"><a href="' + escapeHtml(qualityReport.report.ci_evidence.run_url) + '" target="_blank" rel="noopener noreferrer">Doğrulanan GitHub Actions çalışmasını aç</a></p>' : '')
       + ((Array.isArray(qualityReport.blocking_reasons) ? qualityReport.blocking_reasons : []).length
         ? '<p class="notice warn">Engeller: ' + qualityReport.blocking_reasons.map(escapeHtml).join(' · ') + '</p>'
         : '<p class="notice warn">Kalite raporunda engel görünmüyor; bu tek başına CI, hafıza izolasyonu, güvenlik veya dağıtım onayı değildir.</p>')
