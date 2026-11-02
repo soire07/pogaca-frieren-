@@ -294,8 +294,20 @@ export async function processPendingGuardianRepairDispatch({
       return { status: 'reconciliation_unavailable', jobId: Number(job.id), reason: 'GITHUB_RUN_LIST_HTTP_' + existingResponse.status };
     }
     const existingData = await existingResponse.json().catch(() => ({}));
+    const listedRuns = Array.isArray(existingData.workflow_runs) ? existingData.workflow_runs : [];
+    const totalRuns = Number(existingData.total_count);
+    if (Number.isSafeInteger(totalRuns) && totalRuns > listedRuns.length) {
+      await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'failed' }).catch(() => {});
+      return {
+        status: 'reconciliation_incomplete',
+        jobId: Number(job.id),
+        reason: 'GITHUB_RUN_LIST_TRUNCATED',
+        listed: listedRuns.length,
+        total: totalRuns,
+      };
+    }
     const marker = new RegExp('(?:^|[^A-Za-z0-9])Guardian #' + Number(incident.id) + '(?!\\d)', 'i');
-    const existingRun = (Array.isArray(existingData.workflow_runs) ? existingData.workflow_runs : [])
+    const existingRun = listedRuns
       .find(run => marker.test(String(run.display_title || run.name || run.run_name || '')));
     if (existingRun) {
       const terminalFailure = existingRun.status === 'completed'
