@@ -22,7 +22,7 @@ test('local monitor processes only unseen error rows and advances its cursor', a
 });
 
 
-test('emergency stop pauses error scanning and persists a visible monitor state', async () => {
+test('emergency stop does not disable incident monitoring or error-log scanning', async () => {
   const original = process.env.GUARDIAN_EMERGENCY_STOP;
   process.env.GUARDIAN_EMERGENCY_STOP = 'true';
   const calls = [];
@@ -30,6 +30,8 @@ test('emergency stop pauses error scanning and persists a visible monitor state'
   const db = {
     query: async (sql, values) => {
       calls.push({ sql, values });
+      if (sql.includes('SELECT id,scope,error_type')) return { rows: [] };
+      if (sql.includes('SELECT last_seen_error_id')) return { rows: [{ last_seen_error_id: 0 }] };
       return { rows: [], rowCount: 1 };
     },
   };
@@ -45,9 +47,11 @@ test('emergency stop pauses error scanning and persists a visible monitor state'
       clearIntervalImpl: () => {},
     });
     await new Promise(resolve => setImmediate(resolve));
-    assert.ok(calls.some(call => call.sql.includes('INSERT INTO owner_guardian_monitor_state')
-      && call.sql.includes('EMERGENCY_STOP_ENABLED')));
-    assert.equal(calls.some(call => call.sql.includes('SELECT id,scope,error_type')), false);
+    assert.ok(calls.some(call => call.sql.includes('SELECT id,scope,error_type')),
+      'error scanning must continue while AI review and repair dispatch are stopped');
+    assert.ok(calls.some(call => call.sql.includes('SET last_tick_at=NOW(),last_error=NULL')),
+      'successful monitor heartbeat must be recorded');
+    assert.equal(calls.some(call => call.sql.includes('EMERGENCY_STOP_ENABLED')), false);
     assert.equal(typeof timerCallback, 'function');
   } finally {
     stop?.();
