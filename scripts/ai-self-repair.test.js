@@ -70,7 +70,7 @@ test('repair patch rejects newly created files because proposals may only update
     '+++ b/ai-agent/new-helper.js',
     '@@ -0,0 +1 @@',
     '+export const helper = true;',
-  ].join('\\n');
+  ].join('\n');
   assert.throws(() => validatePatchPaths(newFile), { message: 'REPAIR_PATCH_FEATURE_NOT_ALLOWED' });
 });
 
@@ -80,7 +80,7 @@ test('repair patch rejects incomplete file headers without both existing-file si
     '+++ b/rpg-mechanics.js',
     '@@ -1 +1 @@',
     '+const ready = true;',
-  ].join('\\n');
+  ].join('\n');
   assert.throws(() => validatePatchPaths(incomplete), { message: 'REPAIR_PATCH_MUST_UPDATE_EXISTING_FILE' });
 });
 \ntest('repair patch generation requires the shared configured model client', async () => {
