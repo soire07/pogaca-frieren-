@@ -150,6 +150,23 @@ test('Guardian PR status refresh persists workflow and CI evidence only for disp
   assert.equal(params[8], 'success');
 });
 
+test('Guardian terminal workflow failure can be marked retryable without losing run evidence', async () => {
+  let params;
+  const db = { query: async (sql, values) => {
+    params = values;
+    assert.match(sql, /repair_dispatch_status=CASE WHEN \$10::boolean THEN 'failed'/);
+    assert.match(sql, /WHERE id=\$1 AND repair_dispatch_status='dispatched'/);
+    return { rows: [{ id: 8 }] };
+  } };
+  assert.equal(await updateGuardianRepairStatus(db, {
+    jobId: 8, runId: 124, runUrl: 'https://github.com/actions/runs/124',
+    runStatus: 'completed', runConclusion: 'cancelled',
+    checksStatus: 'cancelled', retryable: true,
+  }), true);
+  assert.equal(params[1], 124);
+  assert.equal(params[9], true);
+});
+
 test('Guardian monitor state can be read for independent heartbeat display', async () => {
   const db = { query: async sql => {
     assert.match(sql, /last_tick_at/);
