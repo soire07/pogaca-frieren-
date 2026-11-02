@@ -218,8 +218,8 @@ test('guild settings explain that disabling a module blocks new sessions but let
 });
 
 
-test('competitor-inspired wishlist, companion home, and guild rewards remain roadmap-only until implemented', () => {
-  for (const id of ['characterWishlist', 'companionHome', 'guildRewardStore']) {
+test('competitor-inspired wishlist and guild rewards remain roadmap-only until implemented', () => {
+  for (const id of ['characterWishlist', 'guildRewardStore']) {
     const feature = GUILD_FEATURE_CATALOG.find(item => item.id === id);
     assert.ok(feature, id + ' should be visible in the roadmap');
     assert.equal(feature.status, 'planned');
