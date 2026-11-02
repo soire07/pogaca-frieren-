@@ -1,5 +1,11 @@
 import { createGuardianIncident } from './core.js';
 
+function boundedInteger(value, fallback, maximum) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed === 0) return fallback;
+  return Math.max(1, Math.min(Math.floor(parsed), maximum));
+}
+
 export async function upsertGuardianIncident(db, input) {
   const incident = createGuardianIncident(input);
   const result = await db.query(
@@ -52,7 +58,7 @@ export async function getGuardianIncident(db, id) {
 }
 
 export async function listGuardianIncidents(db, limit = 30) {
-  const safeLimit = Math.max(1, Math.min(Number(limit) || 30, 100));
+  const safeLimit = boundedInteger(limit, 30, 100);
   const result = await db.query(
     'SELECT * FROM owner_guardian_incidents ORDER BY CASE severity WHEN \'critical\' THEN 0 WHEN \'high\' THEN 1 WHEN \'medium\' THEN 2 ELSE 3 END, last_seen DESC LIMIT $1',
     [safeLimit]
@@ -217,9 +223,7 @@ export async function reserveGuardianRepairDispatch(db, jobId) {
 }
 
 export async function listPendingGuardianRepairDispatches(db, limit = 5) {
-  const parsedLimit = Number(limit);
-  const safeLimit = !Number.isFinite(parsedLimit) || parsedLimit === 0
-    ? 5 : Math.max(1, Math.min(Math.floor(parsedLimit), 25));
+  const safeLimit = boundedInteger(limit, 5, 25);
   const result = await db.query(
     `SELECT j.id,j.incident_id,j.result,j.repair_dispatch_status,j.repair_dispatch_at,
             j.repair_dispatch_attempts,j.created_at AS job_created_at,
@@ -285,7 +289,7 @@ export async function getGuardianMonitorState(db) {
 }
 
 export async function listGuardianJobs(db, limit = 20) {
-  const safeLimit = Math.max(1, Math.min(Number(limit) || 20, 100));
+  const safeLimit = boundedInteger(limit, 20, 100);
   const result = await db.query(
     'SELECT j.*,i.system,i.severity,i.title AS incident_title FROM owner_guardian_jobs j JOIN owner_guardian_incidents i ON i.id=j.incident_id ORDER BY j.id DESC LIMIT $1',
     [safeLimit]
