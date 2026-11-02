@@ -194,7 +194,8 @@ test('Guardian retry scan selects only bounded failed or stale dispatches with s
   let params;
   const db = { query: async (sql, values) => {
     params = values;
-    assert.match(sql, /repair_dispatch_status IN \('failed','dispatching'\)/);
+    assert.match(sql, /repair_dispatch_status='failed'/);
+    assert.match(sql, /repair_dispatch_status='dispatching'/);
     assert.match(sql, /repair_dispatch_attempts < 3/);
     assert.match(sql, /status='awaiting_approval'/);
     assert.match(sql, /j\.result/);
