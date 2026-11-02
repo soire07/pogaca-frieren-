@@ -74,7 +74,7 @@ test('Neural report endpoint rejects unauthorized requests before reading or sto
 });
 
 test('Neural report endpoint rejects a valid OIDC identity when its commit differs from the report', async () => {
-  const deps = dependencies({ verifyOidcToken: async () => ({ sha: 'e'.repeat(40) }) });
+  const deps = dependencies({ verifyToken: async () => ({ sha: 'e'.repeat(40) }) });
   const result = await handleNeuralQualityReportRequest(request(validReport()), deps.options);
   assert.equal(result.status, 401);
   assert.equal(result.payload.error, 'oidc_commit_mismatch');
