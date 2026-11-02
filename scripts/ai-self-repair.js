@@ -98,11 +98,20 @@ export async function collectRepairContext(task, {
 export async function verifyGroqConnection({ client, model = 'openai/gpt-oss-20b' }) {
   if (!client || typeof client.chat?.completions?.create !== 'function') throw new Error('AI_MODEL_CLIENT_REQUIRED');
   const response = await client.chat.completions.create({
-    model, temperature: 0, max_completion_tokens: 16,
-    messages: [{ role: 'user', content: 'Reply with exactly FRIEREN_GROQ_OK.' }],
+    model, temperature: 0, max_completion_tokens: 128,
+    messages: [{ role: 'user', content: 'Reply briefly to confirm that this connection is working.' }],
   });
-  const output = String(response?.choices?.[0]?.message?.content || '').trim();
-  if (output !== 'FRIEREN_GROQ_OK') throw new Error('GROQ_VALIDATION_RESPONSE_INVALID');
+  const choice = response?.choices?.[0];
+  const message = choice?.message;
+  const content = message?.content;
+  const contentText = Array.isArray(content)
+    ? content.map(part => typeof part === 'string' ? part : String(part?.text || '')).join(' ').trim()
+    : String(content || '').trim();
+  const reasoningText = String(message?.reasoning || message?.reasoning_content || '').trim();
+  if (message?.role !== 'assistant' || (!contentText && !reasoningText)
+    || !['stop', 'length', 'tool_calls', 'function_call'].includes(String(choice?.finish_reason || ''))) {
+    throw new Error('GROQ_VALIDATION_RESPONSE_INVALID');
+  }
   return true;
 }
 
