@@ -212,3 +212,13 @@ test('guild settings explain that disabling a module blocks new sessions but let
   assert.match(res.body, /Yeni oturumları engeller/i);
   assert.match(res.body, /devam eden.*tamamlanır/i);
 });
+
+
+test('competitor-inspired wishlist, companion home, and guild rewards remain roadmap-only until implemented', () => {
+  for (const id of ['characterWishlist', 'companionHome', 'guildRewardStore']) {
+    const feature = GUILD_FEATURE_CATALOG.find(item => item.id === id);
+    assert.ok(feature, id + ' should be visible in the roadmap');
+    assert.equal(feature.status, 'planned');
+    assert.equal(feature.key, null, id + ' must not expose a live toggle before implementation');
+  }
+});
