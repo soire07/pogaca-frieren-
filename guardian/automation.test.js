@@ -51,10 +51,10 @@ test('autonomous incident handling respects the emergency stop before contacting
 test('high-severity incidents are reviewed and dispatched to the isolated repair branch', async () => {
   const calls = [];
   const store = {
-    createGuardianReviewJob: async args => { calls.push(['create', args]); return { id: 9, status: 'queued' }; },
-    finishGuardianReviewJob: async args => { calls.push(['finishReview', args]); return true; },
-    reserveGuardianRepairDispatch: async id => { calls.push(['reserve', id]); return { id }; },
-    finishGuardianRepairDispatch: async args => { calls.push(['finishDispatch', args]); return true; },
+    createGuardianReviewJob: async (_db, args) => { calls.push(['create', args]); return { id: 9, status: 'queued' }; },
+    finishGuardianReviewJob: async (_db, args) => { calls.push(['finishReview', args]); return true; },
+    reserveGuardianRepairDispatch: async (_db, id) => { calls.push(['reserve', id]); return { id }; },
+    finishGuardianRepairDispatch: async (_db, args) => { calls.push(['finishDispatch', args]); return true; },
   };
   const requests = [];
   const fetchImpl = async (url, options) => {
