@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGuardianRepairTask, processGuardianIncident, processPendingGuardianRepairDispatch, classifyGuardianWorkflowConclusion } from './automation.js';
+import { buildGuardianRepairTask, processGuardianIncident, processPendingGuardianRepairDispatch, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks } from './automation.js';
 
 const incident = {
   id: 42,
@@ -21,6 +21,17 @@ const review = {
   tests: ['Add a timeout regression test.'],
   risks: ['The upstream call may still finish after cancellation.'],
 };
+
+test('Guardian pull request checks fail closed when the API is unavailable or incomplete', () => {
+  assert.equal(classifyGuardianPullRequestChecks({ ok: false, payload: null }), 'unknown');
+  assert.equal(classifyGuardianPullRequestChecks({ ok: true, payload: null }), 'unknown');
+  assert.equal(classifyGuardianPullRequestChecks({ ok: true, payload: { total_count: 0, check_runs: [] } }), 'unknown');
+  assert.equal(classifyGuardianPullRequestChecks({ ok: true, payload: { total_count: 2, check_runs: [{ status: 'completed', conclusion: 'success' }] } }), 'pending');
+  assert.equal(classifyGuardianPullRequestChecks({ ok: true, payload: { total_count: 1, check_runs: [{ status: 'in_progress', conclusion: null }] } }), 'pending');
+  assert.equal(classifyGuardianPullRequestChecks({ ok: true, payload: { total_count: 1, check_runs: [{ status: 'completed', conclusion: 'success' }] } }), 'success');
+  assert.equal(classifyGuardianPullRequestChecks({ ok: true, payload: { total_count: 1, check_runs: [{ status: 'completed', conclusion: 'failure' }] } }), 'failure');
+  assert.equal(classifyGuardianPullRequestChecks({ ok: true, payload: { total_count: 1, check_runs: [{ status: 'completed', conclusion: 'timed_out' }] } }), 'cancelled');
+});
 
 test('Guardian workflow conclusion classification distinguishes all terminal outcomes', () => {
   assert.equal(classifyGuardianWorkflowConclusion('success'), 'success');
