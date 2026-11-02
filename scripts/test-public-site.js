@@ -216,5 +216,5 @@ test('homepage declares the existing Frieren brand favicon and serves the SVG as
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-avatar.svg', headers: {} }, favicon), true);
   assert.equal(favicon.status, 200);
   assert.match(favicon.headers['Content-Type'], /image\/svg\+xml/);
-  assert.match(String(favicon.body), /^<svg[\\s>]/);
+  assert.ok(String(favicon.body).startsWith('<svg'), 'favicon response must contain the existing SVG brand artwork');
 });
