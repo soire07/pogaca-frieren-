@@ -140,12 +140,14 @@ test('boss, dungeon, and magic duel commands map to their actual guild feature s
 
 test('legacy RPG commands are assigned to their actual guild dashboard modules', () => {
   assert.deepEqual(getCommandFeatureKeys('cantam'), ['equipment', 'rpg']);
-  assert.deepEqual(getCommandFeatureKeys('zanaatustalari'), ['crafting', 'rpg']);
-  assert.deepEqual(getCommandFeatureKeys('hazineac'), ['rpg']);
-  assert.deepEqual(getCommandFeatureKeys('hazinegecmisi'), ['rpg']);
+  assert.deepEqual(getCommandFeatureKeys('zanaatustalari'), ['equipment', 'crafting', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('hazineac'), ['economy', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('hazinegecmisi'), ['economy', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('mimic'), ['rpg']);
-  assert.deepEqual(getCommandFeatureKeys('parcala'), ['character', 'economy', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('parcala'), ['character', 'economy', 'collection', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('gunluk'), ['rpg']);
+  assert.deepEqual(getCommandFeatureKeys('gunlukgorev'), ['quests', 'story', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('npc'), ['quests', 'story', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('liderlik'), ['rpg']);
 });
 
