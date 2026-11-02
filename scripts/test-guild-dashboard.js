@@ -195,3 +195,69 @@ test('OAuth callback rejects another account state before contacting Discord', a
   assert.equal(res.status, 400);
   assert.equal(called, false);
 });
+
+test('feature setting changes require a freshly verified Discord-managed guild', async () => {
+  const db = {
+    calls: [],
+    async query(sql, params = []) {
+      this.calls.push({ sql: String(sql), params });
+      if (String(sql).includes('SELECT account_key,discord_user_id,access_token_enc,refresh_token_enc,expires_at')) {
+        return { rows: [{
+          account_key: accountId,
+          discord_user_id: '123456789012345678',
+          access_token_enc: encryptGuildOAuthToken('valid-access-token', secret),
+          refresh_token_enc: encryptGuildOAuthToken('valid-refresh-token', secret),
+          expires_at: new Date(Date.now() + 60 * 60 * 1000)
+        }], rowCount: 1 };
+      }
+      if (String(sql).includes('INSERT INTO guild_feature_settings')) {
+        return { rows: [{ guild_id: guildA, feature_key: 'rpg', enabled: false }], rowCount: 1 };
+      }
+      return { rows: [], rowCount: 0 };
+    }
+  };
+  const res = response();
+  const user = { id: accountId, username: 'Gezgin' };
+  const csrf = createGuildDashboardCsrf(secret, accountId);
+  const fetchImpl = async () => ({ ok: true, async json() {
+    return [{ id: guildA, name: 'Frieren Test Loncası', owner: true, permissions: '0' }];
+  } });
+  await handleGuildDashboardRequest(request('POST', '/guilds/settings', {
+    csrf, guildId: guildA, featureKey: 'rpg', enabled: 'no'
+  }), res, { db, user, sessionSecret: secret, client: { guilds: { cache: new Map([[guildA, {}]]) } }, fetchImpl });
+  assert.equal(res.status, 303);
+  assert.equal(res.headers.Location, '/guilds/' + guildA + '?status=saved');
+  const write = db.calls.find(call => call.sql.includes('INSERT INTO guild_feature_settings'));
+  assert.ok(write);
+  assert.deepEqual(write.params, [guildA, 'rpg', false, '123456789012345678']);
+});
+
+test('feature settings cannot be changed for a server without the bot or Manage Guild permission', async () => {
+  const db = {
+    calls: [],
+    async query(sql, params = []) {
+      this.calls.push({ sql: String(sql), params });
+      if (String(sql).includes('SELECT account_key,discord_user_id,access_token_enc,refresh_token_enc,expires_at')) {
+        return { rows: [{
+          account_key: accountId,
+          discord_user_id: '123456789012345678',
+          access_token_enc: encryptGuildOAuthToken('valid-access-token', secret),
+          refresh_token_enc: encryptGuildOAuthToken('valid-refresh-token', secret),
+          expires_at: new Date(Date.now() + 60 * 60 * 1000)
+        }], rowCount: 1 };
+      }
+      return { rows: [], rowCount: 0 };
+    }
+  };
+  const res = response();
+  const user = { id: accountId, username: 'Gezgin' };
+  const csrf = createGuildDashboardCsrf(secret, accountId);
+  const fetchImpl = async () => ({ ok: true, async json() {
+    return [{ id: guildB, name: 'Yetkisiz Lonca', owner: false, permissions: '0' }];
+  } });
+  await handleGuildDashboardRequest(request('POST', '/guilds/settings', {
+    csrf, guildId: guildB, featureKey: 'rpg', enabled: 'no'
+  }), res, { db, user, sessionSecret: secret, client: { guilds: { cache: new Map([[guildA, {}]]) } }, fetchImpl });
+  assert.equal(res.status, 403);
+  assert.equal(db.calls.some(call => call.sql.includes('INSERT INTO guild_feature_settings')), false);
+});
