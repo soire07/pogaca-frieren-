@@ -371,9 +371,10 @@ export async function handleGuildDashboardRequest(req, res, {
       send(res, 405, '<h1>Bu istek yöntemi desteklenmiyor.</h1>', { Allow: 'GET, POST' });
       return true;
     }
+    const isGuildSettingsPath = /^\/guilds\/\d{17,20}$/.test(path);
+    const isGuildCommandsPath = new RegExp('^/guilds/[0-9]{17,20}/commands$').test(path);
     if (path !== '/guilds' && path !== '/guilds/' && path !== '/guilds/connect'
-        && !/^\\/guilds\\/\\d{17,20}$/.test(path)
-        && !/^\\/guilds\\/\\d{17,20}\\/commands$/.test(path)) {
+        && !isGuildSettingsPath && !isGuildCommandsPath) {
       send(res, 404, '<h1>Lonca paneli sayfası bulunamadı.</h1>');
       return true;
     }
