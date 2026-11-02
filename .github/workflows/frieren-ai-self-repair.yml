@@ -43,6 +43,10 @@ jobs:
             frieren-ai-agent|feat/neural-guardian-control-center) ;;
             *) echo "Unsupported repair target branch"; exit 1 ;;
           esac
+          if [ "$GITHUB_REF_NAME" != "$BASE_BRANCH" ]; then
+            echo "Workflow ref must match the requested repair target branch"
+            exit 1
+          fi
 
       - name: Checkout requested base branch
         uses: actions/checkout@v4
