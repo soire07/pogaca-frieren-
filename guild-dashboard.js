@@ -347,7 +347,8 @@ export async function handleGuildDashboardRequest(req, res, {
   const redirectUri = process.env.SITE_DISCORD_REDIRECT_URI || baseUrl() + '/guilds/callback';
   try {
     if (path === '/guilds/connect' && req.method === 'GET') {
-      redirect(res, '/owner/login?flow=guilds');
+      res.writeHead(302, { Location: '/owner/login?flow=guilds', 'Cache-Control': 'no-store' });
+      res.end();
       return true;
     }
     if (path === '/guilds/callback' && req.method === 'GET') {
