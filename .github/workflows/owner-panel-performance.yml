@@ -1,10 +1,9 @@
-name: Owner Panel Performance Checks
+name: Owner Panel Performance Checks (Manual)
 
+# This workflow previously reran the entire npm test suite on every PR without
+# running a distinct performance benchmark. Keep it manual until real benchmarks
+# are added; the canonical Frieren Bot CI already covers owner-panel regressions.
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main, optimize-owner-panel-complete]
   workflow_dispatch:
 
 permissions:
@@ -23,5 +22,5 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Syntax and regression checks
+      - name: Run the canonical full check once
         run: npm run check
