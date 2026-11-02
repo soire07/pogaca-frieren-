@@ -140,3 +140,14 @@ test('command interaction coverage: every discoverable slash command exposes a v
   t.diagnostic('Permission-sensitive commands needing review: ' + (permissionSignalUnclear.join(', ') || 'none'));
   t.diagnostic('Scope: static source signals only; signals do not prove that paths execute correctly. No live Discord API call is performed.');
 });
+
+
+test('autocomplete interactions honor the same per-guild command settings as slash execution', async () => {
+  const source = await readFile(path.join(root, 'index.js'), 'utf8');
+  const autocompleteStart = source.indexOf('if (interaction.isAutocomplete())');
+  const autocompleteEnd = source.indexOf('if (!interaction.isChatInputCommand())', autocompleteStart);
+  assert.ok(autocompleteStart >= 0 && autocompleteEnd > autocompleteStart, 'Autocomplete handler should exist');
+  const autocompleteHandler = source.slice(autocompleteStart, autocompleteEnd);
+  assert.match(autocompleteHandler, /interaction\.guildId && !await isGuildCommandEnabled\(pool, interaction\.guildId, interaction\.commandName\)/);
+  assert.match(autocompleteHandler, /return interaction\.respond\(\[\]\)/);
+});
