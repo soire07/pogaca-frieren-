@@ -202,3 +202,33 @@ test('monitor scans bounded retryable repair dispatches independently of AI inci
   assert.deepEqual(handled, [91]);
   assert.deepEqual(result, { attempted: 1 });
 });
+
+
+test('repair retry queue failure does not interrupt normal incident log scanning', async () => {
+  const calls = [];
+  const errors = [];
+  let stop;
+  const db = {
+    query: async sql => {
+      calls.push(sql);
+      if (sql.includes('SELECT last_seen_error_id')) return { rows: [{ last_seen_error_id: 0 }] };
+      if (sql.includes('owner_guardian_jobs')) throw new Error('temporary retry query failure');
+      if (sql.includes('SELECT id,scope,error_type')) return { rows: [] };
+      return { rows: [], rowCount: 1 };
+    },
+  };
+  try {
+    stop = startGuardianMonitor({
+      db,
+      onError: error => errors.push(error.message),
+      setIntervalImpl: () => ({ unref() {} }),
+      clearIntervalImpl: () => {},
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.ok(calls.some(sql => sql.includes('SELECT id,scope,error_type')));
+    assert.ok(calls.some(sql => sql.includes('SET last_tick_at=NOW(),last_error=NULL')));
+    assert.deepEqual(errors, ['temporary retry query failure']);
+  } finally {
+    stop?.();
+  }
+});
