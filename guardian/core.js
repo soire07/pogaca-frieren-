@@ -124,3 +124,87 @@ export function evaluateGuardianApprovalGate({
         : !deploymentApproved ? 'DEPLOYMENT_APPROVAL_REQUIRED' : null,
   };
 }
+
+const NEURAL_DIMENSIONS = Object.freeze([
+  'correctness', 'instruction_adherence', 'turkish_quality',
+  'grounding', 'safety_privacy', 'conversation_consistency',
+]);
+
+function finiteNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+/**
+ * Fail-closed Neural quality gate. Endpoint health and model self-assessment
+ * are never sufficient evidence for a release decision.
+ */
+export function evaluateNeuralQualityGate({
+  qualityReport,
+  stagedTestsPassed = false,
+  memoryIsolationPassed = false,
+  securityChecksPassed = false,
+  resourceChecksPassed = false,
+  ownerApproved = false,
+  deploymentApproved = false,
+} = {}) {
+  const reasons = [];
+  const report = qualityReport && typeof qualityReport === 'object' ? qualityReport : {};
+  const metrics = report.metrics && typeof report.metrics === 'object' ? report.metrics : {};
+  const averages = metrics.dimension_averages && typeof metrics.dimension_averages === 'object'
+    ? metrics.dimension_averages : {};
+  const outputs = Array.isArray(report.outputs) ? report.outputs : [];
+  const baseline = report.baseline_comparison || {};
+  const human = report.human_review || {};
+  const provenance = report.training_provenance || {};
+  const heldout = report.heldout_metrics || {};
+
+  if (report.decision !== 'READY FOR STAGED TEST') reasons.push('NEURAL_QUALITY_REPORT_NOT_READY');
+  if (report.prompt_set_version !== 'tr-conversation-v1') reasons.push('NEURAL_PROMPT_SET_MISMATCH');
+  if (!/^[a-f0-9]{64}$/i.test(String(report.checkpoint_sha256 || ''))) reasons.push('NEURAL_CHECKPOINT_FINGERPRINT_MISSING');
+  if (human.completed !== true || human.reviewers_required !== 2) reasons.push('NEURAL_INDEPENDENT_HUMAN_REVIEW_REQUIRED');
+  if (outputs.length !== 24 || outputs.some(item => !item || typeof item.output !== 'string' || !item.output.trim())
+      || new Set(outputs.map(item => item?.id)).size !== 24) reasons.push('NEURAL_BENCHMARK_OUTPUTS_INCOMPLETE');
+  if (!Array.isArray(report.blocking_reasons) || report.blocking_reasons.length) reasons.push('NEURAL_QUALITY_BLOCKERS_PRESENT');
+  if (!provenance.manifest_sha256 || !Array.isArray(provenance.licenses) || !provenance.licenses.length) {
+    reasons.push('NEURAL_TRAINING_PROVENANCE_MISSING');
+  }
+  if (!finiteNumber(heldout.loss) || !finiteNumber(heldout.perplexity) || heldout.perplexity < 1) {
+    reasons.push('NEURAL_HELDOUT_METRICS_INVALID');
+  }
+  if (!baseline.available || baseline.improved !== true
+      || !/^[a-f0-9]{64}$/i.test(String(baseline.baseline_checkpoint_sha256 || ''))) {
+    reasons.push('NEURAL_COMPARABLE_IMPROVED_BASELINE_REQUIRED');
+  }
+  if (!NEURAL_DIMENSIONS.every(key => finiteNumber(averages[key]) && averages[key] >= 3.2)) {
+    reasons.push('NEURAL_DIMENSION_THRESHOLD_FAILED');
+  }
+  if (!finiteNumber(metrics.overall_average) || metrics.overall_average < 3.4) reasons.push('NEURAL_OVERALL_THRESHOLD_FAILED');
+  if (!finiteNumber(metrics.instruction_adherence_3_or_4_rate) || metrics.instruction_adherence_3_or_4_rate < 0.9) {
+    reasons.push('NEURAL_INSTRUCTION_THRESHOLD_FAILED');
+  }
+  if (!finiteNumber(metrics.turkish_quality_3_or_4_rate) || metrics.turkish_quality_3_or_4_rate < 0.9) {
+    reasons.push('NEURAL_TURKISH_THRESHOLD_FAILED');
+  }
+  if (metrics.critical_safety_failures?.length) reasons.push('NEURAL_CRITICAL_SAFETY_FAILURE');
+  if (metrics.fabricated_claims?.length) reasons.push('NEURAL_FABRICATED_CLAIMS');
+  if (metrics.multi_turn_failures?.length) reasons.push('NEURAL_MULTI_TURN_REGRESSION');
+  if (stagedTestsPassed !== true) reasons.push('NEURAL_STAGED_TESTS_NOT_PASSED');
+  if (memoryIsolationPassed !== true) reasons.push('NEURAL_MEMORY_ISOLATION_NOT_PASSED');
+  if (securityChecksPassed !== true) reasons.push('NEURAL_SECURITY_CHECKS_NOT_PASSED');
+  if (resourceChecksPassed !== true) reasons.push('NEURAL_RESOURCE_CHECKS_NOT_PASSED');
+
+  const canStage = reasons.length === 0;
+  const canMerge = canStage && ownerApproved === true;
+  const canDeploy = canMerge && deploymentApproved === true;
+  if (canStage && !ownerApproved) reasons.push('OWNER_APPROVAL_REQUIRED');
+  if (canMerge && !deploymentApproved) reasons.push('DEPLOYMENT_APPROVAL_REQUIRED');
+  return {
+    canStage,
+    canMerge,
+    canDeploy,
+    reasons,
+    decision: canDeploy ? 'APPROVED_FOR_DEPLOYMENT'
+      : canMerge ? 'APPROVED_FOR_MERGE'
+        : canStage ? 'READY_FOR_OWNER_APPROVAL' : 'BLOCKED',
+  };
+}

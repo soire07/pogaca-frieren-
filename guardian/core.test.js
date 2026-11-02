@@ -5,6 +5,7 @@ import {
   classifyGuardianSeverity,
   canRequestGuardianReview,
   evaluateGuardianApprovalGate,
+  evaluateNeuralQualityGate,
   redactGuardianText,
 } from './core.js';
 
@@ -109,4 +110,103 @@ test('secret redaction covers bearer/basic auth, common credential variables and
       'panel-secret',
     ]) assert.equal(redacted.includes(secret), false, 'credential leaked: ' + secret);
   }
+});
+
+
+function readyNeuralReport() {
+  const dimensions = ['correctness', 'instruction_adherence', 'turkish_quality', 'grounding', 'safety_privacy', 'conversation_consistency'];
+  return {
+    decision: 'READY FOR STAGED TEST',
+    prompt_set_version: 'tr-conversation-v1',
+    checkpoint_sha256: 'a'.repeat(64),
+    outputs: Array.from({ length: 24 }, (_, index) => ({ id: 'TR-' + String(index + 1).padStart(3, '0'), output: 'Yanıt ' + index })),
+    blocking_reasons: [],
+    human_review: { completed: true, reviewers_required: 2 },
+    training_provenance: { manifest_sha256: 'b'.repeat(64), licenses: ['Apache-2.0'] },
+    heldout_metrics: { loss: 1.2, perplexity: 3.32 },
+    baseline_comparison: { available: true, improved: true, baseline_checkpoint_sha256: 'c'.repeat(64) },
+    metrics: {
+      dimension_averages: Object.fromEntries(dimensions.map(key => [key, 3.8])),
+      overall_average: 3.8,
+      instruction_adherence_3_or_4_rate: 0.96,
+      turkish_quality_3_or_4_rate: 0.96,
+      critical_safety_failures: [],
+      fabricated_claims: [],
+      multi_turn_failures: [],
+    },
+  };
+}
+
+test('Neural Guardian fails closed when complete independent quality evidence is absent', () => {
+  const result = evaluateNeuralQualityGate();
+  assert.equal(result.canStage, false);
+  assert.equal(result.canMerge, false);
+  assert.equal(result.canDeploy, false);
+  assert.ok(result.reasons.includes('NEURAL_QUALITY_REPORT_NOT_READY'));
+  assert.ok(result.reasons.includes('NEURAL_MEMORY_ISOLATION_NOT_PASSED'));
+});
+
+test('Neural Guardian requires all quality and operational gates plus separate approvals', () => {
+  const input = {
+    qualityReport: readyNeuralReport(),
+    stagedTestsPassed: true,
+    memoryIsolationPassed: true,
+    securityChecksPassed: true,
+    resourceChecksPassed: true,
+  };
+  const staged = evaluateNeuralQualityGate(input);
+  assert.equal(staged.canStage, true);
+  assert.equal(staged.canMerge, false);
+  assert.equal(staged.canDeploy, false);
+  assert.equal(staged.decision, 'READY_FOR_OWNER_APPROVAL');
+
+  const approved = evaluateNeuralQualityGate({ ...input, ownerApproved: true });
+  assert.equal(approved.canMerge, true);
+  assert.equal(approved.canDeploy, false);
+
+  const deployed = evaluateNeuralQualityGate({ ...input, ownerApproved: true, deploymentApproved: true });
+  assert.equal(deployed.canDeploy, true);
+  assert.equal(deployed.decision, 'APPROVED_FOR_DEPLOYMENT');
+});
+
+test('Neural Guardian blocks empty benchmark outputs, missing reviewers and fabricated claims', () => {
+  const report = readyNeuralReport();
+  report.outputs[7].output = '   ';
+  report.human_review.reviewers_required = 1;
+  report.metrics.fabricated_claims = ['TR-019:reviewer_1'];
+  const result = evaluateNeuralQualityGate({
+    qualityReport: report,
+    stagedTestsPassed: true,
+    memoryIsolationPassed: true,
+    securityChecksPassed: true,
+    resourceChecksPassed: true,
+    ownerApproved: true,
+    deploymentApproved: true,
+  });
+  assert.equal(result.canStage, false);
+  assert.equal(result.canMerge, false);
+  assert.equal(result.canDeploy, false);
+  assert.ok(result.reasons.includes('NEURAL_BENCHMARK_OUTPUTS_INCOMPLETE'));
+  assert.ok(result.reasons.includes('NEURAL_INDEPENDENT_HUMAN_REVIEW_REQUIRED'));
+  assert.ok(result.reasons.includes('NEURAL_FABRICATED_CLAIMS'));
+});
+
+test('Neural Guardian blocks safety failures, low dimensions and baseline regressions', () => {
+  const report = readyNeuralReport();
+  report.metrics.critical_safety_failures = ['TR-011:reviewer_2'];
+  report.metrics.dimension_averages.correctness = 2.9;
+  report.baseline_comparison.improved = false;
+  const result = evaluateNeuralQualityGate({
+    qualityReport: report,
+    stagedTestsPassed: true,
+    memoryIsolationPassed: true,
+    securityChecksPassed: true,
+    resourceChecksPassed: true,
+    ownerApproved: true,
+    deploymentApproved: true,
+  });
+  assert.equal(result.canDeploy, false);
+  assert.ok(result.reasons.includes('NEURAL_CRITICAL_SAFETY_FAILURE'));
+  assert.ok(result.reasons.includes('NEURAL_DIMENSION_THRESHOLD_FAILED'));
+  assert.ok(result.reasons.includes('NEURAL_COMPARABLE_IMPROVED_BASELINE_REQUIRED'));
 });
