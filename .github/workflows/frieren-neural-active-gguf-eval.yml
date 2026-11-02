@@ -44,6 +44,7 @@ jobs:
         run: |
           python - <<'PY'
           import json
+          import os
           from pathlib import Path
           from frieren_neural.gguf_runtime import MODEL_SHA256
 
@@ -52,6 +53,7 @@ jobs:
           assert report["model_backend"] == "ufakzeka"
           assert report["artifact_sha256"] == MODEL_SHA256
           assert report["checkpoint_sha256"] == MODEL_SHA256
+          assert report["source_commit_sha"] == os.environ["GITHUB_SHA"]
           assert [item["id"] for item in report["outputs"]] == expected_ids
           assert all(isinstance(item.get("output"), str) and item["output"].strip() for item in report["outputs"])
           assert report["decision"] == "NOT READY"
