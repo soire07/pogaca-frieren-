@@ -1,0 +1,25 @@
+{
+  "name": "Frieren Platform",
+  "short_name": "Frieren",
+  "description": "Frieren evreninde büyülü bir Discord RPG yolculuğu.",
+  "lang": "tr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#17152c",
+  "theme_color": "#17152c",
+  "icons": [
+    {
+      "src": "/assets/site-avatar.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/site-avatar.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -218,3 +218,25 @@ test('homepage declares the existing Frieren brand favicon and serves the SVG as
   assert.match(favicon.headers['Content-Type'], /image\/svg\+xml/);
   assert.ok(String(favicon.body).startsWith('<svg'), 'favicon response must contain the existing SVG brand artwork');
 });
+
+test('homepage advertises an installable Frieren web app manifest and brand icon', async () => {
+  const homepage = res();
+  await handlePublicSiteRequest(request('/'), homepage);
+  assert.match(homepage.body, /<link rel="manifest" href="\/site\.webmanifest">/);
+  assert.match(homepage.body, /name="mobile-web-app-capable"/);
+  const manifestResponse = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/site.webmanifest', headers: {} }, manifestResponse), true);
+  assert.equal(manifestResponse.status, 200);
+  assert.match(manifestResponse.headers['Content-Type'], /application\/manifest\+json/);
+  assert.match(manifestResponse.headers['Cache-Control'], /public,max-age=86400/);
+  const manifest = JSON.parse(String(manifestResponse.body));
+  assert.equal(manifest.name, 'Frieren Platform');
+  assert.equal(manifest.short_name, 'Frieren');
+  assert.equal(manifest.display, 'standalone');
+  assert.ok(manifest.icons.some(icon => icon.src === '/assets/site-avatar.webp' && icon.sizes === '512x512' && icon.purpose === 'any maskable'));
+  const icon = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-avatar.webp', headers: {} }, icon), true);
+  assert.equal(icon.status, 200);
+  assert.match(icon.headers['Content-Type'], /image\/webp/);
+  assert.ok(Buffer.isBuffer(icon.body) && icon.body.length > 1000);
+});
