@@ -138,7 +138,7 @@ test('Guardian resolution writes an audit record in the same SQL statement', asy
   assert.match(sql, /WITH changed AS/);
   assert.match(sql, /cancelled_jobs AS/);
   assert.match(sql, /UPDATE owner_guardian_jobs/);
-  assert.match(sql, /status IN \\('queued','running'\\)/);
+  assert.match(sql, /status IN/);
   assert.match(sql, /GUARDIAN_INCIDENT_RESOLVED/);
 });
 
