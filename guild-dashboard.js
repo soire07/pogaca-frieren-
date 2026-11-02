@@ -8,7 +8,6 @@ import {
 } from './guild-feature-settings.js';
 
 const SNOWFLAKE = /^\d{17,20}$/;
-const SNOWFLAKE = /^\\d{17,20}$/;
 const SITE_ACCOUNT = /^site_[0-9a-f-]{36}$/i;
 const MAX_BODY_BYTES = 8192;
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({
