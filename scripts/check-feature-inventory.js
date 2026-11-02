@@ -5,7 +5,7 @@ const inventory = JSON.parse(await readFile(new URL('../feature-inventory.json',
 const result = inspectFeatureInventory(inventory);
 
 if (result.errors.length) {
-  console.error(result.errors.join('\\n'));
+  console.error(result.errors.join(String.fromCharCode(10)));
   process.exitCode = 1;
 } else {
   console.log(
