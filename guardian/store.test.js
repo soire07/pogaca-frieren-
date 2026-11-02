@@ -32,36 +32,41 @@ test('Guardian incident upsert deduplicates repeated evidence and bounds evidenc
   assert.equal(call.params[1], 'pogaca_frieren');
 });
 
-test('Guardian review job enforces cooldown and creates one active Frieren AI job', async () => {
+test('Guardian review reservation and queue insertion are atomic and reuse concurrent active jobs', async () => {
   const statements = [];
   const db = { query: async (sql, params) => {
-    statements.push(sql);
-    if (sql.includes('SELECT * FROM owner_guardian_jobs')) return { rows: [] };
-    if (sql.includes('SELECT id,review_attempts')) return { rows: [{ id: 4, review_attempts: 0, last_review_at: null, status: 'open' }] };
-    if (sql.includes('UPDATE owner_guardian_incidents')) return { rowCount: 1, rows: [{ id: 4 }] };
-    if (sql.includes('INSERT INTO owner_guardian_jobs')) return { rows: [{ id: 8, incident_id: 4, agent: 'frieren_ai', status: 'queued' }] };
+    statements.push({ sql, params });
+    if (sql.includes('SELECT * FROM owner_guardian_jobs')) {
+      return statements.filter(item => item.sql.includes('WITH reserved AS')).length
+        ? { rows: [{ id: 8, incident_id: 4, agent: 'frieren_ai', status: 'queued' }] }
+        : { rows: [] };
+    }
+    if (sql.includes('WITH reserved AS')) return { rows: [{ id: 8, incident_id: 4, agent: 'frieren_ai', status: 'queued' }] };
     throw new Error('Unexpected Guardian query');
   } };
   const job = await createGuardianReviewJob(db, { incidentId: 4, actorId: '1553794496234262641' });
   assert.equal(job.id, 8);
-  assert.ok(statements.some(sql => sql.includes('review_attempts < 3')));
-  assert.ok(statements.some(sql => sql.includes('ON CONFLICT (incident_id,agent)')));
+  assert.match(statements[1].sql, /WITH reserved AS/);
+  assert.match(statements[1].sql, /review_attempts=review_attempts\+1/);
+  assert.match(statements[1].sql, /ON CONFLICT \(incident_id,agent\)/);
+  assert.doesNotMatch(statements[1].sql, /SELECT id,review_attempts/);
+  assert.equal(statements.length, 2);
 });
 
-test('Guardian review completion stores a proposal and moves incident to approval review', async () => {
-  const calls = [];
+test('Guardian review completion atomically stores proposal and advances incident status', async () => {
+  let call;
   const db = { query: async (sql, params) => {
-    calls.push({ sql, params });
-    if (sql.includes('UPDATE owner_guardian_jobs')) return { rows: [{ incident_id: 4 }] };
-    if (sql.includes('UPDATE owner_guardian_incidents')) return { rowCount: 1, rows: [] };
-    throw new Error('Unexpected Guardian query');
+    call = { sql, params };
+    return { rows: [{ incident_id: 4 }] };
   } };
   assert.equal(await finishGuardianReviewJob(db, {
     jobId: 8, status: 'completed', result: { status: 'proposal_only', applied: false },
   }), true);
-  assert.match(calls[0].sql, /finished_at=NOW/);
-  assert.equal(calls[1].params[1], 'awaiting_approval');
-  assert.deepEqual(JSON.parse(calls[0].params[2]), { status: 'proposal_only', applied: false });
+  assert.match(call.sql, /WITH changed AS/);
+  assert.match(call.sql, /incident_update AS/);
+  assert.match(call.sql, /finished_at=NOW/);
+  assert.equal(call.params[3], 'awaiting_approval');
+  assert.deepEqual(JSON.parse(call.params[2]), { status: 'proposal_only', applied: false });
 });
 
 test('Guardian resolution writes an audit record in the same SQL statement', async () => {
