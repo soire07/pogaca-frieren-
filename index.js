@@ -320,7 +320,11 @@ client.on(Events.MessageCreate, async message => {
           const embed = new EmbedBuilder().setColor(0x9a8bd2).setTitle(spawn.creature.emoji + ' Vahşi bir yaratık belirdi!')
             .setDescription('**' + spawn.creature.name + '** burada dolaşıyor. İlk yakalayan, yaratığı arşivine ekler.\n\nYakalamak için **3 dakikan** var.');
           try {
-            const sent = await message.channel.send({ embeds: [embed], components: [row] });
+            const notifyUserIds = (spawn.notifyUserIds || []).slice(0, 10);
+            const sent = await message.channel.send({
+              content: notifyUserIds.length ? notifyUserIds.map(id => '<@' + id + '>').join(' ') : undefined,
+              embeds: [embed], components: [row], allowedMentions: { parse: [], users: notifyUserIds }
+            });
             await setCreatureSpawnMessageId(pool, spawn.spawnId, sent.id);
           } catch (sendError) { await deactivateCreatureSpawn(pool, spawn.spawnId); throw sendError; }
         }

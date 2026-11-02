@@ -18,6 +18,22 @@ export async function initCreatureSchema(db){
  await db.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_active_creature_spawn_guild ON active_creature_spawns(guild_id) WHERE active=TRUE');
  await db.query(`CREATE TABLE IF NOT EXISTS user_creature_collection(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,creature_key TEXT NOT NULL,quantity INTEGER NOT NULL DEFAULT 1 CHECK(quantity>0),first_caught_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),last_caught_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id,creature_key),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE)`);
  await db.query('CREATE INDEX IF NOT EXISTS idx_user_creature_collection_count ON user_creature_collection(guild_id,user_id,quantity DESC)');
+ await db.query(`CREATE TABLE IF NOT EXISTS user_creature_wishlist(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,creature_key TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id,creature_key),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE)`);
+ await db.query('CREATE INDEX IF NOT EXISTS idx_creature_wishlist_spawn ON user_creature_wishlist(guild_id,creature_key)');
+}
+export async function setCreatureWishlist(db,{guildId,userId,creatureKey,enabled}){
+ if(!CREATURE_CATALOG.some(x=>x.key===creatureKey)||!guildId||!userId||typeof enabled!=='boolean')return{status:'invalid_creature'};
+ await ensureUser(guildId,userId);
+ if(enabled){
+  const result=await db.query('INSERT INTO user_creature_wishlist(guild_id,user_id,creature_key) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING creature_key',[guildId,userId,creatureKey]);
+  return{status:result.rowCount?'added':'already_listed'};
+ }
+ const result=await db.query('DELETE FROM user_creature_wishlist WHERE guild_id=$1 AND user_id=$2 AND creature_key=$3 RETURNING creature_key',[guildId,userId,creatureKey]);
+ return{status:result.rowCount?'removed':'not_listed'};
+}
+export async function getCreatureWishlist(db,guildId,userId){
+ const result=await db.query('SELECT creature_key FROM user_creature_wishlist WHERE guild_id=$1 AND user_id=$2 ORDER BY created_at',[guildId,userId]);
+ return(result.rows||[]).map(row=>CREATURE_CATALOG.find(x=>x.key===row.creature_key)).filter(Boolean);
 }
 export async function maybeSpawnCreature(dbPool,{guildId,channelId},{random=Math.random,force=false}={}){
  if(!guildId||!channelId)return{status:'invalid_input'};if(!force&&random()>=CREATURE_SPAWN_CHANCE)return{status:'no_spawn'};
@@ -31,8 +47,9 @@ export async function maybeSpawnCreature(dbPool,{guildId,channelId},{random=Math
   if(active.rowCount||Date.now()-last<CREATURE_SPAWN_COOLDOWN_MS){await db.query('ROLLBACK');return{status:'spawn_blocked'};}
   const creature=rollCreature(random),spawnId=randomUUID();
   await db.query("INSERT INTO active_creature_spawns(spawn_id,guild_id,channel_id,creature_key,expires_at) VALUES($1,$2,$3,$4,NOW()+INTERVAL '3 minutes')",[spawnId,guildId,channelId,creature.key]);
+  const wishers=await db.query('SELECT user_id FROM user_creature_wishlist WHERE guild_id=$1 AND creature_key=$2 ORDER BY created_at LIMIT 10',[guildId,creature.key]);
   await db.query('UPDATE guild_creature_spawn_state SET last_spawn_at=NOW() WHERE guild_id=$1',[guildId]);
-  await db.query('COMMIT');return{status:'spawned',spawnId,creature};
+  await db.query('COMMIT');return{status:'spawned',spawnId,creature,notifyUserIds:(wishers.rows||[]).map(row=>row.user_id)};
  }catch(error){await db.query('ROLLBACK').catch(()=>{});throw error;}finally{db.release();}
 }
 export async function setCreatureSpawnMessageId(db,spawnId,messageId){await db.query('UPDATE active_creature_spawns SET message_id=$2 WHERE spawn_id=$1 AND active=TRUE',[spawnId,messageId]);}
