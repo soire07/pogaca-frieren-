@@ -217,6 +217,7 @@ test('Guardian monitor starts after database schema initialization and before Di
   const discordLogin = source.indexOf('await client.login(process.env.DISCORD_TOKEN);');
   assert.ok(schemaReady >= 0 && monitorStart > schemaReady && discordLogin > monitorStart,
     'Guardian must start after its tables exist, without waiting for Discord Ready');
-  assert.ok(source.includes('onIncident: async incident => {') && source.includes('processGuardianIncident({ db: pool, incident })'),\n    'persisted incidents must be handed to the autonomous repair pipeline');\n  assert.equal(source.includes('client.once(Events.ClientReady, () => {\n  stopGuardianMonitor = startGuardianMonitor'), false,
+  assert.ok(source.includes('onIncident: async incident => {') && source.includes('processGuardianIncident({ db: pool, incident })'),
+    'persisted incidents must be handed to the autonomous repair pipeline');\n  assert.equal(source.includes('client.once(Events.ClientReady, () => {\n  stopGuardianMonitor = startGuardianMonitor'), false,
     'Guardian monitor must not be gated on Discord Ready');
 });
