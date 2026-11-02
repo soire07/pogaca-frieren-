@@ -38,6 +38,30 @@ export async function scanNewOwnerErrors(db, lastSeenErrorId = 0, limit = 50, on
   return { lastSeenErrorId: nextId, recorded };
 }
 
+export async function scanPendingGuardianIncidents(db, onIncident = async () => {}, onIncidentError = async () => {}, limit = 10) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 25));
+  const result = await db.query(
+    `SELECT id,system,code,severity,status,title,summary,evidence,review_attempts,last_review_at
+     FROM owner_guardian_incidents
+     WHERE status='open' AND severity IN ('critical','high')
+       AND COALESCE(review_attempts,0) < 3
+       AND (last_review_at IS NULL OR last_review_at < NOW()-INTERVAL '15 minutes')
+     ORDER BY CASE severity WHEN 'critical' THEN 0 ELSE 1 END,last_seen DESC
+     LIMIT $1`,
+    [safeLimit]
+  );
+  let attempted = 0;
+  for (const incident of result.rows || []) {
+    try {
+      await onIncident(incident);
+    } catch (error) {
+      await onIncidentError(error, incident);
+    }
+    attempted += 1;
+  }
+  return { attempted };
+}
+
 export function startGuardianMonitor({
   db,
   client,
@@ -71,6 +95,7 @@ export function startGuardianMonitor({
         "SELECT last_seen_error_id FROM owner_guardian_monitor_state WHERE monitor_key='owner_error_logs'"
       );
       const cursor = Number(cursorResult.rows?.[0]?.last_seen_error_id || 0);
+      await scanPendingGuardianIncidents(db, onIncident, onError, 10);
       await scanNewOwnerErrors(db, cursor, 50, async nextId => {
         await db.query(
           `UPDATE owner_guardian_monitor_state SET last_seen_error_id=$1,updated_at=NOW()
