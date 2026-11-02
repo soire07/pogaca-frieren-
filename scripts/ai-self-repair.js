@@ -95,6 +95,17 @@ export async function collectRepairContext(task, {
   return blocks.join('\n');
 }
 
+export async function verifyGroqConnection({ client, model = 'openai/gpt-oss-20b' }) {
+  if (!client || typeof client.chat?.completions?.create !== 'function') throw new Error('AI_MODEL_CLIENT_REQUIRED');
+  const response = await client.chat.completions.create({
+    model, temperature: 0, max_completion_tokens: 16,
+    messages: [{ role: 'user', content: 'Reply with exactly FRIEREN_GROQ_OK.' }],
+  });
+  const output = String(response?.choices?.[0]?.message?.content || '').trim();
+  if (output !== 'FRIEREN_GROQ_OK') throw new Error('GROQ_VALIDATION_RESPONSE_INVALID');
+  return true;
+}
+
 export async function generateRepairPatch({ task, apiKey, model = 'openai/gpt-oss-20b', client, context }) {
   if (!client || typeof client.chat?.completions?.create !== 'function') {
     throw new Error('AI_MODEL_CLIENT_REQUIRED');
@@ -148,13 +159,21 @@ export function applyRepairPatch(patch, { execFile = runGit } = {}) {
 }
 
 export async function main(env = process.env) {
-  const task = String(env.FRIEREN_REPAIR_TASK || '').trim();
-  if (!task || task.length > 1200) throw new Error('REPAIR_TASK_REQUIRED');
+  const mode = String(env.FRIEREN_REPAIR_MODE || 'repair').trim().toLowerCase();
+  if (!['validate', 'repair'].includes(mode)) throw new Error('REPAIR_MODE_INVALID');
   const provider = createAiModelProvider({ env });
   if (!provider.configured) throw new Error(provider.reason || 'AI_PROVIDER_NOT_CONFIGURED');
+  const model = String(env.FRIEREN_MODEL || 'openai/gpt-oss-20b');
+  if (mode === 'validate') {
+    await verifyGroqConnection({ client: provider.client, model });
+    process.stdout.write('Groq API connection verified. No source files changed.\\n');
+    return;
+  }
+  const task = String(env.FRIEREN_REPAIR_TASK || '').trim();
+  if (!task || task.length > 1200) throw new Error('REPAIR_TASK_REQUIRED');
   const context = await collectRepairContext(task);
   const proposal = await generateRepairPatch({
-    task, client: provider.client, model: String(env.FRIEREN_MODEL || 'openai/gpt-oss-20b'), context,
+    task, client: provider.client, model, context,
   });
   const changed = applyRepairPatch(proposal.patch);
   if (changed.some(path => !proposal.files.includes(path))) throw new Error('REPAIR_CHANGED_UNEXPECTED_FILE');
