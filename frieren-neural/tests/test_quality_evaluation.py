@@ -221,9 +221,6 @@ def test_active_gguf_evaluation_uses_pinned_artifact_and_never_claims_readiness(
     artifact.write_bytes(b"pinned-gguf-test-artifact")
     digest = __import__("hashlib").sha256(artifact.read_bytes()).hexdigest()
     monkeypatch.setattr(gguf_runtime, "MODEL_SHA256", digest)
-    monkeypatch.setattr(quality, "load_prompt_set", lambda: [
-        {"id": "TR-001", "category": "Greeting", "prompt": "Merhaba", "review_hint": "Kısa"}
-    ])
     monkeypatch.setattr(gguf_runtime, "ensure_model_file", lambda _path=None: artifact)
     monkeypatch.setattr(gguf_runtime, "load_model", lambda _path=None: object())
     monkeypatch.setattr(gguf_runtime, "generate_completion", lambda *_args, **_kwargs: "Merhaba.")
@@ -231,6 +228,8 @@ def test_active_gguf_evaluation_uses_pinned_artifact_and_never_claims_readiness(
     report = quality.build_report(checkpoint_sha256=artifact_sha, checkpoint_step=0, outputs=outputs, scores=None,
         model_backend="ufakzeka", artifact_sha256=artifact_sha)
     assert artifact_sha == digest
+    assert len(outputs) == 24
+    assert [item["id"] for item in outputs] == [f"TR-{index:03d}" for index in range(1, 25)]
     assert outputs[0]["output"] == "Merhaba."
     assert report["model_backend"] == "ufakzeka"
     assert report["artifact_sha256"] == digest
