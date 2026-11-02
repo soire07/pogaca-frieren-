@@ -174,3 +174,19 @@ test('standalone RPG subcategories map to their specific feature gates', async (
   assert.deepEqual(getCommandFeatureKeys('hedefler'), ['quests', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('kesifdefteri'), ['quests', 'rpg']);
 });
+
+
+test('iblisavasi is gated by boss and RPG settings', async () => {
+  const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
+  assert.deepEqual(getCommandFeatureKeys('iblisavasi'), ['bosses', 'rpg']);
+});
+
+test('character duplicate dismantling is gated by character, economy and RPG settings', async () => {
+  const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
+  assert.deepEqual(getCommandFeatureKeys('parcala'), ['character', 'economy', 'rpg']);
+});
+
+test('crafting daily quest is gated by equipment, quests and RPG settings', async () => {
+  const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
+  assert.deepEqual(getCommandFeatureKeys('zanaatgorevi'), ['equipment', 'quests', 'rpg']);
+});
