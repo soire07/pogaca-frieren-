@@ -1,7 +1,7 @@
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import {pool,initDatabase} from '../database/db.js';
-import {adoptCompanion,careForCompanion,getCompanion,initCompanionSchema} from '../companions.js';
+import {adoptCompanion,careForCompanion,equipCompanionCosmetic,getCompanion,initCompanionSchema} from '../companions.js';
 const guild='companion-audit-guild',user='companion-audit-user',poorUser='companion-audit-poor';
 before(async()=>{
  await initDatabase();await initCompanionSchema(pool);
@@ -43,4 +43,19 @@ test('insufficient funds and missing companion do not mutate player state',async
  assert.equal(adoption.status,'insufficient_funds');
  const balance=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,poorUser]);
  assert.equal(Number(balance.rows[0].coins),0);
+});
+
+test('companion cosmetics charge once, can be re-equipped free and can be reset',async()=>{
+ const before=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);
+ const first=await equipCompanionCosmetic(pool,{guildId:guild,userId:user,cosmeticKey:'starlight_ribbon'});
+ assert.equal(first.status,'equipped');
+ const afterPurchase=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);
+ assert.equal(Number(afterPurchase.rows[0].coins),Number(before.rows[0].coins)-250);
+ const again=await equipCompanionCosmetic(pool,{guildId:guild,userId:user,cosmeticKey:'starlight_ribbon'});
+ assert.equal(again.status,'equipped');assert.equal(again.alreadyOwned,true);
+ const afterAgain=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);
+ assert.equal(Number(afterAgain.rows[0].coins),Number(afterPurchase.rows[0].coins));
+ assert.equal((await getCompanion(pool,guild,user)).cosmetic.key,'starlight_ribbon');
+ assert.equal((await equipCompanionCosmetic(pool,{guildId:guild,userId:user,cosmeticKey:'default'})).status,'equipped');
+ assert.equal((await getCompanion(pool,guild,user)).cosmetic,null);
 });

@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
-import { adoptCompanion, careForCompanion, getCompanion, initCompanionSchema, COMPANION_CATALOG } from './companions.js';
+import { adoptCompanion, careForCompanion, equipCompanionCosmetic, getCompanion, initCompanionSchema, COMPANION_CATALOG, COMPANION_COSMETICS } from './companions.js';
 
 let schemaReady;
 function ensureSchema() {
@@ -16,7 +16,10 @@ export default {
     .addSubcommand(sub => sub.setName('sahiplen').setDescription('Bir yoldaş sahiplen.').addStringOption(option => option.setName('tur').setDescription('Yoldaş türü').setRequired(true).addChoices(...COMPANION_CATALOG.map(item => ({ name: item.name + ' · ' + item.cost + ' altın', value: item.key })))))
     .addSubcommand(sub => sub.setName('besle').setDescription('Yoldaşını besle.'))
     .addSubcommand(sub => sub.setName('oyna').setDescription('Yoldaşınla oyun oyna.'))
-    .addSubcommand(sub => sub.setName('egit').setDescription('Yoldaşını eğit (100 altın).')),
+    .addSubcommand(sub => sub.setName('egit').setDescription('Yoldaşını eğit (100 altın).'))
+    .addSubcommand(sub => sub.setName('kozmetik').setDescription('Yoldaşına kozmetik giydir veya görünümünü sıfırla.')
+      .addStringOption(option => option.setName('gorunum').setDescription('Seçtiğin görünüm (ilk kullanımda altınla açılır).').setRequired(true)
+        .addChoices({ name: 'Varsayılan görünüm · Ücretsiz', value: 'default' }, ...COMPANION_COSMETICS.map(item => ({ name: item.emoji + ' ' + item.name + ' · ' + item.cost + ' altın', value: item.key }))))),
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({ content: 'Bu komut yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -31,6 +34,13 @@ export default {
         if (result.status === 'already_has_companion') return interaction.editReply('Zaten bir yoldaşın var. Önce mevcut yoldaşının bakımını yap.');
         return interaction.editReply('Geçersiz yoldaş seçimi.');
       }
+      if (action === 'kozmetik') {
+        const result = await equipCompanionCosmetic(pool, { guildId: interaction.guildId, userId: interaction.user.id, cosmeticKey: interaction.options.getString('gorunum', true) });
+        if (result.status === 'no_companion') return interaction.editReply('Önce /yoldas sahiplen ile bir yoldaş edinmelisin.');
+        if (result.status === 'insufficient_funds') return interaction.editReply('Bu görünüm için **' + result.cost + '** altın gerekiyor.');
+        if (result.status !== 'equipped') return interaction.editReply('Bu kozmetik şu anda kullanılamıyor.');
+        return interaction.editReply(result.cosmetic ? result.cosmetic.emoji + ' **' + result.cosmetic.name + '** görünümü yoldaşına uygulandı.' : 'Yoldaşının görünümü varsayılana döndürüldü.');
+      }
       if (['besle', 'oyna', 'egit'].includes(action)) {
         const result = await careForCompanion(pool, { guildId: interaction.guildId, userId: interaction.user.id, action: action === 'besle' ? 'feed' : action === 'oyna' ? 'play' : 'train' });
         if (result.status === 'no_companion') return interaction.editReply('Henüz yoldaşın yok. Önce /yoldas sahiplen komutunu kullan.');
@@ -44,7 +54,7 @@ export default {
         const choices = COMPANION_CATALOG.map(item => item.emoji + ' **' + item.name + '** — ' + item.cost + ' altın').join('\n');
         return interaction.editReply('Yoldaş Akademisi’ne hoş geldin!\n' + choices + '\n\nBir yoldaş seçmek için `/yoldas sahiplen` kullan.');
       }
-      const embed = new EmbedBuilder().setColor(0xb58cff).setTitle(pet.catalog.emoji + ' ' + pet.catalog.name + ' · Yoldaşın').setDescription(pet.catalog.description)
+      const embed = new EmbedBuilder().setColor(0xb58cff).setTitle((pet.cosmetic?.emoji || pet.catalog?.emoji || '🐾') + ' ' + (pet.catalog?.name || 'Yoldaşın') + ' · Yoldaşın').setDescription((pet.catalog?.description || 'Yoldaşın') + (pet.cosmetic ? '\nGörünüm: **' + pet.cosmetic.name + '**' : ''))
         .addFields({ name: 'Seviye', value: String(pet.level), inline: true }, { name: 'Deneyim', value: String(pet.xp) + ' XP', inline: true }, { name: 'Mutluluk', value: pet.happiness + '/100', inline: true }, { name: 'Enerji', value: pet.energy + '/100', inline: true }, { name: 'Açlık', value: pet.hunger + '/100', inline: true })
         .setFooter({ text: 'Besleme: 30 dk · Oyun: 20 dk · Eğitim: 60 dk bekleme süresi' });
       return interaction.editReply({ embeds: [embed] });

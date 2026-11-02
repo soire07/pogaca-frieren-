@@ -7,6 +7,14 @@ export const COMPANION_CATALOG = Object.freeze([
   Object.freeze({ key: 'snow_wolf', name: 'Kuzey Kurdu', emoji: '🐺', cost: 950, description: 'Kuzey Kıtası’nın soğuğuna dayanıklı yol arkadaşı.' })
 ]);
 
+export const COMPANION_COSMETICS = Object.freeze([
+  Object.freeze({ key: 'starlight_ribbon', name: 'Yıldız Kurdele', emoji: '✨', cost: 250 }),
+  Object.freeze({ key: 'frost_cloak', name: 'Buz Pelerini', emoji: '❄️', cost: 400 }),
+  Object.freeze({ key: 'mana_circlet', name: 'Mana Tacı', emoji: '🔮', cost: 600 })
+]);
+export function normalizeCompanionCosmetic(key) {
+  return key === 'default' ? 'default' : COMPANION_COSMETICS.some(item => item.key === key) ? key : null;
+}
 export function companionLevelForXp(xp) {
   const value = Number(xp);
   if (!Number.isFinite(value) || value < 0) return 1;
@@ -30,6 +38,8 @@ export async function initCompanionSchema(db) {
     'PRIMARY KEY (guild_id,user_id), ' +
     'FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE)'
   );
+  await db.query("ALTER TABLE user_companions ADD COLUMN IF NOT EXISTS cosmetic_key TEXT NOT NULL DEFAULT 'default'");
+  await db.query('CREATE TABLE IF NOT EXISTS user_companion_cosmetics (guild_id TEXT NOT NULL,user_id TEXT NOT NULL,cosmetic_key TEXT NOT NULL,unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id,cosmetic_key),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE)');
   await db.query('CREATE INDEX IF NOT EXISTS idx_user_companions_level ON user_companions(guild_id,level DESC,xp DESC)');
 }
 
@@ -90,9 +100,36 @@ export async function careForCompanion(dbPool, input) {
   finally { db.release(); }
 }
 
+export async function equipCompanionCosmetic(dbPool, input) {
+  const cosmeticKey = normalizeCompanionCosmetic(input?.cosmeticKey);
+  if (!cosmeticKey || !input?.guildId || !input?.userId) return { status: 'invalid_cosmetic' };
+  const cosmetic = cosmeticKey === 'default' ? null : COMPANION_COSMETICS.find(item => item.key === cosmeticKey);
+  const db = await dbPool.connect();
+  try {
+    await db.query('BEGIN');
+    await db.query('SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [input.guildId, input.userId]);
+    const companion = await db.query('SELECT companion_key,cosmetic_key FROM user_companions WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [input.guildId, input.userId]);
+    if (!companion.rowCount) { await db.query('ROLLBACK'); return { status: 'no_companion' }; }
+    if (cosmeticKey === 'default') {
+      await db.query("UPDATE user_companions SET cosmetic_key='default',updated_at=NOW() WHERE guild_id=$1 AND user_id=$2", [input.guildId, input.userId]);
+      await db.query('COMMIT');
+      return { status: 'equipped', cosmetic: null };
+    }
+    const owned = await db.query('SELECT cosmetic_key FROM user_companion_cosmetics WHERE guild_id=$1 AND user_id=$2 AND cosmetic_key=$3', [input.guildId, input.userId, cosmeticKey]);
+    if (!owned.rowCount) {
+      const debit = await db.query('UPDATE users SET coins=coins-$3 WHERE guild_id=$1 AND user_id=$2 AND coins >= $3 RETURNING coins', [input.guildId, input.userId, cosmetic.cost]);
+      if (!debit.rowCount) { await db.query('ROLLBACK'); return { status: 'insufficient_funds', cost: cosmetic.cost }; }
+      await db.query('INSERT INTO user_companion_cosmetics(guild_id,user_id,cosmetic_key) VALUES($1,$2,$3)', [input.guildId, input.userId, cosmeticKey]);
+    }
+    await db.query('UPDATE user_companions SET cosmetic_key=$3,updated_at=NOW() WHERE guild_id=$1 AND user_id=$2', [input.guildId, input.userId, cosmeticKey]);
+    await db.query('COMMIT');
+    return { status: 'equipped', cosmetic, alreadyOwned: Boolean(owned.rowCount) };
+  } catch (error) { await db.query('ROLLBACK').catch(() => {}); throw error; }
+  finally { db.release(); }
+}
 export async function getCompanion(dbPool, guildId, userId) {
   const result = await dbPool.query('SELECT companion_key,xp,level,happiness,energy,hunger,adopted_at FROM user_companions WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
   const pet = result.rows[0];
   if (!pet) return null;
-  return { ...pet, catalog: COMPANION_CATALOG.find(item => item.key === pet.companion_key) || null };
+  return { ...pet, catalog: COMPANION_CATALOG.find(item => item.key === pet.companion_key) || null, cosmetic: pet.cosmetic_key === 'default' ? null : COMPANION_COSMETICS.find(item => item.key === pet.cosmetic_key) || null };
 }
