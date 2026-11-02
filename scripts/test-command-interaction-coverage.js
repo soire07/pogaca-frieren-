@@ -140,3 +140,28 @@ test('command interaction coverage: every discoverable slash command exposes a v
   t.diagnostic('Permission-sensitive commands needing review: ' + (permissionSignalUnclear.join(', ') || 'none'));
   t.diagnostic('Scope: static source signals only; signals do not prove that paths execute correctly. No live Discord API call is performed.');
 });
+
+
+test('autocomplete interactions honor the same per-guild command settings as slash execution', async () => {
+  const source = await readFile(path.join(root, 'index.js'), 'utf8');
+  const autocompleteStart = source.indexOf('if (interaction.isAutocomplete())');
+  const autocompleteEnd = source.indexOf('if (!interaction.isChatInputCommand())', autocompleteStart);
+  assert.ok(autocompleteStart >= 0 && autocompleteEnd > autocompleteStart, 'Autocomplete handler should exist');
+  const autocompleteHandler = source.slice(autocompleteStart, autocompleteEnd);
+  assert.match(autocompleteHandler, /interaction\.guildId && !await isGuildCommandEnabled\(pool, interaction\.guildId, interaction\.commandName\)/);
+  assert.match(autocompleteHandler, /return interaction\.respond\(\[\]\)/);
+});
+
+
+test('component interactions are gated before any component handler can mutate state', async () => {
+  const source = await readFile(path.join(root, 'index.js'), 'utf8');
+  const gate = source.indexOf('const componentCommandName =');
+  const enforcement = source.indexOf('!await isGuildCommandEnabled(pool, interaction.guildId, componentCommandName)');
+  const characterHandler = source.indexOf('handleCharacterPanelInteraction(interaction)');
+  const marketHandler = source.indexOf("interaction.customId.startsWith('market_')");
+  const tradeHandler = source.indexOf("interaction.customId.startsWith('trade_accept:')");
+  assert.ok(gate >= 0 && enforcement > gate, 'Component gate must resolve and enforce the owning command');
+  for (const handler of [characterHandler, marketHandler, tradeHandler]) {
+    assert.ok(handler > enforcement, 'All component handlers must execute after the feature gate');
+  }
+});

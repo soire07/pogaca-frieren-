@@ -102,17 +102,44 @@ export async function resetGuildFeatureSetting(db, { guildId, featureKey }) {
   return Boolean(result.rowCount);
 }
 
+const RPG_COMMAND_NAMES = new Set([
+  'basarimlar', 'cantam', 'dinlen', 'dunya', 'gelisim', 'gunluk', 'gunlukodul',
+  'hazineac', 'hazinegecmisi', 'hedefler', 'kesif', 'kesifdefteri', 'kesifliderligi',
+  'koleksiyon', 'liderlik', 'macera', 'maceragecmisi', 'maceraistatistik', 'mimic',
+  'npc', 'siralama', 'zanaat', 'zanaatustalari'
+]);
+
 export function getCommandFeatureKeys(commandName) {
   const name = String(commandName || '').toLocaleLowerCase('tr-TR');
   const keys = [];
-  if (/karakter|sinif|class|profil/.test(name)) keys.push('character');
+  if (/karakter|sinif|class|profil/.test(name) || name === 'parcala') keys.push('character');
   if (/buyu|büyü|spell|yetenek/.test(name)) keys.push('magic');
-  if (/ekipman|envanter|esya|eşya|item|setbonus/.test(name)) keys.push('equipment');
-  if (/bakiye|market|magaza|mağaza|sat|al|ekonomi|takas|trade/.test(name)) keys.push('economy');
-  if (/gorev|görev|quest/.test(name)) keys.push('quests');
+  if (/ekipman|envanter|esya|eşya|item|setbonus/.test(name) || name === 'cantam' || name.startsWith('zanaat')) keys.push('equipment');
+  if (/bakiye|market|magaza|mağaza|ekonomi|takas|trade/.test(name) || name === 'parcala') keys.push('economy');
+  if (name === 'takasteklif') keys.push('trading');
+  if (/gorev|görev|quest/.test(name) || name === 'hedefler' || name === 'kesifdefteri') keys.push('quests');
   if (/zindan|dungeon/.test(name)) keys.push('dungeons');
-  if (/boss/.test(name)) keys.push('bosses');
-  if (/rpg|savas|savaş|dovus|dövüş|arena/.test(name)) keys.push('rpg');
-  if (keys.length) keys.push('rpg');
+  if (/boss/.test(name) || name === 'iblisavasi') keys.push('bosses');
+  if (/rpg|savas|savaş|dovus|dövüş|arena/.test(name) || name === 'iblisavasi' || name === 'parcala') keys.push('rpg');
+  if (keys.length || RPG_COMMAND_NAMES.has(name)) keys.push('rpg');
   return [...new Set(keys)];
+}
+
+
+export async function isGuildCommandEnabled(db, guildId, commandName) {
+  const normalizedName = String(commandName || '').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+  if (!normalizedName) throw new Error('INVALID_GUILD_COMMAND');
+  const featureKeys = getCommandFeatureKeys(commandName);
+  const keys = ['commands', 'command_' + normalizedName, ...featureKeys];
+  const states = await Promise.all(keys.map(key => getGuildFeatureEnabled(db, guildId, key)));
+  return states.every(enabled => enabled === true);
+}
+
+
+export function getComponentCommandName(customId) {
+  const id = String(customId || '');
+  if (id.startsWith('charpanel:')) return 'karakter';
+  if (id.startsWith('market_')) return 'market';
+  if (id.startsWith('trade_accept:') || id.startsWith('trade_decline:')) return 'takasteklif';
+  return null;
 }

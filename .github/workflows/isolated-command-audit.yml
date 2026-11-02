@@ -1,10 +1,30 @@
-name: Frieren isolated command audit
+name: Frieren isolated command and PostgreSQL audit
+
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'commands/rpg/**'
+      - 'database/**'
+      - 'market.js'
+      - 'trade.js'
+      - 'crafting.js'
+      - 'rpg-mechanics.js'
+      - 'rpg-reward-transactions.js'
+      - 'equipment-data.js'
+      - 'zindan.js'
+      - 'iblisavasi.js'
+      - 'ortakboss.js'
+      - 'scripts/run-isolated-command-audit.js'
+      - 'scripts/test-market-concurrency.integration.js'
+      - 'scripts/test-discord-scenarios.js'
+      - 'scripts/test-economy-crafting-integrity.js'
+      - 'scripts/test-gameplay-persistence.js'
   workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -26,7 +46,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
+      - run: npm install --no-audit --no-fund
       - run: node scripts/run-isolated-command-audit.js
       - name: Run real PostgreSQL market concurrency and rollback tests
         run: node --test scripts/test-market-concurrency.integration.js

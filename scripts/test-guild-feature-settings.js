@@ -93,3 +93,108 @@ test('bulk guild feature lookup validates all guild IDs before querying', async 
   await assert.rejects(listGuildFeatureSettingsForGuilds(db, ['1539562273197260860', 'invalid']), /INVALID_GUILD_ID/);
   assert.equal(db.calls.length, 0);
 });
+
+
+test('command category mapping does not infer economy from incidental sat or al substrings', async () => {
+  const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
+  assert.deepEqual(getCommandFeatureKeys('saldir'), []);
+});
+
+test('known economy command names retain their economy and RPG category gates', async () => {
+  const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
+  for (const commandName of ['bakiye', 'market', 'magaza', 'ekonomi', 'trade']) {
+    assert.deepEqual(getCommandFeatureKeys(commandName), ['economy', 'rpg'], commandName);
+  }
+  assert.deepEqual(getCommandFeatureKeys('takasteklif'), ['economy', 'trading', 'rpg']);
+});
+
+
+test('runtime command gate blocks commands when the guild master switch is disabled', async () => {
+  const { isGuildCommandEnabled } = await import('../guild-feature-settings.js');
+  const db = { async query(sql, params) { return { rows: [{ enabled: params[1] === 'commands' ? false : true }], rowCount: 1 }; } };
+  assert.equal(await isGuildCommandEnabled(db, '1539562273197260860', 'karakter'), false);
+});
+
+test('runtime command gate blocks a single disabled slash command without disabling its category', async () => {
+  const { isGuildCommandEnabled } = await import('../guild-feature-settings.js');
+  const db = { async query(sql, params) { return { rows: [{ enabled: params[1] !== 'command_karakter' }], rowCount: 1 }; } };
+  assert.equal(await isGuildCommandEnabled(db, '1539562273197260860', 'karakter'), false);
+});
+
+test('runtime command gate blocks commands when any mapped category is disabled', async () => {
+  const { isGuildCommandEnabled } = await import('../guild-feature-settings.js');
+  const db = { async query(sql, params) { return { rows: [{ enabled: params[1] !== 'character' }], rowCount: 1 }; } };
+  assert.equal(await isGuildCommandEnabled(db, '1539562273197260860', 'karakter'), false);
+});
+
+test('runtime command gate permits commands only when master, individual and category switches are enabled', async () => {
+  const { isGuildCommandEnabled } = await import('../guild-feature-settings.js');
+  const calls = [];
+  const db = { async query(sql, params) { calls.push(params); return { rows: [{ enabled: true }], rowCount: 1 }; } };
+  assert.equal(await isGuildCommandEnabled(db, '1539562273197260860', 'karakter'), true);
+  assert.deepEqual(calls.map(call => call[1]), ['commands', 'command_karakter', 'character', 'rpg']);
+});
+
+test('runtime command gate validates guild IDs and rejects empty command names', async () => {
+  const { isGuildCommandEnabled } = await import('../guild-feature-settings.js');
+  const db = { calls: 0, async query() { this.calls++; return { rows: [], rowCount: 0 }; } };
+  await assert.rejects(isGuildCommandEnabled(db, 'invalid', 'karakter'), /INVALID_GUILD_FEATURE/);
+  await assert.rejects(isGuildCommandEnabled(db, '1539562273197260860', ''), /INVALID_GUILD_COMMAND/);
+  assert.equal(db.calls, 0);
+});
+
+
+test('component custom IDs map to their owning slash command feature gates', async () => {
+  const { getComponentCommandName } = await import('../guild-feature-settings.js');
+  assert.equal(getComponentCommandName('charpanel:class:123456789012345678'), 'karakter');
+  assert.equal(getComponentCommandName('market_buy:item:123456789012345678'), 'market');
+  assert.equal(getComponentCommandName('trade_accept:offer-id'), 'takasteklif');
+  assert.equal(getComponentCommandName('trade_decline:offer-id'), 'takasteklif');
+  assert.equal(getComponentCommandName('unrelated:action'), null);
+  assert.equal(getComponentCommandName(''), null);
+});
+
+
+test('all known standalone RPG commands inherit the RPG feature gate', async () => {
+  const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
+  const names = [
+    'basarimlar', 'cantam', 'dinlen', 'dunya', 'gelisim', 'gunluk', 'gunlukodul',
+    'hazineac', 'hazinegecmisi', 'hedefler', 'kesif', 'kesifdefteri', 'kesifliderligi',
+    'koleksiyon', 'liderlik', 'macera', 'maceragecmisi', 'maceraistatistik', 'mimic',
+    'npc', 'siralama', 'zanaat', 'zanaatustalari'
+  ];
+  for (const name of names) {
+    assert.ok(getCommandFeatureKeys(name).includes('rpg'), name + ' must be controlled by the RPG category');
+  }
+});
+
+test('standalone RPG subcategories map to their specific feature gates', async () => {
+  const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
+  assert.deepEqual(getCommandFeatureKeys('cantam'), ['equipment', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('zanaat'), ['equipment', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('hedefler'), ['quests', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('kesifdefteri'), ['quests', 'rpg']);
+});
+
+
+test('iblisavasi is gated by boss and RPG settings', async () => {
+  const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
+  assert.deepEqual(getCommandFeatureKeys('iblisavasi'), ['bosses', 'rpg']);
+});
+
+test('character duplicate dismantling is gated by character, economy and RPG settings', async () => {
+  const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
+  assert.deepEqual(getCommandFeatureKeys('parcala'), ['character', 'economy', 'rpg']);
+});
+
+test('crafting daily quest is gated by equipment, quests and RPG settings', async () => {
+  const { getCommandFeatureKeys } = await import('../guild-feature-settings.js');
+  assert.deepEqual(getCommandFeatureKeys('zanaatgorevi'), ['equipment', 'quests', 'rpg']);
+});
+
+
+test('player trade command is gated by the dedicated trading feature as well as economy and RPG', async () => {
+  const { isGuildCommandEnabled } = await import('../guild-feature-settings.js');
+  const db = { async query(sql, params) { return { rows: [{ enabled: params[1] !== 'trading' }], rowCount: 1 }; } };
+  assert.equal(await isGuildCommandEnabled(db, '1539562273197260860', 'takasteklif'), false);
+});

@@ -241,3 +241,17 @@ test('homepage advertises an installable Frieren web app manifest and brand icon
   assert.match(String(icon.body), /<clipPath id="clip"><circle cx="256" cy="256" r="246"/);
   assert.ok(String(icon.body).startsWith('<svg'), 'shortcut icon must be a scalable circular SVG');
 });
+
+test('guild dashboard route is authenticated and the navigation exposes the Maceracı Loncası entry', async () => {
+  const anonymous = res();
+  await handlePublicSiteRequest({ method: 'GET', url: '/guilds', headers: {} }, anonymous, { db: { query: async () => ({ rows: [], rowCount: 0 }) } });
+  assert.equal(anonymous.status, 302);
+  assert.equal(anonymous.headers.Location, '/login');
+  const response = res();
+  await handlePublicSiteRequest(request('/'), response);
+  assert.match(response.body, /href="\/guilds">Maceracı Loncası/);
+  const dashboard = res();
+  await handlePublicSiteRequest(request('/guilds'), dashboard, { db: { query: async () => ({ rows: [], rowCount: 0 }) } });
+  assert.equal(dashboard.status, 200);
+  assert.match(dashboard.body, /Discord hesabını bağla/);
+});

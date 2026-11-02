@@ -17,7 +17,7 @@ import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
 import { handleNeuralQualityReportRequest } from './guardian/neural-quality-report-route.js';
 import { saveGuardianQualityReport } from './guardian/quality-report-store.js';
-import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
+import { getGuildFeatureEnabled, isGuildCommandEnabled, getComponentCommandName, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
 
@@ -152,6 +152,12 @@ client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isChatInputCommand() && await getMaintenanceState(pool)) {
       return sendPrivateInteractionError(interaction, 'Frieren şu anda bakım modunda. İşlemler kısa süreliğine durduruldu.');
     }
+    const componentCommandName = interaction.isButton?.() || interaction.isStringSelectMenu?.() || interaction.isModalSubmit?.()
+      ? getComponentCommandName(interaction.customId)
+      : null;
+    if (interaction.guildId && componentCommandName && !await isGuildCommandEnabled(pool, interaction.guildId, componentCommandName)) {
+      return sendPrivateInteractionError(interaction, 'Bu komut bu sunucuda Owner Panel ayarlarıyla devre dışı bırakılmış.');
+    }
     if (await handleCharacterPanelInteraction(interaction)) return;
   if (interaction.isButton() && interaction.customId.startsWith('market_')) {
     const parts = interaction.customId.split(':');
@@ -240,6 +246,9 @@ client.on(Events.InteractionCreate, async interaction => {
   if (interaction.isAutocomplete()) {
     const command = client.commands.get(interaction.commandName);
     if (!command?.autocomplete) return interaction.respond([]).catch(() => {});
+    if (interaction.guildId && !await isGuildCommandEnabled(pool, interaction.guildId, interaction.commandName)) {
+      return interaction.respond([]).catch(() => {});
+    }
     try { await command.autocomplete(interaction); }
     catch (error) { console.error('Otomatik tamamlama hatası:', error); await interaction.respond([]).catch(() => {}); }
     return;
@@ -247,17 +256,8 @@ client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
-  if (interaction.guildId) {
-    const commandFeatureKey = 'command_' + interaction.commandName.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-    const featureKeys = getCommandFeatureKeys(interaction.commandName);
-    const enabledStates = await Promise.all([
-      getGuildFeatureEnabled(pool, interaction.guildId, 'commands'),
-      getGuildFeatureEnabled(pool, interaction.guildId, commandFeatureKey),
-      ...featureKeys.map(key => getGuildFeatureEnabled(pool, interaction.guildId, key)),
-    ]);
-    if (enabledStates.some(enabled => !enabled)) {
-      return sendPrivateInteractionError(interaction, 'Bu komut bu sunucuda Owner Panel ayarlarıyla devre dışı bırakılmış.');
-    }
+  if (interaction.guildId && !await isGuildCommandEnabled(pool, interaction.guildId, interaction.commandName)) {
+    return sendPrivateInteractionError(interaction, 'Bu komut bu sunucuda Owner Panel ayarlarıyla devre dışı bırakılmış.');
   }
   try {
     await recordCommandUsage(pool, interaction.commandName, interaction.guildId).catch(error => console.warn('Komut ölçümü kaydedilemedi:', error?.message || error));

@@ -555,6 +555,13 @@ test('site OAuth state supports separate registration and login modes', async ()
     const state = createOwnerOAuthState(secret, now, flow);
     assert.equal(getOwnerOAuthFlow(state, secret, now + 1000), flow);
   }
+  const accountId = 'site_123e4567-e89b-12d3-a456-426614174000';
+  const guildState = createOwnerOAuthState(secret, now, 'guilds', accountId);
+  const { getOwnerOAuthAccountId } = await import('../owner-dashboard.js');
+  assert.equal(getOwnerOAuthFlow(guildState, secret, now + 1000), 'guilds');
+  assert.equal(getOwnerOAuthAccountId(guildState, secret, now + 1000), accountId);
+  assert.equal(getOwnerOAuthAccountId(guildState, 'wrong-secret-that-is-also-at-least-32-chars', now + 1000), null);
+  assert.throws(() => createOwnerOAuthState(secret, now, 'guilds', 'invalid-account'));
 });
 
 test('legacy public Discord OAuth callbacks redirect to password registration before token exchange', async () => {
@@ -672,6 +679,101 @@ test('Discord owner OAuth requires TOTP enrollment before issuing an owner sessi
     globalThis.fetch = previousFetch;
     for (const [key, value] of Object.entries(previous)) {
       if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
+test('guild dashboard OAuth reuses the existing owner callback and binds the link to the site account', async () => {
+  const { createPublicSiteSession } = await import('../owner-dashboard.js');
+  const { decryptGuildOAuthToken } = await import('../guild-dashboard.js');
+  const accountId = 'site_123e4567-e89b-12d3-a456-426614174000';
+  const session = createPublicSiteSession(secret, { id: accountId, username: 'Gezgin' }, Math.floor(Date.now() / 1000) + 3600);
+  const previous = {
+    CLIENT_ID: process.env.CLIENT_ID, DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
+    ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET, OWNER_DASHBOARD_REDIRECT_URI: process.env.OWNER_DASHBOARD_REDIRECT_URI,
+    fetch: globalThis.fetch
+  };
+  process.env.CLIENT_ID = 'test-client-id';
+  process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
+  process.env.ADMIN_SESSION_SECRET = secret;
+  process.env.OWNER_DASHBOARD_REDIRECT_URI = 'https://pogaca-frieren.onrender.com/owner/callback';
+  const dbCalls = [];
+  const db = { async query(sql, params = []) { dbCalls.push({ sql: String(sql), params }); return { rows: [], rowCount: 0 }; } };
+  const response = { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body = '') { this.body = body; } };
+  try {
+    await handleOwnerDashboardRequest({
+      method: 'GET', url: '/owner/login?flow=guilds',
+      headers: { cookie: 'frieren_site_session=' + encodeURIComponent(session) }
+    }, response, { client: {}, db });
+    assert.equal(response.status, 302);
+    const authorization = new URL(response.headers.Location);
+    assert.equal(authorization.pathname, '/oauth2/authorize');
+    assert.equal(authorization.searchParams.get('redirect_uri'), process.env.OWNER_DASHBOARD_REDIRECT_URI);
+    assert.equal(authorization.searchParams.get('scope'), 'identify guilds');
+    const state = authorization.searchParams.get('state');
+    const { getOwnerOAuthAccountId } = await import('../owner-dashboard.js');
+    assert.equal(getOwnerOAuthAccountId(state, secret), accountId);
+
+    const callbackResponse = { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body = '') { this.body = body; } };
+    const calls = [];
+    globalThis.fetch = async url => {
+      calls.push(String(url));
+      if (String(url).includes('/oauth2/token')) return { ok: true, async json() {
+        return { access_token: 'discord-access-secret', refresh_token: 'discord-refresh-secret', expires_in: 3600 };
+      } };
+      return { ok: true, async json() { return { id: '123456789012345678', username: 'GezginDiscord', avatar: null }; } };
+    };
+    await handleOwnerDashboardRequest({
+      method: 'GET', url: '/owner/callback?code=one-time-code&state=' + encodeURIComponent(state),
+      headers: { cookie: 'frieren_site_session=' + encodeURIComponent(session) }
+    }, callbackResponse, { client: {}, db });
+    assert.equal(callbackResponse.status, 302);
+    assert.equal(callbackResponse.headers.Location, '/guilds');
+    assert.equal(calls.length, 2);
+    const insert = dbCalls.find(call => call.sql.includes('INSERT INTO frieren_site_discord_connections'));
+    assert.ok(insert);
+    assert.equal(decryptGuildOAuthToken(insert.params[2], secret), 'discord-access-secret');
+    assert.equal(decryptGuildOAuthToken(insert.params[3], secret), 'discord-refresh-secret');
+    assert.doesNotMatch(insert.params[2], /discord-access-secret/);
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (key === 'fetch') globalThis.fetch = value;
+      else if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
+test('guild dashboard OAuth callback rejects a changed site account before Discord token exchange', async () => {
+  const { createPublicSiteSession, createOwnerOAuthState } = await import('../owner-dashboard.js');
+  const accountId = 'site_123e4567-e89b-12d3-a456-426614174000';
+  const otherId = 'site_223e4567-e89b-12d3-a456-426614174000';
+  const state = createOwnerOAuthState(secret, Date.now(), 'guilds', accountId);
+  const session = createPublicSiteSession(secret, { id: otherId, username: 'Different' }, Math.floor(Date.now() / 1000) + 3600);
+  const previous = {
+    CLIENT_ID: process.env.CLIENT_ID, DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
+    ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET, OWNER_DASHBOARD_REDIRECT_URI: process.env.OWNER_DASHBOARD_REDIRECT_URI,
+    fetch: globalThis.fetch
+  };
+  process.env.CLIENT_ID = 'test-client-id';
+  process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
+  process.env.ADMIN_SESSION_SECRET = secret;
+  process.env.OWNER_DASHBOARD_REDIRECT_URI = 'https://pogaca-frieren.onrender.com/owner/callback';
+  let fetchCalled = false;
+  const response = { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body = '') { this.body = body; } };
+  try {
+    globalThis.fetch = async () => { fetchCalled = true; throw new Error('unexpected network request'); };
+    await handleOwnerDashboardRequest({
+      method: 'GET', url: '/owner/callback?code=one-time-code&state=' + encodeURIComponent(state),
+      headers: { cookie: 'frieren_site_session=' + encodeURIComponent(session) }
+    }, response, { client: {}, db: { query: async () => { throw new Error('database must not be queried'); } } });
+    assert.equal(response.status, 403);
+    assert.equal(fetchCalled, false);
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (key === 'fetch') globalThis.fetch = value;
+      else if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
   }
