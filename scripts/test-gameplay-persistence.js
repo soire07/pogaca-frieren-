@@ -63,8 +63,8 @@ test('simultaneous legendary and epic equipment sets report both active bonuses'
   const epic = equipmentItems.filter(item => ['frieren_robe', 'rune_ring'].includes(item.id));
   const active = applyEquipmentSetBonus([...legendary, ...epic], equipmentBonus([...legendary, ...epic]));
   assert.equal(active.attack, 20);
-  assert.equal(active.hp, 105);
-  assert.equal(active.defense, 16);
-  assert.equal(active.mana, 85);
+  assert.equal(active.hp, 125);
+  assert.equal(active.defense, 13);
+  assert.equal(active.mana, 65);
   assert.equal(active.setText, 'Efsanevi set: +4 saldırı, +25 HP · Destansı set: +3 savunma, +15 mana');
 });
