@@ -43,6 +43,7 @@ export function startGuardianMonitor({
   let stopped = false;
   let running = false;
   let initialized = false;
+  let discordReadyObserved = false;
   let discordFailureReported = false;
   const interval = Math.max(60_000, Math.min(Number(intervalMs) || 300_000, 1_800_000));
 
@@ -74,7 +75,8 @@ export function startGuardianMonitor({
          WHERE monitor_key='owner_error_logs'`
       );
       const ready = typeof client?.isReady === 'function' ? client.isReady() : null;
-      if (ready === false && !discordFailureReported) {
+      if (ready === true) discordReadyObserved = true;
+      if (ready === false && discordReadyObserved && !discordFailureReported) {
         await upsertGuardianIncident(db, {
           system: 'pogaca_frieren',
           code: 'DISCORD_CLIENT_NOT_READY',
