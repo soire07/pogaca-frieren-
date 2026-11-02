@@ -774,7 +774,7 @@ test('owner activity workspace renders paginated audit and test history safely',
 test('owner scenario tests target the separately hosted Frieren AI service over HTTPS', () => {
   assert.equal(
     getFrierenAiScenarioEndpoint({}),
-    'https://pogaca-frieren-kltd.onrender.com/internal/test-scenario'
+    'https://frieren-ai-agent.onrender.com/internal/test-scenario'
   );
   assert.equal(
     getFrierenAiScenarioEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://ai.example.test/base/' }),
