@@ -71,6 +71,14 @@ function isRepairableProposal(review) {
     && review.tests.length > 0;
 }
 
+async function persistDispatchedState(store, db, jobId, workflowUrl) {
+  return store.finishGuardianRepairDispatch(db, {
+    jobId,
+    status: 'dispatched',
+    workflowUrl,
+  }) === true;
+}
+
 function getReviewEndpoint(env) {
   const base = String(env.FRIEREN_AI_PUBLIC_URL || 'https://frieren-ai-agent.onrender.com').trim();
   const parsed = new URL(base);
@@ -212,11 +220,10 @@ export async function processGuardianIncident({
       }
     );
     if (response.status !== 204) throw new Error('GUARDIAN_GITHUB_DISPATCH_HTTP_' + response.status);
-    await store.finishGuardianRepairDispatch(db, {
-      jobId: job.id,
-      status: 'dispatched',
-      workflowUrl,
-    });
+    const persisted = await persistDispatchedState(store, db, job.id, workflowUrl);
+    if (!persisted) {
+      return { status: 'dispatch_state_unconfirmed', jobId: Number(job.id), workflowUrl };
+    }
     await db.query(
       'INSERT INTO owner_audit_logs(actor_id,action,target,details) VALUES($1,$2,$3,$4::jsonb)',
       [actorId, 'guardian.repair.workflow_dispatched', String(incident.id), JSON.stringify({ jobId: job.id, workflow: REPAIR_WORKFLOW, baseBranch: REPAIR_BRANCH })]
@@ -305,14 +312,14 @@ export async function processPendingGuardianRepairDispatch({
         const prs = await prResponse.json().catch(() => []);
         if (Array.isArray(prs) && prs.some(pr => pr.head?.ref === branchName)) {
           const existingUrl = String(existingRun.html_url || workflowUrl);
-          await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl: existingUrl });
-          return { status: 'already_dispatched', jobId: Number(job.id), workflowUrl: existingUrl };
+          const persisted = await persistDispatchedState(store, db, job.id, existingUrl);
+          return { status: persisted ? 'already_dispatched' : 'dispatch_state_unconfirmed', jobId: Number(job.id), workflowUrl: existingUrl };
         }
         // Terminal failure with no PR is eligible for the bounded retry below.
       } else {
         const existingUrl = String(existingRun.html_url || workflowUrl);
-        await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl: existingUrl });
-        return { status: 'already_dispatched', jobId: Number(job.id), workflowUrl: existingUrl };
+        const persisted = await persistDispatchedState(store, db, job.id, existingUrl);
+        return { status: persisted ? 'already_dispatched' : 'dispatch_state_unconfirmed', jobId: Number(job.id), workflowUrl: existingUrl };
       }
     }
 
@@ -341,7 +348,10 @@ export async function processPendingGuardianRepairDispatch({
       }
     );
     if (response.status !== 204) throw new Error('GUARDIAN_GITHUB_DISPATCH_HTTP_' + response.status);
-    await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl });
+    const persisted = await persistDispatchedState(store, db, job.id, workflowUrl);
+    if (!persisted) {
+      return { status: 'dispatch_state_unconfirmed', jobId: Number(job.id), workflowUrl };
+    }
     await db.query(
       'INSERT INTO owner_audit_logs(actor_id,action,target,details) VALUES($1,$2,$3,$4::jsonb)',
       [actorId, 'guardian.repair.workflow_redispatched', String(incident.id), JSON.stringify({ jobId: job.id, workflow: REPAIR_WORKFLOW, baseBranch: REPAIR_BRANCH })]
