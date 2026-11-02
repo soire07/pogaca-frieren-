@@ -67,3 +67,41 @@ test('repair patch generation requires the shared configured model client', asyn
     { message: 'AI_MODEL_CLIENT_REQUIRED' },
   );
 });
+
+test('repair patch generation uses the injected client and validates the returned diff', async () => {
+  let request;
+  const client = {
+    chat: {
+      completions: {
+        async create(options) {
+          request = options;
+          return { choices: [{ message: { content: validPatch } }] };
+        },
+      },
+    },
+  };
+  const result = await generateRepairPatch({
+    task: 'fix the readiness check',
+    client,
+    model: 'openai/gpt-oss-20b',
+    context: 'const ready = false;',
+  });
+  assert.deepEqual(result.files, ['rpg-mechanics.js']);
+  assert.equal(result.patch, validPatch + '\\n');
+  assert.equal(request.model, 'openai/gpt-oss-20b');
+  assert.equal(request.temperature, 0.1);
+  assert.equal(request.messages[1].content.includes('fix the readiness check'), true);
+  assert.equal(request.messages[1].content.includes('const ready = false;'), true);
+});
+
+test('repair patch generation rejects model output without a safe diff', async () => {
+  const client = {
+    chat: { completions: { async create() {
+      return { choices: [{ message: { content: 'REPAIR_CONTEXT_INSUFFICIENT' } }] };
+    } } },
+  };
+  await assert.rejects(
+    generateRepairPatch({ task: 'fix a bug', client, context: 'limited context' }),
+    { message: 'REPAIR_CONTEXT_INSUFFICIENT' },
+  );
+});
