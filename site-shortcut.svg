@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="t d">
+<title id="t">Frieren circular shortcut icon</title><desc id="d">Frieren portrait centered inside a circular violet frame, with transparent corners for a round home-screen shortcut.</desc>
+<defs>
+ <radialGradient id="bg"><stop stop-color="#66517f"/><stop offset=".62" stop-color="#302642"/><stop offset="1" stop-color="#100f20"/></radialGradient>
+ <linearGradient id="hair" x1=".1" y1="0" x2=".9" y2="1"><stop stop-color="#fff"/><stop offset=".32" stop-color="#eef1fb"/><stop offset=".7" stop-color="#c7d1e7"/><stop offset="1" stop-color="#8798b8"/></linearGradient>
+ <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff1eb"/><stop offset="1" stop-color="#e8c8c4"/></linearGradient>
+ <linearGradient id="robe" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".6" stop-color="#e6e8f2"/><stop offset="1" stop-color="#aab8d2"/></linearGradient>
+ <radialGradient id="aura"><stop stop-color="#d7b9ff" stop-opacity=".5"/><stop offset="1" stop-color="#bca0ff" stop-opacity="0"/></radialGradient>
+ <clipPath id="clip"><circle cx="256" cy="256" r="246"/></clipPath>
+ <filter id="soft"><feGaussianBlur stdDeviation="15"/></filter>
+</defs>
+<g clip-path="url(#clip)">
+ <rect width="512" height="512" fill="url(#bg)"/><circle cx="256" cy="230" r="225" fill="url(#aura)"/>
+ <circle cx="256" cy="250" r="185" fill="none" stroke="#e9ddff" stroke-opacity=".16"/>
+ <g fill="#fff2ff"><circle cx="92" cy="135" r="3"/><circle cx="405" cy="108" r="2.5"/><circle cx="80" cy="300" r="2"/><circle cx="420" cy="330" r="3"/><path d="M118 70v25m-12-12h24M388 190v20m-10-10h20" stroke="#f4eaff" stroke-width="2"/></g>
+ <ellipse cx="256" cy="476" rx="180" ry="70" fill="#0a0914" opacity=".45" filter="url(#soft)"/>
+ <!-- long hair behind -->
+ <path d="M130 207Q89 93 175 42Q251 -4 337 40Q433 89 410 220L457 530H54Z" fill="url(#hair)" stroke="#a4b2cc" stroke-width="4"/>
+ <path d="M143 200Q95 270 117 420L145 520H190L204 315M365 198Q416 264 394 421L367 520H322L309 315" fill="url(#hair)" stroke="#a4b2cc" stroke-width="4"/>
+ <!-- ears -->
+ <path d="M163 195Q83 153 24 175Q86 248 174 257Z" fill="url(#skin)" stroke="#d5bdc7" stroke-width="4"/>
+ <path d="M349 195Q429 153 488 175Q426 248 338 257Z" fill="url(#skin)" stroke="#d5bdc7" stroke-width="4"/>
+ <path d="M151 215L77 186 151 239M361 215L435 186 361 239" fill="none" stroke="#d8aeb6" stroke-width="3"/>
+ <!-- robe -->
+ <path d="M87 530Q103 382 166 344Q205 316 256 316Q307 316 346 344Q409 382 425 530Z" fill="url(#robe)" stroke="#a5b2ca" stroke-width="4"/>
+ <path d="M200 334L256 410 312 334 296 530H216Z" fill="#28243c"/>
+ <path d="M164 362L207 344 256 410 305 344 348 362 319 422 256 446 193 422Z" fill="#faf8ff" stroke="#c4c8dc" stroke-width="3"/>
+ <path d="M184 371l25-8 20 34m99-34-25-8-20 34" fill="none" stroke="#c6a56e" stroke-width="5"/>
+ <path d="M249 410l7 25 7-25" fill="none" stroke="#d4b36f" stroke-width="4"/>
+ <!-- face framing hair -->
+ <path d="M138 156Q149 57 245 43Q341 37 375 132Q397 204 360 300L337 357Q315 294 326 222Q293 200 270 146Q239 210 179 228Q187 296 160 357L135 296Q115 220 138 156Z" fill="url(#hair)" stroke="#a7b5ce" stroke-width="4"/>
+ <!-- face -->
+ <path d="M174 153Q200 101 258 101Q319 101 343 155L337 254Q327 318 258 338Q189 318 178 254Z" fill="url(#skin)" stroke="#ddc5c8" stroke-width="3"/>
+ <!-- fringe -->
+ <path d="M143 168Q148 76 243 53Q331 39 371 132Q345 124 319 144Q297 161 278 190Q264 151 249 122Q220 166 180 187L164 232Z" fill="url(#hair)" stroke="#a7b5ce" stroke-width="4"/>
+ <path d="M181 130Q218 72 286 78M292 91Q344 103 359 155" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".8"/>
+ <!-- eyes -->
+ <path d="M191 233Q214 211 239 233Q215 257 191 233Z" fill="#82a58b"/><path d="M275 233Q300 211 325 233Q301 257 275 233Z" fill="#82a58b"/>
+ <ellipse cx="216" cy="234" rx="5" ry="10" fill="#344d49"/><ellipse cx="300" cy="234" rx="5" ry="10" fill="#344d49"/>
+ <circle cx="218" cy="229" r="3" fill="#fff"/><circle cx="302" cy="229" r="3" fill="#fff"/>
+ <path d="M185 216Q213 201 240 215M276 215Q303 201 331 216" fill="none" stroke="#7b829d" stroke-width="4" stroke-linecap="round"/>
+ <path d="M254 247L249 275Q256 280 264 275" fill="none" stroke="#d5a6a6" stroke-width="3" stroke-linecap="round"/>
+ <path d="M239 297Q257 305 276 296" fill="none" stroke="#b77f8b" stroke-width="3" stroke-linecap="round"/>
+ <!-- hair ornaments -->
+ <path d="M145 119Q122 103 111 128Q125 151 151 145M367 119Q390 103 401 128Q387 151 361 145" fill="#a985c6" stroke="#f2e3ff" stroke-width="4"/>
+ <path d="M121 137L108 166M391 137L404 166" stroke="#d9bce9" stroke-width="4" stroke-linecap="round"/>
+ <path d="M357 291Q380 310 362 331" fill="none" stroke="#c7a16b" stroke-width="4"/><circle cx="363" cy="333" r="8" fill="#a94f73" stroke="#f0d7dc" stroke-width="3"/>
+</g>
+<circle cx="256" cy="256" r="246" fill="none" stroke="#f0e5ff" stroke-width="10" stroke-opacity=".9"/><circle cx="256" cy="256" r="234" fill="none" stroke="#c2a7e5" stroke-width="2" stroke-opacity=".8"/>
+</svg>
