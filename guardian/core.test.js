@@ -337,6 +337,17 @@ test('Guardian CI evidence requires a successful Neural workflow for the exact s
   assert.equal(wrongCommit.verified, false);
   assert.equal(wrongCommit.status, 'pending');
 
+  const impostorWorkflow = evaluateNeuralCiEvidence({
+    sourceCommitSha: sha,
+    workflowRuns: [{
+      ...matchingRun,
+      path: '.github/workflows/untrusted.yml@refs/heads/main',
+      name: 'Frieren Neural CI',
+    }],
+  });
+  assert.equal(impostorWorkflow.verified, false);
+  assert.equal(impostorWorkflow.status, 'pending');
+
   const failed = evaluateNeuralCiEvidence({
     sourceCommitSha: sha,
     workflowRuns: [{ ...matchingRun, conclusion: 'failure' }],
