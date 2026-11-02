@@ -70,7 +70,20 @@ test('trade offers reserve only unexpired copies using the database clock', asyn
   assert.ok(snapshot >= 0 && players > snapshot && offer > players && collection > offer,
     'production acceptance must lock participant rows, then the offer, then the collection');
   assert.ok(trade.includes("offer.status !== 'pending'"));
+  assert.match(trade, /expires_at <= NOW\(\) AS is_expired/);
+  assert.match(trade, /if \(offer\.is_expired\)/);
+  assert.doesNotMatch(trade, /Date\.now\(\)/, 'trade expiry must use the PostgreSQL clock, not the application host clock');
   assert.match(trade, /status='accepted'/);
   assert.match(trade, /reservedForOthers/);
   assert.ok(handler.includes('resolveTradeOffer(pool'));
+});
+
+
+test('co-op boss and dungeon cooldowns are calculated by PostgreSQL time', async () => {
+  const rewards = await read('rpg-reward-transactions.js');
+  assert.match(rewards, /last_boss_at > NOW\(\) - INTERVAL '45 minutes'/);
+  assert.match(rewards, /last_boss_at \+ INTERVAL '45 minutes' - NOW\(\)/);
+  assert.match(rewards, /last_dungeon_at > NOW\(\) - INTERVAL '30 minutes'/);
+  assert.match(rewards, /last_dungeon_at \+ INTERVAL '30 minutes' - NOW\(\)/);
+  assert.doesNotMatch(rewards, /Date\.now\(\)/, 'settlement cooldowns must not depend on application clock skew');
 });
