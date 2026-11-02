@@ -114,7 +114,7 @@ test('password hashing uses salted scrypt and verifies only the matching passwor
   assert.match(stored, /^scrypt\$16384\$8\$1\$/);
   assert.equal(await verifySitePassword('correct horse battery staple', stored), true);
   assert.equal(await verifySitePassword('incorrect password', stored), false);
-  assert.match(await hashSitePassword('Abcdef8!'), /^scrypt\\$16384\\$8\\$1\\$/);
+  assert.match(await hashSitePassword('Abcdef8!'), /^scrypt\$16384\$8\$1\$/);
   await assert.rejects(() => hashSitePassword('Abcdef7'), /INVALID_PASSWORD_LENGTH/);
 });
 
