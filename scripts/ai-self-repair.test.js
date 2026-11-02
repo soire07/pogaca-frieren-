@@ -186,15 +186,22 @@ test('repair workflow output contains only the exact validated file paths', () =
 });
 
 
-test('Groq validation mode verifies the provider response without requesting a code diff', async () => {
+test('Groq validation accepts a valid assistant completion without requiring an exact sentinel', async () => {
   let request;
-  const client = { chat: { completions: { async create(options) { request = options; return { choices: [{ message: { content: 'FRIEREN_GROQ_OK' } }] }; } } } };
+  const client = { chat: { completions: { async create(options) { request = options; return { choices: [{ message: { role: 'assistant', content: 'The connection is working.' }, finish_reason: 'stop' }] }; } } } };
   assert.equal(await verifyGroqConnection({ client }), true);
-  assert.equal(request.max_completion_tokens, 16);
-  assert.match(request.messages[0].content, /FRIEREN_GROQ_OK/);
+  assert.equal(request.max_completion_tokens, 128);
+  assert.equal(request.messages[0].role, 'user');
 });
 
-test('Groq validation mode rejects unexpected provider responses', async () => {
-  const client = { chat: { completions: { async create() { return { choices: [{ message: { content: 'not verified' } }] }; } } } };
-  await assert.rejects(verifyGroqConnection({ client }), { message: 'GROQ_VALIDATION_RESPONSE_INVALID' });
+test('Groq validation accepts reasoning-only responses from reasoning models', async () => {
+  const client = { chat: { completions: { async create() { return { choices: [{ message: { role: 'assistant', content: null, reasoning: 'Connection check completed.' }, finish_reason: 'stop' }] }; } } } };
+  assert.equal(await verifyGroqConnection({ client }), true);
+});
+
+test('Groq validation rejects malformed or empty completion responses', async () => {
+  for (const response of [null, {}, { choices: [] }, { choices: [{ message: { role: 'user', content: 'no' }, finish_reason: 'stop' }] }, { choices: [{ message: { role: 'assistant', content: '' }, finish_reason: 'stop' }] }]) {
+    const client = { chat: { completions: { async create() { return response; } } } };
+    await assert.rejects(verifyGroqConnection({ client }), { message: 'GROQ_VALIDATION_RESPONSE_INVALID' });
+  }
 });
