@@ -7,6 +7,7 @@ on:
       - validation/ufakzeka-real-gguf
     paths:
       - ".github/workflows/frieren-neural-ci.yml"
+      - ".github/workflows/frieren-neural-active-gguf-eval.yml"
       - "frieren-neural/trigger-active-gguf-eval.txt"
       - "frieren-neural/frieren_neural/**"
       - "frieren-neural/benchmarks/**"
