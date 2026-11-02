@@ -121,6 +121,9 @@ test('Guardian workspace shows review proposals as unapplied and requires owner 
   assert.match(html, /guardian-review/);
   assert.match(html, /Guardian izleyici/);
   assert.match(html, /Son Guardian kontrolü/);
+  assert.match(html, /Guardian öz denetimi/);
+  assert.match(html, /Frieren AI köprü anahtarı/);
+  assert.match(html, /NOT TESTED|BLOCKED|PASS|FAIL/);
 });
 
 test('Guardian workspace exposes PR dispatch only after a completed review and with a token', () => {
