@@ -16,6 +16,7 @@ export const DEFAULT_GUILD_FEATURES = Object.freeze({
   aiChat: true,
   animeQuiz: true,
   collection: true,
+  companions: true,
   achievements: true,
   dailyRewards: true,
   exploration: true,
@@ -120,6 +121,7 @@ export function getCommandFeatureKeys(commandName) {
   const name = String(commandName || '').toLocaleLowerCase('tr-TR');
   const keys = [];
   if (/karakter|sinif|class|profil/.test(name) || name === 'parcala') keys.push('character');
+  if (/yoldas|yoldaş|companion|pet/.test(name)) keys.push('companions');
   if (/buyu|büyü|spell|yetenek/.test(name)) keys.push('magic');
   if (/ekipman|envanter|esya|eşya|item|setbonus/.test(name) || name === 'cantam' || name === 'zanaatustalari') keys.push('equipment');
   if (/bakiye|market|magaza|mağaza|ekonomi|takas|trade/.test(name) || ['hazineac', 'hazinegecmisi', 'parcala'].includes(name)) keys.push('economy');
