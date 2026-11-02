@@ -1,5 +1,11 @@
 import { upsertGuardianIncident, listPendingGuardianRepairDispatches } from './store.js';
 
+function boundedInteger(value, fallback, maximum) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed === 0) return fallback;
+  return Math.max(1, Math.min(Math.floor(parsed), maximum));
+}
+
 function systemForScope(scope) {
   const value = String(scope || '').toLocaleLowerCase('tr-TR');
   if (value.includes('neural')) return 'frieren_neural';
@@ -12,7 +18,7 @@ function systemForScope(scope) {
 export async function scanNewOwnerErrors(db, lastSeenErrorId = 0, limit = 50, onProgress = async () => {}, onIncident = async () => {}, onIncidentError = async () => {}) {
   const result = await db.query(
     'SELECT id,scope,error_type,error_message,created_at FROM owner_error_logs WHERE id>$1 ORDER BY id ASC LIMIT $2',
-    [Math.max(0, Number(lastSeenErrorId) || 0), Math.max(1, Math.min(Number(limit) || 50, 100))]
+    [Math.max(0, Number(lastSeenErrorId) || 0), boundedInteger(limit, 50, 100)]
   );
   let nextId = Math.max(0, Number(lastSeenErrorId) || 0);
   let recorded = 0;
@@ -39,7 +45,7 @@ export async function scanNewOwnerErrors(db, lastSeenErrorId = 0, limit = 50, on
 }
 
 export async function scanPendingGuardianIncidents(db, onIncident = async () => {}, onIncidentError = async () => {}, limit = 10) {
-  const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 25));
+  const safeLimit = boundedInteger(limit, 10, 25);
   const result = await db.query(
     `SELECT id,system,code,severity,status,title,summary,evidence,review_attempts,last_review_at
      FROM owner_guardian_incidents
