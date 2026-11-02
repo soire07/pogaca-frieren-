@@ -247,3 +247,94 @@ test('connected guild page shows only bot-installed servers the Discord user can
   assert.doesNotMatch(res.body, /Bot olmayan lonca/);
   assert.doesNotMatch(res.body, /private-access-token|private-refresh-token/);
 });
+
+test('per-guild command catalog lists registered slash commands with saved states', async () => {
+  const db = {
+    async query(sql) {
+      if (String(sql).includes('SELECT account_key,discord_user_id,access_token_enc,refresh_token_enc,expires_at')) {
+        return { rows: [{
+          account_key: accountId, discord_user_id: '123456789012345678',
+          access_token_enc: encryptGuildOAuthToken('access-token', secret),
+          refresh_token_enc: encryptGuildOAuthToken('refresh-token', secret),
+          expires_at: new Date(Date.now() + 3600_000)
+        }], rowCount: 1 };
+      }
+      if (String(sql).includes('SELECT guild_id,feature_key,enabled,updated_by,updated_at')) {
+        return { rows: [{ guild_id: guildA, feature_key: 'command_karakter', enabled: false }] };
+      }
+      return { rows: [], rowCount: 0 };
+    }
+  };
+  const client = {
+    guilds: { cache: new Map([[guildA, {}]]) },
+    commands: new Map([
+      ['karakter', { data: { name: 'karakter', description: 'Karakterini görüntüle' } }],
+      ['market', { data: { name: 'market', description: 'Lonca pazarını aç' } }]
+    ])
+  };
+  const res = response();
+  await handleGuildDashboardRequest(request('GET', '/guilds/' + guildA + '/commands?q=karakter'), res, {
+    db, user: { id: accountId, username: 'Gezgin' }, sessionSecret: secret, client,
+    fetchImpl: async () => ({ ok: true, async json() {
+      return [{ id: guildA, name: 'Frieren Test Loncası', owner: true, permissions: '0' }];
+    } })
+  });
+  assert.equal(res.status, 200);
+  assert.match(res.body, /Komut kataloğu/);
+  assert.match(res.body, /\/karakter/);
+  assert.match(res.body, /Kapalı/);
+  assert.doesNotMatch(res.body, /\/market/);
+});
+
+test('per-guild command settings accept only slash commands registered by this bot', async () => {
+  const db = {
+    calls: [],
+    async query(sql, params = []) {
+      this.calls.push({ sql: String(sql), params });
+      if (String(sql).includes('SELECT account_key,discord_user_id,access_token_enc,refresh_token_enc,expires_at')) {
+        return { rows: [{
+          account_key: accountId, discord_user_id: '123456789012345678',
+          access_token_enc: encryptGuildOAuthToken('access-token', secret),
+          refresh_token_enc: encryptGuildOAuthToken('refresh-token', secret),
+          expires_at: new Date(Date.now() + 3600_000)
+        }], rowCount: 1 };
+      }
+      if (String(sql).includes('INSERT INTO guild_feature_settings')) {
+        return { rows: [{ guild_id: guildA, feature_key: 'command_karakter', enabled: false }] };
+      }
+      return { rows: [], rowCount: 0 };
+    }
+  };
+  const client = {
+    guilds: { cache: new Map([[guildA, {}]]) },
+    commands: new Map([['karakter', { data: { name: 'karakter', description: 'Karakterini görüntüle' } }]])
+  };
+  const csrf = createGuildDashboardCsrf(secret, accountId);
+  const res = response();
+  await handleGuildDashboardRequest(request('POST', '/guilds/settings', {
+    csrf, guildId: guildA, featureKey: 'command_karakter', commandName: 'karakter', enabled: 'no'
+  }), res, {
+    db, user: { id: accountId, username: 'Gezgin' }, sessionSecret: secret, client,
+    fetchImpl: async () => ({ ok: true, async json() {
+      return [{ id: guildA, name: 'Frieren Test Loncası', owner: true, permissions: '0' }];
+    } })
+  });
+  assert.equal(res.status, 303);
+  const write = db.calls.find(call => call.sql.includes('INSERT INTO guild_feature_settings'));
+  assert.ok(write);
+  assert.deepEqual(write.params, [guildA, 'command_karakter', false, '123456789012345678']);
+});
+
+test('per-guild command settings reject unregistered commands without database writes', async () => {
+  const db = fakeDb();
+  const csrf = createGuildDashboardCsrf(secret, accountId);
+  const res = response();
+  await handleGuildDashboardRequest(request('POST', '/guilds/settings', {
+    csrf, guildId: guildA, featureKey: 'command_fake', commandName: 'fake', enabled: 'no'
+  }), res, {
+    db, user: { id: accountId, username: 'Gezgin' }, sessionSecret: secret,
+    client: { commands: new Map() }
+  });
+  assert.equal(res.status, 400);
+  assert.equal(db.calls.some(call => call.sql.includes('INSERT INTO guild_feature_settings')), false);
+});
