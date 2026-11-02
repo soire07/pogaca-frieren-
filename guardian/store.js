@@ -64,6 +64,24 @@ export async function createGuardianReviewJob(db, { incidentId, actorId }) {
   const id = Number(incidentId);
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error('INVALID_GUARDIAN_INCIDENT_ID');
 
+  // Recover abandoned synchronous review requests after the AI endpoint's 60s timeout.
+  // A stale job must not permanently block the incident from being reviewed again.
+  await db.query(
+    `WITH stale AS (
+       UPDATE owner_guardian_jobs
+       SET status='failed',result=jsonb_build_object('error','GUARDIAN_REVIEW_STALE_JOB_RECOVERED'),finished_at=NOW()
+       WHERE incident_id=$1 AND agent='frieren_ai' AND status IN ('queued','running')
+         AND COALESCE(started_at,created_at) < NOW()-INTERVAL '5 minutes'
+       RETURNING incident_id
+     ), reopened AS (
+       UPDATE owner_guardian_incidents i SET status='open',updated_at=NOW()
+       FROM stale s WHERE i.id=s.incident_id AND i.status='in_review'
+       RETURNING i.id
+     )
+     SELECT incident_id FROM stale`,
+    [id]
+  );
+
   const active = await db.query(
     `SELECT * FROM owner_guardian_jobs
      WHERE incident_id=$1 AND agent='frieren_ai' AND status IN ('queued','running')
