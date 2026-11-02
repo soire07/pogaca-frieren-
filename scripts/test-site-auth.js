@@ -150,7 +150,7 @@ test('registration form does not write account data before Gmail SMTP is configu
       createSession: createPublicSiteSession
     }), true);
     assert.equal(res.status, 503);
-    assert.match(res.body, /Gmail SMTP ayarlarını tamamlamalı/);
+    assert.match(res.body, /Gmail API bağlantısını tamamlamalı/);
     assert.equal(db.calls.filter(call => call.sql.includes('INSERT INTO frieren_site_accounts')).length, 0);
   } finally {
     if (previousUser === undefined) delete process.env.SITE_SMTP_USER;
