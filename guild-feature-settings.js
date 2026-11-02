@@ -116,6 +116,7 @@ export function getCommandFeatureKeys(commandName) {
   if (/buyu|büyü|spell|yetenek/.test(name)) keys.push('magic');
   if (/ekipman|envanter|esya|eşya|item|setbonus/.test(name) || name === 'cantam' || name.startsWith('zanaat')) keys.push('equipment');
   if (/bakiye|market|magaza|mağaza|ekonomi|takas|trade/.test(name) || name === 'parcala') keys.push('economy');
+  if (name === 'takasteklif') keys.push('trading');
   if (/gorev|görev|quest/.test(name) || name === 'hedefler' || name === 'kesifdefteri') keys.push('quests');
   if (/zindan|dungeon/.test(name)) keys.push('dungeons');
   if (/boss/.test(name) || name === 'iblisavasi') keys.push('bosses');
