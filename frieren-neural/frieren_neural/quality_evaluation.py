@@ -113,6 +113,35 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
         if (not isinstance(source_commit_sha, str) or len(source_commit_sha) != 40
                 or any(char not in "0123456789abcdefABCDEF" for char in source_commit_sha)):
             reasons.append("source_commit_missing_or_invalid")
+        if (not isinstance(training_provenance, dict)
+                or not isinstance(training_provenance.get("manifest_sha256"), str)
+                or len(training_provenance["manifest_sha256"]) != 64
+                or any(char not in "0123456789abcdefABCDEF" for char in training_provenance["manifest_sha256"])
+                or not isinstance(training_provenance.get("licenses"), list)
+                or not training_provenance["licenses"]):
+            reasons.append("training_provenance_missing")
+        heldout_valid = (
+            isinstance(heldout_metrics, dict)
+            and isinstance(heldout_metrics.get("loss"), (int, float))
+            and not isinstance(heldout_metrics.get("loss"), bool)
+            and math.isfinite(heldout_metrics["loss"])
+            and heldout_metrics["loss"] >= 0
+            and isinstance(heldout_metrics.get("perplexity"), (int, float))
+            and not isinstance(heldout_metrics.get("perplexity"), bool)
+            and math.isfinite(heldout_metrics["perplexity"])
+            and heldout_metrics["perplexity"] >= 1
+            and isinstance(heldout_metrics.get("dataset_sha256"), str)
+            and len(heldout_metrics["dataset_sha256"]) == 64
+            and all(char in "0123456789abcdefABCDEF" for char in heldout_metrics["dataset_sha256"])
+            and isinstance(heldout_metrics.get("sample_count"), int)
+            and not isinstance(heldout_metrics.get("sample_count"), bool)
+            and heldout_metrics["sample_count"] > 0
+            and heldout_metrics.get("split") == "heldout"
+            and isinstance(heldout_metrics.get("evaluation_version"), str)
+            and bool(heldout_metrics["evaluation_version"].strip())
+        )
+        if not heldout_valid:
+            reasons.append("held_out_metrics_missing_or_invalid")
     else:
         if not isinstance(checkpoint_metadata, dict):
             reasons.append("checkpoint_metadata_missing")
