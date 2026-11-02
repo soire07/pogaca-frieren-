@@ -118,7 +118,8 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
                 or len(training_provenance["manifest_sha256"]) != 64
                 or any(char not in "0123456789abcdefABCDEF" for char in training_provenance["manifest_sha256"])
                 or not isinstance(training_provenance.get("licenses"), list)
-                or not training_provenance["licenses"]):
+                or not training_provenance["licenses"]
+                or any(not isinstance(license, str) or not license.strip() for license in training_provenance["licenses"])):
             reasons.append("training_provenance_missing")
         heldout_valid = (
             isinstance(heldout_metrics, dict)
