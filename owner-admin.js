@@ -125,6 +125,7 @@ export async function initOwnerAdminSchema(db) {
       repair_pr_state VARCHAR(16),
       repair_checks_status VARCHAR(16) NOT NULL DEFAULT 'unknown'
     );
+    ALTER TABLE owner_guardian_jobs ADD COLUMN IF NOT EXISTS repair_dispatch_attempts INTEGER NOT NULL DEFAULT 0 CHECK (repair_dispatch_attempts >= 0 AND repair_dispatch_attempts <= 3);
     CREATE INDEX IF NOT EXISTS idx_owner_guardian_jobs_recent ON owner_guardian_jobs(created_at DESC);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_owner_guardian_jobs_active
       ON owner_guardian_jobs(incident_id,agent) WHERE status IN ('queued','running');
