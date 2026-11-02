@@ -329,5 +329,18 @@ export function validateNeuralQualityReport(report) {
   if (outputs.length !== 24 || outputs.some((item, i) =>
     !item || item.id !== expected[i] || typeof item.output !== 'string'
     || !item.output.trim() || item.output.length > 8000)) reasons.push('BENCHMARK_OUTPUTS_INVALID');
+  if (report.decision === 'READY FOR STAGED TEST') {
+    const readiness = evaluateNeuralQualityGate({
+      qualityReport: report,
+      ciEvidenceVerified: true,
+    });
+    const operationalOnly = new Set([
+      'NEURAL_STAGED_TESTS_NOT_PASSED',
+      'NEURAL_MEMORY_ISOLATION_NOT_PASSED',
+      'NEURAL_SECURITY_CHECKS_NOT_PASSED',
+      'NEURAL_RESOURCE_CHECKS_NOT_PASSED',
+    ]);
+    reasons.push(...readiness.reasons.filter(reason => !operationalOnly.has(reason)));
+  }
   return { valid: reasons.length === 0, reasons };
 }
