@@ -105,6 +105,7 @@ test('entertainment and progression commands map to their guild dashboard module
   assert.deepEqual(getCommandFeatureKeys('takasteklif'), ['economy', 'trading', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('trade'), ['economy', 'trading', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('siralama'), ['rpg'], 'leaderboards must not be gated by the economy module');
+  assert.deepEqual(getCommandFeatureKeys('macera'), ['exploration', 'rpg'], 'the main adventure command must honor the exploration toggle');
 });
 
 
