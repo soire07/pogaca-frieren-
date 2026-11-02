@@ -7,6 +7,7 @@ import {
   DEFAULT_GUILD_FEATURES, listGuildFeatureSettings, setGuildFeatureEnabled
 } from './guild-feature-settings.js';
 
+const COOKIE = 'frieren_site_session';
 const SNOWFLAKE = /^\d{17,20}$/;
 const SITE_ACCOUNT = /^site_[0-9a-f-]{36}$/i;
 const MAX_BODY_BYTES = 8192;
