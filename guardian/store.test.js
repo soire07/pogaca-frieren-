@@ -92,11 +92,28 @@ test('Guardian review completion atomically stores proposal and advances inciden
   assert.equal(await finishGuardianReviewJob(db, {
     jobId: 8, status: 'completed', result: { status: 'proposal_only', applied: false },
   }), true);
-  assert.match(call.sql, /WITH changed AS/);
+  assert.match(call.sql, /target AS MATERIALIZED/);
+  assert.match(call.sql, /FOR UPDATE/);
   assert.match(call.sql, /incident_update AS/);
+  assert.match(call.sql, /WHERE i\.id=t\.incident_id AND i\.status='in_review'/);
+  assert.match(call.sql, /FROM incident_update iu/);
   assert.match(call.sql, /finished_at=NOW/);
   assert.equal(call.params[3], 'awaiting_approval');
   assert.deepEqual(JSON.parse(call.params[2]), { status: 'proposal_only', applied: false });
+});
+
+test('Guardian review completion leaves the job active when its incident is no longer in review', async () => {
+  let sql = '';
+  const db = { query: async statement => {
+    sql = statement;
+    return { rows: [] };
+  } };
+  assert.equal(await finishGuardianReviewJob(db, {
+    jobId: 8, status: 'completed', result: { status: 'proposal_only', applied: false },
+  }), false);
+  assert.match(sql, /UPDATE owner_guardian_jobs j/);
+  assert.match(sql, /FROM incident_update iu/);
+  assert.match(sql, /SELECT incident_id FROM changed/);
 });
 
 test('Guardian resolution writes an audit record in the same SQL statement', async () => {
