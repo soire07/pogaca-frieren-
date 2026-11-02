@@ -44,8 +44,8 @@ test('Guardian review reservation and queue insertion are atomic', async () => {
   const job = await createGuardianReviewJob(db, { incidentId: 4, actorId: '1553794496234262641' });
   assert.equal(job.id, 8);
   assert.match(statements[2].sql, /WITH reserved AS/);
-  assert.match(statements[1].sql, /review_attempts=review_attempts\+1/);
-  assert.match(statements[1].sql, /ON CONFLICT \(incident_id,agent\)/);
+  assert.match(statements[2].sql, /review_attempts=review_attempts\+1/);
+  assert.match(statements[2].sql, /ON CONFLICT \(incident_id,agent\)/);
   assert.doesNotMatch(statements[2].sql, /SELECT id,review_attempts/);
   assert.equal(statements.length, 3);
 });
