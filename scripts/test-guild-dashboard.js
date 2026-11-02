@@ -63,8 +63,9 @@ test('guild dashboard catalog only exposes working toggles and labels future ent
   const planned = GUILD_FEATURE_CATALOG.filter(feature => feature.status === 'planned');
   assert.ok(active.some(feature => feature.key === 'animeQuiz'));
   assert.ok(active.some(feature => feature.key === 'collection'));
+  assert.ok(active.some(feature => feature.key === 'companions'));
   assert.ok(active.some(feature => feature.key === 'dailyRewards'));
-  assert.ok(planned.some(feature => feature.id === 'pets'));
+  assert.ok(!planned.some(feature => /yoldaş|evcil ruh/i.test(feature.title + ' ' + feature.description)));
   assert.ok(planned.some(feature => feature.id === 'fishing'));
   assert.ok(planned.some(feature => feature.id === 'miniGames'));
   assert.ok(planned.every(feature => !feature.key));
@@ -198,8 +199,9 @@ test('guild dashboard rejects feature changes from a Discord member without Mana
 });
 
 test('guild dashboard refuses to expose planned entertainment modules as active toggles', async () => {
-  assert.equal(GUILD_FEATURE_CATALOG.find(feature => feature.id === 'pets').status, 'planned');
-  assert.equal(GUILD_FEATURE_CATALOG.find(feature => feature.id === 'pets').key, null);
+  assert.equal(GUILD_FEATURE_CATALOG.some(feature => feature.id === 'pets'), false);
+  assert.equal(GUILD_FEATURE_CATALOG.some(feature => feature.id === 'companionHome'), false);
+  assert.equal(GUILD_FEATURE_CATALOG.find(feature => feature.key === 'companions').status, 'ready');
   assert.equal(GUILD_FEATURE_CATALOG.find(feature => feature.id === 'miniGames').key, null);
 });
 
