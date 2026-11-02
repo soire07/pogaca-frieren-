@@ -137,7 +137,16 @@ function readyNeuralReport() {
     review_template: { reviewers: ['reviewer_1', 'reviewer_2'] },
     checkpoint_metadata: { loss_objective_version: 2 },
     training_provenance: { manifest_sha256: 'b'.repeat(64), licenses: ['Apache-2.0'] },
-    heldout_metrics: { loss: 1.2, perplexity: 3.32, loss_objective_version: 2, checkpoint_training_loss_objective_version: 2 },
+    heldout_metrics: {
+      loss: 1.2,
+      perplexity: 3.32,
+      loss_objective_version: 2,
+      checkpoint_training_loss_objective_version: 2,
+      dataset_sha256: 'e'.repeat(64),
+      sample_count: 120,
+      split: 'heldout',
+      evaluation_version: 'ufakzeka-heldout-v1',
+    },
     baseline_comparison: { available: true, improved: true, baseline_checkpoint_sha256: 'c'.repeat(64) },
     metrics: {
       dimension_averages: Object.fromEntries(dimensions.map(key => [key, 3.8])),
@@ -242,13 +251,13 @@ test('Neural Guardian requires the exact ordered benchmark IDs and objective pro
   });
   assert.equal(result.canDeploy, false);
   assert.ok(result.reasons.includes('NEURAL_BENCHMARK_OUTPUTS_INCOMPLETE'));
-  assert.ok(result.reasons.includes('NEURAL_PRETRAINED_PROVENANCE_INVALID'));
+  assert.ok(result.reasons.includes('NEURAL_TRAINING_PROVENANCE_MISSING'));
 });
 
 test('Neural Guardian rejects incomplete reviewer identities and invalid training provenance', () => {
   const report = readyNeuralReport();
   report.review_template.reviewers = ['reviewer_1', 'reviewer_1'];
-  report.pretrained_provenance.license = 'Unverified-License';
+  report.training_provenance.manifest_sha256 = 'not-a-sha256';
   const result = evaluateNeuralQualityGate({ qualityReport: report });
   assert.equal(result.canStage, false);
   assert.ok(result.reasons.includes('NEURAL_INDEPENDENT_HUMAN_REVIEW_REQUIRED'));
@@ -331,4 +340,23 @@ test('Guardian CI evidence requires a successful Neural workflow for the exact s
   assert.equal(failed.verified, false);
   assert.equal(failed.status, 'failed');
   assert.equal(evaluateNeuralCiEvidence({ sourceCommitSha: 'bad' }).status, 'missing');
+});
+
+
+
+test('Neural Guardian blocks pretrained GGUF reports without independent held-out evidence', () => {
+  const report = readyNeuralReport();
+  report.heldout_metrics = null;
+  const result = evaluateNeuralQualityGate({
+    qualityReport: report,
+    ciEvidenceVerified: true,
+    stagedTestsPassed: true,
+    memoryIsolationPassed: true,
+    securityChecksPassed: true,
+    resourceChecksPassed: true,
+    ownerApproved: true,
+    deploymentApproved: true,
+  });
+  assert.equal(result.canStage, false);
+  assert.ok(result.reasons.includes('NEURAL_HELDOUT_METRICS_INVALID'));
 });
