@@ -103,7 +103,9 @@ export function smtpFailureDetails(error) {
     name: isObject && typeof error.name === 'string' ? error.name.slice(0, 80) : 'NonErrorThrow',
     code: isObject && typeof error.code === 'string' ? error.code.slice(0, 40) : null,
     syscall: isObject && typeof error.syscall === 'string' ? error.syscall.slice(0, 40) : null,
-    message: rawMessage.replace(/[^\s@]+@[^\s@]+/g, '[redacted-email]').slice(0, 180)
+    message: rawMessage.replace(/[^\s@]+@[^\s@]+/g, '[redacted-email]').slice(0, 180),
+    relayStage: isObject && typeof error.relayStage === 'string' ? error.relayStage.replace(/[^A-Z0-9_]/g, '').slice(0, 40) : null,
+    relayError: isObject && typeof error.relayError === 'string' ? error.relayError.replace(/[^A-Z0-9_]/g, '').slice(0, 40) : null
   };
 }
 
@@ -153,7 +155,15 @@ export async function sendGmailApi(to, subject, html, plain) {
   if (!response.ok) throw Object.assign(new Error('GMAIL_SCRIPT_HTTP_' + response.status), { code: 'GMAIL_SCRIPT_HTTP_' + response.status });
   let result;
   try { result = await response.json(); } catch { throw new Error('GMAIL_SCRIPT_INVALID_RESPONSE'); }
-  if (result?.ok !== true) throw Object.assign(new Error('GMAIL_SCRIPT_REJECTED'), { code: 'GMAIL_SCRIPT_REJECTED' });
+  if (result?.ok !== true) {
+    const relayStage = typeof result?.stage === 'string' ? result.stage : 'UNKNOWN';
+    const relayError = typeof result?.error === 'string' ? result.error : 'UNKNOWN';
+    throw Object.assign(new Error('GMAIL_SCRIPT_REJECTED'), {
+      code: 'GMAIL_SCRIPT_REJECTED',
+      relayStage,
+      relayError
+    });
+  }
   return result.messageId || 'accepted';
 }
 
