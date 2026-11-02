@@ -924,8 +924,8 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   }
 
   if (url.pathname === '/owner/frieren-ai/health' && req.method === 'GET') {
-    const aiBase = (process.env.FRIEREN_AI_PUBLIC_URL || 'https://pogaca-frieren-kltd.onrender.com').replace(/\/$/, '');
-    const healthSecret = process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
+    const aiBase = (process.env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).replace(/\/$/, '');
+    const healthSecret = process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
     if (healthSecret.length < 32) {
       res.writeHead(503, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
       res.end(JSON.stringify({ status: 'unconfigured', error: 'Owner sağlık kontrolü henüz yapılandırılmadı.' }));
@@ -1024,81 +1024,6 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     } catch (error) {
       console.error('Guardian workspace load failed:', error?.message || error);
       send(res, 503, page('Guardian yüklenemedi', '<h1>Neural Guardian verileri alınamadı</h1><a class="btn" href="/owner">Panele dön</a>'));
-    }
-    return true;
-  }
-
-  if (url.pathname === '/owner/frieren-ai/health' && req.method === 'GET') {
-    const aiBase = (process.env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).replace(/\/$/, '');
-    const healthSecret = process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
-    if (healthSecret.length < 32) {
-      res.writeHead(503, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
-      res.end(JSON.stringify({ status: 'unconfigured', error: 'Owner sağlık kontrolü henüz yapılandırılmadı.' }));
-      return true;
-    }
-    try {
-      const response = await fetch(aiBase + '/health', { headers: { 'x-frieren-health-secret': healthSecret }, signal: AbortSignal.timeout(10000) });
-      const payload = await response.json().catch(() => ({ status: 'invalid_response' }));
-      res.writeHead(response.status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
-      res.end(JSON.stringify(payload));
-    } catch {
-      res.writeHead(502, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
-      res.end(JSON.stringify({ status: 'unreachable', error: 'Frieren AI sağlık bilgisine şu anda ulaşılamıyor.' }));
-    }
-    return true;
-  }
-
-  const workspaceKinds = {
-    '/owner/frieren-ai': 'ai',
-    '/owner/pogaca': 'pogaca',
-    '/owner/database': 'database',
-    '/owner/settings': 'settings'
-  };
-  if (workspaceKinds[url.pathname] && req.method === 'GET') {
-    try {
-      const kind = workspaceKinds[url.pathname];
-      const data = {};
-      if (kind === 'ai') { data.aiReadiness = await getFrierenAIReadiness(); data.chatSettings = await getFrierenChatSettings(db); data.testRuns = await listOwnerTestRuns(db, { limit: 10 }); data.csrf = session.csrf; data.notice = url.searchParams.get('notice') || ''; }
-      if (kind === 'pogaca') {
-        data.notice = url.searchParams.get('notice') || '';
-        data.rpgMetrics = await getOwnerRpgMetrics(db);
-        data.csrf = session.csrf;
-        data.guildOptions = [...(client?.guilds?.cache?.values?.() || [])].map(guild => ({ id: String(guild.id), name: String(guild.name || guild.id) }));
-        const requestedGuild = String(url.searchParams.get('guildId') || '');
-        data.guildId = data.guildOptions.some(guild => guild.id === requestedGuild) ? requestedGuild :
-          (data.guildOptions.some(guild => guild.id === '1539562273197260860') ? '1539562273197260860' : (data.guildOptions[0]?.id || ''));
-        data.search = String(url.searchParams.get('search') || '').slice(0,80);
-        if (data.guildId) data.players = await searchOwnerRpgPlayers(db, { guildId: data.guildId, query: data.search });
-        const playerId = String(url.searchParams.get('userId') || '');
-        if (playerId && data.guildId) data.player = await getOwnerRpgPlayerDetails(db, { guildId: data.guildId, userId: playerId });
-        if (data.guildId) data.dailyQuests = await listOwnerDailyQuests(db, { guildId: data.guildId });
-        if (data.guildId) data.rpgContent = await listOwnerRpgContent(db, { guildId: data.guildId });
-      }
-      if (kind === 'database') {
-        data.database = await getOwnerDatabaseDiagnostics(db);
-        const neonProjectId = String(process.env.NEON_PROJECT_ID || '').trim();
-        data.backup = { consoleUrl: /^[a-z0-9-]{1,60}$/.test(neonProjectId) ? 'https://console.neon.tech/app/projects/' + neonProjectId : null };
-        const table = String(url.searchParams.get('table') || '');
-        if (table) data.preview = await getOwnerDatabaseTablePreview(db, { table, search: url.searchParams.get('search') || '' });
-      }
-      if (kind === 'settings') data.settings = [
-        { label: 'Discord OAuth istemcisi', configured: Boolean(process.env.CLIENT_ID && process.env.DISCORD_CLIENT_SECRET) },
-        { label: 'Owner oturum imzası', configured: Boolean(process.env.ADMIN_SESSION_SECRET && process.env.ADMIN_SESSION_SECRET.length >= 32) },
-        { label: 'PostgreSQL bağlantısı', configured: Boolean(db) },
-        { label: 'Frieren AI köprü anahtarı', configured: Boolean(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET) },
-        { label: 'Frieren AI sağlık doğrulama anahtarı', configured: Boolean(process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_BRIDGE_SECRET) },
-        { label: 'Poğaça Render API anahtarı', configured: Boolean(process.env.RENDER_POGACA_API_KEY || process.env.RENDER_API_KEY) },
-        { label: 'Frieren AI Render API anahtarı', configured: Boolean(process.env.RENDER_FRIEREN_AI_API_KEY) },
-        { label: 'Poğaça Render servis kimliği', configured: Boolean(RENDER_BOT_SERVICES.pogaca.id) },
-        { label: 'Frieren AI Render servis kimliği', configured: Boolean(RENDER_BOT_SERVICES.frieren_ai.id) },
-        { label: 'Neon Console kısayolu (isteğe bağlı)', configured: Boolean(process.env.NEON_PROJECT_ID) }
-      ];
-      const content = renderOwnerNavigation() + '<div class="top"><div><div class="brand">FRIEREN</div><div class="small">THE ARCANE SANCTUARY · OWNER WORKSPACE</div></div><a class="btn secondary" href="/owner">Genel bakış</a></div>'
-        + renderOwnerWorkspace(kind, data);
-      send(res, 200, page(kind === 'ai' ? 'Frieren AI' : kind === 'pogaca' ? 'Poğaça Frieren' : kind === 'database' ? 'PostgreSQL' : 'Owner ayarları', content));
-    } catch (error) {
-      console.error('Owner workspace load failed:', error?.message || error);
-      send(res, 503, page('Çalışma alanı yüklenemedi', '<h1>Çalışma alanı yüklenemedi</h1><p>Bağlantı ve veritabanı durumunu kontrol et.</p><a class="btn" href="/owner">Panele dön</a>'));
     }
     return true;
   }
