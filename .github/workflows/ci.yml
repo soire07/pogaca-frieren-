@@ -2,7 +2,7 @@ name: Poğaça Frieren checks
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/guardian-autonomous-repair-v2]
   pull_request:
     branches: [main]
 
