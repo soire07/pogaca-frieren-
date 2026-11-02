@@ -17,7 +17,7 @@ import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
 import { handleNeuralQualityReportRequest } from './guardian/neural-quality-report-route.js';
 import { saveGuardianQualityReport } from './guardian/quality-report-store.js';
-import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
+import { getGuildFeatureEnabled, isGuildCommandEnabled, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
 
@@ -247,17 +247,8 @@ client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
-  if (interaction.guildId) {
-    const commandFeatureKey = 'command_' + interaction.commandName.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-    const featureKeys = getCommandFeatureKeys(interaction.commandName);
-    const enabledStates = await Promise.all([
-      getGuildFeatureEnabled(pool, interaction.guildId, 'commands'),
-      getGuildFeatureEnabled(pool, interaction.guildId, commandFeatureKey),
-      ...featureKeys.map(key => getGuildFeatureEnabled(pool, interaction.guildId, key)),
-    ]);
-    if (enabledStates.some(enabled => !enabled)) {
-      return sendPrivateInteractionError(interaction, 'Bu komut bu sunucuda Owner Panel ayarlarıyla devre dışı bırakılmış.');
-    }
+  if (interaction.guildId && !await isGuildCommandEnabled(pool, interaction.guildId, interaction.commandName)) {
+    return sendPrivateInteractionError(interaction, 'Bu komut bu sunucuda Owner Panel ayarlarıyla devre dışı bırakılmış.');
   }
   try {
     await recordCommandUsage(pool, interaction.commandName, interaction.guildId).catch(error => console.warn('Komut ölçümü kaydedilemedi:', error?.message || error));
