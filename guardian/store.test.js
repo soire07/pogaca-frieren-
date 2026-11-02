@@ -11,22 +11,23 @@ import {
   getGuardianMonitorState,
 } from './store.js';
 
-test('Guardian incident upsert uses a stable fingerprint and increments occurrences atomically', async () => {
+test('Guardian incident upsert deduplicates repeated evidence and bounds evidence history', async () => {
   let call;
   const db = { query: async (sql, params) => {
     call = { sql, params };
-  assert.match(call.sql, /owner_guardian_incidents\\.evidence @> EXCLUDED\\.evidence/);
-  assert.match(call.sql, /occurrence_count=owner_guardian_incidents\\.occurrence_count \\+ CASE/);
-  assert.match(call.sql, /LIMIT 8/);
-  assert.match(call.sql, /jsonb_array_elements/);
+    return { rows: [{ id: 12, fingerprint: params[0], occurrence_count: 2 }] };
   } };
   const result = await upsertGuardianIncident(db, {
     system: 'pogaca_frieren', code: 'RPG_TIMEOUT',
     title: 'Boss timeout', summary: 'Boss action timed out',
+    evidence: [{ message: 'Owner error log ID 17' }],
   });
   assert.equal(result.id, 12);
-  assert.match(call.sql, /ON CONFLICT\(fingerprint\) DO UPDATE/);
-  assert.match(call.sql, /occurrence_count=owner_guardian_incidents\.occurrence_count\+1/);
+  assert.match(call.sql, /ON CONFLICT\\(fingerprint\\) DO UPDATE/);
+  assert.match(call.sql, /owner_guardian_incidents\\.evidence @> EXCLUDED\\.evidence/);
+  assert.match(call.sql, /occurrence_count=owner_guardian_incidents\\.occurrence_count \\+ CASE/);
+  assert.match(call.sql, /LIMIT 8/);
+  assert.match(call.sql, /jsonb_array_elements/);
   assert.equal(call.params[1], 'pogaca_frieren');
 });
 
