@@ -353,10 +353,7 @@ await loadCommands();
 await initDatabase();
 await initOwnerAdminSchema(pool);
 await initGuildFeatureSettingsSchema(pool);
-let stopGuardianMonitor = null;
-client.once(Events.ClientReady, () => {
-  stopGuardianMonitor = startGuardianMonitor({ db: pool, client });
-});
+const stopGuardianMonitor = startGuardianMonitor({ db: pool, client });
 await client.login(process.env.DISCORD_TOKEN);
 
 let aiAgentChild = null;
