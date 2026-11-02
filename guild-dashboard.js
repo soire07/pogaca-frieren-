@@ -94,7 +94,7 @@ function getSession(req, secret) {
 function oauthConfig(env = process.env) {
   const clientId = String(env.CLIENT_ID || '').trim();
   const clientSecret = String(env.DISCORD_CLIENT_SECRET || '').trim();
-  const base = String(env.SITE_BASE_URL || 'https://frierenbot.vercel.app').replace(/\\/+$/, '');
+  const base = String(env.SITE_BASE_URL || 'https://frierenbot.vercel.app').replace(/\/+$/, '');
   const redirectUri = String(env.GUILD_DASHBOARD_REDIRECT_URI || (base + '/discord/callback')).trim();
   let parsed;
   try { parsed = new URL(redirectUri); } catch { return null; }
