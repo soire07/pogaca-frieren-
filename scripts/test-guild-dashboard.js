@@ -222,3 +222,27 @@ test('competitor-inspired wishlist, companion home, and guild rewards remain roa
     assert.equal(feature.key, null, id + ' must not expose a live toggle before implementation');
   }
 });
+
+
+test('Discord OAuth state is consumed atomically once and cannot be replayed', async () => {
+  const { consumeGuildOAuthState } = await import('../guild-dashboard.js');
+  const state = createGuildOAuthState(owner, secret);
+  const calls = [];
+  let available = true;
+  const db = {
+    async query(sql, params = []) {
+      calls.push({ sql, params });
+      assert.match(sql, /DELETE FROM frieren_site_oauth_states/i);
+      assert.match(sql, /state_hash=\$1 AND account_id=\$2 AND expires_at>NOW\(\)/i);
+      if (available && params[0] && params[1] === owner) {
+        available = false;
+        return { rows: [{ account_id: owner }], rowCount: 1 };
+      }
+      return { rows: [], rowCount: 0 };
+    }
+  };
+  assert.equal(await consumeGuildOAuthState(db, state, owner, secret), true);
+  assert.equal(await consumeGuildOAuthState(db, state, owner, secret), false);
+  assert.equal(await consumeGuildOAuthState(db, state, 'site_other-account', secret), false);
+  assert.equal(calls.length, 2);
+});
