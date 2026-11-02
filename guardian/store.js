@@ -172,16 +172,22 @@ export async function resolveGuardianIncident(db, { incidentId, actorId }) {
   const id = Number(incidentId);
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error('INVALID_GUARDIAN_INCIDENT_ID');
   const result = await db.query(
-    `WITH changed AS (
+    `WITH target_jobs AS MATERIALIZED (
+       SELECT id FROM owner_guardian_jobs
+       WHERE incident_id=$1 AND status IN ('queued','running')
+       FOR UPDATE
+     ), changed AS (
        UPDATE owner_guardian_incidents SET status='resolved',updated_at=NOW()
-       WHERE id=$1 AND status NOT IN ('resolved','ignored') RETURNING id,fingerprint
+       WHERE id=$1 AND status NOT IN ('resolved','ignored')
+         AND (SELECT COUNT(*) FROM target_jobs) >= 0
+       RETURNING id,fingerprint
      ), cancelled_jobs AS (
        UPDATE owner_guardian_jobs j
        SET status='failed',
            result=jsonb_build_object('error','GUARDIAN_INCIDENT_RESOLVED'),
            finished_at=NOW()
-       FROM changed
-       WHERE j.incident_id=changed.id AND j.status IN ('queued','running')
+       FROM target_jobs t, changed
+       WHERE j.id=t.id
        RETURNING j.id
      ), logged AS (
        INSERT INTO owner_audit_logs(actor_id,action,target,details)
