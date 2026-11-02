@@ -25,6 +25,7 @@ test('feature keys are validated and defaults preserve existing behavior', () =>
   assert.equal(DEFAULT_GUILD_FEATURES.companions, true);
   assert.equal(DEFAULT_GUILD_FEATURES.fishing, true);
   assert.equal(DEFAULT_GUILD_FEATURES.farming, true);
+  assert.equal(DEFAULT_GUILD_FEATURES.creatures, false);
 });
 
 test('feature setting schema is isolated and safe to initialize', async () => {
@@ -101,7 +102,9 @@ test('entertainment and progression commands map to their guild dashboard module
   assert.deepEqual(getCommandFeatureKeys('animequiz'), ['animeQuiz']);
   assert.deepEqual(getCommandFeatureKeys('yoldas'), ['companions', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('balik'), ['fishing', 'rpg']);
+  assert.equal(getComponentCommandName('creature_catch:123e4567-e89b-12d3-a456-426614174000'),'yaratik');
   assert.deepEqual(getCommandFeatureKeys('sera'), ['farming', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('yaratik'), ['creatures', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('koleksiyon'), ['collection', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('basarimlar'), ['achievements', 'rpg']);
   assert.deepEqual(getCommandFeatureKeys('gunlukodul'), ['dailyRewards', 'rpg']);

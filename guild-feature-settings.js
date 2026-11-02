@@ -19,6 +19,7 @@ export const DEFAULT_GUILD_FEATURES = Object.freeze({
   companions: true,
   fishing: true,
   farming: true,
+  creatures: false,
   achievements: true,
   dailyRewards: true,
   exploration: true,
@@ -126,6 +127,7 @@ export function getCommandFeatureKeys(commandName) {
   if (/yoldas|yoldaş|companion|pet/.test(name)) keys.push('companions');
   if (/^balik$|balık|fishing/.test(name)) keys.push('fishing');
   if (/^sera$|sera|farming/.test(name)) keys.push('farming');
+  if (/yaratik|yaratık|creature/.test(name)) keys.push('creatures');
   if (/buyu|büyü|spell|yetenek/.test(name)) keys.push('magic');
   if (/ekipman|envanter|esya|eşya|item|setbonus/.test(name) || name === 'cantam' || name === 'zanaatustalari') keys.push('equipment');
   if (/bakiye|market|magaza|mağaza|ekonomi|takas|trade/.test(name) || ['hazineac', 'hazinegecmisi', 'parcala'].includes(name)) keys.push('economy');
@@ -149,6 +151,7 @@ export function getComponentCommandName(customId) {
   const id = String(customId || '');
   if (id.startsWith('charpanel:')) return 'karakter';
   if (id.startsWith('market_')) return 'market';
+  if (id.startsWith('creature_catch:')) return 'yaratik';
   if (id.startsWith('trade_accept:') || id.startsWith('trade_decline:')) return 'takasteklif';
   return null;
 }

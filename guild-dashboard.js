@@ -33,6 +33,7 @@ const FEATURE_DETAILS = {
   companions: ['Yoldaş Akademisi', 'Yoldaş sahiplenme, bakım, eğitim ve seviye ilerlemesi.', 'Macera'],
   fishing: ['Kuzey Denizi', 'Bölgeye göre balık avı, nadir türler ve koleksiyon defteri.', 'Keşif'],
   farming: ['Büyülü Sera', 'Tohum ekimi, zamanlı yetiştirme, mevsim bonusu ve hasat.', 'Üretim'],
+  creatures: ['Yaratık Arşivi', 'Sohbet etkinliğinde yaratık doğması, ilk yakalama ve koleksiyon.', 'Koleksiyon'],
   achievements: ['Başarımlar', 'Oyuncu başarımları ve ilerleme hedefleri.', 'İlerleme'],
   dailyRewards: ['Günlük ödüller', 'Günlük giriş ödülleri ve devam serileri.', 'İlerleme'],
   exploration: ['Keşif ve macera', 'Bölgeler, keşif karşılaşmaları ve macera kayıtları.', 'Macera'],

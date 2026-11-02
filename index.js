@@ -1,10 +1,11 @@
 import 'dotenv/config';
-import { Client, Collection, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, Collection, EmbedBuilder, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
 import { readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { initDatabase, pool } from './database/db.js';
 import { resolveTradeOffer } from './trade-transaction.js';
+import { CREATURE_SPAWN_CHANCE, claimCreature, deactivateCreatureSpawn, initCreatureSchema, maybeSpawnCreature, setCreatureSpawnMessageId } from './creatures.js';
 import { renderMarket, renderMarketItem, buyMarketItem, renderPurchaseResult, renderMarketInventory } from './market.js';
 import { levelForXp } from './utils.js';
 import { handleCharacterPanelInteraction } from './karakter.js';
@@ -30,6 +31,11 @@ if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL eksik. Önce Render
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMembers, ...(process.env.ENABLE_MESSAGE_CONTENT_INTENT === 'true' ? [GatewayIntentBits.MessageContent] : [])] });
 client.commands = new Collection();
+let creatureSchemaReady;
+async function ensureCreatureSchema() {
+  if (!creatureSchemaReady) creatureSchemaReady = initCreatureSchema(pool).catch(error => { creatureSchemaReady = null; throw error; });
+  await creatureSchemaReady;
+}
 
 
 
@@ -168,6 +174,20 @@ client.on(Events.InteractionCreate, async interaction => {
       return sendPrivateInteractionError(interaction, message);
     }
     if (await handleCharacterPanelInteraction(interaction)) return;
+    if (interaction.isButton() && interaction.customId.startsWith('creature_catch:')) {
+      try {
+        const spawnId = interaction.customId.slice('creature_catch:'.length);
+        const result = await claimCreature(pool, { guildId: interaction.guildId, userId: interaction.user.id, spawnId });
+        if (result.status === 'caught') return interaction.update({
+          embeds: [new EmbedBuilder().setColor(0x9a8bd2).setTitle('✨ Yaratık yakalandı!')
+            .setDescription(interaction.user.username + ', **' + result.creature.name + '** yaratığını arşivine ekledi.')], components: []
+        });
+        return interaction.reply({ content: result.status === 'expired' ? 'Bu yaratığın yakalama süresi doldu.' : 'Bu yaratık başka bir maceracı tarafından yakalandı veya artık aktif değil.', flags: MessageFlags.Ephemeral });
+      } catch (error) {
+        console.error('Yaratık yakalama hatası:', error?.message || error);
+        return sendPrivateInteractionError(interaction, 'Yaratık yakalanırken bir sorun oluştu. Tekrar dene.');
+      }
+    }
   if (interaction.isButton() && interaction.customId.startsWith('market_')) {
     const parts = interaction.customId.split(':');
     const action = parts[0];
@@ -288,6 +308,22 @@ client.on(Events.MessageCreate, async message => {
   if (!message.guild || message.author.bot) return;
   try {
     if (await getMaintenanceState(pool)) return;
+    if (Math.random() < CREATURE_SPAWN_CHANCE && await getGuildFeatureEnabled(pool, message.guild.id, 'creatures')) {
+      try {
+        await ensureCreatureSchema();
+        const spawn = await maybeSpawnCreature(pool, { guildId: message.guild.id, channelId: message.channel.id }, { force: true });
+        if (spawn.status === 'spawned') {
+          const row = new ActionRowBuilder().addComponents(new ButtonBuilder()
+            .setCustomId('creature_catch:' + spawn.spawnId).setLabel('Yaratığı yakala').setStyle(ButtonStyle.Success));
+          const embed = new EmbedBuilder().setColor(0x9a8bd2).setTitle(spawn.creature.emoji + ' Vahşi bir yaratık belirdi!')
+            .setDescription('**' + spawn.creature.name + '** burada dolaşıyor. İlk yakalayan, yaratığı arşivine ekler.\n\nYakalamak için **3 dakikan** var.');
+          try {
+            const sent = await message.channel.send({ embeds: [embed], components: [row] });
+            await setCreatureSpawnMessageId(pool, spawn.spawnId, sent.id);
+          } catch (sendError) { await deactivateCreatureSpawn(pool, spawn.spawnId); throw sendError; }
+        }
+      } catch (spawnError) { console.error('Yaratık doğma akışı başarısız:', spawnError?.message || spawnError); }
+    }
     const [aiChatEnabled, messageXpEnabled] = await Promise.all([
       getGuildFeatureEnabled(pool, message.guild.id, 'aiChat'),
       getGuildFeatureEnabled(pool, message.guild.id, 'messageXp'),

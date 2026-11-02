@@ -9,6 +9,10 @@ on:
       - 'market.js'
       - 'fishing.js'
       - 'farming.js'
+      - 'creatures.js'
+      - 'yaratik.js'
+      - 'index.js'
+      - 'scripts/test-creatures.integration.js'
       - 'sera.js'
       - 'scripts/test-farming.integration.js'
       - 'balik.js'
@@ -60,6 +64,8 @@ jobs:
         run: node --test scripts/test-fishing.integration.js
       - name: Run real PostgreSQL farming concurrency and reward tests
         run: node --test scripts/test-farming.integration.js
+      - name: Run real PostgreSQL creature spawn and capture race tests
+        run: node --test scripts/test-creatures.integration.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
