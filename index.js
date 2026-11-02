@@ -17,7 +17,7 @@ import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
 import { handleNeuralQualityReportRequest } from './guardian/neural-quality-report-route.js';
 import { saveGuardianQualityReport } from './guardian/quality-report-store.js';
-import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
+import { areGuildCommandFeaturesEnabled, getGuildFeatureEnabled, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
 import { initGuildDashboardSchema } from './guild-dashboard.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
@@ -153,8 +153,16 @@ client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isChatInputCommand() && await getMaintenanceState(pool)) {
       return sendPrivateInteractionError(interaction, 'Frieren şu anda bakım modunda. İşlemler kısa süreliğine durduruldu.');
     }
+    if ((interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) &&
+        interaction.customId?.startsWith('charpanel:') &&
+        (!interaction.guildId || !(await areGuildCommandFeaturesEnabled(pool, interaction.guildId, 'karakter')))) {
+      return sendPrivateInteractionError(interaction, 'Karakter modülü bu sunucuda devre dışı bırakılmış.');
+    }
     if (await handleCharacterPanelInteraction(interaction)) return;
   if (interaction.isButton() && interaction.customId.startsWith('market_')) {
+    if (!interaction.guildId || !(await areGuildCommandFeaturesEnabled(pool, interaction.guildId, 'market'))) {
+      return sendPrivateInteractionError(interaction, 'Market ve ekonomi modülü bu sunucuda devre dışı bırakılmış.');
+    }
     const parts = interaction.customId.split(':');
     const action = parts[0];
     const ownerId = parts[parts.length - 1];
@@ -203,6 +211,9 @@ client.on(Events.InteractionCreate, async interaction => {
     }
   }
   if (interaction.isButton() && (interaction.customId.startsWith('trade_accept:') || interaction.customId.startsWith('trade_decline:'))) {
+    if (!interaction.guildId || !(await areGuildCommandFeaturesEnabled(pool, interaction.guildId, 'takasteklif'))) {
+      return sendPrivateInteractionError(interaction, 'Takas modülü bu sunucuda devre dışı bırakılmış.');
+    }
     const [action, offerId] = interaction.customId.split(':');
     if (!interaction.guildId || !offerId) {
       return interaction.reply({ content: 'Bu takas teklifi geçersiz.', flags: MessageFlags.Ephemeral });
@@ -248,17 +259,8 @@ client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
-  if (interaction.guildId) {
-    const commandFeatureKey = 'command_' + interaction.commandName.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-    const featureKeys = getCommandFeatureKeys(interaction.commandName);
-    const enabledStates = await Promise.all([
-      getGuildFeatureEnabled(pool, interaction.guildId, 'commands'),
-      getGuildFeatureEnabled(pool, interaction.guildId, commandFeatureKey),
-      ...featureKeys.map(key => getGuildFeatureEnabled(pool, interaction.guildId, key)),
-    ]);
-    if (enabledStates.some(enabled => !enabled)) {
-      return sendPrivateInteractionError(interaction, 'Bu komut bu sunucuda Owner Panel ayarlarıyla devre dışı bırakılmış.');
-    }
+  if (interaction.guildId && !(await areGuildCommandFeaturesEnabled(pool, interaction.guildId, interaction.commandName))) {
+    return sendPrivateInteractionError(interaction, 'Bu komut bu sunucuda Owner Panel ayarlarıyla devre dışı bırakılmış.');
   }
   try {
     await recordCommandUsage(pool, interaction.commandName, interaction.guildId).catch(error => console.warn('Komut ölçümü kaydedilemedi:', error?.message || error));
