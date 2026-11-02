@@ -1056,15 +1056,15 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              ref: 'frieren-neural-foundation',
-              inputs: { task, base_branch: 'frieren-neural-foundation', incident_id: String(incident.id) },
+              ref: 'feat/neural-guardian-control-center',
+              inputs: { task, base_branch: 'feat/neural-guardian-control-center', incident_id: String(incident.id) },
             }),
             signal: AbortSignal.timeout(12_000),
           });
           if (response.status !== 204) throw new Error('GUARDIAN_GITHUB_DISPATCH_HTTP_' + response.status);
           await finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl });
           await auditOwnerAction(db, OWNER_ID, 'guardian.repair.workflow_dispatched', String(incident.id), {
-            jobId: job.id, workflow: 'frieren-ai-self-repair.yml', baseBranch: 'frieren-neural-foundation',
+            jobId: job.id, workflow: 'frieren-ai-self-repair.yml', baseBranch: 'feat/neural-guardian-control-center',
           }).catch(error => console.error('Guardian dispatch audit failed:', error?.message || error));
           redirect(res, '/owner/guardian?notice=guardian_pr_dispatched');
         } catch (error) {
@@ -1086,7 +1086,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
           'X-GitHub-Api-Version': '2022-11-28',
         };
         const apiBase = 'https://api.github.com/repos/soire07/pogaca-frieren-';
-        const runsResponse = await fetch(apiBase + '/actions/workflows/frieren-ai-self-repair.yml/runs?branch=frieren-neural-foundation&event=workflow_dispatch&per_page=30', {
+        const runsResponse = await fetch(apiBase + '/actions/workflows/frieren-ai-self-repair.yml/runs?branch=feat%2Fneural-guardian-control-center&event=workflow_dispatch&per_page=30', {
           headers, signal: AbortSignal.timeout(10_000),
         });
         if (!runsResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + runsResponse.status);
@@ -1103,7 +1103,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         const query = new URLSearchParams({
           state: 'all',
           head: 'soire07:' + branchName,
-          base: 'frieren-neural-foundation',
+          base: 'feat/neural-guardian-control-center',
         });
         const prResponse = await fetch(apiBase + '/pulls?' + query.toString(), {
           headers, signal: AbortSignal.timeout(10_000),
