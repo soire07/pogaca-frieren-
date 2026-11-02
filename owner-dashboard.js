@@ -15,7 +15,7 @@ import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } fr
 import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
-import { classifyGuardianWorkflowConclusion } from './guardian/automation.js';
+import { classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks } from './guardian/automation.js';
 import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, reserveGuardianRepairDispatch, finishGuardianRepairDispatch, updateGuardianRepairStatus, getGuardianMonitorState, getLatestGuardianQualityReport } from './guardian/store.js';
 
 const OWNER_ID = '1553794496234262641';
@@ -1118,15 +1118,8 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
           const checksResponse = await fetch(apiBase + '/commits/' + encodeURIComponent(pr.head.sha) + '/check-runs?per_page=100', {
             headers, signal: AbortSignal.timeout(10_000),
           });
-          if (checksResponse.ok) {
-            const checksPayload = await checksResponse.json();
-            const checkRuns = checksPayload.check_runs || [];
-            if (checkRuns.some(item => item.status !== 'completed')) checksStatus = 'pending';
-            else if (checkRuns.length && checkRuns.some(item => !['success','skipped','neutral'].includes(item.conclusion))) {
-              checksStatus = checkRuns.some(item => ['cancelled','timed_out'].includes(item.conclusion)) ? 'cancelled' : 'failure';
-            } else if (checkRuns.length) checksStatus = 'success';
-            else checksStatus = 'pending';
-          }
+          const checksPayload = checksResponse.ok ? await checksResponse.json().catch(() => null) : null;
+          checksStatus = classifyGuardianPullRequestChecks({ ok: checksResponse.ok, payload: checksPayload });
         } else if (run && run.status !== 'completed') {
           checksStatus = 'pending';
         } else if (run?.status === 'completed' && run.conclusion === 'success') {
@@ -1142,13 +1135,13 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
           runConclusion,
           prNumber: pr?.number || null,
           prUrl: pr?.html_url || null,
-          prState: pr?.state || null,
+          prState: pr ? (pr.merged_at ? 'merged' : pr.state || null) : null,
           checksStatus,
           retryable: Boolean(!pr && run?.status === 'completed'
             && ['failure','cancelled','timed_out','action_required','startup_failure'].includes(run?.conclusion)),
         });
         await auditOwnerAction(db, OWNER_ID, 'guardian.repair.status_refreshed', String(incident.id), {
-          jobId: job.id, runStatus, runConclusion, prNumber: pr?.number || null, checksStatus,
+          jobId: job.id, runStatus, runConclusion, prNumber: pr?.number || null, prState: pr ? (pr.merged_at ? 'merged' : pr.state || null) : null, checksStatus,
         }).catch(error => console.error('Guardian status audit failed:', error?.message || error));
         redirect(res, '/owner/guardian?notice=guardian_pr_status_updated');
         return true;
