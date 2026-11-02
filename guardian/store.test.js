@@ -191,6 +191,19 @@ test('Guardian repair dispatch reservation is bounded and reclaims stale dispatc
   assert.match(sql, /repair_dispatch_status='dispatching'.*INTERVAL '15 minutes'/s);
 });
 
+test('Guardian repair reservation requires the incident to remain awaiting approval', async () => {
+  let sql = '';
+  const db = { query: async statement => {
+    sql = statement;
+    return { rows: [] };
+  } };
+  const reserved = await reserveGuardianRepairDispatch(db, 8);
+  assert.equal(reserved, null, 'resolved or ignored incidents must not dispatch a repair');
+  assert.match(sql, /FROM owner_guardian_incidents AS i/);
+  assert.match(sql, /i\.status='awaiting_approval'/);
+  assert.match(sql, /i\.id=j\.incident_id/);
+});
+
 test('Guardian retry scan selects only bounded failed or stale dispatches with saved proposals', async () => {
   let params;
   const db = { query: async (sql, values) => {
