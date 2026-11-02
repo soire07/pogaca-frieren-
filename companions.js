@@ -128,7 +128,7 @@ export async function equipCompanionCosmetic(dbPool, input) {
   finally { db.release(); }
 }
 export async function getCompanion(dbPool, guildId, userId) {
-  const result = await dbPool.query('SELECT companion_key,xp,level,happiness,energy,hunger,adopted_at FROM user_companions WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+  const result = await dbPool.query('SELECT companion_key,cosmetic_key,xp,level,happiness,energy,hunger,adopted_at FROM user_companions WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
   const pet = result.rows[0];
   if (!pet) return null;
   return { ...pet, catalog: COMPANION_CATALOG.find(item => item.key === pet.companion_key) || null, cosmetic: pet.cosmetic_key === 'default' ? null : COMPANION_COSMETICS.find(item => item.key === pet.cosmetic_key) || null };
