@@ -135,7 +135,7 @@ test('repair patch refuses to run when the isolated worktree is already dirty', 
   const calls = [];
   const execFile = (args) => {
     calls.push(args);
-    if (args[0] === 'status') return ' M unrelated.js\\n';
+    if (args[0] === 'status') return ' M unrelated.js\n';
     throw new Error('PATCH_MUST_NOT_BE_APPLIED');
   };
   assert.throws(() => applyRepairPatch(validPatch, { execFile }), {
@@ -149,7 +149,7 @@ test('repair patch accepts only the exact validated file set', () => {
   const execFile = (args) => {
     calls.push(args);
     if (args[0] === 'status' && args[1] === '--porcelain') return '';
-    if (args[0] === 'status') return ' M rpg-mechanics.js\\n';
+    if (args[0] === 'status') return ' M rpg-mechanics.js\n';
     return '';
   };
   assert.deepEqual(applyRepairPatch(validPatch, { execFile }), ['rpg-mechanics.js']);
@@ -159,7 +159,7 @@ test('repair patch accepts only the exact validated file set', () => {
 test('repair patch rejects additional allowed files changed outside the proposal', () => {
   const execFile = (args) => {
     if (args[0] === 'status' && args[1] === '--porcelain') return '';
-    if (args[0] === 'status') return ' M rpg-mechanics.js\\n M unrelated.js\\n';
+    if (args[0] === 'status') return ' M rpg-mechanics.js\n M unrelated.js\n';
     return '';
   };
   assert.throws(() => applyRepairPatch(validPatch, { execFile }), {
