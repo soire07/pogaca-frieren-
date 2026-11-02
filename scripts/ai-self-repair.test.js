@@ -5,6 +5,7 @@ import {
   extractUnifiedDiff,
   validatePatchPaths,
   generateRepairPatch,
+  verifyGroqConnection,
   applyRepairPatch,
   formatRepairFilesOutput,
 } from './ai-self-repair.js';
@@ -182,4 +183,18 @@ test('repair workflow output contains only the exact validated file paths', () =
   assert.throws(() => formatRepairFilesOutput([]), {
     message: 'REPAIR_OUTPUT_FILE_SET_INVALID',
   });
+});
+
+
+test('Groq validation mode verifies the provider response without requesting a code diff', async () => {
+  let request;
+  const client = { chat: { completions: { async create(options) { request = options; return { choices: [{ message: { content: 'FRIEREN_GROQ_OK' } }] }; } } } };
+  assert.equal(await verifyGroqConnection({ client }), true);
+  assert.equal(request.max_completion_tokens, 16);
+  assert.match(request.messages[0].content, /FRIEREN_GROQ_OK/);
+});
+
+test('Groq validation mode rejects unexpected provider responses', async () => {
+  const client = { chat: { completions: { async create() { return { choices: [{ message: { content: 'not verified' } }] }; } } } };
+  await assert.rejects(verifyGroqConnection({ client }), { message: 'GROQ_VALIDATION_RESPONSE_INVALID' });
 });
