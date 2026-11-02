@@ -10,6 +10,15 @@ const REPAIR_BRANCH = 'feat/guardian-autonomous-repair-v2';
 const REPAIR_WORKFLOW = 'frieren-ai-self-repair.yml';
 const REPOSITORY = 'soire07/pogaca-frieren-';
 
+export function classifyGuardianWorkflowConclusion(conclusion) {
+  const value = String(conclusion || '').toLowerCase();
+  if (value === 'success') return 'success';
+  if (['failure', 'cancelled', 'timed_out', 'action_required', 'startup_failure'].includes(value)) {
+    return value === 'cancelled' || value === 'timed_out' ? 'cancelled' : 'failure';
+  }
+  return 'unknown';
+}
+
 function safeErrorCode(error) {
   return String(error?.message || 'GUARDIAN_AUTOMATION_FAILED')
     .replace(/[^a-z0-9_.:-]/gi, '_')
