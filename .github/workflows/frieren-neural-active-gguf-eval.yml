@@ -21,7 +21,6 @@ jobs:
     env:
       FRIEREN_MODEL_BACKEND: ufakzeka
       FRIEREN_MODEL_THREADS: "2"
-      FRIEREN_EVALUATED_SOURCE_SHA: ce4712ac7fb8d0777217feba0dad7e9ad79bf57b
     steps:
       - name: Check out validation commit
         uses: actions/checkout@v4
@@ -39,7 +38,7 @@ jobs:
         run: |
           python -m frieren_neural.quality_evaluation \
             --backend ufakzeka \
-            --source-commit "$FRIEREN_EVALUATED_SOURCE_SHA" \
+            --source-commit "$GITHUB_SHA" \
             --output-dir quality-reports/active-gguf
       - name: Verify real-model report contract
         run: |
