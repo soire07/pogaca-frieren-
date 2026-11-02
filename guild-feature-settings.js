@@ -18,6 +18,7 @@ export const DEFAULT_GUILD_FEATURES = Object.freeze({
   collection: true,
   companions: true,
   fishing: true,
+  farming: true,
   achievements: true,
   dailyRewards: true,
   exploration: true,
@@ -124,6 +125,7 @@ export function getCommandFeatureKeys(commandName) {
   if (/karakter|sinif|class|profil/.test(name) || name === 'parcala') keys.push('character');
   if (/yoldas|yoldaş|companion|pet/.test(name)) keys.push('companions');
   if (/^balik$|balık|fishing/.test(name)) keys.push('fishing');
+  if (/^sera$|sera|farming/.test(name)) keys.push('farming');
   if (/buyu|büyü|spell|yetenek/.test(name)) keys.push('magic');
   if (/ekipman|envanter|esya|eşya|item|setbonus/.test(name) || name === 'cantam' || name === 'zanaatustalari') keys.push('equipment');
   if (/bakiye|market|magaza|mağaza|ekonomi|takas|trade/.test(name) || ['hazineac', 'hazinegecmisi', 'parcala'].includes(name)) keys.push('economy');

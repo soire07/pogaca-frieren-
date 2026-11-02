@@ -32,6 +32,7 @@ const FEATURE_DETAILS = {
   collection: ['Karakter koleksiyonu', 'Karakter arşivi, koleksiyon ve keşif defteri.', 'Koleksiyon'],
   companions: ['Yoldaş Akademisi', 'Yoldaş sahiplenme, bakım, eğitim ve seviye ilerlemesi.', 'Macera'],
   fishing: ['Kuzey Denizi', 'Bölgeye göre balık avı, nadir türler ve koleksiyon defteri.', 'Keşif'],
+  farming: ['Büyülü Sera', 'Tohum ekimi, zamanlı yetiştirme, mevsim bonusu ve hasat.', 'Üretim'],
   achievements: ['Başarımlar', 'Oyuncu başarımları ve ilerleme hedefleri.', 'İlerleme'],
   dailyRewards: ['Günlük ödüller', 'Günlük giriş ödülleri ve devam serileri.', 'İlerleme'],
   exploration: ['Keşif ve macera', 'Bölgeler, keşif karşılaşmaları ve macera kayıtları.', 'Macera'],
@@ -40,7 +41,6 @@ const FEATURE_DETAILS = {
 };
 
 const PLANNED_FEATURES = [
-  { id: 'farming', title: 'Bahçe ve iksir malzemeleri', description: 'Tohum ekme, hasat, üretim ve lonca çiftliği.' },
   { id: 'miniGames', title: 'Mini oyun salonu', description: 'Blackjack dışı beceri oyunları, yarışlar, kelime ve hafıza oyunları.' },
   { id: 'profileCards', title: 'Özelleştirilebilir profil kartları', description: 'Rozet, arka plan, çerçeve, unvan ve istatistik kartları.' },
   { id: 'characterWishlist', title: 'Karakter dilek listesi', description: 'İstediğin Frieren karakterlerini listene ekle; karşılaşma ve koleksiyon hedeflerini takip et.' },

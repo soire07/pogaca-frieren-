@@ -8,6 +8,9 @@ on:
       - 'database/**'
       - 'market.js'
       - 'fishing.js'
+      - 'farming.js'
+      - 'sera.js'
+      - 'scripts/test-farming.integration.js'
       - 'balik.js'
       - 'scripts/test-fishing.integration.js'
       - 'trade.js'
@@ -55,6 +58,8 @@ jobs:
         run: node --test scripts/test-market-concurrency.integration.js
       - name: Run real PostgreSQL fishing concurrency and collection tests
         run: node --test scripts/test-fishing.integration.js
+      - name: Run real PostgreSQL farming concurrency and reward tests
+        run: node --test scripts/test-farming.integration.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
