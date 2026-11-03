@@ -600,7 +600,7 @@ test('PostgreSQL reward ledger rejects an old solo boss battle ID after a newer 
       const second = await claim(secondBattleId);
       const replay = await claim(firstBattleId);
       const player = await pool.query(
-        'SELECT coins,xp,boss_defeats,last_boss_battle_id FROM users WHERE guild_id=$1 AND user_id=$2',
+        'SELECT coins,xp,level,stat_points,boss_defeats,last_boss_battle_id FROM users WHERE guild_id=$1 AND user_id=$2',
         [guildId, userId]
       );
       const claims = await pool.query(
