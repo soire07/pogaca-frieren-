@@ -59,6 +59,13 @@ export function validatePatchPaths(patch, { task = '', incidentId = '' } = {}) {
       || /^rename (?:from|to) /m.test(section)) {
       throw new Error('REPAIR_PATCH_FEATURE_NOT_ALLOWED');
     }
+    const hunkHeaders = section.match(/^@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@(?: .*)?$/gm) || [];
+    if (!hunkHeaders.length) throw new Error('REPAIR_PATCH_HUNK_INVALID');
+    const hunkStart = section.search(/^@@ /m);
+    const hunkBody = section.slice(hunkStart).split('\n').slice(1);
+    if (hunkBody.some(line => line && !line.startsWith('@@ ') && ![' ', '+', '-', '\\'].includes(line[0]))) {
+      throw new Error('REPAIR_PATCH_HUNK_INVALID');
+    }
     const oldPath = section.match(/^--- a\/([^\s]+)$/m);
     const newPath = section.match(/^\+\+\+ b\/([^\s]+)$/m);
     if (!oldPath || !newPath) throw new Error('REPAIR_PATCH_MUST_UPDATE_EXISTING_FILE');
@@ -178,9 +185,9 @@ export async function generateRepairPatch({ task, incidentId = '', apiKey, model
 
 export async function generateRepairPatchWithRetry({
   task, incidentId = '', model = 'openai/gpt-oss-20b', client, context,
-  execFile = runGit, maxAttempts = 2,
+  execFile = runGit, maxAttempts = 3,
 } = {}) {
-  const attempts = Math.max(1, Math.min(2, Number(maxAttempts) || 2));
+  const attempts = Math.max(1, Math.min(3, Number(maxAttempts) || 3));
   let repairFeedback = '';
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     let proposal;

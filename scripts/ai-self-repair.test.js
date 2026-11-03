@@ -394,3 +394,38 @@ test('repair workflow rejects an empty task before checkout and dependency insta
   assert.ok(workflow.indexOf('name: Require a repair task') < workflow.indexOf('name: Checkout requested base branch'));
   assert.ok(workflow.indexOf('name: Require a repair task') < workflow.indexOf('name: Install dependencies'));
 });
+
+
+test('repair diff rejects garbage after file headers before invoking git apply', () => {
+  const malformed = [
+    'diff --git a/rpg-mechanics.js b/rpg-mechanics.js',
+    'index 1111111..2222222 100644',
+    '--- a/rpg-mechanics.js',
+    '+++ b/rpg-mechanics.js',
+    'not-a-hunk-header',
+    '+const ready = true;',
+  ].join('\n');
+  assert.throws(() => validatePatchPaths(malformed), {
+    message: 'REPAIR_PATCH_HUNK_INVALID',
+  });
+});
+
+test('Guardian repair uses three attempts by default when generated diffs are structurally invalid', async () => {
+  let calls = 0;
+  const malformedPatch = validPatch.replace('@@ -1 +1 @@', 'not-a-hunk-header');
+  const client = {
+    chat: { completions: { async create() {
+      calls += 1;
+      return { choices: [{ message: { content: malformedPatch }, finish_reason: 'stop' }] };
+    } } },
+  };
+  await assert.rejects(
+    generateRepairPatchWithRetry({
+      task: 'fix the readiness check',
+      client,
+      context: 'const ready = false;',
+    }),
+    { message: 'REPAIR_PATCH_HUNK_INVALID' },
+  );
+  assert.equal(calls, 3);
+});
