@@ -1111,9 +1111,8 @@
         "path": "scripts/test-utils.js",
         "name": "freezing the boss cancels its scheduled special attack and its mana-drain side effect",
         "markers": [
-          "if \\\\(turnCount % 3 === 0 && !frozenBoss\\\\)",
-          "else if \\\\(turnCount % 3 === 0 && frozenBoss\\\\)",
-          "Donma etkisi bossun özel saldırısını da durdurdu"
+          "Donma etkisi bossun özel saldırısını da durdurdu",
+          "frozenBoss"
         ]
       },
       "limitation": "The test asserts the solo boss handler suppresses its scheduled special attack and mana drain while frozen. It is a source-level regression test, not a live Discord fight."
@@ -1159,7 +1158,7 @@
         "name": "cooperative raid boss phases scale incoming damage and announce transitions",
         "markers": [
           "son evreye geçti",
-          "bossPhaseSpecialBonus\\\\(bossPhase\\\\)"
+          "bossPhaseSpecialBonus"
         ]
       },
       "limitation": "The test checks the final raid phase announcement and phase-scaled special damage wiring. A live multiplayer raid is not verified."
@@ -1182,7 +1181,7 @@
         "name": "final dungeon boss has three phases and stronger phase-scaled special attacks",
         "markers": [
           "const finalBoss = floor === FLOORS",
-          "getBossPhase\\\\(enemyHp, maxEnemyHp\\\\)",
+          "getBossPhase",
           "İblis Lordu ikinci evreye geçti"
         ]
       },
@@ -1205,7 +1204,7 @@
         "path": "scripts/test-utils.js",
         "name": "final dungeon boss has three phases and stronger phase-scaled special attacks",
         "markers": [
-          "bossPhaseSpecialBonus\\\\(enemyPhase\\\\)",
+          "bossPhaseSpecialBonus",
           "İblis Lordu son evreye geçti"
         ]
       },
