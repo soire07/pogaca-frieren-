@@ -153,7 +153,7 @@ function makeSimulatedMessage(payload, simulation) {
         const inviteButtons = buttons.filter(id => id.includes(':accept:') || id.includes(':yes:'));
         const roleButtons = buttons.filter(id => id.includes(':role:'));
         const pathButton = buttons.find(id => id.includes(':path:safe:'));
-        const actionButton = buttons.find(id => id.includes(':act:attack:'));
+        const actionButtons = buttons.filter(id => id.includes(':act:'));
         if (inviteButtons.length) {
           clicks = inviteButtons.map(customId => ({
             customId,
@@ -167,8 +167,17 @@ function makeSimulatedMessage(payload, simulation) {
           }));
         } else if (pathButton) {
           clicks = [{ customId: pathButton, user: simulation.users[0] }];
-        } else if (actionButton) {
-          clicks = simulation.users.map(user => ({ customId: actionButton, user }));
+        } else if (actionButtons.length) {
+          const sequence = simulation.actionSequence?.[simulation.actionIndex || 0] || [];
+          simulation.actionIndex = (simulation.actionIndex || 0) + 1;
+          clicks = simulation.users.map((user, index) => {
+            const selected = sequence[index] || 'attack';
+            return {
+              customId: actionButtons.find(id => id.includes(':act:' + selected + ':')) ||
+                actionButtons.find(id => id.includes(':act:attack:')),
+              user
+            };
+          });
         }
         for (const click of clicks) {
           if (!click.customId || !click.user) continue;
@@ -762,7 +771,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           }));
           for (const id of ids) await ensureUser(guildId, id);
           await pool.query(
-            'UPDATE users SET level=30,xp=90000,coins=0,hp=2000,max_hp=2000,mana=500,max_mana=500,attack=250,defense=80,last_dungeon_at=NULL,last_boss_at=NULL WHERE guild_id=$1 AND user_id=ANY($2::text[])',
+            'UPDATE users SET level=10,xp=9900,coins=0,hp=2000,max_hp=2000,mana=500,max_mana=500,attack=50,defense=80,last_dungeon_at=NULL,last_boss_at=NULL WHERE guild_id=$1 AND user_id=ANY($2::text[])',
             [guildId, ids]
           );
           const overrides = {
@@ -776,12 +785,26 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             buildOptions(schema?.options, overrides),
             guildId,
             actionEffects,
-            { users: players }
+            {
+              users: players,
+              actionSequence: [
+                ['defend', 'heal', 'spell'],
+                ['shield', 'attack', 'attack'],
+                ['attack', 'spell', 'defend']
+              ],
+              actionIndex: 0
+            }
           );
           interaction.user.id = userId;
           interaction.user.username = players[0].username;
           interaction.member = makeMember(userId);
-          await command.execute(interaction);
+          const previousRandom = Math.random;
+          try {
+            Math.random = () => 0.3;
+            await command.execute(interaction);
+          } finally {
+            Math.random = previousRandom;
+          }
           effects.push(...actionEffects);
           const state = await pool.query(
             'SELECT user_id,xp,coins,hp,max_hp,mana,max_mana,dungeon_wins,boss_defeats,last_dungeon_at,last_boss_at FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id',
