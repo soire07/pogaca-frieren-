@@ -48,7 +48,7 @@ test('repair task is bounded and excludes raw incident summaries and credentials
   const task = buildGuardianRepairTask(incident, review);
   assert.ok(task.length <= 1200);
   assert.match(task, /Guardian incident #42/);
-  assert.match(task, /İlgili dosyalar: commands\\/example\\.js/);
+  assert.ok(task.includes('İlgili dosyalar: commands/example.js'));
   assert.match(task, /A bounded timeout is missing/);
   assert.doesNotMatch(task, /private-token|user@example.com/);
   assert.doesNotMatch(task, /request timed out/);
