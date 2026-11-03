@@ -1442,6 +1442,7 @@ test('all ten crafting recipes consume their exact ingredients and persist equip
       [guildId, userId, materials.map(row => row[0]), materials.map(row => row[1])]
     );
 
+    const responses = [];
     const makeInteraction = recipe => ({
       guildId,
       user: { id: userId },
@@ -1450,7 +1451,7 @@ test('all ten crafting recipes consume their exact ingredients and persist equip
         getInteger: name => name === 'adet' ? 1 : null
       },
       deferReply: async () => {},
-      editReply: async payload => payload
+      editReply: async payload => { responses.push(payload); return payload; }
     });
 
     try {
@@ -1483,6 +1484,11 @@ test('all ten crafting recipes consume their exact ingredients and persist equip
       assert.equal(Number(progress.rows[0].level), Math.floor((400 + expectedXp) / 100) + 1);
       assert.equal(Number(progress.rows[0].successful_crafts), equipmentItems.length);
       assert.equal(Number(daily.rows[0].crafted_items), equipmentItems.length);
+      assert.equal(responses.length, equipmentItems.length);
+      assert.ok(responses.every(payload => {
+        const rendered = JSON.stringify(payload);
+        return rendered.includes('Zanaat ustalığı') && rendered.includes('Başarılı üretim');
+      }), 'every successful craft response must display profession progress');
     } finally {
       await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
     }
@@ -1593,13 +1599,13 @@ test('crafting material recovery unlocks at profession levels five and ten witho
 }, async () => {
   await withIsolatedTestSchema(async () => {
     const previousRandom = Math.random;
-    Math.random = () => 0;
     const fixtures = [
       { guildId: 'craft-refund-five-' + randomUUID(), userId: testSnowflake('94'), xp: 400, level: 5 },
       { guildId: 'craft-refund-ten-' + randomUUID(), userId: testSnowflake('93'), xp: 900, level: 10 }
     ];
     try {
       for (const fixture of fixtures) {
+        Math.random = () => 0.15;
         await ensureUser(fixture.guildId, fixture.userId);
         await pool.query(
           'INSERT INTO user_crafting_progress(guild_id,user_id,xp,level) VALUES($1,$2,$3,$4)',
@@ -1627,11 +1633,12 @@ test('crafting material recovery unlocks at profession levels five and ten witho
           "SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3",
           [fixture.guildId, fixture.userId, equipmentItems.find(item => item.id === 'iron_sword').name]
         );
-        assert.deepEqual(
-          Object.fromEntries(ingredients.rows.map(row => [row.item_key, Number(row.quantity)])),
-          { '💎 Mana Kristali': 1 },
-          'exactly one ingredient should be recovered after the recipe consumes both'
-        );
+        const remaining = Object.fromEntries(ingredients.rows.map(row => [row.item_key, Number(row.quantity)]));
+        if (fixture.level === 5) {
+          assert.deepEqual(remaining, {}, 'a 0.15 roll must not trigger the ten-percent level-five refund');
+        } else {
+          assert.deepEqual(remaining, { '💎 Mana Kristali': 1 }, 'the same 0.15 roll must trigger the twenty-percent level-ten refund');
+        }
         assert.equal(Number(output.rows[0].quantity), 1, 'material recovery must not duplicate the crafted equipment');
       }
     } finally {
