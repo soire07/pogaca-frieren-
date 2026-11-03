@@ -64,6 +64,11 @@ export function validatePatchPaths(patch, { task = '', incidentId = '' } = {}) {
     if (!oldPath || !newPath) throw new Error('REPAIR_PATCH_MUST_UPDATE_EXISTING_FILE');
     if (oldPath[1] !== header[1]) throw new Error('REPAIR_PATH_MISMATCH');
     if (newPath[1] !== header[2]) throw new Error('REPAIR_PATH_MISMATCH');
+    // A file header is not a patch: require at least one syntactically valid
+    // unified-diff hunk containing a real addition or deletion before Git sees it.
+    const hunks = section.match(/^@@ -\\d+(?:,\\d+)? \\+\\d+(?:,\\d+)? @@(?:.*)$/gm) || [];
+    const hasChangedLine = /^(?:\\+(?!\\+\\+)|-(?!--))/m.test(section);
+    if (!hunks.length || !hasChangedLine) throw new Error('REPAIR_PATCH_HUNK_REQUIRED');
     files.push(header[1]);
   }
   const uniqueFiles = [...new Set(files)];
