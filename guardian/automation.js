@@ -161,7 +161,10 @@ export async function processGuardianIncident({
       signal: AbortSignal.timeout(60_000),
     });
     review = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error('GUARDIAN_AI_HTTP_' + response.status);
+    if (!response.ok) {
+      const responseError = redactGuardianText(review?.error || review?.message || 'UNKNOWN_AI_ERROR', 80);
+      throw new Error('GUARDIAN_AI_HTTP_' + response.status + '_' + responseError);
+    }
     await store.finishGuardianReviewJob(db, {
       jobId: job.id,
       status: 'completed',
