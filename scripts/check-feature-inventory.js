@@ -7,14 +7,29 @@ const originalFeatures = inventory.features.filter(feature => !feature.id.starts
 const roadmapFeatures = inventory.features.filter(feature => feature.id.startsWith('ROADMAP-'));
 
 const normalizeFeatureName = value => String(value || '')
+  .replace(/[ıİ]/g, 'i')
   .normalize('NFKD')
-  .replace(/\p{M}+/gu, '')
+  .replace(/\\p{M}+/gu, '')
   .toLocaleLowerCase('en')
   .replace(/[^a-z0-9]+/g, ' ')
   .trim();
-if (normalizeFeatureName('Büyü') !== normalizeFeatureName('Buyu')) {
-  errors.push('Türkçe Unicode normalizasyonu doğru çalışmıyor.');
+
+const normalizationCases = [
+  ['Büyü', 'Buyu'],
+  ['Işık', 'Isik'],
+  ['İksir', 'Iksir'],
+  ['Çığlık', 'Ciglik'],
+  ['Şövalye', 'Sovalye'],
+  ['Gölge', 'Golge'],
+  ['Üstat', 'Ustat'],
+  ['Yağmur', 'Yagmur'],
+];
+for (const [turkish, ascii] of normalizationCases) {
+  if (normalizeFeatureName(turkish) !== normalizeFeatureName(ascii)) {
+    errors.push(`Türkçe Unicode normalizasyonu doğru çalışmıyor: ${turkish} → ${ascii}`);
+  }
 }
+
 const names = new Map();
 for (const feature of inventory.features) {
   const normalized = normalizeFeatureName(feature.name);
