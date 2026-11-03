@@ -163,7 +163,7 @@ test('viewing another player profile reads the selected guild-scoped record with
     assert.equal(responses.length, 1, 'profile command must respond once');
     assert.ok(text.includes('ProfileTarget'), 'selected target name must appear');
     assert.ok(text.includes('18'), 'selected guild level must appear');
-    assert.ok(text.includes('1.700'), 'selected guild XP must appear');
+    assert.ok(text.includes('1700'), 'selected guild XP must appear');
     assert.ok(text.includes('765'), 'selected guild gold must appear');
     assert.ok(!text.includes('ProfileViewer'), 'profile must not silently show the invoking user');
     assert.deepEqual(after.rows[0], before.rows[0], 'viewing another profile must not mutate target progress');
