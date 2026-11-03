@@ -8,7 +8,10 @@ import {
   applyClassHealing,
   calculateBossIncomingDamage,
   getBossPhase,
-  bossPhaseSpecialBonus
+  bossPhaseSpecialBonus,
+  getRaidBossSpecialAttack,
+  chooseRaidAttackTarget,
+  resolveRaidAreaAttack
 } from '../rpg-mechanics.js';
 
 test('boss incoming damage never becomes negative and has a minimum of one', () => {
@@ -43,6 +46,60 @@ test('boss phase multipliers and special bonuses are deterministic', () => {
   assert.equal(bossPhaseSpecialBonus(1), 0);
   assert.equal(bossPhaseSpecialBonus(2), 4);
   assert.equal(bossPhaseSpecialBonus(3), 8);
+});
+
+test('raid special attacks trigger on their exact scheduled rounds', () => {
+  assert.equal(getRaidBossSpecialAttack('mana-star', 2), null);
+  assert.equal(getRaidBossSpecialAttack('mana-star', 3), 'mana-star');
+  assert.equal(getRaidBossSpecialAttack('mana-star', 6), 'mana-star');
+  assert.equal(getRaidBossSpecialAttack('shard-rain', 1), null);
+  assert.equal(getRaidBossSpecialAttack('shard-rain', 2), 'shard-rain');
+  assert.equal(getRaidBossSpecialAttack('shard-rain', 4), 'shard-rain');
+  assert.equal(getRaidBossSpecialAttack('mana-curse', 3), 'mana-curse');
+  assert.equal(getRaidBossSpecialAttack('mana-curse', 2), null);
+  assert.equal(getRaidBossSpecialAttack('unknown', 3), null);
+});
+
+test('raid tank attracts seventy percent of single-target attacks while alive', () => {
+  const fighters = [{ role: 'damage' }, { role: 'tank' }, { role: 'healer' }];
+  assert.equal(chooseRaidAttackTarget(fighters, [0, 1, 2], () => 0.69), 1);
+  const values = [0.71, 0];
+  let index = 0;
+  assert.equal(chooseRaidAttackTarget(fighters, [0, 1, 2], () => values[index++]), 0);
+  assert.equal(chooseRaidAttackTarget(fighters, [0, 2], () => 0.5), 2);
+  assert.equal(chooseRaidAttackTarget(fighters, [], () => 0), null);
+});
+
+test('raid area specials hit every living teammate and respect individual defense', () => {
+  const fighters = [{ username: 'A', defense: 0 }, { username: 'B', defense: 0 }, { username: 'C', defense: 20 }];
+  const result = resolveRaidAreaAttack({
+    hpNow: [100, 0, 100],
+    livingIndices: [0, 2],
+    fighters,
+    rawDamage: 30,
+    special: 'shard-rain',
+    bossPhase: 1
+  });
+  assert.deepEqual(result.hits.map(hit => hit.index), [0, 2]);
+  assert.deepEqual(result.hits.map(hit => hit.incoming), [15, 11]);
+  assert.deepEqual(result.hpNow, [85, 0, 89]);
+});
+
+test('raid area special applies each living player's own defense and defense choice', () => {
+  const fighters = [{ defense: 0 }, { defense: 20 }];
+  const result = resolveRaidAreaAttack({
+    hpNow: [100, 100],
+    livingIndices: [0, 1],
+    fighters,
+    rawDamage: 30,
+    special: 'mana-star',
+    bossPhase: 1,
+    defending: new Set([1])
+  });
+  assert.equal(result.hits.length, 2);
+  assert.equal(result.hits[0].incoming, 20);
+  assert.equal(result.hits[1].defended, true);
+  assert.equal(result.hpNow[1], 93);
 });
 
 test('raid weakness applies a 30 percent rounded bonus only to the matching action', () => {
