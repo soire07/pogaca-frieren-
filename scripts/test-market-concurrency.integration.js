@@ -21,6 +21,10 @@ import profileCommand from '../profil.js';
 import adventureCommand from '../macera.js';
 import { ADVENTURE_DISCOVERIES, COMPLETE_ADVENTURE_JOURNAL_REWARD } from '../adventure-data.js';
 import treasureCommand from '../hazineac.js';
+import classSelectionCommand from '../commands/rpg/sinifsec.js';
+import classGuideCommand from '../commands/rpg/sinifrehberi.js';
+import characterBuildCommand from '../karakteryapisi.js';
+import talentTreeCommand from '../yetenekagaci.js';
 
 const dedicatedAuditDatabase = /^postgres(?:ql)?:\/\/postgres:postgres@localhost:5432\/frieren_audit(?:\?|$)/.test(
   process.env.DATABASE_URL || ''
@@ -2501,6 +2505,183 @@ test('healer class grants its first-discovery bonus to adventure rewards', {
     assert.equal(history.rows[0]?.first_discovery, true);
     const responseText = JSON.stringify(responses.map(response => response.embeds?.map(embed => embed.toJSON())));
     assert.ok(responseText.includes('Şifacı yardım bonusu'));
+    await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+  });
+});
+
+
+test('class selection persists all four classes and the class guide exposes their actual passive bonuses', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = 'class-selection-' + randomUUID();
+    const userId = 'class-selection-user-' + randomUUID();
+    await ensureUser(guildId, userId);
+    const scenarios = [
+      { key: 'buyucu', label: 'Büyücü', bonus: 'Büyü hasarı %8 artar, büyülerin mana maliyeti %10 azalır.' },
+      { key: 'muhafiz', label: 'Muhafız', bonus: 'Savunma etkisi savaşta %12 artar.' },
+      { key: 'sifaci', label: 'Şifacı', bonus: 'İyileştirme etkisi %20 artar.' },
+      { key: 'gezgin', label: 'Gezgin', bonus: 'Ek sınıf çarpanı yok' }
+    ];
+    const responses = [];
+    for (const scenario of scenarios) {
+      await classSelectionCommand.execute({
+        guildId,
+        user: { id: userId },
+        options: { getString: () => scenario.key },
+        reply: async payload => { responses.push(payload); return payload; }
+      });
+      const saved = await pool.query('SELECT class_name FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+      const embed = responses.at(-1)?.embeds?.[0]?.toJSON?.() || {};
+      assert.equal(saved.rows[0]?.class_name, scenario.label);
+      assert.ok(String(embed.title).includes(scenario.label));
+      assert.ok(String(embed.description).includes(scenario.bonus));
+    }
+    const guideResponses = [];
+    await classGuideCommand.execute({
+      reply: async payload => { guideResponses.push(payload); return payload; }
+    });
+    const guideText = JSON.stringify(guideResponses.map(response => response.embeds?.map(embed => embed.toJSON())));
+    assert.ok(['Büyücü','Muhafız','Şifacı','Gezgin'].every(label => guideText.includes(label)));
+    assert.ok(guideText.includes('mana maliyeti'));
+    assert.ok(guideText.includes('Savunma'));
+    assert.ok(guideText.includes('İyileştirme'));
+    assert.ok(guideText.includes('/sinifsec'));
+    await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+  });
+});
+
+test('character build selection persists every build and the profile renders active build plus effective combat stats', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = 'character-build-' + randomUUID();
+    const userId = 'character-build-user-' + randomUUID();
+    await ensureUser(guildId, userId);
+    const builds = [
+      { key: 'dengeli', label: 'Dengeli' },
+      { key: 'avci', label: 'Avcı' },
+      { key: 'muhafiz', label: 'Muhafız' },
+      { key: 'buyucu', label: 'Büyücü' }
+    ];
+    const responses = [];
+    for (const build of builds) {
+      await characterBuildCommand.execute({
+        guildId,
+        user: { id: userId },
+        options: { getString: () => build.key },
+        reply: async payload => { responses.push(payload); return payload; }
+      });
+      const saved = await pool.query('SELECT active_build FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+      const embed = responses.at(-1)?.embeds?.[0]?.toJSON?.() || {};
+      assert.equal(saved.rows[0]?.active_build, build.key);
+      assert.ok(String(embed.description).includes(build.label));
+    }
+    await pool.query(
+      "UPDATE users SET class_name='Muhafız',active_build='avci',level=10,xp=900,coins=321,hp=800,max_hp=1000,mana=300,max_mana=500,attack=100,defense=50,stat_points=12 WHERE guild_id=$1 AND user_id=$2",
+      [guildId, userId]
+    );
+    await pool.query(
+      'UPDATE user_talents SET attack_rank=3,defense_rank=3,hp_rank=3,mana_rank=3 WHERE guild_id=$1 AND user_id=$2',
+      [guildId, userId]
+    );
+    const profileResponses = [];
+    await profileCommand.execute({
+      guildId,
+      user: { id: userId, username: 'BuildProfileTest', displayAvatarURL: () => 'https://example.com/avatar.png' },
+      options: { getUser: () => null },
+      reply: async payload => { profileResponses.push(payload); return payload; }
+    });
+    const profileText = JSON.stringify(profileResponses.map(response => response.embeds?.map(embed => embed.toJSON())));
+    assert.ok(profileText.includes('Avcı'));
+    assert.ok(profileText.includes('920/1150'));
+    assert.ok(profileText.includes('345/575'));
+    assert.ok(profileText.includes('134'));
+    assert.ok(profileText.includes('56'));
+    await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+  });
+});
+
+test('talent tree persists all four rank paths, enforces the three-rank cap and prevents spending beyond earned points', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = 'talent-tree-' + randomUUID();
+    const userId = 'talent-tree-user-' + randomUUID();
+    await ensureUser(guildId, userId);
+    await pool.query('UPDATE users SET level=36 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    const responses = [];
+    const makeInteraction = key => ({
+      guildId,
+      user: { id: userId },
+      options: { getString: () => key },
+      deferReply: async () => {},
+      editReply: async payload => { responses.push(payload); return payload; }
+    });
+    for (const key of ['saldiri','savunma','can','mana']) {
+      for (let rank = 0; rank < 3; rank++) await talentTreeCommand.execute(makeInteraction(key));
+    }
+    const ranks = await pool.query(
+      'SELECT attack_rank,defense_rank,hp_rank,mana_rank FROM user_talents WHERE guild_id=$1 AND user_id=$2',
+      [guildId, userId]
+    );
+    assert.deepEqual(ranks.rows[0], { attack_rank: 3, defense_rank: 3, hp_rank: 3, mana_rank: 3 });
+    const beforeCap = { ...ranks.rows[0] };
+    await talentTreeCommand.execute(makeInteraction('saldiri'));
+    const afterCap = await pool.query(
+      'SELECT attack_rank,defense_rank,hp_rank,mana_rank FROM user_talents WHERE guild_id=$1 AND user_id=$2',
+      [guildId, userId]
+    );
+    assert.deepEqual(afterCap.rows[0], beforeCap);
+    assert.ok(String(responses.at(-1)).includes('zaten en yüksek III. rütbede'));
+
+    const limitedUserId = 'talent-limited-user-' + randomUUID();
+    await ensureUser(guildId, limitedUserId);
+    await pool.query('UPDATE users SET level=3 WHERE guild_id=$1 AND user_id=$2', [guildId, limitedUserId]);
+    const limitedInteraction = key => ({
+      guildId,
+      user: { id: limitedUserId },
+      options: { getString: () => key },
+      deferReply: async () => {},
+      editReply: async payload => { responses.push(payload); return payload; }
+    });
+    await talentTreeCommand.execute(limitedInteraction('saldiri'));
+    await talentTreeCommand.execute(limitedInteraction('savunma'));
+    const limitedRanks = await pool.query(
+      'SELECT attack_rank,defense_rank FROM user_talents WHERE guild_id=$1 AND user_id=$2',
+      [guildId, limitedUserId]
+    );
+    assert.equal(Number(limitedRanks.rows[0]?.attack_rank), 1);
+    assert.equal(Number(limitedRanks.rows[0]?.defense_rank), 0);
+    assert.ok(String(responses.at(-1)).includes('Henüz yetenek puanın yok'));
+    await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])', [guildId, [userId, limitedUserId]]);
+  });
+});
+
+test('equipment salvage preview lists every equipment type, rarity and exact recovery recipe without mutating inventory', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = 'salvage-preview-' + randomUUID();
+    const userId = 'salvage-preview-user-' + randomUUID();
+    await ensureUser(guildId, userId);
+    const before = await pool.query('SELECT COUNT(*)::int AS total FROM inventory WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    const responses = [];
+    await salvageCommand.execute({
+      guildId,
+      user: { id: userId },
+      options: { getString: () => null, getInteger: () => null },
+      deferReply: async () => {},
+      editReply: async payload => { responses.push(payload); return payload; }
+    });
+    const after = await pool.query('SELECT COUNT(*)::int AS total FROM inventory WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    const description = String(responses[0]?.embeds?.[0]?.toJSON?.().description || '');
+    assert.ok(equipmentItems.every(item => description.includes(item.name)));
+    assert.equal((description.match(/Geri kazanım:/g) || []).length, equipmentItems.length);
+    assert.ok(description.includes('Kuzey İblisi Zırhı'));
+    assert.ok(description.includes('Bakır Gezgin Yüzüğü'));
+    assert.ok(description.includes('Efsanevi'));
+    assert.equal(Number(before.rows[0]?.total), Number(after.rows[0]?.total));
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
   });
 });
