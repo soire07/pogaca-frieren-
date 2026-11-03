@@ -394,3 +394,19 @@ test('repair workflow rejects an empty task before checkout and dependency insta
   assert.ok(workflow.indexOf('name: Require a repair task') < workflow.indexOf('name: Checkout requested base branch'));
   assert.ok(workflow.indexOf('name: Require a repair task') < workflow.indexOf('name: Install dependencies'));
 });
+
+
+test('repair diff rejects garbage after file headers before invoking git apply', () => {
+  const malformed = [
+    'diff --git a/rpg-mechanics.js b/rpg-mechanics.js',
+    'index 1111111..2222222 100644',
+    '--- a/rpg-mechanics.js',
+    '+++ b/rpg-mechanics.js',
+    'not-a-hunk-header',
+    '+const ready = true;',
+  ].join('\\n');
+  assert.throws(() => validatePatchPaths(malformed), {
+    message: 'REPAIR_PATCH_HUNK_INVALID',
+  });
+});
+
