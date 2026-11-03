@@ -12,6 +12,9 @@ const normalizeFeatureName = value => String(value || '')
   .toLocaleLowerCase('en')
   .replace(/[^a-z0-9]+/g, ' ')
   .trim();
+if (normalizeFeatureName('Büyü') !== normalizeFeatureName('Buyu')) {
+  errors.push('Türkçe Unicode normalizasyonu doğru çalışmıyor.');
+}
 const names = new Map();
 for (const feature of inventory.features) {
   const normalized = normalizeFeatureName(feature.name);
