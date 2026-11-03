@@ -260,7 +260,7 @@ test('solo boss victory commits final HP, mana, rewards, mastery and loot in one
   const victory = source.indexOf('if (bossHp <= 0)');
   const claim = source.indexOf('claimSoloBossReward', victory);
   assert.ok(victory >= 0 && claim > victory, 'boss victory must call the shared production reward transaction');
-  for (const required of ['UPDATE users SET hp=$3, mana=$4, coins=coins+$5, xp=xp+$6','last_boss_battle_id IS DISTINCT FROM $7','INSERT INTO spell_mastery','INSERT INTO inventory','await db.query(\'COMMIT\')']) {
+  for (const required of ['UPDATE users SET hp=$3, mana=$4, coins=coins+$5, xp=xp+$6','INSERT INTO solo_boss_reward_claims','INSERT INTO spell_mastery','INSERT INTO inventory','await db.query(\'COMMIT\')']) {
     assert.ok(rewards.includes(required), 'production solo reward transaction missing: ' + required);
   }
   assert.ok(rewards.includes("await db.query('ROLLBACK')"));
