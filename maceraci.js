@@ -1,13 +1,12 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { pool } from './database/db.js';
-import { createSiteLinkToken, getAdventurerDashboard } from './adventurer-platform.js';
+import { createSiteLinkToken } from './adventurer-platform.js';
 
 export default {
   data: new SlashCommandBuilder()
     .setName('maceraci')
     .setDescription('Web Maceracı Panelini bağla ve RPG profilini görüntüle.')
-    .addSubcommand(command => command.setName('bagla').setDescription('Discord karakterini web hesabına güvenli şekilde bağla.'))
-    .addSubcommand(command => command.setName('bilgi').setDescription('Bağlı web profilinin özetini görüntüle.')),
+    .addSubcommand(command => command.setName('bagla').setDescription('Discord karakterini web hesabına güvenli şekilde bağla.')),
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({ content: 'Bu komut bir sunucuda kullanılmalıdır.', flags: MessageFlags.Ephemeral });
     if (interaction.options.getSubcommand() === 'bagla') {
@@ -18,10 +17,6 @@ export default {
         flags: MessageFlags.Ephemeral
       });
     }
-    const data = await getAdventurerDashboard(pool, 'site_' + '00000000-0000-0000-0000-000000000000').catch(() => null);
-    return interaction.reply({
-      content: data?.profiles?.length ? 'Web Maceracı Panelindeki karakterlerini görüntüleyebilirsin.' : 'Web profilini bağlamak için **/maceraci bagla** komutunu kullan.',
-      flags: MessageFlags.Ephemeral
-    });
+    return interaction.reply({ content: 'Web Maceracı Paneline gitmek için [buraya dokun](https://frierenbot.vercel.app/maceraci).', flags: MessageFlags.Ephemeral });
   }
 };
