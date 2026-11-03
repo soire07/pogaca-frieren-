@@ -4,7 +4,7 @@ import { getBossArtUrl } from './boss-art.js';
 import { settleDungeonRewards } from './rpg-reward-transactions.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio } from './rpg-mechanics.js';
+import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, restoreResourceRatio, applyDefendingReduction, isFinalDungeonBossEnraged, shouldFinalDungeonBossSpecialAttack, calculateFinalDungeonBossRawDamage, getDungeonEventOutcome, canAssignPartyRole, isPartyWiped, getPartyRoleModifiers } from './rpg-mechanics.js';
 
 const FLOORS = 5;
 
@@ -16,7 +16,7 @@ function floorProgressBar(cleared, total = FLOORS, width = 10) {
 const COOLDOWN_MS = 30 * 60_000;
 const LOOT = ['Orman Kristali', 'Kadim Rün Parçası', 'Kuzey Mührü'];
 const FLOOR_NAMES = ['🌲 Köklerin Koridoru', '🗿 Kadim Harabeler', '🌫️ Sisli Geçit', '🔥 Küller Salonu', '👑 Mühürlü İblis Lordu'];
-const PARTY_ROLES = { tank: { label: '🛡️ Muhafız', hp: 1.25, attack: 0.85, defense: 1.4 }, healer: { label: '💚 Şifacı', hp: 1, attack: 0.9, defense: 1.05 }, damage: { label: '⚔️ Hasar Ustası', hp: 0.95, attack: 1.3, defense: 0.9 } };
+const PARTY_ROLES = { tank: { label: '🛡️ Muhafız', ...getPartyRoleModifiers('tank', 'dungeon') }, healer: { label: '💚 Şifacı', ...getPartyRoleModifiers('healer', 'dungeon') }, damage: { label: '⚔️ Hasar Ustası', ...getPartyRoleModifiers('damage', 'dungeon') } };
 
 export default {
   data: new SlashCommandBuilder()
@@ -109,9 +109,10 @@ export default {
       collector.on('collect', async c => {
         const role = c.customId.split(':')[2];
         const previous = chosenRoles.get(c.user.id);
-        const conflict = [...chosenRoles.entries()].some(([userId, selected]) =>
-          userId !== c.user.id && selected === role && (role === 'tank' || role === 'healer')
-        );
+        const assignedByOthers = [...chosenRoles.entries()]
+          .filter(([userId]) => userId !== c.user.id)
+          .map(([, selected]) => selected);
+        const conflict = !canAssignPartyRole(assignedByOthers, role);
         if (conflict) {
           await c.reply({ content: role === 'tank' ? 'Bu takımda Muhafız rolü zaten seçildi. Şifacı veya Hasar Ustası seç.' : 'Bu takımda Şifacı rolü zaten seçildi. Muhafız veya Hasar Ustası seç.', flags: MessageFlags.Ephemeral }).catch(() => {});
           return;
@@ -229,7 +230,7 @@ export default {
         const finalBoss = floor === FLOORS;
         let enemyPhase = 1;
         log.push(`**Kat ${floor}: ${FLOOR_NAMES[floor - 1]}** — ${maxEnemyHp} HP.`);
-        while (enemyHp > 0 && hpNow.some(hp => hp > 0) && turn < 10) {
+        while (enemyHp > 0 && !isPartyWiped(hpNow) && turn < 10) {
           const currentPhase = finalBoss ? getBossPhase(enemyHp, maxEnemyHp) : 1;
           if (currentPhase > enemyPhase) {
             enemyPhase = currentPhase;
@@ -332,14 +333,15 @@ export default {
             const tankIndex = living.find(i => players[i].role === 'tank');
             const targetIndex = tankIndex !== undefined && Math.random() < 0.7 ? tankIndex : living[(turn + floor) % living.length];
             const target = players[targetIndex];
-            const enraged = finalBoss && enemyHp <= maxEnemyHp * 0.5;
-            const specialAttack = finalBoss && turn % 3 === 0;
-            const bossPower = finalBoss ? 1.35 : 1;
-            const rawIncoming = Math.max(1, Math.round(enemyDamage * bossPower * (0.9 + ((turn + floor) % 3) * 0.08) + (enraged ? 7 : 0) + (specialAttack ? 6 + bossPhaseSpecialBonus(enemyPhase) : 0)));
+            const enraged = isFinalDungeonBossEnraged(floor, FLOORS, enemyHp, maxEnemyHp);
+            const specialAttack = shouldFinalDungeonBossSpecialAttack(floor, FLOORS, turn);
+            const rawIncoming = calculateFinalDungeonBossRawDamage(enemyDamage, {
+              floor, totalFloors: FLOORS, turn, enraged, specialAttack, phase: enemyPhase
+            });
             let incoming = finalBoss
               ? calculateBossIncomingDamage(rawIncoming, Math.round(target.defense * 0.6), enemyPhase)
               : Math.max(1, Math.round(rawIncoming - target.defense * 0.3));
-            if (defending.has(targetIndex)) incoming = Math.max(1, Math.round(incoming * 0.45));
+            incoming = applyDefendingReduction(incoming, defending.has(targetIndex));
             hpNow[targetIndex] = Math.max(0, hpNow[targetIndex] - incoming);
             if (enraged && !bossRageAnnounced) { log.push('🔥 İblis Lordu öfke evresine girdi; saldırıları güçlendi!'); bossRageAnnounced = true; }
             if (specialAttack) log.push('☄️ İblis Lordu yıldız biçimli mana patlaması kullandı!');
@@ -390,13 +392,13 @@ export default {
           chestRewards.push(pathLoot);
           log.push(`🎁 Yol seçiminin ödülü: ${pathLoot} (her oyuncuya).`);
         }
-        const eventRoll = Math.random();
-        if (eventRoll < 0.24) {
+        const eventOutcome = getDungeonEventOutcome(Math.random());
+        if (eventOutcome === 'hidden_chest') {
           const chestLoot = LOOT[Math.floor(Math.random() * LOOT.length)];
           chestRewards.push(chestLoot);
           totalCoins += 15 + floor * 5;
           log.push(`🧰 ${floor}. katta gizli sandık bulundu! Her oyuncu ${chestLoot} ve ek ${15 + floor * 5} altın kazanacak.`);
-        } else if (eventRoll < 0.42) {
+        } else if (eventOutcome === 'trap') {
           const living = hpNow.map((hp, index) => hp > 0 ? index : -1).filter(index => index >= 0);
           if (living.length) {
             const targetIndex = living[Math.floor(Math.random() * living.length)];
