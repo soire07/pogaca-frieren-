@@ -1600,12 +1600,15 @@ test('crafting material recovery unlocks at profession levels five and ten witho
   await withIsolatedTestSchema(async () => {
     const previousRandom = Math.random;
     const fixtures = [
-      { guildId: 'craft-refund-five-' + randomUUID(), userId: testSnowflake('94'), xp: 400, level: 5 },
-      { guildId: 'craft-refund-ten-' + randomUUID(), userId: testSnowflake('93'), xp: 900, level: 10 }
+      { guildId: 'craft-refund-locked-' + randomUUID(), userId: testSnowflake('94'), xp: 300, level: 4, roll: 0.05 },
+      { guildId: 'craft-refund-five-hit-' + randomUUID(), userId: testSnowflake('93'), xp: 400, level: 5, roll: 0.05 },
+      { guildId: 'craft-refund-five-miss-' + randomUUID(), userId: testSnowflake('92'), xp: 400, level: 5, roll: 0.15 },
+      { guildId: 'craft-refund-ten-hit-' + randomUUID(), userId: testSnowflake('91'), xp: 900, level: 10, roll: 0.15 },
+      { guildId: 'craft-refund-ten-miss-' + randomUUID(), userId: testSnowflake('90'), xp: 900, level: 10, roll: 0.25 }
     ];
     try {
       for (const fixture of fixtures) {
-        Math.random = () => 0.15;
+        Math.random = () => fixture.roll;
         await ensureUser(fixture.guildId, fixture.userId);
         await pool.query(
           'INSERT INTO user_crafting_progress(guild_id,user_id,xp,level) VALUES($1,$2,$3,$4)',
@@ -1634,11 +1637,10 @@ test('crafting material recovery unlocks at profession levels five and ten witho
           [fixture.guildId, fixture.userId, equipmentItems.find(item => item.id === 'iron_sword').name]
         );
         const remaining = Object.fromEntries(ingredients.rows.map(row => [row.item_key, Number(row.quantity)]));
-        if (fixture.level === 5) {
-          assert.deepEqual(remaining, {}, 'a 0.15 roll must not trigger the ten-percent level-five refund');
-        } else {
-          assert.deepEqual(remaining, { '💎 Mana Kristali': 1 }, 'the same 0.15 roll must trigger the twenty-percent level-ten refund');
-        }
+        const refundThreshold = fixture.level >= 10 ? 0.20 : fixture.level >= 5 ? 0.10 : 0;
+        const expectedMaterials = fixture.roll < refundThreshold ? { '💎 Mana Kristali': 1 } : {};
+        assert.deepEqual(remaining, expectedMaterials,
+          `refund threshold must match profession level ${fixture.level} and random roll ${fixture.roll}`);
         assert.equal(Number(output.rows[0].quantity), 1, 'material recovery must not duplicate the crafted equipment');
       }
     } finally {
