@@ -28,9 +28,9 @@ Bu belge bir başlangıç envanteridir; tamamlanma beyanı değildir. Özellik, 
 - Liderlik tabloları, oyuncu geçmişi ve RPG istatistikleri.
 
 ### Kanıt ve sınır
-- Depodaki `feature-inventory.json` 317 ayrı oyuncu özelliği kaydı içeriyor; hedef 2.000.
-- Envanterin `auditComplete` alanı `false`. Bu nedenle 317 sayısı tüm bot özelliklerinin eksiksiz envanteri değildir.
-- 317 kaydın tamamı `implemented_needs_runtime_test` durumunda. Bu, kaynakta uygulama bulunduğunu belirtir; her özelliğin canlı Discord'da gerçek kullanıcıyla uçtan uca doğrulandığını göstermez.
+- Depodaki `feature-inventory.json` 325 ayrı oyuncu özelliği kaydı içeriyor; hedef 2.000.
+- Envanterin `auditComplete` alanı `false`. Bu nedenle 325 sayısı tüm bot özelliklerinin eksiksiz envanteri değildir.
+- 325 kaydın tamamı `implemented_needs_runtime_test` durumunda. Bu, kaynakta uygulama bulunduğunu belirtir; her özelliğin canlı Discord'da gerçek kullanıcıyla uçtan uca doğrulandığını göstermez.
 - Önceki CI kanıtları: 62 oyuncu komut denetimi, 14 PostgreSQL entegrasyon testi ve genel bot testleri başarılıydı. Bunlar sentetik Discord etkileşimleri ve izole test veritabanı kullanır; gerçek kullanıcı hesabıyla manuel Discord testi değildir.
 - Moderasyon ve genel sunucu yönetimi Poğaça'nın hedef kapsamı değildir.
 
@@ -98,3 +98,12 @@ Bu belge bir başlangıç envanteridir; tamamlanma beyanı değildir. Özellik, 
 ## Başlangıç durumu
 
 Bu ilk kayıt, mevcut kod ve belgelerden çıkarılmıştır. Henüz yeni özellik veya üretim verisi değiştirilmedi. Sonraki değişiklikler ayrı PR, CI ve canlı dağıtım kanıtlarıyla kaydedilecektir.
+
+
+## Güncel envanter düzeltmesi — 2026-11-03
+
+- Güncel ana dalda kayıt sayısı **325**'tir; önceki 317 sayısı eski envanter anlık görüntüsüdür.
+- 325 kaydın tamamı hâlâ `implemented_needs_runtime_test` durumundadır ve `auditComplete=false`; bu nedenle hiçbiri gerçek Discord veya üretim ortamında doğrulanmış kabul edilmez.
+- Güncel durum ve yeni/eksik aday sınıflandırması için `docs/FEATURE_AUDIT_325_2026-11-03.md` belgesine bakın.
+- PR #193 (3v3 Arena sezonu, etkinlik takvimi ve Maceracı Paneli) ana dala birleştirilmiştir.
+- Kaynak/test kanıt eşlemesi PR #202 üzerinde 28 kayıtla başlamıştır; PR birleştirilmeden ana dala geçmiş sayılmaz.
