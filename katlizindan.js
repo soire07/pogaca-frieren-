@@ -2,9 +2,9 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, Embe
 import { pool, ensureUser } from './database/db.js';
 import { getBossArtUrl } from './boss-art.js';
 import { settleDungeonRewards } from './rpg-reward-transactions.js';
-import { equipmentItems, equipmentBonus } from './equipment-data.js';
+import { equipmentItems } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { dungeonChoiceOutcome, dungeonEnemyStats, DUNGEON_PARTY_ROLES, applyDungeonTrapDamage, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, chooseDungeonAttackTarget, restoreResourceRatio } from './rpg-mechanics.js';
+import { dungeonChoiceOutcome, dungeonEnemyStats, DUNGEON_PARTY_ROLES, applyDungeonTrapDamage, getEquipmentCombatBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, chooseDungeonAttackTarget, restoreResourceRatio } from './rpg-mechanics.js';
 
 const FLOORS = 5;
 
@@ -190,7 +190,7 @@ export default {
         if (item) gearMap.get(row.user_id).push(item);
       }
       const players = rawPlayers.map((p, i) => {
-        const equipped = gearMap.get(p.user_id) || []; const bonus = applyEquipmentSetBonus(equipped, equipmentBonus(equipped));
+        const equipped = gearMap.get(p.user_id) || []; const bonus = getEquipmentCombatBonus(equipped);
         const role = PARTY_ROLES[roles[i]]; const build = getCharacterBuild(p.active_build);
         const baseMaxHp = Math.min(2000, Number(p.max_hp) + bonus.hp) * (1 + Number(p.talent_hp) * 0.05);
         const maxHp = Math.round(baseMaxHp * build.hp * role.hp);
