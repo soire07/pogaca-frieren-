@@ -112,6 +112,7 @@ export async function enqueueArenaPlayer(db = pool, input) {
   const userId = String(input.userId);
   await ensureUser(guildId, userId);
   const client = await db.connect();
+  let match = null;
   try {
     await client.query('BEGIN');
     await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['frieren-arena:' + guildId]);
@@ -129,17 +130,17 @@ export async function enqueueArenaPlayer(db = pool, input) {
       'INSERT INTO arena_queue(guild_id,user_id,rating) VALUES($1,$2,$3) ON CONFLICT(guild_id,user_id) DO NOTHING',
       [guildId, userId, rating]
     );
-    const match = await createMatchFromQueue(client, guildId);
+    match = await createMatchFromQueue(client, guildId);
     await client.query('COMMIT');
-    return match
-      ? { status: 'matched', matchId: match.matchId, state: match.state, participants: match.participants }
-      : { status: 'queued', queue: await getArenaQueueStatus(db, guildId, userId) };
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     throw error;
   } finally {
     client.release();
   }
+  if (match) return { status: 'matched', matchId: match.matchId, state: match.state, participants: match.participants };
+  // Release the transaction connection before taking another pool connection for status.
+  return { status: 'queued', queue: await getArenaQueueStatus(db, guildId, userId) };
 }
 
 export async function leaveArenaQueue(db = pool, { guildId, userId }) {
