@@ -6,6 +6,7 @@ import { buildCoopTestUserIds } from './coop-test-users.js';
 import { handleCharacterPanelInteraction } from '../karakter.js';
 import { createIsolatedTestRunContext } from './isolated-test-run-context.js';
 import { ensureAdventurerPlatformTables, createGuildEvent } from '../adventurer-platform.js';
+import { levelForXp } from '../utils.js';
 
 
 export function buildIsolatedTestGuildId(index) {
@@ -301,20 +302,24 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'İkinci sınıf görevi engeli', expected: 'bakiye 130 kalmalı ve özel claim oluşmamalı', actual: 'bakiye ' + classBalanceAfterSecond.rows[0]?.coins + ', claim ' + customClaim.rowCount, passed: Number(classBalanceAfterSecond.rows[0]?.coins) === 130 && customClaim.rowCount === 0 }
           );
         } else if (commandName === 'hazineac') {
-          await pool.query('UPDATE users SET coins=0,xp=0,level=1,stat_points=0 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const startingXp = 390;
+          await pool.query('UPDATE users SET coins=0,xp=$3,level=2,stat_points=0 WHERE guild_id=$1 AND user_id=$2', [guildId, userId, startingXp]);
           await pool.query("INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'🗝️ Kadim Hazine Sandığı',2)", [guildId, userId]);
           const interaction = makeInteraction(command, buildOptions(schema?.options, { adet: 2 }), guildId, effects);
           interaction.user.id = userId;
           interaction.member = makeMember(userId);
           await command.execute(interaction);
-          const player = await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const player = await pool.query('SELECT coins,xp,level,stat_points FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const chest = await pool.query("SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='🗝️ Kadim Hazine Sandığı'", [guildId, userId]);
-          const openings = await pool.query('SELECT loot_item,coins,xp FROM treasure_openings WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const openings = await pool.query('SELECT loot_item,coins,xp FROM treasure_openings WHERE guild_id=$1 AND user_id=$2 ORDER BY id', [guildId, userId]);
+          const totals = await pool.query('SELECT COALESCE(SUM(coins),0)::int AS coins,COALESCE(SUM(xp),0)::int AS xp,COUNT(*)::int AS count FROM treasure_openings WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const loot = await pool.query("SELECT COALESCE(SUM(quantity),0)::int AS quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key <> '🗝️ Kadim Hazine Sandığı'", [guildId, userId]);
+          const expectedLevel = levelForXp(startingXp + Number(totals.rows[0]?.xp || 0));
           behavioralChecks.push(
             { name: 'Sandık adedinin düşmesi', expected: '2 → 0 sandık', actual: String(chest.rows[0]?.quantity ?? 0), passed: chest.rowCount === 0 },
-            { name: 'Her sandık için ganimet kaydı', expected: '2 treasure_openings kaydı', actual: openings.rowCount + ' kayıt', passed: openings.rowCount === 2 },
-            { name: 'Ganimet ve ödül bakiyeleri', expected: 'pozitif altın, XP ve envanter ganimeti', actual: player.rows[0] ? 'altın ' + player.rows[0].coins + ', XP ' + player.rows[0].xp + ', eşya ' + loot.rows[0].quantity : 'kullanıcı kaydı yok', passed: Number(player.rows[0]?.coins) > 0 && Number(player.rows[0]?.xp) > 0 && Number(loot.rows[0]?.quantity) > 0 }
+            { name: 'Her sandık için ayrı ganimet kaydı', expected: '2 ayrı treasure_openings satırı ve her satırda eşya/altın/XP', actual: openings.rowCount + ' kayıt; ' + openings.rows.map(row => row.loot_item).join(' | '), passed: openings.rowCount === 2 && openings.rows.every(row => Boolean(row.loot_item) && Number(row.coins) > 0 && Number(row.xp) > 0) },
+            { name: 'Toplam ganimetin bakiye ve envantere yansıması', expected: 'altın ve XP açılan iki sandığın toplamına eşit; envanterde iki ganimet', actual: player.rows[0] ? 'altın ' + player.rows[0].coins + '/' + totals.rows[0].coins + ', XP ' + player.rows[0].xp + '/' + (startingXp + totals.rows[0].xp) + ', eşya ' + loot.rows[0].quantity : 'kullanıcı kaydı yok', passed: Number(player.rows[0]?.coins) === Number(totals.rows[0]?.coins) && Number(player.rows[0]?.xp) === startingXp + Number(totals.rows[0]?.xp) && Number(loot.rows[0]?.quantity) === 2 },
+            { name: 'Sandık XP seviyesi ve stat puanı', expected: 'XP eşiği geçildiğinde seviye ve stat puanı aynı işlemde artmalı', actual: 'seviye ' + player.rows[0]?.level + ', stat puanı ' + player.rows[0]?.stat_points + ', beklenen seviye ' + expectedLevel, passed: Number(player.rows[0]?.level) === expectedLevel && expectedLevel > 2 && Number(player.rows[0]?.stat_points) === expectedLevel - 2 }
           );
         } else if (commandName === 'karakter') {
           await pool.query(
