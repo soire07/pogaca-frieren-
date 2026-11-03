@@ -160,7 +160,7 @@ test('concurrent Discord link redemption is single-use and dashboards cannot exp
       'an unrelated web account must not receive another account\'s linked Discord profile');
     assert.equal(unrelatedDashboard.events.length,0);
   } finally {
-    await pool.query('DELETE FROM site_discord_links WHERE account_id=ANY($1::text[])',[[
+    await pool.query('DELETE FROM site_discord_links WHERE account_id=ANY($1::uuid[])',[[
       accountId.slice(5),unrelatedAccountId.slice(5)
     ]]);
     await pool.query('DELETE FROM site_link_tokens WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
