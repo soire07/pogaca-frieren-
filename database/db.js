@@ -193,7 +193,7 @@ export async function initDatabase() {
       PRIMARY KEY(guild_id,user_id,milestone_key),
       FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
     );
-    CREATE OR REPLACE FUNCTION sync_rpg_progression_titles() RETURNS TRIGGER AS $
+    CREATE OR REPLACE FUNCTION sync_rpg_progression_titles() RETURNS TRIGGER AS $$
     BEGIN
       IF NEW.level >= 10 THEN
         INSERT INTO user_titles(guild_id,user_id,title) VALUES(NEW.guild_id,NEW.user_id,'Kıdemli Maceracı') ON CONFLICT DO NOTHING;
@@ -212,7 +212,7 @@ export async function initDatabase() {
       END IF;
       RETURN NEW;
     END;
-    $ LANGUAGE plpgsql;
+    $$ LANGUAGE plpgsql;
     DROP TRIGGER IF EXISTS trg_users_progression_titles_insert ON users;
     CREATE TRIGGER trg_users_progression_titles_insert AFTER INSERT ON users
       FOR EACH ROW EXECUTE FUNCTION sync_rpg_progression_titles();
