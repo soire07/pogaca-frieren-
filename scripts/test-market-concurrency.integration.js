@@ -302,7 +302,7 @@ test('production solo boss reward transaction rolls back player progression and 
         bonusLoot:null,craftingMaterial:'solo-fixture-material',journalBossKey:null,spellUsed:null
       }),/forced solo boss reward failure/);
       const player=await pool.query(
-        'SELECT coins,xp,boss_defeats,last_boss_battle_id FROM users WHERE guild_id=$1 AND user_id=$2',
+        'SELECT coins,xp,boss_defeats,last_boss_battle_id,level,stat_points FROM users WHERE guild_id=$1 AND user_id=$2',
         [guildId,userId]
       );
       assert.equal(Number(player.rows[0].coins),0);
@@ -897,7 +897,9 @@ test('character collection command filters by rarity and keeps guild/player data
     };
 
     try {
-      const response = await collectionCommand.execute(interaction);
+      let response;
+      interaction.editReply = async payload => { response = payload; return payload; };
+      await collectionCommand.execute(interaction);
       assert.equal(response.embeds.length, 2, 'summary and one character card should be returned');
       assert.ok(response.embeds[0].data.title.includes('Efsanevi'));
       assert.ok(response.embeds[1].data.title.includes('Frieren'));
