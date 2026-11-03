@@ -259,11 +259,11 @@ test('full three-stage daily quest chain completes with level-scaled rewards', {
       assert.equal(Number(player.rows[0].stat_points), 1, 'the level-up stat point must be credited once');
       assert.equal(Number(chain.rows[0].current_step), 4, 'the chain must be marked fully completed');
       assert.ok(chain.rows[0].completed_at, 'completion timestamp must be persisted');
-      assert.deepEqual(materials.rows.map(row => [row.item_key, Number(row.quantity)]), [
-        ['🐉 Ejderha Pulu', 1],
-        ['💎 Mana Kristali', 1],
-        ['🥐 Büyülü Poğaça Kutusu', 1]
-      ]);
+      assert.equal(materials.rowCount, 3, 'all three stage-specific materials must be persisted');
+      const materialCounts = Object.fromEntries(materials.rows.map(row => [row.item_key, Number(row.quantity)]));
+      assert.equal(materialCounts['🥐 Büyülü Poğaça Kutusu'], 1);
+      assert.equal(materialCounts['💎 Mana Kristali'], 1);
+      assert.equal(materialCounts['🐉 Ejderha Pulu'], 1);
       assert.equal(responses.filter(value => typeof value === 'string' && value.includes('Görev zinciri tamamlandı')).length, 1,
         'only the first final-stage claim may report chain completion');
       assert.equal(responses.filter(value => typeof value === 'string' && value.includes('İblis Avcısının Yemini')).length, 1,
