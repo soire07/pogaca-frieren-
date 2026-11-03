@@ -183,7 +183,11 @@
         {
           "type": "isolated_command_audit",
           "file": "scripts/live-command-test.js",
-          "command": "profil"
+          "command": "profil",
+          "checks": [
+            "Başka oyuncunun gerçek profilini görüntüleme",
+            "Profil görüntüleme oyuncu izolasyonu"
+          ]
         }
       ],
       "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
@@ -791,8 +795,7 @@
           "file": "scripts/live-command-test.js",
           "command": "hikaye",
           "checks": [
-            "Hikâye başlangıç kararı",
-            "Hikâye başlangıç ödülü"
+            "Hikâye yolu seçimi ve gereksinim kilidi"
           ]
         }
       ],
@@ -808,7 +811,10 @@
         {
           "type": "isolated_command_audit",
           "file": "scripts/live-command-test.js",
-          "command": "hikaye"
+          "command": "hikaye",
+          "checks": [
+            "Hikâye yolu seçimi ve gereksinim kilidi"
+          ]
         }
       ],
       "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
@@ -825,7 +831,11 @@
           "file": "scripts/live-command-test.js",
           "command": "npc",
           "checks": [
-            "NPC diyalog sistemi"
+            "NPC diyalog sistemi",
+            "Yanlış hikâye yolu ödül engeli",
+            "NPC görev gereksinimi ve ilerleme",
+            "NPC görev ödülü ve kalıcı tekil claim",
+            "NPC ödülünün tekrar alınamaması"
           ]
         }
       ],
@@ -925,7 +935,12 @@
         {
           "type": "isolated_command_audit",
           "file": "scripts/live-command-test.js",
-          "command": "siralama"
+          "command": "siralama",
+          "checks": [
+            "Yedi sunucu sıralaması kategorisi",
+            "Karakter koleksiyonu sıralaması",
+            "İblis zaferi sıralaması"
+          ]
         }
       ],
       "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
@@ -1301,7 +1316,11 @@
         {
           "type": "isolated_command_audit",
           "file": "scripts/live-command-test.js",
-          "command": "hedefler"
+          "command": "hedefler",
+          "checks": [
+            "Altı gelişim hedefinin görünmesi",
+            "Tamamlanan hedeflerin DB ilerlemesi"
+          ]
         }
       ],
       "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
@@ -1715,7 +1734,10 @@
         {
           "type": "isolated_command_audit",
           "file": "scripts/live-command-test.js",
-          "command": "katlizindan"
+          "command": "katlizindan",
+          "checks": [
+            "Katlar arası gizli sandık ödülü"
+          ]
         }
       ],
       "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
@@ -1935,7 +1957,10 @@
         {
           "type": "isolated_command_audit",
           "file": "scripts/live-command-test.js",
-          "command": "katlizindan"
+          "command": "katlizindan",
+          "checks": [
+            "Zoltraak mana harcaması ve kalıcı büyü kaydı"
+          ]
         }
       ],
       "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
@@ -1965,7 +1990,10 @@
         {
           "type": "isolated_command_audit",
           "file": "scripts/live-command-test.js",
-          "command": "katlizindan"
+          "command": "katlizindan",
+          "checks": [
+            "Her davetli kendi rolünü seçer"
+          ]
         }
       ],
       "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
@@ -3166,7 +3194,11 @@
         {
           "type": "isolated_command_audit",
           "file": "scripts/live-command-test.js",
-          "command": "macera"
+          "command": "macera",
+          "checks": [
+            "Beş harita parçası kalıcı ilerleme ve sandık açma",
+            "Harita ilerlemesi oyuncu bazında izole"
+          ]
         }
       ],
       "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
@@ -3638,7 +3670,10 @@
         {
           "type": "isolated_command_audit",
           "file": "scripts/live-command-test.js",
-          "command": "hazineac"
+          "command": "hazineac",
+          "checks": [
+            "Nadir sandık ödülü üstünlüğü"
+          ]
         }
       ],
       "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
@@ -4162,7 +4197,10 @@
         {
           "type": "isolated_command_audit",
           "file": "scripts/live-command-test.js",
-          "command": "maceragecmisi"
+          "command": "maceragecmisi",
+          "checks": [
+            "Macera geçmişi zanaat ilerlemesi"
+          ]
         }
       ],
       "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
@@ -4177,7 +4215,10 @@
         {
           "type": "isolated_command_audit",
           "file": "scripts/live-command-test.js",
-          "command": "maceragecmisi"
+          "command": "maceragecmisi",
+          "checks": [
+            "Macera geçmişi zanaat ilerlemesi"
+          ]
         }
       ],
       "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
