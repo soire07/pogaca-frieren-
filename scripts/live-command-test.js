@@ -704,8 +704,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           );
           if (isDungeon) {
             const floorNames = ['🌲 Köklerin Koridoru','🗿 Kadim Harabeler','🌫️ Sisli Geçit','🔥 Küller Salonu','👑 Mühürlü İblis Lordu'];
-            const carryLine = responseText.match(/Katlar arası HP aktarımı: ([^\n]+)/)?.[1] || '';
-            const carrySnapshots = [...carryLine.matchAll(/Kat (\d+) ([0-9/]+) → ([0-9/]+)/g)].map(match => ({
+            const carrySnapshots = [...responseText.matchAll(/Kat (\d+) ([0-9/]+) → ([0-9/]+)/g)].map(match => ({
               floor: Number(match[1]), start: match[2], end: match[3]
             }));
             const floorOne = carrySnapshots.find(snapshot => snapshot.floor === 1);
@@ -713,7 +712,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             const perFloorRewards = [...responseText.matchAll(/\d+\. kat temizlendi: [^\n]+ · \+\d+ XP, \+\d+ altın/g)];
             behavioralChecks.push(
               { name: 'Beş adlandırılmış zindan katı', expected: 'beş farklı kat adı sonuç günlüğünde yer almalı', actual: floorNames.filter(name => responseText.includes(name)).join(' · '), passed: floorNames.every(name => responseText.includes(name)) },
-              { name: 'Katlar arasında HP taşınması', expected: 'birinci katın son HP değeri ikinci katın başlangıç HP değeriyle aynı olmalı', actual: floorOne && floorTwo ? floorOne.end + ' → ' + floorTwo.start : carryLine.slice(0, 300), passed: Boolean(floorOne && floorTwo && floorOne.end === floorTwo.start) },
+              { name: 'Katlar arasında HP taşınması', expected: 'birinci katın son HP değeri ikinci katın başlangıç HP değeriyle aynı olmalı', actual: floorOne && floorTwo ? floorOne.end + ' → ' + floorTwo.start : carrySnapshots.length + ' HP snapshot', passed: Boolean(floorOne && floorTwo && floorOne.end === floorTwo.start) },
               { name: 'Her zindan katının ayrı ödülü', expected: 'beş temizlenen katın her biri XP ve altın ödülünü ayrı göstermeli', actual: perFloorRewards.length + ' kat ödül satırı', passed: perFloorRewards.length === 5 }
             );
             const beforeCooldown = await pool.query('SELECT user_id,dungeon_runs FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id', [guildId, teamUsers.map(member => member.id)]);
