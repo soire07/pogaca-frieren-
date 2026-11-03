@@ -4,7 +4,7 @@ import { getBossArtUrl } from './boss-art.js';
 import { settleDungeonRewards } from './rpg-reward-transactions.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { dungeonChoiceOutcome, dungeonEnemyStats, DUNGEON_PARTY_ROLES, applyDungeonTrapDamage, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio } from './rpg-mechanics.js';
+import { dungeonChoiceOutcome, dungeonEnemyStats, DUNGEON_PARTY_ROLES, applyDungeonTrapDamage, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, chooseDungeonAttackTarget, restoreResourceRatio } from './rpg-mechanics.js';
 
 const FLOORS = 5;
 
@@ -329,8 +329,7 @@ export default {
                 }
               }
             }
-            const tankIndex = living.find(i => players[i].role === 'tank');
-            const targetIndex = tankIndex !== undefined && Math.random() < 0.7 ? tankIndex : living[(turn + floor) % living.length];
+            const targetIndex = chooseDungeonAttackTarget(players, living, turn, floor);
             const target = players[targetIndex];
             const enraged = finalBoss && enemyHp <= maxEnemyHp * 0.5;
             const specialAttack = finalBoss && turn % 3 === 0;
