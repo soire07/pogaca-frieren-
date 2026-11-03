@@ -17,6 +17,32 @@ for (const feature of inventory.features) {
   if (!inventory.statuses.includes(feature.status)) {
     errors.push(`Geçersiz durum: ${feature.id} → ${feature.status}`);
   }
+  if (feature.status === 'verified_by_automated_test') {
+    if (!Array.isArray(feature.verificationEvidence) || feature.verificationEvidence.length === 0) {
+      errors.push(`Doğrulanmış özellikte test kanıtı eksik: ${feature.id}`);
+    }
+    if (!/^[a-f0-9]{40}$/i.test(String(feature.verifiedAtCommit || '')) || !Number.isInteger(feature.verificationRunId)) {
+      errors.push(`Doğrulanmış özellikte CI commit/run bilgisi eksik: ${feature.id}`);
+    }
+    for (const evidence of feature.verificationEvidence || []) {
+      if (!evidence.file || !['unit_test','postgres_integration','isolated_command_audit'].includes(evidence.type)) {
+        errors.push(`Geçersiz kanıt tanımı: ${feature.id}`);
+        continue;
+      }
+      try {
+        const source = await readFile(new URL('../' + evidence.file, import.meta.url), 'utf8');
+        if (evidence.type === 'isolated_command_audit') {
+          if (!evidence.command || !source.includes(`commandName === '${evidence.command}'`)) {
+            errors.push(`Komut kanıtı bulunamadı: ${feature.id} → ${evidence.command}`);
+          }
+        } else if (!evidence.test || !source.includes(evidence.test)) {
+          errors.push(`Test kanıtı bulunamadı: ${feature.id} → ${evidence.test}`);
+        }
+      } catch {
+        errors.push(`Kanıt dosyası okunamadı: ${feature.id} → ${evidence.file}`);
+      }
+    }
+  }
 }
 if (errors.length) {
   console.error(errors.join('\\n'));
