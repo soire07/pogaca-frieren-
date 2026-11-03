@@ -63,7 +63,7 @@ export function validatePatchPaths(patch, { task = '', incidentId = '' } = {}) {
     if (!hunkHeaders.length) throw new Error('REPAIR_PATCH_HUNK_INVALID');
     const hunkStart = section.search(/^@@ /m);
     const hunkBody = section.slice(hunkStart).split('\n').slice(1);
-    if (hunkBody.some(line => line && ![' ', '+', '-', '\\'].includes(line[0]))) {
+    if (hunkBody.some(line => line && !line.startsWith('@@ ') && ![' ', '+', '-', '\\'].includes(line[0]))) {
       throw new Error('REPAIR_PATCH_HUNK_INVALID');
     }
     const oldPath = section.match(/^--- a\/([^\s]+)$/m);
