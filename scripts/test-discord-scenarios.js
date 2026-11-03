@@ -34,6 +34,18 @@ test('invitations restrict acceptance to invited users and reject duplicate or b
   assert.ok(raid.includes('new Set(team.map(x => x.id)).size !== team.length'));
 });
 
+test('dungeon and raid use the shared tested role modifiers and trap resolver', async () => {
+  const dungeon = await read('katlizindan.js');
+  const raid = await read('ortakboss.js');
+  const mechanics = await read('rpg-mechanics.js');
+  assert.ok(dungeon.includes('const PARTY_ROLES = DUNGEON_PARTY_ROLES'));
+  assert.ok(raid.includes('const ROLES = RAID_PARTY_ROLES'));
+  assert.ok(dungeon.includes('applyDungeonTrapDamage(hpNow, floor)'));
+  assert.ok(mechanics.includes('export const DUNGEON_PARTY_ROLES'));
+  assert.ok(mechanics.includes('export const RAID_PARTY_ROLES'));
+  assert.ok(mechanics.includes('export function applyDungeonTrapDamage'));
+});
+
 test('both co-op modes require every teammate to choose a role and enforce unique tank/healer roles', async () => {
   const dungeon = await read('katlizindan.js');
   const raid = await read('ortakboss.js');
@@ -526,6 +538,24 @@ test('rare adventure and treasure materials can craft advanced Frieren-themed eq
   assert.match(command, /Himmel’in Efsanevi Yadigârı/);
   assert.match(command, /Ejderha Pulu/);
   assert.match(command, /Frieren’in Kayıp Notları/);
+});
+
+test('crafting recipes define the requested cloak, mana ring and legendary hero equipment', async () => {
+  const command = await read('zanaat.js');
+  const equipment = await read('equipment-data.js');
+  const recipeContracts = [
+    ["traveler_cloak: { craftLevel: 1, materials: [{ item: '🥐 Büyülü Poğaça Kutusu', quantity: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }]","traveler_cloak"],
+    ["mana_ring: { craftLevel: 2, materials: [{ item: '💎 Mana Kristali', quantity: 3 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }]","mana_ring"],
+    ["himmel_sword: { craftLevel: 4, materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1 }, { item: '🐉 Ejderha Pulu', quantity: 2 }]","himmel_sword"],
+    ["hero_ring: { craftLevel: 5, materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1 }, { item: '🌙 Efsunlu Elf Yadigârı', quantity: 2 }]","hero_ring"]
+  ];
+  for (const [recipe,id] of recipeContracts) {
+    assert.ok(command.includes(recipe), 'recipe materials must remain exact for ' + id);
+    assert.ok(equipment.includes(id), 'crafted equipment must exist for ' + id);
+  }
+  assert.match(command,/equipmentItems\.find\(entry => entry\.id === id\)/);
+  assert.match(command,/equipmentItems\.find\(item => item\.id === recipeId\)/);
+  assert.match(command,/INSERT INTO inventory\(guild_id,user_id,item_key,quantity\)/);
 });
 
 test('crafting catalog lists all available recipes and material requirements without crafting', async () => {
