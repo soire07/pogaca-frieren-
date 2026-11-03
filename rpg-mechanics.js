@@ -1,3 +1,5 @@
+import { equipmentBonus } from './equipment-data.js';
+
 export const RAID_BOSSES = [
   { id: 'north-general', name: '🌑 Kuzey Platosu İblis Generali', hp: 220, damage: 14, xp: 180, coins: 220, loot: 'İblis Mührü', weakness: 'spell', weaknessLabel: 'Büyü', special: 'mana-star' },
   { id: 'glass-wyrm', name: '🐉 Cam Pullar Ejderhası', hp: 255, damage: 12, xp: 205, coins: 245, loot: 'Ejderha Camı', weakness: 'attack', weaknessLabel: 'Fiziksel saldırı', special: 'shard-rain' },
@@ -38,6 +40,16 @@ export function applyEquipmentSetBonus(items, bonus) {
     setText: legendaryCount >= 2 ? 'Efsanevi set: +4 saldırı, +25 HP' : epicCount >= 2 ? 'Destansı set: +3 savunma, +15 mana' : null
   };
 }
+
+/**
+ * Single source of truth for equipment and rarity-set bonuses in every combat mode.
+ * Keep base player stats immutable; callers derive temporary combat stats from this value.
+ */
+export function getEquipmentCombatBonus(items) {
+  const equipped = Array.isArray(items) ? items : [];
+  return applyEquipmentSetBonus(equipped, equipmentBonus(equipped));
+}
+
 
 export function dungeonChoiceOutcome(choice, floor) {
   if (choice === 'secret') return { label: 'Gizli geçit', coins: 20 + floor * 8, hp: -8, mana: 0, lootChance: 0.45, log: 'Gizli geçit: ek altın bulundu ancak dar geçit yaraladı.' };
