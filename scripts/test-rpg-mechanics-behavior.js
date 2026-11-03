@@ -266,6 +266,7 @@ test('talent ranks increase attack and defense by four percent and HP and mana b
   assert.equal(applyTalentBonus(100, 1, 0.05), 105);
   assert.equal(applyTalentBonus(100, 3, 0.05), 115);
   assert.equal(applyTalentBonus(100, -1, 0.05), 100);
+  assert.equal(applyTalentBonus(101, 1, 0.05), 106.05, 'retain fractional precision until the caller applies its original rounding boundary');
   assert.equal(getDungeonEventOutcome(0.1), 'hidden_chest');
   assert.equal(getDungeonEventOutcome(0.3), 'trap');
   assert.equal(getDungeonEventOutcome(0.9), 'none');
