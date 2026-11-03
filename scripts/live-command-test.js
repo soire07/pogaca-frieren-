@@ -1365,6 +1365,10 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           const targetId=userId+'5';
           await ensureUser(guildId,targetId);
           await pool.query('UPDATE users SET level=12,xp=900,coins=450,boss_defeats=2,exploration_count=5,items_used_count=3,character_draw_count=4 WHERE guild_id=$1 AND user_id=$2',[guildId,targetId]);
+          await pool.query(
+            'INSERT INTO adventure_history(guild_id,user_id,discovery_key,outcome_text,coins_awarded,xp_awarded,item_found,first_discovery) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
+            [guildId,targetId,'isolated-other-player-history','OtherPlayer test expedition record',77,55,'Target relic',true]
+          );
           const targetUser={id:targetId,username:'OtherPlayer',tag:'OtherPlayer#0001',displayAvatarURL:()=> 'https://example.com/other.png',toString(){return '<@'+targetId+'>';}};
           const before=await pool.query('SELECT coins,xp,level,exploration_count,items_used_count,character_draw_count FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,targetId]);
           const interaction=makeInteraction(command,buildOptions(schema?.options,{kullanici:targetUser}),guildId,effects);
@@ -1373,7 +1377,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           const after=await pool.query('SELECT coins,xp,level,exploration_count,items_used_count,character_draw_count FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,targetId]);
           const payloadText=JSON.stringify(effects.map(effect=>effect.payload));
           behavioralChecks.push(
-            {name:'Başka oyuncunun macera geçmişi',expected:'seçilen oyuncunun profil özeti ve adı gösterilmeli',actual:payloadText.includes('OtherPlayer')?'OtherPlayer paneli gösterildi':payloadText.slice(0,350),passed:payloadText.includes('OtherPlayer')&&payloadText.includes('Seviye: **12**')&&payloadText.includes('450')},
+            {name:'Başka oyuncunun macera geçmişi',expected:'seçilen oyuncunun profili ve kendi macera kaydı gösterilmeli',actual:payloadText.includes('OtherPlayer test expedition record')?'hedef oyuncunun macera kaydı gösterildi':payloadText.slice(0,350),passed:payloadText.includes('OtherPlayer')&&payloadText.includes('Seviye: **12**')&&payloadText.includes('450')&&payloadText.includes('OtherPlayer test expedition record')&&payloadText.includes('Target relic')},
             {name:'Başka oyuncunun istatistik kapsamı',expected:'boss, keşif, eşya kullanımı ve karakter çekimi sayıları görünmeli',actual:['İblis zaferi','Keşif: **5**','Kullanılan eşya: **3**','Karakter çekimi: **4**'].filter(x=>payloadText.includes(x)).join(', '),passed:['İblis zaferi','Keşif: **5**','Kullanılan eşya: **3**','Karakter çekimi: **4**'].every(x=>payloadText.includes(x))},
             {name:'Başka oyuncunun verisi salt okunur',expected:'hedef oyuncunun RPG durumu değişmemeli',actual:JSON.stringify(before.rows[0])+' → '+JSON.stringify(after.rows[0]),passed:Object.keys(before.rows[0]).every(key=>Number(before.rows[0][key])===Number(after.rows[0][key]))}
           );
@@ -1413,9 +1417,13 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
 
         if (commandName === 'siralama') {
           const rivalId=userId+'3';
+          const outsiderId=userId+'8';
+          const foreignGuildId=buildIsolatedTestGuildId(998);
           await ensureUser(guildId,rivalId);
+          await ensureUser(foreignGuildId,outsiderId);
           await pool.query('UPDATE users SET xp=2500,boss_defeats=8,dungeon_wins=6 WHERE guild_id=$1 AND user_id=$2',[guildId,rivalId]);
           await pool.query('UPDATE users SET xp=900,boss_defeats=2,dungeon_wins=1 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          await pool.query('UPDATE users SET xp=999999,boss_defeats=999,dungeon_wins=999 WHERE guild_id=$1 AND user_id=$2',[foreignGuildId,outsiderId]);
           const categories=[
             ['xp','Toplam XP','2.500 XP'],
             ['bosses','İblis zaferi','8 zafer'],
@@ -1428,11 +1436,13 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             await command.execute(interaction);
             effects.push(...actionEffects);
             const payloadText=JSON.stringify(actionEffects.map(effect=>effect.payload));
+            const rivalPosition=payloadText.indexOf('<@'+rivalId+'>');
+            const ownPosition=payloadText.indexOf('<@'+userId+'>');
             behavioralChecks.push({
               name:'Sunucu liderlik kategorisi: '+label,
-              expected:label+' sıralaması rakibin en yüksek değerini göstermeli',
-              actual:payloadText.includes(expected)?expected:'beklenen değer bulunamadı',
-              passed:payloadText.includes(label)&&payloadText.includes(expected)
+              expected:label+' sıralamasında yüksek skorlu rakip üstte, oyuncu altta ve başka sunucu oyuncusu dışarıda kalmalı',
+              actual:payloadText.includes(expected)&&rivalPosition>=0&&ownPosition>rivalPosition&&!payloadText.includes('<@'+outsiderId+'>')?'sıralama, sıra önceliği ve sunucu izolasyonu doğru':payloadText.slice(0,500),
+              passed:payloadText.includes(label)&&payloadText.includes(expected)&&rivalPosition>=0&&ownPosition>rivalPosition&&!payloadText.includes('<@'+outsiderId+'>')
             });
           }
         }
