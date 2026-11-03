@@ -1,0 +1,1213 @@
+{
+  "schemaVersion": 1,
+  "policy": "This map records manually inspected source-to-test links. It does not upgrade feature-inventory.json statuses. Static assertions and unit tests are not Discord runtime or production verification. Entries without a current named behavioral test on main are deliberately omitted rather than linked to unrelated tests.",
+  "entries": [
+    {
+      "featureId": "RPG-022",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "market.js",
+          "markers": [
+            "await db.query('BEGIN')",
+            "UPDATE users SET coins=coins-$3",
+            "INSERT INTO inventory"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-economy-crafting-integrity.js",
+        "name": "market purchases serialize the player before charging and never allow a negative balance",
+        "markers": [
+          "purchase must lock the player",
+          "coins >= "
+        ]
+      },
+      "limitation": "Isolated PostgreSQL tests execute real concurrent purchase and forced rollback transactions. They do not invoke Discord's live interaction API or production data.",
+      "integrationTests": [
+        {
+          "path": "scripts/test-market-concurrency.integration.js",
+          "name": "concurrent market purchases cannot overspend and inventory matches successful debits",
+          "markers": [
+            "assert.equal(successful.length, 2",
+            "assert.equal(Number(player.rows[0]?.coins), 0",
+            "assert.equal(Number(inventory.rows[0]?.quantity), 2"
+          ]
+        },
+        {
+          "path": "scripts/test-market-concurrency.integration.js",
+          "name": "market inventory failure rolls back the already attempted coin debit",
+          "markers": [
+            "assert.rejects(",
+            "forced market integration rollback",
+            "assert.equal(Number(player.rows[0]?.coins), 120",
+            "assert.equal(inventory.rowCount, 0"
+          ]
+        }
+      ]
+    },
+    {
+      "featureId": "RPG-040",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "takasteklif.js",
+          "markers": [
+            "NOW()+INTERVAL '5 minutes'",
+            "FOR UPDATE"
+          ]
+        },
+        {
+          "path": "trade-transaction.js",
+          "markers": [
+            "reservedForOthers",
+            "status='accepted'"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/check-gameplay-integrity.js",
+        "name": "trade offers are persistent, expiring and single-use",
+        "markers": [
+          "reservedAmount",
+          "reservedForOthers",
+          "status='accepted'"
+        ]
+      },
+      "limitation": "Source assertions plus isolated PostgreSQL tests cover concurrent offer acceptance and rollback of both collections and offer status. Live Discord button delivery is not tested.",
+      "integrationTests": [
+        {
+          "path": "scripts/test-market-concurrency.integration.js",
+          "name": "the same trade offer can be accepted concurrently only once",
+          "markers": [
+            "await Promise.all([",
+            "assert.equal(outcomes.filter(Boolean).length,1",
+            "assert.equal(Number(source.rows[0].quantity),1,",
+            "assert.equal(Number(target.rows[0].quantity),1,"
+          ]
+        },
+        {
+          "path": "scripts/test-market-concurrency.integration.js",
+          "name": "trade transfer failure rolls back both collection sides and offer status",
+          "markers": [
+            "forced trade recipient failure",
+            "assert.equal(Number(source.rows[0].quantity),2)",
+            "assert.equal(target.rowCount,0)",
+            "assert.equal(offer.rows[0].status,'pending')"
+          ]
+        }
+      ]
+    },
+    {
+      "featureId": "RPG-015",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "claimSoloBossReward"
+          ]
+        },
+        {
+          "path": "rpg-reward-transactions.js",
+          "markers": [
+            "last_boss_battle_id IS DISTINCT FROM $7",
+            "await db.query('COMMIT')",
+            "await db.query('ROLLBACK')"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-boss-combat.js",
+        "name": "solo boss reward persistence is idempotent per battle session across duplicate handlers",
+        "markers": [
+          "last_boss_battle_id",
+          "claimSoloBossReward",
+          "randomUUID"
+        ]
+      },
+      "limitation": "Isolated PostgreSQL tests execute the production reward transaction under duplicate concurrency and forced inventory failure. Live Discord battle presentation remains unverified.",
+      "integrationTests": [
+        {
+          "path": "scripts/test-market-concurrency.integration.js",
+          "name": "production solo boss reward transaction grants a battle only once under concurrency",
+          "markers": [
+            "await Promise.all([reward(),reward()])",
+            "assert.equal(outcomes.filter(x=>x.status==='claimed').length,1)",
+            "assert.equal(Number(player.rows[0].boss_defeats),1)"
+          ]
+        },
+        {
+          "path": "scripts/test-market-concurrency.integration.js",
+          "name": "production solo boss reward transaction rolls back player progression and all loot on inventory failure",
+          "markers": [
+            "forced solo boss reward failure",
+            "assert.equal(Number(player.rows[0].coins),0)",
+            "assert.equal(Number(player.rows[0].boss_defeats),0)"
+          ]
+        }
+      ]
+    },
+    {
+      "featureId": "RPG-113",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function applyEquipmentSetBonus"
+          ]
+        },
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "applyEquipmentSetBonus"
+          ]
+        },
+        {
+          "path": "katlizindan.js",
+          "markers": [
+            "applyEquipmentSetBonus"
+          ]
+        },
+        {
+          "path": "ortakboss.js",
+          "markers": [
+            "applyEquipmentSetBonus"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-gameplay-persistence.js",
+        "name": "legendary set bonus activates at two pieces and disappears when one is removed",
+        "markers": [
+          "applyEquipmentSetBonus",
+          "active.attack",
+          "inactive.attack"
+        ]
+      },
+      "limitation": "The unit test proves the shared set-bonus calculation and source wiring is present in combat handlers; it does not execute full solo, dungeon and raid encounters."
+    },
+    {
+      "featureId": "RPG-213",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "zanaat.js",
+          "markers": [
+            "await db.query('BEGIN')",
+            "FOR UPDATE",
+            "await db.query('ROLLBACK')"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-economy-crafting-integrity.js",
+        "name": "crafting validates bounded quantities and serializes the player before material locks",
+        "markers": [
+          "crafting must lock the player before reading/locking materials",
+          "material consumption, output, crafting XP and daily progress must be one transaction"
+        ]
+      },
+      "limitation": "The test checks lock ordering, quantity bounds and transaction structure; it does not perform a live Discord crafting action."
+    },
+    {
+      "featureId": "RPG-272",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "katlizindan.js",
+          "markers": [
+            "restoreResourceRatio",
+            "persistedHpNow"
+          ]
+        },
+        {
+          "path": "ortakboss.js",
+          "markers": [
+            "restoreResourceRatio",
+            "persistedHpNow"
+          ]
+        },
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function restoreResourceRatio"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/check-gameplay-integrity.js",
+        "name": "cooperative dungeon and raid scale current HP and mana proportionally with gear, talents, builds and roles",
+        "markers": [
+          "persistedHpNow"
+        ]
+      },
+      "limitation": "The test validates shared persistence conversion and handler wiring through source assertions; it does not run a live multi-player encounter."
+    },
+    {
+      "featureId": "RPG-274",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "katlizindan.js",
+          "markers": [
+            "spell_mastery",
+            "spellMastery"
+          ]
+        },
+        {
+          "path": "ortakboss.js",
+          "markers": [
+            "spell_mastery",
+            "spellMastery"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/check-gameplay-integrity.js",
+        "name": "successful Zoltraak casts in cooperative dungeon and boss raid advance persistent spell mastery",
+        "markers": [
+          "spellCasts",
+          "spell_mastery",
+          "mastery_level=LEAST"
+        ]
+      },
+      "limitation": "The test checks the success-gated persistence path by source assertions; it does not verify Discord interaction behavior live."
+    },
+    {
+      "featureId": "RPG-300",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function getBossPhase"
+          ]
+        },
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "getBossPhase("
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-boss-combat.js",
+        "name": "boss phases use stable health thresholds and reject invalid maximum HP",
+        "markers": [
+          "getBossPhase(66, 100)",
+          "getBossPhase(33, 100)"
+        ]
+      },
+      "limitation": "The test proves phase threshold calculations, not the player-visible phase announcement or complete boss encounter."
+    },
+    {
+      "featureId": "RPG-309",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "zoltraak",
+            "damage: 8"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-discord-scenarios.js",
+        "name": "all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten",
+        "markers": [
+          "zoltraak",
+          "damage: 8",
+          "getSpellMasteryAwakening(spell, 10)"
+        ]
+      },
+      "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
+    },
+    {
+      "featureId": "RPG-310",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "alev_kuresi",
+            "damage: 10"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-discord-scenarios.js",
+        "name": "all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten",
+        "markers": [
+          "alev_kuresi",
+          "damage: 10",
+          "getSpellMasteryAwakening(spell, 10)"
+        ]
+      },
+      "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
+    },
+    {
+      "featureId": "RPG-311",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "buz_mizragi",
+            "freezeChance: 0.1"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-discord-scenarios.js",
+        "name": "all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten",
+        "markers": [
+          "buz_mizragi",
+          "freezeChance: 0.1",
+          "getSpellMasteryAwakening(spell, 10)"
+        ]
+      },
+      "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
+    },
+    {
+      "featureId": "RPG-312",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "koruyucu_bariyer",
+            "shieldReduction: 0.05"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-discord-scenarios.js",
+        "name": "all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten",
+        "markers": [
+          "koruyucu_bariyer",
+          "shieldReduction: 0.05",
+          "getSpellMasteryAwakening(spell, 10)"
+        ]
+      },
+      "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
+    },
+    {
+      "featureId": "RPG-313",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "sifa_isigi",
+            "healing: 10"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-discord-scenarios.js",
+        "name": "all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten",
+        "markers": [
+          "sifa_isigi",
+          "healing: 10",
+          "getSpellMasteryAwakening(spell, 10)"
+        ]
+      },
+      "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
+    },
+    {
+      "featureId": "RPG-314",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "yildirim_zinciri",
+            "damage: 12"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-discord-scenarios.js",
+        "name": "all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten",
+        "markers": [
+          "yildirim_zinciri",
+          "damage: 12",
+          "getSpellMasteryAwakening(spell, 10)"
+        ]
+      },
+      "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
+    },
+    {
+      "featureId": "RPG-315",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "tas_duvar",
+            "wallReduction: 0.05"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-discord-scenarios.js",
+        "name": "all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten",
+        "markers": [
+          "tas_duvar",
+          "wallReduction: 0.05",
+          "getSpellMasteryAwakening(spell, 10)"
+        ]
+      },
+      "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
+    },
+    {
+      "featureId": "RPG-316",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "mana_patlamasi",
+            "damage: 15"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-discord-scenarios.js",
+        "name": "all eight mastery-10 spell awakenings grant only their documented capstone and stay locked below level ten",
+        "markers": [
+          "mana_patlamasi",
+          "damage: 15",
+          "getSpellMasteryAwakening(spell, 10)"
+        ]
+      },
+      "limitation": "The mastery helper's numeric capstone, level-9 lockout and level-10 clamp are unit-tested; full live Discord combat presentation remains unverified."
+    },
+    {
+      "featureId": "RPG-317",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function shouldGuaranteeRareDiscovery"
+          ]
+        },
+        {
+          "path": "macera.js",
+          "markers": [
+            "const pityReady = shouldGuaranteeRareDiscovery(",
+            "const undiscoveredRare = rareOutcomes.filter"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "rare exploration pity guarantees a new rare location at each 20-adventure milestone",
+        "markers": [
+          "shouldGuaranteeRareDiscovery(19, 0)",
+          "shouldGuaranteeRareDiscovery(39, 1)",
+          "shouldGuaranteeRareDiscovery(999, 3)"
+        ]
+      },
+      "limitation": "Pity thresholds and rare-discovery selection wiring are tested; a complete live exploration interaction is not verified."
+    },
+    {
+      "featureId": "RPG-318",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function explorationMasteryReward"
+          ]
+        },
+        {
+          "path": "commands/rpg/kesif.js",
+          "markers": [
+            "INSERT INTO exploration_region_mastery",
+            "explorationMasteryReward(regionVisits)"
+          ]
+        },
+        {
+          "path": "database/db.js",
+          "markers": [
+            "CREATE TABLE IF NOT EXISTS exploration_region_mastery"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "region mastery persists per selected exploration region and is displayed to players",
+        "markers": [
+          "exploration_region_mastery",
+          "Bölge ustalığı ödülü",
+          "CREATE TABLE IF NOT EXISTS exploration_region_mastery"
+        ]
+      },
+      "limitation": "Milestone reward calculations and persistence wiring are asserted; multi-region persistence is not executed against a live Discord interaction."
+    },
+    {
+      "featureId": "RPG-319",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "commands/rpg/kesif.js",
+          "markers": [
+            "const craftingMaterials = {",
+            "const foundCraftingMaterial = Math.random() < 0.4"
+          ]
+        },
+        {
+          "path": "zanaat.js",
+          "markers": [
+            "📜 Frieren’in Kayıp Notları"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "exploration can find region-specific materials used by equipment crafting recipes",
+        "markers": [
+          "craftingMaterials",
+          "foundCraftingMaterial",
+          "no crafting recipe consumes exploration material"
+        ]
+      },
+      "limitation": "The test checks the region-specific drop catalogue and recipe consumption wiring; random drop rates are not exercised statistically."
+    },
+    {
+      "featureId": "RPG-320",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "gorevzinciri.js",
+          "markers": [
+            "🥐 Büyülü Poğaça Kutusu",
+            "💎 Mana Kristali",
+            "🐉 Ejderha Pulu",
+            "INSERT INTO inventory",
+            "step.material"
+          ]
+        },
+        {
+          "path": "zanaat.js",
+          "markers": [
+            "🥐 Büyülü Poğaça Kutusu",
+            "💎 Mana Kristali",
+            "🐉 Ejderha Pulu"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "daily quest chain awards recipe materials transactionally for all three stages",
+        "markers": [
+          "INSERT INTO inventory",
+          "BEGIN",
+          "COMMIT"
+        ]
+      },
+      "limitation": "All three stage material rewards, inventory insertion and transaction markers are checked statically; no live quest claim is run."
+    },
+    {
+      "featureId": "RPG-321",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function getLevelScaledQuestReward"
+          ]
+        },
+        {
+          "path": "gorevzinciri.js",
+          "markers": [
+            "getLevelScaledQuestReward(step.reward, step.xpReward, player.level, step.step === 3)",
+            "levelForXp(newXp)",
+            "stat_points=stat_points+$6"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "quest chain integrates level-scaled XP, level-ups, stat points and completion bonus",
+        "markers": [
+          "getLevelScaledQuestReward",
+          "levelForXp",
+          "stat_points=stat_points",
+          "completionBonus"
+        ]
+      },
+      "limitation": "Reward scaling is unit-tested and level-up/stat-point transaction wiring is source-asserted; a live player quest completion is not verified."
+    },
+    {
+      "featureId": "RPG-322",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "boss.craftingMaterial",
+            "claimSoloBossReward"
+          ]
+        },
+        {
+          "path": "rpg-reward-transactions.js",
+          "markers": [
+            "craftingMaterial",
+            "INSERT INTO inventory"
+          ]
+        },
+        {
+          "path": "rpg-content-catalog.js",
+          "markers": [
+            "👑 Himmel’in Efsanevi Yadigârı"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "solo boss victories grant recipe materials matched to boss tier",
+        "markers": [
+          "claimSoloBossReward",
+          "craftingMaterial",
+          "INSERT INTO inventory"
+        ]
+      },
+      "limitation": "Boss-tier material catalogue, reward transaction handoff and recipe availability are asserted; no live boss victory is performed."
+    },
+    {
+      "featureId": "RPG-323",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "katlizindan.js",
+          "markers": [
+            "const craftingLoot = floorsCleared >= FLOORS",
+            "👑 Himmel’in Efsanevi Yadigârı",
+            "craftingLoot ? [craftingLoot] : []"
+          ]
+        },
+        {
+          "path": "zanaat.js",
+          "markers": [
+            "👑 Himmel’in Efsanevi Yadigârı"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "dungeon depth and final victory award recipe materials to participating players",
+        "markers": [
+          "floorsCleared >= FLOORS",
+          "Himmel",
+          "craftingLoot"
+        ]
+      },
+      "limitation": "Dungeon-depth and full-clear material wiring plus recipe availability are asserted; a complete live party dungeon clear is not verified."
+    },
+    {
+      "featureId": "RPG-001",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "profil.js",
+          "markers": [
+            "SELECT xp, level, coins, class_name, active_build, hp, max_hp, mana, max_mana, attack, defense, stat_points",
+            "applyEquipmentSetBonus(equippedItems, equipmentBonus(equippedItems))"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/check-gameplay-integrity.js",
+        "name": "player profile displays selected combat build and build-adjusted stats",
+        "markers": [
+          "assert.match(source, /active_build/)",
+          "assert.match(source, /Savaş yapısı/)",
+          "build\\.hp"
+        ]
+      },
+      "limitation": "Profile query and build-adjusted display calculations are asserted; the complete Discord profile interaction is not executed."
+    },
+    {
+      "featureId": "RPG-003",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "utils.js",
+          "markers": [
+            "export function levelForXp(xp)",
+            "export function xpForNextLevel(level)"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "levelForXp uses the expected XP thresholds",
+        "markers": [
+          "levelForXp(0), 1",
+          "levelForXp(100), 2",
+          "levelForXp(400), 3",
+          "levelForXp(900), 4"
+        ]
+      },
+      "limitation": "XP-to-level thresholds and boundary behavior are directly unit-tested; Discord reward delivery is not covered by this unit test."
+    },
+    {
+      "featureId": "RPG-004",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "gorevzinciri.js",
+          "markers": [
+            "const newLevel = levelForXp(newXp);",
+            "stat_points=stat_points+$6"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "quest chain integrates level-scaled XP, level-ups, stat points and completion bonus",
+        "markers": [
+          "assert.match(quest, /getLevelScaledQuestReward\\(step\\.reward, step\\.xpReward, player\\.level, step\\.step === 3\\)/);",
+          "assert.match(quest, /levelForXp\\(newXp\\)/);",
+          "assert.match(quest, /stat_points=stat_points\\+\\$6/);",
+          "assert.match(quest, /reward\\.completionBonus/);"
+        ]
+      },
+      "limitation": "Quest completion source is checked for level and stat-point writes; no live player quest claim is executed."
+    },
+    {
+      "featureId": "RPG-020",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "esyakullan.js",
+          "markers": [
+            "const updated = await db.query(",
+            "max_mana + $8",
+            "max_hp + $7"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/check-gameplay-integrity.js",
+        "name": "item use persists base HP and mana without permanently adding temporary equipment bonuses",
+        "markers": [
+          "max_mana \\+ \\$8",
+          "max_hp \\+ \\$7",
+          "Math\\.min\\(1, Number\\(user\\.hp\\) \\/ Math\\.max\\(1, Number\\(user\\.max_hp\\)\\)\\)"
+        ]
+      },
+      "limitation": "Item-use resource conversion and SQL update shape are source-asserted, including a separate bind-count regression test; no live inventory item is consumed."
+    },
+    {
+      "featureId": "RPG-024",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "ekipman.js",
+          "markers": [
+            "INSERT INTO user_equipment(guild_id,user_id,slot,item_key)",
+            "DELETE FROM user_equipment",
+            "SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/check-gameplay-integrity.js",
+        "name": "equipment equip and unequip are user-scoped transactions and never permanently add gear stats",
+        "markers": [
+          "DELETE FROM user_equipment",
+          "INSERT INTO user_equipment",
+          "must not persist temporary max HP/mana bonuses"
+        ]
+      },
+      "limitation": "Player-first row locking, user scoping, transactional equip/unequip and base-stat protection are statically asserted; no live Discord equip action is run."
+    },
+    {
+      "featureId": "RPG-030",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "gunlukgorev.js",
+          "markers": [
+            "await db.query('BEGIN')",
+            "INSERT INTO daily_mission_claims",
+            "ON CONFLICT DO NOTHING RETURNING mission_key",
+            "await db.query('COMMIT')"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-market-concurrency.integration.js",
+        "name": "two concurrent daily mission claims grant the reward only once",
+        "markers": [
+          "await Promise.all([",
+          "assert.equal(Number(player.rows[0]?.coins), 75",
+          "assert.equal(claims.rowCount, 1"
+        ]
+      },
+      "limitation": "The isolated PostgreSQL test runs two real command handlers concurrently and checks the reward is credited once. It does not call Discord's live API."
+    },
+    {
+      "featureId": "RPG-052",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "takasteklif.js",
+          "markers": [
+            "reservedAmount",
+            "status='pending'",
+            "NOW()+INTERVAL '5 minutes'"
+          ]
+        },
+        {
+          "path": "trade-transaction.js",
+          "markers": [
+            "reservedForOthers",
+            "status='accepted'"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-market-concurrency.integration.js",
+        "name": "concurrent trade offers cannot reserve the sender last character copy twice",
+        "markers": [
+          "await Promise.all([",
+          "assert.equal(offers.rowCount, 1",
+          "assert.equal(Number(collection.rows[0]?.quantity), 2"
+        ]
+      },
+      "limitation": "The isolated PostgreSQL test verifies concurrent offers cannot reserve the final copy twice. Player-visible Discord interaction delivery remains unverified."
+    },
+    {
+      "featureId": "RPG-073",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "rpg-reward-transactions.js",
+          "markers": [
+            "export async function settleDungeonRewards",
+            "INSERT INTO inventory",
+            "DELETE FROM active_rpg_encounters"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-market-concurrency.integration.js",
+        "name": "production layered dungeon settlement is single-use for the whole party under concurrent completion",
+        "markers": [
+          "settleDungeonRewards(pool",
+          "assert.equal(outcomes.filter(x=>x.status==='settled').length,1)",
+          "dungeon-fixture-rare",
+          "dungeon-fixture-craft",
+          "dungeon-fixture-%"
+        ]
+      },
+      "limitation": "The isolated PostgreSQL test verifies a full dungeon reward settlement writes party loot once and clears the encounter reservation. The complete Discord floor-by-floor battle is not run."
+    },
+    {
+      "featureId": "RPG-082",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "rpg-reward-transactions.js",
+          "markers": [
+            "export async function settleRaidRewards",
+            "INSERT INTO inventory",
+            "DELETE FROM active_rpg_encounters"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-market-concurrency.integration.js",
+        "name": "production co-op boss settlement is single-use for the whole party under concurrent completion",
+        "markers": [
+          "settleRaidRewards(pool",
+          "assert.equal(outcomes.filter(x=>x.status==='settled').length,1)",
+          "raid-fixture-loot",
+          "assert.equal(Number(p.boss_defeats),1)"
+        ]
+      },
+      "limitation": "The isolated PostgreSQL test verifies raid reward settlement is single-use and persists each participant's rewards atomically. Live Discord raid turns are not tested."
+    },
+    {
+      "featureId": "ARENA-004",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "adventurer-platform.js",
+          "markers": [
+            "INSERT INTO arena_match_results",
+            "ON CONFLICT(match_id) DO NOTHING RETURNING match_id",
+            "UPDATE arena_ratings SET rating=$4"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-adventurer-platform.integration.js",
+        "name": "arena season MMR and rewards settle atomically and only once",
+        "markers": [
+          "assert.equal(first.settled,true)",
+          "assert.equal(second.settled,false)",
+          "assert.equal(resultCount.rows[0].count,1)"
+        ]
+      },
+      "limitation": "The isolated PostgreSQL test executes arena season settlement twice and confirms a single result/reward write. Discord match UI and live matchmaking are separately unverified."
+    },
+    {
+      "featureId": "EVENT-002",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "adventurer-platform.js",
+          "markers": [
+            "export async function joinGuildEvent",
+            "FOR UPDATE",
+            "ON CONFLICT DO NOTHING RETURNING user_id"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-adventurer-platform.integration.js",
+        "name": "event calendar enforces idempotent registration, capacity and concurrent seat claims",
+        "markers": [
+          "assert.equal((await joinGuildEvent(pool,{guildId,eventId,userId:users[0]})).status,'already_joined')",
+          "assert.equal(concurrent.filter(item=>item.status==='joined').length,1)",
+          "assert.equal(concurrent.filter(item=>item.status==='full').length,1)"
+        ]
+      },
+      "limitation": "The isolated PostgreSQL test verifies duplicate registration, capacity enforcement, leave/rejoin and concurrent seat claims. Automatic reminders and Discord UI delivery are not tested."
+    },
+    {
+      "featureId": "SITE-001",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "adventurer-platform.js",
+          "markers": [
+            "export async function redeemSiteLinkToken",
+            "expires_at>NOW() FOR UPDATE",
+            "DELETE FROM site_link_tokens",
+            "await client.query('COMMIT')"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-adventurer-platform.integration.js",
+        "name": "single-use Discord link codes connect only the intended profile to a web account",
+        "markers": [
+          "const {token}=await createSiteLinkToken(pool,{guildId,userId})",
+          "assert.equal(linked.status,'linked')",
+          "assert.equal((await redeemSiteLinkToken(pool,accountId,token)).status,'invalid_or_expired')",
+          "assert.equal(dashboard.profiles.length,1)"
+        ]
+      },
+      "limitation": "The isolated PostgreSQL test verifies one-time token redemption and the linked dashboard data. The browser login/session journey and production account are not exercised."
+    },
+    {
+      "featureId": "RPG-301",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "const nextBossPhase = getBossPhase(bossHp, boss.maxHp)",
+            "calculateBossIncomingDamage(rawBossDamage, defense, bossPhase)"
+          ]
+        },
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function getBossPhase(currentHp, maximumHp)"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "solo boss phase transitions use clear two-thirds and one-third health thresholds",
+        "markers": [
+          "getBossPhase(80, 120)",
+          "getBossPhase(40, 120)"
+        ]
+      },
+      "limitation": "The health-threshold helper is unit-tested and the solo handler wires phase transitions into incoming damage. Player-visible enrage timing and a complete live boss encounter are not verified."
+    },
+    {
+      "featureId": "RPG-302",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "calculateBossIncomingDamage(rawBossDamage, defense, bossPhase)"
+          ]
+        },
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function calculateBossIncomingDamage"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "boss phase damage scaling respects defense and grows only in later phases",
+        "markers": [
+          "calculateBossIncomingDamage(10, 4, 1)",
+          "calculateBossIncomingDamage(10, 4, 2)",
+          "calculateBossIncomingDamage(10, 4, 3)"
+        ]
+      },
+      "limitation": "Damage scaling and defense mitigation are unit-tested and the solo handler calls the shared helper. Full Discord combat remains unverified."
+    },
+    {
+      "featureId": "RPG-303",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "bossPhaseSpecialBonus(bossPhase)"
+          ]
+        },
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function bossPhaseSpecialBonus(phase)"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "boss phase damage scaling respects defense and grows only in later phases",
+        "markers": [
+          "bossPhaseSpecialBonus(1), 0",
+          "bossPhaseSpecialBonus(2), 4",
+          "bossPhaseSpecialBonus(3), 8"
+        ]
+      },
+      "limitation": "Special-attack bonus values for all three phases are directly unit-tested; actual special-attack delivery in Discord is not."
+    },
+    {
+      "featureId": "RPG-304",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "if (turnCount % 3 === 0 && !frozenBoss)",
+            "else if (turnCount % 3 === 0 && frozenBoss)"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "freezing the boss cancels its scheduled special attack and its mana-drain side effect",
+        "markers": [
+          "Donma etkisi bossun özel saldırısını da durdurdu",
+          "frozenBoss"
+        ]
+      },
+      "limitation": "The test asserts the solo boss handler suppresses its scheduled special attack and mana drain while frozen. It is a source-level regression test, not a live Discord fight."
+    },
+    {
+      "featureId": "RPG-305",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "ortakboss.js",
+          "markers": [
+            "getBossPhase(bossHp, maxBossHp)",
+            "ikinci evreye geçti"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "cooperative raid boss phases scale incoming damage and announce transitions",
+        "markers": [
+          "ikinci evreye geçti",
+          "son evreye geçti",
+          "calculateBossIncomingDamage(rawDamage, Math.round(target.defense*0.56), bossPhase)"
+        ]
+      },
+      "limitation": "The test checks raid phase wiring, transition announcements and damage helper use in source. It does not run a full multiplayer Discord raid."
+    },
+    {
+      "featureId": "RPG-306",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "ortakboss.js",
+          "markers": [
+            "getBossPhase(bossHp, maxBossHp)",
+            "bossPhaseSpecialBonus(bossPhase)",
+            "son evreye geçti"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "cooperative raid boss phases scale incoming damage and announce transitions",
+        "markers": [
+          "son evreye geçti",
+          "bossPhaseSpecialBonus"
+        ]
+      },
+      "limitation": "The test checks the final raid phase announcement and phase-scaled special damage wiring. A live multiplayer raid is not verified."
+    },
+    {
+      "featureId": "RPG-307",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "katlizindan.js",
+          "markers": [
+            "const finalBoss = floor === FLOORS",
+            "getBossPhase(enemyHp, maxEnemyHp)",
+            "İblis Lordu ikinci evreye geçti"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "final dungeon boss has three phases and stronger phase-scaled special attacks",
+        "markers": [
+          "const finalBoss = floor === FLOORS",
+          "getBossPhase",
+          "İblis Lordu ikinci evreye geçti"
+        ]
+      },
+      "limitation": "The test checks that only the final floor uses the phase-aware boss path and that the second phase is announced. Full floor-by-floor Discord execution is not tested."
+    },
+    {
+      "featureId": "RPG-308",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "katlizindan.js",
+          "markers": [
+            "const finalBoss = floor === FLOORS",
+            "bossPhaseSpecialBonus(enemyPhase)",
+            "İblis Lordu son evreye geçti"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "final dungeon boss has three phases and stronger phase-scaled special attacks",
+        "markers": [
+          "bossPhaseSpecialBonus",
+          "İblis Lordu son evreye geçti"
+        ]
+      },
+      "limitation": "The test checks the final dungeon boss's last-phase announcement and phase-scaled special-attack wiring. Full party gameplay remains unverified."
+    }
+  ]
+}
