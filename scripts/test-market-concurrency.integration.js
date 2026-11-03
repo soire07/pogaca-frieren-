@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomInt, randomUUID } from 'node:crypto';
-import { ensureUser, pool, withIsolatedTestSchema } from '../database/db.js';
+import { initDatabase, ensureUser, pool, withIsolatedTestSchema } from '../database/db.js';
 import { buyMarketItem } from '../market.js';
 import { resolveTradeOffer } from '../trade-transaction.js';
 import { claimSoloBossReward, settleRaidRewards, settleDungeonRewards } from '../rpg-reward-transactions.js';
@@ -622,6 +622,62 @@ test('PostgreSQL reward ledger rejects an old solo boss battle ID after a newer 
         },
         'old battle replay must not duplicate inventory rewards'
       );
+    } finally {
+      await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    }
+  });
+});
+
+
+
+test('PostgreSQL migration backfills the latest legacy solo boss reward before allowing a replay', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = testSnowflake('95');
+    const userId = testSnowflake('96');
+    const legacyBattleId = randomUUID();
+    await ensureUser(guildId, userId);
+    try {
+      await pool.query(
+        'UPDATE users SET last_boss_battle_id=$3,last_boss_win_at=NOW() WHERE guild_id=$1 AND user_id=$2',
+        [guildId, userId, legacyBattleId]
+      );
+
+      await initDatabase();
+
+      const replay = await claimSoloBossReward(pool, {
+        guildId,
+        userId,
+        battleId: legacyBattleId,
+        hp: 100,
+        mana: 100,
+        coins: 250,
+        xp: 100,
+        bonusLoot: 'legacy-migration-bonus',
+        craftingMaterial: 'legacy-migration-material',
+        journalBossKey: null,
+        spellUsed: null
+      });
+      const player = await pool.query(
+        'SELECT coins,xp,boss_defeats FROM users WHERE guild_id=$1 AND user_id=$2',
+        [guildId, userId]
+      );
+      const ledger = await pool.query(
+        "SELECT reward_id FROM rpg_reward_claims WHERE guild_id=$1 AND user_id=$2 AND reward_type='solo_boss' AND reward_id=$3",
+        [guildId, userId, legacyBattleId]
+      );
+      const inventory = await pool.query(
+        'SELECT COUNT(*)::int AS count FROM inventory WHERE guild_id=$1 AND user_id=$2',
+        [guildId, userId]
+      );
+
+      assert.equal(replay.status, 'already_claimed');
+      assert.equal(Number(player.rows[0].coins), 0);
+      assert.equal(Number(player.rows[0].xp), 0);
+      assert.equal(Number(player.rows[0].boss_defeats), 0);
+      assert.equal(ledger.rowCount, 1, 'the legacy latest battle ID must be migrated into the reward ledger');
+      assert.equal(inventory.rows[0].count, 0, 'a migrated reward must not produce a second inventory payout');
     } finally {
       await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
     }
