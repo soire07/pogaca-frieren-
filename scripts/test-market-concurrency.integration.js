@@ -6,6 +6,7 @@ import { buyMarketItem } from '../market.js';
 import { resolveTradeOffer } from '../trade-transaction.js';
 import { claimSoloBossReward, settleRaidRewards, settleDungeonRewards } from '../rpg-reward-transactions.js';
 import achievementCommand from '../basarimlar.js';
+import craftingMissionCommand from '../zanaatgorevi.js';
 import leaderboardCommand from '../liderlik.js';
 import explorationLeaderboardCommand from '../kesifliderligi.js';
 import craftingCommand from '../zanaat.js';
@@ -2313,5 +2314,141 @@ test('treasure chest 1 percent Himmel and 3 percent Frieren rare drops use exact
     assert.equal(inventory.rowCount, 2);
     assert.equal(chest.rowCount, 0);
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+  });
+});
+
+
+test('daily crafting mission rejects early claims, grants XP and stat points at three crafts, and cannot be claimed twice', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = 'daily-craft-mission-' + randomUUID();
+    const userId = 'daily-craft-user-' + randomUUID();
+    await ensureUser(guildId, userId);
+    await pool.query(
+      'UPDATE users SET coins=0,xp=99,level=1,stat_points=0 WHERE guild_id=$1 AND user_id=$2',
+      [guildId, userId]
+    );
+    await pool.query(
+      'INSERT INTO daily_crafting_progress(guild_id,user_id,mission_date,crafted_items) VALUES($1,$2,CURRENT_DATE,2)',
+      [guildId, userId]
+    );
+    const responses = [];
+    const makeInteraction = () => ({
+      guildId,
+      user: { id: userId },
+      options: { getBoolean: () => true },
+      reply: async payload => { responses.push(payload); return payload; }
+    });
+    await craftingMissionCommand.execute(makeInteraction());
+    const beforeCompletion = await pool.query(
+      'SELECT coins,xp,level,stat_points FROM users WHERE guild_id=$1 AND user_id=$2',
+      [guildId, userId]
+    );
+    assert.deepEqual(beforeCompletion.rows[0], { coins: 0, xp: 99, level: 1, stat_points: 0 });
+    await pool.query(
+      'UPDATE daily_crafting_progress SET crafted_items=3 WHERE guild_id=$1 AND user_id=$2 AND mission_date=CURRENT_DATE',
+      [guildId, userId]
+    );
+    await craftingMissionCommand.execute(makeInteraction());
+    const afterFirstClaim = await pool.query(
+      'SELECT coins,xp,level,stat_points FROM users WHERE guild_id=$1 AND user_id=$2',
+      [guildId, userId]
+    );
+    const claimed = await pool.query(
+      'SELECT claimed_at FROM daily_crafting_progress WHERE guild_id=$1 AND user_id=$2 AND mission_date=CURRENT_DATE',
+      [guildId, userId]
+    );
+    await craftingMissionCommand.execute(makeInteraction());
+    const afterReplay = await pool.query(
+      'SELECT coins,xp,level,stat_points FROM users WHERE guild_id=$1 AND user_id=$2',
+      [guildId, userId]
+    );
+    assert.deepEqual(afterFirstClaim.rows[0], { coins: 100, xp: 149, level: 2, stat_points: 1 });
+    assert.ok(claimed.rows[0]?.claimed_at);
+    assert.deepEqual(afterReplay.rows[0], afterFirstClaim.rows[0]);
+    assert.match(String(responses[0]?.content), /3 ekipman üretmelisin/);
+    assert.match(String(responses[1]?.content), /\\+100 altın/);
+    assert.match(String(responses[2]?.content), /zaten aldın/);
+    await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+  });
+});
+
+test('adventure and crafting achievement milestones grant their exact rewards once and reject replay claims', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const scenarios = [
+      {
+        key: 'rare_explorer', reward: 600,
+        seed: async (guildId, userId) => pool.query(
+          "INSERT INTO adventure_discoveries(guild_id,user_id,discovery_key) VALUES($1,$2,'ancient-elf-sanctuary'),($1,$2,'forgotten-grimoire'),($1,$2,'dragon-nest')",
+          [guildId, userId]
+        )
+      },
+      {
+        key: 'treasure_map', reward: 300,
+        seed: async (guildId, userId) => pool.query(
+          'INSERT INTO adventure_treasure_progress(guild_id,user_id,fragments,treasures_opened) VALUES($1,$2,0,1)',
+          [guildId, userId]
+        )
+      },
+      {
+        key: 'chest_opener_10', reward: 700,
+        seed: async (guildId, userId) => pool.query(
+          "INSERT INTO treasure_openings(guild_id,user_id,loot_item,coins,xp) SELECT $1,$2,'test-chest',0,0 FROM generate_series(1,10)",
+          [guildId, userId]
+        )
+      },
+      {
+        key: 'route_master_10', reward: 350,
+        seed: async (guildId, userId) => pool.query(
+          "INSERT INTO adventure_route_mastery(guild_id,user_id,route_key,visits) VALUES($1,$2,'forest-grimoire',10)",
+          [guildId, userId]
+        )
+      },
+      ...[
+        { key: 'craft_level_5', reward: 300, level: 5, crafts: 0, salvage: 0 },
+        { key: 'craft_level_10', reward: 900, level: 10, crafts: 0, salvage: 0 },
+        { key: 'craft_10', reward: 250, level: 1, crafts: 10, salvage: 0 },
+        { key: 'craft_50', reward: 800, level: 1, crafts: 50, salvage: 0 },
+        { key: 'salvage_10', reward: 250, level: 1, crafts: 0, salvage: 10 },
+        { key: 'salvage_25', reward: 600, level: 1, crafts: 0, salvage: 25 }
+      ].map(scenario => ({
+        ...scenario,
+        seed: async (guildId, userId) => pool.query(
+          'INSERT INTO user_crafting_progress(guild_id,user_id,level,xp,successful_crafts,salvaged_items) VALUES($1,$2,$3,0,$4,$5)',
+          [guildId, userId, scenario.level, scenario.crafts, scenario.salvage]
+        )
+      }))
+    ];
+    for (const scenario of scenarios) {
+      const guildId = 'achievement-' + randomUUID();
+      const userId = 'achievement-user-' + randomUUID();
+      await ensureUser(guildId, userId);
+      await pool.query('UPDATE users SET coins=0 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+      await scenario.seed(guildId, userId);
+      const responses = [];
+      const makeInteraction = () => ({
+        guildId,
+        user: { id: userId, username: 'AchievementTest' },
+        options: { getString: () => scenario.key },
+        deferReply: async () => {},
+        editReply: async payload => { responses.push(payload); return payload; }
+      });
+      await achievementCommand.execute(makeInteraction());
+      const first = await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+      await achievementCommand.execute(makeInteraction());
+      const [afterReplay, claim] = await Promise.all([
+        pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]),
+        pool.query('SELECT achievement_key FROM achievement_claims WHERE guild_id=$1 AND user_id=$2 AND achievement_key=$3', [guildId, userId, scenario.key])
+      ]);
+      assert.equal(Number(first.rows[0]?.coins), scenario.reward, scenario.key + ' must grant its configured reward');
+      assert.equal(Number(afterReplay.rows[0]?.coins), scenario.reward, scenario.key + ' must not grant a duplicate reward');
+      assert.equal(claim.rowCount, 1, scenario.key + ' must have one persistent claim');
+      assert.match(String(responses[0]), /ödülünü aldın/);
+      assert.match(String(responses[1]), /daha önce aldın/);
+      await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    }
   });
 });
