@@ -7,6 +7,7 @@ import {
   extractUnifiedDiff,
   validatePatchPaths,
   generateRepairPatch,
+  generateRepairPatchWithRetry,
   verifyGroqConnection,
   applyRepairPatch,
   formatRepairFilesOutput,
@@ -167,6 +168,44 @@ test('repair patch generation uses the injected client and validates the returne
   assert.equal(request.messages[1].content.includes('const ready = false;'), true);
 });
 
+
+test('Groq repair retries once when a structurally valid diff fails git apply --check', async () => {
+  const requests = [];
+  let completion = 0;
+  let applyChecks = 0;
+  const client = {
+    chat: { completions: { async create(options) {
+      requests.push(options);
+      completion += 1;
+      const patch = completion === 1
+        ? validPatch.replace('@@ -1 +1 @@', '@@ -99 +99 @@')
+        : validPatch;
+      return { choices: [{ message: { content: patch }, finish_reason: 'stop' }] };
+    } } },
+  };
+  const execFile = (args) => {
+    if (args[0] === 'status' && args[1] === '--porcelain') return '';
+    if (args[0] === 'apply' && args[1] === '--check') {
+      applyChecks += 1;
+      if (applyChecks === 1) throw new Error('patch does not apply: source context mismatch');
+      return '';
+    }
+    if (args[0] === 'status') return ' M rpg-mechanics.js\\n';
+    return '';
+  };
+  const proposal = await generateRepairPatchWithRetry({
+    task: 'fix the readiness check',
+    client,
+    context: 'const ready = false;',
+    execFile,
+    maxAttempts: 2,
+  });
+  assert.deepEqual(proposal.files, ['rpg-mechanics.js']);
+  assert.equal(completion, 2);
+  assert.equal(applyChecks, 2);
+  assert.match(requests[1].messages[1].content, /Önceki diff doğrulama hatası/);
+  assert.match(requests[1].messages[1].content, /git apply --check/);
+});
 
 test('repair patch generation rejects provider-truncated output before parsing or applying it', async () => {
   let calls = 0;
