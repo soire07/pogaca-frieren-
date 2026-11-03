@@ -124,7 +124,7 @@ test('repair patch generation uses the injected client and validates the returne
   assert.equal(result.patch, validPatch + '\n');
   assert.equal(request.model, 'openai/gpt-oss-20b');
   assert.equal(request.temperature, 0.1);
-  assert.equal(request.max_completion_tokens, 4096);
+  assert.equal(request.max_completion_tokens, 8192);
   assert.equal(request.messages[1].content.includes('fix the readiness check'), true);
   assert.equal(request.messages[1].content.includes('const ready = false;'), true);
 });
