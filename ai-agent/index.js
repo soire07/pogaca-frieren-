@@ -889,8 +889,8 @@ client.on(Events.InteractionCreate, async interaction => {
       return;
     }
     guardianReviewInProgress = true;
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     try {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const review = await reviewGuardianIncident({
         groq,
         model: process.env.FRIEREN_MODEL || 'openai/gpt-oss-20b',
