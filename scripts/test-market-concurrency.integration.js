@@ -203,7 +203,7 @@ test('concurrent daily quest-chain stage claims award gold, XP and materials exa
       assert.equal(Number(player.rows[0].stat_points), 0);
       assert.equal(Number(chain.rows[0].current_step), 2, 'the chain must advance exactly one stage');
       assert.equal(Number(material.rows[0].quantity), 1, 'the stage material must be awarded once');
-      assert.equal(responses.filter(value => typeof value === 'string' && value.includes('Fırtına')).length, 1,
+      assert.equal(responses.filter(value => typeof value === 'string' && value.includes('Fırının Çağrısı')).length, 1,
         'only one concurrent request may report the stage reward');
     } finally {
       await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
