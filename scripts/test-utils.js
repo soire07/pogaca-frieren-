@@ -65,6 +65,26 @@ test('cooperative raid defines player-facing roles and a persistent cooldown', a
   assert.match(source, /c\.user\.id/);
 });
 
+test('solo boss tiers unlock only when the player meets each configured minimum level', async () => {
+  const source = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  assert.match(source, /const playerLevel = Number\(stats\.level \|\| 1\)/);
+  assert.match(source, /bossTiers\.filter\(tier => playerLevel >= tier\.minLevel\)/);
+  assert.match(source, /unlockedBossTiers\.length/);
+});
+
+test('dungeon carries player HP between floors and stops after the party is defeated', async () => {
+  const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  const hpInit = source.indexOf('const hpNow = players.map(p => p.hp)');
+  const floorLoop = source.indexOf('for (let floor = 1; floor <= FLOORS; floor++)');
+  const combatLoop = source.indexOf('while (enemyHp > 0 && hpNow.some(hp => hp > 0) && turn < 10)');
+  const hpWrite = source.indexOf('hpNow[targetIndex] = Math.max(0, hpNow[targetIndex] - incoming)');
+  const stopRun = source.indexOf('if (enemyHp > 0)', combatLoop);
+  assert.ok(hpInit >= 0 && floorLoop > hpInit && combatLoop > floorLoop, 'HP state must be initialized once before all floors');
+  assert.ok(hpWrite > combatLoop && stopRun > hpWrite, 'combat must persist damage and stop the run when enemies remain after party wipe');
+  assert.match(source, /hpNow\.some\(hp => hp > 0\)/);
+  assert.match(source, /☠️ Takım \$\{floor\}\. katta durduruldu/);
+});
+
 test('multi-floor dungeon includes traps, chests and persistent player rewards', async () => {
   const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
   const rewards = await readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
