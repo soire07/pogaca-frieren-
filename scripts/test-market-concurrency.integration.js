@@ -15,6 +15,9 @@ import adventureCommand from '../macera.js';
 import craftingCommand from '../zanaat.js';
 import profileCommand from '../profil.js';
 import leaderboardCommand from '../siralama.js';
+import npcCommand from '../npc.js';
+import characterUpgradeCommand from '../karaktergelistir.js';
+import { createSiteLinkToken, redeemSiteLinkToken, getAdventurerDashboard } from '../adventurer-platform.js';
 
 const dedicatedAuditDatabase = /^postgres(?:ql)?:\/\/postgres:postgres@localhost:5432\/frieren_audit(?:\?|$)/.test(
   process.env.DATABASE_URL || ''
@@ -958,5 +961,148 @@ test('real player profile and collection leaderboard read the selected guild mem
       'collection leaderboard must rank the member with two unique characters above the member with one');
     assert.ok(rankingEmbed?.fields?.some(field=>field.name==='Senin sıran' && field.value.startsWith('#3')),
       'caller rank must be calculated within the same guild and collection category');
+  });
+});
+
+
+test('NPC side quest rewards flow into the linked web dashboard exactly once for all three story paths', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const cases = [
+      { npc:'frieren', path:'merak', quest:'frieren_relics', coins:260, xp:100,
+        prepare:async(guildId,userId)=>pool.query(
+          "INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,'heilen'),($1,$2,'alev_kuresi')",
+          [guildId,userId]
+        ) },
+      { npc:'fern', path:'merhamet', quest:'fern_supplies', coins:220, xp:110,
+        prepare:async(guildId,userId)=>pool.query(
+          'UPDATE users SET items_used_count=3 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
+        ) },
+      { npc:'stark', path:'cesaret', quest:'stark_demon_hunt', coins:280, xp:120,
+        prepare:async(guildId,userId)=>pool.query(
+          'UPDATE users SET boss_defeats=2 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
+        ) }
+    ];
+
+    for (const entry of cases) {
+      const guildId=testSnowflake('91'), userId=testSnowflake('90');
+      await ensureUser(guildId,userId);
+      await pool.query(
+        'UPDATE users SET coins=10,xp=80,level=1 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
+      );
+      await pool.query(
+        'INSERT INTO story_progress(guild_id,user_id,current_chapter,choices) VALUES($1,$2,1,$3::jsonb)',
+        [guildId,userId,JSON.stringify([entry.path])]
+      );
+      const invoke=async (npc,action)=>{
+        const replies=[];
+        await npcCommand.execute({
+          guildId,user:{id:userId,username:'QuestDashboardIntegration'},
+          options:{getString:key=>key==='karakter'?npc:action},
+          deferReply:async()=>{},
+          editReply:async payload=>{replies.push(payload);return payload;}
+        });
+        return replies;
+      };
+
+      const wrongNpc=entry.npc==='frieren'?'fern':'frieren';
+      const blockedPath=await invoke(wrongNpc,'teslim');
+      assert.ok(String(blockedPath[0]||'').includes('Senin seçtiğin'));
+      let player=await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+      assert.deepEqual(player.rows[0],{coins:10,xp:80,level:1},'wrong story path cannot grant another NPC reward');
+
+      const notReady=await invoke(entry.npc,'teslim');
+      assert.ok(String(notReady[0]||'').includes('henüz tamamlanmadı'));
+      player=await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+      assert.deepEqual(player.rows[0],{coins:10,xp:80,level:1},'incomplete quest cannot grant coins or XP');
+
+      await invoke(entry.npc,'gorev');
+      await entry.prepare(guildId,userId);
+      const completed=await invoke(entry.npc,'teslim');
+      assert.ok(String(completed[0]||'').includes(entry.coins+' altın'));
+      player=await pool.query(
+        'SELECT coins,xp,level,stat_points FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
+      );
+      assert.deepEqual(player.rows[0],{
+        coins:10+entry.coins,xp:80+entry.xp,level:2,stat_points:1
+      },'quest reward, level-up and development point must be persisted together');
+
+      const accountId='site_'+randomUUID();
+      const {token}=await createSiteLinkToken(pool,{guildId,userId});
+      assert.equal((await redeemSiteLinkToken(pool,accountId,token)).status,'linked');
+      let dashboard=await getAdventurerDashboard(pool,accountId);
+      assert.equal(dashboard.profiles.length,1);
+      assert.equal(Number(dashboard.profiles[0].coins),10+entry.coins);
+      assert.equal(Number(dashboard.profiles[0].xp),80+entry.xp);
+      assert.equal(Number(dashboard.profiles[0].level),2);
+
+      const duplicate=await invoke(entry.npc,'teslim');
+      assert.ok(String(duplicate[0]||'').includes('zaten tamamladın'));
+      player=await pool.query('SELECT coins,xp,level,stat_points FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+      assert.deepEqual(player.rows[0],{
+        coins:10+entry.coins,xp:80+entry.xp,level:2,stat_points:1
+      },'duplicate claim must not change any reward field');
+      dashboard=await getAdventurerDashboard(pool,accountId);
+      assert.equal(Number(dashboard.profiles[0].coins),10+entry.coins);
+      assert.equal(Number(dashboard.profiles[0].xp),80+entry.xp);
+    }
+  });
+});
+
+test('character collection upgrades serialize gold spending, enforce +10 cap and expose combat bonus level', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId=testSnowflake('91'), userId=testSnowflake('90');
+    await ensureUser(guildId,userId);
+    await pool.query('UPDATE users SET coins=1000 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+    await pool.query(
+      `INSERT INTO anime_character_collection
+       (guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,quantity)
+       VALUES($1,$2,'Frieren','Frieren','Efsanevi','🧝',10194172,'fixture','fixture',2)`,
+      [guildId,userId]
+    );
+    const upgrade=async(doUpgrade=true)=>{
+      const replies=[];
+      await characterUpgradeCommand.execute({
+        guildId,user:{id:userId},
+        options:{getString:()=> 'Frieren',getBoolean:()=>doUpgrade},
+        deferReply:async()=>{},
+        editReply:async payload=>{replies.push(payload);return payload;}
+      });
+      return replies;
+    };
+
+    await Promise.all([upgrade(),upgrade()]);
+    let saved=await pool.query(
+      'SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
+    );
+    let level=await pool.query(
+      'SELECT upgrade_level FROM character_upgrades WHERE guild_id=$1 AND user_id=$2 AND character_name=$3',
+      [guildId,userId,'Frieren']
+    );
+    assert.equal(Number(saved.rows[0].coins),250,'+1 and +2 upgrades must charge 250 and 500 exactly once each');
+    assert.equal(Number(level.rows[0].upgrade_level),2);
+    const combatLevel=await pool.query(
+      'SELECT COALESCE(MAX(upgrade_level),0)::int AS level FROM character_upgrades WHERE guild_id=$1 AND user_id=$2',
+      [guildId,userId]
+    );
+    assert.equal(Number(combatLevel.rows[0].level)*2,4,'persisted character upgrade level must yield the documented combat damage bonus');
+
+    await pool.query(
+      'UPDATE character_upgrades SET upgrade_level=10 WHERE guild_id=$1 AND user_id=$2 AND character_name=$3',
+      [guildId,userId,'Frieren']
+    );
+    await pool.query('UPDATE users SET coins=10000 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+    const capped=await upgrade();
+    assert.ok(String(capped[0]||'').includes('en yüksek +10'));
+    saved=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+    level=await pool.query(
+      'SELECT upgrade_level FROM character_upgrades WHERE guild_id=$1 AND user_id=$2 AND character_name=$3',
+      [guildId,userId,'Frieren']
+    );
+    assert.equal(Number(saved.rows[0].coins),10000,'capped upgrade must not charge gold');
+    assert.equal(Number(level.rows[0].upgrade_level),10);
   });
 });
