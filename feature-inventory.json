@@ -1909,7 +1909,55 @@
       "name": "Dungeon progress grants crafting materials and full clear grants a signature relic",
       "category": "Equipment",
       "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "ARENA-001",
+      "name": "90-day seasonal arena lifecycle",
+      "category": "Arena",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "ARENA-002",
+      "name": "Season-scoped Elo matchmaking rating",
+      "category": "Arena",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "ARENA-003",
+      "name": "Six-tier seasonal arena ranks",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "ARENA-004",
+      "name": "Idempotent arena victory and participation rewards",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "EVENT-001",
+      "name": "Guild event calendar with scheduled start and end times",
+      "category": "Community",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "EVENT-002",
+      "name": "Capacity-limited event registration with concurrency protection",
+      "category": "Community",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SITE-001",
+      "name": "One-time secure Discord-to-web character account linking",
+      "category": "Web",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SITE-002",
+      "name": "Authenticated adventurer dashboard for RPG stats, rank and events",
+      "category": "Web",
+      "status": "implemented_needs_runtime_test"
     }
   ],
-  "count": 317
+  "count": 325
 }
