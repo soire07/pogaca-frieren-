@@ -142,7 +142,6 @@ test('raid catalog includes three bosses, action weaknesses and distinct loot id
   assert.ok(mechanics.includes('Ejderha Camı'));
   assert.ok(mechanics.includes('Auranın Mühürlü Asa Parçası'));
   const raid = await read('ortakboss.js');
-  const mechanics = await read('rpg-mechanics.js');
   assert.ok(raid.includes('getRaidBossSpecialAttack(BOSS.special, rounds)'));
   assert.ok(raid.includes('resolveRaidAreaAttack('));
   assert.match(mechanics, /special === 'mana-star'.*turn % 3/);
