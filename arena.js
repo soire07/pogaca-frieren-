@@ -145,11 +145,11 @@ export async function handleArenaInteraction(interaction, db = pool) {
     });
     return true;
   } catch (error) {
-    if (error.code === 'ARENA_NOT_YOUR_TURN') {
+    if (error.code === 'ARENA_NOT_YOUR_TURN' || error.message === 'ARENA_NOT_YOUR_TURN') {
       await interaction.reply({ content: 'Henüz senin sıran değil. Sıra göstergesini takip et.', flags: MessageFlags.Ephemeral });
       return true;
     }
-    if (error.code === 'ARENA_MATCH_NOT_FOUND_OR_PLAYER_NOT_ACTIVE') {
+    if (error.code === 'ARENA_MATCH_NOT_FOUND_OR_PLAYER_NOT_ACTIVE' || error.message === 'ARENA_MATCH_NOT_FOUND_OR_PLAYER_NOT_ACTIVE') {
       await interaction.reply({ content: 'Bu maç artık aktif değil veya oyuncu kaydın bulunamadı.', flags: MessageFlags.Ephemeral });
       return true;
     }
