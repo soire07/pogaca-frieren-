@@ -4,7 +4,7 @@
   "entries": [
     {
       "featureId": "RPG-022",
-      "evidenceLevel": "automated_static_assertion",
+      "evidenceLevel": "isolated_postgresql_integration",
       "sources": [
         {
           "path": "market.js",
@@ -23,11 +23,32 @@
           "coins >= "
         ]
       },
-      "limitation": "The test inspects transaction ordering and SQL guards; it does not execute a Discord market purchase."
+      "limitation": "Isolated PostgreSQL tests execute real concurrent purchase and forced rollback transactions. They do not invoke Discord's live interaction API or production data.",
+      "integrationTests": [
+        {
+          "path": "scripts/test-market-concurrency.integration.js",
+          "name": "concurrent market purchases cannot overspend and inventory matches successful debits",
+          "markers": [
+            "assert.equal(successful.length, 2",
+            "assert.equal(Number(player.rows[0]?.coins), 0",
+            "assert.equal(Number(inventory.rows[0]?.quantity), 2"
+          ]
+        },
+        {
+          "path": "scripts/test-market-concurrency.integration.js",
+          "name": "market inventory failure rolls back the already attempted coin debit",
+          "markers": [
+            "assert.rejects(",
+            "forced market integration rollback",
+            "assert.equal(Number(player.rows[0]?.coins), 120",
+            "assert.equal(inventory.rowCount, 0"
+          ]
+        }
+      ]
     },
     {
       "featureId": "RPG-040",
-      "evidenceLevel": "automated_static_assertion",
+      "evidenceLevel": "isolated_postgresql_integration",
       "sources": [
         {
           "path": "takasteklif.js",
@@ -53,11 +74,33 @@
           "status='accepted'"
         ]
       },
-      "limitation": "Static source assertions cover reservation and acceptance invariants; no live player-to-player Discord trade is performed."
+      "limitation": "Source assertions plus isolated PostgreSQL tests cover concurrent offer acceptance and rollback of both collections and offer status. Live Discord button delivery is not tested.",
+      "integrationTests": [
+        {
+          "path": "scripts/test-market-concurrency.integration.js",
+          "name": "the same trade offer can be accepted concurrently only once",
+          "markers": [
+            "await Promise.all([",
+            "assert.equal(outcomes.filter(Boolean).length,1",
+            "assert.equal(Number(source.rows[0].quantity),1)",
+            "assert.equal(Number(target.rows[0].quantity),1)"
+          ]
+        },
+        {
+          "path": "scripts/test-market-concurrency.integration.js",
+          "name": "trade transfer failure rolls back both collection sides and offer status",
+          "markers": [
+            "forced trade recipient failure",
+            "assert.equal(Number(source.rows[0].quantity),2)",
+            "assert.equal(target.rowCount,0)",
+            "assert.equal(offer.rows[0].status,'pending')"
+          ]
+        }
+      ]
     },
     {
       "featureId": "RPG-015",
-      "evidenceLevel": "automated_static_assertion",
+      "evidenceLevel": "isolated_postgresql_integration",
       "sources": [
         {
           "path": "iblisavasi.js",
@@ -83,7 +126,27 @@
           "randomUUID"
         ]
       },
-      "limitation": "The test checks the production transaction contract and duplicate-claim guard; it is not a live Discord boss victory."
+      "limitation": "Isolated PostgreSQL tests execute the production reward transaction under duplicate concurrency and forced inventory failure. Live Discord battle presentation remains unverified.",
+      "integrationTests": [
+        {
+          "path": "scripts/test-market-concurrency.integration.js",
+          "name": "production solo boss reward transaction grants a battle only once under concurrency",
+          "markers": [
+            "await Promise.all([reward(),reward()])",
+            "assert.equal(outcomes.filter(x=>x.status==='claimed').length,1)",
+            "assert.equal(Number(player.rows[0].boss_defeats),1)"
+          ]
+        },
+        {
+          "path": "scripts/test-market-concurrency.integration.js",
+          "name": "production solo boss reward transaction rolls back player progression and all loot on inventory failure",
+          "markers": [
+            "forced solo boss reward failure",
+            "assert.equal(Number(player.rows[0].coins),0)",
+            "assert.equal(Number(player.rows[0].boss_defeats),0)"
+          ]
+        }
+      ]
     },
     {
       "featureId": "RPG-113",
@@ -766,6 +829,187 @@
         ]
       },
       "limitation": "Player-first row locking, user scoping, transactional equip/unequip and base-stat protection are statically asserted; no live Discord equip action is run."
+    },
+    {
+      "featureId": "RPG-030",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "gunlukgorev.js",
+          "markers": [
+            "await db.query('BEGIN')",
+            "INSERT INTO daily_mission_claims",
+            "ON CONFLICT DO NOTHING RETURNING mission_key",
+            "await db.query('COMMIT')"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-market-concurrency.integration.js",
+        "name": "two concurrent daily mission claims grant the reward only once",
+        "markers": [
+          "await Promise.all([",
+          "assert.equal(Number(player.rows[0]?.coins), 75",
+          "assert.equal(claims.rowCount, 1"
+        ]
+      },
+      "limitation": "The isolated PostgreSQL test runs two real command handlers concurrently and checks the reward is credited once. It does not call Discord's live API."
+    },
+    {
+      "featureId": "RPG-052",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "takasteklif.js",
+          "markers": [
+            "reservedAmount",
+            "status='pending'",
+            "NOW()+INTERVAL '5 minutes'"
+          ]
+        },
+        {
+          "path": "trade-transaction.js",
+          "markers": [
+            "reservedForOthers",
+            "status='accepted'"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-market-concurrency.integration.js",
+        "name": "concurrent trade offers cannot reserve the sender last character copy twice",
+        "markers": [
+          "await Promise.all([",
+          "assert.equal(offers.rowCount, 1",
+          "assert.equal(Number(collection.rows[0]?.quantity), 2"
+        ]
+      },
+      "limitation": "The isolated PostgreSQL test verifies concurrent offers cannot reserve the final copy twice. Player-visible Discord interaction delivery remains unverified."
+    },
+    {
+      "featureId": "RPG-073",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "rpg-reward-transactions.js",
+          "markers": [
+            "export async function settleDungeonRewards",
+            "INSERT INTO inventory",
+            "DELETE FROM active_rpg_encounters"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-market-concurrency.integration.js",
+        "name": "production layered dungeon settlement is single-use for the whole party under concurrent completion",
+        "markers": [
+          "settleDungeonRewards(pool",
+          "assert.equal(outcomes.filter(x=>x.status==='settled').length,1)",
+          "dungeon-fixture-rare",
+          "dungeon-fixture-craft",
+          "dungeon-fixture-%"
+        ]
+      },
+      "limitation": "The isolated PostgreSQL test verifies a full dungeon reward settlement writes party loot once and clears the encounter reservation. The complete Discord floor-by-floor battle is not run."
+    },
+    {
+      "featureId": "RPG-082",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "rpg-reward-transactions.js",
+          "markers": [
+            "export async function settleRaidRewards",
+            "INSERT INTO inventory",
+            "DELETE FROM active_rpg_encounters"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-market-concurrency.integration.js",
+        "name": "production co-op boss settlement is single-use for the whole party under concurrent completion",
+        "markers": [
+          "settleRaidRewards(pool",
+          "assert.equal(outcomes.filter(x=>x.status==='settled').length,1)",
+          "raid-fixture-loot",
+          "assert.equal(Number(p.boss_defeats),1)"
+        ]
+      },
+      "limitation": "The isolated PostgreSQL test verifies raid reward settlement is single-use and persists each participant's rewards atomically. Live Discord raid turns are not tested."
+    },
+    {
+      "featureId": "ARENA-004",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "adventurer-platform.js",
+          "markers": [
+            "INSERT INTO arena_match_results",
+            "ON CONFLICT(match_id) DO NOTHING RETURNING match_id",
+            "UPDATE arena_ratings SET rating=$4"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-adventurer-platform.integration.js",
+        "name": "arena season MMR and rewards settle atomically and only once",
+        "markers": [
+          "assert.equal(first.settled,true)",
+          "assert.equal(second.settled,false)",
+          "assert.equal(resultCount.rows[0].count,1)"
+        ]
+      },
+      "limitation": "The isolated PostgreSQL test executes arena season settlement twice and confirms a single result/reward write. Discord match UI and live matchmaking are separately unverified."
+    },
+    {
+      "featureId": "EVENT-002",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "adventurer-platform.js",
+          "markers": [
+            "export async function joinGuildEvent",
+            "FOR UPDATE",
+            "ON CONFLICT DO NOTHING RETURNING user_id"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-adventurer-platform.integration.js",
+        "name": "event calendar enforces idempotent registration, capacity and concurrent seat claims",
+        "markers": [
+          "assert.equal((await joinGuildEvent(pool,{guildId,eventId,userId:users[0]})).status,'already_joined')",
+          "assert.equal(concurrent.filter(item=>item.status==='joined').length,1)",
+          "assert.equal(concurrent.filter(item=>item.status==='full').length,1)"
+        ]
+      },
+      "limitation": "The isolated PostgreSQL test verifies duplicate registration, capacity enforcement, leave/rejoin and concurrent seat claims. Automatic reminders and Discord UI delivery are not tested."
+    },
+    {
+      "featureId": "SITE-001",
+      "evidenceLevel": "isolated_postgresql_integration",
+      "sources": [
+        {
+          "path": "adventurer-platform.js",
+          "markers": [
+            "export async function redeemSiteLinkToken",
+            "expires_at>NOW() FOR UPDATE",
+            "DELETE FROM site_link_tokens",
+            "await client.query('COMMIT')"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-adventurer-platform.integration.js",
+        "name": "single-use Discord link codes connect only the intended profile to a web account",
+        "markers": [
+          "const {token}=await createSiteLinkToken(pool,{guildId,userId})",
+          "assert.equal(linked.status,'linked')",
+          "assert.equal((await redeemSiteLinkToken(pool,accountId,token)).status,'invalid_or_expired')",
+          "assert.equal(dashboard.profiles.length,1)"
+        ]
+      },
+      "limitation": "The isolated PostgreSQL test verifies one-time token redemption and the linked dashboard data. The browser login/session journey and production account are not exercised."
     }
   ]
 }
