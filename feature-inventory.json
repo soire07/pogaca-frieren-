@@ -2198,11 +2198,11 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify persistent discovery writes and first-find reward flow."
+        "scope": "Real PostgreSQL integration executes the production /macera command and verifies a route discovery is persisted once even when the same route is revisited three times."
       }
     },
     {
@@ -2211,11 +2211,11 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify first-discovery gold and XP reward handling."
+        "scope": "Real PostgreSQL integration verifies the first-discovery gold/XP bonus and class bonus are awarded on the first route visit only; repeat visits retain base rewards without duplicating discovery bonuses."
       }
     },
     {
@@ -2263,11 +2263,11 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify targeted route selection while retaining random exploration."
+        "scope": "Production /macera command integration explicitly selects two different routes through synthetic Discord interactions and verifies the selected route keys are persisted."
       }
     },
     {
@@ -2276,11 +2276,11 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify per-route visit counts and mastery persistence."
+        "scope": "PostgreSQL integration verifies route visit counts persist across three repeated visits and five map-fragment visits; the command response is exercised through the production interaction handler."
       }
     },
     {
@@ -2289,11 +2289,11 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify a route mastery reward is granted every third visit."
+        "scope": "PostgreSQL integration performs three visits to one route and verifies the third-visit mastery reward is included exactly once in player gold/XP."
       }
     },
     {
@@ -2328,11 +2328,11 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify per-player, per-guild adventure streak persistence."
+        "scope": "PostgreSQL integration verifies the adventure streak row is persisted and current/best streak remain one after multiple same-day visits."
       }
     },
     {
@@ -2445,11 +2445,11 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify ancient elf sanctuary rare encounter and exclusive reward wiring."
+        "scope": "PostgreSQL integration seeds the 20-adventure pity boundary and verifies the production adventure command grants the undiscovered ancient elf sanctuary and its exclusive item."
       }
     },
     {
@@ -2484,11 +2484,11 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify persistent map fragment drops from adventure encounters."
+        "scope": "PostgreSQL integration forces fragment drops through the production adventure command and verifies five persistent map-fragment inventory items."
       }
     },
     {
@@ -2497,11 +2497,11 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify treasure fragment progress and opened chest tracking."
+        "scope": "PostgreSQL integration verifies fragment progress reaches five, treasure count increments, and fragment-progress state resets to zero after map completion."
       }
     },
     {
@@ -2510,11 +2510,11 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify five map fragments convert into a persistent chest."
+        "scope": "PostgreSQL integration verifies exactly five collected fragments create one persistent ancient treasure chest and increment opened-map count once."
       }
     },
     {
@@ -2523,11 +2523,11 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify five-fragment map completion reward wiring."
+        "scope": "PostgreSQL integration verifies the fifth-fragment completion bonus is included in the player's exact gold and XP totals."
       }
     },
     {
@@ -2536,11 +2536,11 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify one/multiple chest opening and inventory consumption flow."
+        "scope": "Production /hazineac command integration opens two chests in one request, consumes the requested quantity, persists both loot outcomes and grants the summed gold/XP."
       }
     },
     {
@@ -2549,11 +2549,11 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify chest ownership and positive-quantity validation before consumption."
+        "scope": "Production /hazineac command integration rejects an attempt to open three chests when only two are owned and verifies the chest balance and player rewards remain unchanged."
       }
     },
     {
@@ -2562,11 +2562,11 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify curated randomized treasure reward pool."
+        "scope": "PostgreSQL integration controls the random roll to exercise the rare treasure reward branch and verifies the selected reward is persisted to inventory and opening history."
       }
     },
     {
@@ -2575,11 +2575,11 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify chest loot, gold, XP and stat progression are persisted transactionally."
+        "scope": "PostgreSQL integration verifies chest consumption, loot inventory, per-opening history and gold/XP commit together; a forced inventory insert failure rolls the entire transaction back. Stat-point deltas are not separately asserted."
       }
     },
     {
@@ -2640,11 +2640,11 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify each chest opening records its reward result."
+        "scope": "PostgreSQL integration opens two chests and verifies two distinct treasure_openings records preserve each opening's loot item, gold and XP values."
       }
     },
     {
@@ -2679,11 +2679,11 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify treasure history and reward writes share one transaction."
+        "scope": "A PostgreSQL rollback test forces treasure inventory persistence to fail and verifies chest quantity, treasure history and player rewards all remain unchanged."
       }
     },
     {
@@ -2744,11 +2744,11 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify daily first-adventure gold bonus is one-time."
+        "scope": "Production adventure command integration verifies the first adventure of the day includes the daily gold bonus and repeat same-day visits do not grant it again."
       }
     },
     {
@@ -2757,11 +2757,11 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify daily first-adventure XP bonus cannot be farmed by repeat visits."
+        "scope": "Production adventure command integration verifies the first adventure of the day includes the daily XP bonus and repeat same-day visits do not grant it again."
       }
     },
     {
@@ -2783,11 +2783,11 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify Wanderer class discovery bonuses."
+        "scope": "PostgreSQL integration executes the production adventure command as Gezgin and verifies the first-discovery class gold/XP bonus is included exactly once."
       }
     },
     {
@@ -2796,11 +2796,11 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify Mage magical-location discovery XP bonus."
+        "scope": "PostgreSQL integration executes the production adventure command as Büyücü at the rare-discovery pity boundary and verifies the magical-location class XP bonus."
       }
     },
     {
@@ -2835,11 +2835,11 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify rare staff chest-drop probability wiring; exact distribution is not statistically validated."
+        "scope": "PostgreSQL integration controls the treasure roll to 0.02, exercises the rare ancient-staff reward band and verifies the item plus exact gold/XP are persisted."
       }
     },
     {
@@ -17695,7 +17695,7 @@
     }
   ],
   "count": 2000,
-  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification. Roadmap expansion (2026-11-03): added 1,675 distinct player-facing feature candidates across 25 Frieren RPG domains. All added entries are explicitly status=planned and are not implemented/test evidence. Roadmap count is a planning target, not a completion claim. All 325 original feature rows now have a linked test/source evidence record (2026-11-03); scope limitations are stated per row. The 1,675 new roadmap rows remain planned and intentionally have no test evidence. RPG-002 profile evidence was upgraded to a dedicated PostgreSQL integration test because the command is internal-only and is not part of the 67-command public audit. Crafting/salvage evidence upgrade (2026-11-03): added disposable frieren_audit PostgreSQL command integrations for all ten recipe ingredient/output mappings, multi-quantity scaling, persisted rarity-weighted XP/profession/daily progress, advanced recipe level gates, deterministic level-4/5/10 refund boundaries, all ten salvage mappings, multi-copy proportional returns, equipped-item protection, and player-visible lifetime salvage totals. These use synthetic Discord interactions and are not live Discord E2E. Salvage catalog completeness fix (2026-11-03): /ekipmanparcala exposed all equipment catalog entries but lacked yields for the purchasable demon_armor and copper_ring items. Added partial recovery mappings and expanded the real PostgreSQL salvage matrix to exercise all twelve equipment types and multiple copies. Evidence classification refinement (2026-11-03): upgraded only rows with directly relevant existing unit, isolated-command behavioral, or real PostgreSQL assertions. Composite levels preserve source-contract limitations; synthetic Discord command audits are never labeled live Discord E2E.",
+  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification. Roadmap expansion (2026-11-03): added 1,675 distinct player-facing feature candidates across 25 Frieren RPG domains. All added entries are explicitly status=planned and are not implemented/test evidence. Roadmap count is a planning target, not a completion claim. All 325 original feature rows now have a linked test/source evidence record (2026-11-03); scope limitations are stated per row. The 1,675 new roadmap rows remain planned and intentionally have no test evidence. RPG-002 profile evidence was upgraded to a dedicated PostgreSQL integration test because the command is internal-only and is not part of the 67-command public audit. Crafting/salvage evidence upgrade (2026-11-03): added disposable frieren_audit PostgreSQL command integrations for all ten recipe ingredient/output mappings, multi-quantity scaling, persisted rarity-weighted XP/profession/daily progress, advanced recipe level gates, deterministic level-4/5/10 refund boundaries, all ten salvage mappings, multi-copy proportional returns, equipped-item protection, and player-visible lifetime salvage totals. These use synthetic Discord interactions and are not live Discord E2E. Salvage catalog completeness fix (2026-11-03): /ekipmanparcala exposed all equipment catalog entries but lacked yields for the purchasable demon_armor and copper_ring items. Added partial recovery mappings and expanded the real PostgreSQL salvage matrix to exercise all twelve equipment types and multiple copies. Evidence classification refinement (2026-11-03): upgraded only rows with directly relevant existing unit, isolated-command behavioral, or real PostgreSQL assertions. Composite levels preserve source-contract limitations; synthetic Discord command audits are never labeled live Discord E2E. Adventure/treasure evidence upgrade (2026-11-03): added disposable PostgreSQL integration for production /macera and /hazineac commands, covering route selection/repeat rewards, first-discovery and class bonuses, route mastery, daily streak persistence, rare-discovery pity, five-fragment map completion, multi-chest opening, ownership checks, rare loot persistence, per-opening history and transaction rollback. The test uses synthetic Discord interactions and is not live Discord E2E.",
   "plannedFeatureCount": 1675,
   "originalFeatureEvidenceLinkedCount": 325
 }
