@@ -169,10 +169,15 @@
           "type": "unit_test",
           "file": "scripts/check-gameplay-integrity.js",
           "test": "player profile displays selected combat build and build-adjusted stats"
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "real player profile and collection leaderboard read the selected guild member without leaking caller state"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177786
+      "verifiedAtCommit": "f650bbd1d4afee0c12fc2215fca9cc51690b1934",
+      "verificationRunId": 41680421544
     },
     {
       "id": "RPG-002",
@@ -188,10 +193,15 @@
             "Başka oyuncunun gerçek profilini görüntüleme",
             "Profil görüntüleme oyuncu izolasyonu"
           ]
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "real player profile and collection leaderboard read the selected guild member without leaking caller state"
         }
       ],
-      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
-      "verificationRunId": 41676999559
+      "verifiedAtCommit": "f650bbd1d4afee0c12fc2215fca9cc51690b1934",
+      "verificationRunId": 41680421544
     },
     {
       "id": "RPG-003",
@@ -797,10 +807,15 @@
           "checks": [
             "Hikâye yolu seçimi ve gereksinim kilidi"
           ]
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "story choices persist all three path requirements, chapter rewards and unique endings exactly once"
         }
       ],
-      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
-      "verificationRunId": 41676999559
+      "verifiedAtCommit": "f650bbd1d4afee0c12fc2215fca9cc51690b1934",
+      "verificationRunId": 41680421544
     },
     {
       "id": "RPG-033",
@@ -815,10 +830,15 @@
           "checks": [
             "Hikâye yolu seçimi ve gereksinim kilidi"
           ]
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "story choices persist all three path requirements, chapter rewards and unique endings exactly once"
         }
       ],
-      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
-      "verificationRunId": 41676999559
+      "verifiedAtCommit": "f650bbd1d4afee0c12fc2215fca9cc51690b1934",
+      "verificationRunId": 41680421544
     },
     {
       "id": "RPG-034",
@@ -941,10 +961,15 @@
             "Karakter koleksiyonu sıralaması",
             "İblis zaferi sıralaması"
           ]
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "real player profile and collection leaderboard read the selected guild member without leaking caller state"
         }
       ],
-      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
-      "verificationRunId": 41676999559
+      "verifiedAtCommit": "f650bbd1d4afee0c12fc2215fca9cc51690b1934",
+      "verificationRunId": 41680421544
     },
     {
       "id": "RPG-040",
@@ -3185,10 +3210,15 @@
           "type": "unit_test",
           "file": "scripts/test-discord-scenarios.js",
           "test": "adventure map fragments persist and complete a five-piece treasure reward"
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "five real adventure map fragments atomically create one treasure chest and persist rewards"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177786
+      "verifiedAtCommit": "f650bbd1d4afee0c12fc2215fca9cc51690b1934",
+      "verificationRunId": 41680421544
     },
     {
       "id": "RPG-175",
@@ -3204,10 +3234,15 @@
             "Beş harita parçası kalıcı ilerleme ve sandık açma",
             "Harita ilerlemesi oyuncu bazında izole"
           ]
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "five real adventure map fragments atomically create one treasure chest and persist rewards"
         }
       ],
-      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
-      "verificationRunId": 41676999559
+      "verifiedAtCommit": "f650bbd1d4afee0c12fc2215fca9cc51690b1934",
+      "verificationRunId": 41680421544
     },
     {
       "id": "RPG-176",
@@ -3219,10 +3254,15 @@
           "type": "unit_test",
           "file": "scripts/test-discord-scenarios.js",
           "test": "adventure map fragments persist and complete a five-piece treasure reward"
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "five real adventure map fragments atomically create one treasure chest and persist rewards"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177786
+      "verifiedAtCommit": "f650bbd1d4afee0c12fc2215fca9cc51690b1934",
+      "verificationRunId": 41680421544
     },
     {
       "id": "RPG-177",
@@ -3754,10 +3794,15 @@
           "type": "unit_test",
           "file": "scripts/test-discord-scenarios.js",
           "test": "crafting consumes required materials safely and produces equipment supported by the equipment system"
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "real crafting output can be equipped and an insufficient-material retry leaves all progress unchanged"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177786
+      "verifiedAtCommit": "f650bbd1d4afee0c12fc2215fca9cc51690b1934",
+      "verificationRunId": 41680421544
     },
     {
       "id": "RPG-209",
@@ -3844,10 +3889,15 @@
           "type": "unit_test",
           "file": "scripts/test-discord-scenarios.js",
           "test": "crafting consumes required materials safely and produces equipment supported by the equipment system"
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "real crafting output can be equipped and an insufficient-material retry leaves all progress unchanged"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177786
+      "verifiedAtCommit": "f650bbd1d4afee0c12fc2215fca9cc51690b1934",
+      "verificationRunId": 41680421544
     },
     {
       "id": "RPG-215",
@@ -3967,10 +4017,15 @@
           "type": "unit_test",
           "file": "scripts/test-discord-scenarios.js",
           "test": "crafting profession progress persists XP, level and successful craft totals"
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "real crafting output can be equipped and an insufficient-material retry leaves all progress unchanged"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177786
+      "verifiedAtCommit": "f650bbd1d4afee0c12fc2215fca9cc51690b1934",
+      "verificationRunId": 41680421544
     },
     {
       "id": "RPG-223",
@@ -3997,10 +4052,15 @@
           "type": "unit_test",
           "file": "scripts/test-discord-scenarios.js",
           "test": "crafting profession progress persists XP, level and successful craft totals"
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "real crafting output can be equipped and an insufficient-material retry leaves all progress unchanged"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177786
+      "verifiedAtCommit": "f650bbd1d4afee0c12fc2215fca9cc51690b1934",
+      "verificationRunId": 41680421544
     },
     {
       "id": "RPG-225",
@@ -4392,10 +4452,15 @@
           "checks": [
             "Günlük zanaat görevi durumu"
           ]
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "real crafting output can be equipped and an insufficient-material retry leaves all progress unchanged"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177615
+      "verifiedAtCommit": "f650bbd1d4afee0c12fc2215fca9cc51690b1934",
+      "verificationRunId": 41680421544
     },
     {
       "id": "RPG-249",
