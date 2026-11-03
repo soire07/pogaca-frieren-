@@ -4397,11 +4397,12 @@
       "category": "Equipment",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "unit_and_source_contract",
+        "level": "postgresql_integration_and_unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-discord-scenarios.js",
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Dungeon floor, route, encounter and reward behavior tests cover dungeon progression and reward settlement; signature relic guarantee is not separately asserted."
+        "scope": "The production dungeon command selects Himmel’s Efsanevi Yadigârı as craftingLoot only after all five floors are cleared. A dedicated disposable-PostgreSQL integration test now invokes the real settlement transaction and verifies the exact relic is persisted once for every party member, alongside the dungeon-win progression update. The synthetic command flow and isolated frieren_audit database are not live Discord E2E or production data."
       }
     },
     {
