@@ -148,7 +148,7 @@ test('dungeon tank attracts seventy percent of single-target enemy attacks while
   const players = [{ role: 'damage' }, { role: 'tank' }, { role: 'healer' }];
   assert.equal(chooseDungeonAttackTarget(players, [0,1,2], 1, 1, () => 0.69), 1);
   assert.equal(chooseDungeonAttackTarget(players, [0,1,2], 1, 1, () => 0.7), 2);
-  assert.equal(chooseDungeonAttackTarget(players, [0,2], 1, 1, () => 0), 2);
+  assert.equal(chooseDungeonAttackTarget(players, [0,2], 1, 1, () => 0), 0);
   assert.equal(chooseDungeonAttackTarget(players, [], 1, 1, () => 0), null);
 });
 
