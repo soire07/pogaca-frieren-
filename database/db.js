@@ -164,6 +164,16 @@ export async function initDatabase() {
       PRIMARY KEY (guild_id, user_id, item_key),
       FOREIGN KEY (guild_id, user_id) REFERENCES users(guild_id, user_id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS solo_boss_reward_claims (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      battle_id TEXT NOT NULL,
+      claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id,user_id,battle_id),
+      FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_solo_boss_reward_claims_user_recent
+      ON solo_boss_reward_claims(guild_id,user_id,claimed_at DESC);
     CREATE TABLE IF NOT EXISTS active_rpg_encounters (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
