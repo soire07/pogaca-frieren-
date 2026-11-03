@@ -1165,7 +1165,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             blocked.member = makeMember(pathUserId);
             await command.execute(blocked);
             const blockedProgress = await pool.query('SELECT current_chapter,choices FROM story_progress WHERE guild_id=$1 AND user_id=$2', [guildId, pathUserId]);
-            const blockedPlayer = await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, pathUserId]);
+            const blockedPlayer = await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, pathUserId]);
             if (scenario.path === 'merak') {
               await pool.query("INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,'alev_kuresi')", [guildId, pathUserId]);
             } else {
@@ -1178,7 +1178,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             await command.execute(continueInteraction);
             const finalProgress = await pool.query('SELECT current_chapter,choices FROM story_progress WHERE guild_id=$1 AND user_id=$2', [guildId, pathUserId]);
             behavioralChecks.push(
-              { name: 'Hikâye yoluna özgü gereksinim · ' + scenario.path, expected: 'başka yolun ilerlemesi engellenmeli, doğru koşul tamamlanınca bölüm açılmalı', actual: 'bloklu bölüm ' + blockedProgress.rows[0]?.current_chapter + ', son bölüm ' + finalProgress.rows[0]?.current_chapter + ', seçim ' + JSON.stringify(finalProgress.rows[0]?.choices), passed: Number(blockedProgress.rows[0]?.current_chapter) === 1 && Array.isArray(blockedProgress.rows[0]?.choices) && blockedProgress.rows[0].choices[0] === scenario.path && Number(blockedPlayer.rows[0]?.coins) === 50 && Number(finalProgress.rows[0]?.current_chapter) === 2 && finalProgress.rows[0].choices.length === 2 }
+              { name: 'Hikâye yolu seçimi ve gereksinim kilidi', expected: 'başka yolun ilerlemesi engellenmeli, doğru koşul tamamlanınca bölüm açılmalı', actual: 'bloklu bölüm ' + blockedProgress.rows[0]?.current_chapter + ', son bölüm ' + finalProgress.rows[0]?.current_chapter + ', seçim ' + JSON.stringify(finalProgress.rows[0]?.choices), passed: Number(blockedProgress.rows[0]?.current_chapter) === 1 && Array.isArray(blockedProgress.rows[0]?.choices) && blockedProgress.rows[0].choices[0] === scenario.path && Number(blockedPlayer.rows[0]?.coins) === 50 && Number(blockedPlayer.rows[0]?.xp) === 25 && Number(finalProgress.rows[0]?.current_chapter) === 2 && finalProgress.rows[0].choices.length === 2 }
             );
             effects.push(...startEffects, ...blockedEffects, ...continueEffects);
           }
@@ -1295,6 +1295,20 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             await pool.query('DELETE FROM side_quest_claims WHERE guild_id=$1 AND user_id=$2', [guildId, npcUserId]);
             await scenario.progress(npcUserId);
 
+            const dialogueText = await runNpc(npcUserId, scenario.npc, 'konus');
+            const expectedDialogue = scenario.npc === 'frieren'
+              ? 'Eski büyü kalıntıları'
+              : scenario.npc === 'fern'
+                ? 'Yolculukta hazırlıklı olmak'
+                : 'korkmuyorum';
+            behavioralChecks.push({
+              name: 'NPC diyalog sistemi',
+              expected: 'seçilen NPC kendi hikâye yoluna uygun karşılaşma diyaloğunu göstermeli',
+              actual: dialogueText.slice(0, 220),
+              passed: dialogueText.includes(scenario.npc === 'frieren' ? 'Frieren' : scenario.npc === 'fern' ? 'Fern' : 'Stark') &&
+                dialogueText.includes('karşılaşma') && dialogueText.includes(expectedDialogue)
+            });
+
             const wrongNpc = scenario.npc === 'frieren' ? 'fern' : 'frieren';
             const blockedText = await runNpc(npcUserId, wrongNpc, 'teslim');
             const blockedClaim = await pool.query(
@@ -1302,7 +1316,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
               [guildId, npcUserId]
             );
             behavioralChecks.push({
-              name: 'Yanlış hikâye yolu ödül engeli · ' + scenario.npc,
+              name: 'Yanlış hikâye yolu ödül engeli',
               expected: 'başka yolun NPC görevi ödül verememeli ve tamamlanmış kayıt oluşturmamalı',
               actual: blockedText.slice(0, 180) + '; claim=' + blockedClaim.rowCount,
               passed: blockedText.includes('görev veren karakter') && blockedClaim.rowCount === 0
@@ -1310,7 +1324,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
 
             const questText = await runNpc(npcUserId, scenario.npc, 'gorev');
             behavioralChecks.push({
-              name: 'NPC görev gereksinimi ve ilerleme · ' + scenario.npc,
+              name: 'NPC görev gereksinimi ve ilerleme',
               expected: 'doğru NPC görev başlığını, hedefini ve tamamlanmış ilerlemeyi göstermeli',
               actual: questText.slice(0, 220),
               passed: questText.includes(scenario.npc === 'frieren' ? 'Kayıp Büyü İzleri' : scenario.npc === 'fern' ? 'Yol Arkadaşına Yardım' : 'Kuzey Avı') &&
@@ -1325,7 +1339,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
               [guildId, npcUserId]
             );
             behavioralChecks.push({
-              name: 'NPC görev ödülü ve kalıcı tekil claim · ' + scenario.npc,
+              name: 'NPC görev ödülü ve kalıcı tekil claim',
               expected: scenario.reward.coins + ' altın, ' + scenario.reward.xp + ' XP ve tek claim kaydı verilmeli',
               actual: JSON.stringify(after.rows[0]) + '; claim=' + claim.rows.map(row => row.quest_key).join(','),
               passed: claimText.includes('görev') && Number(after.rows[0]?.coins) === Number(before.rows[0]?.coins) + scenario.reward.coins &&
@@ -1336,7 +1350,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             const duplicateText = await runNpc(npcUserId, scenario.npc, 'teslim');
             const duplicateState = await pool.query('SELECT coins,xp,level,stat_points FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, npcUserId]);
             behavioralChecks.push({
-              name: 'NPC ödülünün tekrar alınamaması · ' + scenario.npc,
+              name: 'NPC ödülünün tekrar alınamaması',
               expected: 'ikinci teslim yalnızca zaten tamamlandı mesajı vermeli; bakiye değişmemeli',
               actual: duplicateText.slice(0, 180) + '; ' + JSON.stringify(duplicateState.rows[0]),
               passed: duplicateText.includes('zaten tamamladın') &&
