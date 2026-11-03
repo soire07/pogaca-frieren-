@@ -84,6 +84,7 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           FRIEREN_MODEL: openai/gpt-oss-20b
           FRIEREN_REPAIR_TASK: ${{ inputs.task }}
+          FRIEREN_REPAIR_INCIDENT_ID: ${{ inputs.incident_id }}
           FRIEREN_REPAIR_MODE: ${{ inputs.mode }}
         id: repair
         run: node scripts/ai-self-repair.js
