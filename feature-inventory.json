@@ -2051,7 +2051,7 @@
         "tests": [
           "scripts/test-boss-combat.js"
         ],
-        "scope": "Unit tests verify class damage bonuses round down consistently; exact per-spell Mage multipliers remain unverified."
+        "scope": "The exact Mage attack multiplier (1.08) and the class-wide attack/defense/healing/mana multiplier matrix for all four classes are asserted against production helpers in scripts/test-boss-combat.js. This proves the class passive calculation contract; it does not claim every individual spell's complete live Discord damage flow."
       }
     },
     {
@@ -2064,7 +2064,7 @@
         "tests": [
           "scripts/test-boss-combat.js"
         ],
-        "scope": "Unit tests verify class defense bonuses round down consistently; solo boss integration remains unverified."
+        "scope": "The exact Guardian defense multiplier (1.12) and all four class stat multipliers are asserted against production helpers in scripts/test-boss-combat.js. The solo boss command wiring is separately covered by source/command checks; live Discord combat E2E is not claimed."
       }
     },
     {
@@ -2077,7 +2077,7 @@
         "tests": [
           "scripts/test-boss-combat.js"
         ],
-        "scope": "Unit tests verify class healing bonuses round down consistently; Healing Light command E2E remains unverified."
+        "scope": "The exact Healer healing multiplier (1.2) and all four class stat multipliers are asserted against production helpers in scripts/test-boss-combat.js. This proves helper behavior; a live Discord Healing Light interaction is not claimed."
       }
     },
     {
