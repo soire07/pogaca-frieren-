@@ -257,6 +257,7 @@ test('co-op combat releases database locks before waiting for player turns and r
 test('solo boss victory commits final HP, mana, rewards, mastery and loot in one transaction', async () => {
   const source = await read('iblisavasi.js');
   const rewards = await read('rpg-reward-transactions.js');
+  const schema = await read('database/db.js');
   const victory = source.indexOf('if (bossHp <= 0)');
   const claim = source.indexOf('claimSoloBossReward', victory);
   assert.ok(victory >= 0 && claim > victory, 'boss victory must call the shared production reward transaction');
@@ -264,6 +265,9 @@ test('solo boss victory commits final HP, mana, rewards, mastery and loot in one
     assert.ok(rewards.includes(required), 'production solo reward transaction missing: ' + required);
   }
   assert.ok(rewards.includes("await db.query('ROLLBACK')"));
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS rpg_reward_claims/);
+  assert.match(schema, /PRIMARY KEY \(guild_id,user_id,reward_type,reward_id\)/);
+  assert.match(schema, /SELECT guild_id,user_id,'solo_boss',last_boss_battle_id/);
   assert.ok(source.includes('rewardResult.status'));
 });
 
