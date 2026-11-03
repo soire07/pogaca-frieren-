@@ -12,7 +12,9 @@ const SALVAGE_YIELD = {
   himmel_sword: { item: '🐉 Ejderha Pulu', quantity: 1 },
   demon_blade: { item: '🐉 Ejderha Pulu', quantity: 2 },
   rune_ring: { item: '💎 Mana Kristali', quantity: 1 },
-  hero_ring: { item: '🌙 Efsunlu Elf Yadigârı', quantity: 1 }
+  hero_ring: { item: '🌙 Efsunlu Elf Yadigârı', quantity: 1 },
+  demon_armor: { item: '🐉 Ejderha Pulu', quantity: 2 },
+  copper_ring: { item: '💎 Mana Kristali', quantity: 1 }
 };
 
 export default {
