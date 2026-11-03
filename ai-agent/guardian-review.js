@@ -85,16 +85,29 @@ export async function reviewGuardianIncident({ groq, model, incident, collectCod
         content: JSON.stringify({
           incident: normalized,
           sourceContext: context,
+          requiredOutput: {
+            rootCause: 'string',
+            confidence: 'low | medium | high',
+            affectedFiles: ['existing repository-relative file paths only'],
+            suggestedFix: 'string',
+            proposedPatch: 'unified diff string or empty string',
+            tests: ['at least one concrete test name when proposedPatch is non-empty'],
+            risks: ['string'],
+          },
           constraints: [
+            'Return exactly one valid JSON object. Do not use Markdown fences or explanatory text.',
+            'Every requiredOutput key must be present with the exact requested type.',
+            'If proposedPatch is non-empty, tests MUST contain at least one concrete test name.',
+            'If no safe code change is justified, set proposedPatch to an empty string and tests to an empty array.',
             'Patch yalnızca öneridir; uygulanmış değildir.',
-            'Gerekli regresyon testini belirt.',
-            'Aynı testin zaten var olup olmadığını kontrol etmeyi öner.',
+            'Gerekli regresyon testini belirt ve aynı testin zaten var olup olmadığını kontrol et.',
             'Kanıtı olmayan dosya veya fonksiyon adı uydurma.',
             'Sırlar ve kullanıcı verileri rapora eklenmemeli.',
           ],
         }),
       },
     ],
+    response_format: { type: 'json_object' },
   });
   const content = response?.choices?.[0]?.message?.content;
   if (typeof content !== 'string' || !content.trim()) throw new Error('GUARDIAN_REVIEW_EMPTY_RESPONSE');

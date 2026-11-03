@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { normalizeGuardianReviewIncident, parseGuardianReview } from './guardian-review.js';
+import { normalizeGuardianReviewIncident, parseGuardianReview, reviewGuardianIncident } from './guardian-review.js';
 
 test('Guardian review input accepts only known systems and redacts secrets', () => {
   const incident = normalizeGuardianReviewIncident({
@@ -60,4 +60,39 @@ test('Guardian review busy lock is not set by ordinary scenario tests and is rel
   assert.doesNotMatch(scenarioRoute, /guardianReviewInProgress\s*=\s*true/);
   assert.match(guardianRoute, /guardianReviewInProgress\s*=\s*true/);
   assert.match(guardianRoute, /finally\s*\{\s*guardianReviewInProgress\s*=\s*false/);
+});
+
+test('Guardian review requests valid JSON and preserves the required test plan fields', async () => {
+  let request;
+  const result = await reviewGuardianIncident({
+    groq: {
+      chat: {
+        completions: {
+          create: async value => {
+            request = value;
+            return { choices: [{ message: { content: JSON.stringify({
+              rootCause: 'A regression assertion is missing.',
+              confidence: 'high',
+              affectedFiles: ['guardian/automation.test.js'],
+              suggestedFix: 'Add the missing assertion.',
+              proposedPatch: '',
+              tests: ['Assert the affected file appears in the repair task.'],
+              risks: ['Test-only change.'],
+            }) } }] };
+          },
+        },
+      },
+    },
+    model: 'openai/gpt-oss-20b',
+    incident: {
+      system: 'guardian',
+      code: 'TEST_COVERAGE_GAP',
+      title: 'Missing affected-file regression assertion',
+      summary: 'The existing test does not assert affected-file rendering.',
+    },
+    collectCodeContext: async () => '### guardian/automation.test.js\\nExisting tests',
+  });
+  assert.deepEqual(request.response_format, { type: 'json_object' });
+  assert.deepEqual(result.tests, ['Assert the affected file appears in the repair task.']);
+  assert.deepEqual(result.affectedFiles, ['guardian/automation.test.js']);
 });
