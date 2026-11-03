@@ -12,6 +12,7 @@ import {
   getRaidBossSpecialAttack,
   chooseRaidAttackTarget,
   chooseDungeonAttackTarget,
+  getRaidBossMaxHp,
   resolveRaidAreaAttack,
   getSoloBossSpecialAttackState,
   dungeonEnemyStats,
@@ -116,6 +117,14 @@ test('dungeon and raid roles apply distinct HP, attack and defense modifiers', (
     [RAID_PARTY_ROLES.damage.hp,RAID_PARTY_ROLES.damage.attack,RAID_PARTY_ROLES.damage.defense],
     [0.95,1.35,0.9]
   );
+});
+
+test('raid boss HP scales with average level and party size without shrinking below the base', () => {
+  assert.equal(getRaidBossMaxHp(200, 10, 2), 380);
+  assert.equal(getRaidBossMaxHp(200, 10, 3), 470);
+  assert.equal(getRaidBossMaxHp(200, 10, 4), 560);
+  assert.equal(getRaidBossMaxHp(200, 10, 1), 380);
+  assert.equal(getRaidBossMaxHp(200, -5, 0), 200);
 });
 
 test('raid boss catalog binds each named boss to its correct signature attack', () => {
