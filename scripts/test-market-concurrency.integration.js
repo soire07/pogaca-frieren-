@@ -6,6 +6,11 @@ import { buyMarketItem } from '../market.js';
 import { resolveTradeOffer } from '../trade-transaction.js';
 import { claimSoloBossReward, settleRaidRewards, settleDungeonRewards } from '../rpg-reward-transactions.js';
 
+import equipmentCommand from '../ekipman.js';
+import growthCommand from '../commands/rpg/gelisim.js';
+import { equipmentItems, equipmentBonus } from '../equipment-data.js';
+import { applyEquipmentSetBonus } from '../rpg-mechanics.js';
+
 const dedicatedAuditDatabase = /^postgres(?:ql)?:\/\/postgres:postgres@localhost:5432\/frieren_audit(?:\?|$)/.test(
   process.env.DATABASE_URL || ''
 );
@@ -416,6 +421,30 @@ test('production layered dungeon settlement is single-use for the whole party un
     }
     assert.equal((await pool.query('SELECT 1 FROM inventory WHERE guild_id=$1 AND item_key LIKE $2',[guildId,'dungeon-fixture-%'])).rowCount,6);
     assert.equal((await pool.query('SELECT 1 FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2',[guildId,encounterId])).rowCount,0);
+    const perPlayer = await pool.query(
+      'SELECT user_id,hp,mana,xp,level,stat_points FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id',
+      [guildId,ids]
+    );
+    assert.equal(perPlayer.rowCount,2);
+    const expected = new Map([[ids[0],{hp:80,mana:70}],[ids[1],{hp:75,mana:65}]]);
+    for (const player of perPlayer.rows) {
+      assert.equal(Number(player.hp),expected.get(player.user_id).hp,'each participant must retain their own combat HP');
+      assert.equal(Number(player.mana),expected.get(player.user_id).mana,'each participant must retain their own combat mana');
+      assert.equal(Number(player.xp),180);
+      assert.equal(Number(player.level),2);
+      assert.equal(Number(player.stat_points),1);
+    }
+    const perPlayerLoot = await pool.query(
+      'SELECT user_id,item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND item_key LIKE $3 ORDER BY user_id,item_key',
+      [guildId,ids,'dungeon-fixture-%']
+    );
+    assert.equal(perPlayerLoot.rowCount,6,'every participant receives the chest, rare loot and crafting material');
+    for (const userId of ids) {
+      assert.deepEqual(
+        Object.fromEntries(perPlayerLoot.rows.filter(row=>row.user_id===userId).map(row=>[row.item_key,Number(row.quantity)])),
+        {'dungeon-fixture-chest':1,'dungeon-fixture-craft':1,'dungeon-fixture-rare':1}
+      );
+    }
   });
 });
 
@@ -555,5 +584,114 @@ test('co-op settlement failure rolls back all player rewards atomically', {
     for(const player of players.rows) {
       assert.equal(Number(player.coins),10); assert.equal(Number(player.xp),20); assert.equal(Number(player.boss_defeats),0);
     }
+  });
+});
+
+
+test('real equipment command persists slots, derives set bonuses and never overwrites base HP or mana caps', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId=testSnowflake('91'), userId=testSnowflake('90');
+    await ensureUser(guildId,userId);
+    await pool.query(
+      'UPDATE users SET level=50,hp=115,max_hp=120,mana=80,max_mana=90 WHERE guild_id=$1 AND user_id=$2',
+      [guildId,userId]
+    );
+    const blade=equipmentItems.find(item=>item.id==='demon_blade');
+    const armor=equipmentItems.find(item=>item.id==='demon_armor');
+    await pool.query(
+      'INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1),($1,$2,$4,1)',
+      [guildId,userId,blade.name,armor.name]
+    );
+    const invoke=async (action,itemId=null,slot=null) => {
+      const replies=[];
+      const values={islem:action,esya:itemId,yuva:slot};
+      await equipmentCommand.execute({
+        guildId,user:{id:userId,username:'EquipmentIntegration'},
+        options:{getString:key=>values[key]},
+        reply:async payload=>{replies.push(payload);return payload;}
+      });
+      return replies;
+    };
+
+    await invoke('equip','demon_blade');
+    await invoke('equip','demon_armor');
+    const equipped=await pool.query(
+      'SELECT slot,item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2 ORDER BY slot',
+      [guildId,userId]
+    );
+    assert.equal(equipped.rowCount,2);
+    const persistedItems=equipped.rows.map(row=>equipmentItems.find(item=>item.name===row.item_key));
+    const activeSet=applyEquipmentSetBonus(persistedItems,equipmentBonus(persistedItems));
+    assert.equal(activeSet.attack,20);
+    assert.equal(activeSet.hp,85);
+    assert.equal(activeSet.setText,'Efsanevi set: +4 saldırı, +25 HP');
+
+    let player=await pool.query(
+      'SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2',
+      [guildId,userId]
+    );
+    assert.deepEqual(player.rows[0],{hp:115,max_hp:120,mana:80,max_mana:90},
+      'equipping must not write temporary equipment bonuses into persistent base caps');
+
+    await invoke('unequip',null,'armor');
+    const remaining=await pool.query(
+      'SELECT slot,item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2',
+      [guildId,userId]
+    );
+    const remainingItems=remaining.rows.map(row=>equipmentItems.find(item=>item.name===row.item_key));
+    const inactiveSet=applyEquipmentSetBonus(remainingItems,equipmentBonus(remainingItems));
+    assert.equal(inactiveSet.attack,16);
+    assert.equal(inactiveSet.hp,0);
+    assert.equal(inactiveSet.setText,null);
+    player=await pool.query(
+      'SELECT hp,max_hp,mana,max_mana FROM users WHERE guild_id=$1 AND user_id=$2',
+      [guildId,userId]
+    );
+    assert.deepEqual(player.rows[0],{hp:115,max_hp:120,mana:80,max_mana:90},
+      'unequipping must restore the base cap without permanently changing base stats');
+  });
+});
+
+test('real character growth command serializes point spending and enforces stat caps', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId=testSnowflake('91'), userId=testSnowflake('90');
+    await ensureUser(guildId,userId);
+    await pool.query(
+      'UPDATE users SET stat_points=1,attack=10 WHERE guild_id=$1 AND user_id=$2',
+      [guildId,userId]
+    );
+    const invoke=async () => {
+      const replies=[];
+      await growthCommand.execute({
+        guildId,user:{id:userId},
+        options:{getString:()=> 'attack',getInteger:()=>1},
+        reply:async payload=>{replies.push(payload);return payload;}
+      });
+      return replies;
+    };
+    const outcomes=await Promise.all([invoke(),invoke()]);
+    const saved=await pool.query(
+      'SELECT stat_points,attack FROM users WHERE guild_id=$1 AND user_id=$2',
+      [guildId,userId]
+    );
+    assert.deepEqual(saved.rows[0],{stat_points:0,attack:12},
+      'two simultaneous requests cannot spend the same development point twice');
+    assert.equal(outcomes.flat().length,2,'both command interactions receive a response');
+
+    await pool.query(
+      'UPDATE users SET stat_points=1,attack=500 WHERE guild_id=$1 AND user_id=$2',
+      [guildId,userId]
+    );
+    await invoke();
+    const capped=await pool.query(
+      'SELECT stat_points,attack FROM users WHERE guild_id=$1 AND user_id=$2',
+      [guildId,userId]
+    );
+    assert.deepEqual(capped.rows[0],{stat_points:1,attack:500},
+      'a rejected cap overflow must not consume development points');
   });
 });
