@@ -69,12 +69,12 @@ test('index.js exception is restricted to the exact approved Guardian incident a
   assert.throws(() => validatePatchPaths(validIndexPatch, { task: approvedIndexTask, incidentId: '5' }), {
     message: 'REPAIR_PATH_NOT_ALLOWED',
   });
-  assert.throws(() => validatePatchPaths(validIndexPatch + '\\n' + validPatch, {
+  assert.throws(() => validatePatchPaths(validIndexPatch + '\n' + validPatch, {
     task: approvedIndexTask, incidentId: '4',
   }), { message: 'REPAIR_APPROVED_INDEX_SCOPE_VIOLATION' });
   assert.equal(
     formatRepairFilesOutput(['index.js'], { task: approvedIndexTask, incidentId: '4' }),
-    'repair_files<<REPAIR_FILES\\nindex.js\\nREPAIR_FILES\\n',
+    'repair_files<<REPAIR_FILES\nindex.js\nREPAIR_FILES\n',
   );
   assert.throws(() => formatRepairFilesOutput(['index.js']), {
     message: 'REPAIR_OUTPUT_FILE_SET_INVALID',
@@ -217,6 +217,22 @@ test('repair patch refuses to run when the isolated worktree is already dirty', 
   assert.deepEqual(calls, [['status', '--porcelain', '--untracked-files=all']]);
 });
 
+test('approved index repair applies only index.js inside the isolated workflow workspace', () => {
+  const calls = [];
+  const execFile = (args) => {
+    calls.push(args);
+    if (args[0] === 'status' && args[1] === '--porcelain') return '';
+    if (args[0] === 'status') return ' M index.js\\n';
+    return '';
+  };
+  assert.deepEqual(applyRepairPatch(validIndexPatch, {
+    execFile, task: approvedIndexTask, incidentId: '4',
+  }), ['index.js']);
+  assert.throws(() => applyRepairPatch(validIndexPatch, { execFile: () => '' }), {
+    message: 'REPAIR_PATH_NOT_ALLOWED',
+  });
+});
+
 test('repair patch accepts only the exact validated file set', () => {
   const calls = [];
   const execFile = (args) => {
@@ -305,15 +321,15 @@ test('approved index incident reads only index.js and cannot broaden protected c
   };
   const context = await collectRepairContext(approvedIndexTask, {
     incidentId: '4',
-    execFile: () => Object.keys(files).join('\\0') + '\\0',
+    execFile: () => Object.keys(files).join('\0') + '\0',
     statImpl: async path => ({ isFile: () => true, size: files[path].length }),
     readFileImpl: async path => files[path],
   });
-  assert.match(context, /### index\\.js/);
-  assert.doesNotMatch(context, /owner-dashboard|guardian\\/automation/);
+  assert.match(context, /### index\.js/);
+  assert.doesNotMatch(context, /owner-dashboard|guardian\/automation/);
   await assert.rejects(collectRepairContext(approvedIndexTask, {
     incidentId: '5',
-    execFile: () => 'index.js\\0',
+    execFile: () => 'index.js\0',
     statImpl: async () => ({ isFile: () => true, size: 20 }),
     readFileImpl: async () => 'unrelated source',
   }), { message: 'REPAIR_CONTEXT_NOT_FOUND' });
