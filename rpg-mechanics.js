@@ -297,3 +297,54 @@ export function restoreResourceRatio(currentResource, effectiveMaximum, baseMaxi
   if (!Number.isFinite(baseMax) || baseMax < 1 || !Number.isFinite(current)) return 0;
   return Math.max(0, Math.min(baseMax, Math.round((current / effectiveMax) * baseMax)));
 }
+
+
+// Co-op role modifiers are shared by the command implementations and behavior tests.
+export const COOP_DUNGEON_ROLES = {
+  tank: { label: '🛡️ Muhafız', hp: 1.25, attack: 0.85, defense: 1.4 },
+  healer: { label: '💚 Şifacı', hp: 1, attack: 0.9, defense: 1.05 },
+  damage: { label: '⚔️ Hasar Ustası', hp: 0.95, attack: 1.3, defense: 0.9 }
+};
+
+export const COOP_RAID_ROLES = {
+  tank: { label: '🛡️ Muhafız', description: 'Daha çok hasar üzerine çeker ve daha dayanıklıdır.', hp: 1.25, attack: 0.85, defense: 1.45 },
+  healer: { label: '💚 Şifacı', description: 'Her tur takıma küçük bir iyileştirme sağlar.', hp: 1, attack: 0.85, defense: 1.05 },
+  damage: { label: '⚔️ Hasar Ustası', description: 'Boss’a daha yüksek hasar verir.', hp: 0.95, attack: 1.35, defense: 0.9 }
+};
+
+export function calculateRaidBossMaxHp(baseHp, averageLevel, partySize) {
+  const base = Math.max(1, Math.floor(Number(baseHp) || 1));
+  const level = Math.max(1, Math.floor(Number(averageLevel) || 1));
+  const size = Math.max(1, Math.floor(Number(partySize) || 1));
+  return base + level * 18 + Math.max(0, size - 2) * 90;
+}
+
+export function isBossEnraged(currentHp, maximumHp) {
+  const current = Number(currentHp);
+  const maximum = Number(maximumHp);
+  return Number.isFinite(current) && Number.isFinite(maximum) && maximum > 0 && current <= maximum * 0.5;
+}
+
+export function applyDefenseActionReduction(incomingDamage, defending, reduction = 0.45) {
+  const incoming = Math.max(1, Math.floor(Number(incomingDamage) || 1));
+  if (!defending) return incoming;
+  const multiplier = Math.max(0, Math.min(1, Number(reduction)));
+  return Math.max(1, Math.round(incoming * multiplier));
+}
+
+export function applyTalentBonus(baseValue, rank, perRank) {
+  const base = Number(baseValue);
+  const safeRank = Math.max(0, Number(rank) || 0);
+  const rate = Math.max(0, Number(perRank) || 0);
+  if (!Number.isFinite(base)) return 0;
+  return Math.round(base * (1 + safeRank * rate));
+}
+
+export function calculateDungeonFloorReward(floor, averageLevel) {
+  const safeFloor = Math.max(1, Math.floor(Number(floor) || 1));
+  const safeLevel = Math.max(1, Math.floor(Number(averageLevel) || 1));
+  return {
+    xp: 25 + safeFloor * 12 + safeLevel * 2,
+    coins: 20 + safeFloor * 10
+  };
+}
