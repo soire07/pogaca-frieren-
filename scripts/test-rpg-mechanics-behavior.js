@@ -149,7 +149,7 @@ test('route mastery pays exactly on third-visit milestones and never on other vi
 
 test('daily quest rewards scale by level, cap multiplier and add completion bonus once', () => {
   assert.deepEqual(getLevelScaledQuestReward(50, 30, 1), { multiplier: 1, coins: 50, xp: 30, completionBonus: false });
-  assert.deepEqual(getLevelScaledQuestReward(50, 30, 11), { multiplier: 1.1, coins: 165, xp: 143, completionBonus: true });
+  assert.deepEqual(getLevelScaledQuestReward(50, 30, 11, true), { multiplier: 1.1, coins: 165, xp: 143, completionBonus: true });
   assert.deepEqual(getLevelScaledQuestReward(50, 30, 500, true), { multiplier: 3, coins: 450, xp: 390, completionBonus: true });
 });
 
