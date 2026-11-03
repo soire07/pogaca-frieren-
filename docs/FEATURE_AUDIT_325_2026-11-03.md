@@ -7,7 +7,7 @@
 - Mevcut statü dağılımı: **325 `implemented_needs_runtime_test`**, 0 `in_progress`, 0 `planned`.
 - Bu statü, kaynakta uygulama bulunduğu varsayımını gösterir; tek başına işlevsel veya canlı doğrulama değildir.
 - Güncel ana dalda 71 slash komut şeması doğrulanmıştır.
-- Bu PR'da 28 kayıt için kaynak + adlandırılmış test + sınırlama eşlemesi vardır. 297 kayıt için henüz tekil kanıt bağlantısı kurulmamıştır.
+- Bu PR'da 35 kayıt için kaynak + adlandırılmış test + sınırlama eşlemesi vardır. 290 kayıt için henüz tekil kanıt bağlantısı kurulmamıştır.
 - Gerçek Discord test sunucusunda doğrulanmış özellik sayısı: **0**. Üretim ortamında tek tek doğrulanmış özellik sayısı: **0**.
 - `RPG-281`–`RPG-299` kimlik aralığı tarihsel uzlaştırma tamamlanana kadar rezerve kalır.
 
@@ -60,7 +60,7 @@
 - Slash komut denetimi: **71 komut**, yinelenen ad yok.
 - Owner Panel performans kontrolleri: başarılı.
 - Frieren AI CI: başarılı.
-- Bu testler kod ve otomatik test kanıtıdır; gerçek Discord sunucusu veya üretim ortamı kanıtı değildir.
+- İzole PostgreSQL testleri geçici GitHub Actions PostgreSQL servisini kullanır; market, günlük görev, takas, solo boss, raid, dungeon, arena, etkinlik ve hesap bağlantısı transaction akışlarını gerçek DB üzerinde sınar. Bunlar gerçek Discord sunucusu veya üretim ortamı kanıtı değildir.
 
 ## Dağıtım ve güvenlik sınırı
 
@@ -72,7 +72,7 @@
 
 ## Sonraki uygulama sırası
 
-1. Kalan 297 envanter kaydını tek tek kaynak/test/komut kanıtına bağla; test yoksa yeni test yazmadan önce mevcut kapsamı tara.
+1. Kalan 290 envanter kaydını tek tek kaynak/test/komut kanıtına bağla; test yoksa yeni test yazmadan önce mevcut kapsamı tara.
 2. Öncelikli ekonomi, ekipman, ödül ve takas akışlarının eksik kenar durumlarını kapat; izole PostgreSQL testlerini tamamla.
 3. Gerçek test Discord sunucusunda yalnızca otomatik kanıtı eksik kritik akışları doğrula.
 4. Yoldaş ve yaratık yakalama sistemlerini ortak kullanıcı/transaction/ödül servislerine dayalı tasarla.
