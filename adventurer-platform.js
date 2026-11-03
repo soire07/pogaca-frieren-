@@ -240,7 +240,7 @@ export async function getAdventurerDashboard(db = pool, accountId) {
 export async function createGuildEvent(db = pool, { guildId,title,description='',eventType='community',startsAt,endsAt,maxParticipants=null,createdBy }) {
   if(!DISCORD_ID.test(String(guildId||''))||!DISCORD_ID.test(String(createdBy||''))) throw new Error('EVENT_INPUT_INVALID');
   const start=new Date(startsAt), end=new Date(endsAt);
-  if(!/(?:Z|[+-]\\d{2}:\\d{2})$/i.test(String(startsAt||''))||!/(?:Z|[+-]\\d{2}:\\d{2})$/i.test(String(endsAt||''))) throw new Error('EVENT_INPUT_INVALID');
+  if(!/(?:Z|[+-]\d{2}:\\d{2})$/i.test(String(startsAt||''))||!/(?:Z|[+-]\d{2}:\\d{2})$/i.test(String(endsAt||''))) throw new Error('EVENT_INPUT_INVALID');
   const cleanTitle=String(title||'').trim(), cleanDescription=String(description||'').trim();
   if(cleanTitle.length<3||cleanTitle.length>100||cleanDescription.length>1000||!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime())||end<=start||start<=new Date()) throw new Error('EVENT_INPUT_INVALID');
   const cap=maxParticipants==null?null:Number(maxParticipants);
