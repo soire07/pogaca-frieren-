@@ -14,10 +14,10 @@ export async function claimSoloBossReward(dbPool, {
       throw new TypeError('A non-empty solo boss battle ID is required');
     }
     const rewardClaim = await db.query(
-      `INSERT INTO solo_boss_reward_claims (guild_id,user_id,battle_id)
-       VALUES ($1,$2,$3)
-       ON CONFLICT (guild_id,user_id,battle_id) DO NOTHING
-       RETURNING battle_id`,
+      `INSERT INTO rpg_reward_claims(guild_id,user_id,reward_type,reward_id)
+       VALUES ($1,$2,'solo_boss',$3)
+       ON CONFLICT (guild_id,user_id,reward_type,reward_id) DO NOTHING
+       RETURNING reward_id`,
       [guildId, userId, battleId]
     );
     if (rewardClaim.rowCount !== 1) {
