@@ -14,6 +14,8 @@ on:
       - 'companions.js'
       - 'yoldas.js'
       - 'scripts/test-companions.integration.js'
+      - 'animequiz.js'
+      - 'scripts/test-animequiz.integration.js'
       - 'karakteristek.js'
       - 'scripts/test-character-wishlist.integration.js'
       - 'yaratik.js'
@@ -76,6 +78,8 @@ jobs:
         run: node --test scripts/test-character-wishlist.integration.js
       - name: Run real PostgreSQL companion adoption and care transaction tests
         run: node --test scripts/test-companions.integration.js
+      - name: Run real PostgreSQL anime quiz score concurrency tests
+        run: node --test scripts/test-animequiz.integration.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
