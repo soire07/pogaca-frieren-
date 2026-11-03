@@ -1377,6 +1377,20 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Mana bakiyesi', expected: '100 → 92 (-8)', actual: user ? '100 → ' + user.mana : 'Kullanıcı satırı bulunamadı', passed: Number(user?.mana) === 92 },
             { name: 'Zoltraak ustalık kaydı', expected: 'casts=1, mastery_level=0', actual: mastery ? 'casts=' + mastery.casts + ', mastery_level=' + mastery.mastery_level : 'Ustalık kaydı bulunamadı', passed: Number(mastery?.casts) === 1 && Number(mastery?.mastery_level) === 0 }
           );
+          const beforeLockedPractice = await pool.query('SELECT coins,mana FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const lockedEffects = [];
+          const lockedInteraction = makeInteraction(command, buildOptions(schema?.options, { buyu: 'alev_kuresi' }), guildId, lockedEffects);
+          lockedInteraction.user.id = userId;
+          lockedInteraction.member = makeMember(userId);
+          await command.execute(lockedInteraction);
+          const afterLockedPractice = await pool.query('SELECT coins,mana FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const lockedText = payloadTextFromEffects(lockedEffects);
+          behavioralChecks.push({
+            name: 'Öğrenilmemiş büyü için pratik kilidi',
+            expected: 'Alev Küresi öğrenilmedi uyarısı; altın ve mana değişmemeli',
+            actual: lockedText.includes('henüz öğrenilmedi') ? 'öğrenilmemiş büyü reddedildi' : lockedText.slice(0, 250),
+            passed: lockedText.includes('henüz öğrenilmedi') && Number(beforeLockedPractice.rows[0]?.coins) === Number(afterLockedPractice.rows[0]?.coins) && Number(beforeLockedPractice.rows[0]?.mana) === Number(afterLockedPractice.rows[0]?.mana)
+          });
         }
 
         // Additional multi-path behavioral scenarios for feature rows that a single
