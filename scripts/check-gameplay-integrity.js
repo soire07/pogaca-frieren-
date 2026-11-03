@@ -452,10 +452,12 @@ test('trade acceptance serializes player, offer and collection rows in one stabl
   const command = await read('takasteklif.js');
   assert.ok(handler.includes('resolveTradeOffer(pool'));
   const playerLock = transaction.indexOf('SELECT user_id FROM users');
-  const offerLock = transaction.indexOf('SELECT * FROM trade_offers');
+  const offerLock = transaction.indexOf('SELECT *, (expires_at > NOW()) AS is_active FROM trade_offers');
   const collectionLock = transaction.indexOf('FROM anime_character_collection');
   assert.ok(playerLock >= 0 && offerLock > playerLock && collectionLock > offerLock,
     'production transaction must lock player rows, then the offer, then the collection');
+  assert.match(transaction, /expires_at > NOW\(\)\) AS is_active/);
+  assert.doesNotMatch(transaction, /Date\.now\(\)/, 'trade expiration must use the PostgreSQL clock');
   assert.ok(transaction.includes('ORDER BY user_id FOR UPDATE'),
     'both participants must be locked in deterministic order');
   const createBegin = command.indexOf("await db.query('BEGIN')");
