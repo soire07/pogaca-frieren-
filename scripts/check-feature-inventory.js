@@ -42,6 +42,18 @@ for (const feature of inventory.features) {
         errors.push(`Kanıt dosyası okunamadı: ${feature.id} → ${evidence.file}`);
       }
     }
+  } else if (feature.status === 'mapped_needs_review') {
+    const evidence = feature.candidateEvidence;
+    if (evidence?.type !== 'test_candidate' || !evidence.file || !evidence.test || !Number.isFinite(evidence.matchScore) || evidence.matchScore < 0.18 || evidence.reviewRequired !== true) {
+      errors.push(`Aday test eşlemesi eksik veya geçersiz: ${feature.id}`);
+    } else {
+      try {
+        const source = await readFile(new URL('../' + evidence.file, import.meta.url), 'utf8');
+        if (!source.includes(evidence.test)) errors.push(`Aday test başlığı dosyada bulunamadı: ${feature.id} → ${evidence.test}`);
+      } catch {
+        errors.push(`Aday test dosyası okunamadı: ${feature.id} → ${evidence.file}`);
+      }
+    }
   }
 }
 if (errors.length) {
