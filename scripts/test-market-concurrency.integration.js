@@ -9,6 +9,7 @@ import achievementCommand from '../basarimlar.js';
 import leaderboardCommand from '../liderlik.js';
 import explorationLeaderboardCommand from '../kesifliderligi.js';
 import craftingCommand from '../zanaat.js';
+import salvageCommand from '../ekipmanparcala.js';
 import equipmentCommand from '../ekipman.js';
 import collectionCommand from '../koleksiyon.js';
 import useItemCommand from '../esyakullan.js';
@@ -1412,5 +1413,341 @@ test('concurrent character upgrades serialize coin spending and preserve collect
     assert.equal(Number(collection.rows[0].quantity),2,'upgrading a character must not consume collection copies');
     assert.equal(responses.filter(value=>typeof value==='string'&&value.includes('artık **+1**')).length,1);
     assert.equal(responses.filter(value=>typeof value==='string'&&value.includes('Yetersiz altın')).length,1);
+  });
+});
+
+
+test('all ten crafting recipes consume their exact ingredients and persist equipment, rarity XP and profession progress', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = 'craft-recipe-matrix-' + randomUUID();
+    const userId = testSnowflake('97');
+    await ensureUser(guildId, userId);
+    await pool.query(
+      'INSERT INTO user_crafting_progress(guild_id,user_id,xp,level) VALUES($1,$2,400,5)',
+      [guildId, userId]
+    );
+    const materials = [
+      ['💎 Mana Kristali', 11],
+      ['🥐 Büyülü Poğaça Kutusu', 3],
+      ['📖 Yasak Büyü Kitabı', 5],
+      ['🌙 Efsunlu Elf Yadigârı', 6],
+      ['👑 Himmel’in Efsanevi Yadigârı', 2],
+      ['🐉 Ejderha Pulu', 5],
+      ['📜 Frieren’in Kayıp Notları', 1]
+    ];
+    await pool.query(
+      'INSERT INTO inventory(guild_id,user_id,item_key,quantity) SELECT $1,$2,item_key,quantity FROM UNNEST($3::text[],$4::int[]) AS seed(item_key,quantity)',
+      [guildId, userId, materials.map(row => row[0]), materials.map(row => row[1])]
+    );
+
+    const makeInteraction = recipe => ({
+      guildId,
+      user: { id: userId },
+      options: {
+        getString: name => name === 'tarif' ? recipe : null,
+        getInteger: name => name === 'adet' ? 1 : null
+      },
+      deferReply: async () => {},
+      editReply: async payload => payload
+    });
+
+    try {
+      for (const item of equipmentItems) {
+        await craftingCommand.execute(makeInteraction(item.id));
+      }
+      const outputs = await pool.query(
+        'SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[])',
+        [guildId, userId, equipmentItems.map(item => item.name)]
+      );
+      const remainingMaterials = await pool.query(
+        'SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[])',
+        [guildId, userId, materials.map(row => row[0])]
+      );
+      const progress = await pool.query(
+        'SELECT xp,level,successful_crafts FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2',
+        [guildId, userId]
+      );
+      const daily = await pool.query(
+        'SELECT crafted_items FROM daily_crafting_progress WHERE guild_id=$1 AND user_id=$2 AND mission_date=CURRENT_DATE',
+        [guildId, userId]
+      );
+      const expectedXp = equipmentItems.reduce((sum, item) =>
+        sum + ({ Yaygın: 10, Nadir: 20, Destansı: 35, Efsanevi: 50 }[item.rarity] || 10), 0);
+
+      assert.equal(outputs.rowCount, equipmentItems.length, 'each of the ten recipes must create its mapped equipment item');
+      assert.ok(outputs.rows.every(row => Number(row.quantity) === 1));
+      assert.equal(remainingMaterials.rowCount, 0, 'all recipe ingredients must be consumed exactly once');
+      assert.equal(Number(progress.rows[0].xp), 400 + expectedXp, 'rarity-weighted XP must accumulate');
+      assert.equal(Number(progress.rows[0].level), Math.floor((400 + expectedXp) / 100) + 1);
+      assert.equal(Number(progress.rows[0].successful_crafts), equipmentItems.length);
+      assert.equal(Number(daily.rows[0].crafted_items), equipmentItems.length);
+    } finally {
+      await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    }
+  });
+});
+
+test('multi-item crafting scales every ingredient and updates output, profession and daily totals proportionally', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = 'craft-quantity-' + randomUUID();
+    const userId = testSnowflake('96');
+    const item = equipmentItems.find(entry => entry.id === 'iron_sword');
+    await ensureUser(guildId, userId);
+    await pool.query(
+      "INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'💎 Mana Kristali',3),($1,$2,'🥐 Büyülü Poğaça Kutusu',3)",
+      [guildId, userId]
+    );
+    const interaction = {
+      guildId,
+      user: { id: userId },
+      options: {
+        getString: name => name === 'tarif' ? 'iron_sword' : null,
+        getInteger: name => name === 'adet' ? 3 : null
+      },
+      deferReply: async () => {},
+      editReply: async payload => payload
+    };
+    try {
+      await craftingCommand.execute(interaction);
+      const output = await pool.query(
+        'SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',
+        [guildId, userId, item.name]
+      );
+      const ingredients = await pool.query(
+        "SELECT item_key FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[])",
+        [guildId, userId, ['💎 Mana Kristali', '🥐 Büyülü Poğaça Kutusu']]
+      );
+      const progress = await pool.query(
+        'SELECT xp,successful_crafts FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2',
+        [guildId, userId]
+      );
+      const daily = await pool.query(
+        'SELECT crafted_items FROM daily_crafting_progress WHERE guild_id=$1 AND user_id=$2 AND mission_date=CURRENT_DATE',
+        [guildId, userId]
+      );
+      assert.equal(Number(output.rows[0].quantity), 3);
+      assert.equal(ingredients.rowCount, 0);
+      assert.equal(Number(progress.rows[0].xp), 30);
+      assert.equal(Number(progress.rows[0].successful_crafts), 3);
+      assert.equal(Number(daily.rows[0].crafted_items), 3);
+    } finally {
+      await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    }
+  });
+});
+
+test('advanced crafting recipes reject an insufficient profession level without consuming materials', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = 'craft-level-gate-' + randomUUID();
+    const userId = testSnowflake('95');
+    await ensureUser(guildId, userId);
+    await pool.query(
+      'INSERT INTO user_crafting_progress(guild_id,user_id,xp,level) VALUES($1,$2,200,3)',
+      [guildId, userId]
+    );
+    await pool.query(
+      "INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'🌙 Efsunlu Elf Yadigârı',2),($1,$2,'💎 Mana Kristali',3)",
+      [guildId, userId]
+    );
+    let response;
+    const interaction = {
+      guildId,
+      user: { id: userId },
+      options: {
+        getString: name => name === 'tarif' ? 'frieren_robe' : null,
+        getInteger: () => 1
+      },
+      deferReply: async () => {},
+      editReply: async payload => { response = payload; return payload; }
+    };
+    try {
+      await craftingCommand.execute(interaction);
+      const ingredients = await pool.query(
+        "SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[])",
+        [guildId, userId, ['🌙 Efsunlu Elf Yadigârı', '💎 Mana Kristali']]
+      );
+      const output = await pool.query(
+        "SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3",
+        [guildId, userId, equipmentItems.find(item => item.id === 'frieren_robe').name]
+      );
+      assert.match(String(response), /zanaat seviyesi \*\*4\*\*/i);
+      assert.deepEqual(
+        Object.fromEntries(ingredients.rows.map(row => [row.item_key, Number(row.quantity)])),
+        { '🌙 Efsunlu Elf Yadigârı': 2, '💎 Mana Kristali': 3 }
+      );
+      assert.equal(output.rowCount, 0);
+    } finally {
+      await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    }
+  });
+});
+
+test('crafting material recovery unlocks at profession levels five and ten without duplicating equipment output', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const previousRandom = Math.random;
+    Math.random = () => 0;
+    const fixtures = [
+      { guildId: 'craft-refund-five-' + randomUUID(), userId: testSnowflake('94'), xp: 400, level: 5 },
+      { guildId: 'craft-refund-ten-' + randomUUID(), userId: testSnowflake('93'), xp: 900, level: 10 }
+    ];
+    try {
+      for (const fixture of fixtures) {
+        await ensureUser(fixture.guildId, fixture.userId);
+        await pool.query(
+          'INSERT INTO user_crafting_progress(guild_id,user_id,xp,level) VALUES($1,$2,$3,$4)',
+          [fixture.guildId, fixture.userId, fixture.xp, fixture.level]
+        );
+        await pool.query(
+          "INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'💎 Mana Kristali',1),($1,$2,'🥐 Büyülü Poğaça Kutusu',1)",
+          [fixture.guildId, fixture.userId]
+        );
+        await craftingCommand.execute({
+          guildId: fixture.guildId,
+          user: { id: fixture.userId },
+          options: {
+            getString: name => name === 'tarif' ? 'iron_sword' : null,
+            getInteger: () => 1
+          },
+          deferReply: async () => {},
+          editReply: async payload => payload
+        });
+        const ingredients = await pool.query(
+          "SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[])",
+          [fixture.guildId, fixture.userId, ['💎 Mana Kristali', '🥐 Büyülü Poğaça Kutusu']]
+        );
+        const output = await pool.query(
+          "SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3",
+          [fixture.guildId, fixture.userId, equipmentItems.find(item => item.id === 'iron_sword').name]
+        );
+        assert.deepEqual(
+          Object.fromEntries(ingredients.rows.map(row => [row.item_key, Number(row.quantity)])),
+          { '💎 Mana Kristali': 1 },
+          'exactly one ingredient should be recovered after the recipe consumes both'
+        );
+        assert.equal(Number(output.rows[0].quantity), 1, 'material recovery must not duplicate the crafted equipment');
+      }
+    } finally {
+      Math.random = previousRandom;
+      for (const fixture of fixtures) {
+        await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [fixture.guildId, fixture.userId]);
+      }
+    }
+  });
+});
+
+test('equipment salvage returns proportional materials for all ten items and records lifetime dismantling totals', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = 'salvage-matrix-' + randomUUID();
+    const userId = testSnowflake('92');
+    await ensureUser(guildId, userId);
+    await pool.query(
+      'INSERT INTO inventory(guild_id,user_id,item_key,quantity) SELECT $1,$2,item.name,2 FROM UNNEST($3::text[]) AS item(name)',
+      [guildId, userId, equipmentItems.map(item => item.name)]
+    );
+    const makeInteraction = itemId => ({
+      guildId,
+      user: { id: userId },
+      options: {
+        getString: name => name === 'esya' ? itemId : null,
+        getInteger: name => name === 'adet' ? 2 : null
+      },
+      deferReply: async () => {},
+      editReply: async payload => payload
+    });
+    const expected = new Map();
+    try {
+      for (const item of equipmentItems) {
+        const salvage = {
+          iron_sword: ['🥐 Büyülü Poğaça Kutusu', 1],
+          mage_staff: ['📖 Yasak Büyü Kitabı', 1],
+          traveler_cloak: ['🥐 Büyülü Poğaça Kutusu', 1],
+          mana_ring: ['💎 Mana Kristali', 1],
+          fern_robe: ['🌙 Efsunlu Elf Yadigârı', 1],
+          frieren_robe: ['💎 Mana Kristali', 1],
+          himmel_sword: ['🐉 Ejderha Pulu', 1],
+          demon_blade: ['🐉 Ejderha Pulu', 2],
+          rune_ring: ['💎 Mana Kristali', 1],
+          hero_ring: ['🌙 Efsunlu Elf Yadigârı', 1]
+        }[item.id];
+        assert.ok(salvage, 'every craftable equipment item must have a salvage mapping');
+        expected.set(salvage[0], (expected.get(salvage[0]) || 0) + salvage[1] * 2);
+        await salvageCommand.execute(makeInteraction(item.id));
+      }
+      const returned = await pool.query(
+        'SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2',
+        [guildId, userId]
+      );
+      const progress = await pool.query(
+        'SELECT salvaged_items FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2',
+        [guildId, userId]
+      );
+      assert.deepEqual(
+        Object.fromEntries(returned.rows.map(row => [row.item_key, Number(row.quantity)])),
+        Object.fromEntries(expected)
+      );
+      assert.equal(Number(progress.rows[0].salvaged_items), equipmentItems.length * 2);
+    } finally {
+      await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    }
+  });
+});
+
+test('equipment salvage refuses to dismantle equipped copies and leaves inventory and progress unchanged', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = 'salvage-equipped-' + randomUUID();
+    const userId = testSnowflake('91');
+    const item = equipmentItems.find(entry => entry.id === 'iron_sword');
+    await ensureUser(guildId, userId);
+    await pool.query(
+      'INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)',
+      [guildId, userId, item.name]
+    );
+    await pool.query(
+      "INSERT INTO user_equipment(guild_id,user_id,slot,item_key) VALUES($1,$2,'weapon',$3)",
+      [guildId, userId, item.name]
+    );
+    let response;
+    try {
+      await salvageCommand.execute({
+        guildId,
+        user: { id: userId },
+        options: {
+          getString: name => name === 'esya' ? 'iron_sword' : null,
+          getInteger: () => 1
+        },
+        deferReply: async () => {},
+        editReply: async payload => { response = payload; return payload; }
+      });
+      const inventory = await pool.query(
+        'SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',
+        [guildId, userId, item.name]
+      );
+      const materials = await pool.query(
+        "SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='🥐 Büyülü Poğaça Kutusu'",
+        [guildId, userId]
+      );
+      const progress = await pool.query(
+        'SELECT salvaged_items FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2',
+        [guildId, userId]
+      );
+      assert.match(String(response), /kuşanılmış/i);
+      assert.equal(Number(inventory.rows[0].quantity), 1);
+      assert.equal(materials.rowCount, 0);
+      assert.equal(progress.rowCount, 0);
+    } finally {
+      await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    }
   });
 });
