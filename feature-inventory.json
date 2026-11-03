@@ -178,14 +178,16 @@
       "id": "RPG-002",
       "name": "View another player's profile",
       "category": "RPG",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "RPG profile can display another selected server member without using the caller account",
-        "matchScore": 1,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "profil"
+        }
+      ],
+      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
+      "verificationRunId": 41673980283
     },
     {
       "id": "RPG-003",
@@ -801,14 +803,16 @@
       "id": "RPG-033",
       "name": "Choice-dependent story requirements",
       "category": "Story",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "story decisions unlock different requirements and endings from the selected path",
-        "matchScore": 1,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "hikaye"
+        }
+      ],
+      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
+      "verificationRunId": 41673980283
     },
     {
       "id": "RPG-034",
@@ -916,14 +920,16 @@
       "id": "RPG-039",
       "name": "Character collection leaderboard",
       "category": "Social",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "server leaderboard ranks unique anime character collections as a selectable category",
-        "matchScore": 1,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "siralama"
+        }
+      ],
+      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
+      "verificationRunId": 41673980283
     },
     {
       "id": "RPG-040",
@@ -1290,14 +1296,16 @@
       "id": "RPG-059",
       "name": "Track level milestone goal",
       "category": "Progression",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/live-command-test.js",
-        "test": "Altı gelişim hedefinin görünmesi",
-        "matchScore": 1,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "hedefler"
+        }
+      ],
+      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
+      "verificationRunId": 41673980283
     },
     {
       "id": "RPG-060",
@@ -1702,14 +1710,16 @@
       "id": "RPG-083",
       "name": "Trigger hidden treasure chests between dungeon floors",
       "category": "Dungeon",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-utils.js",
-        "test": "multi-floor dungeon includes traps, chests and persistent player rewards",
-        "matchScore": 1,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "katlizindan"
+        }
+      ],
+      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
+      "verificationRunId": 41673980283
     },
     {
       "id": "RPG-084",
@@ -1920,14 +1930,16 @@
       "id": "RPG-097",
       "name": "Cast Zoltraak in dungeons by spending mana for increased damage",
       "category": "Magic",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "both combat modes expose attack, Zoltraak, Heilen, mana shield and defend actions",
-        "matchScore": 1,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "katlizindan"
+        }
+      ],
+      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
+      "verificationRunId": 41673980283
     },
     {
       "id": "RPG-098",
@@ -1948,14 +1960,16 @@
       "id": "RPG-099",
       "name": "Each invited dungeon player chooses their own combat role",
       "category": "Dungeon",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-utils.js",
-        "test": "dungeon and boss raid let each accepted player choose their own role",
-        "matchScore": 1,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "katlizindan"
+        }
+      ],
+      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
+      "verificationRunId": 41673980283
     },
     {
       "id": "RPG-100",
@@ -3147,14 +3161,16 @@
       "id": "RPG-175",
       "name": "Track treasure-map fragment progress and opened treasure count per player",
       "category": "Progression",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure statistics aggregate progress, discoveries, streak and treasure inventory",
-        "matchScore": 1,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "macera"
+        }
+      ],
+      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
+      "verificationRunId": 41673980283
     },
     {
       "id": "RPG-176",
@@ -3617,14 +3633,16 @@
       "id": "RPG-203",
       "name": "Award significantly higher gold and XP for rare treasure chest drops",
       "category": "Economy",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-utils.js",
-        "test": "rare treasure chest drops award more gold and XP than every common drop",
-        "matchScore": 1,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "hazineac"
+        }
+      ],
+      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
+      "verificationRunId": 41673980283
     },
     {
       "id": "RPG-204",
@@ -4139,27 +4157,31 @@
       "id": "RPG-237",
       "name": "Display crafting profession level inside the player's combined adventure history",
       "category": "RPG",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure history profile includes persistent crafting profession progression",
-        "matchScore": 1,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "maceragecmisi"
+        }
+      ],
+      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
+      "verificationRunId": 41673980283
     },
     {
       "id": "RPG-238",
       "name": "Display total crafting XP inside the player's combined adventure history",
       "category": "RPG",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure history profile includes persistent crafting profession progression",
-        "matchScore": 1,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "maceragecmisi"
+        }
+      ],
+      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
+      "verificationRunId": 41673980283
     },
     {
       "id": "RPG-239",
