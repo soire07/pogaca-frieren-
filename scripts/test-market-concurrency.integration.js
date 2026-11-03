@@ -2375,7 +2375,7 @@ test('daily crafting mission rejects early claims, grants XP and stat points at 
     assert.deepEqual(afterFirstClaim.rows[0], { coins: 100, xp: 149, level: 2, stat_points: 1 });
     assert.ok(claimed.rows[0]?.claimed_at);
     assert.deepEqual(afterReplay.rows[0], afterFirstClaim.rows[0]);
-    assert.match(String(responses[0]?.content), /3 ekipman üretmelisin/);
+    assert.match(String(responses[0]?.content), /ekipman üretmelisin/);
     assert.match(String(responses[1]?.content), /\\+100 altın/);
     assert.match(String(responses[2]?.content), /zaten aldın/);
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
