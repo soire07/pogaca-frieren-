@@ -600,7 +600,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           for (const member of teamUsers) {
             await ensureUser(guildId, member.id);
             await pool.query(
-              'UPDATE users SET level=50,xp=0,coins=100,hp=2000,max_hp=2000,mana=500,max_mana=500,attack=500,defense=250,last_dungeon_at=NULL,last_boss_at=NULL,dungeon_runs=0,dungeon_wins=0,boss_defeats=0 WHERE guild_id=$1 AND user_id=$2',
+              'UPDATE users SET level=10,xp=9900,coins=100,hp=2000,max_hp=2000,mana=500,max_mana=500,attack=50,defense=80,last_dungeon_at=NULL,last_boss_at=NULL,dungeon_runs=0,dungeon_wins=0,boss_defeats=0 WHERE guild_id=$1 AND user_id=$2',
               [guildId, member.id]
             );
             await pool.query(
@@ -613,13 +613,27 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             takim_arkadasi_2: teamUsers[2],
             zorluk: 'easy'
           });
-          const simulation = { users: teamUsers };
+          const simulation = {
+            users: teamUsers,
+            actionSequence: [
+              ['defend', 'heal', 'spell'],
+              ['shield', 'attack', 'attack'],
+              ['attack', 'spell', 'defend']
+            ],
+            actionIndex: 0
+          };
           const interaction = makeInteraction(command, options, guildId, effects, simulation);
           interaction.id = 'test-interaction-' + commandName + '-' + index;
           interaction.user.id = userId;
           interaction.user.username = teamUsers[0].username;
           interaction.member = makeMember(userId);
-          await command.execute(interaction);
+          const previousRandom = Math.random;
+          try {
+            Math.random = () => 0.3;
+            await command.execute(interaction);
+          } finally {
+            Math.random = previousRandom;
+          }
           const ids = teamUsers.map(member => member.id);
           const saved = await pool.query(
             'SELECT user_id,xp,coins,hp,max_hp,mana,max_mana,dungeon_runs,dungeon_wins,boss_defeats,last_dungeon_at,last_boss_at FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id',
@@ -633,6 +647,10 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             "SELECT user_id,item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND item_key LIKE 'test-owner-%' ORDER BY user_id",
             [guildId, ids]
           );
+          const spellMastery = await pool.query(
+            "SELECT user_id,casts,mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND spell_key='zoltraak'",
+            [guildId, ids]
+          );
           const isDungeon = commandName === 'katlizindan';
           const timestampField = isDungeon ? 'last_dungeon_at' : 'last_boss_at';
           const counterField = isDungeon ? 'dungeon_runs' : 'boss_defeats';
@@ -644,7 +662,10 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'HP ve mana sınırları korunur', expected: 'her oyuncuda 0 ≤ HP ≤ maksimum HP ve 0 ≤ mana ≤ maksimum mana', actual: saved.rows.map(row => row.user_id + ': ' + row.hp + '/' + row.max_hp + ' HP, ' + row.mana + '/' + row.max_mana + ' mana').join(' | '), passed: saved.rows.length === 3 && saved.rows.every(row => Number(row.hp) >= 0 && Number(row.hp) <= Number(row.max_hp) && Number(row.mana) >= 0 && Number(row.mana) <= Number(row.max_mana)) },
             { name: 'Oyuncu verisi izolasyonu', expected: 'her oyuncunun yalnızca kendi test envanter işareti bulunmalı', actual: markers.rows.map(row => row.user_id + ': ' + row.item_key).join(' | '), passed: markers.rowCount === 3 && markers.rows.every(row => row.item_key === 'test-owner-' + row.user_id && Number(row.quantity) === 1) },
             { name: 'Karşılaşma kilidi temizliği', expected: 'savaş sonunda etkin karşılaşma kaydı kalmamalı', actual: reservations.rowCount + ' etkin kilit', passed: reservations.rowCount === 0 },
-            { name: 'Komut sonucu paneli', expected: 'savaş sonucu Discord yanıtı üretilmeli', actual: effects.length + ' yanıt/etki; ' + (responseText.includes('Kat') || responseText.includes('Boss') ? 'savaş paneli içeriği kaydedildi' : 'panel metni kaydedildi'), passed: effects.length > 0 && (responseText.includes('Kat') || responseText.includes('Boss') || responseText.includes('baskın') || responseText.includes('zindan')) }
+            { name: 'Komut sonucu paneli', expected: 'savaş sonucu Discord yanıtı üretilmeli', actual: effects.length + ' yanıt/etki; ' + (responseText.includes('Kat') || responseText.includes('Boss') ? 'savaş paneli içeriği kaydedildi' : 'panel metni kaydedildi'), passed: effects.length > 0 && (responseText.includes('Kat') || responseText.includes('Boss') || responseText.includes('baskın') || responseText.includes('zindan')) },
+            { name: 'Beş gerçek savaş aksiyonu', expected: 'savunma, Mana Kalkanı, Heilen, Zoltraak ve normal saldırı sonuçları görülmeli', actual: ['savunma duruşu aldı','Mana Kalkanı açtı','Heilen kullandı','Zoltraak kullandı'].filter(value => responseText.includes(value)).join(', '), passed: ['savunma duruşu aldı','Mana Kalkanı açtı','Heilen kullandı','Zoltraak kullandı'].every(value => responseText.includes(value)) && spellMastery.rowCount > 0 && spellMastery.rows.every(row => Number(row.casts) > 0) },
+            { name: 'Tank hedefleme ve şifacı desteği', expected: 'tank öncelikli hedef olmalı ve şifacı takım arkadaşını iyileştirmeli', actual: (responseText.includes(teamUsers[0].username) ? 'tank oyuncusu günlüğe yansıdı' : 'tank oyuncusu yok') + '; ' + (responseText.includes('iyileştirdi') ? 'iyileştirme kaydı var' : 'iyileştirme kaydı yok'), passed: responseText.includes('iyileştirdi') && (isDungeon ? responseText.includes('Düşman <@' + teamUsers[0].id + '> oyuncusuna') : responseText.includes(teamUsers[0].username + ' oyuncusuna')) },
+            { name: isDungeon ? 'Gizli kat tuzağı olayı' : 'Boss alan özel saldırısı', expected: isDungeon ? 'deterministik rota akışında tuzak hasarı günlüğe yazılmalı' : 'Kuzey Platosu bossunun üçüncü tur alan mana patlaması çalışmalı', actual: isDungeon ? (responseText.includes('tuzak') ? 'tuzak olayı kaydedildi' : 'tuzak olayı bulunamadı') : (responseText.includes('yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor') ? 'alan saldırısı kaydedildi' : 'alan saldırısı bulunamadı'), passed: isDungeon ? responseText.includes('tuzak') : responseText.includes('yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor') }
           );
         } else if (commandName === 'bakiye') {
           await pool.query('UPDATE users SET coins=4321,xp=987,level=7 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
@@ -758,92 +779,6 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           behavioralChecks.push(
             { name: 'Takas teklifinin kalıcı kaydı', expected: 'alıcıya 1 Test Fern için bekleyen teklif oluşturulmalı', actual: offer.rows[0] ? offer.rows[0].status + ' / ' + offer.rows[0].amount : 'teklif yok', passed: offer.rowCount === 1 && offer.rows[0].to_user_id === '900000000000000001' && offer.rows[0].status === 'pending' && Number(offer.rows[0].amount) === 1 },
             { name: 'Takas teklifi kopyayı önceden taşımaz', expected: 'teklif kabul edilene kadar gönderenin 3 kopyası korunmalı', actual: String(collection.rows[0]?.quantity ?? 0), passed: Number(collection.rows[0]?.quantity) === 3 && payloadText.includes('Karakter Takas Teklifi') && payloadText.includes('trade_accept:') }
-          );
-        } else if (commandName === 'katlizindan' || commandName === 'ortakboss') {
-          const ids = buildCoopTestUserIds(index, userId);
-          const players = ids.map((id, playerIndex) => ({
-            id,
-            username: 'FrierenParty' + playerIndex,
-            tag: 'FrierenParty' + playerIndex + '#0001',
-            bot: false,
-            displayAvatarURL: () => 'https://example.com/party-avatar.png',
-            toString() { return '<@' + id + '>'; }
-          }));
-          for (const id of ids) await ensureUser(guildId, id);
-          await pool.query(
-            'UPDATE users SET level=10,xp=9900,coins=0,hp=2000,max_hp=2000,mana=500,max_mana=500,attack=50,defense=80,last_dungeon_at=NULL,last_boss_at=NULL WHERE guild_id=$1 AND user_id=ANY($2::text[])',
-            [guildId, ids]
-          );
-          const overrides = {
-            takim_arkadasi: players[1],
-            takim_arkadasi_2: players[2],
-            zorluk: 'normal'
-          };
-          const actionEffects = [];
-          const interaction = makeInteraction(
-            command,
-            buildOptions(schema?.options, overrides),
-            guildId,
-            actionEffects,
-            {
-              users: players,
-              actionSequence: [
-                ['defend', 'heal', 'spell'],
-                ['shield', 'attack', 'attack'],
-                ['attack', 'spell', 'defend']
-              ],
-              actionIndex: 0
-            }
-          );
-          interaction.user.id = userId;
-          interaction.user.username = players[0].username;
-          interaction.member = makeMember(userId);
-          const previousRandom = Math.random;
-          try {
-            Math.random = () => 0.3;
-            await command.execute(interaction);
-          } finally {
-            Math.random = previousRandom;
-          }
-          effects.push(...actionEffects);
-          const state = await pool.query(
-            'SELECT user_id,xp,coins,hp,max_hp,mana,max_mana,dungeon_wins,boss_defeats,last_dungeon_at,last_boss_at FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id',
-            [guildId, ids]
-          );
-          const reservations = await pool.query(
-            'SELECT COUNT(*)::int AS count FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=ANY($2::text[])',
-            [guildId, ids]
-          );
-          const payloadText = payloadTextFromEffects(actionEffects);
-          const dungeonMode = commandName === 'katlizindan';
-          const winField = dungeonMode ? 'dungeon_wins' : 'boss_defeats';
-          const cooldownField = dungeonMode ? 'last_dungeon_at' : 'last_boss_at';
-          const allPlayersWon = state.rowCount === ids.length && state.rows.every(row =>
-            Number(row[winField]) >= 1 && Number(row.xp) > 90000 && Number(row.coins) > 0 && row[cooldownField] != null
-          );
-          behavioralChecks.push(
-            {
-              name: dungeonMode ? 'Beş katlı ortak zindan gerçek parti akışı' : 'Ortak boss baskını gerçek parti akışı',
-              expected: 'Üç oyuncu daveti kabul etmeli, kendi tank/şifacı/hasar rollerini seçmeli ve karşılaşmayı tamamlamalı',
-              actual: state.rows.length + '/' + ids.length + ' oyuncu; ' + (payloadText.includes('Muhafız') && payloadText.includes('Şifacı') && payloadText.includes('Hasar Ustası') ? 'üç rol de yanıtta' : 'rol yanıtı eksik'),
-              passed: allPlayersWon && payloadText.includes(players[1].username) && payloadText.includes(players[2].username) &&
-                payloadText.includes('Muhafız') && payloadText.includes('Şifacı') && payloadText.includes('Hasar Ustası')
-            },
-            {
-              name: dungeonMode ? 'Zindan XP/altın/HP-mana kalıcılığı' : 'Raid XP/altın/HP-mana kalıcılığı',
-              expected: 'Her katılımcının ödülü kaydedilmeli; HP ve mana taban sınırlarında kalmalı',
-              actual: state.rows.map(row => row.user_id + ': XP ' + row.xp + ', altın ' + row.coins + ', HP ' + row.hp + '/' + row.max_hp + ', mana ' + row.mana + '/' + row.max_mana).join(' | '),
-              passed: allPlayersWon && state.rows.every(row =>
-                Number(row.hp) >= 0 && Number(row.hp) <= Number(row.max_hp) &&
-                Number(row.mana) >= 0 && Number(row.mana) <= Number(row.max_mana)
-              )
-            },
-            {
-              name: 'Ortak karşılaşma rezervasyonlarının temizlenmesi',
-              expected: 'Tamamlanan karşılaşma sonrası üç oyuncunun aktif kilidi kalmamalı',
-              actual: String(reservations.rows[0]?.count ?? 'kayıt yok'),
-              passed: Number(reservations.rows[0]?.count) === 0
-            }
           );
         } else if (commandName === 'zindan') {
           const before = await pool.query('SELECT coins,xp,level,hp,dungeon_runs FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
