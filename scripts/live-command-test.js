@@ -1106,6 +1106,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             behavioralChecks.push(
               { name: 'Hikâye yoluna özgü gereksinim · ' + scenario.path, expected: 'başka yolun ilerlemesi engellenmeli, doğru koşul tamamlanınca bölüm açılmalı', actual: 'bloklu bölüm ' + blockedProgress.rows[0]?.current_chapter + ', son bölüm ' + finalProgress.rows[0]?.current_chapter + ', seçim ' + JSON.stringify(finalProgress.rows[0]?.choices), passed: Number(blockedProgress.rows[0]?.current_chapter) === 1 && Array.isArray(blockedProgress.rows[0]?.choices) && blockedProgress.rows[0].choices[0] === scenario.path && Number(blockedPlayer.rows[0]?.coins) === 50 && Number(finalProgress.rows[0]?.current_chapter) === 2 && finalProgress.rows[0].choices.length === 2 }
             );
+            effects.push(...startEffects, ...blockedEffects, ...continueEffects);
           }
         } else if (commandName === 'karaktercek') {
           await pool.query('UPDATE users SET last_free_character_at=NULL,free_character_pity_count=0 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
