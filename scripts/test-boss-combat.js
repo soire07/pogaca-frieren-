@@ -12,7 +12,11 @@ import {
   getRaidBossSpecialAttack,
   chooseRaidAttackTarget,
   resolveRaidAreaAttack,
-  getSoloBossSpecialAttackState
+  getSoloBossSpecialAttackState,
+  dungeonEnemyStats,
+  applyDungeonTrapDamage,
+  DUNGEON_PARTY_ROLES,
+  RAID_PARTY_ROLES
 } from '../rpg-mechanics.js';
 
 test('boss incoming damage never becomes negative and has a minimum of one', () => {
@@ -58,6 +62,59 @@ test('ice spear freeze cancels scheduled solo boss special attacks and mana drai
     assert.equal(getSoloBossSpecialAttackState(turn, false), 'execute');
     assert.equal(getSoloBossSpecialAttackState(turn, true), 'cancelled');
   }
+});
+
+test('dungeon enemy health and damage scale with party level, size and difficulty', () => {
+  const base = dungeonEnemyStats(2,1,2,'normal');
+  const higherLevel = dungeonEnemyStats(2,10,2,'normal');
+  const largerParty = dungeonEnemyStats(2,1,4,'normal');
+  const easy = dungeonEnemyStats(2,1,2,'easy');
+  const nightmare = dungeonEnemyStats(2,1,2,'nightmare');
+  assert.ok(higherLevel.hp > base.hp && higherLevel.damage > base.damage);
+  assert.ok(largerParty.hp > base.hp);
+  assert.ok(easy.hp < base.hp && easy.damage < base.damage);
+  assert.ok(nightmare.hp > base.hp && nightmare.damage > base.damage);
+});
+
+test('dungeon floor traps damage one living teammate and never reduce HP below one', () => {
+  const hit = applyDungeonTrapDamage([40,100,0],2,()=>0);
+  assert.equal(hit.targetIndex,0);
+  assert.equal(hit.damage,16);
+  assert.deepEqual(hit.hpNow,[24,100,0]);
+  const lethal = applyDungeonTrapDamage([5,0],4,()=>0);
+  assert.equal(lethal.damage,24);
+  assert.equal(lethal.hpNow[0],1);
+  const noLiving = applyDungeonTrapDamage([0,0],3,()=>0);
+  assert.equal(noLiving.targetIndex,null);
+  assert.equal(noLiving.damage,0);
+  assert.deepEqual(noLiving.hpNow,[0,0]);
+});
+
+test('dungeon and raid roles apply distinct HP, attack and defense modifiers', () => {
+  assert.deepEqual(
+    [DUNGEON_PARTY_ROLES.tank.hp,DUNGEON_PARTY_ROLES.tank.attack,DUNGEON_PARTY_ROLES.tank.defense],
+    [1.25,0.85,1.4]
+  );
+  assert.deepEqual(
+    [DUNGEON_PARTY_ROLES.healer.hp,DUNGEON_PARTY_ROLES.healer.attack,DUNGEON_PARTY_ROLES.healer.defense],
+    [1,0.9,1.05]
+  );
+  assert.deepEqual(
+    [DUNGEON_PARTY_ROLES.damage.hp,DUNGEON_PARTY_ROLES.damage.attack,DUNGEON_PARTY_ROLES.damage.defense],
+    [0.95,1.3,0.9]
+  );
+  assert.deepEqual(
+    [RAID_PARTY_ROLES.tank.hp,RAID_PARTY_ROLES.tank.attack,RAID_PARTY_ROLES.tank.defense],
+    [1.25,0.85,1.45]
+  );
+  assert.deepEqual(
+    [RAID_PARTY_ROLES.healer.hp,RAID_PARTY_ROLES.healer.attack,RAID_PARTY_ROLES.healer.defense],
+    [1,0.85,1.05]
+  );
+  assert.deepEqual(
+    [RAID_PARTY_ROLES.damage.hp,RAID_PARTY_ROLES.damage.attack,RAID_PARTY_ROLES.damage.defense],
+    [0.95,1.35,0.9]
+  );
 });
 
 test('raid special attacks trigger on their exact scheduled rounds', () => {
