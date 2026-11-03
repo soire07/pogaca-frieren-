@@ -244,3 +244,29 @@ test('solo boss ice freeze cancels the scheduled special attack and mana drain',
   const freezeBranch = source.slice(source.indexOf("else if (turnCount % 3 === 0 && frozenBoss)"), source.indexOf("if (frozenBoss) bossDamage = 0"));
   assert.doesNotMatch(freezeBranch, /drainedMana|playerMana\s*-=|specialDamage/);
 });
+
+test('PvP duel consumes class passives and selected combat-build modifiers for attack, defense and healing', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../buyusavasi.js', import.meta.url), 'utf8');
+  assert.match(source, /getCharacterBuild\(stats1\.active_build\)/);
+  assert.match(source, /getCharacterBuild\(stats2\.active_build\)/);
+  assert.match(source, /applyClassDamage\(rawDamage/);
+  assert.match(source, /applyClassDefense\(Number\(stats1\.defense\)/);
+  assert.match(source, /applyClassDefense\(Number\(stats2\.defense\)/);
+  assert.match(source, /applyClassHealing\(baseHealing/);
+});
+
+test('co-op dungeon and raid count only successful mana-funded Zoltraak casts for mastery settlement', async () => {
+  const fs = await import('node:fs/promises');
+  const raid = await fs.readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  const dungeon = await fs.readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  const settlement = await fs.readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
+  for (const source of [raid,dungeon]) {
+    assert.match(source, /action === 'spell' && [a-zA-Z]+\.mana >= spellCost/);
+    assert.match(source, /spellCasts\.set\([^,]+, castCount\)/);
+    assert.match(source, /spellCasts\s*\}\)/);
+    assert.match(source, /mana yetersiz; normal saldırı yaptı/);
+  }
+  assert.match(settlement, /for \(const \[userId, casts\] of spellCasts\)/);
+  assert.match(settlement, /spell_mastery\.casts\+EXCLUDED\.casts/);
+  assert.match(settlement, /RETURNING casts,mastery_level/);
+});
