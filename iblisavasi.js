@@ -10,7 +10,7 @@ import { pool, ensureUser } from './database/db.js';
 import { claimSoloBossReward } from './rpg-reward-transactions.js';
 import { getGuildRpgContent } from './owner-rpg-content.js';
 import { equipmentItems, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
-import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, applyEquipmentSetBonus, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening, restoreResourceRatio } from './rpg-mechanics.js';
+import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, applyEquipmentSetBonus, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening, getSoloBossSpecialAttackState, restoreResourceRatio } from './rpg-mechanics.js';
 
 const PLAYER_MAX_HP = 100;
 const COOLDOWN_MS = 30 * 60 * 1000;
@@ -372,7 +372,8 @@ export default {
         turnCount += 1;
         const rawBossDamage = Math.floor(Math.random() * (boss.maxDamage - boss.minDamage + 1)) + boss.minDamage;
         let bossDamage = calculateBossIncomingDamage(rawBossDamage, defense, bossPhase);
-        if (turnCount % 3 === 0 && !frozenBoss) {
+        const specialAttackState = getSoloBossSpecialAttackState(turnCount, frozenBoss);
+        if (specialAttackState === 'execute') {
           const specialDamage = (boss.specialType === 'arcane' ? 12 : boss.specialType === 'heavy' ? 8 : 5) + bossPhaseSpecialBonus(bossPhase);
           bossDamage += specialDamage;
           actionText += `\n💥 **${boss.special}**! Boss özel saldırı yaptı ve hasarını **+${specialDamage}** artırdı.`;
@@ -381,7 +382,7 @@ export default {
             playerMana -= drainedMana;
             actionText += `\n🔮 Lanet **${drainedMana} Mana** emdi!`;
           }
-        } else if (turnCount % 3 === 0 && frozenBoss) {
+        } else if (specialAttackState === 'cancelled') {
           actionText += '\n❄️ Donma etkisi bossun özel saldırısını da durdurdu!';
         }
         if (frozenBoss) bossDamage = 0;
