@@ -798,6 +798,80 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Zindan davet paneli', expected: 'takım arkadaşına kabul/ret daveti gönderilmeli', actual: payloadText.includes('birlikte zindana') ? 'zindan daveti gönderildi' : payloadText.slice(0, 400), passed: payloadText.includes('birlikte zindana') && payloadText.includes('dungeon_accept:') && payloadText.includes('dungeon_decline:') },
             { name: 'Yanıtlanmayan davetin güvenli kapanması', expected: 'süre dolunca zindan ödülü/hasarı uygulanmamalı', actual: JSON.stringify(before.rows[0]) + ' → ' + JSON.stringify(after.rows[0]), passed: ['coins','xp','level','hp','dungeon_runs'].every(key => Number(before.rows[0][key]) === Number(after.rows[0][key])) && payloadText.includes('davetinin süresi doldu') }
           );
+
+          const acceptedUserId = userId + '-zindan-accepted';
+          const teammateId = userId + '-zindan-teammate';
+          await ensureUser(guildId, acceptedUserId);
+          await ensureUser(guildId, teammateId);
+          const partyIds = [acceptedUserId, teammateId];
+          await pool.query(
+            'UPDATE users SET coins=0,xp=0,level=1,hp=2000,max_hp=2000,mana=100,max_mana=100,attack=500,defense=250,dungeon_wins=0,dungeon_runs=0,last_dungeon_at=NULL WHERE guild_id=$1 AND user_id=ANY($2::text[])',
+            [guildId, partyIds]
+          );
+          const runAcceptedDungeon = async () => {
+            const actionEffects = [];
+            const teammate = {
+              id: teammateId, username: 'DungeonTeammate', tag: 'DungeonTeammate#0001', bot: false,
+              displayAvatarURL: () => 'https://example.com/dungeon-teammate.png',
+              toString() { return '<@' + teammateId + '>'; }
+            };
+            const acceptedInteraction = makeInteraction(
+              command,
+              buildOptions(schema?.options, { takim_arkadasi: teammate }),
+              guildId,
+              actionEffects
+            );
+            acceptedInteraction.user.id = acceptedUserId;
+            acceptedInteraction.member = makeMember(acceptedUserId);
+            acceptedInteraction.channel.awaitMessageComponent = async ({ filter }) => {
+              const response = {
+                customId: 'dungeon_accept:' + acceptedInteraction.id,
+                user: { id: teammateId },
+                update: async payload => actionEffects.push({ type: 'componentUpdate', payload: normalizePayload(payload) })
+              };
+              if (typeof filter === 'function' && !filter(response)) throw new Error('SIMULATED_DUNGEON_ACCEPT_REJECTED');
+              return response;
+            };
+            const originalRandom = Math.random;
+            try {
+              Math.random = () => 0;
+              await command.execute(acceptedInteraction);
+            } finally {
+              Math.random = originalRandom;
+            }
+            effects.push(...actionEffects);
+            return payloadTextFromEffects(actionEffects);
+          };
+          const acceptedText = await runAcceptedDungeon();
+          const partyState = await pool.query(
+            'SELECT user_id,coins,xp,level,hp,dungeon_wins,dungeon_runs,last_dungeon_at FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id',
+            [guildId, partyIds]
+          );
+          const lootState = await pool.query(
+            "SELECT user_id,quantity FROM inventory WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND item_key='Eski Mahzen Anahtarı' ORDER BY user_id",
+            [guildId, partyIds]
+          );
+          behavioralChecks.push(
+            { name: 'Kabul edilen iki kişilik zindan savaşı', expected: 'davetli kabul edince gerçek savaş çözülmeli ve zafer paneli gösterilmeli', actual: acceptedText.includes('Zindan Tamamlandı') ? 'zindan zafer paneli gösterildi' : acceptedText.slice(0, 400), passed: acceptedText.includes('Zindan Tamamlandı') && acceptedText.includes('Kişi başı ödül') },
+            { name: 'İki oyuncuya atomik ödül, ganimet ve bekleme süresi', expected: 'iki oyuncu da 55 altın, 45 XP, 1 zafer, 1 koşu, zaman damgası ve 1 anahtar almalı', actual: JSON.stringify(partyState.rows) + ' · ganimet=' + JSON.stringify(lootState.rows), passed: partyState.rowCount === 2 && partyState.rows.every(row => Number(row.coins) === 55 && Number(row.xp) === 45 && Number(row.dungeon_wins) === 1 && Number(row.dungeon_runs) === 1 && Boolean(row.last_dungeon_at)) && lootState.rowCount === 2 && lootState.rows.every(row => Number(row.quantity) === 1) }
+          );
+          const beforeReplay = partyState.rows.map(row => ({ ...row }));
+          const replayText = await runAcceptedDungeon();
+          const afterReplay = await pool.query(
+            'SELECT user_id,coins,xp,dungeon_wins,dungeon_runs FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id',
+            [guildId, partyIds]
+          );
+          behavioralChecks.push({
+            name: 'Zindan eşzamanlı/tekrar ödül koruması',
+            expected: 'aynı takım bekleme süresi içinde tekrar ödül alamamalı',
+            actual: replayText.slice(0, 220) + ' · ' + JSON.stringify(afterReplay.rows),
+            passed: replayText.includes('bekleme süresi') && afterReplay.rowCount === 2 && afterReplay.rows.every((row, index) =>
+              Number(row.coins) === Number(beforeReplay[index].coins) &&
+              Number(row.xp) === Number(beforeReplay[index].xp) &&
+              Number(row.dungeon_wins) === Number(beforeReplay[index].dungeon_wins) &&
+              Number(row.dungeon_runs) === Number(beforeReplay[index].dungeon_runs)
+            )
+          });
         } else if (commandName === 'teknik-talep') {
           const interaction = makeInteraction(command, buildOptions(schema?.options, { tur: 'teknik-bilgi', baslik: 'Güvenlik kontrolü', aciklama: 'Discord bot token paylaşımı' }), guildId, effects);
           interaction.user.id = userId;
