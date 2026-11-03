@@ -3,9 +3,9 @@ import { pool, ensureUser } from './database/db.js';
 import { settleRaidRewards } from './rpg-reward-transactions.js';
 import { getBossArtUrl } from './boss-art.js';
 import { getGuildRpgContent } from './owner-rpg-content.js';
-import { equipmentItems, equipmentBonus } from './equipment-data.js';
+import { equipmentItems } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { chooseRaidBoss, getRaidBossMaxHp, RAID_PARTY_ROLES, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getRaidBossSpecialAttack, chooseRaidAttackTarget, resolveRaidAreaAttack, restoreResourceRatio } from './rpg-mechanics.js';
+import { chooseRaidBoss, getRaidBossMaxHp, RAID_PARTY_ROLES, applyRaidWeakness, getEquipmentCombatBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getRaidBossSpecialAttack, chooseRaidAttackTarget, resolveRaidAreaAttack, restoreResourceRatio } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
 
@@ -170,7 +170,7 @@ export default {
         if (item) gearMap.get(g.user_id).push(item);
       }
       const fighters = raw.map(x => {
-        const p = x.stats; const equipped = gearMap.get(x.user.id) || []; const gear = applyEquipmentSetBonus(equipped, equipmentBonus(equipped)); const role = ROLES[x.role]; const build = getCharacterBuild(p.active_build); const baseMaxHp = Math.min(2000, Number(p.max_hp) + gear.hp) * build.hp * (1 + Number(p.talent_hp) * 0.05);
+        const p = x.stats; const equipped = gearMap.get(x.user.id) || []; const gear = getEquipmentCombatBonus(equipped); const role = ROLES[x.role]; const build = getCharacterBuild(p.active_build); const baseMaxHp = Math.min(2000, Number(p.max_hp) + gear.hp) * build.hp * (1 + Number(p.talent_hp) * 0.05);
         const maxHp = Math.round(baseMaxHp * role.hp);
         const maxMana = Math.min(500, Math.round((Number(p.max_mana) + gear.mana) * build.mana * (1 + Number(p.talent_mana) * 0.05)));
         return {
