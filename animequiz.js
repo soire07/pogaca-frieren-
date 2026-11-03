@@ -155,15 +155,6 @@ export default {
           join(__dirname, successGif)
         );
 
-        const result = makeEmbed(
-          '✅ Doğru Cevap!',
-          `Tebrikler ${message.author}!\n\n` +
-          `Doğru cevap: **${question.answer}**\n` +
-          '✨ Bu turda **10 puan** kazandın!',
-          0x57f287,
-          successGif
-        );
-
         await ensureUser(interaction.guildId, message.author.id);
         const scoreResult = await pool.query(
           'UPDATE users SET anime_quiz_points=anime_quiz_points+10 WHERE guild_id=$1 AND user_id=$2 RETURNING anime_quiz_points',
