@@ -106,40 +106,58 @@
       "id": "FUN-001",
       "name": "Random luck interaction",
       "category": "Fun",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "dungeon has five floors, route choices, safe timeout default and random floor events",
-        "matchScore": 0.25,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "sans",
+          "checks": [
+            "Eğlence komutu içeriği",
+            "Eğlence komutu RPG verisini değiştirmez"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600932
     },
     {
       "id": "FUN-002",
       "name": "Virtual hug interaction",
       "category": "Fun",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/check-gameplay-integrity.js",
-        "test": "interaction dispatch catches component-handler and database-acquisition failures safely",
-        "matchScore": 0.25,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "saril",
+          "checks": [
+            "Eğlence komutu içeriği",
+            "Eğlence komutu RPG verisini değiştirmez"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600932
     },
     {
       "id": "FUN-003",
       "name": "Character identification interaction",
       "category": "Fun",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "character classes provide bounded passive bonuses and class selection is discoverable",
-        "matchScore": 0.25,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "kimimben",
+          "checks": [
+            "Kimimben karakter keşfi ve koleksiyon kaydı",
+            "Kimimben karakter kartı ve yenileme düğmesi"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600932
     },
     {
       "id": "RPG-001",
@@ -271,14 +289,16 @@
       "id": "RPG-008",
       "name": "Level-scaled exploration regions",
       "category": "Exploration",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-gameplay-persistence.js",
-        "test": "level-scaled quest rewards include the chain completion bonus deterministically",
-        "matchScore": 0.5,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "exploration regions enforce level gates and scale XP and gold rewards"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-009",
@@ -303,14 +323,26 @@
       "id": "RPG-010",
       "name": "Exploration rewards and item drops",
       "category": "Exploration",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "co-op rewards and cooldowns are persisted inside database transactions",
-        "matchScore": 0.25,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "kesif",
+          "checks": [
+            "Keşif ilerleme kaydı",
+            "Keşif savaş kaynakları sınırları",
+            "Keşif bekleme süresi çift ödülü engeller"
+          ]
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "exploration regions enforce level gates and scale XP and gold rewards"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-011",
@@ -354,14 +386,16 @@
       "id": "RPG-013",
       "name": "Boss tiers based on player level",
       "category": "Combat",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "spell mastery changes ice, barrier, healing and stone-wall effects in boss combat",
-        "matchScore": 0.5,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "solo boss tiers unlock only when the player meets each configured minimum level"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-014",
@@ -407,14 +441,20 @@
       "id": "RPG-016",
       "name": "Boss guide and reward estimates",
       "category": "Combat",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-boss-combat.js",
-        "test": "solo boss reward persistence is idempotent per battle session across duplicate handlers",
-        "matchScore": 0.6,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "bossrehberi",
+          "checks": [
+            "Rehber içeriği ve başlık",
+            "Rehber komutunun oyuncu verisini değiştirmemesi"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600932
     },
     {
       "id": "RPG-017",
@@ -494,14 +534,21 @@
       "id": "RPG-021",
       "name": "Item usage tracking",
       "category": "Inventory",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure statistics aggregate progress, discoveries, streak and treasure inventory",
-        "matchScore": 0.25,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "esyakullan",
+          "checks": [
+            "Şifa iksiri HP yenilemesi",
+            "Şifa iksiri mana yenilemesi",
+            "Şifa iksiri tüketimi ve sayaç"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600932
     },
     {
       "id": "RPG-022",
@@ -526,14 +573,16 @@
       "id": "RPG-023",
       "name": "Buy equipment",
       "category": "Equipment",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "crafting consumes required materials safely and produces equipment supported by the equipment system",
-        "matchScore": 0.5,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-economy-crafting-integrity.js",
+          "test": "market purchases serialize the player before charging and never allow a negative balance"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-024",
@@ -652,14 +701,21 @@
       "id": "RPG-029",
       "name": "Daily reward streak and bonus",
       "category": "Economy",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure leaderboards provide discovery, route mastery and daily streak rankings",
-        "matchScore": 0.4,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "gunlukodul",
+          "checks": [
+            "Günlük ödül bakiyesi",
+            "Günlük seri kaydı",
+            "Günlük ödül zaman damgası"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600932
     },
     {
       "id": "RPG-030",
@@ -1051,14 +1107,20 @@
       "id": "RPG-050",
       "name": "Claim rewards for co-op dungeon milestones",
       "category": "Progression",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "co-op commands expose party options and dungeon difficulty choices",
-        "matchScore": 0.25,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "hedefler",
+          "checks": [
+            "Altı gelişim hedefinin görünmesi",
+            "Tamamlanan hedeflerin DB ilerlemesi"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600932
     },
     {
       "id": "RPG-051",
@@ -1094,27 +1156,37 @@
       "id": "RPG-053",
       "name": "Summarize demon boss victory statistics",
       "category": "Combat",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/check-gameplay-integrity.js",
-        "test": "solo demon combat saves non-victory HP, mana and spell mastery within the same transaction",
-        "matchScore": 0.5,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "maceragecmisi",
+          "checks": [
+            "Macera geçmişi gerçek oyuncu istatistikleri"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600932
     },
     {
       "id": "RPG-054",
       "name": "Summarize co-op dungeon attempt and victory statistics",
       "category": "Co-op",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "co-op commands expose party options and dungeon difficulty choices",
-        "matchScore": 0.2,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "maceragecmisi",
+          "checks": [
+            "Macera geçmişi gerçek oyuncu istatistikleri"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600932
     },
     {
       "id": "RPG-055",
@@ -1157,14 +1229,19 @@
       "id": "RPG-057",
       "name": "Summarize unique characters and total collection copies",
       "category": "Collection",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "both co-op modes require every teammate to choose a role and enforce unique tank/healer roles",
-        "matchScore": 0.2,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "maceragecmisi",
+          "checks": [
+            "Macera geçmişi koleksiyon ve hazırlık verileri"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600932
     },
     {
       "id": "RPG-058",
@@ -1202,66 +1279,96 @@
       "id": "RPG-060",
       "name": "Track demon-slaying milestone goal",
       "category": "Combat",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/check-gameplay-integrity.js",
-        "test": "solo demon combat saves non-victory HP, mana and spell mastery within the same transaction",
-        "matchScore": 0.4,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "hedefler",
+          "checks": [
+            "Altı gelişim hedefinin görünmesi",
+            "Tamamlanan hedeflerin DB ilerlemesi"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600932
     },
     {
       "id": "RPG-061",
       "name": "Track co-op dungeon victory milestone",
       "category": "Co-op",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "co-op commands expose party options and dungeon difficulty choices",
-        "matchScore": 0.333,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "hedefler",
+          "checks": [
+            "Altı gelişim hedefinin görünmesi",
+            "Tamamlanan hedeflerin DB ilerlemesi"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600932
     },
     {
       "id": "RPG-062",
       "name": "Track exploration milestone",
       "category": "Exploration",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure command allows targeted routes while preserving random exploration",
-        "matchScore": 0.5,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "hedefler",
+          "checks": [
+            "Altı gelişim hedefinin görünmesi",
+            "Tamamlanan hedeflerin DB ilerlemesi"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600932
     },
     {
       "id": "RPG-063",
       "name": "Track unique character collection milestone",
       "category": "Collection",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "both co-op modes require every teammate to choose a role and enforce unique tank/healer roles",
-        "matchScore": 0.25,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "hedefler",
+          "checks": [
+            "Altı gelişim hedefinin görünmesi",
+            "Tamamlanan hedeflerin DB ilerlemesi"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600932
     },
     {
       "id": "RPG-064",
       "name": "Track learned-spell milestone",
       "category": "Magic",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "spell practice uses existing learned-spell keys and checks ownership before spending resources",
-        "matchScore": 0.5,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "hedefler",
+          "checks": [
+            "Altı gelişim hedefinin görünmesi",
+            "Tamamlanan hedeflerin DB ilerlemesi"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600932
     },
     {
       "id": "RPG-065",
@@ -1355,27 +1462,31 @@
       "id": "RPG-070",
       "name": "Carry player HP between dungeon floors",
       "category": "Combat",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "dungeon has five floors, route choices, safe timeout default and random floor events",
-        "matchScore": 0.5,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "dungeon carries player HP between floors and stops after the party is defeated"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-071",
       "name": "Award XP and coins for each cleared floor",
       "category": "Progression",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "dungeon has five floors, route choices, safe timeout default and random floor events",
-        "matchScore": 0.2,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "dungeon awards floor-scaled XP and coins for every cleared floor"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-072",
@@ -1409,14 +1520,16 @@
       "id": "RPG-074",
       "name": "Stop the dungeon run when the party can no longer fight",
       "category": "Combat",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "co-op commands expose party options and dungeon difficulty choices",
-        "matchScore": 0.286,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "dungeon carries player HP between floors and stops after the party is defeated"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-075",
@@ -1492,14 +1605,16 @@
       "id": "RPG-079",
       "name": "Increase raid boss health based on party size",
       "category": "Combat",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "solo boss, cooperative raid and dungeon result panels show visual health or progress bars",
-        "matchScore": 0.429,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-boss-combat.js",
+          "test": "raid boss HP scales with average level and party size without shrinking below the base"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-080",
@@ -1520,27 +1635,42 @@
       "id": "RPG-081",
       "name": "Let the healer restore party HP each round",
       "category": "Combat",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "combat choices are bound to living party members and the current encounter turn",
-        "matchScore": 0.333,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "dungeon and raid healers restore every living teammate each combat round"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-082",
       "name": "Reward raid victories with XP, coins and rare loot",
       "category": "Progression",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "raid catalog includes three bosses, action weaknesses and distinct loot identifiers",
-        "matchScore": 0.286,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "ortakboss",
+          "checks": [
+            "Savaş sonucu ve bekleme süresi",
+            "Kişi başı savaş ödülü",
+            "HP ve mana sınırları korunur",
+            "Oyuncu verisi izolasyonu"
+          ]
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "cooperative raid defines player-facing roles and a persistent cooldown"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-083",
@@ -1602,27 +1732,31 @@
       "id": "RPG-087",
       "name": "Scale cooperative raid boss health with average party level",
       "category": "Balance",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "solo boss, cooperative raid and dungeon result panels show visual health or progress bars",
-        "matchScore": 0.444,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-boss-combat.js",
+          "test": "raid boss HP scales with average level and party size without shrinking below the base"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-088",
       "name": "Trigger an enrage phase when raid boss health drops below half",
       "category": "Boss",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "solo boss, cooperative raid and dungeon result panels show visual health or progress bars",
-        "matchScore": 0.333,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "cooperative raid boss phases scale incoming damage and announce transitions"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-089",
@@ -1678,53 +1812,66 @@
       "id": "RPG-092",
       "name": "Let the healer restore teammate HP during dungeon combat",
       "category": "Combat",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "both co-op modes require every teammate to choose a role and enforce unique tank/healer roles",
-        "matchScore": 0.333,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "dungeon and raid healers restore every living teammate each combat round"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-093",
       "name": "Final dungeon boss gains an enrage phase below half health",
       "category": "Boss",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "solo boss, cooperative raid and dungeon result panels show visual health or progress bars",
-        "matchScore": 0.333,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "final dungeon boss enrage and periodic mana-star burst increase combat pressure"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "final dungeon boss has three phases and stronger phase-scaled special attacks"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-094",
       "name": "Final dungeon boss uses a periodic mana-star burst attack",
       "category": "Boss",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "dungeon final boss artwork only appears after the final encounter is cleared",
-        "matchScore": 0.333,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "final dungeon boss enrage and periodic mana-star burst increase combat pressure"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-095",
       "name": "Final-floor demon lord deals increased damage compared with ordinary floor enemies",
       "category": "Boss",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "dungeon final boss artwork only appears after the final encounter is cleared",
-        "matchScore": 0.182,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "final dungeon boss enrage and periodic mana-star burst increase combat pressure"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-096",
@@ -1786,14 +1933,16 @@
       "id": "RPG-100",
       "name": "Each invited boss raid player chooses their own combat role",
       "category": "Boss",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-boss-combat.js",
-        "test": "raid special attacks trigger on their exact scheduled rounds",
-        "matchScore": 0.5,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "dungeon and boss raid let each accepted player choose their own role"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-101",
@@ -1814,27 +1963,36 @@
       "id": "RPG-102",
       "name": "Choose attack, Zoltraak or defense each boss raid turn",
       "category": "Boss",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/check-gameplay-integrity.js",
-        "test": "successful Zoltraak casts in cooperative dungeon and boss raid advance persistent spell mastery",
-        "matchScore": 0.429,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "cooperative boss raid supports attack, mana spell, defense and mana persistence"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-103",
       "name": "Spend persistent mana to amplify cooperative boss raid damage",
       "category": "Magic",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/check-gameplay-integrity.js",
-        "test": "successful Zoltraak casts in cooperative dungeon and boss raid advance persistent spell mastery",
-        "matchScore": 0.444,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "cooperative boss raid supports attack, mana spell, defense and mana persistence"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/check-gameplay-integrity.js",
+          "test": "successful Zoltraak casts in cooperative dungeon and boss raid advance persistent spell mastery"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-104",
@@ -2372,53 +2530,61 @@
       "id": "RPG-136",
       "name": "Apply Mage spell-damage passive in co-op dungeon combat",
       "category": "Combat",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "spell mastery changes ice, barrier, healing and stone-wall effects in boss combat",
-        "matchScore": 0.333,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "character class passives are applied in both co-op modes and class guide is available"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-137",
       "name": "Apply Guardian defense passive in co-op dungeon combat",
       "category": "Combat",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-boss-combat.js",
-        "test": "boss incoming damage clamps negative defense and floors fractional inputs safely",
-        "matchScore": 0.4,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "character class passives are applied in both co-op modes and class guide is available"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-138",
       "name": "Scale dungeon team healing using the healer character class",
       "category": "Combat",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/check-gameplay-integrity.js",
-        "test": "party combat applies class discounts/healing and uses shared HP/mana persistence conversion",
-        "matchScore": 0.333,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "character class passives are applied in both co-op modes and class guide is available"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-139",
       "name": "Apply class passives in co-op raid combat",
       "category": "Combat",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/check-gameplay-integrity.js",
-        "test": "PvP duels apply persistent class passives and selected combat builds",
-        "matchScore": 0.75,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "character class passives are applied in both co-op modes and class guide is available"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-140",
@@ -2559,27 +2725,31 @@
       "id": "RPG-149",
       "name": "Apply talent attack bonuses in solo, co-op dungeon and raid combat",
       "category": "Combat",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "solo boss, cooperative raid and dungeon result panels show visual health or progress bars",
-        "matchScore": 0.429,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "talent tree persists ranks and modifies all combat modes"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-150",
       "name": "Apply talent defense bonuses in solo, co-op dungeon and raid combat",
       "category": "Combat",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "solo boss, cooperative raid and dungeon result panels show visual health or progress bars",
-        "matchScore": 0.429,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "talent tree persists ranks and modifies all combat modes"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-151",
@@ -2664,14 +2834,16 @@
       "id": "RPG-156",
       "name": "Prevent duplicate discovery and completion rewards with transactional uniqueness",
       "category": "Economy",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-gameplay-persistence.js",
-        "test": "level-scaled quest rewards include the chain completion bonus deterministically",
-        "matchScore": 0.286,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "adventure discoveries persist, award first-find bonuses, and grant journal completion once"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-157",
@@ -2737,14 +2909,16 @@
       "id": "RPG-161",
       "name": "Keep route mastery progression and rewards transactional with the adventure result",
       "category": "Economy",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure route mastery persists visits and grants a reward every third visit",
-        "matchScore": 0.375,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "adventure route mastery rewards and discovery uniqueness share one transaction"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-162",
@@ -2810,53 +2984,61 @@
       "id": "RPG-166",
       "name": "View a server-scoped leaderboard of unique adventure discoveries",
       "category": "Social",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure discoveries persist, award first-find bonuses, and grant journal completion once",
-        "matchScore": 0.286,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "adventure leaderboards provide discovery, route mastery and daily streak rankings"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-167",
       "name": "View a server-scoped leaderboard of total adventure route visits",
       "category": "Social",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure route mastery persists visits and grants a reward every third visit",
-        "matchScore": 0.429,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "adventure leaderboards provide discovery, route mastery and daily streak rankings"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-168",
       "name": "View a server-scoped leaderboard of consecutive daily adventure streaks",
       "category": "Social",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure streak advances once per day and pays every third consecutive day",
-        "matchScore": 0.25,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "adventure leaderboards provide discovery, route mastery and daily streak rankings"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-169",
       "name": "Switch between exploration leaderboard categories through a slash-command option",
       "category": "Social",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure command allows targeted routes while preserving random exploration",
-        "matchScore": 0.25,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "adventure leaderboards provide discovery, route mastery and daily streak rankings"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-170",
@@ -2965,14 +3147,16 @@
       "id": "RPG-177",
       "name": "Award bonus gold and XP when completing a five-fragment treasure map",
       "category": "Economy",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure map fragments persist and complete a five-piece treasure reward",
-        "matchScore": 0.333,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "adventure map fragments persist and complete a five-piece treasure reward"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-178",
@@ -3185,14 +3369,21 @@
       "id": "RPG-189",
       "name": "Keep treasure opening history writes in the same transaction as rewards",
       "category": "Economy",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "treasure opening history records each chest reward and lists the latest ten",
-        "matchScore": 0.429,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "treasure opening history is written in the same transaction as chest consumption and rewards"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "treasure opening history records each chest reward and lists the latest ten"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-190",
@@ -3308,53 +3499,61 @@
       "id": "RPG-197",
       "name": "Grant Wanderer-class gold and XP bonuses for first-time adventure discoveries",
       "category": "Progression",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure discoveries persist, award first-find bonuses, and grant journal completion once",
-        "matchScore": 0.444,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "adventure outcomes grant class-specific exploration bonuses"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-198",
       "name": "Grant Mage-class bonus XP when discovering magical adventure locations",
       "category": "Progression",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "Mage class has a mana-cost discount in solo and co-op combat",
-        "matchScore": 0.25,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "adventure outcomes grant class-specific exploration bonuses"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-199",
       "name": "Grant Guardian-class bonus gold for dangerous adventure locations",
       "category": "Economy",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "first adventure of each day grants a daily bonus without repeat farming",
-        "matchScore": 0.25,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "adventure outcomes grant class-specific exploration bonuses"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-200",
       "name": "Grant Healer-class bonuses for first-time adventure discoveries",
       "category": "Progression",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure discoveries persist, award first-find bonuses, and grant journal completion once",
-        "matchScore": 0.5,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "adventure outcomes grant class-specific exploration bonuses"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-201",
@@ -3523,14 +3722,16 @@
       "id": "RPG-212",
       "name": "Craft multiple equipment items in one request with proportional ingredient costs",
       "category": "Crafting",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "equipment salvage preserves equipped items and returns only partial crafting materials",
-        "matchScore": 0.333,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "batch crafting scales ingredient quantities, crafted equipment count and rarity XP"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-213",
@@ -3689,14 +3890,16 @@
       "id": "RPG-223",
       "name": "Award more crafting XP for higher-rarity equipment recipes",
       "category": "Crafting",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "crafting consumes required materials safely and produces equipment supported by the equipment system",
-        "matchScore": 0.286,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "batch crafting scales ingredient quantities, crafted equipment count and rarity XP"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-224",
@@ -3762,14 +3965,21 @@
       "id": "RPG-228",
       "name": "Randomly return one recipe ingredient without duplicating crafted equipment rewards",
       "category": "Crafting",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "crafting consumes required materials safely and produces equipment supported by the equipment system",
-        "matchScore": 0.2,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "crafting mastery unlocks a material refund chance at levels five and ten"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "batch crafting scales ingredient quantities, crafted equipment count and rarity XP"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-229",
@@ -3811,79 +4021,91 @@
       "id": "RPG-231",
       "name": "View the server leaderboard for total equipment items crafted",
       "category": "Social",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "equipment salvage preserves equipped items and returns only partial crafting materials",
-        "matchScore": 0.333,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "crafting leaderboard supports profession level, XP and successful craft rankings"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-232",
       "name": "Switch crafting leaderboard metrics through a slash-command category selector",
       "category": "Social",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "crafting leaderboard supports profession level, XP and successful craft rankings",
-        "matchScore": 0.222,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "crafting leaderboard supports profession level, XP and successful craft rankings"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-233",
       "name": "Claim a one-time achievement reward for reaching crafting level five",
       "category": "Progression",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure map fragments persist and complete a five-piece treasure reward",
-        "matchScore": 0.25,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "achievements include crafting profession level and production milestones"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-234",
       "name": "Claim a one-time achievement reward for reaching crafting level ten",
       "category": "Progression",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "spell practice advances mastery at ten-use thresholds and caps at level ten",
-        "matchScore": 0.25,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "achievements include crafting profession level and production milestones"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-235",
       "name": "Claim a one-time achievement reward after crafting ten equipment items",
       "category": "Progression",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "equipment salvage preserves equipped items and returns only partial crafting materials",
-        "matchScore": 0.375,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "achievements include crafting profession level and production milestones"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-236",
       "name": "Claim a one-time achievement reward after crafting fifty equipment items",
       "category": "Progression",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "equipment salvage preserves equipped items and returns only partial crafting materials",
-        "matchScore": 0.375,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "achievements include crafting profession level and production milestones"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-237",
@@ -3915,14 +4137,16 @@
       "id": "RPG-239",
       "name": "Display the total number of crafted equipment items in the combined player profile",
       "category": "RPG",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "equipment salvage preserves equipped items and returns only partial crafting materials",
-        "matchScore": 0.286,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "adventure history profile includes persistent crafting profession progression"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-240",
@@ -3947,40 +4171,51 @@
       "id": "RPG-241",
       "name": "Protect all equipped copies of an item from equipment dismantling",
       "category": "Economy",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "equipment salvage preserves equipped items and returns only partial crafting materials",
-        "matchScore": 0.286,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "equipment salvage preserves equipped items and returns only partial crafting materials"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-242",
       "name": "Dismantle multiple equipment copies with proportional material returns",
       "category": "Crafting",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "equipment salvage preserves equipped items and returns only partial crafting materials",
-        "matchScore": 0.375,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "equipment dismantling scales material refunds and protects every equipped copy"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-243",
       "name": "Keep equipment dismantling and material refunds inside one transaction",
       "category": "Economy",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "crafting leaderboard also ranks players by equipment dismantling progress",
-        "matchScore": 0.286,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "equipment salvage preserves equipped items and returns only partial crafting materials"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "equipment dismantling scales material refunds and protects every equipped copy"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-244",
@@ -4022,27 +4257,31 @@
       "id": "RPG-246",
       "name": "Claim a one-time achievement reward after dismantling ten equipment items",
       "category": "Progression",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "treasure opening history records each chest reward and lists the latest ten",
-        "matchScore": 0.25,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "equipment salvage progress persists and unlocks recycling achievements"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-247",
       "name": "Claim a one-time achievement reward after dismantling twenty-five equipment items",
       "category": "Progression",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure map fragments persist and complete a five-piece treasure reward",
-        "matchScore": 0.222,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "equipment salvage progress persists and unlocks recycling achievements"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-248",
@@ -4085,40 +4324,56 @@
       "id": "RPG-250",
       "name": "Claim one daily reward of gold and XP after crafting three equipment items",
       "category": "Economy",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "equipment salvage preserves equipped items and returns only partial crafting materials",
-        "matchScore": 0.429,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "daily crafting mission tracks daily production and safely grants one claimable reward"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-251",
       "name": "Prevent duplicate daily crafting reward claims with a locked per-day record",
       "category": "Economy",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "daily crafting mission tracks daily production and safely grants one claimable reward",
-        "matchScore": 0.333,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "daily crafting claim follows the same user-before-progress lock order as crafting"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "daily crafting mission tracks daily production and safely grants one claimable reward"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-252",
       "name": "Apply daily crafting mission XP to level progression and stat-point rewards",
       "category": "Progression",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "daily crafting mission audit verifies displayed rewards and proves that viewing the mission is read-only",
-        "matchScore": 0.5,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "daily crafting mission tracks daily production and safely grants one claimable reward"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "daily crafting mission audit verifies displayed rewards and proves that viewing the mission is read-only"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-253",
@@ -4224,14 +4479,16 @@
       "id": "RPG-259",
       "name": "Display the player's lifetime equipment dismantling count in the combined RPG profile",
       "category": "RPG",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "crafting leaderboard also ranks players by equipment dismantling progress",
-        "matchScore": 0.286,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "combined player history displays crafting salvage progress"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-260",
@@ -4357,14 +4614,16 @@
       "id": "RPG-268",
       "name": "Combine adventure-history filters with viewing another player's public profile",
       "category": "Social",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure history profile includes persistent crafting profession progression",
-        "matchScore": 0.375,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "adventure history supports another player and composes rare and item-found filters"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "RPG-269",
@@ -5104,14 +5363,16 @@
       "id": "SOC-009",
       "name": "View another player's RPG adventure history",
       "category": "Social",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure history records committed rewards and displays the latest five encounters",
-        "matchScore": 0.5,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "adventure history supports another player and composes rare and item-found filters"
+        }
+      ],
+      "verifiedAtCommit": "a0e4c09884b85e9ade50aaedfa0d9d3725c132e6",
+      "verificationRunId": 41663600922
     },
     {
       "id": "SRV-003",
