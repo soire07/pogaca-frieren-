@@ -169,6 +169,11 @@ export async function initDatabase() {
     );
     CREATE INDEX IF NOT EXISTS idx_rpg_reward_claims_user
       ON rpg_reward_claims(guild_id,user_id,claimed_at DESC);
+    INSERT INTO rpg_reward_claims(guild_id,user_id,reward_type,reward_id,claimed_at)
+    SELECT guild_id,user_id,'solo_boss',last_boss_battle_id,COALESCE(last_boss_win_at,NOW())
+    FROM users
+    WHERE last_boss_battle_id IS NOT NULL
+    ON CONFLICT(guild_id,user_id,reward_type,reward_id) DO NOTHING;
     CREATE TABLE IF NOT EXISTS inventory (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
