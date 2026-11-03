@@ -75,7 +75,7 @@ test('multi-floor dungeon includes traps, chests and persistent player rewards',
   assert.match(source, /chestRewards/);
   assert.match(source, /PARTY_ROLES/);
   assert.match(source, /healerIndex/);
-  assert.match(source, /tankIndex/);
+  assert.match(source, /chooseDungeonAttackTarget\(players, living, turn, floor\)/);
   assert.match(source, /players\[trap\.targetIndex\]\.user_id/);
   assert.doesNotMatch(source, /combatants\[targetIndex\]/);
   assert.match(source, /bossRageAnnounced/);
