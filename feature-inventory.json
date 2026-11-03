@@ -200,12 +200,27 @@
         },
         {
           "type": "unit_test",
-          "file": "scripts/test-gameplay-persistence.js",
-          "test": "level-scaled quest rewards include the chain completion bonus deterministically"
+          "file": "scripts/test-utils.js",
+          "test": "XP progression remains monotonic and exact across every level boundary through level 1000"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "large XP grants calculate every crossed level and matching stat points"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "solo boss, raid, dungeon and quest XP settlements use the same quadratic level formula"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "level-scaled quest reward multiplier changes only at ten-level boundaries and is capped"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177786
+      "verifiedAtCommit": "5995ea7fee54c5fe0cd198d8c0bd28ab5993213",
+      "verificationRunId": 41667427161
     },
     {
       "id": "RPG-004",
@@ -216,19 +231,26 @@
         {
           "type": "unit_test",
           "file": "scripts/test-utils.js",
-          "test": "quest chain integrates level-scaled XP, level-ups, stat points and completion bonus"
+          "test": "large XP grants calculate every crossed level and matching stat points"
         },
         {
-          "type": "isolated_command_audit",
-          "file": "scripts/live-command-test.js",
-          "command": "hazineac",
-          "checks": [
-            "Sandık XP seviyesi ve stat puanı"
-          ]
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "solo boss reward claim is idempotent and raid and dungeon settlements lock participants"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "solo boss, raid, dungeon and quest XP settlements use the same quadratic level formula"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "quest chain integrates level-scaled XP, level-ups, stat points and completion bonus"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177786
+      "verifiedAtCommit": "5995ea7fee54c5fe0cd198d8c0bd28ab5993213",
+      "verificationRunId": 41667427161
     },
     {
       "id": "RPG-005",
