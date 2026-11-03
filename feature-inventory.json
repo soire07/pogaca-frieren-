@@ -1973,11 +1973,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify persistent class selection and command discoverability."
+        "scope": "İzole PostgreSQL test şemasında dört sınıfın /sinifsec akışıyla kalıcı class_name alanına yazılması; her seçimin embed başlığı/açıklamasının sınıf pasifiyle eşleşmesi ve /sinifrehberi çıktısının sınıflar/pasiflerle tutarlılığı doğrulanır.",
+        "notes": "Gerçek komut execute fonksiyonları ve PostgreSQL kalıcı kayıtları kullanılır; canlı Discord ve production DB kullanılmaz."
       }
     },
     {
@@ -2025,11 +2026,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify class-selection discoverability and class/passive descriptions."
+        "scope": "İzole PostgreSQL test şemasında dört sınıfın /sinifsec akışıyla kalıcı class_name alanına yazılması; her seçimin embed başlığı/açıklamasının sınıf pasifiyle eşleşmesi ve /sinifrehberi çıktısının sınıflar/pasiflerle tutarlılığı doğrulanır.",
+        "notes": "Gerçek komut execute fonksiyonları ve PostgreSQL kalıcı kayıtları kullanılır; canlı Discord ve production DB kullanılmaz."
       }
     },
     {
