@@ -175,6 +175,31 @@ test('dungeon and raid healers restore every living teammate each combat round',
   assert.match(raid, /for \(const i of alive\)/);
 });
 
+test('co-op dungeon shares discovered chest and rare victory loot with every participant', async () => {
+  const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  const settlement = await readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
+  assert.match(dungeon, /const victory = floorsCleared === FLOORS/);
+  assert.match(dungeon, /const loot = victory && Math\.random\(\) < 0\.35/);
+  assert.match(dungeon, /chestRewards\.push\(chestLoot\)/);
+  assert.match(dungeon, /Her oyuncu \$\{chestLoot\}/);
+  assert.match(settlement, /for \(let i = 0; i < players\.length; i\+\+\)/);
+  assert.match(settlement, /for \(const itemKey of \[\.\.\.chestRewards, \.\.\.\(loot \? \[loot\] : \[\]\), \.\.\.\(craftingLoot \? \[craftingLoot\] : \[\]\)\]\)/);
+  assert.match(settlement, /\[guildId, player\.user_id, itemKey\]/);
+});
+
+test('rare treasure chest drops award more gold and XP than every common drop', async () => {
+  const source = await readFile(new URL('../hazineac.js', import.meta.url), 'utf8');
+  const commonText = source.slice(source.indexOf('const LOOT = ['), source.indexOf('const RARE_LOOT = ['));
+  const rareText = source.slice(source.indexOf('const RARE_LOOT = ['), source.indexOf('export default'));
+  const values = text => [...text.matchAll(/coins: (\d+), xp: (\d+)/g)].map(match => ({ coins: Number(match[1]), xp: Number(match[2]) }));
+  const common = values(commonText);
+  const rare = values(rareText);
+  assert.ok(common.length >= 3 && rare.length >= 2);
+  assert.ok(Math.min(...rare.map(item => item.coins)) > Math.max(...common.map(item => item.coins)));
+  assert.ok(Math.min(...rare.map(item => item.xp)) > Math.max(...common.map(item => item.xp)));
+  assert.match(source, /roll < 0\.01 \? RARE_LOOT\[1\] : roll < 0\.04 \? RARE_LOOT\[0\]/);
+});
+
 test('multi-floor dungeon includes traps, chests and persistent player rewards', async () => {
   const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
   const rewards = await readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
