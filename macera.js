@@ -5,14 +5,14 @@ import { levelForXp } from './utils.js';
 import { ADVENTURE_DISCOVERIES, ADVENTURE_DISCOVERY_REWARD, COMPLETE_ADVENTURE_JOURNAL_REWARD } from './adventure-data.js';
 import { shouldGuaranteeRareDiscovery } from './rpg-mechanics.js';
 
-const outcomes = [
+export const ADVENTURE_OUTCOMES = [
   { text: 'Ormanda kayıp bir büyü kitabı buldun!', coins: 25, xp: 25, item: '📖 Yasak Büyü Kitabı', discovery: 'forest-grimoire' },
   { text: 'Bir Mimic seni kovaladı ama kaçmayı başardın.', coins: 10, xp: 20, item: null, discovery: 'mimic-trail' },
   { text: 'Yol kenarında bir fırın buldun. Fırıncı sana ödül verdi!', coins: 40, xp: 15, item: '🥐 Büyülü Poğaça Kutusu', discovery: 'wandering-bakery' },
   { text: 'Eski bir harabede gizli bir oda keşfettin.', coins: 30, xp: 40, item: '💎 Mana Kristali', discovery: 'ruined-chamber' }
 ];
 
-const rareOutcomes = [
+export const RARE_ADVENTURE_OUTCOMES = [
   { text: 'Sislerin ardında gizlenmiş kadim bir elf sığınağı buldun!', coins: 80, xp: 90, item: '🌙 Efsunlu Elf Yadigârı', discovery: 'ancient-elf-sanctuary' },
   { text: 'Frieren’in unutulmuş notlarının saklandığı gizli bir arşive ulaştın!', coins: 70, xp: 60, item: '📜 Frieren’in Kayıp Notları', discovery: 'forgotten-grimoire' },
   { text: 'Bir ejderhanın eski yuvasını keşfettin ve geride kalan pulları topladın!', coins: 100, xp: 100, item: '🐉 Ejderha Pulu', discovery: 'dragon-nest' }
@@ -72,16 +72,16 @@ export default {
         Number(explorationProgress.total_adventures),
         Number(explorationProgress.rare_discoveries),
         20,
-        rareOutcomes.length
+        RARE_ADVENTURE_OUTCOMES.length
       );
-      const undiscoveredRare = rareOutcomes.filter(entry => !discoveredRare.has(entry.discovery));
+      const undiscoveredRare = RARE_ADVENTURE_OUTCOMES.filter(entry => !discoveredRare.has(entry.discovery));
       const outcome = chosenRoute
-        ? outcomes.find(entry => entry.discovery === chosenRoute)
+        ? ADVENTURE_OUTCOMES.find(entry => entry.discovery === chosenRoute)
         : pityReady && undiscoveredRare.length
           ? undiscoveredRare[0]
           : Math.random() < 0.05
-            ? (undiscoveredRare.length ? undiscoveredRare[Math.floor(Math.random() * undiscoveredRare.length)] : rareOutcomes[Math.floor(Math.random() * rareOutcomes.length)])
-            : outcomes[Math.floor(Math.random() * outcomes.length)];
+            ? (undiscoveredRare.length ? undiscoveredRare[Math.floor(Math.random() * undiscoveredRare.length)] : RARE_ADVENTURE_OUTCOMES[Math.floor(Math.random() * RARE_ADVENTURE_OUTCOMES.length)])
+            : ADVENTURE_OUTCOMES[Math.floor(Math.random() * ADVENTURE_OUTCOMES.length)];
       const discoveryMeta = ADVENTURE_DISCOVERIES.find(entry => entry.key === outcome.discovery);
       const foundFragment = Math.random() < 0.20;
       let fragmentCount = 0;
