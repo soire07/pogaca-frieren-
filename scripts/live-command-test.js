@@ -1200,6 +1200,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Etkinlik oluşturma yetki sınırı', expected: 'sahip olmayan kullanıcı etkinlik oluşturamamalı', actual: ownerDeniedText.slice(0, 180) + '; oluşturulan ' + unauthorizedCreated.rows[0]?.count, passed: ownerDeniedText.includes('yalnızca bot sahibine açıktır') && Number(unauthorizedCreated.rows[0]?.count) === 0 }
           );
         } else if (commandName === 'maceraci') {
+          await ensureAdventurerPlatformTables(pool);
           const interaction = makeInteraction(command, buildOptions(schema?.options, { __subcommand: 'bagla' }), guildId, effects);
           interaction.user.id = userId;
           interaction.member = makeMember(userId);
