@@ -4,7 +4,7 @@ import { getBossArtUrl } from './boss-art.js';
 import { settleDungeonRewards } from './rpg-reward-transactions.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio } from './rpg-mechanics.js';
+import { dungeonChoiceOutcome, dungeonEnemyStats, DUNGEON_PARTY_ROLES, applyDungeonTrapDamage, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio } from './rpg-mechanics.js';
 
 const FLOORS = 5;
 
@@ -16,7 +16,7 @@ function floorProgressBar(cleared, total = FLOORS, width = 10) {
 const COOLDOWN_MS = 30 * 60_000;
 const LOOT = ['Orman Kristali', 'Kadim Rün Parçası', 'Kuzey Mührü'];
 const FLOOR_NAMES = ['🌲 Köklerin Koridoru', '🗿 Kadim Harabeler', '🌫️ Sisli Geçit', '🔥 Küller Salonu', '👑 Mühürlü İblis Lordu'];
-const PARTY_ROLES = { tank: { label: '🛡️ Muhafız', hp: 1.25, attack: 0.85, defense: 1.4 }, healer: { label: '💚 Şifacı', hp: 1, attack: 0.9, defense: 1.05 }, damage: { label: '⚔️ Hasar Ustası', hp: 0.95, attack: 1.3, defense: 0.9 } };
+const PARTY_ROLES = DUNGEON_PARTY_ROLES;
 
 export default {
   data: new SlashCommandBuilder()
@@ -397,12 +397,10 @@ export default {
           totalCoins += 15 + floor * 5;
           log.push(`🧰 ${floor}. katta gizli sandık bulundu! Her oyuncu ${chestLoot} ve ek ${15 + floor * 5} altın kazanacak.`);
         } else if (eventRoll < 0.42) {
-          const living = hpNow.map((hp, index) => hp > 0 ? index : -1).filter(index => index >= 0);
-          if (living.length) {
-            const targetIndex = living[Math.floor(Math.random() * living.length)];
-            const trapDamage = 8 + floor * 4;
-            hpNow[targetIndex] = Math.max(1, hpNow[targetIndex] - trapDamage);
-            log.push(`🪤 ${floor}. kattaki tuzak <@${players[targetIndex].user_id}> oyuncusuna ${trapDamage} hasar verdi!`);
+          const trap = applyDungeonTrapDamage(hpNow, floor);
+          if (trap.targetIndex !== null) {
+            hpNow[trap.targetIndex] = trap.hpNow[trap.targetIndex];
+            log.push(`🪤 ${floor}. kattaki tuzak <@${players[trap.targetIndex].user_id}> oyuncusuna ${trap.damage} hasar verdi!`);
           }
         } else {
           log.push(`🧭 ${floor}. katta yol güvenliydi; takım bir sonraki kata ilerliyor.`);
