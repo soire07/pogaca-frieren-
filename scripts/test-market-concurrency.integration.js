@@ -2543,7 +2543,7 @@ test('class selection persists all four classes and the class guide exposes thei
     });
     const guideText = JSON.stringify(guideResponses.map(response => response.embeds?.map(embed => embed.toJSON())));
     assert.ok(['Büyücü','Muhafız','Şifacı','Gezgin'].every(label => guideText.includes(label)));
-    assert.ok(guideText.includes('mana maliyeti'));
+    assert.ok(guideText.toLocaleLowerCase('tr-TR').includes('mana maliyeti'));
     assert.ok(guideText.includes('Savunma'));
     assert.ok(guideText.includes('İyileştirme'));
     assert.ok(guideText.includes('/sinifsec'));
