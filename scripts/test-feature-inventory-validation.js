@@ -14,9 +14,9 @@ const base = () => ({
   ]
 });
 
-test('current 317-feature inventory passes structural validation without requiring contiguous IDs', async () => {
+test('current 325-feature inventory passes structural validation without requiring contiguous IDs', async () => {
   const inventory = JSON.parse(await readFile(new URL('../feature-inventory.json', import.meta.url), 'utf8'));
-  assert.equal(inventory.features.length, 317);
+  assert.equal(inventory.features.length, 325);
   assert.deepEqual(validateFeatureInventory(inventory), []);
 });
 
