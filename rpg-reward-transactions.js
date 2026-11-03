@@ -10,6 +10,27 @@ export async function claimSoloBossReward(dbPool, {
   const db = await dbPool.connect();
   try {
     await db.query('BEGIN');
+    const player = await db.query(
+      'SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+      [guildId,userId]
+    );
+    if (player.rowCount !== 1) {
+      await db.query('ROLLBACK');
+      return { status: 'already_claimed' };
+    }
+
+    const rewardKey = await db.query(
+      `INSERT INTO rpg_reward_claims(guild_id,user_id,reward_type,reward_id)
+       VALUES($1,$2,'solo_boss',$3)
+       ON CONFLICT(guild_id,user_id,reward_type,reward_id) DO NOTHING
+       RETURNING reward_id`,
+      [guildId,userId,battleId]
+    );
+    if (rewardKey.rowCount !== 1) {
+      await db.query('ROLLBACK');
+      return { status: 'already_claimed' };
+    }
+
     const claim = await db.query(
       `UPDATE users SET hp=$3, mana=$4, coins=coins+$5, xp=xp+$6, last_boss_battle_id=$7,
         boss_defeats=boss_defeats+1, last_boss_win_at=NOW(),
