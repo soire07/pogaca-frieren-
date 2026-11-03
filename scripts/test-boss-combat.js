@@ -208,3 +208,39 @@ test('rare discovery pity guarantees the next undiscovered location at each 20-a
   assert.equal(shouldGuaranteeRareDiscovery(79,3),false);
   assert.equal(shouldGuaranteeRareDiscovery(100,3),false);
 });
+
+test('raid boss special attacks use their distinct turn cadence and mana curse drains mana', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /BOSS\.special === 'mana-star' && rounds % 3 === 0/);
+  assert.match(source, /BOSS\.special === 'shard-rain' && rounds % 2 === 0/);
+  assert.match(source, /BOSS\.special === 'mana-curse' && rounds % 3 === 0/);
+  assert.match(source, /if \(starburst \|\| shardRain\)/);
+  assert.match(source, /if \(manaCurse\)\s*\{\s*const drained=Math\.min\(target\.mana,8\);\s*target\.mana-=drained;/);
+  assert.match(source, /bossPhaseSpecialBonus\(bossPhase\)/);
+});
+
+test('co-op raid and final dungeon boss announce phase two at two-thirds HP and final phase at one-third HP', async () => {
+  const fs = await import('node:fs/promises');
+  const raid = await fs.readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  const dungeon = await fs.readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  assert.match(raid, /getBossPhase\(bossHp, maxBossHp\)/);
+  assert.match(raid, /currentPhase === 2[\s\S]{0,220}ikinci evreye geçti/);
+  assert.match(raid, /son evreye geçti[\s\S]{0,100}özel hamleleri de sertleşti/);
+  assert.match(dungeon, /getBossPhase\(enemyHp, maxEnemyHp\)/);
+  assert.match(dungeon, /currentPhase === 2[\s\S]{0,220}ikinci evreye geçti/);
+  assert.match(dungeon, /son evreye geçti[\s\S]{0,100}özel saldırıları sertleşti/);
+  assert.equal(getBossPhase(67,100),1);
+  assert.equal(getBossPhase(66,100),2);
+  assert.equal(getBossPhase(34,100),2);
+  assert.equal(getBossPhase(33,100),3);
+});
+
+test('solo boss ice freeze cancels the scheduled special attack and mana drain', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  assert.match(source, /if \(turnCount % 3 === 0 && !frozenBoss\)/);
+  assert.match(source, /if \(boss\.specialType === 'drain'\)/);
+  assert.match(source, /else if \(turnCount % 3 === 0 && frozenBoss\)/);
+  assert.match(source, /if \(frozenBoss\) bossDamage = 0/);
+  const freezeBranch = source.slice(source.indexOf("else if (turnCount % 3 === 0 && frozenBoss)"), source.indexOf("if (frozenBoss) bossDamage = 0"));
+  assert.doesNotMatch(freezeBranch, /drainedMana|playerMana\s*-=|specialDamage/);
+});
