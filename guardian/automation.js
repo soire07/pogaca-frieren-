@@ -54,8 +54,8 @@ export function buildGuardianRepairTask(incident = {}, review = {}) {
     'İlgili dosyalar: ' + safeList(review.affectedFiles, 5).join(', '),
     'Test planı: ' + safeList(review.tests, 4).join('; '),
     'Riskler: ' + safeList(review.risks, 3).join('; '),
-    'Frieren AI yama önerisi: ' + redactGuardianText(review.proposedPatch, 300),
-    'Önce mevcut kodu ve mevcut testleri incele. Aynı test zaten varsa tekrar ekleme. Öneriyi körlemesine uygulama; en fazla dört izinli JavaScript dosyasında minimal düzeltme hazırla. npm run check başarılı olmadan PR açma. Birleştirme veya dağıtım yapma.',
+    'Görev: Verilen dosyaları ve mevcut testleri incele; aynı testi tekrarlama. Kök nedeni düzeltmek için en fazla dört izinli mevcut JavaScript dosyasına minimal unified diff üret.',
+    'Çıktı yalnızca diff --git ile başlayan unified diff olmalı. Açıklama, Markdown çiti veya diff dışı metin ekleme. Bağlam yetersizse yalnızca REPAIR_CONTEXT_INSUFFICIENT yaz. npm run check geçmeden PR açma; merge veya deploy yapma.',
   ];
   return lines.join('\n').slice(0, 1200);
 }
