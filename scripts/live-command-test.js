@@ -1188,6 +1188,147 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Zoltraak ustalık kaydı', expected: 'casts=1, mastery_level=0', actual: mastery ? 'casts=' + mastery.casts + ', mastery_level=' + mastery.mastery_level : 'Ustalık kaydı bulunamadı', passed: Number(mastery?.casts) === 1 && Number(mastery?.mastery_level) === 0 }
           );
         }
+
+        // Additional multi-path behavioral scenarios for feature rows that a single
+        // default interaction cannot prove.
+        if (commandName === 'kesif') {
+          const regionMaterials = [
+            ['merkez','🥐 Büyülü Poğaça Kutusu'],['orman','💎 Mana Kristali'],
+            ['harabeler','📖 Yasak Büyü Kitabı'],['kuzey','🐉 Ejderha Pulu'],
+            ['yayla','🌙 Efsunlu Elf Yadigârı'],['aus','📜 Frieren’in Kayıp Notları']
+          ];
+          const previousRandom = Math.random;
+          try {
+            Math.random = () => 0;
+            for (let regionIndex=0; regionIndex<regionMaterials.length; regionIndex++) {
+              const [regionKey,itemKey] = regionMaterials[regionIndex];
+              const regionUserId = userId + String(regionIndex + 1);
+              await ensureUser(guildId,regionUserId);
+              await pool.query('UPDATE users SET level=50,xp=250000,coins=0,hp=max_hp,mana=max_mana,last_exploration_at=NULL WHERE guild_id=$1 AND user_id=$2',[guildId,regionUserId]);
+              const actionEffects=[];
+              const regionInteraction=makeInteraction(command,buildOptions(schema?.options,{bolge:regionKey}),guildId,actionEffects);
+              regionInteraction.user.id=regionUserId;
+              regionInteraction.member=makeMember(regionUserId);
+              await command.execute(regionInteraction);
+              effects.push(...actionEffects);
+              const saved=await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,regionUserId,itemKey]);
+              behavioralChecks.push({
+                name:'Bölgeye özgü üretim malzemesi: '+regionKey,
+                expected:itemKey+' envantere eklenmeli',
+                actual:saved.rowCount?itemKey+' ×'+saved.rows[0].quantity:'malzeme bulunamadı',
+                passed:Number(saved.rows[0]?.quantity)===1
+              });
+            }
+          } finally { Math.random = previousRandom; }
+        }
+
+        if (commandName === 'hikaye') {
+          const pathCases=[
+            {path:'cesaret',prepare:async id=>pool.query('UPDATE users SET boss_defeats=1 WHERE guild_id=$1 AND user_id=$2',[guildId,id])},
+            {path:'merhamet',prepare:async id=>pool.query('UPDATE users SET items_used_count=1 WHERE guild_id=$1 AND user_id=$2',[guildId,id])},
+            {path:'merak',prepare:async id=>pool.query("INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,'alev_kuresi')",[guildId,id])}
+          ];
+          for(let pathIndex=0;pathIndex<pathCases.length;pathIndex++){
+            const scenario=pathCases[pathIndex],pathUserId=userId+String(pathIndex+7);
+            await ensureUser(guildId,pathUserId);
+            await pool.query('UPDATE users SET coins=0,xp=0,level=1,boss_defeats=0,items_used_count=0 WHERE guild_id=$1 AND user_id=$2',[guildId,pathUserId]);
+            const startEffects=[];
+            const startInteraction=makeInteraction(command,buildOptions(schema?.options,{karar:scenario.path}),guildId,startEffects);
+            startInteraction.user.id=pathUserId; startInteraction.member=makeMember(pathUserId);
+            await command.execute(startInteraction);
+            await scenario.prepare(pathUserId);
+            const progressEffects=[];
+            const progressInteraction=makeInteraction(command,buildOptions(schema?.options,{karar:scenario.path}),guildId,progressEffects);
+            progressInteraction.user.id=pathUserId; progressInteraction.member=makeMember(pathUserId);
+            await command.execute(progressInteraction);
+            effects.push(...startEffects,...progressEffects);
+            const progress=await pool.query('SELECT current_chapter,choices FROM story_progress WHERE guild_id=$1 AND user_id=$2',[guildId,pathUserId]);
+            const player=await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,pathUserId]);
+            behavioralChecks.push({
+              name:'Hikâye yol gereksinimi: '+scenario.path,
+              expected:'seçilen yolun kendine özgü şartı sağlanınca Bölüm I açılmalı',
+              actual:'chapter '+progress.rows[0]?.current_chapter+'; '+JSON.stringify(progress.rows[0]?.choices),
+              passed:Number(progress.rows[0]?.current_chapter)===2 && progress.rows[0]?.choices?.[0]===scenario.path && Number(player.rows[0]?.coins)===190 && Number(player.rows[0]?.xp)===95
+            });
+          }
+          const blockedUserId=userId+'6';
+          await ensureUser(guildId,blockedUserId);
+          await pool.query('UPDATE users SET coins=0,xp=0,level=1,boss_defeats=0 WHERE guild_id=$1 AND user_id=$2',[guildId,blockedUserId]);
+          const blockedStart=makeInteraction(command,buildOptions(schema?.options,{karar:'cesaret'}),guildId,[]);
+          blockedStart.user.id=blockedUserId; blockedStart.member=makeMember(blockedUserId);
+          await command.execute(blockedStart);
+          const blockedNext=makeInteraction(command,buildOptions(schema?.options,{karar:'cesaret'}),guildId,[]);
+          blockedNext.user.id=blockedUserId; blockedNext.member=makeMember(blockedUserId);
+          await command.execute(blockedNext);
+          const blocked=await pool.query('SELECT current_chapter FROM story_progress WHERE guild_id=$1 AND user_id=$2',[guildId,blockedUserId]);
+          behavioralChecks.push({
+            name:'Hikâye gereksinimi sağlanmadan bölüm kilidi',
+            expected:'boss zaferi olmayan Cesaret yolu Bölüm I ilerlemesini engellemeli',
+            actual:'chapter '+blocked.rows[0]?.current_chapter,
+            passed:Number(blocked.rows[0]?.current_chapter)===1
+          });
+        }
+
+        if (commandName === 'npc') {
+          await pool.query('UPDATE users SET coins=0,xp=0,items_used_count=3,boss_defeats=2 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          await pool.query("INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,'alev_kuresi'),($1,$2,'buz_mizragi') ON CONFLICT DO NOTHING",[guildId,userId]);
+          const quests=[['frieren',260,100],['fern',220,110],['stark',280,120]];
+          for(const [npcKey] of quests){
+            for(const action of ['gorev','teslim']){
+              const actionEffects=[];
+              const interaction=makeInteraction(command,buildOptions(schema?.options,{karakter:npcKey,eylem:action}),guildId,actionEffects);
+              interaction.user.id=userId; interaction.member=makeMember(userId);
+              await command.execute(interaction);
+              effects.push(...actionEffects);
+            }
+          }
+          const claims=await pool.query('SELECT quest_key FROM side_quest_claims WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const player=await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          for(const [npcKey] of quests){
+            const actionEffects=[];
+            const interaction=makeInteraction(command,buildOptions(schema?.options,{karakter:npcKey,eylem:'teslim'}),guildId,actionEffects);
+            interaction.user.id=userId; interaction.member=makeMember(userId);
+            await command.execute(interaction);
+            effects.push(...actionEffects);
+          }
+          const afterReplay=await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          behavioralChecks.push(
+            {name:'NPC yan görevlerinin tamamlanması',expected:'Frieren, Fern ve Stark görevleri ayrı ayrı kaydedilmeli',actual:claims.rows.map(row=>row.quest_key).join(', '),passed:claims.rowCount===3},
+            {name:'NPC yan görev ödülleri',expected:'toplam 760 altın ve 330 XP verilmeli',actual:'altın '+player.rows[0]?.coins+', XP '+player.rows[0]?.xp,passed:Number(player.rows[0]?.coins)===760&&Number(player.rows[0]?.xp)===330},
+            {name:'NPC yan görev ödülü tek kullanımlı',expected:'tekrar teslimde ödül ikinci kez verilmemeli',actual:'altın '+afterReplay.rows[0]?.coins+', XP '+afterReplay.rows[0]?.xp,passed:Number(afterReplay.rows[0]?.coins)===760&&Number(afterReplay.rows[0]?.xp)===330}
+          );
+        }
+
+        if (commandName === 'maceragecmisi') {
+          const targetId=userId+'5';
+          await ensureUser(guildId,targetId);
+          await pool.query('UPDATE users SET level=12,xp=900,coins=450,boss_defeats=2,exploration_count=5,items_used_count=3,character_draw_count=4 WHERE guild_id=$1 AND user_id=$2',[guildId,targetId]);
+          const targetUser={id:targetId,username:'OtherPlayer',tag:'OtherPlayer#0001',displayAvatarURL:()=> 'https://example.com/other.png',toString(){return '<@'+targetId+'>';}};
+          const before=await pool.query('SELECT coins,xp,level,exploration_count,items_used_count,character_draw_count FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,targetId]);
+          const interaction=makeInteraction(command,buildOptions(schema?.options,{kullanici:targetUser}),guildId,effects);
+          interaction.user.id=userId; interaction.member=makeMember(userId);
+          await command.execute(interaction);
+          const after=await pool.query('SELECT coins,xp,level,exploration_count,items_used_count,character_draw_count FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,targetId]);
+          const payloadText=JSON.stringify(effects.map(effect=>effect.payload));
+          behavioralChecks.push(
+            {name:'Başka oyuncunun macera geçmişi',expected:'seçilen oyuncunun profil özeti ve adı gösterilmeli',actual:payloadText.includes('OtherPlayer')?'OtherPlayer paneli gösterildi':payloadText.slice(0,350),passed:payloadText.includes('OtherPlayer')&&payloadText.includes('Seviye: **12**')&&payloadText.includes('450')},
+            {name:'Başka oyuncunun istatistik kapsamı',expected:'boss, keşif, eşya kullanımı ve karakter çekimi sayıları görünmeli',actual:['İblis zaferi','Keşif: **5**','Kullanılan eşya: **3**','Karakter çekimi: **4**'].filter(x=>payloadText.includes(x)).join(', '),passed:['İblis zaferi','Keşif: **5**','Kullanılan eşya: **3**','Karakter çekimi: **4**'].every(x=>payloadText.includes(x))},
+            {name:'Başka oyuncunun verisi salt okunur',expected:'hedef oyuncunun RPG durumu değişmemeli',actual:JSON.stringify(before.rows[0])+' → '+JSON.stringify(after.rows[0]),passed:Object.keys(before.rows[0]).every(key=>Number(before.rows[0][key])===Number(after.rows[0][key]))}
+          );
+        }
+
+        if (commandName === 'bossrehberi') {
+          await pool.query('UPDATE users SET level=20,boss_defeats=3 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);
+          interaction.user.id=userId; interaction.member=makeMember(userId);
+          await command.execute(interaction);
+          const payloadText=payloadTextFromEffects(effects);
+          behavioralChecks.push(
+            {name:'Oyuncu seviyesine göre boss kademesi',expected:'seviye 20 için Kuzey İblisi ve sıradaki seviye 35 bossu gösterilmeli',actual:payloadText.includes('Kuzey İblisi')&&payloadText.includes('Büyük İblis Komutanı')?'kademe ve sonraki eşik doğru':'boss rehberi içeriği eksik',passed:payloadText.includes('Seviyene göre kademe')&&payloadText.includes('Kuzey İblisi')&&payloadText.includes('Büyük İblis Komutanı')},
+            {name:'Boss rehberi zafer ve ödül bilgileri',expected:'boss zafer sayısı, ödül ve ganimet olasılıkları gösterilmeli',actual:payloadText.includes('Boss zaferi: 3')&&payloadText.includes('Nadir ganimet')?'zafer/ganimet alanları gösterildi':'rehber alanları eksik',passed:payloadText.includes('Boss zaferi: 3')&&payloadText.includes('Nadir ganimet')}
+          );
+        }
+
         const evidence = buildCommandEvidence({ responseCount: effects.length, behavioralChecks });
         results.push({
           command: commandName,
