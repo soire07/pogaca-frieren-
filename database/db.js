@@ -491,6 +491,8 @@ export async function initDatabase() {
   `);
   const { ensureArenaTables } = await import('../arena-queue.js');
   await ensureArenaTables(pool);
+  const { ensureAdventurerPlatformTables } = await import('../adventurer-platform.js');
+  await ensureAdventurerPlatformTables(pool);
   if (!testContext.getStore()) {
     await pool.query(`DELETE FROM frieren_chat_messages
       WHERE created_at < NOW() - INTERVAL '90 days'`);
