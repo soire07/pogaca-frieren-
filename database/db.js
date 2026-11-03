@@ -114,6 +114,7 @@ export async function initDatabase() {
       last_item_used_at TIMESTAMPTZ,
       exploration_count INTEGER NOT NULL DEFAULT 0 CHECK (exploration_count >= 0),
       items_used_count INTEGER NOT NULL DEFAULT 0 CHECK (items_used_count >= 0),
+      anime_quiz_points INTEGER NOT NULL DEFAULT 0 CHECK (anime_quiz_points >= 0),
       boss_defeats INTEGER NOT NULL DEFAULT 0 CHECK (boss_defeats >= 0),
       dungeon_wins INTEGER NOT NULL DEFAULT 0 CHECK (dungeon_wins >= 0),
       dungeon_runs INTEGER NOT NULL DEFAULT 0 CHECK (dungeon_runs >= 0),
@@ -147,6 +148,7 @@ export async function initDatabase() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_item_used_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS exploration_count INTEGER NOT NULL DEFAULT 0 CHECK (exploration_count >= 0);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS items_used_count INTEGER NOT NULL DEFAULT 0 CHECK (items_used_count >= 0);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS anime_quiz_points INTEGER NOT NULL DEFAULT 0 CHECK (anime_quiz_points >= 0);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS boss_defeats INTEGER NOT NULL DEFAULT 0 CHECK (boss_defeats >= 0);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS dungeon_wins INTEGER NOT NULL DEFAULT 0 CHECK (dungeon_wins >= 0);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS dungeon_runs INTEGER NOT NULL DEFAULT 0 CHECK (dungeon_runs >= 0);
