@@ -1270,3 +1270,59 @@ test('equipment supports two independent ring slots and preserves remaining bonu
     }
   });
 });
+
+test('successful co-op raid and dungeon Zoltraak casts persist mastery totals atomically', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId=testSnowflake('91');
+    const raidUser=testSnowflake('90');
+    const dungeonUser=testSnowflake('92');
+    const raidId=randomUUID(), dungeonId=randomUUID();
+    await ensureUser(guildId,raidUser);
+    await ensureUser(guildId,dungeonUser);
+    try {
+      await pool.query(
+        "INSERT INTO active_rpg_encounters(guild_id,user_id,encounter_id,encounter_type,expires_at) VALUES($1,$2,$3,'raid',NOW()+INTERVAL '30 minutes')",
+        [guildId,raidUser,raidId]
+      );
+      const raid = await settleRaidRewards(pool,{
+        guildId,encounterId:raidId,ids:[raidUser],
+        fighters:[{userId:raidUser,maxHp:100,baseMaxHp:100,mana:70,maxMana:100,baseMaxMana:100}],
+        persistedHpNow:[80],persistedManaNow:[70],win:true,xpReward:20,coinReward:10,loot:null,
+        spellCasts:new Map([[raidUser,2]])
+      });
+      assert.equal(raid.status,'settled');
+      assert.equal(raid.masteryResults.length,1);
+      assert.equal(Number(raid.masteryResults[0].casts),2);
+      assert.equal(Number(raid.masteryResults[0].mastery_level),0);
+
+      await pool.query(
+        "INSERT INTO active_rpg_encounters(guild_id,user_id,encounter_id,encounter_type,expires_at) VALUES($1,$2,$3,'dungeon',NOW()+INTERVAL '30 minutes')",
+        [guildId,dungeonUser,dungeonId]
+      );
+      const dungeon = await settleDungeonRewards(pool,{
+        guildId,encounterId:dungeonId,ids:[dungeonUser],
+        players:[{user_id:dungeonUser,maxHp:100,max_hp:100,mana:70,maxMana:100,max_mana:100}],
+        persistedHpNow:[80],persistedManaNow:[70],victory:true,totalXp:20,totalCoins:10,
+        chestRewards:[],loot:null,craftingLoot:null,spellCasts:new Map([[dungeonUser,3]]),journalUserId:dungeonUser
+      });
+      assert.equal(dungeon.status,'settled');
+      assert.equal(dungeon.masteryResults.length,1);
+      assert.equal(Number(dungeon.masteryResults[0].casts),3);
+      assert.equal(Number(dungeon.masteryResults[0].mastery_level),0);
+
+      const rows=await pool.query(
+        'SELECT user_id,casts,mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND spell_key=$3',
+        [guildId,[raidUser,dungeonUser],'zoltraak']
+      );
+      assert.equal(rows.rowCount,2);
+      assert.deepEqual(
+        Object.fromEntries(rows.rows.map(row=>[row.user_id,Number(row.casts)])),
+        {[raidUser]:2,[dungeonUser]:3}
+      );
+    } finally {
+      await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[guildId,[raidUser,dungeonUser]]);
+    }
+  });
+});
