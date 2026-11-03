@@ -152,6 +152,33 @@ test('emergency stop enabled during AI review blocks the later workflow POST', a
   assert.equal(finished[0].status, 'failed');
 });
 
+test('failed Guardian AI review preserves the sanitized upstream error without dispatching', async () => {
+  const finished = [];
+  const result = await processGuardianIncident({
+    db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
+    incident,
+    env: {
+      FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
+      FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
+    },
+    fetchImpl: async () => ({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: 'GROQ_INVALID_REQUEST' }),
+    }),
+    store: {
+      createGuardianReviewJob: async () => ({ id: 12, status: 'queued' }),
+      finishGuardianReviewJob: async (_db, args) => { finished.push(args); return true; },
+      reserveGuardianRepairDispatch: async () => { throw new Error('must not dispatch after failed review'); },
+    },
+  });
+  assert.equal(result.status, 'review_failed');
+  assert.equal(result.reason, 'GUARDIAN_AI_HTTP_400_GROQ_INVALID_REQUEST');
+  assert.equal(finished.length, 1);
+  assert.equal(finished[0].status, 'failed');
+  assert.equal(finished[0].error, 'GUARDIAN_AI_HTTP_400_GROQ_INVALID_REQUEST');
+});
+
 test('low-confidence or incomplete AI proposals never dispatch a repair workflow', async () => {
   let requests = 0;
   const store = {
