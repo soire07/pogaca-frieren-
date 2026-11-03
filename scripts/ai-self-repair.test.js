@@ -410,3 +410,22 @@ test('repair diff rejects garbage after file headers before invoking git apply',
   });
 });
 
+test('Guardian repair uses three attempts by default when generated diffs are structurally invalid', async () => {
+  let calls = 0;
+  const malformedPatch = validPatch.replace('@@ -1 +1 @@', 'not-a-hunk-header');
+  const client = {
+    chat: { completions: { async create() {
+      calls += 1;
+      return { choices: [{ message: { content: malformedPatch }, finish_reason: 'stop' }] };
+    } } },
+  };
+  await assert.rejects(
+    generateRepairPatchWithRetry({
+      task: 'fix the readiness check',
+      client,
+      context: 'const ready = false;',
+    }),
+    { message: 'REPAIR_PATCH_HUNK_INVALID' },
+  );
+  assert.equal(calls, 3);
+});
