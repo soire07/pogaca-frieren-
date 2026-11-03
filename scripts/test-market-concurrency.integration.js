@@ -1093,14 +1093,14 @@ test('expired trade offers are resolved using the PostgreSQL clock without trans
     await ensureUser(guildId, from);
     await ensureUser(guildId, to);
     await pool.query(
-      `INSERT INTO anime_character_collection
+      \`INSERT INTO anime_character_collection
        (guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,quantity)
-       VALUES($1,$2,'Aura','Frieren','Efsanevi','👑',10194172,'fixture','fixture',2)`,
+       VALUES($1,$2,'Aura','Frieren','Efsanevi','👑',10194172,'fixture','fixture',2)\`,
       [guildId, from]
     );
     await pool.query(
-      `INSERT INTO trade_offers(offer_id,guild_id,from_user_id,to_user_id,character_name,amount,expires_at)
-       VALUES($1,$2,$3,$4,'Aura',1,NOW()-INTERVAL '1 second')`,
+      \`INSERT INTO trade_offers(offer_id,guild_id,from_user_id,to_user_id,character_name,amount,expires_at)
+       VALUES($1,$2,$3,$4,'Aura',1,NOW()-INTERVAL '1 second')\`,
       [offerId, guildId, from, to]
     );
 
@@ -1134,14 +1134,14 @@ test('declining a trade offer is single-use and leaves both collections unchange
     await ensureUser(guildId, from);
     await ensureUser(guildId, to);
     await pool.query(
-      `INSERT INTO anime_character_collection
+      \`INSERT INTO anime_character_collection
        (guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,quantity)
-       VALUES($1,$2,'Stark','Frieren','Nadir','🪓',10194172,'fixture','fixture',3)`,
+       VALUES($1,$2,'Stark','Frieren','Nadir','🪓',10194172,'fixture','fixture',3)\`,
       [guildId, from]
     );
     await pool.query(
-      `INSERT INTO trade_offers(offer_id,guild_id,from_user_id,to_user_id,character_name,amount,expires_at)
-       VALUES($1,$2,$3,$4,'Stark',2,NOW()+INTERVAL '5 minutes')`,
+      \`INSERT INTO trade_offers(offer_id,guild_id,from_user_id,to_user_id,character_name,amount,expires_at)
+       VALUES($1,$2,$3,$4,'Stark',2,NOW()+INTERVAL '5 minutes')\`,
       [offerId, guildId, from, to]
     );
 
@@ -1179,14 +1179,14 @@ test('only the intended recipient can accept or decline a trade offer', {
     await ensureUser(guildId, to);
     await ensureUser(guildId, intruder);
     await pool.query(
-      `INSERT INTO anime_character_collection
+      \`INSERT INTO anime_character_collection
        (guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,quantity)
-       VALUES($1,$2,'Fern','Frieren','Nadir','🪄',10194172,'fixture','fixture',2)`,
+       VALUES($1,$2,'Fern','Frieren','Nadir','🪄',10194172,'fixture','fixture',2)\`,
       [guildId, from]
     );
     await pool.query(
-      `INSERT INTO trade_offers(offer_id,guild_id,from_user_id,to_user_id,character_name,amount,expires_at)
-       VALUES($1,$2,$3,$4,'Fern',1,NOW()+INTERVAL '5 minutes')`,
+      \`INSERT INTO trade_offers(offer_id,guild_id,from_user_id,to_user_id,character_name,amount,expires_at)
+       VALUES($1,$2,$3,$4,'Fern',1,NOW()+INTERVAL '5 minutes')\`,
       [offerId, guildId, from, to]
     );
 
