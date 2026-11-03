@@ -614,11 +614,12 @@
       "category": "Co-op",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
+          "scripts/test-utils.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify dungeon difficulty choices are passed into enemy-stat scaling; runtime difficulty balance is not proven by this check."
+        "scope": "Direct unit tests call dungeonEnemyStats at easy, normal and nightmare difficulties and verify HP/damage scale monotonically; source-contract checks verify the selected difficulty is wired into co-op dungeon enemy generation. Full live party-battle balance remains unverified."
       }
     },
     {
@@ -1325,11 +1326,12 @@
       "category": "Loot",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
+          "scripts/test-market-concurrency.integration.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify discovered chest reward persistence is part of dungeon settlement; per-player live loot distribution remains unverified."
+        "scope": "Real PostgreSQL integration settles a completed two-player dungeon with chest, rare and crafting loot and verifies six inventory grants (three per participant) are persisted exactly once; source checks cover the in-dungeon chest interaction."
       }
     },
     {
@@ -1663,11 +1665,12 @@
       "category": "Dungeon",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
+          "scripts/test-utils.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify secret, shrine and safe route choices plus safe timeout default."
+        "scope": "Direct unit tests verify secret, mana-shrine and safe route outcomes have distinct risk/reward values; source-contract tests verify the co-op dungeon exposes all three route choices and timeout fallback."
       }
     },
     {
@@ -1676,11 +1679,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
+          "scripts/test-utils.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify easy/normal/nightmare difficulty values reach dungeon enemy scaling."
+        "scope": "Direct unit tests verify easy, normal and nightmare dungeon enemy HP/damage increase monotonically; source-contract tests verify all three choices are exposed in the production dungeon command."
       }
     },
     {
@@ -17695,7 +17699,7 @@
     }
   ],
   "count": 2000,
-  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification. Roadmap expansion (2026-11-03): added 1,675 distinct player-facing feature candidates across 25 Frieren RPG domains. All added entries are explicitly status=planned and are not implemented/test evidence. Roadmap count is a planning target, not a completion claim. All 325 original feature rows now have a linked test/source evidence record (2026-11-03); scope limitations are stated per row. The 1,675 new roadmap rows remain planned and intentionally have no test evidence. RPG-002 profile evidence was upgraded to a dedicated PostgreSQL integration test because the command is internal-only and is not part of the 67-command public audit. Crafting/salvage evidence upgrade (2026-11-03): added disposable frieren_audit PostgreSQL command integrations for all ten recipe ingredient/output mappings, multi-quantity scaling, persisted rarity-weighted XP/profession/daily progress, advanced recipe level gates, deterministic level-4/5/10 refund boundaries, all ten salvage mappings, multi-copy proportional returns, equipped-item protection, and player-visible lifetime salvage totals. These use synthetic Discord interactions and are not live Discord E2E. Salvage catalog completeness fix (2026-11-03): /ekipmanparcala exposed all equipment catalog entries but lacked yields for the purchasable demon_armor and copper_ring items. Added partial recovery mappings and expanded the real PostgreSQL salvage matrix to exercise all twelve equipment types and multiple copies. Evidence classification refinement (2026-11-03): upgraded only rows with directly relevant existing unit, isolated-command behavioral, or real PostgreSQL assertions. Composite levels preserve source-contract limitations; synthetic Discord command audits are never labeled live Discord E2E. Adventure/treasure evidence upgrade (2026-11-03): added disposable PostgreSQL integration for production /macera and /hazineac commands, covering route selection/repeat rewards, first-discovery and class bonuses, route mastery, daily streak persistence, rare-discovery pity, five-fragment map completion, multi-chest opening, ownership checks, rare loot persistence, per-opening history and transaction rollback. The test uses synthetic Discord interactions and is not live Discord E2E.",
+  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification. Roadmap expansion (2026-11-03): added 1,675 distinct player-facing feature candidates across 25 Frieren RPG domains. All added entries are explicitly status=planned and are not implemented/test evidence. Roadmap count is a planning target, not a completion claim. All 325 original feature rows now have a linked test/source evidence record (2026-11-03); scope limitations are stated per row. The 1,675 new roadmap rows remain planned and intentionally have no test evidence. RPG-002 profile evidence was upgraded to a dedicated PostgreSQL integration test because the command is internal-only and is not part of the 67-command public audit. Crafting/salvage evidence upgrade (2026-11-03): added disposable frieren_audit PostgreSQL command integrations for all ten recipe ingredient/output mappings, multi-quantity scaling, persisted rarity-weighted XP/profession/daily progress, advanced recipe level gates, deterministic level-4/5/10 refund boundaries, all ten salvage mappings, multi-copy proportional returns, equipped-item protection, and player-visible lifetime salvage totals. These use synthetic Discord interactions and are not live Discord E2E. Salvage catalog completeness fix (2026-11-03): /ekipmanparcala exposed all equipment catalog entries but lacked yields for the purchasable demon_armor and copper_ring items. Added partial recovery mappings and expanded the real PostgreSQL salvage matrix to exercise all twelve equipment types and multiple copies. Evidence classification refinement (2026-11-03): upgraded only rows with directly relevant existing unit, isolated-command behavioral, or real PostgreSQL assertions. Composite levels preserve source-contract limitations; synthetic Discord command audits are never labeled live Discord E2E. Adventure/treasure evidence upgrade (2026-11-03): added disposable PostgreSQL integration for production /macera and /hazineac commands, covering route selection/repeat rewards, first-discovery and class bonuses, route mastery, daily streak persistence, rare-discovery pity, five-fragment map completion, multi-chest opening, ownership checks, rare loot persistence, per-opening history and transaction rollback. The test uses synthetic Discord interactions and is not live Discord E2E. Dungeon evidence refinement (2026-11-03): added direct unit evidence for dungeon difficulty scaling and route-outcome risk/reward, plus PostgreSQL proof that a completed two-player dungeon distributes chest, rare and crafting loot to every participant.",
   "plannedFeatureCount": 1675,
   "originalFeatureEvidenceLinkedCount": 325
 }
