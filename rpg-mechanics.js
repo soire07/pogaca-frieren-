@@ -146,6 +146,47 @@ export function bossPhaseSpecialBonus(phase) {
   return phase >= 3 ? 8 : phase === 2 ? 4 : 0;
 }
 
+/** Selects periodic cooperative raid boss mechanics using the current round. */
+export function getRaidBossSpecialAttack(special, round) {
+  const turn = Math.max(0, Math.floor(Number(round) || 0));
+  if (special === 'mana-star' && turn > 0 && turn % 3 === 0) return 'mana-star';
+  if (special === 'shard-rain' && turn > 0 && turn % 2 === 0) return 'shard-rain';
+  if (special === 'mana-curse' && turn > 0 && turn % 3 === 0) return 'mana-curse';
+  return null;
+}
+
+/** Tanks attract 70% of single-target raid attacks while alive. */
+export function chooseRaidAttackTarget(fighters, livingIndices, random = Math.random) {
+  const living = Array.isArray(livingIndices) ? livingIndices : [];
+  if (!living.length) return null;
+  const tank = living.find(index => fighters[index]?.role === 'tank');
+  if (tank !== undefined && random() < 0.7) return tank;
+  return living[Math.min(living.length - 1, Math.floor(random() * living.length))];
+}
+
+/** Applies a raid area special to every living player, preserving individual defense. */
+export function resolveRaidAreaAttack({ hpNow, livingIndices, fighters, rawDamage, special, bossPhase = 1, defending = new Set() } = {}) {
+  if (special !== 'mana-star' && special !== 'shard-rain') {
+    return { hpNow: Array.isArray(hpNow) ? [...hpNow] : [], hits: [] };
+  }
+  const nextHp = [...hpNow];
+  const hits = [];
+  const multiplier = special === 'shard-rain' ? 0.5 : 0.68;
+  for (const index of livingIndices || []) {
+    const fighter = fighters[index];
+    if (!fighter || Number(nextHp[index]) <= 0) continue;
+    let incoming = calculateBossIncomingDamage(
+      Math.round(Number(rawDamage) * multiplier),
+      Math.round(Number(fighter.defense) * 0.44),
+      bossPhase
+    );
+    if (defending?.has?.(index)) incoming = Math.max(1, Math.round(incoming * 0.45));
+    nextHp[index] = Math.max(0, Number(nextHp[index]) - incoming);
+    hits.push({ index, incoming, defended: Boolean(defending?.has?.(index)) });
+  }
+  return { hpNow: nextHp, hits };
+}
+
 
 /** Mastery-10 awakenings: a distinct capstone perk for every combat spell. */
 export function getSpellMasteryAwakening(spellKey, masteryLevel) {
