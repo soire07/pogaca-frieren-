@@ -74,3 +74,12 @@ test('one shared equipment combat calculation applies and removes legendary and 
   assert.equal(getEquipmentCombatBonus(legendary.filter(item=>item.id!=='demon_blade')).attack,16);
   assert.equal(getEquipmentCombatBonus(epic.filter(item=>item.id!=='rune_ring')).defense,7);
 });
+
+
+test('every combat entry point uses the shared equipment and rarity-set calculation', async () => {
+  const combatFiles = ['iblisavasi.js','buyusavasi.js','zindan.js','katlizindan.js','ortakboss.js'];
+  for (const file of combatFiles) {
+    const source = await (await import('node:fs/promises')).readFile(new URL('../' + file, import.meta.url), 'utf8');
+    assert.match(source, /getEquipmentCombatBonus/, file + ' must use the shared equipment calculation');
+  }
+});
