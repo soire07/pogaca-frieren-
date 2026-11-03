@@ -3,7 +3,7 @@ import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, MessageFlags } fr
 import { pool, ensureUser } from './database/db.js';
 import { xpForNextLevel } from './utils.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
-import { applyClassDefense, applyEquipmentSetBonus, getCharacterBuild } from './rpg-mechanics.js';
+import { applyClassDefense, applyEquipmentSetBonus, getCharacterBuild, applyTalentBonus } from './rpg-mechanics.js';
 
 export default {
   internalOnly: true,
@@ -47,10 +47,10 @@ export default {
     const equippedItems = equippedResult.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean);
     const gear = applyEquipmentSetBonus(equippedItems, equipmentBonus(equippedItems));
     const build = getCharacterBuild(u.active_build);
-    const effectiveMaxHp = Math.min(2000, Math.round((Number(u.max_hp) + gear.hp) * build.hp * (1 + Number(u.talent_hp) * 0.05)));
-    const effectiveMaxMana = Math.min(2000, Math.round((Number(u.max_mana) + gear.mana) * build.mana * (1 + Number(u.talent_mana) * 0.05)));
-    const effectiveAttack = Math.min(500, Math.round((Number(u.attack) + gear.attack) * build.attack * (1 + Number(u.talent_attack) * 0.04)));
-    const effectiveDefense = Math.min(250, Math.round(applyClassDefense(Number(u.defense) + gear.defense, u.class_name) * build.defense * (1 + Number(u.talent_defense) * 0.04)));
+    const effectiveMaxHp = Math.min(2000, Math.round(applyTalentBonus((Number(u.max_hp) + gear.hp) * build.hp, u.talent_hp, 0.05)));
+    const effectiveMaxMana = Math.min(2000, Math.round(applyTalentBonus((Number(u.max_mana) + gear.mana) * build.mana, u.talent_mana, 0.05)));
+    const effectiveAttack = Math.min(500, Math.round(applyTalentBonus((Number(u.attack) + gear.attack) * build.attack, u.talent_attack, 0.04)));
+    const effectiveDefense = Math.min(250, Math.round(applyTalentBonus(applyClassDefense(Number(u.defense) + gear.defense, u.class_name) * build.defense, u.talent_defense, 0.04)));
     const currentHp = Math.max(0, Math.min(effectiveMaxHp, Math.round((Number(u.hp) / Math.max(1, Number(u.max_hp))) * effectiveMaxHp)));
     const currentMana = Math.max(0, Math.min(effectiveMaxMana, Math.round((Number(u.mana) / Math.max(1, Number(u.max_mana))) * effectiveMaxMana)));
 
