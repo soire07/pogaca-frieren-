@@ -1122,11 +1122,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-rpg-mechanics-behavior.js"
         ],
-        "scope": "Source-contract checks verify party-size and average-level inputs feed dungeon enemy scaling."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -1379,11 +1380,12 @@
       "category": "Boss",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-boss-combat.js"
         ],
-        "scope": "Source-contract checks verify cooperative boss phase/special-attack wiring only where present in the raid source; phase thresholds are not runtime-tested here."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -1392,11 +1394,12 @@
       "category": "Boss",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-boss-combat.js"
         ],
-        "scope": "Source-contract checks verify periodic boss attack actions are wired into the cooperative raid flow."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -1596,12 +1599,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_postgresql",
+        "level": "source_contract",
         "tests": [
-          "scripts/live-command-test.js"
+          "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
-        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
+        "scope": "Kaynak ve etkileşim sözleşmesi mevcut; savunma seçiminin alınan hasarı azalttığına dair ayrı karşılaştırmalı davranış testi henüz yok.",
+        "notes": "Bu özellik davranışsal olarak doğrulanmış sayılmıyor."
       }
     },
     {
@@ -1624,11 +1627,12 @@
       "category": "Magic",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-boss-combat.js"
         ],
-        "scope": "Source-contract checks verify boss mana-curse action is included in the raid encounter source; exact third-turn damage is not runtime-tested here."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -1637,11 +1641,12 @@
       "category": "Boss",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-rpg-mechanics-behavior.js"
         ],
-        "scope": "Source-contract checks verify three distinct raid bosses with separate base stats, weaknesses and loot identifiers."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -1745,11 +1750,12 @@
       "category": "Dungeon",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-rpg-mechanics-behavior.js"
         ],
-        "scope": "The source-contract test verifies the mana-shrine route outcome restores floor-scaled mana and feeds the dungeon result; runtime route interaction remains unverified. This is isolated synthetic command testing, not live Discord E2E."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -1797,11 +1803,13 @@
       "category": "Magic",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js",
+          "scripts/test-rpg-mechanics-behavior.js"
         ],
-        "scope": "Source-contract checks verify training consumes mana and a mastery-scaled gold fee."
+        "scope": "Komut davranışı sentetik Discord etkileşimleri ve izole PostgreSQL ile; mekanik sınırları ayrıca davranış testleriyle doğrulanır.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -1810,11 +1818,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-rpg-mechanics-behavior.js"
         ],
-        "scope": "Source-contract checks verify persisted practice counts and mastery progression up to level ten."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -1849,11 +1858,13 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js",
+          "scripts/test-rpg-mechanics-behavior.js"
         ],
-        "scope": "Source-contract checks verify practice mana and mastery-scaled gold costs are wired into spell training."
+        "scope": "Komut davranışı sentetik Discord etkileşimleri ve izole PostgreSQL ile; mekanik sınırları ayrıca davranış testleriyle doğrulanır.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -1862,11 +1873,14 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js",
+          "scripts/test-rpg-mechanics-behavior.js",
+          "scripts/test-boss-combat.js"
         ],
-        "scope": "Source-contract checks verify persistent spell practice counts and mastery advancement at ten-use thresholds."
+        "scope": "Komut davranışı sentetik Discord etkileşimleri ve izole PostgreSQL ile; mekanik sınırları ayrıca davranış testleriyle doğrulanır.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -1875,11 +1889,12 @@
       "category": "Magic",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-rpg-mechanics-behavior.js"
         ],
-        "scope": "Source-contract checks verify mastery cap at level ten and rejection of further training."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -1888,11 +1903,12 @@
       "category": "Magic",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify spell-practice is registered in the RPG command directory."
+        "scope": "Komut davranışı sentetik Discord etkileşimleri ve izole PostgreSQL ile; mekanik sınırları ayrıca davranış testleriyle doğrulanır.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -1901,11 +1917,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-boss-combat.js"
         ],
-        "scope": "Source-contract checks verify spell mastery is applied to Ice Spear freeze chance; exact probability behavior remains unverified by a focused unit test."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -1914,11 +1931,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-boss-combat.js"
         ],
-        "scope": "Source-contract checks verify mastery-scaled Protective Barrier reduction is wired; exact cap behavior remains unverified by a focused unit test."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -1927,11 +1945,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-boss-combat.js"
         ],
-        "scope": "Source-contract checks verify mastery-scaled Healing Light restoration is wired; exact per-level arithmetic remains unverified by a focused unit test."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -1940,11 +1959,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-boss-combat.js"
         ],
-        "scope": "Source-contract checks verify mastery-scaled Stone Wall prevention is wired; exact cap behavior remains unverified by a focused unit test."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -2018,11 +2038,13 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-boss-combat.js",
+          "scripts/test-rpg-mechanics-behavior.js"
         ],
-        "scope": "Source-contract checks verify class passives are wired into cooperative dungeon combat."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -2031,11 +2053,13 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-boss-combat.js",
+          "scripts/test-rpg-mechanics-behavior.js"
         ],
-        "scope": "Source-contract checks verify Guardian class defense passive is wired into cooperative dungeon combat."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -2044,11 +2068,13 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-boss-combat.js",
+          "scripts/test-rpg-mechanics-behavior.js"
         ],
-        "scope": "Source-contract checks verify class-adjusted healer restoration is wired into cooperative dungeon combat."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -2070,11 +2096,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-rpg-mechanics-behavior.js"
         ],
-        "scope": "Source-contract checks verify class guide command is discoverable and class passive descriptions are exposed."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -2083,11 +2110,12 @@
       "category": "Magic",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-rpg-mechanics-behavior.js"
         ],
-        "scope": "Source-contract checks verify Mage mana-cost discount is applied in solo and co-op combat."
+        "scope": "Üretim kodundan çağrılan mekanik fonksiyonları ve savaş akışlarını deterministik davranış testleriyle doğrular; canlı Discord/production DB kullanılmaz.",
+        "notes": "Kaynak sözleşmesi kanıtı, çalıştırılabilir davranış testleriyle desteklendi."
       }
     },
     {
@@ -2255,11 +2283,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify one-time journal completion reward handling."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2282,11 +2311,12 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify discovery uniqueness and transactional one-time rewards."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2348,11 +2378,12 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify route mastery and rewards share the adventure result transaction."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2374,11 +2405,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify one daily streak advance and missed-day reset logic."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2387,11 +2419,12 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify recurring third-day streak rewards."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2400,11 +2433,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify current streak is shown in adventure and journal output."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2469,11 +2503,12 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify low-probability rare discovery handling in random adventures."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2495,11 +2530,12 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify forgotten spell archive rare encounter and exclusive reward wiring."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2508,11 +2544,12 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify deserted dragon nest rare encounter and exclusive reward wiring."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2735,11 +2772,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify rare-location achievement claim path."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2748,11 +2786,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify first treasure-map achievement claim path."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2761,11 +2800,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify chest-opening milestone achievement claim path."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2774,11 +2814,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify route-visit milestone achievement claim path."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2813,11 +2854,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify first-adventure bonus stacks with streak milestone reward."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2852,11 +2894,12 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify Guardian dangerous-location discovery gold bonus."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2865,11 +2908,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify Healer first-discovery bonus wiring."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2891,11 +2935,12 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify rare Himmel-themed chest-drop probability wiring; exact distribution is not statistically validated."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2904,11 +2949,12 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify rare chest reward gold/XP bonus wiring."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2917,11 +2963,12 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify adventure encounter persistence with route, outcome and discovery status."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -2930,11 +2977,12 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify exact adventure gold, XP and item reward persistence."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3301,11 +3349,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify crafting level-five achievement claim wiring."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3314,11 +3363,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify crafting level-ten achievement claim wiring."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3327,11 +3377,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify ten-crafted-items achievement claim wiring."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3340,11 +3391,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify fifty-crafted-items achievement claim wiring."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3408,11 +3460,12 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify equipped copies are protected from dismantling."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3434,11 +3487,12 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify dismantling and material refunds use one transaction."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3473,11 +3527,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify ten-dismantled-items achievement claim wiring."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3486,11 +3541,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify twenty-five-dismantled-items achievement claim wiring."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3499,11 +3555,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify daily crafting mission production progress tracking."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3526,11 +3583,12 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify daily crafting reward claim path and reward output."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3539,11 +3597,12 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify per-day locked record prevents duplicate daily crafting reward claims."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3552,11 +3611,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify daily crafting XP is routed through level and stat-point progression."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3605,11 +3665,12 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify dismantling leaderboard metric."
+        "scope": "İzole PostgreSQL üzerinde gerçek komut execute akışı; leaderboard kategorisi ve oyuncu profilindeki kalıcı sayılar doğrulanır.",
+        "notes": "Komut yanıtı ve DB'deki gerçek değerler birlikte kontrol edildi."
       }
     },
     {
@@ -3618,11 +3679,12 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify recycling progress category selection."
+        "scope": "İzole PostgreSQL üzerinde gerçek komut execute akışı; leaderboard kategorisi ve oyuncu profilindeki kalıcı sayılar doğrulanır.",
+        "notes": "Komut yanıtı ve DB'deki gerçek değerler birlikte kontrol edildi."
       }
     },
     {
@@ -3644,11 +3706,12 @@
       "category": "RPG",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify combined profile displays lifetime dismantling count."
+        "scope": "İzole PostgreSQL üzerinde gerçek komut execute akışı; leaderboard kategorisi ve oyuncu profilindeki kalıcı sayılar doğrulanır.",
+        "notes": "Komut yanıtı ve DB'deki gerçek değerler birlikte kontrol edildi."
       }
     },
     {
@@ -3657,11 +3720,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify all-time best streak is persisted separately from current streak."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3670,11 +3734,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify missed-day reset does not overwrite the best streak."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3683,11 +3748,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify current and record streak display in adventure result/journal/stats."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3696,11 +3762,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify seven-day streak milestone reward wiring."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3709,11 +3776,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify fourteen-day streak milestone reward wiring."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3722,11 +3790,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify thirty-day streak milestone reward wiring."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
@@ -3908,11 +3977,12 @@
       "category": "Magic",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify Zoltraak mastery progression and damage-modifier wiring in cooperative combat; exact encounter threshold runtime behavior remains unverified."
+        "scope": "Üretim dışı, tek kullanımlık PostgreSQL test şemasında gerçek transaction, ödül, idempotency ve kalıcı kayıt kontrolleri. Canlı Discord ve production veritabanı kullanılmaz.",
+        "notes": "Testler gerçek PostgreSQL üzerinde deterministik senaryolarla çalıştırıldı; ödül ve geçmiş kayıtları doğrudan DB'den doğrulandı."
       }
     },
     {
