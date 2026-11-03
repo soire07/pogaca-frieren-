@@ -113,6 +113,7 @@ export async function enqueueArenaPlayer(db = pool, input) {
   await ensureUser(guildId, userId);
   const client = await db.connect();
   let match = null;
+  let queueStatus = null;
   try {
     await client.query('BEGIN');
     await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['frieren-arena:' + guildId]);
@@ -131,6 +132,7 @@ export async function enqueueArenaPlayer(db = pool, input) {
       [guildId, userId, rating]
     );
     match = await createMatchFromQueue(client, guildId);
+    if (!match) queueStatus = await getArenaQueueStatus(client, guildId, userId);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
@@ -139,8 +141,7 @@ export async function enqueueArenaPlayer(db = pool, input) {
     client.release();
   }
   if (match) return { status: 'matched', matchId: match.matchId, state: match.state, participants: match.participants };
-  // Release the transaction connection before taking another pool connection for status.
-  return { status: 'queued', queue: await getArenaQueueStatus(db, guildId, userId) };
+  return { status: 'queued', queue: queueStatus };
 }
 
 export async function leaveArenaQueue(db = pool, { guildId, userId }) {
