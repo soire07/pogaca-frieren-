@@ -217,7 +217,7 @@ test('Groq validation rejects malformed or empty completion responses', async ()
 \ntest('repair context prioritizes exact allowlisted affected files from Guardian review tasks', async () => {
   const files = {
     'guardian/automation.js': 'export function dispatchRepair() { return true; }',
-    'commands/unrelated.js': 'export function unrelatedFeature() { return true; }',
+    'ai-agent/owner-scenario-report.js': 'export function unrelatedFeature() { return true; }',
   };
   const context = await collectRepairContext(
     'Guardian incident #42\\nİlgili dosyalar: guardian/automation.js, ../package.json, .env.js',
@@ -228,7 +228,7 @@ test('Groq validation rejects malformed or empty completion responses', async ()
     },
   );
   assert.ok(context.indexOf('### guardian/automation.js') >= 0);
-  assert.ok(context.indexOf('### guardian/automation.js') < context.indexOf('### commands/unrelated.js'));
+  assert.ok(context.indexOf('### guardian/automation.js') < context.indexOf('### ai-agent/owner-scenario-report.js'));
   assert.doesNotMatch(context, /package.json|\\.env/);
 });
 
