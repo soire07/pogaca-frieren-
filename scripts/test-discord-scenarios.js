@@ -222,6 +222,40 @@ test('spell practice is registered in the RPG command directory', async () => {
 });
 
 
+test('RPG profile can display another selected server member without using the caller account', async () => {
+  const profile = await read('profil.js');
+  assert.match(profile, /setName\('profil'\)/);
+  assert.match(profile, /setName\('kullanici'\)/);
+  assert.match(profile, /interaction\.options\.getUser\('kullanici'\) \?\? interaction\.user/);
+  assert.match(profile, /FROM users WHERE guild_id=\$1 AND user_id=\$2/);
+  assert.match(profile, /\[interaction\.guildId, target\.id\]/);
+  assert.match(profile, /target\.username/);
+});
+
+test('story decisions unlock different requirements and endings from the selected path', async () => {
+  const story = await read('hikaye.js');
+  assert.match(story, /value: 'cesaret'/);
+  assert.match(story, /value: 'merhamet'/);
+  assert.match(story, /value: 'merak'/);
+  assert.match(story, /path === 'cesaret'/);
+  assert.match(story, /user\.boss_defeats/);
+  assert.match(story, /path === 'merhamet'/);
+  assert.match(story, /user\.items_used_count/);
+  assert.match(story, /learned_spells/);
+  assert.match(story, /if \(!requirement\.ok\)/);
+  assert.match(story, /endings\[decision\]/);
+  assert.match(story, /previousChoices\[0\]/);
+});
+
+test('server leaderboard ranks unique anime character collections as a selectable category', async () => {
+  const ranking = await read('siralama.js');
+  assert.match(ranking, /value: 'collection'/);
+  assert.match(ranking, /anime_character_collection/);
+  assert.match(ranking, /COUNT\(\*\)::int/);
+  assert.match(ranking, /Karakter koleksiyonu/);
+  assert.match(ranking, /Senin sıran/);
+});
+
 test('character classes provide bounded passive bonuses and class selection is discoverable', async () => {
   const mechanics = await read('rpg-mechanics.js');
   const command = await read('commands/rpg/sinifsec.js');
