@@ -50,6 +50,10 @@ test('repair task is bounded and excludes raw incident summaries and credentials
   assert.match(task, /Guardian incident #42/);
   assert.ok(task.includes('İlgili dosyalar: commands/example.js'));
   assert.match(task, /A bounded timeout is missing/);
+  assert.match(task, /Çıktı yalnızca diff --git ile başlayan unified diff olmalı/);
+  assert.match(task, /npm run check geçmeden PR açma/);
+  assert.equal(task.includes('Frieren AI yama önerisi'), false);
+  assert.equal(task.includes('diff --git a/commands/example.js'), false);
   assert.doesNotMatch(task, /private-token|user@example.com/);
   assert.doesNotMatch(task, /request timed out/);
 });
