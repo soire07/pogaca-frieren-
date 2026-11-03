@@ -204,10 +204,10 @@ test('player profile includes persistent talent ranks and equipment rarity set b
   for (const field of ['talent_attack', 'talent_defense', 'talent_hp', 'talent_mana']) {
     assert.ok(source.includes(`AS ${field}`), 'missing profile talent field: ' + field);
   }
-  assert.match(source, /Number\(u\.talent_hp\) \* 0\.05/);
-  assert.match(source, /Number\(u\.talent_mana\) \* 0\.05/);
-  assert.match(source, /Number\(u\.talent_attack\) \* 0\.04/);
-  assert.match(source, /Number\(u\.talent_defense\) \* 0\.04/);
+  assert.match(source, /applyTalentBonus\(\(Number\(u\.max_hp\) \+ gear\.hp\) \* build\.hp, u\.talent_hp, 0\.05\)/);
+  assert.match(source, /applyTalentBonus\(\(Number\(u\.max_mana\) \+ gear\.mana\) \* build\.mana, u\.talent_mana, 0\.05\)/);
+  assert.match(source, /applyTalentBonus\(\(Number\(u\.attack\) \+ gear\.attack\) \* build\.attack, u\.talent_attack, 0\.04\)/);
+  assert.match(source, /applyTalentBonus\(applyClassDefense\(Number\(u\.defense\) \+ gear\.defense, u\.class_name\) \* build\.defense, u\.talent_defense, 0\.04\)/);
 });
 
 
