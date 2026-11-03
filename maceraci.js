@@ -13,7 +13,7 @@ export default {
       const result = await createSiteLinkToken(pool, { guildId: interaction.guildId, userId: interaction.user.id });
       const base = String(process.env.SITE_BASE_URL || 'https://frierenbot.vercel.app').replace(/\/+$/, '');
       return interaction.reply({
-        content: `**Web Maceracı Paneli bağlantı kodun**\n\n\```\n${result.token}\n\```\n\n1. [Frieren Portalı aç](${base}/maceraci)\n2. Web hesabına giriş yap.\n3. Kodu bağlantı alanına gir.\n\nKod 10 dakika geçerlidir ve yalnızca bir kez kullanılabilir.`,
+        content: '**Web Maceracı Paneli bağlantı kodun**\n\n' + '`' + result.token + '`' + '\n\n1. [Frieren Portalı aç](' + base + '/maceraci)\n2. Web hesabına giriş yap.\n3. Kodu bağlantı alanına gir.\n\nKod 10 dakika geçerlidir ve yalnızca bir kez kullanılabilir.',
         flags: MessageFlags.Ephemeral
       });
     }
