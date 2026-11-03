@@ -1832,11 +1832,12 @@
       "category": "Magic",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify spellbook output includes learned spells, practice counts and mastery progress."
+        "scope": "Öğrenilmiş büyüler, kullanım sayıları ve ustalık ilerlemesi sentetik Discord komut etkileşiminde gösterilir.",
+        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
       }
     },
     {
@@ -1845,11 +1846,12 @@
       "category": "Magic",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify spell practice requires an already learned spell key and checks ownership before resource spending."
+        "scope": "Öğrenilmemiş büyüyle pratik girişimi gerçek komut execute akışında reddedilir; altın ve mana bakiyeleri değişmediği PostgreSQL'den doğrulanır.",
+        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
       }
     },
     {
@@ -1977,8 +1979,8 @@
         "tests": [
           "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "İzole PostgreSQL test şemasında dört sınıfın /sinifsec akışıyla kalıcı class_name alanına yazılması; her seçimin embed başlığı/açıklamasının sınıf pasifiyle eşleşmesi ve /sinifrehberi çıktısının sınıflar/pasiflerle tutarlılığı doğrulanır.",
-        "notes": "Gerçek komut execute fonksiyonları ve PostgreSQL kalıcı kayıtları kullanılır; canlı Discord ve production DB kullanılmaz."
+        "scope": "Dört sınıfın her biri gerçek class-selection komutundan seçilir ve class_name PostgreSQL'den doğrulanır.",
+        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
       }
     },
     {
@@ -2030,8 +2032,8 @@
         "tests": [
           "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "İzole PostgreSQL test şemasında dört sınıfın /sinifsec akışıyla kalıcı class_name alanına yazılması; her seçimin embed başlığı/açıklamasının sınıf pasifiyle eşleşmesi ve /sinifrehberi çıktısının sınıflar/pasiflerle tutarlılığı doğrulanır.",
-        "notes": "Gerçek komut execute fonksiyonları ve PostgreSQL kalıcı kayıtları kullanılır; canlı Discord ve production DB kullanılmaz."
+        "scope": "Sınıf rehberi dört sınıfı ve her birinin gerçek pasif bonus metnini gösterir; sınıf seçimi ayrıca DB'de doğrulanır.",
+        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
       }
     },
     {
@@ -2085,11 +2087,14 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js",
+          "scripts/test-boss-combat.js",
+          "scripts/test-rpg-mechanics-behavior.js"
         ],
-        "scope": "Source-contract checks verify character-class passives are applied in both cooperative combat modes."
+        "scope": "Co-op raid/dungeon komutunda Büyücü mana indirimi gerçek PostgreSQL bakiyesiyle; sınıf hasar, savunma ve iyileştirme çarpanları davranış testleriyle doğrulanır.",
+        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
       }
     },
     {
@@ -2139,11 +2144,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify Mage mana efficiency is wired into co-op dungeon Zoltraak."
+        "scope": "Co-op dungeon akışında Büyücü Zoltraak atışlarının her birinde 10 mana tükettiği kalıcı kullanıcı bakiyesinden doğrulanır.",
+        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
       }
     },
     {
@@ -2152,11 +2158,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify Mage mana efficiency is wired into co-op raid Zoltraak."
+        "scope": "Co-op raid akışında Büyücü Zoltraak atışlarının her birinde 10 mana tükettiği kalıcı kullanıcı bakiyesinden doğrulanır.",
+        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
       }
     },
     {
@@ -2193,11 +2200,14 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration_and_unit",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js",
+          "scripts/test-boss-combat.js",
+          "scripts/test-rpg-mechanics-behavior.js"
         ],
-        "scope": "Source-contract checks verify persistent character builds are consumed across combat modes."
+        "scope": "Dört savaş yapısının seçimi ve users.active_build kalıcılığı PostgreSQL'de; yapı çarpanlarının savaş hesaplarına etkisi davranış testlerinde doğrulanır.",
+        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
       }
     },
     {
@@ -2220,11 +2230,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify talent attack modifiers are consumed across combat modes."
+        "scope": "Saldırı yeteneği rütbeleri üçe kadar kalıcı yükseltilir; sınır ve profil saldırı hesabı gerçek DB kaydıyla doğrulanır.",
+        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
       }
     },
     {
@@ -2233,11 +2244,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify talent defense modifiers are consumed across combat modes."
+        "scope": "Savunma yeteneği rütbeleri üçe kadar kalıcı yükseltilir; sınır ve profil savunma hesabı gerçek DB kaydıyla doğrulanır.",
+        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
       }
     },
     {
@@ -2246,11 +2258,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify talent HP/mana modifiers are consumed across combat modes."
+        "scope": "Can ve mana yetenekleri üç rütbeye kadar kalıcı yükseltilir; profilin efektif HP/mana değerleri DB tabanlı testte doğrulanır.",
+        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
       }
     },
     {
@@ -3695,11 +3708,12 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify dismantling preview includes equipment and material return details."
+        "scope": "Parçalama önizlemesi 12 ekipman türünün tümünü, nadirliklerini ve geri kazanım tariflerini gösterir; önizleme envanteri değiştirmez.",
+        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
       }
     },
     {
@@ -3861,11 +3875,12 @@
       "category": "RPG",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify persistent combat builds are consumed in all combat modes; exact adjusted profile values remain unverified."
+        "scope": "Seçili savaş yapısı profil çıktısında görünür; sınıf, yapı ve yetenek bonuslarıyla efektif HP, mana, saldırı ve savunma hesapları doğrulanır.",
+        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
       }
     },
     {
