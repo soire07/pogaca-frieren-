@@ -87,7 +87,7 @@ async function persistDispatchedState(store, db, jobId, workflowUrl) {
 }
 
 function getReviewEndpoint(env) {
-  const base = String(env.FRIEREN_AI_PUBLIC_URL || 'https://pogaca-frieren-kltd.onrender.com').trim();
+  const base = String(env.FRIEREN_AI_PUBLIC_URL || 'https://frieren-ai-agent.onrender.com').trim();
   const parsed = new URL(base);
   if (parsed.protocol !== 'https:' || parsed.username || parsed.password) {
     throw new Error('INVALID_FRIEREN_AI_PUBLIC_URL');
