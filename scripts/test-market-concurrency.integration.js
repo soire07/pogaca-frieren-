@@ -1448,6 +1448,8 @@ test('all ten crafting recipes consume their exact ingredients and persist equip
     );
 
     const responses = [];
+    const previousRandom = Math.random;
+    Math.random = () => 0.99;
     const makeInteraction = recipe => ({
       guildId,
       user: { id: userId },
@@ -1495,6 +1497,7 @@ test('all ten crafting recipes consume their exact ingredients and persist equip
         return rendered.includes('Zanaat ustalığı') && rendered.includes('Başarılı üretim');
       }), 'every successful craft response must display profession progress');
     } finally {
+      Math.random = previousRandom;
       await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
     }
   });
