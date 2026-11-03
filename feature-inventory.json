@@ -14,12 +14,13 @@
       "category": "RPG",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
           "scripts/live-command-test.js",
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-discord-scenarios.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated character-panel scenario verifies player identity and RPG profile fields against the disposable PostgreSQL fixture. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+        "scope": "The isolated character-panel scenario verifies player identity and RPG profile fields against the disposable PostgreSQL fixture. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -222,11 +223,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/live-command-test.js"
+          "scripts/live-command-test.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated command audit sets the player's level and boss victory count, verifies the level-appropriate boss tier and next threshold, and checks victory/loot guidance. It also verifies guide viewing does not mutate player progress. Synthetic Discord interaction and disposable frieren_test PostgreSQL."
+        "scope": "The isolated command audit sets the player's level and boss victory count, verifies the level-appropriate boss tier and next threshold, and checks victory/loot guidance. It also verifies guide viewing does not mutate player progress. Synthetic Discord interaction and disposable frieren_test PostgreSQL. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -235,12 +237,13 @@
       "category": "Magic",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
           "scripts/live-command-test.js",
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-discord-scenarios.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated spellbook scenarios verify learned-spell and mastery data is rendered. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+        "scope": "The isolated spellbook scenarios verify learned-spell and mastery data is rendered. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -303,12 +306,13 @@
       "category": "Economy",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
           "scripts/live-command-test.js",
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-discord-scenarios.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated market scenario verifies catalog and product options and asserts that browsing is read-only. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+        "scope": "The isolated market scenario verifies catalog and product options and asserts that browsing is read-only. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -371,12 +375,13 @@
       "category": "Inventory",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
           "scripts/live-command-test.js",
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-discord-scenarios.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated inventory scenario verifies item listing and confirms that viewing inventory does not mutate state. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+        "scope": "The isolated inventory scenario verifies item listing and confirms that viewing inventory does not mutate state. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -441,12 +446,13 @@
       "category": "Story",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
           "scripts/live-command-test.js",
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-discord-scenarios.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated story scenario verifies the starting choice and its initial reward. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+        "scope": "The isolated story scenario verifies the starting choice and its initial reward. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -483,12 +489,13 @@
       "category": "Lore",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
           "scripts/live-command-test.js",
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-discord-scenarios.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated lore/book scenario verifies the player-facing book pages and read-only behavior. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+        "scope": "The isolated lore/book scenario verifies the player-facing book pages and read-only behavior. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -564,12 +571,13 @@
       "category": "Mini-games",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
           "scripts/live-command-test.js",
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-discord-scenarios.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated anime quiz scenario verifies question and timer panel output. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+        "scope": "The isolated anime quiz scenario verifies question and timer panel output. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -663,12 +671,13 @@
       "category": "Server",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
           "scripts/live-command-test.js",
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-discord-scenarios.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated status scenario verifies live Discord connection state and runtime information; no live Discord API was called by CI. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+        "scope": "The isolated status scenario verifies live Discord connection state and runtime information; no live Discord API was called by CI. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -705,12 +714,13 @@
       "category": "Fun",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
           "scripts/live-command-test.js",
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-discord-scenarios.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated kimimben scenario verifies character identification, collection persistence and cooldown timestamps. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+        "scope": "The isolated kimimben scenario verifies character identification, collection persistence and cooldown timestamps. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -801,11 +811,12 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/live-command-test.js"
+          "scripts/live-command-test.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated command audit ranks two players by total XP and checks the higher-scoring player appears first; it also inserts a higher-scoring player in another guild and verifies guild isolation. Synthetic Discord interaction and disposable frieren_test PostgreSQL."
+        "scope": "The isolated command audit ranks two players by total XP and checks the higher-scoring player appears first; it also inserts a higher-scoring player in another guild and verifies guild isolation. Synthetic Discord interaction and disposable frieren_test PostgreSQL. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -827,11 +838,12 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/live-command-test.js"
+          "scripts/live-command-test.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated command audit ranks players by demon boss victories, checks ordering by score, and verifies a higher-scoring player from another guild is excluded. Synthetic Discord interaction and disposable frieren_test PostgreSQL."
+        "scope": "The isolated command audit ranks players by demon boss victories, checks ordering by score, and verifies a higher-scoring player from another guild is excluded. Synthetic Discord interaction and disposable frieren_test PostgreSQL. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -840,11 +852,12 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/live-command-test.js"
+          "scripts/live-command-test.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated command audit ranks players by dungeon victories, checks ordering by score, and verifies a higher-scoring player from another guild is excluded. Synthetic Discord interaction and disposable frieren_test PostgreSQL."
+        "scope": "The isolated command audit ranks players by dungeon victories, checks ordering by score, and verifies a higher-scoring player from another guild is excluded. Synthetic Discord interaction and disposable frieren_test PostgreSQL. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -866,12 +879,13 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
           "scripts/live-command-test.js",
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-discord-scenarios.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated ranking scenario verifies the invoking player's rank position output. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+        "scope": "The isolated ranking scenario verifies the invoking player's rank position output. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -880,12 +894,13 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
           "scripts/live-command-test.js",
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-discord-scenarios.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated adventure-history scenario verifies recent history summary fields and read-only behavior. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+        "scope": "The isolated adventure-history scenario verifies recent history summary fields and read-only behavior. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -894,11 +909,12 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/live-command-test.js"
+          "scripts/live-command-test.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated command audit selects a different player, inserts a unique adventure-history record for that player, verifies the selected player's summary and exact adventure record are rendered, and proves their progress remains unchanged. Synthetic Discord interaction and disposable frieren_test PostgreSQL."
+        "scope": "The isolated command audit selects a different player, inserts a unique adventure-history record for that player, verifies the selected player's summary and exact adventure record are rendered, and proves their progress remains unchanged. Synthetic Discord interaction and disposable frieren_test PostgreSQL. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -907,12 +923,13 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
           "scripts/live-command-test.js",
-          "scripts/test-command-test-evidence.js"
+          "scripts/test-command-test-evidence.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated command audit runs the production statistics command against disposable frieren_test PostgreSQL and checks boss-victory statistics in its command-specific behavioral assertions. Synthetic Discord interaction, not live Discord E2E."
+        "scope": "The isolated command audit runs the production statistics command against disposable frieren_test PostgreSQL and checks boss-victory statistics in its command-specific behavioral assertions. Synthetic Discord interaction, not live Discord E2E. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -921,12 +938,13 @@
       "category": "Co-op",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
           "scripts/live-command-test.js",
-          "scripts/test-command-test-evidence.js"
+          "scripts/test-command-test-evidence.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated command audit runs the production statistics command against disposable frieren_test PostgreSQL and checks co-op dungeon attempt/victory counters in command-specific behavioral assertions. Synthetic Discord interaction, not live Discord E2E."
+        "scope": "The isolated command audit runs the production statistics command against disposable frieren_test PostgreSQL and checks co-op dungeon attempt/victory counters in command-specific behavioral assertions. Synthetic Discord interaction, not live Discord E2E. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -935,12 +953,13 @@
       "category": "RPG",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
           "scripts/live-command-test.js",
-          "scripts/test-command-test-evidence.js"
+          "scripts/test-command-test-evidence.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated command audit checks exploration, item-use and character-draw statistics using seeded disposable frieren_test records and command-specific response assertions. Synthetic Discord interaction, not live Discord E2E."
+        "scope": "The isolated command audit checks exploration, item-use and character-draw statistics using seeded disposable frieren_test records and command-specific response assertions. Synthetic Discord interaction, not live Discord E2E. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
@@ -949,12 +968,13 @@
       "category": "RPG",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
           "scripts/live-command-test.js",
-          "scripts/test-command-test-evidence.js"
+          "scripts/test-command-test-evidence.js",
+          "scripts/run-isolated-command-audit.js"
         ],
-        "scope": "The isolated command audit checks learned-spell mastery and equipped-gear summary output against disposable frieren_test PostgreSQL with command-specific response assertions. Synthetic Discord interaction, not live Discord E2E."
+        "scope": "The isolated command audit checks learned-spell mastery and equipped-gear summary output against disposable frieren_test PostgreSQL with command-specific response assertions. Synthetic Discord interaction, not live Discord E2E. The current isolated audit run passed this command within a 67-command synthetic Discord sweep with command-specific behavioral assertions and isolated PostgreSQL state checks; this is not live Discord E2E."
       }
     },
     {
