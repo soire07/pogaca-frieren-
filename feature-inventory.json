@@ -32,13 +32,27 @@
       "id": "RPG-003",
       "name": "XP and level progression",
       "category": "Progression",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Progression milestone tests verify level thresholds and one-time unlock behavior; XP curve implementation is not exhaustively runtime-tested."
+      }
     },
     {
       "id": "RPG-004",
       "name": "Level-up stat point rewards",
       "category": "Progression",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Progression milestone tests verify stat-point rewards at exact level and victory thresholds; all level-up paths are not covered."
+      }
     },
     {
       "id": "RPG-005",
@@ -142,25 +156,53 @@
       "id": "RPG-012",
       "name": "Solo demon boss battles",
       "category": "Combat",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Solo-boss reward, defeat, timeout and battle-session idempotency checks; these are automated unit/source-contract tests, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-013",
       "name": "Boss tiers based on player level",
       "category": "Combat",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-owner-rpg-content.js"
+        ],
+        "scope": "Owner RPG content tests validate bounded boss configuration and guild-scoped boss content; tier selection at every player level is not fully exercised."
+      }
     },
     {
       "id": "RPG-014",
       "name": "Boss-specific attacks",
       "category": "Combat",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Boss special-attack cadence and mana-drain behavior are tested for raid bosses; all solo boss variants are not covered."
+      }
     },
     {
       "id": "RPG-015",
       "name": "Boss loot and permanent bonuses",
       "category": "Combat",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Solo boss reward transaction, defeat/timeout no-reward paths and duplicate-claim protection are tested; permanent bonus balance is not fully verified."
+      }
     },
     {
       "id": "RPG-016",
@@ -391,7 +433,14 @@
       "id": "RPG-034",
       "name": "NPC side quests",
       "category": "Quests",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "Persistent sequential daily quest-chain progression and transactional reward checks exist; NPC-specific side-quest branches are not separately exercised."
+      }
     },
     {
       "id": "RPG-035",
@@ -485,7 +534,14 @@
       "id": "RPG-042",
       "name": "Mimic-themed interaction",
       "category": "Mini-games",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-command-test-evidence.js"
+        ],
+        "scope": "Command-specific isolated behavior assertions cover the registered fun interaction contract; mimic outcome branches require additional direct assertions."
+      }
     },
     {
       "id": "RPG-043",
@@ -570,13 +626,27 @@
       "id": "FUN-001",
       "name": "Random luck interaction",
       "category": "Fun",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-command-test-evidence.js"
+        ],
+        "scope": "Isolated command behavioral evidence covers the luck interaction response path; reward distribution edge cases are not fully covered."
+      }
     },
     {
       "id": "FUN-002",
       "name": "Virtual hug interaction",
       "category": "Fun",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-command-test-evidence.js"
+        ],
+        "scope": "Isolated command behavioral evidence covers the hug interaction response path; this is not live Discord E2E."
+      }
     },
     {
       "id": "FUN-003",
@@ -748,25 +818,53 @@
       "id": "RPG-053",
       "name": "Summarize demon boss victory statistics",
       "category": "Combat",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/live-command-test.js"
+        ],
+        "scope": "Isolated command audit includes boss-statistics command assertions against disposable PostgreSQL; synthetic interactions only."
+      }
     },
     {
       "id": "RPG-054",
       "name": "Summarize co-op dungeon attempt and victory statistics",
       "category": "Co-op",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/live-command-test.js"
+        ],
+        "scope": "Isolated command audit includes cooperative dungeon attempt/victory statistics checks against disposable PostgreSQL; synthetic interactions only."
+      }
     },
     {
       "id": "RPG-055",
       "name": "Summarize exploration, item-use and character-draw statistics",
       "category": "RPG",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/live-command-test.js"
+        ],
+        "scope": "Isolated command audit checks exploration, item-use and character-draw statistics through synthetic Discord interactions and disposable PostgreSQL."
+      }
     },
     {
       "id": "RPG-056",
       "name": "Summarize learned spells and equipped gear",
       "category": "RPG",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/live-command-test.js"
+        ],
+        "scope": "Isolated command audit checks spell mastery and equipped-gear summary output; synthetic interactions only."
+      }
     },
     {
       "id": "RPG-057",
@@ -1521,7 +1619,14 @@
       "id": "RPG-114",
       "name": "Unlock persistent titles from level, boss victory and dungeon victory milestones",
       "category": "Progression",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Progression milestone test verifies persistent title unlock thresholds; all title sources and presentation paths are not covered."
+      }
     },
     {
       "id": "RPG-115",
@@ -1540,19 +1645,40 @@
       "id": "RPG-116",
       "name": "Trigger the North Plateau Demon General's periodic area mana-star burst",
       "category": "Boss",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Automated raid special-attack cadence test verifies North Plateau boss periodic area mana-star burst; not live Discord E2E."
+      }
     },
     {
       "id": "RPG-117",
       "name": "Trigger the Glass Scales Dragon's every-other-turn shard rain with reduced area damage",
       "category": "Boss",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Automated raid special-attack cadence test verifies Glass Scales Dragon shard-rain cadence and reduced area damage; not live Discord E2E."
+      }
     },
     {
       "id": "RPG-118",
       "name": "Trigger Fallen Mage Aura's periodic mana-draining curse",
       "category": "Boss",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Automated raid special-attack cadence test verifies Fallen Mage periodic mana-draining curse; not live Discord E2E."
+      }
     },
     {
       "id": "RPG-123",
@@ -3510,7 +3636,14 @@
       "id": "RPG-269",
       "name": "Apply selected character-class passives and combat-build modifiers to PvP duel health, damage, defense and healing",
       "category": "Combat",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "PvP duel test verifies class passives and selected build modifiers affect attack, defense and healing; all class/build combinations are not exhaustive."
+      }
     },
     {
       "id": "RPG-270",
@@ -3568,7 +3701,14 @@
       "id": "RPG-274",
       "name": "Advance persistent Zoltraak spell mastery from successful cooperative dungeon and boss-raid casts and apply weakness bonuses only when the spell actually succeeds",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Co-op dungeon and raid test verifies only successful mana-funded Zoltraak casts advance mastery and weakness bonus behavior; synthetic/unit scope."
+      }
     },
     {
       "id": "RPG-275",
@@ -3704,85 +3844,183 @@
       "id": "RPG-304",
       "name": "Buz Mızrağı freeze cancels the boss's scheduled special attack and mana-drain side effect",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Ice freeze regression verifies scheduled boss special attack and mana-drain side effect are cancelled."
+      }
     },
     {
       "id": "RPG-305",
       "name": "Cooperative raid boss enters a second phase at two-thirds HP",
       "category": "Combat",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Boss phase test verifies raid boss phase-two threshold at two-thirds HP."
+      }
     },
     {
       "id": "RPG-306",
       "name": "Cooperative raid boss enters a final phase at one-third HP with stronger special attacks",
       "category": "Combat",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Boss phase test verifies raid boss final phase at one-third HP and stronger phase behavior."
+      }
     },
     {
       "id": "RPG-307",
       "name": "Final dungeon boss has a second combat phase at two-thirds HP",
       "category": "Combat",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Boss phase test verifies final dungeon boss phase-two threshold at two-thirds HP."
+      }
     },
     {
       "id": "RPG-308",
       "name": "Final dungeon boss has a final combat phase with stronger signature attacks",
       "category": "Combat",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Boss phase test verifies final dungeon boss final phase at one-third HP and stronger signature attacks."
+      }
     },
     {
       "id": "RPG-309",
       "name": "Zoltraak mastery-10 awakening adds 8 damage",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Mastery-10 awakening test covers Zoltraak's +8 damage effect."
+      }
     },
     {
       "id": "RPG-310",
       "name": "Fireball mastery-10 awakening adds 10 damage",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Mastery-10 awakening test covers Fireball's +10 damage effect."
+      }
     },
     {
       "id": "RPG-311",
       "name": "Ice Lance mastery-10 awakening adds 10 percentage points of freeze chance",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Mastery-10 awakening test covers Ice Lance's additional freeze chance."
+      }
     },
     {
       "id": "RPG-312",
       "name": "Protective Barrier mastery-10 awakening adds 5 percentage points of damage reduction",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Mastery-10 awakening test covers Protective Barrier's additional damage reduction."
+      }
     },
     {
       "id": "RPG-313",
       "name": "Healing Light mastery-10 awakening adds 10 healing",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Mastery-10 awakening test covers Healing Light's additional healing."
+      }
     },
     {
       "id": "RPG-314",
       "name": "Chain Lightning mastery-10 awakening adds 12 damage",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Mastery-10 awakening test covers Chain Lightning's additional damage."
+      }
     },
     {
       "id": "RPG-315",
       "name": "Stone Wall mastery-10 awakening adds 5 percentage points of damage reduction",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Mastery-10 awakening test covers Stone Wall's additional damage reduction."
+      }
     },
     {
       "id": "RPG-316",
       "name": "Mana Burst mastery-10 awakening adds 15 damage",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Mastery-10 awakening test covers Mana Burst's additional damage."
+      }
     },
     {
       "id": "RPG-317",
       "name": "Rare discovery pity system guarantees an undiscovered rare location every 20 adventures",
       "category": "Exploration",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-boss-combat.js"
+        ],
+        "scope": "Rare discovery pity test verifies the next undiscovered location is guaranteed at each 20-adventure boundary."
+      }
     },
     {
       "id": "RPG-318",
@@ -3841,7 +4079,14 @@
       "id": "RPG-323",
       "name": "Dungeon progress grants crafting materials and full clear grants a signature relic",
       "category": "Equipment",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "Dungeon floor, route, encounter and reward behavior tests cover dungeon progression and reward settlement; signature relic guarantee is not separately asserted."
+      }
     },
     {
       "id": "ARENA-001",
@@ -3951,5 +4196,5 @@
     }
   ],
   "count": 325,
-  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised."
+  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof."
 }
