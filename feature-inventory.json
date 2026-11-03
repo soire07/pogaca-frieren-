@@ -2917,11 +2917,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify basic equipment recipe ingredients and crafting output wiring."
+        "scope": "The production /zanaat command was executed against disposable PostgreSQL with a synthetic Discord interaction. The all-recipe matrix verifies the iron sword consumes its exact ingredients and persists the mapped equipment output; this is not live Discord E2E."
       }
     },
     {
@@ -2930,11 +2930,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify Mage Staff recipe ingredient and equipment integration."
+        "scope": "The production /zanaat command was executed against disposable PostgreSQL with a synthetic Discord interaction. The all-ten-recipe matrix verifies the Mage Staff recipe ingredients and mapped equipment output; this is not live Discord E2E."
       }
     },
     {
@@ -2943,11 +2943,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify Traveler Cloak recipe ingredient and equipment integration."
+        "scope": "The production /zanaat command was executed against disposable PostgreSQL with a synthetic Discord interaction. The all-ten-recipe matrix verifies the Traveler Cloak recipe ingredients and mapped equipment output; this is not live Discord E2E."
       }
     },
     {
@@ -2956,11 +2956,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify Mana Ring recipe ingredient and equipment integration."
+        "scope": "The production /zanaat command was executed against disposable PostgreSQL with a synthetic Discord interaction. The all-ten-recipe matrix verifies the Mana Ring recipe ingredients and mapped equipment output; this is not live Discord E2E."
       }
     },
     {
@@ -2969,11 +2969,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify multi-item crafting ingredient scaling."
+        "scope": "A real PostgreSQL command integration crafts three copies of one recipe and verifies each ingredient scales by three, output quantity is three, and profession XP, successful-craft count and daily progress all increase by three."
       }
     },
     {
@@ -2995,11 +2995,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify crafted equipment is compatible with the existing equipment system."
+        "scope": "The PostgreSQL all-recipe command matrix verifies every crafted output uses the canonical equipment catalog item key; the same integration suite separately equips/unequips equipment and verifies inventory ownership and base HP/Mana caps. Synthetic Discord interactions, not live Discord E2E."
       }
     },
     {
@@ -3008,11 +3008,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify Fern's Mage Robe recipe wiring."
+        "scope": "The production /zanaat command was executed against disposable PostgreSQL with a synthetic Discord interaction. The all-ten-recipe matrix verifies Fern's robe ingredient consumption and mapped equipment output."
       }
     },
     {
@@ -3021,11 +3021,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify Frieren's Ancient Robe recipe wiring."
+        "scope": "The production /zanaat command was executed against disposable PostgreSQL with a synthetic Discord interaction. The all-ten-recipe matrix verifies Frieren's robe ingredient consumption and mapped equipment output."
       }
     },
     {
@@ -3034,11 +3034,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify Himmel's Hero Sword recipe wiring."
+        "scope": "The production /zanaat command was executed against disposable PostgreSQL with a synthetic Discord interaction. The all-ten-recipe matrix verifies Himmel's sword ingredient consumption and mapped equipment output."
       }
     },
     {
@@ -3047,11 +3047,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify Northern Demon Cutter recipe wiring."
+        "scope": "The production /zanaat command was executed against disposable PostgreSQL with a synthetic Discord interaction. The all-ten-recipe matrix verifies the demon blade ingredient consumption and mapped equipment output."
       }
     },
     {
@@ -3060,11 +3060,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify Ancient Rune Ring recipe wiring."
+        "scope": "The production /zanaat command was executed against disposable PostgreSQL with a synthetic Discord interaction. The all-ten-recipe matrix verifies the rune ring ingredient consumption and mapped equipment output."
       }
     },
     {
@@ -3073,11 +3073,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify Legendary Heroes' Ring recipe wiring."
+        "scope": "The production /zanaat command was executed against disposable PostgreSQL with a synthetic Discord interaction. The all-ten-recipe matrix verifies the hero ring ingredient consumption and mapped equipment output."
       }
     },
     {
@@ -3099,11 +3099,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify crafting profession XP/level persistence per guild and player."
+        "scope": "A real PostgreSQL integration invokes the production crafting command and verifies persisted profession XP and level after all ten recipes, including cumulative progress across multiple command executions."
       }
     },
     {
@@ -3112,11 +3112,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify recipe rarity influences crafting XP awards."
+        "scope": "The ten-recipe PostgreSQL command matrix checks the XP total against each equipment item's rarity-weighted award and verifies the persisted cumulative profession XP."
       }
     },
     {
@@ -3125,11 +3125,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify successful craft totals are persisted."
+        "scope": "The ten-recipe PostgreSQL command matrix verifies successful_crafts equals the number of completed crafts and daily_crafting_progress records the same total."
       }
     },
     {
@@ -3138,11 +3138,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify crafting response includes profession level, XP and production count."
+        "scope": "The ten-recipe PostgreSQL command matrix verifies each successful command response visibly includes crafting mastery and successful production progress, alongside persisted totals."
       }
     },
     {
@@ -3151,11 +3151,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify material recovery unlock at crafting level five."
+        "scope": "PostgreSQL command integration exercises the level-five refund branch with deterministic rolls on both sides of the 10% threshold (0.05 grants, 0.15 does not); level four remains locked."
       }
     },
     {
@@ -3164,11 +3164,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify material recovery chance increase at crafting level ten."
+        "scope": "PostgreSQL command integration exercises the level-ten refund branch with deterministic rolls on both sides of the 20% threshold (0.15 grants, 0.25 does not)."
       }
     },
     {
@@ -3177,11 +3177,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify ingredient recovery is separate from crafted equipment reward creation."
+        "scope": "PostgreSQL command integration verifies a refund returns exactly one selected recipe ingredient while the crafted equipment quantity remains exactly one; it does not duplicate the output reward."
       }
     },
     {
@@ -3333,11 +3333,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify equipment dismantling and partial material refund wiring."
+        "scope": "The production /ekipmanparcala command runs against disposable PostgreSQL for every equipment catalog item and verifies the exact material return and persisted dismantling count."
       }
     },
     {
@@ -3359,11 +3359,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify multi-copy dismantling and proportional material return logic."
+        "scope": "The production salvage command dismantles two copies of each of the ten equipment items and verifies proportional material returns and exact inventory balances in PostgreSQL."
       }
     },
     {
@@ -3385,11 +3385,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify persistent dismantled-item totals."
+        "scope": "The PostgreSQL salvage matrix verifies the lifetime salvaged_items total accumulates across all ten item types and multiple copies."
       }
     },
     {
@@ -3398,11 +3398,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify dismantling response includes lifetime progress."
+        "scope": "The PostgreSQL salvage matrix verifies each command response displays the updated lifetime dismantling total and that the persisted total matches all completed operations."
       }
     },
     {
@@ -3502,11 +3502,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify advanced recipes are gated by persistent crafting profession level."
+        "scope": "The production crafting command is executed against PostgreSQL with a persisted level-three profession. Level-four and level-five recipe gates reject crafting and preserve every ingredient."
       }
     },
     {
@@ -3515,11 +3515,11 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Source-contract checks verify rare/legendary recipe level requirements."
+        "scope": "The PostgreSQL level-gate test verifies rare/legendary recipes requiring levels four and five are rejected for a level-three profession without creating output or consuming materials."
       }
     },
     {
@@ -17684,7 +17684,7 @@
     }
   ],
   "count": 2000,
-  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification. Roadmap expansion (2026-11-03): added 1,675 distinct player-facing feature candidates across 25 Frieren RPG domains. All added entries are explicitly status=planned and are not implemented/test evidence. Roadmap count is a planning target, not a completion claim. All 325 original feature rows now have a linked test/source evidence record (2026-11-03); scope limitations are stated per row. The 1,675 new roadmap rows remain planned and intentionally have no test evidence. RPG-002 profile evidence was upgraded to a dedicated PostgreSQL integration test because the command is internal-only and is not part of the 67-command public audit.",
+  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification. Roadmap expansion (2026-11-03): added 1,675 distinct player-facing feature candidates across 25 Frieren RPG domains. All added entries are explicitly status=planned and are not implemented/test evidence. Roadmap count is a planning target, not a completion claim. All 325 original feature rows now have a linked test/source evidence record (2026-11-03); scope limitations are stated per row. The 1,675 new roadmap rows remain planned and intentionally have no test evidence. RPG-002 profile evidence was upgraded to a dedicated PostgreSQL integration test because the command is internal-only and is not part of the 67-command public audit. Crafting/salvage evidence upgrade (2026-11-03): added disposable frieren_audit PostgreSQL command integrations for all ten recipe ingredient/output mappings, multi-quantity scaling, persisted rarity-weighted XP/profession/daily progress, advanced recipe level gates, deterministic level-4/5/10 refund boundaries, all ten salvage mappings, multi-copy proportional returns, equipped-item protection, and player-visible lifetime salvage totals. These use synthetic Discord interactions and are not live Discord E2E.",
   "plannedFeatureCount": 1675,
   "originalFeatureEvidenceLinkedCount": 325
 }
