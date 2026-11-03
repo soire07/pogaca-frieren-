@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomInt, randomUUID } from 'node:crypto';
-import { ensureUser, pool, withIsolatedTestSchema } from '../database/db.js';
+import { ensureUser, initDatabase, pool, withIsolatedTestSchema } from '../database/db.js';
 import { buyMarketItem } from '../market.js';
 import { resolveTradeOffer } from '../trade-transaction.js';
 import { claimSoloBossReward, settleRaidRewards, settleDungeonRewards } from '../rpg-reward-transactions.js';
@@ -296,25 +296,31 @@ test('a previously claimed solo boss battle cannot be replayed after a newer bat
 }, async () => {
   await withIsolatedTestSchema(async () => {
     const guildId=testSnowflake('91'), userId=testSnowflake('90');
-    const firstBattleId=randomUUID(), secondBattleId=randomUUID();
+    const legacyBattleId=randomUUID(), secondBattleId=randomUUID();
     await ensureUser(guildId,userId);
+    await pool.query(
+      'UPDATE users SET last_boss_battle_id=$3,last_boss_win_at=NOW() WHERE guild_id=$1 AND user_id=$2',
+      [guildId,userId,legacyBattleId]
+    );
+    await initDatabase();
     const claim=(battleId,coins)=>claimSoloBossReward(pool,{
       guildId,userId,battleId,hp:80,mana:65,coins,xp:100,
       bonusLoot:null,craftingMaterial:null,journalBossKey:null,spellUsed:null
     });
 
-    assert.equal((await claim(firstBattleId,100)).status,'claimed');
+    assert.equal((await claim(legacyBattleId,100)).status,'already_claimed',
+      'the last battle completed before migration must be backfilled into the durable claim ledger');
     assert.equal((await claim(secondBattleId,200)).status,'claimed');
-    const replay=await claim(firstBattleId,100);
+    const replay=await claim(legacyBattleId,100);
     const player=await pool.query(
       'SELECT coins,xp,boss_defeats,last_boss_battle_id FROM users WHERE guild_id=$1 AND user_id=$2',
       [guildId,userId]
     );
 
     assert.equal(replay.status,'already_claimed','an old battle id must remain permanently consumed');
-    assert.equal(Number(player.rows[0].coins),300,'replaying the first battle must not mint coins');
-    assert.equal(Number(player.rows[0].xp),200,'replaying the first battle must not mint XP');
-    assert.equal(Number(player.rows[0].boss_defeats),2,'replaying the first battle must not add a boss victory');
+    assert.equal(Number(player.rows[0].coins),200,'replaying a legacy battle must not mint coins');
+    assert.equal(Number(player.rows[0].xp),100,'replaying a legacy battle must not mint XP');
+    assert.equal(Number(player.rows[0].boss_defeats),1,'replaying a legacy battle must not add a boss victory');
     assert.equal(player.rows[0].last_boss_battle_id,secondBattleId);
   });
 });
