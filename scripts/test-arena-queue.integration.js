@@ -17,7 +17,7 @@ test('PostgreSQL arena matchmaking atomically creates two complete matches from 
   await ensureArenaTables(pool);
   const guildId = '99000000000000001';
   const runId = randomUUID().replaceAll('-', '').slice(0, 8);
-  const userIds = Array.from({ length: 12 }, (_, index) => String(70000000000000000n + BigInt(runId.slice(0, 4), 16) * 100n + BigInt(index + 1)));
+  const userIds = Array.from({ length: 12 }, (_, index) => String(70000000000000000n + BigInt(parseInt(runId.slice(0, 4), 16)) * 100n + BigInt(index + 1)));
   const safeUserIds = userIds.map(id => id.slice(0, 17));
   for (const userId of safeUserIds) await ensureUser(guildId, userId);
 
@@ -32,9 +32,9 @@ test('PostgreSQL arena matchmaking atomically creates two complete matches from 
               COUNT(*) FILTER (WHERE p.team='B')::int AS team_b_count,
               COUNT(DISTINCT p.user_id)::int AS unique_players
        FROM arena_matches m JOIN arena_match_players p USING(match_id)
-       WHERE m.guild_id=$1 AND m.status='active' AND m.match_id LIKE $2
+       WHERE m.guild_id=$1 AND m.status='active'
        GROUP BY m.match_id ORDER BY m.match_id`,
-      [guildId, runId + '%']
+      [guildId]
     );
     assert.equal(matches.rowCount, 2);
     for (const match of matches.rows) {
@@ -50,7 +50,7 @@ test('PostgreSQL arena matchmaking atomically creates two complete matches from 
       error => error.code === 'ARENA_PLAYER_ALREADY_IN_MATCH'
     );
   } finally {
-    await pool.query('DELETE FROM arena_matches WHERE guild_id=$1 AND match_id LIKE $2', [guildId, runId + '%']);
+    await pool.query('DELETE FROM arena_matches WHERE guild_id=$1', [guildId]);
     await pool.query('DELETE FROM arena_queue WHERE guild_id=$1 AND user_id = ANY($2::text[])', [guildId, safeUserIds]);
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id = ANY($2::text[])', [guildId, safeUserIds]);
   }
