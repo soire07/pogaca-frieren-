@@ -857,10 +857,15 @@
             "NPC görev ödülü ve kalıcı tekil claim",
             "NPC ödülünün tekrar alınamaması"
           ]
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "NPC side quest rewards flow into the linked web dashboard exactly once for all three story paths"
         }
       ],
-      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
-      "verificationRunId": 41676999559
+      "verifiedAtCommit": "f0eb3f103c711245cb0c310a58ab231c4349aecd",
+      "verificationRunId": 41683529597
     },
     {
       "id": "RPG-035",
@@ -941,10 +946,15 @@
             "Karakter kopyası parçalama",
             "Nadir karakter parçalama ödülü"
           ]
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "character collection upgrades serialize gold spending, enforce +10 cap and expose combat bonus level"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177615
+      "verifiedAtCommit": "f0eb3f103c711245cb0c310a58ab231c4349aecd",
+      "verificationRunId": 41683529597
     },
     {
       "id": "RPG-039",
@@ -2249,10 +2259,20 @@
           "type": "unit_test",
           "file": "scripts/test-gameplay-persistence.js",
           "test": "epic set bonus activates at two pieces and disappears when one is removed"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-gameplay-persistence.js",
+          "test": "one shared equipment combat calculation applies and removes legendary and epic set bonuses"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-gameplay-persistence.js",
+          "test": "every combat entry point uses the shared equipment and rarity-set calculation"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177786
+      "verifiedAtCommit": "f0eb3f103c711245cb0c310a58ab231c4349aecd",
+      "verificationRunId": 41683529597
     },
     {
       "id": "RPG-114",
@@ -5370,10 +5390,15 @@
           "type": "postgres_integration",
           "file": "scripts/test-adventurer-platform.integration.js",
           "test": "single-use Discord link codes connect only the intended profile to a web account"
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "NPC side quest rewards flow into the linked web dashboard exactly once for all three story paths"
         }
       ],
-      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
-      "verificationRunId": 41654906717
+      "verifiedAtCommit": "f0eb3f103c711245cb0c310a58ab231c4349aecd",
+      "verificationRunId": 41683529597
     },
     {
       "id": "SOC-001",
