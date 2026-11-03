@@ -85,7 +85,7 @@ test('raid area specials hit every living teammate and respect individual defens
   assert.deepEqual(result.hpNow, [85, 0, 89]);
 });
 
-test('raid area special applies each living player's own defense and defense choice', () => {
+test("raid area special applies each living player's own defense and defense choice", () => {
   const fighters = [{ defense: 0 }, { defense: 20 }];
   const result = resolveRaidAreaAttack({
     hpNow: [100, 100],
