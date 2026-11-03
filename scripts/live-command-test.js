@@ -1160,6 +1160,44 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             actual: 'puan=' + quizScore.rows[0]?.anime_quiz_points + '; sonuç yanıtı=' + successReplies.length + '; doğru panel=' + quizText.includes('Doğru Cevap'),
             passed: Number(quizScore.rows[0]?.anime_quiz_points) === 10 && successReplies.length === 1 && quizText.includes('Doğru Cevap') && !quizText.includes('Süre Doldu')
           });
+
+          const timeoutUserId = userId + '-animequiz-timeout';
+          await ensureUser(guildId, timeoutUserId);
+          const timeoutEffects = [];
+          const timeoutInteraction = makeInteraction(command, buildOptions(schema?.options), guildId, timeoutEffects);
+          timeoutInteraction.user.id = timeoutUserId;
+          timeoutInteraction.member = makeMember(timeoutUserId);
+          timeoutInteraction.channel.createMessageCollector = () => {
+            const endListeners = [];
+            const collector = {
+              on(event, listener) { if (event === 'end') endListeners.push(listener); return this; },
+              stop() {}
+            };
+            queueMicrotask(async () => {
+              for (const listener of endListeners) await listener([], 'time');
+            });
+            return collector;
+          };
+          const timeoutRandom = Math.random;
+          try {
+            Math.random = () => 0;
+            await command.execute(timeoutInteraction);
+          } finally {
+            Math.random = timeoutRandom;
+          }
+          await new Promise(resolve => setImmediate(resolve));
+          const timeoutScore = await pool.query(
+            'SELECT anime_quiz_points FROM users WHERE guild_id=$1 AND user_id=$2',
+            [guildId, timeoutUserId]
+          );
+          const timeoutText = payloadTextFromEffects(timeoutEffects);
+          effects.push(...timeoutEffects);
+          behavioralChecks.push({
+            name: 'Anime quiz zaman aşımında puan verilmemesi',
+            expected: 'süre dolunca doğru cevap açıklanmalı ve puan bakiyesi 0 kalmalı',
+            actual: 'puan=' + timeoutScore.rows[0]?.anime_quiz_points + '; süre sonu paneli=' + timeoutText.includes('Süre Doldu'),
+            passed: Number(timeoutScore.rows[0]?.anime_quiz_points) === 0 && timeoutText.includes('Süre Doldu')
+          });
         } else if (commandName === 'gorevzinciri') {
           await pool.query("UPDATE users SET coins=0,xp=0,last_daily_at=NOW() WHERE guild_id=$1 AND user_id=$2", [guildId, userId]);
           const interaction = makeInteraction(command, buildOptions(schema?.options, { odul: '1' }), guildId, effects);
