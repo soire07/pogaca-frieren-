@@ -213,6 +213,7 @@ export async function processGuardianIncident({
           ref: REPAIR_BRANCH,
           inputs: {
             task: buildGuardianRepairTask(incident, review),
+            mode: 'repair',
             base_branch: REPAIR_BRANCH,
             incident_id: String(incident.id),
           },
@@ -353,6 +354,7 @@ export async function processPendingGuardianRepairDispatch({
           ref: REPAIR_BRANCH,
           inputs: {
             task: buildGuardianRepairTask(incident, review),
+            mode: 'repair',
             base_branch: REPAIR_BRANCH,
             incident_id: String(incident.id),
           },

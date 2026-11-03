@@ -1,10 +1,12 @@
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {
   isAllowedRepairPath,
   extractUnifiedDiff,
   validatePatchPaths,
   generateRepairPatch,
+  verifyGroqConnection,
   applyRepairPatch,
   formatRepairFilesOutput,
 } from './ai-self-repair.js';
@@ -19,14 +21,20 @@ const validPatch = [
   '+const ready = true;',
 ].join('\n');
 
-test('repair path allowlist accepts ordinary source and test files only', () => {
+test('repair path allowlist accepts approved source, AI review, Guardian and test files only', () => {
   assert.equal(isAllowedRepairPath('rpg-mechanics.js'), true);
   assert.equal(isAllowedRepairPath('ai-agent/owner-scenario-report.js'), true);
+  assert.equal(isAllowedRepairPath('ai-agent/guardian-review.js'), true);
+  assert.equal(isAllowedRepairPath('guardian/automation.js'), true);
+  assert.equal(isAllowedRepairPath('guardian/automation.test.js'), true);
+  assert.equal(isAllowedRepairPath('guardian/core.js'), true);
   assert.equal(isAllowedRepairPath('scripts/test-owner-dashboard.js'), true);
   assert.equal(isAllowedRepairPath('scripts/ai-self-repair.js'), false);
   assert.equal(isAllowedRepairPath('owner-dashboard.js'), false);
   assert.equal(isAllowedRepairPath('ai-agent/index.js'), false);
   assert.equal(isAllowedRepairPath('ai-agent/memory-store.js'), false);
+  assert.equal(isAllowedRepairPath('guardian/../index.js'), false);
+  assert.equal(isAllowedRepairPath('guardian/.env.js'), false);
   assert.equal(isAllowedRepairPath('package.json'), false);
   assert.equal(isAllowedRepairPath('.env.js'), false);
   assert.equal(isAllowedRepairPath('ai-agent/config.js'), false);
@@ -182,4 +190,36 @@ test('repair workflow output contains only the exact validated file paths', () =
   assert.throws(() => formatRepairFilesOutput([]), {
     message: 'REPAIR_OUTPUT_FILE_SET_INVALID',
   });
+});
+
+
+test('Groq validation accepts a valid assistant completion without requiring an exact sentinel', async () => {
+  let request;
+  const client = { chat: { completions: { async create(options) { request = options; return { choices: [{ message: { role: 'assistant', content: 'The connection is working.' }, finish_reason: 'stop' }] }; } } } };
+  assert.equal(await verifyGroqConnection({ client }), true);
+  assert.equal(request.max_completion_tokens, 128);
+  assert.equal(request.messages[0].role, 'user');
+});
+
+test('Groq validation accepts reasoning-only responses from reasoning models', async () => {
+  const client = { chat: { completions: { async create() { return { choices: [{ message: { role: 'assistant', content: null, reasoning: 'Connection check completed.' }, finish_reason: 'stop' }] }; } } } };
+  assert.equal(await verifyGroqConnection({ client }), true);
+});
+
+test('Groq validation rejects malformed or empty completion responses', async () => {
+  for (const response of [null, {}, { choices: [] }, { choices: [{ message: { role: 'user', content: 'no' }, finish_reason: 'stop' }] }, { choices: [{ message: { role: 'assistant', content: '' }, finish_reason: 'stop' }] }]) {
+    const client = { chat: { completions: { async create() { return response; } } } };
+    await assert.rejects(verifyGroqConnection({ client }), { message: 'GROQ_VALIDATION_RESPONSE_INVALID' });
+  }
+});
+
+
+test('repair workflow rejects an empty task before checkout and dependency installation', async () => {
+  const workflow = await readFile(new URL('../.github/workflows/frieren-ai-self-repair.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /name: Require a repair task when repair mode is selected/);
+  assert.match(workflow, /if: inputs\.mode == 'repair'/);
+  assert.match(workflow, /REPAIR_TASK: \$\{\{ inputs\.task \}\}/);
+  assert.match(workflow, /tr -d '\[:space:\]+'/);
+  assert.ok(workflow.indexOf('name: Require a repair task') < workflow.indexOf('name: Checkout requested base branch'));
+  assert.ok(workflow.indexOf('name: Require a repair task') < workflow.indexOf('name: Install dependencies'));
 });
