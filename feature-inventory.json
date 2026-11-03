@@ -182,9 +182,10 @@
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
-          "scripts/test-owner-rpg-content.js"
+          "scripts/test-owner-rpg-content.js",
+          "scripts/test-feature-evidence-gaps.js"
         ],
-        "scope": "Owner RPG content tests validate bounded boss configuration and guild-scoped boss content; tier selection at every player level is not fully exercised."
+        "scope": "The direct selector test verifies every solo boss unlock boundary at levels 1, 10, 20, 35 and 50, rejects invalid/under-level inputs, and exercises the random rotation edge values. Production solo-boss selection uses this helper. All combat variants and live Discord battle flow are not exhaustive."
       }
     },
     {
@@ -195,9 +196,10 @@
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
-          "scripts/test-boss-combat.js"
+          "scripts/test-boss-combat.js",
+          "scripts/test-feature-evidence-gaps.js"
         ],
-        "scope": "Boss special-attack cadence and mana-drain behavior are tested for raid bosses; all solo boss variants are not covered."
+        "scope": "The direct test validates every solo boss tier's configured combat ranges, reward bounds, loot and special-type configuration. Raid-specific attack cadence is separately tested; every solo special-attack turn effect is not yet exercised end-to-end."
       }
     },
     {
@@ -469,9 +471,10 @@
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-discord-scenarios.js",
+          "scripts/test-feature-evidence-gaps.js"
         ],
-        "scope": "Persistent sequential daily quest-chain progression and transactional reward checks exist; NPC-specific side-quest branches are not separately exercised."
+        "scope": "NPC side-quest unit tests invoke Frieren, Fern and Stark prerequisite functions with isolated fixtures and verify both sides of each completion threshold. Transactional claim/reward persistence and live Discord E2E remain separate boundaries."
       }
     },
     {
@@ -577,9 +580,10 @@
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
-          "scripts/test-command-test-evidence.js"
+          "scripts/test-command-test-evidence.js",
+          "scripts/test-feature-evidence-gaps.js"
         ],
-        "scope": "Command-specific isolated behavior assertions cover the registered fun interaction contract; mimic outcome branches require additional direct assertions."
+        "scope": "Direct adventure-catalog test verifies the Mimic route, exact coin/XP outcome, no-item result and unique discovery keys. The database-backed adventure transaction is covered by existing scenario tests; live Discord E2E is not claimed."
       }
     },
     {
@@ -675,9 +679,10 @@
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
-          "scripts/test-command-test-evidence.js"
+          "scripts/test-command-test-evidence.js",
+          "scripts/test-feature-evidence-gaps.js"
         ],
-        "scope": "Isolated command behavioral evidence covers the luck interaction response path; reward distribution edge cases are not fully covered."
+        "scope": "Direct command interaction tests control the random source at 0, 45%, 81% and near 100%, and verify the response includes the bounded percentage. No production state is changed."
       }
     },
     {
@@ -688,9 +693,10 @@
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
-          "scripts/test-command-test-evidence.js"
+          "scripts/test-command-test-evidence.js",
+          "scripts/test-feature-evidence-gaps.js"
         ],
-        "scope": "Isolated command behavioral evidence covers the hug interaction response path; this is not live Discord E2E."
+        "scope": "Direct command interaction test verifies the sender and selected recipient are both included in the friendly response. No production state is changed."
       }
     },
     {
