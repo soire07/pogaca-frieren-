@@ -427,7 +427,15 @@
       "id": "RPG-033",
       "name": "Choice-dependent story requirements",
       "category": "Story",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-utils.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "Story-choice source tests verify distinct shrine/secret route requirements and selected-choice branches in the adventure/story mechanics; not live Discord E2E."
+      }
     },
     {
       "id": "RPG-034",
@@ -707,7 +715,15 @@
       "id": "RPG-051",
       "name": "Filter character collection by rarity",
       "category": "Collection",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-utils.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "Character catalog tests verify every rarity used by collection filters has matching catalog entries; filter interaction behavior itself is not exhaustively tested."
+      }
     },
     {
       "id": "RPG-052",
@@ -4040,7 +4056,15 @@
       "id": "RPG-319",
       "name": "Region-specific exploration crafting material drops used by equipment recipes",
       "category": "Equipment",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-utils.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "Exploration tests verify region-specific crafting materials can drop and match equipment crafting recipes; automated source/logic checks, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-320",
@@ -4073,7 +4097,15 @@
       "id": "RPG-322",
       "name": "Solo boss tiers guarantee crafting materials that unlock equipment recipes",
       "category": "Equipment",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-utils.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "Solo-boss reward tests verify boss-tier recipe materials; automated source/logic checks, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-323",
@@ -4196,5 +4228,5 @@
     }
   ],
   "count": 325,
-  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof."
+  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification."
 }
