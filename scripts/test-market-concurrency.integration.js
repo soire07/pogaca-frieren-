@@ -13,6 +13,7 @@ import equipmentCommand from '../ekipman.js';
 import collectionCommand from '../koleksiyon.js';
 import useItemCommand from '../esyakullan.js';
 import { equipmentItems } from '../equipment-data.js';
+import questChainCommand from '../gorevzinciri.js';
 
 const dedicatedAuditDatabase = /^postgres(?:ql)?:\/\/postgres:postgres@localhost:5432\/frieren_audit(?:\?|$)/.test(
   process.env.DATABASE_URL || ''
@@ -154,6 +155,59 @@ test('two concurrent daily mission claims grant the reward only once', {
     assert.equal(claims.rowCount, 1, 'the unique daily claim must have one row');
     assert.equal(responses.filter(value => typeof value === 'string' && value.includes('75 altın')).length, 1,
       'only one concurrent interaction may report a successful reward');
+  });
+});
+
+test('concurrent daily quest-chain stage claims award gold, XP and materials exactly once', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = testSnowflake('90');
+    const userId = testSnowflake('89');
+    await ensureUser(guildId, userId);
+    await pool.query(
+      'UPDATE users SET coins=0,xp=0,level=1,stat_points=0,last_daily_at=NOW() WHERE guild_id=$1 AND user_id=$2',
+      [guildId, userId]
+    );
+
+    const responses = [];
+    const makeInteraction = () => ({
+      guildId,
+      user: { id: userId },
+      options: { getString: name => name === 'odul' ? '1' : null },
+      deferReply: async () => {},
+      editReply: async payload => { responses.push(payload); return payload; }
+    });
+
+    try {
+      await Promise.all([
+        questChainCommand.execute(makeInteraction()),
+        questChainCommand.execute(makeInteraction())
+      ]);
+      const player = await pool.query(
+        'SELECT coins,xp,level,stat_points FROM users WHERE guild_id=$1 AND user_id=$2',
+        [guildId, userId]
+      );
+      const chain = await pool.query(
+        'SELECT current_step FROM daily_quest_chains WHERE guild_id=$1 AND user_id=$2 AND chain_date=CURRENT_DATE',
+        [guildId, userId]
+      );
+      const material = await pool.query(
+        "SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='🥐 Büyülü Poğaça Kutusu'",
+        [guildId, userId]
+      );
+
+      assert.equal(Number(player.rows[0].coins), 50, 'stage-one gold must be awarded once');
+      assert.equal(Number(player.rows[0].xp), 20, 'stage-one XP must be awarded once');
+      assert.equal(Number(player.rows[0].level), 1);
+      assert.equal(Number(player.rows[0].stat_points), 0);
+      assert.equal(Number(chain.rows[0].current_step), 2, 'the chain must advance exactly one stage');
+      assert.equal(Number(material.rows[0].quantity), 1, 'the stage material must be awarded once');
+      assert.equal(responses.filter(value => typeof value === 'string' && value.includes('Fırtına')).length, 1,
+        'only one concurrent request may report the stage reward');
+    } finally {
+      await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    }
   });
 });
 
