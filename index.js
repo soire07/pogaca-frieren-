@@ -349,6 +349,9 @@ createServer(async (req, res) => {
   }
   if (await handleOwnerDashboardRequest(req, res, { client, db: pool })) return;
   if (await handlePublicSiteRequest(req, res, { client, db: pool })) return;
+  // A route handler may have committed a response before returning an unhandled result.
+  // Never enter the fallback response path after headers/body have already been sent.
+  if (res.headersSent || res.writableEnded) return;
   const sendJson = (status, payload) => {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(payload));
