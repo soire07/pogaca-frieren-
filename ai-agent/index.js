@@ -252,6 +252,10 @@ const commands = [
     .addStringOption(option => option.setName('hedef').setDescription('Neyi test etmemi istiyorsun? Örn. boss hasarı, görev ödülleri, envanter.') .setRequired(true).setMaxLength(4000))
     .toJSON(),
   new SlashCommandBuilder()
+    .setName('frieren-guardian-test')
+    .setDescription('Groq ve Guardian inceleme hattını sentetik olayla sınar; onarım veya GitHub işlemi başlatmaz.')
+    .toJSON(),
+  new SlashCommandBuilder()
     .setName('frieren-ai')
     .setDescription('Frieren botunun kodu ve test sistemi hakkında yapay zekâya soru sorar.')
     .addStringOption(option => option.setName('soru').setDescription('Sorunu veya inceleme isteğini yaz.').setRequired(true).setMaxLength(1500))
@@ -762,7 +766,7 @@ client.on(Events.InteractionCreate, async interaction => {
     return;
   }
 
-  const adminOnlyCommands = new Set(['frieren-test', 'frieren-komut-denetle']);
+  const adminOnlyCommands = new Set(['frieren-test', 'frieren-komut-denetle', 'frieren-guardian-test']);
   if (adminOnlyCommands.has(interaction.commandName) && !isAuthorizedAdmin(interaction.user.id, admins)) {
     await sendPrivateError(interaction, 'Bu komut yalnızca yetkili geliştiriciler tarafından kullanılabilir.', error => {
       console.error('Authorization denial reply failed:', redactSecrets(error.message || 'unknown error'));
@@ -871,6 +875,51 @@ client.on(Events.InteractionCreate, async interaction => {
       await sendPrivateError(interaction, message, replyError => {
         console.error('Persistent memory error reply failed:', redactSecrets(replyError.message || 'unknown error'));
       });
+    }
+    return;
+  }
+
+  if (interaction.commandName === 'frieren-guardian-test') {
+    if (!groq) {
+      await interaction.reply({ content: 'Groq yapılandırılmamış: GROQ_API_KEY bulunamadı.', flags: MessageFlags.Ephemeral });
+      return;
+    }
+    if (guardianReviewInProgress || runningGuilds.size > 0 || ownerScenarioLocks.size > 0) {
+      await interaction.reply({ content: 'Başka bir test veya Guardian incelemesi çalışıyor. Biraz sonra tekrar dene.', flags: MessageFlags.Ephemeral });
+      return;
+    }
+    guardianReviewInProgress = true;
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    try {
+      const review = await reviewGuardianIncident({
+        groq,
+        model: process.env.FRIEREN_MODEL || 'openai/gpt-oss-20b',
+        incident: {
+          system: 'guardian',
+          code: 'GUARDIAN_GROQ_SELF_TEST',
+          title: 'Guardian Groq bağlantı testi',
+          summary: 'Bu sentetik bir bağlantı testidir. Gerçek üretim olayı değildir. Yalnızca Guardian inceleme modelinin geçerli JSON yanıtı üretip üretmediğini doğrula; herhangi bir dosyayı değiştirme veya onarım başlatma.',
+          evidence: [{ file: 'ai-agent/guardian-review.js', message: 'Sentetik güvenli test girdisi.' }],
+        },
+        collectCodeContext: collectCodeContext,
+      });
+      const report = [
+        '**Guardian–Groq bağlantı testi tamamlandı**',
+        'Sonuç: PASS — Groq yanıtı alındı ve JSON doğrulandı.',
+        'Model güveni: ' + review.confidence,
+        'Kök neden yanıtı: ' + String(review.rootCause || 'Belirtilmedi').slice(0, 500),
+        'Test önerileri: ' + (review.tests || []).slice(0, 3).join('; ').slice(0, 500),
+        'Onarım: BAŞLATILMADI',
+        'Dosya değişikliği / GitHub dispatch: YOK',
+      ].join('\n');
+      await interaction.editReply(report.slice(0, 1900));
+      console.log('Guardian Groq self-test succeeded; proposal only, no repair dispatched.');
+    } catch (error) {
+      const safeMessage = redactSecrets(error?.message || 'GUARDIAN_GROQ_SELF_TEST_FAILED').slice(0, 300);
+      console.error('Guardian Groq self-test failed:', safeMessage);
+      await interaction.editReply('**Guardian–Groq bağlantı testi başarısız**\n' + safeMessage + '\nOnarım veya GitHub işlemi başlatılmadı.').catch(() => {});
+    } finally {
+      guardianReviewInProgress = false;
     }
     return;
   }
