@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { pool, ensureUser } from './database/db.js';
 import { createArenaState, resolveArenaTurn } from './arena-engine.js';
+import { settleArenaMatch } from './adventurer-platform.js';
 
 const DISCORD_ID = /^\d{17,20}$/;
 const MIN_RATING = 0;
@@ -171,15 +172,17 @@ export async function submitArenaTurn(db = pool, { guildId, matchId, actorId, ac
       'UPDATE arena_matches SET state=$2::jsonb,status=$3,updated_at=NOW() WHERE match_id=$1',
       [String(matchId), JSON.stringify(resolved.state), resolved.state.status]
     );
+    let settlement = null;
     if (resolved.state.status === 'finished') {
       await client.query(
         `UPDATE arena_match_players SET status='finished'
          WHERE match_id=$1 AND status='active'`,
         [String(matchId)]
       );
+      settlement = await settleArenaMatch(client, { guildId: String(guildId), matchId: String(matchId), state: resolved.state });
     }
     await client.query('COMMIT');
-    return { state: resolved.state, event: resolved.event };
+    return { state: resolved.state, event: resolved.event, settlement };
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     throw error;
