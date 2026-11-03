@@ -1,5 +1,8 @@
 name: Frieren isolated command audit
 on:
+  push:
+    branches:
+      - fix/guardian-unified-diff-validation-v2
   pull_request:
     branches: [main]
   workflow_dispatch:
