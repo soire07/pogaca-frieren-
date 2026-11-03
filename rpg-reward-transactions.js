@@ -1,27 +1,9 @@
 import { recordJournalEntry } from './gameplay-journal.js';
-import { progressionMilestone } from './rpg-mechanics.js';
 
 async function rollback(db) {
   await db.query('ROLLBACK').catch(() => {});
 }
 
-async function persistProgressionTitles(db, guildId, userId) {
-  const result = await db.query(
-    'SELECT level,boss_defeats,dungeon_wins FROM users WHERE guild_id=$1 AND user_id=$2',
-    [guildId,userId]
-  );
-  const player = result.rows[0];
-  if (!player) return [];
-  const unlocked = [];
-  for (const title of progressionMilestone(Number(player.level),Number(player.boss_defeats),Number(player.dungeon_wins))) {
-    const inserted = await db.query(
-      'INSERT INTO user_titles(guild_id,user_id,title) VALUES($1,$2,$3) ON CONFLICT(guild_id,user_id,title) DO NOTHING RETURNING title',
-      [guildId,userId,title]
-    );
-    if (inserted.rowCount) unlocked.push(title);
-  }
-  return unlocked;
-}
 
 export async function claimSoloBossReward(dbPool, {
   guildId, userId, battleId, hp, mana, coins, xp, bonusLoot, craftingMaterial, journalBossKey, spellUsed
@@ -81,7 +63,6 @@ export async function claimSoloBossReward(dbPool, {
         [guildId, userId, itemKey]
       );
     }
-    await persistProgressionTitles(db,guildId,userId);
     await db.query('COMMIT');
     return { status: 'claimed', mastery };
   } catch (error) {
@@ -154,7 +135,6 @@ export async function settleRaidRewards(dbPool, {
       );
     }
     await db.query('DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2', [guildId, encounterId]);
-    for (const fighter of fighters) await persistProgressionTitles(db,guildId,fighter.userId);
     await db.query('COMMIT');
     return { status: 'settled', masteryResults };
   } catch (error) {
@@ -231,7 +211,6 @@ export async function settleDungeonRewards(dbPool, {
       }
     }
     await db.query('DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2', [guildId, encounterId]);
-    for (const player of players) await persistProgressionTitles(db,guildId,player.user_id);
     await db.query('COMMIT');
     return { status: 'settled', masteryResults };
   } catch (error) {
