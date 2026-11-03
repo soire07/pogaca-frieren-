@@ -1061,14 +1061,16 @@
       "id": "RPG-046",
       "name": "Co-op dungeon rare loot",
       "category": "Co-op",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-utils.js",
-        "test": "co-op dungeon shares discovered chest and rare victory loot with every participant",
-        "matchScore": 1,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "production layered dungeon settlement is single-use for the whole party under concurrent completion"
+        }
+      ],
+      "verifiedAtCommit": "b3005eed16b1da83ff63789730aa4d06886eddb2",
+      "verificationRunId": 41670646647
     },
     {
       "id": "RPG-047",
@@ -1529,14 +1531,16 @@
       "id": "RPG-073",
       "name": "Grant a shared rare loot drop after full dungeon completion",
       "category": "Loot",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-utils.js",
-        "test": "co-op dungeon shares discovered chest and rare victory loot with every participant",
-        "matchScore": 1,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "production layered dungeon settlement is single-use for the whole party under concurrent completion"
+        }
+      ],
+      "verifiedAtCommit": "b3005eed16b1da83ff63789730aa4d06886eddb2",
+      "verificationRunId": 41670646647
     },
     {
       "id": "RPG-074",
@@ -1726,14 +1730,16 @@
       "id": "RPG-085",
       "name": "Grant each party member loot from discovered chests",
       "category": "Loot",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-utils.js",
-        "test": "co-op dungeon shares discovered chest and rare victory loot with every participant",
-        "matchScore": 1,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "production layered dungeon settlement is single-use for the whole party under concurrent completion"
+        }
+      ],
+      "verifiedAtCommit": "b3005eed16b1da83ff63789730aa4d06886eddb2",
+      "verificationRunId": 41670646647
     },
     {
       "id": "RPG-086",
