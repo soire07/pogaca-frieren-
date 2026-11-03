@@ -37,12 +37,36 @@ export function dungeonChoiceOutcome(choice, floor) {
   return { label: 'Güvenli yol', coins: 10 + floor * 4, hp: 0, mana: 0, lootChance: 0.15, log: 'Güvenli yol: takım tuzaklardan kaçınarak erzak buldu.' };
 }
 
+export const DUNGEON_PARTY_ROLES = {
+  tank: { label: '🛡️ Muhafız', hp: 1.25, attack: 0.85, defense: 1.4 },
+  healer: { label: '💚 Şifacı', hp: 1, attack: 0.9, defense: 1.05 },
+  damage: { label: '⚔️ Hasar Ustası', hp: 0.95, attack: 1.3, defense: 0.9 }
+};
+
+export const RAID_PARTY_ROLES = {
+  tank: { label: '🛡️ Muhafız', description: 'Daha çok hasar üzerine çeker ve daha dayanıklıdır.', hp: 1.25, attack: 0.85, defense: 1.45 },
+  healer: { label: '💚 Şifacı', description: 'Her tur takıma küçük bir iyileştirme sağlar.', hp: 1, attack: 0.85, defense: 1.05 },
+  damage: { label: '⚔️ Hasar Ustası', description: 'Boss’a daha yüksek hasar verir.', hp: 0.95, attack: 1.35, defense: 0.9 }
+};
+
 export function dungeonEnemyStats(floor, averageLevel, partySize, difficulty = 'normal') {
   const multiplier = difficulty === 'nightmare' ? 1.35 : difficulty === 'easy' ? 0.8 : 1;
   return {
     hp: Math.round((105 + floor * 48) * (1 + averageLevel * 0.045) * (1 + Math.max(0, partySize - 2) * 0.12) * multiplier),
     damage: Math.max(5, Math.round((5 + floor * 3) * (1 + averageLevel * 0.02) * multiplier))
   };
+}
+
+export function applyDungeonTrapDamage(hpNow, floor, random = Math.random) {
+  const nextHp = Array.isArray(hpNow) ? [...hpNow] : [];
+  const living = nextHp.map((hp,index) => Number(hp) > 0 ? index : -1).filter(index => index >= 0);
+  if (!living.length) return { hpNow: nextHp, targetIndex: null, damage: 0 };
+  const roll = Number(random());
+  const bounded = Number.isFinite(roll) ? Math.max(0,Math.min(0.999999999,roll)) : 0;
+  const targetIndex = living[Math.floor(bounded * living.length)];
+  const damage = 8 + Math.max(1,Math.floor(Number(floor) || 1)) * 4;
+  nextHp[targetIndex] = Math.max(1,Number(nextHp[targetIndex]) - damage);
+  return { hpNow: nextHp, targetIndex, damage };
 }
 
 export function progressionMilestone(level, bossWins, dungeonWins) {
