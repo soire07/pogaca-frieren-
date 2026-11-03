@@ -21,6 +21,7 @@ import { saveGuardianQualityReport } from './guardian/quality-report-store.js';
 import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
 import { shouldSkipFallbackResponse } from './guardian/http-response-guard.js';
+import { withHttpErrorBoundary } from './guardian/http-error-boundary.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -339,7 +340,7 @@ process.once('SIGTERM', async () => {
 const PORT = process.env.PORT || 3000;
 let uptimeRobotCache = null;
 
-createServer(async (req, res) => {
+createServer(withHttpErrorBoundary(async (req, res) => {
   if (req.method === 'POST' && req.url === '/internal/neural-quality-report') {
     const result = await handleNeuralQualityReportRequest(req, {
       saveReport: input => saveGuardianQualityReport(pool, input),
@@ -503,6 +504,11 @@ createServer(async (req, res) => {
     res.writeHead(503);
     res.end('Poğaça Frieren hazır değil: veritabanı erişilemiyor.');
   }
-}).listen(PORT, '0.0.0.0', () => {
+}, {
+  onError: async (error, req) => {
+    console.error('HTTP request handler failed:', error?.stack || error);
+    await recordOwnerError(pool, 'http-server:' + String(req?.url || '/').split('?')[0], error?.name || 'Error', error?.message || '');
+  },
+})).listen(PORT, '0.0.0.0', () => {
   console.log(`Web sunucusu ${PORT} portunda çalışıyor.`);
 });
