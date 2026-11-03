@@ -111,7 +111,7 @@ export default {
     }
     if (subcommand === 'siralam') {
       const board = await getArenaLeaderboard(pool, interaction.guildId, 10);
-      const lines = board.players.map((player,index) => `**${index+1}.** ${player.character_name || 'Maceracı'} — ${player.rating} MMR · ${player.wins}G/${player.losses}M`);
+      const lines = board.players.map((player,index) => `**${index+1}.** ${player.character_name || 'Maceracı'} — ${player.rank} · ${player.rating} MMR · ${player.wins}G/${player.losses}M`);
       return interaction.reply({ content: `**${board.season.name} · Arena Sıralaması**\n${lines.join('\n') || 'Henüz sıralama verisi yok.'}`, flags: MessageFlags.Ephemeral });
     }
     return interaction.reply({ content: 'Bilinmeyen arena işlemi.', flags: MessageFlags.Ephemeral });
