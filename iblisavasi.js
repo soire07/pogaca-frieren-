@@ -9,8 +9,8 @@ import {
 import { pool, ensureUser } from './database/db.js';
 import { claimSoloBossReward } from './rpg-reward-transactions.js';
 import { getGuildRpgContent } from './owner-rpg-content.js';
-import { equipmentItems, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
-import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, applyEquipmentSetBonus, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening, getSoloBossSpecialAttackState, restoreResourceRatio } from './rpg-mechanics.js';
+import { equipmentItems, formatEquipmentBonus } from './equipment-data.js';
+import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getEquipmentCombatBonus, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening, getSoloBossSpecialAttackState, restoreResourceRatio } from './rpg-mechanics.js';
 
 const PLAYER_MAX_HP = 100;
 const COOLDOWN_MS = 30 * 60 * 1000;
@@ -109,7 +109,7 @@ export default {
     const equippedItems = equippedResult.rows
       .map(row => equipmentItems.find(item => item.name === row.item_key))
       .filter(Boolean);
-    const gearBonus = applyEquipmentSetBonus(equippedItems, equipmentBonus(equippedItems));
+    const gearBonus = getEquipmentCombatBonus(equippedItems);
     const build = getCharacterBuild(stats.active_build);
     const playerMaxHp = Math.min(2000, Math.round((Number(stats.max_hp) + gearBonus.hp) * build.hp * (1 + Number(stats.talent_hp) * 0.05)));
     const playerMaxMana = Math.min(2000, Math.round((Number(stats.max_mana) + gearBonus.mana) * build.mana * (1 + Number(stats.talent_mana) * 0.05)));
