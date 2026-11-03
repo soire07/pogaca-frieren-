@@ -175,6 +175,24 @@ export async function initDatabase() {
     );
     CREATE INDEX IF NOT EXISTS idx_rpg_reward_claims_user
       ON rpg_reward_claims(guild_id,user_id,claimed_at DESC);
+    CREATE TABLE IF NOT EXISTS user_titles (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(guild_id,user_id,title),
+      FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_titles_user
+      ON user_titles(guild_id,user_id,unlocked_at DESC);
+    CREATE TABLE IF NOT EXISTS dungeon_milestone_claims (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      milestone_key TEXT NOT NULL,
+      claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(guild_id,user_id,milestone_key),
+      FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
     INSERT INTO rpg_reward_claims(guild_id,user_id,reward_type,reward_id,claimed_at)
     SELECT guild_id,user_id,'solo_boss',last_boss_battle_id,COALESCE(last_boss_win_at,NOW())
     FROM users

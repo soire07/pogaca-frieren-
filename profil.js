@@ -54,6 +54,10 @@ export default {
     const currentHp = Math.max(0, Math.min(effectiveMaxHp, Math.round((Number(u.hp) / Math.max(1, Number(u.max_hp))) * effectiveMaxHp)));
     const currentMana = Math.max(0, Math.min(effectiveMaxMana, Math.round((Number(u.mana) / Math.max(1, Number(u.max_mana))) * effectiveMaxMana)));
 
+    const titleResult = await pool.query(
+      'SELECT title FROM user_titles WHERE guild_id=$1 AND user_id=$2 ORDER BY unlocked_at DESC,title',
+      [interaction.guildId,target.id]
+    );
     const gif = new AttachmentBuilder('./profil.gif');
 
     const embed = new EmbedBuilder()
@@ -78,7 +82,8 @@ export default {
         { name: '🛡️ Savunma', value: String(effectiveDefense), inline: true },
         { name: '🌟 Dağıtılabilir puan', value: String(u.stat_points), inline: true },
         { name: '🧥 Kuşanılan ekipman', value: equippedItems.length ? equippedItems.map(item => item.name).join('\n') : 'Henüz ekipman yok', inline: false },
-        { name: '🧩 Ekipman set bonusu', value: gear.setText || 'Henüz set bonusu etkin değil', inline: false }
+        { name: '🧩 Ekipman set bonusu', value: gear.setText || 'Henüz set bonusu etkin değil', inline: false },
+        { name: '🏅 Kalıcı unvanlar', value: titleResult.rows.length ? titleResult.rows.map(row=>row.title).join(' · ') : 'Henüz kalıcı unvan açılmadı', inline: false }
       )
       .setImage('attachment://profil.gif')
       .setFooter({ text: 'Poğaça Frieren • Maceracı Kayıtları' });
