@@ -565,24 +565,29 @@ test('co-op settlement failure rolls back all player rewards atomically', {
       $$ LANGUAGE plpgsql`);
     await pool.query(`CREATE TRIGGER reject_party_reward_fixture BEFORE INSERT ON inventory
       FOR EACH ROW EXECUTE FUNCTION reject_party_reward_fixture()`);
-    const db=await pool.connect();
     try {
-      await db.query('BEGIN');
-      const ids=[a,b].sort();
-      const players=await db.query('SELECT user_id FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE',[guildId,ids]);
-      const reservations=await db.query("SELECT user_id FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND encounter_id=$3 AND encounter_type='raid' AND expires_at>NOW() FOR UPDATE",[guildId,ids,encounterId]);
-      assert.equal(players.rowCount,2); assert.equal(reservations.rowCount,2);
-      await db.query('UPDATE users SET coins=coins+100,xp=xp+50,boss_defeats=boss_defeats+1 WHERE guild_id=$1 AND user_id=ANY($2::text[])',[guildId,ids]);
-      await db.query("INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'party_fixture',1)",[guildId,a]);
-      assert.fail('expected forced inventory failure');
-    } catch(error) {
-      await db.query('ROLLBACK').catch(()=>{});
-      assert.match(error.message,/forced co-op reward failure/);
-    } finally { db.release(); }
-    const players=await pool.query('SELECT coins,xp,boss_defeats FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[guildId,[a,b]]);
-    assert.equal(players.rowCount,2);
-    for(const player of players.rows) {
-      assert.equal(Number(player.coins),10); assert.equal(Number(player.xp),20); assert.equal(Number(player.boss_defeats),0);
+      const db=await pool.connect();
+      try {
+        await db.query('BEGIN');
+        const ids=[a,b].sort();
+        const players=await db.query('SELECT user_id FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id FOR UPDATE',[guildId,ids]);
+        const reservations=await db.query("SELECT user_id FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND encounter_id=$3 AND encounter_type='raid' AND expires_at>NOW() FOR UPDATE",[guildId,ids,encounterId]);
+        assert.equal(players.rowCount,2); assert.equal(reservations.rowCount,2);
+        await db.query('UPDATE users SET coins=coins+100,xp=xp+50,boss_defeats=boss_defeats+1 WHERE guild_id=$1 AND user_id=ANY($2::text[])',[guildId,ids]);
+        await db.query("INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'party_fixture',1)",[guildId,a]);
+        assert.fail('expected forced inventory failure');
+      } catch(error) {
+        await db.query('ROLLBACK').catch(()=>{});
+        assert.match(error.message,/forced co-op reward failure/);
+      } finally { db.release(); }
+      const players=await pool.query('SELECT coins,xp,boss_defeats FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[guildId,[a,b]]);
+      assert.equal(players.rowCount,2);
+      for(const player of players.rows) {
+        assert.equal(Number(player.coins),10); assert.equal(Number(player.xp),20); assert.equal(Number(player.boss_defeats),0);
+      }
+    } finally {
+      await pool.query('DROP TRIGGER IF EXISTS reject_party_reward_fixture ON inventory');
+      await pool.query('DROP FUNCTION IF EXISTS reject_party_reward_fixture()');
     }
   });
 });
