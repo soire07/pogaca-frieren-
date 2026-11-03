@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { claimSoloBossReward } from '../rpg-reward-transactions.js';
 import assert from 'node:assert/strict';
 import {
   RAID_BOSSES,
