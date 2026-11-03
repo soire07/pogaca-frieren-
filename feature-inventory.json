@@ -12,7 +12,15 @@
       "id": "RPG-001",
       "name": "RPG profile and stats",
       "category": "RPG",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated character-panel scenario verifies player identity and RPG profile fields against the disposable PostgreSQL fixture. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-002",
@@ -42,37 +50,85 @@
       "id": "RPG-006",
       "name": "Restore HP and Mana by resting",
       "category": "RPG",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated rest-command scenario verifies persisted HP and Mana restoration. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-007",
       "name": "Rest cooldown",
       "category": "RPG",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated rest-command scenario verifies the cooldown timestamp and prevents repeat recovery. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-008",
       "name": "Level-scaled exploration regions",
       "category": "Exploration",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated exploration scenario verifies route progression and persistent region mastery. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-009",
       "name": "Random exploration encounters",
       "category": "Exploration",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated exploration scenario verifies encounter result persistence. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-010",
       "name": "Exploration rewards and item drops",
       "category": "Exploration",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated exploration scenario verifies reward and discovery records. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-011",
       "name": "Exploration cooldown",
       "category": "Exploration",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated exploration scenario verifies cooldown enforcement and blocks duplicate rewards. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-012",
@@ -108,19 +164,43 @@
       "id": "RPG-017",
       "name": "Spellbook with multiple spells",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated spellbook scenarios verify learned-spell and mastery data is rendered. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-018",
       "name": "Learn spells",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated learn-spell scenario verifies spell ownership persistence and purchase cost. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-019",
       "name": "Spell mastery progression",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated spell-mastery scenarios verify mastery level and practice-count persistence. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-020",
@@ -152,7 +232,15 @@
       "id": "RPG-022",
       "name": "Browse item market",
       "category": "Economy",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated market scenario verifies catalog and product options and asserts that browsing is read-only. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-023",
@@ -189,37 +277,85 @@
       "id": "RPG-027",
       "name": "Player inventory listing",
       "category": "Inventory",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated inventory scenario verifies item listing and confirms that viewing inventory does not mutate state. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-028",
       "name": "Daily coin reward",
       "category": "Economy",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated daily-reward scenario verifies coin balance and reward timestamp persistence. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-029",
       "name": "Daily reward streak and bonus",
       "category": "Economy",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated daily-reward scenario verifies consecutive streak persistence. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-030",
       "name": "Daily missions and claimable rewards",
       "category": "Quests",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated daily mission scenarios verify completed mission reward and class-gated daily reward claim persistence. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-031",
       "name": "Achievements and claimable rewards",
       "category": "Progression",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated achievement scenario verifies a claim request and a single-use reward ledger. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-032",
       "name": "Main story with player choices",
       "category": "Story",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated story scenario verifies the starting choice and its initial reward. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-033",
@@ -237,19 +373,43 @@
       "id": "RPG-035",
       "name": "World lore pages",
       "category": "Lore",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated lore/book scenario verifies the player-facing book pages and read-only behavior. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-036",
       "name": "Anime character collection",
       "category": "Collection",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated character draw and archive scenarios verify collection records and character-card output. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-037",
       "name": "Character draw pity counters",
       "category": "Collection",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated free-draw scenario verifies cooldown and guaranteed-draw counter persistence. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-038",
@@ -280,7 +440,15 @@
       "id": "RPG-041",
       "name": "Anime quiz interaction",
       "category": "Mini-games",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated anime quiz scenario verifies question and timer panel output. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-042",
@@ -357,7 +525,15 @@
       "id": "SRV-003",
       "name": "Bot/server statistics",
       "category": "Server",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated status scenario verifies live Discord connection state and runtime information; no live Discord API was called by CI. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "FUN-001",
@@ -375,7 +551,15 @@
       "id": "FUN-003",
       "name": "Character identification interaction",
       "category": "Fun",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated kimimben scenario verifies character identification, collection persistence and cooldown timestamps. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-048",
@@ -468,13 +652,29 @@
       "id": "SOC-007",
       "name": "Show the invoking player's current rank",
       "category": "Social",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated ranking scenario verifies the invoking player's rank position output. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "SOC-008",
       "name": "View personal RPG adventure history",
       "category": "Social",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated adventure-history scenario verifies recent history summary fields and read-only behavior. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "SOC-009",
@@ -516,43 +716,99 @@
       "id": "RPG-058",
       "name": "View personalized RPG progression goals",
       "category": "Progression",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated goals scenario verifies six progression goals render and completed-goal progress is persisted. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-059",
       "name": "Track level milestone goal",
       "category": "Progression",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated goals scenario includes the level milestone goal in the six-goal panel and persisted progress checks. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-060",
       "name": "Track demon-slaying milestone goal",
       "category": "Combat",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated goals scenario includes the demon-slaying milestone goal in the six-goal panel and persisted progress checks. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-061",
       "name": "Track co-op dungeon victory milestone",
       "category": "Co-op",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated goals scenario includes the co-op victory milestone goal in the six-goal panel and persisted progress checks. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-062",
       "name": "Track exploration milestone",
       "category": "Exploration",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated goals scenario includes the exploration milestone goal in the six-goal panel and persisted progress checks. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-063",
       "name": "Track unique character collection milestone",
       "category": "Collection",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated goals scenario includes the unique-character milestone goal in the six-goal panel and persisted progress checks. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-064",
       "name": "Track learned-spell milestone",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated goals scenario includes the learned-spell milestone goal in the six-goal panel and persisted progress checks. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-065",
@@ -1563,7 +1819,15 @@
       "id": "RPG-145",
       "name": "Claim one class-specific daily mission with class-gated progress and a once-per-day reward",
       "category": "Quests",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated daily quest scenarios verify class-gated progress, one-time class reward, and rejection of a second claim. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-146",
@@ -3517,7 +3781,15 @@
       "id": "ARENA-003",
       "name": "Six-tier seasonal arena ranks",
       "category": "Progression",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_command_contract",
+        "tests": [
+          "scripts/test-platform-commands.js",
+          "scripts/test-arena-command.js"
+        ],
+        "scope": "Unit/command tests verify the six seasonal rank thresholds are stable and ordered. These are synthetic Discord interactions against the disposable frieren_test schema, not live Discord E2E."
+      }
     },
     {
       "id": "ARENA-004",
@@ -3580,5 +3852,5 @@
     }
   ],
   "count": 325,
-  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence."
+  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test."
 }
