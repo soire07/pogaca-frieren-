@@ -69,19 +69,33 @@ export async function collectRepairContext(task, {
 } = {}) {
   const tracked = execFile(['ls-files', '-z'], { encoding: 'utf8' })
     .split('\0').filter(path => isAllowedRepairPath(path));
-  const tokens = [...new Set(String(task).toLocaleLowerCase('tr-TR')
+  const taskText = String(task);
+  const tokens = [...new Set(taskText.toLocaleLowerCase('tr-TR')
     .split(/[^a-z0-9ğüşöçıİ]+/i).filter(token => token.length >= 3))].slice(0, 40);
+  // Guardian review tasks include an explicit affected-file list. Prefer those
+  // exact, allowlisted paths over fuzzy keyword matches so relevant code is not
+  // displaced by unrelated files that happen to share generic words.
+  const fileList = taskText.match(/(?:ilgili dosyalar|affected files)\\s*:\\s*([^\\n]+)/i)?.[1] || '';
+  const explicitPaths = [...new Set(fileList.split(',').map(value => value.trim())
+    .filter(isAllowedRepairPath))].filter(path => tracked.includes(path));
+  const explicitRank = new Map(explicitPaths.map((path, index) => [path, index]));
   const candidates = [];
   for (const path of tracked) {
     try {
       const info = await statImpl(path);
       if (!info.isFile() || info.size > 60_000) continue;
       const content = String(await readFileImpl(path, 'utf8')).slice(0, 5_000);
-      candidates.push({ path, content, score: scoreFile(path, content, tokens) });
+      candidates.push({
+        path,
+        content,
+        score: scoreFile(path, content, tokens),
+        explicitRank: explicitRank.has(path) ? explicitRank.get(path) : Number.MAX_SAFE_INTEGER,
+      });
     } catch { /* A deleted or unreadable tracked file is not repair context. */ }
   }
-  candidates.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
-  const selected = candidates.filter(item => item.score > 0).slice(0, 14);
+  candidates.sort((a, b) => a.explicitRank - b.explicitRank
+    || b.score - a.score || a.path.localeCompare(b.path));
+  const selected = candidates.filter(item => item.explicitRank !== Number.MAX_SAFE_INTEGER || item.score > 0).slice(0, 14);
   if (!selected.length) throw new Error('REPAIR_CONTEXT_NOT_FOUND');
   let used = 0;
   const blocks = [];
