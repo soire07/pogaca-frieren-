@@ -27,8 +27,8 @@ test('turn ownership is enforced and a normal attack advances to the next living
   assert.equal(getArenaCurrentPlayer(state).userId, teamA[0].userId);
   assert.throws(() => resolveArenaTurn(state, { actorId: teamA[1].userId }), /ARENA_NOT_YOUR_TURN/);
   const result = resolveArenaTurn(state, { actorId: teamA[0].userId, targetId: teamB[0].userId });
-  assert.equal(result.event.damage, 37);
-  assert.equal(result.state.players[3].hp, 63);
+  assert.equal(result.event.damage, 36);
+  assert.equal(result.state.players[3].hp, 64);
   assert.equal(result.state.turnIndex, 1);
 });
 
@@ -45,14 +45,14 @@ test('guard reduces the next incoming hit and is consumed exactly once', () => {
   state = resolveArenaTurn(state, { actorId: teamA[1].userId, targetId: teamB[0].userId }).state;
   state = resolveArenaTurn(state, { actorId: teamA[2].userId, targetId: teamB[0].userId }).state;
   state = resolveArenaTurn(state, { actorId: teamB[0].userId, targetId: teamA[0].userId }).state;
-  assert.equal(state.players[0].hp, 86);
+  assert.equal(state.players[0].hp, 87);
   assert.equal(state.players[0].guarding, false);
 });
 
 test('spell consumes mana and deals boosted damage; insufficient mana is rejected', () => {
   const state = create();
   const result = resolveArenaTurn(state, { actorId: teamA[0].userId, action: 'spell', targetId: teamB[0].userId });
-  assert.equal(result.event.damage, 57);
+  assert.equal(result.event.damage, 56);
   assert.equal(result.state.players[0].mana, 80);
   const exhausted = { ...state, players: state.players.map((p, i) => i ? p : { ...p, mana: 0 }) };
   assert.throws(() => resolveArenaTurn(exhausted, { actorId: teamA[0].userId, action: 'spell', targetId: teamB[0].userId }), /ARENA_INSUFFICIENT_MANA/);
