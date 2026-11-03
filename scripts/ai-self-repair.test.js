@@ -9,6 +9,7 @@ import {
   verifyGroqConnection,
   applyRepairPatch,
   formatRepairFilesOutput,
+  collectRepairContext,
 } from './ai-self-repair.js';
 
 const validPatch = [
