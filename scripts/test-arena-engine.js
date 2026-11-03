@@ -70,3 +70,8 @@ test('defeated players are skipped and a team is declared winner only after all 
   assert.equal(next.state.winner, 'A');
 });
 
+
+test('finished matches reject additional turns', () => {
+  const state = { ...create(), status: 'finished', winner: 'A' };
+  assert.throws(() => resolveArenaTurn(state, { actorId: teamA[0].userId, targetId: teamB[0].userId }), /ARENA_MATCH_NOT_ACTIVE/);
+});
