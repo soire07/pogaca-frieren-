@@ -15,6 +15,7 @@ import useItemCommand from '../esyakullan.js';
 import { equipmentItems } from '../equipment-data.js';
 import questChainCommand from '../gorevzinciri.js';
 import characterUpgradeCommand from '../karaktergelistir.js';
+import profileCommand from '../profil.js';
 
 const dedicatedAuditDatabase = /^postgres(?:ql)?:\/\/postgres:postgres@localhost:5432\/frieren_audit(?:\?|$)/.test(
   process.env.DATABASE_URL || ''
@@ -115,6 +116,59 @@ import tradeOfferCommand from '../takasteklif.js';
 function testSnowflake(prefix) {
   return prefix + String(randomInt(0, 281_474_976_710_655)).padStart(15, '0');
 }
+
+test('viewing another player profile reads the selected guild-scoped record without mutation', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = 'profile-view-' + randomUUID();
+    const foreignGuildId = 'profile-foreign-' + randomUUID();
+    const viewerId = testSnowflake('95');
+    const targetId = testSnowflake('96');
+    const targetUser = {
+      id: targetId,
+      username: 'ProfileTarget',
+      displayAvatarURL: () => 'https://example.com/profile-target.png'
+    };
+
+    await ensureUser(guildId, targetId);
+    await ensureUser(foreignGuildId, targetId);
+    await pool.query(
+      "UPDATE users SET level=18,xp=1700,coins=765,class_name='Büyücü',hp=80,max_hp=120,mana=60,max_mana=90,attack=30,defense=12 WHERE guild_id=$1 AND user_id=$2",
+      [guildId, targetId]
+    );
+    await pool.query(
+      "UPDATE users SET level=3,xp=25,coins=1 WHERE guild_id=$1 AND user_id=$2",
+      [foreignGuildId, targetId]
+    );
+
+    const before = await pool.query(
+      'SELECT level,xp,coins,hp,max_hp,mana,max_mana,attack,defense FROM users WHERE guild_id=$1 AND user_id=$2',
+      [guildId, targetId]
+    );
+    const responses = [];
+    await profileCommand.execute({
+      guildId,
+      user: { id: viewerId, username: 'ProfileViewer' },
+      options: { getUser: name => name === 'kullanici' ? targetUser : null },
+      reply: async payload => { responses.push(payload); return payload; }
+    });
+
+    const after = await pool.query(
+      'SELECT level,xp,coins,hp,max_hp,mana,max_mana,attack,defense FROM users WHERE guild_id=$1 AND user_id=$2',
+      [guildId, targetId]
+    );
+    const embed = responses[0]?.embeds?.[0]?.toJSON?.() ?? responses[0]?.embeds?.[0];
+    const text = JSON.stringify(embed || {});
+    assert.equal(responses.length, 1, 'profile command must respond once');
+    assert.ok(text.includes('ProfileTarget'), 'selected target name must appear');
+    assert.ok(text.includes('18'), 'selected guild level must appear');
+    assert.ok(text.includes('1.700'), 'selected guild XP must appear');
+    assert.ok(text.includes('765'), 'selected guild gold must appear');
+    assert.ok(!text.includes('ProfileViewer'), 'profile must not silently show the invoking user');
+    assert.deepEqual(after.rows[0], before.rows[0], 'viewing another profile must not mutate target progress');
+  });
+});
 
 test('two concurrent daily mission claims grant the reward only once', {
   skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
