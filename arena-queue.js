@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { pool, ensureUser } from './database/db.js';
-import { createArenaState } from './arena-engine.js';
+import { createArenaState, resolveArenaTurn } from './arena-engine.js';
 
 const DISCORD_ID = /^\d{17,20}$/;
 const MIN_RATING = 0;
@@ -142,6 +142,50 @@ export async function enqueueArenaPlayer(db = pool, input) {
   }
   if (match) return { status: 'matched', matchId: match.matchId, state: match.state, participants: match.participants };
   return { status: 'queued', queue: queueStatus };
+}
+
+export async function submitArenaTurn(db = pool, { guildId, matchId, actorId, action, targetId }) {
+  if (!DISCORD_ID.test(String(guildId || '')) || !DISCORD_ID.test(String(actorId || '')) || !matchId) {
+    throw new Error('ARENA_TURN_INPUT_INVALID');
+  }
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      `SELECT m.state,m.status
+       FROM arena_matches m
+       JOIN arena_match_players p ON p.match_id=m.match_id
+       WHERE m.match_id=$1 AND m.guild_id=$2 AND p.user_id=$3
+         AND p.status='active' AND m.status='active'
+       FOR UPDATE OF m`,
+      [String(matchId), String(guildId), String(actorId)]
+    );
+    if (!result.rowCount) {
+      const error = new Error('ARENA_MATCH_NOT_FOUND_OR_PLAYER_NOT_ACTIVE');
+      error.code = 'ARENA_MATCH_NOT_FOUND_OR_PLAYER_NOT_ACTIVE';
+      throw error;
+    }
+    const state = typeof result.rows[0].state === 'string' ? JSON.parse(result.rows[0].state) : result.rows[0].state;
+    const resolved = resolveArenaTurn(state, { actorId, action, targetId });
+    await client.query(
+      'UPDATE arena_matches SET state=$2::jsonb,status=$3,updated_at=NOW() WHERE match_id=$1',
+      [String(matchId), JSON.stringify(resolved.state), resolved.state.status]
+    );
+    if (resolved.state.status === 'finished') {
+      await client.query(
+        `UPDATE arena_match_players SET status='finished'
+         WHERE match_id=$1 AND status='active'`,
+        [String(matchId)]
+      );
+    }
+    await client.query('COMMIT');
+    return { state: resolved.state, event: resolved.event };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function leaveArenaQueue(db = pool, { guildId, userId }) {
