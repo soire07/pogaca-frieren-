@@ -9,6 +9,7 @@ import {
 import { pool, ensureUser } from './database/db.js';
 import { claimSoloBossReward } from './rpg-reward-transactions.js';
 import { getGuildRpgContent } from './owner-rpg-content.js';
+import { selectSoloBossForLevel } from './rpg-content-catalog.js';
 import { equipmentItems, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
 import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, applyEquipmentSetBonus, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening, restoreResourceRatio, applyTalentBonus } from './rpg-mechanics.js';
 
@@ -155,7 +156,7 @@ export default {
     );
     const upgradeBonus = Number(upgrades.rows[0]?.level || 0) * 2;
     // Rotate among unlocked active tiers so earlier bosses remain replayable and journal collections can be completed.
-    const boss = unlockedBossTiers[Math.floor(Math.random() * unlockedBossTiers.length)] || unlockedBossTiers[0];
+    const boss = selectSoloBossForLevel(playerLevel, bossTiers);
     const battleId = randomUUID();
     let bossHp = boss.maxHp;
     let bossPhase = 1;
