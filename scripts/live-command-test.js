@@ -441,7 +441,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             'SELECT COUNT(*)::int AS distinct_items,COALESCE(SUM(quantity),0)::int AS total_items FROM inventory WHERE guild_id=$1 AND user_id=$2',
             [guildId, userId]
           );
-          const responseText = JSON.stringify(effects.map(effect => effect.payload));
+          const responseText = payloadTextFromEffects(effects);
           behavioralChecks.push(
             { name: 'Envanter eşya listesi', expected: 'iki eşya adı ve miktarları yanıtta görünmeli', actual: responseText.includes('Test Şifa İksiri') && responseText.includes('Test Grimoire') ? 'iki eşya da listelendi' : responseText.slice(0, 500), passed: responseText.includes('Test Şifa İksiri') && responseText.includes('Test Grimoire') && responseText.includes('×2') && responseText.includes('×3') },
             { name: 'Envanter toplamları', expected: '2 farklı eşya ve toplam 5 adet', actual: state.rows[0] ? state.rows[0].distinct_items + ' farklı / ' + state.rows[0].total_items + ' toplam' : 'envanter kaydı yok', passed: Number(state.rows[0]?.distinct_items) === 2 && Number(state.rows[0]?.total_items) === 5 }
@@ -599,11 +599,21 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             displayAvatarURL: () => 'https://example.com/test-avatar.png',
             toString() { return '<@' + this.id + '>'; }
           }));
-          for (const member of teamUsers) {
+          const roleProfiles = [
+            { className: 'Muhafız', talents: [0,3,0,0] },
+            { className: 'Şifacı', talents: [0,0,3,3] },
+            { className: 'Büyücü', talents: [3,0,0,0] }
+          ];
+          for (const [roleIndex, member] of teamUsers.entries()) {
             await ensureUser(guildId, member.id);
+            const roleProfile = roleProfiles[roleIndex];
             await pool.query(
-              'UPDATE users SET level=10,xp=9900,coins=100,hp=2000,max_hp=2000,mana=500,max_mana=500,attack=50,defense=0,last_dungeon_at=NULL,last_boss_at=NULL,dungeon_runs=0,dungeon_wins=0,boss_defeats=0 WHERE guild_id=$1 AND user_id=$2',
-              [guildId, member.id]
+              'UPDATE users SET level=10,xp=9900,coins=100,hp=2000,max_hp=2000,mana=400,max_mana=400,attack=50,defense=50,class_name=$3,active_build=\'dengeli\',last_dungeon_at=NULL,last_boss_at=NULL,dungeon_runs=0,dungeon_wins=0,boss_defeats=0 WHERE guild_id=$1 AND user_id=$2',
+              [guildId, member.id, roleProfile.className]
+            );
+            await pool.query(
+              'UPDATE user_talents SET attack_rank=$3,defense_rank=$4,hp_rank=$5,mana_rank=$6 WHERE guild_id=$1 AND user_id=$2',
+              [guildId, member.id, ...roleProfile.talents]
             );
             await pool.query(
               'INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1) ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=EXCLUDED.quantity',
@@ -658,6 +668,11 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           const timestampField = isDungeon ? 'last_dungeon_at' : 'last_boss_at';
           const counterField = isDungeon ? 'dungeon_runs' : 'boss_defeats';
           const responseText = JSON.stringify(effects.map(effect => effect.payload));
+          const tankSaved = saved.rows.find(row => row.user_id === teamUsers[0].id);
+          const healerSaved = saved.rows.find(row => row.user_id === teamUsers[1].id);
+          const mageSaved = saved.rows.find(row => row.user_id === teamUsers[2].id);
+          const mageCasts = Number(spellMastery.rows.find(row => row.user_id === teamUsers[2].id)?.casts || 0);
+          const mageManaSpent = 400 - Number(mageSaved?.mana || 0);
           behavioralChecks.push(
             { name: 'Üç takım üyesinin kalıcı kaydı', expected: 'aynı sunucuda 3 ayrı oyuncu kaydı', actual: saved.rowCount + ' oyuncu kaydı', passed: saved.rowCount === 3 && new Set(saved.rows.map(row => row.user_id)).size === 3 },
             { name: 'Savaş sonucu ve bekleme süresi', expected: 'üç oyuncuda da karşılaşma zaman damgası ve sayaç', actual: saved.rows.map(row => row.user_id + ': ' + row[counterField] + ', ' + row[timestampField]).join(' | '), passed: saved.rows.length === 3 && saved.rows.every(row => Number(row[counterField]) === 1 && row[timestampField] != null) },
@@ -666,8 +681,10 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Oyuncu verisi izolasyonu', expected: 'her oyuncunun yalnızca kendi test envanter işareti bulunmalı', actual: markers.rows.map(row => row.user_id + ': ' + row.item_key).join(' | '), passed: markers.rowCount === 3 && markers.rows.every(row => row.item_key === 'test-owner-' + row.user_id && Number(row.quantity) === 1) },
             { name: 'Karşılaşma kilidi temizliği', expected: 'savaş sonunda etkin karşılaşma kaydı kalmamalı', actual: reservations.rowCount + ' etkin kilit', passed: reservations.rowCount === 0 },
             { name: 'Komut sonucu paneli', expected: 'savaş sonucu Discord yanıtı üretilmeli', actual: effects.length + ' yanıt/etki; ' + (responseText.includes('Kat') || responseText.includes('Boss') ? 'savaş paneli içeriği kaydedildi' : 'panel metni kaydedildi'), passed: effects.length > 0 && (responseText.includes('Kat') || responseText.includes('Boss') || responseText.includes('baskın') || responseText.includes('zindan')) },
-            { name: 'Beş gerçek savaş aksiyonu', expected: 'savunma, Mana Kalkanı, Heilen, Zoltraak ve normal saldırı etkileşimleri kabul edilmeli; mana ve ustalık kalıcılaşmalı', actual: [...new Set(simulation.acceptedActions.map(id => id.split(':')[2]))].join(', ') + '; Zoltraak ustalık kaydı ' + spellMastery.rowCount, passed: ['attack','spell','heal','shield','defend'].every(action => simulation.acceptedActions.some(id => id.split(':')[2] === action)) && spellMastery.rowCount > 0 && spellMastery.rows.every(row => Number(row.casts) > 0) && saved.rows.every(row => Number(row.mana) < 500) },
-            { name: 'Tank hedefleme ve şifacı desteği', expected: 'tank öncelikli hedef olmalı ve şifacı takım arkadaşını iyileştirmeli', actual: 'tank HP ' + saved.rows.find(row => row.user_id === teamUsers[0].id)?.hp + '; iyileştirme günlüğü ' + responseText.includes('iyileştirdi'), passed: Number(saved.rows.find(row => row.user_id === teamUsers[0].id)?.hp) < 2000 && responseText.includes('iyileştirdi') },
+            { name: 'Beş gerçek savaş aksiyonu', expected: 'savunma, Mana Kalkanı, Heilen, Zoltraak ve normal saldırı etkileşimleri kabul edilmeli; mana ve ustalık kalıcılaşmalı', actual: [...new Set(simulation.acceptedActions.map(id => id.split(':')[2]))].join(', ') + '; Zoltraak ustalık kaydı ' + spellMastery.rowCount, passed: ['attack','spell','heal','shield','defend'].every(action => simulation.acceptedActions.some(id => id.split(':')[2] === action)) && spellMastery.rowCount > 0 && spellMastery.rows.every(row => Number(row.casts) > 0) && saved.rows.every(row => Number(row.mana) < Number(row.max_mana)) },
+            { name: 'Tank hedefleme ve şifacı desteği', expected: 'tank öncelikli hedef olmalı ve şifacı takım arkadaşını iyileştirmeli', actual: 'tank HP ' + tankSaved?.hp + '/' + tankSaved?.max_hp + '; iyileştirme günlüğü ' + responseText.includes('iyileştirdi'), passed: Number(tankSaved?.hp) < Number(tankSaved?.max_hp) && responseText.includes('iyileştirdi') },
+            { name: 'Sınıf, takım rolü ve yetenek bonusları', expected: 'tank/şifacı/hasar rollerinin HP, saldırı ve savunma çarpanları; üç sınıf ve yetenek bonusları uygulanmalı', actual: 'tank=' + tankSaved?.hp + '/' + tankSaved?.max_hp + '; healer=' + healerSaved?.hp + '/' + healerSaved?.max_hp + '; mage=' + mageSaved?.hp + '/' + mageSaved?.max_hp + '; spell casts=' + mageCasts, passed: responseText.includes('Muhafız') && responseText.includes('Şifacı') && responseText.includes('Büyücü') && responseText.includes('HP: 2500 →') && responseText.includes('HP: 2300 →') && responseText.includes('HP: 1900 →') && responseText.includes('⚔️ 73') && responseText.includes('🛡️ 88') && responseText.includes('460') && Number(tankSaved?.max_hp) === 2500 && Number(healerSaved?.max_hp) === 2300 && Number(mageSaved?.max_hp) === 1900 },
+            { name: 'Büyücü sınıfının co-op Zoltraak mana verimliliği', expected: 'her başarılı Büyücü Zoltraak atışı 10 mana tüketmeli', actual: mageManaSpent + ' mana / ' + mageCasts + ' atış', passed: mageCasts > 0 && mageManaSpent === mageCasts * 10 },
             { name: isDungeon ? 'Gizli kat tuzağı olayı' : 'Boss alan özel saldırısı', expected: isDungeon ? 'deterministik rota akışında tuzak hasarı günlüğe yazılmalı' : 'Kuzey Platosu bossunun üçüncü tur alan mana patlaması çalışmalı', actual: isDungeon ? (responseText.includes('tuzak') ? 'tuzak olayı kaydedildi' : 'tuzak olayı bulunamadı') : (responseText.includes('yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor') ? 'alan saldırısı kaydedildi' : 'alan saldırısı bulunamadı'), passed: isDungeon ? responseText.includes('tuzak') : responseText.includes('yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor') }
           );
         } else if (commandName === 'bakiye') {
