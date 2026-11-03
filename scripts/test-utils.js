@@ -684,6 +684,87 @@ test('quest chain UI previews level-scaled rewards and the material reward for e
 });
 
 
+test('XP progression remains monotonic and exact across every level boundary through level 1000', () => {
+  let previousThreshold = 0;
+  for (let level = 1; level <= 1000; level += 1) {
+    const threshold = xpForNextLevel(level);
+    assert.ok(Number.isSafeInteger(threshold), 'threshold must remain a safe integer at level ' + level);
+    assert.ok(threshold > previousThreshold, 'XP thresholds must strictly increase at level ' + level);
+    assert.equal(levelForXp(threshold - 1), level, 'one XP below threshold must remain at current level ' + level);
+    assert.equal(levelForXp(threshold), level + 1, 'threshold must unlock next level ' + (level + 1));
+    previousThreshold = threshold;
+  }
+});
+
+test('large XP grants calculate every crossed level and matching stat points', () => {
+  const cases = [
+    { currentXp: 0, currentLevel: 1, earnedXp: 99, nextLevel: 1, points: 0 },
+    { currentXp: 90, currentLevel: 1, earnedXp: 20, nextLevel: 2, points: 1 },
+    { currentXp: 390, currentLevel: 2, earnedXp: 520, nextLevel: 4, points: 2 },
+    { currentXp: 9900, currentLevel: 10, earnedXp: 20100, nextLevel: 18, points: 8 },
+    { currentXp: 10000, currentLevel: 11, earnedXp: 0, nextLevel: 11, points: 0 }
+  ];
+  for (const item of cases) {
+    const nextLevel = levelForXp(item.currentXp + item.earnedXp);
+    assert.equal(nextLevel, item.nextLevel);
+    assert.equal(Math.max(0, nextLevel - item.currentLevel), item.points);
+  }
+});
+
+test('solo boss, raid, dungeon and quest XP settlements use the same quadratic level formula', async () => {
+  const rewards = await readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
+  const quest = await readFile(new URL('../gorevzinciri.js', import.meta.url), 'utf8');
+  assert.match(rewards, /FLOOR\(SQRT\(\(xp\+\$6\)::numeric \/ 100\)\)::int \+ 1/);
+  assert.match(rewards, /Math\.floor\(Math\.sqrt\(newXp \/ 100\)\) \+ 1/);
+  assert.match(quest, /const newLevel = levelForXp\(newXp\)/);
+  assert.match(rewards, /stat_points=stat_points\+GREATEST\(0,/);
+  assert.match(rewards, /Math\.max\(0, newLevel - Number\(current\.level\)\)/);
+  assert.match(quest, /Math\.max\(0, newLevel - Number\(player\.level\)\)/);
+});
+
+test('solo boss reward claim is idempotent and raid and dungeon settlements lock participants', async () => {
+  const rewards = await readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
+  const soloStart = rewards.indexOf('export async function claimSoloBossReward');
+  const raidStart = rewards.indexOf('export async function settleRaidRewards');
+  const dungeonStart = rewards.indexOf('export async function settleDungeonRewards');
+  assert.ok(soloStart >= 0 && raidStart > soloStart && dungeonStart > raidStart);
+  const solo = rewards.slice(soloStart, raidStart);
+  const raid = rewards.slice(raidStart, dungeonStart);
+  const dungeon = rewards.slice(dungeonStart);
+  assert.match(solo, /last_boss_battle_id IS DISTINCT FROM \$7/);
+  assert.match(solo, /RETURNING user_id/);
+  for (const [name, source] of [['raid', raid], ['dungeon', dungeon]]) {
+    assert.match(source, /BEGIN/);
+    assert.match(source, /FOR UPDATE/);
+    assert.match(source, /COMMIT/);
+    assert.match(source, /ROLLBACK/);
+    assert.match(source, /stat_points/);
+    assert.ok(source.includes('level=') || source.includes('level=$5'), name + ' must persist the recalculated level');
+  }
+});
+
+test('level-scaled quest reward multiplier changes only at ten-level boundaries and is capped', () => {
+  const expected = [
+    [1, 1], [9, 1], [10, 1], [11, 1.1],
+    [19, 1.1], [20, 1.1], [21, 1.2],
+    [91, 1.9], [100, 1.9], [101, 2],
+    [191, 2.9], [201, 3], [1000, 3]
+  ];
+  for (const [level, multiplier] of expected) {
+    assert.equal(getLevelScaledQuestReward(100, 50, level).multiplier, multiplier, 'level ' + level);
+  }
+});
+
+test('XP and level display uses the same next-level threshold in profile and character panel', async () => {
+  const profile = await readFile(new URL('../profil.js', import.meta.url), 'utf8');
+  const character = await readFile(new URL('../karakter.js', import.meta.url), 'utf8');
+  assert.match(profile, /xpForNextLevel\(u\.level\)/);
+  assert.match(character, /xpForNextLevel\(level\)/);
+  assert.match(character, /need-xp/);
+  assert.match(character, /levelForXp\(newXp\)/);
+});
+
+
 import { getBossArtUrl } from '../boss-art.js';
 
 test('boss artwork resolver accepts HTTPS URLs and ignores missing, malformed or insecure values', () => {
