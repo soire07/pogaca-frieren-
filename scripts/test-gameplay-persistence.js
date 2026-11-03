@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { equipmentItems, equipmentBonus } from '../equipment-data.js';
-import { applyEquipmentSetBonus, getLevelScaledQuestReward, restoreResourceRatio } from '../rpg-mechanics.js';
+import { applyEquipmentSetBonus, getEquipmentCombatBonus, getLevelScaledQuestReward, restoreResourceRatio } from '../rpg-mechanics.js';
 
 test('legendary set bonus activates at two pieces and disappears when one is removed', () => {
   const set = equipmentItems.filter(item => ['demon_blade', 'demon_armor'].includes(item.id));
@@ -55,4 +55,22 @@ test('combat HP and mana return to persistent base-stat ratios without exceeding
   assert.equal(restoreResourceRatio(50, 0, 100), 100);
   assert.equal(restoreResourceRatio(50, 150, 0), 0);
   assert.equal(restoreResourceRatio(Number.NaN, 150, 100), 0);
+});
+
+
+test('one shared equipment combat calculation applies and removes legendary and epic set bonuses', () => {
+  const legendary = equipmentItems.filter(item => ['demon_blade','demon_armor'].includes(item.id));
+  const epic = equipmentItems.filter(item => ['frieren_robe','rune_ring'].includes(item.id));
+  const legendaryActive = getEquipmentCombatBonus(legendary);
+  const epicActive = getEquipmentCombatBonus(epic);
+  assert.deepEqual(
+    {attack:legendaryActive.attack,defense:legendaryActive.defense,hp:legendaryActive.hp,mana:legendaryActive.mana},
+    {attack:20,defense:13,hp:85,mana:0}
+  );
+  assert.deepEqual(
+    {attack:epicActive.attack,defense:epicActive.defense,hp:epicActive.hp,mana:epicActive.mana},
+    {attack:0,defense:13,hp:40,mana:65}
+  );
+  assert.equal(getEquipmentCombatBonus(legendary.filter(item=>item.id!=='demon_blade')).attack,16);
+  assert.equal(getEquipmentCombatBonus(epic.filter(item=>item.id!=='rune_ring')).defense,7);
 });
