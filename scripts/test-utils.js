@@ -123,11 +123,13 @@ test('cooperative boss raid supports attack, mana spell, defense and mana persis
 
 test('cooperative boss raid includes an area mana-star burst and a mana-draining curse', async () => {
   const source = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  const mechanics = await readFile(new URL('../rpg-mechanics.js', import.meta.url), 'utf8');
   assert.match(source, /getRaidBossSpecialAttack\(BOSS\.special, rounds\)/);
   assert.match(source, /resolveRaidAreaAttack\(/);
-  assert.match(source, /for \(const i of living\)/);
-  assert.match(source, /const shardRain = BOSS\.special === 'shard-rain' && rounds % 2 === 0/);
-  assert.match(source, /const manaCurse = BOSS\.special === 'mana-curse' && rounds % 3 === 0/);
+  assert.match(source, /for \(const hit of areaResult\.hits\)/);
+  assert.match(source, /const shardRain = specialAttack === 'shard-rain'/);
+  assert.match(source, /const manaCurse = specialAttack === 'mana-curse'/);
+  assert.match(mechanics, /for \(const index of livingIndices \|\| \[\]\)/);
   assert.match(source, /Math\.min\(target\.mana,8\)/);
   assert.match(source, /target\.mana-=drained/);
   assert.match(source, /\$\{rounds\}\/12/);
