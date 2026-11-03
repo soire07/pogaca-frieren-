@@ -470,10 +470,15 @@
           "type": "unit_test",
           "file": "scripts/test-utils.js",
           "test": "solo boss victories grant recipe materials matched to boss tier"
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-market-concurrency.integration.js",
+          "test": "a previously claimed solo boss battle cannot be replayed after a newer battle has settled"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177786
+      "verifiedAtCommit": "60ffa37d5db1b355c5c26cb41a850bb5eeeeb7e8",
+      "verificationRunId": 41686808195
     },
     {
       "id": "RPG-016",
