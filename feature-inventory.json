@@ -990,11 +990,12 @@
       "category": "Quests",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "postgresql_integration_partial",
+        "level": "postgresql_integration_and_concurrency",
         "tests": [
-          "scripts/test-market-concurrency.integration.js"
+          "scripts/test-market-concurrency.integration.js",
+          "scripts/test-discord-scenarios.js"
         ],
-        "scope": "First-stage sequential claim and concurrent duplicate prevention; full three-stage chain flow remains unverified."
+        "scope": "Disposable PostgreSQL verifies all three daily stages sequentially, completion timestamp, once-only rewards and concurrent duplicate prevention; live Discord interaction remains unverified."
       }
     },
     {
@@ -1948,11 +1949,11 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "postgresql_integration_partial",
+        "level": "postgresql_integration",
         "tests": [
           "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "First-stage chain material reward persistence; crafting consumption of that reward is not covered by this test."
+        "scope": "All three stage-specific crafting materials are persisted exactly once by the full-chain PostgreSQL test; downstream crafting consumption is covered separately by crafting integration tests."
       }
     },
     {
@@ -1961,12 +1962,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "mixed_unit_and_integration_partial",
+        "level": "postgresql_integration_and_unit",
         "tests": [
-          "scripts/test-gameplay-persistence.js",
-          "scripts/test-market-concurrency.integration.js"
+          "scripts/test-market-concurrency.integration.js",
+          "scripts/test-gameplay-persistence.js"
         ],
-        "scope": "Reward scaling helper and first-stage XP payout are tested; all level thresholds and complete-chain level-up rewards remain unverified."
+        "scope": "Full-chain XP/coin completion bonus, level-up and stat-point award are asserted in PostgreSQL; level-scaled reward arithmetic is covered by unit tests."
       }
     },
     {

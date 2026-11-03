@@ -211,6 +211,69 @@ test('concurrent daily quest-chain stage claims award gold, XP and materials exa
   });
 });
 
+test('full three-stage daily quest chain completes with level-scaled rewards', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = testSnowflake('90');
+    const userId = testSnowflake('88');
+    await ensureUser(guildId, userId);
+    await pool.query(
+      'UPDATE users SET coins=0,xp=0,level=1,stat_points=0,last_daily_at=NOW(),last_exploration_at=NULL,last_boss_win_at=NULL WHERE guild_id=$1 AND user_id=$2',
+      [guildId, userId]
+    );
+
+    const responses = [];
+    const makeInteraction = stage => ({
+      guildId,
+      user: { id: userId },
+      options: { getString: name => name === 'odul' ? String(stage) : null },
+      deferReply: async () => {},
+      editReply: async payload => { responses.push(payload); return payload; }
+    });
+
+    try {
+      await questChainCommand.execute(makeInteraction(1));
+      await pool.query('UPDATE users SET last_exploration_at=NOW() WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+      await questChainCommand.execute(makeInteraction(2));
+      await pool.query('UPDATE users SET last_boss_win_at=NOW() WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+      await questChainCommand.execute(makeInteraction(3));
+      await questChainCommand.execute(makeInteraction(3));
+
+      const player = await pool.query(
+        'SELECT coins,xp,level,stat_points FROM users WHERE guild_id=$1 AND user_id=$2',
+        [guildId, userId]
+      );
+      const chain = await pool.query(
+        'SELECT current_step,completed_at FROM daily_quest_chains WHERE guild_id=$1 AND user_id=$2 AND chain_date=CURRENT_DATE',
+        [guildId, userId]
+      );
+      const materials = await pool.query(
+        "SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[]) ORDER BY item_key",
+        [guildId, userId, ['🥐 Büyülü Poğaça Kutusu','💎 Mana Kristali','🐉 Ejderha Pulu']]
+      );
+
+      assert.equal(Number(player.rows[0].coins), 450, 'all three stage rewards and the completion bonus must be credited once');
+      assert.equal(Number(player.rows[0].xp), 240, 'all three stage XP rewards and the completion bonus must be credited once');
+      assert.equal(Number(player.rows[0].level), 2, 'the complete chain must apply the level-up');
+      assert.equal(Number(player.rows[0].stat_points), 1, 'the level-up stat point must be credited once');
+      assert.equal(Number(chain.rows[0].current_step), 4, 'the chain must be marked fully completed');
+      assert.ok(chain.rows[0].completed_at, 'completion timestamp must be persisted');
+      assert.deepEqual(materials.rows.map(row => [row.item_key, Number(row.quantity)]), [
+        ['🐉 Ejderha Pulu', 1],
+        ['💎 Mana Kristali', 1],
+        ['🥐 Büyülü Poğaça Kutusu', 1]
+      ]);
+      assert.equal(responses.filter(value => typeof value === 'string' && value.includes('Görev zinciri tamamlandı')).length, 1,
+        'only the first final-stage claim may report chain completion');
+      assert.equal(responses.filter(value => typeof value === 'string' && value.includes('İblis Avcısının Yemini')).length, 1,
+        'the final-stage reward must be reported once');
+    } finally {
+      await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    }
+  });
+});
+
 test('concurrent trade offers cannot reserve the sender last character copy twice', {
   skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
 }, async () => {
