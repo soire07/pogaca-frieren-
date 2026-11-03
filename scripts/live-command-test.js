@@ -1231,7 +1231,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
               name: 'Yanlış hikâye yolu ödül engeli · ' + scenario.npc,
               expected: 'başka yolun NPC görevi ödül verememeli ve tamamlanmış kayıt oluşturmamalı',
               actual: blockedText.slice(0, 180) + '; claim=' + blockedClaim.rowCount,
-              passed: blockedText.includes('Görev veren karakter') && blockedClaim.rowCount === 0
+              passed: blockedText.includes('görev veren karakter') && blockedClaim.rowCount === 0
             });
 
             const questText = await runNpc(npcUserId, scenario.npc, 'gorev');
