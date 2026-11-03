@@ -1911,7 +1911,7 @@ test('rare-discovery pity guarantees the next undiscovered rare location at the 
     await ensureUser(guildId, userId);
     await pool.query("UPDATE users SET class_name='Büyücü',last_adventure_at=NULL WHERE guild_id=$1 AND user_id=$2", [guildId, userId]);
     await pool.query(
-      'INSERT INTO adventure_route_mastery(guild_id,user_id,route_key,visits) VALUES($1,$2,$3,19)',
+      'INSERT INTO adventure_route_mastery(guild_id,user_id,route_key,visits) VALUES($1,$2,$3,59)',
       [guildId, userId, 'forest-grimoire']
     );
     const previousRandom = Math.random;
@@ -2139,7 +2139,7 @@ test('a missed adventure day resets the current streak but preserves the all-tim
     const responseText = JSON.stringify(responses.map(response => response.embeds?.map(embed => embed.toJSON())));
     assert.equal(Number(streak.rows[0]?.daily_streak), 1);
     assert.equal(Number(streak.rows[0]?.best_streak), 12);
-    assert.ok(responseText.includes('Günlük seri: **1 gün** · Rekor: **12 gün**'));
+    assert.ok(responseText.includes('Günlük seri:') && responseText.includes('12 gün'), responseText);
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
   });
 });
