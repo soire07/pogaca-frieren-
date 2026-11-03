@@ -164,16 +164,22 @@ export async function initDatabase() {
       PRIMARY KEY (guild_id, user_id, item_key),
       FOREIGN KEY (guild_id, user_id) REFERENCES users(guild_id, user_id) ON DELETE CASCADE
     );
-    CREATE TABLE IF NOT EXISTS solo_boss_reward_claims (
+    CREATE TABLE IF NOT EXISTS rpg_reward_claims (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
-      battle_id TEXT NOT NULL,
+      reward_type TEXT NOT NULL,
+      reward_id TEXT NOT NULL,
       claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      PRIMARY KEY (guild_id,user_id,battle_id),
+      PRIMARY KEY (guild_id,user_id,reward_type,reward_id),
       FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
     );
-    CREATE INDEX IF NOT EXISTS idx_solo_boss_reward_claims_user_recent
-      ON solo_boss_reward_claims(guild_id,user_id,claimed_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_rpg_reward_claims_user
+      ON rpg_reward_claims(guild_id,user_id,claimed_at DESC);
+    INSERT INTO rpg_reward_claims(guild_id,user_id,reward_type,reward_id,claimed_at)
+    SELECT guild_id,user_id,'solo_boss',last_boss_battle_id,COALESCE(last_boss_win_at,NOW())
+    FROM users
+    WHERE last_boss_battle_id IS NOT NULL
+    ON CONFLICT(guild_id,user_id,reward_type,reward_id) DO NOTHING;
     CREATE TABLE IF NOT EXISTS active_rpg_encounters (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
