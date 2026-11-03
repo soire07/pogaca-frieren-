@@ -267,7 +267,7 @@ test('adventurer dashboard requires a verified member session and renders linked
   assert.match(response.body,/Fern/);
   assert.match(response.body,/1180/);
   assert.match(response.body,/Zindan Gecesi/);
-  assert.match(response.body,/action="\\/maceraci\\/link"/);
+  assert.match(response.body,/action="\/maceraci\/link"/);
   assert.match(response.body,/name="csrf"/);
 });
 
