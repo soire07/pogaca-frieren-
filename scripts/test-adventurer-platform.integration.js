@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { initDatabase, pool, ensureUser } from '../database/db.js';
 import {
-  ensureAdventurerPlatformTables, settleArenaMatch, createGuildEvent, joinGuildEvent,
+  ensureAdventurerPlatformTables, ensureActiveArenaSeason, settleArenaMatch, createGuildEvent, joinGuildEvent,
   leaveGuildEvent, listGuildEvents, createSiteLinkToken, redeemSiteLinkToken, getAdventurerDashboard
 } from '../adventurer-platform.js';
 
@@ -17,6 +17,34 @@ function makeIds(prefix, count) {
   const seed = BigInt(parseInt(randomUUID().replaceAll('-','').slice(0,8),16));
   return Array.from({length:count},(_,i)=>String(BigInt(prefix)+seed*100n+BigInt(i+1)).slice(0,17));
 }
+
+test('active arena season expires at day 90 and rolls over to exactly one new 90-day season', async () => {
+  assertIsolatedAuditDatabase();
+  await initDatabase();
+  await ensureAdventurerPlatformTables(pool);
+  const guildId='99000000000000100';
+  try {
+    await pool.query(
+      "INSERT INTO arena_seasons(guild_id,name,starts_at,ends_at,status) VALUES($1,'Expired fixture',NOW()-INTERVAL '90 days',NOW()-INTERVAL '1 second','active')",
+      [guildId]
+    );
+    const season = await ensureActiveArenaSeason(pool, guildId);
+    const rows = await pool.query(
+      "SELECT name,status,starts_at,ends_at FROM arena_seasons WHERE guild_id=$1 ORDER BY season_id",
+      [guildId]
+    );
+    assert.equal(rows.rowCount,2);
+    assert.equal(rows.rows[0].status,'completed');
+    assert.equal(rows.rows[1].status,'active');
+    assert.equal(season.name,rows.rows[1].name);
+    const duration = new Date(rows.rows[1].ends_at).getTime()-new Date(rows.rows[1].starts_at).getTime();
+    assert.ok(Math.abs(duration-90*86400000)<5000,'new season must last 90 days');
+    const active = await pool.query("SELECT COUNT(*)::int AS count FROM arena_seasons WHERE guild_id=$1 AND status='active'",[guildId]);
+    assert.equal(active.rows[0].count,1);
+  } finally {
+    await pool.query('DELETE FROM arena_seasons WHERE guild_id=$1',[guildId]);
+  }
+});
 
 test('arena season MMR and rewards settle atomically and only once', async () => {
   assertIsolatedAuditDatabase();

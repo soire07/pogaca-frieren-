@@ -1131,6 +1131,44 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Status canlı Discord bağlantısı', expected: 'bot çevrimiçi ve Discord gecikmesi gösterilmeli', actual: payloadText.includes('Çevrimiçi') && payloadText.includes('42 ms') ? 'çevrimiçi / 42 ms' : payloadText.slice(0, 400), passed: payloadText.includes('Çevrimiçi') && payloadText.includes('42 ms') },
             { name: 'Status çalışma bilgileri', expected: 'çalışma süresi, sunucu sayısı, komut sayısı ve Node.js sürümü gösterilmeli', actual: ['Çalışma süresi','Sunucu sayısı','Yüklü komut','Node.js'].filter(value => payloadText.includes(value)).join(', '), passed: ['Çalışma süresi','Sunucu sayısı','Yüklü komut','Node.js'].every(value => payloadText.includes(value)) }
           );
+        } else if (commandName === 'arena') {
+          const interaction = makeInteraction(command, buildOptions(schema?.options, { __subcommand: 'katil' }), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const queued = await pool.query('SELECT rating FROM arena_queue WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const season = await pool.query("SELECT starts_at,ends_at FROM arena_seasons WHERE guild_id=$1 AND status='active'", [guildId]);
+          const durationMs = season.rowCount ? new Date(season.rows[0].ends_at).getTime() - new Date(season.rows[0].starts_at).getTime() : 0;
+          const payloadText = payloadTextFromEffects(effects);
+          behavioralChecks.push(
+            { name: 'Arena oyuncu kuyruğu kaydı', expected: 'oyuncu yalnızca bir kez 3v3 kuyruğuna alınmalı', actual: queued.rowCount + ' kayıt', passed: queued.rowCount === 1 && Number(queued.rows[0]?.rating) === 1000 },
+            { name: 'Arena sezonunun 90 günlük süresi', expected: 'aktif sezon yaklaşık 90 gün sürmeli', actual: Math.round(durationMs / 86400000) + ' gün', passed: season.rowCount === 1 && Math.abs(durationMs - 90 * 86400000) < 5000 },
+            { name: 'Arena kuyruk yanıtı', expected: 'kuyrukta 1/6 oyuncu bilgisi gösterilmeli', actual: payloadText.includes('1/6') ? '1/6 gösterildi' : payloadText.slice(0, 250), passed: payloadText.includes('1/6') }
+          );
+        } else if (commandName === 'etkinlik') {
+          const before = await pool.query('SELECT COUNT(*)::int AS count FROM guild_events WHERE guild_id=$1', [guildId]);
+          const interaction = makeInteraction(command, buildOptions(schema?.options, { __subcommand: 'liste' }), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const after = await pool.query('SELECT COUNT(*)::int AS count FROM guild_events WHERE guild_id=$1', [guildId]);
+          const payloadText = payloadTextFromEffects(effects);
+          behavioralChecks.push(
+            { name: 'Etkinlik takvimi liste görünümü', expected: 'yaklaşan etkinlik takvimi başlığı gösterilmeli', actual: payloadText.slice(0, 250), passed: payloadText.includes('Yaklaşan Macera Etkinlikleri') },
+            { name: 'Etkinlik takvimi salt okunur', expected: 'listeleme etkinlik kayıtlarını değiştirmemeli', actual: before.rows[0]?.count + ' → ' + after.rows[0]?.count, passed: Number(before.rows[0]?.count) === Number(after.rows[0]?.count) }
+          );
+        } else if (commandName === 'maceraci') {
+          const interaction = makeInteraction(command, buildOptions(schema?.options, { __subcommand: 'bagla' }), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const token = await pool.query('SELECT expires_at FROM site_link_tokens WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const payloadText = payloadTextFromEffects(effects);
+          const remainingMs = token.rowCount ? new Date(token.rows[0].expires_at).getTime() - Date.now() : 0;
+          behavioralChecks.push(
+            { name: 'Web panel bağlantı kodu oluşturma', expected: 'tek kullanımlık bağlantı kodu gösterilmeli ve veritabanına hash kaydı yazılmalı', actual: token.rowCount + ' token kaydı', passed: token.rowCount === 1 && payloadText.includes('Web Maceracı Paneli bağlantı kodun') },
+            { name: 'Web panel bağlantı kodu 10 dakika geçerli', expected: 'kodun kalan geçerliliği 10 dakikadan uzun olmamalı', actual: Math.round(remainingMs / 1000) + ' saniye', passed: remainingMs > 0 && remainingMs <= 10 * 60 * 1000 + 5000 }
+          );
         } else {
           const options = buildOptions(schema?.options, { user: undefined });
           const interaction = makeInteraction(command, options, guildId, effects);

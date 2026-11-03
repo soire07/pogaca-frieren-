@@ -3,6 +3,9 @@ import { claimSoloBossReward } from '../rpg-reward-transactions.js';
 import assert from 'node:assert/strict';
 import {
   RAID_BOSSES,
+  progressionMilestone,
+  getSpellMasteryAwakening,
+  shouldGuaranteeRareDiscovery,
   applyRaidWeakness,
   applyClassDamage,
   applyClassDefense,
@@ -174,4 +177,34 @@ test('solo boss reward claims reject an old battle id after a newer battle has b
   );
   assert.equal(state.inventory.get('💎 Mana Kristali'), 2);
   assert.equal(state.inventory.get('iron-shard'), 2);
+});
+
+test('progression milestones unlock once at their exact level and victory thresholds', () => {
+  assert.deepEqual(progressionMilestone(9,4,4),[]);
+  assert.deepEqual(progressionMilestone(10,4,4),['Kıdemli Maceracı']);
+  assert.deepEqual(progressionMilestone(25,5,5),['Kıdemli Maceracı','Kıdemli Büyücü','İblis Avcısı','Zindan Kaşifi']);
+  assert.ok(progressionMilestone(25,10,10).includes('Kuzeyin Efsanesi'));
+  assert.equal(new Set(progressionMilestone(25,10,10)).size,5);
+});
+
+test('all eight mastery-10 spell awakenings apply only at the mastery cap', () => {
+  const expected = {
+    zoltraak:{damage:8}, alev_kuresi:{damage:10}, buz_mizragi:{freezeChance:0.1},
+    koruyucu_bariyer:{shieldReduction:0.05}, sifa_isigi:{healing:10},
+    yildirim_zinciri:{damage:12}, tas_duvar:{wallReduction:0.05}, mana_patlamasi:{damage:15}
+  };
+  for (const [spell,perk] of Object.entries(expected)) {
+    assert.deepEqual(getSpellMasteryAwakening(spell,9),{damage:0,freezeChance:0,shieldReduction:0,healing:0,wallReduction:0});
+    assert.deepEqual(getSpellMasteryAwakening(spell,10),{damage:0,freezeChance:0,shieldReduction:0,healing:0,wallReduction:0,...perk});
+  }
+  assert.deepEqual(getSpellMasteryAwakening('unknown',10),{damage:0,freezeChance:0,shieldReduction:0,healing:0,wallReduction:0});
+});
+
+test('rare discovery pity guarantees the next undiscovered location at each 20-adventure boundary', () => {
+  assert.equal(shouldGuaranteeRareDiscovery(18,0),false);
+  assert.equal(shouldGuaranteeRareDiscovery(19,0),true);
+  assert.equal(shouldGuaranteeRareDiscovery(39,1),true);
+  assert.equal(shouldGuaranteeRareDiscovery(59,2),true);
+  assert.equal(shouldGuaranteeRareDiscovery(79,3),false);
+  assert.equal(shouldGuaranteeRareDiscovery(100,3),false);
 });
