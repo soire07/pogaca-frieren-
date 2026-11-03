@@ -38,26 +38,25 @@ function safeErrorCode(error) {
     .slice(0, 100);
 }
 
-function safeList(value, maxItems = 4) {
+function safeList(value, maxItems = 4, maxChars = 120) {
   return Array.isArray(value)
-    ? value.slice(0, maxItems).map(item => redactGuardianText(item, 180)).filter(Boolean)
+    ? value.slice(0, maxItems).map(item => redactGuardianText(item, maxChars)).filter(Boolean)
     : [];
 }
 
 export function buildGuardianRepairTask(incident = {}, review = {}) {
   const incidentId = Number.isSafeInteger(Number(incident.id)) ? Number(incident.id) : 0;
   const lines = [
-    'Guardian incident #' + incidentId + ' · ' + redactGuardianText(incident.system, 40) + ' · ' + redactGuardianText(incident.code, 80),
-    'Başlık: ' + redactGuardianText(incident.title, 120),
-    'Frieren AI kök neden: ' + redactGuardianText(review.rootCause, 220),
-    'Önerilen çözüm: ' + redactGuardianText(review.suggestedFix, 220),
-    'İlgili dosyalar: ' + safeList(review.affectedFiles, 5).join(', '),
-    'Test planı: ' + safeList(review.tests, 4).join('; '),
-    'Riskler: ' + safeList(review.risks, 3).join('; '),
-    'Görev: Verilen dosyaları ve mevcut testleri incele; aynı testi tekrarlama. Kök nedeni düzeltmek için en fazla dört izinli mevcut JavaScript dosyasına minimal unified diff üret.',
-    'Çıktı yalnızca diff --git ile başlayan unified diff olmalı. Açıklama, Markdown çiti veya diff dışı metin ekleme. Bağlam yetersizse yalnızca REPAIR_CONTEXT_INSUFFICIENT yaz. npm run check geçmeden PR açma; merge veya deploy yapma.',
+    'Guardian incident #' + incidentId + ' · ' + redactGuardianText(incident.system, 40) + ' · ' + redactGuardianText(incident.code, 70),
+    'Başlık: ' + redactGuardianText(incident.title, 90),
+    'Kök neden: ' + redactGuardianText(review.rootCause, 180),
+    'Çözüm: ' + redactGuardianText(review.suggestedFix, 180),
+    'İlgili dosyalar: ' + safeList(review.affectedFiles, 5, 100).join(', '),
+    'Test planı: ' + safeList(review.tests, 3, 100).join('; '),
+    'Görev: Kaynak kodu ve testleri incele; var olan testi tekrarlama. Kök nedeni en fazla dört izinli mevcut JavaScript dosyasında düzelt.',
+    'Çıktı yalnızca diff --git ile başlayan unified diff olmalı. Bağlam yetersizse yalnızca REPAIR_CONTEXT_INSUFFICIENT yaz. npm run check başarılı olmadan PR açma; merge/deploy yapma.',
   ];
-  return lines.join('\n').slice(0, 1200);
+  return lines.join('\n').slice(0, 1000);
 }
 
 function isRepairableProposal(review) {
