@@ -557,3 +557,73 @@ test('co-op settlement failure rolls back all player rewards atomically', {
     }
   });
 });
+
+
+
+test('PostgreSQL reward ledger rejects an old solo boss battle ID after a newer victory', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = testSnowflake('93');
+    const userId = testSnowflake('94');
+    const firstBattleId = randomUUID();
+    const secondBattleId = randomUUID();
+    await ensureUser(guildId, userId);
+
+    const claim = battleId => claimSoloBossReward(pool, {
+      guildId,
+      userId,
+      battleId,
+      hp: 75,
+      mana: 60,
+      coins: 250,
+      xp: 100,
+      bonusLoot: 'historical-replay-bonus',
+      craftingMaterial: 'historical-replay-material',
+      journalBossKey: null,
+      spellUsed: null
+    });
+
+    try {
+      const first = await claim(firstBattleId);
+      const second = await claim(secondBattleId);
+      const replay = await claim(firstBattleId);
+      const player = await pool.query(
+        'SELECT coins,xp,boss_defeats,last_boss_battle_id FROM users WHERE guild_id=$1 AND user_id=$2',
+        [guildId, userId]
+      );
+      const claims = await pool.query(
+        "SELECT reward_id FROM rpg_reward_claims WHERE guild_id=$1 AND user_id=$2 AND reward_type='solo_boss' ORDER BY reward_id",
+        [guildId, userId]
+      );
+      const inventory = await pool.query(
+        'SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2',
+        [guildId, userId]
+      );
+
+      assert.equal(first.status, 'claimed');
+      assert.equal(second.status, 'claimed');
+      assert.equal(replay.status, 'already_claimed');
+      assert.equal(Number(player.rows[0].coins), 500, 'old battle replay must not award more gold');
+      assert.equal(Number(player.rows[0].xp), 200, 'old battle replay must not award more XP');
+      assert.equal(Number(player.rows[0].boss_defeats), 2, 'old battle replay must not increment boss defeats');
+      assert.equal(player.rows[0].last_boss_battle_id, secondBattleId);
+      assert.deepEqual(
+        claims.rows.map(row => row.reward_id),
+        [firstBattleId, secondBattleId].sort(),
+        'the ledger must retain both unique battle IDs, not only the latest one'
+      );
+      assert.deepEqual(
+        Object.fromEntries(inventory.rows.map(row => [row.item_key, Number(row.quantity)])),
+        {
+          'historical-replay-bonus': 2,
+          'historical-replay-material': 2,
+          '💎 Mana Kristali': 2
+        },
+        'old battle replay must not duplicate inventory rewards'
+      );
+    } finally {
+      await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    }
+  });
+});
