@@ -445,7 +445,14 @@
       "id": "RPG-039",
       "name": "Character collection leaderboard",
       "category": "Social",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js"
+        ],
+        "scope": "Synthetic Discord interaction against frieren_test inserts two players with different unique-character counts and copy totals, verifies ranking order and confirms the response is limited to the current guild."
+      }
     },
     {
       "id": "RPG-040",
@@ -617,7 +624,14 @@
       "id": "RPG-050",
       "name": "Claim rewards for co-op dungeon milestones",
       "category": "Progression",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js"
+        ],
+        "scope": "Synthetic Discord interaction against frieren_test verifies all 5/10/25 dungeon-win milestone claims are granted once, with exact gold, XP and inventory quantities; a second claim leaves balances, items and claim count unchanged."
+      }
     },
     {
       "id": "RPG-051",
@@ -3833,7 +3847,14 @@
       "id": "ARENA-001",
       "name": "90-day seasonal arena lifecycle",
       "category": "Arena",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "postgresql_integration",
+        "tests": [
+          "scripts/test-adventurer-platform.integration.js"
+        ],
+        "scope": "PostgreSQL integration expires a 90-day arena season, verifies it is marked completed, creates exactly one active replacement season with a 90-day duration and confirms only one active season remains."
+      }
     },
     {
       "id": "ARENA-002",
@@ -3879,7 +3900,14 @@
       "id": "EVENT-001",
       "name": "Guild event calendar with scheduled start and end times",
       "category": "Community",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "postgresql_integration",
+        "tests": [
+          "scripts/test-adventurer-platform.integration.js"
+        ],
+        "scope": "PostgreSQL integration verifies event start/end scheduling, idempotent participation, capacity enforcement, leaving and concurrent seat claims without exceeding capacity."
+      }
     },
     {
       "id": "EVENT-002",
