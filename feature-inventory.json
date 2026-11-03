@@ -898,7 +898,20 @@
       "id": "RPG-042",
       "name": "Mimic-themed interaction",
       "category": "Mini-games",
-      "status": "mapped_needs_review"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "mimic",
+          "checks": [
+            "Eğlence komutu içeriği",
+            "Eğlence komutu RPG verisini değiştirmez"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "7a3e9a9cb1a3287a69fd085500ddec069284d61d",
+      "verificationRunId": 41661096943
     },
     {
       "id": "RPG-043",
@@ -1650,7 +1663,16 @@
       "id": "RPG-091",
       "name": "Let the tank attract dungeon enemy attacks",
       "category": "Combat",
-      "status": "mapped_needs_review"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-boss-combat.js",
+          "test": "dungeon tank attracts seventy percent of single-target enemy attacks while alive"
+        }
+      ],
+      "verifiedAtCommit": "7a3e9a9cb1a3287a69fd085500ddec069284d61d",
+      "verificationRunId": 41661096943
     },
     {
       "id": "RPG-092",
@@ -1833,7 +1855,21 @@
       "id": "RPG-105",
       "name": "Resolve periodic mana-star burst as an area attack against all living raid members",
       "category": "Boss",
-      "status": "mapped_needs_review"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-boss-combat.js",
+          "test": "raid area special applies each living player's own defense and defense choice"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-boss-combat.js",
+          "test": "raid special attacks trigger on their exact scheduled rounds"
+        }
+      ],
+      "verifiedAtCommit": "7a3e9a9cb1a3287a69fd085500ddec069284d61d",
+      "verificationRunId": 41661096943
     },
     {
       "id": "RPG-106",
@@ -1994,33 +2030,66 @@
       "id": "RPG-116",
       "name": "Trigger the North Plateau Demon General's periodic area mana-star burst",
       "category": "Boss",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/check-gameplay-integrity.js",
-        "test": "solo demon battle persists HP and mana using the shared base-stat ratio helper",
-        "matchScore": 0.182,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-boss-combat.js",
+          "test": "raid boss catalog binds each named boss to its correct signature attack"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-boss-combat.js",
+          "test": "raid special attacks trigger on their exact scheduled rounds"
+        }
+      ],
+      "verifiedAtCommit": "7a3e9a9cb1a3287a69fd085500ddec069284d61d",
+      "verificationRunId": 41661096943
     },
     {
       "id": "RPG-117",
       "name": "Trigger the Glass Scales Dragon's every-other-turn shard rain with reduced area damage",
       "category": "Boss",
-      "status": "mapped_needs_review"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-boss-combat.js",
+          "test": "raid boss catalog binds each named boss to its correct signature attack"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-boss-combat.js",
+          "test": "raid special attacks trigger on their exact scheduled rounds"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-boss-combat.js",
+          "test": "raid area specials hit every living teammate and respect individual defense"
+        }
+      ],
+      "verifiedAtCommit": "7a3e9a9cb1a3287a69fd085500ddec069284d61d",
+      "verificationRunId": 41661096943
     },
     {
       "id": "RPG-118",
       "name": "Trigger Fallen Mage Aura's periodic mana-draining curse",
       "category": "Boss",
-      "status": "mapped_needs_review",
-      "candidateEvidence": {
-        "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "Mage class has a mana-cost discount in solo and co-op combat",
-        "matchScore": 0.222,
-        "reviewRequired": true
-      }
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-utils.js",
+          "test": "cooperative boss raid includes an area mana-star burst and a mana-draining curse"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-boss-combat.js",
+          "test": "raid boss catalog binds each named boss to its correct signature attack"
+        }
+      ],
+      "verifiedAtCommit": "7a3e9a9cb1a3287a69fd085500ddec069284d61d",
+      "verificationRunId": 41661096943
     },
     {
       "id": "RPG-119",
