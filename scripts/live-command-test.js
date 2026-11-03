@@ -350,6 +350,16 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             'SELECT class_name FROM users WHERE guild_id=$1 AND user_id=$2',
             [guildId, userId]
           );
+          const buildInteraction = {
+            customId: 'charpanel:build:' + userId,
+            guildId, user: componentUser, values: ['avci'],
+            isButton: () => false, isStringSelectMenu: () => true, isModalSubmit: () => false,
+            reply: async payload => { componentEffects.push({ type: 'reply', payload: normalizePayload(payload) }); },
+            update: async payload => { componentEffects.push({ type: 'update', payload: normalizePayload(payload) }); },
+            followUp: async payload => { componentEffects.push({ type: 'followUp', payload: normalizePayload(payload) }); }
+          };
+          await handleCharacterPanelInteraction(buildInteraction);
+          const buildState = await pool.query('SELECT active_build FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const statsInteraction = {
             customId: 'charpanel:save-stats:' + userId,
             guildId, user: componentUser,
@@ -374,6 +384,12 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
               expected: 'Büyücü sınıfı kalıcı kaydedilmeli',
               actual: classState.rows[0]?.class_name || 'kayıt yok',
               passed: classState.rows[0]?.class_name === 'Büyücü'
+            },
+            {
+              name: 'Karakter paneli savaş yapısı seçimi',
+              expected: 'Avcı yapısı active_build alanına kalıcı yazılmalı',
+              actual: buildState.rows[0]?.active_build || 'kayıt yok',
+              passed: buildState.rows[0]?.active_build === 'avci'
             },
             {
               name: 'Karakter paneli saldırı gelişimi',
@@ -1222,6 +1238,18 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Büyü kitabı sayfa paneli', expected: 'bir büyü adı, açıklaması ve sayfa gezinme düğmeleri gösterilmeli', actual: payloadText.includes('Büyük Büyü Kitabı') ? 'büyü kitabı paneli açıldı' : payloadText.slice(0, 400), passed: payloadText.includes('Büyük Büyü Kitabı') && payloadText.includes('buyukitabi_next') && payloadText.includes('buyukitabi_random') }
           );
         } else if (commandName === 'ekipmanparcala') {
+          const previewEffects = [];
+          const previewInteraction = makeInteraction(command, buildOptions(schema?.options, { esya: null }), guildId, previewEffects);
+          previewInteraction.user.id = userId;
+          previewInteraction.member = makeMember(userId);
+          await command.execute(previewInteraction);
+          const previewText = payloadTextFromEffects(previewEffects);
+          behavioralChecks.push({
+            name: 'On iki ekipman türünün parçalama önizlemesi',
+            expected: 'her ekipman adı, nadirliği ve geri kazanım tarifi seçimden önce gösterilmeli',
+            actual: equipmentItems.filter(entry => previewText.includes(entry.name)).length + '/' + equipmentItems.length + ' ekipman',
+            passed: equipmentItems.length === 12 && equipmentItems.every(entry => previewText.includes(entry.name) && previewText.includes(entry.rarity)) && previewText.includes('Geri kazanım')
+          });
           const item = equipmentItems.find(entry => entry.id === 'iron_sword');
           const salvageItem = '🥐 Büyülü Poğaça Kutusu';
           await pool.query('INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,2)', [guildId, userId, item.name]);
@@ -1582,7 +1610,8 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
         if (commandName === 'profil') {
           const targetId=userId+'4';
           await ensureUser(guildId,targetId);
-          await pool.query('UPDATE users SET level=18,xp=1700,coins=765,class_name=$3 WHERE guild_id=$1 AND user_id=$2',[guildId,targetId,'Büyücü']);
+          await pool.query("UPDATE users SET level=18,xp=1700,coins=765,class_name='Büyücü',active_build='avci',hp=50,max_hp=100,mana=40,max_mana=80,attack=100,defense=50 WHERE guild_id=$1 AND user_id=$2",[guildId,targetId]);
+          await pool.query('INSERT INTO user_talents(guild_id,user_id,attack_rank,defense_rank,hp_rank,mana_rank) VALUES($1,$2,1,1,1,1) ON CONFLICT(guild_id,user_id) DO UPDATE SET attack_rank=1,defense_rank=1,hp_rank=1,mana_rank=1',[guildId,targetId]);
           const targetUser={id:targetId,username:'ProfileTarget',tag:'ProfileTarget#0001',displayAvatarURL:()=> 'https://example.com/profile.png',toString(){return '<@'+targetId+'>';}};
           const before=await pool.query('SELECT level,xp,coins FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,targetId]);
           const actionEffects=[];
@@ -1593,7 +1622,8 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           const after=await pool.query('SELECT level,xp,coins FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,targetId]);
           const payloadText=JSON.stringify(actionEffects.map(effect=>effect.payload));
           behavioralChecks.push(
-            {name:'Başka oyuncunun RPG profili',expected:'hedef oyuncunun adı, seviyesi, XP ve altını gösterilmeli',actual:payloadText.includes('ProfileTarget')?'hedef profil gösterildi':payloadText.slice(0,300),passed:payloadText.includes('ProfileTarget')&&payloadText.includes('Seviye')&&payloadText.includes('18')&&payloadText.includes('1.700')&&payloadText.includes('765')},
+            {name:'Başka oyuncunun RPG profili ve savaş yapısı',expected:'hedef oyuncunun adı, seviyesi, XP, altın ve Avcı yapısı gösterilmeli',actual:payloadText.includes('Avcı')?'Avcı profili gösterildi':payloadText.slice(0,300),passed:payloadText.includes('ProfileTarget')&&payloadText.includes('Seviye')&&payloadText.includes('18')&&payloadText.includes('1.700')&&payloadText.includes('765')&&payloadText.includes('Avcı')},
+            {name:'Profilin yapı ve yetenek bonuslarıyla hesaplanan değerleri',expected:'53/105 HP, 42/84 mana, 125 saldırı ve 47 savunma gösterilmeli',actual:['53/105','42/84','125','47'].filter(value=>payloadText.includes(value)).join(', '),passed:['53/105','42/84','125','47'].every(value=>payloadText.includes(value))},
             {name:'Başka oyuncu profili salt okunur',expected:'hedef oyuncunun ilerleme değerleri değişmemeli',actual:JSON.stringify(before.rows[0])+' → '+JSON.stringify(after.rows[0]),passed:Object.keys(before.rows[0]).every(key=>Number(before.rows[0][key])===Number(after.rows[0][key]))}
           );
         }
@@ -1648,6 +1678,33 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
               {name:'Şans yüzdesi üst sınırı',expected:'rastgele değer 0.999 için %100 gösterilmeli ve yüksek şans yorumu gelmeli',actual:outcomes[1].includes('%100')?'%100':'üst sınır bulunamadı',passed:outcomes[1].includes('%100')&&outcomes[1].includes('yıldızlar senden yana')}
             );
           } finally { Math.random=previousRandom; }
+        }
+
+        if (commandName === 'buyupratik') {
+          await pool.query('DELETE FROM learned_spells WHERE guild_id=$1 AND user_id=$2 AND spell_key=$3', [guildId, userId, 'alev_kuresi']);
+          await pool.query('DELETE FROM spell_mastery WHERE guild_id=$1 AND user_id=$2 AND spell_key=$3', [guildId, userId, 'alev_kuresi']);
+          await pool.query('UPDATE users SET coins=100,mana=100 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const before = await pool.query('SELECT coins,mana FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const lockedEffects = [];
+          const lockedInteraction = makeInteraction(command, buildOptions(schema?.options, { buyu: 'alev_kuresi' }), guildId, lockedEffects);
+          lockedInteraction.user.id = userId;
+          lockedInteraction.member = makeMember(userId);
+          await command.execute(lockedInteraction);
+          const afterLocked = await pool.query('SELECT coins,mana FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const lockedMastery = await pool.query('SELECT 1 FROM spell_mastery WHERE guild_id=$1 AND user_id=$2 AND spell_key=$3', [guildId, userId, 'alev_kuresi']);
+          await pool.query('INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,$3) ON CONFLICT DO NOTHING', [guildId, userId, 'alev_kuresi']);
+          const learnedEffects = [];
+          const learnedInteraction = makeInteraction(command, buildOptions(schema?.options, { buyu: 'alev_kuresi' }), guildId, learnedEffects);
+          learnedInteraction.user.id = userId;
+          learnedInteraction.member = makeMember(userId);
+          await command.execute(learnedInteraction);
+          const afterLearned = await pool.query('SELECT coins,mana FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const learnedMastery = await pool.query('SELECT casts,mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=$2 AND spell_key=$3', [guildId, userId, 'alev_kuresi']);
+          effects.push(...lockedEffects, ...learnedEffects);
+          behavioralChecks.push(
+            { name: 'Öğrenilmemiş büyü pratiği kaynak koruması', expected: 'Alev Küresi öğrenilmediyse işlem reddedilmeli; altın, mana ve ustalık kaydı değişmemeli', actual: JSON.stringify(before.rows[0]) + ' → ' + JSON.stringify(afterLocked.rows[0]), passed: lockedEffects.length > 0 && payloadTextFromEffects(lockedEffects).includes('henüz öğrenilmedi') && Number(before.rows[0].coins) === Number(afterLocked.rows[0].coins) && Number(before.rows[0].mana) === Number(afterLocked.rows[0].mana) && lockedMastery.rowCount === 0 },
+            { name: 'Öğrenilmiş büyü pratiği kaynak ve ustalık kaydı', expected: 'öğrenilmiş Alev Küresi 25 altın ve 8 mana harcayıp bir kullanım kaydetmeli', actual: 'altın ' + afterLearned.rows[0]?.coins + ', mana ' + afterLearned.rows[0]?.mana + ', kullanım ' + learnedMastery.rows[0]?.casts, passed: Number(afterLearned.rows[0]?.coins) === 75 && Number(afterLearned.rows[0]?.mana) === 92 && Number(learnedMastery.rows[0]?.casts) === 1 && Number(learnedMastery.rows[0]?.mastery_level) === 0 }
+          );
         }
 
         const evidence = buildCommandEvidence({ responseCount: effects.length, behavioralChecks });
