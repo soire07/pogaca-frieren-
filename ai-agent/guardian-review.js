@@ -108,6 +108,7 @@ export async function reviewGuardianIncident({ groq, model, incident, collectCod
       },
     ],
     response_format: { type: 'json_object' },
+    reasoning_format: 'hidden',
   });
   const content = response?.choices?.[0]?.message?.content;
   if (typeof content !== 'string' || !content.trim()) throw new Error('GUARDIAN_REVIEW_EMPTY_RESPONSE');
