@@ -185,7 +185,7 @@ export async function generateRepairPatch({ task, incidentId = '', apiKey, model
 
 export async function generateRepairPatchWithRetry({
   task, incidentId = '', model = 'openai/gpt-oss-20b', client, context,
-  execFile = runGit, maxAttempts = 2,
+  execFile = runGit, maxAttempts = 3,
 } = {}) {
   const attempts = Math.max(1, Math.min(3, Number(maxAttempts) || 3));
   let repairFeedback = '';
