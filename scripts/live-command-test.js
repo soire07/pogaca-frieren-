@@ -919,38 +919,102 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           );
         } else if (commandName === 'zanaatustalari') {
           await pool.query('INSERT INTO user_crafting_progress(guild_id,user_id,level,xp,successful_crafts,salvaged_items) VALUES($1,$2,4,120,8,2) ON CONFLICT(guild_id,user_id) DO UPDATE SET level=4,xp=120,successful_crafts=8,salvaged_items=2', [guildId, userId]);
-          const interaction = makeInteraction(command, buildOptions(schema?.options, { kategori: 'level' }), guildId, effects);
-          interaction.user.id = userId;
-          interaction.member = makeMember(userId);
-          await command.execute(interaction);
-          const state = await pool.query('SELECT level FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
-          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
-          behavioralChecks.push(
-            { name: 'Zanaat ustaları sıralaması', expected: 'seviye 4 zanaatkâr listelenmeli', actual: 'zanaat seviyesi ' + state.rows[0]?.level, passed: Number(state.rows[0]?.level) === 4 && payloadText.includes('En Yüksek Zanaat Seviyesi') && payloadText.includes('4') }
-          );
+          const boards = [
+            { key: 'level', title: 'En Yüksek Zanaat Seviyesi', score: '4' },
+            { key: 'xp', title: 'En Çok Zanaat XP', score: '120' },
+            { key: 'crafts', title: 'En Çok Üretim Yapanlar', score: '8' },
+            { key: 'salvage', title: 'En Çok Ekipman Parçalayanlar', score: '2' }
+          ];
+          for (const board of boards) {
+            const start = effects.length;
+            const interaction = makeInteraction(command, buildOptions(schema?.options, { kategori: board.key }), guildId, effects);
+            interaction.user.id = userId;
+            interaction.member = makeMember(userId);
+            await command.execute(interaction);
+            const payloadText = JSON.stringify(effects.slice(start).map(effect => effect.payload));
+            behavioralChecks.push({
+              name: 'Zanaat ustaları ' + board.key + ' kategorisi',
+              expected: board.title + ' tablosunda skor ' + board.score + ' gösterilmeli',
+              actual: payloadText.includes(board.title) && payloadText.includes(board.score) ? 'kategori ve skor doğru' : payloadText.slice(0, 400),
+              passed: payloadText.includes(board.title) && payloadText.includes(userId) && payloadText.includes(board.score)
+            });
+          }
         } else if (commandName === 'kesifliderligi') {
           await pool.query("INSERT INTO adventure_discoveries(guild_id,user_id,discovery_key) VALUES($1,$2,'test-discovery') ON CONFLICT DO NOTHING", [guildId, userId]);
-          const interaction = makeInteraction(command, buildOptions(schema?.options, { kategori: 'kesif' }), guildId, effects);
-          interaction.user.id = userId;
-          interaction.member = makeMember(userId);
-          await command.execute(interaction);
-          const state = await pool.query('SELECT COUNT(*)::int AS total FROM adventure_discoveries WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
-          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
-          behavioralChecks.push(
-            { name: 'Keşif liderliği sıralaması', expected: 'test oyuncusu 1 keşif ile listelenmeli', actual: state.rows[0].total + ' keşif', passed: Number(state.rows[0].total) === 1 && payloadText.includes('En Büyük Kaşifler') && payloadText.includes(userId) && payloadText.includes('1') }
-          );
+          await pool.query("INSERT INTO adventure_route_mastery(guild_id,user_id,route_key,visits) VALUES($1,$2,'test-route',5) ON CONFLICT(guild_id,user_id,route_key) DO UPDATE SET visits=5", [guildId, userId]);
+          await pool.query('INSERT INTO adventure_streaks(guild_id,user_id,daily_streak,best_streak,last_visit_date) VALUES($1,$2,4,4,CURRENT_DATE) ON CONFLICT(guild_id,user_id) DO UPDATE SET daily_streak=4,best_streak=4,last_visit_date=CURRENT_DATE', [guildId, userId]);
+          const boards = [
+            { key: 'kesif', title: 'En Büyük Kaşifler', score: '1' },
+            { key: 'rota', title: 'Rota Ustaları', score: '5' },
+            { key: 'seri', title: 'Günlük Macera Serileri', score: '4' }
+          ];
+          for (const board of boards) {
+            const start = effects.length;
+            const interaction = makeInteraction(command, buildOptions(schema?.options, { kategori: board.key }), guildId, effects);
+            interaction.user.id = userId;
+            interaction.member = makeMember(userId);
+            await command.execute(interaction);
+            const payloadText = JSON.stringify(effects.slice(start).map(effect => effect.payload));
+            behavioralChecks.push({
+              name: 'Keşif liderliği ' + board.key + ' kategorisi',
+              expected: board.title + ' tablosunda test oyuncusunun ' + board.score + ' puanla görünmesi',
+              actual: payloadText.includes(board.title) && payloadText.includes(userId) && payloadText.includes(board.score) ? 'kategori ve skor doğru' : payloadText.slice(0, 400),
+              passed: payloadText.includes(board.title) && payloadText.includes(userId) && payloadText.includes(board.score)
+            });
+          }
         } else if (commandName === 'maceragecmisi') {
           const before = await pool.query('SELECT coins,xp,level,exploration_count FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
-          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          await pool.query(
+            "INSERT INTO adventure_history(guild_id,user_id,discovery_key,outcome_text,coins_awarded,xp_awarded,item_found,first_discovery,occurred_at) VALUES($1,$2,'forest-grimoire','Ordinary history entry',10,5,NULL,false,NOW()-INTERVAL '3 minutes'),($1,$2,'dragon-nest','Rare Dragon History',20,10,NULL,true,NOW()-INTERVAL '2 minutes'),($1,$2,'mimic-trail','Item Found History',30,15,'🧪 Test Potion',true,NOW()-INTERVAL '1 minute')",
+            [guildId, userId]
+          );
+          const summaryStart = effects.length;
+          const interaction = makeInteraction(command, buildOptions(schema?.options, { filtre: 'tum' }), guildId, effects);
           interaction.user.id = userId;
           interaction.member = makeMember(userId);
           await command.execute(interaction);
           const after = await pool.query('SELECT coins,xp,level,exploration_count FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
-          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          const summaryText = JSON.stringify(effects.slice(summaryStart).map(effect => effect.payload));
           behavioralChecks.push(
-            { name: 'Macera geçmişi özet alanları', expected: 'ilerleme, savaş, macera, koleksiyon, hazırlık ve zanaat alanları gösterilmeli', actual: ['İlerleme','Savaş','Macera','Koleksiyon','Hazırlık','Zanaat'].filter(x => payloadText.includes(x)).join(', '), passed: ['İlerleme','Savaş','Macera','Koleksiyon','Hazırlık','Zanaat'].every(x => payloadText.includes(x)) },
+            { name: 'Macera geçmişi özet alanları', expected: 'ilerleme, savaş, macera, koleksiyon, hazırlık ve zanaat alanları gösterilmeli', actual: ['İlerleme','Savaş','Macera','Koleksiyon','Hazırlık','Zanaat'].filter(x => summaryText.includes(x)).join(', '), passed: ['İlerleme','Savaş','Macera','Koleksiyon','Hazırlık','Zanaat'].every(x => summaryText.includes(x)) },
             { name: 'Macera geçmişi salt okunur', expected: 'oyuncu RPG durumu değişmemeli', actual: JSON.stringify(before.rows[0]) + ' → ' + JSON.stringify(after.rows[0]), passed: ['coins','xp','level','exploration_count'].every(key => Number(before.rows[0][key]) === Number(after.rows[0][key])) }
           );
+          for (const filter of [
+            { key: 'nadir', include: 'Rare Dragon History', exclude: 'Ordinary history entry' },
+            { key: 'esya', include: 'Item Found History', exclude: 'Rare Dragon History' }
+          ]) {
+            const start = effects.length;
+            const filteredInteraction = makeInteraction(command, buildOptions(schema?.options, { filtre: filter.key }), guildId, effects);
+            filteredInteraction.user.id = userId;
+            filteredInteraction.member = makeMember(userId);
+            await command.execute(filteredInteraction);
+            const filteredText = JSON.stringify(effects.slice(start).map(effect => effect.payload));
+            behavioralChecks.push({
+              name: 'Macera geçmişi ' + filter.key + ' filtresi',
+              expected: filter.include + ' gösterilmeli ve ' + filter.exclude + ' gizlenmeli',
+              actual: filteredText.includes(filter.include) && !filteredText.includes(filter.exclude) ? 'filtre doğru uygulandı' : filteredText.slice(0, 400),
+              passed: filteredText.includes(filter.include) && !filteredText.includes(filter.exclude)
+            });
+          }
+          const otherUserId = buildCoopTestUserIds(index + 500, userId, runContext.coopUserPrefix)[1];
+          await ensureUser(guildId, otherUserId);
+          await pool.query(
+            "INSERT INTO adventure_history(guild_id,user_id,discovery_key,outcome_text,coins_awarded,xp_awarded,item_found,first_discovery) VALUES($1,$2,'dragon-nest','Other player rare history',10,5,NULL,true)",
+            [guildId, otherUserId]
+          );
+          const otherStart = effects.length;
+          const otherUser = { id: otherUserId, username: 'OtherHistoryTarget', displayAvatarURL: () => 'https://example.com/avatar.png' };
+          const otherInteraction = makeInteraction(command, buildOptions(schema?.options, { kullanici: otherUser, filtre: 'nadir' }), guildId, effects);
+          otherInteraction.user.id = userId;
+          otherInteraction.member = makeMember(userId);
+          await command.execute(otherInteraction);
+          const otherText = JSON.stringify(effects.slice(otherStart).map(effect => effect.payload));
+          behavioralChecks.push({
+            name: 'Başka oyuncunun macera geçmişi',
+            expected: 'seçilen başka oyuncunun nadir macerası ve kullanıcı adı gösterilmeli',
+            actual: otherText.includes('OtherHistoryTarget') && otherText.includes('Other player rare history') ? 'hedef oyuncu geçmişi doğru' : otherText.slice(0, 400),
+            passed: otherText.includes('OtherHistoryTarget') && otherText.includes('Other player rare history')
+          });
         } else if (commandName === 'animequiz') {
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
           interaction.user.id = userId;
