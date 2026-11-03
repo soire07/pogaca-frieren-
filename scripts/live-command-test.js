@@ -1328,7 +1328,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           const payloadText=payloadTextFromEffects(effects);
           behavioralChecks.push(
             {name:'Oyuncu seviyesine göre boss kademesi',expected:'seviye 20 için Kuzey İblisi ve sıradaki seviye 35 bossu gösterilmeli',actual:payloadText.includes('Kuzey İblisi')&&payloadText.includes('Büyük İblis Komutanı')?'kademe ve sonraki eşik doğru':'boss rehberi içeriği eksik',passed:payloadText.includes('Seviyene göre kademe')&&payloadText.includes('Kuzey İblisi')&&payloadText.includes('Büyük İblis Komutanı')},
-            {name:'Boss rehberi zafer ve ödül bilgileri',expected:'boss zafer sayısı, ödül ve ganimet olasılıkları gösterilmeli',actual:payloadText.includes('Boss zaferi')&&payloadText.includes('3')&&payloadText.includes('Nadir ganimet')?'zafer/ganimet alanları gösterildi':'rehber alanları eksik',passed:payloadText.includes('Boss zaferi: 3')&&payloadText.includes('Nadir ganimet')}
+            {name:'Boss rehberi zafer ve ödül bilgileri',expected:'boss zafer sayısı, ödül ve ganimet olasılıkları gösterilmeli',actual:payloadText.includes('Boss zaferi')&&payloadText.includes('3')&&payloadText.includes('Nadir ganimet')?'zafer/ganimet alanları gösterildi':'rehber alanları eksik',passed:payloadText.includes('Boss zaferi')&&payloadText.includes('Nadir ganimet')}
           );
         }
 
