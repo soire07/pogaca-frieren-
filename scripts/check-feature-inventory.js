@@ -17,6 +17,9 @@ for (const feature of inventory.features) {
   if (!inventory.statuses.includes(feature.status)) {
     errors.push(`Geçersiz durum: ${feature.id} → ${feature.status}`);
   }
+  if (!['verified_by_automated_test','mapped_needs_review'].includes(feature.status)) {
+    errors.push(`Özellik test izlenebilirliğine alınmamış: ${feature.id} → ${feature.status}`);
+  }
   if (feature.status === 'verified_by_automated_test') {
     if (!Array.isArray(feature.verificationEvidence) || feature.verificationEvidence.length === 0) {
       errors.push(`Doğrulanmış özellikte test kanıtı eksik: ${feature.id}`);
@@ -55,6 +58,9 @@ for (const feature of inventory.features) {
       }
     }
   }
+}
+if (inventory.auditComplete && inventory.features.some(feature => feature.status !== 'verified_by_automated_test')) {
+  errors.push('auditComplete yalnızca 325 özelliğin tamamı doğrulandığında true olabilir.');
 }
 if (errors.length) {
   console.error(errors.join('\\n'));
