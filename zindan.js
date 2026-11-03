@@ -1,9 +1,10 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
-import { equipmentItems, equipmentBonus } from './equipment-data.js';
+import { equipmentItems } from './equipment-data.js';
 import { levelForXp } from './utils.js';
 import { getGuildRpgContent } from './owner-rpg-content.js';
 import { selectDungeonForLevel } from './rpg-content-catalog.js';
+import { getEquipmentCombatBonus } from './rpg-mechanics.js';
 
 const COOLDOWN_MINUTES = 30;
 const COOLDOWN_MS = COOLDOWN_MINUTES * 60_000;
@@ -102,7 +103,7 @@ export default {
       }
 
       const combatants = players.map(player => {
-        const gear = equipmentBonus(gearByUser.get(player.user_id) || []);
+        const gear = getEquipmentCombatBonus(gearByUser.get(player.user_id) || []);
         return {
           ...player,
           level: Number(player.level),
