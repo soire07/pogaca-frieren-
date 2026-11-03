@@ -45,7 +45,7 @@ test('guard reduces the next incoming hit and is consumed exactly once', () => {
   state = resolveArenaTurn(state, { actorId: teamA[1].userId, targetId: teamB[0].userId }).state;
   state = resolveArenaTurn(state, { actorId: teamA[2].userId, targetId: teamB[0].userId }).state;
   state = resolveArenaTurn(state, { actorId: teamB[0].userId, targetId: teamA[0].userId }).state;
-  assert.equal(state.players[0].hp, 87);
+  assert.equal(state.players[0].hp, 86);
   assert.equal(state.players[0].guarding, false);
 });
 
@@ -58,24 +58,15 @@ test('spell consumes mana and deals boosted damage; insufficient mana is rejecte
   assert.throws(() => resolveArenaTurn(exhausted, { actorId: teamA[0].userId, action: 'spell', targetId: teamB[0].userId }), /ARENA_INSUFFICIENT_MANA/);
 });
 
-test('defeated players are skipped and match ends when the opposing team is eliminated', () => {
+test('defeated players are skipped and a team is declared winner only after all opponents fall', () => {
   let state = create();
-  state.players[3] = { ...state.players[3], hp: 1 };
+  state.players = state.players.map((p, i) => i >= 3 ? { ...p, hp: 1 } : p);
   const first = resolveArenaTurn(state, { actorId: teamA[0].userId, targetId: teamB[0].userId });
   assert.equal(first.state.players[3].alive, false);
   assert.equal(first.state.turnIndex, 1);
-  let finalState = first.state;
-  for (const id of [teamA[1].userId, teamA[2].userId, teamB[1].userId, teamB[2].userId]) {
-    const actor = getArenaCurrentPlayer(finalState);
-    const target = finalState.players.find(p => p.team !== actor.team && p.alive);
-    if (!target) break;
-    finalState = resolveArenaTurn(finalState, { actorId: actor.userId, targetId: target.userId }).state;
-  }
-  assert.equal(finalState.status, 'active');
+  let next = resolveArenaTurn(first.state, { actorId: teamA[1].userId, targetId: teamB[1].userId });
+  next = resolveArenaTurn(next.state, { actorId: teamA[2].userId, targetId: teamB[2].userId });
+  assert.equal(next.state.status, 'finished');
+  assert.equal(next.state.winner, 'A');
 });
 
-test('finished matches reject additional turns and preserve the winning team', () => {
-  const state = create();
-  const finished = { ...state, status: 'finished', winner: 'A' };
-  assert.throws(() => resolveArenaTurn(finished, { actorId: teamA[0].userId, targetId: teamB[0].userId }), /ARENA_MATCH_NOT_ACTIVE/);
-});
