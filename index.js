@@ -8,6 +8,7 @@ import { resolveTradeOffer } from './trade-transaction.js';
 import { renderMarket, renderMarketItem, buyMarketItem, renderPurchaseResult, renderMarketInventory } from './market.js';
 import { levelForXp } from './utils.js';
 import { handleCharacterPanelInteraction } from './karakter.js';
+import { handleArenaInteraction } from './arena.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { spawn } from 'node:child_process';
@@ -155,6 +156,7 @@ client.on(Events.InteractionCreate, async interaction => {
       return sendPrivateInteractionError(interaction, 'Frieren şu anda bakım modunda. İşlemler kısa süreliğine durduruldu.');
     }
     if (await handleCharacterPanelInteraction(interaction)) return;
+    if (await handleArenaInteraction(interaction)) return;
   if (interaction.isButton() && interaction.customId.startsWith('market_')) {
     const parts = interaction.customId.split(':');
     const action = parts[0];
