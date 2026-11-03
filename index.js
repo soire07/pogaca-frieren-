@@ -20,6 +20,7 @@ import { handleNeuralQualityReportRequest } from './guardian/neural-quality-repo
 import { saveGuardianQualityReport } from './guardian/quality-report-store.js';
 import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
+import { shouldSkipFallbackResponse } from './guardian/http-response-guard.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -351,7 +352,7 @@ createServer(async (req, res) => {
   if (await handlePublicSiteRequest(req, res, { client, db: pool })) return;
   // A route handler may have committed a response before returning an unhandled result.
   // Never enter the fallback response path after headers/body have already been sent.
-  if (res.headersSent || res.writableEnded) return;
+  if (shouldSkipFallbackResponse(res)) return;
   const sendJson = (status, payload) => {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(payload));
