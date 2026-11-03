@@ -71,7 +71,7 @@ test('solo boss victory grants rewards in one production transaction and guards 
   const victory = source.indexOf('if (bossHp <= 0)');
   const claim = source.indexOf('claimSoloBossReward', victory);
   assert.ok(victory >= 0 && claim > victory, 'victory handler must invoke the production reward transaction');
-  assert.match(rewards, /last_boss_battle_id IS DISTINCT FROM \$7/);
+  assert.match(rewards, /INSERT INTO solo_boss_reward_claims/);
   assert.match(rewards, /coins=coins\+\$5, xp=xp\+\$6/);
   assert.match(rewards, /INSERT INTO inventory/);
   assert.match(rewards, /await db.query\('COMMIT'\)/);
@@ -102,7 +102,7 @@ test('solo boss reward persistence is idempotent per battle session across dupli
   assert.match(source, /randomUUID/);
   assert.ok(rewards.includes('last_boss_battle_id'));
   assert.ok(source.includes('claimSoloBossReward'));
-  assert.ok(rewards.includes('last_boss_battle_id IS DISTINCT FROM $7'));
+  assert.ok(rewards.includes('ON CONFLICT (guild_id,user_id,battle_id) DO NOTHING'));
   assert.ok(rewards.includes("return { status: 'already_claimed' }"));
   assert.match(schema, /last_boss_battle_id TEXT/);
 });
