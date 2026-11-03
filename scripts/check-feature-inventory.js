@@ -6,6 +6,26 @@ const ids = inventory.features.map(feature => feature.id);
 const originalFeatures = inventory.features.filter(feature => !feature.id.startsWith('ROADMAP-'));
 const roadmapFeatures = inventory.features.filter(feature => feature.id.startsWith('ROADMAP-'));
 
+const normalizeFeatureName = value => String(value || '')
+  .normalize('NFKD')
+  .replace(/[\\u0300-\\u036f]/g, '')
+  .toLocaleLowerCase('en')
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim();
+const names = new Map();
+for (const feature of inventory.features) {
+  const normalized = normalizeFeatureName(feature.name);
+  if (!normalized) continue;
+  const matches = names.get(normalized) || [];
+  matches.push(feature.id);
+  names.set(normalized, matches);
+}
+for (const [name, matches] of names) {
+  if (matches.length > 1) {
+    errors.push(`Yinelenen özellik adı (normalleştirilmiş): ${matches.join(', ')} → ${name}`);
+  }
+}
+
 if (inventory.count !== inventory.features.length) {
   errors.push(`count alanı (${inventory.count}) kayıt sayısıyla (${inventory.features.length}) eşleşmeli.`);
 }
