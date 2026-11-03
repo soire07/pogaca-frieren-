@@ -71,7 +71,7 @@ test('one shared equipment combat calculation applies and removes legendary and 
     {attack:epicActive.attack,defense:epicActive.defense,hp:epicActive.hp,mana:epicActive.mana},
     {attack:0,defense:13,hp:40,mana:65}
   );
-  assert.equal(getEquipmentCombatBonus(legendary.filter(item=>item.id!=='demon_blade')).attack,16);
+  assert.equal(getEquipmentCombatBonus(legendary.filter(item=>item.id!=='demon_blade')).attack,0);
   assert.equal(getEquipmentCombatBonus(epic.filter(item=>item.id!=='rune_ring')).defense,7);
 });
 
