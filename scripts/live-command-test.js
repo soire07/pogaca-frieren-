@@ -716,7 +716,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Keşif defteri görünümü', expected: 'keşif defteri, hazine haritası, günlük seri ve rota ustalığı gösterilmeli', actual: labels.filter(label => payloadText.includes(label)).join(', '), passed: labels.every(label => payloadText.includes(label)) },
             { name: 'Keşif defterinin salt okunur olması', expected: 'görüntüleme sırasında keşif kayıtları değişmemeli', actual: before.rows[0].total + ' → ' + after.rows[0].total + ' keşif kaydı', passed: Number(before.rows[0].total) === Number(after.rows[0].total) }
           );
-        } else if (['bossrehberi','sinifrehberi','dunya','yardim','buyu','evren'].includes(commandName)) {
+        } else if (['bossrehberi','sinifrehberi','dunya','yardim','buyu'].includes(commandName)) {
           const before = await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
           interaction.user.id = userId;
@@ -913,16 +913,64 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Keşif liderliği sıralaması', expected: 'test oyuncusu 1 keşif ile listelenmeli', actual: state.rows[0].total + ' keşif', passed: Number(state.rows[0].total) === 1 && payloadText.includes('En Büyük Kaşifler') && payloadText.includes(userId) && payloadText.includes('1') }
           );
         } else if (commandName === 'maceragecmisi') {
-          const before = await pool.query('SELECT coins,xp,level,exploration_count FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          await pool.query(
+            'UPDATE users SET level=7,xp=987,coins=4321,daily_streak=4,best_daily_streak=9,exploration_count=11,items_used_count=6,boss_defeats=3,dungeon_runs=5,dungeon_wins=2,character_draw_count=8 WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          await pool.query(
+            "INSERT INTO anime_character_collection(guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,quantity) VALUES($1,$2,'Test Fern','Frieren','Nadir','🌿',123,'test','test',3)",
+            [guildId, userId]
+          );
+          await pool.query("INSERT INTO user_equipment(guild_id,user_id,slot,item_key) VALUES($1,$2,'weapon','TEST Staff')", [guildId, userId]);
+          await pool.query("INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,'alev_kuresi'),($1,$2,'buz_mizragi')", [guildId, userId]);
+          await pool.query(
+            "INSERT INTO adventure_history(guild_id,user_id,discovery_key,outcome_text,coins_awarded,xp_awarded,item_found,first_discovery) VALUES($1,$2,'test-north','TEST Kuzey Keşfi',321,123,'TEST Mana Kristali',TRUE)",
+            [guildId, userId]
+          );
+          await pool.query(
+            'INSERT INTO user_crafting_progress(guild_id,user_id,level,xp,successful_crafts,salvaged_items) VALUES($1,$2,5,400,10,2)',
+            [guildId, userId]
+          );
+          const snapshotQuery = 'SELECT coins,xp,level,daily_streak,best_daily_streak,exploration_count,items_used_count,boss_defeats,dungeon_runs,dungeon_wins,character_draw_count FROM users WHERE guild_id=$1 AND user_id=$2';
+          const before = await pool.query(snapshotQuery, [guildId, userId]);
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
           interaction.user.id = userId;
           interaction.member = makeMember(userId);
           await command.execute(interaction);
-          const after = await pool.query('SELECT coins,xp,level,exploration_count FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
-          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          const after = await pool.query(snapshotQuery, [guildId, userId]);
+          const payloadText = payloadTextFromEffects(effects);
+          const expectedValues = ['4.321','987','Seviye','11','6','3','5','2','8','1','3','4 gün','9 gün','TEST Kuzey Keşfi','321 altın','123 XP','TEST Mana Kristali','5','400','10','2'];
           behavioralChecks.push(
-            { name: 'Macera geçmişi özet alanları', expected: 'ilerleme, savaş, macera, koleksiyon, hazırlık ve zanaat alanları gösterilmeli', actual: ['İlerleme','Savaş','Macera','Koleksiyon','Hazırlık','Zanaat'].filter(x => payloadText.includes(x)).join(', '), passed: ['İlerleme','Savaş','Macera','Koleksiyon','Hazırlık','Zanaat'].every(x => payloadText.includes(x)) },
-            { name: 'Macera geçmişi salt okunur', expected: 'oyuncu RPG durumu değişmemeli', actual: JSON.stringify(before.rows[0]) + ' → ' + JSON.stringify(after.rows[0]), passed: ['coins','xp','level','exploration_count'].every(key => Number(before.rows[0][key]) === Number(after.rows[0][key])) }
+            { name: 'Macera geçmişi gerçek oyuncu istatistikleri', expected: 'XP, altın, seviye, savaş, keşif, eşya kullanımı, çekim ve günlük seri değerleri doğru gösterilmeli', actual: expectedValues.filter(value => payloadText.includes(value)).join(', '), passed: expectedValues.slice(0, 13).every(value => payloadText.includes(value)) },
+            { name: 'Macera geçmişi koleksiyon ve hazırlık verileri', expected: '1 farklı karakter / 3 kopya, 2 öğrenilmiş büyü ve 1 kuşanılmış ekipman görünmeli', actual: payloadText.includes('1') && payloadText.includes('3') && payloadText.includes('2') ? 'koleksiyon ve hazırlık değerleri gösterildi' : payloadText.slice(0, 350), passed: payloadText.includes('Farklı karakter: **1**') && payloadText.includes('Toplam kopya: **3**') && payloadText.includes('Öğrenilen büyü: **2**') && payloadText.includes('Kuşanılan ekipman: **1**') },
+            { name: 'Macera geçmişi son macera ödül kaydı', expected: 'son macera metni, altın, XP, ilk keşif ve bulunan eşya gösterilmeli', actual: ['TEST Kuzey Keşfi','321 altın','123 XP','Yeni keşif','TEST Mana Kristali'].filter(value => payloadText.includes(value)).join(', '), passed: ['TEST Kuzey Keşfi','321 altın','123 XP','Yeni keşif','TEST Mana Kristali'].every(value => payloadText.includes(value)) },
+            { name: 'Macera geçmişi zanaat ilerlemesi', expected: 'zanaat seviyesi 5, XP 400, üretilen 10 ve parçalanan 2 gösterilmeli', actual: ['Seviye: **5**','Zanaat XP: **400**','Üretilen eşya: **10**','Parçalanan eşya: **2**'].filter(value => payloadText.includes(value)).join(', '), passed: ['Seviye: **5**','Zanaat XP: **400**','Üretilen eşya: **10**','Parçalanan eşya: **2**'].every(value => payloadText.includes(value)) },
+            { name: 'Macera geçmişi salt okunur davranışı', expected: 'komut oyuncu istatistiklerini değiştirmemeli', actual: JSON.stringify(before.rows[0]) + ' → ' + JSON.stringify(after.rows[0]), passed: Object.keys(before.rows[0]).every(key => Number(before.rows[0][key]) === Number(after.rows[0][key])) }
+          );
+        } else if (commandName === 'evren') {
+          const topics = [
+            ['dunya','Frieren Evreni — Dünya Rehberi','Çağın ruhu'],
+            ['karakterler','Karakterler ve Yol Arkadaşları','Frieren'],
+            ['bolgeler','Bölgeler ve Keşif Alanları','Merkez Topraklar'],
+            ['buyuler','Büyü Sistemi ve Büyücülük','Zoltraak'],
+            ['iblisler','İblisler ve Tehditler','Üst düzey iblisler'],
+            ['sinav','Büyücü Sınavı ve Birlikler','Birinci Sınıf Büyücü Sınavı'],
+            ['esyalar','Büyülü Eşyalar ve Koleksiyon','Grimoire']
+          ];
+          const topicResults = [];
+          for (const [key,title,detail] of topics) {
+            const actionEffects = [];
+            const actionInteraction = makeInteraction(command, buildOptions(schema?.options, { konu: key }), guildId, actionEffects);
+            actionInteraction.user.id = userId;
+            actionInteraction.member = makeMember(userId);
+            await command.execute(actionInteraction);
+            const text = payloadTextFromEffects(actionEffects);
+            topicResults.push({ key,title,detail,passed: text.includes(title) && text.includes(detail) });
+            effects.push(...actionEffects);
+          }
+          behavioralChecks.push(
+            { name: 'Frieren evreni yedi lore sayfası', expected: 'dünya, karakterler, bölgeler, büyüler, iblisler, sınav ve eşyalar sayfaları içerik üretmeli', actual: topicResults.filter(item => item.passed).map(item => item.key).join(', '), passed: topicResults.length === 7 && topicResults.every(item => item.passed) },
+            { name: 'Lore sayfaları etkileşim yanıtı', expected: 'her konu için ayrı embed yanıtı oluşmalı', actual: effects.length + ' yanıt', passed: effects.length === 7 }
           );
         } else if (commandName === 'animequiz') {
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
