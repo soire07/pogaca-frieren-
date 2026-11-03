@@ -22,6 +22,7 @@ import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettings
 import { handlePublicSiteRequest } from './public-site.js';
 import { shouldSkipFallbackResponse } from './guardian/http-response-guard.js';
 import { withHttpErrorBoundary } from './guardian/http-error-boundary.js';
+import { handleHealthRequest } from './guardian/health-route.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -341,6 +342,7 @@ const PORT = process.env.PORT || 3000;
 let uptimeRobotCache = null;
 
 createServer(withHttpErrorBoundary(async (req, res) => {
+  if (await handleHealthRequest(req, res, { client, db: pool })) return;
   if (req.method === 'POST' && req.url === '/internal/neural-quality-report') {
     const result = await handleNeuralQualityReportRequest(req, {
       saveReport: input => saveGuardianQualityReport(pool, input),
