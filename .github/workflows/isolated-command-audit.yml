@@ -1,5 +1,7 @@
 name: Frieren isolated command audit
 on:
+  push:
+    branches: [main, fix/solo-boss-reward-idempotency-mainline]
   pull_request:
     branches: [main]
   workflow_dispatch:
