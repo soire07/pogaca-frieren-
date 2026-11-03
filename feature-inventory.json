@@ -2022,11 +2022,12 @@
       "category": "Web",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "database_integration_only",
+        "level": "route_and_database_integration",
         "tests": [
+          "scripts/test-public-site.js",
           "scripts/test-adventurer-platform.integration.js"
         ],
-        "scope": "Dashboard data query and account isolation; authenticated HTTP route and real-browser user flow remain unverified."
+        "scope": "Authenticated dashboard route checks session gating, renders linked RPG/season/event data and exposes a CSRF-protected link action; disposable PostgreSQL test verifies dashboard account isolation. Browser-driven E2E remains unverified."
       }
     }
   ],
