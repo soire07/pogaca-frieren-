@@ -2,7 +2,7 @@ import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { levelForXp } from './utils.js';
 
-const npcs = {
+export const NPC_SIDE_QUESTS = {
   frieren: {
     name: '🪄 Frieren',
     path: 'merak',
@@ -89,7 +89,7 @@ export default {
     const userId = interaction.user.id;
     const npcKey = interaction.options.getString('karakter');
     const action = interaction.options.getString('eylem');
-    const npc = npcs[npcKey];
+    const npc = NPC_SIDE_QUESTS[npcKey];
 
     try {
       await ensureUser(guildId, userId);
