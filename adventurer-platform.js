@@ -103,14 +103,23 @@ export async function ensureActiveArenaSeason(db = pool, guildId) {
   return result.rows[0];
 }
 
+export function getArenaRankName(rating) {
+  const value=Number(rating)||0;
+  if(value>=1800)return 'Efsane';
+  if(value>=1600)return 'Elmas';
+  if(value>=1400)return 'Platin';
+  if(value>=1200)return 'Altın';
+  if(value>=1000)return 'Gümüş';
+  return 'Bronz';
+}
+
 export async function getArenaRating(db = pool, guildId, userId) {
   if (!DISCORD_ID.test(String(guildId || '')) || !DISCORD_ID.test(String(userId || ''))) throw new Error('ARENA_RATING_INPUT_INVALID');
-  await ensureAdventurerPlatformTables(db);
   await ensureUser(guildId, userId);
   const season = await ensureActiveArenaSeason(db, guildId);
   await db.query('INSERT INTO arena_ratings(season_id,guild_id,user_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING', [season.season_id,guildId,userId]);
   const result = await db.query('SELECT rating,wins,losses,matches,points FROM arena_ratings WHERE season_id=$1 AND guild_id=$2 AND user_id=$3', [season.season_id,guildId,userId]);
-  return { season, ...result.rows[0] };
+  return { season, ...result.rows[0], rank: getArenaRankName(result.rows[0].rating) };
 }
 
 export async function settleArenaMatch(client, { guildId, matchId, state }) {
@@ -176,7 +185,7 @@ export async function getArenaLeaderboard(db = pool, guildId, limit = 10) {
      ORDER BY r.rating DESC,r.wins DESC,r.user_id ASC LIMIT $3`,
     [season.season_id,guildId,Math.max(1,Math.min(25,Number(limit)||10))]
   );
-  return { season, players: result.rows };
+  return { season, players: result.rows.map(player => ({ ...player, rank: getArenaRankName(player.rating) })) };
 }
 
 export async function createSiteLinkToken(db = pool, { guildId, userId }) {
@@ -218,7 +227,8 @@ export async function getAdventurerDashboard(db = pool, accountId) {
   const profiles=await db.query(
     `SELECT l.guild_id,l.user_id,u.character_name,u.class_name,u.level,u.xp,u.coins,u.hp,u.max_hp,u.mana,u.max_mana,
        s.season_id,s.name AS season_name,COALESCE(r.rating,1000) AS rating,
-       COALESCE(r.wins,0) AS wins,COALESCE(r.losses,0) AS losses,COALESCE(r.matches,0) AS matches
+       COALESCE(r.wins,0) AS wins,COALESCE(r.losses,0) AS losses,COALESCE(r.matches,0) AS matches,
+       CASE WHEN COALESCE(r.rating,1000)>=1800 THEN 'Efsane' WHEN COALESCE(r.rating,1000)>=1600 THEN 'Elmas' WHEN COALESCE(r.rating,1000)>=1400 THEN 'Platin' WHEN COALESCE(r.rating,1000)>=1200 THEN 'Altın' WHEN COALESCE(r.rating,1000)>=1000 THEN 'Gümüş' ELSE 'Bronz' END AS rank_name
      FROM site_discord_links l JOIN users u USING(guild_id,user_id)
      LEFT JOIN LATERAL (SELECT season_id,name FROM arena_seasons WHERE guild_id=l.guild_id AND status='active' ORDER BY season_id DESC LIMIT 1) s ON TRUE
      LEFT JOIN arena_ratings r ON r.season_id=s.season_id AND r.guild_id=l.guild_id AND r.user_id=l.user_id
