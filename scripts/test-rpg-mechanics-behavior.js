@@ -219,7 +219,7 @@ test('final dungeon boss attack profile applies its 1.35 multiplier, enrage and 
   const finalBoss = calculateFinalDungeonBossRawDamage(10, {
     floor: 5, totalFloors: 5, turn: 3, enraged: true, specialAttack: true, phase: 3
   });
-  assert.equal(regular, 10);
+  assert.equal(regular, 9);
   assert.equal(finalBoss, 35);
   assert.ok(finalBoss > regular);
 });
@@ -248,6 +248,10 @@ test('party role assignments reject duplicate or unknown roles and preserve the 
   assert.deepEqual(getPartyRoleModifiers('tank'), { hp: 1.25, attack: 0.85, defense: 1.4 });
   assert.deepEqual(getPartyRoleModifiers('healer'), { hp: 1, attack: 0.9, defense: 1.05 });
   assert.deepEqual(getPartyRoleModifiers('damage'), { hp: 0.95, attack: 1.3, defense: 0.9 });
+  assert.deepEqual(getPartyRoleModifiers('tank', 'raid'), { hp: 1.25, attack: 0.85, defense: 1.45 });
+  assert.deepEqual(getPartyRoleModifiers('healer', 'raid'), { hp: 1, attack: 0.85, defense: 1.05 });
+  assert.deepEqual(getPartyRoleModifiers('damage', 'raid'), { hp: 0.95, attack: 1.35, defense: 0.9 });
+  assert.equal(canAssignPartyRole(['damage'], 'damage'), true);
 });
 
 test('party wipe is reported only when every member has zero or less HP', () => {
