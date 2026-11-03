@@ -1628,14 +1628,13 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_postgresql",
+        "level": "unit_and_source_contract",
         "tests": [
-          "scripts/live-command-test.js",
           "scripts/test-rpg-mechanics-behavior.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Ortak boss sentetik etkileşiminde tank savunma aksiyonu seçer, hedefleme tankı seçer ve sonuç günlüğünde savunma azaltımının uygulandığı doğrulanır; hasar azaltma yardımcısı ayrıca sayısal olarak test edilir. Canlı Discord değildir.",
-        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
+        "scope": "applyDefendingReduction, savunma seçildiğinde gelen hasarı yüzde 55 azaltıp minimum 1 hasarı koruduğu sayısal davranış testleriyle doğrulanır; ortak boss komutunun her hedef hasarında savunma durumunu aynı yardımcıya aktardığı kaynak bağlantısıyla kontrol edilir. Sentetik raid akışında savunma aksiyonu seçimi de doğrulanır; hedefleme anındaki azaltım ayrıca canlı Discord E2E iddiası değildir.",
+        "notes": "Hasar azaltma matematiği gerçek yardımcı fonksiyonda davranışsal olarak test edildi; komut entegrasyonu kaynak denetimi ve sentetik etkileşim kapsamındadır."
       }
     },
     {
