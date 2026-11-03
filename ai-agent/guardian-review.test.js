@@ -93,6 +93,7 @@ test('Guardian review requests valid JSON and preserves the required test plan f
     collectCodeContext: async () => '### guardian/automation.test.js\\nExisting tests',
   });
   assert.deepEqual(request.response_format, { type: 'json_object' });
+  assert.equal(request.reasoning_format, 'hidden');
   assert.deepEqual(result.tests, ['Assert the affected file appears in the repair task.']);
   assert.deepEqual(result.affectedFiles, ['guardian/automation.test.js']);
 });

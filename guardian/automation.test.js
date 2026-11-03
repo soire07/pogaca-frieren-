@@ -179,6 +179,35 @@ test('failed Guardian AI review preserves the sanitized upstream error without d
   assert.equal(finished[0].error, 'GUARDIAN_AI_HTTP_400_GROQ_INVALID_REQUEST');
 });
 
+test('failed GitHub repair dispatch preserves a sanitized API permission error', async () => {
+  const finished = [];
+  const result = await processGuardianIncident({
+    db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
+    incident,
+    env: {
+      FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
+      FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
+    },
+    fetchImpl: async url => String(url).includes('/internal/guardian-review')
+      ? { ok: true, status: 200, json: async () => review }
+      : {
+          ok: false,
+          status: 403,
+          json: async () => ({ message: 'Resource not accessible by personal access token' }),
+        },
+    store: {
+      createGuardianReviewJob: async () => ({ id: 13, status: 'queued' }),
+      finishGuardianReviewJob: async () => true,
+      reserveGuardianRepairDispatch: async () => ({ id: 13 }),
+      finishGuardianRepairDispatch: async (_db, args) => { finished.push(args); return true; },
+    },
+  });
+  assert.equal(result.status, 'dispatch_failed');
+  assert.equal(result.reason, 'GUARDIAN_GITHUB_DISPATCH_HTTP_403_Resource_not_accessible_by_personal_access_token');
+  assert.equal(finished.length, 1);
+  assert.equal(finished[0].status, 'failed');
+});
+
 test('low-confidence or incomplete AI proposals never dispatch a repair workflow', async () => {
   let requests = 0;
   const store = {
