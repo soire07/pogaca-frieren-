@@ -65,6 +65,30 @@ export function getPublicLivenessPayload(readiness = {}) {
   };
 }
 
+export const DEFAULT_POGACA_BRIDGE_URL = 'https://pogaca-frieren.onrender.com';
+
+export function resolveAiBridgeConfig(env = process.env) {
+  const rawBaseUrl = String(
+    env.FRIEREN_BRIDGE_URL
+      || env.FRIEREN_AI_BRIDGE_URL
+      || env.FRIEREN_POGACA_PUBLIC_URL
+      || DEFAULT_POGACA_BRIDGE_URL
+  ).trim();
+  const secret = String(env.FRIEREN_BRIDGE_SECRET || env.FRIEREN_AI_BRIDGE_SECRET || '').trim();
+  let baseUrl = '';
+  try {
+    const parsed = new URL(rawBaseUrl);
+    if (parsed.protocol === 'https:' && !parsed.username && !parsed.password && parsed.pathname === '/' && !parsed.search && !parsed.hash) {
+      baseUrl = parsed.origin;
+    }
+  } catch {}
+  return {
+    baseUrl,
+    secret,
+    configured: Boolean(baseUrl && secret.length >= 32),
+  };
+}
+
 export async function checkBridgeReachability({ baseUrl, secret, fetchImpl = fetch, timeoutMs = 5_000 } = {}) {
   if (typeof baseUrl !== 'string' || !baseUrl.trim() || typeof secret !== 'string' || secret.length < 32) {
     return { reachable: false, commandCount: 0, reason: 'not_configured' };
