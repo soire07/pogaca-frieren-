@@ -1557,37 +1557,53 @@ test('advanced crafting recipes reject an insufficient profession level without 
       'INSERT INTO user_crafting_progress(guild_id,user_id,xp,level) VALUES($1,$2,200,3)',
       [guildId, userId]
     );
+    const seededMaterials = [
+      ['🌙 Efsunlu Elf Yadigârı', 2],
+      ['💎 Mana Kristali', 3],
+      ['👑 Himmel’in Efsanevi Yadigârı', 1],
+      ['🐉 Ejderha Pulu', 5],
+      ['📜 Frieren’in Kayıp Notları', 1]
+    ];
     await pool.query(
-      "INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'🌙 Efsunlu Elf Yadigârı',2),($1,$2,'💎 Mana Kristali',3)",
-      [guildId, userId]
+      'INSERT INTO inventory(guild_id,user_id,item_key,quantity) SELECT $1,$2,item_key,quantity FROM UNNEST($3::text[],$4::int[]) AS seed(item_key,quantity)',
+      [guildId, userId, seededMaterials.map(row => row[0]), seededMaterials.map(row => row[1])]
     );
-    let response;
-    const interaction = {
-      guildId,
-      user: { id: userId },
-      options: {
-        getString: name => name === 'tarif' ? 'frieren_robe' : null,
-        getInteger: () => 1
-      },
-      deferReply: async () => {},
-      editReply: async payload => { response = payload; return payload; }
-    };
+    const responses = [];
+    const recipes = [
+      { id: 'frieren_robe', level: 4 },
+      { id: 'himmel_sword', level: 4 },
+      { id: 'demon_blade', level: 5 }
+    ];
     try {
-      await craftingCommand.execute(interaction);
+      for (const recipe of recipes) {
+        await craftingCommand.execute({
+          guildId,
+          user: { id: userId },
+          options: {
+            getString: name => name === 'tarif' ? recipe.id : null,
+            getInteger: () => 1
+          },
+          deferReply: async () => {},
+          editReply: async payload => { responses.push(payload); return payload; }
+        });
+      }
       const ingredients = await pool.query(
-        "SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[])",
-        [guildId, userId, ['🌙 Efsunlu Elf Yadigârı', '💎 Mana Kristali']]
+        'SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[])',
+        [guildId, userId, seededMaterials.map(row => row[0])]
       );
-      const output = await pool.query(
-        "SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3",
-        [guildId, userId, equipmentItems.find(item => item.id === 'frieren_robe').name]
+      const outputs = await pool.query(
+        'SELECT item_key FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[])',
+        [guildId, userId, recipes.map(recipe => equipmentItems.find(item => item.id === recipe.id).name)]
       );
-      assert.match(String(response), /zanaat seviyesi \*\*4\*\*/i);
       assert.deepEqual(
         Object.fromEntries(ingredients.rows.map(row => [row.item_key, Number(row.quantity)])),
-        { '🌙 Efsunlu Elf Yadigârı': 2, '💎 Mana Kristali': 3 }
+        Object.fromEntries(seededMaterials)
       );
-      assert.equal(output.rowCount, 0);
+      assert.equal(outputs.rowCount, 0, 'level-gated rare and legendary recipes must not create equipment');
+      assert.equal(responses.length, recipes.length);
+      for (let index = 0; index < recipes.length; index++) {
+        assert.ok(JSON.stringify(responses[index]).includes(`zanaat seviyesi **${recipes[index].level}**`));
+      }
     } finally {
       await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
     }
