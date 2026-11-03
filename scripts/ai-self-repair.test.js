@@ -109,7 +109,7 @@ test('repair patch generation uses the injected client and validates the returne
       completions: {
         async create(options) {
           request = options;
-          return { choices: [{ message: { content: validPatch } }] };
+          return { choices: [{ message: { content: validPatch }, finish_reason: 'stop' }] };
         },
       },
     },
@@ -124,14 +124,39 @@ test('repair patch generation uses the injected client and validates the returne
   assert.equal(result.patch, validPatch + '\n');
   assert.equal(request.model, 'openai/gpt-oss-20b');
   assert.equal(request.temperature, 0.1);
+  assert.equal(request.max_completion_tokens, 4096);
   assert.equal(request.messages[1].content.includes('fix the readiness check'), true);
   assert.equal(request.messages[1].content.includes('const ready = false;'), true);
+});
+
+
+test('repair patch generation rejects provider-truncated output before parsing or applying it', async () => {
+  let calls = 0;
+  const client = { chat: { completions: { async create() {
+    calls += 1;
+    return { choices: [{ message: { content: validPatch.slice(0, -20) }, finish_reason: 'length' }] };
+  } } } };
+  await assert.rejects(
+    generateRepairPatch({ task: 'fix a bug', client, context: 'source' }),
+    { message: 'REPAIR_DIFF_TRUNCATED' },
+  );
+  assert.equal(calls, 1);
+});
+
+test('repair patch generation rejects non-terminal or malformed provider responses', async () => {
+  for (const response of [
+    { choices: [{ message: { content: validPatch }, finish_reason: 'tool_calls' }] },
+    { choices: [{ message: { content: 'diff output was cut off' }, finish_reason: 'stop' }] },
+  ]) {
+    const client = { chat: { completions: { async create() { return response; } } } };
+    await assert.rejects(generateRepairPatch({ task: 'fix a bug', client, context: 'source' }));
+  }
 });
 
 test('repair patch generation rejects model output without a safe diff', async () => {
   const client = {
     chat: { completions: { async create() {
-      return { choices: [{ message: { content: 'REPAIR_CONTEXT_INSUFFICIENT' } }] };
+      return { choices: [{ message: { content: 'REPAIR_CONTEXT_INSUFFICIENT' }, finish_reason: 'stop' }] };
     } } },
   };
   await assert.rejects(
