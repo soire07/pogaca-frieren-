@@ -1044,15 +1044,19 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           );
         } else if (commandName === 'maceraistatistik') {
           await pool.query("INSERT INTO adventure_route_mastery(guild_id,user_id,route_key,visits) VALUES($1,$2,'test-route',3)", [guildId, userId]);
+          await pool.query('UPDATE users SET last_adventure_at=NOW() WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const before = await pool.query('SELECT last_adventure_at FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
           interaction.user.id = userId;
           interaction.member = makeMember(userId);
           await command.execute(interaction);
           const state = await pool.query("SELECT visits FROM adventure_route_mastery WHERE guild_id=$1 AND user_id=$2 AND route_key='test-route'", [guildId, userId]);
-          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          const after = await pool.query('SELECT last_adventure_at FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const payloadText = payloadTextFromEffects(effects);
           behavioralChecks.push(
             { name: 'Macera istatistikleri', expected: 'toplam macera 3 ve seviye/XP/altın paneli gösterilmeli', actual: payloadText.includes('Toplam macera') && payloadText.includes('3') ? 'istatistik paneli doğru' : payloadText.slice(0, 400), passed: Number(state.rows[0]?.visits) === 3 && payloadText.includes('Toplam macera') && payloadText.includes('3') },
-            { name: 'Macera istatistiği salt okunur', expected: 'rota ziyareti sayısı değişmemeli', actual: String(state.rows[0]?.visits ?? 0), passed: Number(state.rows[0]?.visits) === 3 }
+            { name: 'Son macera zaman damgası', expected: 'son macera tarihi panel alt bilgisinde görünmeli', actual: payloadText.includes('Son macera:') ? 'son macera zaman damgası gösterildi' : payloadText.slice(0, 400), passed: before.rows[0]?.last_adventure_at != null && payloadText.includes('Son macera:') && new Date(before.rows[0].last_adventure_at).getTime() === new Date(after.rows[0].last_adventure_at).getTime() },
+            { name: 'Macera istatistiği salt okunur', expected: 'rota ziyareti ve son macera zaman damgası değişmemeli', actual: String(state.rows[0]?.visits ?? 0), passed: Number(state.rows[0]?.visits) === 3 }
           );
         } else if (['frieren','mimic','pogaca','sans','saril'].includes(commandName)) {
           const before = await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
@@ -1087,15 +1091,25 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'NPC diyalog sistemi', expected: 'Frieren karşılaşma başlığı ve diyalog içeriği gösterilmeli', actual: payloadText.includes('Frieren') ? 'Frieren diyalogu gösterildi' : payloadText.slice(0, 400), passed: payloadText.includes('Frieren') && payloadText.includes('karşılaşma') && payloadText.includes('büyü kalıntıları') }
           );
         } else if (commandName === 'siralama') {
-          await pool.query('UPDATE users SET level=7,xp=987,coins=4321 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
-          const interaction = makeInteraction(command, buildOptions(schema?.options, { kategori: 'level' }), guildId, effects);
-          interaction.user.id = userId;
-          interaction.member = makeMember(userId);
-          await command.execute(interaction);
-          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
-          const mine = await pool.query('SELECT level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          await pool.query('UPDATE users SET level=7,xp=987,coins=4321,boss_defeats=8,dungeon_wins=5,exploration_count=11 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          const categories = [
+            ['level','Seviye 7'],['xp','987 XP'],['coins','4.321 altın'],
+            ['bosses','8 zafer'],['dungeons','5 zafer'],['exploration','11 keşif']
+          ];
+          const results = [];
+          for (const [category, expectedValue] of categories) {
+            const actionEffects = [];
+            const actionInteraction = makeInteraction(command, buildOptions(schema?.options, { kategori: category }), guildId, actionEffects);
+            actionInteraction.user.id = userId;
+            actionInteraction.member = makeMember(userId);
+            await command.execute(actionInteraction);
+            const text = payloadTextFromEffects(actionEffects);
+            results.push({ category, expectedValue, passed: text.includes('Maceracı Sıralaması') && text.includes('Senin sıran') && text.includes(expectedValue) && text.includes('#1') });
+            effects.push(...actionEffects);
+          }
           behavioralChecks.push(
-            { name: 'Oyuncu sıralama konumu', expected: 'test oyuncusu seviye 7 ile birinci sırada görünmeli', actual: 'seviye ' + mine.rows[0]?.level, passed: Number(mine.rows[0]?.level) === 7 && payloadText.includes('Seviye 7') && payloadText.includes('Senin sıran') && payloadText.includes('#1') }
+            { name: 'Altı sunucu sıralaması kategorisi', expected: 'seviye, XP, altın, iblis zaferi, zindan zaferi ve keşif kategorileri doğru skorla açılmalı', actual: results.filter(item => item.passed).map(item => item.category + ':' + item.expectedValue).join(' | '), passed: results.length === 6 && results.every(item => item.passed) },
+            { name: 'İblis zaferi sıralaması', expected: 'boss_defeats alanına göre 8 zafer ve oyuncunun #1 sırası görünmeli', actual: results.find(item => item.category === 'bosses')?.passed ? '8 zafer / #1' : 'boss sıralaması doğrulanamadı', passed: results.some(item => item.category === 'bosses' && item.passed) }
           );
         } else if (commandName === 'buyukitabi') {
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
