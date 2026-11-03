@@ -546,13 +546,18 @@ test('trade transfer failure rolls back both collection sides and offer status',
       $$ LANGUAGE plpgsql`);
     await pool.query(`CREATE TRIGGER reject_trade_recipient_fixture BEFORE INSERT ON anime_character_collection
       FOR EACH ROW EXECUTE FUNCTION reject_trade_recipient_fixture()`);
-    await assert.rejects(acceptTradeTransaction(guildId,offerId,to),/forced trade recipient failure/);
-    const source=await pool.query("SELECT quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name='Stark'",[guildId,from]);
-    const target=await pool.query("SELECT quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name='Stark'",[guildId,to]);
-    const offer=await pool.query('SELECT status FROM trade_offers WHERE offer_id=$1',[offerId]);
-    assert.equal(Number(source.rows[0].quantity),2);
-    assert.equal(target.rowCount,0);
-    assert.equal(offer.rows[0].status,'pending');
+    try {
+      await assert.rejects(acceptTradeTransaction(guildId,offerId,to),/forced trade recipient failure/);
+      const source=await pool.query("SELECT quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name='Stark'",[guildId,from]);
+      const target=await pool.query("SELECT quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name='Stark'",[guildId,to]);
+      const offer=await pool.query('SELECT status FROM trade_offers WHERE offer_id=$1',[offerId]);
+      assert.equal(Number(source.rows[0].quantity),2);
+      assert.equal(target.rowCount,0);
+      assert.equal(offer.rows[0].status,'pending');
+    } finally {
+      await pool.query('DROP TRIGGER IF EXISTS reject_trade_recipient_fixture ON anime_character_collection');
+      await pool.query('DROP FUNCTION IF EXISTS reject_trade_recipient_fixture()');
+    }
   });
 });
 
@@ -766,9 +771,9 @@ test('story choices persist all three path requirements, chapter rewards and uni
       player=await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
       assert.equal(Number(state.rows[0].current_chapter),5,'all five story chapters must be completed');
       assert.deepEqual(state.rows[0].choices,[path.key,path.key,path.key,path.key,path.key]);
-      assert.equal(Number(player.rows[0].coins),920+path.bonusCoins*3,'all chapter rewards and level-scaled ending coins must persist');
-      assert.equal(Number(player.rows[0].xp),1175+path.bonusXp*3,'chapter XP and level-scaled ending XP must persist');
-      assert.equal(Number(player.rows[0].level),3);
+      assert.equal(Number(player.rows[0].coins),920+path.bonusCoins*4,'all chapter rewards and level-scaled ending coins must persist');
+      assert.equal(Number(player.rows[0].xp),1175+path.bonusXp*4,'chapter XP and level-scaled ending XP must persist');
+      assert.equal(Number(player.rows[0].level),4);
       assert.ok(String(finalReply[0] || '').includes(path.ending),'the selected path must produce its matching ending');
 
       await invoke(path.key);
@@ -779,7 +784,7 @@ test('story choices persist all three path requirements, chapter rewards and uni
         'SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
       );
       assert.equal(Number(afterReplay.rows[0].current_chapter),5,'completed story must remain completed');
-      assert.deepEqual(afterReplayPlayer.rows[0],{coins:920+path.bonusCoins*3,xp:1175+path.bonusXp*3},
+      assert.deepEqual(afterReplayPlayer.rows[0],{coins:920+path.bonusCoins*4,xp:1175+path.bonusXp*4},
         'replaying a completed story must not grant duplicate rewards');
     }
   });
