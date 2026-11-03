@@ -222,7 +222,7 @@ test('approved index repair applies only index.js inside the isolated workflow w
   const execFile = (args) => {
     calls.push(args);
     if (args[0] === 'status' && args[1] === '--porcelain') return '';
-    if (args[0] === 'status') return ' M index.js\\n';
+    if (args[0] === 'status') return ' M index.js\n';
     return '';
   };
   assert.deepEqual(applyRepairPatch(validIndexPatch, {
