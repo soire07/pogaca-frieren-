@@ -11,6 +11,7 @@ import explorationLeaderboardCommand from '../kesifliderligi.js';
 import craftingCommand from '../zanaat.js';
 import equipmentCommand from '../ekipman.js';
 import collectionCommand from '../koleksiyon.js';
+import useItemCommand from '../esyakullan.js';
 import { equipmentItems } from '../equipment-data.js';
 
 const dedicatedAuditDatabase = /^postgres(?:ql)?:\/\/postgres:postgres@localhost:5432\/frieren_audit(?:\?|$)/.test(
@@ -734,6 +735,58 @@ test('concurrent crafting cannot consume the same inventory materials or award d
       assert.equal(Number(daily.rows[0]?.crafted_items), 1);
       assert.equal(responses.filter(value => Array.isArray(value?.embeds)).length, 1,
         'exactly one concurrent crafting interaction may report success');
+    } finally {
+      await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    }
+  });
+});
+
+test('concurrent item use consumes a single inventory copy and applies its reward once', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = testSnowflake('88');
+    const userId = testSnowflake('89');
+    await ensureUser(guildId, userId);
+    await pool.query(
+      'UPDATE users SET coins=0,xp=0,level=1,hp=50,max_hp=100,mana=10,max_mana=100,items_used_count=0 WHERE guild_id=$1 AND user_id=$2',
+      [guildId, userId]
+    );
+    await pool.query(
+      "INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'💎 Mana Kristali',1)",
+      [guildId, userId]
+    );
+    const responses = [];
+    const makeInteraction = () => ({
+      guildId,
+      user: { id: userId },
+      options: { getString: () => 'mana_crystal' },
+      reply: async payload => { responses.push(payload); return payload; }
+    });
+
+    try {
+      await Promise.all([
+        useItemCommand.execute(makeInteraction()),
+        useItemCommand.execute(makeInteraction())
+      ]);
+      const player = await pool.query(
+        'SELECT coins,xp,level,hp,max_hp,mana,max_mana,items_used_count FROM users WHERE guild_id=$1 AND user_id=$2',
+        [guildId, userId]
+      );
+      const item = await pool.query(
+        "SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='💎 Mana Kristali'",
+        [guildId, userId]
+      );
+      assert.equal(Number(player.rows[0].mana), 60, 'the 50 mana effect must apply exactly once');
+      assert.equal(Number(player.rows[0].max_mana), 100, 'using a refill must not increase the base mana cap');
+      assert.equal(Number(player.rows[0].hp), 50);
+      assert.equal(Number(player.rows[0].max_hp), 100);
+      assert.equal(Number(player.rows[0].items_used_count), 1);
+      assert.equal(Number(player.rows[0].coins), 0);
+      assert.equal(Number(player.rows[0].xp), 0);
+      assert.equal(item.rowCount, 0, 'the single item copy must be consumed once');
+      assert.equal(responses.filter(value => Array.isArray(value?.embeds)).length, 1,
+        'only one concurrent use interaction may report success');
     } finally {
       await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
     }
