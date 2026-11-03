@@ -1105,10 +1105,61 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           interaction.user.id = userId;
           interaction.member = makeMember(userId);
           await command.execute(interaction);
-          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          const payloadText = payloadTextFromEffects(effects);
           behavioralChecks.push(
-            { name: 'Anime quiz soru ve süre paneli', expected: 'anime sorusu, 20 saniye süresi ve 10 puan ödülü gösterilmeli', actual: payloadText.includes('Anime Quiz Başladı') ? 'quiz sorusu ve başlangıç paneli gösterildi' : payloadText.slice(0, 400), passed: payloadText.includes('Anime Quiz Başladı') && payloadText.includes('20 saniye') && payloadText.includes('10 puan') }
+            { name: 'Anime quiz soru ve süre paneli', expected: 'anime sorusu, 20 saniye süresi ve puan ödülü gösterilmeli', actual: payloadText.includes('Anime Quiz Başladı') ? 'quiz sorusu ve başlangıç paneli gösterildi' : payloadText.slice(0, 400), passed: payloadText.includes('Anime Quiz Başladı') && payloadText.includes('20 saniye') && payloadText.includes('10 puan') }
           );
+
+          const quizUserId = userId + '-animequiz';
+          await ensureUser(guildId, quizUserId);
+          const quizEffects = [];
+          const quizInteraction = makeInteraction(command, buildOptions(schema?.options), guildId, quizEffects);
+          quizInteraction.user.id = quizUserId;
+          quizInteraction.member = makeMember(quizUserId);
+          const listeners = { collect: [], end: [] };
+          let collectorStopped = false;
+          quizInteraction.channel.createMessageCollector = () => {
+            const collector = {
+              on(event, listener) { listeners[event]?.push(listener); return this; },
+              stop(reason = 'answered') {
+                if (collectorStopped) return;
+                collectorStopped = true;
+                for (const listener of listeners.end) void listener([], reason);
+              }
+            };
+            queueMicrotask(async () => {
+              for (const content of ['Fern', 'Elf', 'Elf']) {
+                const message = {
+                  content,
+                  author: { id: quizUserId, username: 'QuizPlayer', bot: false },
+                  toString() { return '<@' + quizUserId + '>'; }
+                };
+                for (const listener of listeners.collect) await listener(message);
+              }
+            });
+            return collector;
+          };
+          const originalRandom = Math.random;
+          try {
+            Math.random = () => 0;
+            await command.execute(quizInteraction);
+          } finally {
+            Math.random = originalRandom;
+          }
+          await new Promise(resolve => setImmediate(resolve));
+          const quizScore = await pool.query(
+            'SELECT anime_quiz_points FROM users WHERE guild_id=$1 AND user_id=$2',
+            [guildId, quizUserId]
+          );
+          const quizText = payloadTextFromEffects(quizEffects);
+          const successReplies = quizEffects.filter(effect => effect.type === 'followUp');
+          effects.push(...quizEffects);
+          behavioralChecks.push({
+            name: 'Anime quiz doğru cevap puanı ve çift ödül koruması',
+            expected: 'yanlış cevap puan vermemeli; doğru cevap toplamı 10 artırmalı; aynı turdaki yinelenen cevap ikinci ödülü vermemeli',
+            actual: 'puan=' + quizScore.rows[0]?.anime_quiz_points + '; sonuç yanıtı=' + successReplies.length + '; doğru panel=' + quizText.includes('Doğru Cevap'),
+            passed: Number(quizScore.rows[0]?.anime_quiz_points) === 10 && successReplies.length === 1 && quizText.includes('Doğru Cevap') && !quizText.includes('Süre Doldu')
+          });
         } else if (commandName === 'gorevzinciri') {
           await pool.query("UPDATE users SET coins=0,xp=0,last_daily_at=NOW() WHERE guild_id=$1 AND user_id=$2", [guildId, userId]);
           const interaction = makeInteraction(command, buildOptions(schema?.options, { odul: '1' }), guildId, effects);
