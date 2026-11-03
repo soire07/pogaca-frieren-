@@ -9,18 +9,11 @@ import {
   getLevelScaledQuestReward, restoreResourceRatio, applyDefendingReduction,
   scaleRaidBossHp, isFinalDungeonBossEnraged, shouldFinalDungeonBossSpecialAttack,
   calculateFinalDungeonBossRawDamage, getDungeonEventOutcome, canAssignPartyRole,
-  isPartyWiped, getPartyRoleModifiers
+  isPartyWiped, getPartyRoleModifiers, applyTalentBonus, calculateDungeonFloorReward
 } from '../rpg-mechanics.js';
 import { equipmentItems, equipmentSlots, equipmentBonus } from '../equipment-data.js';
 import { applyEquipmentSetBonus } from '../rpg-mechanics.js';
 import { masteryLevelForCasts, practiceCost } from '../commands/rpg/buyupratik.js';
-import {
-  getPartyRoleModifiers, scaleRaidBossHp, isFinalDungeonBossEnraged,
-  applyDefendingReduction, applyTalentBonus, calculateDungeonFloorReward,
-  getDungeonEventOutcome, isPartyWiped, canAssignPartyRole
-} from '../rpg-mechanics.js';
-
-
 test('dungeon difficulty, floor, party size and average level change actual enemy stats monotonically', () => {
   const base = dungeonEnemyStats(1, 1, 2, 'normal');
   assert.ok(dungeonEnemyStats(2, 1, 2, 'normal').hp > base.hp);
@@ -265,53 +258,6 @@ test('party wipe is reported only when every member has zero or less HP', () => 
   assert.equal(isPartyWiped([-1, 0, 0]), true);
   assert.equal(isPartyWiped([1, 0, 0]), false);
   assert.equal(isPartyWiped([]), false);
-});
-
-test('co-op role profiles produce their documented HP, attack and defense modifiers', () => {
-  assert.deepEqual(
-    [getPartyRoleModifiers('tank', 'dungeon').hp, getPartyRoleModifiers('tank', 'dungeon').attack, getPartyRoleModifiers('tank', 'dungeon').defense],
-    [1.25, 0.85, 1.4]
-  );
-  assert.deepEqual(
-    [getPartyRoleModifiers('healer', 'dungeon').hp, getPartyRoleModifiers('healer', 'dungeon').attack, getPartyRoleModifiers('healer', 'dungeon').defense],
-    [1, 0.9, 1.05]
-  );
-  assert.deepEqual(
-    [getPartyRoleModifiers('damage', 'dungeon').hp, getPartyRoleModifiers('damage', 'dungeon').attack, getPartyRoleModifiers('damage', 'dungeon').defense],
-    [0.95, 1.3, 0.9]
-  );
-  assert.deepEqual(
-    [getPartyRoleModifiers('tank', 'raid').hp, getPartyRoleModifiers('tank', 'raid').attack, getPartyRoleModifiers('tank', 'raid').defense],
-    [1.25, 0.85, 1.45]
-  );
-  assert.deepEqual(
-    [getPartyRoleModifiers('healer', 'raid').hp, getPartyRoleModifiers('healer', 'raid').attack, getPartyRoleModifiers('healer', 'raid').defense],
-    [1, 0.85, 1.05]
-  );
-  assert.deepEqual(
-    [getPartyRoleModifiers('damage', 'raid').hp, getPartyRoleModifiers('damage', 'raid').attack, getPartyRoleModifiers('damage', 'raid').defense],
-    [0.95, 1.35, 0.9]
-  );
-});
-
-test('raid boss HP scales with average player level and party size', () => {
-  assert.equal(scaleRaidBossHp(500, 10, 2), 680);
-  assert.equal(scaleRaidBossHp(500, 10, 3), 770);
-  assert.equal(scaleRaidBossHp(500, 20, 4), 1040);
-  assert.equal(scaleRaidBossHp(500, 10, 1), 680);
-});
-
-test('enrage activates at and below half health only', () => {
-  assert.equal(isFinalDungeonBossEnraged(5, 5, 51, 100), false);
-  assert.equal(isFinalDungeonBossEnraged(5, 5, 50, 100), true);
-  assert.equal(isFinalDungeonBossEnraged(5, 5, 1, 100), true);
-  assert.equal(isFinalDungeonBossEnraged(5, 5, 50, 0), false);
-});
-
-test('defend action reduces incoming damage to 45 percent with a one-damage floor', () => {
-  assert.equal(applyDefendingReduction(100, true), 45);
-  assert.equal(applyDefendingReduction(3, true), 1);
-  assert.equal(applyDefendingReduction(100, false), 100);
 });
 
 test('talent ranks increase attack and defense by four percent and HP and mana by five percent', () => {
