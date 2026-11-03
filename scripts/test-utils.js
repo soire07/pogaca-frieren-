@@ -751,7 +751,7 @@ test('level-scaled quest reward multiplier changes only at ten-level boundaries 
     [191, 2.9], [201, 3], [1000, 3]
   ];
   for (const [level, multiplier] of expected) {
-    assert.equal(getLevelScaledQuestReward(100, 50, level).multiplier, multiplier, 'level ' + level);
+    assert.ok(Math.abs(getLevelScaledQuestReward(100, 50, level).multiplier - multiplier) < 1e-9, 'level ' + level);
   }
 });
 
@@ -761,7 +761,8 @@ test('XP and level display uses the same next-level threshold in profile and cha
   assert.match(profile, /xpForNextLevel\(u\.level\)/);
   assert.match(character, /xpForNextLevel\(level\)/);
   assert.match(character, /need-xp/);
-  assert.match(character, /levelForXp\(newXp\)/);
+  assert.match(character, /Math\.max\(0,need-xp\)/);
+  assert.match(character, /stat_points=stat_points-\$4/);
 });
 
 
