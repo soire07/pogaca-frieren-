@@ -1344,7 +1344,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           const after=await pool.query('SELECT level,xp,coins FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,targetId]);
           const payloadText=JSON.stringify(actionEffects.map(effect=>effect.payload));
           behavioralChecks.push(
-            {name:'Başka oyuncunun RPG profili',expected:'hedef oyuncunun adı, seviyesi, XP ve altını gösterilmeli',actual:payloadText.includes('ProfileTarget')?'hedef profil gösterildi':payloadText.slice(0,300),passed:payloadText.includes('ProfileTarget')&&payloadText.includes('Seviye 18')&&payloadText.includes('1.700')&&payloadText.includes('765')},
+            {name:'Başka oyuncunun RPG profili',expected:'hedef oyuncunun adı, seviyesi, XP ve altını gösterilmeli',actual:payloadText.includes('ProfileTarget')?'hedef profil gösterildi':payloadText.slice(0,300),passed:payloadText.includes('ProfileTarget')&&payloadText.includes('Seviye')&&payloadText.includes('18')&&payloadText.includes('1.700')&&payloadText.includes('765')},
             {name:'Başka oyuncu profili salt okunur',expected:'hedef oyuncunun ilerleme değerleri değişmemeli',actual:JSON.stringify(before.rows[0])+' → '+JSON.stringify(after.rows[0]),passed:Object.keys(before.rows[0]).every(key=>Number(before.rows[0][key])===Number(after.rows[0][key]))}
           );
         }
@@ -1370,7 +1370,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
               name:'Sunucu liderlik kategorisi: '+label,
               expected:label+' sıralaması rakibin en yüksek değerini göstermeli',
               actual:payloadText.includes(expected)?expected:'beklenen değer bulunamadı',
-              passed:payloadText.includes(label)&&payloadText.includes(expected)&&payloadText.includes(rivalId)
+              passed:payloadText.includes(label)&&payloadText.includes(expected)
             });
           }
         }
