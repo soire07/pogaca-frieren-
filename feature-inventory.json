@@ -761,12 +761,13 @@
           "file": "scripts/live-command-test.js",
           "command": "evren",
           "checks": [
-            "all seven lore pages"
+            "Frieren evreni yedi lore sayfası",
+            "Lore sayfaları etkileşim yanıtı"
           ]
         }
       ],
-      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
-      "verificationRunId": 41654906717
+      "verifiedAtCommit": "3485e5809447374032f9ad409b88380d16b6ab84",
+      "verificationRunId": 41660876443
     },
     {
       "id": "RPG-036",
@@ -897,20 +898,7 @@
       "id": "RPG-042",
       "name": "Mimic-themed interaction",
       "category": "Mini-games",
-      "status": "verified_by_automated_test",
-      "verificationEvidence": [
-        {
-          "type": "isolated_command_audit",
-          "file": "scripts/live-command-test.js",
-          "command": "mimic",
-          "checks": [
-            "Eğlence komutu içeriği",
-            "Eğlence komutu RPG verisini değiştirmez"
-          ]
-        }
-      ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177615
+      "status": "mapped_needs_review"
     },
     {
       "id": "RPG-043",
@@ -1082,12 +1070,12 @@
       "verificationEvidence": [
         {
           "type": "unit_test",
-          "file": "scripts/check-gameplay-integrity.js",
+          "file": "scripts/test-economy-crafting-integrity.js",
           "test": "trade offers reserve only unexpired copies using the database clock"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177786
+      "verifiedAtCommit": "3485e5809447374032f9ad409b88380d16b6ab84",
+      "verificationRunId": 41660876731
     },
     {
       "id": "RPG-053",
@@ -1451,11 +1439,11 @@
         {
           "type": "unit_test",
           "file": "scripts/test-utils.js",
-          "test": "cooperative boss raid defines player-facing roles and a persistent cooldown"
+          "test": "cooperative raid defines player-facing roles and a persistent cooldown"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177786
+      "verifiedAtCommit": "3485e5809447374032f9ad409b88380d16b6ab84",
+      "verificationRunId": 41660876731
     },
     {
       "id": "RPG-077",
@@ -2370,17 +2358,13 @@
       "status": "verified_by_automated_test",
       "verificationEvidence": [
         {
-          "type": "isolated_command_audit",
-          "file": "scripts/live-command-test.js",
-          "command": "sinifrehberi",
-          "checks": [
-            "Rehber içeriği ve başlık",
-            "Rehber komutunun oyuncu verisini değiştirmemesi"
-          ]
+          "type": "unit_test",
+          "file": "scripts/test-discord-scenarios.js",
+          "test": "character class passives are applied in both co-op modes and class guide is available"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177615
+      "verifiedAtCommit": "3485e5809447374032f9ad409b88380d16b6ab84",
+      "verificationRunId": 41660876731
     },
     {
       "id": "RPG-141",
@@ -2982,19 +2966,20 @@
           "file": "scripts/live-command-test.js",
           "command": "hazineac",
           "checks": [
-            "two separate chest records",
-            "total gold and XP",
-            "level-up stat points"
+            "Sandık adedinin düşmesi",
+            "Her sandık için ayrı ganimet kaydı",
+            "Toplam ganimetin bakiye ve envantere yansıması",
+            "Sandık XP seviyesi ve stat puanı"
           ]
         },
         {
-          "type": "postgres_integration",
+          "type": "unit_test",
           "file": "scripts/test-treasure-atomicity.integration.js",
           "test": "treasure chest opening rolls back chest, loot, gold, XP and stat points on persistence failure"
         }
       ],
-      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
-      "verificationRunId": 41654906717
+      "verifiedAtCommit": "3485e5809447374032f9ad409b88380d16b6ab84",
+      "verificationRunId": 41660876731
     },
     {
       "id": "RPG-182",
@@ -3065,13 +3050,14 @@
           "file": "scripts/live-command-test.js",
           "command": "maceraistatistik",
           "checks": [
-            "last adventure timestamp",
-            "level, XP and gold panel"
+            "Macera istatistikleri",
+            "Son macera zaman damgası",
+            "Macera istatistiği salt okunur"
           ]
         }
       ],
-      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
-      "verificationRunId": 41654906717
+      "verifiedAtCommit": "3485e5809447374032f9ad409b88380d16b6ab84",
+      "verificationRunId": 41660876443
     },
     {
       "id": "RPG-186",
@@ -3084,17 +3070,13 @@
           "file": "scripts/live-command-test.js",
           "command": "hazineac",
           "checks": [
-            "individual loot, gold and XP for each chest"
+            "Her sandık için ayrı ganimet kaydı",
+            "Toplam ganimetin bakiye ve envantere yansıması"
           ]
-        },
-        {
-          "type": "postgres_integration",
-          "file": "scripts/test-treasure-atomicity.integration.js",
-          "test": "treasure chest opening rolls back chest, loot, gold, XP and stat points on persistence failure"
         }
       ],
-      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
-      "verificationRunId": 41654906717
+      "verifiedAtCommit": "3485e5809447374032f9ad409b88380d16b6ab84",
+      "verificationRunId": 41660876443
     },
     {
       "id": "RPG-187",
@@ -4876,18 +4858,18 @@
           "file": "scripts/live-command-test.js",
           "command": "maceraci",
           "checks": [
-            "one-time link code creation",
-            "hashed token storage"
+            "Web maceracı tek kullanımlık bağlantı kodu",
+            "Web bağlantı kodunun güvenli saklanması"
           ]
         },
         {
-          "type": "postgres_integration",
+          "type": "unit_test",
           "file": "scripts/test-adventurer-platform.integration.js",
           "test": "single-use Discord link codes connect only the intended profile to a web account"
         }
       ],
-      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
-      "verificationRunId": 41654906717
+      "verifiedAtCommit": "3485e5809447374032f9ad409b88380d16b6ab84",
+      "verificationRunId": 41660876731
     },
     {
       "id": "SITE-002",
@@ -4969,12 +4951,12 @@
           "file": "scripts/live-command-test.js",
           "command": "siralama",
           "checks": [
-            "boss victory ranking category"
+            "İblis zaferi sıralaması"
           ]
         }
       ],
-      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
-      "verificationRunId": 41654906717
+      "verifiedAtCommit": "3485e5809447374032f9ad409b88380d16b6ab84",
+      "verificationRunId": 41660876443
     },
     {
       "id": "SOC-005",
@@ -5023,12 +5005,12 @@
           "file": "scripts/live-command-test.js",
           "command": "siralama",
           "checks": [
-            "all six categories and invoking player's rank"
+            "Altı sunucu sıralaması kategorisi"
           ]
         }
       ],
-      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
-      "verificationRunId": 41654906717
+      "verifiedAtCommit": "3485e5809447374032f9ad409b88380d16b6ab84",
+      "verificationRunId": 41660876443
     },
     {
       "id": "SOC-008",
