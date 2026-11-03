@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MessageFlags } from 'discord.js';
-import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, isAuthorizedAdmin, isPrivateHealthPath, sendPrivateError } from './interaction-safety.js';
+import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, isAuthorizedAdmin, isPrivateHealthPath, resolveAiBridgeConfig, sendPrivateError } from './interaction-safety.js';
 
 test('authorization accepts only exact non-empty IDs in the trusted allowlist', () => {
   const admins = new Set(['123', '456']);
@@ -152,4 +152,33 @@ test('public liveness route is not protected while readiness and bridge diagnost
   assert.equal(isPrivateHealthPath('/ready'), true);
   assert.equal(isPrivateHealthPath('/bridge-health'), true);
   assert.equal(isPrivateHealthPath('/unknown'), false);
+});
+
+test('standalone AI bridge defaults to the production Poğaça URL and accepts the shared AI secret alias', () => {
+  const config = resolveAiBridgeConfig({ FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48) });
+  assert.deepEqual(config, {
+    baseUrl: 'https://pogaca-frieren.onrender.com',
+    secret: 'x'.repeat(48),
+    configured: true,
+  });
+});
+
+test('explicit bridge URL and canonical secret take precedence over aliases', () => {
+  const config = resolveAiBridgeConfig({
+    FRIEREN_BRIDGE_URL: 'https://custom-pogaca.example/',
+    FRIEREN_AI_BRIDGE_URL: 'https://ignored.example',
+    FRIEREN_BRIDGE_SECRET: 'a'.repeat(48),
+    FRIEREN_AI_BRIDGE_SECRET: 'b'.repeat(48),
+  });
+  assert.equal(config.baseUrl, 'https://custom-pogaca.example');
+  assert.equal(config.secret, 'a'.repeat(48));
+  assert.equal(config.configured, true);
+});
+
+test('bridge configuration fails closed for insecure URLs or short secrets', () => {
+  assert.deepEqual(resolveAiBridgeConfig({
+    FRIEREN_BRIDGE_URL: 'http://pogaca-frieren.onrender.com',
+    FRIEREN_BRIDGE_SECRET: 'x'.repeat(48),
+  }), { baseUrl: '', secret: 'x'.repeat(48), configured: false });
+  assert.equal(resolveAiBridgeConfig({ FRIEREN_AI_BRIDGE_SECRET: 'short' }).configured, false);
 });
