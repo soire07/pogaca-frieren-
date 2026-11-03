@@ -146,14 +146,14 @@ test('repair patch rejects file headers that contain no unified-diff hunk or cha
     'diff --git a/rpg-mechanics.js b/rpg-mechanics.js',
     '--- a/rpg-mechanics.js',
     '+++ b/rpg-mechanics.js',
-  ].join('\\n');
+  ].join('\n');
   const emptyHunk = [
     'diff --git a/rpg-mechanics.js b/rpg-mechanics.js',
     '--- a/rpg-mechanics.js',
     '+++ b/rpg-mechanics.js',
     '@@ -1 +1 @@',
     ' unchanged context only',
-  ].join('\\n');
+  ].join('\n');
   assert.throws(() => validatePatchPaths(headerOnly), { message: 'REPAIR_PATCH_HUNK_REQUIRED' });
   assert.throws(() => validatePatchPaths(emptyHunk), { message: 'REPAIR_PATCH_HUNK_REQUIRED' });
 });
@@ -164,7 +164,7 @@ test('repair generation retries a malformed header-only diff before invoking git
   const client = { chat: { completions: { async create() {
     completions += 1;
     return { choices: [{ message: { content: completions === 1
-      ? 'diff --git a/rpg-mechanics.js b/rpg-mechanics.js\\n--- a/rpg-mechanics.js\\n+++ b/rpg-mechanics.js'
+      ? 'diff --git a/rpg-mechanics.js b/rpg-mechanics.js\n--- a/rpg-mechanics.js\n+++ b/rpg-mechanics.js'
       : validPatch }, finish_reason: 'stop' }] };
   } } } };
   const execFile = args => {
