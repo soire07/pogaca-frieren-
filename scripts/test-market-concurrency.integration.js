@@ -10,6 +10,11 @@ import equipmentCommand from '../ekipman.js';
 import growthCommand from '../commands/rpg/gelisim.js';
 import { equipmentItems, equipmentBonus } from '../equipment-data.js';
 import { applyEquipmentSetBonus } from '../rpg-mechanics.js';
+import storyCommand from '../hikaye.js';
+import adventureCommand from '../macera.js';
+import craftingCommand from '../zanaat.js';
+import profileCommand from '../profil.js';
+import leaderboardCommand from '../siralama.js';
 
 const dedicatedAuditDatabase = /^postgres(?:ql)?:\/\/postgres:postgres@localhost:5432\/frieren_audit(?:\?|$)/.test(
   process.env.DATABASE_URL || ''
@@ -698,5 +703,255 @@ test('real character growth command serializes point spending and enforces stat 
     );
     assert.deepEqual(capped.rows[0],{stat_points:1,attack:500},
       'a rejected cap overflow must not consume development points');
+  });
+});
+
+
+test('story choices persist all three path requirements, chapter rewards and unique endings exactly once', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const paths = [
+      { key: 'cesaret', gate: async (guildId,userId) => pool.query(
+        'UPDATE users SET boss_defeats=1 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
+      ), bonusCoins: 100, bonusXp: 40, ending: 'Cesaretin Mührü' },
+      { key: 'merhamet', gate: async (guildId,userId) => pool.query(
+        'UPDATE users SET items_used_count=1 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
+      ), bonusCoins: 120, bonusXp: 50, ending: 'Merhametin Mührü' },
+      { key: 'merak', gate: async (guildId,userId) => pool.query(
+        "INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,'heilen') ON CONFLICT DO NOTHING",[guildId,userId]
+      ), bonusCoins: 90, bonusXp: 60, ending: 'Bilginin Mührü' }
+    ];
+
+    for (const path of paths) {
+      const guildId='story-'+randomUUID(), userId='story-user-'+randomUUID();
+      await ensureUser(guildId,userId);
+      const invoke=async decision=>{
+        const replies=[];
+        await storyCommand.execute({
+          guildId,user:{id:userId,username:'StoryIntegration'},
+          options:{getString:()=>decision ?? null},
+          deferReply:async()=>{},
+          editReply:async payload=>{replies.push(payload);return payload;}
+        });
+        return replies;
+      };
+
+      await invoke(path.key);
+      let state=await pool.query(
+        'SELECT current_chapter,choices FROM story_progress WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
+      );
+      assert.equal(Number(state.rows[0]?.current_chapter),1, path.key+' must persist the initial path');
+      let player=await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+      assert.deepEqual(player.rows[0],{coins:50,xp:25});
+
+      const blocked=await invoke(path.key);
+      state=await pool.query('SELECT current_chapter FROM story_progress WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+      player=await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+      assert.equal(Number(state.rows[0].current_chapter),1,'path gate must block chapter advancement');
+      assert.deepEqual(player.rows[0],{coins:50,xp:25},'blocked chapter must not grant rewards');
+      assert.ok(String(blocked[0] || '').includes('henüz tamamlanmadı'));
+
+      await path.gate(guildId,userId);
+      await invoke(path.key);
+      await pool.query('UPDATE users SET exploration_count=2 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+      await invoke(path.key);
+      await pool.query('UPDATE users SET xp=900,level=3 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+      await invoke(path.key);
+      const finalReply=await invoke(path.key);
+
+      state=await pool.query(
+        'SELECT current_chapter,choices FROM story_progress WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
+      );
+      player=await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+      assert.equal(Number(state.rows[0].current_chapter),5,'all five story chapters must be completed');
+      assert.deepEqual(state.rows[0].choices,[path.key,path.key,path.key,path.key,path.key]);
+      assert.equal(Number(player.rows[0].coins),920+path.bonusCoins*3,'all chapter rewards and level-scaled ending coins must persist');
+      assert.equal(Number(player.rows[0].xp),1175+path.bonusXp*3,'chapter XP and level-scaled ending XP must persist');
+      assert.equal(Number(player.rows[0].level),3);
+      assert.ok(String(finalReply[0] || '').includes(path.ending),'the selected path must produce its matching ending');
+
+      await invoke(path.key);
+      const afterReplay=await pool.query(
+        'SELECT current_chapter FROM story_progress WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
+      );
+      const afterReplayPlayer=await pool.query(
+        'SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
+      );
+      assert.equal(Number(afterReplay.rows[0].current_chapter),5,'completed story must remain completed');
+      assert.deepEqual(afterReplayPlayer.rows[0],{coins:920+path.bonusCoins*3,xp:1175+path.bonusXp*3},
+        'replaying a completed story must not grant duplicate rewards');
+    }
+  });
+});
+
+
+test('five real adventure map fragments atomically create one treasure chest and persist rewards', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId='map-'+randomUUID(), userId='map-user-'+randomUUID();
+    await ensureUser(guildId,userId);
+    const originalRandom=Math.random;
+    const replies=[];
+    try {
+      Math.random=()=>0;
+      for(let index=0;index<5;index+=1) {
+        await adventureCommand.execute({
+          guildId,user:{id:userId,username:'MapIntegration'},
+          options:{getString:()=> 'forest-grimoire'},
+          reply:async payload=>{replies.push(payload);return payload;}
+        });
+        await pool.query('UPDATE users SET last_adventure_at=NULL WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+      }
+    } finally {
+      Math.random=originalRandom;
+    }
+
+    const progress=await pool.query(
+      'SELECT fragments,treasures_opened FROM adventure_treasure_progress WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
+    );
+    const inventory=await pool.query(
+      'SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[])',
+      [guildId,userId,['🧩 Kadim Harita Parçası','🗝️ Kadim Hazine Sandığı']]
+    );
+    const history=await pool.query(
+      'SELECT COUNT(*)::int AS count,BOOL_OR(item_found LIKE $3) AS chest_recorded FROM adventure_history WHERE guild_id=$1 AND user_id=$2',
+      [guildId,userId,'%Kadim Hazine Sandığı%']
+    );
+    const player=await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+    const items=Object.fromEntries(inventory.rows.map(row=>[row.item_key,Number(row.quantity)]));
+    assert.equal(Number(progress.rows[0]?.fragments),0,'five fragments must reset fragment progress');
+    assert.equal(Number(progress.rows[0]?.treasures_opened),1,'exactly one map reward must be opened');
+    assert.equal(items['🧩 Kadim Harita Parçası'],5,'each adventure must persist one fragment');
+    assert.equal(items['🗝️ Kadim Hazine Sandığı'],1,'the completed map must create one chest');
+    assert.equal(Number(history.rows[0]?.count),5,'all five adventures must be journaled');
+    assert.equal(history.rows[0]?.chest_recorded,true,'the chest must be recorded in the adventure history');
+    assert.ok(Number(player.rows[0]?.coins)>=225 && Number(player.rows[0]?.xp)>=205,
+      'adventure and completed-map rewards must be persisted');
+    assert.equal(replies.length,5);
+  });
+});
+
+
+test('real crafting output can be equipped and an insufficient-material retry leaves all progress unchanged', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId='craft-chain-'+randomUUID(), userId='craft-user-'+randomUUID();
+    await ensureUser(guildId,userId);
+    const sword=equipmentItems.find(item=>item.id==='iron_sword');
+    assert.ok(sword,'iron_sword recipe must resolve to a real equipment definition');
+    await pool.query('UPDATE users SET level=100 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+    await pool.query(
+      'INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1),($1,$2,$4,1)',
+      [guildId,userId,'💎 Mana Kristali','🥐 Büyülü Poğaça Kutusu']
+    );
+
+    const craft=async()=>{
+      const replies=[];
+      await craftingCommand.execute({
+        guildId,user:{id:userId,username:'CraftIntegration'},
+        options:{getString:key=>key==='tarif'?'iron_sword':null,getInteger:key=>key==='adet'?1:null},
+        deferReply:async()=>{},
+        editReply:async payload=>{replies.push(payload);return payload;}
+      });
+      return replies;
+    };
+    await craft();
+    let materials=await pool.query(
+      'SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[])',
+      [guildId,userId,['💎 Mana Kristali','🥐 Büyülü Poğaça Kutusu']]
+    );
+    let output=await pool.query(
+      'SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,userId,sword.name]
+    );
+    let profession=await pool.query(
+      'SELECT xp,level,successful_crafts FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
+    );
+    let daily=await pool.query(
+      'SELECT crafted_items FROM daily_crafting_progress WHERE guild_id=$1 AND user_id=$2 AND mission_date=CURRENT_DATE',[guildId,userId]
+    );
+    assert.equal(materials.rowCount,0,'successful craft must consume every recipe material');
+    assert.equal(Number(output.rows[0]?.quantity),1,'successful craft must create one real equipment item');
+    assert.equal(Number(profession.rows[0]?.successful_crafts),1,'crafting mastery must count the produced item');
+    assert.equal(Number(daily.rows[0]?.crafted_items),1,'daily crafting progress must track the same output count');
+
+    const equipReplies=[];
+    await equipmentCommand.execute({
+      guildId,user:{id:userId,username:'CraftIntegration'},
+      options:{getString:key=>({islem:'equip',esya:'iron_sword',yuva:null})[key] ?? null},
+      reply:async payload=>{equipReplies.push(payload);return payload;}
+    });
+    const equipped=await pool.query(
+      'SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
+    );
+    output=await pool.query(
+      'SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,userId,sword.name]
+    );
+    assert.equal(equipped.rowCount,1,'crafted equipment must be accepted by the real equipment command');
+    assert.equal(equipped.rows[0].item_key,sword.name);
+    assert.equal(output.rowCount,0,'equipping must consume the crafted inventory copy');
+
+    const before=await pool.query(
+      'SELECT xp,level,successful_crafts FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
+    );
+    const failedReply=await craft();
+    const after=await pool.query(
+      'SELECT xp,level,successful_crafts FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
+    );
+    assert.deepEqual(after.rows[0],before.rows[0],'failed craft must not advance profession XP or successful craft count');
+    assert.ok(String(failedReply[0] || '').includes('malzemen yetmiyor'),'missing materials must produce a clear rejection');
+    assert.equal(equipReplies.length,1);
+  });
+});
+
+
+test('real player profile and collection leaderboard read the selected guild member without leaking caller state', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId='profile-rank-'+randomUUID();
+    const caller='profile-caller-'+randomUUID(), target='profile-target-'+randomUUID(), other='profile-other-'+randomUUID();
+    for(const userId of [caller,target,other]) await ensureUser(guildId,userId);
+    await pool.query(
+      'UPDATE users SET coins=10,xp=100,level=2 WHERE guild_id=$1 AND user_id=$2',
+      [guildId,caller]
+    );
+    await pool.query(
+      'UPDATE users SET coins=900,xp=900,level=3,attack=24 WHERE guild_id=$1 AND user_id=$2',
+      [guildId,target]
+    );
+    await pool.query(
+      'INSERT INTO anime_character_collection(guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,quantity) VALUES($1,$2,\'Frieren\',\'Frieren\',\'Efsanevi\',\'🧙\',10194172,\'fixture\',\'fixture\',1),($1,$2,\'Fern\',\'Frieren\',\'Nadir\',\'🪄\',10194172,\'fixture\',\'fixture\',1),($1,$3,\'Stark\',\'Frieren\',\'Nadir\',\'🪓\',10194172,\'fixture\',\'fixture\',1)',
+      [guildId,target,other]
+    );
+
+    const profileReplies=[];
+    await profileCommand.execute({
+      guildId,
+      user:{id:caller,username:'Caller'},
+      options:{getUser:()=>({id:target,username:'Target',displayAvatarURL:()=> 'https://example.invalid/avatar.png'})},
+      reply:async payload=>{profileReplies.push(payload);return payload;}
+    });
+    const profileEmbed=profileReplies[0]?.embeds?.[0]?.toJSON?.() ?? profileReplies[0]?.embeds?.[0];
+    assert.ok(profileEmbed?.title?.includes('Target'),'profile must render the selected target member');
+    assert.ok(profileEmbed?.fields?.some(field=>field.name==='Poğaça altını' && field.value==='900'),
+      'profile must show the target member balance, not the caller balance');
+    assert.ok(profileEmbed?.fields?.some(field=>field.name==='Saldırı' && field.value==='24'),
+      'profile must show target combat stats');
+
+    const rankingReplies=[];
+    await leaderboardCommand.execute({
+      guildId,user:{id:caller,username:'Caller'},
+      options:{getString:()=> 'collection'},
+      deferReply:async()=>{},
+      editReply:async payload=>{rankingReplies.push(payload);return payload;}
+    });
+    const rankingEmbed=rankingReplies[0]?.embeds?.[0]?.toJSON?.() ?? rankingReplies[0]?.embeds?.[0];
+    assert.ok(rankingEmbed?.description?.indexOf('<@'+target+'>') < rankingEmbed?.description?.indexOf('<@'+other+'>'),
+      'collection leaderboard must rank the member with two unique characters above the member with one');
+    assert.ok(rankingEmbed?.fields?.some(field=>field.name==='Senin sıran' && field.value.startsWith('#3')),
+      'caller rank must be calculated within the same guild and collection category');
   });
 });
