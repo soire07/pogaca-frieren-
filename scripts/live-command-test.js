@@ -1418,7 +1418,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
         if (commandName === 'siralama') {
           const rivalId=userId+'3';
           const outsiderId=userId+'8';
-          const foreignGuildId=buildIsolatedTestGuildId(998);
+          const foreignGuildId='foreign-'+guildId;
           await ensureUser(guildId,rivalId);
           await ensureUser(foreignGuildId,outsiderId);
           await pool.query('UPDATE users SET xp=2500,boss_defeats=8,dungeon_wins=6 WHERE guild_id=$1 AND user_id=$2',[guildId,rivalId]);
