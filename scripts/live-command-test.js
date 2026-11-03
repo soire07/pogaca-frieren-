@@ -1169,6 +1169,65 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Web panel bağlantı kodu oluşturma', expected: 'tek kullanımlık bağlantı kodu gösterilmeli ve veritabanına hash kaydı yazılmalı', actual: token.rowCount + ' token kaydı', passed: token.rowCount === 1 && payloadText.includes('Web Maceracı Paneli bağlantı kodun') },
             { name: 'Web panel bağlantı kodu 10 dakika geçerli', expected: 'kodun kalan geçerliliği 10 dakikadan uzun olmamalı', actual: Math.round(remainingMs / 1000) + ' saniye', passed: remainingMs > 0 && remainingMs <= 10 * 60 * 1000 + 5000 }
           );
+        } else if (commandName === 'koleksiyonliderlik') {
+          const rivalId = userId.slice(0, -1) + '8';
+          await ensureUser(guildId, rivalId);
+          const suffix = String(runContext.runId);
+          const names = ['Audit Fern ' + suffix, 'Audit Frieren ' + suffix, 'Audit Stark ' + suffix];
+          await pool.query(
+            `INSERT INTO anime_character_collection
+             (guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,image,quantity)
+             VALUES
+             ($1,$2,$3,'Frieren','Nadir','🌿',123,'audit','audit',NULL,2),
+             ($1,$2,$4,'Frieren','Nadir','🌿',123,'audit','audit',NULL,1),
+             ($1,$5,$6,'Frieren','Nadir','🌿',123,'audit','audit',NULL,9)`,
+            [guildId, userId, names[0], names[1], rivalId, names[2]]
+          );
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const ranking = await pool.query(
+            `SELECT user_id,COUNT(*)::int AS unique_characters,COALESCE(SUM(quantity),0)::int AS total_copies
+             FROM anime_character_collection WHERE guild_id=$1 GROUP BY user_id
+             ORDER BY unique_characters DESC,total_copies DESC,user_id ASC LIMIT 10`,
+            [guildId]
+          );
+          const payloadText = payloadTextFromEffects(effects);
+          behavioralChecks.push(
+            { name: 'Koleksiyon liderliği farklı karakter sıralaması', expected: 'iki farklı karakteri olan oyuncu, dokuz kopyalı tek karakter oyuncusunun üstünde olmalı', actual: ranking.rows.map(row => row.user_id + ':' + row.unique_characters + '/' + row.total_copies).join(', '), passed: ranking.rows[0]?.user_id === userId && Number(ranking.rows[0]?.unique_characters) === 2 && ranking.rows[1]?.user_id === rivalId },
+            { name: 'Koleksiyon liderliği sunucu kapsamı ve yanıtı', expected: 'yalnızca bu sunucunun koleksiyon sıralaması ve iki oyuncu gösterilmeli', actual: payloadText.slice(0, 500), passed: ranking.rowCount === 2 && payloadText.includes('Sunucu Karakter Koleksiyonu') && payloadText.includes(userId) && payloadText.includes(rivalId) }
+          );
+        } else if (commandName === 'zindanodulleri') {
+          await pool.query(
+            'UPDATE users SET coins=100,xp=0,level=1,stat_points=0,dungeon_wins=25 WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          const itemKeys = ['💎 Mana Kristali','🐉 Ejderha Pulu','👑 Himmel’in Efsanevi Yadigârı'];
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const firstState = await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const firstClaims = await pool.query('SELECT milestone_key FROM dungeon_milestone_claims WHERE guild_id=$1 AND user_id=$2 ORDER BY milestone_key',[guildId,userId]);
+          const firstItems = await pool.query('SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[])',[guildId,userId,itemKeys]);
+          const firstText = payloadTextFromEffects(effects);
+          behavioralChecks.push(
+            { name: 'Zindan kilometre taşı ödülleri', expected: '5, 10 ve 25 zafer ödülleri tek işlemde; +2350 altın ve +1100 XP', actual: 'altın ' + firstState.rows[0]?.coins + ', XP ' + firstState.rows[0]?.xp + ', hak ' + firstClaims.rowCount, passed: Number(firstState.rows[0]?.coins) === 2450 && Number(firstState.rows[0]?.xp) === 1100 && firstClaims.rowCount === 3 && firstItems.rowCount === 3 && firstItems.rows.every(row => Number(row.quantity) === 1) },
+            { name: 'Zindan kilometre taşı ödül yanıtı', expected: 'üç kilometre taşı ve toplam kazanım gösterilmeli', actual: firstText.slice(0, 500), passed: firstText.includes('Zindan Kilometre Taşı Ödülleri') && firstText.includes('İlk Beş Zindan') && firstText.includes('On Zindan Ustası') && firstText.includes('Kuzey Zindan Efsanesi') }
+          );
+          const secondEffects = [];
+          const secondInteraction = makeInteraction(command, buildOptions(schema?.options), guildId, secondEffects);
+          secondInteraction.user.id = userId;
+          secondInteraction.member = makeMember(userId);
+          await command.execute(secondInteraction);
+          const secondState = await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const secondClaims = await pool.query('SELECT COUNT(*)::int AS count FROM dungeon_milestone_claims WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const secondItems = await pool.query('SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[])',[guildId,userId,itemKeys]);
+          behavioralChecks.push(
+            { name: 'Zindan ödülü tekrar talebinde çift ödeme koruması', expected: 'ikinci talep altın, XP, eşya veya claim sayısını artırmamalı', actual: 'altın ' + secondState.rows[0]?.coins + ', XP ' + secondState.rows[0]?.xp + ', hak ' + secondClaims.rows[0]?.count, passed: Number(secondState.rows[0]?.coins) === 2450 && Number(secondState.rows[0]?.xp) === 1100 && Number(secondClaims.rows[0]?.count) === 3 && secondItems.rowCount === 3 && secondItems.rows.every(row => Number(row.quantity) === 1) }
+          );
+          effects.push(...secondEffects);
         } else {
           const options = buildOptions(schema?.options, { user: undefined });
           const interaction = makeInteraction(command, options, guildId, effects);
