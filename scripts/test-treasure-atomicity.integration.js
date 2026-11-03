@@ -15,7 +15,8 @@ test('treasure chest opening rolls back chest, loot, gold, XP and stat points on
   assertIsolatedAuditDatabase();
   await initDatabase();
   const guildId = '99000000000000105';
-  const userId = String(75000000000000000n + BigInt(randomUUID().replaceAll('-','').slice(0,8), 16) % 9000000000000000n);
+  const seed = BigInt('0x' + randomUUID().replaceAll('-','').slice(0,8));
+  const userId = String(75000000000000000n + seed);
   await ensureUser(guildId,userId);
   await pool.query('UPDATE users SET coins=100,xp=390,level=2,stat_points=0 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
   await pool.query("INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'🗝️ Kadim Hazine Sandığı',2)",[guildId,userId]);
