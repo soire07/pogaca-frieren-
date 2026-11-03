@@ -10,9 +10,11 @@ import {
   applyClassDamage,
   applyClassDefense,
   applyClassHealing,
+  applyClassManaCost,
   calculateBossIncomingDamage,
   getBossPhase,
-  bossPhaseSpecialBonus
+  bossPhaseSpecialBonus,
+  CHARACTER_CLASSES
 } from '../rpg-mechanics.js';
 
 test('boss incoming damage never becomes negative and has a minimum of one', () => {
@@ -59,6 +61,26 @@ test('raid weakness applies a 30 percent rounded bonus only to the matching acti
   assert.equal(applyRaidWeakness(1, spellBoss, 'spell'), 1);
   assert.equal(applyRaidWeakness(5, spellBoss, 'spell'), 7);
   assert.equal(applyRaidWeakness(100, attackBoss, 'attack'), 130);
+});
+
+test('class passives apply exact advertised multipliers across every class and combat stat', () => {
+  const cases = [
+    { key: 'gezgin', label: 'Gezgin', attack: 1, defense: 1, healing: 1, mana: 1 },
+    { key: 'buyucu', label: 'Büyücü', attack: 1.08, defense: 1, healing: 1, mana: 0.9 },
+    { key: 'muhafiz', label: 'Muhafız', attack: 1, defense: 1.12, healing: 1, mana: 1 },
+    { key: 'sifaci', label: 'Şifacı', attack: 1, defense: 1, healing: 1.2, mana: 1 }
+  ];
+  for (const entry of cases) {
+    const profile = CHARACTER_CLASSES[entry.key];
+    assert.equal(profile.attackMultiplier, entry.attack, entry.label + ' attack profile');
+    assert.equal(profile.defenseMultiplier, entry.defense, entry.label + ' defense profile');
+    assert.equal(profile.healingMultiplier, entry.healing, entry.label + ' healing profile');
+    assert.equal(profile.manaCostMultiplier, entry.mana, entry.label + ' mana profile');
+    assert.equal(applyClassDamage(101, entry.label), Math.floor(101 * entry.attack), entry.label + ' attack application');
+    assert.equal(applyClassDefense(101, entry.label), Math.floor(101 * entry.defense), entry.label + ' defense application');
+    assert.equal(applyClassHealing(101, entry.label), Math.floor(101 * entry.healing), entry.label + ' healing application');
+    assert.equal(applyClassManaCost(101, entry.label), Math.max(1, Math.floor(101 * entry.mana)), entry.label + ' mana application');
+  }
 });
 
 test('class damage, defense and healing bonuses round down consistently', () => {
