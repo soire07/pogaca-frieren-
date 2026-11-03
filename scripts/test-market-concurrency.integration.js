@@ -1671,9 +1671,10 @@ test('equipment salvage returns proportional materials for all ten items and rec
         getInteger: name => name === 'adet' ? 2 : null
       },
       deferReply: async () => {},
-      editReply: async payload => payload
+      editReply: async payload => { responses.push(payload); return payload; }
     });
     const expected = new Map();
+    const responses = [];
     try {
       for (const item of equipmentItems) {
         const salvage = {
@@ -1705,6 +1706,9 @@ test('equipment salvage returns proportional materials for all ten items and rec
         Object.fromEntries(expected)
       );
       assert.equal(Number(progress.rows[0].salvaged_items), equipmentItems.length * 2);
+      assert.equal(responses.length, equipmentItems.length);
+      assert.ok(responses.every(payload => JSON.stringify(payload).includes('Toplam parçalanan ekipman')),
+        'each salvage response must display the updated lifetime dismantling total');
     } finally {
       await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
     }
