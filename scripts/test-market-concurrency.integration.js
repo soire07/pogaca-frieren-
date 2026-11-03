@@ -608,6 +608,43 @@ test('production layered dungeon settlement is single-use for the whole party un
   });
 });
 
+test('full dungeon clear grants Himmel’s signature relic to every party member in PostgreSQL', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = testSnowflake('91');
+    const ids = [testSnowflake('90'), testSnowflake('92')];
+    const encounterId = randomUUID();
+    for (const id of ids) await ensureUser(guildId, id);
+    await pool.query(
+      `INSERT INTO active_rpg_encounters(guild_id,user_id,encounter_id,encounter_type,expires_at)
+       SELECT $1,user_id,$3,'dungeon',NOW()+INTERVAL '30 minutes' FROM unnest($2::text[]) AS user_id`,
+      [guildId, ids, encounterId]
+    );
+    const players = ids.map(user_id => ({ user_id, maxHp: 100, max_hp: 100, mana: 70, maxMana: 100, max_mana: 100 }));
+    const relic = '👑 Himmel’in Efsanevi Yadigârı';
+    const result = await settleDungeonRewards(pool, {
+      guildId, encounterId, ids, players,
+      persistedHpNow: [80, 75], persistedManaNow: [70, 65],
+      victory: true, totalXp: 180, totalCoins: 120,
+      chestRewards: [], loot: null, craftingLoot: relic,
+      spellCasts: new Map(), journalUserId: ids[0]
+    });
+    assert.equal(result.status, 'settled');
+    const saved = await pool.query(
+      'SELECT user_id,quantity FROM inventory WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND item_key=$3 ORDER BY user_id',
+      [guildId, ids, relic]
+    );
+    assert.equal(saved.rowCount, ids.length, 'every player who completed the final floor must receive the signature relic');
+    assert.ok(saved.rows.every(row => Number(row.quantity) === 1));
+    const progression = await pool.query(
+      'SELECT user_id,dungeon_wins FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',
+      [guildId, ids]
+    );
+    assert.ok(progression.rows.every(row => Number(row.dungeon_wins) === 1));
+  });
+});
+
 test('production layered dungeon settlement rolls back all players and reservations when loot persistence fails', {
   skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
 }, async () => {
