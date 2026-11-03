@@ -4,7 +4,7 @@ import { getBossArtUrl } from './boss-art.js';
 import { settleDungeonRewards } from './rpg-reward-transactions.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, restoreResourceRatio, applyDefendingReduction, isFinalDungeonBossEnraged, shouldFinalDungeonBossSpecialAttack, calculateFinalDungeonBossRawDamage, getDungeonEventOutcome, canAssignPartyRole, isPartyWiped, getPartyRoleModifiers } from './rpg-mechanics.js';
+import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, restoreResourceRatio, applyDefendingReduction, isFinalDungeonBossEnraged, shouldFinalDungeonBossSpecialAttack, calculateFinalDungeonBossRawDamage, getDungeonEventOutcome, canAssignPartyRole, isPartyWiped, getPartyRoleModifiers, applyTalentBonus, calculateDungeonFloorReward } from './rpg-mechanics.js';
 
 const FLOORS = 5;
 
@@ -193,13 +193,13 @@ export default {
       const players = rawPlayers.map((p, i) => {
         const equipped = gearMap.get(p.user_id) || []; const bonus = applyEquipmentSetBonus(equipped, equipmentBonus(equipped));
         const role = PARTY_ROLES[roles[i]]; const build = getCharacterBuild(p.active_build);
-        const baseMaxHp = Math.min(2000, Number(p.max_hp) + bonus.hp) * (1 + Number(p.talent_hp) * 0.05);
+        const baseMaxHp = applyTalentBonus(Math.min(2000, Number(p.max_hp) + bonus.hp), p.talent_hp, 0.05);
         const maxHp = Math.round(baseMaxHp * build.hp * role.hp);
-        const maxMana = Math.min(500, Math.round((Number(p.max_mana) + bonus.mana) * build.mana * (1 + Number(p.talent_mana) * 0.05)));
+        const maxMana = Math.min(500, Math.round(applyTalentBonus((Number(p.max_mana) + bonus.mana) * build.mana, p.talent_mana, 0.05)));
         return { ...p, build, classProfile: getCharacterClass(p.class_name), level: Number(p.level), xp: Number(p.xp), mana: Math.min(maxMana, Math.round((Number(p.mana) / Math.max(1, Number(p.max_mana))) * maxMana)), maxMana, role: roles[i], roleLabel: role.label, maxHp,
           hp: Math.round((Number(p.hp) / Math.max(1, Number(p.max_hp))) * maxHp),
-          attack: Math.round(Math.min(500, Number(p.attack) + bonus.attack) * build.attack * role.attack * (1 + Number(p.talent_attack) * 0.04)),
-          defense: Math.round(Math.min(250, applyClassDefense(Number(p.defense) + bonus.defense, p.class_name) * build.defense * (1 + Number(p.talent_defense) * 0.04)) * role.defense) };
+          attack: Math.round(applyTalentBonus(Math.min(500, Number(p.attack) + bonus.attack) * build.attack * role.attack, p.talent_attack, 0.04)),
+          defense: Math.round(Math.min(250, applyTalentBonus(applyClassDefense(Number(p.defense) + bonus.defense, p.class_name) * build.defense, p.talent_defense, 0.04)) * role.defense) };
       });
       if (players.some(p => p.hp <= 0)) {
         await db.query('ROLLBACK');
@@ -356,8 +356,7 @@ export default {
           break;
         }
         floorsCleared++;
-        const floorXp = 25 + floor * 12 + avgLevel * 2;
-        const floorCoins = 20 + floor * 10;
+        const { xp: floorXp, coins: floorCoins } = calculateDungeonFloorReward(floor, avgLevel);
         totalXp += floorXp; totalCoins += floorCoins;
         log.push(`✅ ${floor}. kat temizlendi: +${floorXp} XP, +${floorCoins} altın (kişi başı).`);
         const pathRow = new ActionRowBuilder().addComponents(
