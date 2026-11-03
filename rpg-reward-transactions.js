@@ -87,7 +87,7 @@ export async function settleRaidRewards(dbPool, {
     for (const [userId, casts] of spellCasts) {
       const result = await db.query(
         `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
-         VALUES ($1,$2,'zoltraak',$3::integer,LEAST(10,FLOOR($3::numeric/10.0)::int),NOW())
+         VALUES ($1,$2,'zoltraak',$3::integer,LEAST(10,FLOOR(($3::integer)::numeric/10.0)::int),NOW())
          ON CONFLICT (guild_id,user_id,spell_key) DO UPDATE
          SET casts=spell_mastery.casts+EXCLUDED.casts,
              mastery_level=LEAST(10,FLOOR((spell_mastery.casts+EXCLUDED.casts)/10.0)::int),
@@ -160,7 +160,7 @@ export async function settleDungeonRewards(dbPool, {
     for (const [userId, casts] of spellCasts) {
       const result = await db.query(
         `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
-         VALUES ($1,$2,'zoltraak',$3,LEAST(10,FLOOR($3/10.0)::int),NOW())
+         VALUES ($1,$2,'zoltraak',$3::integer,LEAST(10,FLOOR(($3::integer)::numeric/10.0)::int),NOW())
          ON CONFLICT (guild_id,user_id,spell_key) DO UPDATE
          SET casts=spell_mastery.casts+EXCLUDED.casts,
              mastery_level=LEAST(10,FLOOR((spell_mastery.casts+EXCLUDED.casts)/10.0)::int),
