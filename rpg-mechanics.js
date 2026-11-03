@@ -45,6 +45,51 @@ export function dungeonEnemyStats(floor, averageLevel, partySize, difficulty = '
   };
 }
 
+
+export function scaleRaidBossHp(baseHp, averageLevel, partySize) {
+  const base = Math.max(1, Math.floor(Number(baseHp) || 1));
+  const level = Math.max(1, Math.floor(Number(averageLevel) || 1));
+  const party = Math.max(2, Math.floor(Number(partySize) || 2));
+  return Math.round(base + level * 18 + (party - 2) * 90);
+}
+
+export function getDungeonEventOutcome(eventRoll) {
+  const roll = Number(eventRoll);
+  if (!Number.isFinite(roll)) return 'none';
+  if (roll < 0.24) return 'hidden_chest';
+  if (roll < 0.42) return 'trap';
+  return 'none';
+}
+
+export function isPartyWiped(hpValues) {
+  return Array.isArray(hpValues) && hpValues.length > 0 &&
+    hpValues.every(hp => Number.isFinite(Number(hp)) && Number(hp) <= 0);
+}
+
+export function canAssignPartyRole(assignedRoles, role) {
+  const validRoles = ['tank', 'healer', 'damage'];
+  if (!validRoles.includes(role)) return false;
+  const selected = Array.isArray(assignedRoles) ? assignedRoles : [...(assignedRoles || [])];
+  return (role !== 'tank' && role !== 'healer') || !selected.includes(role);
+}
+
+export function getPartyRoleModifiers(role, encounterType = 'dungeon') {
+  const profiles = {
+    dungeon: {
+      tank: { hp: 1.25, attack: 0.85, defense: 1.4 },
+      healer: { hp: 1, attack: 0.9, defense: 1.05 },
+      damage: { hp: 0.95, attack: 1.3, defense: 0.9 }
+    },
+    raid: {
+      tank: { hp: 1.25, attack: 0.85, defense: 1.45 },
+      healer: { hp: 1, attack: 0.85, defense: 1.05 },
+      damage: { hp: 0.95, attack: 1.35, defense: 0.9 }
+    }
+  };
+  const profile = profiles[encounterType] || profiles.dungeon;
+  return { ...(profile[role] || { hp: 1, attack: 1, defense: 1 }) };
+}
+
 export function progressionMilestone(level, bossWins, dungeonWins) {
   const rewards = [];
   if (level >= 10) rewards.push('Kıdemli Maceracı');
@@ -140,6 +185,43 @@ export function calculateBossIncomingDamage(rawDamage, defense, phase = 1) {
   const mitigated = Math.max(1, raw - Math.floor(guard / 2));
   const multiplier = phase >= 3 ? 1.25 : phase === 2 ? 1.1 : 1;
   return Math.max(1, Math.round(mitigated * multiplier));
+}
+
+
+export function applyDefendingReduction(incomingDamage, isDefending) {
+  const damage = Math.max(1, Math.floor(Number(incomingDamage) || 0));
+  return isDefending ? Math.max(1, Math.round(damage * 0.45)) : damage;
+}
+
+export function isFinalDungeonBossEnraged(floor, totalFloors, enemyHp, maximumHp) {
+  return Number(floor) === Number(totalFloors) &&
+    Number.isFinite(Number(enemyHp)) &&
+    Number.isFinite(Number(maximumHp)) &&
+    Number(maximumHp) > 0 &&
+    Number(enemyHp) <= Number(maximumHp) * 0.5;
+}
+
+export function shouldFinalDungeonBossSpecialAttack(floor, totalFloors, turn) {
+  return Number(floor) === Number(totalFloors) &&
+    Number.isInteger(Number(turn)) &&
+    Number(turn) > 0 &&
+    Number(turn) % 3 === 0;
+}
+
+export function calculateFinalDungeonBossRawDamage(enemyDamage, {
+  floor, totalFloors, turn, enraged = false, specialAttack = false, phase = 1
+} = {}) {
+  const floorNumber = Math.max(1, Math.floor(Number(floor) || 1));
+  const finalFloor = Math.max(1, Math.floor(Number(totalFloors) || 5));
+  const turnNumber = Math.max(1, Math.floor(Number(turn) || 1));
+  const base = Math.max(0, Number(enemyDamage) || 0);
+  const bossPower = floorNumber === finalFloor ? 1.35 : 1;
+  const turnMultiplier = 0.9 + ((turnNumber + floorNumber) % 3) * 0.08;
+  return Math.max(1, Math.round(
+    base * bossPower * turnMultiplier +
+    (enraged ? 7 : 0) +
+    (specialAttack ? 6 + bossPhaseSpecialBonus(phase) : 0)
+  ));
 }
 
 export function bossPhaseSpecialBonus(phase) {
