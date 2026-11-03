@@ -78,7 +78,7 @@ test('dungeon carries player HP between floors and stops after the party is defe
   const floorLoop = source.indexOf('for (let floor = 1; floor <= FLOORS; floor++)');
   const combatLoop = source.indexOf('while (enemyHp > 0 && hpNow.some(hp => hp > 0) && turn < 10)');
   const hpWrite = source.indexOf('hpNow[targetIndex] = Math.max(0, hpNow[targetIndex] - incoming)');
-  const stopRun = source.indexOf('if (enemyHp > 0)', combatLoop);
+  const stopRun = source.indexOf('if (enemyHp > 0)', hpWrite);
   assert.ok(hpInit >= 0 && floorLoop > hpInit && combatLoop > floorLoop, 'HP state must be initialized once before all floors');
   assert.ok(hpWrite > combatLoop && stopRun > hpWrite, 'combat must persist damage and stop the run when enemies remain after party wipe');
   assert.match(source, /hpNow\.some\(hp => hp > 0\)/);
