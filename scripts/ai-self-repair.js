@@ -75,7 +75,7 @@ export async function collectRepairContext(task, {
   // Guardian review tasks include an explicit affected-file list. Prefer those
   // exact, allowlisted paths over fuzzy keyword matches so relevant code is not
   // displaced by unrelated files that happen to share generic words.
-  const fileList = taskText.match(/(?:ilgili dosyalar|affected files)\\s*:\\s*([^\\n]+)/i)?.[1] || '';
+  const fileList = taskText.match(/(?:ilgili dosyalar|affected files)\s*:\s*([^\n]+)/i)?.[1] || '';
   const explicitPaths = [...new Set(fileList.split(',').map(value => value.trim())
     .filter(isAllowedRepairPath))].filter(path => tracked.includes(path));
   const explicitRank = new Map(explicitPaths.map((path, index) => [path, index]));
