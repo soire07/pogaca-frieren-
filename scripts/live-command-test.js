@@ -5,6 +5,7 @@ import { applyEquipmentSetBonus } from '../rpg-mechanics.js';
 import { buildCoopTestUserIds } from './coop-test-users.js';
 import { handleCharacterPanelInteraction } from '../karakter.js';
 import { createIsolatedTestRunContext } from './isolated-test-run-context.js';
+import { ensureAdventurerPlatformTables, createGuildEvent } from '../adventurer-platform.js';
 
 
 export function buildIsolatedTestGuildId(index) {
@@ -1120,6 +1121,98 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Kimimben karakter keşfi ve koleksiyon kaydı', expected: 'bir karakter keşfedilmeli ve koleksiyona tam bir kopya eklenmeli', actual: collection.rows[0]?.distinct_characters + ' karakter / ' + collection.rows[0]?.total_copies + ' kopya', passed: Number(collection.rows[0]?.distinct_characters) === 1 && Number(collection.rows[0]?.total_copies) === 1 },
             { name: 'Kimimben çekim limiti ve zaman damgası', expected: 'çekim sayacı 1 olmalı ve son çekim zamanı kaydedilmeli', actual: 'sayaç ' + state.rows[0]?.character_draw_count + ' / zaman ' + Boolean(state.rows[0]?.last_character_draw_at), passed: Number(state.rows[0]?.character_draw_count) === 1 && Boolean(state.rows[0]?.last_character_draw_at) && state.rows[0]?.character_draw_cooldown_until == null },
             { name: 'Kimimben karakter kartı ve yenileme düğmesi', expected: 'karakter kartı ve yalnızca kullanıcıya ait yenileme düğmesi gösterilmeli', actual: payloadText.includes('kimimben_again') ? 'karakter kartı ve yenileme düğmesi gösterildi' : payloadText.slice(0, 400), passed: payloadText.includes('Karakter Keşfi') && payloadText.includes('kimimben_again') }
+          );
+        } else if (commandName === 'arena') {
+          const runArenaAction = async subcommand => {
+            const actionEffects = [];
+            const actionOptions = buildOptions(schema?.options, { __subcommand: subcommand });
+            const actionInteraction = makeInteraction(command, actionOptions, guildId, actionEffects);
+            actionInteraction.user.id = userId;
+            actionInteraction.member = makeMember(userId);
+            await command.execute(actionInteraction);
+            effects.push(...actionEffects);
+            return payloadTextFromEffects(actionEffects);
+          };
+          const joinText = await runArenaAction('katil');
+          const queueAfterJoin = await pool.query(
+            'SELECT rating FROM arena_queue WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          await runArenaAction('katil');
+          const queueAfterDuplicate = await pool.query(
+            'SELECT COUNT(*)::int AS count FROM arena_queue WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          const statusText = await runArenaAction('durum');
+          const leaveText = await runArenaAction('ayril');
+          const queueAfterLeave = await pool.query(
+            'SELECT COUNT(*)::int AS count FROM arena_queue WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          behavioralChecks.push(
+            { name: 'Arena kuyruğuna kayıt', expected: 'oyuncu 3v3 kuyruğuna bir kez eklenmeli ve 1/6 görünmeli', actual: queueAfterJoin.rowCount + ' kayıt; ' + joinText.slice(0, 180), passed: queueAfterJoin.rowCount === 1 && Number(queueAfterJoin.rows[0]?.rating) >= 0 && joinText.includes('1/6') },
+            { name: 'Arena yinelenen katılım koruması', expected: 'aynı oyuncu ikinci kez katıldığında tek kuyruk kaydı kalmalı', actual: queueAfterDuplicate.rows[0]?.count + ' kayıt', passed: Number(queueAfterDuplicate.rows[0]?.count) === 1 },
+            { name: 'Arena kuyruk durumu', expected: 'durum alt komutu oyuncunun kuyruk konumunu göstermeli', actual: statusText.slice(0, 180), passed: statusText.includes('Kuyruktasın') && statusText.includes('1/6') },
+            { name: 'Arena kuyruktan ayrılma', expected: 'ayrıl komutu kuyruk kaydını silmeli', actual: leaveText.slice(0, 180) + '; kalan ' + queueAfterLeave.rows[0]?.count, passed: leaveText.includes('Kuyruktan ayrıldın') && Number(queueAfterLeave.rows[0]?.count) === 0 }
+          );
+        } else if (commandName === 'etkinlik') {
+          await ensureAdventurerPlatformTables(pool);
+          const startsAt = new Date(Date.now() + 60 * 60_000).toISOString();
+          const endsAt = new Date(Date.now() + 2 * 60 * 60_000).toISOString();
+          const created = await createGuildEvent(pool, {
+            guildId, createdBy: userId, title: 'Frieren İzole Test Etkinliği',
+            description: 'Komut davranış denetimi', startsAt, endsAt, maxParticipants: 2
+          });
+          const runEventAction = async (subcommand, values = {}) => {
+            const actionEffects = [];
+            const actionOptions = buildOptions(schema?.options, { __subcommand: subcommand, id: created.eventId, ...values });
+            const actionInteraction = makeInteraction(command, actionOptions, guildId, actionEffects);
+            actionInteraction.user.id = userId;
+            actionInteraction.member = makeMember(userId);
+            await command.execute(actionInteraction);
+            effects.push(...actionEffects);
+            return payloadTextFromEffects(actionEffects);
+          };
+          const listText = await runEventAction('liste');
+          const joinText = await runEventAction('katil');
+          const joined = await pool.query(
+            'SELECT user_id FROM guild_event_participants WHERE event_id=$1 AND guild_id=$2 AND user_id=$3',
+            [created.eventId, guildId, userId]
+          );
+          const duplicateText = await runEventAction('katil');
+          const leaveText = await runEventAction('ayril');
+          const left = await pool.query(
+            'SELECT COUNT(*)::int AS count FROM guild_event_participants WHERE event_id=$1 AND guild_id=$2 AND user_id=$3',
+            [created.eventId, guildId, userId]
+          );
+          const ownerDeniedText = await runEventAction('olustur', {
+            baslik: 'Yetkisiz etkinlik', baslangic: startsAt, bitis: endsAt, aciklama: 'Test', kapasite: 2
+          });
+          const unauthorizedCreated = await pool.query(
+            "SELECT COUNT(*)::int AS count FROM guild_events WHERE guild_id=$1 AND title='Yetkisiz etkinlik'",
+            [guildId]
+          );
+          behavioralChecks.push(
+            { name: 'Etkinlik takvim listesi', expected: 'planlanmış etkinlik adı ve kimliği listelenmeli', actual: listText.includes('Frieren İzole Test Etkinliği') ? 'etkinlik listelendi' : listText.slice(0, 220), passed: listText.includes('Frieren İzole Test Etkinliği') && listText.includes(created.eventId) },
+            { name: 'Etkinliğe kayıt', expected: 'oyuncu etkinliğe bir kez kaydedilmeli', actual: joinText.slice(0, 180) + '; kayıt ' + joined.rowCount, passed: joinText.includes('Etkinliğe kaydın oluşturuldu') && joined.rowCount === 1 },
+            { name: 'Etkinlik yinelenen kayıt koruması', expected: 'ikinci kayıt already_joined olmalı ve yeni satır açmamalı', actual: duplicateText.slice(0, 180), passed: duplicateText.includes('zaten kayıtlısın') },
+            { name: 'Etkinlikten ayrılma', expected: 'ayrılma katılımcı kaydını silmeli', actual: leaveText.slice(0, 180) + '; kalan ' + left.rows[0]?.count, passed: leaveText.includes('Etkinlik kaydın silindi') && Number(left.rows[0]?.count) === 0 },
+            { name: 'Etkinlik oluşturma yetki sınırı', expected: 'sahip olmayan kullanıcı etkinlik oluşturamamalı', actual: ownerDeniedText.slice(0, 180) + '; oluşturulan ' + unauthorizedCreated.rows[0]?.count, passed: ownerDeniedText.includes('yalnızca bot sahibine açıktır') && Number(unauthorizedCreated.rows[0]?.count) === 0 }
+          );
+        } else if (commandName === 'maceraci') {
+          const interaction = makeInteraction(command, buildOptions(schema?.options, { __subcommand: 'bagla' }), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const payloadText = payloadTextFromEffects(effects);
+          const tokenMatch = payloadText.match(/\b[A-Za-z0-9_-]{32}\b/);
+          const stored = await pool.query(
+            'SELECT token_hash,expires_at FROM site_link_tokens WHERE guild_id=$1 AND user_id=$2 ORDER BY created_at DESC LIMIT 1',
+            [guildId, userId]
+          );
+          behavioralChecks.push(
+            { name: 'Web maceracı tek kullanımlık bağlantı kodu', expected: 'Discord yanıtında 10 dakika geçerli kod ve portal bağlantısı gösterilmeli', actual: 'kod ' + Boolean(tokenMatch) + '; kayıt ' + stored.rowCount + '; süre ' + (stored.rows[0]?.expires_at || 'yok'), passed: Boolean(tokenMatch) && payloadText.includes('/maceraci') && payloadText.includes('10 dakika') && stored.rowCount === 1 && new Date(stored.rows[0].expires_at).getTime() > Date.now() },
+            { name: 'Web bağlantı kodunun güvenli saklanması', expected: 'veritabanında ham kod değil, kod hash değeri saklanmalı', actual: 'hash alanı ' + Boolean(stored.rows[0]?.token_hash) + '; ham kod saklanmıyor', passed: Boolean(stored.rows[0]?.token_hash) && stored.rows[0].token_hash !== tokenMatch?.[0] }
           );
         } else if (commandName === 'status') {
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
