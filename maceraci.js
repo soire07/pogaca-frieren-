@@ -17,6 +17,6 @@ export default {
         flags: MessageFlags.Ephemeral
       });
     }
-    return interaction.reply({ content: 'Web Maceracı Paneline gitmek için [buraya dokun](https://frierenbot.vercel.app/maceraci).', flags: MessageFlags.Ephemeral });
+    return interaction.reply({ content: 'Bilinmeyen panel işlemi.', flags: MessageFlags.Ephemeral });
   }
 };
