@@ -143,7 +143,7 @@ export default {
              updated_at=NOW()
            RETURNING daily_streak, best_streak
          )
-         SELECT updated.daily_streak,
+         SELECT updated.daily_streak, updated.best_streak,
                 COALESCE((SELECT last_visit_date FROM previous), CURRENT_DATE-2) IS DISTINCT FROM CURRENT_DATE AS new_day
          FROM updated`,
         [interaction.guildId, interaction.user.id]
