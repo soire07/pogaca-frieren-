@@ -2239,7 +2239,7 @@ test('rare discovery pity selects the remaining forgotten archive and dragon nes
           [guildId, userId, scenario.className]
         );
         await pool.query(
-          'INSERT INTO adventure_route_mastery(guild_id,user_id,route_key,visits) VALUES($1,$2,$3,19)',
+          'INSERT INTO adventure_route_mastery(guild_id,user_id,route_key,visits) VALUES($1,$2,$3,59)',
           [guildId, userId, 'forest-grimoire']
         );
         await pool.query(
