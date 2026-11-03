@@ -1010,6 +1010,206 @@
         ]
       },
       "limitation": "The isolated PostgreSQL test verifies one-time token redemption and the linked dashboard data. The browser login/session journey and production account are not exercised."
+    },
+    {
+      "featureId": "RPG-301",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "const nextBossPhase = getBossPhase(bossHp, boss.maxHp)",
+            "calculateBossIncomingDamage(rawBossDamage, defense, bossPhase)"
+          ]
+        },
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function getBossPhase(currentHp, maximumHp)"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "solo boss phase transitions use clear two-thirds and one-third health thresholds",
+        "markers": [
+          "getBossPhase(80, 120)",
+          "getBossPhase(40, 120)"
+        ]
+      },
+      "limitation": "The health-threshold helper is unit-tested and the solo handler wires phase transitions into incoming damage. Player-visible enrage timing and a complete live boss encounter are not verified."
+    },
+    {
+      "featureId": "RPG-302",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "calculateBossIncomingDamage(rawBossDamage, defense, bossPhase)"
+          ]
+        },
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function calculateBossIncomingDamage"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "boss phase damage scaling respects defense and grows only in later phases",
+        "markers": [
+          "calculateBossIncomingDamage(10, 4, 1)",
+          "calculateBossIncomingDamage(10, 4, 2)",
+          "calculateBossIncomingDamage(10, 4, 3)"
+        ]
+      },
+      "limitation": "Damage scaling and defense mitigation are unit-tested and the solo handler calls the shared helper. Full Discord combat remains unverified."
+    },
+    {
+      "featureId": "RPG-303",
+      "evidenceLevel": "automated_tested",
+      "sources": [
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "bossPhaseSpecialBonus(bossPhase)"
+          ]
+        },
+        {
+          "path": "rpg-mechanics.js",
+          "markers": [
+            "export function bossPhaseSpecialBonus(phase)"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "boss phase damage scaling respects defense and grows only in later phases",
+        "markers": [
+          "bossPhaseSpecialBonus(1), 0",
+          "bossPhaseSpecialBonus(2), 4",
+          "bossPhaseSpecialBonus(3), 8"
+        ]
+      },
+      "limitation": "Special-attack bonus values for all three phases are directly unit-tested; actual special-attack delivery in Discord is not."
+    },
+    {
+      "featureId": "RPG-304",
+      "evidenceLevel": "automated_static_assertion",
+      "sources": [
+        {
+          "path": "iblisavasi.js",
+          "markers": [
+            "if (turnCount % 3 === 0 && !frozenBoss)",
+            "else if (turnCount % 3 === 0 && frozenBoss)"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "freezing the boss cancels its scheduled special attack and its mana-drain side effect",
+        "markers": [
+          "if \\\\(turnCount % 3 === 0 && !frozenBoss\\\\)",
+          "else if \\\\(turnCount % 3 === 0 && frozenBoss\\\\)",
+          "Donma etkisi bossun özel saldırısını da durdurdu"
+        ]
+      },
+      "limitation": "The test asserts the solo boss handler suppresses its scheduled special attack and mana drain while frozen. It is a source-level regression test, not a live Discord fight."
+    },
+    {
+      "featureId": "RPG-305",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "ortakboss.js",
+          "markers": [
+            "getBossPhase(bossHp, maxBossHp)",
+            "ikinci evreye geçti"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "cooperative raid boss phases scale incoming damage and announce transitions",
+        "markers": [
+          "ikinci evreye geçti",
+          "son evreye geçti",
+          "calculateBossIncomingDamage(rawDamage, Math.round(target.defense*0.56), bossPhase)"
+        ]
+      },
+      "limitation": "The test checks raid phase wiring, transition announcements and damage helper use in source. It does not run a full multiplayer Discord raid."
+    },
+    {
+      "featureId": "RPG-306",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "ortakboss.js",
+          "markers": [
+            "getBossPhase(bossHp, maxBossHp)",
+            "bossPhaseSpecialBonus(bossPhase)",
+            "son evreye geçti"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "cooperative raid boss phases scale incoming damage and announce transitions",
+        "markers": [
+          "son evreye geçti",
+          "bossPhaseSpecialBonus\\\\(bossPhase\\\\)"
+        ]
+      },
+      "limitation": "The test checks the final raid phase announcement and phase-scaled special damage wiring. A live multiplayer raid is not verified."
+    },
+    {
+      "featureId": "RPG-307",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "katlizindan.js",
+          "markers": [
+            "const finalBoss = floor === FLOORS",
+            "getBossPhase(enemyHp, maxEnemyHp)",
+            "İblis Lordu ikinci evreye geçti"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "final dungeon boss has three phases and stronger phase-scaled special attacks",
+        "markers": [
+          "const finalBoss = floor === FLOORS",
+          "getBossPhase\\\\(enemyHp, maxEnemyHp\\\\)",
+          "İblis Lordu ikinci evreye geçti"
+        ]
+      },
+      "limitation": "The test checks that only the final floor uses the phase-aware boss path and that the second phase is announced. Full floor-by-floor Discord execution is not tested."
+    },
+    {
+      "featureId": "RPG-308",
+      "evidenceLevel": "automated_partial",
+      "sources": [
+        {
+          "path": "katlizindan.js",
+          "markers": [
+            "const finalBoss = floor === FLOORS",
+            "bossPhaseSpecialBonus(enemyPhase)",
+            "İblis Lordu son evreye geçti"
+          ]
+        }
+      ],
+      "test": {
+        "path": "scripts/test-utils.js",
+        "name": "final dungeon boss has three phases and stronger phase-scaled special attacks",
+        "markers": [
+          "bossPhaseSpecialBonus\\\\(enemyPhase\\\\)",
+          "İblis Lordu son evreye geçti"
+        ]
+      },
+      "limitation": "The test checks the final dungeon boss's last-phase announcement and phase-scaled special-attack wiring. Full party gameplay remains unverified."
     }
   ]
 }
