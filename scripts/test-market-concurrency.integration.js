@@ -1080,3 +1080,193 @@ test('character collection command filters by rarity and keeps guild/player data
     }
   });
 });
+
+
+test('expired trade offers are resolved using the PostgreSQL clock without transferring characters', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = testSnowflake('95');
+    const from = testSnowflake('90');
+    const to = testSnowflake('92');
+    const offerId = randomUUID();
+    await ensureUser(guildId, from);
+    await ensureUser(guildId, to);
+    await pool.query(
+      \`INSERT INTO anime_character_collection
+       (guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,quantity)
+       VALUES($1,$2,'Aura','Frieren','Efsanevi','👑',10194172,'fixture','fixture',2)\`,
+      [guildId, from]
+    );
+    await pool.query(
+      \`INSERT INTO trade_offers(offer_id,guild_id,from_user_id,to_user_id,character_name,amount,expires_at)
+       VALUES($1,$2,$3,$4,'Aura',1,NOW()-INTERVAL '1 second')\`,
+      [offerId, guildId, from, to]
+    );
+
+    const result = await resolveTradeOffer(pool, { guildId, offerId, acceptingUserId: to });
+    const offer = await pool.query('SELECT status,resolved_at FROM trade_offers WHERE offer_id=$1', [offerId]);
+    const sender = await pool.query(
+      "SELECT quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name='Aura'",
+      [guildId, from]
+    );
+    const recipient = await pool.query(
+      "SELECT quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name='Aura'",
+      [guildId, to]
+    );
+
+    assert.equal(result.status, 'expired');
+    assert.equal(offer.rows[0].status, 'expired');
+    assert.ok(offer.rows[0].resolved_at);
+    assert.equal(Number(sender.rows[0].quantity), 2);
+    assert.equal(recipient.rowCount, 0);
+  });
+});
+
+test('declining a trade offer is single-use and leaves both collections unchanged', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = testSnowflake('96');
+    const from = testSnowflake('90');
+    const to = testSnowflake('92');
+    const offerId = randomUUID();
+    await ensureUser(guildId, from);
+    await ensureUser(guildId, to);
+    await pool.query(
+      \`INSERT INTO anime_character_collection
+       (guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,quantity)
+       VALUES($1,$2,'Stark','Frieren','Nadir','🪓',10194172,'fixture','fixture',3)\`,
+      [guildId, from]
+    );
+    await pool.query(
+      \`INSERT INTO trade_offers(offer_id,guild_id,from_user_id,to_user_id,character_name,amount,expires_at)
+       VALUES($1,$2,$3,$4,'Stark',2,NOW()+INTERVAL '5 minutes')\`,
+      [offerId, guildId, from, to]
+    );
+
+    const first = await resolveTradeOffer(pool, { guildId, offerId, acceptingUserId: to, action: 'trade_decline' });
+    const replay = await resolveTradeOffer(pool, { guildId, offerId, acceptingUserId: to, action: 'trade_decline' });
+    const offer = await pool.query('SELECT status,resolved_at FROM trade_offers WHERE offer_id=$1', [offerId]);
+    const sender = await pool.query(
+      "SELECT quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name='Stark'",
+      [guildId, from]
+    );
+    const recipient = await pool.query(
+      "SELECT quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name='Stark'",
+      [guildId, to]
+    );
+
+    assert.equal(first.status, 'declined');
+    assert.equal(replay.status, 'already_resolved');
+    assert.equal(offer.rows[0].status, 'declined');
+    assert.ok(offer.rows[0].resolved_at);
+    assert.equal(Number(sender.rows[0].quantity), 3);
+    assert.equal(recipient.rowCount, 0);
+  });
+});
+
+test('only the intended recipient can accept or decline a trade offer', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = testSnowflake('97');
+    const from = testSnowflake('90');
+    const to = testSnowflake('92');
+    const intruder = testSnowflake('93');
+    const offerId = randomUUID();
+    await ensureUser(guildId, from);
+    await ensureUser(guildId, to);
+    await ensureUser(guildId, intruder);
+    await pool.query(
+      \`INSERT INTO anime_character_collection
+       (guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,quantity)
+       VALUES($1,$2,'Fern','Frieren','Nadir','🪄',10194172,'fixture','fixture',2)\`,
+      [guildId, from]
+    );
+    await pool.query(
+      \`INSERT INTO trade_offers(offer_id,guild_id,from_user_id,to_user_id,character_name,amount,expires_at)
+       VALUES($1,$2,$3,$4,'Fern',1,NOW()+INTERVAL '5 minutes')\`,
+      [offerId, guildId, from, to]
+    );
+
+    const accept = await resolveTradeOffer(pool, { guildId, offerId, acceptingUserId: intruder });
+    const decline = await resolveTradeOffer(pool, { guildId, offerId, acceptingUserId: intruder, action: 'trade_decline' });
+    const offer = await pool.query('SELECT status FROM trade_offers WHERE offer_id=$1', [offerId]);
+    const sender = await pool.query(
+      "SELECT quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name='Fern'",
+      [guildId, from]
+    );
+
+    assert.equal(accept.status, 'forbidden');
+    assert.equal(decline.status, 'forbidden');
+    assert.equal(offer.rows[0].status, 'pending');
+    assert.equal(Number(sender.rows[0].quantity), 2);
+  });
+});
+
+test('equipment supports two independent ring slots and preserves remaining bonuses after one ring is removed', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = testSnowflake('98');
+    const userId = testSnowflake('90');
+    const copper = equipmentItems.find(entry => entry.id === 'copper_ring');
+    const hero = equipmentItems.find(entry => entry.id === 'hero_ring');
+    assert.ok(copper && hero);
+    await ensureUser(guildId, userId);
+    await pool.query(
+      'UPDATE users SET level=50,hp=120,max_hp=120,mana=90,max_mana=90 WHERE guild_id=$1 AND user_id=$2',
+      [guildId, userId]
+    );
+    await pool.query(
+      'INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1),($1,$2,$4,1)',
+      [guildId, userId, copper.name, hero.name]
+    );
+
+    const makeInteraction = (itemId, slot, action = 'equip') => ({
+      guildId,
+      user: { id: userId },
+      options: { getString: name => name === 'islem' ? action : name === 'esya' ? itemId : name === 'yuva' ? slot : null },
+      reply: async payload => payload
+    });
+
+    try {
+      await equipmentCommand.execute(makeInteraction(copper.id, 'ring1'));
+      await equipmentCommand.execute(makeInteraction(hero.id, 'ring2'));
+      let state = await pool.query(
+        'SELECT max_hp,max_mana,hp,mana,(SELECT COUNT(*)::int FROM user_equipment WHERE guild_id=$1 AND user_id=$2) AS equipped FROM users WHERE guild_id=$1 AND user_id=$2',
+        [guildId, userId]
+      );
+      let slots = await pool.query(
+        'SELECT slot,item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2 ORDER BY slot',
+        [guildId, userId]
+      );
+      assert.equal(Number(state.rows[0].max_hp), 120, 'ring bonuses must not be persisted into base max HP');
+      assert.equal(Number(state.rows[0].max_mana), 90, 'ring bonuses must not be persisted into base max mana');
+      assert.equal(Number(state.rows[0].equipped), 2);
+      assert.deepEqual(slots.rows.map(row => row.slot), ['ring1', 'ring2']);
+
+      await equipmentCommand.execute(makeInteraction(null, 'ring1', 'unequip'));
+      state = await pool.query(
+        'SELECT max_hp,max_mana,hp,mana,(SELECT COUNT(*)::int FROM user_equipment WHERE guild_id=$1 AND user_id=$2) AS equipped FROM users WHERE guild_id=$1 AND user_id=$2',
+        [guildId, userId]
+      );
+      slots = await pool.query(
+        'SELECT slot,item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2 ORDER BY slot',
+        [guildId, userId]
+      );
+      assert.equal(Number(state.rows[0].max_hp), 120);
+      assert.equal(Number(state.rows[0].max_mana), 90);
+      assert.equal(Number(state.rows[0].equipped), 1);
+      assert.deepEqual(slots.rows.map(row => row.slot), ['ring2']);
+      const owned = await pool.query(
+        'SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 ORDER BY item_key',
+        [guildId, userId]
+      );
+      assert.equal(owned.rowCount, 2, 'equipping and unequipping must preserve both inventory copies');
+    } finally {
+      await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    }
+  });
+});

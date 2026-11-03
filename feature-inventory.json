@@ -156,7 +156,7 @@
         "tests": [
           "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Equip/unequip preserves inventory ownership and persistent base HP/Mana caps."
+        "scope": "PostgreSQL command integration verifies equip/unequip inventory ownership and base HP/Mana caps, including independent ring slots and preserving the remaining equipped slot; live Discord E2E remains unverified."
       }
     },
     {
@@ -259,7 +259,7 @@
         "tests": [
           "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Concurrent offer creation, single-use acceptance and transfer rollback."
+        "scope": "PostgreSQL integration verifies concurrent single-use acceptance, sender reservation, atomic transfer rollback, PostgreSQL-clock expiry, recipient-only accept/decline authorization and single-use decline; it does not represent live Discord E2E."
       }
     },
     {
