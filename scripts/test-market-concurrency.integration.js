@@ -14,6 +14,7 @@ import collectionCommand from '../koleksiyon.js';
 import useItemCommand from '../esyakullan.js';
 import { equipmentItems } from '../equipment-data.js';
 import questChainCommand from '../gorevzinciri.js';
+import characterUpgradeCommand from '../karaktergelistir.js';
 
 const dedicatedAuditDatabase = /^postgres(?:ql)?:\/\/postgres:postgres@localhost:5432\/frieren_audit(?:\?|$)/.test(
   process.env.DATABASE_URL || ''
@@ -1324,5 +1325,38 @@ test('successful co-op raid and dungeon Zoltraak casts persist mastery totals at
     } finally {
       await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[guildId,[raidUser,dungeonUser]]);
     }
+  });
+});
+
+test('concurrent character upgrades serialize coin spending and preserve collection copies', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId=testSnowflake('94'), userId=testSnowflake('90');
+    await ensureUser(guildId,userId);
+    await pool.query('UPDATE users SET coins=500 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+    await pool.query(
+      "INSERT INTO anime_character_collection(guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,quantity) VALUES($1,$2,'Frieren','Frieren','Efsanevi','🌟',10194172,'fixture','fixture',2)",
+      [guildId,userId]
+    );
+    const responses=[];
+    const makeInteraction=()=>({
+      guildId,user:{id:userId},
+      options:{getString:()=> 'Frieren',getBoolean:()=>true},
+      deferReply:async()=>{},
+      editReply:async payload=>{responses.push(payload);return payload;}
+    });
+    await Promise.all([
+      characterUpgradeCommand.execute(makeInteraction()),
+      characterUpgradeCommand.execute(makeInteraction())
+    ]);
+    const player=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+    const upgrade=await pool.query('SELECT upgrade_level FROM character_upgrades WHERE guild_id=$1 AND user_id=$2 AND character_name=$3',[guildId,userId,'Frieren']);
+    const collection=await pool.query('SELECT quantity FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 AND character_name=$3',[guildId,userId,'Frieren']);
+    assert.equal(Number(player.rows[0].coins),250,'only the first level upgrade may spend 250 coins');
+    assert.equal(Number(upgrade.rows[0].upgrade_level),1,'the concurrent second upgrade must fail the 500-coin balance check');
+    assert.equal(Number(collection.rows[0].quantity),2,'upgrading a character must not consume collection copies');
+    assert.equal(responses.filter(value=>typeof value==='string'&&value.includes('artık **+1**')).length,1);
+    assert.equal(responses.filter(value=>typeof value==='string'&&value.includes('Yetersiz altın')).length,1);
   });
 });
