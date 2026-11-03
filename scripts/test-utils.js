@@ -123,7 +123,8 @@ test('cooperative boss raid supports attack, mana spell, defense and mana persis
 
 test('cooperative boss raid includes an area mana-star burst and a mana-draining curse', async () => {
   const source = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
-  assert.match(source, /const starburst = BOSS\.special === 'mana-star'/);
+  assert.match(source, /getRaidBossSpecialAttack\(BOSS\.special, rounds\)/);
+  assert.match(source, /resolveRaidAreaAttack\(/);
   assert.match(source, /for \(const i of living\)/);
   assert.match(source, /const shardRain = BOSS\.special === 'shard-rain' && rounds % 2 === 0/);
   assert.match(source, /const manaCurse = BOSS\.special === 'mana-curse' && rounds % 3 === 0/);
@@ -321,7 +322,7 @@ test('cooperative raid boss phases scale incoming damage and announce transition
   assert.match(source, /getBossPhase\(bossHp, maxBossHp\)/);
   assert.match(source, /bossPhaseSpecialBonus\(bossPhase\)/);
   assert.ok(source.includes('calculateBossIncomingDamage(rawDamage, Math.round(target.defense*0.56), bossPhase)'));
-  assert.ok(source.includes('calculateBossIncomingDamage(Math.round(rawDamage*specialMultiplier), Math.round(f.defense*0.44), bossPhase)'));
+  assert.ok(source.includes('resolveRaidAreaAttack({'));
   assert.match(source, /ikinci evreye geçti/);
   assert.match(source, /son evreye geçti/);
 });
