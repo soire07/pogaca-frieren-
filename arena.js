@@ -13,6 +13,7 @@ import {
   leaveArenaQueue,
   submitArenaTurn
 } from './arena-queue.js';
+import { getArenaRating, getArenaLeaderboard } from './adventurer-platform.js';
 
 function arenaEmbed(state) {
   const team = key => state.players
@@ -53,7 +54,8 @@ export default {
     .setDescription('3v3 Büyücü Arenasına katıl, sıranı gör veya kuyruktan ayrıl.')
     .addSubcommand(command => command.setName('katil').setDescription('3v3 eşleştirme kuyruğuna katıl.'))
     .addSubcommand(command => command.setName('durum').setDescription('Kuyruk veya devam eden maç durumunu gör.'))
-    .addSubcommand(command => command.setName('ayril').setDescription('Eşleştirme kuyruğundan ayrıl.')),
+    .addSubcommand(command => command.setName('ayril').setDescription('Eşleştirme kuyruğundan ayrıl.'))
+    .addSubcommand(command => command.setName('siralam').setDescription('Bu sezonun arena sıralamasını gör.')),
 
   async execute(interaction) {
     if (!interaction.guildId) {
@@ -61,10 +63,11 @@ export default {
     }
     const subcommand = interaction.options.getSubcommand();
     if (subcommand === 'katil') {
+      const rating = await getArenaRating(pool, interaction.guildId, interaction.user.id);
       const result = await enqueueArenaPlayer(pool, {
         guildId: interaction.guildId,
         userId: interaction.user.id,
-        rating: 1000
+        rating: Number(rating.rating)
       });
       if (result.status === 'queued') {
         const queue = result.queue;
@@ -105,6 +108,11 @@ export default {
         content: result.removed ? 'Kuyruktan ayrıldın.' : 'Aktif bir kuyruk kaydın bulunamadı.',
         flags: MessageFlags.Ephemeral
       });
+    }
+    if (subcommand === 'siralam') {
+      const board = await getArenaLeaderboard(pool, interaction.guildId, 10);
+      const lines = board.players.map((player,index) => `**${index+1}.** ${player.character_name || 'Maceracı'} — ${player.rating} MMR · ${player.wins}G/${player.losses}M`);
+      return interaction.reply({ content: `**${board.season.name} · Arena Sıralaması**\n${lines.join('\n') || 'Henüz sıralama verisi yok.'}`, flags: MessageFlags.Ephemeral });
     }
     return interaction.reply({ content: 'Bilinmeyen arena işlemi.', flags: MessageFlags.Ephemeral });
   }
