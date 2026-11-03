@@ -2,7 +2,8 @@
 import {
   SlashCommandBuilder,
   EmbedBuilder,
-  AttachmentBuilder
+  AttachmentBuilder,
+  MessageFlags
 } from 'discord.js';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -123,7 +124,7 @@ export default {
     .setDescription('Süreli anime bilgi yarışmasına katıl.'),
 
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: 'Anime Quiz yalnızca sunucularda oynanabilir.', ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: 'Anime Quiz yalnızca sunucularda oynanabilir.', flags: MessageFlags.Ephemeral });
     const question =
       questions[Math.floor(Math.random() * questions.length)];
 
