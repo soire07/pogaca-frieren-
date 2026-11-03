@@ -230,6 +230,7 @@ export default {
         const finalBoss = floor === FLOORS;
         let enemyPhase = 1;
         log.push(`**Kat ${floor}: ${FLOOR_NAMES[floor - 1]}** — ${maxEnemyHp} HP.`);
+        log.push(`❤️ Kat ${floor} başlangıç HP: ${hpNow.join('/')}`);
         while (enemyHp > 0 && !isPartyWiped(hpNow) && turn < 10) {
           const currentPhase = finalBoss ? getBossPhase(enemyHp, maxEnemyHp) : 1;
           if (currentPhase > enemyPhase) {
@@ -409,6 +410,7 @@ export default {
         } else {
           log.push(`🧭 ${floor}. katta yol güvenliydi; takım bir sonraki kata ilerliyor.`);
         }
+        log.push(`❤️ Kat ${floor} sonrası, sonraki kata taşınan HP: ${hpNow.join('/')}`);
       }
 
       const victory = floorsCleared === FLOORS;
