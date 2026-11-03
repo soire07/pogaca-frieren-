@@ -1273,14 +1273,14 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           interaction.member = makeMember(userId);
           await command.execute(interaction);
           const payloadText = payloadTextFromEffects(effects);
-          const tokenMatch = payloadText.match(/\b[A-Za-z0-9_-]{32}\b/);
+          const tokenMatch = payloadText.match(/`([A-Za-z0-9_-]{32})`/);
           const stored = await pool.query(
             'SELECT token_hash,expires_at FROM site_link_tokens WHERE guild_id=$1 AND user_id=$2 ORDER BY created_at DESC LIMIT 1',
             [guildId, userId]
           );
           behavioralChecks.push(
             { name: 'Web maceracı tek kullanımlık bağlantı kodu', expected: 'Discord yanıtında 10 dakika geçerli kod ve portal bağlantısı gösterilmeli', actual: 'kod ' + Boolean(tokenMatch) + '; kayıt ' + stored.rowCount + '; süre ' + (stored.rows[0]?.expires_at || 'yok'), passed: Boolean(tokenMatch) && payloadText.includes('/maceraci') && payloadText.includes('10 dakika') && stored.rowCount === 1 && new Date(stored.rows[0].expires_at).getTime() > Date.now() },
-            { name: 'Web bağlantı kodunun güvenli saklanması', expected: 'veritabanında ham kod değil, kod hash değeri saklanmalı', actual: 'hash alanı ' + Boolean(stored.rows[0]?.token_hash) + '; ham kod saklanmıyor', passed: Boolean(stored.rows[0]?.token_hash) && stored.rows[0].token_hash !== tokenMatch?.[0] }
+            { name: 'Web bağlantı kodunun güvenli saklanması', expected: 'veritabanında ham kod değil, kod hash değeri saklanmalı', actual: 'hash alanı ' + Boolean(stored.rows[0]?.token_hash) + '; ham kod saklanmıyor', passed: Boolean(stored.rows[0]?.token_hash) && stored.rows[0].token_hash !== tokenMatch?.[1] }
           );
         } else if (commandName === 'status') {
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
