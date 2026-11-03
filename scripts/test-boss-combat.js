@@ -106,3 +106,68 @@ test('solo boss reward persistence is idempotent per battle session across dupli
   assert.match(schema, /last_boss_battle_id TEXT/);
 });
 
+
+
+test('solo boss reward claims reject an old battle id after a newer battle has been rewarded', async () => {
+  const claimed = new Set();
+  const state = {
+    lastBattleId: null,
+    coins: 0,
+    xp: 0,
+    bossDefeats: 0,
+    inventory: new Map()
+  };
+  const client = {
+    async query(sql, values = []) {
+      if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rowCount: null, rows: [] };
+      if (/INSERT INTO solo_boss_reward_claims/.test(sql)) {
+        const key = values.slice(0, 3).join(':');
+        if (claimed.has(key)) return { rowCount: 0, rows: [] };
+        claimed.add(key);
+        return { rowCount: 1, rows: [{ battle_id: values[2] }] };
+      }
+      if (/UPDATE users SET/.test(sql)) {
+        const battleId = values[6];
+        if (/last_boss_battle_id IS DISTINCT FROM/.test(sql) && state.lastBattleId === battleId) {
+          return { rowCount: 0, rows: [] };
+        }
+        state.lastBattleId = battleId;
+        state.coins += Number(values[4]);
+        state.xp += Number(values[5]);
+        state.bossDefeats += 1;
+        return { rowCount: 1, rows: [{ user_id: values[1] }] };
+      }
+      if (/INSERT INTO inventory/.test(sql)) {
+        const key = values[2];
+        state.inventory.set(key, (state.inventory.get(key) || 0) + 1);
+        return { rowCount: 1, rows: [] };
+      }
+      throw new Error('Unexpected SQL in boss reward test: ' + sql);
+    },
+    release() {}
+  };
+  const pool = { async connect() { return client; } };
+  const claim = battleId => claimSoloBossReward(pool, {
+    guildId: 'guild-1',
+    userId: 'user-1',
+    battleId,
+    hp: 100,
+    mana: 80,
+    coins: 10,
+    xp: 20,
+    bonusLoot: null,
+    craftingMaterial: 'iron-shard',
+    journalBossKey: null,
+    spellUsed: null
+  });
+
+  assert.equal((await claim('battle-A')).status, 'claimed');
+  assert.equal((await claim('battle-B')).status, 'claimed');
+  assert.equal((await claim('battle-A')).status, 'already_claimed');
+  assert.deepEqual(
+    { coins: state.coins, xp: state.xp, bossDefeats: state.bossDefeats },
+    { coins: 20, xp: 40, bossDefeats: 2 }
+  );
+  assert.equal(state.inventory.get('💎 Mana Kristali'), 2);
+  assert.equal(state.inventory.get('iron-shard'), 2);
+});
