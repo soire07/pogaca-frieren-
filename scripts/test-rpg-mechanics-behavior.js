@@ -14,6 +14,12 @@ import {
 import { equipmentItems, equipmentSlots, equipmentBonus } from '../equipment-data.js';
 import { applyEquipmentSetBonus } from '../rpg-mechanics.js';
 import { masteryLevelForCasts, practiceCost } from '../commands/rpg/buyupratik.js';
+import {
+  COOP_DUNGEON_ROLES, COOP_RAID_ROLES, calculateRaidBossMaxHp,
+  isBossEnraged, applyDefenseActionReduction, applyTalentBonus,
+  calculateDungeonFloorReward
+} from '../rpg-mechanics.js';
+
 
 test('dungeon difficulty, floor, party size and average level change actual enemy stats monotonically', () => {
   const base = dungeonEnemyStats(1, 1, 2, 'normal');
@@ -259,4 +265,67 @@ test('party wipe is reported only when every member has zero or less HP', () => 
   assert.equal(isPartyWiped([-1, 0, 0]), true);
   assert.equal(isPartyWiped([1, 0, 0]), false);
   assert.equal(isPartyWiped([]), false);
+});
+
+test('co-op role profiles produce their documented HP, attack and defense modifiers', () => {
+  assert.deepEqual(
+    [COOP_DUNGEON_ROLES.tank.hp, COOP_DUNGEON_ROLES.tank.attack, COOP_DUNGEON_ROLES.tank.defense],
+    [1.25, 0.85, 1.4]
+  );
+  assert.deepEqual(
+    [COOP_DUNGEON_ROLES.healer.hp, COOP_DUNGEON_ROLES.healer.attack, COOP_DUNGEON_ROLES.healer.defense],
+    [1, 0.9, 1.05]
+  );
+  assert.deepEqual(
+    [COOP_DUNGEON_ROLES.damage.hp, COOP_DUNGEON_ROLES.damage.attack, COOP_DUNGEON_ROLES.damage.defense],
+    [0.95, 1.3, 0.9]
+  );
+  assert.deepEqual(
+    [COOP_RAID_ROLES.tank.hp, COOP_RAID_ROLES.tank.attack, COOP_RAID_ROLES.tank.defense],
+    [1.25, 0.85, 1.45]
+  );
+  assert.deepEqual(
+    [COOP_RAID_ROLES.healer.hp, COOP_RAID_ROLES.healer.attack, COOP_RAID_ROLES.healer.defense],
+    [1, 0.85, 1.05]
+  );
+  assert.deepEqual(
+    [COOP_RAID_ROLES.damage.hp, COOP_RAID_ROLES.damage.attack, COOP_RAID_ROLES.damage.defense],
+    [0.95, 1.35, 0.9]
+  );
+});
+
+test('raid boss HP scales with average player level and party size', () => {
+  assert.equal(calculateRaidBossMaxHp(500, 10, 2), 680);
+  assert.equal(calculateRaidBossMaxHp(500, 10, 3), 770);
+  assert.equal(calculateRaidBossMaxHp(500, 20, 4), 1040);
+  assert.equal(calculateRaidBossMaxHp(500, 10, 1), 680);
+});
+
+test('enrage activates at and below half health only', () => {
+  assert.equal(isBossEnraged(51, 100), false);
+  assert.equal(isBossEnraged(50, 100), true);
+  assert.equal(isBossEnraged(1, 100), true);
+  assert.equal(isBossEnraged(50, 0), false);
+});
+
+test('defend action reduces incoming damage to 45 percent with a one-damage floor', () => {
+  assert.equal(applyDefenseActionReduction(100, true), 45);
+  assert.equal(applyDefenseActionReduction(3, true), 1);
+  assert.equal(applyDefenseActionReduction(100, false), 100);
+});
+
+test('talent ranks increase attack and defense by four percent and HP and mana by five percent', () => {
+  assert.equal(applyTalentBonus(100, 1, 0.04), 104);
+  assert.equal(applyTalentBonus(100, 3, 0.04), 112);
+  assert.equal(applyTalentBonus(100, 1, 0.05), 105);
+  assert.equal(applyTalentBonus(100, 3, 0.05), 115);
+  assert.equal(applyTalentBonus(100, -1, 0.05), 100);
+});
+
+test('each cleared dungeon floor grants its own level-scaled XP and coin reward', () => {
+  assert.deepEqual(calculateDungeonFloorReward(1, 10), { xp: 57, coins: 30 });
+  assert.deepEqual(calculateDungeonFloorReward(5, 10), { xp: 105, coins: 70 });
+  const total = [1, 2, 3, 4, 5].map(floor => calculateDungeonFloorReward(floor, 10));
+  assert.equal(total.reduce((sum, reward) => sum + reward.xp, 0), 405);
+  assert.equal(total.reduce((sum, reward) => sum + reward.coins, 0), 250);
 });
