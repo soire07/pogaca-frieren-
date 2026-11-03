@@ -118,10 +118,11 @@ test('site profile uses dedicated brand avatar and banner assets', async () => {
   assert.match(response.body, /profile-banner[\s\S]*?src="\/assets\/site-banner\.webp"/);
   const stylesheet = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
-  assert.match(String(stylesheet.body), /\.profile-banner img\{display:block;width:100%;height:100%;max-width:none;object-fit:cover/);
-  assert.match(String(stylesheet.body), /\.home-banner\{[^}]*aspect-ratio:640\/177/);
-  assert.match(String(stylesheet.body), /\.home-banner img\{display:block;width:100%;height:100%;object-fit:contain/);
-  assert.doesNotMatch(String(stylesheet.body), /\.home-banner\{[^}]*aspect-ratio:16\/5/);
+  assert.match(String(stylesheet.body), /\.profile-banner\{[^}]*aspect-ratio:1672\/941/);
+  assert.match(String(stylesheet.body), /\.profile-banner img\{display:block;width:100%;height:100%;max-width:none;object-fit:contain/);
+  assert.match(String(stylesheet.body), /\.home-banner\{[^}]*aspect-ratio:1672\/941/);
+  assert.match(String(stylesheet.body), /\.home-banner img\{display:block;width:100%;height:auto;aspect-ratio:1672\/941;object-fit:contain/);
+  assert.doesNotMatch(String(stylesheet.body), /\.home-banner\{[^}]*aspect-ratio:640\/177/);
   assert.doesNotMatch(String(stylesheet.body), /\.profile-banner\{[^}]*url\(['"]?\/assets\/site-banner\.webp/);
 });
 
