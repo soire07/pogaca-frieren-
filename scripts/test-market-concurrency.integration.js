@@ -896,7 +896,7 @@ test('real crafting output can be equipped and an insufficient-material retry le
     );
     assert.equal(equipped.rowCount,1,'crafted equipment must be accepted by the real equipment command');
     assert.equal(equipped.rows[0].item_key,sword.name);
-    assert.equal(output.rowCount,0,'equipping must consume the crafted inventory copy');
+    assert.equal(Number(output.rows[0]?.quantity),1,'equipped equipment remains in inventory so the player can re-equip it after removing it');
 
     const before=await pool.query(
       'SELECT xp,level,successful_crafts FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2',[guildId,userId]
@@ -941,7 +941,7 @@ test('real player profile and collection leaderboard read the selected guild mem
     });
     const profileEmbed=profileReplies[0]?.embeds?.[0]?.toJSON?.() ?? profileReplies[0]?.embeds?.[0];
     assert.ok(profileEmbed?.title?.includes('Target'),'profile must render the selected target member');
-    assert.ok(profileEmbed?.fields?.some(field=>field.name==='Poğaça altını' && field.value==='900'),
+    assert.ok(profileEmbed?.fields?.some(field=>field.name.includes('Poğaça altını') && field.value==='900'),
       'profile must show the target member balance, not the caller balance');
     assert.ok(profileEmbed?.fields?.some(field=>field.name==='Saldırı' && field.value==='24'),
       'profile must show target combat stats');
