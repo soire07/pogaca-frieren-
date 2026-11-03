@@ -11,6 +11,7 @@ import {
   bossPhaseSpecialBonus,
   getRaidBossSpecialAttack,
   chooseRaidAttackTarget,
+  chooseDungeonAttackTarget,
   resolveRaidAreaAttack,
   getSoloBossSpecialAttackState,
   dungeonEnemyStats,
@@ -127,6 +128,14 @@ test('raid special attacks trigger on their exact scheduled rounds', () => {
   assert.equal(getRaidBossSpecialAttack('mana-curse', 3), 'mana-curse');
   assert.equal(getRaidBossSpecialAttack('mana-curse', 2), null);
   assert.equal(getRaidBossSpecialAttack('unknown', 3), null);
+});
+
+test('dungeon tank attracts seventy percent of single-target enemy attacks while alive', () => {
+  const players = [{ role: 'damage' }, { role: 'tank' }, { role: 'healer' }];
+  assert.equal(chooseDungeonAttackTarget(players, [0,1,2], 1, 1, () => 0.69), 1);
+  assert.equal(chooseDungeonAttackTarget(players, [0,1,2], 1, 1, () => 0.7), 2);
+  assert.equal(chooseDungeonAttackTarget(players, [0,2], 1, 1, () => 0), 2);
+  assert.equal(chooseDungeonAttackTarget(players, [], 1, 1, () => 0), null);
 });
 
 test('raid tank attracts seventy percent of single-target attacks while alive', () => {
