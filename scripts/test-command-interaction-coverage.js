@@ -140,3 +140,28 @@ test('command interaction coverage: every discoverable slash command exposes a v
   t.diagnostic('Permission-sensitive commands needing review: ' + (permissionSignalUnclear.join(', ') || 'none'));
   t.diagnostic('Scope: static source signals only; signals do not prove that paths execute correctly. No live Discord API call is performed.');
 });
+
+
+test('guild-disabled command autocomplete is gated before suggestions are returned', async () => {
+  const source = await readFile(path.join(root, 'index.js'), 'utf8');
+  const autocompleteIndex = source.indexOf('if (interaction.isAutocomplete())');
+  const gatePattern = /if\s*\(\s*interaction\.isAutocomplete\(\)\s*&&\s*interaction\.guildId\s*&&\s*!\(await areGuildCommandFeaturesEnabled\(pool, interaction\.guildId, interaction\.commandName\)\)\s*\)/;
+  const gateMatch = gatePattern.exec(source);
+  assert.ok(autocompleteIndex >= 0, 'autocomplete handler must remain present');
+  assert.ok(gateMatch, 'autocomplete must have a guild feature gate');
+  assert.ok(gateMatch.index < autocompleteIndex, 'feature gate must run before autocomplete handler');
+});
+
+
+test('guild-disabled interactive components are gated before their handlers run', async () => {
+  const source = await readFile(path.join(root, 'index.js'), 'utf8');
+  const gateIndex = source.indexOf('if (componentCommandName &&');
+  const characterHandlerIndex = source.indexOf('if (await handleCharacterPanelInteraction(interaction))');
+  const marketHandlerIndex = source.indexOf("if (interaction.isButton() && interaction.customId.startsWith('market_'))");
+  const tradeHandlerIndex = source.indexOf("if (interaction.isButton() && (interaction.customId.startsWith('trade_accept:')");
+  assert.ok(source.includes('getComponentCommandName(interaction.customId)'), 'component IDs must resolve through the shared feature map');
+  assert.ok(gateIndex >= 0, 'interactive component feature gate must exist');
+  assert.ok(gateIndex < characterHandlerIndex, 'component gate must run before character handlers');
+  assert.ok(gateIndex < marketHandlerIndex, 'component gate must run before market handlers');
+  assert.ok(gateIndex < tradeHandlerIndex, 'component gate must run before trade handlers');
+});

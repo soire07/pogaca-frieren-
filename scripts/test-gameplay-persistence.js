@@ -56,3 +56,15 @@ test('combat HP and mana return to persistent base-stat ratios without exceeding
   assert.equal(restoreResourceRatio(50, 150, 0), 0);
   assert.equal(restoreResourceRatio(Number.NaN, 150, 100), 0);
 });
+
+
+test('simultaneous legendary and epic equipment sets report both active bonuses', () => {
+  const legendary = equipmentItems.filter(item => ['demon_blade', 'demon_armor'].includes(item.id));
+  const epic = equipmentItems.filter(item => ['frieren_robe', 'rune_ring'].includes(item.id));
+  const active = applyEquipmentSetBonus([...legendary, ...epic], equipmentBonus([...legendary, ...epic]));
+  assert.equal(active.attack, 20);
+  assert.equal(active.hp, 125);
+  assert.equal(active.defense, 26);
+  assert.equal(active.mana, 65);
+  assert.equal(active.setText, 'Efsanevi set: +4 saldırı, +25 HP · Destansı set: +3 savunma, +15 mana');
+});

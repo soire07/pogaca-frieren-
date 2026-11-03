@@ -2,11 +2,13 @@ name: Frieren Bot CI
 
 on:
   push:
-    branches:
-      - "**"
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - '*.md'
   workflow_dispatch:
 
 permissions:
@@ -18,20 +20,19 @@ concurrency:
 
 jobs:
   test:
-    name: Validate and test bot
+    name: Full syntax, command, gameplay and regression suite
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-
+          node-version: "22"
       - name: Install dependencies
-        run: npm install
-
-      - name: Run syntax, command, gameplay and automated tests
+        run: npm install --no-audit --no-fund
+      - name: Check every JavaScript file syntax
+        run: find . -type f -name '*.js' -not -path './node_modules/*' -not -path './.git/*' -print0 | xargs -0 -n1 node --check
+      - name: Run the canonical full check once
         run: npm run check

@@ -17,7 +17,7 @@ test('trade offers are persistent, expiring and single-use', async () => {
   assert.match(command, /reservedAmount/);
   assert.match(transaction, /reservedForOthers/);
   assert.match(command, /NOW\(\)\+INTERVAL '5 minutes'/);
-  assert.match(transaction, /SELECT \* FROM trade_offers WHERE offer_id=\$1 AND guild_id=\$2 FOR UPDATE/);
+  assert.match(transaction, /SELECT \*, expires_at <= NOW\(\) AS is_expired FROM trade_offers WHERE offer_id=\$1 AND guild_id=\$2 FOR UPDATE/);
   assert.ok(transaction.includes('acceptingUserId !== offer.to_user_id'));
   assert.match(transaction, /status='accepted'/);
   assert.match(transaction, /quantity=quantity-\$4/);
@@ -448,7 +448,7 @@ test('trade acceptance serializes player, offer and collection rows in one stabl
   const command = await read('takasteklif.js');
   assert.ok(handler.includes('resolveTradeOffer(pool'));
   const playerLock = transaction.indexOf('SELECT user_id FROM users');
-  const offerLock = transaction.indexOf('SELECT * FROM trade_offers');
+  const offerLock = transaction.indexOf('SELECT *, expires_at <= NOW() AS is_expired FROM trade_offers');
   const collectionLock = transaction.indexOf('FROM anime_character_collection');
   assert.ok(playerLock >= 0 && offerLock > playerLock && collectionLock > offerLock,
     'production transaction must lock player rows, then the offer, then the collection');
@@ -459,4 +459,12 @@ test('trade acceptance serializes player, offer and collection rows in one stabl
   const createCollectionLock = command.indexOf('FROM anime_character_collection', createPlayerLock);
   assert.ok(createBegin >= 0 && createPlayerLock > createBegin && createCollectionLock > createPlayerLock,
     'offer creation must use the same player-before-collection order');
+});
+
+
+test('equipment status view displays derived rarity set bonuses as well as item bonuses', async () => {
+  const source = await read('ekipman.js');
+  assert.match(source, /applyEquipmentSetBonus\(total, equipmentBonus\(total\)\)/);
+  assert.match(source, /setTotals\.setText/);
+  assert.match(source, /Ekipman set bonusu/);
 });

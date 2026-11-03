@@ -1,10 +1,11 @@
 import 'dotenv/config';
-import { Client, Collection, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, Collection, EmbedBuilder, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
 import { readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { initDatabase, pool } from './database/db.js';
 import { resolveTradeOffer } from './trade-transaction.js';
+import { CREATURE_SPAWN_CHANCE, claimCreature, deactivateCreatureSpawn, initCreatureSchema, maybeSpawnCreature, setCreatureSpawnMessageId } from './creatures.js';
 import { renderMarket, renderMarketItem, buyMarketItem, renderPurchaseResult, renderMarketInventory } from './market.js';
 import { levelForXp } from './utils.js';
 import { handleCharacterPanelInteraction } from './karakter.js';
@@ -19,8 +20,9 @@ import { startGuardianMonitor } from './guardian/monitor.js';
 import { processGuardianIncident, processPendingGuardianRepairDispatch } from './guardian/automation.js';
 import { handleNeuralQualityReportRequest } from './guardian/neural-quality-report-route.js';
 import { saveGuardianQualityReport } from './guardian/quality-report-store.js';
-import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
+import { areGuildCommandFeaturesEnabled, getComponentCommandName, getGuildFeatureEnabled, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
+import { initGuildDashboardSchema } from './guild-dashboard.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -29,6 +31,11 @@ if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL eksik. Önce Render
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMembers, ...(process.env.ENABLE_MESSAGE_CONTENT_INTENT === 'true' ? [GatewayIntentBits.MessageContent] : [])] });
 client.commands = new Collection();
+let creatureSchemaReady;
+async function ensureCreatureSchema() {
+  if (!creatureSchemaReady) creatureSchemaReady = initCreatureSchema(pool).catch(error => { creatureSchemaReady = null; throw error; });
+  await creatureSchemaReady;
+}
 
 
 
@@ -154,7 +161,35 @@ client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isChatInputCommand() && await getMaintenanceState(pool)) {
       return sendPrivateInteractionError(interaction, 'Frieren şu anda bakım modunda. İşlemler kısa süreliğine durduruldu.');
     }
+    const componentCommandName = (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit())
+      ? getComponentCommandName(interaction.customId)
+      : null;
+    if (componentCommandName && (!interaction.guildId ||
+        !(await areGuildCommandFeaturesEnabled(pool, interaction.guildId, componentCommandName)))) {
+      const message = componentCommandName === 'karakter'
+        ? 'Karakter modülü bu sunucuda devre dışı bırakılmış.'
+        : componentCommandName === 'market'
+          ? 'Market ve ekonomi modülü bu sunucuda devre dışı bırakılmış.'
+          : componentCommandName === 'yaratik'
+            ? 'Yaratık Arşivi bu sunucuda devre dışı bırakılmış.'
+            : 'Takas modülü bu sunucuda devre dışı bırakılmış.';
+      return sendPrivateInteractionError(interaction, message);
+    }
     if (await handleCharacterPanelInteraction(interaction)) return;
+    if (interaction.isButton() && interaction.customId.startsWith('creature_catch:')) {
+      try {
+        const spawnId = interaction.customId.slice('creature_catch:'.length);
+        const result = await claimCreature(pool, { guildId: interaction.guildId, userId: interaction.user.id, spawnId });
+        if (result.status === 'caught') return interaction.update({
+          embeds: [new EmbedBuilder().setColor(0x9a8bd2).setTitle('✨ Yaratık yakalandı!')
+            .setDescription(interaction.user.username + ', **' + (result.creature.variant === 'shiny' ? 'Parlak ' : '') + result.creature.name + '** yaratığını arşivine ekledi.')], components: []
+        });
+        return interaction.reply({ content: result.status === 'expired' ? 'Bu yaratığın yakalama süresi doldu.' : 'Bu yaratık başka bir maceracı tarafından yakalandı veya artık aktif değil.', flags: MessageFlags.Ephemeral });
+      } catch (error) {
+        console.error('Yaratık yakalama hatası:', error?.message || error);
+        return sendPrivateInteractionError(interaction, 'Yaratık yakalanırken bir sorun oluştu. Tekrar dene.');
+      }
+    }
   if (interaction.isButton() && interaction.customId.startsWith('market_')) {
     const parts = interaction.customId.split(':');
     const action = parts[0];
@@ -239,6 +274,10 @@ client.on(Events.InteractionCreate, async interaction => {
       return sendPrivateInteractionError(interaction, 'Takas sırasında hata oluştu. Daha sonra tekrar dene.');
     }
   }
+  if (interaction.isAutocomplete() && interaction.guildId &&
+      !(await areGuildCommandFeaturesEnabled(pool, interaction.guildId, interaction.commandName))) {
+    return interaction.respond([]).catch(() => {});
+  }
   if (interaction.isAutocomplete()) {
     const command = client.commands.get(interaction.commandName);
     if (!command?.autocomplete) return interaction.respond([]).catch(() => {});
@@ -249,17 +288,8 @@ client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
-  if (interaction.guildId) {
-    const commandFeatureKey = 'command_' + interaction.commandName.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-    const featureKeys = getCommandFeatureKeys(interaction.commandName);
-    const enabledStates = await Promise.all([
-      getGuildFeatureEnabled(pool, interaction.guildId, 'commands'),
-      getGuildFeatureEnabled(pool, interaction.guildId, commandFeatureKey),
-      ...featureKeys.map(key => getGuildFeatureEnabled(pool, interaction.guildId, key)),
-    ]);
-    if (enabledStates.some(enabled => !enabled)) {
-      return sendPrivateInteractionError(interaction, 'Bu komut bu sunucuda Owner Panel ayarlarıyla devre dışı bırakılmış.');
-    }
+  if (interaction.guildId && !(await areGuildCommandFeaturesEnabled(pool, interaction.guildId, interaction.commandName))) {
+    return sendPrivateInteractionError(interaction, 'Bu komut bu sunucuda Owner Panel ayarlarıyla devre dışı bırakılmış.');
   }
   try {
     await recordCommandUsage(pool, interaction.commandName, interaction.guildId).catch(error => console.warn('Komut ölçümü kaydedilemedi:', error?.message || error));
@@ -280,6 +310,26 @@ client.on(Events.MessageCreate, async message => {
   if (!message.guild || message.author.bot) return;
   try {
     if (await getMaintenanceState(pool)) return;
+    if (Math.random() < CREATURE_SPAWN_CHANCE && await getGuildFeatureEnabled(pool, message.guild.id, 'creatures')) {
+      try {
+        await ensureCreatureSchema();
+        const spawn = await maybeSpawnCreature(pool, { guildId: message.guild.id, channelId: message.channel.id }, { force: true });
+        if (spawn.status === 'spawned') {
+          const row = new ActionRowBuilder().addComponents(new ButtonBuilder()
+            .setCustomId('creature_catch:' + spawn.spawnId).setLabel('Yaratığı yakala').setStyle(ButtonStyle.Success));
+          const embed = new EmbedBuilder().setColor(0x9a8bd2).setTitle((spawn.creature.variant === 'shiny' ? '✨ Parlak ' : '') + spawn.creature.emoji + ' Vahşi bir yaratık belirdi!')
+            .setDescription('**' + spawn.creature.name + '** burada dolaşıyor. İlk yakalayan, yaratığı arşivine ekler.\n\nYakalamak için **3 dakikan** var.');
+          try {
+            const notifyUserIds = (spawn.notifyUserIds || []).slice(0, 10);
+            const sent = await message.channel.send({
+              content: notifyUserIds.length ? notifyUserIds.map(id => '<@' + id + '>').join(' ') : undefined,
+              embeds: [embed], components: [row], allowedMentions: { parse: [], users: notifyUserIds }
+            });
+            await setCreatureSpawnMessageId(pool, spawn.spawnId, sent.id);
+          } catch (sendError) { await deactivateCreatureSpawn(pool, spawn.spawnId); throw sendError; }
+        }
+      } catch (spawnError) { console.error('Yaratık doğma akışı başarısız:', spawnError?.message || spawnError); }
+    }
     const [aiChatEnabled, messageXpEnabled] = await Promise.all([
       getGuildFeatureEnabled(pool, message.guild.id, 'aiChat'),
       getGuildFeatureEnabled(pool, message.guild.id, 'messageXp'),
@@ -310,6 +360,7 @@ await loadCommands();
 await initDatabase();
 await initOwnerAdminSchema(pool);
 await initGuildFeatureSettingsSchema(pool);
+await initGuildDashboardSchema(pool);
 const stopGuardianMonitor = startGuardianMonitor({
   db: pool, client,
   onIncident: async incident => {

@@ -1,10 +1,48 @@
-name: Frieren isolated command audit
+name: Frieren isolated command and PostgreSQL audit
+
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'commands/rpg/**'
+      - 'database/**'
+      - 'market.js'
+      - 'fishing.js'
+      - 'farming.js'
+      - 'creatures.js'
+      - 'character-wishlist.js'
+      - 'companions.js'
+      - 'yoldas.js'
+      - 'scripts/test-companions.integration.js'
+      - 'animequiz.js'
+      - 'scripts/test-animequiz.integration.js'
+      - 'karakteristek.js'
+      - 'scripts/test-character-wishlist.integration.js'
+      - 'yaratik.js'
+      - 'index.js'
+      - 'scripts/test-creatures.integration.js'
+      - 'sera.js'
+      - 'scripts/test-farming.integration.js'
+      - 'balik.js'
+      - 'scripts/test-fishing.integration.js'
+      - 'trade.js'
+      - 'crafting.js'
+      - 'rpg-mechanics.js'
+      - 'rpg-reward-transactions.js'
+      - 'equipment-data.js'
+      - 'zindan.js'
+      - 'iblisavasi.js'
+      - 'ortakboss.js'
+      - 'scripts/run-isolated-command-audit.js'
+      - 'scripts/test-market-concurrency.integration.js'
+      - 'scripts/test-discord-scenarios.js'
+      - 'scripts/test-economy-crafting-integrity.js'
+      - 'scripts/test-gameplay-persistence.js'
   workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -26,10 +64,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
+      - run: npm install --no-audit --no-fund
       - run: node scripts/run-isolated-command-audit.js
       - name: Run real PostgreSQL market concurrency and rollback tests
         run: node --test scripts/test-market-concurrency.integration.js
+      - name: Run real PostgreSQL fishing concurrency and collection tests
+        run: node --test scripts/test-fishing.integration.js
+      - name: Run real PostgreSQL farming concurrency and reward tests
+        run: node --test scripts/test-farming.integration.js
+      - name: Run real PostgreSQL creature spawn and capture race tests
+        run: node --test scripts/test-creatures.integration.js
+      - name: Run real PostgreSQL character wishlist transaction tests
+        run: node --test scripts/test-character-wishlist.integration.js
+      - name: Run real PostgreSQL companion adoption and care transaction tests
+        run: node --test scripts/test-companions.integration.js
+      - name: Run real PostgreSQL anime quiz score concurrency tests
+        run: node --test scripts/test-animequiz.integration.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:

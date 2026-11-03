@@ -36,7 +36,7 @@ export async function resolveTradeOffer(dbPool, { guildId, offerId, acceptingUse
     }
 
     const offerResult = await db.query(
-      'SELECT * FROM trade_offers WHERE offer_id=$1 AND guild_id=$2 FOR UPDATE',
+      'SELECT *, expires_at <= NOW() AS is_expired FROM trade_offers WHERE offer_id=$1 AND guild_id=$2 FOR UPDATE',
       [offerId, guildId]
     );
     const offer = offerResult.rows[0];
@@ -52,8 +52,8 @@ export async function resolveTradeOffer(dbPool, { guildId, offerId, acceptingUse
       await db.query('ROLLBACK');
       return { status: 'already_resolved', offer };
     }
-    if (new Date(offer.expires_at).getTime() <= Date.now()) {
-      await db.query("UPDATE trade_offers SET status='expired',resolved_at=NOW() WHERE offer_id=$1", [offerId]);
+    if (offer.is_expired) {
+      await db.query("UPDATE trade_offers SET status='expired',resolved_at=NOW() WHERE offer_id=$1 AND guild_id=$2", [offerId, guildId]);
       await db.query('COMMIT');
       return { status: 'expired', offer };
     }

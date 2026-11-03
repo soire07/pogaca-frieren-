@@ -54,6 +54,24 @@ export function verifySiteCsrfToken(token, secret, now = Date.now()) {
   const b = Buffer.from(p[2]);
   return a.length === b.length && timingSafeEqual(a,b);
 }
+
+export function isSameOriginRequest(req, siteBaseUrl = process.env.SITE_BASE_URL) {
+  const headers = req?.headers || {};
+  const fetchSite = String(headers['sec-fetch-site'] || '').toLowerCase();
+  if (fetchSite && !['same-origin', 'none'].includes(fetchSite)) return false;
+  const originHeader = headers.origin;
+  if (!originHeader) return true;
+  let origin;
+  try { origin = new URL(originHeader).origin; } catch { return false; }
+  const allowed = new Set();
+  try { allowed.add(new URL(siteBaseUrl || 'https://frierenbot.vercel.app').origin); } catch {}
+  const host = String(headers['x-forwarded-host'] || headers.host || '').split(',')[0].trim();
+  const protocol = String(headers['x-forwarded-proto'] || 'https').split(',')[0].trim().toLowerCase();
+  if (host && ['http', 'https'].includes(protocol)) {
+    try { allowed.add(new URL(protocol + '://' + host).origin); } catch {}
+  }
+  return allowed.has(origin);
+}
 function page(title, body) {
   return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><title>' + esc(title) + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css"><style>.auth-wrap{min-height:100vh;display:grid;place-items:center;padding:28px 18px}.auth-card{width:min(100%,520px);padding:clamp(22px,5vw,36px);border:1px solid #e8dafa55;border-radius:26px;background:linear-gradient(145deg,#34294cdd,#17152eee);box-shadow:0 24px 80px #05030d88;text-align:center}.auth-mark{width:86px;height:86px;border-radius:50%;object-fit:cover;border:2px solid #e8dafa88}.auth-card h1{font:38px Georgia,serif;margin:18px 0 8px}.auth-card p{color:var(--muted);line-height:1.65}.auth-card form{text-align:left;display:grid;gap:9px;margin-top:22px}.auth-card label{font-size:13px;color:#e8dcf7}.auth-card input{width:100%;padding:13px 14px;border:1px solid #e8dafa44;border-radius:12px;background:#100d1dcc;color:#fff;font:inherit;box-sizing:border-box}.auth-card button{width:100%;margin:10px 0;padding:13px 16px;border:0;border-radius:12px;cursor:pointer;font:inherit}.auth-card .auth-notice{padding:12px 14px;border:1px solid #f0c8a866;border-radius:12px;color:#ffe3b4}.auth-card a{color:#e3c9ff}.auth-links{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:18px}.auth-hint{font-size:12px!important}</style></head><body><main class="auth-wrap"><section class="auth-card"><img class="auth-mark" src="/assets/site-avatar.svg" alt="Frieren"><div class="eyebrow">✧ FRIEREN · THE ARCANE JOURNEY ✧</div>' + body + '</section></main></body></html>';
 }
@@ -275,9 +293,14 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
   const routes=['/login','/register','/forgot-password','/reset-password','/verify-email','/resend-verification','/logout'];
   if(!routes.includes(path))return false;
   if(path==='/logout'&&req.method==='GET'){
-    res.writeHead(302,{Location:'/login?status=logged_out','Cache-Control':'no-store','Set-Cookie':COOKIE+'=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'});res.end();return true;
+    if(!sessionSecret||sessionSecret.length<32){send(res,503,page('Kurulum gerekli','<h1>Oturum güvenlik ayarı eksik.</h1>'));return true;}
+    send(res,200,page('Çıkış yap','<h1>Oturumu kapatmak istiyor musun?</h1><p>Site hesabından güvenli şekilde çıkış yap.</p><form method="post" action="/logout">'+formToken(sessionSecret || '')+'<button class="btn">Çıkış yap</button></form><div class="auth-links"><a href="/">Vazgeç</a></div>'));
+    return true;
   }
   if(!db||!sessionSecret||sessionSecret.length<32){send(res,503,page('Kurulum gerekli','<h1>Hesap sistemi geçici olarak kullanılamıyor</h1>'));return true;}
+  if(req.method==='POST'&&!isSameOriginRequest(req)){
+    send(res,403,page('İstek reddedildi','<h1>Bu form yalnızca Frieren sitesinden gönderilebilir.</h1>'));return true;
+  }
   try {
     await schema(db);
     if(req.method==='GET'){
@@ -297,6 +320,12 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
     if(req.method!=='POST'){send(res,405,page('Yöntem desteklenmiyor','<h1>Yöntem desteklenmiyor</h1>'),{Allow:'GET, POST'});return true;}
     if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){send(res,415,page('Geçersiz form','<h1>Form biçimi geçersiz</h1>'));return true;}
     const f=await formBody(req);
+    if(path==='/logout'){
+      if(!verifySiteCsrfToken(f.csrf,sessionSecret)){
+        send(res,403,page('Güvenlik doğrulaması','<h1>Formun süresi doldu. Sayfayı yenile.</h1>'));return true;
+      }
+      res.writeHead(302,{Location:'/login?status=logged_out','Cache-Control':'no-store','Set-Cookie':COOKIE+'=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'});res.end();return true;
+    }
     if(!verifySiteCsrfToken(f.csrf,sessionSecret)){
       const mode=path==='/register'?'register':path==='/forgot-password'?'forgot':path==='/resend-verification'?'resend':'login';
       send(res,403,authPage(mode,sessionSecret,'csrf'));return true;

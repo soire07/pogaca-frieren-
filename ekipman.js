@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentSlots, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
+import { applyEquipmentSetBonus } from './rpg-mechanics.js';
 
 const rarityEmoji = { Yaygın: '⚪', Nadir: '🔹', Destansı: '🟣', Efsanevi: '🟡' };
 
@@ -38,12 +39,10 @@ export default {
         return entry.label + ': ' + (item ? '**' + item.name + '** · ' + formatEquipmentBonus(item) : '*Boş*');
       });
       const total = equipped.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean);
-      const totals = total.reduce((sum, item) => ({
-        attack: sum.attack + item.attack, defense: sum.defense + item.defense, hp: sum.hp + item.hp, mana: sum.mana + item.mana
-      }), { attack: 0, defense: 0, hp: 0, mana: 0 });
+      const setTotals = applyEquipmentSetBonus(total, equipmentBonus(total));
       const embed = new EmbedBuilder().setColor(0x9b8cff).setTitle('🛡️ Kuşanılan Ekipman')
         .setDescription(lines.join('\n\n'))
-        .addFields({ name: '✨ Toplam ekipman bonusu', value: formatEquipmentBonus(totals), inline: false })
+        .addFields({ name: '✨ Toplam ekipman bonusu', value: formatEquipmentBonus(setTotals) + (setTotals.setText ? '\n**' + setTotals.setText + '**' : ''), inline: false }, { name: '🏅 Ekipman set bonusu', value: setTotals.setText || 'Henüz etkin bir nadirlik seti yok.', inline: false })
         .setFooter({ text: 'Eşyalar envanterinde kalır. /market ile ekipman alabilir, /ekipman ile kuşanabilirsin.' });
       return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }

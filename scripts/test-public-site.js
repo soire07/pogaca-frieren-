@@ -79,12 +79,31 @@ test('owner link is only rendered for the configured bot owner', async () => {
   assert.doesNotMatch(visitorResponse.body, /href="\/owner"/);
 });
 
-test('logout clears the shared member session cookie', async () => {
-  const response = res();
-  await handlePublicSiteRequest({ method: 'GET', url: '/logout', headers: {} }, response);
-  assert.equal(response.status, 302);
-  assert.match(response.headers['Set-Cookie'], /frieren_site_session=/);
-  assert.match(response.headers['Set-Cookie'], /Max-Age=0/);
+test('logout requires a confirmation POST and then clears the shared member session cookie', async () => {
+  const previousSecret = process.env.ADMIN_SESSION_SECRET;
+  const secret = 'public-site-logout-test-secret-with-at-least-32-characters';
+  process.env.ADMIN_SESSION_SECRET = secret;
+  const db = { async query() { return { rows: [], rowCount: 0 }; } };
+  try {
+    const page = res();
+    await handlePublicSiteRequest({ method: 'GET', url: '/logout', headers: {} }, page, { db });
+    assert.equal(page.status, 200);
+    const csrf = page.body.match(/name="csrf" value="([^"]+)"/)?.[1];
+    assert.ok(csrf);
+    const body = new URLSearchParams({ csrf }).toString();
+    const response = res();
+    await handlePublicSiteRequest({
+      method: 'POST', url: '/logout',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', origin: 'https://frierenbot.vercel.app', 'sec-fetch-site': 'same-origin' },
+      async *[Symbol.asyncIterator]() { yield Buffer.from(body); }
+    }, response, { db });
+    assert.equal(response.status, 302);
+    assert.match(response.headers['Set-Cookie'], /frieren_site_session=/);
+    assert.match(response.headers['Set-Cookie'], /Max-Age=0/);
+  } finally {
+    if (previousSecret === undefined) delete process.env.ADMIN_SESSION_SECRET;
+    else process.env.ADMIN_SESSION_SECRET = previousSecret;
+  }
 });
 
 test('unknown routes and non-GET requests are not intercepted', async () => {

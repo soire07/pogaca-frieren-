@@ -11,9 +11,9 @@ const secret = 'site-auth-test-secret-with-at-least-32-characters';
 function response() {
   return { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body) { this.body = body; } };
 }
-function post(path, fields) {
+function post(path, fields, extraHeaders = {}) {
   const body = new URLSearchParams(fields).toString();
-  return { method: 'POST', url: path, headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-forwarded-for': '203.0.113.10' }, async *[Symbol.asyncIterator]() { yield Buffer.from(body); } };
+  return { method: 'POST', url: path, headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-forwarded-for': '203.0.113.10', ...extraHeaders }, async *[Symbol.asyncIterator]() { yield Buffer.from(body); } };
 }
 function fakeDb() {
   const calls = [];
@@ -208,4 +208,43 @@ test('password reset request returns the same generic response without exposing 
     if (previousPassword === undefined) delete process.env.SITE_SMTP_APP_PASSWORD;
     else process.env.SITE_SMTP_APP_PASSWORD = previousPassword;
   }
+});
+
+
+test('cross-site form submissions are rejected before account database access', async () => {
+  const db = fakeDb();
+  const req = post('/register', {
+    csrf: createSiteCsrfToken(secret), username: 'Gezgin03', email: 'gezgin3@example.com',
+    password: 'a-secure-password', confirmPassword: 'a-secure-password'
+  }, { origin: 'https://attacker.example', 'sec-fetch-site': 'cross-site', host: 'frierenbot.vercel.app' });
+  const res = response();
+  assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret, createSession: createPublicSiteSession }), true);
+  assert.equal(res.status, 403);
+  assert.equal(db.calls.length, 0);
+});
+
+
+test('logout requires a same-origin POST confirmation and clears only after valid CSRF', async () => {
+  const db = fakeDb();
+  const pageRes = response();
+  await handleSiteAuthRequest({ method: 'GET', url: '/logout', headers: {} }, pageRes, {
+    db, sessionSecret: secret, createSession: createPublicSiteSession
+  });
+  assert.equal(pageRes.status, 200);
+  const token = pageRes.body.match(/name="csrf" value="([^"]+)"/)?.[1];
+  assert.ok(token);
+
+  const forged = response();
+  await handleSiteAuthRequest(post('/logout', { csrf: token }, {
+    origin: 'https://attacker.example', 'sec-fetch-site': 'cross-site', host: 'frierenbot.vercel.app'
+  }), forged, { db, sessionSecret: secret, createSession: createPublicSiteSession });
+  assert.equal(forged.status, 403);
+  assert.equal(forged.headers['Set-Cookie'], undefined);
+
+  const valid = response();
+  await handleSiteAuthRequest(post('/logout', { csrf: token }, {
+    origin: 'https://frierenbot.vercel.app', 'sec-fetch-site': 'same-origin', host: 'frierenbot.vercel.app'
+  }), valid, { db, sessionSecret: secret, createSession: createPublicSiteSession });
+  assert.equal(valid.status, 302);
+  assert.match(valid.headers['Set-Cookie'], /Max-Age=0/);
 });

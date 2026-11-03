@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_GUILD_FEATURES, getGuildFeatureEnabled, initGuildFeatureSettingsSchema, isValidGuildFeatureKey, listGuildFeatureSettings, listGuildFeatureSettingsForGuilds, resetGuildFeatureSetting, setGuildFeatureEnabled } from '../guild-feature-settings.js';
+import { DEFAULT_GUILD_FEATURES, areGuildCommandFeaturesEnabled, getCommandFeatureKeys, getComponentCommandName, getGuildFeatureEnabled, initGuildFeatureSettingsSchema, isValidGuildFeatureKey, listGuildFeatureSettings, listGuildFeatureSettingsForGuilds, resetGuildFeatureSetting, setGuildFeatureEnabled } from '../guild-feature-settings.js';
 
 function fakeDb(rows = []) {
   const calls = [];
@@ -22,6 +22,11 @@ test('feature keys are validated and defaults preserve existing behavior', () =>
   assert.equal(isValidGuildFeatureKey('bad key'), false);
   assert.equal(DEFAULT_GUILD_FEATURES.rpg, true);
   assert.equal(DEFAULT_GUILD_FEATURES.aiChat, true);
+  assert.equal(DEFAULT_GUILD_FEATURES.companions, true);
+  assert.equal(DEFAULT_GUILD_FEATURES.characterWishlist, true);
+  assert.equal(DEFAULT_GUILD_FEATURES.fishing, true);
+  assert.equal(DEFAULT_GUILD_FEATURES.farming, true);
+  assert.equal(DEFAULT_GUILD_FEATURES.creatures, false);
 });
 
 test('feature setting schema is isolated and safe to initialize', async () => {
@@ -92,4 +97,75 @@ test('bulk guild feature lookup validates all guild IDs before querying', async 
   const db = fakeDb();
   await assert.rejects(listGuildFeatureSettingsForGuilds(db, ['1539562273197260860', 'invalid']), /INVALID_GUILD_ID/);
   assert.equal(db.calls.length, 0);
+});
+
+test('entertainment and progression commands map to their guild dashboard modules', () => {
+  assert.deepEqual(getCommandFeatureKeys('animequiz'), ['animeQuiz']);
+  assert.deepEqual(getCommandFeatureKeys('yoldas'), ['companions', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('karakteristek'), ['character', 'characterWishlist', 'collection', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('balik'), ['fishing', 'rpg']);
+  assert.equal(getComponentCommandName('creature_catch:123e4567-e89b-12d3-a456-426614174000'),'yaratik');
+  assert.deepEqual(getCommandFeatureKeys('sera'), ['farming', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('yaratik'), ['creatures', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('koleksiyon'), ['collection', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('basarimlar'), ['achievements', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('gunlukodul'), ['dailyRewards', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('kesifdefteri'), ['collection', 'exploration', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('zanaat'), ['crafting', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('hikaye'), ['story', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('takasteklif'), ['economy', 'trading', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('trade'), ['economy', 'trading', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('siralama'), ['rpg'], 'leaderboards must not be gated by the economy module');
+  assert.deepEqual(getCommandFeatureKeys('macera'), ['exploration', 'rpg'], 'the main adventure command must honor the exploration toggle');
+});
+
+
+test('guild command feature gate checks global, command-specific, and mapped modules', async () => {
+  const db = fakeDb([]);
+  assert.equal(await areGuildCommandFeaturesEnabled(db, '1539562273197260860', 'takasteklif'), true);
+  assert.deepEqual(db.calls[0].params, ['1539562273197260860', 'commands']);
+  assert.deepEqual(db.calls.map(call => call.params[1]), [
+    'commands', 'command_takasteklif', 'economy', 'trading', 'rpg'
+  ]);
+});
+
+test('guild command feature gate blocks a disabled mapped module', async () => {
+  const db = fakeDb([{ enabled: false }]);
+  assert.equal(await areGuildCommandFeaturesEnabled(db, '1539562273197260860', 'takasteklif'), false);
+});
+
+test('guild command feature gate rejects invalid command or guild identifiers', async () => {
+  const db = fakeDb();
+  assert.equal(await areGuildCommandFeaturesEnabled(db, 'invalid', 'takasteklif'), false);
+  assert.equal(await areGuildCommandFeaturesEnabled(db, '1539562273197260860', 'bad command'), false);
+  assert.equal(db.calls.length, 0);
+});
+
+
+test('boss, dungeon, and magic duel commands map to their actual guild feature switches', () => {
+  assert.deepEqual(getCommandFeatureKeys('ortakboss'), ['bosses', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('katlizindan'), ['dungeons', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('buyusavasi'), ['magic', 'rpg']);
+});
+
+
+test('legacy RPG commands are assigned to their actual guild dashboard modules', () => {
+  assert.deepEqual(getCommandFeatureKeys('cantam'), ['equipment', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('zanaatustalari'), ['equipment', 'crafting', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('hazineac'), ['economy', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('hazinegecmisi'), ['economy', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('mimic'), ['rpg']);
+  assert.deepEqual(getCommandFeatureKeys('parcala'), ['character', 'economy', 'collection', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('gunluk'), ['rpg']);
+  assert.deepEqual(getCommandFeatureKeys('gunlukgorev'), ['quests', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('npc'), ['quests', 'story', 'rpg']);
+  assert.deepEqual(getCommandFeatureKeys('liderlik'), ['rpg']);
+});
+
+test('interactive component IDs resolve to the same command feature gate as slash commands', () => {
+  assert.equal(getComponentCommandName('charpanel:open:123'), 'karakter');
+  assert.equal(getComponentCommandName('market_buy:123'), 'market');
+  assert.equal(getComponentCommandName('trade_accept:offer-1:123'), 'takasteklif');
+  assert.equal(getComponentCommandName('trade_decline:offer-1:123'), 'takasteklif');
+  assert.equal(getComponentCommandName('unrelated-component'), null);
 });
