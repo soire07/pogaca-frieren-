@@ -96,6 +96,7 @@ test('high-severity incidents are reviewed and dispatched to the isolated repair
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
     incident,
     env: {
+      FRIEREN_AI_PUBLIC_URL: 'https://pogaca-frieren-kltd.onrender.com',
       FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
       FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
     },
@@ -104,7 +105,7 @@ test('high-severity incidents are reviewed and dispatched to the isolated repair
   });
   assert.equal(result.status, 'dispatched');
   assert.equal(requests.length, 2);
-  assert.equal(requests[0].url, 'https://frieren-ai-agent.onrender.com/internal/guardian-review');
+  assert.equal(requests[0].url, 'https://pogaca-frieren-kltd.onrender.com/internal/guardian-review');
   assert.equal(requests[1].url, 'https://api.github.com/repos/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml/dispatches');
   assert.equal(requests[1].options.headers.Authorization, 'Bearer ' + 'y'.repeat(48));
   const payload = JSON.parse(requests[1].options.body);
