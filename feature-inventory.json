@@ -219,7 +219,7 @@
           "test": "level-scaled quest reward multiplier changes only at ten-level boundaries and is capped"
         }
       ],
-      "verifiedAtCommit": "5995ea7fee54c5fe0cd198d8c0bd28ab5993213",
+      "verifiedAtCommit": "5995ea7fee54c5fe0cd1986d8c0bd28ab5993213",
       "verificationRunId": 41667427161
     },
     {
@@ -249,7 +249,7 @@
           "test": "quest chain integrates level-scaled XP, level-ups, stat points and completion bonus"
         }
       ],
-      "verifiedAtCommit": "5995ea7fee54c5fe0cd198d8c0bd28ab5993213",
+      "verifiedAtCommit": "5995ea7fee54c5fe0cd1986d8c0bd28ab5993213",
       "verificationRunId": 41667427161
     },
     {
