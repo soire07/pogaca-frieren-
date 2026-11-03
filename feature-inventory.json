@@ -182,8 +182,8 @@
       "candidateEvidence": {
         "type": "test_candidate",
         "file": "scripts/test-discord-scenarios.js",
-        "test": "spell practice is registered in the RPG command directory",
-        "matchScore": 0.5,
+        "test": "RPG profile can display another selected server member without using the caller account",
+        "matchScore": 1,
         "reviewRequired": true
       }
     },
@@ -783,8 +783,8 @@
       "candidateEvidence": {
         "type": "test_candidate",
         "file": "scripts/test-discord-scenarios.js",
-        "test": "crafting catalog lists all available recipes and material requirements without crafting",
-        "matchScore": 0.25,
+        "test": "story decisions unlock different requirements and endings from the selected path",
+        "matchScore": 1,
         "reviewRequired": true
       }
     },
@@ -898,8 +898,8 @@
       "candidateEvidence": {
         "type": "test_candidate",
         "file": "scripts/test-discord-scenarios.js",
-        "test": "character classes provide bounded passive bonuses and class selection is discoverable",
-        "matchScore": 0.25,
+        "test": "server leaderboard ranks unique anime character collections as a selectable category",
+        "matchScore": 1,
         "reviewRequired": true
       }
     },
@@ -1042,9 +1042,9 @@
       "status": "mapped_needs_review",
       "candidateEvidence": {
         "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "co-op commands expose party options and dungeon difficulty choices",
-        "matchScore": 0.333,
+        "file": "scripts/test-utils.js",
+        "test": "co-op dungeon shares discovered chest and rare victory loot with every participant",
+        "matchScore": 1,
         "reviewRequired": true
       }
     },
@@ -1269,9 +1269,9 @@
       "status": "mapped_needs_review",
       "candidateEvidence": {
         "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "spell practice advances mastery at ten-use thresholds and caps at level ten",
-        "matchScore": 0.25,
+        "file": "scripts/live-command-test.js",
+        "test": "Altı gelişim hedefinin görünmesi",
+        "matchScore": 1,
         "reviewRequired": true
       }
     },
@@ -1510,9 +1510,9 @@
       "status": "mapped_needs_review",
       "candidateEvidence": {
         "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "achievement claims include rare exploration, treasure completion, chest and route milestones",
-        "matchScore": 0.286,
+        "file": "scripts/test-utils.js",
+        "test": "co-op dungeon shares discovered chest and rare victory loot with every participant",
+        "matchScore": 1,
         "reviewRequired": true
       }
     },
@@ -1679,9 +1679,9 @@
       "status": "mapped_needs_review",
       "candidateEvidence": {
         "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "dungeon has five floors, route choices, safe timeout default and random floor events",
-        "matchScore": 0.333,
+        "file": "scripts/test-utils.js",
+        "test": "multi-floor dungeon includes traps, chests and persistent player rewards",
+        "matchScore": 1,
         "reviewRequired": true
       }
     },
@@ -1707,9 +1707,9 @@
       "status": "mapped_needs_review",
       "candidateEvidence": {
         "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "treasure chests are consumed transactionally and grant persistent randomized loot",
-        "matchScore": 0.4,
+        "file": "scripts/test-utils.js",
+        "test": "co-op dungeon shares discovered chest and rare victory loot with every participant",
+        "matchScore": 1,
         "reviewRequired": true
       }
     },
@@ -1897,7 +1897,7 @@
         "type": "test_candidate",
         "file": "scripts/test-discord-scenarios.js",
         "test": "both combat modes expose attack, Zoltraak, Heilen, mana shield and defend actions",
-        "matchScore": 0.25,
+        "matchScore": 1,
         "reviewRequired": true
       }
     },
@@ -1923,9 +1923,9 @@
       "status": "mapped_needs_review",
       "candidateEvidence": {
         "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "isolated command runner simulates co-op invitations, role selection, combat turns and path choices",
-        "matchScore": 0.4,
+        "file": "scripts/test-utils.js",
+        "test": "dungeon and boss raid let each accepted player choose their own role",
+        "matchScore": 1,
         "reviewRequired": true
       }
     },
@@ -3123,8 +3123,8 @@
       "candidateEvidence": {
         "type": "test_candidate",
         "file": "scripts/test-discord-scenarios.js",
-        "test": "adventure map fragments persist and complete a five-piece treasure reward",
-        "matchScore": 0.286,
+        "test": "adventure statistics aggregate progress, discoveries, streak and treasure inventory",
+        "matchScore": 1,
         "reviewRequired": true
       }
     },
@@ -3592,9 +3592,9 @@
       "status": "mapped_needs_review",
       "candidateEvidence": {
         "type": "test_candidate",
-        "file": "scripts/test-discord-scenarios.js",
-        "test": "achievement claims include rare exploration, treasure completion, chest and route milestones",
-        "matchScore": 0.333,
+        "file": "scripts/test-utils.js",
+        "test": "rare treasure chest drops award more gold and XP than every common drop",
+        "matchScore": 1,
         "reviewRequired": true
       }
     },
@@ -4116,7 +4116,7 @@
         "type": "test_candidate",
         "file": "scripts/test-discord-scenarios.js",
         "test": "adventure history profile includes persistent crafting profession progression",
-        "matchScore": 0.5,
+        "matchScore": 1,
         "reviewRequired": true
       }
     },
@@ -4129,7 +4129,7 @@
         "type": "test_candidate",
         "file": "scripts/test-discord-scenarios.js",
         "test": "adventure history profile includes persistent crafting profession progression",
-        "matchScore": 0.5,
+        "matchScore": 1,
         "reviewRequired": true
       }
     },
@@ -5225,7 +5225,7 @@
           "file": "scripts/live-command-test.js",
           "command": "siralama",
           "checks": [
-            "Altı sunucu sıralaması kategorisi"
+            "Yedi sunucu sıralaması kategorisi"
           ]
         }
       ],
@@ -5243,7 +5243,7 @@
           "file": "scripts/live-command-test.js",
           "command": "siralama",
           "checks": [
-            "Altı sunucu sıralaması kategorisi"
+            "Yedi sunucu sıralaması kategorisi"
           ]
         }
       ],
@@ -5261,7 +5261,7 @@
           "file": "scripts/live-command-test.js",
           "command": "siralama",
           "checks": [
-            "Altı sunucu sıralaması kategorisi"
+            "Yedi sunucu sıralaması kategorisi"
           ]
         }
       ],
@@ -5297,7 +5297,7 @@
           "file": "scripts/live-command-test.js",
           "command": "siralama",
           "checks": [
-            "Altı sunucu sıralaması kategorisi"
+            "Yedi sunucu sıralaması kategorisi"
           ]
         }
       ],
@@ -5315,7 +5315,7 @@
           "file": "scripts/live-command-test.js",
           "command": "siralama",
           "checks": [
-            "Altı sunucu sıralaması kategorisi"
+            "Yedi sunucu sıralaması kategorisi"
           ]
         }
       ],
@@ -5333,7 +5333,7 @@
           "file": "scripts/live-command-test.js",
           "command": "siralama",
           "checks": [
-            "Altı sunucu sıralaması kategorisi"
+            "Yedi sunucu sıralaması kategorisi"
           ]
         }
       ],
