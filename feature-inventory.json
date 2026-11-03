@@ -26,7 +26,14 @@
       "id": "RPG-002",
       "name": "View another player's profile",
       "category": "RPG",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js"
+        ],
+        "scope": "The isolated command audit selects a second player, verifies that the target player's name, level, XP and gold are rendered, and proves the target's RPG state remains unchanged. Synthetic Discord interaction and disposable frieren_test PostgreSQL; not live Discord E2E."
+      }
     },
     {
       "id": "RPG-003",
@@ -208,7 +215,14 @@
       "id": "RPG-016",
       "name": "Boss guide and reward estimates",
       "category": "Combat",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js"
+        ],
+        "scope": "The isolated command audit sets the player's level and boss victory count, verifies the level-appropriate boss tier and next threshold, and checks victory/loot guidance. It also verifies guide viewing does not mutate player progress. Synthetic Discord interaction and disposable frieren_test PostgreSQL."
+      }
     },
     {
       "id": "RPG-017",
@@ -296,7 +310,14 @@
       "id": "RPG-023",
       "name": "Buy equipment",
       "category": "Equipment",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "postgres_integration",
+        "tests": [
+          "scripts/test-market-concurrency.integration.js"
+        ],
+        "scope": "Real PostgreSQL integration tests run eight concurrent purchases against a limited balance and verify exact debits/inventory quantities; a forced inventory-write failure verifies the gold debit rolls back. Uses the disposable frieren_audit PostgreSQL service, not production."
+      }
     },
     {
       "id": "RPG-024",
@@ -496,7 +517,14 @@
       "id": "RPG-038",
       "name": "Character collection upgrades",
       "category": "Collection",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "postgres_integration",
+        "tests": [
+          "scripts/test-market-concurrency.integration.js"
+        ],
+        "scope": "Real PostgreSQL integration test races two character upgrades with a 500-gold balance; verifies only one 250-gold upgrade succeeds, the level becomes +1, collection copies remain unchanged, and the second request is rejected. Uses disposable frieren_audit PostgreSQL."
+      }
     },
     {
       "id": "RPG-039",
@@ -756,7 +784,14 @@
       "id": "SOC-002",
       "name": "Guild leaderboard by total XP",
       "category": "Social",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js"
+        ],
+        "scope": "The isolated command audit ranks two players by total XP and checks the higher-scoring player appears first; it also inserts a higher-scoring player in another guild and verifies guild isolation. Synthetic Discord interaction and disposable frieren_test PostgreSQL."
+      }
     },
     {
       "id": "SOC-003",
@@ -775,13 +810,27 @@
       "id": "SOC-004",
       "name": "Guild leaderboard by demon boss victories",
       "category": "Social",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js"
+        ],
+        "scope": "The isolated command audit ranks players by demon boss victories, checks ordering by score, and verifies a higher-scoring player from another guild is excluded. Synthetic Discord interaction and disposable frieren_test PostgreSQL."
+      }
     },
     {
       "id": "SOC-005",
       "name": "Guild leaderboard by dungeon victories",
       "category": "Social",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js"
+        ],
+        "scope": "The isolated command audit ranks players by dungeon victories, checks ordering by score, and verifies a higher-scoring player from another guild is excluded. Synthetic Discord interaction and disposable frieren_test PostgreSQL."
+      }
     },
     {
       "id": "SOC-006",
@@ -828,7 +877,14 @@
       "id": "SOC-009",
       "name": "View another player's RPG adventure history",
       "category": "Social",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_contract",
+        "tests": [
+          "scripts/live-command-test.js"
+        ],
+        "scope": "The isolated command audit selects a different player, inserts a unique adventure-history record for that player, verifies the selected player's summary and exact adventure record are rendered, and proves their progress remains unchanged. Synthetic Discord interaction and disposable frieren_test PostgreSQL."
+      }
     },
     {
       "id": "RPG-053",
@@ -17628,7 +17684,7 @@
     }
   ],
   "count": 2000,
-  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification. Roadmap expansion (2026-11-03): added 1,675 distinct player-facing feature candidates across 25 Frieren RPG domains. All added entries are explicitly status=planned and are not implemented/test evidence. Roadmap count is a planning target, not a completion claim.",
+  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification. Roadmap expansion (2026-11-03): added 1,675 distinct player-facing feature candidates across 25 Frieren RPG domains. All added entries are explicitly status=planned and are not implemented/test evidence. Roadmap count is a planning target, not a completion claim. All 325 original feature rows now have a linked test/source evidence record (2026-11-03); scope limitations are stated per row. The 1,675 new roadmap rows remain planned and intentionally have no test evidence.",
   "plannedFeatureCount": 1675,
   "implementedFeatureCount": 325
 }
