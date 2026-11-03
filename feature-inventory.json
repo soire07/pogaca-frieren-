@@ -44,7 +44,15 @@
       "id": "RPG-005",
       "name": "Distribute character stat points",
       "category": "Progression",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated character-panel interaction selects an attack stat, spends three stat points and verifies the persisted character progression response; this is a synthetic Discord interaction against frieren_test. This is isolated synthetic command testing, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-006",
@@ -265,13 +273,29 @@
       "id": "RPG-025",
       "name": "Equipment attack and defense bonuses",
       "category": "Equipment",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-gameplay-persistence.js"
+        ],
+        "scope": "The isolated equipment interaction equips/unequips gear, verifies set activation/removal and inventory ownership; the separate helper unit tests verify set-bonus calculation. Live Discord E2E remains unverified. This is isolated synthetic command testing, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-026",
       "name": "Equipment max HP and Mana bonuses",
       "category": "Equipment",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-gameplay-persistence.js"
+        ],
+        "scope": "The isolated equipment interaction checks HP/Mana state around equip/unequip and the helper tests verify set bonus activation/removal; exhaustive per-item stat matrix remains unverified. This is isolated synthetic command testing, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-027",
@@ -565,13 +589,29 @@
       "id": "RPG-048",
       "name": "Track co-op dungeon attempts",
       "category": "Co-op",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated co-op command scenario checks persisted dungeon-run counters for the three synthetic party members in frieren_test. This is isolated synthetic command testing, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-049",
       "name": "Track successful co-op dungeon clears",
       "category": "Co-op",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated co-op command scenario checks persisted dungeon-win counters and the battle settlement result in frieren_test. This is isolated synthetic command testing, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-050",
@@ -602,7 +642,15 @@
       "id": "SOC-001",
       "name": "Guild leaderboard by player level",
       "category": "Social",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated ranking command scenario verifies the level category ordering and the invoking player's rank position. This is isolated synthetic command testing, not live Discord E2E."
+      }
     },
     {
       "id": "SOC-002",
@@ -710,7 +758,15 @@
       "id": "RPG-057",
       "name": "Summarize unique characters and total collection copies",
       "category": "Collection",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated character identification and draw scenarios verify collection records and aggregate character-copy counts in frieren_test. This is isolated synthetic command testing, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-058",
@@ -1457,7 +1513,14 @@
       "id": "RPG-115",
       "name": "Restore HP and floor-scaled mana through the mana shrine route",
       "category": "Dungeon",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "source_contract",
+        "tests": [
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The source-contract test verifies the mana-shrine route outcome restores floor-scaled mana and feeds the dungeon result; runtime route interaction remains unverified. This is isolated synthetic command testing, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-116",
@@ -3711,7 +3774,15 @@
       "id": "RPG-318",
       "name": "Persistent per-region exploration mastery with every-third-visit bonus rewards",
       "category": "Exploration",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "isolated_command_postgresql",
+        "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
+        ],
+        "scope": "The isolated exploration command scenario verifies persisted region mastery progress and the journal output; the every-third-visit reward is additionally covered by the source-contract test. This is isolated synthetic command testing, not live Discord E2E."
+      }
     },
     {
       "id": "RPG-319",
@@ -3852,5 +3923,5 @@
     }
   ],
   "count": 325,
-  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test."
+  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised."
 }
