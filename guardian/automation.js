@@ -38,6 +38,13 @@ function safeErrorCode(error) {
     .slice(0, 100);
 }
 
+async function assertGithubWorkflowDispatched(response) {
+  if (response.status === 204) return;
+  const payload = await response.json().catch(() => ({}));
+  const detail = redactGuardianText(payload?.message || payload?.error || 'UNKNOWN_GITHUB_ERROR', 80);
+  throw new Error('GUARDIAN_GITHUB_DISPATCH_HTTP_' + response.status + '_' + (detail || 'UNKNOWN_GITHUB_ERROR'));
+}
+
 function safeList(value, maxItems = 4, maxChars = 120) {
   return Array.isArray(value)
     ? value.slice(0, maxItems).map(item => redactGuardianText(item, maxChars)).filter(Boolean)
@@ -223,7 +230,7 @@ export async function processGuardianIncident({
         signal: AbortSignal.timeout(12_000),
       }
     );
-    if (response.status !== 204) throw new Error('GUARDIAN_GITHUB_DISPATCH_HTTP_' + response.status);
+    await assertGithubWorkflowDispatched(response);
     const persisted = await persistDispatchedState(store, db, job.id, workflowUrl);
     if (!persisted) {
       return { status: 'dispatch_state_unconfirmed', jobId: Number(job.id), workflowUrl };
@@ -364,7 +371,7 @@ export async function processPendingGuardianRepairDispatch({
         signal: AbortSignal.timeout(12_000),
       }
     );
-    if (response.status !== 204) throw new Error('GUARDIAN_GITHUB_DISPATCH_HTTP_' + response.status);
+    await assertGithubWorkflowDispatched(response);
     const persisted = await persistDispatchedState(store, db, job.id, workflowUrl);
     if (!persisted) {
       return { status: 'dispatch_state_unconfirmed', jobId: Number(job.id), workflowUrl };
