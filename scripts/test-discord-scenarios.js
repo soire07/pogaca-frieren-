@@ -222,6 +222,11 @@ test('spell practice is registered in the RPG command directory', async () => {
 });
 
 
+test('public player profile command is registered for direct player use', async () => {
+  const profile = await read('profil.js');
+  assert.doesNotMatch(profile, /internalOnly:\\s*true/);
+});
+
 test('RPG profile can display another selected server member without using the caller account', async () => {
   const profile = await read('profil.js');
   assert.match(profile, /setName\('profil'\)/);
