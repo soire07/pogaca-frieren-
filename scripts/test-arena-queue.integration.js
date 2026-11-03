@@ -25,7 +25,8 @@ test('PostgreSQL arena matchmaking atomically creates two complete matches from 
     const joins = await Promise.all(safeUserIds.map((userId, index) =>
       enqueueArenaPlayer(pool, { guildId, userId, rating: 900 + index * 20 })
     ));
-    assert.equal(joins.filter(result => result.status === 'matched').length, 12);
+    assert.equal(joins.filter(result => result.status === 'matched').length, 2, 'one join call creates each of the two complete matches');
+    assert.equal(joins.length, 12);
     const matches = await pool.query(
       `SELECT m.match_id, COUNT(p.user_id)::int AS player_count,
               COUNT(*) FILTER (WHERE p.team='A')::int AS team_a_count,
