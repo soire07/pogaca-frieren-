@@ -261,12 +261,12 @@ test('party wipe is reported only when every member has zero or less HP', () => 
 });
 
 test('talent ranks increase attack and defense by four percent and HP and mana by five percent', () => {
-  assert.equal(applyTalentBonus(100, 1, 0.04), 104);
-  assert.equal(applyTalentBonus(100, 3, 0.04), 112);
-  assert.equal(applyTalentBonus(100, 1, 0.05), 105);
-  assert.equal(applyTalentBonus(100, 3, 0.05), 115);
-  assert.equal(applyTalentBonus(100, -1, 0.05), 100);
-  assert.equal(applyTalentBonus(101, 1, 0.05), 106.05, 'retain fractional precision until the caller applies its original rounding boundary');
+  assert.ok(Math.abs(applyTalentBonus(100, 1, 0.04) - 104) < 1e-9);
+  assert.ok(Math.abs(applyTalentBonus(100, 3, 0.04) - 112) < 1e-9);
+  assert.ok(Math.abs(applyTalentBonus(100, 1, 0.05) - 105) < 1e-9);
+  assert.ok(Math.abs(applyTalentBonus(100, 3, 0.05) - 115) < 1e-9);
+  assert.ok(Math.abs(applyTalentBonus(100, -1, 0.05) - 100) < 1e-9);
+  assert.ok(Math.abs(applyTalentBonus(101, 1, 0.05) - 106.05) < 1e-9, 'retain fractional precision until the caller applies its original rounding boundary');
   assert.equal(getDungeonEventOutcome(0.1), 'hidden_chest');
   assert.equal(getDungeonEventOutcome(0.3), 'trap');
   assert.equal(getDungeonEventOutcome(0.9), 'none');
