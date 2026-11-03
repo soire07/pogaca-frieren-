@@ -56,24 +56,31 @@ test('PostgreSQL arena matchmaking atomically creates two complete matches from 
   }
 });
 
-test('arena matchmaking transaction rolls back queue rows when match creation fails', async () => {
+test('arena matchmaking rolls back the sixth join when one queued player has invalid combat stats', async () => {
   assertIsolatedAuditDatabase();
+  await initDatabase();
   await ensureArenaTables(pool);
   const guildId = '99000000000000002';
   const runId = randomUUID().replaceAll('-', '').slice(0, 8);
-  const userIds = Array.from({ length: 5 }, (_, index) => String(80000000000000000n + BigInt(runId.slice(0, 4), 16) * 100n + BigInt(index + 1)).slice(0, 17));
+  const userIds = Array.from({ length: 6 }, (_, index) => String(80000000000000000n + BigInt(parseInt(runId.slice(0,4), 16)) * 100n + BigInt(index + 1)).slice(0, 17));
   for (const userId of userIds) await ensureUser(guildId, userId);
   try {
-    for (const userId of userIds) {
+    for (const userId of userIds.slice(0, 5)) {
       const result = await enqueueArenaPlayer(pool, { guildId, userId, rating: 1000 });
       assert.equal(result.status, 'queued');
     }
+    await pool.query('UPDATE users SET hp=0 WHERE guild_id=$1 AND user_id=$2', [guildId, userIds[5]]);
+    await assert.rejects(
+      enqueueArenaPlayer(pool, { guildId, userId: userIds[5], rating: 1000 }),
+      /ARENA_HP_INVALID/
+    );
     const queued = await pool.query('SELECT COUNT(*)::int AS count FROM arena_queue WHERE guild_id=$1 AND user_id=ANY($2::text[])', [guildId, userIds]);
-    assert.equal(queued.rows[0].count, 5);
-    const matches = await pool.query('SELECT COUNT(*)::int AS count FROM arena_matches WHERE guild_id=$1 AND match_id LIKE $2', [guildId, runId + '%']);
-    assert.equal(matches.rows[0].count, 0);
+    assert.equal(queued.rows[0].count, 5, 'the failed sixth join must roll back without deleting the five existing queue entries');
+    const matches = await pool.query('SELECT COUNT(*)::int AS count FROM arena_matches WHERE guild_id=$1', [guildId]);
+    assert.equal(matches.rows[0].count, 0, 'a partially created match must not survive the failed transaction');
   } finally {
     await pool.query('DELETE FROM arena_queue WHERE guild_id=$1 AND user_id=ANY($2::text[])', [guildId, userIds]);
+    await pool.query('DELETE FROM arena_matches WHERE guild_id=$1', [guildId]);
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])', [guildId, userIds]);
   }
 });
