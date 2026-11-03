@@ -3337,7 +3337,7 @@
         "tests": [
           "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "The production /ekipmanparcala command runs against disposable PostgreSQL for every equipment catalog item and verifies the exact material return and persisted dismantling count."
+        "scope": "The production /ekipmanparcala command runs against disposable PostgreSQL for all twelve equipment catalog items and verifies the exact material return and persisted dismantling count. The test exposed and the command now covers missing yields for demon_armor and copper_ring."
       }
     },
     {
@@ -3363,7 +3363,7 @@
         "tests": [
           "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "The production salvage command dismantles two copies of each of the ten equipment items and verifies proportional material returns and exact inventory balances in PostgreSQL."
+        "scope": "The production salvage command dismantles two copies of each of the twelve equipment catalog items and verifies proportional material returns and exact inventory balances in PostgreSQL."
       }
     },
     {
@@ -3389,7 +3389,7 @@
         "tests": [
           "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "The PostgreSQL salvage matrix verifies the lifetime salvaged_items total accumulates across all ten item types and multiple copies."
+        "scope": "The PostgreSQL salvage matrix verifies the lifetime salvaged_items total accumulates across all twelve equipment types and multiple copies."
       }
     },
     {
@@ -17684,7 +17684,7 @@
     }
   ],
   "count": 2000,
-  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification. Roadmap expansion (2026-11-03): added 1,675 distinct player-facing feature candidates across 25 Frieren RPG domains. All added entries are explicitly status=planned and are not implemented/test evidence. Roadmap count is a planning target, not a completion claim. All 325 original feature rows now have a linked test/source evidence record (2026-11-03); scope limitations are stated per row. The 1,675 new roadmap rows remain planned and intentionally have no test evidence. RPG-002 profile evidence was upgraded to a dedicated PostgreSQL integration test because the command is internal-only and is not part of the 67-command public audit. Crafting/salvage evidence upgrade (2026-11-03): added disposable frieren_audit PostgreSQL command integrations for all ten recipe ingredient/output mappings, multi-quantity scaling, persisted rarity-weighted XP/profession/daily progress, advanced recipe level gates, deterministic level-4/5/10 refund boundaries, all ten salvage mappings, multi-copy proportional returns, equipped-item protection, and player-visible lifetime salvage totals. These use synthetic Discord interactions and are not live Discord E2E.",
+  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification. Roadmap expansion (2026-11-03): added 1,675 distinct player-facing feature candidates across 25 Frieren RPG domains. All added entries are explicitly status=planned and are not implemented/test evidence. Roadmap count is a planning target, not a completion claim. All 325 original feature rows now have a linked test/source evidence record (2026-11-03); scope limitations are stated per row. The 1,675 new roadmap rows remain planned and intentionally have no test evidence. RPG-002 profile evidence was upgraded to a dedicated PostgreSQL integration test because the command is internal-only and is not part of the 67-command public audit. Crafting/salvage evidence upgrade (2026-11-03): added disposable frieren_audit PostgreSQL command integrations for all ten recipe ingredient/output mappings, multi-quantity scaling, persisted rarity-weighted XP/profession/daily progress, advanced recipe level gates, deterministic level-4/5/10 refund boundaries, all ten salvage mappings, multi-copy proportional returns, equipped-item protection, and player-visible lifetime salvage totals. These use synthetic Discord interactions and are not live Discord E2E. Salvage catalog completeness fix (2026-11-03): /ekipmanparcala exposed all equipment catalog entries but lacked yields for the purchasable demon_armor and copper_ring items. Added partial recovery mappings and expanded the real PostgreSQL salvage matrix to exercise all twelve equipment types and multiple copies.",
   "plannedFeatureCount": 1675,
   "originalFeatureEvidenceLinkedCount": 325
 }
