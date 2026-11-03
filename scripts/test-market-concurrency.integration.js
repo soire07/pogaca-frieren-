@@ -1428,6 +1428,9 @@ test('all ten crafting recipes consume their exact ingredients and persist equip
       'INSERT INTO user_crafting_progress(guild_id,user_id,xp,level) VALUES($1,$2,400,5)',
       [guildId, userId]
     );
+    const recipeIds = new Set(['iron_sword','mage_staff','traveler_cloak','mana_ring','fern_robe','frieren_robe','himmel_sword','demon_blade','rune_ring','hero_ring']);
+    const recipeItems = equipmentItems.filter(item => recipeIds.has(item.id));
+    assert.equal(recipeItems.length, 10, 'the catalog must expose the ten crafting recipes under test');
     const materials = [
       ['💎 Mana Kristali', 11],
       ['🥐 Büyülü Poğaça Kutusu', 3],
@@ -1455,12 +1458,12 @@ test('all ten crafting recipes consume their exact ingredients and persist equip
     });
 
     try {
-      for (const item of equipmentItems) {
+      for (const item of recipeItems) {
         await craftingCommand.execute(makeInteraction(item.id));
       }
       const outputs = await pool.query(
         'SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[])',
-        [guildId, userId, equipmentItems.map(item => item.name)]
+        [guildId, userId, recipeItems.map(item => item.name)]
       );
       const remainingMaterials = await pool.query(
         'SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[])',
@@ -1474,17 +1477,17 @@ test('all ten crafting recipes consume their exact ingredients and persist equip
         'SELECT crafted_items FROM daily_crafting_progress WHERE guild_id=$1 AND user_id=$2 AND mission_date=CURRENT_DATE',
         [guildId, userId]
       );
-      const expectedXp = equipmentItems.reduce((sum, item) =>
+      const expectedXp = recipeItems.reduce((sum, item) =>
         sum + ({ Yaygın: 10, Nadir: 20, Destansı: 35, Efsanevi: 50 }[item.rarity] || 10), 0);
 
-      assert.equal(outputs.rowCount, equipmentItems.length, 'each of the ten recipes must create its mapped equipment item');
+      assert.equal(outputs.rowCount, recipeItems.length, 'each of the ten recipes must create its mapped equipment item');
       assert.ok(outputs.rows.every(row => Number(row.quantity) === 1));
       assert.equal(remainingMaterials.rowCount, 0, 'all recipe ingredients must be consumed exactly once');
       assert.equal(Number(progress.rows[0].xp), 400 + expectedXp, 'rarity-weighted XP must accumulate');
       assert.equal(Number(progress.rows[0].level), Math.floor((400 + expectedXp) / 100) + 1);
-      assert.equal(Number(progress.rows[0].successful_crafts), equipmentItems.length);
-      assert.equal(Number(daily.rows[0].crafted_items), equipmentItems.length);
-      assert.equal(responses.length, equipmentItems.length);
+      assert.equal(Number(progress.rows[0].successful_crafts), recipeItems.length);
+      assert.equal(Number(daily.rows[0].crafted_items), recipeItems.length);
+      assert.equal(responses.length, recipeItems.length);
       assert.ok(responses.every(payload => {
         const rendered = JSON.stringify(payload);
         return rendered.includes('Zanaat ustalığı') && rendered.includes('Başarılı üretim');
@@ -1668,7 +1671,7 @@ test('crafting material recovery unlocks at profession levels five and ten witho
   });
 });
 
-test('equipment salvage returns proportional materials for all ten items and records lifetime dismantling totals', {
+test('equipment salvage returns proportional materials for all twelve items and records lifetime dismantling totals', {
   skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
 }, async () => {
   await withIsolatedTestSchema(async () => {
@@ -1703,7 +1706,9 @@ test('equipment salvage returns proportional materials for all ten items and rec
           himmel_sword: ['🐉 Ejderha Pulu', 1],
           demon_blade: ['🐉 Ejderha Pulu', 2],
           rune_ring: ['💎 Mana Kristali', 1],
-          hero_ring: ['🌙 Efsunlu Elf Yadigârı', 1]
+          hero_ring: ['🌙 Efsunlu Elf Yadigârı', 1],
+          demon_armor: ['🐉 Ejderha Pulu', 2],
+          copper_ring: ['💎 Mana Kristali', 1]
         }[item.id];
         assert.ok(salvage, 'every craftable equipment item must have a salvage mapping');
         expected.set(salvage[0], (expected.get(salvage[0]) || 0) + salvage[1] * 2);
