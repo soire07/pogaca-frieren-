@@ -107,7 +107,7 @@ export function startGuardianMonitor({
       if (!initialized) {
         await db.query(
           `INSERT INTO owner_guardian_monitor_state(monitor_key,last_seen_error_id)
-           SELECT 'owner_error_logs',COALESCE(MAX(id),0) FROM owner_error_logs
+           VALUES('owner_error_logs',0)
            ON CONFLICT(monitor_key) DO NOTHING`
         );
         initialized = true;
