@@ -4,6 +4,14 @@ export const RAID_BOSSES = [
   { id: 'fallen-mage', name: '🕯️ Düşmüş Büyücü Aura', hp: 195, damage: 17, xp: 230, coins: 260, loot: 'Auranın Mühürlü Asa Parçası', weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'mana-curse' }
 ];
 
+/** Scales cooperative raid boss HP by average player level and party size. */
+export function getRaidBossMaxHp(baseHp, averageLevel, partySize) {
+  const base = Math.max(1, Math.floor(Number(baseHp) || 1));
+  const level = Math.max(0, Math.floor(Number(averageLevel) || 0));
+  const players = Math.max(0, Math.floor(Number(partySize) || 0));
+  return base + level * 18 + Math.max(0, players - 2) * 90;
+}
+
 export function chooseRaidBoss(random = Math.random, bosses = RAID_BOSSES) {
   const catalog = Array.isArray(bosses) && bosses.length ? bosses : RAID_BOSSES;
   return catalog[Math.floor(random() * catalog.length)] || catalog[0];
