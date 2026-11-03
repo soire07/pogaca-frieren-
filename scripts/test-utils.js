@@ -85,6 +85,96 @@ test('dungeon carries player HP between floors and stops after the party is defe
   assert.match(source, /☠️ Takım \$\{floor\}\. katta durduruldu/);
 });
 
+test('exploration regions enforce level gates and scale XP and gold rewards', async () => {
+  const source = await readFile(new URL('../commands/rpg/kesif.js', import.meta.url), 'utf8');
+  assert.match(source, /minLevel: 1/);
+  assert.match(source, /Number\(player\.level\) < region\.minLevel/);
+  assert.match(source, /rewardMultiplier = Math\.min\(5, 1 \+ Math\.floor\(\(Number\(player\.level\) - 1\) \/ 10\) \* 0\.1\)/);
+  assert.match(source, /rewardXp = Math\.round\(encounter\.xp \* rewardMultiplier\)/);
+  assert.match(source, /rewardCoins = Math\.round\(encounter\.coins \* rewardMultiplier\)/);
+});
+
+test('adventure route mastery rewards and discovery uniqueness share one transaction', async () => {
+  const source = await readFile(new URL('../macera.js', import.meta.url), 'utf8');
+  const begin = source.indexOf("await client.query('BEGIN')");
+  const routeWrite = source.indexOf('INSERT INTO adventure_route_mastery', begin);
+  const discoveryWrite = source.indexOf('INSERT INTO adventure_discoveries', routeWrite);
+  const commit = source.indexOf("await client.query('COMMIT')", discoveryWrite);
+  assert.ok(begin >= 0 && routeWrite > begin && discoveryWrite > routeWrite && commit > discoveryWrite);
+  assert.match(source, /routeVisits % 3 === 0/);
+  assert.match(source, /ON CONFLICT\(guild_id,user_id,route_key\)/);
+  assert.match(source, /ON CONFLICT DO NOTHING RETURNING discovery_key/);
+});
+
+test('treasure opening history is written in the same transaction as chest consumption and rewards', async () => {
+  const source = await readFile(new URL('../hazineac.js', import.meta.url), 'utf8');
+  const begin = source.indexOf("await db.query('BEGIN')");
+  const consume = source.indexOf('UPDATE inventory SET quantity=quantity-$3', begin);
+  const history = source.indexOf('INSERT INTO treasure_openings', consume);
+  const commit = source.indexOf("await db.query('COMMIT')", history);
+  assert.ok(begin >= 0 && consume > begin && history > consume && commit > history);
+  assert.match(source, /await db\.query\('ROLLBACK'\)/);
+  assert.match(source, /for \(let i = 0; i < amount; i\+\+\)/);
+});
+
+test('batch crafting scales ingredient quantities, crafted equipment count and rarity XP', async () => {
+  const source = await readFile(new URL('../zanaat.js', import.meta.url), 'utf8');
+  assert.match(source, /amount < 1 \|\| amount > 5/);
+  assert.match(source, /const required = material\.quantity \* amount/);
+  assert.match(source, /equipment\.name, amount/);
+  assert.match(source, /const craftXp = amount \* \(\{ Yaygın: 10, Nadir: 20, Destansı: 35, Efsanevi: 50 \}/);
+  assert.match(source, /successful_crafts=user_crafting_progress\.successful_crafts\+EXCLUDED\.successful_crafts/);
+  assert.match(source, /daily_crafting_progress/);
+});
+
+test('equipment dismantling scales material refunds and protects every equipped copy', async () => {
+  const source = await readFile(new URL('../ekipmanparcala.js', import.meta.url), 'utf8');
+  assert.match(source, /quantity - equipped < amount/);
+  assert.match(source, /const returned = salvage\.quantity \* amount/);
+  assert.match(source, /salvaged_items=user_crafting_progress\.salvaged_items\+EXCLUDED\.salvaged_items/);
+  const begin = source.indexOf("await db.query('BEGIN')");
+  const remove = source.indexOf('quantity-$4', begin);
+  const refund = source.indexOf('const returned = salvage.quantity * amount', remove);
+  const commit = source.indexOf("await db.query('COMMIT')", refund);
+  assert.ok(begin >= 0 && remove > begin && refund > remove && commit > refund);
+});
+
+test('adventure history supports another player and composes rare and item-found filters', async () => {
+  const source = await readFile(new URL('../maceragecmisi.js', import.meta.url), 'utf8');
+  assert.match(source, /interaction\.options\.getUser\('kullanici'\) \?\? interaction\.user/);
+  assert.match(source, /filter === 'nadir'/);
+  assert.match(source, /filter === 'esya'/);
+  assert.match(source, /target\.id/);
+  assert.match(source, /historyFilter/);
+});
+
+test('dungeon awards floor-scaled XP and coins for every cleared floor', async () => {
+  const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  assert.match(source, /const floorXp = 25 \+ floor \* 12 \+ avgLevel \* 2/);
+  assert.match(source, /const floorCoins = 20 \+ floor \* 10/);
+  assert.match(source, /totalXp \+= floorXp; totalCoins \+= floorCoins/);
+  assert.match(source, /floorsCleared\+\+/);
+});
+
+test('final dungeon boss enrage and periodic mana-star burst increase combat pressure', async () => {
+  const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  assert.match(source, /enemyHp <= maxEnemyHp \* 0\.5/);
+  assert.match(source, /const bossPower = finalBoss \? 1\.35 : 1/);
+  assert.match(source, /const specialAttack = finalBoss && turn % 3 === 0/);
+  assert.match(source, /yıldız biçimli mana patlaması kullandı/);
+});
+
+test('dungeon and raid healers restore every living teammate each combat round', async () => {
+  const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  const raid = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(dungeon, /const healerIndex = living\.find/);
+  assert.match(dungeon, /applyClassHealing\(6, players\[healerIndex\]\.class_name\)/);
+  assert.match(dungeon, /for \(const i of living\)/);
+  assert.match(raid, /const healer = alive\.find/);
+  assert.match(raid, /applyClassHealing\(12, fighters\[healer\]\.className\)/);
+  assert.match(raid, /for \(const i of alive\)/);
+});
+
 test('multi-floor dungeon includes traps, chests and persistent player rewards', async () => {
   const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
   const rewards = await readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
