@@ -8,7 +8,7 @@ const roadmapFeatures = inventory.features.filter(feature => feature.id.startsWi
 
 const normalizeFeatureName = value => String(value || '')
   .normalize('NFKD')
-  .replace(/[\\u0300-\\u036f]/g, '')
+  .replace(/\\p{M}+/gu, '')
   .toLocaleLowerCase('en')
   .replace(/[^a-z0-9]+/g, ' ')
   .trim();
