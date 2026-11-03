@@ -56,3 +56,29 @@ test('combat HP and mana return to persistent base-stat ratios without exceeding
   assert.equal(restoreResourceRatio(50, 150, 0), 0);
   assert.equal(restoreResourceRatio(Number.NaN, 150, 100), 0);
 });
+
+test('equipment set bonuses are wired into exploration, solo/co-op boss and profile calculations', async () => {
+  const read = async path => (await import('node:fs/promises')).readFile(new URL(path, import.meta.url), 'utf8');
+  const [exploration, soloBoss, coOpBoss, profile] = await Promise.all([
+    read('../commands/rpg/kesif.js'),
+    read('../iblisavasi.js'),
+    read('../ortakboss.js'),
+    read('../profil.js')
+  ]);
+
+  assert.match(exploration, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+  assert.match(exploration, /effectiveMaxHp[\s\S]*?gear\.hp/);
+  assert.match(exploration, /effectiveMaxMana[\s\S]*?gear\.mana/);
+  assert.match(exploration, /effectiveDefense[\s\S]*?gear\.defense/);
+  assert.match(exploration, /gear\.setText[\s\S]*?Etkin ekipman seti/);
+
+  assert.match(soloBoss, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+  for (const stat of ['hp', 'mana', 'attack', 'defense']) assert.ok(soloBoss.includes('gearBonus.' + stat), 'solo boss must apply set bonus ' + stat);
+
+  assert.match(coOpBoss, /applyEquipmentSetBonus\(equipped, equipmentBonus\(equipped\)\)/);
+  for (const stat of ['hp', 'mana', 'attack', 'defense']) assert.ok(coOpBoss.includes('gear.' + stat), 'co-op boss must apply set bonus ' + stat);
+
+  assert.match(profile, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+  assert.match(profile, /gear\.setText \|\| 'Henüz set bonusu etkin değil'/);
+  for (const stat of ['hp', 'mana', 'attack', 'defense']) assert.ok(profile.includes('gear.' + stat), 'profile must display set-adjusted ' + stat);
+});

@@ -785,11 +785,11 @@
       "category": "Equipment",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "unit_helper",
+        "level": "unit_and_source_wiring",
         "tests": [
           "scripts/test-gameplay-persistence.js"
         ],
-        "scope": "Epic/legendary set helper activation and removal are tested; combat-mode end-to-end application remains unverified."
+        "scope": "Epic/legendary set calculations and their solo/co-op boss combat consumers are covered by helper assertions and source-wiring checks; combat interaction E2E remains unverified."
       }
     },
     {
@@ -1771,11 +1771,11 @@
       "category": "Equipment",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "unit_helper",
+        "level": "unit_and_source_wiring",
         "tests": [
           "scripts/test-gameplay-persistence.js"
         ],
-        "scope": "Set bonus calculation helper is tested; exploration integration remains unverified."
+        "scope": "Set helper behavior plus exploration HP, Mana and defense integration points are checked; live Discord exploration interaction remains unverified."
       }
     },
     {
@@ -1788,13 +1788,27 @@
       "id": "RPG-277",
       "name": "Show profile HP, mana, attack and defense using persistent talent ranks and rarity-based equipment set bonuses",
       "category": "RPG",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_wiring",
+        "tests": [
+          "scripts/test-gameplay-persistence.js"
+        ],
+        "scope": "Set-adjusted profile HP, Mana, attack and defense calculations are checked at source-wiring level; live Discord profile interaction remains unverified."
+      }
     },
     {
       "id": "RPG-278",
       "name": "Display the currently active rarity-based equipment set bonus in the player's RPG profile",
       "category": "Equipment",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_wiring",
+        "tests": [
+          "scripts/test-gameplay-persistence.js"
+        ],
+        "scope": "Set helper activation/removal and profile active-set label wiring are checked; live Discord profile interaction remains unverified."
+      }
     },
     {
       "id": "RPG-279",
