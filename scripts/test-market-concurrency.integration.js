@@ -264,7 +264,7 @@ test('production solo boss reward transaction grants a battle only once under co
     });
     const outcomes=await Promise.all([reward(),reward()]);
     const player=await pool.query(
-      'SELECT coins,xp,boss_defeats,last_boss_battle_id FROM users WHERE guild_id=$1 AND user_id=$2',
+      'SELECT coins,xp,boss_defeats,last_boss_battle_id,level,stat_points FROM users WHERE guild_id=$1 AND user_id=$2',
       [guildId,userId]
     );
     const items=await pool.query(
@@ -526,6 +526,8 @@ test('trade transfer failure rolls back both collection sides and offer status',
     assert.equal(Number(source.rows[0].quantity),2);
     assert.equal(target.rowCount,0);
     assert.equal(offer.rows[0].status,'pending');
+    await pool.query('DROP TRIGGER IF EXISTS reject_trade_recipient_fixture ON anime_character_collection');
+    await pool.query('DROP FUNCTION IF EXISTS reject_trade_recipient_fixture()');
   });
 });
 
@@ -562,6 +564,8 @@ test('co-op settlement failure rolls back all player rewards atomically', {
     for(const player of players.rows) {
       assert.equal(Number(player.coins),10); assert.equal(Number(player.xp),20); assert.equal(Number(player.boss_defeats),0);
     }
+    await pool.query('DROP TRIGGER IF EXISTS reject_party_reward_fixture ON inventory');
+    await pool.query('DROP FUNCTION IF EXISTS reject_party_reward_fixture()');
   });
 });
 
@@ -614,6 +618,8 @@ test('PostgreSQL reward ledger rejects an old solo boss battle ID after a newer 
       assert.equal(Number(player.rows[0].coins), 500, 'old battle replay must not award more gold');
       assert.equal(Number(player.rows[0].xp), 200, 'old battle replay must not award more XP');
       assert.equal(Number(player.rows[0].boss_defeats), 2, 'old battle replay must not increment boss defeats');
+      assert.equal(Number(player.rows[0].level), 2, 'XP must advance the persistent level exactly as expected');
+      assert.equal(Number(player.rows[0].stat_points), 1, 'level-up stat points must be granted once');
       assert.equal(player.rows[0].last_boss_battle_id, secondBattleId);
       assert.deepEqual(
         claims.rows.map(row => row.reward_id),
