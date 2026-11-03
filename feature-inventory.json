@@ -190,8 +190,8 @@
           ]
         }
       ],
-      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
-      "verificationRunId": 41673980283
+      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
+      "verificationRunId": 41676999559
     },
     {
       "id": "RPG-003",
@@ -799,8 +799,8 @@
           ]
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177615
+      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
+      "verificationRunId": 41676999559
     },
     {
       "id": "RPG-033",
@@ -817,8 +817,8 @@
           ]
         }
       ],
-      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
-      "verificationRunId": 41673980283
+      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
+      "verificationRunId": 41676999559
     },
     {
       "id": "RPG-034",
@@ -839,8 +839,8 @@
           ]
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177615
+      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
+      "verificationRunId": 41676999559
     },
     {
       "id": "RPG-035",
@@ -943,8 +943,8 @@
           ]
         }
       ],
-      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
-      "verificationRunId": 41673980283
+      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
+      "verificationRunId": 41676999559
     },
     {
       "id": "RPG-040",
@@ -986,12 +986,14 @@
           "file": "scripts/live-command-test.js",
           "command": "animequiz",
           "checks": [
-            "Anime quiz soru ve süre paneli"
+            "Anime quiz soru ve süre paneli",
+            "Anime quiz doğru cevap puanı ve çift ödül koruması",
+            "Anime quiz zaman aşımında puan verilmemesi"
           ]
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177615
+      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
+      "verificationRunId": 41676999559
     },
     {
       "id": "RPG-042",
@@ -1036,8 +1038,8 @@
           "test": "runtime guardrails: dungeon invitations and role choices reject unrelated users"
         }
       ],
-      "verifiedAtCommit": "b18dbaee6189bc0315f037ee21f2db2e4af08293",
-      "verificationRunId": 41657177786
+      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
+      "verificationRunId": 41676999559
     },
     {
       "id": "RPG-044",
@@ -1326,8 +1328,8 @@
           ]
         }
       ],
-      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
-      "verificationRunId": 41673980283
+      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
+      "verificationRunId": 41676999559
     },
     {
       "id": "RPG-060",
@@ -1743,8 +1745,8 @@
           ]
         }
       ],
-      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
-      "verificationRunId": 41673980283
+      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
+      "verificationRunId": 41676999559
     },
     {
       "id": "RPG-084",
@@ -1966,8 +1968,8 @@
           ]
         }
       ],
-      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
-      "verificationRunId": 41673980283
+      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
+      "verificationRunId": 41676999559
     },
     {
       "id": "RPG-098",
@@ -1999,8 +2001,8 @@
           ]
         }
       ],
-      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
-      "verificationRunId": 41673980283
+      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
+      "verificationRunId": 41676999559
     },
     {
       "id": "RPG-100",
@@ -3204,8 +3206,8 @@
           ]
         }
       ],
-      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
-      "verificationRunId": 41673980283
+      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
+      "verificationRunId": 41676999559
     },
     {
       "id": "RPG-176",
@@ -3679,8 +3681,8 @@
           ]
         }
       ],
-      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
-      "verificationRunId": 41673980283
+      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
+      "verificationRunId": 41676999559
     },
     {
       "id": "RPG-204",
@@ -4206,8 +4208,8 @@
           ]
         }
       ],
-      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
-      "verificationRunId": 41673980283
+      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
+      "verificationRunId": 41676999559
     },
     {
       "id": "RPG-238",
@@ -4224,8 +4226,8 @@
           ]
         }
       ],
-      "verifiedAtCommit": "055c4b09a3713b583ad2b00e862ccaffae45251e",
-      "verificationRunId": 41673980283
+      "verifiedAtCommit": "f618a515a21bb7471d3c572d3d4614e7fb3b3be6",
+      "verificationRunId": 41676999559
     },
     {
       "id": "RPG-239",
