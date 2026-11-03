@@ -228,8 +228,7 @@ export async function getAdventurerDashboard(db = pool, accountId) {
   const guildIds=profiles.rows.map(row=>row.guild_id);
   const events=guildIds.length?await db.query(
     `SELECT e.event_id,e.guild_id,e.title,e.description,e.event_type,e.starts_at,e.ends_at,e.max_participants,
-       COUNT(p.user_id)::int AS participants,
-       BOOL_OR(p.user_id IS NOT NULL) FILTER (WHERE p.user_id IS NOT NULL) AS joined
+       COUNT(p.user_id)::int AS participants
      FROM guild_events e LEFT JOIN guild_event_participants p ON p.event_id=e.event_id
      WHERE e.guild_id=ANY($1::text[]) AND e.status='scheduled' AND e.ends_at>NOW()
      GROUP BY e.event_id ORDER BY e.starts_at ASC LIMIT 20`,
@@ -241,6 +240,7 @@ export async function getAdventurerDashboard(db = pool, accountId) {
 export async function createGuildEvent(db = pool, { guildId,title,description='',eventType='community',startsAt,endsAt,maxParticipants=null,createdBy }) {
   if(!DISCORD_ID.test(String(guildId||''))||!DISCORD_ID.test(String(createdBy||''))) throw new Error('EVENT_INPUT_INVALID');
   const start=new Date(startsAt), end=new Date(endsAt);
+  if(!/(?:Z|[+-]\\d{2}:\\d{2})$/i.test(String(startsAt||''))||!/(?:Z|[+-]\\d{2}:\\d{2})$/i.test(String(endsAt||''))) throw new Error('EVENT_INPUT_INVALID');
   const cleanTitle=String(title||'').trim(), cleanDescription=String(description||'').trim();
   if(cleanTitle.length<3||cleanTitle.length>100||cleanDescription.length>1000||!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime())||end<=start||start<=new Date()) throw new Error('EVENT_INPUT_INVALID');
   const cap=maxParticipants==null?null:Number(maxParticipants);
