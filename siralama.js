@@ -7,7 +7,8 @@ const rankings = {
   coins: { label: 'Altın', column: 'coins', emoji: '🪙', format: value => `${Number(value).toLocaleString('tr-TR')} altın` },
   bosses: { label: 'İblis zaferi', column: 'boss_defeats', emoji: '👹', format: value => `${value} zafer` },
   dungeons: { label: 'Zindan zaferi', column: 'dungeon_wins', emoji: '⚔️', format: value => `${value} zafer` },
-  exploration: { label: 'Keşif', column: 'exploration_count', emoji: '🧭', format: value => `${value} keşif` }
+  exploration: { label: 'Keşif', column: 'exploration_count', emoji: '🧭', format: value => `${value} keşif` },
+  collection: { label: 'Karakter koleksiyonu', column: '(SELECT COUNT(*)::int FROM anime_character_collection c WHERE c.guild_id=users.guild_id AND c.user_id=users.user_id)', emoji: '🎭', format: value => `${Number(value)} farklı karakter` }
 };
 
 export default {
@@ -23,7 +24,8 @@ export default {
         { name: 'Altın', value: 'coins' },
         { name: 'İblis zaferleri', value: 'bosses' },
         { name: 'Zindan zaferleri', value: 'dungeons' },
-        { name: 'Keşif sayısı', value: 'exploration' }
+        { name: 'Keşif sayısı', value: 'exploration' },
+        { name: 'Karakter koleksiyonu', value: 'collection' }
       )
       .setRequired(false)),
 
