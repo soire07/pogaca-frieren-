@@ -198,7 +198,7 @@ export function applyRepairPatch(patch, { execFile = runGit, task = '', incident
   execFile(['diff', '--check'], { stdio: ['ignore', 'pipe', 'pipe'] });
   const changed = execFile(['status', '--short', '--untracked-files=all'], { encoding: 'utf8' })
     .split('\n').filter(Boolean).map(line => line.slice(3).trim()).sort();
-  if (!changed.length || changed.length > MAX_PATCH_FILES || changed.some(path => !isAllowedRepairPath(path))) {
+  if (!changed.length || changed.length > MAX_PATCH_FILES || changed.some(path => !isAllowedRepairPath(path, { allowProtectedIndexJs: isApprovedIndexRepairTask(task, incidentId) }))) {
     throw new Error('REPAIR_WORKTREE_VALIDATION_FAILED');
   }
   if (JSON.stringify(changed) !== JSON.stringify(expectedFiles)) {
