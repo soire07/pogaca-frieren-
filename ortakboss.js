@@ -5,7 +5,7 @@ import { getBossArtUrl } from './boss-art.js';
 import { getGuildRpgContent } from './owner-rpg-content.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { chooseRaidBoss, RAID_PARTY_ROLES, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getRaidBossSpecialAttack, chooseRaidAttackTarget, resolveRaidAreaAttack, restoreResourceRatio } from './rpg-mechanics.js';
+import { chooseRaidBoss, getRaidBossMaxHp, RAID_PARTY_ROLES, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getRaidBossSpecialAttack, chooseRaidAttackTarget, resolveRaidAreaAttack, restoreResourceRatio } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
 
@@ -187,7 +187,7 @@ export default {
         return interaction.editReply({ content: '❤️ Her oyuncunun HP değeri sıfırdan yüksek olmalı. Önce /dinlen kullanın.', components: [] });
       }
       const averageLevel = Math.floor(fighters.reduce((sum, fighter) => sum + fighter.level, 0) / fighters.length);
-      let bossHp = BOSS.hp + averageLevel * 18 + Math.max(0,fighters.length-2)*90;
+      let bossHp = getRaidBossMaxHp(BOSS.hp, averageLevel, fighters.length);
       const maxBossHp = bossHp;
       const masteryRows = await db.query('SELECT user_id,casts,mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND spell_key=$3',[interaction.guildId,ids,'zoltraak']);
       const spellMastery = new Map(masteryRows.rows.map(row => [row.user_id, Number(row.mastery_level)]));
