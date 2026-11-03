@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {
   isAllowedRepairPath,
+  isApprovedIndexRepairTask,
   extractUnifiedDiff,
   validatePatchPaths,
   generateRepairPatch,
@@ -17,6 +18,21 @@ const validPatch = [
   'index 1111111..2222222 100644',
   '--- a/rpg-mechanics.js',
   '+++ b/rpg-mechanics.js',
+  '@@ -1 +1 @@',
+  '-const ready = false;',
+  '+const ready = true;',
+].join('\n');
+
+const approvedIndexTask = [
+  'Guardian incident #4 · pogaca_frieren · ERR_HTTP_HEADERS_SENT',
+  'İlgili dosyalar: index.js',
+].join('\n');
+
+const validIndexPatch = [
+  'diff --git a/index.js b/index.js',
+  'index 1111111..2222222 100644',
+  '--- a/index.js',
+  '+++ b/index.js',
   '@@ -1 +1 @@',
   '-const ready = false;',
   '+const ready = true;',
@@ -41,6 +57,28 @@ test('repair path allowlist accepts approved source, AI review, Guardian and tes
   assert.equal(isAllowedRepairPath('ai-agent/config.js'), false);
   assert.equal(isAllowedRepairPath('database/migrations/001.js'), false);
   assert.equal(isAllowedRepairPath('../index.js'), false);
+  assert.equal(isAllowedRepairPath('index.js'), false);
+});
+
+test('index.js exception is restricted to the exact approved Guardian incident and file set', () => {
+  assert.equal(isApprovedIndexRepairTask(approvedIndexTask, '4'), true);
+  assert.equal(isApprovedIndexRepairTask(approvedIndexTask, '5'), false);
+  assert.equal(isApprovedIndexRepairTask(approvedIndexTask.replace('ERR_HTTP_HEADERS_SENT', 'OTHER_ERROR'), '4'), false);
+  assert.equal(isAllowedRepairPath('index.js'), false);
+  assert.deepEqual(validatePatchPaths(validIndexPatch, { task: approvedIndexTask, incidentId: '4' }), ['index.js']);
+  assert.throws(() => validatePatchPaths(validIndexPatch, { task: approvedIndexTask, incidentId: '5' }), {
+    message: 'REPAIR_PATH_NOT_ALLOWED',
+  });
+  assert.throws(() => validatePatchPaths(validIndexPatch + '\\n' + validPatch, {
+    task: approvedIndexTask, incidentId: '4',
+  }), { message: 'REPAIR_APPROVED_INDEX_SCOPE_VIOLATION' });
+  assert.equal(
+    formatRepairFilesOutput(['index.js'], { task: approvedIndexTask, incidentId: '4' }),
+    'repair_files<<REPAIR_FILES\\nindex.js\\nREPAIR_FILES\\n',
+  );
+  assert.throws(() => formatRepairFilesOutput(['index.js']), {
+    message: 'REPAIR_OUTPUT_FILE_SET_INVALID',
+  });
 });
 
 test('repair diff parser extracts a fenced unified diff and validates file paths', () => {
@@ -257,6 +295,28 @@ test('repair context prioritizes exact allowlisted affected files from Guardian 
   assert.ok(context.indexOf('### guardian/automation.js') >= 0);
   assert.ok(context.indexOf('### guardian/automation.js') < context.indexOf('### ai-agent/owner-scenario-report.js'));
   assert.doesNotMatch(context, /package.json|\.env/);
+});
+
+test('approved index incident reads only index.js and cannot broaden protected context', async () => {
+  const files = {
+    'index.js': 'createServer((req, res) => { res.end("ok"); });',
+    'owner-dashboard.js': 'export async function handleOwnerDashboardRequest() {}',
+    'guardian/automation.js': 'export function dispatchRepair() {}',
+  };
+  const context = await collectRepairContext(approvedIndexTask, {
+    incidentId: '4',
+    execFile: () => Object.keys(files).join('\\0') + '\\0',
+    statImpl: async path => ({ isFile: () => true, size: files[path].length }),
+    readFileImpl: async path => files[path],
+  });
+  assert.match(context, /### index\\.js/);
+  assert.doesNotMatch(context, /owner-dashboard|guardian\\/automation/);
+  await assert.rejects(collectRepairContext(approvedIndexTask, {
+    incidentId: '5',
+    execFile: () => 'index.js\\0',
+    statImpl: async () => ({ isFile: () => true, size: 20 }),
+    readFileImpl: async () => 'unrelated source',
+  }), { message: 'REPAIR_CONTEXT_NOT_FOUND' });
 });
 
 test('repair context still rejects tasks with no matching tracked source files', async () => {
