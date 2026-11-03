@@ -142,9 +142,12 @@ test('raid catalog includes three bosses, action weaknesses and distinct loot id
   assert.ok(mechanics.includes('Ejderha Camı'));
   assert.ok(mechanics.includes('Auranın Mühürlü Asa Parçası'));
   const raid = await read('ortakboss.js');
-  assert.ok(raid.includes("BOSS.special === 'mana-star' && rounds % 3 === 0"));
-  assert.ok(raid.includes("BOSS.special === 'shard-rain' && rounds % 2 === 0"));
-  assert.ok(raid.includes("BOSS.special === 'mana-curse' && rounds % 3 === 0"));
+  const mechanics = await read('rpg-mechanics.js');
+  assert.ok(raid.includes('getRaidBossSpecialAttack(BOSS.special, rounds)'));
+  assert.ok(raid.includes('resolveRaidAreaAttack('));
+  assert.match(mechanics, /special === 'mana-star'.*turn % 3/);
+  assert.match(mechanics, /special === 'shard-rain'.*turn % 2/);
+  assert.match(mechanics, /special === 'mana-curse'.*turn % 3/);
 });
 
 test('manual test plan distinguishes automated checks from live Discord verification', async () => {
