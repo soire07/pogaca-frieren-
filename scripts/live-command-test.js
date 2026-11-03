@@ -1270,33 +1270,36 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
         }
 
         if (commandName === 'npc') {
-          await pool.query('UPDATE users SET coins=0,xp=0,items_used_count=3,boss_defeats=2 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
-          await pool.query("INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,'alev_kuresi'),($1,$2,'buz_mizragi') ON CONFLICT DO NOTHING",[guildId,userId]);
-          const quests=[['frieren',260,100],['fern',220,110],['stark',280,120]];
-          for(const [npcKey] of quests){
-            for(const action of ['gorev','teslim']){
+          const questCases=[
+            {npc:'frieren',path:'merak',coins:260,xp:100},
+            {npc:'fern',path:'merhamet',coins:220,xp:110},
+            {npc:'stark',path:'cesaret',coins:280,xp:120}
+          ];
+          for(let questIndex=0;questIndex<questCases.length;questIndex++){
+            const scenario=questCases[questIndex],questUserId=userId+String(questIndex+1);
+            await ensureUser(guildId,questUserId);
+            await pool.query('UPDATE users SET coins=0,xp=0,level=1,items_used_count=3,boss_defeats=2 WHERE guild_id=$1 AND user_id=$2',[guildId,questUserId]);
+            await pool.query(
+              'INSERT INTO story_progress(guild_id,user_id,current_chapter,choices) VALUES($1,$2,1,$3::jsonb) ON CONFLICT(guild_id,user_id) DO UPDATE SET current_chapter=1,choices=EXCLUDED.choices',
+              [guildId,questUserId,JSON.stringify([scenario.path])]
+            );
+            if(scenario.npc==='frieren'){
+              await pool.query("INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,'alev_kuresi'),($1,$2,'buz_mizragi') ON CONFLICT DO NOTHING",[guildId,questUserId]);
+            }
+            for(const action of ['gorev','teslim','teslim']){
               const actionEffects=[];
-              const interaction=makeInteraction(command,buildOptions(schema?.options,{karakter:npcKey,eylem:action}),guildId,actionEffects);
-              interaction.user.id=userId; interaction.member=makeMember(userId);
+              const interaction=makeInteraction(command,buildOptions(schema?.options,{karakter:scenario.npc,eylem:action}),guildId,actionEffects);
+              interaction.user.id=questUserId; interaction.member=makeMember(questUserId);
               await command.execute(interaction);
               effects.push(...actionEffects);
             }
+            const claim=await pool.query('SELECT quest_key FROM side_quest_claims WHERE guild_id=$1 AND user_id=$2',[guildId,questUserId]);
+            const player=await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,questUserId]);
+            behavioralChecks.push(
+              {name:'NPC yol kilidi ve yan görev: '+scenario.npc,expected:'yalnızca seçilen hikâye yolunun NPC görevi tamamlanmalı',actual:claim.rows[0]?.quest_key||'görev kaydı yok',passed:claim.rowCount===1},
+              {name:'NPC görev ödülü: '+scenario.npc,expected:scenario.coins+' altın ve '+scenario.xp+' XP',actual:'altın '+player.rows[0]?.coins+', XP '+player.rows[0]?.xp,passed:Number(player.rows[0]?.coins)===scenario.coins&&Number(player.rows[0]?.xp)===scenario.xp}
+            );
           }
-          const claims=await pool.query('SELECT quest_key FROM side_quest_claims WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
-          const player=await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
-          for(const [npcKey] of quests){
-            const actionEffects=[];
-            const interaction=makeInteraction(command,buildOptions(schema?.options,{karakter:npcKey,eylem:'teslim'}),guildId,actionEffects);
-            interaction.user.id=userId; interaction.member=makeMember(userId);
-            await command.execute(interaction);
-            effects.push(...actionEffects);
-          }
-          const afterReplay=await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
-          behavioralChecks.push(
-            {name:'NPC yan görevlerinin tamamlanması',expected:'Frieren, Fern ve Stark görevleri ayrı ayrı kaydedilmeli',actual:claims.rows.map(row=>row.quest_key).join(', '),passed:claims.rowCount===3},
-            {name:'NPC yan görev ödülleri',expected:'toplam 760 altın ve 330 XP verilmeli',actual:'altın '+player.rows[0]?.coins+', XP '+player.rows[0]?.xp,passed:Number(player.rows[0]?.coins)===760&&Number(player.rows[0]?.xp)===330},
-            {name:'NPC yan görev ödülü tek kullanımlı',expected:'tekrar teslimde ödül ikinci kez verilmemeli',actual:'altın '+afterReplay.rows[0]?.coins+', XP '+afterReplay.rows[0]?.xp,passed:Number(afterReplay.rows[0]?.coins)===760&&Number(afterReplay.rows[0]?.xp)===330}
-          );
         }
 
         if (commandName === 'maceragecmisi') {
