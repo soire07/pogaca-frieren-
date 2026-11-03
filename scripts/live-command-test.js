@@ -686,6 +686,44 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Büyücü sınıfının co-op Zoltraak mana verimliliği', expected: 'her başarılı Büyücü Zoltraak atışı 10 mana tüketmeli', actual: mageManaSpent + ' mana / ' + mageCasts + ' atış', passed: mageCasts > 0 && mageManaSpent === mageCasts * 10 },
             { name: isDungeon ? 'Gizli kat tuzağı olayı' : 'Boss alan özel saldırısı', expected: isDungeon ? 'deterministik rota akışında tuzak hasarı günlüğe yazılmalı' : 'Kuzey Platosu bossunun üçüncü tur alan mana patlaması çalışmalı', actual: isDungeon ? (responseText.includes('tuzak') ? 'tuzak olayı kaydedildi' : 'tuzak olayı bulunamadı') : (responseText.includes('yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor') ? 'alan saldırısı kaydedildi' : 'alan saldırısı bulunamadı'), passed: isDungeon ? responseText.includes('tuzak') : responseText.includes('yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor') }
           );
+          if (isDungeon) {
+            const floorNames = ['🌲 Köklerin Koridoru','🗿 Kadim Harabeler','🌫️ Sisli Geçit','🔥 Küller Salonu','👑 Mühürlü İblis Lordu'];
+            const carryLine = responseText.match(/Katlar arası HP aktarımı: ([^\\n]+)/)?.[1] || '';
+            const carrySnapshots = [...carryLine.matchAll(/Kat (\\d+) ([0-9/]+) → ([0-9/]+)/g)].map(match => ({
+              floor: Number(match[1]), start: match[2], end: match[3]
+            }));
+            const floorOne = carrySnapshots.find(snapshot => snapshot.floor === 1);
+            const floorTwo = carrySnapshots.find(snapshot => snapshot.floor === 2);
+            const perFloorRewards = [...responseText.matchAll(/\\d+\\. kat temizlendi: \\+\\d+ XP, \\+\\d+ altın/g)];
+            behavioralChecks.push(
+              { name: 'Beş adlandırılmış zindan katı', expected: 'beş farklı kat adı sonuç günlüğünde yer almalı', actual: floorNames.filter(name => responseText.includes(name)).join(' · '), passed: floorNames.every(name => responseText.includes(name)) },
+              { name: 'Katlar arasında HP taşınması', expected: 'birinci katın son HP değeri ikinci katın başlangıç HP değeriyle aynı olmalı', actual: floorOne && floorTwo ? floorOne.end + ' → ' + floorTwo.start : carryLine.slice(0, 300), passed: Boolean(floorOne && floorTwo && floorOne.end === floorTwo.start) },
+              { name: 'Her zindan katının ayrı ödülü', expected: 'beş temizlenen katın her biri XP ve altın ödülünü ayrı göstermeli', actual: perFloorRewards.length + ' kat ödül satırı', passed: perFloorRewards.length === 5 }
+            );
+            const beforeCooldown = await pool.query('SELECT user_id,dungeon_runs FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id', [guildId, teamUsers.map(member => member.id)]);
+            const cooldownEffects = [];
+            const cooldownSimulation = { users: teamUsers, actionSequence: simulation.actionSequence, actionIndex: 0, acceptedActions: [] };
+            const cooldownInteraction = makeInteraction(command, options, guildId, cooldownEffects, cooldownSimulation);
+            cooldownInteraction.id = 'test-interaction-' + commandName + '-' + index + '-cooldown';
+            cooldownInteraction.user.id = userId;
+            cooldownInteraction.user.username = teamUsers[0].username;
+            cooldownInteraction.member = makeMember(userId);
+            const previousCooldownRandom = Math.random;
+            try {
+              Math.random = () => 0.3;
+              await command.execute(cooldownInteraction);
+            } finally {
+              Math.random = previousCooldownRandom;
+            }
+            const afterCooldown = await pool.query('SELECT user_id,dungeon_runs FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id', [guildId, teamUsers.map(member => member.id)]);
+            const cooldownText = payloadTextFromEffects(cooldownEffects);
+            behavioralChecks.push({
+              name: 'Oyuncu başına 30 dakikalık zindan bekleme süresi',
+              expected: 'aynı takım hemen tekrar girememeli ve dungeon_runs artmamalı',
+              actual: cooldownText.slice(-300),
+              passed: cooldownText.includes('dakika') && cooldownText.includes('beklemeli') && beforeCooldown.rowCount === 3 && afterCooldown.rowCount === 3 && beforeCooldown.rows.every((row, rowIndex) => Number(row.dungeon_runs) === Number(afterCooldown.rows[rowIndex].dungeon_runs))
+            });
+          }
         } else if (commandName === 'bakiye') {
           await pool.query('UPDATE users SET coins=4321,xp=987,level=7 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
