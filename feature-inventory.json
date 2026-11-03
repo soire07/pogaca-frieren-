@@ -5,9 +5,128 @@
   "statuses": [
     "implemented_needs_runtime_test",
     "in_progress",
-    "planned"
+    "planned",
+    "verified_by_automated_test"
   ],
   "features": [
+    {
+      "id": "ARENA-001",
+      "name": "90-day seasonal arena lifecycle",
+      "category": "Arena",
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-adventurer-platform.integration.js",
+          "test": "arena seasons last ninety days, rotate when expired and keep MMR season-scoped"
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
+    },
+    {
+      "id": "ARENA-002",
+      "name": "Season-scoped Elo matchmaking rating",
+      "category": "Arena",
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-adventurer-platform.integration.js",
+          "test": "arena seasons last ninety days, rotate when expired and keep MMR season-scoped"
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-adventurer-platform.integration.js",
+          "test": "arena season MMR and rewards settle atomically and only once"
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
+    },
+    {
+      "id": "ARENA-003",
+      "name": "Six-tier seasonal arena ranks",
+      "category": "Progression",
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-adventurer-platform.integration.js",
+          "test": "arena rank mapping has six stable tiers at every boundary"
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-adventurer-platform.integration.js",
+          "test": "single-use Discord link codes connect only the intended profile to a web account"
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
+    },
+    {
+      "id": "ARENA-004",
+      "name": "Idempotent arena victory and participation rewards",
+      "category": "Economy",
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-adventurer-platform.integration.js",
+          "test": "arena season MMR and rewards settle atomically and only once"
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
+    },
+    {
+      "id": "EVENT-001",
+      "name": "Guild event calendar with scheduled start and end times",
+      "category": "Community",
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-adventurer-platform.integration.js",
+          "test": "event calendar enforces idempotent registration, capacity and concurrent seat claims"
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
+    },
+    {
+      "id": "EVENT-002",
+      "name": "Capacity-limited event registration with concurrency protection",
+      "category": "Community",
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-adventurer-platform.integration.js",
+          "test": "event calendar enforces idempotent registration, capacity and concurrent seat claims"
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
+    },
+    {
+      "id": "FUN-001",
+      "name": "Random luck interaction",
+      "category": "Fun",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "FUN-002",
+      "name": "Virtual hug interaction",
+      "category": "Fun",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "FUN-003",
+      "name": "Character identification interaction",
+      "category": "Fun",
+      "status": "implemented_needs_runtime_test"
+    },
     {
       "id": "RPG-001",
       "name": "RPG profile and stats",
@@ -108,13 +227,39 @@
       "id": "RPG-017",
       "name": "Spellbook with multiple spells",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "buyular",
+          "checks": [
+            "starting and learned spell list",
+            "multiple learned spells"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
     },
     {
       "id": "RPG-018",
       "name": "Learn spells",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "buyuogren",
+          "checks": [
+            "spell learning",
+            "duplicate learning and resource checks"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
     },
     {
       "id": "RPG-019",
@@ -216,7 +361,19 @@
       "id": "RPG-035",
       "name": "World lore pages",
       "category": "Lore",
-      "status": "implemented_needs_runtime_test"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "evren",
+          "checks": [
+            "all seven lore pages"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
     },
     {
       "id": "RPG-036",
@@ -291,30 +448,6 @@
       "status": "implemented_needs_runtime_test"
     },
     {
-      "id": "SRV-003",
-      "name": "Bot/server statistics",
-      "category": "Server",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "FUN-001",
-      "name": "Random luck interaction",
-      "category": "Fun",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "FUN-002",
-      "name": "Virtual hug interaction",
-      "category": "Fun",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "FUN-003",
-      "name": "Character identification interaction",
-      "category": "Fun",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
       "id": "RPG-048",
       "name": "Track co-op dungeon attempts",
       "category": "Co-op",
@@ -345,60 +478,6 @@
       "status": "implemented_needs_runtime_test"
     },
     {
-      "id": "SOC-001",
-      "name": "Guild leaderboard by player level",
-      "category": "Social",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "SOC-002",
-      "name": "Guild leaderboard by total XP",
-      "category": "Social",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "SOC-003",
-      "name": "Guild leaderboard by earned coins",
-      "category": "Social",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "SOC-004",
-      "name": "Guild leaderboard by demon boss victories",
-      "category": "Social",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "SOC-005",
-      "name": "Guild leaderboard by dungeon victories",
-      "category": "Social",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "SOC-006",
-      "name": "Guild leaderboard by exploration count",
-      "category": "Social",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "SOC-007",
-      "name": "Show the invoking player's current rank",
-      "category": "Social",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "SOC-008",
-      "name": "View personal RPG adventure history",
-      "category": "Social",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "SOC-009",
-      "name": "View another player's RPG adventure history",
-      "category": "Social",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
       "id": "RPG-053",
       "name": "Summarize demon boss victory statistics",
       "category": "Combat",
@@ -414,13 +493,37 @@
       "id": "RPG-055",
       "name": "Summarize exploration, item-use and character-draw statistics",
       "category": "RPG",
-      "status": "implemented_needs_runtime_test"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "maceragecmisi",
+          "checks": [
+            "exploration, item-use and character-draw statistics"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
     },
     {
       "id": "RPG-056",
       "name": "Summarize learned spells and equipped gear",
       "category": "RPG",
-      "status": "implemented_needs_runtime_test"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "maceragecmisi",
+          "checks": [
+            "learned spell and equipped gear counts"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
     },
     {
       "id": "RPG-057",
@@ -630,7 +733,16 @@
       "id": "RPG-091",
       "name": "Let the tank attract dungeon enemy attacks",
       "category": "Combat",
-      "status": "implemented_needs_runtime_test"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-boss-combat.js",
+          "test": "raid tank attracts seventy percent of single-target attacks while alive"
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
     },
     {
       "id": "RPG-092",
@@ -714,7 +826,16 @@
       "id": "RPG-105",
       "name": "Resolve periodic mana-star burst as an area attack against all living raid members",
       "category": "Boss",
-      "status": "implemented_needs_runtime_test"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-boss-combat.js",
+          "test": "raid area special applies each living player's own defense and defense choice"
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
     },
     {
       "id": "RPG-106",
@@ -786,30 +907,26 @@
       "id": "RPG-117",
       "name": "Trigger the Glass Scales Dragon's every-other-turn shard rain with reduced area damage",
       "category": "Boss",
-      "status": "implemented_needs_runtime_test"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-boss-combat.js",
+          "test": "raid special attacks trigger on their exact scheduled rounds"
+        },
+        {
+          "type": "unit_test",
+          "file": "scripts/test-boss-combat.js",
+          "test": "raid area specials hit every living teammate and respect individual defense"
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
     },
     {
       "id": "RPG-118",
       "name": "Trigger Fallen Mage Aura's periodic mana-draining curse",
       "category": "Boss",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "RPG-123",
-      "name": "Train learned spells by spending mana and a mastery-scaled gold fee",
-      "category": "Magic",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "RPG-124",
-      "name": "Progress spell mastery through persisted practice counts up to level ten",
-      "category": "Progression",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "RPG-125",
-      "name": "View learned spells, practice counts and mastery progress",
-      "category": "Magic",
       "status": "implemented_needs_runtime_test"
     },
     {
@@ -833,6 +950,24 @@
     {
       "id": "RPG-122",
       "name": "Cap spell mastery at level ten and reject further training at the cap",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-123",
+      "name": "Train learned spells by spending mana and a mastery-scaled gold fee",
+      "category": "Magic",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-124",
+      "name": "Progress spell mastery through persisted practice counts up to level ten",
+      "category": "Progression",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "RPG-125",
+      "name": "View learned spells, practice counts and mastery progress",
       "category": "Magic",
       "status": "implemented_needs_runtime_test"
     },
@@ -1170,7 +1305,26 @@
       "id": "RPG-181",
       "name": "Persist chest loot, gold, XP and level-up stat points atomically",
       "category": "Economy",
-      "status": "implemented_needs_runtime_test"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "hazineac",
+          "checks": [
+            "two separate chest records",
+            "total gold and XP",
+            "level-up stat points"
+          ]
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-treasure-atomicity.integration.js",
+          "test": "treasure chest opening rolls back chest, loot, gold, XP and stat points on persistence failure"
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
     },
     {
       "id": "RPG-182",
@@ -1194,13 +1348,43 @@
       "id": "RPG-185",
       "name": "View the last adventure timestamp alongside current RPG level, XP and gold",
       "category": "RPG",
-      "status": "implemented_needs_runtime_test"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "maceraistatistik",
+          "checks": [
+            "last adventure timestamp",
+            "level, XP and gold panel"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
     },
     {
       "id": "RPG-186",
       "name": "Persist each opened chest's individual loot, gold and XP result",
       "category": "Economy",
-      "status": "implemented_needs_runtime_test"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "hazineac",
+          "checks": [
+            "individual loot, gold and XP for each chest"
+          ]
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-treasure-atomicity.integration.js",
+          "test": "treasure chest opening rolls back chest, loot, gold, XP and stat points on persistence failure"
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
     },
     {
       "id": "RPG-187",
@@ -1794,7 +1978,16 @@
       "id": "RPG-304",
       "name": "Buz Mızrağı freeze cancels the boss's scheduled special attack and mana-drain side effect",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "unit_test",
+          "file": "scripts/test-boss-combat.js",
+          "test": "ice spear freeze cancels scheduled solo boss special attacks and mana drain"
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
     },
     {
       "id": "RPG-305",
@@ -1911,51 +2104,126 @@
       "status": "implemented_needs_runtime_test"
     },
     {
-      "id": "ARENA-001",
-      "name": "90-day seasonal arena lifecycle",
-      "category": "Arena",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "ARENA-002",
-      "name": "Season-scoped Elo matchmaking rating",
-      "category": "Arena",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "ARENA-003",
-      "name": "Six-tier seasonal arena ranks",
-      "category": "Progression",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "ARENA-004",
-      "name": "Idempotent arena victory and participation rewards",
-      "category": "Economy",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "EVENT-001",
-      "name": "Guild event calendar with scheduled start and end times",
-      "category": "Community",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
-      "id": "EVENT-002",
-      "name": "Capacity-limited event registration with concurrency protection",
-      "category": "Community",
-      "status": "implemented_needs_runtime_test"
-    },
-    {
       "id": "SITE-001",
       "name": "One-time secure Discord-to-web character account linking",
       "category": "Web",
-      "status": "implemented_needs_runtime_test"
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "maceraci",
+          "checks": [
+            "one-time link code creation",
+            "hashed token storage"
+          ]
+        },
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-adventurer-platform.integration.js",
+          "test": "single-use Discord link codes connect only the intended profile to a web account"
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
     },
     {
       "id": "SITE-002",
       "name": "Authenticated adventurer dashboard for RPG stats, rank and events",
       "category": "Web",
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "postgres_integration",
+          "file": "scripts/test-adventurer-platform.integration.js",
+          "test": "single-use Discord link codes connect only the intended profile to a web account"
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
+    },
+    {
+      "id": "SOC-001",
+      "name": "Guild leaderboard by player level",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-002",
+      "name": "Guild leaderboard by total XP",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-003",
+      "name": "Guild leaderboard by earned coins",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-004",
+      "name": "Guild leaderboard by demon boss victories",
+      "category": "Social",
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "siralama",
+          "checks": [
+            "boss victory ranking category"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
+    },
+    {
+      "id": "SOC-005",
+      "name": "Guild leaderboard by dungeon victories",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-006",
+      "name": "Guild leaderboard by exploration count",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-007",
+      "name": "Show the invoking player's current rank",
+      "category": "Social",
+      "status": "verified_by_automated_test",
+      "verificationEvidence": [
+        {
+          "type": "isolated_command_audit",
+          "file": "scripts/live-command-test.js",
+          "command": "siralama",
+          "checks": [
+            "all six categories and invoking player's rank"
+          ]
+        }
+      ],
+      "verifiedAtCommit": "fe1df972957b8edda73f2550ba46b50aadcdb35d",
+      "verificationRunId": 41654906717
+    },
+    {
+      "id": "SOC-008",
+      "name": "View personal RPG adventure history",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SOC-009",
+      "name": "View another player's RPG adventure history",
+      "category": "Social",
+      "status": "implemented_needs_runtime_test"
+    },
+    {
+      "id": "SRV-003",
+      "name": "Bot/server statistics",
+      "category": "Server",
       "status": "implemented_needs_runtime_test"
     }
   ],
