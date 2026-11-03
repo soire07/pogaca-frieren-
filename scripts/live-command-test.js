@@ -156,6 +156,7 @@ function makeSimulatedMessage(payload, simulation) {
         const roleButtons = buttons.filter(id => id.includes(':role:'));
         const pathButton = buttons.find(id => id.includes(':path:safe:'));
         const actionButton = buttons.find(id => id.includes(':act:attack:'));
+        const spellButton = buttons.find(id => id.includes(':act:spell:'));
         if (inviteButtons.length) {
           clicks = inviteButtons.map(customId => ({
             customId,
@@ -170,7 +171,11 @@ function makeSimulatedMessage(payload, simulation) {
         } else if (pathButton) {
           clicks = [{ customId: pathButton, user: simulation.users[0] }];
         } else if (actionButton) {
-          clicks = simulation.users.map(user => ({ customId: actionButton, user }));
+          const firstTurn = spellButton?.endsWith(':1:1');
+          clicks = simulation.users.map((user, index) => ({
+            customId: simulation.spellOnFirstTurn && firstTurn && index === 0 ? spellButton : actionButton,
+            user
+          }));
         }
         for (const click of clicks) {
           if (!click.customId || !click.user) continue;
@@ -610,13 +615,20 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             takim_arkadasi_2: teamUsers[2],
             zorluk: 'easy'
           });
-          const simulation = { users: teamUsers };
+          const isDungeon = commandName === 'katlizindan';
+          const simulation = { users: teamUsers, spellOnFirstTurn: isDungeon };
           const interaction = makeInteraction(command, options, guildId, effects, simulation);
           interaction.id = 'test-interaction-' + commandName + '-' + index;
           interaction.user.id = userId;
           interaction.user.username = teamUsers[0].username;
           interaction.member = makeMember(userId);
-          await command.execute(interaction);
+          const originalRandom = Math.random;
+          try {
+            if (isDungeon) Math.random = () => 0.1;
+            await command.execute(interaction);
+          } finally {
+            Math.random = originalRandom;
+          }
           const ids = teamUsers.map(member => member.id);
           const saved = await pool.query(
             'SELECT user_id,xp,coins,hp,max_hp,mana,max_mana,dungeon_runs,dungeon_wins,boss_defeats,last_dungeon_at,last_boss_at FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id',
@@ -630,7 +642,14 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             "SELECT user_id,item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND item_key LIKE 'test-owner-%' ORDER BY user_id",
             [guildId, ids]
           );
-          const isDungeon = commandName === 'katlizindan';
+          const dungeonLoot = isDungeon ? await pool.query(
+            "SELECT user_id,quantity FROM inventory WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND item_key='Orman Kristali' ORDER BY user_id",
+            [guildId, ids]
+          ) : { rows: [], rowCount: 0 };
+          const dungeonSpells = isDungeon ? await pool.query(
+            "SELECT user_id,casts,mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND spell_key='zoltraak' ORDER BY user_id",
+            [guildId, ids]
+          ) : { rows: [], rowCount: 0 };
           const timestampField = isDungeon ? 'last_dungeon_at' : 'last_boss_at';
           const counterField = isDungeon ? 'dungeon_runs' : 'boss_defeats';
           const responseText = JSON.stringify(effects.map(effect => effect.payload));
@@ -643,6 +662,14 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Karşılaşma kilidi temizliği', expected: 'savaş sonunda etkin karşılaşma kaydı kalmamalı', actual: reservations.rowCount + ' etkin kilit', passed: reservations.rowCount === 0 },
             { name: 'Komut sonucu paneli', expected: 'savaş sonucu Discord yanıtı üretilmeli', actual: effects.length + ' yanıt/etki; ' + (responseText.includes('Kat') || responseText.includes('Boss') ? 'savaş paneli içeriği kaydedildi' : 'panel metni kaydedildi'), passed: effects.length > 0 && (responseText.includes('Kat') || responseText.includes('Boss') || responseText.includes('baskın') || responseText.includes('zindan')) }
           );
+          if (isDungeon) {
+            const firstPlayer = saved.rows.find(row => row.user_id === teamUsers[0].id);
+            behavioralChecks.push(
+              { name: 'Her davetli kendi rolünü seçer', expected: 'Muhafız, Şifacı ve Hasar Ustası ayrı oyunculara atanmalı', actual: ['Muhafız','Şifacı','Hasar Ustası'].filter(role => responseText.includes(role)).join(', '), passed: ['Muhafız','Şifacı','Hasar Ustası'].every(role => responseText.includes(role)) },
+              { name: 'Zoltraak mana harcaması ve kalıcı büyü kaydı', expected: 'ilk oyuncu 12 mana harcamalı ve 1 Zoltraak kullanımı kaydedilmeli', actual: 'mana ' + firstPlayer?.mana + ', büyü kayıtları ' + dungeonSpells.rowCount + ', kullanım ' + dungeonSpells.rows.find(row => row.user_id === teamUsers[0].id)?.casts, passed: Number(firstPlayer?.mana) === 488 && Number(dungeonSpells.rows.find(row => row.user_id === teamUsers[0].id)?.casts) === 1 },
+              { name: 'Katlar arası gizli sandık ödülü', expected: 'beş katta da sandık ödülü üç oyuncunun envanterine yazılmalı', actual: dungeonLoot.rows.map(row => row.user_id + ':' + row.quantity).join(' | '), passed: dungeonLoot.rowCount === 3 && dungeonLoot.rows.every(row => Number(row.quantity) >= 5) }
+            );
+          }
         } else if (commandName === 'bakiye') {
           await pool.query('UPDATE users SET coins=4321,xp=987,level=7 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
