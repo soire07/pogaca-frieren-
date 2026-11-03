@@ -11,7 +11,8 @@ import {
   bossPhaseSpecialBonus,
   getRaidBossSpecialAttack,
   chooseRaidAttackTarget,
-  resolveRaidAreaAttack
+  resolveRaidAreaAttack,
+  getSoloBossSpecialAttackState
 } from '../rpg-mechanics.js';
 
 test('boss incoming damage never becomes negative and has a minimum of one', () => {
@@ -46,6 +47,17 @@ test('boss phase multipliers and special bonuses are deterministic', () => {
   assert.equal(bossPhaseSpecialBonus(1), 0);
   assert.equal(bossPhaseSpecialBonus(2), 4);
   assert.equal(bossPhaseSpecialBonus(3), 8);
+});
+
+test('ice spear freeze cancels scheduled solo boss special attacks and mana drain', () => {
+  for (const turn of [0,1,2,4,5,7]) {
+    assert.equal(getSoloBossSpecialAttackState(turn, false), 'none');
+    assert.equal(getSoloBossSpecialAttackState(turn, true), 'none');
+  }
+  for (const turn of [3,6,9]) {
+    assert.equal(getSoloBossSpecialAttackState(turn, false), 'execute');
+    assert.equal(getSoloBossSpecialAttackState(turn, true), 'cancelled');
+  }
 });
 
 test('raid special attacks trigger on their exact scheduled rounds', () => {
