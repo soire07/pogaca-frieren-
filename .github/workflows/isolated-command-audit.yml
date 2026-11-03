@@ -32,6 +32,8 @@ jobs:
         run: node --test scripts/test-market-concurrency.integration.js
       - name: Run real PostgreSQL arena matchmaking concurrency and rollback tests
         run: node --test scripts/test-arena-queue.integration.js
+      - name: Run real PostgreSQL seasons, events and adventurer linking tests
+        run: node --test scripts/test-adventurer-platform.integration.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
