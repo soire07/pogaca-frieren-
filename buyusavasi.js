@@ -213,6 +213,7 @@ export default {
       let healUsed1 = false;
       let healUsed2 = false;
       let turnCollector;
+      let moveInProgress = false;
 
       const playerName = id =>
         id === challenger.id ? challenger.username : opponent.username;
@@ -293,7 +294,10 @@ export default {
           });
         }
 
-        clearTimeout(turnTimer);
+        if (moveInProgress) return move.deferUpdate().catch(() => {});
+        moveInProgress = true;
+        try {
+          clearTimeout(turnTimer);
 
         const isPlayer1 = move.user.id === challenger.id;
         let description = '';
@@ -386,6 +390,9 @@ export default {
         }
 
         startTurnTimer();
+        } finally {
+          moveInProgress = false;
+        }
       };
 
       const initialEmbed = makeDuelEmbed(
