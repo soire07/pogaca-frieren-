@@ -219,6 +219,7 @@ export default {
       const log = [];
       const spellCasts = new Map();
       const chestRewards = [];
+      const floorHpSnapshots = [];
 
       for (let floor = 1; floor <= FLOORS; floor++) {
         const enemyStats = dungeonEnemyStats(floor, avgLevel, players.length, interaction.options.getString('zorluk') || 'normal');
@@ -229,8 +230,9 @@ export default {
         let bossRageAnnounced = false;
         const finalBoss = floor === FLOORS;
         let enemyPhase = 1;
+        const floorStartHp = hpNow.join('/');
         log.push(`**Kat ${floor}: ${FLOOR_NAMES[floor - 1]}** — ${maxEnemyHp} HP.`);
-        log.push(`❤️ Kat ${floor} başlangıç HP: ${hpNow.join('/')}`);
+        log.push(`❤️ Kat ${floor} başlangıç HP: ${floorStartHp}`);
         while (enemyHp > 0 && !isPartyWiped(hpNow) && turn < 10) {
           const currentPhase = finalBoss ? getBossPhase(enemyHp, maxEnemyHp) : 1;
           if (currentPhase > enemyPhase) {
@@ -410,7 +412,12 @@ export default {
         } else {
           log.push(`🧭 ${floor}. katta yol güvenliydi; takım bir sonraki kata ilerliyor.`);
         }
-        log.push(`❤️ Kat ${floor} sonrası, sonraki kata taşınan HP: ${hpNow.join('/')}`);
+        const floorEndHp = hpNow.join('/');
+        floorHpSnapshots.push({ floor, start: floorStartHp, end: floorEndHp });
+        log.push(`❤️ Kat ${floor} sonrası, sonraki kata taşınan HP: ${floorEndHp}`);
+      }
+      if (floorHpSnapshots.length) {
+        log.push(`📊 Katlar arası HP aktarımı: ${floorHpSnapshots.map(snapshot => `Kat ${snapshot.floor} ${snapshot.start} → ${snapshot.end}`).join(' | ')}`);
       }
 
       const victory = floorsCleared === FLOORS;
