@@ -5,7 +5,7 @@ import { getBossArtUrl } from './boss-art.js';
 import { getGuildRpgContent } from './owner-rpg-content.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio } from './rpg-mechanics.js';
+import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getRaidBossSpecialAttack, chooseRaidAttackTarget, resolveRaidAreaAttack, restoreResourceRatio } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
 
@@ -300,24 +300,24 @@ export default {
         }
         if (bossHp <= 0) break;
         const living=fighters.map((x,i)=>hpNow[i]>0?i:-1).filter(i=>i>=0);
-        const tank=living.find(i=>fighters[i].role==='tank');
-        const targetIndex=tank !== undefined && Math.random()<0.7 ? tank : living[Math.floor(Math.random()*living.length)];
+        const targetIndex=chooseRaidAttackTarget(fighters,living);
         const target=fighters[targetIndex];
         const enraged = bossHp <= maxBossHp * 0.5;
-        const starburst = BOSS.special === 'mana-star' && rounds % 3 === 0;
-        const shardRain = BOSS.special === 'shard-rain' && rounds % 2 === 0;
-        const manaCurse = BOSS.special === 'mana-curse' && rounds % 3 === 0;
+        const specialAttack = getRaidBossSpecialAttack(BOSS.special, rounds);
+        const starburst = specialAttack === 'mana-star';
+        const shardRain = specialAttack === 'shard-rain';
+        const manaCurse = specialAttack === 'mana-curse';
         const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0)+((starburst || shardRain || manaCurse) ? bossPhaseSpecialBonus(bossPhase) : 0);
         if (enraged && !rageAnnounced) { log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.'); rageAnnounced = true; }
         if (starburst || shardRain) {
           log.push(BOSS.special === 'shard-rain' ? '🐉 Cam Pullar Ejderhası keskin kristal parçalarını tüm takıma yağdırıyor!' : '☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!');
-          for (const i of living) {
-            const f=fighters[i];
-            const specialMultiplier = shardRain ? 0.5 : 0.68;
-            let incoming=calculateBossIncomingDamage(Math.round(rawDamage*specialMultiplier), Math.round(f.defense*0.44), bossPhase);
-            if (defending.has(i)) incoming=Math.max(1,Math.round(incoming*0.45));
-            hpNow[i]=Math.max(0,hpNow[i]-incoming);
-            log.push(`☄️ ${f.username} ${shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
+          const areaResult = resolveRaidAreaAttack({
+            hpNow, livingIndices: living, fighters, rawDamage, special: specialAttack, bossPhase, defending
+          });
+          for (const hit of areaResult.hits) {
+            const f = fighters[hit.index];
+            hpNow[hit.index] = areaResult.hpNow[hit.index];
+            log.push(`☄️ ${f.username} ${shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${hit.incoming} hasar aldı${hit.defended ? ' (savunma azaltımı uygulandı)' : ''}.`);
           }
         } else {
           let incoming=calculateBossIncomingDamage(rawDamage, Math.round(target.defense*0.56), bossPhase);
