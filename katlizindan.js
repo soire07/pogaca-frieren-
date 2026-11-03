@@ -216,6 +216,8 @@ export default {
       const avgLevel = Math.floor(players.reduce((n, p) => n + p.level, 0) / players.length);
       const hpNow = players.map(p => p.hp);
       let floorsCleared = 0, totalXp = 0, totalCoins = 0, turns = 0;
+      let defendedHits = 0, healerSupportEvents = 0;
+      const floorRewards = [];
       const log = [];
       const spellCasts = new Map();
       const chestRewards = [];
@@ -328,6 +330,7 @@ export default {
                 const classHeal = applyClassHealing(6, players[healerIndex].class_name);
                 const healed = Math.min(players[i].maxHp, hpNow[i] + classHeal);
                 if (healed > hpNow[i]) {
+                  healerSupportEvents++;
                   log.push(`💚 ${players[healerIndex].roleLabel} <@${players[healerIndex].user_id}> ${healed - hpNow[i]} HP iyileştirdi.`);
                   hpNow[i] = healed;
                 }
@@ -345,6 +348,7 @@ export default {
               ? calculateBossIncomingDamage(rawIncoming, Math.round(target.defense * 0.6), enemyPhase)
               : Math.max(1, Math.round(rawIncoming - target.defense * 0.3));
             incoming = applyDefendingReduction(incoming, defending.has(targetIndex));
+            if (defending.has(targetIndex)) defendedHits++;
             hpNow[targetIndex] = Math.max(0, hpNow[targetIndex] - incoming);
             if (enraged && !bossRageAnnounced) { log.push('🔥 İblis Lordu öfke evresine girdi; saldırıları güçlendi!'); bossRageAnnounced = true; }
             if (specialAttack) log.push('☄️ İblis Lordu yıldız biçimli mana patlaması kullandı!');
@@ -357,6 +361,7 @@ export default {
         }
         floorsCleared++;
         const { xp: floorXp, coins: floorCoins } = calculateDungeonFloorReward(floor, avgLevel);
+        floorRewards.push({ floor, name: FLOOR_NAMES[floor - 1], xp: floorXp, coins: floorCoins });
         totalXp += floorXp; totalCoins += floorCoins;
         log.push(`✅ ${floor}. kat temizlendi: +${floorXp} XP, +${floorCoins} altın (kişi başı).`);
         const pathRow = new ActionRowBuilder().addComponents(
@@ -471,6 +476,9 @@ export default {
         )
         .addFields(
           { name: '🗝️ Zindan ilerlemesi', value: `\`${floorProgressBar(floorsCleared)}\`\n**${floorsCleared}/${FLOORS} kat** · ${victory ? '🏆 İblis Lordu yenildi' : floorsCleared >= 3 ? '🔥 Derin katlara ulaşıldı' : '🌲 Yolculuk devam ediyor'}`, inline: false },
+          { name: '📚 Kat bazlı ödüller', value: floorRewards.map(reward => `${reward.floor}. kat temizlendi: ${reward.name} · +${reward.xp} XP, +${reward.coins} altın`).join('\n').slice(0,1024) || 'Henüz kat tamamlanmadı.', inline: false },
+          { name: '❤️ Katlar arası HP aktarımı', value: floorHpSnapshots.map(snapshot => `Kat ${snapshot.floor} ${snapshot.start} → ${snapshot.end}`).join('\n').slice(0,1024) || 'Kat geçişi yok.', inline: false },
+          { name: '🛡️ Takım savunması ve desteği', value: `Savunma azaltımı uygulandı: ${defendedHits} kez\nŞifacı ${healerSupportEvents} kez iyileştirdi.`, inline: true },
           { name: '🏅 Kalıcı unvanlar', value: milestoneText.slice(0,1024), inline: false },
           { name: '🎁 Kişi başı ödül', value: `✨ ${totalXp} XP\n🥐 ${totalCoins} altın`, inline: true },
           { name: '💎 Ganimet ve sandıklar', value: [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])].length ? [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])].map(item => `• ${item}`).join('\\n') : 'Bu sefer ganimet çıkmadı.', inline: true },
