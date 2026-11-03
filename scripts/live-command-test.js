@@ -1184,14 +1184,91 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Karakter arşivi kartı', expected: 'Frieren adı, Elf büyücü rolü ve karakter açıklaması gösterilmeli', actual: payloadText.includes('Frieren') && payloadText.includes('Elf büyücü') ? 'Frieren arşiv kartı gösterildi' : payloadText.slice(0, 400), passed: payloadText.includes('Frieren') && payloadText.includes('Elf büyücü') && payloadText.includes('yolculuğunun anlamını') }
           );
         } else if (commandName === 'npc') {
-          const interaction = makeInteraction(command, buildOptions(schema?.options, { karakter: 'frieren', eylem: 'konus' }), guildId, effects);
-          interaction.user.id = userId;
-          interaction.member = makeMember(userId);
-          await command.execute(interaction);
-          const payloadText = JSON.stringify(effects.map(effect => effect.payload));
-          behavioralChecks.push(
-            { name: 'NPC diyalog sistemi', expected: 'Frieren karşılaşma başlığı ve diyalog içeriği gösterilmeli', actual: payloadText.includes('Frieren') ? 'Frieren diyalogu gösterildi' : payloadText.slice(0, 400), passed: payloadText.includes('Frieren') && payloadText.includes('karşılaşma') && payloadText.includes('büyü kalıntıları') }
-          );
+          const scenarios = [
+            { npc: 'frieren', path: 'merak', questKey: 'frieren_relics', reward: { coins: 260, xp: 100 }, progress: async (id) => pool.query(
+              "INSERT INTO learned_spells(guild_id,user_id,spell_key) VALUES($1,$2,'alev_kuresi'),($1,$2,'koruyucu_bariyer')",
+              [guildId, id]
+            ) },
+            { npc: 'fern', path: 'merhamet', questKey: 'fern_supplies', reward: { coins: 220, xp: 110 }, progress: async (id) => pool.query(
+              'UPDATE users SET items_used_count=3 WHERE guild_id=$1 AND user_id=$2',
+              [guildId, id]
+            ) },
+            { npc: 'stark', path: 'cesaret', questKey: 'stark_demon_hunt', reward: { coins: 280, xp: 120 }, progress: async (id) => pool.query(
+              'UPDATE users SET boss_defeats=2 WHERE guild_id=$1 AND user_id=$2',
+              [guildId, id]
+            ) }
+          ];
+          const runNpc = async (id, npcKey, action) => {
+            const actionEffects = [];
+            const actionInteraction = makeInteraction(command, buildOptions(schema?.options, { karakter: npcKey, eylem: action }), guildId, actionEffects);
+            actionInteraction.user.id = id;
+            actionInteraction.member = makeMember(id);
+            await command.execute(actionInteraction);
+            effects.push(...actionEffects);
+            return payloadTextFromEffects(actionEffects);
+          };
+          for (const [index, scenario] of scenarios.entries()) {
+            const npcUserId = userId + '-npc-' + scenario.npc;
+            await ensureUser(guildId, npcUserId);
+            await pool.query(
+              'UPDATE users SET coins=0,xp=0,level=1,stat_points=0,items_used_count=0,boss_defeats=0 WHERE guild_id=$1 AND user_id=$2',
+              [guildId, npcUserId]
+            );
+            await pool.query(
+              'INSERT INTO story_progress(guild_id,user_id,current_chapter,choices) VALUES($1,$2,1,$3::jsonb) ON CONFLICT(guild_id,user_id) DO UPDATE SET current_chapter=1,choices=EXCLUDED.choices,updated_at=NOW()',
+              [guildId, npcUserId, JSON.stringify([scenario.path])]
+            );
+            await pool.query('DELETE FROM side_quest_claims WHERE guild_id=$1 AND user_id=$2', [guildId, npcUserId]);
+            await scenario.progress(npcUserId);
+
+            const wrongNpc = scenario.npc === 'frieren' ? 'fern' : 'frieren';
+            const blockedText = await runNpc(npcUserId, wrongNpc, 'teslim');
+            const blockedClaim = await pool.query(
+              'SELECT 1 FROM side_quest_claims WHERE guild_id=$1 AND user_id=$2',
+              [guildId, npcUserId]
+            );
+            behavioralChecks.push({
+              name: 'Yanlış hikâye yolu ödül engeli · ' + scenario.npc,
+              expected: 'başka yolun NPC görevi ödül verememeli ve tamamlanmış kayıt oluşturmamalı',
+              actual: blockedText.slice(0, 180) + '; claim=' + blockedClaim.rowCount,
+              passed: blockedText.includes('Görev veren karakter') && blockedClaim.rowCount === 0
+            });
+
+            const questText = await runNpc(npcUserId, scenario.npc, 'gorev');
+            behavioralChecks.push({
+              name: 'NPC görev gereksinimi ve ilerleme · ' + scenario.npc,
+              expected: 'doğru NPC görev başlığını, hedefini ve tamamlanmış ilerlemeyi göstermeli',
+              actual: questText.slice(0, 220),
+              passed: questText.includes(scenario.npc === 'frieren' ? 'Kayıp Büyü İzleri' : scenario.npc === 'fern' ? 'Yol Arkadaşına Yardım' : 'Kuzey Avı') &&
+                questText.includes('Görev') && questText.includes('İlerleme') && questText.includes('Ödül')
+            });
+
+            const before = await pool.query('SELECT coins,xp,level,stat_points FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, npcUserId]);
+            const claimText = await runNpc(npcUserId, scenario.npc, 'teslim');
+            const after = await pool.query('SELECT coins,xp,level,stat_points FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, npcUserId]);
+            const claim = await pool.query(
+              'SELECT quest_key FROM side_quest_claims WHERE guild_id=$1 AND user_id=$2',
+              [guildId, npcUserId]
+            );
+            behavioralChecks.push({
+              name: 'NPC görev ödülü ve kalıcı tekil claim · ' + scenario.npc,
+              expected: scenario.reward.coins + ' altın, ' + scenario.reward.xp + ' XP ve tek claim kaydı verilmeli',
+              actual: JSON.stringify(after.rows[0]) + '; claim=' + claim.rows.map(row => row.quest_key).join(','),
+              passed: claimText.includes('görev') && Number(after.rows[0]?.coins) === Number(before.rows[0]?.coins) + scenario.reward.coins &&
+                Number(after.rows[0]?.xp) === Number(before.rows[0]?.xp) + scenario.reward.xp &&
+                claim.rowCount === 1 && claim.rows[0]?.quest_key === scenario.questKey
+            });
+
+            const duplicateText = await runNpc(npcUserId, scenario.npc, 'teslim');
+            const duplicateState = await pool.query('SELECT coins,xp,level,stat_points FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, npcUserId]);
+            behavioralChecks.push({
+              name: 'NPC ödülünün tekrar alınamaması · ' + scenario.npc,
+              expected: 'ikinci teslim yalnızca zaten tamamlandı mesajı vermeli; bakiye değişmemeli',
+              actual: duplicateText.slice(0, 180) + '; ' + JSON.stringify(duplicateState.rows[0]),
+              passed: duplicateText.includes('zaten tamamladın') &&
+                ['coins','xp','level','stat_points'].every(key => Number(duplicateState.rows[0]?.[key]) === Number(after.rows[0]?.[key]))
+            });
+          }
         } else if (commandName === 'siralama') {
           await pool.query('UPDATE users SET level=7,xp=987,coins=4321,boss_defeats=8,dungeon_wins=5,exploration_count=11 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           await pool.query("INSERT INTO anime_character_collection(guild_id,user_id,character_name,anime,rarity,emoji,quantity) VALUES($1,$2,'Test Fern','Frieren','Nadir','🌿',1) ON CONFLICT(guild_id,user_id,character_name) DO UPDATE SET quantity=1", [guildId,userId]);
@@ -1393,7 +1470,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           await command.execute(interaction);
           const payloadText = payloadTextFromEffects(effects);
           behavioralChecks.push(
-            { name: 'Status canlı Discord bağlantısı', expected: 'bot çevrimiçi ve Discord gecikmesi gösterilmeli', actual: payloadText.includes('Çevrimiçi') && payloadText.includes('42 ms') ? 'çevrimiçi / 42 ms' : payloadText.slice(0, 400), passed: payloadText.includes('Çevrimiçi') && payloadText.includes('42 ms') },
+            { name: 'Status paneli sentetik istemci durumunu yansıtıyor', expected: 'test istemcisinin hazır durumu ve sabit 42 ms gecikme değeri gösterilmeli; bu gerçek Discord bağlantı testi değildir', actual: payloadText.includes('Çevrimiçi') && payloadText.includes('42 ms') ? 'sentetik istemci: çevrimiçi / 42 ms' : payloadText.slice(0, 400), passed: payloadText.includes('Çevrimiçi') && payloadText.includes('42 ms') },
             { name: 'Status çalışma bilgileri', expected: 'çalışma süresi, sunucu sayısı, komut sayısı ve Node.js sürümü gösterilmeli', actual: ['Çalışma süresi','Sunucu sayısı','Yüklü komut','Node.js'].filter(value => payloadText.includes(value)).join(', '), passed: ['Çalışma süresi','Sunucu sayısı','Yüklü komut','Node.js'].every(value => payloadText.includes(value)) }
           );
         } else {
