@@ -644,11 +644,13 @@
       "category": "Co-op",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
+          "scripts/live-command-test.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify persisted co-op cooldown fields and transactional reward handling; live Discord cooldown behavior remains unverified."
+        "scope": "/katlizindan gerçek komut execute akışı sentetik Discord bileşenleriyle frieren_test üzerinde çalıştırılır; üç oyuncunun last_dungeon_at/dungeon_runs değerleri yazılır ve aynı takımın ikinci girişinin ödül/sayaç üretmeden cooldown ile reddedildiği PostgreSQL'den doğrulanır.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -1109,11 +1111,13 @@
       "category": "Dungeon",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
+          "scripts/live-command-test.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify a five-floor progression loop and named floor route flow."
+        "scope": "/katlizindan sentetik komut akışında beş ayrı kat adı ve sonuç günlüğü doğrulanır; kat isimlerinin kaynak bağlantısı ayrıca kontrol edilir.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -1136,11 +1140,13 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
+          "scripts/live-command-test.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify player combat state is carried between dungeon floor encounters."
+        "scope": "/katlizindan çalıştırmasında kat sonu/sonraki kat başlangıcı HP snapshot değerleri karşılaştırılır; devam eden HP durumunun aynı oyuncu için taşındığı doğrulanır.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -1149,11 +1155,14 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-rpg-mechanics-behavior.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify dungeon settlement persists per-floor XP and coin rewards in a transaction."
+        "scope": "Beş katın her biri için ayrı XP/altın satırı komut sonucunda doğrulanır; hesaplama yardımcısı her kat ve ortalama seviye için deterministik ödül değerleriyle test edilir.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -1190,11 +1199,13 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
+          "scripts/test-rpg-mechanics-behavior.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify encounter termination and living-player constraints; live party wipe behavior remains unverified."
+        "scope": "isPartyWiped davranışı tüm oyuncular sıfır veya altındayken true, en az bir yaşayan oyuncu varken false olarak sınanır; zindan döngüsünün bu koşulu kullandığı ayrıca doğrulanır. Tamamen yenilmiş takımın canlı Discord etkileşimi bu testte simüle edilmez.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -1259,11 +1270,13 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
+          "scripts/test-rpg-mechanics-behavior.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify party size is supplied to raid boss scaling."
+        "scope": "scaleRaidBossHp gerçek ölçekleme yardımcısı temel HP, ortalama seviye ve takım büyüklüğü sınırlarında sayısal olarak test edilir; ortak boss komutunun aynı yardımcıyı kullandığı kaynak bağlantısıyla doğrulanır.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -1313,11 +1326,13 @@
       "category": "Dungeon",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
+          "scripts/test-rpg-mechanics-behavior.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify hidden chest floor events and route event integration."
+        "scope": "getDungeonEventOutcome gizli sandık, tuzak ve olaysız sonuç eşiklerinde deterministik test edilir; zindan komutunun olay sonucunu ödül/olay akışına bağladığı kaynak denetimiyle doğrulanır.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -1354,11 +1369,13 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
+          "scripts/test-rpg-mechanics-behavior.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify role-specific combat modifiers are used in cooperative encounters."
+        "scope": "getPartyRoleModifiers tank, healer ve damage rollerinin HP/saldırı/savunma çarpanlarını zindan ve raid için ayrı ayrı sayısal olarak doğrular; iki komutun bu ortak profilleri kullandığı kaynak denetimiyle kontrol edilir.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -1367,11 +1384,13 @@
       "category": "Balance",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
+          "scripts/test-rpg-mechanics-behavior.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify party level is included in cooperative raid boss scaling."
+        "scope": "Raid boss HP ölçekleme yardımcısı ortalama seviye artışını ve ek takım üyelerini sayısal olarak sınar; ortak boss komutunun hesaplanan ortalama seviye ve takım boyutunu bu yardımcıya aktardığı doğrulanır.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -1450,11 +1469,13 @@
       "category": "Boss",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
+          "scripts/test-rpg-mechanics-behavior.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify final dungeon boss encounter and boss action catalog; exact enrage threshold remains unverified."
+        "scope": "Son zindan bossunun yalnızca beşinci katta ve maksimum HP'nin yüzde 50 veya altında öfke evresine geçtiği sınır testleriyle doğrulanır; komut entegrasyonu kaynak denetimiyle eşleştirilir.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -1463,11 +1484,13 @@
       "category": "Boss",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
+          "scripts/test-rpg-mechanics-behavior.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify the dungeon combat action set and boss encounter wiring; exact periodic mana-star timing remains unverified."
+        "scope": "Son kat boss özel saldırısının yalnızca final katta ve her üçüncü turda tetiklendiği deterministik testlerle doğrulanır; zindan komutunun saldırı zamanlamasını bu yardımcıya bağladığı kontrol edilir.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -1476,11 +1499,13 @@
       "category": "Boss",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
+          "scripts/test-rpg-mechanics-behavior.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify final-floor boss is distinct from ordinary floor encounters; damage comparison is not runtime-tested here."
+        "scope": "Final kat boss hasar yardımcısının 1.35 boss çarpanını, öfke bonusunu ve periyodik özel saldırı bonusunu uyguladığı sayısal senaryolarla doğrulanır; komutun hesaplanan sonucu kullandığı kaynak denetimiyle eşleştirilir.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -1517,11 +1542,13 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
+          "scripts/test-rpg-mechanics-behavior.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify timed defense action and defensive combat choices."
+        "scope": "Savunma eyleminin gelen hasarı yüzde 55 azalttığı ve en az 1 hasar bıraktığı deterministik testlerle doğrulanır; zindan komutunun savunma seçimini hasar hesabına uyguladığı kontrol edilir.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -1558,11 +1585,13 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
+          "scripts/test-rpg-mechanics-behavior.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify duplicate tank/healer role assignments are rejected."
+        "scope": "canAssignPartyRole aynı anda ikinci tank/şifacı atamasını ve bilinmeyen rolleri reddeder, damage rolünün tekrarına izin verir; zindan ve raid rol toplayıcılarının bu kuralı kullandığı doğrulanır.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -1599,12 +1628,14 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
+          "scripts/live-command-test.js",
+          "scripts/test-rpg-mechanics-behavior.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Kaynak ve etkileşim sözleşmesi mevcut; savunma seçiminin alınan hasarı azalttığına dair ayrı karşılaştırmalı davranış testi henüz yok.",
-        "notes": "Bu özellik davranışsal olarak doğrulanmış sayılmıyor."
+        "scope": "Ortak boss sentetik etkileşiminde tank savunma aksiyonu seçer, hedefleme tankı seçer ve sonuç günlüğünde savunma azaltımının uygulandığı doğrulanır; hasar azaltma yardımcısı ayrıca sayısal olarak test edilir. Canlı Discord değildir.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -1834,10 +1865,11 @@
       "testEvidence": {
         "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/live-command-test.js"
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Öğrenilmiş büyüler, kullanım sayıları ve ustalık ilerlemesi sentetik Discord komut etkileşiminde gösterilir.",
-        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
+        "scope": "/buyuustaligi sentetik komut çalıştırmasında öğrenilmiş iki büyünün kullanım sayısı ve ustalık seviyesi izole PostgreSQL kayıtlarından okunur ve oyuncuya gösterilen panelle karşılaştırılır.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -1848,10 +1880,11 @@
       "testEvidence": {
         "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/live-command-test.js"
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Öğrenilmemiş büyüyle pratik girişimi gerçek komut execute akışında reddedilir; altın ve mana bakiyeleri değişmediği PostgreSQL'den doğrulanır.",
-        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
+        "scope": "/buyupratik gerçek komut akışı önce öğrenilmemiş Alev Küresi için reddedilir ve altın/mana/ustalık kaydının değişmediği PostgreSQL'den doğrulanır; büyü öğrenildikten sonra aynı pratik maliyet ve ustalık kaydıyla başarılı olur.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -2087,14 +2120,14 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_postgresql",
+        "level": "unit_and_source_contract",
         "tests": [
-          "scripts/live-command-test.js",
-          "scripts/test-boss-combat.js",
-          "scripts/test-rpg-mechanics-behavior.js"
+          "scripts/test-rpg-mechanics-behavior.js",
+          "scripts/test-discord-scenarios.js",
+          "scripts/live-command-test.js"
         ],
-        "scope": "Co-op raid/dungeon komutunda Büyücü mana indirimi gerçek PostgreSQL bakiyesiyle; sınıf hasar, savunma ve iyileştirme çarpanları davranış testleriyle doğrulanır.",
-        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
+        "scope": "Sınıf hasarı, savunması, iyileştirmesi ve mana maliyeti ortak mekanik fonksiyonları üzerinde sayısal test edilir; raid komutunun bu fonksiyonları savaşçı sınıfına bağladığı kaynak kontrolü ve sentetik raid akışında sınıf/mana kalıcılığıyla desteklenir. Her sınıfın her aksiyon kombinasyonu ayrı canlı test değildir.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -2131,11 +2164,13 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
+          "scripts/test-rpg-mechanics-behavior.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify class-specific mana cost is applied to solo demon combat."
+        "scope": "applyClassManaCost Büyücü indirimi dahil sınıf maliyetlerini sayısal olarak doğrular; solo iblis savaşı komutunun büyü maliyetini seçili sınıfa göre hesapladığı kaynak bağlantısıyla kontrol edilir.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -2146,10 +2181,12 @@
       "testEvidence": {
         "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/live-command-test.js"
+          "scripts/live-command-test.js",
+          "scripts/test-rpg-mechanics-behavior.js",
+          "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Co-op dungeon akışında Büyücü Zoltraak atışlarının her birinde 10 mana tükettiği kalıcı kullanıcı bakiyesinden doğrulanır.",
-        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
+        "scope": "/katlizindan sentetik savaşında Büyücü oyuncunun kalıcı Zoltraak atış sayısı ile mana harcaması karşılaştırılır; her başarılı atışın 10 mana tükettiği doğrulanır.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -2160,10 +2197,12 @@
       "testEvidence": {
         "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/live-command-test.js"
+          "scripts/live-command-test.js",
+          "scripts/test-rpg-mechanics-behavior.js",
+          "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Co-op raid akışında Büyücü Zoltraak atışlarının her birinde 10 mana tükettiği kalıcı kullanıcı bakiyesinden doğrulanır.",
-        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
+        "scope": "/ortakboss sentetik savaşında Büyücü oyuncunun kalıcı Zoltraak atış sayısı ile mana harcaması karşılaştırılır; her başarılı atışın 10 mana tükettiği doğrulanır.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -2200,14 +2239,14 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "postgresql_integration_and_unit",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-market-concurrency.integration.js",
-          "scripts/test-boss-combat.js",
-          "scripts/test-rpg-mechanics-behavior.js"
+          "scripts/live-command-test.js",
+          "scripts/test-rpg-mechanics-behavior.js",
+          "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Dört savaş yapısının seçimi ve users.active_build kalıcılığı PostgreSQL'de; yapı çarpanlarının savaş hesaplarına etkisi davranış testlerinde doğrulanır.",
-        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
+        "scope": "Karakter panelinde Avcı yapısı seçilip active_build alanına kalıcı yazıldığı izole PostgreSQL'den doğrulanır; profil paneli yapı bonuslarıyla hesaplanan HP/mana/saldırı/savunmayı gösterir. Solo, zindan ve raid modüllerinin aynı build tanımını kullandığı kaynak bağlantısıyla kontrol edilir.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -2230,12 +2269,14 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "postgresql_integration",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-market-concurrency.integration.js"
+          "scripts/test-rpg-mechanics-behavior.js",
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Saldırı yeteneği rütbeleri üçe kadar kalıcı yükseltilir; sınır ve profil saldırı hesabı gerçek DB kaydıyla doğrulanır.",
-        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
+        "scope": "Saldırı yetenek puanının yüzde 4/rütbe çarpanı ortak hesaplama yardımcısında sınanır; profil komutu gerçek PostgreSQL yetenek kaydıyla hesaplanan saldırıyı doğrular ve solo/zindan/raid akışlarının aynı yardımcısını kullandığı kontrol edilir.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -2244,12 +2285,14 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "postgresql_integration",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-market-concurrency.integration.js"
+          "scripts/test-rpg-mechanics-behavior.js",
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Savunma yeteneği rütbeleri üçe kadar kalıcı yükseltilir; sınır ve profil savunma hesabı gerçek DB kaydıyla doğrulanır.",
-        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
+        "scope": "Savunma yetenek puanının yüzde 4/rütbe çarpanı ortak hesaplama yardımcısında sınanır; profil komutu gerçek PostgreSQL yetenek kaydıyla hesaplanan savunmayı doğrular ve savaş modüllerinin ortak hesaplaması kontrol edilir.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -2258,12 +2301,14 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "postgresql_integration",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-market-concurrency.integration.js"
+          "scripts/test-rpg-mechanics-behavior.js",
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Can ve mana yetenekleri üç rütbeye kadar kalıcı yükseltilir; profilin efektif HP/mana değerleri DB tabanlı testte doğrulanır.",
-        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
+        "scope": "HP ve mana yetenek puanlarının yüzde 5/rütbe çarpanları ortak hesaplama yardımcısında sınanır; profil komutu gerçek PostgreSQL yetenek kaydıyla azami/mevcut HP-mana değerlerini doğrular ve savaş modüllerinin aynı hesaplamayı kullandığı kontrol edilir.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -3708,12 +3753,13 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "postgresql_integration",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-market-concurrency.integration.js"
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Parçalama önizlemesi 12 ekipman türünün tümünü, nadirliklerini ve geri kazanım tariflerini gösterir; önizleme envanteri değiştirmez.",
-        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
+        "scope": "/ekipmanparcala seçeneği boş bırakılarak gerçek komut execute akışı çalıştırılır; 12 ekipmanın tamamının adı, nadirliği ve geri kazanım tarifi seçim öncesi yanıtta doğrulanır. Ayrı senaryoda gerçek parçalama ve PostgreSQL envanter hareketi de sınanır.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
@@ -3875,12 +3921,13 @@
       "category": "RPG",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "postgresql_integration",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-market-concurrency.integration.js"
+          "scripts/live-command-test.js",
+          "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Seçili savaş yapısı profil çıktısında görünür; sınıf, yapı ve yetenek bonuslarıyla efektif HP, mana, saldırı ve savunma hesapları doğrulanır.",
-        "notes": "Kaynak sözleşmesi kanıtı çalıştırılabilir davranış/entegrasyon testiyle desteklendi."
+        "scope": "/profil sentetik etkileşiminde Avcı build'i ve dört yetenek rütbesi izole PostgreSQL'e yazılır; yanıt içindeki HP, mana, saldırı ve savunma değerleri bağımsız beklenen hesaplarla karşılaştırılır.",
+        "notes": "Kaynak-kod sözleşmesi tek başına kanıt sayılmadı; belirtilen davranış testleri ve/veya izole PostgreSQL komut sonuçlarıyla eşleştirildi. Canlı Discord ve üretim veritabanı kullanılmadı."
       }
     },
     {
