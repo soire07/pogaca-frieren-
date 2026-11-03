@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 const MAX_CONTEXT_CHARS = 22_000;
 const MAX_PATCH_CHARS = 12_000;
 const MAX_PATCH_FILES = 4;
+const MAX_COMPLETION_TOKENS = 4096;
 const ALLOWED_PATH = /^(?:[A-Za-z0-9_.-]+\.js|(?:ai-agent|scripts|database|guardian)\/[A-Za-z0-9_.-]+\.js)$/;
 const PROTECTED_PATHS = new Set(['index.js','owner-dashboard.js','owner-admin.js','owner-render-control.js','owner-workspaces.js','owner-metrics.js','frieren-chat.js','ai-agent/index.js','ai-agent/memory-store.js','ai-agent/memory-extractor.js','scripts/ai-self-repair.js','scripts/ai-self-repair.test.js','scripts/check-commands.js','scripts/check-feature-inventory.js','scripts/check-gameplay-integrity.js','database/db.js']);
 const runGit = (args, options = {}) => execFileSync('git', args, options);
@@ -136,7 +137,7 @@ export async function generateRepairPatch({ task, apiKey, model = 'openai/gpt-os
   const response = await client.chat.completions.create({
     model,
     temperature: 0.1,
-    max_completion_tokens: 1800,
+    max_completion_tokens: MAX_COMPLETION_TOKENS,
     messages: [
       {
         role: 'system',
@@ -145,7 +146,10 @@ export async function generateRepairPatch({ task, apiKey, model = 'openai/gpt-os
       { role: 'user', content: 'İstenen düzeltme:\n' + String(task).slice(0, 1200) + '\n\nKaynak kod bağlamı:\n' + context },
     ],
   });
-  const output = response?.choices?.[0]?.message?.content;
+  const choice = response?.choices?.[0];
+  const output = choice?.message?.content;
+  if (choice?.finish_reason === 'length') throw new Error('REPAIR_DIFF_TRUNCATED');
+  if (choice?.finish_reason !== 'stop') throw new Error('REPAIR_COMPLETION_NOT_FINISHED');
   if (!output || output.includes('REPAIR_CONTEXT_INSUFFICIENT')) throw new Error('REPAIR_CONTEXT_INSUFFICIENT');
   const patch = extractUnifiedDiff(output);
   const files = validatePatchPaths(patch);
