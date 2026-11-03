@@ -644,9 +644,9 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           const simulation = {
             users: teamUsers,
             actionSequence: [
-              ['defend', 'heal', 'spell'],
-              ['shield', 'attack', 'attack'],
-              ['attack', 'spell', 'defend']
+              ['defend', 'defend', 'defend'],
+              ['shield', 'heal', 'spell'],
+              ['attack', 'attack', 'attack']
             ],
             actionIndex: 0,
             acceptedActions: []
