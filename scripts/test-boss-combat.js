@@ -118,6 +118,20 @@ test('dungeon and raid roles apply distinct HP, attack and defense modifiers', (
   );
 });
 
+test('raid boss catalog binds each named boss to its correct signature attack', () => {
+  const expected = [
+    ['north-general', '🌑 Kuzey Platosu İblis Generali', 'mana-star'],
+    ['glass-wyrm', '🐉 Cam Pullar Ejderhası', 'shard-rain'],
+    ['fallen-mage', '🕯️ Düşmüş Büyücü Aura', 'mana-curse']
+  ];
+  for (const [id, name, special] of expected) {
+    const boss = RAID_BOSSES.find(entry => entry.id === id);
+    assert.ok(boss, 'missing raid boss ' + id);
+    assert.equal(boss.name, name);
+    assert.equal(boss.special, special);
+  }
+});
+
 test('raid special attacks trigger on their exact scheduled rounds', () => {
   assert.equal(getRaidBossSpecialAttack('mana-star', 2), null);
   assert.equal(getRaidBossSpecialAttack('mana-star', 3), 'mana-star');
