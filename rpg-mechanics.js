@@ -303,7 +303,7 @@ export function applyTalentBonus(baseValue, rank, perRank) {
   const safeRank = Math.max(0, Number(rank) || 0);
   const rate = Math.max(0, Number(perRank) || 0);
   if (!Number.isFinite(base)) return 0;
-  return Math.round(base * (1 + safeRank * rate));
+  return base * (1 + safeRank * rate);
 }
 
 export function calculateDungeonFloorReward(floor, averageLevel) {
