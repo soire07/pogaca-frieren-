@@ -71,7 +71,7 @@ test('solo boss victory grants rewards in one production transaction and guards 
   const victory = source.indexOf('if (bossHp <= 0)');
   const claim = source.indexOf('claimSoloBossReward', victory);
   assert.ok(victory >= 0 && claim > victory, 'victory handler must invoke the production reward transaction');
-  assert.match(rewards, /INSERT INTO solo_boss_reward_claims/);
+  assert.match(rewards, /INSERT INTO rpg_reward_claims/);
   assert.match(rewards, /coins=coins\+\$5, xp=xp\+\$6/);
   assert.match(rewards, /INSERT INTO inventory/);
   assert.match(rewards, /await db.query\('COMMIT'\)/);
@@ -102,7 +102,7 @@ test('solo boss reward persistence is idempotent per battle session across dupli
   assert.match(source, /randomUUID/);
   assert.ok(rewards.includes('last_boss_battle_id'));
   assert.ok(source.includes('claimSoloBossReward'));
-  assert.ok(rewards.includes('ON CONFLICT (guild_id,user_id,battle_id) DO NOTHING'));
+  assert.ok(rewards.includes('ON CONFLICT (guild_id,user_id,reward_type,reward_id) DO NOTHING'));
   assert.ok(rewards.includes("return { status: 'already_claimed' }"));
   assert.match(schema, /last_boss_battle_id TEXT/);
 });
@@ -121,7 +121,7 @@ test('solo boss reward claims reject an old battle id after a newer battle has b
   const client = {
     async query(sql, values = []) {
       if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rowCount: null, rows: [] };
-      if (/INSERT INTO solo_boss_reward_claims/.test(sql)) {
+      if (/INSERT INTO rpg_reward_claims/.test(sql)) {
         const key = values.slice(0, 3).join(':');
         if (claimed.has(key)) return { rowCount: 0, rows: [] };
         claimed.add(key);
