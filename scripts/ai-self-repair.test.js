@@ -215,28 +215,29 @@ test('Groq validation rejects malformed or empty completion responses', async ()
 });
 
 
-\ntest('repair context prioritizes exact allowlisted affected files from Guardian review tasks', async () => {
+
+test('repair context prioritizes exact allowlisted affected files from Guardian review tasks', async () => {
   const files = {
     'guardian/automation.js': 'export function dispatchRepair() { return true; }',
     'ai-agent/owner-scenario-report.js': 'export function guardianIncidentSummary() { return true; }',
   };
   const context = await collectRepairContext(
-    'Guardian incident #42\\nİlgili dosyalar: guardian/automation.js, ../package.json, .env.js',
+    'Guardian incident #42\nİlgili dosyalar: guardian/automation.js, ../package.json, .env.js',
     {
-      execFile: () => Object.keys(files).join('\\0') + '\\0',
+      execFile: () => Object.keys(files).join('\0') + '\0',
       statImpl: async path => ({ isFile: () => true, size: files[path].length }),
       readFileImpl: async path => files[path],
     },
   );
   assert.ok(context.indexOf('### guardian/automation.js') >= 0);
   assert.ok(context.indexOf('### guardian/automation.js') < context.indexOf('### ai-agent/owner-scenario-report.js'));
-  assert.doesNotMatch(context, /package.json|\\.env/);
+  assert.doesNotMatch(context, /package.json|\.env/);
 });
 
 test('repair context still rejects tasks with no matching tracked source files', async () => {
   await assert.rejects(
     collectRepairContext('unmatched xyzzy request', {
-      execFile: () => 'guardian/automation.js\\0',
+      execFile: () => 'guardian/automation.js\0',
       statImpl: async () => ({ isFile: () => true, size: 10 }),
       readFileImpl: async () => 'const unrelated = true;',
     }),
