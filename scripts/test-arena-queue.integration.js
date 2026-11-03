@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { initDatabase, pool, ensureUser } from '../database/db.js';
-import { ensureArenaTables, enqueueArenaPlayer, getArenaQueueStatus } from '../arena-queue.js';
+import { ensureArenaTables, enqueueArenaPlayer, getArenaQueueStatus, submitArenaTurn } from '../arena-queue.js';
 
 function assertIsolatedAuditDatabase() {
   const url = new URL(process.env.DATABASE_URL || '');
@@ -46,6 +46,17 @@ test('PostgreSQL arena matchmaking atomically creates two complete matches from 
     }
     const queue = await getArenaQueueStatus(pool, guildId, safeUserIds[0]);
     assert.equal(queue.status, 'in_match');
+    const match = await pool.query('SELECT match_id,state FROM arena_matches WHERE guild_id=$1 ORDER BY created_at LIMIT 1', [guildId]);
+    const current = match.rows[0].state.players[match.rows[0].state.turnIndex];
+    const target = match.rows[0].state.players.find(player => player.team !== current.team && player.alive);
+    const simultaneousTurns = await Promise.allSettled([
+      submitArenaTurn(pool, { guildId, matchId: match.rows[0].match_id, actorId: current.userId, action: 'attack', targetId: target.userId }),
+      submitArenaTurn(pool, { guildId, matchId: match.rows[0].match_id, actorId: current.userId, action: 'attack', targetId: target.userId })
+    ]);
+    assert.equal(simultaneousTurns.filter(result => result.status === 'fulfilled').length, 1,
+      'row locking must allow only one of two duplicate simultaneous turns');
+    const persisted = await pool.query('SELECT state FROM arena_matches WHERE match_id=$1', [match.rows[0].match_id]);
+    assert.equal(persisted.rows[0].state.turnCount, 1);
     await assert.rejects(
       enqueueArenaPlayer(pool, { guildId, userId: safeUserIds[0], rating: 1000 }),
       error => error.code === 'ARENA_PLAYER_ALREADY_IN_MATCH'
