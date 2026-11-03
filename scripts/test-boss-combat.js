@@ -105,6 +105,9 @@ test('solo boss reward persistence is idempotent per battle session across dupli
   assert.ok(rewards.includes('ON CONFLICT (guild_id,user_id,reward_type,reward_id) DO NOTHING'));
   assert.ok(rewards.includes("return { status: 'already_claimed' }"));
   assert.match(schema, /last_boss_battle_id TEXT/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS rpg_reward_claims/);
+  assert.match(schema, /PRIMARY KEY \(guild_id,user_id,reward_type,reward_id\)/);
+  assert.match(schema, /SELECT guild_id,user_id,'solo_boss',last_boss_battle_id/);
 });
 
 
