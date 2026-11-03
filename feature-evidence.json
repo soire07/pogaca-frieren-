@@ -82,8 +82,8 @@
           "markers": [
             "await Promise.all([",
             "assert.equal(outcomes.filter(Boolean).length,1",
-            "assert.equal(Number(source.rows[0].quantity),1)",
-            "assert.equal(Number(target.rows[0].quantity),1)"
+            "assert.equal(Number(source.rows[0].quantity),1,",
+            "assert.equal(Number(target.rows[0].quantity),1,"
           ]
         },
         {
