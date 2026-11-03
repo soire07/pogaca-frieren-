@@ -6,7 +6,10 @@ import {
   applyClassDefense, applyClassHealing, characterClassGuide, applyClassManaCost,
   getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus,
   getSpellMasteryAwakening, shouldGuaranteeRareDiscovery, explorationMasteryReward,
-  getLevelScaledQuestReward, restoreResourceRatio
+  getLevelScaledQuestReward, restoreResourceRatio, applyDefendingReduction,
+  scaleRaidBossHp, isFinalDungeonBossEnraged, shouldFinalDungeonBossSpecialAttack,
+  calculateFinalDungeonBossRawDamage, getDungeonEventOutcome, canAssignPartyRole,
+  isPartyWiped, getPartyRoleModifiers
 } from '../rpg-mechanics.js';
 import { equipmentItems, equipmentSlots, equipmentBonus } from '../equipment-data.js';
 import { applyEquipmentSetBonus } from '../rpg-mechanics.js';
@@ -189,4 +192,67 @@ test('epic and legendary equipment set bonuses activate at two matching pieces a
   );
   assert.equal(applyEquipmentSetBonus(legendary.slice(0,1), emptyBonus).setText, null);
   assert.equal(applyEquipmentSetBonus(epic.slice(0,1), emptyBonus).setText, null);
+});
+
+
+test('raid boss HP scaling includes average party level and additional party members', () => {
+  assert.equal(scaleRaidBossHp(220, 10, 2), 400);
+  assert.equal(scaleRaidBossHp(220, 10, 3), 490);
+  assert.equal(scaleRaidBossHp(220, 20, 3), 670);
+  assert.equal(scaleRaidBossHp(220, 10, 1), 400);
+});
+
+test('final dungeon boss enrage and special attack thresholds are deterministic', () => {
+  assert.equal(isFinalDungeonBossEnraged(5, 5, 50, 100), true);
+  assert.equal(isFinalDungeonBossEnraged(5, 5, 51, 100), false);
+  assert.equal(isFinalDungeonBossEnraged(4, 5, 1, 100), false);
+  assert.equal(shouldFinalDungeonBossSpecialAttack(5, 5, 3), true);
+  assert.equal(shouldFinalDungeonBossSpecialAttack(5, 5, 6), true);
+  assert.equal(shouldFinalDungeonBossSpecialAttack(5, 5, 2), false);
+  assert.equal(shouldFinalDungeonBossSpecialAttack(4, 5, 3), false);
+});
+
+test('final dungeon boss attack profile applies its 1.35 multiplier, enrage and periodic special bonus', () => {
+  const regular = calculateFinalDungeonBossRawDamage(10, {
+    floor: 4, totalFloors: 5, turn: 2, enraged: false, specialAttack: false, phase: 1
+  });
+  const finalBoss = calculateFinalDungeonBossRawDamage(10, {
+    floor: 5, totalFloors: 5, turn: 3, enraged: true, specialAttack: true, phase: 3
+  });
+  assert.equal(regular, 10);
+  assert.equal(finalBoss, 35);
+  assert.ok(finalBoss > regular);
+});
+
+test('defending action reduces incoming damage by 55 percent and keeps a one-damage minimum', () => {
+  assert.equal(applyDefendingReduction(100, false), 100);
+  assert.equal(applyDefendingReduction(100, true), 45);
+  assert.equal(applyDefendingReduction(1, true), 1);
+  assert.equal(applyDefendingReduction(0, true), 1);
+});
+
+test('dungeon event roll deterministically distinguishes hidden chests, traps and no event', () => {
+  assert.equal(getDungeonEventOutcome(0.1), 'hidden_chest');
+  assert.equal(getDungeonEventOutcome(0.2399), 'hidden_chest');
+  assert.equal(getDungeonEventOutcome(0.24), 'trap');
+  assert.equal(getDungeonEventOutcome(0.4199), 'trap');
+  assert.equal(getDungeonEventOutcome(0.42), 'none');
+});
+
+test('party role assignments reject duplicate or unknown roles and preserve the three role multipliers', () => {
+  assert.equal(canAssignPartyRole([], 'tank'), true);
+  assert.equal(canAssignPartyRole(['tank'], 'tank'), false);
+  assert.equal(canAssignPartyRole(['tank'], 'healer'), true);
+  assert.equal(canAssignPartyRole(['tank','healer'], 'damage'), true);
+  assert.equal(canAssignPartyRole([], 'wizard'), false);
+  assert.deepEqual(getPartyRoleModifiers('tank'), { hp: 1.25, attack: 0.85, defense: 1.4 });
+  assert.deepEqual(getPartyRoleModifiers('healer'), { hp: 1, attack: 0.9, defense: 1.05 });
+  assert.deepEqual(getPartyRoleModifiers('damage'), { hp: 0.95, attack: 1.3, defense: 0.9 });
+});
+
+test('party wipe is reported only when every member has zero or less HP', () => {
+  assert.equal(isPartyWiped([0, 0, 0]), true);
+  assert.equal(isPartyWiped([-1, 0, 0]), true);
+  assert.equal(isPartyWiped([1, 0, 0]), false);
+  assert.equal(isPartyWiped([]), false);
 });
