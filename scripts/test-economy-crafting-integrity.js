@@ -45,6 +45,9 @@ test('crafting validates bounded quantities and serializes the player before mat
   assert.match(craft, /if \(!consumed\.rowCount\) throw new Error/);
   assert.match(craft, /await db\.query\('ROLLBACK'\)/);
   assert.match(craft, /if \(!playerLock\.rowCount\)/);
+  assert.match(craft, /WITH craft_input AS/);
+  assert.match(craft, /craft_input\.craft_xp::numeric/);
+  assert.doesNotMatch(craft, /VALUES\(\$1,\$2,\$3,GREATEST\(1,FLOOR\(\$3\/100\.0/);
 });
 
 test('trade offers reserve only unexpired copies using the database clock', async () => {
