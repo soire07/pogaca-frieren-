@@ -124,3 +124,46 @@ test('single-use Discord link codes connect only the intended profile to a web a
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
   }
 });
+
+test('concurrent Discord link redemption is single-use and dashboards cannot expose another account', async () => {
+  assertIsolatedAuditDatabase();
+  await initDatabase();
+  await ensureAdventurerPlatformTables(pool);
+  const guildId='99000000000000104';
+  const userId=makeIds('73000000000000000',1)[0];
+  const accountId='site_'+randomUUID();
+  const unrelatedAccountId='site_'+randomUUID();
+  await ensureUser(guildId,userId);
+  try {
+    await pool.query(
+      "UPDATE users SET character_name='Fern',class_name='Büyücü',level=12,xp=900,coins=450 WHERE guild_id=$1 AND user_id=$2",
+      [guildId,userId]
+    );
+    const {token}=await createSiteLinkToken(pool,{guildId,userId});
+    const outcomes=await Promise.all([
+      redeemSiteLinkToken(pool,accountId,token),
+      redeemSiteLinkToken(pool,accountId,token)
+    ]);
+    assert.equal(outcomes.filter(value=>value.status==='linked').length,1,
+      'a token may establish exactly one link under concurrent redemption');
+    assert.equal(outcomes.filter(value=>value.status==='invalid_or_expired').length,1,
+      'the second redemption must observe the consumed token');
+
+    const [ownerDashboard,unrelatedDashboard]=await Promise.all([
+      getAdventurerDashboard(pool,accountId),
+      getAdventurerDashboard(pool,unrelatedAccountId)
+    ]);
+    assert.equal(ownerDashboard.profiles.length,1);
+    assert.equal(ownerDashboard.profiles[0].character_name,'Fern');
+    assert.equal(Number(ownerDashboard.profiles[0].coins),450);
+    assert.equal(unrelatedDashboard.profiles.length,0,
+      'an unrelated web account must not receive another account\'s linked Discord profile');
+    assert.equal(unrelatedDashboard.events.length,0);
+  } finally {
+    await pool.query('DELETE FROM site_discord_links WHERE account_id=ANY($1::text[])',[[
+      accountId.slice(5),unrelatedAccountId.slice(5)
+    ]]);
+    await pool.query('DELETE FROM site_link_tokens WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+    await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+  }
+});
