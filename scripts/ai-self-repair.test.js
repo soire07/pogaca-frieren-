@@ -141,6 +141,45 @@ test('repair patch generation requires the shared configured model client', asyn
   );
 });
 
+test('repair patch rejects file headers that contain no unified-diff hunk or changed lines', () => {
+  const headerOnly = [
+    'diff --git a/rpg-mechanics.js b/rpg-mechanics.js',
+    '--- a/rpg-mechanics.js',
+    '+++ b/rpg-mechanics.js',
+  ].join('\\n');
+  const emptyHunk = [
+    'diff --git a/rpg-mechanics.js b/rpg-mechanics.js',
+    '--- a/rpg-mechanics.js',
+    '+++ b/rpg-mechanics.js',
+    '@@ -1 +1 @@',
+    ' unchanged context only',
+  ].join('\\n');
+  assert.throws(() => validatePatchPaths(headerOnly), { message: 'REPAIR_PATCH_HUNK_REQUIRED' });
+  assert.throws(() => validatePatchPaths(emptyHunk), { message: 'REPAIR_PATCH_HUNK_REQUIRED' });
+});
+
+test('repair generation retries a malformed header-only diff before invoking git apply', async () => {
+  let completions = 0;
+  let applyChecks = 0;
+  const client = { chat: { completions: { async create() {
+    completions += 1;
+    return { choices: [{ message: { content: completions === 1
+      ? 'diff --git a/rpg-mechanics.js b/rpg-mechanics.js\\n--- a/rpg-mechanics.js\\n+++ b/rpg-mechanics.js'
+      : validPatch }, finish_reason: 'stop' }] };
+  } } } };
+  const execFile = args => {
+    if (args[0] === 'status' && args[1] === '--porcelain') return '';
+    if (args[0] === 'apply' && args[1] === '--check') { applyChecks += 1; return ''; }
+    return '';
+  };
+  const proposal = await generateRepairPatchWithRetry({
+    task: 'fix the readiness check', client, context: 'const ready = false;', execFile,
+  });
+  assert.deepEqual(proposal.files, ['rpg-mechanics.js']);
+  assert.equal(completions, 2);
+  assert.equal(applyChecks, 1);
+});
+
 test('repair patch generation uses the injected client and validates the returned diff', async () => {
   let request;
   const client = {
