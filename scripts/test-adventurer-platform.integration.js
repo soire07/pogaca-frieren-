@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { initDatabase, pool, ensureUser } from '../database/db.js';
 import {
-  ensureAdventurerPlatformTables, settleArenaMatch, createGuildEvent, joinGuildEvent,
-  leaveGuildEvent, listGuildEvents, createSiteLinkToken, redeemSiteLinkToken, getAdventurerDashboard
+  ensureAdventurerPlatformTables, ensureActiveArenaSeason, getArenaRating, getArenaRankName,
+  settleArenaMatch, createGuildEvent, joinGuildEvent, leaveGuildEvent, listGuildEvents,
+  createSiteLinkToken, redeemSiteLinkToken, getAdventurerDashboard
 } from '../adventurer-platform.js';
 
 function assertIsolatedAuditDatabase() {
@@ -67,6 +68,46 @@ test('arena season MMR and rewards settle atomically and only once', async () =>
   }
 });
 
+test('arena rank mapping has six stable tiers at every boundary', () => {
+  const tiers = [
+    [0,'Bronz'],[999,'Bronz'],[1000,'Gümüş'],[1199,'Gümüş'],
+    [1200,'Altın'],[1399,'Altın'],[1400,'Platin'],[1599,'Platin'],
+    [1600,'Elmas'],[1799,'Elmas'],[1800,'Efsane'],[5000,'Efsane']
+  ];
+  for (const [rating, expected] of tiers) assert.equal(getArenaRankName(rating), expected, 'rating ' + rating);
+});
+
+test('arena seasons last ninety days, rotate when expired and keep MMR season-scoped', async () => {
+  assertIsolatedAuditDatabase();
+  await initDatabase();
+  await ensureAdventurerPlatformTables(pool);
+  const guildId='99000000000000104';
+  const userId=makeIds('74000000000000000',1)[0];
+  await ensureUser(guildId,userId);
+  try {
+    const first = await ensureActiveArenaSeason(pool,guildId);
+    const firstDays = (new Date(first.ends_at).getTime() - new Date(first.starts_at).getTime()) / 86_400_000;
+    assert.ok(Math.abs(firstDays - 90) < 0.001, 'new season must last exactly 90 days');
+    await pool.query('INSERT INTO arena_ratings(season_id,guild_id,user_id,rating,wins) VALUES($1,$2,$3,1650,4)',[first.season_id,guildId,userId]);
+    await pool.query("UPDATE arena_seasons SET ends_at=NOW()-INTERVAL '1 second' WHERE season_id=$1",[first.season_id]);
+    const second = await ensureActiveArenaSeason(pool,guildId);
+    assert.notEqual(second.season_id,first.season_id);
+    const old = await pool.query('SELECT status,rating FROM arena_seasons s JOIN arena_ratings r USING(season_id) WHERE s.season_id=$1 AND r.user_id=$2',[first.season_id,userId]);
+    assert.equal(old.rows[0]?.status,'completed');
+    assert.equal(Number(old.rows[0]?.rating),1650);
+    const current = await getArenaRating(pool,guildId,userId);
+    assert.equal(Number(current.rating),1000);
+    assert.equal(current.rank,'Gümüş');
+    const active = await pool.query("SELECT COUNT(*)::int AS count FROM arena_seasons WHERE guild_id=$1 AND status='active'",[guildId]);
+    assert.equal(active.rows[0].count,1);
+    const secondDays = (new Date(second.ends_at).getTime() - new Date(second.starts_at).getTime()) / 86_400_000;
+    assert.ok(Math.abs(secondDays - 90) < 0.001);
+  } finally {
+    await pool.query('DELETE FROM arena_seasons WHERE guild_id=$1',[guildId]);
+    await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+  }
+});
+
 test('event calendar enforces idempotent registration, capacity and concurrent seat claims', async () => {
   assertIsolatedAuditDatabase();
   await initDatabase();
@@ -105,9 +146,15 @@ test('single-use Discord link codes connect only the intended profile to a web a
   const guildId='99000000000000103';
   const userId=makeIds('73000000000000000',1)[0];
   const accountId='site_'+randomUUID();
+  let eventId;
   await ensureUser(guildId,userId);
   try {
     await pool.query("UPDATE users SET character_name='Test Maceracı',class_name='Büyücü',level=7,xp=360,coins=125,hp=80,mana=60 WHERE guild_id=$1 AND user_id=$2",[guildId,userId]);
+    const season = await ensureActiveArenaSeason(pool,guildId);
+    await pool.query('INSERT INTO arena_ratings(season_id,guild_id,user_id,rating,wins,losses,matches,points) VALUES($1,$2,$3,1850,3,1,4,9)',[season.season_id,guildId,userId]);
+    const start=new Date(Date.now()+60*60_000).toISOString();
+    const end=new Date(Date.now()+2*60*60_000).toISOString();
+    eventId=(await createGuildEvent(pool,{guildId,createdBy:userId,title:'Dashboard Test Etkinliği',description:'Panel takvim doğrulaması',startsAt:start,endsAt:end,maxParticipants:5})).eventId;
     const {token}=await createSiteLinkToken(pool,{guildId,userId});
     const linked=await redeemSiteLinkToken(pool,accountId,token);
     assert.equal(linked.status,'linked');
@@ -118,9 +165,17 @@ test('single-use Discord link codes connect only the intended profile to a web a
     assert.equal(dashboard.profiles.length,1);
     assert.equal(dashboard.profiles[0].character_name,'Test Maceracı');
     assert.equal(Number(dashboard.profiles[0].level),7);
+    assert.equal(Number(dashboard.profiles[0].rating),1850);
+    assert.equal(dashboard.profiles[0].rank_name,'Efsane');
+    assert.equal(dashboard.profiles[0].season_name,season.name);
+    assert.equal(dashboard.events.length,1);
+    assert.equal(dashboard.events[0].event_id,eventId);
+    assert.equal(dashboard.events[0].title,'Dashboard Test Etkinliği');
   } finally {
+    if(eventId) await pool.query('DELETE FROM guild_events WHERE event_id=$1',[eventId]);
     await pool.query('DELETE FROM site_discord_links WHERE account_id=$1',[accountId.slice(5)]);
     await pool.query('DELETE FROM site_link_tokens WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+    await pool.query('DELETE FROM arena_seasons WHERE guild_id=$1',[guildId]);
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
   }
 });
