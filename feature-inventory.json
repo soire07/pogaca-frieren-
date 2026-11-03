@@ -588,11 +588,12 @@
       "category": "Co-op",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Co-op source-contract checks verify invite acceptance is restricted to invited users, duplicate/bot teammates are rejected, and party options are registered."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -601,11 +602,12 @@
       "category": "Co-op",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Co-op source-contract checks cover turn ownership, living-player eligibility, action choices, and the isolated command test harness; live Discord E2E remains unverified."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1065,11 +1067,12 @@
       "category": "Co-op",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify five-floor dungeon loop and the isolated command runner contract; live Discord E2E remains unverified."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1078,11 +1081,12 @@
       "category": "Co-op",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify up to three teammate slots and invite controls."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1091,11 +1095,12 @@
       "category": "Co-op",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify all party members must accept and role selection must complete before combat."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1156,11 +1161,12 @@
       "category": "Boss",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify the final-floor boss encounter and its distinct boss catalog."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1196,11 +1202,12 @@
       "category": "Co-op",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify role-based cooperative boss command and party setup."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1209,11 +1216,12 @@
       "category": "Co-op",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify teammate invite slots and acceptance controls for cooperative raids."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1222,11 +1230,12 @@
       "category": "Co-op",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify raid members must accept before the encounter begins."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1235,11 +1244,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify tank/healer role selection and unique role assignment."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1261,11 +1271,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify tank role behavior is wired into combat resolution."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1274,11 +1285,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify healer action and class-adjusted healing are wired into co-op combat."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1313,11 +1325,12 @@
       "category": "Dungeon",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify floor trap events are part of the dungeon route event flow."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1392,11 +1405,12 @@
       "category": "Dungeon",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify each invited dungeon player selects a role and tank/healer uniqueness is enforced."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1405,11 +1419,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify tank role assignment is consumed by dungeon combat."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1418,11 +1433,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify healer actions and class-adjusted healing are wired into dungeon combat."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1470,11 +1486,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify attack, spell, heal, shield and defend action controls in dungeon combat."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1483,11 +1500,12 @@
       "category": "Magic",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify dungeon Zoltraak action, mana-cost checks and class-adjusted spell costs."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1509,11 +1527,12 @@
       "category": "Dungeon",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify every invited dungeon participant must select their own role."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1522,11 +1541,12 @@
       "category": "Boss",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify every invited raid participant must select their own role."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1548,11 +1568,12 @@
       "category": "Boss",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify raid attack, Zoltraak and defense actions are exposed."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1561,11 +1582,12 @@
       "category": "Magic",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify persistent mana is read and spent for cooperative raid spell actions."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1574,11 +1596,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify player defense choices feed raid damage resolution."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1587,11 +1610,12 @@
       "category": "Boss",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify area boss attack and living-party member targeting in raid flow."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1639,11 +1663,12 @@
       "category": "Magic",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify Heilen action, mana validation and class-adjusted healing in cooperative combat."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -1652,11 +1677,12 @@
       "category": "Magic",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify mana shield action, mana validation and damage-reduction wiring in cooperative combat."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -2150,11 +2176,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify talent ranks persist and use level-earned skill points."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -2241,11 +2268,12 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify persistent adventure journal and discovery collection output."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -2306,11 +2334,12 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify journal output includes route visits, mastery and next reward progress."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -2384,11 +2413,12 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify guild-scoped discovery leaderboard."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -2397,11 +2427,12 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify guild-scoped route mastery leaderboard."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -2410,11 +2441,12 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify guild-scoped daily streak leaderboard."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -2423,11 +2455,12 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify exploration leaderboard category selection."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -2592,11 +2625,12 @@
       "category": "RPG",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify combined adventure progression dashboard aggregation."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -2605,11 +2639,12 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify total adventure count, highest route visits and discovery progress aggregation."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -2618,11 +2653,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify streak, fragments, opened chests and chest inventory are aggregated."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -2631,11 +2667,12 @@
       "category": "RPG",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify adventure timestamp and current RPG progression are included in the summary."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -2657,11 +2694,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify private recent treasure history listing."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -2670,11 +2708,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify stable timestamp/record ordering for treasure history."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -2904,11 +2943,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify latest-five adventure history output."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -2917,11 +2957,12 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify relative encounter time and first-discovery highlighting."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -3099,11 +3140,12 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify recipe catalog includes ingredients, requirements and equipment bonuses."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -3203,11 +3245,12 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify crafting profession leaderboard by level."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -3216,11 +3259,12 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify crafting profession leaderboard by XP."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -3229,11 +3273,12 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify crafting profession leaderboard by crafted count."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -3242,11 +3287,12 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify crafting leaderboard category selector."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -3307,11 +3353,12 @@
       "category": "RPG",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify crafting profession level is included in combined adventure history."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -3320,11 +3367,12 @@
       "category": "RPG",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify total crafting XP is included in combined adventure history."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -3333,11 +3381,12 @@
       "category": "RPG",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify crafted equipment total is included in combined profile output."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -3463,11 +3512,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify daily crafting mission progress and remaining target output."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -3541,11 +3591,12 @@
       "category": "Crafting",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify recipe catalog displays crafting level requirements."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -3684,11 +3735,12 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify recent adventure history rare-location filter."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -3697,11 +3749,12 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify recent adventure history item-found filter."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
@@ -3710,11 +3763,12 @@
       "category": "Social",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "isolated_command_postgresql",
         "tests": [
-          "scripts/test-discord-scenarios.js"
+          "scripts/live-command-test.js"
         ],
-        "scope": "Source-contract checks verify history filters can be combined with another player's public profile."
+        "scope": "Gerçek komut execute akışı sentetik Discord etkileşimleriyle çalıştırılır; yanıt/embeds ve izole PostgreSQL kayıtları doğrulanır. Canlı Discord, üretim veritabanı ve Render kullanılmaz.",
+        "notes": "Bu özellik için kaynak-kod sözleşmesi kanıtı, izole komut davranışı ve ilgili kalıcı durum kontrolleriyle desteklendi."
       }
     },
     {
