@@ -750,6 +750,78 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Takas teklifinin kalıcı kaydı', expected: 'alıcıya 1 Test Fern için bekleyen teklif oluşturulmalı', actual: offer.rows[0] ? offer.rows[0].status + ' / ' + offer.rows[0].amount : 'teklif yok', passed: offer.rowCount === 1 && offer.rows[0].to_user_id === '900000000000000001' && offer.rows[0].status === 'pending' && Number(offer.rows[0].amount) === 1 },
             { name: 'Takas teklifi kopyayı önceden taşımaz', expected: 'teklif kabul edilene kadar gönderenin 3 kopyası korunmalı', actual: String(collection.rows[0]?.quantity ?? 0), passed: Number(collection.rows[0]?.quantity) === 3 && payloadText.includes('Karakter Takas Teklifi') && payloadText.includes('trade_accept:') }
           );
+        } else if (commandName === 'katlizindan' || commandName === 'ortakboss') {
+          const ids = buildCoopTestUserIds(index, userId);
+          const players = ids.map((id, playerIndex) => ({
+            id,
+            username: 'FrierenParty' + playerIndex,
+            tag: 'FrierenParty' + playerIndex + '#0001',
+            bot: false,
+            displayAvatarURL: () => 'https://example.com/party-avatar.png',
+            toString() { return '<@' + id + '>'; }
+          }));
+          for (const id of ids) await ensureUser(guildId, id);
+          await pool.query(
+            'UPDATE users SET level=30,xp=90000,coins=0,hp=2000,max_hp=2000,mana=500,max_mana=500,attack=250,defense=80,last_dungeon_at=NULL,last_boss_at=NULL WHERE guild_id=$1 AND user_id=ANY($2::text[])',
+            [guildId, ids]
+          );
+          const overrides = {
+            takim_arkadasi: players[1],
+            takim_arkadasi_2: players[2],
+            zorluk: 'normal'
+          };
+          const actionEffects = [];
+          const interaction = makeInteraction(
+            command,
+            buildOptions(schema?.options, overrides),
+            guildId,
+            actionEffects,
+            { users: players }
+          );
+          interaction.user.id = userId;
+          interaction.user.username = players[0].username;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          effects.push(...actionEffects);
+          const state = await pool.query(
+            'SELECT user_id,xp,coins,hp,max_hp,mana,max_mana,dungeon_wins,boss_defeats,last_dungeon_at,last_boss_at FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id',
+            [guildId, ids]
+          );
+          const reservations = await pool.query(
+            'SELECT COUNT(*)::int AS count FROM active_rpg_encounters WHERE guild_id=$1 AND user_id=ANY($2::text[])',
+            [guildId, ids]
+          );
+          const payloadText = payloadTextFromEffects(actionEffects);
+          const dungeonMode = commandName === 'katlizindan';
+          const winField = dungeonMode ? 'dungeon_wins' : 'boss_defeats';
+          const cooldownField = dungeonMode ? 'last_dungeon_at' : 'last_boss_at';
+          const allPlayersWon = state.rowCount === ids.length && state.rows.every(row =>
+            Number(row[winField]) >= 1 && Number(row.xp) > 90000 && Number(row.coins) > 0 && row[cooldownField] != null
+          );
+          behavioralChecks.push(
+            {
+              name: dungeonMode ? 'Beş katlı ortak zindan gerçek parti akışı' : 'Ortak boss baskını gerçek parti akışı',
+              expected: 'Üç oyuncu daveti kabul etmeli, kendi tank/şifacı/hasar rollerini seçmeli ve karşılaşmayı tamamlamalı',
+              actual: state.rows.length + '/' + ids.length + ' oyuncu; ' + (payloadText.includes('Muhafız') && payloadText.includes('Şifacı') && payloadText.includes('Hasar Ustası') ? 'üç rol de yanıtta' : 'rol yanıtı eksik'),
+              passed: allPlayersWon && payloadText.includes(players[1].username) && payloadText.includes(players[2].username) &&
+                payloadText.includes('Muhafız') && payloadText.includes('Şifacı') && payloadText.includes('Hasar Ustası')
+            },
+            {
+              name: dungeonMode ? 'Zindan XP/altın/HP-mana kalıcılığı' : 'Raid XP/altın/HP-mana kalıcılığı',
+              expected: 'Her katılımcının ödülü kaydedilmeli; HP ve mana taban sınırlarında kalmalı',
+              actual: state.rows.map(row => row.user_id + ': XP ' + row.xp + ', altın ' + row.coins + ', HP ' + row.hp + '/' + row.max_hp + ', mana ' + row.mana + '/' + row.max_mana).join(' | '),
+              passed: allPlayersWon && state.rows.every(row =>
+                Number(row.hp) >= 0 && Number(row.hp) <= Number(row.max_hp) &&
+                Number(row.mana) >= 0 && Number(row.mana) <= Number(row.max_mana)
+              )
+            },
+            {
+              name: 'Ortak karşılaşma rezervasyonlarının temizlenmesi',
+              expected: 'Tamamlanan karşılaşma sonrası üç oyuncunun aktif kilidi kalmamalı',
+              actual: String(reservations.rows[0]?.count ?? 'kayıt yok'),
+              passed: Number(reservations.rows[0]?.count) === 0
+            }
+          );
         } else if (commandName === 'zindan') {
           const before = await pool.query('SELECT coins,xp,level,hp,dungeon_runs FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
