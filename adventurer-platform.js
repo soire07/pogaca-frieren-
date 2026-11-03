@@ -265,14 +265,16 @@ export async function listGuildEvents(db = pool,guildId,limit=10) {
 
 export async function joinGuildEvent(db = pool,{guildId,eventId,userId}) {
   if(!DISCORD_ID.test(String(guildId||''))||!DISCORD_ID.test(String(userId||''))) throw new Error('EVENT_INPUT_INVALID');
+  await ensureUser(guildId,userId);
   const client=await db.connect();
   try {
     await client.query('BEGIN');
     const event=await client.query("SELECT event_id,max_participants FROM guild_events WHERE event_id=$1 AND guild_id=$2 AND status='scheduled' AND starts_at>NOW() FOR UPDATE",[eventId,guildId]);
     if(!event.rowCount){await client.query('ROLLBACK');return {status:'unavailable'};}
+    const existing=await client.query('SELECT 1 FROM guild_event_participants WHERE event_id=$1 AND user_id=$2',[eventId,userId]);
+    if(existing.rowCount){await client.query('ROLLBACK');return {status:'already_joined'};}
     const count=await client.query('SELECT COUNT(*)::int AS count FROM guild_event_participants WHERE event_id=$1',[eventId]);
     if(event.rows[0].max_participants&&count.rows[0].count>=event.rows[0].max_participants){await client.query('ROLLBACK');return {status:'full'};}
-    await ensureUser(guildId,userId);
     const inserted=await client.query('INSERT INTO guild_event_participants(event_id,guild_id,user_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING user_id',[eventId,guildId,userId]);
     await client.query('COMMIT');
     return {status:inserted.rowCount?'joined':'already_joined'};
