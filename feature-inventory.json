@@ -43,9 +43,10 @@
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
-          "scripts/test-boss-combat.js"
+          "scripts/test-boss-combat.js",
+          "scripts/test-utils.js"
         ],
-        "scope": "Progression milestone tests verify level thresholds and one-time unlock behavior; XP curve implementation is not exhaustively runtime-tested."
+        "scope": "Unit tests exercise levelForXp and xpForNextLevel at exact boundaries and verify their inverse relationship; progression milestone title checks are separate. The full production level-up flow is not exhaustively runtime-tested."
       }
     },
     {
@@ -165,11 +166,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "unit_and_source_contract",
+        "level": "postgresql_integration_and_unit",
         "tests": [
-          "scripts/test-boss-combat.js"
+          "scripts/test-boss-combat.js",
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Solo-boss reward, defeat, timeout and battle-session idempotency checks; these are automated unit/source-contract tests, not live Discord E2E."
+        "scope": "Unit/source checks cover solo boss victory, defeat, timeout and battle-session idempotency; real PostgreSQL integration invokes the production reward transaction under concurrent claims and forced inventory failure. Combat button flow remains synthetic/source-tested, not live Discord E2E."
       }
     },
     {
@@ -204,11 +206,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "unit_and_source_contract",
+        "level": "postgresql_integration_and_unit",
         "tests": [
-          "scripts/test-boss-combat.js"
+          "scripts/test-boss-combat.js",
+          "scripts/test-market-concurrency.integration.js"
         ],
-        "scope": "Solo boss reward transaction, defeat/timeout no-reward paths and duplicate-claim protection are tested; permanent bonus balance is not fully verified."
+        "scope": "Unit/source checks cover solo boss reward paths; real PostgreSQL integration verifies solo, co-op raid and layered-dungeon reward settlement is single-use under concurrency and rolls back player progression/loot atomically on persistence failure. Not live Discord E2E."
       }
     },
     {
@@ -624,11 +627,12 @@
       "category": "Co-op",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
+          "scripts/test-market-concurrency.integration.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify co-op reward settlement paths and distinct raid loot identifiers; live loot-roll behavior remains unverified."
+        "scope": "Real PostgreSQL integration settles a full co-op dungeon victory for two players and verifies each participant receives chest, rare-loot and crafting-material rewards exactly once; source tests cover the dungeon interaction path. Synthetic interactions, not live Discord E2E."
       }
     },
     {
@@ -745,12 +749,12 @@
       "category": "Collection",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "unit_and_source_contract",
+        "level": "postgresql_integration",
         "tests": [
-          "scripts/test-utils.js",
-          "scripts/test-discord-scenarios.js"
+          "scripts/test-market-concurrency.integration.js",
+          "scripts/test-utils.js"
         ],
-        "scope": "Character catalog tests verify every rarity used by collection filters has matching catalog entries; filter interaction behavior itself is not exhaustively tested."
+        "scope": "Real PostgreSQL integration executes the production collection command with a rarity filter and verifies the selected rarity is rendered while another guild's character is excluded. Catalog rarity coverage is also unit-tested."
       }
     },
     {
@@ -892,11 +896,12 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "unit_and_source_contract",
+        "level": "isolated_command_contract",
         "tests": [
-          "scripts/live-command-test.js"
+          "scripts/live-command-test.js",
+          "scripts/test-command-test-evidence.js"
         ],
-        "scope": "Isolated command audit includes boss-statistics command assertions against disposable PostgreSQL; synthetic interactions only."
+        "scope": "The isolated command audit runs the production statistics command against disposable frieren_test PostgreSQL and checks boss-victory statistics in its command-specific behavioral assertions. Synthetic Discord interaction, not live Discord E2E."
       }
     },
     {
@@ -905,11 +910,12 @@
       "category": "Co-op",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "unit_and_source_contract",
+        "level": "isolated_command_contract",
         "tests": [
-          "scripts/live-command-test.js"
+          "scripts/live-command-test.js",
+          "scripts/test-command-test-evidence.js"
         ],
-        "scope": "Isolated command audit includes cooperative dungeon attempt/victory statistics checks against disposable PostgreSQL; synthetic interactions only."
+        "scope": "The isolated command audit runs the production statistics command against disposable frieren_test PostgreSQL and checks co-op dungeon attempt/victory counters in command-specific behavioral assertions. Synthetic Discord interaction, not live Discord E2E."
       }
     },
     {
@@ -918,11 +924,12 @@
       "category": "RPG",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "unit_and_source_contract",
+        "level": "isolated_command_contract",
         "tests": [
-          "scripts/live-command-test.js"
+          "scripts/live-command-test.js",
+          "scripts/test-command-test-evidence.js"
         ],
-        "scope": "Isolated command audit checks exploration, item-use and character-draw statistics through synthetic Discord interactions and disposable PostgreSQL."
+        "scope": "The isolated command audit checks exploration, item-use and character-draw statistics using seeded disposable frieren_test records and command-specific response assertions. Synthetic Discord interaction, not live Discord E2E."
       }
     },
     {
@@ -931,11 +938,12 @@
       "category": "RPG",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "unit_and_source_contract",
+        "level": "isolated_command_contract",
         "tests": [
-          "scripts/live-command-test.js"
+          "scripts/live-command-test.js",
+          "scripts/test-command-test-evidence.js"
         ],
-        "scope": "Isolated command audit checks spell mastery and equipped-gear summary output; synthetic interactions only."
+        "scope": "The isolated command audit checks learned-spell mastery and equipped-gear summary output against disposable frieren_test PostgreSQL with command-specific response assertions. Synthetic Discord interaction, not live Discord E2E."
       }
     },
     {
@@ -1160,11 +1168,12 @@
       "category": "Loot",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "postgresql_integration",
         "tests": [
+          "scripts/test-market-concurrency.integration.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Source-contract checks verify full-run dungeon settlement and reward persistence; exact shared-drop runtime distribution remains unverified."
+        "scope": "Real PostgreSQL integration invokes production layered-dungeon settlement for a multi-player victory and verifies each player receives the shared rare loot, chest rewards and crafting materials once; source checks cover the full dungeon flow."
       }
     },
     {
@@ -3736,11 +3745,11 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
           "scripts/test-gameplay-persistence.js"
         ],
-        "scope": "Set bonus helper tests and source-wiring checks verify exploration effective HP/Mana/defense calculation entry points; complete live exploration flow remains unverified."
+        "scope": "Unit tests verify base-stat HP/Mana ratio normalization and equipment-set bonus calculation; source wiring checks cover exploration effective-stat integration. All class/build/talent combinations are not exhaustively exercised."
       }
     },
     {
@@ -3749,11 +3758,11 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
           "scripts/test-gameplay-persistence.js"
         ],
-        "scope": "Unit tests verify persistent HP/Mana ratios remain within base caps; party-role/equipment/talent combinations across live dungeon/raid flows remain unverified."
+        "scope": "Unit tests verify HP/Mana ratios remain proportional and within base caps; source wiring checks cover temporary-stat persistence across dungeon/raid consumers. Full role/equipment/talent combinations remain unverified."
       }
     },
     {
@@ -3762,11 +3771,11 @@
       "category": "Combat",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
           "scripts/test-gameplay-persistence.js"
         ],
-        "scope": "Unit tests verify HP/Mana ratio normalization and source wiring for profile, exploration and boss consumers; cross-command live E2E remains unverified."
+        "scope": "Unit tests verify HP/Mana ratio normalization and set-bonus behavior; source wiring checks cover profile, exploration and boss consumers. Cross-command live E2E remains unverified."
       }
     },
     {
@@ -3801,11 +3810,12 @@
       "category": "Progression",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
-          "scripts/test-gameplay-persistence.js"
+          "scripts/test-gameplay-persistence.js",
+          "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Set-bonus source-wiring checks verify exploration effective-stat calculation entry points; talent-rank combinations remain unverified."
+        "scope": "Unit tests verify effective-stat HP/Mana normalization and set-bonus activation/removal; source-contract checks verify talent ranks feed exploration effective stats. All talent-rank combinations are not runtime-tested."
       }
     },
     {
@@ -3853,11 +3863,12 @@
       "category": "Exploration",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "source_contract",
+        "level": "unit_and_source_contract",
         "tests": [
-          "scripts/test-gameplay-persistence.js"
+          "scripts/test-gameplay-persistence.js",
+          "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Unit/source-wiring checks verify active equipment set helper activation/removal and exploration outcome summary integration points; live interaction remains unverified."
+        "scope": "Unit tests verify active equipment set bonuses and their removal; source-contract checks verify the exploration outcome summary includes the active bonus. Live interaction rendering remains unverified."
       }
     },
     {
@@ -17684,7 +17695,7 @@
     }
   ],
   "count": 2000,
-  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification. Roadmap expansion (2026-11-03): added 1,675 distinct player-facing feature candidates across 25 Frieren RPG domains. All added entries are explicitly status=planned and are not implemented/test evidence. Roadmap count is a planning target, not a completion claim. All 325 original feature rows now have a linked test/source evidence record (2026-11-03); scope limitations are stated per row. The 1,675 new roadmap rows remain planned and intentionally have no test evidence. RPG-002 profile evidence was upgraded to a dedicated PostgreSQL integration test because the command is internal-only and is not part of the 67-command public audit. Crafting/salvage evidence upgrade (2026-11-03): added disposable frieren_audit PostgreSQL command integrations for all ten recipe ingredient/output mappings, multi-quantity scaling, persisted rarity-weighted XP/profession/daily progress, advanced recipe level gates, deterministic level-4/5/10 refund boundaries, all ten salvage mappings, multi-copy proportional returns, equipped-item protection, and player-visible lifetime salvage totals. These use synthetic Discord interactions and are not live Discord E2E. Salvage catalog completeness fix (2026-11-03): /ekipmanparcala exposed all equipment catalog entries but lacked yields for the purchasable demon_armor and copper_ring items. Added partial recovery mappings and expanded the real PostgreSQL salvage matrix to exercise all twelve equipment types and multiple copies.",
+  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification. Roadmap expansion (2026-11-03): added 1,675 distinct player-facing feature candidates across 25 Frieren RPG domains. All added entries are explicitly status=planned and are not implemented/test evidence. Roadmap count is a planning target, not a completion claim. All 325 original feature rows now have a linked test/source evidence record (2026-11-03); scope limitations are stated per row. The 1,675 new roadmap rows remain planned and intentionally have no test evidence. RPG-002 profile evidence was upgraded to a dedicated PostgreSQL integration test because the command is internal-only and is not part of the 67-command public audit. Crafting/salvage evidence upgrade (2026-11-03): added disposable frieren_audit PostgreSQL command integrations for all ten recipe ingredient/output mappings, multi-quantity scaling, persisted rarity-weighted XP/profession/daily progress, advanced recipe level gates, deterministic level-4/5/10 refund boundaries, all ten salvage mappings, multi-copy proportional returns, equipped-item protection, and player-visible lifetime salvage totals. These use synthetic Discord interactions and are not live Discord E2E. Salvage catalog completeness fix (2026-11-03): /ekipmanparcala exposed all equipment catalog entries but lacked yields for the purchasable demon_armor and copper_ring items. Added partial recovery mappings and expanded the real PostgreSQL salvage matrix to exercise all twelve equipment types and multiple copies. Evidence classification refinement (2026-11-03): upgraded only rows with directly relevant existing unit, isolated-command behavioral, or real PostgreSQL assertions. Composite levels preserve source-contract limitations; synthetic Discord command audits are never labeled live Discord E2E.",
   "plannedFeatureCount": 1675,
   "originalFeatureEvidenceLinkedCount": 325
 }
