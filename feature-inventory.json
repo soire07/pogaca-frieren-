@@ -1024,7 +1024,10 @@
           "command": "zindan",
           "checks": [
             "Zindan davet paneli",
-            "Yanıtlanmayan davetin güvenli kapanması"
+            "Yanıtlanmayan davetin güvenli kapanması",
+            "Kabul edilen iki kişilik zindan savaşı",
+            "İki oyuncuya atomik ödül, ganimet ve bekleme süresi",
+            "Zindan eşzamanlı/tekrar ödül koruması"
           ]
         },
         {
