@@ -971,7 +971,11 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
         } else if (commandName === 'maceragecmisi') {
           const before = await pool.query('SELECT coins,xp,level,exploration_count FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           await pool.query(
-            "INSERT INTO adventure_history(guild_id,user_id,discovery_key,outcome_text,coins_awarded,xp_awarded,item_found,first_discovery,occurred_at) VALUES($1,$2,'forest-grimoire','Ordinary history entry',10,5,NULL,false,NOW()-INTERVAL '3 minutes'),($1,$2,'dragon-nest','Rare Dragon History',20,10,NULL,true,NOW()-INTERVAL '2 minutes'),($1,$2,'mimic-trail','Item Found History',30,15,'🧪 Test Potion',true,NOW()-INTERVAL '1 minute')",
+            "INSERT INTO adventure_history(guild_id,user_id,discovery_key,outcome_text,coins_awarded,xp_awarded,item_found,first_discovery,occurred_at) VALUES($1,$2,'forest-grimoire','Ordinary history entry',10,5,NULL,false,NOW()-INTERVAL '3 minutes'),($1,$2,'dragon-nest','Rare Dragon History',20,10,NULL,true,NOW()-INTERVAL '2 minutes'),($1,$2,'mimic-trail','Item Found History',30,15,'🧪 Test Potion',true,NOW()-INTERVAL '1 minute'),($1,$2,'forest-grimoire','Older History Entry 4',4,4,NULL,false,NOW()-INTERVAL '4 minutes'),($1,$2,'forest-grimoire','Older History Entry 5',5,5,NULL,false,NOW()-INTERVAL '5 minutes'),($1,$2,'forest-grimoire','Oldest History Excluded',6,6,NULL,false,NOW()-INTERVAL '6 minutes')",
+            [guildId, userId]
+          );
+          await pool.query(
+            'INSERT INTO user_crafting_progress(guild_id,user_id,level,xp,successful_crafts,salvaged_items) VALUES($1,$2,5,1234,9,4)',
             [guildId, userId]
           );
           const summaryStart = effects.length;
@@ -982,7 +986,8 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           const after = await pool.query('SELECT coins,xp,level,exploration_count FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const summaryText = JSON.stringify(effects.slice(summaryStart).map(effect => effect.payload));
           behavioralChecks.push(
-            { name: 'Macera geçmişi özet alanları', expected: 'ilerleme, savaş, macera, koleksiyon, hazırlık ve zanaat alanları gösterilmeli', actual: ['İlerleme','Savaş','Macera','Koleksiyon','Hazırlık','Zanaat'].filter(x => summaryText.includes(x)).join(', '), passed: ['İlerleme','Savaş','Macera','Koleksiyon','Hazırlık','Zanaat'].every(x => summaryText.includes(x)) },
+            { name: 'Macera geçmişi özet alanları ve zanaat değerleri', expected: 'ilerleme, savaş, macera, koleksiyon, hazırlık, seri ve zanaat sayıları gösterilmeli', actual: ['İlerleme','Savaş','Macera','Koleksiyon','Hazırlık','Günlük seri','Zanaat XP: **1.234**','Üretilen eşya: **9**','Parçalanan eşya: **4**'].filter(x => summaryText.includes(x)).join(', '), passed: ['İlerleme','Savaş','Macera','Koleksiyon','Hazırlık','Günlük seri','Zanaat XP: **1.234**','Üretilen eşya: **9**','Parçalanan eşya: **4**'].every(x => summaryText.includes(x)) },
+            { name: 'Son beş macera, göreli zaman ve ilk keşif vurgusu', expected: 'son beş kayıt gösterilmeli; altıncı kayıt gizlenmeli; zaman ve ilk keşif etiketi görünmeli', actual: (summaryText.includes('Oldest History Excluded') ? 'eski kayıt yanlışlıkla gösterildi' : 'son beş sınırı doğru') + '; ' + (summaryText.includes('<t:') ? 'göreli zaman var' : 'zaman yok') + '; ' + (summaryText.includes('Yeni keşif') ? 'ilk keşif vurgusu var' : 'ilk keşif vurgusu yok'), passed: !summaryText.includes('Oldest History Excluded') && summaryText.includes('Older History Entry 4') && summaryText.includes('Older History Entry 5') && summaryText.includes('<t:') && summaryText.includes('Yeni keşif') },
             { name: 'Macera geçmişi salt okunur', expected: 'oyuncu RPG durumu değişmemeli', actual: JSON.stringify(before.rows[0]) + ' → ' + JSON.stringify(after.rows[0]), passed: ['coins','xp','level','exploration_count'].every(key => Number(before.rows[0][key]) === Number(after.rows[0][key])) }
           );
           for (const filter of [
