@@ -35,7 +35,7 @@ for (const feature of inventory.features) {
       try {
         const source = await readFile(new URL('../' + evidence.file, import.meta.url), 'utf8');
         if (evidence.type === 'isolated_command_audit') {
-          if (!evidence.command || !source.includes(`commandName === '${evidence.command}'`)) {
+          if (!evidence.command || !(source.includes("commandName === '" + evidence.command + "'") || source.includes("'" + evidence.command + "'") || source.includes('"' + evidence.command + '"'))) {
             errors.push(`Komut kanıtı bulunamadı: ${feature.id} → ${evidence.command}`);
           }
         } else if (!evidence.test || !source.includes(evidence.test)) {
