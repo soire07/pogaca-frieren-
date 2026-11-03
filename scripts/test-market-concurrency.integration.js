@@ -18,6 +18,7 @@ import questChainCommand from '../gorevzinciri.js';
 import characterUpgradeCommand from '../karaktergelistir.js';
 import profileCommand from '../profil.js';
 import adventureCommand from '../macera.js';
+import { ADVENTURE_DISCOVERIES, COMPLETE_ADVENTURE_JOURNAL_REWARD } from '../adventure-data.js';
 import treasureCommand from '../hazineac.js';
 
 const dedicatedAuditDatabase = /^postgres(?:ql)?:\/\/postgres:postgres@localhost:5432\/frieren_audit(?:\?|$)/.test(
@@ -2041,5 +2042,276 @@ test('treasure opening rolls back chest consumption, loot history and rewards wh
       await pool.query('DROP FUNCTION IF EXISTS reject_treasure_loot_fixture()');
       await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
     }
+  });
+});
+
+
+test('adventure streak day transitions grant stacked daily, third-day and 7/14/30-day milestone rewards exactly once', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const scenarios = [
+      { days: 3, coins: 110, xp: 85 },
+      { days: 7, coins: 210, xp: 155 },
+      { days: 14, coins: 360, xp: 255 },
+      { days: 30, coins: 810, xp: 555 }
+    ];
+    const previousRandom = Math.random;
+    Math.random = () => 0.99;
+    try {
+      for (const scenario of scenarios) {
+        const guildId = 'adventure-streak-' + randomUUID();
+        const userId = 'adventure-streak-user-' + randomUUID();
+        await ensureUser(guildId, userId);
+        await pool.query(
+          "UPDATE users SET coins=0,xp=0,level=1,class_name='Gezgin',last_adventure_at=NULL WHERE guild_id=$1 AND user_id=$2",
+          [guildId, userId]
+        );
+        await pool.query(
+          'INSERT INTO adventure_streaks(guild_id,user_id,daily_streak,best_streak,last_visit_date) VALUES($1,$2,$3,$3,CURRENT_DATE-1)',
+          [guildId, userId, scenario.days - 1]
+        );
+        const responses = [];
+        await adventureCommand.execute({
+          guildId,
+          user: { id: userId, username: 'StreakTest' },
+          options: { getString: name => name === 'rota' ? 'mimic-trail' : null },
+          reply: async payload => { responses.push(payload); return payload; }
+        });
+        const [player, streak, history] = await Promise.all([
+          pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]),
+          pool.query('SELECT daily_streak,best_streak,last_visit_date FROM adventure_streaks WHERE guild_id=$1 AND user_id=$2', [guildId, userId]),
+          pool.query('SELECT coins_awarded,xp_awarded FROM adventure_history WHERE guild_id=$1 AND user_id=$2 ORDER BY id DESC LIMIT 1', [guildId, userId])
+        ]);
+        assert.equal(Number(streak.rows[0]?.daily_streak), scenario.days);
+        assert.equal(Number(streak.rows[0]?.best_streak), scenario.days);
+        assert.equal(Number(player.rows[0]?.coins), scenario.coins);
+        assert.equal(Number(player.rows[0]?.xp), scenario.xp);
+        assert.equal(Number(history.rows[0]?.coins_awarded), scenario.coins);
+        assert.equal(Number(history.rows[0]?.xp_awarded), scenario.xp);
+        const responseText = JSON.stringify(responses.map(response => response.embeds?.map(embed => embed.toJSON())));
+        assert.ok(responseText.includes('Günlük seri: **' + scenario.days + ' gün**'));
+        if (scenario.days === 3) assert.ok(responseText.includes('Seri ödülü: +50 altın, +30 XP'));
+        if (scenario.days === 7) assert.ok(responseText.includes('7 günlük rekor serisi kilometre taşı'));
+        if (scenario.days === 14) assert.ok(responseText.includes('14 günlük rekor serisi kilometre taşı'));
+        if (scenario.days === 30) assert.ok(responseText.includes('30 günlük rekor serisi kilometre taşı'));
+        await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+      }
+    } finally {
+      Math.random = previousRandom;
+    }
+  });
+});
+
+test('a missed adventure day resets the current streak but preserves the all-time best record', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = 'adventure-streak-reset-' + randomUUID();
+    const userId = 'adventure-streak-reset-user-' + randomUUID();
+    await ensureUser(guildId, userId);
+    await pool.query(
+      "UPDATE users SET coins=0,xp=0,level=1,class_name='Gezgin',last_adventure_at=NULL WHERE guild_id=$1 AND user_id=$2",
+      [guildId, userId]
+    );
+    await pool.query(
+      'INSERT INTO adventure_streaks(guild_id,user_id,daily_streak,best_streak,last_visit_date) VALUES($1,$2,8,12,CURRENT_DATE-2)',
+      [guildId, userId]
+    );
+    const responses = [];
+    const previousRandom = Math.random;
+    try {
+      Math.random = () => 0.99;
+      await adventureCommand.execute({
+        guildId,
+        user: { id: userId, username: 'StreakResetTest' },
+        options: { getString: name => name === 'rota' ? 'mimic-trail' : null },
+        reply: async payload => { responses.push(payload); return payload; }
+      });
+    } finally {
+      Math.random = previousRandom;
+    }
+    const streak = await pool.query(
+      'SELECT daily_streak,best_streak FROM adventure_streaks WHERE guild_id=$1 AND user_id=$2',
+      [guildId, userId]
+    );
+    const responseText = JSON.stringify(responses.map(response => response.embeds?.map(embed => embed.toJSON())));
+    assert.equal(Number(streak.rows[0]?.daily_streak), 1);
+    assert.equal(Number(streak.rows[0]?.best_streak), 12);
+    assert.ok(responseText.includes('Günlük seri: **1 gün** · Rekor: **12 gün**'));
+    await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+  });
+});
+
+test('completing every adventure journal location grants the completion reward once, even after a replay', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = 'adventure-journal-' + randomUUID();
+    const userId = 'adventure-journal-user-' + randomUUID();
+    await ensureUser(guildId, userId);
+    await pool.query(
+      "UPDATE users SET coins=0,xp=0,level=1,class_name='Gezgin',last_adventure_at=NULL WHERE guild_id=$1 AND user_id=$2",
+      [guildId, userId]
+    );
+    await pool.query(
+      'INSERT INTO adventure_discoveries(guild_id,user_id,discovery_key) SELECT $1,$2,unnest($3::text[]) ON CONFLICT DO NOTHING',
+      [guildId, userId, ADVENTURE_DISCOVERIES.map(entry => entry.key)]
+    );
+    const responses = [];
+    const makeInteraction = () => ({
+      guildId,
+      user: { id: userId, username: 'JournalTest' },
+      options: { getString: name => name === 'rota' ? 'forest-grimoire' : null },
+      reply: async payload => { responses.push(payload); return payload; }
+    });
+    const previousRandom = Math.random;
+    let first;
+    try {
+      Math.random = () => 0.99;
+      await adventureCommand.execute(makeInteraction());
+      first = await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+      await pool.query('UPDATE users SET last_adventure_at=NULL WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+      await adventureCommand.execute(makeInteraction());
+    } finally {
+      Math.random = previousRandom;
+    }
+    const [player, claim, history] = await Promise.all([
+      pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]),
+      pool.query('SELECT user_id FROM adventure_journal_claims WHERE guild_id=$1 AND user_id=$2', [guildId, userId]),
+      pool.query('SELECT coins_awarded,xp_awarded FROM adventure_history WHERE guild_id=$1 AND user_id=$2 ORDER BY id', [guildId, userId])
+    ]);
+    assert.equal(claim.rowCount, 1);
+    assert.equal(Number(first.rows[0]?.coins), COMPLETE_ADVENTURE_JOURNAL_REWARD.coins + 40);
+    assert.equal(Number(player.rows[0]?.coins), COMPLETE_ADVENTURE_JOURNAL_REWARD.coins + 65);
+    assert.equal(Number(player.rows[0]?.xp), 60);
+    assert.equal(history.rowCount, 2);
+    assert.equal(Number(history.rows[0]?.coins_awarded), COMPLETE_ADVENTURE_JOURNAL_REWARD.coins + 40);
+    assert.equal(Number(history.rows[1]?.coins_awarded), 25);
+    const firstResponse = JSON.stringify(responses[0]?.embeds?.map(embed => embed.toJSON()));
+    const secondResponse = JSON.stringify(responses[1]?.embeds?.map(embed => embed.toJSON()));
+    assert.ok(firstResponse.includes('Keşif defterini tamamladın'));
+    assert.ok(!secondResponse.includes('Keşif defterini tamamladın'));
+    await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+  });
+});
+
+test('rare discovery pity selects the remaining forgotten archive and dragon nest with class-specific rewards', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const scenarios = [
+      {
+        discovery: 'forgotten-grimoire',
+        className: 'Büyücü',
+        alreadyFound: ['ancient-elf-sanctuary', 'dragon-nest'],
+        item: '📜 Frieren’in Kayıp Notları',
+        coins: 110,
+        xp: 105
+      },
+      {
+        discovery: 'dragon-nest',
+        className: 'Muhafız',
+        alreadyFound: ['ancient-elf-sanctuary', 'forgotten-grimoire'],
+        item: '🐉 Ejderha Pulu',
+        coins: 160,
+        xp: 125
+      }
+    ];
+    const previousRandom = Math.random;
+    Math.random = () => 0.99;
+    try {
+      for (const scenario of scenarios) {
+        const guildId = 'rare-discovery-' + randomUUID();
+        const userId = 'rare-discovery-user-' + randomUUID();
+        await ensureUser(guildId, userId);
+        await pool.query(
+          'UPDATE users SET coins=0,xp=0,level=1,class_name=$3,last_adventure_at=NULL WHERE guild_id=$1 AND user_id=$2',
+          [guildId, userId, scenario.className]
+        );
+        await pool.query(
+          'INSERT INTO adventure_route_mastery(guild_id,user_id,route_key,visits) VALUES($1,$2,$3,19)',
+          [guildId, userId, 'forest-grimoire']
+        );
+        await pool.query(
+          'INSERT INTO adventure_discoveries(guild_id,user_id,discovery_key) SELECT $1,$2,unnest($3::text[]) ON CONFLICT DO NOTHING',
+          [guildId, userId, scenario.alreadyFound]
+        );
+        const responses = [];
+        await adventureCommand.execute({
+          guildId,
+          user: { id: userId, username: 'RareDiscoveryTest' },
+          options: { getString: () => null },
+          reply: async payload => { responses.push(payload); return payload; }
+        });
+        const [history, inventory, player, discovery] = await Promise.all([
+          pool.query('SELECT discovery_key,first_discovery,coins_awarded,xp_awarded FROM adventure_history WHERE guild_id=$1 AND user_id=$2 ORDER BY id DESC LIMIT 1', [guildId, userId]),
+          pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3', [guildId, userId, scenario.item]),
+          pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]),
+          pool.query('SELECT discovery_key FROM adventure_discoveries WHERE guild_id=$1 AND user_id=$2 AND discovery_key=$3', [guildId, userId, scenario.discovery])
+        ]);
+        assert.equal(history.rows[0]?.discovery_key, scenario.discovery);
+        assert.equal(history.rows[0]?.first_discovery, true);
+        assert.equal(Number(history.rows[0]?.coins_awarded), scenario.coins);
+        assert.equal(Number(history.rows[0]?.xp_awarded), scenario.xp);
+        assert.equal(Number(inventory.rows[0]?.quantity), 1);
+        assert.equal(Number(player.rows[0]?.coins), scenario.coins);
+        assert.equal(Number(player.rows[0]?.xp), scenario.xp);
+        assert.equal(discovery.rowCount, 1);
+        const responseText = JSON.stringify(responses.map(response => response.embeds?.map(embed => embed.toJSON())));
+        assert.ok(responseText.includes(scenario.item));
+        await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+      }
+    } finally {
+      Math.random = previousRandom;
+    }
+  });
+});
+
+test('treasure chest 1 percent Himmel and 3 percent Frieren rare drops use exact reward tiers', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = 'rare-treasure-' + randomUUID();
+    const userId = 'rare-treasure-user-' + randomUUID();
+    await ensureUser(guildId, userId);
+    await pool.query('UPDATE users SET coins=0,xp=0,level=1 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    await pool.query(
+      "INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'🗝️ Kadim Hazine Sandığı',2)",
+      [guildId, userId]
+    );
+    const rolls = [0.005, 0.01];
+    let rollIndex = 0;
+    const previousRandom = Math.random;
+    try {
+      Math.random = () => rolls[rollIndex++] ?? 0.99;
+      await treasureCommand.execute({
+        guildId,
+        user: { id: userId },
+        options: { getInteger: () => 2 },
+        deferReply: async () => {},
+        editReply: async payload => payload
+      });
+    } finally {
+      Math.random = previousRandom;
+    }
+    const [player, openings, inventory, chest] = await Promise.all([
+      pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]),
+      pool.query('SELECT loot_item,coins,xp FROM treasure_openings WHERE guild_id=$1 AND user_id=$2 ORDER BY id', [guildId, userId]),
+      pool.query(
+        'SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[]) ORDER BY item_key',
+        [guildId, userId, ['👑 Himmel’in Efsanevi Yadigârı', '🪄 Frieren’in Kadim Asası']]
+      ),
+      pool.query("SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='🗝️ Kadim Hazine Sandığı'", [guildId, userId])
+    ]);
+    assert.equal(openings.rowCount, 2);
+    assert.deepEqual(openings.rows.map(row => row.loot_item), ['👑 Himmel’in Efsanevi Yadigârı', '🪄 Frieren’in Kadim Asası']);
+    assert.deepEqual(openings.rows.map(row => Number(row.coins)), [800, 500]);
+    assert.deepEqual(openings.rows.map(row => Number(row.xp)), [500, 350]);
+    assert.equal(Number(player.rows[0]?.coins), 1300);
+    assert.equal(Number(player.rows[0]?.xp), 850);
+    assert.equal(inventory.rowCount, 2);
+    assert.equal(chest.rowCount, 0);
+    await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
   });
 });
