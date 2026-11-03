@@ -8,7 +8,7 @@ import saril from '../saril.js';
 
 test('solo boss tier selection unlocks exactly at each configured player-level boundary', () => {
   const boundaries = [[1,'level_1'],[9,'level_1'],[10,'level_10'],[19,'level_10'],[20,'level_20'],[34,'level_20'],[35,'level_35'],[49,'level_35'],[50,'level_50'],[100,'level_50']];
-  for (const [level, expected] of boundaries) assert.equal(selectSoloBossForLevel(level, DEFAULT_SOLO_BOSSES, () => 0).key, expected);
+  for (const [level, expected] of boundaries) assert.equal(selectSoloBossForLevel(level, DEFAULT_SOLO_BOSSES, () => 0.999999).key, expected);
   assert.equal(selectSoloBossForLevel(0), null);
   assert.equal(selectSoloBossForLevel(Number.NaN), null);
 });
