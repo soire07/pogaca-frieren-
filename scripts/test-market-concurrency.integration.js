@@ -2203,6 +2203,14 @@ test('rare discovery pity selects the remaining forgotten archive and dragon nes
   await withIsolatedTestSchema(async () => {
     const scenarios = [
       {
+        discovery: 'ancient-elf-sanctuary',
+        className: 'Büyücü',
+        alreadyFound: ['forgotten-grimoire', 'dragon-nest'],
+        item: '🌙 Efsunlu Elf Yadigârı',
+        coins: 120,
+        xp: 135
+      },
+      {
         discovery: 'forgotten-grimoire',
         className: 'Büyücü',
         alreadyFound: ['ancient-elf-sanctuary', 'dragon-nest'],
@@ -2450,5 +2458,43 @@ test('adventure and crafting achievement milestones grant their exact rewards on
       assert.match(String(responses[1]), /daha önce aldın/);
       await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
     }
+  });
+});
+
+
+test('healer class grants its first-discovery bonus to adventure rewards', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = 'healer-adventure-' + randomUUID();
+    const userId = 'healer-adventure-user-' + randomUUID();
+    await ensureUser(guildId, userId);
+    await pool.query(
+      "UPDATE users SET coins=0,xp=0,level=1,class_name='Şifacı',last_adventure_at=NULL WHERE guild_id=$1 AND user_id=$2",
+      [guildId, userId]
+    );
+    const responses = [];
+    const previousRandom = Math.random;
+    try {
+      Math.random = () => 0.99;
+      await adventureCommand.execute({
+        guildId,
+        user: { id: userId, username: 'HealerAdventureTest' },
+        options: { getString: name => name === 'rota' ? 'mimic-trail' : null },
+        reply: async payload => { responses.push(payload); return payload; }
+      });
+    } finally {
+      Math.random = previousRandom;
+    }
+    const history = await pool.query(
+      'SELECT coins_awarded,xp_awarded,first_discovery FROM adventure_history WHERE guild_id=$1 AND user_id=$2 ORDER BY id DESC LIMIT 1',
+      [guildId, userId]
+    );
+    assert.equal(Number(history.rows[0]?.coins_awarded), 60);
+    assert.equal(Number(history.rows[0]?.xp_awarded), 60);
+    assert.equal(history.rows[0]?.first_discovery, true);
+    const responseText = JSON.stringify(responses.map(response => response.embeds?.map(embed => embed.toJSON())));
+    assert.ok(responseText.includes('Şifacı keşif desteği'));
+    await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
   });
 });
