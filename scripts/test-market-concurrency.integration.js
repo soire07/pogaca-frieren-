@@ -2246,6 +2246,12 @@ test('rare discovery pity selects the remaining forgotten archive and dragon nes
           'INSERT INTO adventure_discoveries(guild_id,user_id,discovery_key) SELECT $1,$2,unnest($3::text[]) ON CONFLICT DO NOTHING',
           [guildId, userId, scenario.alreadyFound]
         );
+        const pityState = await pool.query(
+          "SELECT COALESCE((SELECT SUM(visits)::int FROM adventure_route_mastery WHERE guild_id=$1 AND user_id=$2),0) AS total_adventures, COALESCE((SELECT COUNT(*)::int FROM adventure_discoveries WHERE guild_id=$1 AND user_id=$2 AND discovery_key IN ('ancient-elf-sanctuary','forgotten-grimoire','dragon-nest')),0) AS rare_discoveries",
+          [guildId, userId]
+        );
+        assert.equal(Number(pityState.rows[0]?.total_adventures), 59);
+        assert.equal(Number(pityState.rows[0]?.rare_discoveries), 2);
         const responses = [];
         await adventureCommand.execute({
           guildId,
@@ -2376,7 +2382,7 @@ test('daily crafting mission rejects early claims, grants XP and stat points at 
     assert.ok(claimed.rows[0]?.claimed_at);
     assert.deepEqual(afterReplay.rows[0], afterFirstClaim.rows[0]);
     assert.match(String(responses[0]?.content), /ekipman üretmelisin/);
-    assert.match(String(responses[1]?.content), /\\+100 altın/);
+    assert.ok(String(responses[1]?.content).includes('+100 altın'));
     assert.match(String(responses[2]?.content), /zaten aldın/);
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
   });
