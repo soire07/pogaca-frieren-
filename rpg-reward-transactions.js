@@ -10,18 +10,33 @@ export async function claimSoloBossReward(dbPool, {
   const db = await dbPool.connect();
   try {
     await db.query('BEGIN');
-    const claim = await db.query(
+    if (typeof battleId !== 'string' || !battleId.trim()) {
+      throw new TypeError('A non-empty solo boss battle ID is required');
+    }
+    const rewardClaim = await db.query(
+      `INSERT INTO solo_boss_reward_claims (guild_id,user_id,battle_id)
+       VALUES ($1,$2,$3)
+       ON CONFLICT (guild_id,user_id,battle_id) DO NOTHING
+       RETURNING battle_id`,
+      [guildId, userId, battleId]
+    );
+    if (rewardClaim.rowCount !== 1) {
+      await db.query('ROLLBACK');
+      return { status: 'already_claimed' };
+    }
+
+    const playerUpdate = await db.query(
       `UPDATE users SET hp=$3, mana=$4, coins=coins+$5, xp=xp+$6, last_boss_battle_id=$7,
         boss_defeats=boss_defeats+1, last_boss_win_at=NOW(),
         stat_points=stat_points+GREATEST(0,(FLOOR(SQRT((xp+$6)::numeric / 100))::int + 1)-level),
         level=FLOOR(SQRT((xp+$6)::numeric / 100))::int + 1
-       WHERE guild_id=$1 AND user_id=$2 AND last_boss_battle_id IS DISTINCT FROM $7
+       WHERE guild_id=$1 AND user_id=$2
        RETURNING user_id`,
       [guildId, userId, hp, mana, coins, xp, battleId]
     );
-    if (claim.rowCount !== 1) {
+    if (playerUpdate.rowCount !== 1) {
       await db.query('ROLLBACK');
-      return { status: 'already_claimed' };
+      return { status: 'player_missing' };
     }
 
     if (journalBossKey) await recordJournalEntry(db, guildId, userId, 'bosses', journalBossKey);
