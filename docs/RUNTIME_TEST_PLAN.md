@@ -6,7 +6,7 @@ Bu kontrol listesi komut sayısından bağımsız olarak oyun sistemlerinin büt
 
 - [x] Geliştirme dalındaki GitHub Actions doğrulaması başarılı.
 - [x] Son doğrulamada test işi başarıyla tamamlandı.
-- [x] Özellik envanterinde 323 benzersiz kayıt var; bildirilen sayı 323 ile eşleşiyor.
+- [x] Özellik envanterinde 325 benzersiz kayıt var; bildirilen sayı 325 ile eşleşiyor.
 - [ ] Gerçek Discord test sunucusunda uçtan uca test.
 - [ ] Render'da güvenli bir dağıtım sonrası sağlık kontrolü.
 - [ ] Boss görsellerinin gerçek URL'lerle etkinleştirilmesi.
@@ -64,3 +64,8 @@ Bu kontrol listesi komut sayısından bağımsız olarak oyun sistemlerinin büt
 - [ ] Kullanıcı onayı alındı.
 
 Son kutu işaretlenmeden PR birleştirilmez ve üretime dağıtım başlatılmaz.
+
+
+## Envanter sayısı düzeltmesi — 2026-11-03
+
+Güncel ana dalda 325 kayıt bulunmaktadır. Tüm kayıtlar `implemented_needs_runtime_test` durumundadır; gerçek Discord ve üretim doğrulaması ayrıca yapılmalıdır. Ayrıntılı durum: `docs/FEATURE_AUDIT_325_2026-11-03.md`.
