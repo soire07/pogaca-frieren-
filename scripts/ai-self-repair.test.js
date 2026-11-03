@@ -244,7 +244,8 @@ test('repair context still rejects tasks with no matching tracked source files',
     { message: 'REPAIR_CONTEXT_NOT_FOUND' },
   );
 });
-\ntest('repair workflow rejects an empty task before checkout and dependency installation', async () => {
+
+test('repair workflow rejects an empty task before checkout and dependency installation', async () => {
   const workflow = await readFile(new URL('../.github/workflows/frieren-ai-self-repair.yml', import.meta.url), 'utf8');
   assert.match(workflow, /name: Require a repair task when repair mode is selected/);
   assert.match(workflow, /if: inputs\.mode == 'repair'/);
