@@ -943,7 +943,7 @@ test('real player profile and collection leaderboard read the selected guild mem
     assert.ok(profileEmbed?.title?.includes('Target'),'profile must render the selected target member');
     assert.ok(profileEmbed?.fields?.some(field=>field.name.includes('Poğaça altını') && field.value==='900'),
       'profile must show the target member balance, not the caller balance');
-    assert.ok(profileEmbed?.fields?.some(field=>field.name==='Saldırı' && field.value==='24'),
+    assert.ok(profileEmbed?.fields?.some(field=>field.name.includes('Saldırı') && field.value==='24'),
       'profile must show target combat stats');
 
     const rankingReplies=[];
