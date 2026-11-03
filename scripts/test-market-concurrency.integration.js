@@ -266,8 +266,8 @@ test('full three-stage daily quest chain completes with level-scaled rewards', {
       assert.equal(materialCounts['🐉 Ejderha Pulu'], 1);
       assert.equal(responses.filter(value => typeof value === 'string' && value.includes('Görev zinciri tamamlandı')).length, 1,
         'only the first final-stage claim may report chain completion');
-      assert.equal(responses.filter(value => typeof value === 'string' && value.includes('İblis Avcısının Yemini')).length, 1,
-        'the final-stage reward must be reported once');
+      assert.equal(responses.filter(value => typeof value === 'string' && value.includes('300 altın') && value.includes('180 XP')).length, 1,
+        'the final-stage reward must be reported once without matching the previous stage preview');
     } finally {
       await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
     }
