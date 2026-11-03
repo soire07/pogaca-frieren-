@@ -186,6 +186,17 @@ export function getRaidBossSpecialAttack(special, round) {
   return null;
 }
 
+/** Dungeon tanks attract 70% of single-target enemy attacks while alive. */
+export function chooseDungeonAttackTarget(players, livingIndices, turn, floor, random = Math.random) {
+  const living = Array.isArray(livingIndices) ? livingIndices : [];
+  if (!living.length) return null;
+  const tank = living.find(index => players[index]?.role === 'tank');
+  if (tank !== undefined && random() < 0.7) return tank;
+  const safeTurn = Math.max(0, Math.floor(Number(turn) || 0));
+  const safeFloor = Math.max(1, Math.floor(Number(floor) || 1));
+  return living[(safeTurn + safeFloor) % living.length];
+}
+
 /** Tanks attract 70% of single-target raid attacks while alive. */
 export function chooseRaidAttackTarget(fighters, livingIndices, random = Math.random) {
   const living = Array.isArray(livingIndices) ? livingIndices : [];
