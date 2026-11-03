@@ -719,18 +719,24 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Tamamlanan hedeflerin DB ilerlemesi', expected: 'seviye 10, 5 boss, 3 zindan ve 10 keşif durumu korunmalı', actual: state.rows[0] ? JSON.stringify(state.rows[0]) : 'oyuncu kaydı yok', passed: Number(state.rows[0]?.level) === 10 && Number(state.rows[0]?.boss_defeats) === 5 && Number(state.rows[0]?.dungeon_wins) === 3 && Number(state.rows[0]?.exploration_count) === 10 }
           );
         } else if (commandName === 'hazinegecmisi') {
-          await pool.query('INSERT INTO treasure_openings(guild_id,user_id,loot_item,coins,xp) VALUES($1,$2,$3,$4,$5)', [guildId, userId, 'TEST Mana Kristali', 321, 123]);
+          await pool.query("INSERT INTO treasure_openings(guild_id,user_id,loot_item,coins,xp,opened_at) VALUES($1,$2,'TEST Older Treasure',11,12,NOW()),($1,$2,'TEST Newer Treasure',21,22,NOW())", [guildId, userId]);
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
           interaction.user.id = userId;
           interaction.member = makeMember(userId);
           await command.execute(interaction);
           const state = await pool.query('SELECT loot_item,coins,xp FROM treasure_openings WHERE guild_id=$1 AND user_id=$2 ORDER BY opened_at DESC,id DESC LIMIT 10', [guildId, userId]);
           const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          const newerIndex = payloadText.indexOf('TEST Newer Treasure');
+          const olderIndex = payloadText.indexOf('TEST Older Treasure');
           behavioralChecks.push(
-            { name: 'Hazine geçmişi kayıtlarını gösterme', expected: 'TEST Mana Kristali, 321 altın ve 123 XP görünmeli', actual: payloadText.includes('TEST Mana Kristali') && payloadText.includes('321') && payloadText.includes('123') ? 'Test ganimeti yanıtta listelendi' : payloadText.slice(0, 500), passed: state.rowCount === 1 && state.rows[0].loot_item === 'TEST Mana Kristali' && Number(state.rows[0].coins) === 321 && Number(state.rows[0].xp) === 123 && payloadText.includes('TEST Mana Kristali') && payloadText.includes('321') && payloadText.includes('123') },
-            { name: 'Hazine geçmişinin salt okunur olması', expected: 'geçmiş sorgusu ganimet kayıtlarını değiştirmemeli', actual: state.rowCount + ' hazine kaydı', passed: state.rowCount === 1 }
+            { name: 'Hazine geçmişi son kayıtları', expected: 'iki ganimet, altın ve XP değerleri görünmeli', actual: state.rows.map(row => row.loot_item + ':' + row.coins + '/' + row.xp).join(', '), passed: state.rowCount === 2 && payloadText.includes('TEST Newer Treasure') && payloadText.includes('TEST Older Treasure') && payloadText.includes('21') && payloadText.includes('22') && payloadText.includes('11') && payloadText.includes('12') },
+            { name: 'Hazine geçmişinde kararlı eş-zamanlı sıralama', expected: 'aynı timestamp değerinde daha yüksek kayıt ID önce görünmeli', actual: newerIndex >= 0 && olderIndex > newerIndex ? 'yeni kayıt önce' : 'sıralama kanıtı yok', passed: state.rows[0]?.loot_item === 'TEST Newer Treasure' && newerIndex >= 0 && olderIndex > newerIndex }
           );
         } else if (commandName === 'kesifdefteri') {
+          await pool.query("INSERT INTO adventure_discoveries(guild_id,user_id,discovery_key) VALUES($1,$2,'ancient-elf-sanctuary') ON CONFLICT DO NOTHING", [guildId, userId]);
+          await pool.query("INSERT INTO adventure_route_mastery(guild_id,user_id,route_key,visits) VALUES($1,$2,'ancient-elf-sanctuary',5) ON CONFLICT(guild_id,user_id,route_key) DO UPDATE SET visits=5", [guildId, userId]);
+          await pool.query('INSERT INTO adventure_treasure_progress(guild_id,user_id,fragments,treasures_opened) VALUES($1,$2,3,2) ON CONFLICT(guild_id,user_id) DO UPDATE SET fragments=3,treasures_opened=2', [guildId, userId]);
+          await pool.query('INSERT INTO adventure_streaks(guild_id,user_id,daily_streak,best_streak,last_visit_date) VALUES($1,$2,4,6,CURRENT_DATE) ON CONFLICT(guild_id,user_id) DO UPDATE SET daily_streak=4,best_streak=6,last_visit_date=CURRENT_DATE', [guildId, userId]);
           const before = await pool.query('SELECT COUNT(*)::int AS total FROM adventure_discoveries WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
           interaction.user.id = userId;
@@ -738,9 +744,9 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           await command.execute(interaction);
           const after = await pool.query('SELECT COUNT(*)::int AS total FROM adventure_discoveries WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const payloadText = JSON.stringify(effects.map(effect => effect.payload));
-          const labels = ['Macera Keşif Defteri','Hazine haritası','Günlük macera serisi','Keşfedilen yerler'];
+          const labels = ['Macera Keşif Defteri','Hazine haritası','Günlük macera serisi','Keşfedilen yerler','Rota ziyaretleri: **5** · Ustalık: **1** · Sonraki ödül: **1 ziyaret**'];
           behavioralChecks.push(
-            { name: 'Keşif defteri görünümü', expected: 'keşif defteri, hazine haritası, günlük seri ve rota ustalığı gösterilmeli', actual: labels.filter(label => payloadText.includes(label)).join(', '), passed: labels.every(label => payloadText.includes(label)) },
+            { name: 'Keşif defteri ve rota ustalığı görünümü', expected: 'keşif, hazine, seri ve 5 ziyaret/1 ustalık/1 sonraki ödül gösterilmeli', actual: labels.filter(label => payloadText.includes(label)).join(', '), passed: labels.every(label => payloadText.includes(label)) },
             { name: 'Keşif defterinin salt okunur olması', expected: 'görüntüleme sırasında keşif kayıtları değişmemeli', actual: before.rows[0].total + ' → ' + after.rows[0].total + ' keşif kaydı', passed: Number(before.rows[0].total) === Number(after.rows[0].total) }
           );
         } else if (['bossrehberi','sinifrehberi','dunya','yardim','buyu','evren'].includes(commandName)) {
@@ -888,7 +894,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           await command.execute(interaction);
           const payloadText = JSON.stringify(effects.map(effect => effect.payload));
           behavioralChecks.push(
-            { name: 'Zanaat tarif kataloğu', expected: 'demir kılıç ve ekipman tarifleri listelenmeli', actual: payloadText.includes('Zanaat Tarif Defteri') ? 'tarif defteri açıldı' : payloadText.slice(0, 400), passed: payloadText.includes('Zanaat Tarif Defteri') && payloadText.includes('Gezginin Demir Kılıcı') && payloadText.includes('Malzeme') }
+            { name: 'Zanaat tarif kataloğu ve gereksinimleri', expected: 'tarifler, oyuncu/zanaat seviyesi, malzemeler ve ekipman bonusları listelenmeli', actual: ['Zanaat Tarif Defteri','Gezginin Demir Kılıcı','Oyuncu seviyesi','Zanaat seviyesi','Malzeme'].filter(value => payloadText.includes(value)).join(', '), passed: ['Zanaat Tarif Defteri','Gezginin Demir Kılıcı','Oyuncu seviyesi','Zanaat seviyesi','Malzeme'].every(value => payloadText.includes(value)) && payloadText.includes('ATK') }
           );
         } else if (commandName === 'zanaatgorevi') {
           const before = await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
@@ -1086,16 +1092,23 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Envanter görüntüleme salt okunur', expected: 'eşya miktarı değişmemeli', actual: String(state.rows[0]?.quantity ?? 0), passed: Number(state.rows[0]?.quantity) === 2 }
           );
         } else if (commandName === 'maceraistatistik') {
-          await pool.query("INSERT INTO adventure_route_mastery(guild_id,user_id,route_key,visits) VALUES($1,$2,'test-route',3)", [guildId, userId]);
+          await pool.query('UPDATE users SET level=7,xp=700,coins=321,last_adventure_at=NOW() WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          await pool.query("INSERT INTO adventure_discoveries(guild_id,user_id,discovery_key) VALUES($1,$2,'test-discovery-a'),($1,$2,'test-discovery-b')", [guildId, userId]);
+          await pool.query("INSERT INTO adventure_route_mastery(guild_id,user_id,route_key,visits) VALUES($1,$2,'test-route',5),($1,$2,'second-route',3)", [guildId, userId]);
+          await pool.query('INSERT INTO adventure_streaks(guild_id,user_id,daily_streak,best_streak,last_visit_date) VALUES($1,$2,4,6,CURRENT_DATE)', [guildId, userId]);
+          await pool.query('INSERT INTO adventure_treasure_progress(guild_id,user_id,fragments,treasures_opened) VALUES($1,$2,3,2)', [guildId, userId]);
+          await pool.query("INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'🗝️ Kadim Hazine Sandığı',4)", [guildId, userId]);
+          const before = await pool.query('SELECT level,xp,coins FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
           interaction.user.id = userId;
           interaction.member = makeMember(userId);
           await command.execute(interaction);
-          const state = await pool.query("SELECT visits FROM adventure_route_mastery WHERE guild_id=$1 AND user_id=$2 AND route_key='test-route'", [guildId, userId]);
+          const after = await pool.query('SELECT level,xp,coins FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const payloadText = JSON.stringify(effects.map(effect => effect.payload));
+          const expectedFields = ['Seviye: **7**','XP: **700**','Altın: **321**','Toplam macera: **8**','Keşfedilen yer: **2/','En çok gezilen rota: **5** ziyaret','Günlük seri: **4 gün** · Rekor: **6 gün**','Harita parçaları: **3/5**','Tamamlanan harita: **2**','Sandık: **4**','Son macera:'];
           behavioralChecks.push(
-            { name: 'Macera istatistikleri', expected: 'toplam macera 3 ve seviye/XP/altın paneli gösterilmeli', actual: payloadText.includes('Toplam macera') && payloadText.includes('3') ? 'istatistik paneli doğru' : payloadText.slice(0, 400), passed: Number(state.rows[0]?.visits) === 3 && payloadText.includes('Toplam macera') && payloadText.includes('3') },
-            { name: 'Macera istatistiği salt okunur', expected: 'rota ziyareti sayısı değişmemeli', actual: String(state.rows[0]?.visits ?? 0), passed: Number(state.rows[0]?.visits) === 3 }
+            { name: 'Birleşik macera istatistikleri tüm ilerleme alanları', expected: 'seviye, XP, altın, macera, keşif, rota, seri, harita, sandık ve son macera gösterilmeli', actual: expectedFields.filter(value => payloadText.includes(value)).join(', '), passed: expectedFields.every(value => payloadText.includes(value)) },
+            { name: 'Macera istatistiği salt okunur', expected: 'oyuncu seviye, XP ve altın değerleri değişmemeli', actual: JSON.stringify(before.rows[0]) + ' → ' + JSON.stringify(after.rows[0]), passed: ['level','xp','coins'].every(key => Number(before.rows[0]?.[key]) === Number(after.rows[0]?.[key])) }
           );
         } else if (['frieren','mimic','pogaca','sans','saril'].includes(commandName)) {
           const before = await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
