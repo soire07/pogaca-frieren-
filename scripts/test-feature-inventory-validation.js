@@ -63,3 +63,15 @@ test('feature inventory rejects malformed top-level data', () => {
   assert.ok(errors.some(error => error.includes('features bir dizi')));
   assert.ok(errors.some(error => error.includes('statuses boş olmayan bir dizi')));
 });
+
+
+test('feature inventory accepts established multi-letter namespaces', () => {
+  const inventory = base();
+  inventory.features.push(
+    { id: 'ARENA-001', name: 'Arena feature', category: 'Arena', status: 'planned' },
+    { id: 'EVENT-001', name: 'Event feature', category: 'Events', status: 'planned' },
+    { id: 'SITE-001', name: 'Site feature', category: 'Web', status: 'planned' }
+  );
+  inventory.count = inventory.features.length;
+  assert.deepEqual(validateFeatureInventory(inventory), []);
+});
