@@ -29,12 +29,14 @@ test('incident evidence rejects Windows drive and network-share absolute paths',
   const slash = String.fromCharCode(92);
   const drivePath = 'C:' + slash + 'Windows' + slash + 'system.ini';
   const networkPath = slash + slash + 'server' + slash + 'share' + slash + 'private.txt';
+  const rootedPath = slash + 'etc' + slash + 'passwd';
   const incident = createGuardianIncident({
     system: 'frieren_ai',
     title: 'Unsafe evidence paths',
     evidence: [
       { file: drivePath, message: 'drive path' },
       { file: networkPath, message: 'network path' },
+      { file: rootedPath, message: 'rooted path' },
       { file: 'guardian' + slash + 'monitor.js', message: 'relative path' },
       { file: './guardian/core.js', message: 'dot segment' },
     ],
