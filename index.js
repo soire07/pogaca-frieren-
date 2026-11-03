@@ -11,8 +11,6 @@ import { handleCharacterPanelInteraction } from './karakter.js';
 import { handleArenaInteraction } from './arena.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
-import { spawn } from 'node:child_process';
-import { createAiAgentChildEnv, AI_AGENT_HEALTH_PORT } from './ai-agent/render-supervisor.js';
 import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
@@ -325,73 +323,15 @@ const stopGuardianMonitor = startGuardianMonitor({
 });
 await client.login(process.env.DISCORD_TOKEN);
 
-let aiAgentChild = null;
-let aiAgentRestartTimer = null;
-let shuttingDown = false;
-
-function startAiAgent() {
-  const config = createAiAgentChildEnv(process.env);
-  if (!config.ok) {
-    const reason = config.missing?.length
-      ? 'eksik Render değişkenleri: ' + config.missing.join(', ')
-      : 'AI botu yalnızca Frieren test sunucusuna kayıt yapabilir.';
-    console.error('Frieren AI Agent başlatılmadı; ' + reason);
-    return;
-  }
-
-  aiAgentChild = spawn(process.execPath, [join(__dirname, 'ai-agent', 'index.js')], {
-    cwd: __dirname,
-    env: config.env,
-    stdio: 'inherit',
-  });
-  console.log('Frieren AI Agent ayrı süreç olarak başlatıldı.');
-
-  aiAgentChild.once('error', error => {
-    console.error('Frieren AI Agent süreci başlatılamadı:', error.message);
-  });
-  aiAgentChild.once('exit', (code, signal) => {
-    aiAgentChild = null;
-    if (shuttingDown) return;
-    console.error('Frieren AI Agent kapandı (code=' + code + ', signal=' + signal + '). 5 saniye sonra yeniden başlatılacak.');
-    aiAgentRestartTimer = setTimeout(startAiAgent, 5_000);
-    aiAgentRestartTimer.unref();
-  });
-}
-
-startAiAgent();
-
-async function stopAiAgentChild() {
-  const child = aiAgentChild;
-  if (!child || child.exitCode !== null || child.signalCode !== null) return;
-
-  await new Promise(resolve => {
-    const forceKillTimer = setTimeout(() => {
-      if (child.exitCode === null && child.signalCode === null) {
-        console.error('Frieren AI Agent 5 saniyede kapanmadı; SIGKILL gönderiliyor.');
-        child.kill('SIGKILL');
-      }
-    }, 5_000);
-    forceKillTimer.unref();
-
-    child.once('exit', () => {
-      clearTimeout(forceKillTimer);
-      resolve();
-    });
-
-    if (!child.killed) child.kill('SIGTERM');
-  });
-}
+// Frieren AI runs as an independent Render service; the main bot never starts a second Discord client.
 
 process.once('SIGTERM', async () => {
-  shuttingDown = true;
   stopGuardianMonitor?.();
-  if (aiAgentRestartTimer) clearTimeout(aiAgentRestartTimer);
   console.log('Kapatılıyor...');
 
   await Promise.allSettled([
     client.destroy(),
     pool.end(),
-    stopAiAgentChild(),
   ]);
   process.exit(0);
 });
@@ -413,11 +353,26 @@ createServer(async (req, res) => {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(payload));
   };
-  if (req.method === 'GET' && (req.url === '/ai-health' || req.url === '/ai-ready')) {
+  if (req.method === 'GET' && ['/ai-health', '/ai-ready', '/ai-bridge-health'].includes(req.url)) {
     try {
-      const childPath = req.url === '/ai-health' ? '/live' : '/health';
-      const response = await fetch('http://127.0.0.1:' + AI_AGENT_HEALTH_PORT + childPath, {
-        signal: AbortSignal.timeout(2_500),
+      const aiBase = String(process.env.FRIEREN_AI_PUBLIC_URL || 'https://pogaca-frieren-kltd.onrender.com').trim();
+      const parsedAiBase = new URL(aiBase);
+      if (parsedAiBase.protocol !== 'https:' || parsedAiBase.username || parsedAiBase.password) {
+        return sendJson(503, { status: 'not_ready', service: 'frieren-ai-agent', reason: 'invalid_ai_service_url' });
+      }
+      const aiPath = req.url === '/ai-health' ? '/live'
+        : req.url === '/ai-ready' ? '/health' : '/bridge-health';
+      const headers = { accept: 'application/json' };
+      if (aiPath !== '/live') {
+        const bridgeSecret = String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+        if (bridgeSecret.length < 32) {
+          return sendJson(503, { status: 'not_ready', service: 'frieren-ai-agent', reason: 'bridge_secret_not_configured' });
+        }
+        headers['x-frieren-health-secret'] = bridgeSecret;
+      }
+      const response = await fetch(new URL(aiPath, parsedAiBase).toString(), {
+        headers,
+        signal: AbortSignal.timeout(5_000),
       });
       const body = await response.text();
       res.writeHead(response.status, {
@@ -426,7 +381,7 @@ createServer(async (req, res) => {
       });
       res.end(body);
     } catch {
-      sendJson(503, { status: 'not_ready', service: 'frieren-ai-agent' });
+      sendJson(503, { status: 'not_ready', service: 'frieren-ai-agent', reason: 'upstream_unavailable' });
     }
     return;
   }
