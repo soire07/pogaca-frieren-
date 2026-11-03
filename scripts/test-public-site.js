@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { handlePublicSiteRequest } from '../public-site.js';
 import { createPublicSiteSession, buildPublicSiteSessionCookie } from '../owner-dashboard.js';
+import { createSiteCsrfToken } from '../site-auth.js';
 
 const secret = 'test-public-site-session-secret-at-least-32-characters';
 process.env.ADMIN_SESSION_SECRET = secret;
@@ -241,4 +242,59 @@ test('homepage advertises an installable Frieren web app manifest and brand icon
   assert.match(icon.headers['Content-Type'], /image\/svg\+xml/);
   assert.match(String(icon.body), /<clipPath id="clip"><circle cx="256" cy="256" r="246"/);
   assert.ok(String(icon.body).startsWith('<svg'), 'shortcut icon must be a scalable circular SVG');
+});
+
+function sitePost(path, fields, id='site_123e4567-e89b-12d3-a456-426614174000') {
+  const token=createPublicSiteSession(secret,{id,username:'Gezgin'},Math.floor(Date.now()/1000)+3600);
+  const body=new URLSearchParams(fields).toString();
+  return {method:'POST',url:path,headers:{cookie:buildPublicSiteSessionCookie(token,3600).split(';')[0],'content-type':'application/x-www-form-urlencoded'},async *[Symbol.asyncIterator](){yield Buffer.from(body);}};
+}
+
+test('adventurer dashboard requires a verified member session and renders linked RPG, season and event data', async () => {
+  const anonymous=res();
+  await handlePublicSiteRequest({method:'GET',url:'/maceraci',headers:{}},anonymous);
+  assert.equal(anonymous.status,302);
+  assert.equal(anonymous.headers.Location,'/login');
+  const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:12,xp:1440,coins:900,hp:80,max_hp:100,mana:65,max_mana:100,season_name:'Sezon 2026',rating:1180,wins:4,losses:2,matches:6};
+  const event={event_id:'event-test',guild_id:profile.guild_id,title:'Zindan Gecesi',description:'Topluluk etkinliği',event_type:'community',starts_at:new Date(Date.now()+3600000).toISOString(),ends_at:new Date(Date.now()+7200000).toISOString(),max_participants:12,participants:5};
+  let queryCount=0;
+  const db={query:async()=>({rows:queryCount++===0?[profile]:[event],rowCount:1})};
+  const response=res();
+  const id='site_123e4567-e89b-12d3-a456-426614174000';
+  assert.equal(await handlePublicSiteRequest(request('/maceraci',{id,username:'Gezgin'}),response,{db}),true);
+  assert.equal(response.status,200);
+  assert.match(response.body,/Maceracı Paneli/);
+  assert.match(response.body,/Fern/);
+  assert.match(response.body,/1180/);
+  assert.match(response.body,/Zindan Gecesi/);
+  assert.match(response.body,/action="\\/maceraci\\/link"/);
+  assert.match(response.body,/name="csrf"/);
+});
+
+test('adventurer account linking validates CSRF and consumes a single-use token', async () => {
+  const id='site_123e4567-e89b-12d3-a456-426614174000';
+  const csrf=createSiteCsrfToken(secret);
+  let selected=false;
+  const client={async query(sql){
+    if(sql==='BEGIN'||sql==='COMMIT'||sql==='ROLLBACK'||sql.startsWith('DELETE')||sql.startsWith('INSERT')) return {rows:[],rowCount:1};
+    if(sql.startsWith('SELECT guild_id,user_id FROM site_link_tokens')) { selected=true; return {rows:[{guild_id:'1539562273197260860',user_id:'123456789012345678'}],rowCount:1}; }
+    throw new Error('Unexpected query: '+sql);
+  },release(){}};
+  const db={connect:async()=>client};
+  const requestPost=sitePost('/maceraci/link',{csrf,token:'abcdefghijklmnopqrstuvwxyz0123456789'},id);
+  const response=res();
+  assert.equal(await handlePublicSiteRequest(requestPost,response,{db}),true);
+  assert.equal(selected,true);
+  assert.equal(response.status,303);
+  assert.equal(response.headers.Location,'/maceraci?status=linked');
+});
+
+test('adventurer account linking rejects invalid CSRF before opening a database transaction', async () => {
+  let connected=false;
+  const db={connect:async()=>{connected=true;throw new Error('must not connect');}};
+  const requestPost=sitePost('/maceraci/link',{csrf:'invalid',token:'abcdefghijklmnopqrstuvwxyz0123456789'});
+  const response=res();
+  assert.equal(await handlePublicSiteRequest(requestPost,response,{db}),true);
+  assert.equal(response.status,403);
+  assert.equal(connected,false);
 });
