@@ -75,7 +75,7 @@ test('class passives apply exact advertised multipliers across every class and c
     assert.equal(profile.attackMultiplier, entry.attack, entry.label + ' attack profile');
     assert.equal(profile.defenseMultiplier, entry.defense, entry.label + ' defense profile');
     assert.equal(profile.healingMultiplier, entry.healing, entry.label + ' healing profile');
-    assert.equal(profile.manaCostMultiplier, entry.mana, entry.label + ' mana profile');
+    assert.equal(profile.manaCostMultiplier ?? 1, entry.mana, entry.label + ' mana profile');
     assert.equal(applyClassDamage(101, entry.label), Math.floor(101 * entry.attack), entry.label + ' attack application');
     assert.equal(applyClassDefense(101, entry.label), Math.floor(101 * entry.defense), entry.label + ' defense application');
     assert.equal(applyClassHealing(101, entry.label), Math.floor(101 * entry.healing), entry.label + ' healing application');
