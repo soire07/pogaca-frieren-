@@ -1,0 +1,33 @@
+name: Frieren Groq API Validation (temporary)
+
+on:
+  push:
+    branches:
+      - test/groq-api-validation
+    paths:
+      - .github/workflows/groq-api-validation.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate-groq:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout isolated test branch
+        uses: actions/checkout@v4
+        with:
+          ref: test/groq-api-validation
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install existing dependencies
+        run: npm install --package-lock=false
+      - name: Validate live Groq API connection (no source changes)
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          FRIEREN_MODEL: openai/gpt-oss-20b
+          FRIEREN_REPAIR_MODE: validate
+        run: node scripts/ai-self-repair.js
