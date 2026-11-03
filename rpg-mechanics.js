@@ -147,6 +147,13 @@ export function bossPhaseSpecialBonus(phase) {
 }
 
 /** Selects periodic cooperative raid boss mechanics using the current round. */
+/** Frozen solo bosses skip their scheduled special attack and mana drain. */
+export function getSoloBossSpecialAttackState(turnCount, frozenBoss) {
+  const turn = Math.max(0, Math.floor(Number(turnCount) || 0));
+  if (!turn || turn % 3 !== 0) return 'none';
+  return frozenBoss ? 'cancelled' : 'execute';
+}
+
 export function getRaidBossSpecialAttack(special, round) {
   const turn = Math.max(0, Math.floor(Number(round) || 0));
   if (special === 'mana-star' && turn > 0 && turn % 3 === 0) return 'mana-star';
