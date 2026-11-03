@@ -356,7 +356,7 @@ test('equipment set bonuses and milestone titles are wired into both rewards flo
   const boss = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
   const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
   for (const source of [boss, dungeon]) {
-    assert.match(source, /applyEquipmentSetBonus/);
+    assert.match(source, /getEquipmentCombatBonus/);
     assert.match(source, /progressionMilestone/);
     assert.match(source, /Kalıcı unvanlar/);
   }
@@ -545,8 +545,8 @@ test('equipment set bonuses activate for two legendary or two epic pieces', () =
 
 test('solo boss combat applies the same equipment set bonuses as profile and group combat', async () => {
   const source = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
-  assert.match(source, /applyEquipmentSetBonus/);
-  assert.match(source, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+  assert.match(source, /getEquipmentCombatBonus/);
+  assert.match(source, /getEquipmentCombatBonus\(equippedItems\)/);
   assert.match(source, /gearBonus\.setText/);
 });
 
