@@ -32,7 +32,7 @@ test('feature evidence map references unique, registered feature IDs without pro
     const testDeclaration = "test('" + entry.test.name + "'";
     const testStart = testContent.indexOf(testDeclaration);
     assert.ok(testStart >= 0, entry.featureId + ': named test not found: ' + entry.test.name);
-    const nextTestStart = testContent.indexOf("\\ntest(", testStart + testDeclaration.length);
+    const nextTestStart = testContent.indexOf("\ntest(", testStart + testDeclaration.length);
     const namedTestBody = testContent.slice(testStart, nextTestStart < 0 ? testContent.length : nextTestStart);
     for (const marker of entry.test.markers) {
       assert.ok(namedTestBody.includes(marker),
@@ -49,7 +49,7 @@ test('feature evidence map references unique, registered feature IDs without pro
       const declaration = "test('" + integrationTest.name + "'";
       const start = integrationContent.indexOf(declaration);
       assert.ok(start >= 0, entry.featureId + ': isolated integration test not found: ' + integrationTest.name);
-      const next = integrationContent.indexOf("\\ntest(", start + declaration.length);
+      const next = integrationContent.indexOf("\ntest(", start + declaration.length);
       const body = integrationContent.slice(start, next < 0 ? integrationContent.length : next);
       for (const marker of integrationTest.markers) {
         assert.ok(body.includes(marker), entry.featureId + ': integration assertion marker missing: ' + marker);
