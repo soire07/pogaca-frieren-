@@ -150,7 +150,14 @@
       "id": "RPG-024",
       "name": "Equip and unequip gear by slot",
       "category": "Equipment",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "postgresql_integration",
+        "tests": [
+          "scripts/test-market-concurrency.integration.js"
+        ],
+        "scope": "Equip/unequip preserves inventory ownership and persistent base HP/Mana caps."
+      }
     },
     {
       "id": "RPG-025",
@@ -246,7 +253,14 @@
       "id": "RPG-040",
       "name": "Trade offer flow",
       "category": "Social",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "postgresql_integration",
+        "tests": [
+          "scripts/test-market-concurrency.integration.js"
+        ],
+        "scope": "Concurrent offer creation, single-use acceptance and transfer rollback."
+      }
     },
     {
       "id": "RPG-041",
@@ -342,7 +356,14 @@
       "id": "RPG-052",
       "name": "Reserve duplicate character copies for pending trades",
       "category": "Social",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "postgresql_integration",
+        "tests": [
+          "scripts/test-market-concurrency.integration.js"
+        ],
+        "scope": "Concurrent pending offers cannot reserve the same available character copy twice."
+      }
     },
     {
       "id": "SOC-001",
@@ -762,7 +783,14 @@
       "id": "RPG-113",
       "name": "Apply legendary and epic multi-item equipment set bonuses in combat",
       "category": "Equipment",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_helper",
+        "tests": [
+          "scripts/test-gameplay-persistence.js"
+        ],
+        "scope": "Epic/legendary set helper activation and removal are tested; combat-mode end-to-end application remains unverified."
+      }
     },
     {
       "id": "RPG-114",
@@ -960,7 +988,14 @@
       "id": "RPG-146",
       "name": "Progress through a three-stage daily quest chain with sequential objective checks and escalating claimable gold rewards",
       "category": "Quests",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "postgresql_integration_partial",
+        "tests": [
+          "scripts/test-market-concurrency.integration.js"
+        ],
+        "scope": "First-stage sequential claim and concurrent duplicate prevention; full three-stage chain flow remains unverified."
+      }
     },
     {
       "id": "RPG-147",
@@ -1734,7 +1769,14 @@
       "id": "RPG-275",
       "name": "Apply rarity-based equipment set bonuses to exploration HP, mana and defense calculations",
       "category": "Equipment",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_helper",
+        "tests": [
+          "scripts/test-gameplay-persistence.js"
+        ],
+        "scope": "Set bonus calculation helper is tested; exploration integration remains unverified."
+      }
     },
     {
       "id": "RPG-276",
@@ -1890,13 +1932,28 @@
       "id": "RPG-320",
       "name": "Daily quest chain stage rewards provide usable equipment crafting materials",
       "category": "Progression",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "postgresql_integration_partial",
+        "tests": [
+          "scripts/test-market-concurrency.integration.js"
+        ],
+        "scope": "First-stage chain material reward persistence; crafting consumption of that reward is not covered by this test."
+      }
     },
     {
       "id": "RPG-321",
       "name": "Daily quest chain rewards scale by player level and grant XP with level-up stat points",
       "category": "Progression",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "mixed_unit_and_integration_partial",
+        "tests": [
+          "scripts/test-gameplay-persistence.js",
+          "scripts/test-market-concurrency.integration.js"
+        ],
+        "scope": "Reward scaling helper and first-stage XP payout are tested; all level thresholds and complete-chain level-up rewards remain unverified."
+      }
     },
     {
       "id": "RPG-322",
@@ -1950,14 +2007,29 @@
       "id": "SITE-001",
       "name": "One-time secure Discord-to-web character account linking",
       "category": "Web",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "postgresql_integration",
+        "tests": [
+          "scripts/test-adventurer-platform.integration.js"
+        ],
+        "scope": "Single-use and concurrent Discord link token redemption."
+      }
     },
     {
       "id": "SITE-002",
       "name": "Authenticated adventurer dashboard for RPG stats, rank and events",
       "category": "Web",
-      "status": "implemented_needs_runtime_test"
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "database_integration_only",
+        "tests": [
+          "scripts/test-adventurer-platform.integration.js"
+        ],
+        "scope": "Dashboard data query and account isolation; authenticated HTTP route and real-browser user flow remain unverified."
+      }
     }
   ],
-  "count": 325
+  "count": 325,
+  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level."
 }
