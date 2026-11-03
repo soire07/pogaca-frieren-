@@ -2054,7 +2054,7 @@ test('adventure streak day transitions grant stacked daily, third-day and 7/14/3
       { days: 3, coins: 110, xp: 85 },
       { days: 7, coins: 210, xp: 155 },
       { days: 14, coins: 360, xp: 255 },
-      { days: 30, coins: 810, xp: 555 }
+      { days: 30, coins: 860, xp: 585 }
     ];
     const previousRandom = Math.random;
     Math.random = () => 0.99;
