@@ -489,6 +489,8 @@ export async function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_frieren_chat_memories_scope
       ON frieren_chat_memories(guild_id,user_id,updated_at DESC);
   `);
+  const { ensureArenaTables } = await import('../arena-queue.js');
+  await ensureArenaTables(pool);
   if (!testContext.getStore()) {
     await pool.query(`DELETE FROM frieren_chat_messages
       WHERE created_at < NOW() - INTERVAL '90 days'`);
