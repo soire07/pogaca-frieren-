@@ -56,8 +56,8 @@ function sanitizeEvidence(items) {
   return items.slice(0, 8).map(item => {
     const entry = item && typeof item === 'object' ? item : { message: item };
     const file = String(entry.file || entry.path || '');
-    const normalizedFile = file.replace(/\\\\/g, '/');
-    const hasUnsafePath = !file || file.startsWith('/') || file.startsWith('\\\\')
+    const normalizedFile = file.replace(/\\/g, '/');
+    const hasUnsafePath = !file || file.startsWith('/') || file.startsWith('\\')
       || /^[a-z]:/i.test(file) || normalizedFile.split('/').some(segment => segment === '..' || segment === '.');
     const safeFile = !hasUnsafePath ? redactGuardianText(file, 180) : '';
     if (file && !safeFile) return null;
