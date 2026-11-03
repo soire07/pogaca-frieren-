@@ -8,7 +8,7 @@ import { isExplicitMemoryOverviewQuestion } from './memory-intent.js';
 import { containsSensitiveInformation, extractAutomaticMemories, isExplicitMemorySaveRequest } from './memory-extractor.js';
 import { hasLiveMemoryPrivacyProof, isMemoryPrivacyTarget, isTargetedTestFailure, liveMemoryPrivacySummarySuffix } from './test-report-guards.js';
 import { buildTestDiagnostics } from './test-diagnostics.js';
-import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, getPublicLivenessPayload, isPrivateHealthPath, isAuthorizedAdmin, sendPrivateError, checkBridgeReachability } from './interaction-safety.js';
+import { getTestLockKey, getPublicHealthPayload, getPublicHealthStatus, getPublicLivenessPayload, isPrivateHealthPath, isAuthorizedAdmin, sendPrivateError, checkBridgeReachability, resolveAiBridgeConfig } from './interaction-safety.js';
 import { checkLiveRpgHealth } from './live-rpg-health.js';
 import { formatCommandTestResult } from './command-test-report.js';
 import { parseCommandNames } from './command-test-input.js';
@@ -51,7 +51,8 @@ const groq = groqKey ? new OpenAI({ apiKey: groqKey, baseURL: 'https://api.groq.
 const memoryStore = process.env.DATABASE_URL?.trim() ? createMemoryStore(process.env.DATABASE_URL.trim()) : null;
 let memoryDatabaseReady = false;
 const modelConfigured = Boolean(groq);
-const bridgeConfigured = Boolean(process.env.FRIEREN_BRIDGE_URL?.trim() && process.env.FRIEREN_BRIDGE_SECRET?.trim());
+const bridgeConfig = resolveAiBridgeConfig(process.env);
+const bridgeConfigured = bridgeConfig.configured;
 
 // Render Web Services require an HTTP port. This lightweight endpoint does not expose bot controls.
 const port = Number(process.env.FRIEREN_AI_HEALTH_PORT) || Number(process.env.PORT) || 10000;
@@ -62,11 +63,16 @@ let guardianReviewInProgress = false;
 
 const healthServer = createServer(async (req, res) => {
   if (isPrivateHealthPath(req.url)) {
-    const expected = process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
+    const expectedSecrets = [
+      process.env.FRIEREN_AI_HEALTH_SECRET,
+      process.env.FRIEREN_BRIDGE_SECRET,
+      process.env.FRIEREN_AI_BRIDGE_SECRET,
+    ].map(value => String(value || '').trim()).filter(value => value.length >= 32);
     const supplied = req.headers['x-frieren-health-secret'] || '';
-    const valid = expected.length >= 32 && typeof supplied === 'string'
-      && Buffer.byteLength(expected) === Buffer.byteLength(supplied)
-      && timingSafeEqual(Buffer.from(expected), Buffer.from(supplied));
+    const valid = typeof supplied === 'string' && expectedSecrets.some(expected =>
+      Buffer.byteLength(expected) === Buffer.byteLength(supplied)
+      && timingSafeEqual(Buffer.from(expected), Buffer.from(supplied))
+    );
     if (!valid) {
       res.writeHead(404, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ error: 'not_found' }));
@@ -174,8 +180,8 @@ const healthServer = createServer(async (req, res) => {
   }
   if (req.url === '/bridge-health') {
     const result = await checkBridgeReachability({
-      baseUrl: process.env.FRIEREN_BRIDGE_URL,
-      secret: process.env.FRIEREN_BRIDGE_SECRET,
+      baseUrl: bridgeConfig.baseUrl,
+      secret: bridgeConfig.secret,
     });
     res.writeHead(result.reachable ? 200 : 503, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
     res.end(JSON.stringify({
@@ -789,9 +795,8 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 
   if (interaction.commandName === 'frieren-komut-denetle') {
-    const baseUrl = process.env.FRIEREN_BRIDGE_URL?.trim()?.replace(/\/$/, '');
-    const secret = process.env.FRIEREN_BRIDGE_SECRET?.trim();
-    if (!baseUrl || !secret) {
+    const { baseUrl, secret, configured } = bridgeConfig;
+    if (!configured) {
       await interaction.reply({ content: 'Komut köprüsü yapılandırılmamış. Frieren AI ortamında FRIEREN_BRIDGE_URL ve FRIEREN_BRIDGE_SECRET eksik.', });
       return;
     }
