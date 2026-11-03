@@ -1329,6 +1329,72 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           );
         }
 
+
+        if (commandName === 'profil') {
+          const targetId=userId+'4';
+          await ensureUser(guildId,targetId);
+          await pool.query('UPDATE users SET level=18,xp=1700,coins=765,class_name=$3 WHERE guild_id=$1 AND user_id=$2',[guildId,targetId,'Büyücü']);
+          const targetUser={id:targetId,username:'ProfileTarget',tag:'ProfileTarget#0001',displayAvatarURL:()=> 'https://example.com/profile.png',toString(){return '<@'+targetId+'>';}};
+          const before=await pool.query('SELECT level,xp,coins FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,targetId]);
+          const actionEffects=[];
+          const interaction=makeInteraction(command,buildOptions(schema?.options,{kullanici:targetUser}),guildId,actionEffects);
+          interaction.user.id=userId; interaction.member=makeMember(userId);
+          await command.execute(interaction);
+          effects.push(...actionEffects);
+          const after=await pool.query('SELECT level,xp,coins FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,targetId]);
+          const payloadText=JSON.stringify(actionEffects.map(effect=>effect.payload));
+          behavioralChecks.push(
+            {name:'Başka oyuncunun RPG profili',expected:'hedef oyuncunun adı, seviyesi, XP ve altını gösterilmeli',actual:payloadText.includes('ProfileTarget')?'hedef profil gösterildi':payloadText.slice(0,300),passed:payloadText.includes('ProfileTarget')&&payloadText.includes('Seviye 18')&&payloadText.includes('1.700')&&payloadText.includes('765')},
+            {name:'Başka oyuncu profili salt okunur',expected:'hedef oyuncunun ilerleme değerleri değişmemeli',actual:JSON.stringify(before.rows[0])+' → '+JSON.stringify(after.rows[0]),passed:Object.keys(before.rows[0]).every(key=>Number(before.rows[0][key])===Number(after.rows[0][key]))}
+          );
+        }
+
+        if (commandName === 'siralama') {
+          const rivalId=userId+'3';
+          await ensureUser(guildId,rivalId);
+          await pool.query('UPDATE users SET xp=2500,boss_defeats=8,dungeon_wins=6 WHERE guild_id=$1 AND user_id=$2',[guildId,rivalId]);
+          await pool.query('UPDATE users SET xp=900,boss_defeats=2,dungeon_wins=1 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const categories=[
+            ['xp','Toplam XP','2.500 XP'],
+            ['bosses','İblis zaferi','8 zafer'],
+            ['dungeons','Zindan zaferi','6 zafer']
+          ];
+          for(const [category,label,expected] of categories){
+            const actionEffects=[];
+            const interaction=makeInteraction(command,buildOptions(schema?.options,{kategori:category}),guildId,actionEffects);
+            interaction.user.id=userId; interaction.member=makeMember(userId);
+            await command.execute(interaction);
+            effects.push(...actionEffects);
+            const payloadText=JSON.stringify(actionEffects.map(effect=>effect.payload));
+            behavioralChecks.push({
+              name:'Sunucu liderlik kategorisi: '+label,
+              expected:label+' sıralaması rakibin en yüksek değerini göstermeli',
+              actual:payloadText.includes(expected)?expected:'beklenen değer bulunamadı',
+              passed:payloadText.includes(label)&&payloadText.includes(expected)&&payloadText.includes(rivalId)
+            });
+          }
+        }
+
+        if (commandName === 'sans') {
+          const previousRandom=Math.random;
+          try {
+            const outcomes=[];
+            for(const value of [0,0.999]){
+              Math.random=()=>value;
+              const actionEffects=[];
+              const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,actionEffects);
+              interaction.user.id=userId; interaction.member=makeMember(userId);
+              await command.execute(interaction);
+              effects.push(...actionEffects);
+              outcomes.push(payloadTextFromEffects(actionEffects));
+            }
+            behavioralChecks.push(
+              {name:'Şans yüzdesi alt sınırı',expected:'rastgele değer 0 için %0 gösterilmeli',actual:outcomes[0].includes('%0')?'%0':'alt sınır bulunamadı',passed:outcomes[0].includes('%0')},
+              {name:'Şans yüzdesi üst sınırı',expected:'rastgele değer 0.999 için %100 gösterilmeli ve yüksek şans yorumu gelmeli',actual:outcomes[1].includes('%100')?'%100':'üst sınır bulunamadı',passed:outcomes[1].includes('%100')&&outcomes[1].includes('yıldızlar senden yana')}
+            );
+          } finally { Math.random=previousRandom; }
+        }
+
         const evidence = buildCommandEvidence({ responseCount: effects.length, behavioralChecks });
         results.push({
           command: commandName,
