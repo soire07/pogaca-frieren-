@@ -1092,9 +1092,10 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           );
         } else if (commandName === 'siralama') {
           await pool.query('UPDATE users SET level=7,xp=987,coins=4321,boss_defeats=8,dungeon_wins=5,exploration_count=11 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+          await pool.query("INSERT INTO anime_character_collection(guild_id,user_id,character_name,anime,rarity,emoji,quantity) VALUES($1,$2,'Test Fern','Frieren','Nadir','🌿',1) ON CONFLICT(guild_id,user_id,character_name) DO UPDATE SET quantity=1", [guildId,userId]);
           const categories = [
             ['level','Seviye 7'],['xp','987 XP'],['coins','4.321 altın'],
-            ['bosses','8 zafer'],['dungeons','5 zafer'],['exploration','11 keşif']
+            ['bosses','8 zafer'],['dungeons','5 zafer'],['exploration','11 keşif'],['collection','1 farklı karakter']
           ];
           const results = [];
           for (const [category, expectedValue] of categories) {
@@ -1108,7 +1109,8 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             effects.push(...actionEffects);
           }
           behavioralChecks.push(
-            { name: 'Altı sunucu sıralaması kategorisi', expected: 'seviye, XP, altın, iblis zaferi, zindan zaferi ve keşif kategorileri doğru skorla açılmalı', actual: results.filter(item => item.passed).map(item => item.category + ':' + item.expectedValue).join(' | '), passed: results.length === 6 && results.every(item => item.passed) },
+            { name: 'Yedi sunucu sıralaması kategorisi', expected: 'seviye, XP, altın, iblis zaferi, zindan zaferi, keşif ve karakter koleksiyonu kategorileri doğru skorla açılmalı', actual: results.filter(item => item.passed).map(item => item.category + ':' + item.expectedValue).join(' | '), passed: results.length === 7 && results.every(item => item.passed) },
+            { name: 'Karakter koleksiyonu sıralaması', expected: 'benzersiz karakter sayısı doğru hesaplanmalı ve oyuncu #1 görünmeli', actual: results.find(item => item.category === 'collection')?.passed ? '1 farklı karakter / #1' : 'koleksiyon sıralaması doğrulanamadı', passed: results.some(item => item.category === 'collection' && item.passed) },
             { name: 'İblis zaferi sıralaması', expected: 'boss_defeats alanına göre 8 zafer ve oyuncunun #1 sırası görünmeli', actual: results.find(item => item.category === 'bosses')?.passed ? '8 zafer / #1' : 'boss sıralaması doğrulanamadı', passed: results.some(item => item.category === 'bosses' && item.passed) }
           );
         } else if (commandName === 'buyukitabi') {
