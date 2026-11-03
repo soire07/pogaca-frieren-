@@ -404,7 +404,7 @@ test('repair diff rejects garbage after file headers before invoking git apply',
     '+++ b/rpg-mechanics.js',
     'not-a-hunk-header',
     '+const ready = true;',
-  ].join('\\n');
+  ].join('\n');
   assert.throws(() => validatePatchPaths(malformed), {
     message: 'REPAIR_PATCH_HUNK_INVALID',
   });
