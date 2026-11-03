@@ -894,7 +894,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           await command.execute(interaction);
           const payloadText = JSON.stringify(effects.map(effect => effect.payload));
           behavioralChecks.push(
-            { name: 'Zanaat tarif kataloğu ve gereksinimleri', expected: 'tarifler, oyuncu/zanaat seviyesi, malzemeler ve ekipman bonusları listelenmeli', actual: ['Zanaat Tarif Defteri','Gezginin Demir Kılıcı','Oyuncu seviyesi','Zanaat seviyesi','Malzeme'].filter(value => payloadText.includes(value)).join(', '), passed: ['Zanaat Tarif Defteri','Gezginin Demir Kılıcı','Oyuncu seviyesi','Zanaat seviyesi','Malzeme'].every(value => payloadText.includes(value)) && payloadText.includes('ATK') }
+            { name: 'Zanaat tarif kataloğu ve gereksinimleri', expected: 'tarifler, oyuncu/zanaat seviyesi, malzemeler ve ekipman bonusları listelenmeli', actual: ['Zanaat Tarif Defteri','Gezginin Demir Kılıcı','Oyuncu seviyesi','Zanaat seviyesi','Malzeme'].filter(value => payloadText.includes(value)).join(', '), passed: ['Zanaat Tarif Defteri','Gezginin Demir Kılıcı','Oyuncu seviyesi','Zanaat seviyesi','Malzeme'].every(value => payloadText.includes(value)) && payloadText.includes('saldırı') }
           );
         } else if (commandName === 'zanaatgorevi') {
           const before = await pool.query('SELECT coins,xp,level FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
