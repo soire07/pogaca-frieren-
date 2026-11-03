@@ -667,7 +667,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           const isDungeon = commandName === 'katlizindan';
           const timestampField = isDungeon ? 'last_dungeon_at' : 'last_boss_at';
           const counterField = isDungeon ? 'dungeon_runs' : 'boss_defeats';
-          const responseText = JSON.stringify(effects.map(effect => effect.payload));
+          const responseText = payloadTextFromEffects(effects);
           const tankSaved = saved.rows.find(row => row.user_id === teamUsers[0].id);
           const healerSaved = saved.rows.find(row => row.user_id === teamUsers[1].id);
           const mageSaved = saved.rows.find(row => row.user_id === teamUsers[2].id);
