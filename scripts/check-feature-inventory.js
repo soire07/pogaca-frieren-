@@ -36,7 +36,16 @@ for (const feature of inventory.features) {
         const source = await readFile(new URL('../' + evidence.file, import.meta.url), 'utf8');
         if (evidence.type === 'isolated_command_audit') {
           if (!evidence.command || !(source.includes("commandName === '" + evidence.command + "'") || source.includes("'" + evidence.command + "'") || source.includes('"' + evidence.command + '"'))) {
-            errors.push(`Komut kanıtı bulunamadı: ${feature.id} → ${evidence.command}`);
+            errors.push('Komut kanıtı bulunamadı: ' + feature.id + ' → ' + evidence.command);
+          }
+          if (!Array.isArray(evidence.checks) || evidence.checks.length === 0) {
+            errors.push('Komut kanıtında davranış kontrolleri eksik: ' + feature.id);
+          } else {
+            for (const check of evidence.checks) {
+              if (typeof check !== 'string' || !check.trim() || !source.includes(check)) {
+                errors.push('Komut davranış kanıtı bulunamadı: ' + feature.id + ' → ' + check);
+              }
+            }
           }
         } else if (!evidence.test || !source.includes(evidence.test)) {
           errors.push(`Test kanıtı bulunamadı: ${feature.id} → ${evidence.test}`);
