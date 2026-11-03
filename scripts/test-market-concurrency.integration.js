@@ -5,6 +5,13 @@ import { initDatabase, ensureUser, pool, withIsolatedTestSchema } from '../datab
 import { buyMarketItem } from '../market.js';
 import { resolveTradeOffer } from '../trade-transaction.js';
 import { claimSoloBossReward, settleRaidRewards, settleDungeonRewards } from '../rpg-reward-transactions.js';
+import achievementCommand from '../basarimlar.js';
+import leaderboardCommand from '../liderlik.js';
+import explorationLeaderboardCommand from '../kesifliderligi.js';
+import craftingCommand from '../zanaat.js';
+import equipmentCommand from '../ekipman.js';
+import collectionCommand from '../koleksiyon.js';
+import { equipmentItems } from '../equipment-data.js';
 
 const dedicatedAuditDatabase = /^postgres(?:ql)?:\/\/postgres:postgres@localhost:5432\/frieren_audit(?:\?|$)/.test(
   process.env.DATABASE_URL || ''
@@ -680,6 +687,218 @@ test('PostgreSQL migration backfills the latest legacy solo boss reward before a
       assert.equal(inventory.rows[0].count, 0, 'a migrated reward must not produce a second inventory payout');
     } finally {
       await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    }
+  });
+});
+
+test('concurrent crafting cannot consume the same inventory materials or award duplicate XP', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = testSnowflake('97');
+    const userId = testSnowflake('98');
+    const item = equipmentItems.find(entry => entry.id === 'iron_sword');
+    assert.ok(item, 'iron_sword recipe must map to a real equipment item');
+    await ensureUser(guildId, userId);
+    await pool.query("INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'💎 Mana Kristali',1),($1,$2,'🥐 Büyülü Poğaça Kutusu',1)", [guildId, userId]);
+
+    const responses = [];
+    const makeInteraction = () => ({
+      guildId,
+      user: { id: userId },
+      options: {
+        getString: name => name === 'tarif' ? 'iron_sword' : null,
+        getInteger: name => name === 'adet' ? 1 : null
+      },
+      deferReply: async () => {},
+      editReply: async payload => { responses.push(payload); return payload; }
+    });
+
+    try {
+      await Promise.all([craftingCommand.execute(makeInteraction()), craftingCommand.execute(makeInteraction())]);
+      const output = await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3', [guildId, userId, item.name]);
+      const materials = await pool.query("SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=ANY($3::text[])", [guildId, userId, ['💎 Mana Kristali', '🥐 Büyülü Poğaça Kutusu']]);
+      const progress = await pool.query('SELECT xp,level,successful_crafts FROM user_crafting_progress WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+      const daily = await pool.query('SELECT crafted_items FROM daily_crafting_progress WHERE guild_id=$1 AND user_id=$2 AND mission_date=CURRENT_DATE', [guildId, userId]);
+
+      assert.equal(Number(output.rows[0]?.quantity), 1, 'only one craft may create the item');
+      assert.equal(materials.rowCount, 0, 'both required materials must be consumed exactly once');
+      assert.equal(Number(progress.rows[0]?.successful_crafts), 1);
+      assert.equal(Number(progress.rows[0]?.xp), ({ Yaygın: 10, Nadir: 20, Destansı: 35, Efsanevi: 50 }[item.rarity] || 10));
+      assert.equal(Number(daily.rows[0]?.crafted_items), 1);
+      assert.equal(responses.filter(value => Array.isArray(value?.embeds)).length, 1,
+        'exactly one concurrent crafting interaction may report success');
+    } finally {
+      await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    }
+  });
+});
+
+test('equipment equip and unequip preserve base HP, mana caps and inventory ownership', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = testSnowflake('99');
+    const userId = testSnowflake('98');
+    const item = equipmentItems.find(entry => entry.id === 'iron_sword');
+    assert.ok(item);
+    await ensureUser(guildId, userId);
+    await pool.query('UPDATE users SET level=$3,max_hp=120,hp=120,max_mana=90,mana=90 WHERE guild_id=$1 AND user_id=$2', [guildId, userId, item.levelReq]);
+    await pool.query('INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)', [guildId, userId, item.name]);
+
+    const makeInteraction = (action, slot = null) => ({
+      guildId,
+      user: { id: userId },
+      options: { getString: name => name === 'islem' ? action : name === 'esya' ? item.id : name === 'yuva' ? slot : null },
+      reply: async payload => payload
+    });
+
+    try {
+      await equipmentCommand.execute(makeInteraction('equip'));
+      let state = await pool.query("SELECT u.max_hp,u.max_mana,u.hp,u.mana,(SELECT COUNT(*)::int FROM user_equipment e WHERE e.guild_id=u.guild_id AND e.user_id=u.user_id) AS equipped FROM users u WHERE u.guild_id=$1 AND u.user_id=$2", [guildId, userId]);
+      let inventory = await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3', [guildId, userId, item.name]);
+      assert.equal(Number(state.rows[0].max_hp), 120);
+      assert.equal(Number(state.rows[0].max_mana), 90);
+      assert.equal(Number(state.rows[0].equipped), 1);
+      assert.equal(Number(inventory.rows[0].quantity), 1, 'equipping must not consume the owned item');
+
+      await equipmentCommand.execute(makeInteraction('unequip', 'weapon'));
+      state = await pool.query("SELECT max_hp,max_mana,hp,mana,(SELECT COUNT(*)::int FROM user_equipment e WHERE e.guild_id=users.guild_id AND e.user_id=users.user_id) AS equipped FROM users WHERE guild_id=$1 AND user_id=$2", [guildId, userId]);
+      inventory = await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3', [guildId, userId, item.name]);
+      assert.equal(Number(state.rows[0].max_hp), 120);
+      assert.equal(Number(state.rows[0].max_mana), 90);
+      assert.equal(Number(state.rows[0].equipped), 0);
+      assert.equal(Number(inventory.rows[0].quantity), 1, 'unequipping must keep the item in inventory');
+    } finally {
+      await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+    }
+  });
+});
+
+test('achievement rewards are single-use under concurrent claims and isolated per guild', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildA = testSnowflake('91');
+    const guildB = testSnowflake('92');
+    const userId = testSnowflake('90');
+    await ensureUser(guildA, userId);
+    await ensureUser(guildB, userId);
+    await pool.query('UPDATE users SET coins=1000,level=5 WHERE user_id=$1 AND guild_id=ANY($2::text[])', [userId, [guildA, guildB]]);
+
+    const makeInteraction = guildId => ({
+      guildId,
+      user: { id: userId, username: 'AchievementTester' },
+      options: { getString: () => 'rich_1000' },
+      deferReply: async () => {},
+      editReply: async payload => payload
+    });
+
+    try {
+      const sameGuild = await Promise.all([achievementCommand.execute(makeInteraction(guildA)), achievementCommand.execute(makeInteraction(guildA))]);
+      const otherGuild = await achievementCommand.execute(makeInteraction(guildB));
+      const balances = await pool.query('SELECT guild_id,coins FROM users WHERE user_id=$1 AND guild_id=ANY($2::text[]) ORDER BY guild_id', [userId, [guildA, guildB]]);
+      const claims = await pool.query("SELECT guild_id,achievement_key FROM achievement_claims WHERE user_id=$1 AND guild_id=ANY($2::text[]) AND achievement_key='rich_1000'", [userId, [guildA, guildB]]);
+
+      assert.deepEqual(balances.rows.map(row => Number(row.coins)), [1100, 1100]);
+      assert.equal(claims.rowCount, 2, 'one claim per guild is allowed');
+      assert.equal(sameGuild.filter(value => String(value).includes('100 altın')).length, 1,
+        'same-guild concurrent requests must award once');
+      assert.ok(String(otherGuild).includes('100 altın'), 'the other guild has an independent claim');
+    } finally {
+      await pool.query('DELETE FROM users WHERE user_id=$1 AND guild_id=ANY($2::text[])', [userId, [guildA, guildB]]);
+    }
+  });
+});
+
+test('gold leaderboard orders by coins and tie-breaks while excluding other guilds', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = testSnowflake('93');
+    const foreignGuildId = testSnowflake('94');
+    const users = [testSnowflake('90'), testSnowflake('91'), testSnowflake('92')];
+    for (const userId of users) await ensureUser(guildId, userId);
+    await ensureUser(foreignGuildId, users[0]);
+    await pool.query('UPDATE users SET coins=1000,level=3,xp=300 WHERE guild_id=$1 AND user_id=$2', [guildId, users[0]]);
+    await pool.query('UPDATE users SET coins=1000,level=5,xp=100 WHERE guild_id=$1 AND user_id=$2', [guildId, users[1]]);
+    await pool.query('UPDATE users SET coins=500,level=9,xp=900 WHERE guild_id=$1 AND user_id=$2', [guildId, users[2]]);
+    await pool.query('UPDATE users SET coins=9999,level=99,xp=99999 WHERE guild_id=$1 AND user_id=$2', [foreignGuildId, users[0]]);
+    const interaction = {
+      guildId,
+      deferReply: async () => {},
+      client: { users: { fetch: async id => ({ username: 'Player-' + id }) } },
+      editReply: async payload => payload
+    };
+
+    try {
+      const response = await leaderboardCommand.execute(interaction);
+      const description = response.embeds[0].data.description;
+      assert.ok(description.indexOf('Player-' + users[1]) < description.indexOf('Player-' + users[0]),
+        'higher level wins the tie on equal gold');
+      assert.ok(description.includes('Player-' + users[2]));
+      assert.ok(!description.includes('9999'), 'foreign guild balance must not leak into the leaderboard');
+    } finally {
+      await pool.query('DELETE FROM users WHERE (guild_id=$1 AND user_id=ANY($2::text[])) OR (guild_id=$3 AND user_id=$4)', [guildId, users, foreignGuildId, users[0]]);
+    }
+  });
+});
+
+test('exploration leaderboard aggregates discoveries only within the requested guild', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = testSnowflake('95');
+    const foreignGuildId = testSnowflake('96');
+    const users = [testSnowflake('90'), testSnowflake('91')];
+    for (const userId of users) await ensureUser(guildId, userId);
+    await ensureUser(foreignGuildId, users[0]);
+    await pool.query("INSERT INTO adventure_discoveries(guild_id,user_id,discovery_key) VALUES($1,$2,'forest'),($1,$2,'ruins'),($1,$3,'lake'),($4,$2,'foreign-forest')", [guildId, users[0], users[1], foreignGuildId]);
+    const interaction = {
+      guildId,
+      options: { getString: () => 'kesif' },
+      reply: async payload => payload
+    };
+
+    try {
+      const response = await explorationLeaderboardCommand.execute(interaction);
+      const description = response.embeds[0].data.description;
+      assert.ok(description.includes('<@' + users[0] + '> — **2** keşif'));
+      assert.ok(description.includes('<@' + users[1] + '> — **1** keşif'));
+      assert.equal((description.match(/keşif/g) || []).length, 2);
+    } finally {
+      await pool.query('DELETE FROM users WHERE (guild_id=$1 AND user_id=ANY($2::text[])) OR (guild_id=$3 AND user_id=$4)', [guildId, users, foreignGuildId, users[0]]);
+    }
+  });
+});
+
+test('character collection command filters by rarity and keeps guild/player data isolated', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId = testSnowflake('97');
+    const foreignGuildId = testSnowflake('98');
+    const userId = testSnowflake('90');
+    await ensureUser(guildId, userId);
+    await ensureUser(foreignGuildId, userId);
+    await pool.query("INSERT INTO anime_character_collection (guild_id,user_id,character_name,anime,rarity,emoji,color,description,traits,quantity) VALUES($1,$2,'Frieren','Frieren','Efsanevi','🌟',10194172,'fixture','fixture',2),($3,$2,'Fern','Frieren','Nadir','🪄',10194172,'fixture','fixture',1)", [guildId, userId, foreignGuildId]);
+    const interaction = {
+      guildId,
+      user: { id: userId, username: 'CollectionTester' },
+      options: { getUser: () => null, getString: () => 'Efsanevi' },
+      deferReply: async () => {},
+      editReply: async payload => payload
+    };
+
+    try {
+      const response = await collectionCommand.execute(interaction);
+      assert.equal(response.embeds.length, 2, 'summary and one character card should be returned');
+      assert.ok(response.embeds[0].data.title.includes('Efsanevi'));
+      assert.ok(response.embeds[1].data.title.includes('Frieren'));
+      assert.ok(!response.embeds.some(embed => embed.data.title.includes('Fern')),
+        'a character from another guild must not appear');
+    } finally {
+      await pool.query('DELETE FROM users WHERE (guild_id=$1 AND user_id=$2) OR (guild_id=$3 AND user_id=$2)', [guildId, userId, foreignGuildId]);
     }
   });
 });
