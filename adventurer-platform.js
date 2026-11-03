@@ -227,8 +227,7 @@ export async function getAdventurerDashboard(db = pool, accountId) {
   const profiles=await db.query(
     `SELECT l.guild_id,l.user_id,u.character_name,u.class_name,u.level,u.xp,u.coins,u.hp,u.max_hp,u.mana,u.max_mana,
        s.season_id,s.name AS season_name,COALESCE(r.rating,1000) AS rating,
-       COALESCE(r.wins,0) AS wins,COALESCE(r.losses,0) AS losses,COALESCE(r.matches,0) AS matches,
-       CASE WHEN COALESCE(r.rating,1000)>=1800 THEN 'Efsane' WHEN COALESCE(r.rating,1000)>=1600 THEN 'Elmas' WHEN COALESCE(r.rating,1000)>=1400 THEN 'Platin' WHEN COALESCE(r.rating,1000)>=1200 THEN 'Altın' WHEN COALESCE(r.rating,1000)>=1000 THEN 'Gümüş' ELSE 'Bronz' END AS rank_name
+       COALESCE(r.wins,0) AS wins,COALESCE(r.losses,0) AS losses,COALESCE(r.matches,0) AS matches
      FROM site_discord_links l JOIN users u USING(guild_id,user_id)
      LEFT JOIN LATERAL (SELECT season_id,name FROM arena_seasons WHERE guild_id=l.guild_id AND status='active' ORDER BY season_id DESC LIMIT 1) s ON TRUE
      LEFT JOIN arena_ratings r ON r.season_id=s.season_id AND r.guild_id=l.guild_id AND r.user_id=l.user_id
@@ -244,7 +243,7 @@ export async function getAdventurerDashboard(db = pool, accountId) {
      GROUP BY e.event_id ORDER BY e.starts_at ASC LIMIT 20`,
     [guildIds]
   ): {rows:[]};
-  return { profiles:profiles.rows, events:events.rows };
+  return { profiles:profiles.rows.map(profile => ({ ...profile, rank_name:getArenaRankName(profile.rating) })), events:events.rows };
 }
 
 export async function createGuildEvent(db = pool, { guildId,title,description='',eventType='community',startsAt,endsAt,maxParticipants=null,createdBy }) {
