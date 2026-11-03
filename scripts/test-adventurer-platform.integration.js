@@ -89,7 +89,7 @@ test('arena seasons last ninety days, rotate when expired and keep MMR season-sc
     const firstDays = (new Date(first.ends_at).getTime() - new Date(first.starts_at).getTime()) / 86_400_000;
     assert.ok(Math.abs(firstDays - 90) < 0.001, 'new season must last exactly 90 days');
     await pool.query('INSERT INTO arena_ratings(season_id,guild_id,user_id,rating,wins) VALUES($1,$2,$3,1650,4)',[first.season_id,guildId,userId]);
-    await pool.query("UPDATE arena_seasons SET ends_at=NOW()-INTERVAL '1 second' WHERE season_id=$1",[first.season_id]);
+    await pool.query("UPDATE arena_seasons SET starts_at=NOW()-INTERVAL '91 days',ends_at=NOW()-INTERVAL '1 second' WHERE season_id=$1",[first.season_id]);
     const second = await ensureActiveArenaSeason(pool,guildId);
     assert.notEqual(second.season_id,first.season_id);
     const old = await pool.query('SELECT status,rating FROM arena_seasons s JOIN arena_ratings r USING(season_id) WHERE s.season_id=$1 AND r.user_id=$2',[first.season_id,userId]);
