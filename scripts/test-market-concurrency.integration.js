@@ -2494,7 +2494,7 @@ test('healer class grants its first-discovery bonus to adventure rewards', {
     assert.equal(Number(history.rows[0]?.xp_awarded), 60);
     assert.equal(history.rows[0]?.first_discovery, true);
     const responseText = JSON.stringify(responses.map(response => response.embeds?.map(embed => embed.toJSON())));
-    assert.ok(responseText.includes('Şifacı keşif desteği'));
+    assert.ok(responseText.includes('Şifacı yardım bonusu'));
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
   });
 });
