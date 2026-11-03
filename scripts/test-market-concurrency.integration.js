@@ -291,6 +291,34 @@ test('production solo boss reward transaction grants a battle only once under co
   });
 });
 
+test('a previously claimed solo boss battle cannot be replayed after a newer battle has settled', {
+  skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    const guildId=testSnowflake('91'), userId=testSnowflake('90');
+    const firstBattleId=randomUUID(), secondBattleId=randomUUID();
+    await ensureUser(guildId,userId);
+    const claim=(battleId,coins)=>claimSoloBossReward(pool,{
+      guildId,userId,battleId,hp:80,mana:65,coins,xp:100,
+      bonusLoot:null,craftingMaterial:null,journalBossKey:null,spellUsed:null
+    });
+
+    assert.equal((await claim(firstBattleId,100)).status,'claimed');
+    assert.equal((await claim(secondBattleId,200)).status,'claimed');
+    const replay=await claim(firstBattleId,100);
+    const player=await pool.query(
+      'SELECT coins,xp,boss_defeats,last_boss_battle_id FROM users WHERE guild_id=$1 AND user_id=$2',
+      [guildId,userId]
+    );
+
+    assert.equal(replay.status,'already_claimed','an old battle id must remain permanently consumed');
+    assert.equal(Number(player.rows[0].coins),300,'replaying the first battle must not mint coins');
+    assert.equal(Number(player.rows[0].xp),200,'replaying the first battle must not mint XP');
+    assert.equal(Number(player.rows[0].boss_defeats),2,'replaying the first battle must not add a boss victory');
+    assert.equal(player.rows[0].last_boss_battle_id,secondBattleId);
+  });
+});
+
 test('production solo boss reward transaction rolls back player progression and all loot on inventory failure', {
   skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
 }, async () => {
