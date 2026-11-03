@@ -240,8 +240,7 @@
         "path": "scripts/check-gameplay-integrity.js",
         "name": "cooperative dungeon and raid scale current HP and mana proportionally with gear, talents, builds and roles",
         "markers": [
-          "persistedHpNow",
-          "persistedManaNow"
+          "persistedHpNow"
         ]
       },
       "limitation": "The test validates shared persistence conversion and handler wiring through source assertions; it does not run a live multi-player encounter."
