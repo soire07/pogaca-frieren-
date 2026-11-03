@@ -26,6 +26,10 @@ const commands = [
     .addStringOption(option => option.setName('hedef').setDescription('Neyi test etmemi istiyorsun? Örn. boss hasarı, görev ödülleri, envanter.').setRequired(true).setMaxLength(4000))
     .toJSON(),
   new SlashCommandBuilder()
+    .setName('frieren-guardian-test')
+    .setDescription('Groq ve Guardian inceleme hattını sentetik olayla sınar; onarım veya GitHub işlemi başlatmaz.')
+    .toJSON(),
+  new SlashCommandBuilder()
     .setName('frieren-ai')
     .setDescription('Frieren botunun kodu ve test sistemi hakkında yapay zekâya soru sorar.')
     .addStringOption(option => option.setName('soru').setDescription('Sorunu veya inceleme isteğini yaz.').setRequired(true).setMaxLength(1500))
