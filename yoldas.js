@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
-import { adoptCompanion, careForCompanion, equipCompanionCosmetic, evolveCompanion, getCompanion, initCompanionSchema, COMPANION_CATALOG, COMPANION_COSMETICS } from './companions.js';
+import { adoptCompanion, careForCompanion, equipCompanionCosmetic, evolveCompanion, getCompanion, getCompanionEvolutionHistory, initCompanionSchema, COMPANION_CATALOG, COMPANION_COSMETICS } from './companions.js';
 
 let schemaReady;
 function ensureSchema() {
@@ -18,6 +18,7 @@ export default {
     .addSubcommand(sub => sub.setName('oyna').setDescription('Yoldaşınla oyun oyna.'))
     .addSubcommand(sub => sub.setName('egit').setDescription('Yoldaşını eğit (100 altın).'))
     .addSubcommand(sub => sub.setName('evrim').setDescription('Seviyen ve altının uygunsa yoldaşını bir üst forma evrimleştir.'))
+    .addSubcommand(sub => sub.setName('gecmis').setDescription('Yoldaşının evrim geçmişini görüntüle.'))
     .addSubcommand(sub => sub.setName('kozmetik').setDescription('Yoldaşına kozmetik giydir veya görünümünü sıfırla.')
       .addStringOption(option => option.setName('gorunum').setDescription('Seçtiğin görünüm (ilk kullanımda altınla açılır).').setRequired(true)
         .addChoices({ name: 'Varsayılan görünüm · Ücretsiz', value: 'default' }, ...COMPANION_COSMETICS.map(item => ({ name: item.emoji + ' ' + item.name + ' · ' + item.cost + ' altın', value: item.key }))))),
@@ -34,6 +35,14 @@ export default {
         if (result.status === 'insufficient_funds') return interaction.editReply('Bu yoldaş için **' + result.cost + '** altın gerekiyor.');
         if (result.status === 'already_has_companion') return interaction.editReply('Zaten bir yoldaşın var. Önce mevcut yoldaşının bakımını yap.');
         return interaction.editReply('Geçersiz yoldaş seçimi.');
+      }
+      if (action === 'gecmis') {
+        const pet = await getCompanion(pool, interaction.guildId, interaction.user.id);
+        if (!pet) return interaction.editReply('Henüz yoldaşın yok.');
+        const history = await getCompanionEvolutionHistory(pool, { guildId: interaction.guildId, userId: interaction.user.id });
+        if (!history.length) return interaction.editReply('Yoldaşının henüz bir evrim geçmişi yok.');
+        const lines = history.map(row => '**Aşama ' + row.stage + ':** ' + row.evolution_name + ' · ' + row.coin_cost + ' altın · ' + new Date(row.evolved_at).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' }));
+        return interaction.editReply('**Yoldaş Evrim Geçmişi**\\n' + lines.join('\\n'));
       }
       if (action === 'evrim') {
         const result = await evolveCompanion(pool, { guildId: interaction.guildId, userId: interaction.user.id });
