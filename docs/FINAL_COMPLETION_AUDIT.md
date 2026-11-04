@@ -116,3 +116,26 @@ Bu belge, bütünleşik tamamlama çalışmasının denetim tabanıdır. Her tam
 - `docs/COMPETITOR_FEATURE_STATUS.md` üst başlığı ve envanter sayacı güncel kod başlığı `99d25d0b72fb0052bd2aa2adc89c61db95a706be` ile 2.018 toplam / 343 kod karşılığı / 1.675 planlı olarak düzeltildi; tarihsel durum satırlarının eski olabileceği açıkça belirtildi.
 - PR #217 açıklamasının özet envanter sayısı 340/2.015'ten 343/2.018'e güncellendi; 343 kaydın canlı doğrulanmış olmadığı özellikle yazıldı.
 - Bu değişiklikler dokümantasyon ve PR metni uzlaştırmasıdır. Oyun kodu, DB şeması, Discord komut kaydı veya canlı dağıtım değiştirilmedi.
+
+
+## 10. 2026-11-04 CI ve canlı ortam tekrar kontrolü
+
+### GitHub Actions
+- Düzeltme commit'i `3a34353602e3df26c7a0bde7dd05b4f3fe243b7a` üzerinde altı workflow'un tamamı başarıyla tamamlandı.
+- Ana Poğaça doğrulama job'u: **791 test / 791 PASS / 0 FAIL**. Loglarda yeni Discord-only session yönlendirme testi (693) ve web hesabı gerekli uyarı testi (738) PASS.
+- İzole PostgreSQL audit job'unda raporlanan test grupları: **7 + 4 + 26 + 6 + 1 = 44 PASS / 0 FAIL**. Bunlar izole CI PostgreSQL konteynerinde çalıştı; production DB'ye yazılmadı.
+- Daha sonra PR başlığına yalnızca Vercel deployment metadata'sı ekleyen `1e267c0a7eb10a8b306b7517d73c691ed6569de1` commit'i geldi. Bu başlıkta 5 workflow başarıyla tamamlandı; izole audit workflow'u iptal edildi. Önceki kod düzeltmesi commit'inin altı başarılı sonucu ayrıca korunuyor.
+
+### Render üretim durumu
+- Ana Render servisi `pogaca-frieren-`: Free plan, `main` dalı, otomatik deploy açık, `/health` health check; canlı deploy commit'i `bf1b29aaf40d82fa581cbf4c5bb86f6095961a33`.
+- Render uygulama loglarında `SITE_ACCOUNT_INVALID` hatası 2026-11-04 12:47:35 UTC ve 13:58:09 UTC zamanlarında görülüyor. Düzeltme PR #217 dalında; canlı servisin commit'i düzeltme commit'ini içermediği için **bu hata henüz canlıda giderilmiş sayılmaz**.
+- Frieren AI Render servisi Free plan ve `ai-agent` root directory ile çalışıyor; health check path şu anda boş. Loglar PostgreSQL bağlantısının doğrulandığını ve slash komutlarının yalnızca test sunucusuna kaydedildiğini gösteriyor.
+
+### Vercel üretim durumu
+- `frierenbot.vercel.app` alias'ına bağlı son production deployment `READY`; commit `052aebb2547212128a710c4a0c97baf529aeb458` (`main`).
+- Son 7 günlük Vercel runtime error sorgusu hata kümesi döndürmedi. Bu, tarayıcıda Discord OAuth ve panel akışının uçtan uca test edildiği anlamına gelmez.
+- Vercel deployment URL fetch işlemi yetki/erişim hatası verdi; dolayısıyla bu turda canlı HTML/etkileşim doğrulaması yapılmadı.
+
+### Yayın kararı
+- PR #217 hâlâ draft ve açık; 129 dosya, 450 commit içeriyor ve `main` tabanına karşı geniş kapsamlı. Sadece son küçük düzeltme gibi değerlendirilmemeli.
+- PR #217 merge edilmedi, Render/Vercel production deploy tetiklenmedi, production DB değiştirilmedi. Bu karar canlı sistemde kanıtlanmamış geniş değişiklikleri tek seferde riske atmamak içindir.
