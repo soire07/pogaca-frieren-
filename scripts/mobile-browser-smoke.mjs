@@ -1,6 +1,10 @@
 import { chromium, webkit, request } from 'playwright';
 
-const baseUrl = String(process.env.MOBILE_SMOKE_BASE_URL || 'https://frierenbot.vercel.app').replace(/\/$/, '');
+const configuredBaseUrl = String(process.env.MOBILE_SMOKE_BASE_URL || '').trim();
+if (!/^https:\/\//i.test(configuredBaseUrl)) throw new Error('MOBILE_SMOKE_BASE_URL must point to a successful preview deployment; production fallback is disabled.');
+const parsedBaseUrl = new URL(configuredBaseUrl);
+if (!/vercel\.app$/i.test(parsedBaseUrl.hostname) || parsedBaseUrl.hostname === 'frierenbot.vercel.app') throw new Error('Browser smoke accepts only a Vercel preview hostname.');
+const baseUrl = parsedBaseUrl.origin.replace(/\/$/, '');
 const scenarios = [
   { name: 'Android Chrome viewport', engine: chromium, viewport: { width: 412, height: 915 }, isMobile: true },
   { name: 'iOS Safari viewport', engine: webkit, viewport: { width: 390, height: 844 }, isMobile: true },
