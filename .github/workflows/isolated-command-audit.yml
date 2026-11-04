@@ -1,7 +1,7 @@
 name: Frieren isolated command audit
 on:
   pull_request:
-    branches: [main]
+    branches: [main, fix/solo-boss-reward-idempotency-mainline]
     paths:
       - "*.js"
       - "commands/**"
@@ -14,11 +14,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: frieren-isolated-audit-${{ github.ref }}
+  group: frieren-isolated-audit-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
   audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16
