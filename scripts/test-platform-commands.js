@@ -14,7 +14,7 @@ test('adventurer web-link command is discoverable and exposes only the one-time 
 test('event calendar exposes list, join, leave and creation actions with bounded inputs', () => {
   const schema=eventCommand.data.toJSON();
   assert.equal(schema.name,'etkinlik');
-  assert.deepEqual(schema.options.map(option=>option.name),['liste','katil','ayril','olustur']);
+  assert.deepEqual(schema.options.map(option=>option.name),['liste','katil','ayril','yoklama','olustur']);
   const create=schema.options.find(option=>option.name==='olustur');
   assert.ok(create.options.find(option=>option.name==='baslik').required);
   assert.ok(create.options.find(option=>option.name==='baslangic').required);
