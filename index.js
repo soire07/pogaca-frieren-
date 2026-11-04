@@ -242,7 +242,8 @@ client.once(Events.ClientReady, async readyClient => {
   void processDueGuildEventReminders(readyClient);
   void processDuePlayerMarketPriceAlerts(readyClient);
   void processNewsBirdDigests(readyClient);
-  setInterval(() => { void processDueGuildEventReminders(readyClient); void processDuePlayerMarketPriceAlerts(readyClient); }, 30_000);
+  setInterval(() => void processDueGuildEventReminders(readyClient), 60_000);
+  setInterval(() => void processDuePlayerMarketPriceAlerts(readyClient), 5 * 60_000);
   setInterval(() => void processNewsBirdDigests(readyClient), 60 * 60_000);
   const activities = [
     'bin yıllık büyüler öğreniyor ✨',
