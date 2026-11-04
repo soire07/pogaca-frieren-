@@ -33,6 +33,23 @@ test('epic set bonus activates at two pieces and disappears when one is removed'
   assert.equal(inactive.setText, null);
 });
 
+test('equipment command equip and unequip resource caps include active rarity set bonuses', async () => {
+  const read = async path => (await import('node:fs/promises')).readFile(new URL(path, import.meta.url), 'utf8');
+  const [equipmentCommand, itemCommand] = await Promise.all([read('../ekipman.js'), read('../esyakullan.js')]);
+  assert.match(equipmentCommand, /applyEquipmentSetBonus\(remainingItems, equipmentBonus\(remainingItems\)\)/);
+  assert.match(equipmentCommand, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+  assert.match(itemCommand, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+
+  const legendary = equipmentItems.filter(item => ['demon_blade', 'demon_armor'].includes(item.id));
+  const epic = equipmentItems.filter(item => ['frieren_robe', 'rune_ring'].includes(item.id));
+  const legendaryCaps = applyEquipmentSetBonus(legendary, equipmentBonus(legendary));
+  const epicCaps = applyEquipmentSetBonus(epic, equipmentBonus(epic));
+  assert.equal(Math.min(2000, 100 + legendaryCaps.hp), 185);
+  assert.equal(Math.min(2000, 100 + epicCaps.mana), 165);
+  assert.equal(Math.min(2000, 100 + applyEquipmentSetBonus(legendary.slice(1), equipmentBonus(legendary.slice(1))).hp), 160);
+  assert.equal(Math.min(2000, 100 + applyEquipmentSetBonus(epic.slice(1), equipmentBonus(epic.slice(1))).mana), 130);
+});
+
 test('level-scaled quest rewards include the chain completion bonus deterministically', () => {
   assert.deepEqual(getLevelScaledQuestReward(100, 80, 21, false), {
     multiplier: 1.2, coins: 120, xp: 96, completionBonus: false
