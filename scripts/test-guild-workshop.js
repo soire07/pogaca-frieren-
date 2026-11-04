@@ -51,7 +51,7 @@ test('spell automation rejects cross-guild channels and missing send permissions
  const rule={automation_id:'automation-1',channel_id:'223456789012345678',message:'{{player}}',template_id:null};
  const db={async query(sql){assert.ok(sql.includes('WITH due AS'));return{rows:[rule],rowCount:1};}};
  let sends=0;
- const client={user:{id:'123456789012345678'},channels:{async fetch(){return{guildId:'999999999999999999',isTextBased:()=>true,async send(){sends++;}}};}};
+ const client = { user: { id: '123456789012345678' }, channels: { async fetch() { return { guildId: '999999999999999999', isTextBased: () => true, async send() { sends++; } }; } } };
  const {runGuildSpellAutomations}=await import('../guild-workshop.js');
  const result=await runGuildSpellAutomations(db,client,'1539562273197260860','event_reminder',{player:'Fern'});
  assert.deepEqual(result,{sent:0,skipped:1});
@@ -62,7 +62,7 @@ test('spell automation respects Discord send and embed permissions',async()=>{
  const rule={automation_id:'automation-2',channel_id:'223456789012345678',message:'Ready',template_id:null};
  const db={async query(){return{rows:[rule],rowCount:1};}};
  let sends=0;
- const client={user:{id:'123456789012345678'},channels:{async fetch(){return{guildId:'1539562273197260860',isTextBased:()=>true,permissionsFor:()=>({has:permission=>permission==='SendMessages'}),async send(){sends++;}}};}};
+ const client = { user: { id: '123456789012345678' }, channels: { async fetch() { return { guildId: '1539562273197260860', isTextBased: () => true, permissionsFor: () => ({ has: permission => permission === 'SendMessages' }), async send() { sends++; } }; } } };
  const {runGuildSpellAutomations}=await import('../guild-workshop.js');
  const result=await runGuildSpellAutomations(db,client,'1539562273197260860','event_reminder');
  assert.deepEqual(result,{sent:1,skipped:0});
@@ -73,7 +73,7 @@ test('spell automation respects Discord send and embed permissions',async()=>{
 test('spell automation claims are leased and cooldown starts only after a successful Discord send',async()=>{
  const calls=[];
  const db={async query(sql){calls.push(sql);if(sql.includes('WITH due AS'))return{rows:[{automation_id:'automation-retry',channel_id:'223456789012345678',message:'Ready',template_id:null}],rowCount:1};return{rows:[],rowCount:1};}};
- const client={user:{id:'123456789012345678'},channels:{async fetch(){return{guildId:'1539562273197260860',isTextBased:()=>true,async send(){return{id:'message-1'};}};}}};
+ const client = { user: { id: '123456789012345678' }, channels: { async fetch() { return { guildId: '1539562273197260860', isTextBased: () => true, async send() { return { id: 'message-1' }; } }; } } };
  const {runGuildSpellAutomations}=await import('../guild-workshop.js');
  assert.deepEqual(await runGuildSpellAutomations(db,client,'1539562273197260860','event_reminder'),{sent:1,skipped:0});
  assert.match(calls[0],/claimed_at<=NOW\(\)-INTERVAL '10 minutes'/);
