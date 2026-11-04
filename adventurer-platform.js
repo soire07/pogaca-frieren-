@@ -383,6 +383,7 @@ export async function joinGuildEvent(db = pool,{guildId,eventId,userId}) {
     const count=await client.query('SELECT COUNT(*)::int AS count FROM guild_event_participants WHERE event_id=$1',[eventId]);
     if(event.rows[0].max_participants&&count.rows[0].count>=event.rows[0].max_participants){await client.query('ROLLBACK');return {status:'full'};}
     const inserted=await client.query('INSERT INTO guild_event_participants(event_id,guild_id,user_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING user_id',[eventId,guildId,userId]);
+    if(inserted.rowCount) await client.query("INSERT INTO guild_event_progress(event_id,guild_id,user_id,progress_key,progress) VALUES($1,$2,$3,'participation',1) ON CONFLICT(event_id,user_id,progress_key) DO UPDATE SET progress=GREATEST(guild_event_progress.progress,1),updated_at=NOW()",[eventId,guildId,userId]);
     await client.query('COMMIT');
     return {status:inserted.rowCount?'joined':'already_joined'};
   }catch(error){await client.query('ROLLBACK').catch(()=>{});throw error;}
