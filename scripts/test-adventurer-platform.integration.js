@@ -354,7 +354,9 @@ test('guild teams, raid signup and league fixtures persist real UUID relationshi
     const scheduled=await scheduleGuildTeamLeague(pool,{guildId,leagueId,actorId:captainA,startsAt:start,intervalDays:7});
     assert.equal(scheduled.status,'scheduled');
     assert.equal(scheduled.fixtureCount,1);
-    const fixture=scheduled.fixtures[0];
+    const persistedFixture=await pool.query('SELECT fixture_id,home_team_id,away_team_id FROM guild_team_fixtures WHERE league_id=$1',[leagueId]);
+    assert.equal(persistedFixture.rowCount,1);
+    const fixture={fixtureId:persistedFixture.rows[0].fixture_id,homeTeamId:persistedFixture.rows[0].home_team_id,awayTeamId:persistedFixture.rows[0].away_team_id};
     const homeCaptain=fixture.homeTeamId===teamA?captainA:captainB;
     const awayCaptain=fixture.awayTeamId===teamA?captainA:captainB;
     const first=await reportGuildTeamFixtureScore(pool,{guildId,fixtureId:fixture.fixtureId,teamId:fixture.homeTeamId,actorId:homeCaptain,ownScore:2,opponentScore:1});
