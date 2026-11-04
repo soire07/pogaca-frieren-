@@ -244,3 +244,31 @@ test('repair retry queue failure does not interrupt normal incident log scanning
     stop?.();
   }
 });
+
+
+test('Guardian monitor defaults to a ten-minute interval for serverless database scale-to-zero', async () => {
+  let scheduledInterval;
+  let stop;
+  const db = {
+    query: async sql => {
+      if (sql.includes('SELECT last_seen_error_id')) return { rows: [{ last_seen_error_id: 0 }] };
+      if (sql.includes('SELECT id,scope,error_type')) return { rows: [] };
+      return { rows: [], rowCount: 1 };
+    },
+  };
+  try {
+    stop = startGuardianMonitor({
+      db,
+      client: { isReady: () => true },
+      setIntervalImpl: (_callback, intervalMs) => {
+        scheduledInterval = intervalMs;
+        return { unref() {} };
+      },
+      clearIntervalImpl: () => {},
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(scheduledInterval, 600_000);
+  } finally {
+    stop?.();
+  }
+});
