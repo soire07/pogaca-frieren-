@@ -1769,6 +1769,9 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
         } else if (commandName === 'loncaoyun') {
           await ensureGuildGameTables(pool);
           const channelId='900000000000000004';
+          // The frieren_test schema is intentionally reused between CI runs. Close any
+          // interrupted prior audit round before starting this run's deterministic scenario.
+          await pool.query("UPDATE guild_game_sessions SET status='completed' WHERE guild_id=$1 AND channel_id=$2 AND status='active'",[guildId,channelId]);
           const session=await startGuildMiniGame(pool,{guildId,channelId,userId,gameType:'bilgi',random:()=>0,now:new Date()});
           const answered=await answerGuildMiniGame(pool,{guildId,channelId,sessionId:session.session_id,userId,answerIndex:session.answerIndex,now:new Date()});
           const score=await pool.query('SELECT points,correct_answers,played_games FROM guild_game_scores WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
