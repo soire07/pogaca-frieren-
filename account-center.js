@@ -118,7 +118,7 @@ export async function replySupportTicket(db, accountId, ticketId, message) {
   const id = accountUuid(accountId);
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(ticketId || ''))) throw new Error('SUPPORT_TICKET_ID_INVALID');
   const clean = String(message || '').trim();
-  if (!clean || clean.length > 5000 || /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(clean)) {
+  if (!clean || clean.length > 5000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(clean)) {
     throw new Error('SUPPORT_TICKET_REPLY_INVALID');
   }
   const ticket = await db.query(
@@ -178,7 +178,7 @@ export async function replySupportTicketFromOwner(db,ticketId,ownerId,message) {
   if(String(ownerId)!=='1553794496234262641')throw new Error('SUPPORT_TICKET_OWNER_REQUIRED');
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(ticketId||'')))throw new Error('SUPPORT_TICKET_ID_INVALID');
   const clean=String(message||'').trim();
-  if(!clean||clean.length>5000||/[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(clean))throw new Error('SUPPORT_TICKET_REPLY_INVALID');
+  if(!clean||clean.length>5000||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(clean))throw new Error('SUPPORT_TICKET_REPLY_INVALID');
   const ticket=await db.query('SELECT ticket_id,status FROM frieren_support_tickets WHERE ticket_id=$1',[ticketId]);
   if(!ticket.rowCount)return{status:'not_found'};
   if(ticket.rows[0].status==='closed')return{status:'closed'};
