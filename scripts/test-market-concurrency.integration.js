@@ -1114,9 +1114,9 @@ test('gold leaderboard orders by coins and tie-breaks while excluding other guil
       assert.ok(description.indexOf('Player-' + users[1]) < description.indexOf('Player-' + users[0]),
         'higher level wins the tie on equal gold');
       assert.ok(description.includes('Player-' + users[2]));
-      const userZeroLines=description.split('\\n').filter(line=>line.includes('Player-' + users[0]));
+      const userZeroLines=description.split('\n').filter(line=>line.includes('Player-' + users[0]));
       assert.equal(userZeroLines.length,1,'the same Discord user must appear only once for the requested guild');
-      assert.match(userZeroLines[0],/🪙 1\\.000 altın/,'the requested guild balance must be shown, not the foreign guild balance');
+      assert.match(userZeroLines[0],/🪙 1\.000 altın/,'the requested guild balance must be shown, not the foreign guild balance');
     } finally {
       await pool.query('DELETE FROM users WHERE (guild_id=$1 AND user_id=ANY($2::text[])) OR (guild_id=$3 AND user_id=$4)', [guildId, users, foreignGuildId, users[0]]);
     }
