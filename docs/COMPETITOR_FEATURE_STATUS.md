@@ -1,7 +1,7 @@
 # Rakip Özellik Backlog'u — Mevcut Kodla İlk Eşleştirme
 
 > Denetim tarihi: 2026-11-04  
-> İncelenen kod tabanı: `fix/solo-boss-reward-idempotency-mainline` @ `99d25d0b72fb0052bd2aa2adc89c61db95a706be` (kod); güncel envanter 2.018 kayıt / 343 mevcut / 1.675 planlı  
+> İncelenen kod tabanı: `fix/solo-boss-reward-idempotency-mainline` @ `8f80c32352dd04f8a4be61d6d236e3c10c4feaab` (kod); güncel envanter 2.018 kayıt / 343 mevcut / 1.675 planlı  
 > Kaynak listeler: `docs/COMPETITOR_FEATURE_MATRIX.md`, `docs/ENTERTAINMENT_FEATURE_BACKLOG.md`  
 > Bu belge ilk kaynak/test eşleştirmesidir; canlı Discord doğrulaması veya tamamlanma beyanı değildir.
 
@@ -62,9 +62,9 @@ Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal
 |---|---|---|---|
 | ENT-001 | Yoldaş sahiplenme | Entegrasyon dalında mevcut; henüz ana dala alınmadı | `companions.js`, `yoldas.js`; izole PostgreSQL testi var. |
 | ENT-002 | Yoldaş besleme ve bakım | Entegrasyon dalında mevcut; henüz ana dala alınmadı | Besleme/oyun/eğitim, mutluluk/enerji/açlık ve cooldown: `companions.js`, `yoldas.js`. |
-| ENT-003 | Yoldaş XP, eğitim ve evrim | Kısmi; PR #217 içinde genişletildi | Dört yoldaş türü için üç aşamalı evrim, 10/25/40 seviye eşikleri, altın maliyetleri ve evrim geçmişi eklendi. İzole PostgreSQL regresyon testi CI bekliyor; rol bazlı destek görevleri ve dokuz rolün tamamı hâlâ eksik. |
+| ENT-003 | Yoldaş XP, eğitim ve evrim | Kısmi; PR #217 CI doğruladı | Dört yoldaş türü için üç aşamalı evrim, 10/25/40 seviye eşikleri, altın maliyetleri ve evrim geçmişi var. Güncel PR #217 CI'ında birim ve izole PostgreSQL testleri başarılı; rol bazlı destek görevleri ve dokuz rolün tamamı hâlâ eksik. Canlı Discord akışı doğrulanmadı. |
 | ENT-004 | Yoldaş odası ve kozmetik | Kısmi; entegrasyon dalında mevcut | Kozmetik görünüm satın alma/giydirme var; oda/dekorasyon yok. |
-| ENT-005 | Balıkçılık, olta ve yem | PR #217 içinde genişletildi / doğrulama gerekli | `fishing.js`, `balik.js`; 3 kademeli olta, mana/buz/nadirlik yem paketleri, bölgesel ağırlık bonusları ve başarılı avda tek yem tüketimi eklendi. Coin debit, rod level ve bait stock aynı PostgreSQL transaction'ında. İzole entegrasyon ve birim testleri eklendi; canlı Discord akışı doğrulanmadı. |
+| ENT-005 | Balıkçılık, olta ve yem | PR #217 içinde mevcut / CI doğruladı | `fishing.js`, `balik.js`; 3 kademeli olta, mana/buz/nadirlik yem paketleri, bölgesel ağırlık bonusları ve başarılı uyumlu avda tek yem tüketimi var. Altın kesintisi, olta seviyesi ve yem stoğu aynı PostgreSQL transaction'ında. Güncel PR #217 birim ve izole PostgreSQL testleri başarılı; canlı Discord akışı doğrulanmadı. |
 | ENT-006 | Bölgeye göre balık türü/nadirlik | Entegrasyon dalında mevcut; henüz ana dala alınmadı | Bölge kilidi, tür ve nadirlik kataloğu: `fishing.js`. |
 | ENT-007 | Balık koleksiyon defteri | Entegrasyon dalında mevcut; henüz ana dala alınmadı | Koleksiyon sorgusu ve `/balik defter`: `fishing.js`, `balik.js`. |
 | ENT-008 | Tohum ekme, büyüme ve hasat | Entegrasyon dalında mevcut; henüz ana dala alınmadı | `farming.js`, `sera.js`; zamanlı ekim/hasat ve PostgreSQL testi var. |
@@ -74,8 +74,8 @@ Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal
 | ENT-012 | Nadir/shiny/efsanevi yaratık varyantı | Entegrasyon dalında mevcut; henüz ana dala alınmadı | Normal/shiny varyant ve RNG: `creatures.js`; nadirlik dengesi ayrıca gözden geçirilmeli. |
 | ENT-013 | Yaratık arşivi ve tamamlama | Entegrasyon dalında mevcut; henüz ana dala alınmadı | Yaratık kataloğu, koleksiyon, arama ve filtre: `creatures.js`, `yaratik.js`. |
 | ENT-014 | Wishlist ve spawn bildirimi | Entegrasyon dalında mevcut; henüz ana dala alınmadı | Yaratık wishlist ve eşleşen spawn için opt-in bildirim listesi var. |
-| ENT-015 | 1v1/3v3 takım kurucu | Kısmi | 3v3 eşleştirme kuyruğu ve iki takım oluşturma var: `arena.js`, `arena-engine.js`, `arena-queue.js`. Serbest takım kurucu ve 1v1 modu bulunamadı. |
-| ENT-016 | Sıra tabanlı yetenek/element savaşı | Kısmi | Arena saldırı, savunma ve büyü hamlelerini destekliyor. Element uyumu/karşıtlığı mekaniği bulunamadı: `arena-engine.js`. |
+| ENT-015 | 1v1/3v3 takım eşleştirme | Mevcut / CI doğruladı | `arena.js`, `arena-engine.js`, `arena-queue.js`; 1v1 için iki, 3v3 için altı oyunculu ayrı kuyruk ve maç oluşturma var. `scripts/test-arena-engine.js`, `scripts/test-arena-command.js` ve `scripts/test-arena-queue.integration.js` 1v1/3v3 sözleşmesini, kuyruk izolasyonunu, eşzamanlı katılımı ve PostgreSQL kalıcılığını doğruluyor. Serbest manuel takım kurucu henüz yok; canlı Discord etkileşimi doğrulanmadı. |
+| ENT-016 | Sıra tabanlı yetenek/element savaşı | Mevcut / CI doğruladı | `arena-engine.js`; saldırı, savunma ve büyü hamleleri ile Ateş/Buz/Yıldırım döngüsü, Işık/Karanlık karşıtlığı ve Nötr element desteği var. Avantaj 1,25x; dezavantaj 0,8x hasar uygular. Birim testleri element etkisini ve kaynak state'in değişmeden kalmasını doğruluyor; canlı Discord savaşı doğrulanmadı. |
 | ENT-017 | Sezon, rütbe ve arena sıralaması | Mevcut / doğrulama gerekli | Sezon, MMR, derece ve sıralama altyapısı var: `adventurer-platform.js`, `arena.js`; sezon geçişi ve sonuçların tekilleştirilmesi için PostgreSQL testleri mevcut. |
 | ENT-018 | Kart albümü, seri, nadirlik ve varyant | Kısmi | Anime karakter koleksiyonu ve nadirlik filtresi var: `kimimben.js`, `koleksiyon.js`. Kart baskı/seri/varyant kataloğu bulunamadı. |
 | ENT-019 | Wishlist, favori, not ve profil rozeti | Kısmi; entegrasyon dalında mevcut | Karakter wishlist var (`character-wishlist.js`, `karakteristek.js`); favori/not/rozet ayrı ayrı yok. |
@@ -90,8 +90,8 @@ Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal
 | ENT-028 | Arkadaş/ekip ve ortak ilerleme | Kısmi | Co-op zindan/raid mevcut. Kalıcı arkadaş listesi ve ortak ilerleme panosu bulunamadı. |
 | ENT-029 | Profil/duyuru/başarı görsel editörü | Bulunamadı | Kullanıcıya açık görsel/Embed editörü ve canlı önizleme bulunamadı. |
 | ENT-030 | Ses kuyruğu ve playlist | Bulunamadı | Müzik çalma/kuyruk modülü bulunamadı. |
-| ENT-031 | Yoldaş sahiplenme, bakım, eğitim ve kozmetik | Mevcut / doğrulama gerekli | `companions.js`, `yoldas.js`; dört tür, bakım/eğitim, kozmetik ve üç aşamalı evrim. Evrim geçmişi `/yoldas gecmis` ile görüntülenebilir. Yeni evrim transaction ve concurrency testleri PR #217 CI sonucunu bekliyor; dokuz rol ve destek görevleri kapsamı tamamlanmadı. |
-| ENT-032 | Bölgesel balıkçılık ve koleksiyon defteri | Mevcut / doğrulama gerekli | `fishing.js`, `balik.js`; bölge/seviye kilidi, nadirlik, cooldown ve balık defteri. Unit + izole PostgreSQL testleri var; olta/yem yükseltmesi henüz yok. |
+| ENT-031 | Yoldaş sahiplenme, bakım, eğitim ve kozmetik | Mevcut / CI doğruladı | `companions.js`, `yoldas.js`; dört tür, bakım/eğitim, kozmetik ve üç aşamalı evrim. Evrim geçmişi `/yoldas gecmis` ile görüntülenebilir. Güncel PR #217 birim ve izole PostgreSQL concurrency testleri başarılı; dokuz rol ve destek görevleri kapsamı tamamlanmadı. Canlı Discord akışı doğrulanmadı. |
+| ENT-032 | Bölgesel balıkçılık ve koleksiyon defteri | Mevcut / CI doğruladı | `fishing.js`, `balik.js`; bölge/seviye kilidi, nadirlik, cooldown, balık defteri ve üç kademeli olta/yem yükseltmeleri var. Güncel PR #217 birim ve izole PostgreSQL testleri başarılı; canlı Discord akışı doğrulanmadı. |
 | ENT-033 | Büyülü Sera ekim ve mevsimsel hasat | Mevcut / doğrulama gerekli | `farming.js`, `sera.js`; tek aktif ekim, zamanlı hasat, mevsim verimi ve envanter kaydı. Unit + izole PostgreSQL testleri var; tam hava simülasyonu henüz yok. |
 | ENT-034 | Yaratık spawn, süreli ilk yakalayan ve arşiv | Mevcut / doğrulama gerekli | `creatures.js`, `yaratik.js`; spawn cooldown, atomik ilk claim, koleksiyon ve wishlist eşleşmesi. Unit + izole PostgreSQL testleri var; canlı Message Content intent ve kanal gönderimi henüz doğrulanmadı. |
 | ENT-035 | Anime karakter istek listesi | Mevcut / doğrulama gerekli | `character-wishlist.js`, `karakteristek.js`; arama, ekle/sil, tekrar engeli ve 10 kayıt sınırı. Unit + izole PostgreSQL testleri var; canlı autocomplete henüz doğrulanmadı. |
