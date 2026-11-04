@@ -29,7 +29,7 @@ _TASK_HINTS = {
     "benchmark_outputs_incomplete_or_out_of_order": "Repair benchmark generation and completeness checks.",
     "human_review_missing": "Collect two independent human reviews before requesting Guardian approval.",
     "training_provenance_missing": "Record licensed training-data provenance and artifact lineage.",
-    "heldout_metrics_missing_or_invalid": "Run held-out evaluation and record reproducible metrics.",
+    "held_out_metrics_missing_or_invalid": "Run held-out evaluation and record reproducible metrics.",
     "baseline_comparison_missing": "Compare the candidate with a pinned baseline checkpoint.",
     "neural_ci_evidence_not_verified": "Wait for and verify the exact commit's Neural CI run.",
     "neural_staged_tests_not_passed": "Run isolated staged behavior tests and record the results.",
@@ -153,7 +153,8 @@ def build_evolution_plan(report: object) -> dict[str, Any]:
     elif not outputs_complete:
         status, reasons = "blocked", ["Benchmark outputs are missing, empty, or out of order."]
     elif not thresholds_passed:
-        status, reasons = "blocked", ["Quality metrics are missing or below the required thresholds."]
+        status = "blocked"
+        reasons = raw_reasons or ["Quality metrics are missing or below the required thresholds."]
     elif not quality_ready or not baseline_improved:
         status = "improvement_proposed"
         reasons = raw_reasons or ["Human review or baseline-improvement evidence is incomplete."]
