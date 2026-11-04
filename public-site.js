@@ -251,14 +251,14 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
         else if(action==='gift')status=(await sendCoinGift(db,{guildId,senderId:profile.user_id,recipientId:targetId,amount:Number(form.get('amount')),note:String(form.get('note')||'')})).status;
         else if(action==='commend')status=(await commendPlayer(db,{guildId,giverId:profile.user_id,recipientId:targetId})).status;
         else status='invalid';
-        if(status==='sent')status='request_sent';
+        if(action==='request'&&status==='sent')status='request_sent';
         if(['player_missing','SOCIAL_ID_INVALID','SOCIAL_SELF_INTERACTION','SOCIAL_GIFT_AMOUNT_INVALID','SOCIAL_REQUEST_ID_INVALID'].includes(status))status='invalid';
         res.writeHead(303,{Location:'/maceraci/sosyal?'+new URLSearchParams({guildId,status}).toString(),'Cache-Control':'no-store'});res.end();return true;
       }
       if(url.pathname==='/pazar/sat') status=(await createPlayerMarketListing(db,{guildId,sellerId:profile.user_id,itemKey:form.get('itemKey'),quantity:Number(form.get('quantity')),priceCoins:Number(form.get('priceCoins'))})).status;
       else if(url.pathname==='/pazar/al') status=(await buyPlayerMarketListing(db,{guildId,buyerId:profile.user_id,listingId:form.get('listingId')})).status;
       else if(url.pathname==='/pazar/iptal') status=(await cancelPlayerMarketListing(db,{guildId,sellerId:profile.user_id,listingId:form.get('listingId')})).status;
-    }catch(error){if(String(error?.message||'').endsWith('_INVALID'))status='invalid';else throw error;}
+    }catch(error){if(String(error?.message||'').endsWith('_INVALID')||String(error?.message||'')==='SOCIAL_SELF_INTERACTION')status='invalid';else throw error;}
     res.writeHead(303,{Location:'/pazar?'+new URLSearchParams({guildId,status}).toString(),'Cache-Control':'no-store'});res.end();return true;
   }
   if (req.method !== 'GET') return false;
@@ -314,15 +314,16 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       res.end(html);return true;
     }
     if(!/^\d{17,20}$/.test(guildId)){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Sunucu seçimi geçersiz.');return true;}
-    const data=await getAdventurerInventory(db,user.id,guildId);
+    const data=url.pathname==='/maceraci/sosyal'?await getLinkedAdventurer(db,user.id,guildId):await getAdventurerInventory(db,user.id,guildId);
     if(!data){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter web hesabına bağlı değil.');return true;}
+    const profile=url.pathname==='/maceraci/sosyal'?data:data.profile;
     const filters={query:url.searchParams.get('q')||'',minPrice:url.searchParams.get('min')||'',maxPrice:url.searchParams.get('max')||'',sort:url.searchParams.get('sort')||'price_asc'};
     const html=url.pathname==='/pazar'
       ?playerMarketPage(user,data,await listPlayerMarketListings(db,guildId,20,filters),await getPlayerMarketHistory(db,guildId,data.profile.user_id,15),url.searchParams.get('status'),filters)
       :url.pathname==='/maceraci/koleksiyon'
         ?adventurerCollectionPage(user,data.profile,await loadAdventurerCollections(db,guildId,data.profile.user_id))
         :url.pathname==='/maceraci/sosyal'
-          ?adventurerSocialPage(user,data.profile,{
+          ?adventurerSocialPage(user,profile,{
             friends:await listSocialRelationships(db,guildId,data.profile.user_id,'friend',50),
             rivals:await listSocialRelationships(db,guildId,data.profile.user_id,'rival',50),
             requests:await listPendingFriendRequests(db,guildId,data.profile.user_id,50),

@@ -451,10 +451,9 @@ test('web event RSVP uses the linked Discord character and redirects after joini
 
 test('adventurer social page is scoped to the linked guild character and renders relationships and pending requests',async()=>{
   const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern'};
-  const db={async query(sql){
+  const db={async query(sql,params){
     if(sql.includes('FROM site_discord_links'))return{rows:[profile],rowCount:1};
-    if(sql.includes('FROM social_relationships')&&sql.includes("'friend'"))return{rows:[{user_id:'223456789012345678',relationship_type:'friend'}],rowCount:1};
-    if(sql.includes('FROM social_relationships')&&sql.includes("'rival'"))return{rows:[{user_id:'323456789012345678',relationship_type:'rival'}],rowCount:1};
+    if(sql.includes('FROM social_relationships'))return{rows:[{user_id:params?.[2]==='rival'?'323456789012345678':'223456789012345678',relationship_type:params?.[2]||'friend'}],rowCount:1};
     if(sql.includes('FROM social_friend_requests'))return{rows:[{request_id:'123e4567-e89b-42d3-a456-426614174000',requester_id:'423456789012345678'}],rowCount:1};
     if(sql.includes('FROM social_reputation'))return{rows:[{points:7}],rowCount:1};
     throw new Error('Unexpected query: '+sql);
@@ -462,7 +461,7 @@ test('adventurer social page is scoped to the linked guild character and renders
   const response=res();
   assert.equal(await handlePublicSiteRequest(request('/maceraci/sosyal?guildId='+profile.guild_id,{id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'}),response,{db}),true);
   assert.equal(response.status,200);
-  assert.match(response.body,/Sosyal alan/);
+  assert.match(response.body,/Sosyal Alan|Sosyal <em>alanın/);
   assert.match(response.body,/223456789012345678/);
   assert.match(response.body,/323456789012345678/);
   assert.match(response.body,/423456789012345678/);
