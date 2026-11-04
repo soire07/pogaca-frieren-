@@ -15,7 +15,7 @@ import { handleArenaInteraction } from './arena.js';
 import { ensureGuildGameTables } from './guild-games.js';
 import { handleGuildGameInteraction } from './loncaoyun.js';
 import { ensureAdventurerPlatformTables, claimDueGuildEventReminders, markGuildEventReminderSent, releaseGuildEventReminderClaim } from './adventurer-platform.js';
-import { ensurePlayerMarketTables } from './player-market.js';
+import { ensurePlayerMarketTables, claimDuePlayerMarketPriceAlerts, markPlayerMarketPriceAlertNotified, releasePlayerMarketPriceAlertClaim } from './player-market.js';
 import { ensureSocialPlatformTables } from './social-platform.js';
 import { initCompanionSchema } from './companions.js';
 import { initFishingSchema } from './fishing.js';
@@ -113,6 +113,35 @@ async function sendPrivateInteractionError(interaction, content) {
   }
 }
 
+let marketPriceAlertSweepRunning = false;
+async function processDuePlayerMarketPriceAlerts(readyClient = client) {
+  if (marketPriceAlertSweepRunning || !readyClient?.isReady?.()) return;
+  marketPriceAlertSweepRunning = true;
+  try {
+    const due = await claimDuePlayerMarketPriceAlerts(pool, 20);
+    for (const alert of due) {
+      try {
+        const user = await readyClient.users.fetch(alert.user_id);
+        await user.send(
+          '🔔 **Kuzey Pazarı fiyat alarmı**\\n' +
+          '**' + String(alert.item_key).slice(0, 120) + '** artık **' +
+          Number(alert.price_coins).toLocaleString('tr-TR') + ' altın**. ' +
+          'Hedefin: ' + Number(alert.target_price).toLocaleString('tr-TR') +
+          ' altın veya altı. İlan: ' + alert.listing_id
+        );
+        await markPlayerMarketPriceAlertNotified(pool, alert.alert_id, alert.claimed_at);
+      } catch (error) {
+        await releasePlayerMarketPriceAlertClaim(pool, alert.alert_id, alert.claimed_at).catch(() => false);
+        if (error?.code !== 50007) console.error('Pazar fiyat alarmı teslim edilemedi:', error?.message || error);
+      }
+    }
+  } catch (error) {
+    console.error('Pazar fiyat alarmı taraması başarısız:', error?.message || error);
+  } finally {
+    marketPriceAlertSweepRunning = false;
+  }
+}
+
 let eventReminderSweepRunning = false;
 async function processDueGuildEventReminders(readyClient = client) {
   if (eventReminderSweepRunning || !readyClient?.isReady?.()) return;
@@ -160,7 +189,8 @@ client.once(Events.ClientReady, async readyClient => {
     .sort((a, b) => a.name.localeCompare(b.name));
   console.log('Bağlı Discord sunucuları (ad/ID):', JSON.stringify(connectedGuilds));
   void processDueGuildEventReminders(readyClient);
-  setInterval(() => void processDueGuildEventReminders(readyClient), 30_000);
+  void processDuePlayerMarketPriceAlerts(readyClient);
+  setInterval(() => { void processDueGuildEventReminders(readyClient); void processDuePlayerMarketPriceAlerts(readyClient); }, 30_000);
   const activities = [
     'bin yıllık büyüler öğreniyor ✨',
     'Fern ile büyü çalışıyor 🔮',
