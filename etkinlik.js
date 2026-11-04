@@ -21,7 +21,7 @@ export default {
     .addSubcommand(command => command.setName('lig-fikstur').setDescription('Ligin çift devre olmayan round-robin fikstürünü oluştur.').addStringOption(option => option.setName('lig').setDescription('Lig UUID').setRequired(true)).addStringOption(option => option.setName('baslangic').setDescription('İlk maçın ISO tarihi').setRequired(true)).addIntegerOption(option => option.setName('aralik').setDescription('Turlar arası gün').setMinValue(1).setMaxValue(30)))
     .addSubcommand(command => command.setName('lig-durum').setDescription('Lig puan tablosu ve sezon fikstürünü görüntüle.').addStringOption(option => option.setName('lig').setDescription('Lig UUID').setRequired(true)))
     .addSubcommand(command => command.setName('lig-skor').setDescription('Takım kaptanı olarak maç sonucunu bildir.').addStringOption(option => option.setName('mac').setDescription('Maç UUID').setRequired(true)).addStringOption(option => option.setName('takim').setDescription('Takım UUID').setRequired(true)).addIntegerOption(option => option.setName('skor').setDescription('Kendi takımının skoru').setMinValue(0).setMaxValue(99).setRequired(true)).addIntegerOption(option => option.setName('rakip_skor').setDescription('Rakip takımın skoru').setMinValue(0).setMaxValue(99).setRequired(true)))
-    .addSubcommand(command => command.setName('katil').setDescription('Bir etkinliğe katıl.').addStringOption(option => option.setName('id').setDescription('Etkinlik kimliği').setRequired(true)))
+    .addSubcommand(command => command.setName('katil').setDescription('Bir etkinliğe katıl.').addStringOption(option => option.setName('id').setDescription('Etkinlik kimliği').setRequired(true)).addStringOption(option => option.setName('takim').setDescription('Boss/raid için A veya B takımı').addChoices({name:'A Takımı',value:'A'},{name:'B Takımı',value:'B'})))
     .addSubcommand(command => command.setName('ayril').setDescription('Bir etkinlikten ayrıl.').addStringOption(option => option.setName('id').setDescription('Etkinlik kimliği').setRequired(true)))
     .addSubcommand(command => command.setName('yoklama').setDescription('Başlamış etkinlikte katılımını doğrula.').addStringOption(option => option.setName('id').setDescription('Etkinlik kimliği').setRequired(true)))
     .addSubcommand(command => command.setName('olustur').setDescription('Yeni topluluk etkinliği oluştur (yalnızca bot sahibi).')
@@ -79,8 +79,8 @@ export default {
     }
     const eventId = interaction.options.getString('id');
     if (action === 'katil') {
-      const result = await joinGuildEvent(pool, { guildId: interaction.guildId, eventId, userId: interaction.user.id });
-      const messages = { joined: 'Etkinliğe kaydın oluşturuldu.', already_joined: 'Bu etkinliğe zaten kayıtlısın.', full: 'Etkinlik kapasitesi doldu.', unavailable: 'Etkinlik bulunamadı veya kayıt süresi kapandı.' };
+      const result = await joinGuildEvent(pool, { guildId: interaction.guildId, eventId, userId: interaction.user.id, teamKey: interaction.options.getString('takim') || null });
+      const messages = { joined: result.teamKey ? 'Boss/raid kaydın '+result.teamKey+' takımına oluşturuldu.' : 'Etkinliğe kaydın oluşturuldu.', team_required: 'Boss/raid etkinliği için A veya B takımını seçmelisin.', team_full: 'Seçtiğin takım dolu.', already_joined: 'Bu etkinliğe zaten kayıtlısın.', full: 'Etkinlik kapasitesi doldu.', unavailable: 'Etkinlik bulunamadı veya kayıt süresi kapandı.' };
       return interaction.reply({ content: messages[result.status] || 'Kayıt tamamlanamadı.', flags: MessageFlags.Ephemeral });
     }
     if (action === 'yoklama') {
