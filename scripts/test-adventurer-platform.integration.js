@@ -156,6 +156,8 @@ test('single-use Discord link codes connect only the intended profile to a web a
     assert.equal(dashboard.profiles.length,1);
     assert.equal(dashboard.profiles[0].character_name,'Test Maceracı');
     assert.equal(Number(dashboard.profiles[0].level),7);
+    const sessionDashboard=await getAdventurerDashboard(pool,accountUuid);
+    assert.equal(sessionDashboard.profiles.length,1,'canonical UUID from authenticated site session must be accepted');
   } finally {
     await pool.query('DELETE FROM site_discord_links WHERE account_id=$1',[accountId.slice(5)]);
     await pool.query('DELETE FROM site_link_tokens WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
