@@ -1,6 +1,7 @@
 import test from 'node:test';
 import { claimSoloBossReward } from '../rpg-reward-transactions.js';
 import assert from 'node:assert/strict';
+import raidCommand from '../ortakboss.js';
 import {
   RAID_BOSSES,
   progressionMilestone,
@@ -291,4 +292,14 @@ test('co-op dungeon and raid count only successful mana-funded Zoltraak casts fo
   assert.match(settlement, /for \(const \[userId, casts\] of spellCasts\)/);
   assert.match(settlement, /spell_mastery\.casts\+EXCLUDED\.casts/);
   assert.match(settlement, /RETURNING casts,mastery_level/);
+});
+
+
+test('co-op boss command accepts a calendar event id for a registered raid team', () => {
+  const command = raidCommand.data.toJSON();
+  assert.equal(command.name, 'ortakboss');
+  const eventOption = command.options.find(option => option.name === 'etkinlik_id');
+  assert.ok(eventOption, 'raid should support a calendar event link');
+  assert.equal(eventOption.required, false);
+  assert.equal(eventOption.max_length, 36);
 });
