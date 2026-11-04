@@ -191,7 +191,7 @@ function makeSimulatedMessage(payload, simulation) {
               if (click.customId?.includes(':act:')) simulation.acceptedActions?.push(click.customId);
             },
             reply: async payload => {
-              simulation.componentEffects?.push({ userId: click.user.id, payload: normalizePayload(payload) });
+              simulation.componentEffects?.push({ userId: click.user.id, flags: payload?.flags, payload: normalizePayload(payload) });
             },
             update: async () => {}
           };
@@ -1327,7 +1327,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           behavioralChecks.push(
             { name: 'Kimimben karakter keşfi ve koleksiyon kaydı', expected: 'bir karakter keşfedilmeli ve koleksiyona tam bir kopya eklenmeli', actual: collection.rows[0]?.distinct_characters + ' karakter / ' + collection.rows[0]?.total_copies + ' kopya', passed: Number(collection.rows[0]?.distinct_characters) === 1 && Number(collection.rows[0]?.total_copies) === 1 },
             { name: 'Kimimben çekim limiti ve zaman damgası', expected: 'çekim sayacı 1 olmalı ve son çekim zamanı kaydedilmeli', actual: 'sayaç ' + state.rows[0]?.character_draw_count + ' / zaman ' + Boolean(state.rows[0]?.last_character_draw_at), passed: Number(state.rows[0]?.character_draw_count) === 1 && Boolean(state.rows[0]?.last_character_draw_at) && state.rows[0]?.character_draw_cooldown_until == null },
-            { name: 'Kimimben kartı ve yalnızca komut sahibinin yenilemesi', expected: 'karakter kartı, yenileme düğmesi ve başka kullanıcıya ephemeral ret gösterilmeli', actual: (payloadText.includes('Güzel bir keşif yaptın!') && payloadText.includes('kimimben_again') ? 'karakter kartı ve yenileme düğmesi gösterildi' : 'karakter kartı veya yenileme düğmesi eksik') + '; yabancı kullanıcı reddi: ' + Boolean(outsiderReply), passed: payloadText.includes('Güzel bir keşif yaptın!') && payloadText.includes('kimimben_again') && Boolean(outsiderReply) && Boolean(outsiderReply.payload?.flags) }
+            { name: 'Kimimben kartı ve yalnızca komut sahibinin yenilemesi', expected: 'karakter kartı, yenileme düğmesi ve başka kullanıcıya ephemeral ret gösterilmeli', actual: (payloadText.includes('Güzel bir keşif yaptın!') && payloadText.includes('kimimben_again') ? 'karakter kartı ve yenileme düğmesi gösterildi' : 'karakter kartı veya yenileme düğmesi eksik') + '; yabancı kullanıcı reddi: ' + Boolean(outsiderReply) + ' / ephemeral flag: ' + String(outsiderReply?.flags), passed: payloadText.includes('Güzel bir keşif yaptın!') && payloadText.includes('kimimben_again') && Boolean(outsiderReply) && Number(outsiderReply.flags) === 64 }
           );
         } else if (commandName === 'status') {
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
