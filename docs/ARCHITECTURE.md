@@ -95,6 +95,7 @@ Discord ve web için iki ayrı bakiye/ödül/iş kuralı oluşturulamaz.
 - Mevcut `CREATE TABLE IF NOT EXISTS` kurulumları bir hamlede silinmez. Önce mevcut şema karşılaştırılır ve baseline alınır; sonra modül bazında taşınır.
 - PR #217 uygulama adımı: `database/migrations.js` sürüm sırası, SHA-256 checksum, PostgreSQL advisory lock ve migration başına transaction uygular. Mevcut `ensure*Schema` bootstrap'ı tamamlandıktan sonra legacy baseline `version=0` olarak kaydedilir; yeni SQL dosyaları `database/migrations/0001_*.sql` biçiminde eklenir.
 - Runner Poğaça ana uygulamasının `DATABASE_URL` bağlantısında çalışır; Frieren AI'ın ayrı DB bağlantısına uygulanmaz. İlk migration runner commit'i CI'da doğrulanmadan ve owner onayı olmadan canlı ortama taşınmaz.
+- `version=0` kaydı mevcut şemayı değiştirmeyen bir geçiş işaretidir; henüz mevcut tabloları taşıyan SQL migration eklenmedi. İlk veri/şema değiştiren migration'dan önce katalog karşılaştırması ve izole PostgreSQL prova kanıtı ayrıca zorunludur.
 - Otomatik rollback yoktur. Başarısız SQL transaction'ı geri alınır; daha önce uygulanmış migration dosyasının checksum'u değişirse başlangıç durur ve sessizce devam etmez.
 
 ## 6. Servis ve dağıtım topolojisi
