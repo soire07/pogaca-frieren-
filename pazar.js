@@ -108,6 +108,7 @@ export default {
       const messages = {
         offer_created: 'Teklifin satıcıya iletildi. Altın, satıcı kabul ederse tahsil edilir. Teklif ID: `' + result.offer.offer_id + '`',
         already_offered: 'Bu ilan için zaten bekleyen bir teklifin var: `' + result.offerId + '`',
+        offer_limit: 'Aynı anda en fazla 20 bekleyen teklif verebilirsin.',
         self_offer: 'Kendi ilanına teklif veremezsin.',
         unavailable: 'İlan artık aktif değil veya bulunamadı.',
         buyer_missing: 'Oyuncu kaydın bulunamadı.'
