@@ -20,7 +20,7 @@ function request(path = '/', user = visitor) {
 test('public command catalog includes the new guild mini-game command', async () => {
   const response = res();
   const client = { guilds: { cache: { size: 1 } }, commands: { size: 1 }, isReady: () => true };
-  await handlePublicSiteRequest(request('/kesfet'), response, { client });
+  await handlePublicSiteRequest(request('/pogaca'), response, { client });
   assert.ok(response.body.includes('/loncaoyun'));
 });
 
