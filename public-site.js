@@ -152,6 +152,8 @@ function adventurerInventoryPage(user, data) {
 
 function publicHomeShowcasePage(user,data){
  const rooms=data.rooms.map(x=>HOME_ROOMS.find(r=>r.key===x.room_key)?.name||x.room_key);
+ const unlockedRooms=new Set(data.rooms.map(x=>x.room_key));
+ const stationPanel=HOME_STATIONS.map(station=>'<article class="card"><h3>'+esc(station.name)+'</h3><p class="market-meta">'+(unlockedRooms.has(station.roomKey)?'Açık':'Kilitli')+'</p></article>').join('');
  const trophies=data.trophies.filter(x=>x.display_slot!==null).sort((a,b)=>a.display_slot-b.display_slot).map(x=>'<li>Vitrin '+Number(x.display_slot)+': '+esc(x.achievement_key)+'</li>').join('');
  const loadout=data.loadout.map(x=>{const item=PLAYER_COSMETICS.find(c=>c.key===x.cosmetic_key);return item?'<li>'+esc(item.name)+' · '+esc(item.slot)+'</li>':'';}).join('');
  const layout=Array.isArray(data.home.layout)?data.home.layout:[];
@@ -280,16 +282,6 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(!profile){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter web hesabına bağlı değil.');return true;}
     if(url.pathname==='/maceraci/sosyal'&&!await getGuildFeatureEnabled(db,guildId,'social')){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Sosyal modül bu sunucuda kapalı.');return true;}
     let status='invalid';
-    if(url.pathname==='/maceraci/ev'){
-    if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Panel veritabanı kullanılamıyor.');return true;}
-    const guildId=String(url.searchParams.get('guildId')||''),userId=String(url.searchParams.get('userId')||'');
-    if(!/^\d{17,20}$/.test(guildId)||!/^\d{17,20}$/.test(userId)){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Ev bağlantısı geçersiz.');return true;}
-    const showcase=await getPublicPlayerHome(db,{guildId,userId});
-    if(!showcase){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Bu ev paylaşılmıyor veya bulunamadı.');return true;}
-    const html=publicHomeShowcasePage(user,showcase);
-    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; base-uri 'self'; frame-ancestors 'self'"});
-    res.end(html);return true;
-  }
   if(url.pathname==='/maceraci/yasam'){
       const action=String(form.get('action')||'');
       if(action==='unlock-room')status=(await unlockHomeRoom(db,{guildId,userId:profile.user_id,roomKey:String(form.get('roomKey')||'')})).status;
@@ -372,6 +364,19 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
+  if (url.pathname === '/maceraci/ev') {
+    if (!db) { res.writeHead(503, { 'Cache-Control': 'no-store' }); res.end('Panel veritabanı kullanılamıyor.'); return true; }
+    const guildId = String(url.searchParams.get('guildId') || '');
+    const userId = String(url.searchParams.get('userId') || '');
+    if (!/^[0-9]{17,20}$/.test(guildId) || !/^[0-9]{17,20}$/.test(userId)) { res.writeHead(400, { 'Cache-Control': 'no-store' }); res.end('Ev bağlantısı geçersiz.'); return true; }
+    const showcase = await getPublicPlayerHome(db, { guildId, userId });
+    if (!showcase) { res.writeHead(404, { 'Cache-Control': 'no-store' }); res.end('Bu ev paylaşılmıyor veya bulunamadı.'); return true; }
+    const html = publicHomeShowcasePage(user, showcase);
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; base-uri 'self'; frame-ancestors 'self'" });
+    res.end(html);
+    return true;
+  }
+
   if (url.pathname === '/' || url.pathname === '/maceraci') {
     if (!db) { res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }); res.end('Oyuncu paneli veritabanına şu anda bağlanamıyor.'); return true; }
     const data = await getAdventurerDashboard(db, user.id);
