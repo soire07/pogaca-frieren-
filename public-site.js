@@ -101,7 +101,8 @@ function adventurerPanel(user, data, status) {
     status === 'full' ? '<p class="notice">Etkinliğin katılımcı kapasitesi dolu.</p>' :
     status === 'already_joined' ? '<p class="notice">Bu etkinliğe zaten kayıtlısın.</p>' :
     status === 'team_full' ? '<p class="notice">Seçtiğin raid takımı dolu. Diğer takımı seç.</p>' :
-    status === 'team_required' ? '<p class="notice">Boss / Raid etkinliğine katılmak için A veya B takımını seç.</p>' : '';
+    status === 'team_required' ? '<p class="notice">Boss / Raid etkinliğine katılmak için üyesi olduğun bir lonca takımını seç.</p>' :
+    status === 'not_team_member' ? '<p class="notice">Bu takıma üye değilsin. Önce Discord’da /etkinlik takim-katil komutuyla katıl.</p>' : '';
   const profiles = data.profiles.map(profile => {
     const hp = Math.max(0, Math.min(100, Number(profile.hp) / Math.max(1, Number(profile.max_hp)) * 100));
     const mana = Math.max(0, Math.min(100, Number(profile.mana) / Math.max(1, Number(profile.max_mana)) * 100));
@@ -111,8 +112,14 @@ function adventurerPanel(user, data, status) {
   const events = data.events.map(event => {
     const action = event.joined ? 'leave' : 'join';
     const label = event.joined ? 'Katılımdan ayrıl' : event.event_type==='boss_raid'?'Raid takımına katıl':'Etkinliğe katıl';
-    const teamChoice = event.event_type==='boss_raid'&&!event.joined?'<label>Raid takımı<select name="teamKey" required><option value="">Takım seç</option><option value="A">Takım A</option><option value="B">Takım B</option></select></label>':event.joined&&event.joined_team?'<p class="market-meta">Katıldığın raid takımı: '+esc(event.joined_team)+'</p>':'';
-    return '<article class="card"><div class="eyebrow">' + esc(event.event_type) + '</div><h3>' + esc(event.title) + '</h3><p>' + esc(event.description || 'Açıklama yok.') + '</p><p><b>' + esc(new Date(event.starts_at).toLocaleString('tr-TR', { dateStyle:'medium', timeStyle:'short', timeZone:'Europe/Istanbul' })) + '</b></p><p>' + Number(event.participants) + (event.max_participants ? '/' + Number(event.max_participants) : '') + ' katılımcı</p><form method="post" action="/maceraci/event"><input type="hidden" name="csrf" value="' + esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET)) + '"><input type="hidden" name="guildId" value="' + esc(event.guild_id) + '"><input type="hidden" name="eventId" value="' + esc(event.event_id) + '"><input type="hidden" name="action" value="' + action + '">' + teamChoice + '<button class="btn ghost" type="submit">' + label + '</button></form></article>';
+    const teams=Array.isArray(event.available_teams)?event.available_teams:[];
+    const teamOptions=teams.map(team=>'<option value="'+esc(team.team_id)+'">'+esc(team.team_name)+'</option>').join('');
+    const joinedTeam=event.joined_team_name||(event.joined_team_key?'Takım '+event.joined_team_key:'');
+    const teamChoice=event.event_type==='boss_raid'&&!event.joined
+      ? teams.length?'<label>Raid takımı<select name="teamId" required><option value="">Üyesi olduğun takımı seç</option>'+teamOptions+'</select></label>':'<p class="market-meta">Raid kaydı için önce Discord’da /etkinlik takim-olustur veya /etkinlik takim-katil ile bir takıma katıl.</p>'
+      :event.joined&&joinedTeam?'<p class="market-meta">Katıldığın raid takımı: '+esc(joinedTeam)+'</p>':'';
+    const canJoin=event.event_type!=='boss_raid'||event.joined||teams.length>0;
+    return '<article class="card"><div class="eyebrow">' + esc(event.event_type) + '</div><h3>' + esc(event.title) + '</h3><p>' + esc(event.description || 'Açıklama yok.') + '</p><p><b>' + esc(new Date(event.starts_at).toLocaleString('tr-TR', { dateStyle:'medium', timeStyle:'short', timeZone:'Europe/Istanbul' })) + '</b></p><p>' + Number(event.participants) + (event.max_participants ? '/' + Number(event.max_participants) : '') + ' katılımcı</p><form method="post" action="/maceraci/event"><input type="hidden" name="csrf" value="' + esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET)) + '"><input type="hidden" name="guildId" value="' + esc(event.guild_id) + '"><input type="hidden" name="eventId" value="' + esc(event.event_id) + '"><input type="hidden" name="action" value="' + action + '">' + teamChoice + '<button class="btn ghost" type="submit"'+(canJoin?'':' disabled')+'>' + label + '</button></form></article>';
   }).join('');
   const empty = '<article class="card"><h2>Henüz bağlı karakter yok</h2><p>Discord sunucunda <b>/maceraci bagla</b> komutunu çalıştır. Sana özel, 10 dakika geçerli bağlantı kodunu buraya gir.</p></article>';
   const content = '<main class="wrap" style="padding:54px 0 80px"><div class="eyebrow">✧ FRIEREN ADVENTURER PORTAL ✧</div><h1 class="hero-title">Maceracı <em>Paneli</em></h1><p class="lead">Discord karakterlerinin ilerlemesi, arena sezonları ve yaklaşan topluluk etkinlikleri.</p>' + notice +
@@ -471,7 +478,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(url.pathname==='/maceraci/event'){
       const eventId=String(form.get('eventId')||'');const action=String(form.get('action')||'');
       if(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(eventId)){
-        if(action==='join') status=(await joinGuildEvent(db,{guildId,eventId,userId:profile.user_id,teamKey:String(form.get('teamKey')||'')||null})).status;
+        if(action==='join') status=(await joinGuildEvent(db,{guildId,eventId,userId:profile.user_id,teamId:String(form.get('teamId')||'')||null})).status;
         else if(action==='leave') status=(await leaveGuildEvent(db,{guildId,eventId,userId:profile.user_id})).removed?'left':'unavailable';
       }
       res.writeHead(303,{Location:'/maceraci?'+new URLSearchParams({status}).toString(),'Cache-Control':'no-store'});res.end();return true;
