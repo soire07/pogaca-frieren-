@@ -13,8 +13,11 @@ const variantByKey=new Map(CARD_VARIANTS.map(item=>[item.key,item]));
 export function pickCardVariant(random=Math.random) {
   const value=Number(random());
   if(!Number.isFinite(value)||value<0||value>=1) throw new Error('CARD_VARIANT_RANDOM_INVALID');
-  let cursor=value*100;
-  for(const variant of CARD_VARIANTS){cursor-=variant.weight;if(cursor<variant.weight*0+0)return variant;}
+  let cumulative=0;
+  for(const variant of CARD_VARIANTS){
+    cumulative+=variant.weight/100;
+    if(value<cumulative)return variant;
+  }
   return CARD_VARIANTS[0];
 }
 
