@@ -367,8 +367,8 @@ test('guild teams, raid signup and league fixtures persist real UUID relationshi
     const dashboard=await getGuildTeamLeagueDashboard(pool,guildId,leagueId);
     assert.equal(dashboard.fixtures.length,1);
     assert.equal(dashboard.fixtures[0].status,'completed');
-    assert.equal(Number(dashboard.table.find(row=>row.team_id===teamA).points),3);
-    assert.equal(Number(dashboard.table.find(row=>row.team_id===teamB).points),0);
+    assert.equal(Number(dashboard.table.find(row=>row.team_id===fixture.homeTeamId).points),3);
+    assert.equal(Number(dashboard.table.find(row=>row.team_id===fixture.awayTeamId).points),0);
     assert.equal(await getGuildTeamLeagueDashboard(pool,'99000000000000121',leagueId),null);
   } finally {
     if(eventId) await pool.query('DELETE FROM guild_events WHERE event_id=$1',[eventId]);
