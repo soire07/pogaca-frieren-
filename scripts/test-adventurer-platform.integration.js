@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { initDatabase, pool, ensureUser } from '../database/db.js';
 import {
   ensureAdventurerPlatformTables, ensureActiveArenaSeason, settleArenaMatch, createGuildEvent, joinGuildEvent,
-  leaveGuildEvent, listGuildEvents, createSiteLinkToken, redeemSiteLinkToken, getAdventurerDashboard
+  leaveGuildEvent, listGuildEvents, claimDueGuildEventReminders, markGuildEventReminderSent, releaseGuildEventReminderClaim, createSiteLinkToken, redeemSiteLinkToken, getAdventurerDashboard, getAdventurerInventory
 } from '../adventurer-platform.js';
 
 function assertIsolatedAuditDatabase() {
@@ -192,6 +192,78 @@ test('concurrent Discord link redemption is single-use and dashboards cannot exp
       accountId.slice(5),unrelatedAccountId.slice(5)
     ]]);
     await pool.query('DELETE FROM site_link_tokens WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+    await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+  }
+});
+
+
+test('event reminders are claimed once, retried after delivery failure and finalized idempotently', async () => {
+  assertIsolatedAuditDatabase();
+  await initDatabase();
+  await ensureAdventurerPlatformTables(pool);
+  const guildId='99000000000000105';
+  const channelId='99000000000000106';
+  const userId=makeIds('74000000000000000',1)[0];
+  await ensureUser(guildId,userId);
+  const now=new Date();
+  const start=new Date(now.getTime()+20*60_000).toISOString();
+  const end=new Date(now.getTime()+80*60_000).toISOString();
+  let eventId;
+  try {
+    eventId=(await createGuildEvent(pool,{
+      guildId,createdBy:userId,channelId,title:'Hatırlatma Deneme Etkinliği',
+      startsAt:start,endsAt:end
+    })).eventId;
+    const claimed=await claimDueGuildEventReminders(pool,10,now);
+    const item=claimed.find(row=>row.event_id===eventId);
+    assert.ok(item,'event starting within 30 minutes should be claimed');
+    assert.equal(item.channel_id,channelId);
+    assert.deepEqual(item.attendee_ids,[]);
+    const concurrent=await claimDueGuildEventReminders(pool,10,now);
+    assert.equal(concurrent.some(row=>row.event_id===eventId),false,
+      'a claimed reminder must not be delivered twice');
+    assert.equal(await releaseGuildEventReminderClaim(pool,eventId,item.reminder_claimed_at),true);
+    const retry=await claimDueGuildEventReminders(pool,10,now);
+    const retryItem=retry.find(row=>row.event_id===eventId);
+    assert.ok(retryItem,'failed delivery claim must be retryable');
+    assert.equal(await markGuildEventReminderSent(pool,eventId,retryItem.reminder_claimed_at),true);
+    assert.equal(await markGuildEventReminderSent(pool,eventId,retryItem.reminder_claimed_at),false,
+      'a reminder can be finalized only once');
+    assert.equal((await claimDueGuildEventReminders(pool,10,now)).some(row=>row.event_id===eventId),false);
+  } finally {
+    if(eventId) await pool.query('DELETE FROM guild_events WHERE event_id=$1',[eventId]);
+    await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+  }
+});
+
+test('linked adventurer inventory is account-scoped and includes equipment and RSVP state', async () => {
+  assertIsolatedAuditDatabase();
+  await initDatabase();
+  await ensureAdventurerPlatformTables(pool);
+  const guildId='99000000000000123';
+  const [userId]=makeIds('72000000000000000',1);
+  const accountId='site_'+randomUUID();
+  let eventId=null;
+  await ensureUser(guildId,userId);
+  try {
+    await pool.query('INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,2)',[guildId,userId,'Mana Kristali']);
+    await pool.query('INSERT INTO user_equipment(guild_id,user_id,slot,item_key) VALUES($1,$2,$3,$4)',[guildId,userId,'weapon','Efsunlu Asa']);
+    const link=await createSiteLinkToken(pool,{guildId,userId});
+    assert.equal((await redeemSiteLinkToken(pool,accountId,link.token)).status,'linked');
+    const event=await createGuildEvent(pool,{guildId,title:'Portal RSVP Fixture',startsAt:new Date(Date.now()+3600000).toISOString(),endsAt:new Date(Date.now()+7200000).toISOString(),createdBy:userId});
+    eventId=event.eventId;
+    assert.equal((await joinGuildEvent(pool,{guildId,eventId,userId})).status,'joined');
+    const inventory=await getAdventurerInventory(pool,accountId,guildId);
+    assert.equal(inventory.profile.user_id,userId);
+    assert.ok(inventory.items.some(item=>item.item_key==='Mana Kristali'&&Number(item.quantity)===2));
+    assert.ok(inventory.items.some(item=>item.item_key==='Efsunlu Asa'&&item.slot==='weapon'));
+    const dashboard=await getAdventurerDashboard(pool,accountId);
+    const listed=dashboard.events.find(item=>item.event_id===eventId);
+    assert.ok(listed);
+    assert.equal(listed.joined,true);
+  } finally {
+    await pool.query('DELETE FROM site_discord_links WHERE account_id=$1',[accountId]);
+    if(eventId) await pool.query('DELETE FROM guild_events WHERE event_id=$1',[eventId]);
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
   }
 });

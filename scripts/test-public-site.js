@@ -189,12 +189,17 @@ test('command catalogue is authenticated, dynamic, searchable and safely escapes
   const commands = new Map([
     ['karakter', { data: { name: 'karakter', description: 'RPG karakterini görüntüle.' } }],
     ['animequiz', { data: { name: 'animequiz', description: 'Anime quizlerine katıl.' } }],
+    ['yoldas', { data: { name: 'yoldas', description: 'Yoldaşını geliştir.' } }],
+    ['balik', { data: { name: 'balik', description: 'Balık tut.' } }],
+    ['sera', { data: { name: 'sera', description: 'Tohum ek ve hasat yap.' } }],
+    ['yaratik', { data: { name: 'yaratik', description: 'Yaratık yakala.' } }],
+    ['karakteristek', { data: { name: 'karakteristek', description: 'Karakter istek listeni yönet.' } }],
     ['hazine', { data: { name: 'hazine', description: '<script>alert(1)</script>' } }],
   ]);
   await handlePublicSiteRequest(request('/komutlar'), response, { client: { commands } });
   assert.equal(response.status, 200);
   assert.match(response.body, /Bütün <em>komutlar/);
-  assert.match(response.body, /3\/3 komut gösteriliyor/);
+  assert.match(response.body, /8\/8 komut gösteriliyor/);
   assert.match(response.body, /command-search/);
   assert.match(response.body, /RPG &amp; Macera/);
   assert.match(response.body, /Anime &amp; Eğlence/);
@@ -214,6 +219,8 @@ test('homepage declares the existing Frieren brand favicon and serves the SVG as
   const homepage = res();
   await handlePublicSiteRequest(request('/'), homepage);
   assert.match(homepage.body, /<link rel="icon" type="image\/svg\+xml" href="\/assets\/site-avatar\.svg">/);
+  assert.match(homepage.body, /href="\/lonca">Maceracı Loncası/);
+  assert.match(homepage.body, /Frieren modüllerini düzenle/);
   const favicon = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-avatar.svg', headers: {} }, favicon), true);
   assert.equal(favicon.status, 200);
@@ -297,4 +304,89 @@ test('adventurer account linking rejects invalid CSRF before opening a database 
   assert.equal(await handlePublicSiteRequest(requestPost,response,{db}),true);
   assert.equal(response.status,403);
   assert.equal(connected,false);
+});
+
+test('adventurer inventory page is account- and guild-scoped and displays equipped items', async () => {
+  const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:12,xp:1440,coins:900,hp:80,max_hp:100,mana:65,max_mana:100};
+  const db={async query(sql){
+    if(sql.includes('FROM site_discord_links')) return {rows:[profile],rowCount:1};
+    if(sql.includes('FROM inventory')) return {rows:[{item_key:'Mana Kristali',quantity:3,slot:null},{item_key:'Efsunlu Asa',quantity:1,slot:'weapon'}],rowCount:2};
+    throw new Error('Unexpected query: '+sql);
+  }};
+  const response=res();
+  assert.equal(await handlePublicSiteRequest(request('/maceraci/envanter?guildId='+profile.guild_id,{id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'}),response,{db}),true);
+  assert.equal(response.status,200);
+  assert.match(response.body,/Envanter/);
+  assert.match(response.body,/Mana Kristali/);
+  assert.match(response.body,/Efsunlu Asa/);
+  assert.match(response.body,/Takılı: Silah/);
+  assert.match(response.body,/Kuzey Pazarı/);
+});
+
+test('web player market renders linked inventory, public listings, own-listing cancellation and history', async () => {
+  const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:12,xp:1440,coins:900,hp:80,max_hp:100,mana:65,max_mana:100};
+  const listing={listing_id:'123e4567-e89b-42d3-a456-426614174000',seller_id:'223456789012345678',item_key:'Mana Kristali',quantity:2,price_coins:80,created_at:new Date().toISOString()};
+  const ownListing={...listing,listing_id:'123e4567-e89b-42d3-a456-426614174001',seller_id:profile.user_id,item_key:'Efsunlu Asa'};
+  const db={async query(sql){
+    if(sql.includes('FROM site_discord_links')) return {rows:[profile],rowCount:1};
+    if(sql.includes('FROM inventory')) return {rows:[{item_key:'Efsunlu Asa',quantity:1,slot:null}],rowCount:1};
+    if(sql.includes("WHERE guild_id=$1 AND status='active'")) return {rows:[listing,ownListing],rowCount:2};
+    if(sql.includes('seller_id=$2 OR buyer_id=$2')) return {rows:[{...ownListing,status:'active'}],rowCount:1};
+    throw new Error('Unexpected query: '+sql);
+  }};
+  const response=res();
+  assert.equal(await handlePublicSiteRequest(request('/pazar?guildId='+profile.guild_id,{id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'}),response,{db}),true);
+  assert.equal(response.status,200);
+  assert.match(response.body,/Kuzey Pazarı/);
+  assert.match(response.body,/Satın al/);
+  assert.match(response.body,/İlanı iptal et/);
+  assert.match(response.body,/Eşyanı satışa çıkar/);
+  assert.match(response.body,/İşlem geçmişim/);
+  assert.doesNotMatch(response.body,/223456789012345678/);
+});
+
+test('web market mutations reject invalid CSRF before any database access', async () => {
+  let queries=0;
+  const db={async query(){queries++;throw new Error('must not query');}};
+  const response=res();
+  const post=sitePost('/pazar/al',{csrf:'invalid',guildId:'1539562273197260860',listingId:'123e4567-e89b-42d3-a456-426614174000'});
+  assert.equal(await handlePublicSiteRequest(post,response,{db}),true);
+  assert.equal(response.status,403);
+  assert.equal(queries,0);
+});
+
+test('web market mutations reject a guild not linked to the authenticated site account', async () => {
+  let queryCount=0;
+  const db={async query(sql){queryCount++;if(sql.includes('FROM site_discord_links'))return {rows:[],rowCount:0};throw new Error('Unexpected query: '+sql);}};
+  const response=res();
+  const post=sitePost('/pazar/al',{csrf:createSiteCsrfToken(secret),guildId:'1539562273197260860',listingId:'123e4567-e89b-42d3-a456-426614174000'});
+  assert.equal(await handlePublicSiteRequest(post,response,{db}),true);
+  assert.equal(response.status,403);
+  assert.equal(queryCount,1);
+});
+
+test('web event RSVP uses the linked Discord character and redirects after joining', async () => {
+  const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern'};
+  const db={
+    async query(sql){
+      if(sql.includes('FROM site_discord_links')) return {rows:[profile],rowCount:1};
+      if(sql.startsWith('INSERT INTO users')) return {rows:[],rowCount:1};
+      throw new Error('Unexpected pool query: '+sql);
+    },
+    async connect(){
+      return {async query(sql){
+        if(sql==='BEGIN'||sql==='COMMIT'||sql==='ROLLBACK') return {rows:[],rowCount:1};
+        if(sql.includes('FROM guild_events')) return {rows:[{event_id:'123e4567-e89b-42d3-a456-426614174000',max_participants:10}],rowCount:1};
+        if(sql.includes('FROM guild_event_participants WHERE event_id=$1 AND user_id=$2')) return {rows:[],rowCount:0};
+        if(sql.includes('COUNT(*)::int AS count')) return {rows:[{count:1}],rowCount:1};
+        if(sql.startsWith('INSERT INTO guild_event_participants')) return {rows:[{user_id:profile.user_id}],rowCount:1};
+        throw new Error('Unexpected client query: '+sql);
+      },release(){}};
+    }
+  };
+  const response=res();
+  const post=sitePost('/maceraci/event',{csrf:createSiteCsrfToken(secret),guildId:profile.guild_id,eventId:'123e4567-e89b-42d3-a456-426614174000',action:'join'});
+  assert.equal(await handlePublicSiteRequest(post,response,{db}),true);
+  assert.equal(response.status,303);
+  assert.match(response.headers.Location,/status=joined/);
 });

@@ -1,0 +1,146 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { randomInt } from 'node:crypto';
+import { initDatabase, pool, ensureUser, withIsolatedTestSchema } from '../database/db.js';
+import {
+  ensurePlayerMarketTables,
+  createPlayerMarketListing,
+  buyPlayerMarketListing,
+  cancelPlayerMarketListing,
+  listPlayerMarketListings,
+  getPlayerMarketHistory
+} from '../player-market.js';
+
+const dedicatedAuditDatabase = /^postgres(?:ql)?:\/\/postgres:postgres@localhost:5432\/frieren_audit(?:\?|$)/.test(process.env.DATABASE_URL || '');
+
+function snowflake(prefix) {
+  return prefix + String(randomInt(0,1_000_000_000_000)).padStart(12,'0');
+}
+
+test('concurrent player-market purchases transfer escrowed inventory and coins exactly once', {
+  skip: !dedicatedAuditDatabase && 'Requires disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    await initDatabase();
+    await ensurePlayerMarketTables(pool);
+    const guildId=snowflake('91000'), sellerId=snowflake('92000'), buyerId=snowflake('93000');
+    await ensureUser(guildId,sellerId);
+    await ensureUser(guildId,buyerId);
+    await pool.query('UPDATE users SET coins=0 WHERE guild_id=$1 AND user_id=$2',[guildId,sellerId]);
+    await pool.query('UPDATE users SET coins=500 WHERE guild_id=$1 AND user_id=$2',[guildId,buyerId]);
+    await pool.query('INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,5)',[guildId,sellerId,'Mana Kristali']);
+    const listing=(await createPlayerMarketListing(pool,{guildId,sellerId,itemKey:'Mana Kristali',quantity:3,priceCoins:300})).listing;
+    const results=await Promise.all(Array.from({length:8},()=>buyPlayerMarketListing(pool,{guildId,buyerId,listingId:listing.listing_id})));
+    assert.equal(results.filter(x=>x.status==='purchased').length,1);
+    assert.equal(results.filter(x=>x.status==='unavailable').length,7);
+    const balances=await pool.query('SELECT user_id,coins FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id',[guildId,[sellerId,buyerId]]);
+    assert.equal(Number(balances.rows.find(x=>x.user_id===sellerId).coins),300);
+    assert.equal(Number(balances.rows.find(x=>x.user_id===buyerId).coins),200);
+    const items=await pool.query('SELECT user_id,quantity FROM inventory WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND item_key=$3 ORDER BY user_id',[guildId,[sellerId,buyerId],'Mana Kristali']);
+    assert.equal(Number(items.rows.find(x=>x.user_id===sellerId).quantity),2);
+    assert.equal(Number(items.rows.find(x=>x.user_id===buyerId).quantity),3);
+    assert.equal((await getPlayerMarketHistory(pool,guildId,buyerId)).length,1);
+    assert.equal((await listPlayerMarketListings(pool,guildId)).some(x=>x.listing_id===listing.listing_id),false);
+  });
+});
+
+test('cancelling a player-market listing returns escrow exactly once', {
+  skip: !dedicatedAuditDatabase && 'Requires disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    await initDatabase();
+    await ensurePlayerMarketTables(pool);
+    const guildId=snowflake('91000'), sellerId=snowflake('94000'), intruderId=snowflake('98000');
+    await ensureUser(guildId,sellerId);
+    await ensureUser(guildId,intruderId);
+    await pool.query('INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,4)',[guildId,sellerId,'Gümüş Cevheri']);
+    const listing=(await createPlayerMarketListing(pool,{guildId,sellerId,itemKey:'Gümüş Cevheri',quantity:2,priceCoins:80})).listing;
+    assert.equal(Number((await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,sellerId,'Gümüş Cevheri'])).rows[0].quantity),2);
+    assert.equal((await cancelPlayerMarketListing(pool,{guildId,sellerId:intruderId,listingId:listing.listing_id})).status,'not_owner');
+    assert.equal((await cancelPlayerMarketListing(pool,{guildId,sellerId,listingId:listing.listing_id})).status,'cancelled');
+    assert.equal((await cancelPlayerMarketListing(pool,{guildId,sellerId,listingId:listing.listing_id})).status,'unavailable');
+    assert.equal(Number((await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,sellerId,'Gümüş Cevheri'])).rows[0].quantity),4);
+  });
+});
+
+test('player-market purchase rejects self-buy and insufficient balance without mutating listing or inventory', {
+  skip: !dedicatedAuditDatabase && 'Requires disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    await initDatabase();
+    await ensurePlayerMarketTables(pool);
+    const guildId=snowflake('91000'), sellerId=snowflake('95000'), buyerId=snowflake('96000');
+    await ensureUser(guildId,sellerId);
+    await ensureUser(guildId,buyerId);
+    await pool.query('UPDATE users SET coins=0 WHERE guild_id=$1 AND user_id=ANY($2::text[])',[guildId,[sellerId,buyerId]]);
+    await pool.query('INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)',[guildId,sellerId,'Işık Taşı']);
+    const listing=(await createPlayerMarketListing(pool,{guildId,sellerId,itemKey:'Işık Taşı',quantity:1,priceCoins:500})).listing;
+    assert.equal((await buyPlayerMarketListing(pool,{guildId,buyerId:sellerId,listingId:listing.listing_id})).status,'self_purchase');
+    assert.equal((await buyPlayerMarketListing(pool,{guildId,buyerId,listingId:listing.listing_id})).status,'insufficient_funds');
+    const row=await pool.query('SELECT status FROM player_market_listings WHERE listing_id=$1',[listing.listing_id]);
+    assert.equal(row.rows[0].status,'active');
+    assert.equal(Number((await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,sellerId])).rows[0].coins),0);
+  });
+});
+
+test('equipped gear cannot be escrowed into the player market', {
+  skip: !dedicatedAuditDatabase && 'Requires disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    await initDatabase();
+    await ensurePlayerMarketTables(pool);
+    const guildId=snowflake('91000'), sellerId=snowflake('97000');
+    await ensureUser(guildId,sellerId);
+    await pool.query('INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)',[guildId,sellerId,'Equipped Sword']);
+    await pool.query("INSERT INTO user_equipment(guild_id,user_id,slot,item_key) VALUES($1,$2,'weapon',$3)",[guildId,sellerId,'Equipped Sword']);
+    const result=await createPlayerMarketListing(pool,{guildId,sellerId,itemKey:'Equipped Sword',quantity:1,priceCoins:100});
+    assert.equal(result.status,'equipped_item');
+    assert.equal(Number((await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,sellerId,'Equipped Sword'])).rows[0].quantity),1);
+    assert.equal((await pool.query("SELECT 1 FROM player_market_listings WHERE guild_id=$1 AND seller_id=$2",[guildId,sellerId])).rowCount,0);
+  });
+});
+
+test('failed player-market item delivery rolls back buyer debit, seller credit and sale status', {
+  skip: !dedicatedAuditDatabase && 'Requires disposable GitHub Actions frieren_audit PostgreSQL service'
+}, async () => {
+  await withIsolatedTestSchema(async () => {
+    await initDatabase();
+    await ensurePlayerMarketTables(pool);
+    const guildId=snowflake('91000'), sellerId=snowflake('95000'), buyerId=snowflake('96000');
+    await ensureUser(guildId,sellerId);
+    await ensureUser(guildId,buyerId);
+    await pool.query('UPDATE users SET coins=0 WHERE guild_id=$1 AND user_id=$2',[guildId,sellerId]);
+    await pool.query('UPDATE users SET coins=500 WHERE guild_id=$1 AND user_id=$2',[guildId,buyerId]);
+    await pool.query('INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,2)',[guildId,sellerId,'Market Rollback Relic']);
+    const listing=(await createPlayerMarketListing(pool,{guildId,sellerId,itemKey:'Market Rollback Relic',quantity:1,priceCoins:300})).listing;
+    await pool.query(`
+      CREATE OR REPLACE FUNCTION reject_player_market_delivery_fixture() RETURNS trigger AS $player_market$
+      BEGIN
+        IF NEW.user_id LIKE '96000%' AND NEW.item_key='Market Rollback Relic' THEN
+          RAISE EXCEPTION 'forced player market delivery failure';
+        END IF;
+        RETURN NEW;
+      END;
+      $player_market$ LANGUAGE plpgsql
+    `);
+    await pool.query(`CREATE TRIGGER reject_player_market_delivery_fixture BEFORE INSERT ON inventory
+      FOR EACH ROW EXECUTE FUNCTION reject_player_market_delivery_fixture()`);
+    try {
+      await assert.rejects(
+        buyPlayerMarketListing(pool,{guildId,buyerId,listingId:listing.listing_id}),
+        /forced player market delivery failure/
+      );
+      const balances=await pool.query('SELECT user_id,coins FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id',[guildId,[sellerId,buyerId]]);
+      assert.equal(Number(balances.rows.find(x=>x.user_id===sellerId).coins),0);
+      assert.equal(Number(balances.rows.find(x=>x.user_id===buyerId).coins),500);
+      assert.equal((await pool.query('SELECT status FROM player_market_listings WHERE listing_id=$1',[listing.listing_id])).rows[0].status,'active');
+      assert.equal((await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,sellerId,'Market Rollback Relic'])).rows[0].quantity,1);
+      assert.equal((await pool.query('SELECT 1 FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,buyerId,'Market Rollback Relic'])).rowCount,0);
+    } finally {
+      await pool.query('DROP TRIGGER IF EXISTS reject_player_market_delivery_fixture ON inventory');
+      await pool.query('DROP FUNCTION IF EXISTS reject_player_market_delivery_fixture()');
+    }
+  });
+});
+
+test.after(async()=>{ await pool.end(); });

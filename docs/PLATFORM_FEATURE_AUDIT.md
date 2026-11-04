@@ -1,5 +1,18 @@
 # Frieren Platform — Birleşik Özellik Envanteri
 
+## Güncel ek denetim — 2026-11-04
+
+Bu bölüm, 2026-11-01 tarihli başlangıç notunu entegrasyon dalı `feat/frieren-platform-expansion-batch` için günceller; bu dal ana dala merge edilmiş değildir.
+
+- Özellik envanteri: **2.010 kayıt**; **335 mevcut/kod karşılığı olan kayıt** ve **1.675 planlı roadmap adayı**.
+- `auditComplete=false` korunuyor. Kod/test kanıtı canlı Discord veya canlı web doğrulaması yerine geçmez.
+- Yeni kanıt bağlantılı kayıtlar: ENT-031–ENT-037 ve WEB-016–WEB-017.
+- Rakip karşılaştırması Dyno, MEE6, Carl-bot, Tatsu ve UnbelievaBoat resmî sayfalarıyla güncellendi; kaynaklar ve ücretsiz/premium sınır notları `docs/COMPETITOR_FEATURE_MATRIX.md` içinde.
+- Poğaça modülleri: yoldaş, balıkçılık, sera, yaratık arşivi, karakter wishlist, Anime Quiz kalıcı puan ve Lonca etkinlik hatırlatmaları.
+- Web modülleri: Discord OAuth bağlantısı, yetkili sunucu seçimi ve sunucu bazlı Frieren modül anahtarları.
+- Bot CI **715/715**, komut senaryoları **31/31**, slash command doğrulaması ve Owner Panel testleri başarılı; izole PostgreSQL entegrasyonları **82/82** başarılı.
+- PR #219, PR #217 üzerine yığılmış taslak PR'dır. Merge, Render deploy, Discord komut kaydı ve üretim DB değişikliği yapılmadı.
+
 Son denetim: 2026-11-01  
 Kapsam: Poğaça Frieren, Frieren AI ve Frieren Owner Panel / web sitesi.  
 Kapsam dışı: log görüntüleme/analizi ve bu üç sistem dışında kalan botlar veya projeler.
@@ -28,10 +41,11 @@ Bu belge bir başlangıç envanteridir; tamamlanma beyanı değildir. Özellik, 
 - Liderlik tabloları, oyuncu geçmişi ve RPG istatistikleri.
 
 ### Kanıt ve sınır
-- Depodaki `feature-inventory.json` 317 ayrı oyuncu özelliği kaydı içeriyor; hedef 2.000.
-- Envanterin `auditComplete` alanı `false`. Bu nedenle 317 sayısı tüm bot özelliklerinin eksiksiz envanteri değildir.
-- 317 kaydın tamamı `implemented_needs_runtime_test` durumunda. Bu, kaynakta uygulama bulunduğunu belirtir; her özelliğin canlı Discord'da gerçek kullanıcıyla uçtan uca doğrulandığını göstermez.
-- Önceki CI kanıtları: 62 oyuncu komut denetimi, 14 PostgreSQL entegrasyon testi ve genel bot testleri başarılıydı. Bunlar sentetik Discord etkileşimleri ve izole test veritabanı kullanır; gerçek kullanıcı hesabıyla manuel Discord testi değildir.
+- Rakip bot/web karşılaştırmasından gelen 10 ek kayıt (`ENT-031–038`, `WEB-016–017`) eklendi. Bunlar kodda mevcut işlevleri temsil eder; canlı Discord/web akışlarının tamamı doğrulanmış değildir.
+- Depodaki `feature-inventory.json` 335 mevcut özellik kaydı içeriyor; toplam 2.010 kayıt (335 mevcut + 1.675 planlanan); başlangıç hedefi 2.000.
+- Envanterin `auditComplete` alanı `false`. Bu nedenle 335 sayısı tüm bot özelliklerinin eksiksiz envanteri değildir.
+- 335 kaydın tamamı `implemented_needs_runtime_test` durumunda. Bu, kaynakta uygulama bulunduğunu belirtir; her özelliğin canlı Discord'da gerçek kullanıcıyla uçtan uca doğrulandığını göstermez.
+- Önceki CI kanıtları: 715/715 ana bot testi, 31/31 komut senaryosu ve 82/82 izole PostgreSQL entegrasyon testi başarılıydı. 2026-11-04 tarihli güncel HEAD `bef213d891080aac4414ca418b8b46029f115be7` için ana bot CI, komut doğrulaması ve Owner Panel testleri başarılı; genişletilmiş PostgreSQL denetimi yeni pazar escrow testiyle tekrar çalışıyor ve henüz tamamlanmadı. Bunlar sentetik Discord etkileşimleri ve izole test veritabanı kullanır; gerçek kullanıcı hesabıyla manuel Discord testi değildir.
 - Moderasyon ve genel sunucu yönetimi Poğaça'nın hedef kapsamı değildir.
 
 ## 2. Frieren AI
@@ -97,4 +111,4 @@ Bu belge bir başlangıç envanteridir; tamamlanma beyanı değildir. Özellik, 
 
 ## Başlangıç durumu
 
-Bu ilk kayıt, mevcut kod ve belgelerden çıkarılmıştır. Henüz yeni özellik veya üretim verisi değiştirilmedi. Sonraki değişiklikler ayrı PR, CI ve canlı dağıtım kanıtlarıyla kaydedilecektir.
+Bu denetimde yeni özellik kodu PR #219 taslağına eklendi; üretim verisi değiştirilmedi ve canlı dağıtım yapılmadı. CI kanıtı: önceki doğrulanmış dal noktasında 715/715 ana bot testi, 31/31 komut senaryosu ve 82/82 izole PostgreSQL entegrasyon testi. Güncel HEAD için yeni PostgreSQL genişletilmiş denetimi henüz çalışıyor. Canlı Discord ve Render doğrulaması merge/deploy sonrasına bırakılmıştır.
