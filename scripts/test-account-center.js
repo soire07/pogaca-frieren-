@@ -6,7 +6,7 @@ const accountId='site_123e4567-e89b-12d3-a456-426614174000';
 
 test('support ticket input is normalized and bounded',()=>{
  assert.deepEqual(normalizeSupportTicketInput({category:'bug',subject:' OAuth issue ',message:' Login callback fails. '}),{category:'bug',subject:'OAuth issue',message:'Login callback fails.'});
- assert.throws(()=>normalizeSupportTicketInput({category:'other',subject:'x',message:'body'}),/SUPPORT_TICKET_CATEGORY_INVALID/);
+ assert.throws(()=>normalizeSupportTicketInput({category:'invalid',subject:'Valid subject',message:'valid enough body'}),/SUPPORT_TICKET_CATEGORY_INVALID/);
  assert.throws(()=>normalizeSupportTicketInput({category:'bug',subject:'x'.repeat(161),message:'body'}),/SUPPORT_TICKET_SUBJECT_INVALID/);
 });
 
@@ -17,7 +17,7 @@ test('support ticket creation is scoped to the current account and rate limited'
  assert.equal(result.status,'created');
  assert.ok(calls.every(x=>x.params.includes('123e4567-e89b-12d3-a456-426614174000')));
  const limited={async query(sql){if(sql.includes('COUNT(*)'))return{rows:[{count:5}],rowCount:1};throw Error('must not insert');}};
- assert.equal((await createSupportTicket(limited,accountId,{category:'bug',subject:'Help',message:'Body'})).status,'daily_limit');
+ assert.equal((await createSupportTicket(limited,accountId,{category:'bug',subject:'Help',message:'This is long enough.'})).status,'daily_limit');
 });
 
 test('support tickets list only the authenticated account records',async()=>{
