@@ -226,5 +226,5 @@ test('site account required notice is shown when a Discord-only session opens th
   }), true);
   assert.equal(res.status, 200);
   assert.match(res.body, /Maceracı paneli için önce Frieren web hesabınla giriş yap/);
-  assert.match(res.body, /href="\\/register"/);
+  assert.match(res.body, /href="\/register"/);
 });
