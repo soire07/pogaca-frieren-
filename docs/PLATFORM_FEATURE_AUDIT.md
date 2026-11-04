@@ -133,3 +133,12 @@ Güncel uygulama PR #217 taslağında tutuluyor; üretim verisi değiştirilmedi
 - Five unit-level migration runner tests cover ordering, idempotency, checksum drift, rollback/lock release, and invalid sequence/filename/transaction controls. No schema-changing SQL migration has been added yet; existing schema parity and real PostgreSQL migration proof remain release gates.
 - The last verified pre-follow-up CI head `fcb5688` completed all six PR workflows, including the isolated PostgreSQL audit. The newer OAuth/migration commits have not yet received attached workflow results; the prior 89/89 integration result must not be attributed to the newer HEAD.
 - PR #217 remains draft and GitHub currently reports the branch as not mergeable against `main`; the one-commit OAuth overlap must be reconciled before review. No production DB, live Discord, or Render deployment action was taken.
+
+
+## Roadmap kalite denetimi — 2026-11-04
+
+- Yeni `scripts/roadmap-capability-audit.js`, roadmap kayıtlarını işlem fiili + temel yetenek olarak ayırır; aynı kategori ve temel yetenek altındaki Preview/Unlock/Track/Compare gibi varyantları ayrı bağımsız ürün yeteneği olarak saymaz.
+- Mevcut 1.675 roadmap kaydı 25 kategoride dağılmıştır. İşlem fiili çıkarılıp kategori kapsamı korunarak normalleştirildiğinde **775 kategori/yetenek grubu** elde edilir; dolayısıyla kayıt sayısı tek başına 1.675 bağımsız ürün yeteneği kanıtı değildir.
+- Bu denetim kayıtları otomatik silmez veya mevcut/planned statülerini değiştirmez. Tekrarlanan varyantlar ürün gereksinimi, ayrı davranış veya yalnızca görünüm/CRUD işlemi olup olmadığına göre insan incelemesi gerektirir.
+- Denetim `npm run check` ve `npm test` akışına eklendi; `scripts/test-roadmap-capability-audit.js` Türkçe normalizasyonu, kategori ayrımı, işlem fiili ayrıştırması ve envanter sayaçlarını test eder.
+- Sonraki uygulama paketleri 775 temel yetenek grubuna göre tanımlanmalı; her temel yetenek için Discord/web yüzeyleri, veri modeli, izin kapsamı ve test kanıtı ayrı izlenmelidir. Roadmap kayıt sayısı, uygulama yüzeyi veya test sayısı olarak raporlanmamalıdır.
