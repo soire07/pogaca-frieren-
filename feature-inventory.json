@@ -1784,7 +1784,7 @@
         "tests": [
           "scripts/test-gameplay-persistence.js"
         ],
-        "scope": "Epic/legendary set calculations and their solo/co-op boss combat consumers are covered by helper assertions and source-wiring checks; combat interaction E2E remains unverified."
+        "scope": "Epic/legendary set calculations and solo/co-op boss consumers are covered by helper assertions and source-wiring checks. Additional regression coverage verifies the equipment command recalculates resource caps after equip/unequip with active set bonuses and the item-use command resolves the same active-set totals. Full combat interaction/live Discord E2E remains unverified."
       }
     },
     {
@@ -3965,7 +3965,7 @@
         "tests": [
           "scripts/test-gameplay-persistence.js"
         ],
-        "scope": "Unit tests verify base-stat HP/Mana ratio normalization and equipment-set bonus calculation; source wiring checks cover exploration effective-stat integration. All class/build/talent combinations are not exhaustively exercised."
+        "scope": "Unit tests verify base-stat HP/Mana ratio normalization and equipment-set calculations; source-wiring checks cover exploration effective-stat integration. Separate regression coverage confirms equipment equip/unequip cap calculations include active rarity set bonuses. All class/build/talent combinations and live Discord E2E remain unverified."
       }
     },
     {
@@ -3978,7 +3978,7 @@
         "tests": [
           "scripts/test-gameplay-persistence.js"
         ],
-        "scope": "Unit tests verify HP/Mana ratios remain proportional and within base caps; source wiring checks cover temporary-stat persistence across dungeon/raid consumers. Full role/equipment/talent combinations remain unverified."
+        "scope": "Unit tests verify HP/Mana ratios remain proportional and within base caps; source-contract checks cover temporary-stat persistence across dungeon/raid consumers. Equipment command regression tests now cover active set-bonus caps during equip/unequip. Full role/equipment/talent combinations remain unverified."
       }
     },
     {
@@ -3991,7 +3991,7 @@
         "tests": [
           "scripts/test-gameplay-persistence.js"
         ],
-        "scope": "Unit tests verify HP/Mana ratio normalization and set-bonus behavior; source wiring checks cover profile, exploration and boss consumers. Cross-command live E2E remains unverified."
+        "scope": "Unit tests verify HP/Mana ratio normalization and set-bonus behavior; source-wiring checks cover profile, exploration and boss consumers. Equipment equip/unequip cap regression coverage includes active rarity set bonuses. Cross-command live E2E remains unverified."
       }
     },
     {
@@ -4017,7 +4017,7 @@
         "tests": [
           "scripts/test-gameplay-persistence.js"
         ],
-        "scope": "Set helper behavior plus exploration HP, Mana and defense integration points are checked; live Discord exploration interaction remains unverified."
+        "scope": "Set helper behavior and exploration HP/Mana/defense integration points are checked; equip/unequip regression tests verify rarity set bonuses remain included in resource caps when equipment changes. Live Discord exploration interaction remains unverified."
       }
     },
     {
@@ -4044,7 +4044,7 @@
         "tests": [
           "scripts/test-gameplay-persistence.js"
         ],
-        "scope": "Set-adjusted profile HP, Mana, attack and defense calculations are checked at source-wiring level; live Discord profile interaction remains unverified."
+        "scope": "Set-adjusted profile HP, Mana, attack and defense calculations are checked at source-wiring level; equipment resource-cap regression coverage verifies equip/unequip use the same active rarity set calculation. Live Discord profile interaction remains unverified."
       }
     },
     {
@@ -4057,7 +4057,7 @@
         "tests": [
           "scripts/test-gameplay-persistence.js"
         ],
-        "scope": "Set helper activation/removal and profile active-set label wiring are checked; live Discord profile interaction remains unverified."
+        "scope": "Set helper activation/removal and profile active-set label wiring are checked; equip/unequip regression tests also cover active set bonus recalculation. Live Discord profile interaction remains unverified."
       }
     },
     {
@@ -4085,7 +4085,7 @@
           "scripts/test-gameplay-persistence.js",
           "scripts/test-discord-scenarios.js"
         ],
-        "scope": "Unit tests verify active equipment set bonuses and their removal; source-contract checks verify the exploration outcome summary includes the active bonus. Live interaction rendering remains unverified."
+        "scope": "Unit tests verify active equipment set bonuses and their removal; source-contract checks verify the exploration outcome summary includes the active bonus. Equip/unequip cap regression tests cover set-bonus retention across equipment changes. Live interaction rendering remains unverified."
       }
     },
     {
