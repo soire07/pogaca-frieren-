@@ -102,7 +102,8 @@ function adventurerPanel(user, data, status) {
     status === 'already_joined' ? '<p class="notice">Bu etkinliğe zaten kayıtlısın.</p>' :
     status === 'team_full' ? '<p class="notice">Seçtiğin raid takımı dolu. Diğer takımı seç.</p>' :
     status === 'team_required' ? '<p class="notice">Boss / Raid etkinliğine katılmak için üyesi olduğun bir lonca takımını seç.</p>' :
-    status === 'not_team_member' ? '<p class="notice">Bu takıma üye değilsin. Önce Discord’da /etkinlik takim-katil komutuyla katıl.</p>' : '';
+    status === 'not_team_member' ? '<p class="notice">Bu takıma üye değilsin. Önce Discord’da /etkinlik takim-katil komutuyla katıl.</p>' :
+    status === 'invalid_team' ? '<p class="notice">Takım kimliği geçersiz. Takımını yeniden seç.</p>' : '';
   const profiles = data.profiles.map(profile => {
     const hp = Math.max(0, Math.min(100, Number(profile.hp) / Math.max(1, Number(profile.max_hp)) * 100));
     const mana = Math.max(0, Math.min(100, Number(profile.mana) / Math.max(1, Number(profile.max_mana)) * 100));
