@@ -17,6 +17,19 @@ function request(path = '/', user = visitor) {
   return { method: 'GET', url: path, headers: { cookie } };
 }
 
+test('account-only player routes reject legacy Discord sessions before querying account data', async () => {
+  const routes=['/maceraci','/maceraci/yasam','/maceraci/atolye','/maceraci/bildirimler','/maceraci/envanter','/maceraci/koleksiyon','/maceraci/sosyal','/pazar','/destek'];
+  for(const route of routes){
+    let queries=0;
+    const response=res();
+    const db={async query(){queries++;throw new Error('invalid account session must not query the database');}};
+    assert.equal(await handlePublicSiteRequest(request(route,visitor),response,{db}),true,route);
+    assert.equal(response.status,302,route);
+    assert.equal(response.headers.Location,'/login?status=site_account_required',route);
+    assert.equal(queries,0,route);
+  }
+});
+
 test('public command catalog includes the new guild mini-game command', async () => {
   const response = res();
   const client = { guilds: { cache: { size: 1 } }, commands: { size: 1 }, isReady: () => true };
