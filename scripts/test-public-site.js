@@ -448,6 +448,7 @@ test('web player market renders linked inventory, public listings, own-listing c
     if(sql.includes('FROM inventory')) return {rows:[{item_key:'Efsunlu Asa',quantity:1,slot:null}],rowCount:1};
     if(sql.includes("WHERE guild_id=$1 AND status='active'")) return {rows:[listing,ownListing],rowCount:2};
     if(sql.includes('seller_id=$2 OR buyer_id=$2')) return {rows:[{...ownListing,status:'active'}],rowCount:1};
+    if(sql.includes('FROM player_market_offers o JOIN player_market_listings')) return {rows:[{offer_id:'123e4567-e89b-42d3-a456-426614174002',listing_id:ownListing.listing_id,buyer_id:'323456789012345678',offer_coins:75,status:'pending',seller_id:profile.user_id,item_key:ownListing.item_key,quantity:1,price_coins:100,listing_status:'active'}],rowCount:1};
     throw new Error('Unexpected query: '+sql);
   }};
   const response=res();
@@ -458,6 +459,9 @@ test('web player market renders linked inventory, public listings, own-listing c
   assert.match(response.body,/İlanı iptal et/);
   assert.match(response.body,/Eşyanı satışa çıkar/);
   assert.match(response.body,/İşlem geçmişim/);
+  assert.match(response.body,/Pazarlık teklifi gönder/);
+  assert.match(response.body,/Tekliflerim ve gelen teklifler/);
+  assert.match(response.body,/Teklifi kabul et/);
   assert.doesNotMatch(response.body,/223456789012345678/);
 });
 
@@ -465,7 +469,7 @@ test('web market mutations reject invalid CSRF before any database access', asyn
   let queries=0;
   const db={async query(){queries++;throw new Error('must not query');}};
   const response=res();
-  const post=sitePost('/pazar/al',{csrf:'invalid',guildId:'1539562273197260860',listingId:'123e4567-e89b-42d3-a456-426614174000'});
+  const post=sitePost('/pazar/teklif-ver',{csrf:'invalid',guildId:'1539562273197260860',listingId:'123e4567-e89b-42d3-a456-426614174000',offerCoins:'100'});
   assert.equal(await handlePublicSiteRequest(post,response,{db}),true);
   assert.equal(response.status,403);
   assert.equal(queries,0);
