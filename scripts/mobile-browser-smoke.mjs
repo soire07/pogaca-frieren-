@@ -54,7 +54,6 @@ const api = await request.newContext({ timeout: 30000 });
 try {
   const response = await api.get(baseUrl + '/owner/login', { maxRedirects: 0 });
   const location = response.headers()['location'] || '';
-  const stateCookie = response.headers()['set-cookie'] || '';
   if (response.status() !== 302 || !location.startsWith('https://discord.com/oauth2/authorize')) {
     throw new Error('Owner OAuth redirect is not healthy: HTTP ' + response.status() + ' ' + location.slice(0, 120));
   }
@@ -65,7 +64,7 @@ try {
   }
   const invalidCallback = await api.get(baseUrl + '/owner/callback?code=smoke-test&state=invalid-state', { maxRedirects: 0 });
   if (invalidCallback.status() !== 400) throw new Error('Invalid OAuth callback state was not rejected: HTTP ' + invalidCallback.status());
-  process.stdout.write('PASS owner OAuth authorize redirect, state cookie, OAuth parameters and invalid callback rejection\\n');
+  process.stdout.write('PASS owner OAuth authorize redirect, signed state, OAuth parameters and invalid callback rejection\n');
 } finally {
   await api.dispose();
 }
