@@ -18,6 +18,7 @@ import { ensureAdventurerPlatformTables, claimDueGuildEventReminders, markGuildE
 import { ensurePlayerMarketTables, claimDuePlayerMarketPriceAlerts, markPlayerMarketPriceAlertNotified, releasePlayerMarketPriceAlertClaim, cancelPlayerMarketPriceAlert } from './player-market.js';
 import { ensureSocialPlatformTables } from './social-platform.js';
 import { ensureAccountCenterSchema } from './account-center.js';
+import { ensureNewsBirdSchema, pollAnimeNewsFeed, claimDueAnimeNewsDigests, markAnimeNewsDigestSent, releaseAnimeNewsDigestClaim, getEventReminderRecipients, setNotificationPreference } from './news-birds.js';
 import { initCompanionSchema } from './companions.js';
 import { initFishingSchema } from './fishing.js';
 import { initFarmSchema } from './farming.js';
@@ -147,6 +148,46 @@ async function processDuePlayerMarketPriceAlerts(readyClient = client) {
   }
 }
 
+let newsBirdSweepRunning = false;
+async function processNewsBirdDigests(readyClient = client) {
+  if (newsBirdSweepRunning || !readyClient?.isReady?.()) return;
+  newsBirdSweepRunning = true;
+  try {
+    try { await pollAnimeNewsFeed(pool); }
+    catch (error) { console.warn('Haberci kuş RSS güncellemesi başarısız:', error?.message || error); }
+    const due = await claimDueAnimeNewsDigests(pool, 20);
+    for (const digest of due) {
+      try {
+        const user = await readyClient.users.fetch(digest.user_id);
+        const items = Array.isArray(digest.items) ? digest.items : [];
+        const lines = items.slice(0, 5).map(item =>
+          '• **' + String(item.title || '').slice(0, 180) + '**\\n' +
+          String(item.summary || '').slice(0, 180) + '\\n' + String(item.link || '')
+        );
+        const content = ('🐦 **Frieren Haberci Kuşu · Günlük anime özeti**\\n' + lines.join('\\n\\n')).slice(0, 1900);
+        if (!lines.length) {
+          await markAnimeNewsDigestSent(pool, digest.guild_id, digest.user_id);
+          continue;
+        }
+        await user.send({ content, allowedMentions: { parse: [] } });
+        await markAnimeNewsDigestSent(pool, digest.guild_id, digest.user_id);
+      } catch (error) {
+        if ([50007, 10013].includes(Number(error?.code))) {
+          await setNotificationPreference(pool, { guildId: digest.guild_id, userId: digest.user_id, category: 'anime_news', enabled: false }).catch(() => {});
+          await markAnimeNewsDigestSent(pool, digest.guild_id, digest.user_id).catch(() => false);
+        } else {
+          await releaseAnimeNewsDigestClaim(pool, digest.guild_id, digest.user_id).catch(() => false);
+          console.error('Haberci kuş bildirimi teslim edilemedi:', error?.message || error);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Haberci kuş taraması başarısız:', error?.message || error);
+  } finally {
+    newsBirdSweepRunning = false;
+  }
+}
+
 let eventReminderSweepRunning = false;
 async function processDueGuildEventReminders(readyClient = client) {
   if (eventReminderSweepRunning || !readyClient?.isReady?.()) return;
@@ -160,7 +201,8 @@ async function processDueGuildEventReminders(readyClient = client) {
           await releaseGuildEventReminderClaim(pool, event.event_id, event.reminder_claimed_at);
           continue;
         }
-        const attendees = Array.isArray(event.attendee_ids) ? event.attendee_ids.slice(0, 100) : [];
+        const reminderCategory = event.event_type === 'boss_raid' ? 'boss_raid_reminders' : 'event_reminders';
+        const attendees = (await getEventReminderRecipients(pool,event.event_id,reminderCategory)).slice(0,100);
         const when = new Date(event.starts_at).toLocaleString('tr-TR', {
           dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Istanbul'
         });
@@ -196,7 +238,9 @@ client.once(Events.ClientReady, async readyClient => {
   console.log('Bağlı Discord sunucuları (ad/ID):', JSON.stringify(connectedGuilds));
   void processDueGuildEventReminders(readyClient);
   void processDuePlayerMarketPriceAlerts(readyClient);
+  void processNewsBirdDigests(readyClient);
   setInterval(() => { void processDueGuildEventReminders(readyClient); void processDuePlayerMarketPriceAlerts(readyClient); }, 30_000);
+  setInterval(() => void processNewsBirdDigests(readyClient), 60 * 60_000);
   const activities = [
     'bin yıllık büyüler öğreniyor ✨',
     'Fern ile büyü çalışıyor 🔮',
@@ -451,6 +495,7 @@ await ensureAdventurerPlatformTables(pool);
 await ensurePlayerMarketTables(pool);
 await ensureSocialPlatformTables(pool);
 await ensureAccountCenterSchema(pool);
+await ensureNewsBirdSchema(pool);
 await ensureGuildGameTables(pool);
 await Promise.all([ensureCreatureSchema(), initCompanionSchema(pool), initFishingSchema(pool), initFarmSchema(pool), initCharacterWishlistSchema(pool), ensurePlayerExperienceSchema(pool)]);
 await initOwnerAdminSchema(pool);
