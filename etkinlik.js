@@ -5,6 +5,7 @@ import { checkInGuildEvent } from './player-experience.js';
 
 const OWNER_ID = '1553794496234262641';
 const dateText = value => new Date(value).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Istanbul' });
+const eventTypeLabel = type => ({ boss_raid: 'Boss / Raid', tournament: 'Takım Turnuvası', anime_night: 'Anime Gecesi' })[type] || 'Topluluk';
 
 export default {
   data: new SlashCommandBuilder()
@@ -26,7 +27,7 @@ export default {
     const action = interaction.options.getSubcommand();
     if (action === 'liste') {
       const events = await listGuildEvents(pool, interaction.guildId, 15);
-      const lines = events.map(event => `• **${event.title}** — ${dateText(event.starts_at)} · ${event.participants}${event.max_participants ? '/'+event.max_participants : ''} kişi\n  ID: \`${event.event_id}\`\n  ${event.description || 'Açıklama yok.'}`);
+      const lines = events.map(event => `• **${event.title}** — ${dateText(event.starts_at)} · ${event.participants}${event.max_participants ? '/'+event.max_participants : ''} kişi\n  ${eventTypeLabel(event.event_type)} · ID: \`${event.event_id}\`\n  ${event.description || 'Açıklama yok.'}`);
       return interaction.reply({ content: `**Yaklaşan Macera Etkinlikleri**\n${lines.join('\n') || 'Henüz planlanmış etkinlik yok.'}`, flags: MessageFlags.Ephemeral });
     }
     const eventId = interaction.options.getString('id');
