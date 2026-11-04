@@ -27,18 +27,23 @@ test('support tickets list only the authenticated account records',async()=>{
  assert.deepEqual(params,['123e4567-e89b-12d3-a456-426614174000',20]);
 });
 
-test('account export returns linked profile, inventory and collection data',async()=>{
+test('account export returns linked profile, inventory, card collection and scoped module records',async()=>{
  const db={async query(sql){
   if(sql.includes('FROM frieren_site_accounts'))return{rows:[{id:'123e4567-e89b-12d3-a456-426614174000',username:'Gezgin',email:'member@example.com'}],rowCount:1};
   if(sql.includes('FROM site_discord_links'))return{rows:[{guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',level:20,xp:2400}],rowCount:1};
   if(sql.includes('FROM inventory'))return{rows:[{item_key:'Mana Kristali',quantity:2}],rowCount:1};
   if(sql.includes('FROM anime_character_collection'))return{rows:[{character_name:'Frieren',quantity:1}],rowCount:1};
+  if(sql.includes('information_schema.columns')&&sql.includes('ANY'))return{rows:[{table_name:'user_fish_collection',column_name:'guild_id'},{table_name:'user_fish_collection',column_name:'user_id'}],rowCount:2};
+  if(sql.includes('information_schema.columns')&&sql.includes('table_name=$1'))return{rows:[{column_name:'guild_id'},{column_name:'user_id'},{column_name:'fish_key'},{column_name:'quantity'},{column_name:'access_token'}],rowCount:5};
+  if(sql.includes('FROM "user_fish_collection"'))return{rows:[{guild_id:'1539562273197260860',user_id:'123456789012345678',fish_key:'silver_trout',quantity:2}],rowCount:1};
   return{rows:[],rowCount:0};
  }};
  const result=await exportSiteAccountData(db,accountId);
  assert.equal(result.account.username,'Gezgin');
  assert.equal(result.linkedProfiles[0].inventory[0].item_key,'Mana Kristali');
  assert.equal(result.linkedProfiles[0].collections[0].character_name,'Frieren');
+ assert.equal(result.linkedProfiles[0].gameData.user_fish_collection[0].fish_key,'silver_trout');
+ assert.ok(!JSON.stringify(result).includes('access_token'));
 });
 
 test('account deletion requires the explicit confirmation phrase',async()=>{
