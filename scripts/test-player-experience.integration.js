@@ -2,7 +2,7 @@ import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import {pool,initDatabase} from '../database/db.js';
 import {ensureAdventurerPlatformTables,createGuildEvent,joinGuildEvent} from '../adventurer-platform.js';
-import {HOME_ROOMS,PLAYER_COSMETICS,getPlayerHome,unlockHomeRoom,saveHomeLayout,getHomeTrophies,placeHomeTrophy,getCosmeticAcquisitionHistory,purchaseCosmetic,equipCosmetic,saveCosmeticPreset,applyCosmeticPreset,checkInGuildEvent,claimEventMilestone} from '../player-experience.js';
+import {HOME_ROOMS,PLAYER_COSMETICS,getPlayerHome,unlockHomeRoom,saveHomeLayout,getHomeTrophies,placeHomeTrophy,getCosmeticAcquisitionHistory,setHomeVisibility,getPublicPlayerHome,purchaseCosmetic,equipCosmetic,saveCosmeticPreset,applyCosmeticPreset,checkInGuildEvent,claimEventMilestone} from '../player-experience.js';
 const guild='1539562273197260860',user='123456789012345678';
 let eventId;
 before(async()=>{
@@ -23,6 +23,11 @@ test('home room unlock and layout persist only supported unlocked rooms and deco
  await pool.query('INSERT INTO achievement_claims(guild_id,user_id,achievement_key) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[guild,user,'audit_trophy']);
  assert.equal((await placeHomeTrophy(pool,{guildId:guild,userId:user,achievementKey:'audit_trophy',displaySlot:0})).status,'placed');
  assert.equal((await getHomeTrophies(pool,{guildId:guild,userId:user})).find(x=>x.achievement_key==='audit_trophy').display_slot,0);
+ assert.equal(await getPublicPlayerHome(pool,{guildId:guild,userId:user}),null);
+ assert.equal((await setHomeVisibility(pool,{guildId:guild,userId:user,isPublic:true})).status,'updated');
+ assert.equal((await getPublicPlayerHome(pool,{guildId:guild,userId:user})).profile.user_id,user);
+ assert.equal((await setHomeVisibility(pool,{guildId:guild,userId:user,isPublic:false})).status,'updated');
+ assert.equal(await getPublicPlayerHome(pool,{guildId:guild,userId:user}),null);
  const saved=await saveHomeLayout(pool,{guildId:guild,userId:user,activeRoom:'library',layout:[{roomKey:'library',decorationKey:'book_shelf',position:0},{roomKey:'starter',decorationKey:'mana_lamp',position:1}]});
  assert.equal(saved.status,'saved');
  await assert.rejects(()=>saveHomeLayout(pool,{guildId:guild,userId:user,activeRoom:'library',layout:[{roomKey:'library',decorationKey:'unknown',position:0}]}),/HOME_LAYOUT_INVALID/);
