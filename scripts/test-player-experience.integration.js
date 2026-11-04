@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {pool,initDatabase} from '../database/db.js';
 import {ensureAdventurerPlatformTables,createGuildEvent,joinGuildEvent} from '../adventurer-platform.js';
 import {HOME_ROOMS,PLAYER_COSMETICS,getPlayerHome,unlockHomeRoom,saveHomeLayout,purchaseCosmetic,equipCosmetic,saveCosmeticPreset,checkInGuildEvent,claimEventMilestone} from '../player-experience.js';
-const guild='player-feature-audit-guild',user='player-feature-audit-user';
+const guild='1539562273197260860',user='123456789012345678';
 let eventId;
 before(async()=>{
  await initDatabase();await ensureAdventurerPlatformTables(pool);
