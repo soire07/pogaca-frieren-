@@ -122,7 +122,7 @@ export default {
       });
       if (result.status !== 'listed') return interaction.reply({ content: result.status === 'forbidden' ? 'Bu ilanın tekliflerini görüntüleme yetkin yok.' : 'İlan bulunamadı.', flags: MessageFlags.Ephemeral });
       const lines = result.offers.map(offer => '• <@' + offer.buyer_id + '> — **' + Number(offer.offer_coins).toLocaleString('tr-TR') + ' altın** · ' + offer.status + ' · `' + offer.offer_id + '`');
-      return interaction.reply({ content: '**İlan Teklifleri**\\n' + (lines.join('\\n') || 'Henüz teklif yok.'), flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+      return interaction.reply({ content: '**İlan Teklifleri**\n' + (lines.join('\n') || 'Henüz teklif yok.'), flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
     }
     if (action === 'teklif-kabul' || action === 'teklif-reddet') {
       const result = await resolvePlayerMarketOffer(pool, {
