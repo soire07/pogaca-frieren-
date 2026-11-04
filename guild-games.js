@@ -85,6 +85,7 @@ export async function ensureGuildGameTables(db) {
       created_by TEXT NOT NULL,
       game_type VARCHAR(16) NOT NULL CHECK (game_type IN ('bilgi','kelime','hafiza','tahmin')),
       game_label VARCHAR(80) NOT NULL,
+      team_mode BOOLEAN NOT NULL DEFAULT FALSE,
       prompt TEXT NOT NULL,
       options JSONB NOT NULL,
       answer_index SMALLINT NOT NULL CHECK (answer_index BETWEEN 0 AND 3),
@@ -93,6 +94,7 @@ export async function ensureGuildGameTables(db) {
       expires_at TIMESTAMPTZ NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE guild_game_sessions ADD COLUMN IF NOT EXISTS team_mode BOOLEAN NOT NULL DEFAULT FALSE;
     CREATE INDEX IF NOT EXISTS guild_game_sessions_guild_idx
       ON guild_game_sessions(guild_id,created_at DESC);
     CREATE INDEX IF NOT EXISTS guild_game_sessions_expiry_idx
@@ -108,6 +110,25 @@ export async function ensureGuildGameTables(db) {
       answered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY (session_id,user_id)
     );
+    CREATE TABLE IF NOT EXISTS guild_game_participants (
+      session_id UUID NOT NULL REFERENCES guild_game_sessions(session_id) ON DELETE CASCADE,
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      team CHAR(1) NOT NULL CHECK (team IN ('A','B')),
+      joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (session_id,user_id)
+    );
+    CREATE INDEX IF NOT EXISTS guild_game_participants_team_idx
+      ON guild_game_participants(session_id,team,user_id);
+    CREATE TABLE IF NOT EXISTS guild_game_team_scores (
+      session_id UUID NOT NULL REFERENCES guild_game_sessions(session_id) ON DELETE CASCADE,
+      guild_id TEXT NOT NULL,
+      team CHAR(1) NOT NULL CHECK (team IN ('A','B')),
+      points INTEGER NOT NULL DEFAULT 0 CHECK (points >= 0),
+      correct_answers INTEGER NOT NULL DEFAULT 0 CHECK (correct_answers >= 0),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (session_id,team)
+    );
     CREATE TABLE IF NOT EXISTS guild_game_scores (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
@@ -122,7 +143,7 @@ export async function ensureGuildGameTables(db) {
   `);
 }
 
-export async function startGuildMiniGame(db, { guildId, channelId, userId, gameType, random = Math.random, now = new Date() }) {
+export async function startGuildMiniGame(db, { guildId, channelId, userId, gameType, teamMode = false, random = Math.random, now = new Date() }) {
   validateIds(guildId, userId);
   if (!/^\d{17,20}$/.test(String(channelId || ''))) throw new Error('GUILD_GAME_CHANNEL_INVALID');
   const question = createGuildGameQuestion(gameType, random);
@@ -141,10 +162,10 @@ export async function startGuildMiniGame(db, { guildId, channelId, userId, gameT
     }
     const result = await client.query(
       `INSERT INTO guild_game_sessions
-        (session_id,guild_id,channel_id,created_by,game_type,game_label,prompt,options,answer_index,explanation,expires_at)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11)
-       RETURNING session_id,guild_id,channel_id,game_type,game_label,prompt,options,expires_at`,
-      [sessionId,String(guildId),String(channelId),String(userId),question.gameType,question.gameLabel,question.prompt,
+        (session_id,guild_id,channel_id,created_by,game_type,game_label,team_mode,prompt,options,answer_index,explanation,expires_at)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12)
+       RETURNING session_id,guild_id,channel_id,game_type,game_label,team_mode,prompt,options,expires_at`,
+      [sessionId,String(guildId),String(channelId),String(userId),question.gameType,question.gameLabel,Boolean(teamMode),question.prompt,
         JSON.stringify(question.options),question.answerIndex,question.explanation,expiresAt.toISOString()]
     );
     const row = result.rows?.[0];
@@ -169,7 +190,7 @@ export async function answerGuildMiniGame(db, { guildId, channelId, sessionId, u
   try {
     await client.query('BEGIN');
     const sessionResult = await client.query(
-      'SELECT session_id,guild_id,channel_id,answer_index,explanation,status,expires_at FROM guild_game_sessions WHERE session_id=$1 AND guild_id=$2 AND channel_id=$3 FOR UPDATE',
+      'SELECT session_id,guild_id,channel_id,answer_index,explanation,status,expires_at,team_mode FROM guild_game_sessions WHERE session_id=$1 AND guild_id=$2 AND channel_id=$3 FOR UPDATE',
       [String(sessionId),String(guildId),String(channelId)]
     );
     const session = sessionResult.rows?.[0];
@@ -181,6 +202,18 @@ export async function answerGuildMiniGame(db, { guildId, channelId, sessionId, u
       await client.query("UPDATE guild_game_sessions SET status='expired' WHERE session_id=$1 AND status='active'", [String(sessionId)]);
       await client.query('COMMIT');
       return { status: 'expired' };
+    }
+    let team = null;
+    if (session.team_mode) {
+      const participant = await client.query(
+        'SELECT team FROM guild_game_participants WHERE session_id=$1 AND guild_id=$2 AND user_id=$3',
+        [String(sessionId),String(guildId),String(userId)]
+      );
+      if (!participant.rowCount) {
+        await client.query('COMMIT');
+        return { status:'join_team_first' };
+      }
+      team = participant.rows[0].team;
     }
     const correct = index === Number(session.answer_index);
     const inserted = await client.query(
@@ -214,15 +247,64 @@ export async function answerGuildMiniGame(db, { guildId, channelId, sessionId, u
         [String(guildId),String(userId)]
       );
     }
+    let teamScore = null;
+    if (correct && team) {
+      const teamResult = await client.query(
+        `INSERT INTO guild_game_team_scores(session_id,guild_id,team,points,correct_answers)
+         VALUES($1,$2,$3,$4,1)
+         ON CONFLICT(session_id,team) DO UPDATE SET
+           points=guild_game_team_scores.points+EXCLUDED.points,
+           correct_answers=guild_game_team_scores.correct_answers+1,
+           updated_at=NOW()
+         RETURNING points,correct_answers`,
+        [String(sessionId),String(guildId),team,GUILD_GAME_POINTS]
+      );
+      teamScore = teamResult.rows?.[0] ? { points:Number(teamResult.rows[0].points),correctAnswers:Number(teamResult.rows[0].correct_answers) } : null;
+    }
     await client.query('COMMIT');
     return { status: correct ? 'correct' : 'incorrect', pointsAwarded: correct ? GUILD_GAME_POINTS : 0,
-      explanation: session.explanation, score: score ? { points:Number(score.points),correctAnswers:Number(score.correct_answers),playedGames:Number(score.played_games) } : null };
+      explanation: session.explanation, team, teamScore,
+      score: score ? { points:Number(score.points),correctAnswers:Number(score.correct_answers),playedGames:Number(score.played_games) } : null };
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     throw error;
   } finally {
     client.release();
   }
+}
+
+export async function joinGuildMiniGameTeam(db, { guildId, channelId, sessionId, userId, team, now = new Date() }) {
+  validateIds(guildId,userId);
+  if (!/^\\d{17,20}$/.test(String(channelId || ''))) throw new Error('GUILD_GAME_CHANNEL_INVALID');
+  if (!SESSION_ID.test(String(sessionId || '')) || !['A','B'].includes(team)) throw new Error('GUILD_GAME_TEAM_INPUT_INVALID');
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      'SELECT session_id,team_mode,status,expires_at FROM guild_game_sessions WHERE session_id=$1 AND guild_id=$2 AND channel_id=$3 FOR UPDATE',
+      [String(sessionId),String(guildId),String(channelId)]
+    );
+    const session = result.rows?.[0];
+    if (!session) { await client.query('COMMIT'); return {status:'not_found'}; }
+    if (session.status!=='active' || new Date(session.expires_at).getTime()<=new Date(now).getTime()) {
+      await client.query("UPDATE guild_game_sessions SET status='expired' WHERE session_id=$1 AND status='active'",[String(sessionId)]);
+      await client.query('COMMIT'); return {status:'expired'};
+    }
+    if (!session.team_mode) { await client.query('COMMIT'); return {status:'not_team_mode'}; }
+    const existing = await client.query('SELECT team FROM guild_game_participants WHERE session_id=$1 AND user_id=$2',[String(sessionId),String(userId)]);
+    if (existing.rowCount) {
+      await client.query('COMMIT');
+      return {status:existing.rows[0].team===team?'already_joined':'team_locked',team:existing.rows[0].team};
+    }
+    const count = await client.query('SELECT COUNT(*)::int AS count FROM guild_game_participants WHERE session_id=$1 AND team=$2',[String(sessionId),team]);
+    if (Number(count.rows[0]?.count||0)>=5) { await client.query('COMMIT'); return {status:'team_full'}; }
+    await client.query('INSERT INTO guild_game_participants(session_id,guild_id,user_id,team) VALUES($1,$2,$3,$4)',[String(sessionId),String(guildId),String(userId),team]);
+    await client.query('COMMIT');
+    return {status:'joined',team};
+  } catch(error) {
+    await client.query('ROLLBACK').catch(()=>{});
+    throw error;
+  } finally { client.release(); }
 }
 
 export async function getGuildGameLeaderboard(db, guildId, limit = 10) {
