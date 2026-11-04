@@ -52,6 +52,8 @@ jobs:
         run: node --test scripts/test-player-experience.integration.js
       - name: Run real PostgreSQL integration tests for quiz, companions, fishing, farming, creatures, wishlist and player market
         run: node --test --test-concurrency=1 scripts/test-animequiz.integration.js scripts/test-companions.integration.js scripts/test-fishing.integration.js scripts/test-farming.integration.js scripts/test-creatures.integration.js scripts/test-character-wishlist.integration.js scripts/test-player-market.integration.js
+      - name: Run real PostgreSQL account export, support history and deletion-scope tests
+        run: node --test --test-concurrency=1 scripts/test-account-center.integration.js
       - name: Run real PostgreSQL social relationships, gifts and reputation tests
         run: node --test scripts/test-social-platform.integration.js
       - name: Run real PostgreSQL guild mini-game concurrency and guild isolation tests
