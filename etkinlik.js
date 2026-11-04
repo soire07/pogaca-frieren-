@@ -1,6 +1,7 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { pool } from './database/db.js';
 import { createGuildEvent, listGuildEvents, joinGuildEvent, leaveGuildEvent } from './adventurer-platform.js';
+import { checkInGuildEvent } from './player-experience.js';
 
 const OWNER_ID = '1553794496234262641';
 const dateText = value => new Date(value).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Istanbul' });
@@ -12,6 +13,7 @@ export default {
     .addSubcommand(command => command.setName('liste').setDescription('Yaklaşan etkinlikleri göster.'))
     .addSubcommand(command => command.setName('katil').setDescription('Bir etkinliğe katıl.').addStringOption(option => option.setName('id').setDescription('Etkinlik kimliği').setRequired(true)))
     .addSubcommand(command => command.setName('ayril').setDescription('Bir etkinlikten ayrıl.').addStringOption(option => option.setName('id').setDescription('Etkinlik kimliği').setRequired(true)))
+    .addSubcommand(command => command.setName('yoklama').setDescription('Başlamış etkinlikte katılımını doğrula.').addStringOption(option => option.setName('id').setDescription('Etkinlik kimliği').setRequired(true)))
     .addSubcommand(command => command.setName('olustur').setDescription('Yeni topluluk etkinliği oluştur (yalnızca bot sahibi).')
       .addStringOption(option => option.setName('baslik').setDescription('Etkinlik başlığı').setMaxLength(100).setRequired(true))
       .addStringOption(option => option.setName('baslangic').setDescription('ISO tarih/saat, ör. 2026-11-10T20:00:00+03:00').setRequired(true))
@@ -31,6 +33,11 @@ export default {
       const result = await joinGuildEvent(pool, { guildId: interaction.guildId, eventId, userId: interaction.user.id });
       const messages = { joined: 'Etkinliğe kaydın oluşturuldu.', already_joined: 'Bu etkinliğe zaten kayıtlısın.', full: 'Etkinlik kapasitesi doldu.', unavailable: 'Etkinlik bulunamadı veya kayıt süresi kapandı.' };
       return interaction.reply({ content: messages[result.status] || 'Kayıt tamamlanamadı.', flags: MessageFlags.Ephemeral });
+    }
+    if (action === 'yoklama') {
+      const result = await checkInGuildEvent(pool, { guildId: interaction.guildId, eventId, userId: interaction.user.id });
+      const messages = { checked_in: 'Etkinlik katılımın doğrulandı. Etkinlik bitince /yasam etkinlik-odul ile ödülünü alabilirsin.', already_checked_in: 'Bu etkinlikte yoklaman zaten alındı.', not_eligible: 'Yoklama yalnızca kayıtlı katılımcılara, etkinlik başladıktan sonra açıktır.', invalid_event: 'Etkinlik kimliği geçersiz.' };
+      return interaction.reply({ content: messages[result.status] || 'Yoklama alınamadı.', flags: MessageFlags.Ephemeral });
     }
     if (action === 'ayril') {
       const result = await leaveGuildEvent(pool, { guildId: interaction.guildId, eventId, userId: interaction.user.id });
