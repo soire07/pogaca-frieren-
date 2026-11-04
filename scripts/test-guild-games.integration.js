@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomInt } from 'node:crypto';
 import { pool, withIsolatedTestSchema } from '../database/db.js';
-import { ensureGuildGameTables, startGuildMiniGame, answerGuildMiniGame, getGuildGameLeaderboard } from '../guild-games.js';
+import { ensureGuildGameTables, startGuildMiniGame, answerGuildMiniGame, getGuildGameLeaderboard, joinGuildMiniGameTeam, getGuildGameTeamLeaderboard } from '../guild-games.js';
 
 const dedicatedAuditDatabase = /^postgres(?:ql)?:\/\/postgres:postgres@localhost:5432\/frieren_audit(?:\?|$)/.test(process.env.DATABASE_URL || '');
 function snowflake(prefix) { return prefix + String(randomInt(0,281_474_976_710_655)).padStart(15,'0'); }
@@ -67,9 +67,27 @@ test('guild mini-games persist scores once, isolate guild/channel and reject exp
       now:new Date('2026-11-04T12:02:00.000Z')
     });
     assert.equal(expired.status,'expired');
-    const nextSession = await startGuildMiniGame(pool,{guildId,channelId,userId:creatorId,gameType:'hafiza',random:()=>0,now:new Date('2026-11-04T12:02:01.000Z')});
+    const nextSession = await startGuildMiniGame(pool,{guildId,channelId,userId:creatorId,gameType:'hafiza',teamMode:true,random:()=>0,now:new Date('2026-11-04T12:02:01.000Z')});
     assert.ok(nextSession.session_id,'expired channel sessions must not block the next round');
-    assert.equal(nextSession.status,undefined);
+    assert.equal(nextSession.team_mode,true);
+    const notJoined = await answerGuildMiniGame(pool,{guildId,channelId,sessionId:nextSession.session_id,userId:playerId,answerIndex:nextSession.answerIndex,now:new Date('2026-11-04T12:02:02.000Z')});
+    assert.equal(notJoined.status,'join_team_first');
+    const joinA = await joinGuildMiniGameTeam(pool,{guildId,channelId,sessionId:nextSession.session_id,userId:playerId,team:'A',now:new Date('2026-11-04T12:02:03.000Z')});
+    assert.equal(joinA.status,'joined');
+    const joinB = await joinGuildMiniGameTeam(pool,{guildId,channelId,sessionId:nextSession.session_id,userId:secondPlayerId,team:'B',now:new Date('2026-11-04T12:02:03.000Z')});
+    assert.equal(joinB.status,'joined');
+    const switchTeam = await joinGuildMiniGameTeam(pool,{guildId,channelId,sessionId:nextSession.session_id,userId:playerId,team:'B',now:new Date('2026-11-04T12:02:04.000Z')});
+    assert.equal(switchTeam.status,'team_locked');
+    const teamAnswer = await answerGuildMiniGame(pool,{guildId,channelId,sessionId:nextSession.session_id,userId:playerId,answerIndex:nextSession.answerIndex,now:new Date('2026-11-04T12:02:05.000Z')});
+    assert.equal(teamAnswer.status,'correct');
+    assert.equal(teamAnswer.team,'A');
+    assert.equal(teamAnswer.teamScore.points,10);
+    const teamBoard = await getGuildGameTeamLeaderboard(pool,{guildId,channelId,sessionId:nextSession.session_id});
+    assert.equal(Number(teamBoard.team_a_points),10);
+    assert.equal(Number(teamBoard.team_b_points),0);
+    assert.equal(Number(teamBoard.team_a_players),1);
+    assert.equal(Number(teamBoard.team_b_players),1);
+    assert.equal(await getGuildGameTeamLeaderboard(pool,{guildId,channelId:otherChannelId,sessionId:nextSession.session_id}),null);
   });
 });
 
