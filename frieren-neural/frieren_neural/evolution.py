@@ -84,14 +84,45 @@ def build_evolution_plan(report: object) -> dict[str, Any]:
         and isinstance(quality.get("blocking_reasons"), list)
         and not quality.get("blocking_reasons")
     )
-    baseline_improved = baseline.get("available") is True and baseline.get("improved") is True
+    source_sha = data.get("source_commit_sha")
+    artifact_sha = data.get("artifact_sha256")
+    outputs = quality.get("outputs") if isinstance(quality.get("outputs"), list) else []
+    averages = metrics.get("dimension_averages") if isinstance(metrics.get("dimension_averages"), Mapping) else {}
+    dimensions = ("correctness", "instruction_adherence", "turkish_quality", "grounding", "safety_privacy", "conversation_consistency")
+    thresholds_passed = (
+        all(isinstance(averages.get(key), (int, float)) and not isinstance(averages.get(key), bool) and averages[key] >= 3.2 for key in dimensions)
+        and isinstance(metrics.get("overall_average"), (int, float)) and not isinstance(metrics.get("overall_average"), bool) and metrics["overall_average"] >= 3.4
+        and isinstance(metrics.get("instruction_adherence_3_or_4_rate"), (int, float)) and metrics["instruction_adherence_3_or_4_rate"] >= 0.9
+        and isinstance(metrics.get("turkish_quality_3_or_4_rate"), (int, float)) and metrics["turkish_quality_3_or_4_rate"] >= 0.9
+        and isinstance(metrics.get("multi_turn_failures"), list) and not metrics["multi_turn_failures"]
+    )
+    outputs_complete = len(outputs) == 24 and all(
+        isinstance(item, Mapping) and item.get("id") == f"TR-{index:03d}" and isinstance(item.get("output"), str) and bool(item["output"].strip())
+        for index, item in enumerate(outputs, 1)
+    )
+    report_provenance_matches = (
+        quality.get("source_commit_sha") == source_sha
+        and quality.get("artifact_sha256") == artifact_sha
+        and quality.get("checkpoint_sha256") == artifact_sha
+    )
+    baseline_improved = (
+        baseline.get("available") is True and baseline.get("improved") is True
+        and _valid_hex(baseline.get("baseline_checkpoint_sha256"), 64)
+    )
     provenance_valid = (
-        _valid_hex(data.get("source_commit_sha"), 40)
-        and _valid_hex(data.get("artifact_sha256"), 64)
+        _valid_hex(source_sha, 40)
+        and _valid_hex(artifact_sha, 64)
+        and report_provenance_matches
+        and isinstance(human.get("reviewers_required"), int)
+        and human.get("reviewers_required") == 2
+        and thresholds_passed
+        and outputs_complete
     )
     gates = {
         "ci_passed": ci_passed,
         "quality_ready": quality_ready,
+        "quality_thresholds_passed": thresholds_passed,
+        "benchmark_outputs_complete": outputs_complete,
         "baseline_improved": baseline_improved,
         "provenance_valid": provenance_valid,
     }
