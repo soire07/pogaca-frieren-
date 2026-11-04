@@ -1,6 +1,12 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { pool } from './database/db.js';
-import { GUILD_GAME_TYPES, startGuildMiniGame, answerGuildMiniGame, getGuildGameLeaderboard, joinGuildMiniGameTeam, getGuildGameTeamLeaderboard } from './guild-games.js';
+import { GUILD_GAME_TYPES, ensureGuildGameTables, startGuildMiniGame, answerGuildMiniGame, getGuildGameLeaderboard, joinGuildMiniGameTeam, getGuildGameTeamLeaderboard } from './guild-games.js';
+
+let schemaReady;
+async function ensureSchema() {
+  if (!schemaReady) schemaReady = ensureGuildGameTables(pool).catch(error => { schemaReady = null; throw error; });
+  await schemaReady;
+}
 
 const gameChoices = GUILD_GAME_TYPES.map(game => ({ name: game.label, value: game.key }));
 
@@ -34,6 +40,7 @@ export default {
     if (!interaction.guildId || !interaction.channelId) {
       return interaction.reply({ content: 'Lonca oyunları yalnızca sunucu kanallarında oynanabilir.', flags: MessageFlags.Ephemeral });
     }
+    await ensureSchema();
     const action = interaction.options.getSubcommand();
     if (action === 'baslat') {
       const gameType = interaction.options.getString('oyun', true);
@@ -82,6 +89,7 @@ export async function handleGuildGameInteraction(interaction, db = pool) {
     return true;
   }
   try {
+    await ensureSchema();
     if (mode === 'team') {
       if (!['A','B'].includes(value)) return interaction.reply({content:'Takım seçimi geçersiz.',flags:MessageFlags.Ephemeral});
       const joined = await joinGuildMiniGameTeam(db,{guildId:interaction.guildId,channelId:interaction.channelId,sessionId,userId:interaction.user.id,team:value});
