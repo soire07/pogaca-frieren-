@@ -45,3 +45,26 @@ test('existing buyu command can execute saved guild commands without adding a ne
  assert.equal(command.name,'buyu');
  assert.ok(command.options.some(option=>option.name==='ad'&&option.required===false));
 });
+
+
+test('spell automation rejects cross-guild channels and missing send permissions before sending',async()=>{
+ const rule={automation_id:'automation-1',channel_id:'223456789012345678',message:'{{player}}',template_id:null};
+ const db={async query(sql){assert.ok(sql.includes('WITH due AS'));return{rows:[rule],rowCount:1};}};
+ let sends=0;
+ const client={user:{id:'123456789012345678'},channels:{async fetch(){return{guildId:'999999999999999999',isTextBased:()=>true,async send(){sends++;}}};}};
+ const {runGuildSpellAutomations}=await import('../guild-workshop.js');
+ const result=await runGuildSpellAutomations(db,client,'1539562273197260860','event_reminder',{player:'Fern'});
+ assert.deepEqual(result,{sent:0,skipped:1});
+ assert.equal(sends,0);
+});
+
+test('spell automation respects Discord send and embed permissions',async()=>{
+ const rule={automation_id:'automation-2',channel_id:'223456789012345678',message:'Ready',template_id:null};
+ const db={async query(){return{rows:[rule],rowCount:1};}};
+ let sends=0;
+ const client={user:{id:'123456789012345678'},channels:{async fetch(){return{guildId:'1539562273197260860',isTextBased:()=>true,permissionsFor:()=>({has:permission=>permission==='SendMessages'}),async send(){sends++;}}};}};
+ const {runGuildSpellAutomations}=await import('../guild-workshop.js');
+ const result=await runGuildSpellAutomations(db,client,'1539562273197260860','event_reminder');
+ assert.deepEqual(result,{sent:1,skipped:0});
+ assert.equal(sends,1);
+});
