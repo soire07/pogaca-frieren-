@@ -38,12 +38,6 @@ jobs:
             if (!manual) {
               const sha = context.payload.pull_request?.head?.sha;
               if (!sha) throw new Error('Pull request head SHA is unavailable; refusing to test production.');
-              const deployments = await github.rest.repos.listDeployments({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                sha,
-                per_page: 20
-              });
               for (let attempt = 0; attempt < 12 && !baseUrl; attempt++) {
                 const deployments = await github.rest.repos.listDeployments({
                   owner: context.repo.owner,
