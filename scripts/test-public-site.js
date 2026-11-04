@@ -492,6 +492,22 @@ test('web social friend request uses the linked character and redirects after cr
   assert.match(response.headers.Location,/status=request_sent/);
   assert.ok(queries.some(sql=>sql.includes('social_friend_requests')));
 });
+test('web social page and mutations respect the guild social feature toggle',async()=>{
+  const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern'};
+  const db={async query(sql){
+    if(sql.includes('FROM site_discord_links'))return{rows:[profile],rowCount:1};
+    if(sql.includes('FROM guild_feature_settings'))return{rows:[{enabled:false}],rowCount:1};
+    throw new Error('Unexpected query: '+sql);
+  }};
+  const page=res();
+  assert.equal(await handlePublicSiteRequest(request('/maceraci/sosyal?guildId='+profile.guild_id),page,{db}),true);
+  assert.equal(page.status,403);
+  assert.match(String(page.body),/Sosyal modül bu sunucuda kapalı/);
+  const post=res();
+  assert.equal(await handlePublicSiteRequest(sitePost('/maceraci/sosyal',{csrf:createSiteCsrfToken(secret),guildId:profile.guild_id,action:'request',targetId:'223456789012345678'}),post,{db}),true);
+  assert.equal(post.status,403);
+  assert.match(String(post.body),/Sosyal modül bu sunucuda kapalı/);
+});
 test('main startup initializes all player-facing collection schemas before serving the web portal', async () => {
   const source=await readFile(new URL('../index.js',import.meta.url),'utf8');
   for(const moduleName of ['companions.js','fishing.js','farming.js','character-wishlist.js'])assert.ok(source.includes("from './"+moduleName+"'"));

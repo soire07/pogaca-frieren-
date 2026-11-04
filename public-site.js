@@ -17,6 +17,7 @@ import {
   cancelPlayerMarketListing, getPlayerMarketHistory
 } from './player-market.js';
 import { createFriendRequest, respondFriendRequest, setPlayerRival, removeSocialRelationship, listSocialRelationships, listPendingFriendRequests, sendCoinGift, commendPlayer, getSocialReputation } from './social-platform.js';
+import { getGuildFeatureEnabled } from './guild-feature-settings.js';
 
 const SITE_COOKIE = 'frieren_site_session';
 const OWNER_ID = '1553794496234262641';
@@ -232,6 +233,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(!/^\d{17,20}$/.test(guildId)){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Sunucu seçimi geçersiz.');return true;}
     const profile=await getLinkedAdventurer(db,session.id,guildId);
     if(!profile){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter web hesabına bağlı değil.');return true;}
+    if(url.pathname==='/maceraci/sosyal'&&!await getGuildFeatureEnabled(db,guildId,'social')){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Sosyal modül bu sunucuda kapalı.');return true;}
     let status='invalid';
     if(url.pathname==='/maceraci/event'){
       const eventId=String(form.get('eventId')||'');const action=String(form.get('action')||'');
@@ -317,6 +319,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const data=url.pathname==='/maceraci/sosyal'?await getLinkedAdventurer(db,user.id,guildId):await getAdventurerInventory(db,user.id,guildId);
     if(!data){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter web hesabına bağlı değil.');return true;}
     const profile=url.pathname==='/maceraci/sosyal'?data:data.profile;
+    if(url.pathname==='/maceraci/sosyal'&&!await getGuildFeatureEnabled(db,guildId,'social')){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Sosyal modül bu sunucuda kapalı.');return true;}
     const filters={query:url.searchParams.get('q')||'',minPrice:url.searchParams.get('min')||'',maxPrice:url.searchParams.get('max')||'',sort:url.searchParams.get('sort')||'price_asc'};
     const html=url.pathname==='/pazar'
       ?playerMarketPage(user,data,await listPlayerMarketListings(db,guildId,20,filters),await getPlayerMarketHistory(db,guildId,data.profile.user_id,15),url.searchParams.get('status'),filters)
