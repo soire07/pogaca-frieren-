@@ -60,7 +60,7 @@ test('support conversations are account-scoped and preserve ordered reply histor
  const calls=[];
  const db={async query(sql,params){
   calls.push({sql,params});
-  if(sql.includes('SELECT ticket_id FROM frieren_support_tickets'))return{rows:[{ticket_id:'123e4567-e89b-42d3-a456-426614174000'}],rowCount:1};
+  if(sql.includes('SELECT ticket_id,status FROM frieren_support_tickets'))return{rows:[{ticket_id:'123e4567-e89b-42d3-a456-426614174000'}],rowCount:1};
   if(sql.includes('INSERT INTO frieren_support_ticket_messages'))return{rows:[{message_id:'message-1',author_type:'account',message:'More details'}],rowCount:1};
   if(sql.includes('FROM frieren_support_ticket_messages'))return{rows:[{message_id:'message-1',author_type:'account',message:'More details'}],rowCount:1};
   if(sql.includes('INSERT INTO frieren_support_ticket_events'))return{rows:[],rowCount:1};
