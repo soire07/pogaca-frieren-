@@ -8,7 +8,17 @@ import {
   applyClassHealing,
   calculateBossIncomingDamage,
   getBossPhase,
-  bossPhaseSpecialBonus
+  bossPhaseSpecialBonus,
+  getRaidBossSpecialAttack,
+  chooseRaidAttackTarget,
+  chooseDungeonAttackTarget,
+  getRaidBossMaxHp,
+  resolveRaidAreaAttack,
+  getSoloBossSpecialAttackState,
+  dungeonEnemyStats,
+  applyDungeonTrapDamage,
+  DUNGEON_PARTY_ROLES,
+  RAID_PARTY_ROLES
 } from '../rpg-mechanics.js';
 
 test('boss incoming damage never becomes negative and has a minimum of one', () => {
@@ -43,6 +53,154 @@ test('boss phase multipliers and special bonuses are deterministic', () => {
   assert.equal(bossPhaseSpecialBonus(1), 0);
   assert.equal(bossPhaseSpecialBonus(2), 4);
   assert.equal(bossPhaseSpecialBonus(3), 8);
+});
+
+test('ice spear freeze cancels scheduled solo boss special attacks and mana drain', () => {
+  for (const turn of [0,1,2,4,5,7]) {
+    assert.equal(getSoloBossSpecialAttackState(turn, false), 'none');
+    assert.equal(getSoloBossSpecialAttackState(turn, true), 'none');
+  }
+  for (const turn of [3,6,9]) {
+    assert.equal(getSoloBossSpecialAttackState(turn, false), 'execute');
+    assert.equal(getSoloBossSpecialAttackState(turn, true), 'cancelled');
+  }
+});
+
+test('dungeon enemy health and damage scale with party level, size and difficulty', () => {
+  const base = dungeonEnemyStats(2,1,2,'normal');
+  const higherLevel = dungeonEnemyStats(2,10,2,'normal');
+  const largerParty = dungeonEnemyStats(2,1,4,'normal');
+  const easy = dungeonEnemyStats(2,1,2,'easy');
+  const nightmare = dungeonEnemyStats(2,1,2,'nightmare');
+  assert.ok(higherLevel.hp > base.hp && higherLevel.damage > base.damage);
+  assert.ok(largerParty.hp > base.hp);
+  assert.ok(easy.hp < base.hp && easy.damage < base.damage);
+  assert.ok(nightmare.hp > base.hp && nightmare.damage > base.damage);
+});
+
+test('dungeon floor traps damage one living teammate and never reduce HP below one', () => {
+  const hit = applyDungeonTrapDamage([40,100,0],2,()=>0);
+  assert.equal(hit.targetIndex,0);
+  assert.equal(hit.damage,16);
+  assert.deepEqual(hit.hpNow,[24,100,0]);
+  const lethal = applyDungeonTrapDamage([5,0],4,()=>0);
+  assert.equal(lethal.damage,24);
+  assert.equal(lethal.hpNow[0],1);
+  const noLiving = applyDungeonTrapDamage([0,0],3,()=>0);
+  assert.equal(noLiving.targetIndex,null);
+  assert.equal(noLiving.damage,0);
+  assert.deepEqual(noLiving.hpNow,[0,0]);
+});
+
+test('dungeon and raid roles apply distinct HP, attack and defense modifiers', () => {
+  assert.deepEqual(
+    [DUNGEON_PARTY_ROLES.tank.hp,DUNGEON_PARTY_ROLES.tank.attack,DUNGEON_PARTY_ROLES.tank.defense],
+    [1.25,0.85,1.4]
+  );
+  assert.deepEqual(
+    [DUNGEON_PARTY_ROLES.healer.hp,DUNGEON_PARTY_ROLES.healer.attack,DUNGEON_PARTY_ROLES.healer.defense],
+    [1,0.9,1.05]
+  );
+  assert.deepEqual(
+    [DUNGEON_PARTY_ROLES.damage.hp,DUNGEON_PARTY_ROLES.damage.attack,DUNGEON_PARTY_ROLES.damage.defense],
+    [0.95,1.3,0.9]
+  );
+  assert.deepEqual(
+    [RAID_PARTY_ROLES.tank.hp,RAID_PARTY_ROLES.tank.attack,RAID_PARTY_ROLES.tank.defense],
+    [1.25,0.85,1.45]
+  );
+  assert.deepEqual(
+    [RAID_PARTY_ROLES.healer.hp,RAID_PARTY_ROLES.healer.attack,RAID_PARTY_ROLES.healer.defense],
+    [1,0.85,1.05]
+  );
+  assert.deepEqual(
+    [RAID_PARTY_ROLES.damage.hp,RAID_PARTY_ROLES.damage.attack,RAID_PARTY_ROLES.damage.defense],
+    [0.95,1.35,0.9]
+  );
+});
+
+test('raid boss HP scales with average level and party size without shrinking below the base', () => {
+  assert.equal(getRaidBossMaxHp(200, 10, 2), 380);
+  assert.equal(getRaidBossMaxHp(200, 10, 3), 470);
+  assert.equal(getRaidBossMaxHp(200, 10, 4), 560);
+  assert.equal(getRaidBossMaxHp(200, 10, 1), 380);
+  assert.equal(getRaidBossMaxHp(200, -5, 0), 200);
+});
+
+test('raid boss catalog binds each named boss to its correct signature attack', () => {
+  const expected = [
+    ['north-general', '🌑 Kuzey Platosu İblis Generali', 'mana-star'],
+    ['glass-wyrm', '🐉 Cam Pullar Ejderhası', 'shard-rain'],
+    ['fallen-mage', '🕯️ Düşmüş Büyücü Aura', 'mana-curse']
+  ];
+  for (const [id, name, special] of expected) {
+    const boss = RAID_BOSSES.find(entry => entry.id === id);
+    assert.ok(boss, 'missing raid boss ' + id);
+    assert.equal(boss.name, name);
+    assert.equal(boss.special, special);
+  }
+});
+
+test('raid special attacks trigger on their exact scheduled rounds', () => {
+  assert.equal(getRaidBossSpecialAttack('mana-star', 2), null);
+  assert.equal(getRaidBossSpecialAttack('mana-star', 3), 'mana-star');
+  assert.equal(getRaidBossSpecialAttack('mana-star', 6), 'mana-star');
+  assert.equal(getRaidBossSpecialAttack('shard-rain', 1), null);
+  assert.equal(getRaidBossSpecialAttack('shard-rain', 2), 'shard-rain');
+  assert.equal(getRaidBossSpecialAttack('shard-rain', 4), 'shard-rain');
+  assert.equal(getRaidBossSpecialAttack('mana-curse', 3), 'mana-curse');
+  assert.equal(getRaidBossSpecialAttack('mana-curse', 2), null);
+  assert.equal(getRaidBossSpecialAttack('unknown', 3), null);
+});
+
+test('dungeon tank attracts seventy percent of single-target enemy attacks while alive', () => {
+  const players = [{ role: 'damage' }, { role: 'tank' }, { role: 'healer' }];
+  assert.equal(chooseDungeonAttackTarget(players, [0,1,2], 1, 1, () => 0.69), 1);
+  assert.equal(chooseDungeonAttackTarget(players, [0,1,2], 1, 1, () => 0.7), 2);
+  assert.equal(chooseDungeonAttackTarget(players, [0,2], 1, 1, () => 0), 0);
+  assert.equal(chooseDungeonAttackTarget(players, [], 1, 1, () => 0), null);
+});
+
+test('raid tank attracts seventy percent of single-target attacks while alive', () => {
+  const fighters = [{ role: 'damage' }, { role: 'tank' }, { role: 'healer' }];
+  assert.equal(chooseRaidAttackTarget(fighters, [0, 1, 2], () => 0.69), 1);
+  const values = [0.71, 0];
+  let index = 0;
+  assert.equal(chooseRaidAttackTarget(fighters, [0, 1, 2], () => values[index++]), 0);
+  assert.equal(chooseRaidAttackTarget(fighters, [0, 2], () => 0.5), 2);
+  assert.equal(chooseRaidAttackTarget(fighters, [], () => 0), null);
+});
+
+test('raid area specials hit every living teammate and respect individual defense', () => {
+  const fighters = [{ username: 'A', defense: 0 }, { username: 'B', defense: 0 }, { username: 'C', defense: 20 }];
+  const result = resolveRaidAreaAttack({
+    hpNow: [100, 0, 100],
+    livingIndices: [0, 2],
+    fighters,
+    rawDamage: 30,
+    special: 'shard-rain',
+    bossPhase: 1
+  });
+  assert.deepEqual(result.hits.map(hit => hit.index), [0, 2]);
+  assert.deepEqual(result.hits.map(hit => hit.incoming), [15, 11]);
+  assert.deepEqual(result.hpNow, [85, 0, 89]);
+});
+
+test("raid area special applies each living player's own defense and defense choice", () => {
+  const fighters = [{ defense: 0 }, { defense: 20 }];
+  const result = resolveRaidAreaAttack({
+    hpNow: [100, 100],
+    livingIndices: [0, 1],
+    fighters,
+    rawDamage: 30,
+    special: 'mana-star',
+    bossPhase: 1,
+    defending: new Set([1])
+  });
+  assert.equal(result.hits.length, 2);
+  assert.equal(result.hits[0].incoming, 20);
+  assert.equal(result.hits[1].defended, true);
+  assert.equal(result.hpNow[1], 93);
 });
 
 test('raid weakness applies a 30 percent rounded bonus only to the matching action', () => {

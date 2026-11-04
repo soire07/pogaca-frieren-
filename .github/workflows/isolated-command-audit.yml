@@ -1,5 +1,8 @@
 name: Frieren isolated command audit
 on:
+  push:
+    branches:
+      - fix/guardian-unified-diff-validation-v2
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -34,6 +37,8 @@ jobs:
         run: node --test scripts/test-arena-queue.integration.js
       - name: Run real PostgreSQL seasons, events and adventurer linking tests
         run: node --test scripts/test-adventurer-platform.integration.js
+      - name: Run real PostgreSQL treasure chest atomicity tests
+        run: node --test scripts/test-treasure-atomicity.integration.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:

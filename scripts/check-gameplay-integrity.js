@@ -374,7 +374,7 @@ test('co-op raid acknowledges the Discord interaction before database work and t
     'raid command must defer its reply before database work');
   assert.match(source, /const msg = await interaction\.editReply\(/,
     'invitation message must edit the deferred reply');
-  assert.match(rewards, /VALUES \(\$1,\$2,'zoltraak',\$3::integer,LEAST\(10,FLOOR\(\$3::numeric\/10\.0\)::int\),NOW\(\)\)/,
+  assert.match(rewards, /VALUES \(\$1,\$2,'zoltraak',\$3::integer,LEAST\(10,FLOOR\(\(\$3::integer\)::numeric\/10\.0\)::int\),NOW\(\)\)/,
     'spell mastery casts parameter must have explicit integer/numeric casts');
 });
 

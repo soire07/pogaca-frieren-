@@ -34,6 +34,18 @@ test('invitations restrict acceptance to invited users and reject duplicate or b
   assert.ok(raid.includes('new Set(team.map(x => x.id)).size !== team.length'));
 });
 
+test('dungeon and raid use the shared tested role modifiers and trap resolver', async () => {
+  const dungeon = await read('katlizindan.js');
+  const raid = await read('ortakboss.js');
+  const mechanics = await read('rpg-mechanics.js');
+  assert.ok(dungeon.includes('const PARTY_ROLES = DUNGEON_PARTY_ROLES'));
+  assert.ok(raid.includes('const ROLES = RAID_PARTY_ROLES'));
+  assert.ok(dungeon.includes('applyDungeonTrapDamage(hpNow, floor)'));
+  assert.ok(mechanics.includes('export const DUNGEON_PARTY_ROLES'));
+  assert.ok(mechanics.includes('export const RAID_PARTY_ROLES'));
+  assert.ok(mechanics.includes('export function applyDungeonTrapDamage'));
+});
+
 test('both co-op modes require every teammate to choose a role and enforce unique tank/healer roles', async () => {
   const dungeon = await read('katlizindan.js');
   const raid = await read('ortakboss.js');
@@ -142,9 +154,11 @@ test('raid catalog includes three bosses, action weaknesses and distinct loot id
   assert.ok(mechanics.includes('Ejderha Camı'));
   assert.ok(mechanics.includes('Auranın Mühürlü Asa Parçası'));
   const raid = await read('ortakboss.js');
-  assert.ok(raid.includes("BOSS.special === 'mana-star' && rounds % 3 === 0"));
-  assert.ok(raid.includes("BOSS.special === 'shard-rain' && rounds % 2 === 0"));
-  assert.ok(raid.includes("BOSS.special === 'mana-curse' && rounds % 3 === 0"));
+  assert.ok(raid.includes('getRaidBossSpecialAttack(BOSS.special, rounds)'));
+  assert.ok(raid.includes('resolveRaidAreaAttack('));
+  assert.match(mechanics, /special === 'mana-star'.*turn % 3/);
+  assert.match(mechanics, /special === 'shard-rain'.*turn % 2/);
+  assert.match(mechanics, /special === 'mana-curse'.*turn % 3/);
 });
 
 test('manual test plan distinguishes automated checks from live Discord verification', async () => {
@@ -207,6 +221,45 @@ test('spell practice is registered in the RPG command directory', async () => {
   assert.match(source, /FOR UPDATE/);
 });
 
+
+test('public player profile command is registered for direct player use', async () => {
+  const profile = await read('profil.js');
+  assert.doesNotMatch(profile, /internalOnly:\s*true/);
+});
+
+test('RPG profile can display another selected server member without using the caller account', async () => {
+  const profile = await read('profil.js');
+  assert.match(profile, /setName\('profil'\)/);
+  assert.match(profile, /setName\('kullanici'\)/);
+  assert.match(profile, /interaction\.options\.getUser\('kullanici'\) \?\? interaction\.user/);
+  assert.match(profile, /FROM users WHERE guild_id=\$1 AND user_id=\$2/);
+  assert.match(profile, /\[interaction\.guildId, target\.id\]/);
+  assert.match(profile, /target\.username/);
+});
+
+test('story decisions unlock different requirements and endings from the selected path', async () => {
+  const story = await read('hikaye.js');
+  assert.match(story, /value: 'cesaret'/);
+  assert.match(story, /value: 'merhamet'/);
+  assert.match(story, /value: 'merak'/);
+  assert.match(story, /path === 'cesaret'/);
+  assert.match(story, /user\.boss_defeats/);
+  assert.match(story, /path === 'merhamet'/);
+  assert.match(story, /user\.items_used_count/);
+  assert.match(story, /learned_spells/);
+  assert.match(story, /if \(!requirement\.ok\)/);
+  assert.match(story, /endings\[decision\]/);
+  assert.match(story, /previousChoices\[0\]/);
+});
+
+test('server leaderboard ranks unique anime character collections as a selectable category', async () => {
+  const ranking = await read('siralama.js');
+  assert.match(ranking, /value: 'collection'/);
+  assert.match(ranking, /anime_character_collection/);
+  assert.match(ranking, /COUNT\(\*\)::int/);
+  assert.match(ranking, /Karakter koleksiyonu/);
+  assert.match(ranking, /Senin sıran/);
+});
 
 test('character classes provide bounded passive bonuses and class selection is discoverable', async () => {
   const mechanics = await read('rpg-mechanics.js');
@@ -524,6 +577,24 @@ test('rare adventure and treasure materials can craft advanced Frieren-themed eq
   assert.match(command, /Himmel’in Efsanevi Yadigârı/);
   assert.match(command, /Ejderha Pulu/);
   assert.match(command, /Frieren’in Kayıp Notları/);
+});
+
+test('crafting recipes define the requested cloak, mana ring and legendary hero equipment', async () => {
+  const command = await read('zanaat.js');
+  const equipment = await read('equipment-data.js');
+  const recipeContracts = [
+    ["traveler_cloak: { craftLevel: 1, materials: [{ item: '🥐 Büyülü Poğaça Kutusu', quantity: 2 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }]","traveler_cloak"],
+    ["mana_ring: { craftLevel: 2, materials: [{ item: '💎 Mana Kristali', quantity: 3 }, { item: '📖 Yasak Büyü Kitabı', quantity: 1 }]","mana_ring"],
+    ["himmel_sword: { craftLevel: 4, materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1 }, { item: '🐉 Ejderha Pulu', quantity: 2 }]","himmel_sword"],
+    ["hero_ring: { craftLevel: 5, materials: [{ item: '👑 Himmel’in Efsanevi Yadigârı', quantity: 1 }, { item: '🌙 Efsunlu Elf Yadigârı', quantity: 2 }]","hero_ring"]
+  ];
+  for (const [recipe,id] of recipeContracts) {
+    assert.ok(command.includes(recipe), 'recipe materials must remain exact for ' + id);
+    assert.ok(equipment.includes(id), 'crafted equipment must exist for ' + id);
+  }
+  assert.match(command,/equipmentItems\.find\(entry => entry\.id === id\)/);
+  assert.match(command,/equipmentItems\.find\(item => item\.id === recipeId\)/);
+  assert.match(command,/INSERT INTO inventory\(guild_id,user_id,item_key,quantity\)/);
 });
 
 test('crafting catalog lists all available recipes and material requirements without crafting', async () => {

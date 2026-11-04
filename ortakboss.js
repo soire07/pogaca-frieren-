@@ -3,9 +3,9 @@ import { pool, ensureUser } from './database/db.js';
 import { settleRaidRewards } from './rpg-reward-transactions.js';
 import { getBossArtUrl } from './boss-art.js';
 import { getGuildRpgContent } from './owner-rpg-content.js';
-import { equipmentItems, equipmentBonus } from './equipment-data.js';
+import { equipmentItems } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio } from './rpg-mechanics.js';
+import { chooseRaidBoss, getRaidBossMaxHp, RAID_PARTY_ROLES, applyRaidWeakness, getEquipmentCombatBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getRaidBossSpecialAttack, chooseRaidAttackTarget, resolveRaidAreaAttack, restoreResourceRatio } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
 
@@ -15,11 +15,7 @@ function hpBar(current, maximum, width = 12) {
   const filled = Math.round(ratio * width);
   return '█'.repeat(filled) + '░'.repeat(width - filled);
 }
-const ROLES = {
-  tank: { label: '🛡️ Muhafız', description: 'Daha çok hasar üzerine çeker ve daha dayanıklıdır.', hp: 1.25, attack: 0.85, defense: 1.45 },
-  healer: { label: '💚 Şifacı', description: 'Her tur takıma küçük bir iyileştirme sağlar.', hp: 1, attack: 0.85, defense: 1.05 },
-  damage: { label: '⚔️ Hasar Ustası', description: 'Boss’a daha yüksek hasar verir.', hp: 0.95, attack: 1.35, defense: 0.9 }
-};
+const ROLES = RAID_PARTY_ROLES;
 
 export default {
   data: new SlashCommandBuilder()
@@ -174,7 +170,7 @@ export default {
         if (item) gearMap.get(g.user_id).push(item);
       }
       const fighters = raw.map(x => {
-        const p = x.stats; const equipped = gearMap.get(x.user.id) || []; const gear = applyEquipmentSetBonus(equipped, equipmentBonus(equipped)); const role = ROLES[x.role]; const build = getCharacterBuild(p.active_build); const baseMaxHp = Math.min(2000, Number(p.max_hp) + gear.hp) * build.hp * (1 + Number(p.talent_hp) * 0.05);
+        const p = x.stats; const equipped = gearMap.get(x.user.id) || []; const gear = getEquipmentCombatBonus(equipped); const role = ROLES[x.role]; const build = getCharacterBuild(p.active_build); const baseMaxHp = Math.min(2000, Number(p.max_hp) + gear.hp) * build.hp * (1 + Number(p.talent_hp) * 0.05);
         const maxHp = Math.round(baseMaxHp * role.hp);
         const maxMana = Math.min(500, Math.round((Number(p.max_mana) + gear.mana) * build.mana * (1 + Number(p.talent_mana) * 0.05)));
         return {
@@ -191,7 +187,7 @@ export default {
         return interaction.editReply({ content: '❤️ Her oyuncunun HP değeri sıfırdan yüksek olmalı. Önce /dinlen kullanın.', components: [] });
       }
       const averageLevel = Math.floor(fighters.reduce((sum, fighter) => sum + fighter.level, 0) / fighters.length);
-      let bossHp = BOSS.hp + averageLevel * 18 + Math.max(0,fighters.length-2)*90;
+      let bossHp = getRaidBossMaxHp(BOSS.hp, averageLevel, fighters.length);
       const maxBossHp = bossHp;
       const masteryRows = await db.query('SELECT user_id,casts,mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND spell_key=$3',[interaction.guildId,ids,'zoltraak']);
       const spellMastery = new Map(masteryRows.rows.map(row => [row.user_id, Number(row.mastery_level)]));
@@ -300,24 +296,24 @@ export default {
         }
         if (bossHp <= 0) break;
         const living=fighters.map((x,i)=>hpNow[i]>0?i:-1).filter(i=>i>=0);
-        const tank=living.find(i=>fighters[i].role==='tank');
-        const targetIndex=tank !== undefined && Math.random()<0.7 ? tank : living[Math.floor(Math.random()*living.length)];
+        const targetIndex=chooseRaidAttackTarget(fighters,living);
         const target=fighters[targetIndex];
         const enraged = bossHp <= maxBossHp * 0.5;
-        const starburst = BOSS.special === 'mana-star' && rounds % 3 === 0;
-        const shardRain = BOSS.special === 'shard-rain' && rounds % 2 === 0;
-        const manaCurse = BOSS.special === 'mana-curse' && rounds % 3 === 0;
+        const specialAttack = getRaidBossSpecialAttack(BOSS.special, rounds);
+        const starburst = specialAttack === 'mana-star';
+        const shardRain = specialAttack === 'shard-rain';
+        const manaCurse = specialAttack === 'mana-curse';
         const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0)+((starburst || shardRain || manaCurse) ? bossPhaseSpecialBonus(bossPhase) : 0);
         if (enraged && !rageAnnounced) { log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.'); rageAnnounced = true; }
         if (starburst || shardRain) {
           log.push(BOSS.special === 'shard-rain' ? '🐉 Cam Pullar Ejderhası keskin kristal parçalarını tüm takıma yağdırıyor!' : '☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!');
-          for (const i of living) {
-            const f=fighters[i];
-            const specialMultiplier = shardRain ? 0.5 : 0.68;
-            let incoming=calculateBossIncomingDamage(Math.round(rawDamage*specialMultiplier), Math.round(f.defense*0.44), bossPhase);
-            if (defending.has(i)) incoming=Math.max(1,Math.round(incoming*0.45));
-            hpNow[i]=Math.max(0,hpNow[i]-incoming);
-            log.push(`☄️ ${f.username} ${shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
+          const areaResult = resolveRaidAreaAttack({
+            hpNow, livingIndices: living, fighters, rawDamage, special: specialAttack, bossPhase, defending
+          });
+          for (const hit of areaResult.hits) {
+            const f = fighters[hit.index];
+            hpNow[hit.index] = areaResult.hpNow[hit.index];
+            log.push(`☄️ ${f.username} ${shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${hit.incoming} hasar aldı${hit.defended ? ' (savunma azaltımı uygulandı)' : ''}.`);
           }
         } else {
           let incoming=calculateBossIncomingDamage(rawDamage, Math.round(target.defense*0.56), bossPhase);

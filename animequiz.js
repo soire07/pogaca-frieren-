@@ -6,6 +6,7 @@ import {
 } from 'discord.js';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pool, ensureUser } from './database/db.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -100,6 +101,10 @@ export default {
     .setDescription('Süreli anime bilgi yarışmasına katıl.'),
 
   async execute(interaction) {
+    if (!interaction.guildId) {
+      return interaction.reply({ content: 'Anime quiz yalnızca sunucularda kullanılabilir.' });
+    }
+
     const question =
       questions[Math.floor(Math.random() * questions.length)];
 
@@ -150,17 +155,24 @@ export default {
           join(__dirname, successGif)
         );
 
-        const result = makeEmbed(
+        await ensureUser(interaction.guildId, message.author.id);
+        const scoreResult = await pool.query(
+          'UPDATE users SET anime_quiz_points=anime_quiz_points+10 WHERE guild_id=$1 AND user_id=$2 RETURNING anime_quiz_points',
+          [interaction.guildId, message.author.id]
+        );
+        if (scoreResult.rowCount !== 1) throw new Error('ANIME_QUIZ_SCORE_UPDATE_FAILED');
+        const totalPoints = Number(scoreResult.rows[0].anime_quiz_points);
+        const scoredResult = makeEmbed(
           '✅ Doğru Cevap!',
           `Tebrikler ${message.author}!\n\n` +
           `Doğru cevap: **${question.answer}**\n` +
-          '✨ Bu turda **10 puan** kazandın!',
+          '✨ Bu turda **10 puan** kazandın!\n' +
+          `🏅 Toplam anime quiz puanın: **${totalPoints}**`,
           0x57f287,
           successGif
         );
-
         await interaction.followUp({
-          embeds: [result],
+          embeds: [scoredResult],
           files: [successAttachment]
         });
       } catch (error) {

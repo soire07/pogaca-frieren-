@@ -111,7 +111,7 @@ export default {
       const craftXp = amount * ({ Yaygın: 10, Nadir: 20, Destansı: 35, Efsanevi: 50 }[equipment.rarity] || 10);
       const { rows: [craftProgress] } = await db.query(
         `INSERT INTO user_crafting_progress(guild_id,user_id,xp,level,successful_crafts)
-         VALUES($1,$2,$3,GREATEST(1,FLOOR($3/100.0)::int+1),$4)
+         VALUES($1,$2,$3::integer,GREATEST(1,FLOOR(($3::integer)::numeric/100.0)::int+1),$4)
          ON CONFLICT(guild_id,user_id) DO UPDATE SET
            xp=user_crafting_progress.xp+EXCLUDED.xp,
            level=GREATEST(1,FLOOR((user_crafting_progress.xp+EXCLUDED.xp)/100.0)::int+1),

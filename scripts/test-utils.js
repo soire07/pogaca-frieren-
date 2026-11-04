@@ -65,6 +65,141 @@ test('cooperative raid defines player-facing roles and a persistent cooldown', a
   assert.match(source, /c\.user\.id/);
 });
 
+test('solo boss tiers unlock only when the player meets each configured minimum level', async () => {
+  const source = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
+  assert.match(source, /const playerLevel = Number\(stats\.level \|\| 1\)/);
+  assert.match(source, /bossTiers\.filter\(tier => playerLevel >= tier\.minLevel\)/);
+  assert.match(source, /unlockedBossTiers\.length/);
+});
+
+test('dungeon carries player HP between floors and stops after the party is defeated', async () => {
+  const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  const hpInit = source.indexOf('const hpNow = players.map(p => p.hp)');
+  const floorLoop = source.indexOf('for (let floor = 1; floor <= FLOORS; floor++)');
+  const combatLoop = source.indexOf('while (enemyHp > 0 && hpNow.some(hp => hp > 0) && turn < 10)');
+  const hpWrite = source.indexOf('hpNow[targetIndex] = Math.max(0, hpNow[targetIndex] - incoming)');
+  const stopRun = source.indexOf('if (enemyHp > 0)', hpWrite);
+  assert.ok(hpInit >= 0 && floorLoop > hpInit && combatLoop > floorLoop, 'HP state must be initialized once before all floors');
+  assert.ok(hpWrite > combatLoop && stopRun > hpWrite, 'combat must persist damage and stop the run when enemies remain after party wipe');
+  assert.match(source, /hpNow\.some\(hp => hp > 0\)/);
+  assert.match(source, /☠️ Takım \$\{floor\}\. katta durduruldu/);
+});
+
+test('exploration regions enforce level gates and scale XP and gold rewards', async () => {
+  const source = await readFile(new URL('../commands/rpg/kesif.js', import.meta.url), 'utf8');
+  assert.match(source, /minLevel: 1/);
+  assert.match(source, /Number\(player\.level\) < region\.minLevel/);
+  assert.match(source, /rewardMultiplier = Math\.min\(5, 1 \+ Math\.floor\(\(Number\(player\.level\) - 1\) \/ 10\) \* 0\.1\)/);
+  assert.match(source, /rewardXp = Math\.round\(encounter\.xp \* rewardMultiplier\)/);
+  assert.match(source, /rewardCoins = Math\.round\(encounter\.coins \* rewardMultiplier\)/);
+});
+
+test('adventure route mastery rewards and discovery uniqueness share one transaction', async () => {
+  const source = await readFile(new URL('../macera.js', import.meta.url), 'utf8');
+  const begin = source.indexOf("await client.query('BEGIN')");
+  const routeWrite = source.indexOf('INSERT INTO adventure_route_mastery', begin);
+  const discoveryWrite = source.indexOf('INSERT INTO adventure_discoveries', routeWrite);
+  const commit = source.indexOf("await client.query('COMMIT')", discoveryWrite);
+  assert.ok(begin >= 0 && routeWrite > begin && discoveryWrite > routeWrite && commit > discoveryWrite);
+  assert.match(source, /routeVisits % 3 === 0/);
+  assert.match(source, /ON CONFLICT\(guild_id,user_id,route_key\)/);
+  assert.match(source, /ON CONFLICT DO NOTHING RETURNING discovery_key/);
+});
+
+test('treasure opening history is written in the same transaction as chest consumption and rewards', async () => {
+  const source = await readFile(new URL('../hazineac.js', import.meta.url), 'utf8');
+  const begin = source.indexOf("await db.query('BEGIN')");
+  const consume = source.indexOf('UPDATE inventory SET quantity=quantity-$3', begin);
+  const history = source.indexOf('INSERT INTO treasure_openings', consume);
+  const commit = source.indexOf("await db.query('COMMIT')", history);
+  assert.ok(begin >= 0 && consume > begin && history > consume && commit > history);
+  assert.match(source, /await db\.query\('ROLLBACK'\)/);
+  assert.match(source, /for \(let i = 0; i < amount; i\+\+\)/);
+});
+
+test('batch crafting scales ingredient quantities, crafted equipment count and rarity XP', async () => {
+  const source = await readFile(new URL('../zanaat.js', import.meta.url), 'utf8');
+  assert.match(source, /amount < 1 \|\| amount > 5/);
+  assert.match(source, /const required = material\.quantity \* amount/);
+  assert.match(source, /equipment\.name, amount/);
+  assert.match(source, /const craftXp = amount \* \(\{ Yaygın: 10, Nadir: 20, Destansı: 35, Efsanevi: 50 \}/);
+  assert.match(source, /successful_crafts=user_crafting_progress\.successful_crafts\+EXCLUDED\.successful_crafts/);
+  assert.match(source, /daily_crafting_progress/);
+});
+
+test('equipment dismantling scales material refunds and protects every equipped copy', async () => {
+  const source = await readFile(new URL('../ekipmanparcala.js', import.meta.url), 'utf8');
+  assert.match(source, /quantity - equipped < amount/);
+  assert.match(source, /const returned = salvage\.quantity \* amount/);
+  assert.match(source, /salvaged_items=user_crafting_progress\.salvaged_items\+EXCLUDED\.salvaged_items/);
+  const begin = source.indexOf("await db.query('BEGIN')");
+  const remove = source.indexOf('quantity-$4', begin);
+  const refund = source.indexOf('const returned = salvage.quantity * amount', remove);
+  const commit = source.indexOf("await db.query('COMMIT')", refund);
+  assert.ok(begin >= 0 && remove > begin && refund > remove && commit > refund);
+});
+
+test('adventure history supports another player and composes rare and item-found filters', async () => {
+  const source = await readFile(new URL('../maceragecmisi.js', import.meta.url), 'utf8');
+  assert.match(source, /interaction\.options\.getUser\('kullanici'\) \?\? interaction\.user/);
+  assert.match(source, /filter === 'nadir'/);
+  assert.match(source, /filter === 'esya'/);
+  assert.match(source, /target\.id/);
+  assert.match(source, /historyFilter/);
+});
+
+test('dungeon awards floor-scaled XP and coins for every cleared floor', async () => {
+  const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  assert.match(source, /const floorXp = 25 \+ floor \* 12 \+ avgLevel \* 2/);
+  assert.match(source, /const floorCoins = 20 \+ floor \* 10/);
+  assert.match(source, /totalXp \+= floorXp; totalCoins \+= floorCoins/);
+  assert.match(source, /floorsCleared\+\+/);
+});
+
+test('final dungeon boss enrage and periodic mana-star burst increase combat pressure', async () => {
+  const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  assert.match(source, /enemyHp <= maxEnemyHp \* 0\.5/);
+  assert.match(source, /const bossPower = finalBoss \? 1\.35 : 1/);
+  assert.match(source, /const specialAttack = finalBoss && turn % 3 === 0/);
+  assert.match(source, /yıldız biçimli mana patlaması kullandı/);
+});
+
+test('dungeon and raid healers restore every living teammate each combat round', async () => {
+  const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  const raid = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(dungeon, /const healerIndex = living\.find/);
+  assert.match(dungeon, /applyClassHealing\(6, players\[healerIndex\]\.class_name\)/);
+  assert.match(dungeon, /for \(const i of living\)/);
+  assert.match(raid, /const healer = alive\.find/);
+  assert.match(raid, /applyClassHealing\(12, fighters\[healer\]\.className\)/);
+  assert.match(raid, /for \(const i of alive\)/);
+});
+
+test('co-op dungeon shares discovered chest and rare victory loot with every participant', async () => {
+  const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
+  const settlement = await readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
+  assert.match(dungeon, /const victory = floorsCleared === FLOORS/);
+  assert.match(dungeon, /const loot = victory && Math\.random\(\) < 0\.35/);
+  assert.match(dungeon, /chestRewards\.push\(chestLoot\)/);
+  assert.match(dungeon, /Her oyuncu \$\{chestLoot\}/);
+  assert.match(settlement, /for \(let i = 0; i < players\.length; i\+\+\)/);
+  assert.match(settlement, /for \(const itemKey of \[\.\.\.chestRewards, \.\.\.\(loot \? \[loot\] : \[\]\), \.\.\.\(craftingLoot \? \[craftingLoot\] : \[\]\)\]\)/);
+  assert.match(settlement, /\[guildId, player\.user_id, itemKey\]/);
+});
+
+test('rare treasure chest drops award more gold and XP than every common drop', async () => {
+  const source = await readFile(new URL('../hazineac.js', import.meta.url), 'utf8');
+  const commonText = source.slice(source.indexOf('const LOOT = ['), source.indexOf('const RARE_LOOT = ['));
+  const rareText = source.slice(source.indexOf('const RARE_LOOT = ['), source.indexOf('export default'));
+  const values = text => [...text.matchAll(/coins: (\d+), xp: (\d+)/g)].map(match => ({ coins: Number(match[1]), xp: Number(match[2]) }));
+  const common = values(commonText);
+  const rare = values(rareText);
+  assert.ok(common.length >= 3 && rare.length >= 2);
+  assert.ok(Math.min(...rare.map(item => item.coins)) > Math.max(...common.map(item => item.coins)));
+  assert.ok(Math.min(...rare.map(item => item.xp)) > Math.max(...common.map(item => item.xp)));
+  assert.match(source, /roll < 0\.01 \? RARE_LOOT\[1\] : roll < 0\.04 \? RARE_LOOT\[0\]/);
+});
+
 test('multi-floor dungeon includes traps, chests and persistent player rewards', async () => {
   const source = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
   const rewards = await readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
@@ -75,8 +210,8 @@ test('multi-floor dungeon includes traps, chests and persistent player rewards',
   assert.match(source, /chestRewards/);
   assert.match(source, /PARTY_ROLES/);
   assert.match(source, /healerIndex/);
-  assert.match(source, /tankIndex/);
-  assert.match(source, /players\[targetIndex\]\.user_id/);
+  assert.match(source, /chooseDungeonAttackTarget\(players, living, turn, floor\)/);
+  assert.match(source, /players\[trap\.targetIndex\]\.user_id/);
   assert.doesNotMatch(source, /combatants\[targetIndex\]/);
   assert.match(source, /bossRageAnnounced/);
   assert.match(source, /yıldız biçimli mana patlaması/);
@@ -123,10 +258,13 @@ test('cooperative boss raid supports attack, mana spell, defense and mana persis
 
 test('cooperative boss raid includes an area mana-star burst and a mana-draining curse', async () => {
   const source = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
-  assert.match(source, /const starburst = BOSS\.special === 'mana-star'/);
-  assert.match(source, /for \(const i of living\)/);
-  assert.match(source, /const shardRain = BOSS\.special === 'shard-rain' && rounds % 2 === 0/);
-  assert.match(source, /const manaCurse = BOSS\.special === 'mana-curse' && rounds % 3 === 0/);
+  const mechanics = await readFile(new URL('../rpg-mechanics.js', import.meta.url), 'utf8');
+  assert.match(source, /getRaidBossSpecialAttack\(BOSS\.special, rounds\)/);
+  assert.match(source, /resolveRaidAreaAttack\(/);
+  assert.match(source, /for \(const hit of areaResult\.hits\)/);
+  assert.match(source, /const shardRain = specialAttack === 'shard-rain'/);
+  assert.match(source, /const manaCurse = specialAttack === 'mana-curse'/);
+  assert.match(mechanics, /for \(const index of livingIndices \|\| \[\]\)/);
   assert.match(source, /Math\.min\(target\.mana,8\)/);
   assert.match(source, /target\.mana-=drained/);
   assert.match(source, /\$\{rounds\}\/12/);
@@ -218,7 +356,7 @@ test('equipment set bonuses and milestone titles are wired into both rewards flo
   const boss = await readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
   const dungeon = await readFile(new URL('../katlizindan.js', import.meta.url), 'utf8');
   for (const source of [boss, dungeon]) {
-    assert.match(source, /applyEquipmentSetBonus/);
+    assert.match(source, /getEquipmentCombatBonus/);
     assert.match(source, /progressionMilestone/);
     assert.match(source, /Kalıcı unvanlar/);
   }
@@ -310,8 +448,11 @@ test('boss phase damage scaling respects defense and grows only in later phases'
 
 test('freezing the boss cancels its scheduled special attack and its mana-drain side effect', async () => {
   const source = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
-  assert.match(source, /if \(turnCount % 3 === 0 && !frozenBoss\)/);
-  assert.match(source, /else if \(turnCount % 3 === 0 && frozenBoss\)/);
+  assert.match(source, /getSoloBossSpecialAttackState\(turnCount, frozenBoss\)/);
+  assert.match(source, /specialAttackState === 'execute'/);
+  assert.match(source, /specialAttackState === 'cancelled'/);
+  assert.match(source, /if \(boss\.specialType === 'drain'\)/);
+  assert.match(source, /playerMana -= drainedMana/);
   assert.match(source, /Donma etkisi bossun özel saldırısını da durdurdu/);
 });
 
@@ -321,7 +462,7 @@ test('cooperative raid boss phases scale incoming damage and announce transition
   assert.match(source, /getBossPhase\(bossHp, maxBossHp\)/);
   assert.match(source, /bossPhaseSpecialBonus\(bossPhase\)/);
   assert.ok(source.includes('calculateBossIncomingDamage(rawDamage, Math.round(target.defense*0.56), bossPhase)'));
-  assert.ok(source.includes('calculateBossIncomingDamage(Math.round(rawDamage*specialMultiplier), Math.round(f.defense*0.44), bossPhase)'));
+  assert.ok(source.includes('resolveRaidAreaAttack({'));
   assert.match(source, /ikinci evreye geçti/);
   assert.match(source, /son evreye geçti/);
 });
@@ -404,8 +545,8 @@ test('equipment set bonuses activate for two legendary or two epic pieces', () =
 
 test('solo boss combat applies the same equipment set bonuses as profile and group combat', async () => {
   const source = await readFile(new URL('../iblisavasi.js', import.meta.url), 'utf8');
-  assert.match(source, /applyEquipmentSetBonus/);
-  assert.match(source, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+  assert.match(source, /getEquipmentCombatBonus/);
+  assert.match(source, /getEquipmentCombatBonus\(equippedItems\)/);
   assert.match(source, /gearBonus\.setText/);
 });
 
@@ -540,6 +681,88 @@ test('quest chain UI previews level-scaled rewards and the material reward for e
   assert.match(quest, /getLevelScaledQuestReward\(s\.reward, s\.xpReward, p\.level, s\.step === 3\)/);
   assert.match(quest, /reward\.coins.*reward\.xp.*s\.material/);
   assert.match(quest, /Sıradaki aşama açıldı/);
+});
+
+
+test('XP progression remains monotonic and exact across every level boundary through level 1000', () => {
+  let previousThreshold = 0;
+  for (let level = 1; level <= 1000; level += 1) {
+    const threshold = xpForNextLevel(level);
+    assert.ok(Number.isSafeInteger(threshold), 'threshold must remain a safe integer at level ' + level);
+    assert.ok(threshold > previousThreshold, 'XP thresholds must strictly increase at level ' + level);
+    assert.equal(levelForXp(threshold - 1), level, 'one XP below threshold must remain at current level ' + level);
+    assert.equal(levelForXp(threshold), level + 1, 'threshold must unlock next level ' + (level + 1));
+    previousThreshold = threshold;
+  }
+});
+
+test('large XP grants calculate every crossed level and matching stat points', () => {
+  const cases = [
+    { currentXp: 0, currentLevel: 1, earnedXp: 99, nextLevel: 1, points: 0 },
+    { currentXp: 90, currentLevel: 1, earnedXp: 20, nextLevel: 2, points: 1 },
+    { currentXp: 390, currentLevel: 2, earnedXp: 520, nextLevel: 4, points: 2 },
+    { currentXp: 9900, currentLevel: 10, earnedXp: 20100, nextLevel: 18, points: 8 },
+    { currentXp: 10000, currentLevel: 11, earnedXp: 0, nextLevel: 11, points: 0 }
+  ];
+  for (const item of cases) {
+    const nextLevel = levelForXp(item.currentXp + item.earnedXp);
+    assert.equal(nextLevel, item.nextLevel);
+    assert.equal(Math.max(0, nextLevel - item.currentLevel), item.points);
+  }
+});
+
+test('solo boss, raid, dungeon and quest XP settlements use the same quadratic level formula', async () => {
+  const rewards = await readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
+  const quest = await readFile(new URL('../gorevzinciri.js', import.meta.url), 'utf8');
+  assert.match(rewards, /FLOOR\(SQRT\(\(xp\+\$6\)::numeric \/ 100\)\)::int \+ 1/);
+  assert.match(rewards, /Math\.floor\(Math\.sqrt\(newXp \/ 100\)\) \+ 1/);
+  assert.match(quest, /const newLevel = levelForXp\(newXp\)/);
+  assert.match(rewards, /stat_points=stat_points\+GREATEST\(0,/);
+  assert.match(rewards, /Math\.max\(0, newLevel - Number\(current\.level\)\)/);
+  assert.match(quest, /Math\.max\(0, newLevel - Number\(player\.level\)\)/);
+});
+
+test('solo boss reward claim is idempotent and raid and dungeon settlements lock participants', async () => {
+  const rewards = await readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
+  const soloStart = rewards.indexOf('export async function claimSoloBossReward');
+  const raidStart = rewards.indexOf('export async function settleRaidRewards');
+  const dungeonStart = rewards.indexOf('export async function settleDungeonRewards');
+  assert.ok(soloStart >= 0 && raidStart > soloStart && dungeonStart > raidStart);
+  const solo = rewards.slice(soloStart, raidStart);
+  const raid = rewards.slice(raidStart, dungeonStart);
+  const dungeon = rewards.slice(dungeonStart);
+  assert.match(solo, /last_boss_battle_id IS DISTINCT FROM \$7/);
+  assert.match(solo, /RETURNING user_id/);
+  for (const [name, source] of [['raid', raid], ['dungeon', dungeon]]) {
+    assert.match(source, /BEGIN/);
+    assert.match(source, /FOR UPDATE/);
+    assert.match(source, /COMMIT/);
+    assert.match(source, /ROLLBACK/);
+    assert.match(source, /stat_points/);
+    assert.ok(source.includes('level=') || source.includes('level=$5'), name + ' must persist the recalculated level');
+  }
+});
+
+test('level-scaled quest reward multiplier changes only at ten-level boundaries and is capped', () => {
+  const expected = [
+    [1, 1], [9, 1], [10, 1], [11, 1.1],
+    [19, 1.1], [20, 1.1], [21, 1.2],
+    [91, 1.9], [100, 1.9], [101, 2],
+    [191, 2.9], [201, 3], [1000, 3]
+  ];
+  for (const [level, multiplier] of expected) {
+    assert.ok(Math.abs(getLevelScaledQuestReward(100, 50, level).multiplier - multiplier) < 1e-9, 'level ' + level);
+  }
+});
+
+test('XP and level display uses the same next-level threshold in profile and character panel', async () => {
+  const profile = await readFile(new URL('../profil.js', import.meta.url), 'utf8');
+  const character = await readFile(new URL('../karakter.js', import.meta.url), 'utf8');
+  assert.match(profile, /xpForNextLevel\(u\.level\)/);
+  assert.match(character, /xpForNextLevel\(level\)/);
+  assert.match(character, /need-xp/);
+  assert.match(character, /Math\.max\(0,need-xp\)/);
+  assert.match(character, /stat_points=stat_points-\$4/);
 });
 
 

@@ -1,8 +1,18 @@
+import { equipmentBonus } from './equipment-data.js';
+
 export const RAID_BOSSES = [
   { id: 'north-general', name: '🌑 Kuzey Platosu İblis Generali', hp: 220, damage: 14, xp: 180, coins: 220, loot: 'İblis Mührü', weakness: 'spell', weaknessLabel: 'Büyü', special: 'mana-star' },
   { id: 'glass-wyrm', name: '🐉 Cam Pullar Ejderhası', hp: 255, damage: 12, xp: 205, coins: 245, loot: 'Ejderha Camı', weakness: 'attack', weaknessLabel: 'Fiziksel saldırı', special: 'shard-rain' },
   { id: 'fallen-mage', name: '🕯️ Düşmüş Büyücü Aura', hp: 195, damage: 17, xp: 230, coins: 260, loot: 'Auranın Mühürlü Asa Parçası', weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'mana-curse' }
 ];
+
+/** Scales cooperative raid boss HP by average player level and party size. */
+export function getRaidBossMaxHp(baseHp, averageLevel, partySize) {
+  const base = Math.max(1, Math.floor(Number(baseHp) || 1));
+  const level = Math.max(0, Math.floor(Number(averageLevel) || 0));
+  const players = Math.max(0, Math.floor(Number(partySize) || 0));
+  return base + level * 18 + Math.max(0, players - 2) * 90;
+}
 
 export function chooseRaidBoss(random = Math.random, bosses = RAID_BOSSES) {
   const catalog = Array.isArray(bosses) && bosses.length ? bosses : RAID_BOSSES;
@@ -31,11 +41,33 @@ export function applyEquipmentSetBonus(items, bonus) {
   };
 }
 
+/**
+ * Single source of truth for equipment and rarity-set bonuses in every combat mode.
+ * Keep base player stats immutable; callers derive temporary combat stats from this value.
+ */
+export function getEquipmentCombatBonus(items) {
+  const equipped = Array.isArray(items) ? items : [];
+  return applyEquipmentSetBonus(equipped, equipmentBonus(equipped));
+}
+
+
 export function dungeonChoiceOutcome(choice, floor) {
   if (choice === 'secret') return { label: 'Gizli geçit', coins: 20 + floor * 8, hp: -8, mana: 0, lootChance: 0.45, log: 'Gizli geçit: ek altın bulundu ancak dar geçit yaraladı.' };
   if (choice === 'shrine') return { label: 'Mana mabedi', coins: 0, hp: 12 + Math.floor(floor / 2), mana: 16 + floor * 2, lootChance: 0.08, log: 'Mana mabedi: yaşayan takım üyeleri HP ve mana yeniledi.' };
   return { label: 'Güvenli yol', coins: 10 + floor * 4, hp: 0, mana: 0, lootChance: 0.15, log: 'Güvenli yol: takım tuzaklardan kaçınarak erzak buldu.' };
 }
+
+export const DUNGEON_PARTY_ROLES = {
+  tank: { label: '🛡️ Muhafız', hp: 1.25, attack: 0.85, defense: 1.4 },
+  healer: { label: '💚 Şifacı', hp: 1, attack: 0.9, defense: 1.05 },
+  damage: { label: '⚔️ Hasar Ustası', hp: 0.95, attack: 1.3, defense: 0.9 }
+};
+
+export const RAID_PARTY_ROLES = {
+  tank: { label: '🛡️ Muhafız', description: 'Daha çok hasar üzerine çeker ve daha dayanıklıdır.', hp: 1.25, attack: 0.85, defense: 1.45 },
+  healer: { label: '💚 Şifacı', description: 'Her tur takıma küçük bir iyileştirme sağlar.', hp: 1, attack: 0.85, defense: 1.05 },
+  damage: { label: '⚔️ Hasar Ustası', description: 'Boss’a daha yüksek hasar verir.', hp: 0.95, attack: 1.35, defense: 0.9 }
+};
 
 export function dungeonEnemyStats(floor, averageLevel, partySize, difficulty = 'normal') {
   const multiplier = difficulty === 'nightmare' ? 1.35 : difficulty === 'easy' ? 0.8 : 1;
@@ -43,6 +75,18 @@ export function dungeonEnemyStats(floor, averageLevel, partySize, difficulty = '
     hp: Math.round((105 + floor * 48) * (1 + averageLevel * 0.045) * (1 + Math.max(0, partySize - 2) * 0.12) * multiplier),
     damage: Math.max(5, Math.round((5 + floor * 3) * (1 + averageLevel * 0.02) * multiplier))
   };
+}
+
+export function applyDungeonTrapDamage(hpNow, floor, random = Math.random) {
+  const nextHp = Array.isArray(hpNow) ? [...hpNow] : [];
+  const living = nextHp.map((hp,index) => Number(hp) > 0 ? index : -1).filter(index => index >= 0);
+  if (!living.length) return { hpNow: nextHp, targetIndex: null, damage: 0 };
+  const roll = Number(random());
+  const bounded = Number.isFinite(roll) ? Math.max(0,Math.min(0.999999999,roll)) : 0;
+  const targetIndex = living[Math.floor(bounded * living.length)];
+  const damage = 8 + Math.max(1,Math.floor(Number(floor) || 1)) * 4;
+  nextHp[targetIndex] = Math.max(1,Number(nextHp[targetIndex]) - damage);
+  return { hpNow: nextHp, targetIndex, damage };
 }
 
 export function progressionMilestone(level, bossWins, dungeonWins) {
@@ -144,6 +188,65 @@ export function calculateBossIncomingDamage(rawDamage, defense, phase = 1) {
 
 export function bossPhaseSpecialBonus(phase) {
   return phase >= 3 ? 8 : phase === 2 ? 4 : 0;
+}
+
+/** Selects periodic cooperative raid boss mechanics using the current round. */
+/** Frozen solo bosses skip their scheduled special attack and mana drain. */
+export function getSoloBossSpecialAttackState(turnCount, frozenBoss) {
+  const turn = Math.max(0, Math.floor(Number(turnCount) || 0));
+  if (!turn || turn % 3 !== 0) return 'none';
+  return frozenBoss ? 'cancelled' : 'execute';
+}
+
+export function getRaidBossSpecialAttack(special, round) {
+  const turn = Math.max(0, Math.floor(Number(round) || 0));
+  if (special === 'mana-star' && turn > 0 && turn % 3 === 0) return 'mana-star';
+  if (special === 'shard-rain' && turn > 0 && turn % 2 === 0) return 'shard-rain';
+  if (special === 'mana-curse' && turn > 0 && turn % 3 === 0) return 'mana-curse';
+  return null;
+}
+
+/** Dungeon tanks attract 70% of single-target enemy attacks while alive. */
+export function chooseDungeonAttackTarget(players, livingIndices, turn, floor, random = Math.random) {
+  const living = Array.isArray(livingIndices) ? livingIndices : [];
+  if (!living.length) return null;
+  const tank = living.find(index => players[index]?.role === 'tank');
+  if (tank !== undefined && random() < 0.7) return tank;
+  const safeTurn = Math.max(0, Math.floor(Number(turn) || 0));
+  const safeFloor = Math.max(1, Math.floor(Number(floor) || 1));
+  return living[(safeTurn + safeFloor) % living.length];
+}
+
+/** Tanks attract 70% of single-target raid attacks while alive. */
+export function chooseRaidAttackTarget(fighters, livingIndices, random = Math.random) {
+  const living = Array.isArray(livingIndices) ? livingIndices : [];
+  if (!living.length) return null;
+  const tank = living.find(index => fighters[index]?.role === 'tank');
+  if (tank !== undefined && random() < 0.7) return tank;
+  return living[Math.min(living.length - 1, Math.floor(random() * living.length))];
+}
+
+/** Applies a raid area special to every living player, preserving individual defense. */
+export function resolveRaidAreaAttack({ hpNow, livingIndices, fighters, rawDamage, special, bossPhase = 1, defending = new Set() } = {}) {
+  if (special !== 'mana-star' && special !== 'shard-rain') {
+    return { hpNow: Array.isArray(hpNow) ? [...hpNow] : [], hits: [] };
+  }
+  const nextHp = [...hpNow];
+  const hits = [];
+  const multiplier = special === 'shard-rain' ? 0.5 : 0.68;
+  for (const index of livingIndices || []) {
+    const fighter = fighters[index];
+    if (!fighter || Number(nextHp[index]) <= 0) continue;
+    let incoming = calculateBossIncomingDamage(
+      Math.round(Number(rawDamage) * multiplier),
+      Math.round(Number(fighter.defense) * 0.44),
+      bossPhase
+    );
+    if (defending?.has?.(index)) incoming = Math.max(1, Math.round(incoming * 0.45));
+    nextHp[index] = Math.max(0, Number(nextHp[index]) - incoming);
+    hits.push({ index, incoming, defended: Boolean(defending?.has?.(index)) });
+  }
+  return { hpNow: nextHp, hits };
 }
 
 
