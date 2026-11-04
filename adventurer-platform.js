@@ -372,7 +372,7 @@ export async function listGuildEvents(db = pool,guildId,limit=10) {
 
 export async function joinGuildEvent(db = pool,{guildId,eventId,userId}) {
   if(!DISCORD_ID.test(String(guildId||''))||!DISCORD_ID.test(String(userId||''))) throw new Error('EVENT_INPUT_INVALID');
-  await db.query('INSERT INTO users(guild_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[guildId,userId]);
+  await ensureUser(guildId,userId,db);
   const client=await db.connect();
   try {
     await client.query('BEGIN');
