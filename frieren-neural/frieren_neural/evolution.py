@@ -27,6 +27,15 @@ _TASK_HINTS = {
     "fabricated_claim": "Improve uncertainty handling and factual-grounding evaluation.",
     "multi_turn_failures": "Improve multi-turn context consistency and memory-boundary tests.",
     "benchmark_outputs_incomplete_or_out_of_order": "Repair benchmark generation and completeness checks.",
+    "human_review_missing": "Collect two independent human reviews before requesting Guardian approval.",
+    "training_provenance_missing": "Record licensed training-data provenance and artifact lineage.",
+    "heldout_metrics_missing_or_invalid": "Run held-out evaluation and record reproducible metrics.",
+    "baseline_comparison_missing": "Compare the candidate with a pinned baseline checkpoint.",
+    "neural_ci_evidence_not_verified": "Wait for and verify the exact commit's Neural CI run.",
+    "neural_staged_tests_not_passed": "Run isolated staged behavior tests and record the results.",
+    "neural_memory_isolation_not_passed": "Add and pass cross-user memory-isolation tests.",
+    "neural_security_checks_not_passed": "Run security and privacy checks and record the results.",
+    "neural_resource_checks_not_passed": "Measure CPU and RSS against the resource limits.",
 }
 
 
@@ -113,14 +122,16 @@ def build_evolution_plan(report: object) -> dict[str, Any]:
         baseline.get("available") is True and baseline.get("improved") is True
         and _valid_hex(baseline.get("baseline_checkpoint_sha256"), 64)
     )
+    review_policy_valid = (
+        isinstance(human.get("reviewers_required"), int)
+        and not isinstance(human.get("reviewers_required"), bool)
+        and human.get("reviewers_required") == 2
+    )
     provenance_valid = (
         _valid_hex(source_sha, 40)
         and _valid_hex(artifact_sha, 64)
         and report_provenance_matches
-        and isinstance(human.get("reviewers_required"), int)
-        and human.get("reviewers_required") == 2
-        and thresholds_passed
-        and outputs_complete
+        and review_policy_valid
     )
     gates = {
         "ci_passed": ci_passed,
@@ -128,6 +139,7 @@ def build_evolution_plan(report: object) -> dict[str, Any]:
         "quality_thresholds_passed": thresholds_passed,
         "benchmark_outputs_complete": outputs_complete,
         "baseline_improved": baseline_improved,
+        "review_policy_valid": review_policy_valid,
         "provenance_valid": provenance_valid,
     }
 
@@ -137,10 +149,14 @@ def build_evolution_plan(report: object) -> dict[str, Any]:
     if not ci_passed:
         status, reasons = "blocked", ["CI evidence is missing, incomplete, or unsuccessful."]
     elif not provenance_valid:
-        status, reasons = "blocked", ["Source commit or model artifact fingerprint is missing or invalid."]
+        status, reasons = "blocked", ["Source commit, model artifact fingerprint, or two-reviewer policy is invalid."]
+    elif not outputs_complete:
+        status, reasons = "blocked", ["Benchmark outputs are missing, empty, or out of order."]
+    elif not thresholds_passed:
+        status, reasons = "blocked", ["Quality metrics are missing or below the required thresholds."]
     elif not quality_ready or not baseline_improved:
         status = "improvement_proposed"
-        reasons = raw_reasons or ["Quality review or baseline-improvement evidence is incomplete."]
+        reasons = raw_reasons or ["Human review or baseline-improvement evidence is incomplete."]
     else:
         status, reasons = "eligible_for_guard_review", []
 

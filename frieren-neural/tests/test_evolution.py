@@ -115,3 +115,26 @@ def test_report_commit_or_artifact_mismatch_fails_closed():
     plan = build_evolution_plan(report)
     assert plan["gates"]["quality_thresholds_passed"] is False
     assert plan["apply_changes"] is False
+
+def test_missing_quality_metrics_are_blocked_for_the_correct_reason():
+    report = _ready_report()
+    report["quality_report"]["metrics"] = {}
+    plan = build_evolution_plan(report)
+    assert plan["status"] == "blocked"
+    assert plan["gates"]["provenance_valid"] is True
+    assert plan["gates"]["quality_thresholds_passed"] is False
+    assert "Quality metrics are missing" in plan["tasks"][0]["reason"]
+    assert plan["apply_changes"] is False
+
+
+def test_missing_human_review_becomes_a_guard_review_task():
+    report = _ready_report()
+    report["quality_report"]["human_review"]["completed"] = False
+    report["quality_report"]["blocking_reasons"] = ["human_review_missing"]
+    plan = build_evolution_plan(report)
+    assert plan["status"] == "improvement_proposed"
+    assert plan["gates"]["provenance_valid"] is True
+    assert "two independent human reviews" in plan["tasks"][0]["title"]
+    assert plan["requires_guard_review"] is True
+    assert plan["apply_changes"] is False
+
