@@ -165,3 +165,11 @@ Yeni uygulama grubu, yukarıdaki tamamlanmamış alt davranışları mevcut kodl
 - Her oyuncu tur başına bir cevap verebilir. Doğru cevap 10 lonca puanı kazandırır; yanlış cevap tekrar denenemez. `/loncaoyun siralam` sunucuya özel skorları listeler. `takimli:true` seçeneği A/B takımları açar; her takım en fazla beş oyuncu alır, oyuncu takımı değiştiremez ve doğru cevap puanı takım hanesine de atomik yazılır. `/loncaoyun takim-siralam` tur skorunu gösterir.
 - PostgreSQL cevap transaction'ı, oturum satırı kilidi, kanal/guild kapsamı, benzersiz oyuncu cevabı ve 30 günlük oturum temizliğiyle koruma sağlanır.
 - ENT-023 ve ENT-024 kısmen karşılandı; takım kaptanı/rol seçimi, günlük fikstür ve sezonluk takım ligi hâlâ eksik.
+
+
+## 7. Balıkçılık ilerlemesi — PR #217 ek paketi
+
+- `/balik ekipman` olta seviyesi, aktif yem stoğu ve altın bakiyesini gösterir; `/balik olta` üç kademeli olta ağacında bir sonraki seviyeyi satın alır.
+- `/balik yem` beşli Mana, Buz veya Nadirlik yemi paketi satın alır. Aynı anda tek yem türü stoğu tutulur; stok bitmeden farklı yem türüne geçilemez.
+- Olta seviyesi nadir balık ağırlığını artırır; Mana/Buz yemleri uyumlu bölge ve türlerde, Nadirlik yemi tüm bölgelerde nadir türlerin ağırlığını artırır. Yem yalnızca başarılı ve uyumlu bölge avında tüketilir.
+- Balık yakalama akışında transaction boyunca aynı PostgreSQL client kullanılarak cooldown, koleksiyon, av sayısı ve yem tüketimi atomik hâle getirildi.
