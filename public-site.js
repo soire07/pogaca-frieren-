@@ -28,6 +28,7 @@ import { listGuildEmbedTemplates, listGuildCustomCommands, listGuildSpellAutomat
 import { HOME_ROOMS, HOME_DECORATIONS, HOME_STATIONS, ALCHEMY_RECIPES, PLAYER_COSMETICS, getPlayerHome, unlockHomeRoom, saveHomeLayout, purchaseCosmetic, equipCosmetic, saveCosmeticPreset, applyCosmeticPreset, checkInGuildEvent, getCosmeticAcquisitionHistory, getHomeTrophies, placeHomeTrophy, setHomeVisibility, getPublicPlayerHome, brewHomePotion, claimEventMilestone } from './player-experience.js';
 
 const SITE_COOKIE = 'frieren_site_session';
+const SITE_ACCOUNT_ID = /^site_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const OWNER_ID = '1553794496234262641';
 const assets = new Map([
   ...['animequiz.gif','buyusavasi.gif','buyusavasi_kazandi.gif','buyusavasi_vurus.gif','eisen.gif','envanter.gif','fern.gif','frieren.gif','heiter.gif','himmel.gif','macera.gif','profil.gif','quizdogru.gif','quizyanlis.gif','stark.gif','yardim.gif','site-avatar.svg','site-avatar.webp','site-shortcut.svg','site-banner.svg','site-banner.webp','site.css','owner.css'].map(file => ['/assets/' + file, file])
@@ -41,6 +42,13 @@ function cookies(req) {
     if (i < 0) return ['', ''];
     try { return [part.slice(0, i).trim(), decodeURIComponent(part.slice(i + 1).trim())]; } catch { return ['', '']; }
   }).filter(([key]) => key));
+}
+
+function requireSiteAccount(res, accountId) {
+  if (SITE_ACCOUNT_ID.test(String(accountId || ''))) return true;
+  res.writeHead(302, { Location: '/login?status=site_account_required', 'Cache-Control': 'no-store' });
+  res.end();
+  return false;
 }
 
 
@@ -341,7 +349,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   const url = new URL(req.url, 'http://localhost');
   if (req.method === 'GET' && url.pathname === '/hesap/veri') {
     const session = readPublicSiteSession(cookies(req)[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
-    if (!session?.id?.startsWith('site_')) { res.writeHead(302,{Location:'/login','Cache-Control':'no-store'});res.end();return true; }
+    if (!requireSiteAccount(res, session?.id)) return true;
     if (!db) { res.writeHead(503,{'Cache-Control':'no-store'});res.end('Hesap veritabanı kullanılamıyor.');return true; }
     const data = await exportSiteAccountData(db,session.id);
     if (!data) { res.writeHead(404,{'Cache-Control':'no-store'});res.end('Hesap bulunamadı.');return true; }
@@ -350,7 +358,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   }
   if (req.method === 'POST' && (url.pathname === '/destek' || url.pathname === '/destek/yanit' || url.pathname === '/hesap/sil')) {
     const session = readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
-    if (!session?.id?.startsWith('site_')) { res.writeHead(302,{Location:'/login','Cache-Control':'no-store'});res.end();return true; }
+    if (!requireSiteAccount(res, session?.id)) return true;
     if (!db) { res.writeHead(503,{'Cache-Control':'no-store'});res.end('Hesap veritabanı kullanılamıyor.');return true; }
     if (!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')) { res.writeHead(415,{'Cache-Control':'no-store'});res.end('Form biçimi geçersiz.');return true; }
     let size=0;const chunks=[];
@@ -378,9 +386,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   }
   if (req.method === 'POST' && url.pathname === '/maceraci/link') {
     const session = readPublicSiteSession(cookies(req)[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
-    if (!session?.id?.startsWith('site_')) {
-      res.writeHead(302, { Location: '/login', 'Cache-Control': 'no-store' }); res.end(); return true;
-    }
+    if (!requireSiteAccount(res, session?.id)) return true;
     if (!db) { res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }); res.end('Panel veritabanı kullanılamıyor.'); return true; }
     if (!String(req.headers['content-type'] || '').toLowerCase().includes('application/x-www-form-urlencoded')) { res.writeHead(415, { 'Cache-Control': 'no-store' }); res.end('Form biçimi geçersiz.'); return true; }
     let size = 0; const chunks = [];
@@ -395,7 +401,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   const mutationPaths = new Set(['/maceraci/event','/maceraci/yasam','/pazar/sat','/pazar/al','/pazar/iptal','/pazar/teklif-ver','/pazar/teklif-kabul','/pazar/teklif-reddet','/pazar/teklif-iptal','/pazar/alarm-kur','/pazar/alarm-sil','/maceraci/sosyal','/maceraci/bildirimler','/maceraci/atolye']);
   if (req.method === 'POST' && mutationPaths.has(url.pathname)) {
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
-    if(!session?.id?.startsWith('site_')) { res.writeHead(302,{Location:'/login','Cache-Control':'no-store'});res.end();return true; }
+    if (!requireSiteAccount(res, session?.id)) return true;
     if(!db) { res.writeHead(503,{'Cache-Control':'no-store'});res.end('Panel veritabanı kullanılamıyor.');return true; }
     if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')) { res.writeHead(415,{'Cache-Control':'no-store'});res.end('Form biçimi geçersiz.');return true; }
     let size=0;const chunks=[];
@@ -460,6 +466,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
 
     let status='invalid';
   if(url.pathname==='/maceraci/yasam'){
+    if (!requireSiteAccount(res, user?.id)) return true;
       const action=String(form.get('action')||'');
       if(action==='unlock-room')status=(await unlockHomeRoom(db,{guildId,userId:profile.user_id,roomKey:String(form.get('roomKey')||'')})).status;
       else if(action==='save-layout'){
@@ -555,7 +562,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     return true;
   }
   if (url.pathname === '/destek') {
-    if (!user?.id?.startsWith('site_')) { res.writeHead(302,{Location:'/login','Cache-Control':'no-store'});res.end();return true; }
+    if (!requireSiteAccount(res, user?.id)) return true;
     if (!db) { res.writeHead(503,{'Cache-Control':'no-store'});res.end('Destek veritabanı kullanılamıyor.');return true; }
     const tickets=await listSupportTickets(db,user.id,20);
     const ticketId=String(url.searchParams.get('ticket')||'');
@@ -565,6 +572,8 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     res.end(html);return true;
   }
   if (url.pathname === '/maceraci/atolye') {
+    if (!requireSiteAccount(res, user?.id)) return true;
+    if (!db) { res.writeHead(503, {'Cache-Control':'no-store'}); res.end('Panel veritabanı kullanılamıyor.'); return true; }
     const guildId=String(url.searchParams.get('guildId')||'');
     if(!/^\d{17,20}$/.test(guildId)){const dashboard=await getAdventurerDashboard(db,user.id);const html=portalGuildPicker(user,dashboard.profiles,url.pathname,'Lonca Büyü Atölyesi');res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end(html);return true;}
     const profile=await getLinkedAdventurer(db,user.id,guildId);
@@ -576,6 +585,8 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     res.end(html);return true;
   }
   if (url.pathname === '/maceraci/bildirimler') {
+    if (!requireSiteAccount(res, user?.id)) return true;
+    if (!db) { res.writeHead(503, {'Cache-Control':'no-store'}); res.end('Panel veritabanı kullanılamıyor.'); return true; }
     const guildId=String(url.searchParams.get('guildId')||'');
     if(!/^\d{17,20}$/.test(guildId)){const dashboard=await getAdventurerDashboard(db,user.id);const html=portalGuildPicker(user,dashboard.profiles,url.pathname,'Bildirim Tercihleri');res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end(html);return true;}
     const profile=await getLinkedAdventurer(db,user.id,guildId);
@@ -600,7 +611,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   }
 
   if (url.pathname === '/' || url.pathname === '/maceraci') {
-    if (!/^site_[0-9a-f-]{36}$/i.test(String(user.id || ''))) {
+    if (!requireSiteAccount(res, user?.id)) return true;
       res.writeHead(302, { Location: '/login?status=site_account_required', 'Cache-Control': 'no-store' });
       res.end();
       return true;
@@ -631,6 +642,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     res.end(html);return true;
   }
   if (url.pathname === '/maceraci/envanter' || url.pathname === '/maceraci/koleksiyon' || url.pathname === '/maceraci/sosyal' || url.pathname === '/pazar') {
+    if (!requireSiteAccount(res, user?.id)) return true;
     if (!db) { res.writeHead(503, { 'Content-Type':'text/plain; charset=utf-8', 'Cache-Control':'no-store' }); res.end('Panel veritabanı kullanılamıyor.'); return true; }
     const guildId=String(url.searchParams.get('guildId')||'');
     if(!guildId){
