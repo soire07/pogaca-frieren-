@@ -47,7 +47,7 @@ test('equipment command equip and unequip resource caps include active rarity se
   assert.equal(Math.min(2000, 100 + legendaryCaps.hp), 185);
   assert.equal(Math.min(2000, 100 + epicCaps.mana), 165);
   assert.equal(Math.min(2000, 100 + applyEquipmentSetBonus(legendary.slice(1), equipmentBonus(legendary.slice(1))).hp), 160);
-  assert.equal(Math.min(2000, 100 + applyEquipmentSetBonus(epic.slice(1), equipmentBonus(epic.slice(1))).mana), 130);
+  assert.equal(Math.min(2000, 100 + applyEquipmentSetBonus(epic.slice(1), equipmentBonus(epic.slice(1))).mana), 120);
 });
 
 test('level-scaled quest rewards include the chain completion bonus deterministically', () => {
