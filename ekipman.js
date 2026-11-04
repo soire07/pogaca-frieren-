@@ -39,12 +39,13 @@ export default {
         return entry.label + ': ' + (item ? '**' + item.name + '** · ' + formatEquipmentBonus(item) : '*Boş*');
       });
       const total = equipped.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean);
-      const totals = total.reduce((sum, item) => ({
-        attack: sum.attack + item.attack, defense: sum.defense + item.defense, hp: sum.hp + item.hp, mana: sum.mana + item.mana
-      }), { attack: 0, defense: 0, hp: 0, mana: 0 });
+      const totals = applyEquipmentSetBonus(total, equipmentBonus(total));
       const embed = new EmbedBuilder().setColor(0x9b8cff).setTitle('🛡️ Kuşanılan Ekipman')
         .setDescription(lines.join('\n\n'))
-        .addFields({ name: '✨ Toplam ekipman bonusu', value: formatEquipmentBonus(totals), inline: false })
+        .addFields(
+          { name: '✨ Toplam ekipman bonusu', value: formatEquipmentBonus(totals), inline: false },
+          { name: '🧩 Aktif set bonusu', value: totals.setText || 'Henüz set bonusu etkin değil', inline: false }
+        )
         .setFooter({ text: 'Eşyalar envanterinde kalır. /market ile ekipman alabilir, /ekipman ile kuşanabilirsin.' });
       return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
