@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {HOME_ROOMS,PLAYER_COSMETICS,EVENT_MILESTONES,validateHomeLayout} from '../player-experience.js';
+import {HOME_ROOMS,HOME_DECORATIONS,PLAYER_COSMETICS,EVENT_MILESTONES,validateHomeLayout} from '../player-experience.js';
 
 test('personal home rooms have unique keys and nonnegative progression costs',()=>{
  assert.equal(new Set(HOME_ROOMS.map(x=>x.key)).size,HOME_ROOMS.length);
@@ -15,7 +15,9 @@ test('general cosmetics cover distinct player-facing slots without duplicate key
  assert.ok(PLAYER_COSMETICS.every(x=>x.cost>=0&&x.level>=1));
 });
 test('home layout rejects duplicate positions, malformed keys and more than twelve decorations',()=>{
+ assert.ok(HOME_DECORATIONS.includes('book_shelf'));
  assert.deepEqual(validateHomeLayout([{roomKey:'starter',decorationKey:'book_shelf',position:0}]),[{roomKey:'starter',decorationKey:'book_shelf',position:0}]);
+ assert.throws(()=>validateHomeLayout([{roomKey:'starter',decorationKey:'unknown_item',position:0}]),/HOME_LAYOUT_INVALID/);
  assert.throws(()=>validateHomeLayout([{roomKey:'starter',decorationKey:'book_shelf',position:0},{roomKey:'starter',decorationKey:'lamp',position:0}]),/HOME_LAYOUT_INVALID/);
  assert.throws(()=>validateHomeLayout([{roomKey:'../users',decorationKey:'lamp',position:0}]),/HOME_LAYOUT_INVALID/);
  assert.throws(()=>validateHomeLayout(Array.from({length:13},(_,i)=>({roomKey:'starter',decorationKey:'lamp_'+i,position:i}))),/HOME_LAYOUT_INVALID/);
