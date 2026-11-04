@@ -62,13 +62,14 @@ test('account export returns linked profile, inventory, card collection and scop
 
 test('account deletion requires the explicit confirmation phrase and removes account-owned portal rows only',async()=>{
  let connected=false;const calls=[];
- const db={connect:async()=>{connected=true;return{async query(sql,params){calls.push({sql,params});if(sql.includes('SELECT id FROM frieren_site_accounts'))return{rows:[{id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};if(sql.includes("column_name='account_id'"))return{rows:[{table_name:'site_user_preferences',data_type:'uuid'},{table_name:'frieren_site_discord_links',data_type:'character varying'},{table_name:'frieren_support_tickets',data_type:'uuid'}],rowCount:3};return{rows:[],rowCount:1};},release(){}};}};
+ const db={connect:async()=>{connected=true;return{async query(sql,params){calls.push({sql,params});if(sql.includes('SELECT id FROM frieren_site_accounts'))return{rows:[{id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};if(sql.includes("column_name='account_id'"))return{rows:[{table_name:'site_user_preferences',data_type:'uuid'},{table_name:'frieren_site_discord_links',data_type:'character varying'},{table_name:'frieren_site_sessions',data_type:'character varying'},{table_name:'frieren_support_tickets',data_type:'uuid'}],rowCount:3};return{rows:[],rowCount:1};},release(){}};}};
  assert.equal((await deleteSiteAccount(db,accountId,'')).status,'confirmation_required');
  assert.equal(connected,false);
  assert.equal((await deleteSiteAccount(db,accountId,'HESABIMI SIL')).status,'deleted');
  assert.equal(connected,true);
  assert.ok(calls.some(call=>call.sql.includes('DELETE FROM "site_user_preferences" WHERE account_id=$1')));
  assert.ok(calls.some(call=>call.sql.includes('DELETE FROM "frieren_site_discord_links" WHERE account_id IN ($1,$2)')));
+ assert.ok(calls.some(call=>call.sql.includes('DELETE FROM "frieren_site_sessions" WHERE account_id IN ($1,$2)')));
  assert.ok(!calls.some(call=>call.sql.includes('DELETE FROM "frieren_support_tickets" WHERE account_id IN')));
  assert.ok(calls.some(call=>call.sql.includes('DELETE FROM frieren_support_tickets WHERE account_id=$1')));
 });

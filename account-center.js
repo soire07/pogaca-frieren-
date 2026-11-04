@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 const ACCOUNT_ID = /^site_([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
 const CATEGORIES = new Set(['technical','bug','account','gameplay','other']);
 const SENSITIVE_TABLE = /(?:auth|session|credential|token|secret|owner|support|oauth|audit|log)/i;
+const ACCOUNT_DELETE_EXCLUDED_TABLE = /(?:owner|audit|log|support)/i;
 const SENSITIVE_COLUMN = /password|secret|token|credential|session|api.?key|private.?key|hash/i;
 
 async function withAccountTransaction(db, operation) {
@@ -339,7 +340,7 @@ export async function deleteSiteAccount(db, accountId, confirmation) {
     const accountTables = await client.query("SELECT table_name,data_type FROM information_schema.columns WHERE table_schema=current_schema() AND column_name='account_id'");
     for (const table of accountTables.rows || []) {
       const name = String(table.table_name || '');
-      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) || SENSITIVE_TABLE.test(name)) continue;
+      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) || ACCOUNT_DELETE_EXCLUDED_TABLE.test(name)) continue;
       if (table.data_type === 'uuid') {
         await client.query('DELETE FROM "' + name + '" WHERE account_id=$1',[id]);
       } else {
