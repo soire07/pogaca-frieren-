@@ -45,7 +45,7 @@ export default {
       const embed = new EmbedBuilder()
         .setColor(0x9b8cff)
         .setTitle('🏰 ' + session.game_label)
-        .setDescription(session.prompt + '\\n\\n**60 saniyen var.** Her oyuncu bu turda bir kez cevap verebilir; doğru cevap 10 lonca puanı kazandırır.' + (session.team_mode ? '\\n\\nÖnce Takım A veya Takım B’ye katıl, ardından cevabını seç.' : ''))
+        .setDescription(session.prompt + '\n\n**60 saniyen var.** Her oyuncu bu turda bir kez cevap verebilir; doğru cevap 10 lonca puanı kazandırır.' + (session.team_mode ? '\n\nÖnce Takım A veya Takım B’ye katıl, ardından cevabını seç.' : ''))
         .setFooter({ text: 'Frieren Lonca Oyun Salonu • Tur ' + session.session_id.slice(0,8) });
       return interaction.reply({
         embeds: [embed], components: gameComponents(session),
@@ -56,13 +56,13 @@ export default {
       const sessionId = interaction.options.getString('tur',true);
       const board = await getGuildGameTeamLeaderboard(pool,{guildId:interaction.guildId,channelId:interaction.channelId,sessionId});
       if (!board) return interaction.reply({content:'Bu takım turu bulunamadı veya bu kanala ait değil.',flags:MessageFlags.Ephemeral});
-      return interaction.reply({content:'**' + board.game_label + ' · Takım Skoru**\\n🅰️ Takım A: **' + Number(board.team_a_points).toLocaleString('tr-TR') + '** puan (' + Number(board.team_a_players) + ' oyuncu)\\n🅱️ Takım B: **' + Number(board.team_b_points).toLocaleString('tr-TR') + '** puan (' + Number(board.team_b_players) + ' oyuncu)',flags:MessageFlags.Ephemeral});
+      return interaction.reply({content:'**' + board.game_label + ' · Takım Skoru**\n🅰️ Takım A: **' + Number(board.team_a_points).toLocaleString('tr-TR') + '** puan (' + Number(board.team_a_players) + ' oyuncu)\n🅱️ Takım B: **' + Number(board.team_b_points).toLocaleString('tr-TR') + '** puan (' + Number(board.team_b_players) + ' oyuncu)',flags:MessageFlags.Ephemeral});
     }
     if (action === 'siralam') {
       const rows = await getGuildGameLeaderboard(pool, interaction.guildId, 10);
       const lines = rows.map((row,index) => '**' + (index+1) + '.** <@' + row.user_id + '> — **' + Number(row.points).toLocaleString('tr-TR') + '** puan · ' + Number(row.correct_answers) + ' doğru');
       return interaction.reply({
-        content: '**🏆 Lonca Oyun Salonu Sıralaması**\\n' + (lines.join('\\n') || 'Henüz skor kaydı yok.'),
+        content: '**🏆 Lonca Oyun Salonu Sıralaması**\n' + (lines.join('\n') || 'Henüz skor kaydı yok.'),
         flags: MessageFlags.Ephemeral,
         allowedMentions: { parse: [] }
       });
@@ -88,7 +88,7 @@ export async function handleGuildGameInteraction(interaction, db = pool) {
       const messages = {joined:'Takım ' + value + ' kadrosuna katıldın. Şimdi cevap butonunu kullanabilirsin.',already_joined:'Zaten Takım ' + value + ' kadrosundasın.',team_locked:'Bu turda takımın değiştirilemez.',team_full:'Bu takımın 5 kişilik kontenjanı doldu.',not_found:'Bu tur bulunamadı.',expired:'Bu turun süresi doldu.',not_team_mode:'Bu tur takım modu değil.'};
       return interaction.reply({content:messages[joined.status]||'Takıma katılma işlemi tamamlanamadı.',flags:MessageFlags.Ephemeral});
     }
-    if (!/^\\d$/.test(value)) return interaction.reply({content:'Cevap seçimi geçersiz.',flags:MessageFlags.Ephemeral});
+    if (!/^\d$/.test(value)) return interaction.reply({content:'Cevap seçimi geçersiz.',flags:MessageFlags.Ephemeral});
     const result = await answerGuildMiniGame(db, {
       guildId: interaction.guildId, channelId: interaction.channelId,
       sessionId, userId: interaction.user.id, answerIndex: Number(value)
