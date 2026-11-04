@@ -9,7 +9,10 @@ import {
   createPlayerMarketOffer,
   listPlayerMarketOffers,
   resolvePlayerMarketOffer,
-  cancelPlayerMarketOffer
+  cancelPlayerMarketOffer,
+  createPlayerMarketPriceAlert,
+  listPlayerMarketPriceAlerts,
+  cancelPlayerMarketPriceAlert
 } from './player-market.js';
 
 const safeText = value => String(value || '').replace(/[\x00-\x1f\x7f]/g, '').replace(/[`*_~|]/g, '\\$&').slice(0, 120);
@@ -38,12 +41,45 @@ export default {
     .addSubcommand(command => command.setName('teklif-reddet').setDescription('Bir alıcı teklifini reddet.')
       .addStringOption(option => option.setName('teklif').setDescription('Teklif UUID').setMaxLength(36).setRequired(true)))
     .addSubcommand(command => command.setName('teklif-iptal').setDescription('Gönderdiğin bekleyen teklifi geri çek.')
-      .addStringOption(option => option.setName('teklif').setDescription('Teklif UUID').setMaxLength(36).setRequired(true))),
+      .addStringOption(option => option.setName('teklif').setDescription('Teklif UUID').setMaxLength(36).setRequired(true)))
+    .addSubcommand(command => command.setName('alarm-kur').setDescription('Bir eşya hedef fiyatına indiğinde tek seferlik bildirim al.')
+      .addStringOption(option => option.setName('esya').setDescription('Eşyanın tam adı').setMaxLength(120).setRequired(true))
+      .addIntegerOption(option => option.setName('fiyat').setDescription('En fazla ödeyeceğin altın').setMinValue(1).setMaxValue(1000000).setRequired(true)))
+    .addSubcommand(command => command.setName('alarmlar').setDescription('Aktif fiyat alarmlarını görüntüle.'))
+    .addSubcommand(command => command.setName('alarm-sil').setDescription('Fiyat alarmını iptal et.')
+      .addStringOption(option => option.setName('id').setDescription('Alarm UUID').setMaxLength(36).setRequired(true))),
   async execute(interaction) {
     if (!interaction.guildId) {
       return interaction.reply({ content: 'Kuzey Pazarı yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     }
     const action = interaction.options.getSubcommand();
+    if (action === 'alarm-kur') {
+      const result = await createPlayerMarketPriceAlert(pool, {
+        guildId: interaction.guildId, userId: interaction.user.id,
+        itemKey: interaction.options.getString('esya'),
+        targetPrice: interaction.options.getInteger('fiyat')
+      });
+      const alert = result.alert;
+      return interaction.reply({
+        content: result.status === 'created'
+          ? `Fiyat alarmın etkin. **${safeText(alert.item_key)}** ${Number(alert.target_price).toLocaleString('tr-TR')} altın veya altına indiğinde sana DM göndereceğim. Alarm: \`${alert.alert_id}\``
+          : result.status === 'alert_limit' ? 'En fazla 10 aktif fiyat alarmı kurabilirsin.'
+          : 'Oyuncu kaydın bulunamadı.',
+        flags: MessageFlags.Ephemeral
+      });
+    }
+    if (action === 'alarmlar') {
+      const alerts = await listPlayerMarketPriceAlerts(pool, interaction.guildId, interaction.user.id, 10);
+      const lines = alerts.map(alert => `• **${safeText(alert.item_key)}** ≤ ${Number(alert.target_price).toLocaleString('tr-TR')} altın · ${alert.status === 'active' ? 'Aktif' : 'Bildirildi'} · \`${alert.alert_id}\``);
+      return interaction.reply({ content: '**Kuzey Pazarı fiyat alarmların**\\n' + (lines.join('\\n') || 'Henüz fiyat alarmın yok.'), flags: MessageFlags.Ephemeral });
+    }
+    if (action === 'alarm-sil') {
+      const result = await cancelPlayerMarketPriceAlert(pool, {
+        guildId: interaction.guildId, userId: interaction.user.id,
+        alertId: interaction.options.getString('id')
+      });
+      return interaction.reply({ content: result.status === 'cancelled' ? 'Fiyat alarmı iptal edildi.' : 'Bu alarm bulunamadı veya zaten iptal edilmiş.', flags: MessageFlags.Ephemeral });
+    }
     if (action === 'liste') {
       const listings = await listPlayerMarketListings(pool, interaction.guildId, 15);
       const lines = listings.map(item =>
