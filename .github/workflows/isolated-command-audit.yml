@@ -41,6 +41,8 @@ jobs:
         with:
           node-version: 22
       - run: npm install
+      - name: Rehearse versioned migrations on disposable PostgreSQL schema
+        run: node --test scripts/test-database-migrations.integration.js
       - run: node scripts/run-isolated-command-audit.js
       - name: Run real PostgreSQL market concurrency and rollback tests
         run: node --test scripts/test-market-concurrency.integration.js
