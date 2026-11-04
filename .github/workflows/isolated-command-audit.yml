@@ -15,7 +15,7 @@ on:
       - ".github/workflows/isolated-command-audit.yml"
   pull_request:
     branches: [main]
-    types: [opened, reopened]
+    types: [opened, reopened, synchronize]
     paths:
       - "*.js"
       - "commands/**"
