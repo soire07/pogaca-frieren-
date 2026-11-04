@@ -1,17 +1,5 @@
 name: Mobile browser smoke
 on:
-  push:
-    branches: [fix/solo-boss-reward-idempotency-mainline]
-    paths:
-      - 'public-site.js'
-      - 'site-auth.js'
-      - 'owner-dashboard.js'
-      - 'account-center.js'
-      - 'news-birds.js'
-      - 'card-variants.js'
-      - 'scripts/mobile-browser-smoke.mjs'
-      - 'scripts/start-public-site-smoke-server.mjs'
-      - '.github/workflows/mobile-browser-smoke.yml'
   pull_request:
     types: [opened, reopened, synchronize]
     paths:
@@ -27,6 +15,11 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+
+concurrency:
+  group: mobile-browser-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   mobile:
     runs-on: ubuntu-latest
