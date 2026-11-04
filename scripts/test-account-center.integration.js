@@ -79,6 +79,19 @@ test('account export includes linked game and support data while excluding secre
     assert.equal((await updateSupportTicketStatusFromOwner(pool,ticketId,'1553794496234262641','in_progress')).status,'updated');
 
     const exported=await exportSiteAccountData(pool,accountId);
+    const excludedTablePattern='(auth|session|credential|token|secret|owner|support|oauth|audit|log)';
+    const userOwnedTables=await pool.query(
+      "SELECT DISTINCT table_name FROM information_schema.columns WHERE table_schema=current_schema() AND column_name='user_id' AND table_name !~* $1 ORDER BY table_name",
+      [excludedTablePattern]
+    );
+    const missingUserTables=userOwnedTables.rows.map(row=>row.table_name).filter(table=>!Object.hasOwn(exported.linkedProfiles[0].gameData,table));
+    assert.deepEqual(missingUserTables,[],'every non-sensitive direct user_id table must be included in the linked profile export');
+    const accountOwnedTables=await pool.query(
+      "SELECT DISTINCT account_column.table_name FROM information_schema.columns account_column WHERE account_column.table_schema=current_schema() AND account_column.column_name='account_id' AND account_column.table_name !~* $1 AND NOT EXISTS (SELECT 1 FROM information_schema.columns user_column WHERE user_column.table_schema=account_column.table_schema AND user_column.table_name=account_column.table_name AND user_column.column_name='user_id') ORDER BY account_column.table_name",
+      [excludedTablePattern]
+    );
+    const missingAccountTables=accountOwnedTables.rows.map(row=>row.table_name).filter(table=>!Object.hasOwn(exported.accountData,table));
+    assert.deepEqual(missingAccountTables,[],'every non-sensitive direct account_id table must be included in accountData');
     assert.equal(exported.account.username.startsWith('audit_'),true);
     assert.equal(exported.linkedProfiles.length,1);
     assert.equal(exported.linkedProfiles[0].inventory.find(row=>row.item_key==='export_relic').quantity,2);
