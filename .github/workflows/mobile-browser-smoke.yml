@@ -47,8 +47,8 @@ jobs:
             const manual = context.eventName === 'workflow_dispatch';
             let baseUrl = manual ? String(core.getInput('base_url') || '').trim() : '';
             if (!manual) {
-              const sha = context.payload.pull_request?.head?.sha;
-              if (!sha) throw new Error('Pull request head SHA is unavailable; refusing to test production.');
+              const sha = context.payload.pull_request?.head?.sha || context.sha;
+              if (!sha) throw new Error('Git commit SHA is unavailable; refusing to test production.');
               for (let attempt = 0; attempt < 12 && !baseUrl; attempt++) {
                 const deployments = await github.rest.repos.listDeployments({
                   owner: context.repo.owner,
