@@ -12,11 +12,11 @@ test('support ticket input is normalized and bounded',()=>{
 
 test('support ticket creation is scoped to the current account and rate limited',async()=>{
  const calls=[];
- const db={async query(sql,params){calls.push({sql,params});if(sql.includes('SELECT id FROM frieren_site_accounts'))return{rows:[{id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};if(sql.includes('COUNT(*)'))return{rows:[{count:0}],rowCount:1};if(sql.includes('INSERT INTO frieren_support_tickets'))return{rows:[{ticket_id:'ticket-1',category:'bug',subject:'OAuth issue',status:'open'}],rowCount:1};if(sql.includes('INSERT INTO frieren_support_ticket_events'))return{rows:[],rowCount:1};throw Error('unexpected query');}};
+ const db={async query(sql,params){calls.push({sql,params});if(sql.includes('SELECT id FROM frieren_site_accounts'))return{rows:[{id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};if(sql.includes('COUNT('))return{rows:[{count:0}],rowCount:1};if(sql.includes('INSERT INTO frieren_support_tickets'))return{rows:[{ticket_id:'ticket-1',category:'bug',subject:'OAuth issue',status:'open'}],rowCount:1};if(sql.includes('INSERT INTO frieren_support_ticket_events'))return{rows:[],rowCount:1};throw Error('unexpected query');}};
  const result=await createSupportTicket(db,accountId,{category:'bug',subject:'OAuth issue',message:'Callback fails.'});
  assert.equal(result.status,'created');
  assert.ok(calls.every(x=>x.params.includes('123e4567-e89b-12d3-a456-426614174000')));
- const limited={async query(sql){if(sql.includes('SELECT id FROM frieren_site_accounts'))return{rows:[{id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};if(sql.includes('COUNT(*)'))return{rows:[{count:5}],rowCount:1};throw Error('must not insert');}};
+ const limited={async query(sql){if(sql.includes('INSERT INTO frieren_support_tickets'))throw Error('must not insert');if(sql.includes('COUNT('))return{rows:[{count:5}],rowCount:1};return{rows:[{id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};}};
  assert.equal((await createSupportTicket(limited,accountId,{category:'bug',subject:'Help',message:'This is long enough.'})).status,'daily_limit');
 });
 
@@ -69,8 +69,7 @@ test('support conversations are account-scoped and preserve ordered reply histor
  const calls=[];
  const db={async query(sql,params){
   calls.push({sql,params});
-  if(sql.includes('SELECT ticket_id,status FROM frieren_support_tickets'))return{rows:[{ticket_id:'123e4567-e89b-42d3-a456-426614174000',status:'open'}],rowCount:1};
-  if(sql.includes('SELECT ticket_id,message,status FROM frieren_support_tickets'))return{rows:[{ticket_id:'123e4567-e89b-42d3-a456-426614174000',message:'Original',status:'open'}],rowCount:1};
+  if(sql.includes('FROM frieren_support_tickets'))return{rows:[{ticket_id:'123e4567-e89b-42d3-a456-426614174000',message:'Original',status:'open'}],rowCount:1};
   if(sql.includes('INSERT INTO frieren_support_ticket_messages'))return{rows:[{message_id:'message-1',author_type:'account',message:'More details'}],rowCount:1};
   if(sql.includes('FROM frieren_support_ticket_messages'))return{rows:[{message_id:'message-1',author_type:'account',message:'More details'}],rowCount:1};
   if(sql.includes('FROM frieren_support_ticket_events'))return{rows:[{actor_type:'account',previous_status:null,new_status:'open'}],rowCount:1};
