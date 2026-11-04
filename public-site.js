@@ -324,10 +324,10 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
         ?adventurerCollectionPage(user,data.profile,await loadAdventurerCollections(db,guildId,data.profile.user_id))
         :url.pathname==='/maceraci/sosyal'
           ?adventurerSocialPage(user,profile,{
-            friends:await listSocialRelationships(db,guildId,data.profile.user_id,'friend',50),
-            rivals:await listSocialRelationships(db,guildId,data.profile.user_id,'rival',50),
-            requests:await listPendingFriendRequests(db,guildId,data.profile.user_id,50),
-            reputation:await getSocialReputation(db,guildId,data.profile.user_id)
+            friends:await listSocialRelationships(db,guildId,profile.user_id,'friend',50),
+            rivals:await listSocialRelationships(db,guildId,profile.user_id,'rival',50),
+            requests:await listPendingFriendRequests(db,guildId,profile.user_id,50),
+            reputation:await getSocialReputation(db,guildId,profile.user_id)
           },url.searchParams.get('status'))
           :adventurerInventoryPage(user,data);
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
