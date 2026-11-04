@@ -195,7 +195,7 @@ function readOwnerSecondFactorChallenge(token, secret, nowSeconds = Math.floor(D
   return challenge;
 }
 function buildSecondFactorCookie(token, maxAgeSeconds) {
-  return SECOND_FACTOR_COOKIE + '=' + encodeURIComponent(token) + '; Path=/owner; HttpOnly; Secure; SameSite=Strict; Max-Age=' + maxAgeSeconds;
+  return SECOND_FACTOR_COOKIE + '=' + encodeURIComponent(token) + '; Path=/owner; HttpOnly; Secure; SameSite=Lax; Max-Age=' + maxAgeSeconds;
 }
 async function getOwnerTotpConfig(db) {
   const result = await db.query("SELECT setting_value FROM owner_settings WHERE setting_key='owner_totp' LIMIT 1");
