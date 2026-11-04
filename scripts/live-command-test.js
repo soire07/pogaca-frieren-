@@ -1832,7 +1832,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           const wishlist=await getCreatureWishlist(pool,guildId,userId);
           behavioralChecks.push(
             {name:'Yaratık isteği doğma bildirimine bağlanır',expected:'istek kaydı eklenmeli ve spawn bildirimi kullanıcıyı içermeli',actual:wish.status+' / '+(spawn.notifyUserIds||[]).length,passed:wish.status==='added'&&spawn.status==='spawned'&&spawn.notifyUserIds.includes(userId)&&wishlist.some(item=>item.key===creature.key)},
-            {name:'Yaratık yakalama koleksiyona yazılır',expected:'aktif spawn bir kez yakalanmalı ve koleksiyonda görünmeli',actual:caught.status+' / '+collection.total,passed:caught.status==='caught'&&collection.total===1&&collection.entries.some(item=>item.creature_key===spawn.creature.storageKey)}
+            {name:'Yaratık yakalama koleksiyona yazılır',expected:'aktif spawn bir kez yakalanmalı ve koleksiyonda görünmeli',actual:caught.status+' / '+collection.total,passed:caught.status==='caught'&&Boolean(caught.creature?.storageKey)&&collection.total===1&&collection.entries.some(item=>item.creature_key===caught.creature.storageKey)}
           );
           const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
         } else if (commandName === 'yasam') {
