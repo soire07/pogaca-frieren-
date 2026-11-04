@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 const DISCORD_ID = /^\d{17,20}$/;
 const MAX_ACTIVE_LISTINGS = 10;
+const MAX_ACTIVE_OFFERS = 20;
 const MAX_QUANTITY = 1000;
 const MAX_PRICE = 1_000_000;
 
@@ -169,6 +170,11 @@ export async function createPlayerMarketOffer(db, { guildId, buyerId, listingId,
       [listingId, buyerId]
     );
     if (existing.rowCount) return { status: 'already_offered', offerId: existing.rows[0].offer_id };
+    const activeOffers = await client.query(
+      "SELECT COUNT(*)::int AS count FROM player_market_offers WHERE guild_id=$1 AND buyer_id=$2 AND status='pending'",
+      [guildId, buyerId]
+    );
+    if (Number(activeOffers.rows[0]?.count || 0) >= MAX_ACTIVE_OFFERS) return { status: 'offer_limit' };
     const inserted = await client.query(
       "INSERT INTO player_market_offers(offer_id,listing_id,guild_id,buyer_id,offer_coins) VALUES($1,$2,$3,$4,$5) RETURNING offer_id,listing_id,buyer_id,offer_coins,status,created_at",
       [randomUUID(), listingId, guildId, buyerId, amount]
