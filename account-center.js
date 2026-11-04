@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 const ACCOUNT_ID = /^site_([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
 const CATEGORIES = new Set(['technical','bug','account','gameplay','other']);
-const SENSITIVE_TABLE = /(?:account|auth|session|credential|token|secret|owner|support|oauth|audit|log)/i;
+const SENSITIVE_TABLE = /(?:auth|session|credential|token|secret|owner|support|oauth|audit|log)/i;
 const SENSITIVE_COLUMN = /password|secret|token|credential|session|api.?key|private.?key|hash/i;
 
 async function withAccountTransaction(db, operation) {
@@ -281,6 +281,23 @@ export async function exportSiteAccountData(db, accountId) {
     }
     return { ...profile, inventory: inventory.rows, collections: collections.rows, achievements: achievements.rows, marketHistory: marketHistory.rows, marketOffers: marketOffers.rows, gameData };
   }));
+  const accountTableColumns = await db.query("SELECT table_name,column_name FROM information_schema.columns WHERE table_schema=current_schema() AND column_name='account_id' ORDER BY table_name,ordinal_position");
+  const accountColumnsByTable = new Map();
+  for (const column of accountTableColumns.rows || []) {
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(String(column.table_name||'')) || SENSITIVE_TABLE.test(column.table_name)) continue;
+    if (!accountColumnsByTable.has(column.table_name)) accountColumnsByTable.set(column.table_name, []);
+    accountColumnsByTable.get(column.table_name).push(column.column_name);
+  }
+  const accountData = {};
+  for (const [table, columns] of accountColumnsByTable) {
+    if (!columns.includes('account_id') || columns.includes('user_id')) continue;
+    const metadata = await db.query('SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=$1 ORDER BY ordinal_position',[table]);
+    const selected = (metadata.rows || []).map(row => row.column_name).filter(name => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) && !SENSITIVE_COLUMN.test(name));
+    if (!selected.includes('account_id')) continue;
+    const projection = selected.map(name => '"' + name + '"').join(',');
+    const rows = await db.query('SELECT ' + projection + ' FROM "' + table + '" WHERE account_id=$1',[id]);
+    accountData[table] = rows.rows;
+  }
   const ticketsResult = await db.query(
     'SELECT ticket_id,category,subject,message,status,created_at,updated_at FROM frieren_support_tickets WHERE account_id=$1 ORDER BY created_at,ticket_id',
     [id]
@@ -293,9 +310,10 @@ export async function exportSiteAccountData(db, accountId) {
     return { ...ticket, replies:messages.rows, statusHistory:events.rows };
   }));
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     exportedAt: new Date().toISOString(),
     account: accountResult.rows[0],
+    accountData,
     linkedProfiles,
     supportTickets: tickets,
     deletionScope: 'Deleting the site account removes this portal identity and its Discord links. Discord-owned RPG profiles and guild game records remain intact.'
