@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
 
 const ACTIONS = Object.freeze([
-  'Preview', 'Unlock', 'Track', 'Compare', 'Customize', 'Earn', 'Review',
+  'Earn milestones for', 'Review history for',
+  'Preview', 'Unlock', 'Track', 'Compare', 'Customize',
   'Generate', 'Set', 'Build', 'Save', 'Create', 'Replay', 'Filter', 'Share',
   'Follow', 'Nominate', 'Collect', 'Assign', 'Name', 'Place', 'Visit',
   'Connect', 'View', 'Export', 'Configure', 'Manage', 'Upgrade', 'Claim',
