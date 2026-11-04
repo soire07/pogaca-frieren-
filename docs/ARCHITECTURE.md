@@ -93,6 +93,9 @@ Discord ve web için iki ayrı bakiye/ödül/iş kuralı oluşturulamaz.
 - Destructive otomatik rollback yoktur; geri dönüş forward-fix veya doğrulanmış yedekten restore ile yapılır.
 - Poğaça/Owner ve AI hafızası kendi DB bağlantı/izin alanında kalır; migration kümeleri ayrıdır.
 - Mevcut `CREATE TABLE IF NOT EXISTS` kurulumları bir hamlede silinmez. Önce mevcut şema karşılaştırılır ve baseline alınır; sonra modül bazında taşınır.
+- PR #217 uygulama adımı: `database/migrations.js` sürüm sırası, SHA-256 checksum, PostgreSQL advisory lock ve migration başına transaction uygular. Mevcut `ensure*Schema` bootstrap'ı tamamlandıktan sonra legacy baseline `version=0` olarak kaydedilir; yeni SQL dosyaları `database/migrations/0001_*.sql` biçiminde eklenir.
+- Runner Poğaça ana uygulamasının `DATABASE_URL` bağlantısında çalışır; Frieren AI'ın ayrı DB bağlantısına uygulanmaz. İlk migration runner commit'i CI'da doğrulanmadan ve owner onayı olmadan canlı ortama taşınmaz.
+- Otomatik rollback yoktur. Başarısız SQL transaction'ı geri alınır; daha önce uygulanmış migration dosyasının checksum'u değişirse başlangıç durur ve sessizce devam etmez.
 
 ## 6. Servis ve dağıtım topolojisi
 
