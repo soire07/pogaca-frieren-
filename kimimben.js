@@ -6,6 +6,7 @@ import { SlashCommandBuilder,
   ComponentType, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { drawCharacter } from './character-data.js';
+import { pickCardVariant, saveCardVariant } from './card-variants.js';
 
 const BUTTON_TIMEOUT = 10 * 60 * 1000;
 
@@ -81,32 +82,52 @@ async function drawForUser(guildId, userId, previousName = null) {
 
 async function saveCharacter(guildId, userId, character) {
   await ensureUser(guildId, userId);
-  const result = await pool.query(
-    `INSERT INTO anime_character_collection
-      (guild_id, user_id, character_name, anime, rarity, emoji, color, description, traits, image)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-     ON CONFLICT (guild_id, user_id, character_name)
-     DO UPDATE SET quantity = anime_character_collection.quantity + 1,
-                   anime = EXCLUDED.anime,
-                   rarity = EXCLUDED.rarity,
-                   emoji = EXCLUDED.emoji,
-                   color = EXCLUDED.color,
-                   description = EXCLUDED.description,
-                   traits = EXCLUDED.traits,
-                   image = EXCLUDED.image,
-                   last_obtained_at = NOW()
-     RETURNING quantity`,
-    [guildId, userId, character.name, character.anime, character.rarity, character.emoji, character.color, character.description, character.traits, character.image]
-  );
-  await pool.query(
-    `UPDATE users SET pity_count = CASE WHEN $3 IN ('Destansı', 'Efsanevi', 'Gizemli') THEN 0 ELSE pity_count + 1 END
-     WHERE guild_id = $1 AND user_id = $2`,
-    [guildId, userId, character.rarity]
-  );
-  return result.rows[0].quantity;
+  const variant = pickCardVariant();
+  const db = await pool.connect();
+  try {
+    await db.query('BEGIN');
+    const result = await db.query(
+      `INSERT INTO anime_character_collection
+        (guild_id, user_id, character_name, anime, rarity, emoji, color, description, traits, image)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       ON CONFLICT (guild_id, user_id, character_name)
+       DO UPDATE SET quantity = anime_character_collection.quantity + 1,
+                     anime = EXCLUDED.anime,
+                     rarity = EXCLUDED.rarity,
+                     emoji = EXCLUDED.emoji,
+                     color = EXCLUDED.color,
+                     description = EXCLUDED.description,
+                     traits = EXCLUDED.traits,
+                     image = EXCLUDED.image,
+                     last_obtained_at = NOW()
+       RETURNING quantity`,
+      [guildId, userId, character.name, character.anime, character.rarity, character.emoji, character.color, character.description, character.traits, character.image]
+    );
+    await db.query(
+      `UPDATE users SET pity_count = CASE WHEN $3 IN ('Destansı', 'Efsanevi', 'Gizemli') THEN 0 ELSE pity_count + 1 END
+       WHERE guild_id = $1 AND user_id = $2`,
+      [guildId, userId, character.rarity]
+    );
+    const variantResult = await saveCardVariant(db, {
+      guildId, userId, characterName: character.name, variantKey: variant.key
+    });
+    await db.query('COMMIT');
+    return {
+      quantity: Number(result.rows[0].quantity),
+      variant: variantResult.variant,
+      variantQuantity: variantResult.quantity
+    };
+  } catch (error) {
+    await db.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    db.release();
+  }
 }
 
-function createCharacterEmbed(character, user, quantity) {
+function createCharacterEmbed(character, user, saved) {
+  const quantity = saved.quantity;
+  const variant = saved.variant;
   const info = rarityInfo[character.rarity] ?? rarityInfo.Nadir;
   
   const rarityFrame = {
@@ -124,21 +145,22 @@ function createCharacterEmbed(character, user, quantity) {
     Gizemli: '🌌 Eşsiz bir karşılaşma... Poğaça Frieren’in gizemli büyüsü ortaya çıktı!'
   }[character.rarity] ?? 'Yeni bir karakter keşfettin!';
   const embed = new EmbedBuilder()
-    .setColor(character.color)
+    .setColor(variant.color || character.color)
     .setAuthor({
       name: `✧ ${character.rarity.toLocaleUpperCase('tr-TR')} ✧`
     })
     .setTitle(`${character.emoji}  ${character.name}  ${character.emoji}`)
     .setDescription(
-      `${rarityFrame}\n**${user.username}**, ${discoveryLine}\n\n${character.description}\n\n${rarityFrame}`
+      `${rarityFrame}\n**${user.username}**, ${discoveryLine}\n\n${character.description}\n\n✧ **${variant.label}** · ${variant.frame} çerçevesi\n${rarityFrame}`
     )
     .addFields(
-      { name: '🎬  ANİME', value: `**${character.anime}**`, inline: true },
+      { name: '🎬  SERİ', value: `**${character.anime}**`, inline: true },
+      { name: '🎴  KART VARYANTI', value: `**${variant.label}**\\n×${saved.variantQuantity}`, inline: true },
       { name: `${character.emoji}  SINIF`, value: `**${character.rarity}**\n${info.stars}`, inline: true },
       { name: '📚  KOLEKSİYON', value: `**×${quantity}**`, inline: true },
       { name: '✧  KARAKTER ÖZELLİKLERİ', value: `┏  ${character.traits}\n┗━━━━━━━━━━━━━━━━`, inline: false }
     )
-    .setFooter({ text: 'Poğaça Frieren • Karakter Keşfi' })
+    .setFooter({ text: 'Poğaça Frieren • ' + variant.label })
     .setTimestamp();
   if (character.image) embed.setImage(character.image);
   return embed;
@@ -168,16 +190,16 @@ export default {
     if (!drawClaim.ok) return interaction.editReply(cooldownMessage(drawClaim));
 
     let character = await drawForUser(interaction.guildId, interaction.user.id);
-    let quantity;
+    let saved;
     try {
-      quantity = await saveCharacter(interaction.guildId, interaction.user.id, character);
+      saved = await saveCharacter(interaction.guildId, interaction.user.id, character);
     } catch (error) {
       console.error('Karakter kaydetme hatası:', error);
       return interaction.editReply('Karakter veritabanına kaydedilemedi. Lütfen biraz sonra tekrar dene.');
     }
 
     const response = await interaction.editReply({
-      embeds: [createCharacterEmbed(character, interaction.user, quantity)],
+      embeds: [createCharacterEmbed(character, interaction.user, saved)],
       components: [createRow()]
     });
 
@@ -203,9 +225,9 @@ export default {
           return button.reply({ content: cooldownMessage(drawClaim), flags: MessageFlags.Ephemeral }).catch(() => {});
         }
         const nextCharacter = await drawForUser(interaction.guildId, interaction.user.id, character.name);
-        const nextQuantity = await saveCharacter(interaction.guildId, interaction.user.id, nextCharacter);
+        const nextSaved = await saveCharacter(interaction.guildId, interaction.user.id, nextCharacter);
         await button.update({
-          embeds: [createCharacterEmbed(nextCharacter, interaction.user, nextQuantity)],
+          embeds: [createCharacterEmbed(nextCharacter, interaction.user, nextSaved)],
           components: [createRow()]
         });
         character = nextCharacter;
