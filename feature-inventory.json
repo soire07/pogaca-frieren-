@@ -4508,7 +4508,7 @@
           "scripts/test-public-site.js",
           "scripts/test-adventurer-platform.integration.js"
         ],
-        "scope": "Authenticated dashboard route checks session gating, renders linked RPG/season/event data and exposes a CSRF-protected link action; disposable PostgreSQL test verifies dashboard account isolation. Browser-driven E2E remains unverified."
+        "scope": "Authenticated dashboard and inventory routes are account/guild scoped; CSRF-protected event RSVP join/leave forms use the linked Discord character. Route tests and disposable PostgreSQL integration verify inventory/equipment and RSVP state. Live OAuth, browser and Discord delivery remain unverified."
       }
     },
     {
@@ -18045,9 +18045,10 @@
         "level": "unit_and_isolated_postgresql",
         "tests": [
           "scripts/test-player-market.js",
-          "scripts/test-player-market.integration.js"
+          "scripts/test-player-market.integration.js",
+          "scripts/test-public-site.js"
         ],
-        "scope": "Escrowed listing creation, exact inventory debit/restore, concurrent single-sale settlement, atomic buyer/seller coin transfer, self-purchase and insufficient-balance rejection, equipped-gear protection and transaction history are covered by unit and isolated PostgreSQL tests. Live Discord interaction and a web marketplace interface remain unverified."
+        "scope": "Escrowed listing creation, exact inventory debit/restore, concurrent single-sale settlement, atomic buyer/seller coin transfer, self-purchase and insufficient-balance rejection, equipped-gear protection and transaction history are covered by unit and isolated PostgreSQL tests. The authenticated web /pazar route adds account/guild scoping, CSRF-protected listing, purchase and cancellation forms, and history rendering. Live Discord interaction and browser E2E remain unverified."
       }
     }
   ],

@@ -241,3 +241,15 @@ Bu bölüm, ürünün kendi sitesi veya resmî dokümanında açıkça sunulan y
 ### Ücretsiz/ücretli ve kapsam notu
 
 Rakiplerin premium paketleri, özel API'leri veya ücretli dashboard özellikleri Frieren'e taşınmayacak. Herhangi bir özellik yalnızca ücretsiz altyapıyla, mevcut PostgreSQL/Discord.js/Render mimarisinde güvenli ve sürdürülebilir biçimde uygulanabiliyorsa aday olarak kalır. Genel moderasyon, ban/kick/timeout, otomod ve ceza günlükleri Poğaça'nın RPG/eğlence kapsamı dışındadır.
+## Roadmap kayıtlarının normalize edilmesi — 2026-11-04
+
+`feature-inventory.json` içindeki 1.675 planlı satır, 1.675 bağımsız oyun mekaniği değildir. Kategori + temel yetenek adı üzerinden, baştaki işlem fiilleri kaldırılarak yapılan normalize etme sonucu:
+
+- **325 temel yetenek grubu**.
+- **225 grup**, aynı temel yeteneği yedi işlemle listeler: Preview, Unlock, Track, Compare, Customize, Earn milestones, Review history (**1.575 satır**).
+- **50 tek işlemli grup** (**50 satır**).
+- **50 fiilsiz tekil grup** (**50 satır**).
+- Toplam: **1.575 + 50 + 50 = 1.675 planlı satır**.
+
+Bu yalnızca ad/fiil normalizasyonudur; anlamsal eşdeğerlik veya kodda mevcut olma kanıtı değildir. Hiçbir kayıt silinmedi. Her temel yetenek yine kaynak kod, test kanıtı ve rakip davranışıyla karşılaştırılmalıdır. Ayrıntılı ID eşlemesi: `docs/ROADMAP_CAPABILITY_INDEX.md`.
+

@@ -269,7 +269,7 @@ test('linked adventurer inventory is account-scoped and includes equipment and R
     assert.ok(listed);
     assert.equal(listed.joined,true);
   } finally {
-    await pool.query('DELETE FROM site_discord_links WHERE account_id=$1',[accountUuid]);
+    await pool.query('DELETE FROM site_discord_links WHERE account_id=$1',[accountId.replace(/^site_/, '')]);
     if(eventId) await pool.query('DELETE FROM guild_events WHERE event_id=$1',[eventId]);
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
   }

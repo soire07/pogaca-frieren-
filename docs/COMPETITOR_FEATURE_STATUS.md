@@ -73,7 +73,7 @@ Bu dalda 10 yeni, kanıt bağlantılı özellik kaydı eklendi: **2.010 toplam k
 | ENT-018 | Kart albümü, seri, nadirlik ve varyant | Kısmi | Anime karakter koleksiyonu ve nadirlik filtresi var: `kimimben.js`, `koleksiyon.js`. Kart baskı/seri/varyant kataloğu bulunamadı. |
 | ENT-019 | Wishlist, favori, not ve profil rozeti | Kısmi; entegrasyon dalında mevcut | Karakter wishlist var (`character-wishlist.js`, `karakteristek.js`); favori/not/rozet ayrı ayrı yok. |
 | ENT-020 | Karakter/kart takası ve iki taraflı onay | Mevcut / doğrulama gerekli | Karakter kopyası teklifi, alıcı kabul/red ve PostgreSQL transaction akışı var: `takasteklif.js`, `trade-transaction.js`. Kart kozmetiği takasıyla aynı kapsam değildir. |
-| ENT-021 | Oyuncu pazarı, arama ve filtre | Kısmi; PR #219 dalında mevcut | `/pazar liste/sat/al/iptal/gecmis`; escrow, fiyat sıralı ilanlar ve atomik alım var. Arama/kategori filtreleri ve web pazarı henüz yok: `player-market.js`, `pazar.js`. |
+| ENT-021 | Oyuncu pazarı, arama ve filtre | Kısmi; PR #219 taslağında mevcut | Discord `/pazar` komutları ve web `/pazar` sayfası aynı escrow/transaction servislerini kullanıyor; ilan, satın alma, iptal ve geçmiş var. Arama/kategori filtreleri ve teklif pazarlığı eksik: `player-market.js`, `pazar.js`, `public-site.js`. |
 | ENT-022 | Teklif, kabul, iptal ve işlem geçmişi | Kısmi | `/pazar` doğrudan satın alma, satıcı iptali ve işlem geçmişi sağlıyor; pazarlık/teklif kabul akışı yok. Karakter takasındaki iki taraflı onay ayrı kalıyor. |
 | ENT-023 | Trivia, kelime, hafıza ve tahmin oyunları | Kısmi | Anime quiz ve rastgele karakter keşfi var. Kelime/hafıza oyunları ve takım mini oyunları bulunamadı. |
 | ENT-024 | Takım mini oyunları ve günlük skor | Bulunamadı | Takım mini oyun skoru/oturum sistemi bulunamadı. |
@@ -90,7 +90,7 @@ Bu dalda 10 yeni, kanıt bağlantılı özellik kaydı eklendi: **2.010 toplam k
 | ENT-035 | Anime karakter istek listesi | Mevcut / doğrulama gerekli | `character-wishlist.js`, `karakteristek.js`; arama, ekle/sil, tekrar engeli ve 10 kayıt sınırı. Unit + izole PostgreSQL testleri var; canlı autocomplete henüz doğrulanmadı. |
 | ENT-036 | Anime Quiz kalıcı puan ve doğru cevap takibi | Mevcut / doğrulama gerekli | `animequiz.js`; `anime_quiz_scores` kalıcı tablosu ve eşzamanlı puan yazımı. Unit + izole PostgreSQL testleri var; canlı Message Content privileged intent henüz doğrulanmadı. |
 | ENT-037 | Lonca etkinliği otomatik hatırlatması | Mevcut / doğrulama gerekli | `adventurer-platform.js`, `index.js`; 30 dakika öncesi zamanlayıcı, PostgreSQL claim/lease, retry ve idempotent finalize. İzole PostgreSQL testi var; gerçek Discord kanal teslimi henüz doğrulanmadı. |
-| ENT-038 | Kuzey Pazarı oyuncular arası eşya pazarı | Mevcut / doğrulama gerekli | `player-market.js`, `pazar.js`; escrow ile ilan açma, atomik satın alma/para transferi, satıcı iptali, geçmiş, eşzamanlı tek satış ve takılı ekipman koruması. Unit + izole PostgreSQL testleri var; canlı Discord ve web pazar ekranı doğrulanmadı. |
+| ENT-038 | Kuzey Pazarı oyuncular arası eşya pazarı | Mevcut / doğrulama gerekli | `player-market.js`, `pazar.js`, `public-site.js`; Discord ve web üzerinden escrow ilanı, atomik satın alma/para transferi, satıcı iptali ve geçmiş. Unit, route ve izole PostgreSQL testleri var; canlı Discord/web tarayıcı akışı henüz doğrulanmadı. |
 
 ## Web sitesi ve kullanıcı paneli backlog'u
 
@@ -101,9 +101,9 @@ Bu dalda 10 yeni, kanıt bağlantılı özellik kaydı eklendi: **2.010 toplam k
 | WEB-003 | Sunucuya özel modül ayarları | Entegrasyon dalında mevcut; henüz ana dala alınmadı | Guild Dashboard feature gate ayarları ve yetki kontrolü var; testleri var: `guild-dashboard.js`, `guild-feature-settings.js`. |
 | WEB-004 | Aranabilir komut arşivi | Mevcut / doğrulama gerekli | `/komutlar` sayfası dinamik, aramalı ve kategorili; testleri mevcut: `public-site.js`, `scripts/test-public-site.js`. |
 | WEB-005 | Maceracı profili | Mevcut / doğrulama gerekli | `/maceraci` bağlı karakterin seviye, XP, altın, HP/mana ve etkinliklerini gösteriyor. Daha geniş profil vitrini eksik olabilir: `public-site.js`. |
-| WEB-006 | Envanter/kart/yoldaş web görünümü | Kısmi | Owner Panel oyuncu ayrıntısında envanter ve ekipmanı görebiliyor; oyuncunun kendi web panelinde envanter/koleksiyon/yoldaş ekranı bulunamadı: `owner-platform.js`, `public-site.js`. |
-| WEB-007 | Web oyuncu pazarı | Bulunamadı | Web'de oyuncu listeleme/teklif/satın alma pazarı bulunamadı. |
-| WEB-008 | Web etkinlik takvimi ve RSVP | Kısmi | Maceracı paneli yaklaşan etkinlikleri listeliyor; web üzerinden RSVP/ayrılma ve hatırlatma ayarları bulunamadı. |
+| WEB-006 | Envanter/kart/yoldaş web görünümü | Kısmi; PR #219 taslağında envanter mevcut | `/maceraci/envanter?guildId=...` bağlı karakterin envanter ve ekipmanını sunucu kapsamıyla gösteriyor. Kart albümü ve yoldaş web görünümü hâlâ eksik: `public-site.js`, `adventurer-platform.js`. |
+| WEB-007 | Web oyuncu pazarı | Mevcut / doğrulama gerekli | PR #219 taslağındaki `/pazar` sayfası ilan listeleme, satışa çıkarma, satın alma, satıcı iptali ve işlem geçmişini mevcut escrow servisine bağlar. CSRF ve hesap/sunucu kapsamı testleri var; canlı tarayıcı akışı henüz doğrulanmadı. |
+| WEB-008 | Web etkinlik takvimi ve RSVP | Kısmi; PR #219 taslağında RSVP mevcut | `/maceraci` yaklaşan etkinlikleri listeler ve bağlı karakter için CSRF korumalı katıl/ayrıl formları sunar. Hatırlatma tercihleri ve tam takvim görünümü eksik; canlı Discord teslimi ayrıca doğrulanmalı. |
 | WEB-009 | Analitik ve grafikler | Kısmi | Owner Panel'de RPG ve servis metrikleri var; kullanıcı/sunucu yöneticisi self-service analitik paneli bulunamadı. |
 | WEB-010 | Görsel mesaj/Embed editörü | Bulunamadı | Görsel editör ve canlı önizleme bulunamadı. |
 | WEB-011 | Özel komut/büyü otomasyon oluşturucusu | Bulunamadı | Güvenli trigger/condition/action oluşturucu bulunamadı. |

@@ -137,8 +137,8 @@ Aşağıdaki backlog maddelerinin ilk uygulama dilimi PR #219 / `feat/frieren-pl
 - ENT-035: Anime karakter wishlist.
 - ENT-036: Kalıcı Anime Quiz puanları.
 - ENT-037 / ENT-025: 30 dakika önceden etkinlik hatırlatması; PostgreSQL claim/retry/idempotency.
-- ENT-038 / ENT-021–022: escrow tabanlı oyuncu pazarı; ilan, satın alma, iptal ve işlem geçmişi. Arama/filtre, teklif pazarlığı ve web pazarı hâlâ eksik.
+- ENT-038 / ENT-021–022: escrow tabanlı oyuncu pazarı; Discord komutları ve PR #219 taslağındaki web `/pazar` sayfası aynı transaction servislerini kullanır. İlan, satın alma, iptal ve işlem geçmişi var; arama/filtre ve teklif pazarlığı eksik.
 
-Web tarafında WEB-001–003 için Discord OAuth bağlantısı, yetkili sunucu seçimi ve sunucu bazlı modül/komut anahtarları eklendi. PR #219 CI ve izole PostgreSQL testleri tamamlanmadan ve canlı OAuth/Discord akışı doğrulanmadan bunlar production-ready kabul edilmez.
+Web tarafında WEB-001–003 için Discord OAuth bağlantısı, yetkili sunucu seçimi ve sunucu bazlı modül/komut anahtarları mevcut. PR #219 taslağında WEB-006 envanter/ekipman görünümü, WEB-007 escrow tabanlı web pazarı ve WEB-008 etkinlik RSVP/ayrılma akışları da eklendi. Kart/yoldaş web görünümü, pazar arama/teklifleri ve etkinlik hatırlatma tercihleri eksik. CI/izole PostgreSQL testleri canlı OAuth, mobil tarayıcı veya Discord teslimi yerine geçmez.
 
 Yeni uygulama grubu, yukarıdaki tamamlanmamış alt davranışları mevcut kodla tekrar karşılaştırarak sürdürülmelidir; aynı özellik ailesi için ikinci modül/komut oluşturulmamalıdır.

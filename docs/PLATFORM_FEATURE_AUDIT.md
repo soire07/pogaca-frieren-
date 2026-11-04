@@ -9,8 +9,8 @@ Bu bölüm, 2026-11-01 tarihli başlangıç notunu entegrasyon dalı `feat/frier
 - Yeni kanıt bağlantılı kayıtlar: ENT-031–ENT-037 ve WEB-016–WEB-017.
 - Rakip karşılaştırması Dyno, MEE6, Carl-bot, Tatsu ve UnbelievaBoat resmî sayfalarıyla güncellendi; kaynaklar ve ücretsiz/premium sınır notları `docs/COMPETITOR_FEATURE_MATRIX.md` içinde.
 - Poğaça modülleri: yoldaş, balıkçılık, sera, yaratık arşivi, karakter wishlist, Anime Quiz kalıcı puan ve Lonca etkinlik hatırlatmaları.
-- Web modülleri: Discord OAuth bağlantısı, yetkili sunucu seçimi ve sunucu bazlı Frieren modül anahtarları.
-- Bot CI **715/715**, komut senaryoları **31/31**, slash command doğrulaması ve Owner Panel testleri başarılı; izole PostgreSQL entegrasyonları **82/82** başarılı.
+- Web modülleri: Discord OAuth bağlantısı, yetkili sunucu seçimi, sunucu bazlı Frieren modül anahtarları, bağlı karakterin envanter/ekipman görünümü (`/maceraci/envanter`), escrow tabanlı oyuncu pazarı (`/pazar`) ve etkinlik RSVP/ayrılma formları (`/maceraci`).
+- Son tam bot kontrolü **725/725** test ve **31/31** komut senaryosu ile başarılı; slash command doğrulaması ve Owner Panel testleri başarılı. İzole PostgreSQL denetiminin önceki tamamlanmış sonucu **82/82** idi; yeni web envanteri/RSVP entegrasyon testi genişletilmiş denetim paketine eklendi. Bu testler canlı Discord/web tarayıcı doğrulaması değildir.
 - PR #219, PR #217 üzerine yığılmış taslak PR'dır. Merge, Render deploy, Discord komut kaydı ve üretim DB değişikliği yapılmadı.
 
 Son denetim: 2026-11-01  
@@ -42,7 +42,7 @@ Bu belge bir başlangıç envanteridir; tamamlanma beyanı değildir. Özellik, 
 
 ### Kanıt ve sınır
 - Rakip bot/web karşılaştırmasından gelen 10 ek kayıt (`ENT-031–038`, `WEB-016–017`) eklendi. Bunlar kodda mevcut işlevleri temsil eder; canlı Discord/web akışlarının tamamı doğrulanmış değildir.
-- Depodaki `feature-inventory.json` 335 mevcut özellik kaydı içeriyor; toplam 2.010 kayıt (335 mevcut + 1.675 planlanan); başlangıç hedefi 2.000.
+- Depodaki `feature-inventory.json` 335 mevcut özellik kaydı içeriyor; toplam 2.010 kayıt (335 mevcut + 1.675 planlanan); başlangıç hedefi 2.000. Planlanan 1.675 satır, normalize edildiğinde 325 temel yetenek grubuna ayrılıyor: 225 grup yedi işlem fiiliyle (1.575 satır), 50 tek işlemli ve 50 fiilsiz tekil kayıt. Ayrıntı: `docs/ROADMAP_CAPABILITY_INDEX.md`.
 - Envanterin `auditComplete` alanı `false`. Bu nedenle 335 sayısı tüm bot özelliklerinin eksiksiz envanteri değildir.
 - 335 kaydın tamamı `implemented_needs_runtime_test` durumunda. Bu, kaynakta uygulama bulunduğunu belirtir; her özelliğin canlı Discord'da gerçek kullanıcıyla uçtan uca doğrulandığını göstermez.
 - Önceki CI kanıtları: 715/715 ana bot testi, 31/31 komut senaryosu ve 82/82 izole PostgreSQL entegrasyon testi başarılıydı. 2026-11-04 tarihli güncel HEAD `bef213d891080aac4414ca418b8b46029f115be7` için ana bot CI, komut doğrulaması ve Owner Panel testleri başarılı; genişletilmiş PostgreSQL denetimi yeni pazar escrow testiyle tekrar çalışıyor ve henüz tamamlanmadı. Bunlar sentetik Discord etkileşimleri ve izole test veritabanı kullanır; gerçek kullanıcı hesabıyla manuel Discord testi değildir.
