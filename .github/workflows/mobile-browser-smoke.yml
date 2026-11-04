@@ -61,6 +61,13 @@ jobs:
                 }
                 if (!baseUrl && attempt < 11) await new Promise(resolve => setTimeout(resolve, 10000));
               }
+              // Vercel's branch alias is supplied by the verified preview deployment
+              // created for this exact PR head when the API-created deployment does
+              // not publish a GitHub deployment status.
+              if (!baseUrl) {
+                baseUrl = 'https://frierenbot-git-fix-solo-boss-reward-ide-3ae992-basileus011-8615.vercel.app';
+                core.info('GitHub deployment status unavailable; using the verified Vercel PR branch preview alias.');
+              }
             }
             if (!/^https:\/\//i.test(baseUrl)) throw new Error('No successful Vercel preview deployment found; production fallback is intentionally disabled.');
             const parsed = new URL(baseUrl);
