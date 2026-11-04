@@ -124,3 +124,12 @@ Bu karar mimariyi ve hedefi netleştirir; 1.675 planlı roadmap kaydının uygul
 ## Başlangıç durumu
 
 Güncel uygulama PR #217 taslağında tutuluyor; üretim verisi değiştirilmedi ve canlı dağıtım yapılmadı. 2026-11-04 doğrulaması: 748/748 ana bot testi, 31/31 komut senaryosu, 89/89 izole PostgreSQL senaryosu ve ilgili Frieren AI/Owner Panel CI kontrolleri başarılı. Canlı Discord, OAuth callback ve gerçek mobil/masaüstü tarayıcı doğrulaması henüz yapılmadı.
+
+
+## Follow-up verification notes — 2026-11-04
+
+- Owner Panel login was simplified per owner request: Discord OAuth remains mandatory, the fixed Owner ID check remains server-side, and TOTP/Authenticator setup and verification are no longer part of the owner login route. Successful OAuth issues a signed owner session directly; non-owner OAuth identities are rejected before any owner session is issued. Regression coverage was added for both paths. This is not yet live OAuth/browser validation.
+- Versioned migration runner is now implemented in `database/migrations.js` and invoked after the legacy schema initializer sequence. It serializes runs with a PostgreSQL advisory lock, records immutable SHA-256 checksums, executes each SQL migration transactionally, and establishes a non-destructive legacy baseline at version 0.
+- Five unit-level migration runner tests cover ordering, idempotency, checksum drift, rollback/lock release, and invalid sequence/filename/transaction controls. No schema-changing SQL migration has been added yet; existing schema parity and real PostgreSQL migration proof remain release gates.
+- The last verified pre-follow-up CI head `fcb5688` completed all six PR workflows, including the isolated PostgreSQL audit. The newer OAuth/migration commits have not yet received attached workflow results; the prior 89/89 integration result must not be attributed to the newer HEAD.
+- PR #217 remains draft and GitHub currently reports the branch as not mergeable against `main`; the one-commit OAuth overlap must be reconciled before review. No production DB, live Discord, or Render deployment action was taken.
