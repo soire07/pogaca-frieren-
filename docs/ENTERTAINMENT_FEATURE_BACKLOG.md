@@ -137,7 +137,7 @@ Aşağıdaki backlog maddelerinin ilk uygulama dilimi PR #217 / `fix/solo-boss-r
 - ENT-035: Anime karakter wishlist.
 - ENT-036: Kalıcı Anime Quiz puanları.
 - ENT-037 / ENT-025: 30 dakika önceden etkinlik hatırlatması; PostgreSQL claim/retry/idempotency.
-- ENT-038 / ENT-021–022: escrow tabanlı oyuncu pazarı; Discord komutları ve PR #217 içindeki web `/pazar` sayfası aynı transaction servislerini kullanır. İlan, satın alma, iptal ve işlem geçmişi var; arama/filtre ve teklif pazarlığı eksik.
+- ENT-038 / ENT-021–022: escrow tabanlı oyuncu pazarı; Discord ve web `/pazar` aynı transaction servislerini kullanır. İlan, satın alma, iptal, geçmiş, web arama/fiyat/sıralama filtreleri ve pazarlık teklifi akışı var. Alıcı teklifi kabul anında bakiyeden tahsil edilir; satıcı kabulü item/coin aktarımını atomik yapar. Kategori filtresi, fiyat alarmı ve teklif önizleme eksik.
 
 Web tarafında WEB-001–003 için Discord OAuth bağlantısı, yetkili sunucu seçimi ve sunucu bazlı modül/komut anahtarları mevcut. PR #217 içinde WEB-006 envanter/ekipman görünümü, WEB-007 escrow tabanlı web pazarı ve WEB-008 etkinlik RSVP/ayrılma akışları da eklendi. Kart/yoldaş web görünümü, pazar arama/teklifleri ve etkinlik hatırlatma tercihleri eksik. CI/izole PostgreSQL testleri canlı OAuth, mobil tarayıcı veya Discord teslimi yerine geçmez.
 
@@ -157,3 +157,4 @@ Yeni uygulama grubu, yukarıdaki tamamlanmamış alt davranışları mevcut kodl
 - Yoldaş evrimi dört türde üç aşama, seviye/altın gereksinimi, atomik ücret kesintisi ve geçmiş kaydıyla genişletildi. /yoldas evrim ve /yoldas gecmis eklendi.
 - Public home showcase GET route yerleşimi düzeltildi; herkese açık olmayan evler için 404 gizlilik testi eklendi.
 - Bu değişiklikler PR #217 içinde; CI/izole PostgreSQL doğrulaması bekleniyor. Önceki PR #219 kapatıldı ve merge edilmedi.
+- Teklif pazarlığı Discord ve web'e eklendi: teklif ver, gelen teklifleri gör, kabul et/reddet ve geri çek. Teklifler non-binding; kabul edilene kadar bakiye bloke edilmez. 773/773 otomatik test, 31/31 komut senaryosu ve 100/100 izole PostgreSQL entegrasyon senaryosu geçti.
