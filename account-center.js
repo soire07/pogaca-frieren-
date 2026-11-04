@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 const ACCOUNT_ID = /^site_([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
 const CATEGORIES = new Set(['technical','bug','account','gameplay','other']);
-const SENSITIVE_TABLE = /(?:auth|session|credential|token|secret|owner|support|oauth|audit|log)/i;
+const SENSITIVE_TABLE = /(?:auth|session|credential|token|secret|owner|support|oauth|audit|log|site_discord_links)/i;
 const ACCOUNT_DELETE_EXCLUDED_TABLE = /(?:owner|audit|log|support)/i;
 const SENSITIVE_COLUMN = /password|secret|token|credential|session|api.?key|private.?key|hash/i;
 const USER_REFERENCE_COLUMNS = new Set([
