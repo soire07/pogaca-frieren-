@@ -749,3 +749,42 @@ test('Discord owner OAuth issues the owner session directly without an authentic
     }
   }
 });
+
+
+test('owner support inbox is protected by the Discord owner session and renders staff reply controls',async()=>{
+ const previous={CLIENT_ID:process.env.CLIENT_ID,DISCORD_CLIENT_SECRET:process.env.DISCORD_CLIENT_SECRET,ADMIN_SESSION_SECRET:process.env.ADMIN_SESSION_SECRET};
+ process.env.CLIENT_ID='test-client-id';process.env.DISCORD_CLIENT_SECRET='test-discord-secret';process.env.ADMIN_SESSION_SECRET=secret;
+ const token=createOwnerSession(secret,Math.floor(Date.now()/1000)+3600);
+ const ticketId='123e4567-e89b-42d3-a456-426614174000';
+ const db={async query(sql){
+  if(sql.includes('ORDER BY CASE status'))return{rows:[{ticket_id:ticketId,account_id:'123e4567-e89b-12d3-a456-426614174000',category:'bug',subject:'OAuth issue',message:'Callback failed',status:'open',created_at:new Date().toISOString(),updated_at:new Date().toISOString()}],rowCount:1};
+  if(sql.includes('WHERE ticket_id=$1'))return{rows:[{ticket_id:ticketId,account_id:'123e4567-e89b-12d3-a456-426614174000',category:'bug',subject:'OAuth issue',message:'Callback failed',status:'open'}],rowCount:1};
+  if(sql.includes('FROM frieren_support_ticket_messages'))return{rows:[{author_type:'account',message:'Callback failed'}],rowCount:1};
+  if(sql.includes('FROM frieren_support_ticket_events'))return{rows:[{previous_status:null,new_status:'open'}],rowCount:1};
+  throw new Error('Unexpected support query: '+sql);
+ }};
+ const req={method:'GET',url:'/owner/support?ticket='+ticketId,headers:{cookie:'frieren_owner_session='+encodeURIComponent(token)}};
+ const response={status:0,headers:{},body:'',writeHead(status,headers={}){this.status=status;this.headers=headers;},end(body=''){this.body=body;}};
+ try{
+  assert.equal(await handleOwnerDashboardRequest(req,response,{client:{},db}),true);
+  assert.equal(response.status,200);
+  assert.match(response.body,/Destek merkezi/);
+  assert.match(response.body,/Yanıtı gönder/);
+  assert.match(response.body,/support-status/);
+ }finally{for(const [key,value] of Object.entries(previous)){if(value===undefined)delete process.env[key];else process.env[key]=value;}}
+});
+
+test('owner support reply action requires owner session and CSRF before writing a staff message',async()=>{
+ let inserted=false;
+ const db={async query(sql){
+  if(sql.includes('SELECT ticket_id,status FROM frieren_support_tickets'))return{rows:[{ticket_id:'123e4567-e89b-42d3-a456-426614174000',status:'open'}],rowCount:1};
+  if(sql.includes('INSERT INTO frieren_support_ticket_messages')){inserted=true;return{rows:[{message_id:'staff-1'}],rowCount:1};}
+  if(sql.includes('UPDATE frieren_support_tickets SET updated_at'))return{rows:[],rowCount:1};
+  if(sql.includes('INSERT INTO frieren_support_ticket_events'))return{rows:[],rowCount:1};
+  throw new Error('Unexpected support action query: '+sql);
+ }};
+ const {response}=await runOwnerPost({action:'support-reply',csrf:'session',ticketId:'123e4567-e89b-42d3-a456-426614174000',message:'We are investigating.'},db);
+ assert.equal(response.status,303);
+ assert.match(response.headers.Location,/support_reply_saved/);
+ assert.equal(inserted,true);
+});
