@@ -6,6 +6,15 @@ import { applyEquipmentSetBonus } from '../rpg-mechanics.js';
 import { buildCoopTestUserIds } from './coop-test-users.js';
 import { handleCharacterPanelInteraction } from '../karakter.js';
 import { createIsolatedTestRunContext } from './isolated-test-run-context.js';
+import { FARM_SEEDS, initFarmSchema, plantSeed, harvestFarm, getFarmPlot } from '../farming.js';
+import { FISHING_ZONES, initFishingSchema, fishAtZone, getFishCollection } from '../fishing.js';
+import { initCharacterWishlistSchema, setCharacterWishlist, getCharacterWishlist } from '../character-wishlist.js';
+import { ensureGuildGameTables, startGuildMiniGame, answerGuildMiniGame } from '../guild-games.js';
+import { ensurePlayerMarketTables, createPlayerMarketListing, cancelPlayerMarketListing } from '../player-market.js';
+import { CREATURE_CATALOG, initCreatureSchema, setCreatureWishlist, getCreatureWishlist, maybeSpawnCreature, claimCreature, getCreatureCollection } from '../creatures.js';
+import { COMPANION_CATALOG, initCompanionSchema, adoptCompanion, careForCompanion, getCompanion } from '../companions.js';
+import { ensurePlayerExperienceSchema, setHomeVisibility } from '../player-experience.js';
+import { ensureSocialPlatformTables, createFriendRequest, respondFriendRequest, listSocialRelationships, sendCoinGift, commendPlayer, getSocialReputation } from '../social-platform.js';
 
 
 export function buildIsolatedTestGuildId(index) {
@@ -1721,6 +1730,130 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Öğrenilmemiş büyü pratiği kaynak koruması', expected: 'Alev Küresi öğrenilmediyse işlem reddedilmeli; altın, mana ve ustalık kaydı değişmemeli', actual: JSON.stringify(before.rows[0]) + ' → ' + JSON.stringify(afterLocked.rows[0]), passed: lockedEffects.length > 0 && payloadTextFromEffects(lockedEffects).includes('henüz öğrenilmedi') && Number(before.rows[0].coins) === Number(afterLocked.rows[0].coins) && Number(before.rows[0].mana) === Number(afterLocked.rows[0].mana) && lockedMastery.rowCount === 0 },
             { name: 'Öğrenilmiş büyü pratiği kaynak ve ustalık kaydı', expected: 'öğrenilmiş Alev Küresi 25 altın ve 8 mana harcayıp bir kullanım kaydetmeli', actual: 'altın ' + afterLearned.rows[0]?.coins + ', mana ' + afterLearned.rows[0]?.mana + ', kullanım ' + learnedMastery.rows[0]?.casts, passed: Number(afterLearned.rows[0]?.coins) === 75 && Number(afterLearned.rows[0]?.mana) === 92 && Number(learnedMastery.rows[0]?.casts) === 1 && Number(learnedMastery.rows[0]?.mastery_level) === 0 }
           );
+        }
+
+        if (commandName === 'bahce') {
+          await initFarmSchema(pool);
+          await pool.query('UPDATE users SET level=30,coins=2000 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const seed=FARM_SEEDS.find(item=>item.key==='winter_berry');
+          const planted=await plantSeed(pool,{guildId,userId,seedKey:seed.key});
+          const plot=await getFarmPlot(pool,guildId,userId);
+          const harvestDate=new Date(Date.now()+48*60*60*1000);
+          const harvested=await harvestFarm(pool,{guildId,userId},{date:harvestDate});
+          const inventory=await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,userId,seed.name]);
+          behavioralChecks.push(
+            {name:'Bahçe ekimi oyuncuya ait parsel oluşturur',expected:'tohum bedeli düşülmeli ve seçilen tohum parselde saklanmalı',actual:planted.status+' / '+(plot?.seed_key||'parsel yok'),passed:planted.status==='planted'&&plot?.seed_key===seed.key},
+            {name:'Bahçe hasadı ürünü envantere ekler',expected:'hasat tamamlanmalı ve ürün miktarı hasat sonucuyla eşleşmeli',actual:harvested.status+' / '+(inventory.rows[0]?.quantity||0),passed:harvested.status==='harvested'&&Number(inventory.rows[0]?.quantity)===harvested.quantity}
+          );
+          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        } else if (commandName === 'balik') {
+          await initFishingSchema(pool);
+          await pool.query('UPDATE users SET level=30 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const caught=await fishAtZone(pool,{guildId,userId,zoneKey:FISHING_ZONES[0].key},{random:()=>0});
+          const collection=await getFishCollection(pool,guildId,userId);
+          behavioralChecks.push(
+            {name:'Balıkçılık yakalama kaydı',expected:'geçerli bölgede balık yakalanmalı ve koleksiyona yazılmalı',actual:caught.status+' / '+collection.caught+' yakalama',passed:caught.status==='caught'&&collection.caught===1&&collection.entries.some(item=>item.fish_key===caught.fish.key)},
+            {name:'Balıkçılık bölge sınırı',expected:'yakalanan tür seçilen bölgede bulunmalı',actual:caught.fish?.name||'balık yok',passed:Boolean(caught.fish?.zones?.includes(FISHING_ZONES[0].key))}
+          );
+          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        } else if (commandName === 'karakteristek') {
+          await initCharacterWishlistSchema(pool);
+          const added=await setCharacterWishlist(pool,{guildId,userId,characterName:'Frieren',enabled:true});
+          const duplicate=await setCharacterWishlist(pool,{guildId,userId,characterName:'Frieren',enabled:true});
+          const wishlist=await getCharacterWishlist(pool,guildId,userId);
+          behavioralChecks.push(
+            {name:'Karakter istek listesi kaydı',expected:'Frieren bir kez kaydedilmeli',actual:added.status+' / '+wishlist.length+' kayıt',passed:added.status==='added'&&wishlist.length===1&&wishlist[0].character_name==='Frieren'},
+            {name:'Yinelenen karakter isteği engeli',expected:'aynı karakter ikinci kez eklenmemeli',actual:duplicate.status,passed:duplicate.status==='already_listed'&&wishlist.length===1}
+          );
+          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        } else if (commandName === 'loncaoyun') {
+          await ensureGuildGameTables(pool);
+          const channelId='900000000000000004';
+          const session=await startGuildMiniGame(pool,{guildId,channelId,userId,gameType:'bilgi',random:()=>0,now:new Date()});
+          const answered=await answerGuildMiniGame(pool,{guildId,channelId,sessionId:session.session_id,userId,answerIndex:session.answerIndex,now:new Date()});
+          const score=await pool.query('SELECT points,correct_answers,played_games FROM guild_game_scores WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          behavioralChecks.push(
+            {name:'Lonca oyunu oturum ve doğru yanıt',expected:'aktif oturum oluşturulmalı ve doğru yanıt kabul edilmeli',actual:session.status+' / '+answered.status,passed:Boolean(session.session_id)&&answered.status==='correct'},
+            {name:'Lonca oyunu puanının kalıcılığı',expected:'oyuncuya 10 puan ve bir doğru yanıt yazılmalı',actual:JSON.stringify(score.rows[0]||{}),passed:Number(score.rows[0]?.points)===10&&Number(score.rows[0]?.correct_answers)===1&&Number(score.rows[0]?.played_games)===1}
+          );
+          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        } else if (commandName === 'pazar') {
+          await ensurePlayerMarketTables(pool);
+          await pool.query("INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'audit_market_relic',2) ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=2",[guildId,userId]);
+          const listing=await createPlayerMarketListing(pool,{guildId,sellerId:userId,itemKey:'audit_market_relic',quantity:1,priceCoins:50});
+          const cancelled=listing.status==='listed'?await cancelPlayerMarketListing(pool,{guildId,sellerId:userId,listingId:listing.listing.listing_id}):{status:'not_cancelled'};
+          const inventory=await pool.query("SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='audit_market_relic'",[guildId,userId]);
+          behavioralChecks.push(
+            {name:'Pazar ilanı envanterden güvenli ayırır',expected:'bir adet eşya ilanda olmalı ve bir adet envanterde kalmalı',actual:listing.status+' / '+(inventory.rows[0]?.quantity||0),passed:listing.status==='listed'&&Number(inventory.rows[0]?.quantity)===1},
+            {name:'Pazar ilan iptali eşyayı iade eder',expected:'iptal sonrası iki eşya envantere dönmeli',actual:cancelled.status+' / '+(inventory.rows[0]?.quantity||0),passed:cancelled.status==='cancelled'&&Number(inventory.rows[0]?.quantity)===2}
+          );
+          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        } else if (commandName === 'sera') {
+          await initFarmSchema(pool);
+          await pool.query('UPDATE users SET level=30,coins=3000 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const seed=FARM_SEEDS.find(item=>item.key==='mana_wheat');
+          const planted=await plantSeed(pool,{guildId,userId,seedKey:seed.key});
+          const harvested=await harvestFarm(pool,{guildId,userId},{date:new Date(Date.now()+48*60*60*1000)});
+          const plot=await getFarmPlot(pool,guildId,userId);
+          const inventory=await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,userId,seed.name]);
+          behavioralChecks.push(
+            {name:'Sera ekim ve yetişme kaydı',expected:'seçilen tohum oyuncunun serasına ekilmeli',actual:planted.status+' / '+seed.key,passed:planted.status==='planted'},
+            {name:'Sera hasadı tek seferlik tüketir',expected:'hasat sonrası parsel silinmeli ve ürün envantere eklenmeli',actual:harvested.status+' / parsel '+(plot?'var':'yok')+' / ürün '+(inventory.rows[0]?.quantity||0),passed:harvested.status==='harvested'&&!plot&&Number(inventory.rows[0]?.quantity)===harvested.quantity}
+          );
+          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        } else if (commandName === 'sosyal') {
+          await ensureSocialPlatformTables(pool);
+          const peerId='900000000000000002';
+          await ensureUser(guildId,peerId);
+          await pool.query('UPDATE users SET coins=1000 WHERE guild_id=$1 AND user_id=ANY($2::text[])',[guildId,[userId,peerId]]);
+          const request=await createFriendRequest(pool,{guildId,requesterId:userId,targetId:peerId});
+          const accepted=await respondFriendRequest(pool,{guildId,actorId:peerId,requestId:request.requestId,accept:true});
+          const relationships=await listSocialRelationships(pool,guildId,userId,'friend');
+          const gift=await sendCoinGift(pool,{guildId,senderId:userId,recipientId:peerId,amount:50,note:'izole test'});
+          const reputation=await commendPlayer(pool,{guildId,giverId:userId,recipientId:peerId,now:new Date('2026-11-04T12:00:00.000Z')});
+          const reputationPoints=await getSocialReputation(pool,guildId,peerId);
+          const balances=await pool.query('SELECT user_id,coins FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id',[guildId,[userId,peerId]]);
+          behavioralChecks.push(
+            {name:'Sosyal arkadaşlık isteği ve kabul',expected:'istek gönderilmeli ve arkadaşlık ilişkisi kurulmalı',actual:request.status+' / '+accepted.status+' / '+relationships.length,passed:request.status==='sent'&&accepted.status==='accepted'&&relationships.length===1},
+            {name:'Sosyal altın hediyesi',expected:'50 altın gönderen hesabından alıcıya aktarılmalı',actual:gift.status+' / '+balances.rows.map(row=>row.coins).join(','),passed:gift.status==='sent'&&Number(gift.amount)===50&&balances.rows.length===2&&Number(gift.senderBalance)===950&&Number(gift.recipientBalance)===1050},
+            {name:'Sosyal itibar oyu haftalık tekilleştirme',expected:'alıcıya bir itibar puanı eklenmeli',actual:reputation.status+' / '+reputationPoints,passed:reputation.status==='commended'&&reputationPoints===1}
+          );
+          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        } else if (commandName === 'yaratik') {
+          await initCreatureSchema(pool);
+          const creature=CREATURE_CATALOG[0];
+          const wish=await setCreatureWishlist(pool,{guildId,userId,creatureKey:creature.key,enabled:true});
+          const spawn=await maybeSpawnCreature(pool,{guildId,channelId:'900000000000000004'},{random:()=>0,force:true});
+          const caught=spawn.status==='spawned'?await claimCreature(pool,{guildId,userId,spawnId:spawn.spawnId}):{status:'not_spawned'};
+          const collection=await getCreatureCollection(pool,guildId,userId);
+          const wishlist=await getCreatureWishlist(pool,guildId,userId);
+          behavioralChecks.push(
+            {name:'Yaratık isteği doğma bildirimine bağlanır',expected:'istek kaydı eklenmeli ve spawn bildirimi kullanıcıyı içermeli',actual:wish.status+' / '+(spawn.notifyUserIds||[]).length,passed:wish.status==='added'&&spawn.status==='spawned'&&spawn.notifyUserIds.includes(userId)&&wishlist.some(item=>item.key===creature.key)},
+            {name:'Yaratık yakalama koleksiyona yazılır',expected:'aktif spawn bir kez yakalanmalı ve koleksiyonda görünmeli',actual:caught.status+' / '+collection.total,passed:caught.status==='caught'&&collection.total===1&&collection.entries.some(item=>item.creature_key===spawn.creature.storageKey)}
+          );
+          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        } else if (commandName === 'yasam') {
+          await ensurePlayerExperienceSchema(pool);
+          const visible=await setHomeVisibility(pool,{guildId,userId,isPublic:true});
+          const hidden=await setHomeVisibility(pool,{guildId,userId,isPublic:false});
+          const home=await pool.query('SELECT is_public FROM player_homes WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          behavioralChecks.push(
+            {name:'Yaşam evi görünürlük kontrolü',expected:'ev görünür yapılabilmeli ve ayar kalıcı kaydedilmeli',actual:visible.status+' / '+visible.isPublic,passed:visible.status==='updated'&&visible.isPublic===true},
+            {name:'Yaşam evi gizlilik kontrolü',expected:'gizleme işlemi herkese açık görünümü kapatmalı',actual:hidden.status+' / '+String(home.rows[0]?.is_public),passed:hidden.status==='updated'&&home.rows[0]?.is_public===false}
+          );
+          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        } else if (commandName === 'yoldas') {
+          await initCompanionSchema(pool);
+          await pool.query('UPDATE users SET coins=5000 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const companion=COMPANION_CATALOG[0];
+          const adopted=await adoptCompanion(pool,{guildId,userId,companionKey:companion.key});
+          const cared=await careForCompanion(pool,{guildId,userId,action:'feed'});
+          const saved=await getCompanion(pool,guildId,userId);
+          behavioralChecks.push(
+            {name:'Yoldaş sahiplenme kalıcılığı',expected:'altın bedeli ödenip tek yoldaş kaydı oluşturulmalı',actual:adopted.status+' / '+(saved?.companion_key||'kayıt yok'),passed:adopted.status==='adopted'&&saved?.companion_key===companion.key},
+            {name:'Yoldaş bakım ilerlemesi',expected:'besleme XP ve açlık değerini güncellemeli',actual:cared.status+' / XP '+(saved?.xp||0),passed:cared.status==='cared'&&Number(saved?.xp)===5&&Number(saved?.hunger)<100}
+          );
+          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
         }
 
         const evidence = buildCommandEvidence({ responseCount: effects.length, behavioralChecks });
