@@ -274,3 +274,31 @@ test('linked adventurer inventory is account-scoped and includes equipment and R
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
   }
 });
+
+
+test('scheduled boss raid events preserve their type and appear in the guild calendar', async () => {
+  assertIsolatedAuditDatabase();
+  await initDatabase();
+  await ensureAdventurerPlatformTables(pool);
+  const guildId = '99000000000000991';
+  const createdBy = '99000000000000992';
+  const startsAt = new Date(Date.now() + 45 * 60_000).toISOString();
+  const endsAt = new Date(Date.now() + 105 * 60_000).toISOString();
+  let eventId;
+  try {
+    eventId = (await createGuildEvent(pool, {
+      guildId, createdBy, title: 'Test Boss Raid Takvimi',
+      startsAt, endsAt, eventType: 'boss_raid'
+    })).eventId;
+    const row = await pool.query('SELECT event_type FROM guild_events WHERE event_id=$1 AND guild_id=$2', [eventId, guildId]);
+    assert.equal(row.rows[0].event_type, 'boss_raid');
+    const calendar = await listGuildEvents(pool, guildId);
+    assert.equal(calendar.find(event => event.event_id === eventId)?.event_type, 'boss_raid');
+    await assert.rejects(
+      createGuildEvent(pool, { guildId, createdBy, title: 'Invalid Event Type', startsAt, endsAt, eventType: 'untrusted_sql' }),
+      /EVENT_TYPE_INVALID/
+    );
+  } finally {
+    if (eventId) await pool.query('DELETE FROM guild_events WHERE event_id=$1', [eventId]);
+  }
+});
