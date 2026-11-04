@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { handlePublicSiteRequest } from '../public-site.js';
 import { createPublicSiteSession, buildPublicSiteSessionCookie } from '../owner-dashboard.js';
 import { createSiteCsrfToken } from '../site-auth.js';
