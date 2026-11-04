@@ -128,3 +128,20 @@ test('owner support actions require the fixed owner identity and append staff re
  assert.ok(calls.some(call=>call.sql.includes("VALUES($1,$2,'support'")));
  assert.ok(calls.some(call=>call.sql.includes('frieren_support_ticket_events')));
 });
+
+
+test('account export includes account-owned tables that also contain a user_id column', async () => {
+  const db = { async query(sql, params) {
+    if (sql.includes('FROM frieren_site_accounts')) return { rows: [{ id: '123e4567-e89b-12d3-a456-426614174000', username: 'Gezgin' }], rowCount: 1 };
+    if (sql.includes('FROM site_discord_links')) return { rows: [], rowCount: 0 };
+    if (sql.includes("column_name='account_id'")) return { rows: [{ table_name: 'site_account_player_links', column_name: 'account_id', data_type: 'uuid' }], rowCount: 1 };
+    if (sql.includes('table_name=$1')) return { rows: [{ column_name: 'account_id' }, { column_name: 'user_id' }, { column_name: 'link_type' }], rowCount: 3 };
+    if (sql.includes('FROM "site_account_player_links"')) return { rows: [{ account_id: '123e4567-e89b-12d3-a456-426614174000', user_id: '123456789012345678', link_type: 'primary' }], rowCount: 1 };
+    if (sql.includes('pg_constraint')) return { rows: [], rowCount: 0 };
+    if (sql.includes('FROM frieren_support_tickets')) return { rows: [], rowCount: 0 };
+    throw new Error('Unexpected query: ' + sql + ' ' + JSON.stringify(params));
+  }};
+  const result = await exportSiteAccountData(db, accountId);
+  assert.equal(result.accountData.site_account_player_links[0].user_id, '123456789012345678');
+  assert.equal(result.accountData.site_account_player_links[0].link_type, 'primary');
+});
