@@ -2,6 +2,19 @@ import { randomUUID } from 'node:crypto';
 
 const ACCOUNT_ID = /^site_([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
 const CATEGORIES = new Set(['technical','bug','account','gameplay','other']);
+const EXPORT_TABLES = Object.freeze([
+  'inventory','user_equipment','anime_character_collection','achievement_claims',
+  'user_companions','user_companion_cosmetics','user_companion_evolution_history',
+  'user_fishing_state','user_fish_collection','user_farm_plots','user_creature_collection',
+  'user_creature_wishlist','user_character_wishlist','anime_character_card_variants',
+  'player_homes','player_home_rooms','player_home_trophies','player_cosmetic_ownership',
+  'player_cosmetic_loadout','player_cosmetic_presets','guild_event_progress','guild_event_checkins',
+  'guild_event_reward_claims','social_friend_requests','social_relationships','social_coin_gifts',
+  'social_reputation','social_reputation_votes','guild_game_sessions','guild_game_answers',
+  'guild_game_participants','guild_game_team_scores','guild_game_scores','player_market_listings',
+  'player_market_offers','player_market_price_alerts'
+]);
+const SENSITIVE_COLUMN = /password|secret|token|credential|session|api.?key|private.?key|hash/i;
 
 function accountUuid(value) {
   const match = ACCOUNT_ID.exec(String(value || ''));
@@ -161,15 +174,49 @@ export async function exportSiteAccountData(db, accountId) {
     [id]
   );
   const linkedProfiles = await Promise.all(links.rows.map(async profile => {
-    const [inventory, collections, achievements, marketHistory] = await Promise.all([
+    const [inventory, collections, achievements, marketHistory, tableColumns] = await Promise.all([
       db.query('SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 ORDER BY item_key', [profile.guild_id, profile.user_id]),
       db.query('SELECT character_name,anime,rarity,quantity,first_obtained_at,last_obtained_at FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 ORDER BY character_name', [profile.guild_id, profile.user_id]),
       db.query('SELECT achievement_key,display_slot,claimed_at FROM achievement_claims WHERE guild_id=$1 AND user_id=$2 ORDER BY claimed_at', [profile.guild_id, profile.user_id]),
-      db.query('SELECT listing_id,item_key,quantity,price_coins,status,created_at,resolved_at FROM player_market_listings WHERE guild_id=$1 AND (seller_id=$2 OR buyer_id=$2) ORDER BY created_at DESC LIMIT 100', [profile.guild_id, profile.user_id])
+      db.query('SELECT listing_id,item_key,quantity,price_coins,status,created_at,resolved_at FROM player_market_listings WHERE guild_id=$1 AND (seller_id=$2 OR buyer_id=$2) ORDER BY created_at DESC', [profile.guild_id, profile.user_id]),
+      db.query("SELECT table_name,column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=ANY($1::text[]) AND column_name IN ('guild_id','user_id') ORDER BY table_name,column_name", [EXPORT_TABLES])
     ]);
-    return { ...profile, inventory: inventory.rows, collections: collections.rows, achievements: achievements.rows, marketHistory: marketHistory.rows };
+    const columnsByTable = new Map();
+    for (const column of tableColumns.rows || []) {
+      if (!columnsByTable.has(column.table_name)) columnsByTable.set(column.table_name, new Set());
+      columnsByTable.get(column.table_name).add(column.column_name);
+    }
+    const gameData = {};
+    for (const table of EXPORT_TABLES) {
+      const columns = columnsByTable.get(table);
+      if (!columns?.has('guild_id') || !columns.has('user_id')) continue;
+      const safeColumns = await db.query(
+        'SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=$1 ORDER BY ordinal_position',
+        [table]
+      );
+      const selected = (safeColumns.rows || []).map(row => row.column_name)
+        .filter(name => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) && !SENSITIVE_COLUMN.test(name));
+      if (!selected.includes('guild_id') || !selected.includes('user_id')) continue;
+      const projection = selected.map(name => '"' + name + '"').join(',');
+      const rows = await db.query(
+        'SELECT ' + projection + ' FROM "' + table + '" WHERE guild_id=$1 AND user_id=$2',
+        [profile.guild_id, profile.user_id]
+      );
+      gameData[table] = rows.rows;
+    }
+    return { ...profile, inventory: inventory.rows, collections: collections.rows, achievements: achievements.rows, marketHistory: marketHistory.rows, gameData };
   }));
-  const tickets = await listSupportTickets(db, accountId, 50);
+  const ticketsResult = await db.query(
+    'SELECT ticket_id,category,subject,message,status,created_at,updated_at FROM frieren_support_tickets WHERE account_id=$1 ORDER BY created_at,ticket_id',
+    [id]
+  );
+  const tickets = await Promise.all(ticketsResult.rows.map(async ticket => {
+    const [messages, events] = await Promise.all([
+      db.query('SELECT author_type,author_id,message,created_at FROM frieren_support_ticket_messages WHERE ticket_id=$1 ORDER BY created_at,message_id',[ticket.ticket_id]),
+      db.query('SELECT actor_type,previous_status,new_status,created_at FROM frieren_support_ticket_events WHERE ticket_id=$1 ORDER BY created_at,event_id',[ticket.ticket_id])
+    ]);
+    return { ...ticket, replies:messages.rows, statusHistory:events.rows };
+  }));
   return {
     schemaVersion: 1,
     exportedAt: new Date().toISOString(),
