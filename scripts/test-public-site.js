@@ -438,6 +438,7 @@ test('web event RSVP uses the linked Discord character and redirects after joini
         if(sql.includes('FROM guild_event_participants WHERE event_id=$1 AND user_id=$2')) return {rows:[],rowCount:0};
         if(sql.includes('COUNT(*)::int AS count')) return {rows:[{count:1}],rowCount:1};
         if(sql.startsWith('INSERT INTO guild_event_participants')) return {rows:[{user_id:profile.user_id}],rowCount:1};
+        if(sql.startsWith('INSERT INTO guild_event_progress')) return {rows:[{progress:1}],rowCount:1};
         throw new Error('Unexpected client query: '+sql);
       },release(){}};
     }
