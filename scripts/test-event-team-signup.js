@@ -28,6 +28,11 @@ test('boss raid signup requires a real team UUID',async()=>{
  const {db}=fixture();
  assert.equal((await joinGuildEvent(db,input)).status,'team_required');
 });
+test('boss raid signup rejects malformed team UUIDs without opening a transaction',async()=>{
+ const {db,calls}=fixture();
+ assert.equal((await joinGuildEvent(db,{...input,teamId:'not-a-uuid'})).status,'invalid_team');
+ assert.equal(calls.length,0);
+});
 test('boss raid signup rejects users who are not members of the selected guild team',async()=>{
  const {db}=fixture({teamMember:false});
  assert.equal((await joinGuildEvent(db,{...input,teamId:teamA})).status,'not_team_member');
