@@ -96,5 +96,6 @@ test('expired or cross-channel mini-game sessions cannot be answered', async () 
   const result = await answerGuildMiniGame(db, { guildId: '1539562273197260860', channelId: '1564945192803639356', sessionId: session.session_id, userId: '123456789012345678', answerIndex: 2, now: '2026-11-04T15:00:00.000Z' });
   assert.equal(result.status, 'expired');
   assert.equal(db.calls.some(call => call.sql.startsWith('INSERT INTO guild_game_answers')), false);
-  await assert.rejects(answerGuildMiniGame(fakeGameDb({ session }), { guildId: '1539562273197260860', channelId: '1564945192803639357', sessionId: session.session_id, userId: '123456789012345678', answerIndex: 2 }), /GUILD_GAME_SESSION_NOT_FOUND|not_found/);
+  const wrongChannel = await answerGuildMiniGame(fakeGameDb({ session }), { guildId: '1539562273197260860', channelId: '1564945192803639357', sessionId: session.session_id, userId: '123456789012345678', answerIndex: 2 });
+  assert.equal(wrongChannel.status, 'not_found');
 });
