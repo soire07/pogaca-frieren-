@@ -4,6 +4,7 @@ import { readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { initDatabase, pool } from './database/db.js';
+import { runDatabaseMigrations } from './database/migrations.js';
 import { resolveTradeOffer } from './trade-transaction.js';
 import { CREATURE_SPAWN_CHANCE, claimCreature, deactivateCreatureSpawn, initCreatureSchema, maybeSpawnCreature, setCreatureSpawnMessageId } from './creatures.js';
 import { initGuildDashboardSchema } from './guild-dashboard.js';
@@ -413,6 +414,8 @@ await Promise.all([ensureCreatureSchema(), initCompanionSchema(pool), initFishin
 await initOwnerAdminSchema(pool);
 await initGuildFeatureSettingsSchema(pool);
 await initGuildDashboardSchema(pool);
+// The legacy schema bootstrap remains the compatibility baseline; new schema changes use versioned SQL.
+await runDatabaseMigrations(pool);
 const stopGuardianMonitor = startGuardianMonitor({
   db: pool, client,
   onIncident: async incident => {
