@@ -281,12 +281,14 @@ export async function exportSiteAccountData(db, accountId) {
     }
     return { ...profile, inventory: inventory.rows, collections: collections.rows, achievements: achievements.rows, marketHistory: marketHistory.rows, marketOffers: marketOffers.rows, gameData };
   }));
-  const accountTableColumns = await db.query("SELECT table_name,column_name FROM information_schema.columns WHERE table_schema=current_schema() AND column_name='account_id' ORDER BY table_name,ordinal_position");
+  const accountTableColumns = await db.query("SELECT table_name,column_name,data_type FROM information_schema.columns WHERE table_schema=current_schema() AND column_name='account_id' ORDER BY table_name,ordinal_position");
   const accountColumnsByTable = new Map();
+  const accountIdTypes = new Map();
   for (const column of accountTableColumns.rows || []) {
     if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(String(column.table_name||'')) || SENSITIVE_TABLE.test(column.table_name)) continue;
     if (!accountColumnsByTable.has(column.table_name)) accountColumnsByTable.set(column.table_name, []);
     accountColumnsByTable.get(column.table_name).push(column.column_name);
+    if (column.column_name === 'account_id') accountIdTypes.set(column.table_name, column.data_type);
   }
   const accountData = {};
   for (const [table, columns] of accountColumnsByTable) {
@@ -295,7 +297,10 @@ export async function exportSiteAccountData(db, accountId) {
     const selected = (metadata.rows || []).map(row => row.column_name).filter(name => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) && !SENSITIVE_COLUMN.test(name));
     if (!selected.includes('account_id')) continue;
     const projection = selected.map(name => '"' + name + '"').join(',');
-    const rows = await db.query('SELECT ' + projection + ' FROM "' + table + '" WHERE account_id=$1',[id]);
+    const accountType = accountIdTypes.get(table);
+    const rows = accountType === 'uuid'
+      ? await db.query('SELECT ' + projection + ' FROM "' + table + '" WHERE account_id=$1',[id])
+      : await db.query('SELECT ' + projection + ' FROM "' + table + '" WHERE account_id IN ($1,$2)',[accountId,id]);
     accountData[table] = rows.rows;
   }
   const ticketsResult = await db.query(
@@ -330,6 +335,16 @@ export async function deleteSiteAccount(db, accountId, confirmation) {
     if (!account.rowCount) {
       await client.query('ROLLBACK');
       return { status: 'not_found' };
+    }
+    const accountTables = await client.query("SELECT table_name,data_type FROM information_schema.columns WHERE table_schema=current_schema() AND column_name='account_id'");
+    for (const table of accountTables.rows || []) {
+      const name = String(table.table_name || '');
+      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) || SENSITIVE_TABLE.test(name)) continue;
+      if (table.data_type === 'uuid') {
+        await client.query('DELETE FROM "' + name + '" WHERE account_id=$1',[id]);
+      } else {
+        await client.query('DELETE FROM "' + name + '" WHERE account_id IN ($1,$2)',[accountId,id]);
+      }
     }
     await client.query('DELETE FROM frieren_support_tickets WHERE account_id=$1', [id]);
     await client.query('DELETE FROM site_discord_links WHERE account_id=$1', [id]);
