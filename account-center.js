@@ -389,7 +389,42 @@ export async function exportSiteAccountData(db, accountId) {
       gameData[table] = rows.rows;
     }
     await includeForeignKeyDescendants(db, gameData);
-    return { ...profile, inventory: inventory.rows, collections: collections.rows, achievements: achievements.rows, marketHistory: marketHistory.rows, marketOffers: marketOffers.rows, gameData };
+    // Export the player's own settled arena history without leaking other participants' identities.
+    const arenaMatchHistory = await db.query(
+      `SELECT r.match_id,r.season_id,r.guild_id,r.winner,
+              COALESCE((
+                SELECT jsonb_agg(participant.value ORDER BY participant.value->>'userId')
+                FROM jsonb_array_elements(COALESCE(r.participants,'[]'::jsonb)) AS participant(value)
+                WHERE participant.value->>'userId'=$2
+              ),'[]'::jsonb) AS participants,
+              r.settled_at
+       FROM arena_match_results r
+       JOIN arena_match_players p ON p.match_id=r.match_id AND p.guild_id=r.guild_id
+       WHERE p.guild_id=$1 AND p.user_id=$2
+       ORDER BY r.settled_at DESC,r.match_id`,
+      [profile.guild_id,profile.user_id]
+    );
+    // Include event context only for events this linked player personally joined.
+    const guildEventHistory = await db.query(
+      `SELECT e.event_id,e.guild_id,e.title,e.description,e.event_type,e.starts_at,e.ends_at,
+              e.status,e.max_participants,p.joined_at
+       FROM guild_event_participants p
+       JOIN guild_events e ON e.event_id=p.event_id AND e.guild_id=p.guild_id
+       WHERE p.guild_id=$1 AND p.user_id=$2
+       ORDER BY e.starts_at DESC,e.event_id`,
+      [profile.guild_id,profile.user_id]
+    );
+    return {
+      ...profile,
+      inventory: inventory.rows,
+      collections: collections.rows,
+      achievements: achievements.rows,
+      marketHistory: marketHistory.rows,
+      marketOffers: marketOffers.rows,
+      arenaMatchHistory: arenaMatchHistory.rows,
+      guildEventHistory: guildEventHistory.rows,
+      gameData
+    };
   }));
   const accountTableColumns = await db.query("SELECT table_name,column_name,data_type FROM information_schema.columns WHERE table_schema=current_schema() AND column_name='account_id' ORDER BY table_name,ordinal_position");
   const accountColumnsByTable = new Map();
