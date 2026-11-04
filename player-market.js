@@ -406,7 +406,7 @@ export async function getPlayerMarketHistory(db, guildId, userId, limit = 10) {
 export function normalizePlayerMarketPriceAlertInput({ itemKey, targetPrice } = {}) {
   const key = String(itemKey || '').trim();
   const price = Number(targetPrice);
-  if (!key || key.length > 120 || /[\\u0000-\\u001f\\u007f]/.test(key)) {
+  if (!key || key.length > 120 || /[\u0000-\u001f\u007f]/.test(key)) {
     throw new Error('PLAYER_MARKET_ALERT_ITEM_INVALID');
   }
   if (!Number.isSafeInteger(price) || price < 1 || price > MAX_PRICE) {
