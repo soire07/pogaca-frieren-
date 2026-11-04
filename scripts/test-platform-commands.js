@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import adventurerCommand from '../maceraci.js';
 import eventCommand from '../etkinlik.js';
 import arenaCommand from '../arena.js';
+import lifeCommand from '../yasam.js';
 import { getArenaRankName } from '../adventurer-platform.js';
 
 test('adventurer web-link command is discoverable and exposes only the one-time link flow', () => {
@@ -36,3 +37,5 @@ test('seasonal MMR rank thresholds are stable and ordered', () => {
   assert.equal(getArenaRankName(1600),'Elmas');
   assert.equal(getArenaRankName(1800),'Efsane');
 });
+
+test('player experience command exposes home, cosmetics, presets and event rewards',()=>{ const schema=lifeCommand.data.toJSON(); assert.equal(schema.name,'yasam'); assert.deepEqual(schema.options.map(option=>option.name),['ev','dekorasyonlar','oda-ac','duzenle','kozmetik','kozmetik-al','kozmetik-kus','preset','preset-yukle','etkinlik-odul']); const purchase=schema.options.find(option=>option.name==='kozmetik-al'); assert.ok(purchase.options[0].choices.length<=25); });
