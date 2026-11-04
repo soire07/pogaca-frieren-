@@ -24,6 +24,38 @@ test('public command catalog includes the new guild mini-game command', async ()
   assert.ok(response.body.includes('/loncaoyun'));
 });
 
+
+test('support center is account-scoped and exposes data export and deletion controls',async()=>{
+ const accountId='site_123e4567-e89b-12d3-a456-426614174000';
+ const db={async query(sql,params){
+  if(sql.includes('FROM frieren_support_tickets'))return{rows:[{ticket_id:'ticket-1',category:'bug',subject:'OAuth issue',status:'open',created_at:new Date().toISOString()}],rowCount:1};
+  throw new Error('Unexpected support query: '+sql);
+ }};
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/destek',{id:accountId,username:'Gezgin'}),response,{db}),true);
+ assert.equal(response.status,200);
+ assert.match(response.body,/Destek ve Hesap Merkezi/);
+ assert.match(response.body,/OAuth issue/);
+ assert.match(response.body,/Verilerimi dışa aktar/);
+ assert.match(response.body,/Portal hesabını sil/);
+});
+
+test('account data export is authenticated and delivered as a no-store JSON attachment',async()=>{
+ const accountId='site_123e4567-e89b-12d3-a456-426614174000';
+ const db={async query(sql){
+  if(sql.includes('FROM frieren_site_accounts'))return{rows:[{id:accountId.slice(5),username:'Gezgin',email:'member@example.com'}],rowCount:1};
+  if(sql.includes('FROM site_discord_links'))return{rows:[],rowCount:0};
+  if(sql.includes('FROM frieren_support_tickets'))return{rows:[],rowCount:0};
+  throw new Error('Unexpected export query: '+sql);
+ }};
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/hesap/veri',{id:accountId,username:'Gezgin'}),response,{db}),true);
+ assert.equal(response.status,200);
+ assert.match(response.headers['Content-Disposition'],/frieren-account-data\.json/);
+ assert.equal(response.headers['Cache-Control'],'no-store');
+ assert.equal(JSON.parse(response.body).account.username,'Gezgin');
+});
+
 test('anonymous visitors must authenticate before viewing the homepage', async () => {
   const response = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/', headers: {} }, response), true);
