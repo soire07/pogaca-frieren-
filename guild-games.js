@@ -139,8 +139,9 @@ export async function startGuildMiniGame(db, { guildId, channelId, userId, gameT
   return { ...row, options: Array.isArray(row.options) ? row.options : question.options, answerIndex: question.answerIndex };
 }
 
-export async function answerGuildMiniGame(db, { guildId, sessionId, userId, answerIndex, now = new Date() }) {
+export async function answerGuildMiniGame(db, { guildId, channelId, sessionId, userId, answerIndex, now = new Date() }) {
   validateIds(guildId, userId);
+  if (!/^\\d{17,20}$/.test(String(channelId || ''))) throw new Error('GUILD_GAME_CHANNEL_INVALID');
   if (!SESSION_ID.test(String(sessionId || ''))) throw new Error('GUILD_GAME_SESSION_INVALID');
   const index = Number(answerIndex);
   if (!Number.isInteger(index) || index < 0 || index > 3) throw new Error('GUILD_GAME_ANSWER_INVALID');
@@ -148,8 +149,8 @@ export async function answerGuildMiniGame(db, { guildId, sessionId, userId, answ
   try {
     await client.query('BEGIN');
     const sessionResult = await client.query(
-      'SELECT session_id,guild_id,answer_index,explanation,status,expires_at FROM guild_game_sessions WHERE session_id=$1 AND guild_id=$2 FOR UPDATE',
-      [String(sessionId),String(guildId)]
+      'SELECT session_id,guild_id,channel_id,answer_index,explanation,status,expires_at FROM guild_game_sessions WHERE session_id=$1 AND guild_id=$2 AND channel_id=$3 FOR UPDATE',
+      [String(sessionId),String(guildId),String(channelId)]
     );
     const session = sessionResult.rows?.[0];
     if (!session) {
