@@ -5,6 +5,7 @@ import { getBossArtUrl } from './boss-art.js';
 import { getGuildRpgContent } from './owner-rpg-content.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
+import { validateGuildEventRaidTeam } from './guild-team-leagues.js';
 import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio, applyDefendingReduction, scaleRaidBossHp, canAssignPartyRole, isPartyWiped, getPartyRoleModifiers, applyTalentBonus } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
@@ -127,21 +128,10 @@ export default {
       const ids = team.map(x => x.id).sort();
       const calendarEventId = interaction.options.getString('etkinlik_id');
       if (calendarEventId) {
-        const linkedEvent = await db.query(
-          `SELECT e.event_id FROM guild_events e
-           WHERE e.event_id=$1 AND e.guild_id=$2 AND e.event_type='boss_raid'
-             AND e.status='scheduled' AND e.starts_at<=NOW()+INTERVAL '30 minutes' AND e.ends_at>NOW()
-             AND NOT EXISTS (
-               SELECT 1 FROM unnest($3::text[]) AS member(user_id)
-               WHERE NOT EXISTS (
-                 SELECT 1 FROM guild_event_participants p
-                 WHERE p.event_id=e.event_id AND p.guild_id=e.guild_id AND p.user_id=member.user_id
-               )
-             )
-           FOR UPDATE`,
-          [calendarEventId, interaction.guildId, ids]
-        );
-        if (!linkedEvent.rowCount) {
+        const linkedEvent = await validateGuildEventRaidTeam(db,{
+          guildId:interaction.guildId,eventId:calendarEventId,userIds:ids,leaderId:interaction.user.id
+        });
+        if (linkedEvent.status !== 'valid') {
           await db.query('ROLLBACK');
           return interaction.editReply({
             content: 'Takvim baskını geçersiz, henüz başlama penceresinde değil veya takım üyelerinin tamamı bu Boss / Raid etkinliğine kayıtlı değil.',
