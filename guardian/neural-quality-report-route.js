@@ -53,6 +53,9 @@ export async function handleNeuralQualityReportRequest(req, {
         else evidence = { verified: false, status: 'unverified', reason: 'GITHUB_ACTIONS_API_UNAVAILABLE' };
       } catch { evidence = { verified: false, status: 'unverified', reason: 'GITHUB_ACTIONS_API_UNAVAILABLE' }; }
     }
+    if (report.evolution_plan?.gates?.ci_passed === true && !evidence.verified) {
+      return { status: 422, payload: { error: 'evolution_plan_ci_evidence_unverified' } };
+    }
     report.ci_evidence = evidence;
     const blockers = Array.isArray(report.blocking_reasons) ? report.blocking_reasons.filter(x => x !== 'NEURAL_CI_EVIDENCE_NOT_VERIFIED') : [];
     if (!evidence.verified) {
