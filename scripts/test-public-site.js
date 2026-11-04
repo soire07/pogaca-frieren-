@@ -449,6 +449,36 @@ test('web event RSVP uses the linked Discord character and redirects after joini
   assert.match(response.headers.Location,/status=joined/);
 });
 
+test('adventurer social page is scoped to the linked guild character and renders relationships and pending requests',async()=>{
+  const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern'};
+  const db={async query(sql){
+    if(sql.includes('FROM site_discord_links'))return{rows:[profile],rowCount:1};
+    if(sql.includes('FROM social_relationships')&&sql.includes("'friend'"))return{rows:[{user_id:'223456789012345678',relationship_type:'friend'}],rowCount:1};
+    if(sql.includes('FROM social_relationships')&&sql.includes("'rival'"))return{rows:[{user_id:'323456789012345678',relationship_type:'rival'}],rowCount:1};
+    if(sql.includes('FROM social_friend_requests'))return{rows:[{request_id:'123e4567-e89b-42d3-a456-426614174000',requester_id:'423456789012345678'}],rowCount:1};
+    if(sql.includes('FROM social_reputation'))return{rows:[{points:7}],rowCount:1};
+    throw new Error('Unexpected query: '+sql);
+  }};
+  const response=res();
+  assert.equal(await handlePublicSiteRequest(request('/maceraci/sosyal?guildId='+profile.guild_id,{id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'}),response,{db}),true);
+  assert.equal(response.status,200);
+  assert.match(response.body,/Sosyal alan/);
+  assert.match(response.body,/223456789012345678/);
+  assert.match(response.body,/323456789012345678/);
+  assert.match(response.body,/423456789012345678/);
+  assert.match(response.body,/İtibar/);
+  assert.match(response.body,/action="\/maceraci\/sosyal"/);
+});
+test('web social mutations reject invalid CSRF before any database access',async()=>{
+  let queries=0;const db={async query(){queries++;throw new Error('must not query');}};
+  const response=res(),post=sitePost('/maceraci/sosyal',{csrf:'invalid',guildId:'1539562273197260860',action:'request',targetId:'223456789012345678'});
+  assert.equal(await handlePublicSiteRequest(post,response,{db}),true);assert.equal(response.status,403);assert.equal(queries,0);
+});
+test('web social mutations reject a guild not linked to the authenticated site account',async()=>{
+  let queries=0;const db={async query(sql){queries++;if(sql.includes('FROM site_discord_links'))return{rows:[],rowCount:0};throw new Error('Unexpected query: '+sql);}};
+  const response=res(),post=sitePost('/maceraci/sosyal',{csrf:createSiteCsrfToken(secret),guildId:'1539562273197260860',action:'request',targetId:'223456789012345678'});
+  assert.equal(await handlePublicSiteRequest(post,response,{db}),true);assert.equal(response.status,403);assert.equal(queries,1);
+});
 test('main startup initializes all player-facing collection schemas before serving the web portal', async () => {
   const source=await readFile(new URL('../index.js',import.meta.url),'utf8');
   for(const moduleName of ['companions.js','fishing.js','farming.js','character-wishlist.js'])assert.ok(source.includes("from './"+moduleName+"'"));

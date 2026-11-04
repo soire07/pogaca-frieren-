@@ -16,6 +16,7 @@ import {
   createPlayerMarketListing, listPlayerMarketListings, buyPlayerMarketListing,
   cancelPlayerMarketListing, getPlayerMarketHistory
 } from './player-market.js';
+import { createFriendRequest, respondFriendRequest, setPlayerRival, removeSocialRelationship, listSocialRelationships, listPendingFriendRequests, sendCoinGift, commendPlayer, getSocialReputation } from './social-platform.js';
 
 const SITE_COOKIE = 'frieren_site_session';
 const OWNER_ID = '1553794496234262641';
@@ -167,6 +168,30 @@ function playerMarketPage(user, data, listings, history, status, filters = {}) {
   return page('Kuzey Pazarı', content, user);
 }
 
+
+function adventurerSocialPage(user, profile, social, status) {
+  const guild=encodeURIComponent(profile.guild_id),csrf=esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET));
+  const notices={request_sent:'Arkadaşlık isteği gönderildi.',already_pending:'Bekleyen isteğin zaten var.',incoming_request:'Bu oyuncudan gelen isteği aşağıda yanıtlayabilirsin.',already_friends:'Bu oyuncu zaten arkadaşın.',rival_exists:'Önce rakiplik bağını kaldırmalısın.',accepted:'Arkadaşlık isteği kabul edildi.',rejected:'Arkadaşlık isteği reddedildi.',not_recipient:'Bu isteği yalnızca hedef kullanıcı yanıtlayabilir.',request_unavailable:'İstek bulunamadı veya süresi doldu.',rival_created:'RPG rakipliği oluşturuldu.',already_rivals:'Bu oyuncu zaten rakibin.',removed:'Sosyal bağ kaldırıldı.',not_found:'Kayıtlı sosyal bağ bulunamadı.',sent:'Altın hediyesi gönderildi.',insufficient_funds:'Yeterli altının yok.',commended:'İtibar puanı verildi.',already_voted:'Bu haftaki itibar puanını kullandın.',invalid:'Bilgiler geçersiz veya oyuncu bu sunucuda kayıtlı değil.'};
+  const form=(action,target='',label='İşlemi uygula',extra='')=>'<form method="post" action="/maceraci/sosyal"><input type="hidden" name="csrf" value="'+csrf+'"><input type="hidden" name="guildId" value="'+guild+'"><input type="hidden" name="action" value="'+action+'">'+(target?'<input type="hidden" name="targetId" value="'+esc(target)+'">':'')+extra+'<button class="btn ghost" type="submit">'+label+'</button></form>';
+  const friendCards=social.friends.map(r=>'<article class="card"><div class="eyebrow">ARKADAŞ</div><code>'+esc(r.user_id)+'</code>'+form('remove',r.user_id,'Sosyal bağı kaldır')+'</article>').join('');
+  const rivalCards=social.rivals.map(r=>'<article class="card"><div class="eyebrow">RPG RAKİBİ</div><code>'+esc(r.user_id)+'</code>'+form('remove',r.user_id,'Sosyal bağı kaldır')+'</article>').join('');
+  const requests=social.requests.map(r=>'<article class="card"><div class="eyebrow">GELEN ARKADAŞLIK İSTEĞİ</div><code>'+esc(r.requester_id)+'</code><p class="market-meta">'+esc(r.request_id)+'</p>'+form('accept','','Kabul et','<input type="hidden" name="requestId" value="'+esc(r.request_id)+'">')+form('reject','','Reddet','<input type="hidden" name="requestId" value="'+esc(r.request_id)+'">')+'</article>').join('');
+  const targetInput=(id)=>'<label for="'+id+'">Discord kullanıcı ID</label><input id="'+id+'" name="targetId" inputmode="numeric" pattern="[0-9]{17,20}" minlength="17" maxlength="20" required>';
+  const forms='<section class="section"><div class="portal-grid">'+
+    '<article class="card"><h2>Arkadaşlık isteği</h2><form method="post" action="/maceraci/sosyal"><input type="hidden" name="csrf" value="'+csrf+'"><input type="hidden" name="guildId" value="'+guild+'"><input type="hidden" name="action" value="request">'+targetInput('social-friend-id')+'<button class="btn" type="submit">İstek gönder</button></form></article>'+
+    '<article class="card"><h2>Rakip belirle</h2><form method="post" action="/maceraci/sosyal"><input type="hidden" name="csrf" value="'+csrf+'"><input type="hidden" name="guildId" value="'+guild+'"><input type="hidden" name="action" value="rival">'+targetInput('social-rival-id')+'<button class="btn ghost" type="submit">Rakip yap</button></form></article>'+
+    '<article class="card"><h2>Altın hediye et</h2><form method="post" action="/maceraci/sosyal"><input type="hidden" name="csrf" value="'+csrf+'"><input type="hidden" name="guildId" value="'+guild+'"><input type="hidden" name="action" value="gift">'+targetInput('social-gift-id')+'<label for="social-gift-amount">Altın (1–50.000)</label><input id="social-gift-amount" name="amount" type="number" min="1" max="50000" step="1" required><label for="social-gift-note">Not</label><input id="social-gift-note" name="note" maxlength="100"><button class="btn" type="submit">Hediye gönder</button></form></article>'+
+    '<article class="card"><h2>Haftalık itibar</h2><p>Her hafta bir oyuncuya bir puan verebilirsin.</p><form method="post" action="/maceraci/sosyal"><input type="hidden" name="csrf" value="'+csrf+'"><input type="hidden" name="guildId" value="'+guild+'"><input type="hidden" name="action" value="commend">'+targetInput('social-commend-id')+'<button class="btn ghost" type="submit">İtibar ver</button></form></article></div></section>';
+  const content='<main class="wrap" style="padding:54px 0 80px"><div class="eyebrow">✧ LONCA BAĞLARI</div><h1 class="hero-title">Sosyal <em>alanın.</em></h1><p class="lead">'+esc(profile.character_name||'Maceracı')+' · Yalnızca seçili sunucudaki bağlı karakterin kullanılır.</p>'+(notices[status]?'<p class="notice" role="status">'+notices[status]+'</p>':'')+
+    '<div class="portal-actions"><a class="btn ghost" href="/maceraci">Maceracı paneli</a><a class="btn ghost" href="/maceraci/envanter?guildId='+guild+'">Envanterim</a><a class="btn ghost" href="/pazar?guildId='+guild+'">Kuzey Pazarı</a></div>'+
+    '<section class="section"><div class="portal-grid"><article class="card"><div class="eyebrow">İTİBAR</div><h2>'+Number(social.reputation)+'</h2></article><article class="card"><div class="eyebrow">ARKADAŞLAR</div><h2>'+social.friends.length+'</h2></article><article class="card"><div class="eyebrow">RAKİPLER</div><h2>'+social.rivals.length+'</h2></article><article class="card"><div class="eyebrow">BEKLEYEN İSTEKLER</div><h2>'+social.requests.length+'</h2></article></div></section>'+forms+
+    '<section class="section"><h2>Arkadaşların</h2><div class="portal-grid">'+(friendCards||'<article class="card">Henüz arkadaşın yok.</article>')+'</div></section>'+
+    '<section class="section"><h2>RPG rakiplerin</h2><div class="portal-grid">'+(rivalCards||'<article class="card">Henüz rakibin yok.</article>')+'</div></section>'+
+    '<section class="section"><h2>Gelen istekler</h2><div class="portal-grid">'+(requests||'<article class="card">Bekleyen isteğin yok.</article>')+'</div></section></main>'+
+    '<style>.card form{display:grid;gap:12px}.card input{width:100%;padding:13px;border-radius:10px;border:1px solid #62577d;background:#17152c;color:#fff}.card label{font-weight:600}</style>';
+  return page('Sosyal Alan',content,user);
+}
+
 function aiPage(user) {
   const healthLink = user.id === OWNER_ID ? '<a class="btn ghost" href="/owner/frieren-ai/health">Servis sağlık durumu</a>' : '';
   return page('Frieren AI', '<main><section class="wrap" style="padding:65px 0 42px;text-align:center"><div class="eyebrow">AKILLI ASİSTAN · TEST · TEKNİK ANALİZ</div><h1 class="hero-title">Frieren <em>AI</em></h1><p class="lead" style="margin:auto">Poğaça Frieren’in teknik yol arkadaşı. Sohbet ve hafızadan kod denetimine, test senaryolarından hata raporlarına uzanan ayrı bir AI servisi.</p><div class="actions" style="justify-content:center"><a class="btn" href="/owner">AI kontrol merkezine git ↗</a>' + healthLink + '</div></section><section class="section"><div class="wrap grid"><article class="card"><div class="icon">✧</div><h3>Frieren sohbeti</h3><p>Karakter odaklı sohbet akışı ve izinli kullanıcı hafızası.</p></article><article class="card"><div class="icon">⌘</div><h3>Teknik denetim</h3><p>Komut sözleşmeleri, kod incelemesi ve hata teşhisi.</p></article><article class="card"><div class="icon">✓</div><h3>Test sistemi</h3><p>Senaryo bazlı testler, PASS/FAIL raporları ve kanıt odaklı doğrulama.</p></article></div></section><section class="section"><div class="wrap cta"><h2>İki bot, tek büyülü platform.</h2><p>RPG macerası ve teknik asistan birbirinden bağımsız servislerde çalışır.</p><a class="btn" href="/pogaca">Poğaça Frieren’i keşfet</a></div></section></main>', user);
@@ -193,7 +218,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const result = await redeemSiteLinkToken(db, session.id, form.get('token'));
     res.writeHead(303, { Location: '/maceraci?status=' + (result.status === 'linked' ? 'linked' : 'invalid'), 'Cache-Control': 'no-store' }); res.end(); return true;
   }
-  const mutationPaths = new Set(['/maceraci/event','/pazar/sat','/pazar/al','/pazar/iptal']);
+  const mutationPaths = new Set(['/maceraci/event','/pazar/sat','/pazar/al','/pazar/iptal','/maceraci/sosyal']);
   if (req.method === 'POST' && mutationPaths.has(url.pathname)) {
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!session?.id?.startsWith('site_')) { res.writeHead(302,{Location:'/login','Cache-Control':'no-store'});res.end();return true; }
@@ -217,6 +242,19 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       res.writeHead(303,{Location:'/maceraci?'+new URLSearchParams({status}).toString(),'Cache-Control':'no-store'});res.end();return true;
     }
     try{
+      if(url.pathname==='/maceraci/sosyal'){
+        const action=String(form.get('action')||''),targetId=String(form.get('targetId')||'');
+        if(action==='request')status=(await createFriendRequest(db,{guildId,requesterId:profile.user_id,targetId})).status;
+        else if(action==='rival')status=(await setPlayerRival(db,{guildId,actorId:profile.user_id,targetId})).status;
+        else if(action==='remove')status=(await removeSocialRelationship(db,{guildId,actorId:profile.user_id,targetId})).status;
+        else if(action==='accept'||action==='reject')status=(await respondFriendRequest(db,{guildId,requestId:String(form.get('requestId')||''),actorId:profile.user_id,accept:action==='accept'})).status;
+        else if(action==='gift')status=(await sendCoinGift(db,{guildId,senderId:profile.user_id,recipientId:targetId,amount:Number(form.get('amount')),note:String(form.get('note')||'')})).status;
+        else if(action==='commend')status=(await commendPlayer(db,{guildId,giverId:profile.user_id,recipientId:targetId})).status;
+        else status='invalid';
+        if(status==='sent')status='request_sent';
+        if(['player_missing','SOCIAL_ID_INVALID','SOCIAL_SELF_INTERACTION','SOCIAL_GIFT_AMOUNT_INVALID','SOCIAL_REQUEST_ID_INVALID'].includes(status))status='invalid';
+        res.writeHead(303,{Location:'/maceraci/sosyal?'+new URLSearchParams({guildId,status}).toString(),'Cache-Control':'no-store'});res.end();return true;
+      }
       if(url.pathname==='/pazar/sat') status=(await createPlayerMarketListing(db,{guildId,sellerId:profile.user_id,itemKey:form.get('itemKey'),quantity:Number(form.get('quantity')),priceCoins:Number(form.get('priceCoins'))})).status;
       else if(url.pathname==='/pazar/al') status=(await buyPlayerMarketListing(db,{guildId,buyerId:profile.user_id,listingId:form.get('listingId')})).status;
       else if(url.pathname==='/pazar/iptal') status=(await cancelPlayerMarketListing(db,{guildId,sellerId:profile.user_id,listingId:form.get('listingId')})).status;
@@ -238,7 +276,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/maceraci', '/maceraci/envanter', '/maceraci/koleksiyon', '/pazar']);
+  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/maceraci', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/pazar']);
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname)) return false;
   const user = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
   if (!user) {
@@ -266,7 +304,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });
     res.end(html); return true;
   }
-  if (url.pathname === '/maceraci/envanter' || url.pathname === '/maceraci/koleksiyon' || url.pathname === '/pazar') {
+  if (url.pathname === '/maceraci/envanter' || url.pathname === '/maceraci/koleksiyon' || url.pathname === '/maceraci/sosyal' || url.pathname === '/pazar') {
     if (!db) { res.writeHead(503, { 'Content-Type':'text/plain; charset=utf-8', 'Cache-Control':'no-store' }); res.end('Panel veritabanı kullanılamıyor.'); return true; }
     const guildId=String(url.searchParams.get('guildId')||'');
     if(!guildId){
@@ -283,7 +321,14 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       ?playerMarketPage(user,data,await listPlayerMarketListings(db,guildId,20,filters),await getPlayerMarketHistory(db,guildId,data.profile.user_id,15),url.searchParams.get('status'),filters)
       :url.pathname==='/maceraci/koleksiyon'
         ?adventurerCollectionPage(user,data.profile,await loadAdventurerCollections(db,guildId,data.profile.user_id))
-        :adventurerInventoryPage(user,data);
+        :url.pathname==='/maceraci/sosyal'
+          ?adventurerSocialPage(user,data.profile,{
+            friends:await listSocialRelationships(db,guildId,data.profile.user_id,'friend',50),
+            rivals:await listSocialRelationships(db,guildId,data.profile.user_id,'rival',50),
+            requests:await listPendingFriendRequests(db,guildId,data.profile.user_id,50),
+            reputation:await getSocialReputation(db,guildId,data.profile.user_id)
+          },url.searchParams.get('status'))
+          :adventurerInventoryPage(user,data);
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
     res.end(html);return true;
   }
