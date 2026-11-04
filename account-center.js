@@ -82,11 +82,16 @@ export async function createSupportTicket(db, accountId, input) {
     [id]
   );
   if (Number(count.rows[0]?.count || 0) >= 5) return { status: 'daily_limit' };
+  const ticketId = randomUUID();
   const result = await db.query(
     `INSERT INTO frieren_support_tickets(ticket_id,account_id,category,subject,message)
      VALUES($1,$2,$3,$4,$5)
      RETURNING ticket_id,account_id,category,subject,status,created_at,updated_at`,
-    [randomUUID(), id, normalized.category, normalized.subject, normalized.message]
+    [ticketId, id, normalized.category, normalized.subject, normalized.message]
+  );
+  await db.query(
+    "INSERT INTO frieren_support_ticket_events(event_id,ticket_id,actor_type,actor_id,previous_status,new_status) VALUES($1,$2,'account',$3,NULL,'open')",
+    [randomUUID(),ticketId,id]
   );
   return { status: 'created', ticket: result.rows[0] };
 }
