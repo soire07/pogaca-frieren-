@@ -275,7 +275,7 @@ export async function answerGuildMiniGame(db, { guildId, channelId, sessionId, u
 
 export async function joinGuildMiniGameTeam(db, { guildId, channelId, sessionId, userId, team, now = new Date() }) {
   validateIds(guildId,userId);
-  if (!/^\\d{17,20}$/.test(String(channelId || ''))) throw new Error('GUILD_GAME_CHANNEL_INVALID');
+  if (!/^\d{17,20}$/.test(String(channelId || ''))) throw new Error('GUILD_GAME_CHANNEL_INVALID');
   if (!SESSION_ID.test(String(sessionId || '')) || !['A','B'].includes(team)) throw new Error('GUILD_GAME_TEAM_INPUT_INVALID');
   const client = await db.connect();
   try {
@@ -305,6 +305,26 @@ export async function joinGuildMiniGameTeam(db, { guildId, channelId, sessionId,
     await client.query('ROLLBACK').catch(()=>{});
     throw error;
   } finally { client.release(); }
+}
+
+export async function getGuildGameTeamLeaderboard(db, { guildId, channelId, sessionId }) {
+  if (!/^\\d{17,20}$/.test(String(guildId || '')) || !/^\\d{17,20}$/.test(String(channelId || '')) || !SESSION_ID.test(String(sessionId || ''))) {
+    throw new Error('GUILD_GAME_TEAM_INPUT_INVALID');
+  }
+  const result = await db.query(
+    `SELECT s.session_id,s.game_label,s.status,s.expires_at,
+            COALESCE(MAX(CASE WHEN t.team='A' THEN t.points END),0)::int AS team_a_points,
+            COALESCE(MAX(CASE WHEN t.team='B' THEN t.points END),0)::int AS team_b_points,
+            COUNT(DISTINCT CASE WHEN p.team='A' THEN p.user_id END)::int AS team_a_players,
+            COUNT(DISTINCT CASE WHEN p.team='B' THEN p.user_id END)::int AS team_b_players
+     FROM guild_game_sessions s
+     LEFT JOIN guild_game_team_scores t ON t.session_id=s.session_id AND t.guild_id=s.guild_id
+     LEFT JOIN guild_game_participants p ON p.session_id=s.session_id AND p.guild_id=s.guild_id
+     WHERE s.session_id=$1 AND s.guild_id=$2 AND s.channel_id=$3 AND s.team_mode=TRUE
+     GROUP BY s.session_id,s.game_label,s.status,s.expires_at`,
+    [String(sessionId),String(guildId),String(channelId)]
+  );
+  return result.rows?.[0] || null;
 }
 
 export async function getGuildGameLeaderboard(db, guildId, limit = 10) {
