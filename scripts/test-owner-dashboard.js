@@ -662,6 +662,38 @@ test('owner navigation provides a safe public-site preview shortcut', () => {
 });
 
 
+test('Discord OAuth never creates an owner session for a non-owner Discord account', async () => {
+  const previous = {
+    CLIENT_ID: process.env.CLIENT_ID,
+    DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
+    ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET
+  };
+  const previousFetch = globalThis.fetch;
+  process.env.CLIENT_ID = 'test-client-id';
+  process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
+  process.env.ADMIN_SESSION_SECRET = secret;
+  globalThis.fetch = async url => String(url).includes('/oauth2/token')
+    ? { ok: true, json: async () => ({ access_token: 'temporary-discord-access-token' }) }
+    : { ok: true, json: async () => ({ id: '1553794496234262642', username: 'not-owner', avatar: null }) };
+  const req = new EventEmitter();
+  req.method = 'GET';
+  req.url = '/owner/callback?state=' + encodeURIComponent(createOwnerOAuthState(secret)) + '&code=oauth-test-code';
+  req.headers = {};
+  const response = { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body = '') { this.body = body; } };
+  try {
+    await handleOwnerDashboardRequest(req, response, { client: {}, db: { query: async () => { throw new Error('DB must not be queried'); } } });
+    assert.equal(response.status, 403);
+    assert.ok(!response.headers['Set-Cookie']?.some(cookie => cookie.startsWith('frieren_owner_session=')));
+    assert.match(response.body, /yalnızca site sahibine açıktır/);
+  } finally {
+    globalThis.fetch = previousFetch;
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
 test('Discord owner OAuth issues the owner session directly without an authenticator challenge', async () => {
   const previous = {
     CLIENT_ID: process.env.CLIENT_ID,
