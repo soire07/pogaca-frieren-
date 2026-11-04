@@ -42,7 +42,7 @@ export default {
         const history = await getCompanionEvolutionHistory(pool, { guildId: interaction.guildId, userId: interaction.user.id });
         if (!history.length) return interaction.editReply('Yoldaşının henüz bir evrim geçmişi yok.');
         const lines = history.map(row => '**Aşama ' + row.stage + ':** ' + row.evolution_name + ' · ' + row.coin_cost + ' altın · ' + new Date(row.evolved_at).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' }));
-        return interaction.editReply('**Yoldaş Evrim Geçmişi**\\n' + lines.join('\\n'));
+        return interaction.editReply('**Yoldaş Evrim Geçmişi**\n' + lines.join('\n'));
       }
       if (action === 'evrim') {
         const result = await evolveCompanion(pool, { guildId: interaction.guildId, userId: interaction.user.id });
