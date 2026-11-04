@@ -56,6 +56,34 @@ test('account data export is authenticated and delivered as a no-store JSON atta
  assert.equal(JSON.parse(response.body).account.username,'Gezgin');
 });
 
+
+test('notification preferences are account and guild scoped and expose the news bird controls',async()=>{
+ const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20,xp:2400,coins:500,hp:100,max_hp:100,mana:80,max_mana:100};
+ const db={async query(sql){
+  if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};
+  if(sql.includes('FROM frieren_notification_preferences'))return{rows:[{category:'anime_news',enabled:true}],rowCount:1};
+  throw new Error('Unexpected notification query: '+sql);
+ }};
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/maceraci/bildirimler?guildId='+profile.guild_id,{id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'}),response,{db}),true);
+ assert.equal(response.status,200);
+ assert.match(response.body,/Haberci kuş/);
+ assert.match(response.body,/Boss \/ Raid hatırlatmaları/);
+ assert.match(response.body,/action="\/maceraci\/bildirimler"/);
+});
+
+test('notification preference updates require CSRF and persist the selected category',async()=>{
+ const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern'};
+ let inserted=false;
+ const db={async query(sql){if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};if(sql.includes('INSERT INTO frieren_notification_preferences')){inserted=true;return{rows:[],rowCount:1};}throw new Error('Unexpected preference update query: '+sql);}};
+ const response=res();
+ const post=sitePost('/maceraci/bildirimler',{csrf:createSiteCsrfToken(secret),guildId:profile.guild_id,category:'anime_news',enabled:'true'});
+ assert.equal(await handlePublicSiteRequest(post,response,{db}),true);
+ assert.equal(response.status,303);
+ assert.match(response.headers.Location,/status=saved/);
+ assert.equal(inserted,true);
+});
+
 test('anonymous visitors must authenticate before viewing the homepage', async () => {
   const response = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/', headers: {} }, response), true);
