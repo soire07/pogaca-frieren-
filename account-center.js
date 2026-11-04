@@ -122,6 +122,7 @@ export async function listSupportTicketMessages(db, accountId, ticketId) {
 
 export async function replySupportTicket(db, accountId, ticketId, message) {
   const id = accountUuid(accountId);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(ticketId || ''))) throw new Error('SUPPORT_TICKET_ID_INVALID');
   const clean = String(message || '').trim();
   if (!clean || clean.length > 5000 || /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(clean)) {
     throw new Error('SUPPORT_TICKET_REPLY_INVALID');
@@ -146,6 +147,7 @@ export async function replySupportTicket(db, accountId, ticketId, message) {
 
 export async function updateSupportTicketStatus(db, accountId, ticketId, nextStatus, actorType='support') {
   const id = accountUuid(accountId);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(ticketId || ''))) throw new Error('SUPPORT_TICKET_ID_INVALID');
   if (actorType !== 'support' || !['open','in_progress','closed'].includes(nextStatus)) throw new Error('SUPPORT_TICKET_STATUS_INVALID');
   const current = await db.query('SELECT ticket_id,status FROM frieren_support_tickets WHERE ticket_id=$1 AND account_id=$2',[ticketId,id]);
   if (!current.rowCount) return { status:'not_found' };
