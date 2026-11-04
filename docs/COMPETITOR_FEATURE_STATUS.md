@@ -85,6 +85,22 @@
 
 PR #185 dalı ile aktif onarım dalı tarihçesi ayrışmış durumda. Bu nedenle PR #185 bütünüyle merge/cherry-pick edilmemeli. İhtiyaç duyulan dosyalar güncel kodla üç yönlü karşılaştırılmalı; komut kaydı, DB şeması, `index.js`, `package.json`, feature gate ve test workflow'ları uyumlandırılmalı. Aynı özellikler yeniden yazılmamalı.
 
+### Envanterle eşleştirme — önemli sınır
+
+Aktif 2.000 kayıtlı `feature-inventory.json` içinde:
+- `ROADMAP-1274–1340`: 67 yoldaş yetenek/ilerleme kaydı hâlâ `planned`.
+- `ROADMAP-1341–1407`: 67 pet bakım/ilerleme kaydı hâlâ `planned`.
+- `ROADMAP-0938`: karakter wishlist kaydı hâlâ `planned`.
+- Balıkçılık, sera/çiftçilik ve yaratık spawn/yakalama için bu aramada doğrudan eşleşen ayrı kayıt bulunamadı.
+
+PR #185'teki temel yoldaş sistemi, bu 134 roadmap kaydının tamamını karşılamaz. Örneğin dokuz farklı yoldaş rolü, pet destek bonusları, bakım serileri, kilometre taşı kozmetikleri ve geçmiş/karşılaştırma işlevlerinin hepsi uygulanmış değildir. Bu kayıtları topluca `implemented` yapmayacağız. Önce her birini gerçek davranışla eşleştireceğiz; balıkçılık/sera/yaratık için de envanterde yeni ve benzersiz kayıt alanı açacağız veya gerçekten aynı davranışı temsil eden bir kayda bağlayacağız.
+
+### PR #185 kod incelemesinde bulunan düzeltme adayları
+
+1. **Yoldaş transaction kilit sırası:** `careForCompanion()` önce `user_companions` satırını, eğitim sırasında sonra `users` satırını kilitliyor. `equipCompanionCosmetic()` ise önce `users`, sonra `user_companions` satırını kilitliyor. Eşzamanlı eğitim ve kozmetik işlemi deadlock oluşturabilir. Birleştirmeden önce iki akış da aynı deterministik sıraya alınmalı ve çapraz işlem concurrency testi eklenmeli.
+2. **Discord OAuth redirect varsayılanı:** `guild-dashboard.js` içinde `SITE_BASE_URL` yoksa `https://frierenbot.vercel.app` varsayılıyor. PR #185 dalındaki `.env.example` dosyasında `SITE_BASE_URL` ve `GUILD_DASHBOARD_REDIRECT_URI` tanımlı değil; yalnızca Owner OAuth redirect'i Render adresini gösteriyor. Canlı kullanımdan önce gerçek site origin'i ve Discord Developer Portal callback URI'si açıkça eşleştirilmeli. Testlerde redirect URI açıkça verildiği için CI bu eksik varsayılanı yakalamıyor.
+3. **Dal uyumsuzluğu:** PR #185 head'i ile aktif onarım dalı karşılaştırmasında 114 commit yalnız PR #185 tarafında, 261 commit ise aktif onarım dalı tarafında. PR #185 topluca merge edilmemeli; modül modül uyarlanmalı.
+
 ## Önemli mevcut özellikler — tekrar eklenmeyecek
 
 - 3v3 arena ve sezon/MMR altyapısı.
