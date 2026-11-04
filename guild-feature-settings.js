@@ -27,6 +27,7 @@ export const DEFAULT_GUILD_FEATURES = Object.freeze({
   exploration: true,
   crafting: true,
   story: true,
+  social: true,
 });
 
 export function isValidGuildFeatureKey(value) {
@@ -146,6 +147,7 @@ export function getCommandFeatureKeys(commandName) {
   if (/kesif|keşif|explor|macera|maceragecmisi|maceraistatistik/.test(name)) keys.push('exploration');
   if (/zanaat|craft|uret|üret/.test(name)) keys.push('crafting');
   if (/hikaye|hikâye|story/.test(name) || name === 'npc') keys.push('story');
+  if (/^sosyal$|social/.test(name)) keys.push('social');
   if (/rpg|savas|savaş|dovus|dövüş|arena|siralama|liderlik/.test(name) || RPG_COMMAND_NAMES.has(name)) keys.push('rpg');
   if (keys.some(key => key !== 'animeQuiz')) keys.push('rpg');
   return [...new Set(keys)];
