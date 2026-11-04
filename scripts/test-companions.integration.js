@@ -1,7 +1,7 @@
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import {pool,initDatabase} from '../database/db.js';
-import {adoptCompanion,careForCompanion,equipCompanionCosmetic,evolveCompanion,getCompanion,initCompanionSchema} from '../companions.js';
+import {adoptCompanion,careForCompanion,equipCompanionCosmetic,evolveCompanion,getCompanion,getCompanionEvolutionHistory,initCompanionSchema} from '../companions.js';
 const guild='companion-audit-guild',user='companion-audit-user',poorUser='companion-audit-poor',lockUser='companion-audit-lock',evolutionUser='companion-audit-evolution',evolutionPoor='companion-audit-evolution-poor',evolutionRace='companion-audit-evolution-race';
 before(async()=>{
  await initDatabase();await initCompanionSchema(pool);
@@ -91,6 +91,8 @@ test('companion evolution is level-gated, charges atomically and records each st
  assert.equal(locked.requiredLevel,25);
  const history=await pool.query('SELECT stage,coin_cost FROM user_companion_evolution_history WHERE guild_id=$1 AND user_id=$2 ORDER BY stage',[guild,evolutionUser]);
  assert.deepEqual(history.rows.map(row=>[Number(row.stage),Number(row.coin_cost)]),[[1,1000]]);
+ const historyView=await getCompanionEvolutionHistory(pool,{guildId:guild,userId:evolutionUser});
+ assert.deepEqual(historyView.map(row=>[Number(row.stage),row.evolution_name]),[[1,'Kor Alev Tilkisi']]);
  const balance=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,evolutionUser]);
  assert.equal(Number(balance.rows[0].coins),20000-adopted.companion.cost-1000);
 });
