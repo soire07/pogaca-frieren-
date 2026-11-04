@@ -103,7 +103,7 @@ function adventurerPanel(user, data, status) {
     const hp = Math.max(0, Math.min(100, Number(profile.hp) / Math.max(1, Number(profile.max_hp)) * 100));
     const mana = Math.max(0, Math.min(100, Number(profile.mana) / Math.max(1, Number(profile.max_mana)) * 100));
     const guild = encodeURIComponent(profile.guild_id);
-    return '<article class="card"><div class="eyebrow">SUNUCU · ' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + Number(profile.level) + '</p><div class="stats"><span><b>' + Number(profile.xp) + '</b> XP</span><span><b>' + Number(profile.coins) + '</b> Altın</span><span><b>' + Number(profile.rating) + '</b> MMR</span></div><p>HP ' + Number(profile.hp) + '/' + Number(profile.max_hp) + '</p><div class="progress"><i style="width:' + hp.toFixed(1) + '%"></i></div><p>Mana ' + Number(profile.mana) + '/' + Number(profile.max_mana) + '</p><div class="progress"><i style="width:' + mana.toFixed(1) + '%"></i></div><p>' + esc(profile.season_name || 'Sezon başlamadı') + ' · ' + Number(profile.wins) + ' galibiyet / ' + Number(profile.losses) + ' mağlubiyet</p><div class="actions"><a class="btn ghost" href="/maceraci/envanter?guildId=' + guild + '">Envanterim</a><a class="btn ghost" href="/maceraci/koleksiyon?guildId=' + guild + '">Koleksiyonum</a><a class="btn ghost" href="/maceraci/sosyal?guildId=' + guild + '">Sosyal alanım</a><a class="btn ghost" href="/maceraci/yasam?guildId=' + guild + '">Yaşam alanım</a><a class="btn ghost" href="/maceraci/bildirimler?guildId=' + guild + '">Haberci kuş ve bildirimler</a><a class="btn ghost" href="/pazar?guildId=' + guild + '">Kuzey Pazarı</a></div></article>';
+    return '<article class="card"><div class="eyebrow">SUNUCU · ' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + Number(profile.level) + '</p><div class="stats"><span><b>' + Number(profile.xp) + '</b> XP</span><span><b>' + Number(profile.coins) + '</b> Altın</span><span><b>' + Number(profile.rating) + '</b> MMR</span></div><p>HP ' + Number(profile.hp) + '/' + Number(profile.max_hp) + '</p><div class="progress"><i style="width:' + hp.toFixed(1) + '%"></i></div><p>Mana ' + Number(profile.mana) + '/' + Number(profile.max_mana) + '</p><div class="progress"><i style="width:' + mana.toFixed(1) + '%"></i></div><p>' + esc(profile.season_name || 'Sezon başlamadı') + ' · ' + Number(profile.wins) + ' galibiyet / ' + Number(profile.losses) + ' mağlubiyet</p><div class="actions"><a class="btn ghost" href="/maceraci/envanter?guildId=' + guild + '">Envanterim</a><a class="btn ghost" href="/maceraci/koleksiyon?guildId=' + guild + '">Koleksiyonum</a><a class="btn ghost" href="/maceraci/sosyal?guildId=' + guild + '">Sosyal alanım</a><a class="btn ghost" href="/maceraci/yasam?guildId=' + guild + '">Yaşam alanım</a><a class="btn ghost" href="/maceraci/bildirimler?guildId=' + guild + '">Haberci kuş ve bildirimler</a><a class="btn ghost" href="/maceraci/atolye?guildId=' + guild + '">Embed / Büyü Atölyesi</a><a class="btn ghost" href="/pazar?guildId=' + guild + '">Kuzey Pazarı</a></div></article>';
   }).join('');
   const events = data.events.map(event => {
     const action = event.joined ? 'leave' : 'join';
@@ -363,7 +363,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const result = await redeemSiteLinkToken(db, session.id, form.get('token'));
     res.writeHead(303, { Location: '/maceraci?status=' + (result.status === 'linked' ? 'linked' : 'invalid'), 'Cache-Control': 'no-store' }); res.end(); return true;
   }
-  const mutationPaths = new Set(['/maceraci/event','/maceraci/yasam','/pazar/sat','/pazar/al','/pazar/iptal','/pazar/teklif-ver','/pazar/teklif-kabul','/pazar/teklif-reddet','/pazar/teklif-iptal','/pazar/alarm-kur','/pazar/alarm-sil','/maceraci/sosyal','/maceraci/bildirimler']);
+  const mutationPaths = new Set(['/maceraci/event','/maceraci/yasam','/pazar/sat','/pazar/al','/pazar/iptal','/pazar/teklif-ver','/pazar/teklif-kabul','/pazar/teklif-reddet','/pazar/teklif-iptal','/pazar/alarm-kur','/pazar/alarm-sil','/maceraci/sosyal','/maceraci/bildirimler','/maceraci/atolye']);
   if (req.method === 'POST' && mutationPaths.has(url.pathname)) {
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!session?.id?.startsWith('site_')) { res.writeHead(302,{Location:'/login','Cache-Control':'no-store'});res.end();return true; }
@@ -378,6 +378,43 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const profile=await getLinkedAdventurer(db,session.id,guildId);
     if(!profile){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter web hesabına bağlı değil.');return true;}
     if(url.pathname==='/maceraci/sosyal'&&!await getGuildFeatureEnabled(db,guildId,'social')){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Sosyal modül bu sunucuda kapalı.');return true;}
+    if(url.pathname==='/maceraci/atolye'){
+      if(!await canManageGuild(client,guildId,profile.user_id)){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu atölye için sunucu sahibi veya Yönet sunucu izni gerekir.');return true;}
+      try{
+        const action=String(form.get('action')||'');
+        if(action==='embed'){
+          const fields=[];
+          for(let index=1;index<=2;index++){
+            const name=String(form.get('field'+index+'Name')||'').trim();
+            const value=String(form.get('field'+index+'Value')||'').trim();
+            if(name||value)fields.push({name,value});
+          }
+          await saveGuildEmbedTemplate(db,{guildId,creatorId:profile.user_id,template:{
+            name:form.get('name'),title:form.get('title'),description:form.get('description'),
+            color:form.get('color'),footer:form.get('footer'),fields
+          }});
+          res.writeHead(303,{Location:'/maceraci/atolye?'+new URLSearchParams({guildId,status:'saved_embed'}).toString(),'Cache-Control':'no-store'});res.end();return true;
+        }
+        if(action==='command'){
+          await saveGuildCustomCommand(db,{guildId,creatorId:profile.user_id,command:{
+            triggerName:form.get('triggerName'),kind:form.get('kind'),responseText:form.get('responseText'),
+            element:form.get('element'),manaCost:Number(form.get('manaCost')),power:Number(form.get('power'))
+          }});
+          res.writeHead(303,{Location:'/maceraci/atolye?'+new URLSearchParams({guildId,status:'saved_command'}).toString(),'Cache-Control':'no-store'});res.end();return true;
+        }
+        if(action==='automation'){
+          await saveGuildSpellAutomation(db,{guildId,creatorId:profile.user_id,rule:{
+            name:form.get('automationName'),triggerKey:form.get('triggerKey'),channelId:form.get('channelId'),
+            message:form.get('automationMessage'),templateId:form.get('templateId')||null,cooldownSeconds:Number(form.get('cooldownSeconds'))
+          }});
+          res.writeHead(303,{Location:'/maceraci/atolye?'+new URLSearchParams({guildId,status:'saved_automation'}).toString(),'Cache-Control':'no-store'});res.end();return true;
+        }
+        throw new Error('GUILD_WORKSHOP_ACTION_INVALID');
+      }catch(error){
+        if(String(error?.message||'').startsWith('GUILD_')||String(error?.message||'').endsWith('_INVALID')){res.writeHead(303,{Location:'/maceraci/atolye?'+new URLSearchParams({guildId,status:'invalid'}).toString(),'Cache-Control':'no-store'});res.end();return true;}
+        throw error;
+      }
+    }
     if(url.pathname==='/maceraci/bildirimler'){
       try{
         const category=String(form.get('category')||'');
@@ -464,7 +501,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/pazar']);
+  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/pazar']);
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname)) return false;
   const sessionUser = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
   const user = sessionUser || (url.pathname === '/maceraci/ev' ? { id: 'public-viewer', username: 'Gezgin' } : null);
@@ -491,6 +528,17 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if (!db) { res.writeHead(503,{'Cache-Control':'no-store'});res.end('Destek veritabanı kullanılamıyor.');return true; }
     const tickets=await listSupportTickets(db,user.id,20);
     const html=accountCenterPage(user,tickets,url.searchParams.get('status'));
+    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
+    res.end(html);return true;
+  }
+  if (url.pathname === '/maceraci/atolye') {
+    const guildId=String(url.searchParams.get('guildId')||'');
+    if(!/^\d{17,20}$/.test(guildId)){const dashboard=await getAdventurerDashboard(db,user.id);const html=portalGuildPicker(user,dashboard.profiles,url.pathname,'Lonca Büyü Atölyesi');res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end(html);return true;}
+    const profile=await getLinkedAdventurer(db,user.id,guildId);
+    if(!profile){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter web hesabına bağlı değil.');return true;}
+    if(!await canManageGuild(client,guildId,profile.user_id)){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu atölye için sunucu sahibi veya Yönet sunucu izni gerekir.');return true;}
+    const [templates,commands,automations]=await Promise.all([listGuildEmbedTemplates(db,guildId),listGuildCustomCommands(db,guildId),listGuildSpellAutomations(db,guildId)]);
+    const html=guildWorkshopPage(user,profile,templates,commands,automations,url.searchParams.get('status'));
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
     res.end(html);return true;
   }
