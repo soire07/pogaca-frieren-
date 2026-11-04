@@ -3,7 +3,8 @@ import { chromium, webkit, request } from 'playwright';
 const baseUrl = String(process.env.MOBILE_SMOKE_BASE_URL || 'https://frierenbot.vercel.app').replace(/\/$/, '');
 const scenarios = [
   { name: 'Android Chrome viewport', engine: chromium, viewport: { width: 412, height: 915 }, isMobile: true },
-  { name: 'iOS Safari viewport', engine: webkit, viewport: { width: 390, height: 844 }, isMobile: true }
+  { name: 'iOS Safari viewport', engine: webkit, viewport: { width: 390, height: 844 }, isMobile: true },
+  { name: 'Desktop Chromium viewport', engine: chromium, viewport: { width: 1440, height: 960 }, isMobile: false }
 ];
 
 for (const scenario of scenarios) {
