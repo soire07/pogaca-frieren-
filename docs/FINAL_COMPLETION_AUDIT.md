@@ -145,3 +145,24 @@ Bu düzeltme yalnızca PR #217 dalındadır. PR hâlâ taslak ve birleştirilmem
 - PR #217 içindeki özellik durumu, doğrudan kod/test dosyalarıyla yeniden karşılaştırıldı. Rakip özellik tablosunda kart varyantları, pazar fiyat alarmı servisleri, Embed/özel komut/otomasyon atölyesi, bildirim tercihleri, web destek merkezi ve hesap export/silme akışlarının mevcut altyapısı eksik görünüyordu. `docs/COMPETITOR_FEATURE_STATUS.md` bu 12 satırda mevcut kodla uzlaştırıldı; kısmi özellikler tamamlandı olarak işaretlenmedi.
 - Tamamlanması gereken başlıca ürün boşlukları: paylaşılabilir profil + rozet vitrini/gizlilik; takım ligi ve sezon fikstürü; etkinlikten raid takımına doğrudan katılım; Embed canlı önizleme ve güvenli otomasyon yürütme; kart/yoldaş web koleksiyon vitrini; fiyat alarmı gerçek tetikleme/teslimi; destek bileti yanıt/durum geçmişi; export/delete veri kapsamı ve mobil/OAuth gerçek E2E.
 - Bu dokümantasyon uzlaştırması oyun kodunu veya veritabanını değiştirmedi. Üretim DB, Discord komut kaydı, Render/Vercel deploy ve PR merge yapılmadı.
+
+## 12. Portal kabul paketi — 2026-11-04
+
+### Uygulanan kod değişiklikleri (PR #217 head zincirinde)
+- Guild Workshop'a tarayıcı içi Embed canlı önizlemesi eklendi. Başlık, açıklama, renk ve altbilgi form girdileri önizlemeyi anlık günceller; önizleme kendi başına Discord'a mesaj göndermez.
+- Destek merkezi için hesap kapsamlı ticket konuşması, kullanıcı yanıtı ve durum geçmişi eklendi. Ticket oluşturma da başlangıç durum olayı üretir; kapalı ticket'a kullanıcı yanıtı engellenir.
+- Hesap JSON export'u genişletildi: izinli guild/user anahtarlı oyun tabloları şemadan bulunur; hassas token/secret/password/hash sütunları export dışında bırakılır. Portal hesabı silme portal kimliğini ve Discord bağlantılarını kaldırır; Discord RPG profillerini silmez.
+- Playwright smoke senaryolarına masaüstü Chromium eklendi; Discord OAuth authorize redirect için state cookie ve zorunlu OAuth parametreleri kontrol edilir.
+- Mevcut koleksiyon sayfası ve fiyat alarmı DM işçisi tekrar denetlendi. Kart varyantı/yoldaş web vitrini zaten mevcut; pazar alarmı eşleşme taraması, Discord DM, başarı sonrası finalize ve geçici hatada claim bırakma akışı mevcut. Bu işlevler yeniden yazılmadı; regresyon testleri genişletildi.
+- docs/COMPETITOR_FEATURE_STATUS.md kodun mevcut durumuna göre uzlaştırıldı; tamamlanmış temel işlevler ile canlı kanıt gerektiren işler ayrı tutuldu.
+
+### Henüz tamamlanmış sayılamayacak yayın kapıları
+- Owner Panel'de destek personelinin yanıt yazması ve ticket durumunu değiştirmesi için yetkili UI/route entegrasyonu.
+- Export allowlist'inin tüm kullanıcı veri tabloları, pazar teklifleri, sosyal/arena/oyun ilişkileri ve saklama/yedek politikasıyla tam uzlaştırılması. Mevcut export kapsamı genişletildi fakat veritabanındaki bütün kullanıcı verisi garantisi verilmez.
+- Embed'in Discord'a kontrollü gönderimi ve otomasyonların tüm gerçek tetikleyici/başarısız gönderi senaryolarının Discord E2E doğrulaması.
+- Yetkili Discord hesabıyla OAuth consent/callback/session tamamlanması; mobil ve masaüstünde authenticated panel route'larının gerçek tarayıcı E2E testi. Smoke şu anda giriş/kayıt layout'u ve OAuth başlangıç yönlendirmesini doğrular.
+- Fiyat alarmı DM tesliminin gerçek Discord hesabında, DM kapalı ve geçici Discord API hatası senaryolarında doğrulanması.
+- Yeni HEAD için GitHub Actions sonuçları. Son görülen HEAD'de altı workflow queued ve combined status boştu; test başarı sonucu henüz yok.
+
+### Güvenli çalışma sınırı
+Bu turda production DB migration/write, canlı Discord komut PUT, Render/Vercel deploy veya PR merge yapılmadı. Tüm değişiklikler fix/solo-boss-reward-idempotency-mainline üzerinden PR #217'de tutuldu.
