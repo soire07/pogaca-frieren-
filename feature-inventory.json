@@ -18048,7 +18048,7 @@
           "scripts/test-player-market.integration.js",
           "scripts/test-public-site.js"
         ],
-        "scope": "Escrowed listing creation, exact inventory debit/restore, concurrent single-sale settlement, atomic buyer/seller coin transfer, self-purchase and insufficient-balance rejection, equipped-gear protection and transaction history are covered by unit and isolated PostgreSQL tests. The authenticated web /pazar route adds account/guild scoping, CSRF-protected listing, purchase and cancellation forms, and history rendering. Live Discord interaction and browser E2E remain unverified."
+        "scope": "Escrowed listing creation, exact inventory debit/restore, concurrent single-sale settlement, atomic buyer/seller coin transfer, self-purchase and insufficient-balance rejection, equipped-gear protection and transaction history are covered by unit and isolated PostgreSQL tests. Added non-binding player-market offers: one pending offer per buyer/listing, maximum 20 pending offers per buyer, seller accept/reject, buyer cancellation, acceptance-time balance validation, atomic item/coin settlement, and automatic closure of pending offers when a listing is sold or cancelled. Discord /pazar and authenticated CSRF-protected web /pazar expose offer creation, review, acceptance, rejection and withdrawal. Current PR CI passed 773/773 automated tests, 31/31 Discord scenarios and 100/100 isolated PostgreSQL integration scenarios; live Discord and browser E2E remain unverified."
       }
     },
     {
