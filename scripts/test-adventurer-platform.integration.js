@@ -322,9 +322,10 @@ test('guild teams, raid signup and league fixtures persist real UUID relationshi
   await ensureAdventurerPlatformTables(pool);
   await ensureGuildTeamLeagueSchema(pool);
   const guildId='99000000000000120';
-  const users=makeIds('73000000000000000',4);
+  const users=makeIds('73000000000000000',8);
   for(const userId of users) await ensureUser(guildId,userId);
-  const [captainA,memberA,captainB,memberB]=users;
+  const captainA=users[0],membersA=users.slice(1,6),captainB=users[6],memberB=users[7];
+  const memberA=membersA[0];
   let teamA,teamB,leagueId,eventId;
   try {
     const createdA=await createGuildTeam(pool,{guildId,captainId:captainA,name:'İzole Fern Takımı'});
@@ -333,7 +334,7 @@ test('guild teams, raid signup and league fixtures persist real UUID relationshi
     assert.equal(createdB.status,'created');
     teamA=createdA.team.team_id;
     teamB=createdB.team.team_id;
-    assert.equal((await joinGuildTeam(pool,{guildId,userId:memberA,teamId:teamA})).status,'joined');
+    for(const userId of membersA) assert.equal((await joinGuildTeam(pool,{guildId,userId,teamId:teamA})).status,'joined');
     assert.equal((await joinGuildTeam(pool,{guildId,userId:memberB,teamId:teamB})).status,'joined');
 
     const start=new Date(Date.now()+60*60_000).toISOString();
@@ -344,6 +345,8 @@ test('guild teams, raid signup and league fixtures persist real UUID relationshi
     assert.equal(raidJoin.teamId,teamA);
     assert.equal((await joinGuildEvent(pool,{guildId,eventId,userId:memberA,teamId:teamA})).status,'already_joined');
     assert.equal((await joinGuildEvent(pool,{guildId,eventId,userId:memberB,teamId:teamA})).status,'not_team_member');
+    for(const userId of membersA.slice(1)) assert.equal((await joinGuildEvent(pool,{guildId,eventId,userId,teamId:teamA})).status,'joined');
+    assert.equal((await joinGuildEvent(pool,{guildId,eventId,userId:captainA,teamId:teamA})).status,'team_full');
     const savedParticipant=await pool.query('SELECT team_id FROM guild_event_participants WHERE event_id=$1 AND user_id=$2',[eventId,memberA]);
     assert.equal(savedParticipant.rows[0].team_id,teamA);
 
