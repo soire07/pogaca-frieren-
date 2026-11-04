@@ -1,7 +1,7 @@
 # Rakip Özellik Backlog'u — Mevcut Kodla İlk Eşleştirme
 
 > Denetim tarihi: 2026-11-04  
-> İncelenen kod tabanı: `fix/solo-boss-reward-idempotency-mainline` @ `8cdc98d17aa47d3a3c9aa70626c32dbf1174dea6` (kod); güncel envanter 2.016 kayıt / 341 mevcut / 1.675 planlı  
+> İncelenen kod tabanı: `fix/solo-boss-reward-idempotency-mainline` @ `8cdc98d17aa47d3a3c9aa70626c32dbf1174dea6` (kod); güncel envanter 2.017 kayıt / 342 mevcut / 1.675 planlı  
 > Kaynak listeler: `docs/COMPETITOR_FEATURE_MATRIX.md`, `docs/ENTERTAINMENT_FEATURE_BACKLOG.md`  
 > Bu belge ilk kaynak/test eşleştirmesidir; canlı Discord doğrulaması veya tamamlanma beyanı değildir.
 
@@ -11,7 +11,7 @@
 
 ### Envanter sayacı
 
-Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal portalı için kanıt bağlantılı kayıtlar eklendi: **2.016 toplam kayıt = 341 mevcut/kod karşılığı olan özellik + 1.675 planlanan aday**. `auditComplete=false` korunuyor; 1.675 roadmap kaydı planlı kalıyor.
+Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal portalı için kanıt bağlantılı kayıtlar eklendi: **2.017 toplam kayıt = 342 mevcut/kod karşılığı olan özellik + 1.675 planlanan aday**. `auditComplete=false` korunuyor; 1.675 roadmap kaydı planlı kalıyor.
 
 ### Bu dalda taşınan / bağlanan modüller
 
@@ -64,7 +64,7 @@ Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal
 | ENT-002 | Yoldaş besleme ve bakım | Entegrasyon dalında mevcut; henüz ana dala alınmadı | Besleme/oyun/eğitim, mutluluk/enerji/açlık ve cooldown: `companions.js`, `yoldas.js`. |
 | ENT-003 | Yoldaş XP, eğitim ve evrim | Kısmi; PR #217 içinde genişletildi | Dört yoldaş türü için üç aşamalı evrim, 10/25/40 seviye eşikleri, altın maliyetleri ve evrim geçmişi eklendi. İzole PostgreSQL regresyon testi CI bekliyor; rol bazlı destek görevleri ve dokuz rolün tamamı hâlâ eksik. |
 | ENT-004 | Yoldaş odası ve kozmetik | Kısmi; entegrasyon dalında mevcut | Kozmetik görünüm satın alma/giydirme var; oda/dekorasyon yok. |
-| ENT-005 | Balıkçılık, olta ve yem | Entegrasyon dalında mevcut; henüz ana dala alınmadı | `fishing.js`, `balik.js`; bölge, katalog ve cooldown var. Olta/yem yükseltmesi ayrıca doğrulanmalı. |
+| ENT-005 | Balıkçılık, olta ve yem | PR #217 içinde genişletildi / doğrulama gerekli | `fishing.js`, `balik.js`; 3 kademeli olta, mana/buz/nadirlik yem paketleri, bölgesel ağırlık bonusları ve başarılı avda tek yem tüketimi eklendi. Coin debit, rod level ve bait stock aynı PostgreSQL transaction'ında. İzole entegrasyon ve birim testleri eklendi; canlı Discord akışı doğrulanmadı. |
 | ENT-006 | Bölgeye göre balık türü/nadirlik | Entegrasyon dalında mevcut; henüz ana dala alınmadı | Bölge kilidi, tür ve nadirlik kataloğu: `fishing.js`. |
 | ENT-007 | Balık koleksiyon defteri | Entegrasyon dalında mevcut; henüz ana dala alınmadı | Koleksiyon sorgusu ve `/balik defter`: `fishing.js`, `balik.js`. |
 | ENT-008 | Tohum ekme, büyüme ve hasat | Entegrasyon dalında mevcut; henüz ana dala alınmadı | `farming.js`, `sera.js`; zamanlı ekim/hasat ve PostgreSQL testi var. |
@@ -220,3 +220,5 @@ Bu liste, sonraki uygulama grubunun tekrar yazılmaması gereken kontrol noktas�
 - Teklifler için aynı alıcı/ilan kombinasyonunda tek bekleyen kayıt, alıcı başına en fazla 20 bekleyen teklif ve CSRF/bağlı hesap/sunucu kontrolleri vardır.
 - PR #217 son kod HEAD'i için 773/773 otomatik test, 31/31 Discord senaryosu ve 100/100 izole PostgreSQL entegrasyon senaryosu geçti. Altı GitHub Actions workflow'u başarılı; canlı Discord, tarayıcı OAuth ve Render deployment doğrulaması yapılmadı.
 | ENT-039 | Lonca Oyun Salonu — bilgi, kelime, hafıza ve bilmece | PR #217 içinde eklendi / doğrulama gerekli | `guild-games.js`, `loncaoyun.js`; ortak 60 saniyelik tur, tek cevap, guild/channel izolasyonu, kalıcı skor ve sıralama. Unit + izole PostgreSQL testleri eklendi; canlı Discord slash komut kaydı ve gerçek kullanıcı akışı henüz doğrulanmadı. |
+
+| ENT-040 | Olta geliştirme ve sarf yem ekonomisi | PR #217 içinde eklendi / doğrulama gerekli | `fishing.js`, `balik.js`; Ahşap → Buz Kristali → Mana Dokuma olta, 3 yem türü, bölgesel ağırlık bonusları, altın/yem transaction'ları ve avda stok tüketimi. `scripts/test-fishing.js` + `scripts/test-fishing.integration.js`; canlı Discord doğrulaması bekliyor. |
