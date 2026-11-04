@@ -146,12 +146,13 @@ test('player collection page is scoped to the linked guild and shows existing ga
     if(sql.includes('FROM user_creature_collection'))return{rows:[{creature_key:'mana_slime',quantity:1}]};
     if(sql.includes('FROM user_creature_wishlist'))return{rows:[{creature_key:'frost_hare'}]};
     if(sql.includes('FROM user_character_wishlist'))return{rows:[{character_name:'Frieren',created_at:new Date().toISOString()}]};
+    if(sql.includes('FROM anime_character_card_variants'))return{rows:[{character_name:'Frieren',series_name:'Frieren Series',variant_key:'mage_exam',quantity:1}]};
     throw new Error('Unexpected collection query: '+sql);
   }};
   const response=res();
   assert.equal(await handlePublicSiteRequest(request('/maceraci/koleksiyon?guildId='+profile.guild_id,{id:accountId,username:'Gezgin'}),response,{db}),true);
   assert.equal(response.status,200);
-  for(const expected of ['Fern','Ay Baykuşu','Gümüş Alabalık','Kuzey Meyvesi','Mana Slime','Buz Tavşanı','Frieren','Seviye 3'])assert.ok(response.body.includes(expected),expected);
+  for(const expected of ['Fern','Ay Baykuşu','Gümüş Alabalık','Kuzey Meyvesi','Mana Slime','Buz Tavşanı','Frieren','Seviye 3','Anime Kart Serileri ve Varyantlar','Büyü Sınavı Baskısı'])assert.ok(response.body.includes(expected),expected);
 });
 test('player collection page rejects guilds not linked to the signed-in site account', async () => {
   const accountId='site_123e4567-e89b-12d3-a456-426614174000';
