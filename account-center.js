@@ -437,7 +437,7 @@ export async function exportSiteAccountData(db, accountId) {
   }
   const accountData = {};
   for (const [table, columns] of accountColumnsByTable) {
-    if (!columns.includes('account_id') || columns.includes('user_id')) continue;
+    if (!columns.includes('account_id')) continue;
     const metadata = await db.query('SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=$1 ORDER BY ordinal_position',[table]);
     const selected = (metadata.rows || []).map(row => row.column_name).filter(name => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) && !SENSITIVE_COLUMN.test(name));
     if (!selected.includes('account_id')) continue;
