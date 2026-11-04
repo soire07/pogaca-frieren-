@@ -25,6 +25,8 @@ test('guild mini-games persist scores once, isolate guild/channel and reject exp
       random: () => 0, now: new Date('2026-11-04T12:00:00.000Z')
     });
     assert.equal(session.options.length,4);
+    const overlap = await startGuildMiniGame(pool, { guildId, channelId, userId:creatorId, gameType:'kelime', random:()=>0, now:new Date('2026-11-04T12:00:01.000Z') });
+    assert.equal(overlap.status,'channel_active','a channel must not host overlapping active rounds');
     const correctIndex = session.answerIndex;
 
     const duplicateAttempts = await Promise.all(Array.from({length:8},()=>answerGuildMiniGame(pool,{
@@ -65,6 +67,9 @@ test('guild mini-games persist scores once, isolate guild/channel and reject exp
       now:new Date('2026-11-04T12:02:00.000Z')
     });
     assert.equal(expired.status,'expired');
+    const nextSession = await startGuildMiniGame(pool,{guildId,channelId,userId:creatorId,gameType:'hafiza',random:()=>0,now:new Date('2026-11-04T12:02:01.000Z')});
+    assert.ok(nextSession.session_id,'expired channel sessions must not block the next round');
+    assert.equal(nextSession.status,undefined);
   });
 });
 
