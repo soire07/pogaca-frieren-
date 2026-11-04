@@ -206,7 +206,10 @@ export async function runGuildSpellAutomations(db,client,guildId,triggerKey,cont
   for(const rule of claimed.rows){
     try{
       const channel=await client.channels.fetch(rule.channel_id);
-      if(!channel?.isTextBased?.()) { skipped++;continue; }
+      if(!channel?.isTextBased?.() || String(channel.guildId||'')!==String(guildId)) { skipped++;continue; }
+      const permissions=typeof channel.permissionsFor==='function'?channel.permissionsFor(client.user):null;
+      if(permissions && !permissions.has('SendMessages')) { skipped++;continue; }
+      if(rule.template_id && permissions && !permissions.has('EmbedLinks')) { skipped++;continue; }
       const replacements={player:String(context.player||'Maceracı'),boss:String(context.boss||'Boss'),event:String(context.event||'Etkinlik'),spell:String(context.spell||'Büyü')};
       const content=String(rule.message).replace(/\{\{(player|boss|event|spell)\}\}/g,(_match,key)=>replacements[key]).slice(0,1900);
       const embeds=[];
