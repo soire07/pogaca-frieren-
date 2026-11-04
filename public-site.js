@@ -32,7 +32,7 @@ function page(title, content, user) {
   const avatar = user.avatarUrl || '/assets/site-avatar.webp';
   const ownerLink = user.id === OWNER_ID ? '<a href="/owner">Owner Panel</a>' : '';
   const guildLink = '<a href="/lonca">Maceracı Loncası</a>';
-  return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><meta name="description" content="Frieren evreninde büyülü bir Discord RPG yolculuğu."><link rel="icon" type="image/svg+xml" href="/assets/site-avatar.svg"><link rel="alternate icon" href="/assets/site-avatar.webp" type="image/webp"><link rel="manifest" href="/site.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><title>' + esc(title) + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css"></head><body><header class="topbar"><a class="brand" href="/"><span class="brand-mark">✧</span><span>FRIEREN<small>THE ARCANE JOURNEY</small></span></a><nav><a href="/">Ana Sayfa</a><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/maceraci">Maceracı Paneli</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><div class="user-chip"><img src="' + esc(avatar) + '" alt=""><span>' + esc(user.username || 'Gezgin') + '</span><a href="/logout" title="Çıkış yap">↗</a></div></header>' + content + '<footer><div><strong>✧ FRIEREN</strong><span>Bir yolculuk, bin yıllık bir hikâye.</span></div><nav><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><small>© Frieren Platform · Developed by Soiree</small></footer></body></html>';
+  return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><meta name="description" content="Frieren evreninde büyülü bir Discord RPG yolculuğu."><link rel="icon" type="image/svg+xml" href="/assets/site-avatar.svg"><link rel="alternate icon" href="/assets/site-avatar.webp" type="image/webp"><link rel="manifest" href="/site.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><title>' + esc(title) + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css"></head><body><header class="topbar"><a class="brand" href="/"><span class="brand-mark">✧</span><span>FRIEREN<small>THE ARCANE JOURNEY</small></span></a><nav><a href="/">Oyuncu Paneli</a><a href="/kesfet">Keşfet</a><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/maceraci">Maceracı Paneli</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><div class="user-chip"><img src="' + esc(avatar) + '" alt=""><span>' + esc(user.username || 'Gezgin') + '</span><a href="/logout" title="Çıkış yap">↗</a></div></header>' + content + '<footer><div><strong>✧ FRIEREN</strong><span>Bir yolculuk, bin yıllık bir hikâye.</span></div><nav><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><small>© Frieren Platform · Developed by Soiree</small></footer></body></html>';
 }
 function home(client, user) {
   const ready = client?.isReady?.() === true;
@@ -207,7 +207,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  const publicPaths = new Set(['/', '/pogaca', '/komutlar', '/frieren-ai', '/maceraci', '/maceraci/envanter', '/pazar']);
+  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/maceraci', '/maceraci/envanter', '/pazar']);
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname)) return false;
   const user = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
   if (!user) {
@@ -228,8 +228,8 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  if (url.pathname === '/maceraci') {
-    if (!db) { res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }); res.end('Panel veritabanı kullanılamıyor.'); return true; }
+  if (url.pathname === '/' || url.pathname === '/maceraci') {
+    if (!db) { res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }); res.end('Oyuncu paneli veritabanına şu anda bağlanamıyor.'); return true; }
     const data = await getAdventurerDashboard(db, user.id);
     const html = adventurerPanel(user, data, url.searchParams.get('status'));
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });
@@ -253,7 +253,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
     res.end(html);return true;
   }
-  const routes = new Map([['/', () => home(client, user)], ['/pogaca', () => pogaca(client, user)], ['/komutlar', () => commandCatalog(client, user)], ['/frieren-ai', () => aiPage(user)]]);
+  const routes = new Map([['/kesfet', () => home(client, user)], ['/pogaca', () => pogaca(client, user)], ['/komutlar', () => commandCatalog(client, user)], ['/frieren-ai', () => aiPage(user)]]);
   const render = routes.get(url.pathname);
   if (!render) return false;
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });

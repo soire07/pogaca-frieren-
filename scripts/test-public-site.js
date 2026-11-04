@@ -26,7 +26,7 @@ test('anonymous visitors must authenticate before viewing the homepage', async (
 test('authenticated homepage includes the member identity, profile and GIF gallery', async () => {
   const response = res();
   const client = { guilds: { cache: { size: 3 } }, commands: { size: 68 }, isReady: () => true };
-  assert.equal(await handlePublicSiteRequest(request('/', visitor), response, { client }), true);
+  assert.equal(await handlePublicSiteRequest(request('/kesfet', visitor), response, { client }), true);
   assert.equal(response.status, 200);
   assert.match(response.body, /Bin yıllık/);
   assert.match(response.body, /Gezgin/);
@@ -40,6 +40,37 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.equal((response.body.match(/loading="lazy"/g) || []).length, 18);
   assert.equal((response.body.match(/class="gif-item"/g) || []).length, 16);
   assert.match(response.body, /68/);
+});
+
+
+test('authenticated homepage is the account-scoped player dashboard', async () => {
+  const profile = { guild_id:'1539562273197260860', user_id:'123456789012345678', character_name:'Fern', class_name:'Büyücü', level:12, xp:1440, coins:900, hp:80, max_hp:100, mana:65, max_mana:100, season_name:'Sezon 2026', rating:1180, wins:4, losses:2, matches:6 };
+  const event = { event_id:'event-home', guild_id:profile.guild_id, title:'Zindan Gecesi', description:'Topluluk etkinliği', event_type:'community', starts_at:new Date(Date.now()+3600000).toISOString(), ends_at:new Date(Date.now()+7200000).toISOString(), max_participants:12, participants:5 };
+  const accountId = 'site_123e4567-e89b-12d3-a456-426614174000';
+  const queries = [];
+  const db = { async query(sql, params) {
+    queries.push({ sql, params });
+    if (sql.includes('FROM site_discord_links l JOIN users u')) return { rows:[profile], rowCount:1 };
+    if (sql.includes('FROM guild_events e LEFT JOIN guild_event_participants')) return { rows:[event], rowCount:1 };
+    throw new Error('Unexpected query: ' + sql);
+  }};
+  const response = res();
+  assert.equal(await handlePublicSiteRequest(request('/', { id:accountId, username:'Gezgin' }), response, { db }), true);
+  assert.equal(response.status, 200);
+  assert.match(response.body, /Maceracı Paneli/);
+  assert.match(response.body, /Fern/);
+  assert.match(response.body, /1180/);
+  assert.match(response.body, /Zindan Gecesi/);
+  assert.match(response.body, /action="\\/maceraci\\/link"/);
+  assert.equal(queries.length, 2);
+  assert.equal(queries[0].params[0], accountId.replace(/^site_/, ''));
+});
+
+test('player homepage fails closed when its database is unavailable', async () => {
+  const response = res();
+  assert.equal(await handlePublicSiteRequest(request('/'), response, {}), true);
+  assert.equal(response.status, 503);
+  assert.match(response.body, /veritabanına/);
 });
 
 test('all public pages require a valid Discord session', async () => {
