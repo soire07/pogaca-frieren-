@@ -128,7 +128,7 @@
 
 ## 5. İlk entegrasyon grubu — kod ve test durumu
 
-Aşağıdaki backlog maddelerinin ilk uygulama dilimi PR #219 / `feat/frieren-platform-expansion-batch` dalında kodlandı. Henüz ana dala alınmış veya canlıda doğrulanmış sayılmaz:
+Aşağıdaki backlog maddelerinin ilk uygulama dilimi PR #217 / `fix/solo-boss-reward-idempotency-mainline` (PR #219 kapatıldı; merge edilmedi) dalında kodlandı. Henüz ana dala alınmış veya canlıda doğrulanmış sayılmaz:
 
 - ENT-001–004: Yoldaş sahiplenme, bakım, eğitim ve kozmetik (evrim/oda dekorasyonu kısmi).
 - ENT-005–007: Bölgesel balıkçılık ve koleksiyon defteri (olta/yem yükseltmeleri kısmi).
@@ -137,9 +137,9 @@ Aşağıdaki backlog maddelerinin ilk uygulama dilimi PR #219 / `feat/frieren-pl
 - ENT-035: Anime karakter wishlist.
 - ENT-036: Kalıcı Anime Quiz puanları.
 - ENT-037 / ENT-025: 30 dakika önceden etkinlik hatırlatması; PostgreSQL claim/retry/idempotency.
-- ENT-038 / ENT-021–022: escrow tabanlı oyuncu pazarı; Discord komutları ve PR #219 taslağındaki web `/pazar` sayfası aynı transaction servislerini kullanır. İlan, satın alma, iptal ve işlem geçmişi var; arama/filtre ve teklif pazarlığı eksik.
+- ENT-038 / ENT-021–022: escrow tabanlı oyuncu pazarı; Discord komutları ve PR #217 içindeki web `/pazar` sayfası aynı transaction servislerini kullanır. İlan, satın alma, iptal ve işlem geçmişi var; arama/filtre ve teklif pazarlığı eksik.
 
-Web tarafında WEB-001–003 için Discord OAuth bağlantısı, yetkili sunucu seçimi ve sunucu bazlı modül/komut anahtarları mevcut. PR #219 taslağında WEB-006 envanter/ekipman görünümü, WEB-007 escrow tabanlı web pazarı ve WEB-008 etkinlik RSVP/ayrılma akışları da eklendi. Kart/yoldaş web görünümü, pazar arama/teklifleri ve etkinlik hatırlatma tercihleri eksik. CI/izole PostgreSQL testleri canlı OAuth, mobil tarayıcı veya Discord teslimi yerine geçmez.
+Web tarafında WEB-001–003 için Discord OAuth bağlantısı, yetkili sunucu seçimi ve sunucu bazlı modül/komut anahtarları mevcut. PR #217 içinde WEB-006 envanter/ekipman görünümü, WEB-007 escrow tabanlı web pazarı ve WEB-008 etkinlik RSVP/ayrılma akışları da eklendi. Kart/yoldaş web görünümü, pazar arama/teklifleri ve etkinlik hatırlatma tercihleri eksik. CI/izole PostgreSQL testleri canlı OAuth, mobil tarayıcı veya Discord teslimi yerine geçmez.
 
 Yeni uygulama grubu, yukarıdaki tamamlanmamış alt davranışları mevcut kodla tekrar karşılaştırarak sürdürülmelidir; aynı özellik ailesi için ikinci modül/komut oluşturulmamalıdır.
 
@@ -151,3 +151,9 @@ Yeni uygulama grubu, yukarıdaki tamamlanmamış alt davranışları mevcut kodl
 - Altın hediyeleri kilitli transaction ve hediye defteriyle atomiktir; haftalık itibar giver/week unique kısıtıyla tekilleştirilir.
 - Web `/maceraci/sosyal` bağlı karakterin arkadaş/rakip/istek/itibar görünümünü ve işlemlerini sunar. GET ve POST, hesap bağlantısı, CSRF ve lonca `social` feature gate ile korunur.
 - PostgreSQL sosyal testleri 6/6; web sosyal route testleri `scripts/test-public-site.js` içinde. Canlı Discord ve gerçek mobil/masaüstü tarayıcı doğrulaması henüz yapılmadı.
+
+## PR #217 ek bütünleşik geliştirme — 2026-11-04
+
+- Yoldaş evrimi dört türde üç aşama, seviye/altın gereksinimi, atomik ücret kesintisi ve geçmiş kaydıyla genişletildi. /yoldas evrim ve /yoldas gecmis eklendi.
+- Public home showcase GET route yerleşimi düzeltildi; herkese açık olmayan evler için 404 gizlilik testi eklendi.
+- Bu değişiklikler PR #217 içinde; CI/izole PostgreSQL doğrulaması bekleniyor. Önceki PR #219 kapatıldı ve merge edilmedi.
