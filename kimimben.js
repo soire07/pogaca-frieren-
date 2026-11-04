@@ -155,7 +155,7 @@ function createCharacterEmbed(character, user, saved) {
     )
     .addFields(
       { name: '🎬  SERİ', value: `**${character.anime}**`, inline: true },
-      { name: '🎴  KART VARYANTI', value: `**${variant.label}**\\n×${saved.variantQuantity}`, inline: true },
+      { name: '🎴  KART VARYANTI', value: `**${variant.label}**\n×${saved.variantQuantity}`, inline: true },
       { name: `${character.emoji}  SINIF`, value: `**${character.rarity}**\n${info.stars}`, inline: true },
       { name: '📚  KOLEKSİYON', value: `**×${quantity}**`, inline: true },
       { name: '✧  KARAKTER ÖZELLİKLERİ', value: `┏  ${character.traits}\n┗━━━━━━━━━━━━━━━━`, inline: false }
