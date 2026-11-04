@@ -1,0 +1,51 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { normalizeSupportTicketInput, createSupportTicket, listSupportTickets, exportSiteAccountData, deleteSiteAccount } from '../account-center.js';
+
+const accountId='site_123e4567-e89b-12d3-a456-426614174000';
+
+test('support ticket input is normalized and bounded',()=>{
+ assert.deepEqual(normalizeSupportTicketInput({category:'bug',subject:' OAuth issue ',message:' Login callback fails. '}),{category:'bug',subject:'OAuth issue',message:'Login callback fails.'});
+ assert.throws(()=>normalizeSupportTicketInput({category:'other',subject:'x',message:'body'}),/SUPPORT_TICKET_CATEGORY_INVALID/);
+ assert.throws(()=>normalizeSupportTicketInput({category:'bug',subject:'x'.repeat(161),message:'body'}),/SUPPORT_TICKET_SUBJECT_INVALID/);
+});
+
+test('support ticket creation is scoped to the current account and rate limited',async()=>{
+ const calls=[];
+ const db={async query(sql,params){calls.push({sql,params});if(sql.includes('COUNT(*)'))return{rows:[{count:0}],rowCount:1};if(sql.includes('INSERT INTO frieren_support_tickets'))return{rows:[{ticket_id:'ticket-1',category:'bug',subject:'OAuth issue',status:'open'}],rowCount:1};throw Error('unexpected query');}};
+ const result=await createSupportTicket(db,accountId,{category:'bug',subject:'OAuth issue',message:'Callback fails.'});
+ assert.equal(result.status,'created');
+ assert.ok(calls.every(x=>x.params.includes('123e4567-e89b-12d3-a456-426614174000')));
+ const limited={async query(sql){if(sql.includes('COUNT(*)'))return{rows:[{count:5}],rowCount:1};throw Error('must not insert');}};
+ assert.equal((await createSupportTicket(limited,accountId,{category:'bug',subject:'Help',message:'Body'})).status,'daily_limit');
+});
+
+test('support tickets list only the authenticated account records',async()=>{
+ let params;
+ const db={async query(_sql,p){params=p;return{rows:[{ticket_id:'ticket-1',status:'open'}],rowCount:1};}};
+ assert.equal((await listSupportTickets(db,accountId)).length,1);
+ assert.deepEqual(params,['123e4567-e89b-12d3-a456-426614174000',20]);
+});
+
+test('account export returns linked profile, inventory and collection data',async()=>{
+ const db={async query(sql){
+  if(sql.includes('FROM frieren_site_accounts'))return{rows:[{id:'123e4567-e89b-12d3-a456-426614174000',username:'Gezgin',email:'member@example.com'}],rowCount:1};
+  if(sql.includes('FROM site_discord_links'))return{rows:[{guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',level:20,xp:2400}],rowCount:1};
+  if(sql.includes('FROM inventory'))return{rows:[{item_key:'Mana Kristali',quantity:2}],rowCount:1};
+  if(sql.includes('FROM anime_character_collection'))return{rows:[{character_name:'Frieren',quantity:1}],rowCount:1};
+  return{rows:[],rowCount:0};
+ }};
+ const result=await exportSiteAccountData(db,accountId);
+ assert.equal(result.account.username,'Gezgin');
+ assert.equal(result.linkedProfiles[0].inventory[0].item_key,'Mana Kristali');
+ assert.equal(result.linkedProfiles[0].collections[0].character_name,'Frieren');
+});
+
+test('account deletion requires the explicit confirmation phrase',async()=>{
+ let connected=false;
+ const db={connect:async()=>{connected=true;return{async query(){return{rows:[],rowCount:1};},release(){}};}};
+ assert.equal((await deleteSiteAccount(db,accountId,'')).status,'confirmation_required');
+ assert.equal(connected,false);
+ assert.equal((await deleteSiteAccount(db,accountId,'HESABIMI SIL')).status,'deleted');
+ assert.equal(connected,true);
+});
