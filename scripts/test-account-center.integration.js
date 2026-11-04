@@ -25,8 +25,8 @@ function makeIds(prefix, count) {
 test('account export includes linked game and support data while excluding secrets; deletion removes portal data but preserves Discord RPG data', async () => {
   assertIsolatedAuditDatabase();
   await initDatabase();
-  await ensureAdventurerPlatformTables(pool);
   await ensureArenaTables(pool);
+  await ensureAdventurerPlatformTables(pool);
   await ensurePlayerMarketTables(pool);
   await ensureSocialPlatformTables(pool);
   await ensureAccountCenterSchema(pool);
