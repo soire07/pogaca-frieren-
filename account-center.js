@@ -41,35 +41,27 @@ function quoteExportIdentifier(value) {
 }
 
 async function includeForeignKeyDescendants(db, data) {
-  const foreignKeys = await db.query(`
-    SELECT child.relname AS child_table,
-           parent.relname AS parent_table,
-           ARRAY_AGG(child_column.attname ORDER BY child_key.ordinality) AS child_columns,
-           ARRAY_AGG(parent_column.attname ORDER BY child_key.ordinality) AS parent_columns
-    FROM pg_constraint relation
-    JOIN pg_class child ON child.oid=relation.conrelid
-    JOIN pg_namespace child_schema ON child_schema.oid=child.relnamespace
-    JOIN pg_class parent ON parent.oid=relation.confrelid
-    JOIN pg_namespace parent_schema ON parent_schema.oid=parent.relnamespace
-    JOIN LATERAL unnest(relation.conkey) WITH ORDINALITY child_key(attnum,ordinality) ON TRUE
-    JOIN pg_attribute child_column ON child_column.attrelid=child.oid AND child_column.attnum=child_key.attnum
-    JOIN LATERAL unnest(relation.confkey) WITH ORDINALITY parent_key(attnum,ordinality)
-      ON parent_key.ordinality=child_key.ordinality
-    JOIN pg_attribute parent_column ON parent_column.attrelid=parent.oid AND parent_column.attnum=parent_key.attnum
-    WHERE relation.contype='f'
-      AND child_schema.nspname=current_schema()
-      AND parent_schema.nspname=current_schema()
-    GROUP BY child.relname,parent.relname,relation.oid
-    ORDER BY child.relname,parent.relname
-  `);
+  const fkSql = 'SELECT child.relname AS child_table, parent.relname AS parent_table, ' +
+    'ARRAY_AGG(child_column.attname ORDER BY child_key.ordinality) AS child_columns, ' +
+    'ARRAY_AGG(parent_column.attname ORDER BY child_key.ordinality) AS parent_columns ' +
+    'FROM pg_constraint relation ' +
+    'JOIN pg_class child ON child.oid=relation.conrelid ' +
+    'JOIN pg_namespace child_schema ON child_schema.oid=child.relnamespace ' +
+    'JOIN pg_class parent ON parent.oid=relation.confrelid ' +
+    'JOIN pg_namespace parent_schema ON parent_schema.oid=parent.relnamespace ' +
+    'JOIN LATERAL unnest(relation.conkey) WITH ORDINALITY child_key(attnum,ordinality) ON TRUE ' +
+    'JOIN pg_attribute child_column ON child_column.attrelid=child.oid AND child_column.attnum=child_key.attnum ' +
+    'JOIN LATERAL unnest(relation.confkey) WITH ORDINALITY parent_key(attnum,ordinality) ON parent_key.ordinality=child_key.ordinality ' +
+    'JOIN pg_attribute parent_column ON parent_column.attrelid=parent.oid AND parent_column.attnum=parent_key.attnum ' +
+    'WHERE relation.contype=\'f\' AND child_schema.nspname=current_schema() AND parent_schema.nspname=current_schema() ' +
+    'GROUP BY child.relname,parent.relname,relation.oid ORDER BY child.relname,parent.relname';
+  const foreignKeys = await db.query(fkSql);
   const edges = (foreignKeys.rows || []).filter(edge =>
     /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(String(edge.child_table || '')) &&
     /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(String(edge.parent_table || '')) &&
     !SENSITIVE_TABLE.test(edge.child_table) &&
-    Array.isArray(edge.child_columns) &&
-    Array.isArray(edge.parent_columns) &&
-    edge.child_columns.length > 0 &&
-    edge.child_columns.length === edge.parent_columns.length
+    Array.isArray(edge.child_columns) && Array.isArray(edge.parent_columns) &&
+    edge.child_columns.length > 0 && edge.child_columns.length === edge.parent_columns.length
   );
   const seen = new Map();
   const remember = (table, row) => {
@@ -84,16 +76,16 @@ async function includeForeignKeyDescendants(db, data) {
   let frontier = [];
   for (const [table, rows] of Object.entries(data)) {
     if (!Array.isArray(rows)) continue;
+    if (!seen.has(table)) seen.set(table, new Set());
     for (const row of rows) {
       const key = JSON.stringify(row);
-      if (!seen.has(table)) seen.set(table, new Set());
-      if (!seen.get(table).has(key)) {
-        seen.get(table).add(key);
-        frontier.push({ table, row });
-      }
+      if (seen.get(table).has(key)) continue;
+      seen.get(table).add(key);
+      frontier.push({ table, row });
     }
   }
   const columnCache = new Map();
+  const dollar = String.fromCharCode(36);
   while (frontier.length) {
     const rowsByTable = new Map();
     for (const item of frontier) {
@@ -103,10 +95,10 @@ async function includeForeignKeyDescendants(db, data) {
     const next = [];
     for (const edge of edges) {
       const parents = rowsByTable.get(edge.parent_table);
-      if (!parents?.length) continue;
+      if (!parents || !parents.length) continue;
       if (!columnCache.has(edge.child_table)) {
         const metadata = await db.query(
-          'SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=$1 ORDER BY ordinal_position',
+          'SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=' + dollar + '1 ORDER BY ordinal_position',
           [edge.child_table]
         );
         columnCache.set(edge.child_table, (metadata.rows || []).map(row => row.column_name)
@@ -124,8 +116,23 @@ async function includeForeignKeyDescendants(db, data) {
             const value = parent[parentColumn];
             if (value === null || value === undefined) return null;
             params.push(String(value));
-            return quoteExportIdentifier(edge.child_columns[index]) + '::text=
-
+            return quoteExportIdentifier(edge.child_columns[index]) + '::text=' + dollar + params.length;
+          });
+          if (parts.every(Boolean)) predicates.push('(' + parts.join(' AND ') + ')');
+        }
+        if (!predicates.length) continue;
+        const result = await db.query(
+          'SELECT ' + projection + ' FROM ' + quoteExportIdentifier(edge.child_table) + ' WHERE ' + predicates.join(' OR '),
+          params
+        );
+        for (const row of result.rows || []) {
+          if (remember(edge.child_table, row)) next.push({ table: edge.child_table, row });
+        }
+      }
+    }
+    frontier = next;
+  }
+}
 export function normalizeSupportTicketInput({ category, subject, message } = {}) {
   const selectedCategory = String(category || '').trim().toLowerCase();
   const cleanSubject = String(subject || '').trim();
