@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseAnimeNewsRss, setNotificationPreference, getNotificationPreferences, claimDueAnimeNewsDigests } from '../news-birds.js';
+import { parseAnimeNewsRss, setNotificationPreference, getNotificationPreferences, claimDueAnimeNewsDigests, getEventReminderRecipients } from '../news-birds.js';
 
 test('RSS parser extracts bounded safe titles, summaries and HTTPS article links',()=>{
  const xml='<?xml version="1.0"?><rss><channel><item><title><![CDATA[Frieren: New Arc & Cast]]></title><link>https://www.animenewsnetwork.com/news/2026-11-04/test</link><guid>ann-1</guid><pubDate>Wed, 04 Nov 2026 12:00:00 GMT</pubDate><description><![CDATA[<p>New <b>anime</b> update &amp; details.</p>]]></description></item></channel></rss>';
@@ -30,8 +30,8 @@ test('notification preference view defaults every supported category to disabled
  const db={async query(){return{rows:[{category:'anime_news',enabled:true}],rowCount:1};}};
  const result=await getNotificationPreferences(db,'1539562273197260860','123456789012345678');
  assert.equal(result.anime_news,true);
- assert.equal(result.event_reminders,false);
- assert.equal(result.boss_raid_reminders,false);
+ assert.equal(result.event_reminders,true);
+ assert.equal(result.boss_raid_reminders,true);
 });
 
 test('news digest claims use row locks and a bounded retry lease',async()=>{
@@ -41,4 +41,13 @@ test('news digest claims use row locks and a bounded retry lease',async()=>{
  assert.match(query.sql,/FOR UPDATE OF p SKIP LOCKED/);
  assert.match(query.sql,/claimed_until/);
  assert.deepEqual(query.params,[12]);
+});
+
+test('calendar reminder recipient lookup honors explicit opt-outs while preserving RSVP defaults',async()=>{
+ let captured;
+ const db={async query(sql,params){captured={sql,params};return{rows:[{user_id:'123456789012345678'}],rowCount:1};}};
+ const users=await getEventReminderRecipients(db,'123e4567-e89b-42d3-a456-426614174000','boss_raid_reminders');
+ assert.deepEqual(users,['123456789012345678']);
+ assert.match(captured.sql,/COALESCE\(n\.enabled,TRUE\)=TRUE/);
+ assert.deepEqual(captured.params,['123e4567-e89b-42d3-a456-426614174000','boss_raid_reminders']);
 });
