@@ -37,6 +37,27 @@ export async function ensureAccountCenterSchema(db) {
     );
     CREATE INDEX IF NOT EXISTS frieren_support_tickets_account_idx
       ON frieren_support_tickets(account_id,created_at DESC);
+    CREATE TABLE IF NOT EXISTS frieren_support_ticket_messages (
+      message_id UUID PRIMARY KEY,
+      ticket_id UUID NOT NULL REFERENCES frieren_support_tickets(ticket_id) ON DELETE CASCADE,
+      author_type TEXT NOT NULL CHECK(author_type IN ('account','support')),
+      author_id TEXT NOT NULL,
+      message TEXT NOT NULL CHECK(length(message) BETWEEN 1 AND 5000),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS frieren_support_ticket_messages_idx
+      ON frieren_support_ticket_messages(ticket_id,created_at,message_id);
+    CREATE TABLE IF NOT EXISTS frieren_support_ticket_events (
+      event_id UUID PRIMARY KEY,
+      ticket_id UUID NOT NULL REFERENCES frieren_support_tickets(ticket_id) ON DELETE CASCADE,
+      actor_type TEXT NOT NULL CHECK(actor_type IN ('account','support')),
+      actor_id TEXT NOT NULL,
+      previous_status TEXT,
+      new_status TEXT NOT NULL CHECK(new_status IN ('open','in_progress','closed')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS frieren_support_ticket_events_idx
+      ON frieren_support_ticket_events(ticket_id,created_at,event_id);
   `);
 }
 
@@ -66,6 +87,64 @@ export async function listSupportTickets(db, accountId, limit = 20) {
     [id, Math.max(1, Math.min(50, Number(limit) || 20))]
   );
   return result.rows;
+}
+
+export async function listSupportTicketMessages(db, accountId, ticketId) {
+  const id = accountUuid(accountId);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(ticketId || ''))) {
+    throw new Error('SUPPORT_TICKET_ID_INVALID');
+  }
+  const ticket = await db.query('SELECT ticket_id,message,status FROM frieren_support_tickets WHERE ticket_id=$1 AND account_id=$2', [ticketId,id]);
+  if (!ticket.rowCount) return { status:'not_found', messages:[] };
+  const messages = await db.query(
+    'SELECT message_id,author_type,author_id,message,created_at FROM frieren_support_ticket_messages WHERE ticket_id=$1 ORDER BY created_at,message_id',
+    [ticketId]
+  );
+  const events = await db.query(
+    'SELECT actor_type,previous_status,new_status,created_at FROM frieren_support_ticket_events WHERE ticket_id=$1 ORDER BY created_at,event_id',
+    [ticketId]
+  );
+  return { status:'ok', ticket:ticket.rows[0], messages:messages.rows, events:events.rows };
+}
+
+export async function replySupportTicket(db, accountId, ticketId, message) {
+  const id = accountUuid(accountId);
+  const clean = String(message || '').trim();
+  if (!clean || clean.length > 5000 || /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(clean)) {
+    throw new Error('SUPPORT_TICKET_REPLY_INVALID');
+  }
+  const ticket = await db.query(
+    "SELECT ticket_id,status FROM frieren_support_tickets WHERE ticket_id=$1 AND account_id=$2",
+    [ticketId,id]
+  );
+  if (!ticket.rowCount) return { status:'not_found' };
+  if (ticket.rows[0].status === 'closed') return { status:'closed' };
+  const inserted = await db.query(
+    "INSERT INTO frieren_support_ticket_messages(message_id,ticket_id,author_type,author_id,message) VALUES($1,$2,'account',$3,$4) RETURNING message_id,author_type,message,created_at",
+    [randomUUID(),ticketId,id,clean]
+  );
+  await db.query('UPDATE frieren_support_tickets SET updated_at=NOW() WHERE ticket_id=$1 AND account_id=$2',[ticketId,id]);
+  await db.query(
+    "INSERT INTO frieren_support_ticket_events(event_id,ticket_id,actor_type,actor_id,previous_status,new_status) VALUES($1,$2,'account',$3,$4,$4)",
+    [randomUUID(),ticketId,id,ticket.rows[0].status]
+  );
+  return { status:'replied', message:inserted.rows[0] };
+}
+
+export async function updateSupportTicketStatus(db, accountId, ticketId, nextStatus, actorType='support') {
+  const id = accountUuid(accountId);
+  if (actorType !== 'support' || !['open','in_progress','closed'].includes(nextStatus)) throw new Error('SUPPORT_TICKET_STATUS_INVALID');
+  const current = await db.query('SELECT ticket_id,status FROM frieren_support_tickets WHERE ticket_id=$1 AND account_id=$2',[ticketId,id]);
+  if (!current.rowCount) return { status:'not_found' };
+  const updated = await db.query(
+    'UPDATE frieren_support_tickets SET status=$3,updated_at=NOW() WHERE ticket_id=$1 AND account_id=$2 RETURNING ticket_id,status',
+    [ticketId,id,nextStatus]
+  );
+  await db.query(
+    "INSERT INTO frieren_support_ticket_events(event_id,ticket_id,actor_type,actor_id,previous_status,new_status) VALUES($1,$2,'support','support',$3,$4)",
+    [randomUUID(),ticketId,current.rows[0].status,nextStatus]
+  );
+  return { status:'updated', ticket:updated.rows[0] };
 }
 
 export async function exportSiteAccountData(db, accountId) {
