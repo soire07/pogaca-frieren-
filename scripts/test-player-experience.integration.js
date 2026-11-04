@@ -21,8 +21,7 @@ test('home room unlock and layout persist only supported unlocked rooms and deco
  assert.equal(unlocked.status,'unlocked');
  const saved=await saveHomeLayout(pool,{guildId:guild,userId:user,activeRoom:'library',layout:[{roomKey:'library',decorationKey:'book_shelf',position:0},{roomKey:'starter',decorationKey:'mana_lamp',position:1}]});
  assert.equal(saved.status,'saved');
- const invalid=await saveHomeLayout(pool,{guildId:guild,userId:user,activeRoom:'library',layout:[{roomKey:'library',decorationKey:'unknown',position:0}]});
- assert.throws(()=>invalid,/never');
+ await assert.rejects(()=>saveHomeLayout(pool,{guildId:guild,userId:user,activeRoom:'library',layout:[{roomKey:'library',decorationKey:'unknown',position:0}]}),/HOME_LAYOUT_INVALID/);
 });
 test('cosmetic purchase is single-charge, equip is ownership-gated and presets persist',async()=>{
  const item=PLAYER_COSMETICS[0];
