@@ -55,7 +55,7 @@ async function discoverMigrations(directory) {
 export async function runDatabaseMigrations(db, options = {}) {
   if (!db || typeof db.connect !== 'function') throw new Error('DB_MIGRATION_DATABASE_REQUIRED');
   const directory = options.migrationsDir
-    ? new URL('file://' + String(options.migrationsDir).replace(/\\/g, '/') + (String(options.migrationsDir).endsWith('/') ? '' : '/'))
+    ? pathToFileURL(resolve(String(options.migrationsDir)) + '/')
     : new URL('./migrations/', import.meta.url);
   const migrations = await discoverMigrations(directory);
   const client = await db.connect();
