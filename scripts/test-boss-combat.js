@@ -2,6 +2,7 @@ import test from 'node:test';
 import { claimSoloBossReward } from '../rpg-reward-transactions.js';
 import assert from 'node:assert/strict';
 import raidCommand from '../ortakboss.js';
+import eventCommand from '../etkinlik.js';
 import {
   RAID_BOSSES,
   progressionMilestone,
@@ -302,4 +303,12 @@ test('co-op boss command accepts a calendar event id for a registered raid team'
   assert.ok(eventOption, 'raid should support a calendar event link');
   assert.equal(eventOption.required, false);
   assert.equal(eventOption.max_length, 36);
+});
+
+test('guild event creation exposes a typed boss raid calendar option', () => {
+  const event = eventCommand.data.toJSON();
+  const create = event.options.find(option => option.name === 'olustur');
+  const type = create.options.find(option => option.name === 'tur');
+  assert.ok(type);
+  assert.deepEqual(type.choices.map(choice => choice.value), ['community','boss_raid','tournament','anime_night']);
 });
