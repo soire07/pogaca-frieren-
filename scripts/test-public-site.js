@@ -20,7 +20,7 @@ function request(path = '/', user = visitor) {
 test('public command catalog includes the new guild mini-game command', async () => {
   const response = res();
   await handlePublicSiteRequest(request('/'), response);
-  assert.match(response.body,/\\/loncaoyun/);
+  assert.ok(response.body.includes('/loncaoyun'));
 });
 
 test('anonymous visitors must authenticate before viewing the homepage', async () => {
