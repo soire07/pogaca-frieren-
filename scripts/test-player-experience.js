@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {HOME_ROOMS,HOME_DECORATIONS,PLAYER_COSMETICS,EVENT_MILESTONES,validateHomeLayout} from '../player-experience.js';
+import {HOME_ROOMS,HOME_DECORATIONS,HOME_STATIONS,ALCHEMY_RECIPES,PLAYER_COSMETICS,EVENT_MILESTONES,validateHomeLayout} from '../player-experience.js';
 
 test('personal home rooms have unique keys and nonnegative progression costs',()=>{
  assert.equal(new Set(HOME_ROOMS.map(x=>x.key)).size,HOME_ROOMS.length);
@@ -26,3 +26,5 @@ test('event rewards use only attainable one-time registration and check-in miles
  assert.deepEqual(EVENT_MILESTONES.map(x=>x.key),['participant','checkin']);
  assert.ok(EVENT_MILESTONES.every(x=>x.target===1&&x.coins>0&&x.xp>0));
 });
+
+test('home stations reference existing commands and alchemy recipes consume known materials',()=>{assert.equal(new Set(HOME_STATIONS.map(x=>x.roomKey)).size,HOME_STATIONS.length);assert.ok(HOME_STATIONS.some(x=>x.roomKey==='garden'&&x.commands.includes('/bahce durum')));assert.ok(ALCHEMY_RECIPES.length>0);assert.ok(ALCHEMY_RECIPES.every(x=>x.materials.length>0&&x.output));});
