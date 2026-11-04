@@ -150,7 +150,7 @@ test('account export includes linked game and support data while excluding secre
     assert.equal(exported.linkedProfiles[0].arenaMatchHistory[0].participants[0].name,'Exported Fern');
     assert.equal(exported.linkedProfiles[0].guildEventHistory.length,1,'the linked player event context must be exported');
     assert.equal(exported.linkedProfiles[0].guildEventHistory[0].title,'Export test event');
-    assert.equal(Object.hasOwn(exported.linkedProfiles[0].guildEventHistory[0],'created_by'),false,'event export must not expose another user's creator identity');
+    assert.equal(Object.hasOwn(exported.linkedProfiles[0].guildEventHistory[0],'created_by'),false,"event export must not expose another user's creator identity");
     assert.equal(exported.linkedProfiles[0].gameData.social_friend_requests.length,1,'requester/target references must be exported');
     assert.equal(exported.linkedProfiles[0].gameData.social_relationships.length,1,'both sides of a social relationship must be exported');
     assert.equal(exported.linkedProfiles[0].gameData.social_coin_gifts.length,1,'sender/recipient gift records must be exported');
