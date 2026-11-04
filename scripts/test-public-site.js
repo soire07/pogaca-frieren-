@@ -573,3 +573,15 @@ test('main startup initializes all player-facing collection schemas before servi
   for(const moduleName of ['companions.js','fishing.js','farming.js','character-wishlist.js'])assert.ok(source.includes("from './"+moduleName+"'"));
   assert.match(source,/await Promise\.all\(\[[\s\S]*ensureCreatureSchema\(\)[\s\S]*initCompanionSchema\(pool\)[\s\S]*initFishingSchema\(pool\)[\s\S]*initFarmSchema\(pool\)[\s\S]*initCharacterWishlistSchema\(pool\)[\s\S]*\]\)/);
 });
+
+
+test('private home showcase remains unavailable without explicit opt-in',async()=>{
+ const db={async query(sql){
+  assert.ok(sql.includes('h.is_public=TRUE'));
+  return {rows:[],rowCount:0};
+ }};
+ const response=res();
+ assert.equal(await handlePublicSiteRequest({method:'GET',url:'/maceraci/ev?guildId=1539562273197260860&userId=123456789012345678',headers:{}},response,{db}),true);
+ assert.equal(response.status,404);
+ assert.match(response.body,/Bu ev paylaşılmıyor/);
+});
