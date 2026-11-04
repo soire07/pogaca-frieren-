@@ -21,7 +21,7 @@
 
 PR #217 açıklaması hâlâ 2.015 kayıt / 340 kod karşılığı bildirirken, PR head'indeki güncel JSON 2.018 / 343 değerini bildiriyor. Bu nedenle PR açıklaması ve eski denetim belgeleri güncel envanterle uzlaştırılmalıdır.
 
-`docs/COMPETITOR_FEATURE_MATRIX.md` içinde önceki envanter sayısına ve ilk araştırma durumuna dayanan ifadeler bulunuyor. `docs/COMPETITOR_FEATURE_STATUS.md` bazı yeni PR kapsamlarını ve son arena/balıkçılık doğrulamasını yansıtmıyor olabilir. Kod, test ve belge eşlemesi yeniden yapılmadan bu durum tabloları nihai kabul edilmemelidir.
+`docs/COMPETITOR_FEATURE_MATRIX.md` içinde önceki envanter sayısına ve ilk araştırma durumuna dayanan ifadeler bulunuyor. `docs/COMPETITOR_FEATURE_STATUS.md` içindeki üst sayaç ve son kaynak uzlaştırma notu 2026-11-04 tarihinde güncel 2.018/343/1.675 envanterine çekildi; tarihsel backlog satırları için ayrıca güncel kod/test eşlemesi gerekir. Bu nedenle durum tablosu nihai ürün kabulü değildir.
 
 ## 3. PR ve doğrulama sınırı
 
@@ -109,3 +109,10 @@ Her envanter kaydı benzersiz bir davranışa bağlanmalı; yalnızca komut alia
 - Başarılı CI, canlı sistemin doğrulandığı şeklinde raporlanmaz.
 
 Bu belge, bütünleşik tamamlama çalışmasının denetim tabanıdır. Her tamamlanma iddiası commit, test çıktısı ve gerekiyorsa canlı kanıtla güncellenmelidir.
+
+
+## 9. Bu denetim turunda yapılan kaynak uzlaştırması
+
+- `docs/COMPETITOR_FEATURE_STATUS.md` üst başlığı ve envanter sayacı güncel kod başlığı `99d25d0b72fb0052bd2aa2adc89c61db95a706be` ile 2.018 toplam / 343 kod karşılığı / 1.675 planlı olarak düzeltildi; tarihsel durum satırlarının eski olabileceği açıkça belirtildi.
+- PR #217 açıklamasının özet envanter sayısı 340/2.015'ten 343/2.018'e güncellendi; 343 kaydın canlı doğrulanmış olmadığı özellikle yazıldı.
+- Bu değişiklikler dokümantasyon ve PR metni uzlaştırmasıdır. Oyun kodu, DB şeması, Discord komut kaydı veya canlı dağıtım değiştirilmedi.
