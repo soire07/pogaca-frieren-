@@ -412,6 +412,8 @@ test('player experience web page is scoped to the linked character and shows hom
  assert.equal(await handlePublicSiteRequest(request('/maceraci/yasam?guildId='+profile.guild_id,account),response,{db}),true);
  assert.equal(response.status,200);
  assert.match(response.body,/Kişisel Ev/);
+ assert.match(response.body,/Ev İstasyonları/);
+ assert.match(response.body,/Simya Laboratuvarı/);
  assert.match(response.body,/Genel Kozmetikler/);
  assert.match(response.body,/Zafer Salonu/);
  assert.match(response.body,/first_boss/);
