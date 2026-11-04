@@ -150,6 +150,33 @@ function adventurerInventoryPage(user, data) {
   return page('Maceracı Envanteri', content, user);
 }
 
+function playerExperiencePage(user,profile,home,ownedRows,loadoutRows,presetRows,status){
+ const guild=encodeURIComponent(profile.guild_id),csrf=esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET));
+ const owned=new Set(ownedRows.map(x=>x.cosmetic_key)),equipped=new Map(loadoutRows.map(x=>[x.slot,x.cosmetic_key]));
+ const form=(action,fields,button)=>'<form method="post" action="/maceraci/yasam"><input type="hidden" name="csrf" value="'+csrf+'"><input type="hidden" name="guildId" value="'+guild+'"><input type="hidden" name="action" value="'+esc(action)+'">'+fields+'<button class="btn ghost" type="submit">'+esc(button)+'</button></form>';
+ const rooms=HOME_ROOMS.map(room=>{
+  const isOwned=home.rooms.some(x=>x.room_key===room.key);
+  return '<article class="card"><h3>'+esc(room.name)+'</h3><p>Seviye '+room.level+' · '+room.cost+' altın</p>'+(isOwned?'<span class="market-meta">Açık</span>':form('unlock-room','<input type="hidden" name="roomKey" value="'+esc(room.key)+'">','Odayı aç'))+'</article>';
+ }).join('');
+ const cosmetics=PLAYER_COSMETICS.map(item=>{
+  const action=owned.has(item.key)?'equip-cosmetic':'buy-cosmetic';
+  const label=owned.has(item.key)?(equipped.get(item.slot)===item.key?'Kuşanıldı':'Kuşan'):'Satın al · '+item.cost+' altın';
+  return '<article class="card"><h3>'+esc(item.name)+'</h3><p>'+esc(item.slot)+' · Seviye '+item.level+' · '+item.cost+' altın</p>'+form(action,'<input type="hidden" name="cosmeticKey" value="'+esc(item.key)+'">',label)+'</article>';
+ }).join('');
+ const presets=presetRows.map(row=>'<article class="card"><h3>'+esc(row.preset_name)+'</h3>'+form('apply-preset','<input type="hidden" name="presetName" value="'+esc(row.preset_name)+'">','Görünümü uygula')+'</article>').join('');
+ const events=home.events||[];
+ const eventHtml=events.map(event=>{
+  const ended=new Date(event.ends_at).getTime()<=Date.now();
+  const rewards=ended?['participant','checkin'].map(key=>form('claim-event','<input type="hidden" name="eventId" value="'+esc(event.event_id)+'"><input type="hidden" name="rewardKey" value="'+key+'">',key==='participant'?'Katılım ödülünü al':'Yoklama ödülünü al')).join(''):'<span class="market-meta">Etkinlik bitince ödül alınabilir.</span>';
+  return '<article class="card"><h3>'+esc(event.title)+'</h3><p>Kayıt: '+Number(event.participation)+'/1 · Yoklama: '+Number(event.checkin)+'/1</p><p class="market-meta">Bitiş: '+esc(new Date(event.ends_at).toLocaleString('tr-TR',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Istanbul'}))+'</p>'+rewards+'</article>';
+ }).join('');
+ const notices={unlocked:'Oda açıldı.',saved:'Ev yerleşimi kaydedildi.',purchased:'Kozmetik satın alındı.',equipped:'Kozmetik kuşanıldı.',applied:'Görünüm uygulandı.',claimed:'Etkinlik ödülü alındı.',already_owned:'Bu kozmetik zaten sende.',already_unlocked:'Bu oda zaten açık.',level_locked:'Seviye şartı karşılanmıyor.',insufficient_funds:'Yeterli altının yok.',not_owned:'Kozmetik koleksiyonunda bulunmuyor.',saved:'İşlem kaydedildi.',invalid_layout:'Yerleşim biçimi veya dekorasyon anahtarı geçersiz.'};
+ const notice=status&&notices[status]?'<article class="card"><p>'+esc(notices[status])+'</p></article>':'';
+ const layout=esc(JSON.stringify(Array.isArray(home.home.layout)?home.home.layout:[],null,2));
+ const content='<main class="wrap" style="padding:54px 0 80px"><div class="eyebrow">✧ KİŞİSEL MACERA ALANI</div><h1 class="hero-title">'+esc(profile.character_name||'Maceracı')+' <em>Yaşam Alanı</em></h1><p class="lead">Ev odalarını aç, yerleşimini kaydet, kozmetiklerini yönet ve tamamladığın etkinliklerin ödüllerini al. Tüm işlemler bağlı Discord karakterine aittir.</p><div class="portal-actions"><a class="btn ghost" href="/maceraci?guildId='+guild+'">Maceracı paneli</a><a class="btn ghost" href="/maceraci/koleksiyon?guildId='+guild+'">Koleksiyon</a></div>'+notice+'<section class="section"><h2>Kişisel Ev</h2><div class="portal-grid">'+rooms+'</div><article class="card"><h3>Oda Yerleşimi</h3><p class="market-meta">Dekorasyon anahtarları: '+HOME_DECORATIONS.map(esc).join(', ')+'</p>'+form('save-layout','<label>Aktif oda <select name="activeRoom">'+HOME_ROOMS.filter(x=>home.rooms.some(r=>r.room_key===x.key)).map(x=>'<option value="'+esc(x.key)+'"'+(home.home.active_room===x.key?' selected':'')+'>'+esc(x.name)+'</option>').join('')+'</select></label><label>Yerleşim JSON <textarea name="layout" rows="5" maxlength="1500">'+layout+'</textarea></label>','Yerleşimi kaydet')+'</article></section><section class="section"><h2>Genel Kozmetikler</h2><div class="portal-grid">'+cosmetics+'</div><article class="card"><h3>Görünüm presetleri</h3>'+form('save-preset','<input name="presetName" maxlength="32" required placeholder="Preset adı">','Mevcut görünümü kaydet')+'</article><div class="portal-grid">'+(presets||'<article class="card"><p>Henüz preset kaydedilmedi.</p></article>')+'</div></section><section class="section"><h2>Etkinlik İlerlemesi</h2><p class="lead">Kayıt ve yoklama ilerlemesi sunucu etkinlikleriyle ortak veritabanında tutulur.</p><div class="portal-grid">'+(eventHtml||'<article class="card"><p>Görüntülenecek etkinlik ilerlemesi yok.</p></article>')+'</div></section></main>';
+ return page('Kişisel Yaşam Alanı',content,user);
+}
+
 function playerMarketPage(user, data, listings, history, status, filters = {}) {
   const notices = {listed:'İlanın oluşturuldu; eşya emanet kasasına alındı.',purchased:'Satın alma tamamlandı; altın ve eşya aynı işlemde aktarıldı.',cancelled:'İlan iptal edildi; eşyan envanterine geri döndü.',unavailable:'İlan artık kullanılamıyor.',insufficient_funds:'Bu ilan için yeterli altının yok.',insufficient_items:'Satış için yeterli eşyan yok.',equipped_item:'Takılı ekipman pazara konulamaz.',listing_limit:'En fazla 10 aktif ilan açabilirsin.',self_purchase:'Kendi ilanını satın alamazsın.',not_owner:'Yalnızca kendi ilanını iptal edebilirsin.',invalid:'Gönderilen bilgiler geçersiz.'};
   const guild = encodeURIComponent(data.profile.guild_id);
@@ -334,7 +361,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       db.query('SELECT preset_name FROM player_cosmetic_presets WHERE guild_id=$1 AND user_id=$2 ORDER BY preset_name',[guildId,profile.user_id]),
       db.query("SELECT e.event_id,e.title,e.starts_at,e.ends_at,COALESCE(p.progress,0)::int AS participation,COALESCE(c.progress,0)::int AS checkin FROM guild_events e LEFT JOIN guild_event_progress p ON p.event_id=e.event_id AND p.guild_id=e.guild_id AND p.user_id=$2 AND p.progress_key='participation' LEFT JOIN guild_event_progress c ON c.event_id=e.event_id AND c.guild_id=e.guild_id AND c.user_id=$2 AND c.progress_key='checkin' WHERE e.guild_id=$1 AND e.ends_at>NOW()-INTERVAL '14 days' ORDER BY e.starts_at DESC LIMIT 12",[guildId,profile.user_id])
     ]);
-    const html=playerExperiencePage(user,profile,home,owned.rows,loadout.rows,presets.rows,events.rows,url.searchParams.get('status'));
+    const html=playerExperiencePage(user,profile,{...home,events:events.rows},owned.rows,loadout.rows,presets.rows,url.searchParams.get('status'));
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
     res.end(html);return true;
   }
