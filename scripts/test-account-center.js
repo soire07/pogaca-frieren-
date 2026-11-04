@@ -16,7 +16,7 @@ test('support ticket creation is scoped to the current account and rate limited'
  const result=await createSupportTicket(db,accountId,{category:'bug',subject:'OAuth issue',message:'Callback fails.'});
  assert.equal(result.status,'created');
  assert.ok(calls.every(x=>x.params.includes('123e4567-e89b-12d3-a456-426614174000')));
- const limited={async query(sql){if(sql.includes('COUNT(*)'))return{rows:[{count:5}],rowCount:1};throw Error('must not insert');}};
+ const limited={async query(sql){if(sql.includes('SELECT id FROM frieren_site_accounts'))return{rows:[{id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};if(sql.includes('COUNT(*)'))return{rows:[{count:5}],rowCount:1};throw Error('must not insert');}};
  assert.equal((await createSupportTicket(limited,accountId,{category:'bug',subject:'Help',message:'This is long enough.'})).status,'daily_limit');
 });
 
@@ -82,7 +82,7 @@ test('support conversations are account-scoped and preserve ordered reply histor
  const reply=await replySupportTicket(db,accountId,ticketId,'More details');
  assert.equal(reply.status,'replied');
  const messages=await listSupportTicketMessages(db,accountId,ticketId);
- assert.equal(messages[0].message,'More details');
+ assert.equal(messages.messages[0].message,'More details');
  assert.ok(calls.every(call=>call.params.includes('123e4567-e89b-12d3-a456-426614174000')||call.params.includes(ticketId)));
 });
 
