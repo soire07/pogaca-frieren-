@@ -111,7 +111,7 @@ test('PostgreSQL arena keeps 1v1 and 3v3 queues isolated and persists player ele
   for(const userId of allIds) await ensureUser(guildId,userId);
   try {
     const duelJoins=await Promise.all(duelIds.map((userId,index)=>enqueueArenaPlayer(pool,{
-      guildId,userId,rating:1100+index*50,mode:'1v1',element:index===0?'fire':'ice'
+      guildId,userId,rating:1150-index*50,mode:'1v1',element:index===0?'fire':'ice'
     })));
     assert.equal(duelJoins.filter(result=>result.status==='matched').length,1);
     const duel=await pool.query(
