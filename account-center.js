@@ -222,11 +222,12 @@ export async function exportSiteAccountData(db, accountId) {
     [id]
   );
   const linkedProfiles = await Promise.all(links.rows.map(async profile => {
-    const [inventory, collections, achievements, marketHistory, tableColumns] = await Promise.all([
+    const [inventory, collections, achievements, marketHistory, marketOffers, tableColumns] = await Promise.all([
       db.query('SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 ORDER BY item_key', [profile.guild_id, profile.user_id]),
       db.query('SELECT character_name,anime,rarity,quantity,first_obtained_at,last_obtained_at FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2 ORDER BY character_name', [profile.guild_id, profile.user_id]),
       db.query('SELECT achievement_key,display_slot,claimed_at FROM achievement_claims WHERE guild_id=$1 AND user_id=$2 ORDER BY claimed_at', [profile.guild_id, profile.user_id]),
       db.query('SELECT listing_id,item_key,quantity,price_coins,status,created_at,resolved_at FROM player_market_listings WHERE guild_id=$1 AND (seller_id=$2 OR buyer_id=$2) ORDER BY created_at DESC', [profile.guild_id, profile.user_id]),
+      db.query('SELECT o.offer_id,o.listing_id,o.buyer_id,o.offer_coins,o.status,o.created_at,o.resolved_at,l.seller_id,l.item_key FROM player_market_offers o JOIN player_market_listings l ON l.listing_id=o.listing_id AND l.guild_id=o.guild_id WHERE o.guild_id=$1 AND (o.buyer_id=$2 OR l.seller_id=$2) ORDER BY o.created_at DESC', [profile.guild_id, profile.user_id]),
       db.query("SELECT table_name,column_name FROM information_schema.columns WHERE table_schema=current_schema() AND column_name IN ('guild_id','user_id') ORDER BY table_name,ordinal_position")
     ]);
     const columnsByTable = new Map();
@@ -252,7 +253,7 @@ export async function exportSiteAccountData(db, accountId) {
       );
       gameData[table] = rows.rows;
     }
-    return { ...profile, inventory: inventory.rows, collections: collections.rows, achievements: achievements.rows, marketHistory: marketHistory.rows, gameData };
+    return { ...profile, inventory: inventory.rows, collections: collections.rows, achievements: achievements.rows, marketHistory: marketHistory.rows, marketOffers: marketOffers.rows, gameData };
   }));
   const ticketsResult = await db.query(
     'SELECT ticket_id,category,subject,message,status,created_at,updated_at FROM frieren_support_tickets WHERE account_id=$1 ORDER BY created_at,ticket_id',
