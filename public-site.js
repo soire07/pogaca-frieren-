@@ -396,6 +396,11 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   }
 
   if (url.pathname === '/' || url.pathname === '/maceraci') {
+    if (!/^site_[0-9a-f-]{36}$/i.test(String(user.id || ''))) {
+      res.writeHead(302, { Location: '/login?status=site_account_required', 'Cache-Control': 'no-store' });
+      res.end();
+      return true;
+    }
     if (!db) { res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }); res.end('Oyuncu paneli veritabanına şu anda bağlanamıyor.'); return true; }
     const data = await getAdventurerDashboard(db, user.id);
     const html = adventurerPanel(user, data, url.searchParams.get('status'));
