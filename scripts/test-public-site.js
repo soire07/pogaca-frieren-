@@ -100,9 +100,10 @@ test('player collection page rejects guilds not linked to the signed-in site acc
   assert.equal(await handlePublicSiteRequest(request('/maceraci/koleksiyon?guildId=1539562273197260860',{id:accountId,username:'Gezgin'}),response,{db}),true);
   assert.equal(response.status,403);
 });
-test('player homepage fails closed when its database is unavailable', async () => {
+test('player homepage fails closed when its database is unavailable for a valid site account', async () => {
   const response = res();
-  assert.equal(await handlePublicSiteRequest(request('/'), response, {}), true);
+  const siteAccount = { id: 'site_123e4567-e89b-12d3-a456-426614174000', username: 'Gezgin' };
+  assert.equal(await handlePublicSiteRequest(request('/', siteAccount), response, {}), true);
   assert.equal(response.status, 503);
   assert.match(response.body, /veritabanına/);
 });
