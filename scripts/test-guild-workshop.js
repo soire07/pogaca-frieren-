@@ -68,3 +68,24 @@ test('spell automation respects Discord send and embed permissions',async()=>{
  assert.deepEqual(result,{sent:1,skipped:0});
  assert.equal(sends,1);
 });
+
+
+test('spell automation claims are leased and cooldown starts only after a successful Discord send',async()=>{
+ const calls=[];
+ const db={async query(sql){calls.push(sql);if(sql.includes('WITH due AS'))return{rows:[{automation_id:'automation-retry',channel_id:'223456789012345678',message:'Ready',template_id:null}],rowCount:1};return{rows:[],rowCount:1};}};
+ const client={user:{id:'123456789012345678'},channels:{async fetch(){return{guildId:'1539562273197260860',isTextBased:()=>true,async send(){return{id:'message-1'};}};}}};
+ const {runGuildSpellAutomations}=await import('../guild-workshop.js');
+ assert.deepEqual(await runGuildSpellAutomations(db,client,'1539562273197260860','event_reminder'),{sent:1,skipped:0});
+ assert.match(calls[0],/claimed_at<=NOW\(\)-INTERVAL '10 minutes'/);
+ assert.ok(calls.some(sql=>sql.includes('last_triggered_at=NOW(),claimed_at=NULL')));
+});
+
+test('failed spell automation delivery releases its claim for retry without consuming cooldown',async()=>{
+ const calls=[];
+ const db={async query(sql){calls.push(sql);if(sql.includes('WITH due AS'))return{rows:[{automation_id:'automation-failed',channel_id:'223456789012345678',message:'Ready',template_id:null}],rowCount:1};return{rows:[],rowCount:1};}};
+ const client={user:{id:'123456789012345678'},channels:{async fetch(){throw new Error('temporary Discord outage');}}};
+ const {runGuildSpellAutomations}=await import('../guild-workshop.js');
+ assert.deepEqual(await runGuildSpellAutomations(db,client,'1539562273197260860','event_reminder'),{sent:0,skipped:1});
+ assert.ok(calls.some(sql=>sql.includes('SET claimed_at=NULL')));
+ assert.ok(!calls.some(sql=>sql.includes('last_triggered_at=NOW(),claimed_at=NULL')));
+});
