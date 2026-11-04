@@ -238,19 +238,18 @@ export async function exportSiteAccountData(db, accountId) {
     }
     const gameData = {};
     for (const [table, columns] of columnsByTable) {
-      if (!columns.includes('guild_id') || !columns.includes('user_id')) continue;
+      if (!columns.includes('user_id')) continue;
       const metadata = await db.query(
         'SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=$1 ORDER BY ordinal_position',
         [table]
       );
       const selected = (metadata.rows || []).map(row => row.column_name)
         .filter(name => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) && !SENSITIVE_COLUMN.test(name));
-      if (!selected.includes('guild_id') || !selected.includes('user_id')) continue;
+      if (!selected.includes('user_id')) continue;
       const projection = selected.map(name => '"' + name + '"').join(',');
-      const rows = await db.query(
-        'SELECT ' + projection + ' FROM "' + table + '" WHERE guild_id=$1 AND user_id=$2',
-        [profile.guild_id, profile.user_id]
-      );
+      const rows = columns.includes('guild_id')
+        ? await db.query('SELECT ' + projection + ' FROM "' + table + '" WHERE guild_id=$1 AND user_id=$2', [profile.guild_id, profile.user_id])
+        : await db.query('SELECT ' + projection + ' FROM "' + table + '" WHERE user_id=$1', [profile.user_id]);
       gameData[table] = rows.rows;
     }
     return { ...profile, inventory: inventory.rows, collections: collections.rows, achievements: achievements.rows, marketHistory: marketHistory.rows, marketOffers: marketOffers.rows, gameData };
