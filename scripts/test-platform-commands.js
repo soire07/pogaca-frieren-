@@ -16,6 +16,12 @@ test('event calendar exposes list, join, leave and creation actions with bounded
   const schema=eventCommand.data.toJSON();
   assert.equal(schema.name,'etkinlik');
   assert.deepEqual(schema.options.map(option=>option.name),['liste','takim-olustur','takimlar','takim-katil','lig-olustur','lig-kayit','lig-fikstur','lig-durum','lig-skor','katil','ayril','yoklama','olustur']);
+  const teamCreate=schema.options.find(option=>option.name==='takim-olustur');
+  assert.ok(teamCreate.options.find(option=>option.name==='isim').required);
+  const leagueCreate=schema.options.find(option=>option.name==='lig-olustur');
+  assert.ok(leagueCreate.options.find(option=>option.name==='sezon').required);
+  assert.ok(leagueCreate.options.find(option=>option.name==='baslangic').required);
+  assert.ok(leagueCreate.options.find(option=>option.name==='bitis').required);
   const create=schema.options.find(option=>option.name==='olustur');
   assert.ok(create.options.find(option=>option.name==='baslik').required);
   assert.ok(create.options.find(option=>option.name==='baslangic').required);
