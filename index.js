@@ -415,6 +415,7 @@ await initOwnerAdminSchema(pool);
 await initGuildFeatureSettingsSchema(pool);
 await initGuildDashboardSchema(pool);
 // The legacy schema bootstrap remains the compatibility baseline; new schema changes use versioned SQL.
+// Run only against Poğaça DATABASE_URL after every existing schema initializer has completed.
 await runDatabaseMigrations(pool);
 const stopGuardianMonitor = startGuardianMonitor({
   db: pool, client,
