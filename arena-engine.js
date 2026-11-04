@@ -3,7 +3,7 @@ const MAX_STAT = 500;
 const MAX_HP = 2000;
 const MAX_MANA = 2000;
 export const ARENA_ELEMENTS = Object.freeze(['fire','ice','lightning','light','dark','neutral']);
-const ELEMENT_ADVANTAGE = Object.freeze({fire:'ice',ice:'lightning',lightning:'fire',light:'dark',dark:'light'});
+const ELEMENT_ADVANTAGE = Object.freeze({fire:'ice',ice:'lightning',lightning:'fire',light:'dark'});
 
 export function getArenaElementEffect(attackerElement,targetElement) {
   const attacker=ARENA_ELEMENTS.includes(attackerElement)?attackerElement:'neutral';
