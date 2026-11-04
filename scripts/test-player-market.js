@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import command from '../pazar.js';
 import { getCommandFeatureKeys } from '../guild-feature-settings.js';
-import { listPlayerMarketListings, createPlayerMarketOffer, listPlayerMarketOffers, resolvePlayerMarketOffer, cancelPlayerMarketOffer, getPlayerMarketOffers } from '../player-market.js';
+import { listPlayerMarketListings, createPlayerMarketOffer, listPlayerMarketOffers, resolvePlayerMarketOffer, cancelPlayerMarketOffer, getPlayerMarketOffers, normalizePlayerMarketPriceAlertInput, createPlayerMarketPriceAlert, listPlayerMarketPriceAlerts, cancelPlayerMarketPriceAlert, claimDuePlayerMarketPriceAlerts, markPlayerMarketPriceAlertNotified, releasePlayerMarketPriceAlertClaim } from '../player-market.js';
 
 test('player market command exposes listing, purchase, cancellation and history actions', () => {
   const json = command.data.toJSON();
@@ -47,6 +47,23 @@ test('web market ignores out-of-range price filters and accepts only known sort 
 
 test('player market exposes safe offer negotiation service entry points', () => {
   for (const action of [createPlayerMarketOffer, listPlayerMarketOffers, resolvePlayerMarketOffer, cancelPlayerMarketOffer, getPlayerMarketOffers]) {
+    assert.equal(typeof action, 'function');
+  }
+});
+
+
+test('player-market price alert input is normalized and rejects unsafe values', () => {
+  assert.deepEqual(normalizePlayerMarketPriceAlertInput({ itemKey: '  Mana Kristali  ', targetPrice: 250 }), {
+    itemKey: 'Mana Kristali', targetPrice: 250
+  });
+  assert.throws(() => normalizePlayerMarketPriceAlertInput({ itemKey: '', targetPrice: 250 }), /PLAYER_MARKET_ALERT_ITEM_INVALID/);
+  assert.throws(() => normalizePlayerMarketPriceAlertInput({ itemKey: 'Mana', targetPrice: 0 }), /PLAYER_MARKET_ALERT_PRICE_INVALID/);
+  assert.throws(() => normalizePlayerMarketPriceAlertInput({ itemKey: 'Mana', targetPrice: 1000001 }), /PLAYER_MARKET_ALERT_PRICE_INVALID/);
+});
+
+test('player-market price alert service exposes create, list, cancel and retry-safe delivery claims', () => {
+  for (const action of [createPlayerMarketPriceAlert, listPlayerMarketPriceAlerts, cancelPlayerMarketPriceAlert,
+    claimDuePlayerMarketPriceAlerts, markPlayerMarketPriceAlertNotified, releasePlayerMarketPriceAlertClaim]) {
     assert.equal(typeof action, 'function');
   }
 });
