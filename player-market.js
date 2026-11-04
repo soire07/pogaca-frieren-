@@ -75,6 +75,22 @@ export async function ensurePlayerMarketTables(db) {
       ON player_market_offers(guild_id,listing_id,status,created_at DESC);
     CREATE INDEX IF NOT EXISTS player_market_offer_buyer_idx
       ON player_market_offers(guild_id,buyer_id,created_at DESC);
+    CREATE TABLE IF NOT EXISTS player_market_price_alerts (
+      alert_id UUID PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      item_key VARCHAR(120) NOT NULL,
+      target_price INTEGER NOT NULL CHECK (target_price BETWEEN 1 AND 1000000),
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','notified','cancelled')),
+      claimed_at TIMESTAMPTZ,
+      notified_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS player_market_price_alert_unique_idx
+      ON player_market_price_alerts(guild_id,user_id,LOWER(item_key),target_price);
+    CREATE INDEX IF NOT EXISTS player_market_price_alert_due_idx
+      ON player_market_price_alerts(status,claimed_at,created_at) WHERE status='active';
   `);
 }
 
@@ -384,4 +400,138 @@ export async function getPlayerMarketHistory(db, guildId, userId, limit = 10) {
     [guildId, userId, count]
   );
   return result.rows;
+}
+
+
+export function normalizePlayerMarketPriceAlertInput({ itemKey, targetPrice } = {}) {
+  const key = String(itemKey || '').trim();
+  const price = Number(targetPrice);
+  if (!key || key.length > 120 || /[\\u0000-\\u001f\\u007f]/.test(key)) {
+    throw new Error('PLAYER_MARKET_ALERT_ITEM_INVALID');
+  }
+  if (!Number.isSafeInteger(price) || price < 1 || price > MAX_PRICE) {
+    throw new Error('PLAYER_MARKET_ALERT_PRICE_INVALID');
+  }
+  return { itemKey: key, targetPrice: price };
+}
+
+export async function createPlayerMarketPriceAlert(db, { guildId, userId, itemKey, targetPrice }) {
+  validateIdentity(guildId, userId);
+  const normalized = normalizePlayerMarketPriceAlertInput({ itemKey, targetPrice });
+  return withTransaction(db, async client => {
+    const user = await client.query(
+      'SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',
+      [guildId, userId]
+    );
+    if (!user.rowCount) return { status: 'player_missing' };
+    const existing = await client.query(
+      `SELECT alert_id,status FROM player_market_price_alerts
+       WHERE guild_id=$1 AND user_id=$2 AND LOWER(item_key)=LOWER($3) AND target_price=$4
+       FOR UPDATE`,
+      [guildId, userId, normalized.itemKey, normalized.targetPrice]
+    );
+    if (existing.rowCount) {
+      const result = await client.query(
+        `UPDATE player_market_price_alerts SET status='active',claimed_at=NULL,notified_at=NULL
+         WHERE alert_id=$1 RETURNING alert_id,item_key,target_price,status,created_at`,
+        [existing.rows[0].alert_id]
+      );
+      return { status: 'created', alert: result.rows[0], reactivated: true };
+    }
+    const count = await client.query(
+      "SELECT COUNT(*)::int AS count FROM player_market_price_alerts WHERE guild_id=$1 AND user_id=$2 AND status='active'",
+      [guildId, userId]
+    );
+    if (Number(count.rows[0]?.count || 0) >= 10) return { status: 'alert_limit' };
+    const result = await client.query(
+      `INSERT INTO player_market_price_alerts(alert_id,guild_id,user_id,item_key,target_price)
+       VALUES($1,$2,$3,$4,$5)
+       RETURNING alert_id,item_key,target_price,status,created_at`,
+      [randomUUID(), guildId, userId, normalized.itemKey, normalized.targetPrice]
+    );
+    return { status: 'created', alert: result.rows[0], reactivated: false };
+  });
+}
+
+export async function listPlayerMarketPriceAlerts(db, guildId, userId, limit = 10) {
+  validateIdentity(guildId, userId);
+  const result = await db.query(
+    `SELECT alert_id,item_key,target_price,status,created_at,notified_at
+     FROM player_market_price_alerts
+     WHERE guild_id=$1 AND user_id=$2 AND status<>'cancelled'
+     ORDER BY created_at DESC,alert_id LIMIT $3`,
+    [guildId, userId, Math.max(1, Math.min(10, Number(limit) || 10))]
+  );
+  return result.rows;
+}
+
+export async function cancelPlayerMarketPriceAlert(db, { guildId, userId, alertId }) {
+  validateIdentity(guildId, userId);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(alertId || ''))) {
+    throw new Error('PLAYER_MARKET_ALERT_ID_INVALID');
+  }
+  const result = await db.query(
+    `UPDATE player_market_price_alerts SET status='cancelled',claimed_at=NULL
+     WHERE alert_id=$1 AND guild_id=$2 AND user_id=$3 AND status<>'cancelled'
+     RETURNING alert_id`,
+    [alertId, guildId, userId]
+  );
+  return { status: result.rowCount ? 'cancelled' : 'unavailable' };
+}
+
+export async function claimDuePlayerMarketPriceAlerts(db, limit = 20) {
+  const batchSize = Math.max(1, Math.min(100, Number(limit) || 20));
+  const result = await db.query(
+    `WITH due AS (
+       SELECT a.alert_id
+       FROM player_market_price_alerts a
+       WHERE a.status='active'
+         AND (a.claimed_at IS NULL OR a.claimed_at <= NOW()-INTERVAL '2 minutes')
+         AND EXISTS (
+           SELECT 1 FROM player_market_listings l
+           WHERE l.guild_id=a.guild_id AND l.status='active'
+             AND LOWER(l.item_key)=LOWER(a.item_key) AND l.price_coins<=a.target_price
+         )
+       ORDER BY a.created_at,a.alert_id
+       LIMIT $1
+       FOR UPDATE SKIP LOCKED
+     ), claimed AS (
+       UPDATE player_market_price_alerts a SET claimed_at=NOW()
+       FROM due WHERE a.alert_id=due.alert_id
+       RETURNING a.alert_id,a.guild_id,a.user_id,a.item_key,a.target_price,a.claimed_at
+     )
+     SELECT c.alert_id,c.guild_id,c.user_id,c.item_key,c.target_price,c.claimed_at,
+       l.listing_id,l.price_coins,l.quantity,l.seller_id
+     FROM claimed c
+     CROSS JOIN LATERAL (
+       SELECT listing_id,price_coins,quantity,seller_id
+       FROM player_market_listings
+       WHERE guild_id=c.guild_id AND status='active'
+         AND LOWER(item_key)=LOWER(c.item_key) AND price_coins<=c.target_price
+       ORDER BY price_coins,created_at,listing_id LIMIT 1
+     ) l`,
+    [batchSize]
+  );
+  return result.rows;
+}
+
+export async function markPlayerMarketPriceAlertNotified(db, alertId, claimedAt) {
+  const result = await db.query(
+    `UPDATE player_market_price_alerts
+     SET status='notified',notified_at=NOW(),claimed_at=NULL
+     WHERE alert_id=$1 AND claimed_at=$2 AND status='active'
+     RETURNING alert_id`,
+    [alertId, claimedAt]
+  );
+  return result.rowCount === 1;
+}
+
+export async function releasePlayerMarketPriceAlertClaim(db, alertId, claimedAt) {
+  const result = await db.query(
+    `UPDATE player_market_price_alerts SET claimed_at=NULL
+     WHERE alert_id=$1 AND claimed_at=$2 AND status='active'
+     RETURNING alert_id`,
+    [alertId, claimedAt]
+  );
+  return result.rowCount === 1;
 }
