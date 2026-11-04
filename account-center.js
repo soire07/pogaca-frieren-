@@ -42,8 +42,8 @@ function quoteExportIdentifier(value) {
 
 async function includeForeignKeyDescendants(db, data) {
   const fkSql = 'SELECT child.relname AS child_table, parent.relname AS parent_table, ' +
-    'ARRAY_AGG(child_column.attname ORDER BY child_key.ordinality) AS child_columns, ' +
-    'ARRAY_AGG(parent_column.attname ORDER BY child_key.ordinality) AS parent_columns ' +
+    'ARRAY_AGG(child_column.attname::text ORDER BY child_key.ordinality) AS child_columns, ' +
+    'ARRAY_AGG(parent_column.attname::text ORDER BY child_key.ordinality) AS parent_columns ' +
     'FROM pg_constraint relation ' +
     'JOIN pg_class child ON child.oid=relation.conrelid ' +
     'JOIN pg_namespace child_schema ON child_schema.oid=child.relnamespace ' +
