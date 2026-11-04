@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { initDatabase, pool, ensureUser } from '../database/db.js';
+import { ensureGuildTeamLeagueSchema } from '../guild-team-leagues.js';
 import {
   ensureAdventurerPlatformTables, ensureActiveArenaSeason, settleArenaMatch, createGuildEvent, joinGuildEvent,
   leaveGuildEvent, listGuildEvents, claimDueGuildEventReminders, markGuildEventReminderSent, releaseGuildEventReminderClaim, createSiteLinkToken, redeemSiteLinkToken, getAdventurerDashboard, getAdventurerInventory
@@ -22,6 +23,7 @@ test('active arena season expires at day 90 and rolls over to exactly one new 90
   assertIsolatedAuditDatabase();
   await initDatabase();
   await ensureAdventurerPlatformTables(pool);
+  await ensureGuildTeamLeagueSchema(pool);
   const guildId='99000000000000100';
   try {
     await pool.query(
@@ -50,6 +52,7 @@ test('arena season MMR and rewards settle atomically and only once', async () =>
   assertIsolatedAuditDatabase();
   await initDatabase();
   await ensureAdventurerPlatformTables(pool);
+  await ensureGuildTeamLeagueSchema(pool);
   const guildId='99000000000000101';
   const users=makeIds('71000000000000000',6);
   const matchId=randomUUID();
@@ -99,6 +102,7 @@ test('event calendar enforces idempotent registration, capacity and concurrent s
   assertIsolatedAuditDatabase();
   await initDatabase();
   await ensureAdventurerPlatformTables(pool);
+  await ensureGuildTeamLeagueSchema(pool);
   const guildId='99000000000000102';
   const users=makeIds('72000000000000000',3);
   for(const userId of users) await ensureUser(guildId,userId);
@@ -130,6 +134,7 @@ test('single-use Discord link codes connect only the intended profile to a web a
   assertIsolatedAuditDatabase();
   await initDatabase();
   await ensureAdventurerPlatformTables(pool);
+  await ensureGuildTeamLeagueSchema(pool);
   const guildId='99000000000000103';
   const userId=makeIds('73000000000000000',1)[0];
   const accountUuid=randomUUID();
@@ -158,6 +163,7 @@ test('concurrent Discord link redemption is single-use and dashboards cannot exp
   assertIsolatedAuditDatabase();
   await initDatabase();
   await ensureAdventurerPlatformTables(pool);
+  await ensureGuildTeamLeagueSchema(pool);
   const guildId='99000000000000104';
   const userId=makeIds('73000000000000000',1)[0];
   const accountId='site_'+randomUUID();
@@ -202,6 +208,7 @@ test('event reminders are claimed once, retried after delivery failure and final
   assertIsolatedAuditDatabase();
   await initDatabase();
   await ensureAdventurerPlatformTables(pool);
+  await ensureGuildTeamLeagueSchema(pool);
   const guildId='99000000000000105';
   const channelId='99000000000000106';
   const userId=makeIds('74000000000000000',1)[0];
@@ -241,6 +248,7 @@ test('linked adventurer inventory is account-scoped and includes equipment and R
   assertIsolatedAuditDatabase();
   await initDatabase();
   await ensureAdventurerPlatformTables(pool);
+  await ensureGuildTeamLeagueSchema(pool);
   const guildId='99000000000000123';
   const [userId]=makeIds('72000000000000000',1);
   const accountId='site_'+randomUUID();
@@ -280,6 +288,7 @@ test('scheduled boss raid events preserve their type and appear in the guild cal
   assertIsolatedAuditDatabase();
   await initDatabase();
   await ensureAdventurerPlatformTables(pool);
+  await ensureGuildTeamLeagueSchema(pool);
   const guildId = '99000000000000991';
   const createdBy = '99000000000000992';
   const startsAt = new Date(Date.now() + 45 * 60_000).toISOString();
