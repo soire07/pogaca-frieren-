@@ -12,6 +12,8 @@ import { renderMarket, renderMarketItem, buyMarketItem, renderPurchaseResult, re
 import { levelForXp } from './utils.js';
 import { handleCharacterPanelInteraction } from './karakter.js';
 import { handleArenaInteraction } from './arena.js';
+import { ensureGuildGameTables } from './guild-games.js';
+import { handleGuildGameInteraction } from './loncaoyun.js';
 import { ensureAdventurerPlatformTables, claimDueGuildEventReminders, markGuildEventReminderSent, releaseGuildEventReminderClaim } from './adventurer-platform.js';
 import { ensurePlayerMarketTables } from './player-market.js';
 import { ensureSocialPlatformTables } from './social-platform.js';
@@ -219,6 +221,7 @@ client.on(Events.InteractionCreate, async interaction => {
         : 'Bu modül bu sunucuda devre dışı bırakılmış.');
     }
     if (await handleCharacterPanelInteraction(interaction)) return;
+    if (await handleGuildGameInteraction(interaction)) return;
     if (await handleArenaInteraction(interaction)) return;
     if (interaction.isButton() && interaction.customId.startsWith('creature_catch:')) {
       try {
@@ -411,6 +414,7 @@ await initDatabase();
 await ensureAdventurerPlatformTables(pool);
 await ensurePlayerMarketTables(pool);
 await ensureSocialPlatformTables(pool);
+await ensureGuildGameTables(pool);
 await Promise.all([ensureCreatureSchema(), initCompanionSchema(pool), initFishingSchema(pool), initFarmSchema(pool), initCharacterWishlistSchema(pool), ensurePlayerExperienceSchema(pool)]);
 await initOwnerAdminSchema(pool);
 await initGuildFeatureSettingsSchema(pool);
