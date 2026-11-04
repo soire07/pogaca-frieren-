@@ -174,6 +174,15 @@ export async function evolveCompanion(dbPool, input) {
   } finally { db.release(); }
 }
 
+export async function getCompanionEvolutionHistory(dbPool, { guildId, userId }) {
+  if (!guildId || !userId) return [];
+  const result = await dbPool.query(
+    'SELECT stage,evolution_name,coin_cost,evolved_at FROM user_companion_evolution_history WHERE guild_id=$1 AND user_id=$2 ORDER BY stage DESC',
+    [guildId, userId]
+  );
+  return result.rows;
+}
+
 export async function getCompanion(dbPool, guildId, userId) {
   const result = await dbPool.query('SELECT companion_key,cosmetic_key,evolution_stage,xp,level,happiness,energy,hunger,adopted_at FROM user_companions WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
   const pet = result.rows[0];
