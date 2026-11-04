@@ -61,7 +61,7 @@ test('authenticated homepage is the account-scoped player dashboard', async () =
   assert.match(response.body, /Fern/);
   assert.match(response.body, /1180/);
   assert.match(response.body, /Zindan Gecesi/);
-  assert.match(response.body, /action="\\/maceraci\\/link"/);
+  assert.ok(response.body.includes('action="/maceraci/link"'));
   assert.equal(queries.length, 2);
   assert.equal(queries[0].params[0], accountId.replace(/^site_/, ''));
 });
