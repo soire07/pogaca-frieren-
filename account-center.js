@@ -283,7 +283,12 @@ export async function exportSiteAccountData(db, accountId) {
       const safeUserColumns = userColumns.filter(name => selected.includes(name));
       if (!safeUserColumns.length) continue;
       const projection = selected.map(name => '"' + name + '"').join(',');
-      const identityPredicate = safeUserColumns.map(name => '"' + name + '"=
+      const identityPredicate = safeUserColumns.map(name => '"' + name + '"::text=$' + (columns.includes('guild_id') ? 2 : 1)).join(' OR ');
+      const rows = columns.includes('guild_id')
+        ? await db.query('SELECT ' + projection + ' FROM "' + table + '" WHERE guild_id=$1 AND (' + identityPredicate + ')', [profile.guild_id, profile.user_id])
+        : await db.query('SELECT ' + projection + ' FROM "' + table + '" WHERE (' + identityPredicate + ')', [profile.user_id]);
+      gameData[table] = rows.rows;
+    }
     return { ...profile, inventory: inventory.rows, collections: collections.rows, achievements: achievements.rows, marketHistory: marketHistory.rows, marketOffers: marketOffers.rows, gameData };
   }));
   const accountTableColumns = await db.query("SELECT table_name,column_name,data_type FROM information_schema.columns WHERE table_schema=current_schema() AND column_name='account_id' ORDER BY table_name,ordinal_position");
