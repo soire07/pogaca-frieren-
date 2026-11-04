@@ -56,7 +56,7 @@ test('rod upgrades and bait purchases settle atomically and bait is consumed on 
   assert.equal(afterCatch.activeBaitKey,'mana');
 
   await pool.query('UPDATE users SET coins=0 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
-  const insufficient=await purchaseFishingBait(pool,{guildId,userId,baitKey:'rare'});
+  const insufficient=await purchaseFishingBait(pool,{guildId,userId,baitKey:'mana'});
   assert.equal(insufficient.status,'insufficient_funds');
   const unchanged=await getFishingGear(pool,guildId,userId);
   assert.equal(unchanged.baitCount,4);
