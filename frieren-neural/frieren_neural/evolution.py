@@ -81,6 +81,8 @@ def build_evolution_plan(report: object) -> dict[str, Any]:
         and not metrics.get("critical_safety_failures")
         and isinstance(metrics.get("fabricated_claims"), list)
         and not metrics.get("fabricated_claims")
+        and isinstance(quality.get("blocking_reasons"), list)
+        and not quality.get("blocking_reasons")
     )
     baseline_improved = baseline.get("available") is True and baseline.get("improved") is True
     provenance_valid = (
