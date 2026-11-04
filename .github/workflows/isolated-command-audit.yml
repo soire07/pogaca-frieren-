@@ -1,7 +1,10 @@
 name: Frieren isolated command audit
 on:
-  pull_request:
-    branches: [main, fix/solo-boss-reward-idempotency-mainline]
+  # PR opening runs the initial audit. Later code pushes to the PR branch run it
+  # through the push event, whose path filter is scoped to that push only. This
+  # prevents a docs-only follow-up commit from re-running disposable PostgreSQL.
+  push:
+    branches: [fix/solo-boss-reward-idempotency-mainline]
     paths:
       - "*.js"
       - "commands/**"
@@ -9,6 +12,18 @@ on:
       - "scripts/**"
       - "package.json"
       - "package-lock.json"
+      - ".github/workflows/isolated-command-audit.yml"
+  pull_request:
+    branches: [main]
+    types: [opened, reopened]
+    paths:
+      - "*.js"
+      - "commands/**"
+      - "database/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/isolated-command-audit.yml"
   workflow_dispatch:
 permissions:
   contents: read
