@@ -48,6 +48,8 @@ jobs:
         run: node --test scripts/test-adventurer-platform.integration.js
       - name: Run real PostgreSQL integration tests for quiz, companions, fishing, farming, creatures, wishlist and player market
         run: node --test --test-concurrency=1 scripts/test-animequiz.integration.js scripts/test-companions.integration.js scripts/test-fishing.integration.js scripts/test-farming.integration.js scripts/test-creatures.integration.js scripts/test-character-wishlist.integration.js scripts/test-player-market.integration.js
+      - name: Run real PostgreSQL social relationships, gifts and reputation tests
+        run: node --test scripts/test-social-platform.integration.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
