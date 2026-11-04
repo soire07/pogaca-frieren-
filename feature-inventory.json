@@ -347,12 +347,11 @@
       "category": "Equipment",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_postgresql",
+        "level": "unit_and_source_wiring",
         "tests": [
-          "scripts/live-command-test.js",
           "scripts/test-gameplay-persistence.js"
         ],
-        "scope": "The isolated equipment interaction equips/unequips gear, verifies set activation/removal and inventory ownership; the separate helper unit tests verify set-bonus calculation. Live Discord E2E remains unverified. This is isolated synthetic command testing, not live Discord E2E."
+        "scope": "Equipment bonus helper behavior is covered by unit assertions; the equipment overview source is checked to use the shared rarity-set bonus calculation and display the active set label. Discord interaction and live display remain unverified."
       }
     },
     {
@@ -361,12 +360,11 @@
       "category": "Equipment",
       "status": "implemented_needs_runtime_test",
       "testEvidence": {
-        "level": "isolated_command_postgresql",
+        "level": "unit_and_source_wiring",
         "tests": [
-          "scripts/live-command-test.js",
           "scripts/test-gameplay-persistence.js"
         ],
-        "scope": "The isolated equipment interaction checks HP/Mana state around equip/unequip and the helper tests verify set bonus activation/removal; exhaustive per-item stat matrix remains unverified. This is isolated synthetic command testing, not live Discord E2E."
+        "scope": "Equipment bonus helper behavior is covered by unit assertions; the equipment overview source is checked to use the shared rarity-set bonus calculation and display the active set label. Discord interaction and live display remain unverified."
       }
     },
     {
