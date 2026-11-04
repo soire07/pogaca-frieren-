@@ -1,6 +1,7 @@
 name: Owner panel tests
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - 'owner-dashboard.js'
