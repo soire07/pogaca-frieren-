@@ -239,6 +239,7 @@ function normalizePayload(payload) {
   if (!payload || typeof payload !== 'object') return payload;
   return {
     content: typeof payload.content === 'string' ? payload.content.slice(0, 1800) : undefined,
+    flags: payload.flags,
     embeds: Array.isArray(payload.embeds) ? payload.embeds.map(e => {
       try { return typeof e.toJSON === 'function' ? e.toJSON() : e; } catch { return '[embed]'; }
     }).slice(0, 5) : undefined,
