@@ -48,7 +48,7 @@ test('same capability in different categories remains separate', () => {
 
 test('invalid roadmap state and inconsistent inventory counters are reported', () => {
   const report = auditRoadmapCapabilities({
-    count: 2, plannedFeatureCount: 4,
+    count: 3, plannedFeatureCount: 4,
     features: [
       { id: 'ROADMAP-1', category: 'Housing', name: 'Preview home', status: 'implemented' },
       { id: 'ROADMAP-2', category: '', name: '', status: 'planned' }
