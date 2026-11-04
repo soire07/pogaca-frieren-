@@ -373,7 +373,7 @@ test('adventurer account linking rejects invalid CSRF before opening a database 
 });
 
 test('public home showcase is visible only after explicit opt-in',async()=>{
- const profile={user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20,active_room:'starter',layout:[],is_public:true};
+ const profile={user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20,xp:2400,active_room:'starter',layout:[],is_public:true};
  const db={async query(sql){
   if(sql.includes('FROM player_homes h JOIN users u'))return {rows:[profile],rowCount:1};
   if(sql.includes('FROM player_home_rooms'))return {rows:[{room_key:'starter'}],rowCount:1};
@@ -385,7 +385,10 @@ test('public home showcase is visible only after explicit opt-in',async()=>{
  const response=res();
  assert.equal(await handlePublicSiteRequest({method:'GET',url:'/maceraci/ev?guildId=1539562273197260860&userId='+profile.user_id,headers:{}},response,{db}),true);
  assert.equal(response.status,200);
- assert.match(response.body,/Topluluk Ev Vitrini/);
+ assert.match(response.body,/Profil Vitrini/);
+ assert.match(response.body,/Seviye 20/);
+ assert.match(response.body,/2\.400 XP/);
+ assert.match(response.body,/Rozet ve Başarım Vitrini/);
  assert.match(response.body,/Fern/);
  assert.match(response.body,/first_boss/);
  assert.match(response.body,/Ay Işığı Çerçevesi/);
