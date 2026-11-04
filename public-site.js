@@ -368,7 +368,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       db.query("SELECT e.event_id,e.title,e.starts_at,e.ends_at,COALESCE(p.progress,0)::int AS participation,COALESCE(c.progress,0)::int AS checkin FROM guild_events e LEFT JOIN guild_event_progress p ON p.event_id=e.event_id AND p.guild_id=e.guild_id AND p.user_id=$2 AND p.progress_key='participation' LEFT JOIN guild_event_progress c ON c.event_id=e.event_id AND c.guild_id=e.guild_id AND c.user_id=$2 AND c.progress_key='checkin' WHERE e.guild_id=$1 AND e.status IN ('scheduled','completed') AND e.ends_at>NOW()-INTERVAL '90 days' ORDER BY e.starts_at DESC LIMIT 50",[guildId,profile.user_id]),
       getHomeTrophies(db,{guildId,userId:profile.user_id})
     ]);
-    const html=playerExperiencePage(user,profile,{...home,events:events.rows},owned.rows,loadout.rows,presets.rows,trophies,url.searchParams.get('status'));
+    const html=playerExperiencePage(user,profile,{...home,events:events.rows},owned,loadout.rows,presets.rows,trophies,url.searchParams.get('status'));
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
     res.end(html);return true;
   }
