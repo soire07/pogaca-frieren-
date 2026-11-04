@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { createHmac } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
 import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
@@ -57,6 +58,17 @@ test('owner session accepts a valid signed session for the configured owner', ()
   const token = createOwnerSession(secret, 2_000);
   assert.equal(verifyOwnerSession(token, secret, 1_000), true);
   assert.equal(JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString()).ownerOAuth, true);
+});
+
+test('owner session rejects legacy TOTP-marked sessions after OAuth-only migration', () => {
+  const payload = Buffer.from(JSON.stringify({
+    sub: ownerId,
+    mfa: true,
+    exp: 2_000,
+    csrf: 'legacy-csrf-token-value-that-is-long-enough'
+  })).toString('base64url');
+  const signature = createHmac('sha256', secret).update(payload).digest('base64url');
+  assert.equal(verifyOwnerSession(payload + '.' + signature, secret, 1_000), false);
 });
 
 test('owner session rejects expired sessions', () => {
