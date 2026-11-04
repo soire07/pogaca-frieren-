@@ -308,7 +308,7 @@ export async function joinGuildMiniGameTeam(db, { guildId, channelId, sessionId,
 }
 
 export async function getGuildGameTeamLeaderboard(db, { guildId, channelId, sessionId }) {
-  if (!/^\\d{17,20}$/.test(String(guildId || '')) || !/^\\d{17,20}$/.test(String(channelId || '')) || !SESSION_ID.test(String(sessionId || ''))) {
+  if (!/^\d{17,20}$/.test(String(guildId || '')) || !/^\d{17,20}$/.test(String(channelId || '')) || !SESSION_ID.test(String(sessionId || ''))) {
     throw new Error('GUILD_GAME_TEAM_INPUT_INVALID');
   }
   const result = await db.query(
