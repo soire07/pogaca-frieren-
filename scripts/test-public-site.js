@@ -398,7 +398,7 @@ test('player experience web page is scoped to the linked character and shows hom
  const db={async query(sql){
   if(sql.includes('FROM site_discord_links'))return {rows:[profile],rowCount:1};
   if(sql.startsWith('INSERT INTO users')||sql.startsWith('INSERT INTO user_talents')||sql.startsWith('INSERT INTO learned_spells')||sql.startsWith('INSERT INTO player_home_rooms')||sql.startsWith('INSERT INTO player_homes'))return {rows:[],rowCount:1};
-  if(sql.includes('SELECT active_room,layout FROM player_homes'))return {rows:[{active_room:'starter',layout:[]}],rowCount:1};
+  if(sql.includes('SELECT active_room,layout,is_public FROM player_homes'))return {rows:[{active_room:'starter',layout:[]}],rowCount:1};
   if(sql.includes('SELECT room_key,unlocked_at FROM player_home_rooms'))return {rows:[{room_key:'starter'}],rowCount:1};
   if(sql.includes('FROM player_cosmetic_ownership'))return {rows:[],rowCount:0};
   if(sql.includes('FROM player_cosmetic_loadout'))return {rows:[],rowCount:0};
