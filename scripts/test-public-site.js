@@ -98,7 +98,7 @@ test('guild workshop is permission-gated and renders embed, custom spell and aut
  const response=res();
  assert.equal(await handlePublicSiteRequest(request('/maceraci/atolye?guildId='+profile.guild_id,{id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'}),response,{db,client}),true);
  assert.equal(response.status,200);
- assert.match(response.body,/Görsel Embed Tasarımcısı/);
+ assert.match(response.body,/Görsel Embed Tasarımcısı/);assert.match(response.body,/embed-live-preview/);assert.match(response.body,/embed-preview-description/);assert.match(response.body,/Önizleme yalnızca tarayıcında çalışır/);
  assert.match(response.body,/Özel Komut \/ Büyü Oluşturucu/);
  assert.match(response.body,/Büyü Otomasyonu Oluşturucu/);
 });
@@ -719,4 +719,42 @@ test('Discord-only sessions are redirected to the site account login before play
     assert.equal(response.headers.Location, '/login?status=site_account_required', path);
     assert.equal(queryCount, 0, path);
   }
+});
+
+
+test('support ticket thread is isolated to the authenticated account and renders reply and status history',async()=>{
+ const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern'};
+ const ticketId='123e4567-e89b-42d3-a456-426614174000';
+ const db={async query(sql){
+  if(sql.includes('FROM frieren_support_tickets WHERE account_id'))return{rows:[{ticket_id:ticketId,category:'bug',subject:'OAuth issue',status:'in_progress',created_at:new Date().toISOString()}],rowCount:1};
+  if(sql.includes('SELECT ticket_id,message,status FROM frieren_support_tickets'))return{rows:[{ticket_id:ticketId,message:'Callback failed',status:'in_progress'}],rowCount:1};
+  if(sql.includes('FROM frieren_support_ticket_messages'))return{rows:[{message_id:'message-1',author_type:'support',message:'We are investigating',created_at:new Date().toISOString()}],rowCount:1};
+  if(sql.includes('FROM frieren_support_ticket_events'))return{rows:[{actor_type:'support',previous_status:'open',new_status:'in_progress',created_at:new Date().toISOString()}],rowCount:1};
+  throw new Error('Unexpected query: '+sql);
+ }};
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/destek?ticket='+ticketId,{id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'}),response,{db}),true);
+ assert.equal(response.status,200);
+ assert.match(response.body,/Talep konuşması/);
+ assert.match(response.body,/We are investigating/);
+ assert.match(response.body,/Yanıt gönder/);
+ assert.match(response.body,/open → in_progress/);
+});
+
+test('support replies require valid CSRF and stay scoped to the signed-in account',async()=>{
+ const ticketId='123e4567-e89b-42d3-a456-426614174000';
+ let replyInserted=false;
+ const db={async query(sql){
+  if(sql.includes('SELECT ticket_id,status FROM frieren_support_tickets'))return{rows:[{ticket_id:ticketId,status:'open'}],rowCount:1};
+  if(sql.includes('INSERT INTO frieren_support_ticket_messages')){replyInserted=true;return{rows:[{message_id:'message-2'}],rowCount:1};}
+  if(sql.includes('UPDATE frieren_support_tickets SET updated_at'))return{rows:[],rowCount:1};
+  if(sql.includes('INSERT INTO frieren_support_ticket_events'))return{rows:[],rowCount:1};
+  throw new Error('Unexpected query: '+sql);
+ }};
+ const response=res();
+ const post=sitePost('/destek/yanit',{csrf:createSiteCsrfToken(secret),ticketId,message:'I can provide more details.'});
+ assert.equal(await handlePublicSiteRequest(post,response,{db}),true);
+ assert.equal(response.status,303);
+ assert.match(response.headers.Location,/reply_sent/);
+ assert.equal(replyInserted,true);
 });
