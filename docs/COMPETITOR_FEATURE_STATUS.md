@@ -1,7 +1,7 @@
 # Rakip Özellik Backlog'u — Mevcut Kodla İlk Eşleştirme
 
 > Denetim tarihi: 2026-11-04  
-> İncelenen kod tabanı: `fix/solo-boss-reward-idempotency-mainline` @ `81ff29518f0067b4b7bb3bb5e0c8da9874b7f3bd` (kod); güncel envanter 2.015 kayıt / 340 mevcut / 1.675 planlı  
+> İncelenen kod tabanı: `fix/solo-boss-reward-idempotency-mainline` @ `8cdc98d17aa47d3a3c9aa70626c32dbf1174dea6` (kod); güncel envanter 2.015 kayıt / 340 mevcut / 1.675 planlı  
 > Kaynak listeler: `docs/COMPETITOR_FEATURE_MATRIX.md`, `docs/ENTERTAINMENT_FEATURE_BACKLOG.md`  
 > Bu belge ilk kaynak/test eşleştirmesidir; canlı Discord doğrulaması veya tamamlanma beyanı değildir.
 
@@ -179,13 +179,13 @@ PR #219'daki temel yoldaş sistemi, bu 134 roadmap kaydının tamamını karşı
 
 ## Güncel entegrasyon denetimi — 2026-11-04
 
-- Entegrasyon dalı: `feat/frieren-platform-expansion-batch`
-- Kod commit'i: `d792ad979e3441b7ef2eb019f828134d40aeb7be`; son CI kanıtı: `f698b7a34fde9daa978c2605c14b374efae87fa5`
-- Ana bot CI: **714/714 PASS**.
-- Slash komut / sözdizimi doğrulaması: **PASS**.
-- İzole PostgreSQL komut denetimi: **77/77 PASS** (56 temel oyun/ekonomi senaryosu + 5 oyuncu pazarı senaryosu + arena, etkinlik/hatırlatma, balıkçılık, sera, yaratık, karakter wishlist, yoldaş ve anime quiz entegrasyonları).
-- Bu kanıtlar GitHub Actions içindeki geçici test veritabanını kullanır; üretim PostgreSQL'i, canlı Discord komutlarını veya Render dağıtımını doğrulamaz.
-- PR #185 hâlâ açık taslak ve birleştirilmemiştir. Yeni entegrasyon dalı eski PR'ı topluca birleştirmek yerine ilgili modülleri güncel ana kodla uyumlandırır.
+- Güncel çalışma dalı: `fix/solo-boss-reward-idempotency-mainline`; açık taslak PR #217.
+- Kod commit'i: `8cdc98d17aa47d3a3c9aa70626c32dbf1174dea6`.
+- Ana bot CI: **748/748 PASS**; Discord komut senaryoları **31/31 PASS**.
+- İzole PostgreSQL entegrasyonu: **89/89 PASS**; sosyal işlemler 6/6 gerçek PostgreSQL testiyle doğrulandı.
+- Frieren AI CI, Owner Panel testleri, Owner Panel Performance Checks ve slash-command validation başarılı.
+- Bu kanıtlar GitHub Actions içindeki geçici PostgreSQL test veritabanını kullanır; üretim PostgreSQL'i, canlı Discord komutlarını, gerçek OAuth callback'ini veya Render dağıtımını doğrulamaz.
+- Önceki PR #185 ve `feat/frieren-platform-expansion-batch` geçmiş entegrasyon referanslarıdır; güncel çalışma PR #217 içindedir.
 - Lonca paneli, ana site rotasına bağlandı; ana sayfa kartı ve site navigasyonu eklendi. Guild OAuth callback için Render origin varsayılanı ve same-origin kontrolü test edildi.
 - Anime Quiz puanları için `anime_quiz_scores` şeması eklendi; Discord Developer Portal'da Message Content Intent etkinliği ayrıca gerekir.
 - Yaratık yakalama butonu, spawn mesajı ve guild feature gate bağlantısı eklendi. Gerçek Discord sunucusunda spawn/claim akışı henüz manuel doğrulanmadı.
@@ -199,10 +199,10 @@ PR #219'daki temel yoldaş sistemi, bu 134 roadmap kaydının tamamını karşı
 - Yaratık varyantları için pity/garanti sayaçları ve geniş nadirlik dengesi.
 - Serbest 1v1 takım kurucu ve element uyumu/karşıtlığı.
 - Kart baskı/seri/varyant, favori/not/rozet ve kart kozmetiği.
-- Oyuncu pazarı, teklif iptali ve kullanıcıya açık işlem geçmişi.
+- Açık artırma/teklif sistemi ve lonca yarışları.
 - Kelime/hafıza/takım mini oyunları.
 - Etkinlik hatırlatıcıları ve boss/raid etkinliklerine doğrudan katılım.
-- Paylaşılabilir profil vitrini, arkadaş listesi ve ortak ilerleme.
+- Paylaşılabilir profil vitrini ve ortak ilerleme. Arkadaş/rakip/istek/itibar altyapısı ile web sosyal paneli PR #217 içinde kodlandı; canlı tarayıcı ve Discord E2E doğrulaması bekliyor.
 - Embed/görsel editörü, güvenli büyü otomasyon oluşturucusu, opt-in feed.
 - Web oyuncu envanteri/koleksiyonu/pazarı, RSVP ve self-service analitik.
 - Veri dışa aktarma/silme ve tüm dashboard akışlarının gerçek mobil tarayıcı doğrulaması.
