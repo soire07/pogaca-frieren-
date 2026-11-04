@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { readFile } from 'node:fs/promises';
 import command from '../pazar.js';
 import { getCommandFeatureKeys } from '../guild-feature-settings.js';
 import { listPlayerMarketListings, createPlayerMarketOffer, listPlayerMarketOffers, resolvePlayerMarketOffer, cancelPlayerMarketOffer, getPlayerMarketOffers, normalizePlayerMarketPriceAlertInput, createPlayerMarketPriceAlert, listPlayerMarketPriceAlerts, cancelPlayerMarketPriceAlert, claimDuePlayerMarketPriceAlerts, markPlayerMarketPriceAlertNotified, releasePlayerMarketPriceAlertClaim } from '../player-market.js';
