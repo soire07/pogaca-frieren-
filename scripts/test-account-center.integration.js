@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { initDatabase, pool, ensureUser } from '../database/db.js';
-import { ensureAdventurerPlatformTables } from '../adventurer-platform.js';
+import { ensureAdventurerPlatformTables, ensureActiveArenaSeason } from '../adventurer-platform.js';
+import { ensureArenaTables } from '../arena-queue.js';
 import { ensurePlayerMarketTables } from '../player-market.js';
 import { ensureSocialPlatformTables } from '../social-platform.js';
 import {
@@ -25,6 +26,7 @@ test('account export includes linked game and support data while excluding secre
   assertIsolatedAuditDatabase();
   await initDatabase();
   await ensureAdventurerPlatformTables(pool);
+  await ensureArenaTables(pool);
   await ensurePlayerMarketTables(pool);
   await ensureSocialPlatformTables(pool);
   await ensureAccountCenterSchema(pool);
@@ -34,7 +36,7 @@ test('account export includes linked game and support data while excluding secre
   const [ownerUser,buyerUser]=users;
   const accountUuid=randomUUID();
   const accountId='site_'+accountUuid;
-  let listingId,ticketId,noteId;
+  let listingId,ticketId,noteId,matchId,eventId,seasonId;
   try {
     for(const userId of users) await ensureUser(guildId,userId);
     await pool.query(`
@@ -91,6 +93,20 @@ test('account export includes linked game and support data while excluding secre
     await pool.query("INSERT INTO account_export_fk_player_notes(note_id,guild_id,player_ref,note) VALUES($1,$2,$3,'user-linked note')",[noteId,guildId,ownerUser]);
     await pool.query("INSERT INTO account_export_fk_note_revisions(revision_id,note_id,body) VALUES($1,$2,'linked note revision')",[randomUUID(),noteId]);
 
+    const season=await ensureActiveArenaSeason(pool,guildId);
+    seasonId=season.season_id;
+    matchId=randomUUID();
+    await pool.query("INSERT INTO arena_matches(match_id,guild_id,status,state) VALUES($1,$2,'finished',$3::jsonb)",[matchId,guildId,JSON.stringify({status:'finished',winner:'A'})]);
+    await pool.query("INSERT INTO arena_match_players(match_id,guild_id,user_id,team,slot,status) VALUES($1,$2,$3,'A',0,'finished'),($1,$2,$4,'B',0,'finished')",[matchId,guildId,ownerUser,buyerUser]);
+    await pool.query("INSERT INTO arena_match_results(match_id,season_id,guild_id,winner,participants) VALUES($1,$2,$3,'A',$4::jsonb)",[matchId,seasonId,guildId,JSON.stringify([{userId:ownerUser,team:'A',name:'Exported Fern'},{userId:buyerUser,team:'B',name:'Other Player'}])]);
+
+    eventId=randomUUID();
+    await pool.query(
+      "INSERT INTO guild_events(event_id,guild_id,title,description,event_type,starts_at,ends_at,status,created_by) VALUES($1,$2,'Export test event','Personal event export fixture','community',NOW()-INTERVAL '2 days',NOW()-INTERVAL '1 day','completed',$3)",
+      [eventId,guildId,buyerUser]
+    );
+    await pool.query("INSERT INTO guild_event_participants(event_id,guild_id,user_id) VALUES($1,$2,$3)",[eventId,guildId,ownerUser]);
+
     const [lowUser,highUser]=[ownerUser,buyerUser].sort();
     await pool.query("INSERT INTO social_friend_requests(request_id,guild_id,requester_id,target_id,status) VALUES($1,$2,$3,$4,'accepted')",[randomUUID(),guildId,ownerUser,buyerUser]);
     await pool.query("INSERT INTO social_relationships(guild_id,user_low_id,user_high_id,relationship_type,created_by) VALUES($1,$2,$3,'friend',$4)",[guildId,lowUser,highUser,ownerUser]);
@@ -128,6 +144,13 @@ test('account export includes linked game and support data while excluding secre
     assert.equal(exported.linkedProfiles[0].achievements.some(row=>row.achievement_key==='export_test_achievement'),true);
     assert.equal(exported.linkedProfiles[0].marketHistory.length,1);
     assert.equal(exported.linkedProfiles[0].marketOffers.length,1);
+    assert.equal(exported.linkedProfiles[0].arenaMatchHistory.length,1,'the linked player match result must be exported through arena_match_players');
+    assert.equal(exported.linkedProfiles[0].arenaMatchHistory[0].participants.length,1,'arena export must not expose other match participants');
+    assert.equal(exported.linkedProfiles[0].arenaMatchHistory[0].participants[0].userId,ownerUser);
+    assert.equal(exported.linkedProfiles[0].arenaMatchHistory[0].participants[0].name,'Exported Fern');
+    assert.equal(exported.linkedProfiles[0].guildEventHistory.length,1,'the linked player event context must be exported');
+    assert.equal(exported.linkedProfiles[0].guildEventHistory[0].title,'Export test event');
+    assert.equal(Object.hasOwn(exported.linkedProfiles[0].guildEventHistory[0],'created_by'),false,'event export must not expose another user's creator identity');
     assert.equal(exported.linkedProfiles[0].gameData.social_friend_requests.length,1,'requester/target references must be exported');
     assert.equal(exported.linkedProfiles[0].gameData.social_relationships.length,1,'both sides of a social relationship must be exported');
     assert.equal(exported.linkedProfiles[0].gameData.social_coin_gifts.length,1,'sender/recipient gift records must be exported');
@@ -184,6 +207,9 @@ test('account export includes linked game and support data while excluding secre
     assert.equal((await pool.query("SELECT 1 FROM achievement_claims WHERE guild_id=$1 AND user_id=$2 AND achievement_key='export_test_achievement'",[guildId,ownerUser])).rowCount,1);
     assert.equal((await pool.query('SELECT 1 FROM player_market_listings WHERE listing_id=$1',[listingId])).rowCount,1);
   } finally {
+    if(matchId) await pool.query('DELETE FROM arena_matches WHERE match_id=$1',[matchId]);
+    if(eventId) await pool.query('DELETE FROM guild_events WHERE event_id=$1',[eventId]);
+    if(seasonId) await pool.query('DELETE FROM arena_seasons WHERE season_id=$1',[seasonId]);
     await pool.query('DELETE FROM owner_audit_records WHERE account_id=$1',[accountUuid]);
     await pool.query('DELETE FROM frieren_support_tickets WHERE account_id=$1',[accountUuid]);
     await pool.query('DELETE FROM frieren_site_accounts WHERE id=$1',[accountUuid]);
