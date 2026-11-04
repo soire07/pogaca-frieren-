@@ -612,10 +612,6 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
 
   if (url.pathname === '/' || url.pathname === '/maceraci') {
     if (!requireSiteAccount(res, user?.id)) return true;
-      res.writeHead(302, { Location: '/login?status=site_account_required', 'Cache-Control': 'no-store' });
-      res.end();
-      return true;
-    }
     if (!db) { res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }); res.end('Oyuncu paneli veritabanına şu anda bağlanamıyor.'); return true; }
     const data = await getAdventurerDashboard(db, user.id);
     const html = adventurerPanel(user, data, url.searchParams.get('status'));
@@ -623,6 +619,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     res.end(html); return true;
   }
   if(url.pathname==='/maceraci/yasam'){
+    if (!requireSiteAccount(res, user?.id)) return true;
     if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Panel veritabanı kullanılamıyor.');return true;}
     const guildId=String(url.searchParams.get('guildId')||'');
     if(!guildId){const dashboard=await getAdventurerDashboard(db,user.id);const html=portalGuildPicker(user,dashboard.profiles,url.pathname,'Kişisel Yaşam Alanı');res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end(html);return true;}
