@@ -17,7 +17,7 @@ test('player market command exposes listing, purchase, cancellation and history 
 test('main startup initializes player-market and adventurer portal schemas after base RPG tables', async () => {
   const source=await readFile(new URL('../index.js',import.meta.url),'utf8');
   assert.match(source,/import \{ ensureAdventurerPlatformTables[\s\S]*?\} from '\.\/adventurer-platform\.js'/);
-  assert.match(source,/import \{ ensurePlayerMarketTables \} from '\.\/player-market\.js'/);
+  assert.match(source,/import \{ ensurePlayerMarketTables, claimDuePlayerMarketPriceAlerts/);
   assert.match(source,/await initDatabase\(\);\s*await ensureAdventurerPlatformTables\(pool\);\s*await ensurePlayerMarketTables\(pool\);/);
 });
 
