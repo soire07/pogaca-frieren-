@@ -781,3 +781,18 @@ test('public player showcase respects privacy and exposes only the opt-in card a
  assert.match(response.body,/first_raid/);
  assert.ok(calls.some(sql=>sql.includes('h.is_public=TRUE')));
 });
+
+
+test('adventurer calendar exposes direct A/B team signup for boss raid events',async()=>{
+ const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20,xp:2400,coins:100,hp:80,max_hp:100,mana:40,max_mana:60,rating:1200,wins:2,losses:1};
+ const event={event_id:'123e4567-e89b-42d3-a456-426614174000',guild_id:profile.guild_id,title:'Kuzey Zindanı',description:'Birlikte ilerle.',event_type:'boss_raid',starts_at:new Date(Date.now()+3600000).toISOString(),ends_at:new Date(Date.now()+7200000).toISOString(),max_participants:10,participants:2,joined:false,joined_team:null};
+ const db={async query(sql){if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};if(sql.includes('FROM guild_events e'))return{rows:[event],rowCount:1};throw new Error('Unexpected dashboard query: '+sql);}};
+ const response=res();
+ const account={id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'};
+ assert.equal(await handlePublicSiteRequest(request('/maceraci',account),response,{db}),true);
+ assert.equal(response.status,200);
+ assert.match(response.body,/Raid takımına katıl/);
+ assert.match(response.body,/name="teamKey"/);
+ assert.match(response.body,/Takım A/);
+ assert.match(response.body,/Takım B/);
+});
