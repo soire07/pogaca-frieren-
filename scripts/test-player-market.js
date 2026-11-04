@@ -67,3 +67,39 @@ test('player-market price alert service exposes create, list, cancel and retry-s
     assert.equal(typeof action, 'function');
   }
 });
+
+
+test('creating a price alert locks the account, enforces the active cap and persists a one-shot target', async () => {
+  const calls = [];
+  const client = {
+    async query(sql, params = []) {
+      calls.push({ sql, params });
+      if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rows: [], rowCount: 1 };
+      if (sql.includes('SELECT user_id FROM users')) return { rows: [{ user_id: '123456789012345678' }], rowCount: 1 };
+      if (sql.includes('SELECT alert_id,status FROM player_market_price_alerts')) return { rows: [], rowCount: 0 };
+      if (sql.includes('SELECT COUNT(*)::int AS count FROM player_market_price_alerts')) return { rows: [{ count: 0 }], rowCount: 1 };
+      if (sql.includes('INSERT INTO player_market_price_alerts')) return { rows: [{ alert_id: '123e4567-e89b-42d3-a456-426614174000', item_key: 'Mana Kristali', target_price: 250, status: 'active' }], rowCount: 1 };
+      throw new Error('Unexpected query: ' + sql);
+    },
+    release() {}
+  };
+  const db = { connect: async () => client };
+  const result = await createPlayerMarketPriceAlert(db, {
+    guildId: '1539562273197260860', userId: '123456789012345678',
+    itemKey: ' Mana Kristali ', targetPrice: 250
+  });
+  assert.equal(result.status, 'created');
+  assert.equal(result.alert.item_key, 'Mana Kristali');
+  assert.ok(calls.some(call => call.sql.includes('FOR UPDATE')));
+  assert.ok(calls.some(call => call.sql.includes('INSERT INTO player_market_price_alerts')));
+});
+
+test('price-alert delivery claims are concurrent-safe and only match active listings at or below target', async () => {
+  let captured;
+  const db = { async query(sql, params) { captured = { sql, params }; return { rows: [], rowCount: 0 }; } };
+  await claimDuePlayerMarketPriceAlerts(db, 15);
+  assert.match(captured.sql, /FOR UPDATE SKIP LOCKED/);
+  assert.match(captured.sql, /LOWER\(l\.item_key\)=LOWER\(a\.item_key\)/);
+  assert.match(captured.sql, /l\.price_coins<=a\.target_price/);
+  assert.deepEqual(captured.params, [15]);
+});
