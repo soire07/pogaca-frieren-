@@ -1,7 +1,10 @@
 import { chromium, webkit, request } from 'playwright';
 
-const baseUrl = String(process.env.MOBILE_SMOKE_BASE_URL || 'https://frierenbot.vercel.app').replace(/\/$/, '');
-const failures = [];
+const configuredBaseUrl = String(process.env.MOBILE_SMOKE_BASE_URL || '').trim();
+if (!/^https:\/\//i.test(configuredBaseUrl)) throw new Error('MOBILE_SMOKE_BASE_URL must point to a successful preview deployment; production fallback is disabled.');
+const parsedBaseUrl = new URL(configuredBaseUrl);
+if (!/vercel\.app$/i.test(parsedBaseUrl.hostname) || parsedBaseUrl.hostname === 'frierenbot.vercel.app') throw new Error('Browser smoke accepts only a Vercel preview hostname.');
+const baseUrl = parsedBaseUrl.origin.replace(/\/$/, '');
 const scenarios = [
   { name: 'Android Chrome viewport', engine: chromium, viewport: { width: 412, height: 915 }, isMobile: true },
   { name: 'iOS Safari viewport', engine: webkit, viewport: { width: 390, height: 844 }, isMobile: true },
@@ -20,7 +23,7 @@ for (const scenario of scenarios) {
     const page = await context.newPage();
     for (const route of ['/login', '/register']) {
       const response = await page.goto(baseUrl + route, { waitUntil: 'domcontentloaded', timeout: 45000 });
-      if (!response || response.status() !== 200) { failures.push(scenario.name + ' ' + route + ' HTTP ' + (response?.status() || 'no response')); continue; }
+      if (!response || response.status() !== 200) throw new Error(scenario.name + ' ' + route + ' HTTP ' + (response?.status() || 'no response'));
       const layout = await page.evaluate(() => ({
         width: window.innerWidth,
         documentWidth: document.documentElement.scrollWidth,
@@ -32,12 +35,12 @@ for (const scenario of scenarios) {
           return { left: rect.left, right: rect.right, height: rect.height, visible: style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0 && node.type !== 'hidden' };
         }).filter(control => control.visible)
       }));
-      if (!layout.viewport || !layout.form) { failures.push(scenario.name + ' ' + route + ' missing mobile viewport or form'); continue; }
+      if (!layout.viewport || !layout.form) throw new Error(scenario.name + ' ' + route + ' missing mobile viewport or form');
       const authFields = await page.locator('input[name="csrf"]').count();
-      if (!authFields) { failures.push(scenario.name + ' ' + route + ' missing CSRF-protected form'); continue; }
-      if (layout.documentWidth > layout.width + 1) failures.push(scenario.name + ' ' + route + ' horizontal overflow: ' + layout.documentWidth + ' > ' + layout.width);
-      if (layout.controls.some(control => control.left < -1 || control.right > layout.width + 1 || control.height < 32)) {
-        failures.push(scenario.name + ' ' + route + ' has clipped or undersized controls: ' + JSON.stringify(layout.controls));
+      if (!authFields) throw new Error(scenario.name + ' ' + route + ' missing CSRF-protected form');
+      if (layout.documentWidth > layout.width + 1) throw new Error(scenario.name + ' ' + route + ' horizontal overflow: ' + layout.documentWidth + ' > ' + layout.width);
+      if (layout.controls.some(control => control.left < -1 || control.right > layout.width + 1 || control.height < 44)) {
+        throw new Error(scenario.name + ' ' + route + ' has clipped or undersized controls: ' + JSON.stringify(layout.controls));
       }
     }
     await context.close();
@@ -51,25 +54,17 @@ const api = await request.newContext({ timeout: 30000 });
 try {
   const response = await api.get(baseUrl + '/owner/login', { maxRedirects: 0 });
   const location = response.headers()['location'] || '';
-  const stateCookie = response.headers()['set-cookie'] || '';
   if (response.status() !== 302 || !location.startsWith('https://discord.com/oauth2/authorize')) {
     throw new Error('Owner OAuth redirect is not healthy: HTTP ' + response.status() + ' ' + location.slice(0, 120));
   }
   const authorize = new URL(location);
   const state = authorize.searchParams.get('state') || '';
-  if (!stateCookie.includes('frieren_owner_oauth_state')) throw new Error('Owner OAuth state cookie is missing');
-  if (!authorize.searchParams.get('client_id') || !authorize.searchParams.get('redirect_uri') || authorize.searchParams.get('response_type') !== 'code' || !/^[a-f0-9]{64}$/i.test(state)) {
+  if (!authorize.searchParams.get('client_id') || !authorize.searchParams.get('redirect_uri') || authorize.searchParams.get('response_type') !== 'code' || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(state)) {
     throw new Error('Owner OAuth authorization request is missing valid client, callback, response type or state');
   }
   const invalidCallback = await api.get(baseUrl + '/owner/callback?code=smoke-test&state=invalid-state', { maxRedirects: 0 });
   if (invalidCallback.status() !== 400) throw new Error('Invalid OAuth callback state was not rejected: HTTP ' + invalidCallback.status());
-  process.stdout.write('PASS owner OAuth authorize redirect, state cookie, OAuth parameters and invalid callback rejection\\n');
-} catch(error) {
-  failures.push('Owner OAuth smoke: ' + (error?.message || error));
+  process.stdout.write('PASS owner OAuth authorize redirect, signed state, OAuth parameters and invalid callback rejection\n');
 } finally {
   await api.dispose();
-}
-if (failures.length) {
-  for (const failure of failures) process.stderr.write('FAIL ' + failure + '\\n');
-  throw new Error(failures.length + ' browser smoke assertion(s) failed');
 }
