@@ -8,7 +8,7 @@ import { listPlayerMarketListings, createPlayerMarketOffer, listPlayerMarketOffe
 test('player market command exposes listing, purchase, cancellation and history actions', () => {
   const json = command.data.toJSON();
   assert.equal(json.name, 'pazar');
-  assert.deepEqual(json.options.map(option => option.name), ['liste','sat','al','iptal','gecmis','teklif-ver','teklifler','teklif-kabul','teklif-reddet','teklif-iptal']);
+  assert.deepEqual(json.options.map(option => option.name), ['liste','sat','al','iptal','gecmis','teklif-ver','teklifler','teklif-kabul','teklif-reddet','teklif-iptal','alarm-kur','alarmlar','alarm-sil']);
   assert.equal(getCommandFeatureKeys('pazar').includes('playerMarket'), true);
   assert.equal(getCommandFeatureKeys('pazar').includes('economy'), true);
   assert.equal(getCommandFeatureKeys('pazar').includes('trading'), true);
