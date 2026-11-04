@@ -141,7 +141,7 @@ Güncel uygulama PR #217 taslağında tutuluyor; üretim verisi değiştirilmedi
 - Mevcut 1.675 roadmap kaydı 25 kategoride dağılmıştır. `Earn milestones for` ve `Review history for` gibi birleşik işlem önekleri tek parça çıkarıldığında kategori kapsamı korunarak **325 kategori/yetenek grubu** elde edilir: 225 grup yedi işlem varyantı (1.575 kayıt), 50 tek işlem grubu ve 50 öneksiz bağımsız kayıt. Önceki denetim kodu birleşik önekleri yalnızca `Earn`/`Review` olarak kestiği için hatalı 775 sayısını raporlamıştı; kod ve regresyon testi düzeltildi.
 - Bu denetim kayıtları otomatik silmez veya mevcut/planned statülerini değiştirmez. Tekrarlanan varyantlar ürün gereksinimi, ayrı davranış veya yalnızca görünüm/CRUD işlemi olup olmadığına göre insan incelemesi gerektirir.
 - Denetim `npm run check` ve `npm test` akışına eklendi; `scripts/test-roadmap-capability-audit.js` Türkçe normalizasyonu, kategori ayrımı, işlem fiili ayrıştırması ve envanter sayaçlarını test eder.
-- Sonraki uygulama paketleri 775 temel yetenek grubuna göre tanımlanmalı; her temel yetenek için Discord/web yüzeyleri, veri modeli, izin kapsamı ve test kanıtı ayrı izlenmelidir. Roadmap kayıt sayısı, uygulama yüzeyi veya test sayısı olarak raporlanmamalıdır.
+- Sonraki uygulama paketleri 325 temel yetenek grubuna göre tanımlanmalı; her temel yetenek için Discord/web yüzeyleri, veri modeli, izin kapsamı ve test kanıtı ayrı izlenmelidir. Roadmap kayıt sayısı, uygulama yüzeyi veya test sayısı olarak raporlanmamalıdır.
 
 
 ## Kişisel yaşam, kozmetik ve etkinlik ilerlemesi — 2026-11-04
