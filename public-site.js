@@ -21,6 +21,7 @@ import {
 import { createFriendRequest, respondFriendRequest, setPlayerRival, removeSocialRelationship, listSocialRelationships, listPendingFriendRequests, sendCoinGift, commendPlayer, getSocialReputation } from './social-platform.js';
 import { getGuildFeatureEnabled } from './guild-feature-settings.js';
 import { createSupportTicket, listSupportTickets, exportSiteAccountData, deleteSiteAccount } from './account-center.js';
+import { getNotificationPreferences, setNotificationPreference } from './news-birds.js';
 import { HOME_ROOMS, HOME_DECORATIONS, HOME_STATIONS, ALCHEMY_RECIPES, PLAYER_COSMETICS, getPlayerHome, unlockHomeRoom, saveHomeLayout, purchaseCosmetic, equipCosmetic, saveCosmeticPreset, applyCosmeticPreset, checkInGuildEvent, getCosmeticAcquisitionHistory, getHomeTrophies, placeHomeTrophy, setHomeVisibility, getPublicPlayerHome, brewHomePotion, claimEventMilestone } from './player-experience.js';
 
 const SITE_COOKIE = 'frieren_site_session';
@@ -99,7 +100,7 @@ function adventurerPanel(user, data, status) {
     const hp = Math.max(0, Math.min(100, Number(profile.hp) / Math.max(1, Number(profile.max_hp)) * 100));
     const mana = Math.max(0, Math.min(100, Number(profile.mana) / Math.max(1, Number(profile.max_mana)) * 100));
     const guild = encodeURIComponent(profile.guild_id);
-    return '<article class="card"><div class="eyebrow">SUNUCU · ' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + Number(profile.level) + '</p><div class="stats"><span><b>' + Number(profile.xp) + '</b> XP</span><span><b>' + Number(profile.coins) + '</b> Altın</span><span><b>' + Number(profile.rating) + '</b> MMR</span></div><p>HP ' + Number(profile.hp) + '/' + Number(profile.max_hp) + '</p><div class="progress"><i style="width:' + hp.toFixed(1) + '%"></i></div><p>Mana ' + Number(profile.mana) + '/' + Number(profile.max_mana) + '</p><div class="progress"><i style="width:' + mana.toFixed(1) + '%"></i></div><p>' + esc(profile.season_name || 'Sezon başlamadı') + ' · ' + Number(profile.wins) + ' galibiyet / ' + Number(profile.losses) + ' mağlubiyet</p><div class="actions"><a class="btn ghost" href="/maceraci/envanter?guildId=' + guild + '">Envanterim</a><a class="btn ghost" href="/maceraci/koleksiyon?guildId=' + guild + '">Koleksiyonum</a><a class="btn ghost" href="/maceraci/sosyal?guildId=' + guild + '">Sosyal alanım</a><a class="btn ghost" href="/maceraci/yasam?guildId=' + guild + '">Yaşam alanım</a><a class="btn ghost" href="/pazar?guildId=' + guild + '">Kuzey Pazarı</a></div></article>';
+    return '<article class="card"><div class="eyebrow">SUNUCU · ' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + Number(profile.level) + '</p><div class="stats"><span><b>' + Number(profile.xp) + '</b> XP</span><span><b>' + Number(profile.coins) + '</b> Altın</span><span><b>' + Number(profile.rating) + '</b> MMR</span></div><p>HP ' + Number(profile.hp) + '/' + Number(profile.max_hp) + '</p><div class="progress"><i style="width:' + hp.toFixed(1) + '%"></i></div><p>Mana ' + Number(profile.mana) + '/' + Number(profile.max_mana) + '</p><div class="progress"><i style="width:' + mana.toFixed(1) + '%"></i></div><p>' + esc(profile.season_name || 'Sezon başlamadı') + ' · ' + Number(profile.wins) + ' galibiyet / ' + Number(profile.losses) + ' mağlubiyet</p><div class="actions"><a class="btn ghost" href="/maceraci/envanter?guildId=' + guild + '">Envanterim</a><a class="btn ghost" href="/maceraci/koleksiyon?guildId=' + guild + '">Koleksiyonum</a><a class="btn ghost" href="/maceraci/sosyal?guildId=' + guild + '">Sosyal alanım</a><a class="btn ghost" href="/maceraci/yasam?guildId=' + guild + '">Yaşam alanım</a><a class="btn ghost" href="/maceraci/bildirimler?guildId=' + guild + '">Haberci kuş ve bildirimler</a><a class="btn ghost" href="/pazar?guildId=' + guild + '">Kuzey Pazarı</a></div></article>';
   }).join('');
   const events = data.events.map(event => {
     const action = event.joined ? 'leave' : 'join';
@@ -267,6 +268,18 @@ function accountCenterPage(user,tickets,status){
  return page('Destek ve Hesap Merkezi',content,user);
 }
 
+function notificationPreferencesPage(user,profile,preferences,status){
+ const guild=encodeURIComponent(profile.guild_id),csrf=esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET));
+ const labels={anime_news:'Haberci kuş · Günlük anime haber özeti',event_reminders:'Topluluk etkinliği hatırlatmaları',boss_raid_reminders:'Boss / Raid hatırlatmaları'};
+ const cards=Object.entries(labels).map(([category,label])=>{
+  const enabled=Boolean(preferences[category]);
+  return '<article class="card"><h2>'+esc(label)+'</h2><p>'+(enabled?'Açık':'Kapalı')+'</p><form method="post" action="/maceraci/bildirimler"><input type="hidden" name="csrf" value="'+csrf+'"><input type="hidden" name="guildId" value="'+guild+'"><input type="hidden" name="category" value="'+category+'"><input type="hidden" name="enabled" value="'+(!enabled)+'"><button class="btn '+(enabled?'ghost':'')+'" type="submit">'+(enabled?'Kapat':'Aç')+'</button></form></article>';
+ }).join('');
+ const notice=status==='saved'?'Bildirim tercihin kaydedildi.':status==='invalid'?'Bildirim tercihi geçersiz.':'';
+ const content='<main class="wrap" style="padding:54px 0 80px"><div class="eyebrow">✧ FRIEREN HABERCİ KUŞU</div><h1 class="hero-title">Bildirim <em>tercihlerin.</em></h1><p class="lead">'+esc(profile.character_name||'Maceracı')+' · Tercihler yalnızca bu Discord sunucusundaki karakterin için geçerlidir.</p>'+(notice?'<p class="notice" role="status">'+notice+'</p>':'')+'<div class="portal-actions"><a class="btn ghost" href="/maceraci">Maceracı paneli</a></div><section class="section"><div class="portal-grid">'+cards+'</div></section><article class="card"><p>Anime haberleri, Anime News Network’ün herkese açık RSS akışından alınır ve günde en fazla bir kez özel mesajla özetlenir. Özel mesajların kapalıysa haberci kuş tercihini otomatik kapatır. Takvim ve boss/raid hatırlatmalarında etkinliğe kayıt olmak varsayılan izindir; buradan kapatabilirsin.</p></article></main><style>.card form{display:flex;gap:12px;align-items:center}.card form button{min-width:110px}</style>';
+ return page('Bildirim Tercihleri',content,user);
+}
+
 function aiPage(user) {
   const healthLink = user.id === OWNER_ID ? '<a class="btn ghost" href="/owner/frieren-ai/health">Servis sağlık durumu</a>' : '';
   return page('Frieren AI', '<main><section class="wrap" style="padding:65px 0 42px;text-align:center"><div class="eyebrow">AKILLI ASİSTAN · TEST · TEKNİK ANALİZ</div><h1 class="hero-title">Frieren <em>AI</em></h1><p class="lead" style="margin:auto">Poğaça Frieren’in teknik yol arkadaşı. Sohbet ve hafızadan kod denetimine, test senaryolarından hata raporlarına uzanan ayrı bir AI servisi.</p><div class="actions" style="justify-content:center"><a class="btn" href="/owner">AI kontrol merkezine git ↗</a>' + healthLink + '</div></section><section class="section"><div class="wrap grid"><article class="card"><div class="icon">✧</div><h3>Frieren sohbeti</h3><p>Karakter odaklı sohbet akışı ve izinli kullanıcı hafızası.</p></article><article class="card"><div class="icon">⌘</div><h3>Teknik denetim</h3><p>Komut sözleşmeleri, kod incelemesi ve hata teşhisi.</p></article><article class="card"><div class="icon">✓</div><h3>Test sistemi</h3><p>Senaryo bazlı testler, PASS/FAIL raporları ve kanıt odaklı doğrulama.</p></article></div></section><section class="section"><div class="wrap cta"><h2>İki bot, tek büyülü platform.</h2><p>RPG macerası ve teknik asistan birbirinden bağımsız servislerde çalışır.</p><a class="btn" href="/pogaca">Poğaça Frieren’i keşfet</a></div></section></main>', user);
@@ -326,7 +339,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const result = await redeemSiteLinkToken(db, session.id, form.get('token'));
     res.writeHead(303, { Location: '/maceraci?status=' + (result.status === 'linked' ? 'linked' : 'invalid'), 'Cache-Control': 'no-store' }); res.end(); return true;
   }
-  const mutationPaths = new Set(['/maceraci/event','/maceraci/yasam','/pazar/sat','/pazar/al','/pazar/iptal','/pazar/teklif-ver','/pazar/teklif-kabul','/pazar/teklif-reddet','/pazar/teklif-iptal','/pazar/alarm-kur','/pazar/alarm-sil','/maceraci/sosyal']);
+  const mutationPaths = new Set(['/maceraci/event','/maceraci/yasam','/pazar/sat','/pazar/al','/pazar/iptal','/pazar/teklif-ver','/pazar/teklif-kabul','/pazar/teklif-reddet','/pazar/teklif-iptal','/pazar/alarm-kur','/pazar/alarm-sil','/maceraci/sosyal','/maceraci/bildirimler']);
   if (req.method === 'POST' && mutationPaths.has(url.pathname)) {
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!session?.id?.startsWith('site_')) { res.writeHead(302,{Location:'/login','Cache-Control':'no-store'});res.end();return true; }
@@ -341,6 +354,18 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const profile=await getLinkedAdventurer(db,session.id,guildId);
     if(!profile){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter web hesabına bağlı değil.');return true;}
     if(url.pathname==='/maceraci/sosyal'&&!await getGuildFeatureEnabled(db,guildId,'social')){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Sosyal modül bu sunucuda kapalı.');return true;}
+    if(url.pathname==='/maceraci/bildirimler'){
+      try{
+        const category=String(form.get('category')||'');
+        const enabled=String(form.get('enabled')||'')==='true';
+        await setNotificationPreference(db,{guildId,userId:profile.user_id,category,enabled});
+        res.writeHead(303,{Location:'/maceraci/bildirimler?'+new URLSearchParams({guildId,status:'saved'}).toString(),'Cache-Control':'no-store'});res.end();return true;
+      }catch(error){
+        if(String(error?.message||'').endsWith('_INVALID')){res.writeHead(303,{Location:'/maceraci/bildirimler?'+new URLSearchParams({guildId,status:'invalid'}).toString(),'Cache-Control':'no-store'});res.end();return true;}
+        throw error;
+      }
+    }
+
     let status='invalid';
   if(url.pathname==='/maceraci/yasam'){
       const action=String(form.get('action')||'');
@@ -415,7 +440,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/pazar']);
+  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/pazar']);
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname)) return false;
   const sessionUser = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
   const user = sessionUser || (url.pathname === '/maceraci/ev' ? { id: 'public-viewer', username: 'Gezgin' } : null);
@@ -442,6 +467,16 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if (!db) { res.writeHead(503,{'Cache-Control':'no-store'});res.end('Destek veritabanı kullanılamıyor.');return true; }
     const tickets=await listSupportTickets(db,user.id,20);
     const html=accountCenterPage(user,tickets,url.searchParams.get('status'));
+    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
+    res.end(html);return true;
+  }
+  if (url.pathname === '/maceraci/bildirimler') {
+    const guildId=String(url.searchParams.get('guildId')||'');
+    if(!/^\\d{17,20}$/.test(guildId)){const dashboard=await getAdventurerDashboard(db,user.id);const html=portalGuildPicker(user,dashboard.profiles,url.pathname,'Bildirim Tercihleri');res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end(html);return true;}
+    const profile=await getLinkedAdventurer(db,user.id,guildId);
+    if(!profile){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter web hesabına bağlı değil.');return true;}
+    const preferences=await getNotificationPreferences(db,guildId,profile.user_id);
+    const html=notificationPreferencesPage(user,profile,preferences,url.searchParams.get('status'));
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
     res.end(html);return true;
   }
