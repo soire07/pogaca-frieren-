@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseCommandNames } from './command-test-input.js';
 import { readFile } from 'node:fs/promises';
-import { registerCommandsIfChanged, getFrierenAiCommandRoute } from './command-registration-target.js';
+import { registerCommandsIfChanged, getFrierenAiCommandRoute, FRIEREN_AI_TEST_GUILD_ID } from './command-registration-target.js';
 
 const [runtime, manual] = await Promise.all([
   readFile(new URL('./index.js', import.meta.url), 'utf8'),
@@ -35,7 +35,8 @@ test('registration exposes only the four Frieren AI root commands and four memor
   }
   assert.match(manual, /const required = \['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DISCORD_GUILD_ID'\]/);
   assert.match(manual, /const botUser = await rest\.get\(Routes\.user\(\)\)/);
-  assert.match(manual, /const TEST_GUILD_ID = '1564945192803639356'/);
+  assert.match(manual, /const TEST_GUILD_ID = FRIEREN_AI_TEST_GUILD_ID/);
+  assert.equal(FRIEREN_AI_TEST_GUILD_ID, '1564945192803639356');
   assert.match(manual, /configuredGuildId !== TEST_GUILD_ID/);
   assert.match(manual, /registerCommandsIfChanged/);
   assert.match(runtime, /registerCommandsIfChanged/);

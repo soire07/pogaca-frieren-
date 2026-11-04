@@ -3,17 +3,6 @@ name: Frieren Bot CI
 on:
   push:
     branches:
-      - "**"
-    paths:
-      - "*.js"
-      - "commands/**"
-      - "database/**"
-      - "scripts/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/frieren-ci.yml"
-  pull_request:
-    branches:
       - main
     paths:
       - "*.js"
@@ -22,7 +11,7 @@ on:
       - "scripts/**"
       - "package.json"
       - "package-lock.json"
-      - ".github/workflows/frieren-ci.yml"
+  workflow_dispatch:
   workflow_dispatch:
 
 permissions:

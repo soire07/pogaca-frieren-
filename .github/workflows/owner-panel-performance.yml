@@ -28,7 +28,6 @@ on:
       - 'scripts/test-owner-rpg-content.js'
       - 'scripts/test-owner-render-control.js'
       - 'scripts/check-gameplay-integrity.js'
-      - '.github/workflows/owner-panel-performance.yml'
   push:
     branches: [main, optimize-owner-panel-complete]
     paths:
