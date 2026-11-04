@@ -28,7 +28,7 @@ test('support tickets list only the authenticated account records',async()=>{
 });
 
 test('account export returns linked profile, inventory, card collection and scoped module records',async()=>{
- const db={async query(sql){
+ const db={async query(sql,params){
   if(sql.includes('FROM frieren_site_accounts'))return{rows:[{id:'123e4567-e89b-12d3-a456-426614174000',username:'Gezgin',email:'member@example.com'}],rowCount:1};
   if(sql.includes('FROM site_discord_links'))return{rows:[{guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',level:20,xp:2400}],rowCount:1};
   if(sql.includes('FROM inventory'))return{rows:[{item_key:'Mana Kristali',quantity:2}],rowCount:1};
