@@ -13,8 +13,13 @@ permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: frieren-neural-active-gguf-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   active-gguf-evaluation:
+    if: github.ref == 'refs/heads/validation/ufakzeka-real-gguf'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     defaults:
@@ -26,6 +31,36 @@ jobs:
     steps:
       - name: Check out validation commit
         uses: actions/checkout@v4
+      - name: Wait for successful Neural CI on this exact commit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p quality-reports/active-gguf
+          for attempt in $(seq 1 30); do
+            runs="$(curl -fsSL \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${GITHUB_SHA}&per_page=100")"
+            match="$(printf '%s' "$runs" | jq -c --arg sha "$GITHUB_SHA" \
+              '.workflow_runs | map(select(.head_sha == $sha and .path == ".github/workflows/frieren-neural-ci.yml")) | sort_by(.run_started_at) | last // empty')"
+            if [ -n "$match" ]; then
+              status="$(printf '%s' "$match" | jq -r '.status')"
+              conclusion="$(printf '%s' "$match" | jq -r '.conclusion // empty')"
+              if [ "$status" = "completed" ]; then
+                if [ "$conclusion" != "success" ]; then
+                  echo "Matching Neural CI ended with $conclusion"
+                  exit 1
+                fi
+                printf '%s' "$match" | jq '{status:"success",failed:0,skipped:0,run_id:.id,workflow_path:.path,head_sha:.head_sha}' > quality-reports/active-gguf/ci-evidence.json
+                echo "Verified completed Neural CI run for $GITHUB_SHA"
+                exit 0
+              fi
+            fi
+            sleep 10
+          done
+          echo "No successful frieren-neural-ci.yml run for $GITHUB_SHA within five minutes"
+          exit 1
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -66,6 +101,55 @@ jobs:
           print("PINNED_ARTIFACT_SHA256=" + MODEL_SHA256)
           print("QUALITY_DECISION=" + report["decision"])
           print("BLOCKING_REASONS=" + ",".join(report["blocking_reasons"]))
+          PY
+      - name: Build and validate Guardian-supervised evolution plan
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("quality-reports/active-gguf")
+          report_path = root / "quality-report.json"
+          report = json.loads(report_path.read_text(encoding="utf-8"))
+          ci = json.loads((root / "ci-evidence.json").read_text(encoding="utf-8"))
+          envelope = {
+              "ci": ci,
+              "quality_report": report,
+              "source_commit_sha": report["source_commit_sha"],
+              "artifact_sha256": report["artifact_sha256"],
+          }
+          (root / "evolution-input.json").write_text(
+              json.dumps(envelope, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8"
+          )
+          PY
+          frieren-neural-plan-evolution \
+            --report quality-reports/active-gguf/evolution-input.json \
+            --output quality-reports/active-gguf/evolution-plan.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("quality-reports/active-gguf")
+          report_path = root / "quality-report.json"
+          report = json.loads(report_path.read_text(encoding="utf-8"))
+          plan = json.loads((root / "evolution-plan.json").read_text(encoding="utf-8"))
+          assert plan["status"] in {"blocked", "improvement_proposed", "eligible_for_guard_review"}
+          assert plan["requires_guard_review"] is True
+          assert plan["apply_changes"] is False
+          assert len(plan["tasks"]) <= 8
+          assert plan["source_commit_sha"] == report["source_commit_sha"]
+          assert plan["artifact_sha256"] == report["artifact_sha256"]
+          if plan["status"] == "eligible_for_guard_review":
+              assert report["decision"] == "READY FOR STAGED TEST"
+              assert report["human_review"]["completed"] is True
+              assert not report["blocking_reasons"]
+          report["evolution_plan"] = plan
+          report_path.write_text(
+              json.dumps(report, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8"
+          )
+          print("EVOLUTION_PLAN_STATUS=" + plan["status"])
+          print("EVOLUTION_PLAN_TASKS=" + str(len(plan["tasks"])))
+          print("EVOLUTION_PLAN_APPLY_CHANGES=false")
           PY
       - name: Send quality report to Guardian using GitHub OIDC
         if: success()
