@@ -12,7 +12,7 @@ test('support ticket input is normalized and bounded',()=>{
 
 test('support ticket creation is scoped to the current account and rate limited',async()=>{
  const calls=[];
- const db={async query(sql,params){calls.push({sql,params});if(sql.includes('COUNT(*)'))return{rows:[{count:0}],rowCount:1};if(sql.includes('INSERT INTO frieren_support_tickets'))return{rows:[{ticket_id:'ticket-1',category:'bug',subject:'OAuth issue',status:'open'}],rowCount:1};throw Error('unexpected query');}};
+ const db={async query(sql,params){calls.push({sql,params});if(sql.includes('COUNT(*)'))return{rows:[{count:0}],rowCount:1};if(sql.includes('INSERT INTO frieren_support_tickets'))return{rows:[{ticket_id:'ticket-1',category:'bug',subject:'OAuth issue',status:'open'}],rowCount:1};if(sql.includes('INSERT INTO frieren_support_ticket_events'))return{rows:[],rowCount:1};throw Error('unexpected query');}};
  const result=await createSupportTicket(db,accountId,{category:'bug',subject:'OAuth issue',message:'Callback fails.'});
  assert.equal(result.status,'created');
  assert.ok(calls.every(x=>x.params.includes('123e4567-e89b-12d3-a456-426614174000')));
