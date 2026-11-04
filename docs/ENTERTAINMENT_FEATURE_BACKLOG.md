@@ -162,6 +162,6 @@ Yeni uygulama grubu, yukarıdaki tamamlanmamış alt davranışları mevcut kodl
 ## 6. Lonca Oyun Salonu — PR #217 ek paketi
 
 - `/loncaoyun baslat` ile Frieren bilgi yarışı, büyülü kelime, hafıza mührü veya bilmece sandığı başlatılır; aynı kanalda aynı anda tek aktif tur bulunur.
-- Her oyuncu tur başına bir cevap verebilir. Doğru cevap 10 lonca puanı kazandırır; yanlış cevap tekrar denenemez. `/loncaoyun siralam` sunucuya özel skorları listeler.
+- Her oyuncu tur başına bir cevap verebilir. Doğru cevap 10 lonca puanı kazandırır; yanlış cevap tekrar denenemez. `/loncaoyun siralam` sunucuya özel skorları listeler. `takimli:true` seçeneği A/B takımları açar; her takım en fazla beş oyuncu alır, oyuncu takımı değiştiremez ve doğru cevap puanı takım hanesine de atomik yazılır. `/loncaoyun takim-siralam` tur skorunu gösterir.
 - PostgreSQL cevap transaction'ı, oturum satırı kilidi, kanal/guild kapsamı, benzersiz oyuncu cevabı ve 30 günlük oturum temizliğiyle koruma sağlanır.
-- ENT-023 kısmen karşılandı; ayrı takım kaptanı/rol seçimi, takım puanı ve günlük turnuva ENT-024 için sonraki eksik kapsamdır.
+- ENT-023 ve ENT-024 kısmen karşılandı; takım kaptanı/rol seçimi, günlük fikstür ve sezonluk takım ligi hâlâ eksik.
