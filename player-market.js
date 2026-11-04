@@ -163,7 +163,7 @@ export async function createPlayerMarketOffer(db, { guildId, buyerId, listingId,
     );
     if (!selected.rowCount || selected.rows[0].status !== 'active') return { status: 'unavailable' };
     if (selected.rows[0].seller_id === buyerId) return { status: 'self_offer' };
-    const buyer = await client.query('SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, buyerId]);
+    const buyer = await client.query('SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [guildId, buyerId]);
     if (!buyer.rowCount) return { status: 'buyer_missing' };
     const existing = await client.query(
       "SELECT offer_id FROM player_market_offers WHERE listing_id=$1 AND buyer_id=$2 AND status='pending'",
