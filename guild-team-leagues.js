@@ -60,6 +60,12 @@ export async function ensureGuildTeamLeagueSchema(db){
  `);
 }
 
+export async function listGuildTeams(db,guildId){
+ if(!DISCORD_ID.test(String(guildId||'')))throw new Error('TEAM_GUILD_INVALID');
+ const result=await db.query('SELECT t.team_id,t.team_name,t.captain_id,COUNT(m.user_id)::int AS member_count FROM guild_teams t LEFT JOIN guild_team_members m ON m.guild_id=t.guild_id AND m.team_id=t.team_id WHERE t.guild_id=$1 GROUP BY t.team_id,t.team_name,t.captain_id ORDER BY t.team_name LIMIT 50',[guildId]);
+ return result.rows;
+}
+
 export async function createGuildTeam(db,{guildId,captainId,name}){
  if(!validIds(guildId,captainId))throw new Error('TEAM_PLAYER_INVALID');
  const teamName=safeName(name),teamId=randomUUID(),client=await db.connect();
