@@ -97,6 +97,8 @@ export async function ensureGuildGameTables(db) {
       ON guild_game_sessions(guild_id,created_at DESC);
     CREATE INDEX IF NOT EXISTS guild_game_sessions_expiry_idx
       ON guild_game_sessions(expires_at) WHERE status='active';
+    CREATE UNIQUE INDEX IF NOT EXISTS guild_game_one_active_session_per_channel
+      ON guild_game_sessions(guild_id,channel_id) WHERE status='active';
     CREATE TABLE IF NOT EXISTS guild_game_answers (
       session_id UUID NOT NULL REFERENCES guild_game_sessions(session_id) ON DELETE CASCADE,
       guild_id TEXT NOT NULL,
@@ -126,17 +128,35 @@ export async function startGuildMiniGame(db, { guildId, channelId, userId, gameT
   const question = createGuildGameQuestion(gameType, random);
   const sessionId = randomUUID();
   const expiresAt = new Date(new Date(now).getTime() + GUILD_GAME_DURATION_MS);
-  const result = await db.query(
-    `INSERT INTO guild_game_sessions
-      (session_id,guild_id,channel_id,created_by,game_type,game_label,prompt,options,answer_index,explanation,expires_at)
-     VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11)
-     RETURNING session_id,guild_id,channel_id,game_type,game_label,prompt,options,expires_at`,
-    [sessionId,String(guildId),String(channelId),String(userId),question.gameType,question.gameLabel,question.prompt,
-      JSON.stringify(question.options),question.answerIndex,question.explanation,expiresAt.toISOString()]
-  );
-  const row = result.rows?.[0];
-  if (!row) throw new Error('GUILD_GAME_SESSION_NOT_CREATED');
-  return { ...row, options: Array.isArray(row.options) ? row.options : question.options, answerIndex: question.answerIndex };
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['frieren-guild-game:' + guildId + ':' + channelId]);
+    await client.query("UPDATE guild_game_sessions SET status='expired' WHERE guild_id=$1 AND channel_id=$2 AND status='active' AND expires_at <= $3", [String(guildId),String(channelId),new Date(now).toISOString()]);
+    await client.query("DELETE FROM guild_game_sessions WHERE created_at < NOW() - INTERVAL '30 days'");
+    const active = await client.query("SELECT session_id,expires_at FROM guild_game_sessions WHERE guild_id=$1 AND channel_id=$2 AND status='active' LIMIT 1", [String(guildId),String(channelId)]);
+    if (active.rowCount) {
+      await client.query('COMMIT');
+      return { status:'channel_active', sessionId:active.rows[0].session_id, expiresAt:active.rows[0].expires_at };
+    }
+    const result = await client.query(
+      `INSERT INTO guild_game_sessions
+        (session_id,guild_id,channel_id,created_by,game_type,game_label,prompt,options,answer_index,explanation,expires_at)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11)
+       RETURNING session_id,guild_id,channel_id,game_type,game_label,prompt,options,expires_at`,
+      [sessionId,String(guildId),String(channelId),String(userId),question.gameType,question.gameLabel,question.prompt,
+        JSON.stringify(question.options),question.answerIndex,question.explanation,expiresAt.toISOString()]
+    );
+    const row = result.rows?.[0];
+    if (!row) throw new Error('GUILD_GAME_SESSION_NOT_CREATED');
+    await client.query('COMMIT');
+    return { ...row, options: Array.isArray(row.options) ? row.options : question.options, answerIndex: question.answerIndex };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function answerGuildMiniGame(db, { guildId, channelId, sessionId, userId, answerIndex, now = new Date() }) {
