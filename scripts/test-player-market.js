@@ -118,3 +118,10 @@ test('main runtime delivers price alerts by Discord DM, finalizes only after suc
  assert.match(worker,/releasePlayerMarketPriceAlertClaim\(pool, alert\.alert_id, alert\.claimed_at\)/);
  assert.match(worker,/cancelPlayerMarketPriceAlert\(pool, \{ guildId: alert\.guild_id, userId: alert\.user_id, alertId: alert\.alert_id \}\)/);
 });
+
+
+test('market price alert worker uses a bounded five-minute sweep rather than frequent database polling',async()=>{
+ const source=await readFile(new URL('../index.js',import.meta.url),'utf8');
+ assert.match(source,/setInterval\(\(\) => void processDuePlayerMarketPriceAlerts\(readyClient\), 5 \* 60_000\)/);
+ assert.doesNotMatch(source,/processDuePlayerMarketPriceAlerts\(readyClient\)\s*;\s*\}, 30_000/);
+});
