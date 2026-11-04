@@ -90,7 +90,7 @@ export async function setHomeVisibility(db,{guildId,userId,isPublic}){
  player(guildId,userId);if(typeof isPublic!=='boolean')return {status:'invalid_visibility'};await ensureUser(guildId,userId,db);await db.query("INSERT INTO player_home_rooms(guild_id,user_id,room_key) VALUES($1,$2,'starter') ON CONFLICT DO NOTHING",[guildId,userId]);await db.query('INSERT INTO player_homes(guild_id,user_id,is_public) VALUES($1,$2,$3) ON CONFLICT(guild_id,user_id) DO UPDATE SET is_public=EXCLUDED.is_public,updated_at=NOW()',[guildId,userId,isPublic]);return {status:'updated',isPublic};
 }
 export async function getPublicPlayerHome(db,{guildId,userId}){
- player(guildId,userId);const result=await db.query('SELECT u.user_id,u.character_name,u.class_name,u.level,h.active_room,h.layout,h.is_public FROM player_homes h JOIN users u ON u.guild_id=h.guild_id AND u.user_id=h.user_id WHERE h.guild_id=$1 AND h.user_id=$2 AND h.is_public=TRUE',[guildId,userId]);
+ player(guildId,userId);const result=await db.query('SELECT u.user_id,u.character_name,u.class_name,u.level,u.xp,h.active_room,h.layout,h.is_public FROM player_homes h JOIN users u ON u.guild_id=h.guild_id AND u.user_id=h.user_id WHERE h.guild_id=$1 AND h.user_id=$2 AND h.is_public=TRUE',[guildId,userId]);
  if(!result.rowCount)return null;
  const [rooms,trophies,loadout]=await Promise.all([
   db.query('SELECT room_key FROM player_home_rooms WHERE guild_id=$1 AND user_id=$2 ORDER BY unlocked_at',[guildId,userId]),
