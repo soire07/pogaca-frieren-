@@ -197,6 +197,22 @@ test('invalid CSRF token blocks account registration before database writes', as
   assert.equal(db.calls.filter(call => call.sql.includes('INSERT INTO frieren_site_accounts')).length, 0);
 });
 
+test('cross-origin account POST is rejected before schema or account database queries', async () => {
+  const db = fakeDb();
+  const req = post('/register', {
+    csrf: createSiteCsrfToken(secret), username: 'Gezgin03', email: 'gezgin3@example.com',
+    password: 'a-secure-password', confirmPassword: 'a-secure-password'
+  });
+  req.headers.origin = 'https://attacker.example';
+  req.headers.host = 'frierenbot.vercel.app';
+  req.headers['x-forwarded-proto'] = 'https';
+  req.headers['sec-fetch-site'] = 'cross-site';
+  const res = response();
+  assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret, createSession: createPublicSiteSession }), true);
+  assert.equal(res.status, 403);
+  assert.equal(db.calls.length, 0, 'cross-origin requests must be rejected before schema queries or writes');
+});
+
 test('password reset request returns the same generic response without exposing account existence', async () => {
   const db = fakeDb();
   const req = post('/forgot-password', { csrf: createSiteCsrfToken(secret), email: 'unknown@example.com' });
