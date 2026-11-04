@@ -281,7 +281,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(url.pathname==='/maceraci/ev'){
     if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Panel veritabanı kullanılamıyor.');return true;}
     const guildId=String(url.searchParams.get('guildId')||''),userId=String(url.searchParams.get('userId')||'');
-    if(!/^\\d{17,20}$/.test(guildId)||!/^\\d{17,20}$/.test(userId)){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Ev bağlantısı geçersiz.');return true;}
+    if(!/^\d{17,20}$/.test(guildId)||!/^\d{17,20}$/.test(userId)){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Ev bağlantısı geçersiz.');return true;}
     const showcase=await getPublicPlayerHome(db,{guildId,userId});
     if(!showcase){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Bu ev paylaşılmıyor veya bulunamadı.');return true;}
     const html=publicHomeShowcasePage(user,showcase);
