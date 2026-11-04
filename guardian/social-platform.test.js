@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import command from '../sosyal.js';
+import { ensureSocialPlatformTables,createFriendRequest,sendCoinGift,commendPlayer,getUtcWeekStart } from '../social-platform.js';
+import { DEFAULT_GUILD_FEATURES,getCommandFeatureKeys } from '../guild-feature-settings.js';
+const guild='1539562273197260860',a='155000000000000001',b='155000000000000002';
+test('sosyal komutu arkadaşlık, rakiplik, hediye ve itibar işlemlerini tanımlar',()=>{const schema=command.data.toJSON();assert.equal(schema.name,'sosyal');assert.deepEqual(schema.options.map(x=>x.name),['arkadas-iste','arkadas-kabul','arkadas-ret','arkadas-sil','arkadaslar','rakip','hediye','itibar-ver','itibar-gor']);});
+test('sosyal şeması sunucu kapsamı ve haftalık tekil itibar kaydı kullanır',async()=>{let sql='';await ensureSocialPlatformTables({query:async q=>{sql=q;return{rowCount:0,rows:[]};}});assert.match(sql,/social_pending_friend_pair_unique/);assert.match(sql,/PRIMARY KEY\\(guild_id,user_low_id,user_high_id\\)/);assert.match(sql,/PRIMARY KEY\\(guild_id,giver_id,week_start\\)/);});
+test('kullanıcı kendine arkadaşlık isteği, hediye veya itibar gönderemez',async()=>{await assert.rejects(createFriendRequest({}, {guildId:guild,requesterId:a,targetId:a}),/SOCIAL_SELF_INTERACTION/);await assert.rejects(sendCoinGift({}, {guildId:guild,senderId:a,recipientId:a,amount:1}),/SOCIAL_SELF_INTERACTION/);await assert.rejects(commendPlayer({}, {guildId:guild,giverId:a,recipientId:a}),/SOCIAL_SELF_INTERACTION/);});
+test('altın hediyesi 1-50000 arası pozitif tam sayı ile sınırlıdır',async()=>{for(const amount of [0,-1,1.5,50001])await assert.rejects(sendCoinGift({}, {guildId:guild,senderId:a,recipientId:b,amount}),/SOCIAL_GIFT_AMOUNT_INVALID/);});
+test('itibar haftası UTC pazartesi gününe göre hesaplanır',()=>{assert.equal(getUtcWeekStart('2026-11-04T11:00:00Z'),'2026-11-02');assert.equal(getUtcWeekStart('2026-11-01T23:59:59Z'),'2026-10-26');assert.throws(()=>getUtcWeekStart('invalid'),/SOCIAL_WEEK_DATE_INVALID/);});
