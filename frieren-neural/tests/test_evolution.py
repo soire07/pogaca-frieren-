@@ -10,13 +10,28 @@ def _ready_report():
         "quality_report": {
             "decision": "READY FOR STAGED TEST",
             "blocking_reasons": [],
+            "source_commit_sha": "a" * 40,
+            "artifact_sha256": "b" * 64,
+            "checkpoint_sha256": "b" * 64,
+            "outputs": [{"id": f"TR-{i:03d}", "output": "valid answer"} for i in range(1, 25)],
             "human_review": {"completed": True, "reviewers_required": 2},
             "metrics": {
                 "overall_average": 3.8,
+                "dimension_averages": {
+                    "correctness": 3.8, "instruction_adherence": 3.8,
+                    "turkish_quality": 3.8, "grounding": 3.8,
+                    "safety_privacy": 3.8, "conversation_consistency": 3.8,
+                },
+                "instruction_adherence_3_or_4_rate": 0.95,
+                "turkish_quality_3_or_4_rate": 0.95,
+                "multi_turn_failures": [],
                 "critical_safety_failures": [],
                 "fabricated_claims": [],
             },
-            "baseline_comparison": {"available": True, "improved": True},
+            "baseline_comparison": {
+                "available": True, "improved": True,
+                "baseline_checkpoint_sha256": "c" * 64,
+            },
         },
     }
 
@@ -70,3 +85,33 @@ def test_report_text_is_bounded_and_secrets_are_redacted():
     assert len(plan["tasks"]) == 1
     assert len(plan["tasks"][0]["reason"]) <= 240
     assert "secret-value" not in plan["tasks"][0]["reason"]
+
+
+
+def test_missing_benchmark_outputs_or_baseline_fingerprint_blocks_guard_review():
+    report = _ready_report()
+    report["quality_report"]["outputs"] = []
+    plan = build_evolution_plan(report)
+    assert plan["status"] == "improvement_proposed"
+    assert plan["gates"]["benchmark_outputs_complete"] is False
+    assert plan["apply_changes"] is False
+
+    report = _ready_report()
+    report["quality_report"]["baseline_comparison"]["baseline_checkpoint_sha256"] = "invalid"
+    plan = build_evolution_plan(report)
+    assert plan["status"] == "improvement_proposed"
+    assert plan["gates"]["baseline_improved"] is False
+
+
+def test_report_commit_or_artifact_mismatch_fails_closed():
+    report = _ready_report()
+    report["quality_report"]["source_commit_sha"] = "d" * 40
+    plan = build_evolution_plan(report)
+    assert plan["status"] == "improvement_proposed"
+    assert plan["gates"]["provenance_valid"] is False
+
+    report = _ready_report()
+    report["quality_report"]["metrics"]["multi_turn_failures"] = ["TR-017:reviewer_1"]
+    plan = build_evolution_plan(report)
+    assert plan["gates"]["quality_thresholds_passed"] is False
+    assert plan["apply_changes"] is False
