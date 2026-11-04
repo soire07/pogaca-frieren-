@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-const DISCORD_ID=/^\\d{17,20}$/;
+const DISCORD_ID=/^\d{17,20}$/;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const validIds=(guildId,userId)=>DISCORD_ID.test(String(guildId||''))&&DISCORD_ID.test(String(userId||''));
-const safeName=value=>{const name=String(value||'').trim().replace(/\\s+/g,' ');if(name.length<3||name.length>32||/[\\u0000-\\u001f\\u007f]/.test(name))throw new Error('TEAM_NAME_INVALID');return name;};
+const safeName=value=>{const name=String(value||'').trim().replace(/\s+/g,' ');if(name.length<3||name.length>32||/[\u0000-\u001f\u007f]/.test(name))throw new Error('TEAM_NAME_INVALID');return name;};
 
 export async function ensureGuildTeamLeagueSchema(db){
  await db.query(`
