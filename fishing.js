@@ -1,6 +1,6 @@
 import { ensureUser } from './database/db.js';
 
-const DISCORD_ID = /^\\d{17,20}$/;
+const DISCORD_ID = /^\d{17,20}$/;
 export const FISHING_COOLDOWN_MS = 1_800_000;
 export const FISHING_ZONES = Object.freeze([
   { key: 'kuzey_kiyisi', name: 'Kuzey Kıyısı', minLevel: 1 },
