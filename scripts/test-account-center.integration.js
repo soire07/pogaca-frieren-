@@ -108,7 +108,7 @@ test('account export includes linked game and support data while excluding secre
     assert.equal((await updateSupportTicketStatusFromOwner(pool,ticketId,'1553794496234262641','in_progress')).status,'updated');
 
     const exported=await exportSiteAccountData(pool,accountId);
-    const excludedTablePattern='(auth|session|credential|token|secret|owner|support|oauth|audit|log)';
+    const excludedTablePattern='(auth|session|credential|token|secret|owner|support|oauth|audit|log|site_discord_links)';
     const userOwnedTables=await pool.query(
       "SELECT DISTINCT table_name FROM information_schema.columns WHERE table_schema=current_schema() AND column_name='user_id' AND table_name !~* $1 ORDER BY table_name",
       [excludedTablePattern]
