@@ -75,7 +75,7 @@ def build_evolution_plan(report: object) -> dict[str, Any]:
 
     ci_passed = ci.get("status") == "success" and ci.get("failed") == 0 and ci.get("skipped") == 0
     quality_ready = (
-        quality.get("decision") == "READY"
+        quality.get("decision") == "READY FOR STAGED TEST"
         and human.get("completed") is True
         and isinstance(metrics.get("critical_safety_failures"), list)
         and not metrics.get("critical_safety_failures")
