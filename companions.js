@@ -1,10 +1,10 @@
 import { ensureUser } from './database/db.js';
 
 export const COMPANION_CATALOG = Object.freeze([
-  Object.freeze({ key: 'flamme_fox', name: 'Alev Tilkisi', emoji: '🦊', cost: 500, description: 'Mana izlerini takip eden çevik bir yoldaş.' }),
-  Object.freeze({ key: 'moon_owl', name: 'Ay Baykuşu', emoji: '🦉', cost: 650, description: 'Gece keşiflerinde sana eşlik eden bilge bir kuş.' }),
-  Object.freeze({ key: 'mimicling', name: 'Minik Mimic', emoji: '📦', cost: 800, description: 'Sürprizlerle dolu, huysuz ama sadık bir sandık.' }),
-  Object.freeze({ key: 'snow_wolf', name: 'Kuzey Kurdu', emoji: '🐺', cost: 950, description: 'Kuzey Kıtası’nın soğuğuna dayanıklı yol arkadaşı.' })
+  Object.freeze({ key: 'flamme_fox', name: 'Alev Tilkisi', emoji: '🦊', cost: 500, description: 'Mana izlerini takip eden çevik bir yoldaş.', evolutions: Object.freeze([{ name: 'Kor Alev Tilkisi', emoji: '🔥', description: 'Alev manasını savaşta daha iyi yönlendirir.' }, { name: 'Güneş Ruhu Tilkisi', emoji: '☀️', description: 'Keşif ve büyü yolculuklarında parlayan kadim form.' }, { name: 'Ebedî Alev Muhafızı', emoji: '🌟', description: 'Yoldaş bağını tamamlamış efsanevi koruyucu.' }]) }),
+  Object.freeze({ key: 'moon_owl', name: 'Ay Baykuşu', emoji: '🦉', cost: 650, description: 'Gece keşiflerinde sana eşlik eden bilge bir kuş.', evolutions: Object.freeze([{ name: 'Yıldız Gözlü Baykuş', emoji: '🌙', description: 'Gece keşiflerinde yıldızların izini sürer.' }, { name: 'Kozmik Kehanet Baykuşu', emoji: '🌌', description: 'Gizli yolları ve tehlikeleri önceden sezer.' }, { name: 'Göksel Bilgelik Bekçisi', emoji: '✨', description: 'Kadim bilgeliğiyle ekibine yol gösterir.' }]) }),
+  Object.freeze({ key: 'mimicling', name: 'Minik Mimic', emoji: '📦', cost: 800, description: 'Sürprizlerle dolu, huysuz ama sadık bir sandık.', evolutions: Object.freeze([{ name: 'Hazine Mimic', emoji: '💎', description: 'Bulduğu ganimetleri daha iyi korur.' }, { name: 'Kadim Mimic', emoji: '🗝️', description: 'Unutulmuş zindanların sırlarını tanır.' }, { name: 'Efsanevi Kasa Muhafızı', emoji: '👑', description: 'Loncanın en değerli hazinelerinin koruyucusu.' }]) }),
+  Object.freeze({ key: 'snow_wolf', name: 'Kuzey Kurdu', emoji: '🐺', cost: 950, description: 'Kuzey Kıtası’nın soğuğuna dayanıklı yol arkadaşı.', evolutions: Object.freeze([{ name: 'Buz Fırtınası Kurdu', emoji: '❄️', description: 'Kuzey fırtınalarında çevikliğini artırır.' }, { name: 'Kutup Muhafızı', emoji: '🌨️', description: 'Takımını soğuk ve tehlikeli rotalarda korur.' }, { name: 'Kuzeyin Efsanevi Ruhu', emoji: '🐺', description: 'Kuzey Kıtası’nın kadim koruyucu ruhuna dönüşür.' }]) })
 ]);
 
 export const COMPANION_COSMETICS = Object.freeze([
@@ -12,8 +12,23 @@ export const COMPANION_COSMETICS = Object.freeze([
   Object.freeze({ key: 'frost_cloak', name: 'Buz Pelerini', emoji: '❄️', cost: 400 }),
   Object.freeze({ key: 'mana_circlet', name: 'Mana Tacı', emoji: '🔮', cost: 600 })
 ]);
+
+export const COMPANION_EVOLUTION_STAGES = Object.freeze([
+  Object.freeze({ stage: 1, requiredLevel: 10, cost: 1000 }),
+  Object.freeze({ stage: 2, requiredLevel: 25, cost: 3500 }),
+  Object.freeze({ stage: 3, requiredLevel: 40, cost: 8000 })
+]);
 export function normalizeCompanionCosmetic(key) {
   return key === 'default' ? 'default' : COMPANION_COSMETICS.some(item => item.key === key) ? key : null;
+}
+
+export function getNextCompanionEvolution(companionKey, currentStage) {
+  if (!Number.isInteger(currentStage) || currentStage < 0 || currentStage >= COMPANION_EVOLUTION_STAGES.length) return null;
+  const companion = COMPANION_CATALOG.find(item => item.key === companionKey);
+  const stage = COMPANION_EVOLUTION_STAGES[currentStage];
+  const form = companion?.evolutions?.[currentStage];
+  if (!companion || !stage || !form) return null;
+  return { ...form, stage: stage.stage, requiredLevel: stage.requiredLevel, cost: stage.cost };
 }
 export function companionLevelForXp(xp) {
   const value = Number(xp);
@@ -40,6 +55,8 @@ export async function initCompanionSchema(db) {
   );
   await db.query("ALTER TABLE user_companions ADD COLUMN IF NOT EXISTS cosmetic_key TEXT NOT NULL DEFAULT 'default'");
   await db.query('CREATE TABLE IF NOT EXISTS user_companion_cosmetics (guild_id TEXT NOT NULL,user_id TEXT NOT NULL,cosmetic_key TEXT NOT NULL,unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id,cosmetic_key),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE)');
+  await db.query('ALTER TABLE user_companions ADD COLUMN IF NOT EXISTS evolution_stage INTEGER NOT NULL DEFAULT 0 CHECK (evolution_stage BETWEEN 0 AND 3)');
+  await db.query('CREATE TABLE IF NOT EXISTS user_companion_evolution_history (guild_id TEXT NOT NULL,user_id TEXT NOT NULL,stage INTEGER NOT NULL CHECK (stage BETWEEN 1 AND 3),evolution_name TEXT NOT NULL,coin_cost INTEGER NOT NULL CHECK (coin_cost > 0),evolved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id,stage),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE)');
   await db.query('CREATE INDEX IF NOT EXISTS idx_user_companions_level ON user_companions(guild_id,level DESC,xp DESC)');
 }
 
@@ -129,9 +146,39 @@ export async function equipCompanionCosmetic(dbPool, input) {
   } catch (error) { await db.query('ROLLBACK').catch(() => {}); throw error; }
   finally { db.release(); }
 }
+export async function evolveCompanion(dbPool, input) {
+  if (!input?.guildId || !input?.userId) return { status: 'invalid_input' };
+  await ensureUser(input.guildId, input.userId);
+  const db = await dbPool.connect();
+  try {
+    await db.query('BEGIN');
+    await db.query('SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [input.guildId, input.userId]);
+    const result = await db.query('SELECT companion_key,evolution_stage,level FROM user_companions WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', [input.guildId, input.userId]);
+    const pet = result.rows[0];
+    if (!pet) { await db.query('ROLLBACK'); return { status: 'no_companion' }; }
+    const evolution = getNextCompanionEvolution(pet.companion_key, Number(pet.evolution_stage));
+    if (!evolution) { await db.query('ROLLBACK'); return { status: 'max_evolution' }; }
+    if (Number(pet.level) < evolution.requiredLevel) {
+      await db.query('ROLLBACK');
+      return { status: 'level_locked', requiredLevel: evolution.requiredLevel, currentLevel: Number(pet.level) };
+    }
+    const debit = await db.query('UPDATE users SET coins=coins-$3 WHERE guild_id=$1 AND user_id=$2 AND coins >= $3 RETURNING coins', [input.guildId, input.userId, evolution.cost]);
+    if (!debit.rowCount) { await db.query('ROLLBACK'); return { status: 'insufficient_funds', cost: evolution.cost }; }
+    await db.query('UPDATE user_companions SET evolution_stage=$3,updated_at=NOW() WHERE guild_id=$1 AND user_id=$2', [input.guildId, input.userId, evolution.stage]);
+    await db.query('INSERT INTO user_companion_evolution_history(guild_id,user_id,stage,evolution_name,coin_cost) VALUES($1,$2,$3,$4,$5)', [input.guildId, input.userId, evolution.stage, evolution.name, evolution.cost]);
+    await db.query('COMMIT');
+    return { status: 'evolved', evolution, balance: Number(debit.rows[0].coins) };
+  } catch (error) {
+    await db.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally { db.release(); }
+}
+
 export async function getCompanion(dbPool, guildId, userId) {
-  const result = await dbPool.query('SELECT companion_key,cosmetic_key,xp,level,happiness,energy,hunger,adopted_at FROM user_companions WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
+  const result = await dbPool.query('SELECT companion_key,cosmetic_key,evolution_stage,xp,level,happiness,energy,hunger,adopted_at FROM user_companions WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
   const pet = result.rows[0];
   if (!pet) return null;
-  return { ...pet, catalog: COMPANION_CATALOG.find(item => item.key === pet.companion_key) || null, cosmetic: pet.cosmetic_key === 'default' ? null : COMPANION_COSMETICS.find(item => item.key === pet.cosmetic_key) || null };
+  const catalog = COMPANION_CATALOG.find(item => item.key === pet.companion_key) || null;
+  const evolution = catalog?.evolutions?.[Number(pet.evolution_stage) - 1] || null;
+  return { ...pet, catalog, evolution, displayName: evolution?.name || catalog?.name || 'Yoldaşın', displayEmoji: evolution?.emoji || catalog?.emoji || '🐾', cosmetic: pet.cosmetic_key === 'default' ? null : COMPANION_COSMETICS.find(item => item.key === pet.cosmetic_key) || null };
 }
