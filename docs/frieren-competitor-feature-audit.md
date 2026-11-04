@@ -20,7 +20,7 @@ PR #217 başlığındaki `feature-inventory.json` şu anda:
 - toplam 2.000 kayıt,
 - 25 kategori ve kategori başına 67 planlama kaydı içerir.
 
-1.675 kayıt, 1.675 bağımsız oyun mekaniği değildir. İsimler normalize edildiğinde 225 temel yetenek grubu yedi işlem etiketiyle tekrar eder: `Preview`, `Unlock`, `Track`, `Compare`, `Customize`, `Earn milestones for`, `Review history for`. Buna ek olarak 100 tekil planlama kaydı bulunur. Böylece 1.675 satır, 325 temel planlama fikrini temsil eder. Bu tekrarlar silinmeyecek; tek bir temel yetenek ve ona bağlı gerçek kullanıcı işlemleri olarak yeniden modellenmeleri değerlendirilecektir.
+1.675 kayıt, 1.675 bağımsız oyun mekaniği değildir. İsimler normalize edildiğinde 225 temel yetenek grubu yedi işlem etiketiyle tekrar eder: `Preview`, `Unlock`, `Track`, `Compare`, `Customize`, `Earn milestones for`, `Review history for`. Buna ek olarak 100 tekil planlama kaydı bulunur. Böylece 1.675 satır, 325 temel planlama fikrini temsil eder. Web kategorisindeki 67 kayıt da dokuz panel alanına (profil, envanter, görev, zanaat, pazar, koleksiyon, arena, lonca, etkinlik geçmişi) yedi işlem etiketi uygulanmasıyla oluşan 63 satır ve dört ayrı ek maddeden (mobil panel, geçmiş filtreleme, dışa aktarma, gizlilik) oluşur. Bu tekrarlar silinmeyecek; tek bir temel yetenek ve ona bağlı gerçek kullanıcı işlemleri olarak yeniden modellenmeleri değerlendirilecektir.
 
 Mevcut 325 kaydın kanıtları da aynı şey değildir: testEvidence alanları unit, source-contract, izole Discord etkileşimi ve gerçek PostgreSQL entegrasyonu gibi farklı kapsamları açıkça belirtir. Kaynak sözleşmesi testi canlı Discord uçtan uca testi olarak sunulmayacaktır. `auditComplete` false kalmalıdır; planlanan özellikler uygulanmış sayılmaz.
 
