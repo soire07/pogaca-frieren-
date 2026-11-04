@@ -50,6 +50,20 @@ test('equipment command equip and unequip resource caps include active rarity se
   assert.equal(Math.min(2000, 100 + applyEquipmentSetBonus(epic.slice(1), equipmentBonus(epic.slice(1))).mana), 120);
 });
 
+
+test('equipment overview totals include active legendary and epic set bonuses', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../ekipman.js', import.meta.url), 'utf8');
+  assert.match(source, /const totals = applyEquipmentSetBonus\(total, equipmentBonus\(total\)\)/);
+  const legendary = equipmentItems.filter(item => ['demon_blade', 'demon_armor'].includes(item.id));
+  const epic = equipmentItems.filter(item => ['frieren_robe', 'rune_ring'].includes(item.id));
+  const legendaryTotals = applyEquipmentSetBonus(legendary, equipmentBonus(legendary));
+  const epicTotals = applyEquipmentSetBonus(epic, equipmentBonus(epic));
+  assert.equal(legendaryTotals.attack, 20);
+  assert.equal(legendaryTotals.hp, 85);
+  assert.equal(epicTotals.defense, 13);
+  assert.equal(epicTotals.mana, 65);
+});
+
 test('level-scaled quest rewards include the chain completion bonus deterministically', () => {
   assert.deepEqual(getLevelScaledQuestReward(100, 80, 21, false), {
     multiplier: 1.2, coins: 120, xp: 96, completionBonus: false
