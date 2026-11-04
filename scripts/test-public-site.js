@@ -84,6 +84,38 @@ test('notification preference updates require CSRF and persist the selected cate
  assert.equal(inserted,true);
 });
 
+
+test('guild workshop is permission-gated and renders embed, custom spell and automation builders',async()=>{
+ const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20};
+ const db={async query(sql){
+  if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};
+  if(sql.includes('FROM guild_embed_templates'))return{rows:[],rowCount:0};
+  if(sql.includes('FROM guild_custom_commands'))return{rows:[],rowCount:0};
+  if(sql.includes('FROM guild_spell_automations'))return{rows:[],rowCount:0};
+  throw new Error('Unexpected workshop query: '+sql);
+ }};
+ const client={guilds:{cache:{get:()=>({ownerId:profile.user_id})}}};
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/maceraci/atolye?guildId='+profile.guild_id,{id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'}),response,{db,client}),true);
+ assert.equal(response.status,200);
+ assert.match(response.body,/Görsel Embed Tasarımcısı/);
+ assert.match(response.body,/Özel Komut \/ Büyü Oluşturucu/);
+ assert.match(response.body,/Büyü Otomasyonu Oluşturucu/);
+});
+
+test('guild workshop embed saves require the linked Discord guild owner',async()=>{
+ const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern'};
+ let saved=false;
+ const db={async query(sql){if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};if(sql.includes('INSERT INTO guild_embed_templates')){saved=true;return{rows:[{template_id:'template-1'}],rowCount:1};}throw new Error('Unexpected workshop save query: '+sql);}};
+ const client={guilds:{cache:{get:()=>({ownerId:profile.user_id})}}};
+ const response=res();
+ const post=sitePost('/maceraci/atolye',{csrf:createSiteCsrfToken(secret),guildId:profile.guild_id,action:'embed',name:'Raid',title:'Boss Raid',description:'The party is ready.',color:'#9b8cff',footer:'Frieren'});
+ assert.equal(await handlePublicSiteRequest(post,response,{db,client}),true);
+ assert.equal(response.status,303);
+ assert.match(response.headers.Location,/saved_embed/);
+ assert.equal(saved,true);
+});
+
 test('anonymous visitors must authenticate before viewing the homepage', async () => {
   const response = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/', headers: {} }, response), true);
