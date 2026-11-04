@@ -7,8 +7,8 @@ test('visual embed templates validate title, description, color and bounded fiel
  const result=normalizeGuildEmbedTemplate({name:'Raid Banner',title:'Boss Raid',description:'The party is ready.',color:'#9b8cff',footer:'Frieren'});
  assert.equal(result.color,0x9b8cff);
  assert.equal(result.fields.length,0);
- assert.throws(()=>normalizeGuildEmbedTemplate({name:'x',title:'',description:'body',color:'#ffffff'}),/GUILD_EMBED_TITLE_INVALID/);
- assert.throws(()=>normalizeGuildEmbedTemplate({name:'x',title:'Title',description:'x'.repeat(4001),color:'#ffffff'}),/GUILD_EMBED_DESCRIPTION_INVALID/);
+ assert.throws(()=>normalizeGuildEmbedTemplate({name:'valid',title:'',description:'body',color:'#ffffff'}),/GUILD_EMBED_TITLE_INVALID/);
+ assert.throws(()=>normalizeGuildEmbedTemplate({name:'valid',title:'Title',description:'x'.repeat(4001),color:'#ffffff'}),/GUILD_EMBED_DESCRIPTION_INVALID/);
 });
 
 test('custom commands and spells use a safe declarative schema, not executable code',()=>{
