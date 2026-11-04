@@ -51,7 +51,7 @@ export function createArenaState({ matchId, teamA, teamB, mode = '3v3', createdA
     ...teamA.map((player, slot) => normalizePlayer(player, 'A', slot)),
     ...teamB.map((player, slot) => normalizePlayer(player, 'B', slot))
   ];
-  if (new Set(players.map(player => player.userId)).size !== 6) throw new Error('ARENA_DUPLICATE_PLAYER');
+  if (new Set(players.map(player => player.userId)).size !== teamSize * 2) throw new Error('ARENA_DUPLICATE_PLAYER');
   if (players.some(player => player.hp > player.maxHp || player.mana > player.maxMana)) {
     throw new Error('ARENA_CURRENT_RESOURCE_EXCEEDS_MAXIMUM');
   }
