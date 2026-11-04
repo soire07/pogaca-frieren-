@@ -133,8 +133,25 @@ test('account export includes linked game and support data while excluding secre
     assert.equal(exported.linkedProfiles[0].gameData.social_coin_gifts.length,1,'sender/recipient gift records must be exported');
     assert.equal(exported.linkedProfiles[0].gameData.social_reputation_votes.length,1,'giver/recipient reputation records must be exported');
     assert.ok(exported.linkedProfiles[0].gameData.users?.some(row=>row.guild_id===guildId&&row.user_id===ownerUser),'the linked Discord user row must be present as the FK traversal root');
-    const noteForeignKey=await pool.query("SELECT 1 FROM pg_constraint relation JOIN pg_class child ON child.oid=relation.conrelid JOIN pg_class parent ON parent.oid=relation.confrelid WHERE relation.contype='f' AND child.relname='account_export_fk_player_notes' AND parent.relname='users'");
+    const noteForeignKey=await pool.query(
+      "SELECT child.relname AS child_table,parent.relname AS parent_table,"+
+      "ARRAY_AGG(child_column.attname ORDER BY child_key.ordinality) AS child_columns,"+
+      "ARRAY_AGG(parent_column.attname ORDER BY child_key.ordinality) AS parent_columns "+
+      "FROM pg_constraint relation JOIN pg_class child ON child.oid=relation.conrelid "+
+      "JOIN pg_namespace child_schema ON child_schema.oid=child.relnamespace "+
+      "JOIN pg_class parent ON parent.oid=relation.confrelid JOIN pg_namespace parent_schema ON parent_schema.oid=parent.relnamespace "+
+      "JOIN LATERAL unnest(relation.conkey) WITH ORDINALITY child_key(attnum,ordinality) ON TRUE "+
+      "JOIN pg_attribute child_column ON child_column.attrelid=child.oid AND child_column.attnum=child_key.attnum "+
+      "JOIN LATERAL unnest(relation.confkey) WITH ORDINALITY parent_key(attnum,ordinality) ON parent_key.ordinality=child_key.ordinality "+
+      "JOIN pg_attribute parent_column ON parent_column.attrelid=parent.oid AND parent_column.attnum=parent_key.attnum "+
+      "WHERE relation.contype='f' AND child_schema.nspname=current_schema() AND parent_schema.nspname=current_schema() "+
+      "AND child.relname='account_export_fk_player_notes' GROUP BY child.relname,parent.relname,relation.oid"
+    );
     assert.equal(noteForeignKey.rowCount,1,'the composite user foreign key must be visible to the export query');
+    assert.deepEqual(noteForeignKey.rows[0].child_columns,['guild_id','player_ref']);
+    assert.deepEqual(noteForeignKey.rows[0].parent_columns,['guild_id','user_id']);
+    const directNote=await pool.query('SELECT 1 FROM account_export_fk_player_notes WHERE guild_id::text=$1 AND player_ref::text=$2',[guildId,ownerUser]);
+    assert.equal(directNote.rowCount,1,'the child row must match the linked user composite key');
     assert.equal(exported.linkedProfiles[0].gameData.account_export_fk_player_notes.length,1,'composite foreign keys to a user must seed export even without a user_id-named column');
     assert.equal(exported.linkedProfiles[0].gameData.account_export_fk_note_revisions.length,1,'foreign-key descendants of user-linked rows must be exported');
     assert.equal(exported.accountData.site_profile_preference_details.length,1,'foreign-key descendants of account-owned rows must be exported');
