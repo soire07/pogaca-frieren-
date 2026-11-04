@@ -1,12 +1,12 @@
 import { chromium, webkit, request } from 'playwright';
 
 const configuredBaseUrl = String(process.env.MOBILE_SMOKE_BASE_URL || '').trim();
-if (!/^https:\/\//i.test(configuredBaseUrl)) throw new Error('MOBILE_SMOKE_BASE_URL must point to a successful preview deployment; production fallback is disabled.');
+const allowLocal = process.env.MOBILE_SMOKE_ALLOW_LOCAL === '1';
+if (!configuredBaseUrl) throw new Error('MOBILE_SMOKE_BASE_URL is required.');
 const parsedBaseUrl = new URL(configuredBaseUrl);
-if (!/vercel\.app$/i.test(parsedBaseUrl.hostname) || parsedBaseUrl.hostname === 'frierenbot.vercel.app') throw new Error('Browser smoke accepts only a Vercel preview hostname.');
+const isLocalSmokeServer = allowLocal && parsedBaseUrl.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(parsedBaseUrl.hostname);
+if (!isLocalSmokeServer) throw new Error('Browser smoke accepts only the isolated local CI server; production and Vercel proxy URLs are forbidden.');
 const baseUrl = parsedBaseUrl.origin.replace(/\/$/, '');
-const bypassSecret = String(process.env.VERCEL_AUTOMATION_BYPASS_SECRET || '').trim();
-const protectionHeaders = bypassSecret ? { 'x-vercel-protection-bypass': bypassSecret, 'x-vercel-set-bypass-cookie': 'true' } : {};
 const scenarios = [
   { name: 'Android Chrome viewport', engine: chromium, viewport: { width: 412, height: 915 }, isMobile: true },
   { name: 'iOS Safari viewport', engine: webkit, viewport: { width: 390, height: 844 }, isMobile: true },
@@ -20,15 +20,11 @@ for (const scenario of scenarios) {
       viewport: scenario.viewport,
       deviceScaleFactor: 2,
       isMobile: scenario.isMobile,
-      hasTouch: true,
-      extraHTTPHeaders: protectionHeaders
+      hasTouch: true
     });
     const page = await context.newPage();
     for (const route of ['/login', '/register']) {
       const response = await page.goto(baseUrl + route, { waitUntil: 'domcontentloaded', timeout: 45000 });
-      if (page.url().startsWith('https://vercel.com/login')) {
-        throw new Error('Vercel preview protection blocked the browser smoke. Configure the GitHub Actions secret VERCEL_AUTOMATION_BYPASS_SECRET from the Frierenbot Vercel project protection settings.');
-      }
       if (!response || response.status() !== 200) throw new Error(scenario.name + ' ' + route + ' HTTP ' + (response?.status() || 'no response'));
       const layout = await page.evaluate(() => ({
         width: window.innerWidth,
@@ -65,8 +61,13 @@ for (const scenario of scenarios) {
   }
 }
 
-const api = await request.newContext({ timeout: 30000, extraHTTPHeaders: protectionHeaders });
+const api = await request.newContext({ timeout: 30000 });
 try {
+  const loginPage = await api.get(baseUrl + '/login');
+  if (loginPage.status() !== 200) throw new Error('Local site login form is unavailable: HTTP ' + loginPage.status());
+  const loginHtml = await loginPage.text();
+  const invalidCsrf = await api.post(baseUrl + '/login', { form: { csrf: 'invalid', username: 'smoke-user', password: 'not-a-real-password' } });
+  if (invalidCsrf.status() !== 403) throw new Error('Invalid site-login CSRF was not rejected: HTTP ' + invalidCsrf.status());
   const response = await api.get(baseUrl + '/owner/login', { maxRedirects: 0 });
   const location = response.headers()['location'] || '';
   if (response.status() !== 302 || !location.startsWith('https://discord.com/oauth2/authorize')) {
@@ -79,7 +80,7 @@ try {
   }
   const invalidCallback = await api.get(baseUrl + '/owner/callback?code=smoke-test&state=invalid-state', { maxRedirects: 0 });
   if (invalidCallback.status() !== 400) throw new Error('Invalid OAuth callback state was not rejected: HTTP ' + invalidCallback.status());
-  process.stdout.write('PASS owner OAuth authorize redirect, signed state, OAuth parameters and invalid callback rejection\n');
+  process.stdout.write('PASS site-login CSRF rejection and owner OAuth authorize redirect, signed state, OAuth parameters and invalid callback rejection\n');
 } finally {
   await api.dispose();
 }
