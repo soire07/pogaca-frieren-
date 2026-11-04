@@ -95,7 +95,23 @@ export async function equipCosmetic(pool,{guildId,userId,cosmeticKey}){
 export async function saveCosmeticPreset(db,{guildId,userId,presetName}){
  player(guildId,userId);const name=String(presetName||'').trim();if(!/^[\\p{L}\\p{N} _-]{1,32}$/u.test(name))return {status:'invalid_preset'};const r=await db.query('SELECT slot,cosmetic_key FROM player_cosmetic_loadout WHERE guild_id=$1 AND user_id=$2 ORDER BY slot',[guildId,userId]);await db.query('INSERT INTO player_cosmetic_presets(guild_id,user_id,preset_name,loadout) VALUES($1,$2,$3,$4::jsonb) ON CONFLICT(guild_id,user_id,preset_name) DO UPDATE SET loadout=EXCLUDED.loadout,updated_at=NOW()',[guildId,userId,name,JSON.stringify(r.rows)]);return {status:'saved',presetName:name};
 }
-export async function checkInGuildEvent(pool,{guildId,userId,eventId}){\n player(guildId,userId);if(!/^[0-9a-f-]{36}$/i.test(String(eventId||'')))return {status:'invalid_event'};const c=await pool.connect();\n try{await c.query('BEGIN');const joined=await c.query(\"SELECT e.event_id FROM guild_events e JOIN guild_event_participants p ON p.event_id=e.event_id AND p.user_id=$3 WHERE e.event_id=$1 AND e.guild_id=$2 AND e.status='scheduled' AND e.starts_at<=NOW() AND e.ends_at>NOW() FOR UPDATE\",[eventId,guildId,userId]);if(!joined.rowCount){await c.query('ROLLBACK');return {status:'not_eligible'};}const inserted=await c.query('INSERT INTO guild_event_checkins(event_id,guild_id,user_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING event_id',[eventId,guildId,userId]);if(!inserted.rowCount){await c.query('ROLLBACK');return {status:'already_checked_in'};}await c.query(\"INSERT INTO guild_event_progress(event_id,guild_id,user_id,progress_key,progress) VALUES($1,$2,$3,'checkin',1) ON CONFLICT(event_id,user_id,progress_key) DO UPDATE SET progress=1,updated_at=NOW()\",[eventId,guildId,userId]);await c.query('COMMIT');return {status:'checked_in'};}catch(e){await c.query('ROLLBACK').catch(()=>{});throw e;}finally{c.release();}\n}\nexport async function claimEventMilestone(pool,{guildId,userId,eventId,rewardKey}){
+export async function checkInGuildEvent(pool,{guildId,userId,eventId}) {
+ player(guildId,userId);
+ if(!/^[0-9a-f-]{36}$/i.test(String(eventId||''))) return {status:'invalid_event'};
+ const c=await pool.connect();
+ try {
+  await c.query('BEGIN');
+  const joined=await c.query("SELECT e.event_id FROM guild_events e JOIN guild_event_participants p ON p.event_id=e.event_id AND p.user_id=$3 WHERE e.event_id=$1 AND e.guild_id=$2 AND e.status='scheduled' AND e.starts_at<=NOW() AND e.ends_at>NOW() FOR UPDATE",[eventId,guildId,userId]);
+  if(!joined.rowCount){await c.query('ROLLBACK');return {status:'not_eligible'};}
+  const inserted=await c.query('INSERT INTO guild_event_checkins(event_id,guild_id,user_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING event_id',[eventId,guildId,userId]);
+  if(!inserted.rowCount){await c.query('ROLLBACK');return {status:'already_checked_in'};}
+  await c.query("INSERT INTO guild_event_progress(event_id,guild_id,user_id,progress_key,progress) VALUES($1,$2,$3,'checkin',1) ON CONFLICT(event_id,user_id,progress_key) DO UPDATE SET progress=1,updated_at=NOW()",[eventId,guildId,userId]);
+  await c.query('COMMIT');
+  return {status:'checked_in'};
+ } catch(e) {await c.query('ROLLBACK').catch(()=>{});throw e;}
+ finally {c.release();}
+}
+export async function claimEventMilestone(pool,{guildId,userId,eventId,rewardKey}){
  player(guildId,userId);const m=EVENT_MILESTONES.find(x=>x.key===rewardKey);if(!m||!/^[0-9a-f-]{36}$/i.test(String(eventId||'')))return {status:'invalid_reward'};const c=await pool.connect();
  try{await c.query('BEGIN');const e=await c.query("SELECT event_id FROM guild_events WHERE event_id=$1 AND guild_id=$2 AND ends_at<=NOW() AND status IN ('scheduled','completed') FOR UPDATE",[eventId,guildId]);if(!e.rowCount){await c.query('ROLLBACK');return {status:'event_not_finished'};}const p=await c.query("SELECT progress FROM guild_event_progress WHERE event_id=$1 AND guild_id=$2 AND user_id=$3 AND progress_key='participation' FOR UPDATE",[eventId,guildId,userId]);if(Number(p.rows[0]?.progress||0)<m.target){await c.query('ROLLBACK');return {status:'milestone_locked',target:m.target};}const claim=await c.query('INSERT INTO guild_event_reward_claims(event_id,guild_id,user_id,reward_key,coins,xp) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING RETURNING reward_key',[eventId,guildId,userId,rewardKey,m.coins,m.xp]);if(!claim.rowCount){await c.query('ROLLBACK');return {status:'already_claimed'};}await c.query('UPDATE users SET coins=coins+$3,xp=xp+$4,level=GREATEST(level,FLOOR(SQRT((xp+$4)::numeric/100))::int+1) WHERE guild_id=$1 AND user_id=$2',[guildId,userId,m.coins,m.xp]);await c.query('COMMIT');return {status:'claimed',coins:m.coins,xp:m.xp};
  }catch(e){await c.query('ROLLBACK').catch(()=>{});throw e;}finally{c.release();}
