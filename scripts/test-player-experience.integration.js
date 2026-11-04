@@ -2,11 +2,11 @@ import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import {pool,initDatabase} from '../database/db.js';
 import {ensureAdventurerPlatformTables,createGuildEvent,joinGuildEvent} from '../adventurer-platform.js';
-import {HOME_ROOMS,PLAYER_COSMETICS,getPlayerHome,unlockHomeRoom,saveHomeLayout,getHomeTrophies,placeHomeTrophy,getCosmeticAcquisitionHistory,setHomeVisibility,getPublicPlayerHome,purchaseCosmetic,equipCosmetic,saveCosmeticPreset,applyCosmeticPreset,checkInGuildEvent,claimEventMilestone} from '../player-experience.js';
+import {HOME_ROOMS,ALCHEMY_RECIPES,PLAYER_COSMETICS,ensurePlayerExperienceSchema,brewHomePotion,getPlayerHome,unlockHomeRoom,saveHomeLayout,getHomeTrophies,placeHomeTrophy,getCosmeticAcquisitionHistory,setHomeVisibility,getPublicPlayerHome,purchaseCosmetic,equipCosmetic,saveCosmeticPreset,applyCosmeticPreset,checkInGuildEvent,claimEventMilestone} from '../player-experience.js';
 const guild='1539562273197260860',user='123456789012345678';
 let eventId;
 before(async()=>{
- await initDatabase();await ensureAdventurerPlatformTables(pool);
+ await initDatabase();await ensureAdventurerPlatformTables(pool);await ensurePlayerExperienceSchema(pool);
  await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);
  await pool.query('INSERT INTO users(guild_id,user_id,level,coins) VALUES($1,$2,50,50000)',[guild,user]);
  const event=await createGuildEvent(pool,{guildId:guild,createdBy:'123456789012345678',title:'Audit Event',startsAt:new Date(Date.now()+60000).toISOString(),endsAt:new Date(Date.now()+3600000).toISOString()});
@@ -69,3 +69,5 @@ test('event registration and check-in progress award each milestone once',async(
  assert.equal(history.find(x=>x.cosmetic_key==='spring_theme').acquisition_source,'event');
  assert.equal(history.find(x=>x.cosmetic_key==='winter_theme').acquisition_source,'event');
 });
+
+test('alchemy station requires its home room and consumes materials atomically',async()=>{const recipe=ALCHEMY_RECIPES[0];await pool.query('INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1),($1,$2,$4,1) ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+EXCLUDED.quantity',[guild,user,recipe.materials[0].item,recipe.materials[1].item]);assert.equal((await brewHomePotion(pool,{guildId:guild,userId:user,recipeKey:recipe.key})).status,'station_locked');await unlockHomeRoom(pool,{guildId:guild,userId:user,roomKey:'alchemy'});assert.equal((await brewHomePotion(pool,{guildId:guild,userId:user,recipeKey:recipe.key})).status,'brewed');const output=await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guild,user,recipe.output]);assert.equal(Number(output.rows[0].quantity),1);});
