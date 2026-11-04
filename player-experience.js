@@ -96,6 +96,29 @@ export async function equipCosmetic(pool,{guildId,userId,cosmeticKey}){
 export async function saveCosmeticPreset(db,{guildId,userId,presetName}){
  player(guildId,userId);const name=String(presetName||'').trim();if(!/^[\p{L}\p{N} _-]{1,32}$/u.test(name))return {status:'invalid_preset'};const r=await db.query('SELECT slot,cosmetic_key FROM player_cosmetic_loadout WHERE guild_id=$1 AND user_id=$2 ORDER BY slot',[guildId,userId]);await db.query('INSERT INTO player_cosmetic_presets(guild_id,user_id,preset_name,loadout) VALUES($1,$2,$3,$4::jsonb) ON CONFLICT(guild_id,user_id,preset_name) DO UPDATE SET loadout=EXCLUDED.loadout,updated_at=NOW()',[guildId,userId,name,JSON.stringify(r.rows)]);return {status:'saved',presetName:name};
 }
+export async function applyCosmeticPreset(pool,{guildId,userId,presetName}) {
+ player(guildId,userId);
+ const name=String(presetName||'').trim();
+ if(!/^[\\p{L}\\p{N} _-]{1,32}$/u.test(name)) return {status:'invalid_preset'};
+ const c=await pool.connect();
+ try {
+  await c.query('BEGIN');
+  const preset=await c.query('SELECT loadout FROM player_cosmetic_presets WHERE guild_id=$1 AND user_id=$2 AND preset_name=$3 FOR UPDATE',[guildId,userId,name]);
+  if(!preset.rowCount){await c.query('ROLLBACK');return {status:'preset_missing'};}
+  const loadout=Array.isArray(preset.rows[0].loadout)?preset.rows[0].loadout:[];
+  for(const entry of loadout) {
+   const item=PLAYER_COSMETICS.find(x=>x.key===entry.cosmetic_key&&x.slot===entry.slot);
+   if(!item){await c.query('ROLLBACK');return {status:'preset_invalid'};}
+   const owned=await c.query('SELECT 1 FROM player_cosmetic_ownership WHERE guild_id=$1 AND user_id=$2 AND cosmetic_key=$3',[guildId,userId,item.key]);
+   if(!owned.rowCount){await c.query('ROLLBACK');return {status:'ownership_missing'};}
+  }
+  await c.query('DELETE FROM player_cosmetic_loadout WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+  for(const entry of loadout) await c.query('INSERT INTO player_cosmetic_loadout(guild_id,user_id,slot,cosmetic_key) VALUES($1,$2,$3,$4)',[guildId,userId,entry.slot,entry.cosmetic_key]);
+  await c.query('COMMIT');
+  return {status:'applied',count:loadout.length};
+ } catch(e) {await c.query('ROLLBACK').catch(()=>{});throw e;}
+ finally {c.release();}
+}
 export async function checkInGuildEvent(pool,{guildId,userId,eventId}) {
  player(guildId,userId);
  if(!/^[0-9a-f-]{36}$/i.test(String(eventId||''))) return {status:'invalid_event'};
