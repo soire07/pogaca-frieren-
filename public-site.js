@@ -20,6 +20,7 @@ import {
 } from './player-market.js';
 import { createFriendRequest, respondFriendRequest, setPlayerRival, removeSocialRelationship, listSocialRelationships, listPendingFriendRequests, sendCoinGift, commendPlayer, getSocialReputation } from './social-platform.js';
 import { getGuildFeatureEnabled } from './guild-feature-settings.js';
+import { createSupportTicket, listSupportTickets, exportSiteAccountData, deleteSiteAccount } from './account-center.js';
 import { HOME_ROOMS, HOME_DECORATIONS, HOME_STATIONS, ALCHEMY_RECIPES, PLAYER_COSMETICS, getPlayerHome, unlockHomeRoom, saveHomeLayout, purchaseCosmetic, equipCosmetic, saveCosmeticPreset, applyCosmeticPreset, checkInGuildEvent, getCosmeticAcquisitionHistory, getHomeTrophies, placeHomeTrophy, setHomeVisibility, getPublicPlayerHome, brewHomePotion, claimEventMilestone } from './player-experience.js';
 
 const SITE_COOKIE = 'frieren_site_session';
@@ -258,6 +259,14 @@ function adventurerSocialPage(user, profile, social, status) {
   return page('Sosyal Alan',content,user);
 }
 
+function accountCenterPage(user,tickets,status){
+ const csrf=esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET));
+ const notice=status==='created'?'Destek talebin kaydedildi.':status==='daily_limit'?'24 saat içinde en fazla 5 destek talebi açabilirsin.':status==='invalid'?'Form bilgilerini kontrol et.':'';
+ const rows=tickets.map(ticket=>'<article class="card"><h3>'+esc(ticket.subject)+'</h3><p>'+esc(ticket.category)+' · '+(ticket.status==='open'?'Açık':ticket.status==='in_progress'?'İnceleniyor':'Kapalı')+'</p><p class="market-meta">'+esc(new Date(ticket.created_at).toLocaleString('tr-TR',{dateStyle:'medium',timeStyle:'short'}))+' · '+esc(ticket.ticket_id)+'</p></article>').join('');
+ const content='<main class="wrap" style="padding:54px 0 80px"><div class="eyebrow">✧ FRIEREN PORTAL</div><h1 class="hero-title">Destek ve <em>Hesap Merkezi</em></h1><p class="lead">Teknik sorun, oyun hatası veya hesap talebi oluştur. Verilerini JSON olarak dışa aktarabilir veya portal hesabını silebilirsin.</p>'+(notice?'<p class="notice" role="status">'+esc(notice)+'</p>':'')+'<section class="section"><div class="portal-grid"><article class="card"><h2>Destek talebi oluştur</h2><form method="post" action="/destek"><input type="hidden" name="csrf" value="'+csrf+'"><label for="ticket-category">Kategori</label><select id="ticket-category" name="category"><option value="technical">Teknik sorun</option><option value="bug">Hata bildirimi</option><option value="account">Hesap / OAuth</option><option value="gameplay">RPG / oyun</option><option value="other">Diğer</option></select><label for="ticket-subject">Konu</label><input id="ticket-subject" name="subject" maxlength="160" required><label for="ticket-message">Açıklama</label><textarea id="ticket-message" name="message" minlength="10" maxlength="5000" required></textarea><button class="btn" type="submit">Talebi gönder</button></form></article><article class="card"><h2>Verilerim</h2><p>Site hesabı, bağlı Discord karakterleri, envanter, koleksiyon, başarımlar ve pazar geçmişini JSON dosyası olarak al.</p><a class="btn" href="/hesap/veri">Verilerimi dışa aktar</a><p class="market-meta">Şifre ve oturum doğrulama sırları dışa aktarıma dahil edilmez.</p></article></div></section><section class="section"><div class="section-head"><h2>Destek geçmişim</h2></div><div class="portal-grid">'+(rows||'<article class="card">Henüz destek talebin yok.</article>')+'</div></section><section class="section"><article class="card"><h2>Portal hesabını sil</h2><p>Bu işlem portal hesabını ve Discord bağlantılarını kaldırır. Discord hesabına ait RPG karakterleri ve sunucu oyun kayıtları silinmez.</p><form method="post" action="/hesap/sil"><input type="hidden" name="csrf" value="'+csrf+'"><label for="delete-confirm">Onaylamak için HESABIMI SIL yaz</label><input id="delete-confirm" name="confirmation" maxlength="32" required><button class="btn ghost" type="submit">Portal hesabını sil</button></form></article></section></main><style>.card form{display:grid;gap:12px}.card input,.card textarea,.card select{width:100%;padding:13px;border-radius:10px;border:1px solid #62577d;background:#17152c;color:#fff}.card textarea{min-height:140px}.card label{font-weight:600}</style>';
+ return page('Destek ve Hesap Merkezi',content,user);
+}
+
 function aiPage(user) {
   const healthLink = user.id === OWNER_ID ? '<a class="btn ghost" href="/owner/frieren-ai/health">Servis sağlık durumu</a>' : '';
   return page('Frieren AI', '<main><section class="wrap" style="padding:65px 0 42px;text-align:center"><div class="eyebrow">AKILLI ASİSTAN · TEST · TEKNİK ANALİZ</div><h1 class="hero-title">Frieren <em>AI</em></h1><p class="lead" style="margin:auto">Poğaça Frieren’in teknik yol arkadaşı. Sohbet ve hafızadan kod denetimine, test senaryolarından hata raporlarına uzanan ayrı bir AI servisi.</p><div class="actions" style="justify-content:center"><a class="btn" href="/owner">AI kontrol merkezine git ↗</a>' + healthLink + '</div></section><section class="section"><div class="wrap grid"><article class="card"><div class="icon">✧</div><h3>Frieren sohbeti</h3><p>Karakter odaklı sohbet akışı ve izinli kullanıcı hafızası.</p></article><article class="card"><div class="icon">⌘</div><h3>Teknik denetim</h3><p>Komut sözleşmeleri, kod incelemesi ve hata teşhisi.</p></article><article class="card"><div class="icon">✓</div><h3>Test sistemi</h3><p>Senaryo bazlı testler, PASS/FAIL raporları ve kanıt odaklı doğrulama.</p></article></div></section><section class="section"><div class="wrap cta"><h2>İki bot, tek büyülü platform.</h2><p>RPG macerası ve teknik asistan birbirinden bağımsız servislerde çalışır.</p><a class="btn" href="/pogaca">Poğaça Frieren’i keşfet</a></div></section></main>', user);
@@ -268,6 +277,39 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   const authHandled = await handleSiteAuthRequest(req, res, { db, sessionSecret: process.env.ADMIN_SESSION_SECRET, createSession: createPublicSiteSession });
   if (authHandled) return true;
   const url = new URL(req.url, 'http://localhost');
+  if (req.method === 'GET' && url.pathname === '/hesap/veri') {
+    const session = readPublicSiteSession(cookies(req)[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
+    if (!session?.id?.startsWith('site_')) { res.writeHead(302,{Location:'/login','Cache-Control':'no-store'});res.end();return true; }
+    if (!db) { res.writeHead(503,{'Cache-Control':'no-store'});res.end('Hesap veritabanı kullanılamıyor.');return true; }
+    const data = await exportSiteAccountData(db,session.id);
+    if (!data) { res.writeHead(404,{'Cache-Control':'no-store'});res.end('Hesap bulunamadı.');return true; }
+    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Content-Disposition':'attachment; filename="frieren-account-data.json"','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
+    res.end(JSON.stringify(data,null,2));return true;
+  }
+  if (req.method === 'POST' && (url.pathname === '/destek' || url.pathname === '/hesap/sil')) {
+    const session = readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if (!session?.id?.startsWith('site_')) { res.writeHead(302,{Location:'/login','Cache-Control':'no-store'});res.end();return true; }
+    if (!db) { res.writeHead(503,{'Cache-Control':'no-store'});res.end('Hesap veritabanı kullanılamıyor.');return true; }
+    if (!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')) { res.writeHead(415,{'Cache-Control':'no-store'});res.end('Form biçimi geçersiz.');return true; }
+    let size=0;const chunks=[];
+    for await(const chunk of req){size+=chunk.length;if(size>8192){res.writeHead(413,{'Cache-Control':'no-store'});res.end('Form çok büyük.');return true;}chunks.push(chunk);}
+    const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
+    if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Güvenlik doğrulaması başarısız. Sayfayı yenile.');return true;}
+    if(url.pathname==='/destek'){
+      try{
+        const result=await createSupportTicket(db,session.id,{category:form.get('category'),subject:form.get('subject'),message:form.get('message')});
+        res.writeHead(303,{Location:'/destek?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
+      }catch(error){
+        const status=String(error?.message||'').startsWith('SUPPORT_TICKET_')?'invalid':'invalid';
+        res.writeHead(303,{Location:'/destek?status='+status,'Cache-Control':'no-store'});res.end();return true;
+      }
+    }
+    const result=await deleteSiteAccount(db,session.id,String(form.get('confirmation')||''));
+    if(result.status==='deleted'){
+      res.writeHead(303,{Location:'/register?status=account_deleted','Cache-Control':'no-store','Set-Cookie':SITE_COOKIE+'=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'});res.end();return true;
+    }
+    res.writeHead(303,{Location:'/destek?status=delete_confirmation_required','Cache-Control':'no-store'});res.end();return true;
+  }
   if (req.method === 'POST' && url.pathname === '/maceraci/link') {
     const session = readPublicSiteSession(cookies(req)[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
     if (!session?.id?.startsWith('site_')) {
@@ -373,7 +415,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/maceraci', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/pazar']);
+  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/pazar']);
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname)) return false;
   const sessionUser = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
   const user = sessionUser || (url.pathname === '/maceraci/ev' ? { id: 'public-viewer', username: 'Gezgin' } : null);
@@ -394,6 +436,14 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       res.end('Asset bulunamadı.');
     }
     return true;
+  }
+  if (url.pathname === '/destek') {
+    if (!user?.id?.startsWith('site_')) { res.writeHead(302,{Location:'/login','Cache-Control':'no-store'});res.end();return true; }
+    if (!db) { res.writeHead(503,{'Cache-Control':'no-store'});res.end('Destek veritabanı kullanılamıyor.');return true; }
+    const tickets=await listSupportTickets(db,user.id,20);
+    const html=accountCenterPage(user,tickets,url.searchParams.get('status'));
+    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
+    res.end(html);return true;
   }
   if (url.pathname === '/maceraci/ev') {
     if (!db) { res.writeHead(503, { 'Cache-Control': 'no-store' }); res.end('Panel veritabanı kullanılamıyor.'); return true; }
