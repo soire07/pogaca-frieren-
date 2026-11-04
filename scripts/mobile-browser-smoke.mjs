@@ -59,7 +59,9 @@ try {
   if (!authorize.searchParams.get('client_id') || !authorize.searchParams.get('redirect_uri') || authorize.searchParams.get('response_type') !== 'code' || !/^[a-f0-9]{64}$/i.test(state)) {
     throw new Error('Owner OAuth authorization request is missing valid client, callback, response type or state');
   }
-  process.stdout.write('PASS owner OAuth authorize redirect, state cookie and OAuth parameters\n');
+  const invalidCallback = await api.get(baseUrl + '/owner/callback?code=smoke-test&state=invalid-state', { maxRedirects: 0 });
+  if (invalidCallback.status() !== 400) throw new Error('Invalid OAuth callback state was not rejected: HTTP ' + invalidCallback.status());
+  process.stdout.write('PASS owner OAuth authorize redirect, state cookie, OAuth parameters and invalid callback rejection\\n');
 } finally {
   await api.dispose();
 }
