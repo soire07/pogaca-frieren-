@@ -15,7 +15,7 @@ import { handleArenaInteraction } from './arena.js';
 import { ensureGuildGameTables } from './guild-games.js';
 import { handleGuildGameInteraction } from './loncaoyun.js';
 import { ensureAdventurerPlatformTables, claimDueGuildEventReminders, markGuildEventReminderSent, releaseGuildEventReminderClaim } from './adventurer-platform.js';
-import { ensurePlayerMarketTables, claimDuePlayerMarketPriceAlerts, markPlayerMarketPriceAlertNotified, releasePlayerMarketPriceAlertClaim } from './player-market.js';
+import { ensurePlayerMarketTables, claimDuePlayerMarketPriceAlerts, markPlayerMarketPriceAlertNotified, releasePlayerMarketPriceAlertClaim, cancelPlayerMarketPriceAlert } from './player-market.js';
 import { ensureSocialPlatformTables } from './social-platform.js';
 import { initCompanionSchema } from './companions.js';
 import { initFishingSchema } from './fishing.js';
@@ -131,8 +131,12 @@ async function processDuePlayerMarketPriceAlerts(readyClient = client) {
         );
         await markPlayerMarketPriceAlertNotified(pool, alert.alert_id, alert.claimed_at);
       } catch (error) {
-        await releasePlayerMarketPriceAlertClaim(pool, alert.alert_id, alert.claimed_at).catch(() => false);
-        if (error?.code !== 50007) console.error('Pazar fiyat alarmı teslim edilemedi:', error?.message || error);
+        if ([50007, 10013].includes(Number(error?.code))) {
+          await cancelPlayerMarketPriceAlert(pool, { guildId: alert.guild_id, userId: alert.user_id, alertId: alert.alert_id }).catch(() => {});
+        } else {
+          await releasePlayerMarketPriceAlertClaim(pool, alert.alert_id, alert.claimed_at).catch(() => false);
+          console.error('Pazar fiyat alarmı teslim edilemedi:', error?.message || error);
+        }
       }
     }
   } catch (error) {
