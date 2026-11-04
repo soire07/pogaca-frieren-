@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import buyuCommand from '../buyu.js';
 import { normalizeGuildEmbedTemplate, normalizeGuildCustomCommand, normalizeGuildSpellAutomation, saveGuildEmbedTemplate, saveGuildCustomCommand, saveGuildSpellAutomation } from '../guild-workshop.js';
 
 test('visual embed templates validate title, description, color and bounded fields',()=>{
@@ -37,4 +38,10 @@ test('embed, command and automation writes are guild-scoped and parameterized',a
  assert.equal(calls.length,3);
  assert.ok(calls.every(call=>call.sql.includes('ON CONFLICT')));
  assert.ok(calls.every(call=>call.params.includes('1539562273197260860')));
+});
+
+test('existing buyu command can execute saved guild commands without adding a new slash command',()=>{
+ const command=buyuCommand.data.toJSON();
+ assert.equal(command.name,'buyu');
+ assert.ok(command.options.some(option=>option.name==='ad'&&option.required===false));
 });
