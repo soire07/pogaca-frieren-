@@ -284,6 +284,16 @@ function notificationPreferencesPage(user,profile,preferences,status){
  return page('Bildirim Tercihleri',content,user);
 }
 
+async function canSendAutomationToChannel(client,guildId,channelId,usesEmbed=false){
+ try{
+  if(!client?.user||!/^\d{17,20}$/.test(String(channelId||'')))return false;
+  const channel=await client.channels.fetch(channelId);
+  if(!channel||channel.guildId!==guildId||!channel.isTextBased())return false;
+  const permissions=channel.permissionsFor(client.user);
+  return Boolean(permissions?.has(PermissionFlagsBits.SendMessages)&&(!usesEmbed||permissions.has(PermissionFlagsBits.EmbedLinks)));
+ }catch{return false;}
+}
+
 async function canManageGuild(client,guildId,userId){
  try{
   const guild=client?.guilds?.cache?.get(guildId)||await client?.guilds?.fetch(guildId);
@@ -403,9 +413,11 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
           res.writeHead(303,{Location:'/maceraci/atolye?'+new URLSearchParams({guildId,status:'saved_command'}).toString(),'Cache-Control':'no-store'});res.end();return true;
         }
         if(action==='automation'){
+          const channelId=String(form.get('channelId')||''),templateId=String(form.get('templateId')||'')||null;
+          if(!await canSendAutomationToChannel(client,guildId,channelId,Boolean(templateId))){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Otomasyon kanalı seçili sunucuda olmalı ve botun mesaj gönderme izni bulunmalı.');return true;}
           await saveGuildSpellAutomation(db,{guildId,creatorId:profile.user_id,rule:{
-            name:form.get('automationName'),triggerKey:form.get('triggerKey'),channelId:form.get('channelId'),
-            message:form.get('automationMessage'),templateId:form.get('templateId')||null,cooldownSeconds:Number(form.get('cooldownSeconds'))
+            name:form.get('automationName'),triggerKey:form.get('triggerKey'),channelId,
+            message:form.get('automationMessage'),templateId,cooldownSeconds:Number(form.get('cooldownSeconds'))
           }});
           res.writeHead(303,{Location:'/maceraci/atolye?'+new URLSearchParams({guildId,status:'saved_automation'}).toString(),'Cache-Control':'no-store'});res.end();return true;
         }
