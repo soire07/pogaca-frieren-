@@ -35,7 +35,7 @@ test('account export returns linked profile, inventory, card collection and scop
   if(sql.includes('FROM player_market_offers'))return{rows:[{offer_id:'offer-1',buyer_id:'123456789012345678',offer_coins:150,status:'pending'}],rowCount:1};
   if(sql.includes('FROM anime_character_collection'))return{rows:[{character_name:'Frieren',quantity:1}],rowCount:1};
   if(sql.includes('information_schema.columns')&&sql.includes("column_name IN ('guild_id','user_id')"))return{rows:[{table_name:'user_fish_collection',column_name:'guild_id'},{table_name:'user_fish_collection',column_name:'user_id'},{table_name:'guild_private_tokens',column_name:'guild_id'},{table_name:'guild_private_tokens',column_name:'user_id'},{table_name:'user_preferences',column_name:'user_id'}],rowCount:5};
-  if(sql.includes("column_name='account_id'"))return{rows:[{table_name:'site_user_preferences',column_name:'account_id'},{table_name:'frieren_support_tickets',column_name:'account_id'}],rowCount:2};
+  if(sql.includes("column_name='account_id'"))return{rows:[{table_name:'site_user_preferences',column_name:'account_id',data_type:'uuid'},{table_name:'frieren_support_tickets',column_name:'account_id',data_type:'uuid'}],rowCount:2};
   if(sql.includes('information_schema.columns')&&sql.includes('table_name=$1')&&params?.[0]==='user_fish_collection')return{rows:[{column_name:'guild_id'},{column_name:'user_id'},{column_name:'fish_key'},{column_name:'quantity'},{column_name:'access_token'}],rowCount:5};
   if(sql.includes('information_schema.columns')&&sql.includes('table_name=$1')&&params?.[0]==='guild_private_tokens')return{rows:[{column_name:'guild_id'},{column_name:'user_id'},{column_name:'private_token'}],rowCount:3};
   if(sql.includes('information_schema.columns')&&sql.includes('table_name=$1')&&params?.[0]==='user_preferences')return{rows:[{column_name:'user_id'},{column_name:'preference_key'},{column_name:'preference_value'}],rowCount:3};
@@ -60,13 +60,17 @@ test('account export returns linked profile, inventory, card collection and scop
  assert.ok(!JSON.stringify(result).includes('should-not-export'));
 });
 
-test('account deletion requires the explicit confirmation phrase',async()=>{
- let connected=false;
- const db={connect:async()=>{connected=true;return{async query(){return{rows:[],rowCount:1};},release(){}};}};
+test('account deletion requires the explicit confirmation phrase and removes account-owned portal rows only',async()=>{
+ let connected=false;const calls=[];
+ const db={connect:async()=>{connected=true;return{async query(sql,params){calls.push({sql,params});if(sql.includes('SELECT id FROM frieren_site_accounts'))return{rows:[{id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};if(sql.includes("column_name='account_id'"))return{rows:[{table_name:'site_user_preferences',data_type:'uuid'},{table_name:'frieren_site_discord_links',data_type:'character varying'},{table_name:'frieren_support_tickets',data_type:'uuid'}],rowCount:3};return{rows:[],rowCount:1};},release(){}};}};
  assert.equal((await deleteSiteAccount(db,accountId,'')).status,'confirmation_required');
  assert.equal(connected,false);
  assert.equal((await deleteSiteAccount(db,accountId,'HESABIMI SIL')).status,'deleted');
  assert.equal(connected,true);
+ assert.ok(calls.some(call=>call.sql.includes('DELETE FROM "site_user_preferences" WHERE account_id=$1')));
+ assert.ok(calls.some(call=>call.sql.includes('DELETE FROM "frieren_site_discord_links" WHERE account_id IN ($1,$2)')));
+ assert.ok(!calls.some(call=>call.sql.includes('DELETE FROM "frieren_support_tickets" WHERE account_id IN')));
+ assert.ok(calls.some(call=>call.sql.includes('DELETE FROM frieren_support_tickets WHERE account_id=$1')));
 });
 
 
