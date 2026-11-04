@@ -57,7 +57,7 @@ The key is not stored in the repository. Groq free-tier limits apply; quota erro
 
 ## Free scheduled health check
 
-The GitHub Actions workflow `.github/workflows/frieren-ai-health.yml` checks the Render `/live` readiness endpoint hourly and makes at most three short attempts. The separate uptime monitor remains responsible for frequent liveness checks. It fails if the HTTP health response or Discord gateway readiness is not healthy. You can also run it manually from the Actions tab.
+The GitHub Actions workflow `.github/workflows/frieren-ai-health.yml` checks the Render `/live` readiness endpoint every six hours and makes at most three short attempts. The separate uptime monitor remains responsible for frequent liveness checks. It fails if the HTTP health response or Discord gateway readiness is not healthy. You can also run it manually from the Actions tab.
 
 This is a best-effort free-tier workaround, not an uptime guarantee: GitHub scheduled jobs can be delayed, and Render can still restart or suspend free services.
 

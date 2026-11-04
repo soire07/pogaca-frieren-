@@ -1,10 +1,9 @@
 name: Retry Poğaça production command sync
 
-# Discord temporarily rejected command creation with code 30034. Retry once daily;
-# deploy-commands.js reads live state first and skips writes when all commands already match.
+# Manual fallback only. The single scheduled attempt lives in
+# register-production-after-quota-reset.yml. The deploy script reads live state first
+# and skips writes when the production command definitions already match.
 on:
-  schedule:
-    - cron: "30 4 * * *"
   workflow_dispatch:
 
 permissions:

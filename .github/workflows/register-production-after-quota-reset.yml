@@ -3,6 +3,8 @@ name: Register Poğaça commands after Discord daily quota reset
 # Manual one-off retry after Discord's daily quota reset. The separate
 # retry-production-command-sync workflow owns the single scheduled retry.
 on:
+  schedule:
+    - cron: "35 0 * * *"
   workflow_dispatch:
 
 permissions:
