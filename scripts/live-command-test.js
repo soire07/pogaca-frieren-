@@ -1749,6 +1749,10 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
         } else if (commandName === 'balik') {
           await initFishingSchema(pool);
           await pool.query('UPDATE users SET level=30 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          // The isolated test schema persists between CI runs; reset only this synthetic
+          // player's fishing rows so the cooldown and collection cannot leak across runs.
+          await pool.query('DELETE FROM user_fish_collection WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          await pool.query('DELETE FROM user_fishing_state WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
           const caught=await fishAtZone(pool,{guildId,userId,zoneKey:FISHING_ZONES[0].key},{random:()=>0});
           const collection=await getFishCollection(pool,guildId,userId);
           behavioralChecks.push(
@@ -1784,11 +1788,12 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           await ensurePlayerMarketTables(pool);
           await pool.query("INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'audit_market_relic',2) ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=2",[guildId,userId]);
           const listing=await createPlayerMarketListing(pool,{guildId,sellerId:userId,itemKey:'audit_market_relic',quantity:1,priceCoins:50});
+          const inventoryAfterListing=await pool.query("SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='audit_market_relic'",[guildId,userId]);
           const cancelled=listing.status==='listed'?await cancelPlayerMarketListing(pool,{guildId,sellerId:userId,listingId:listing.listing.listing_id}):{status:'not_cancelled'};
-          const inventory=await pool.query("SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='audit_market_relic'",[guildId,userId]);
+          const inventoryAfterCancel=await pool.query("SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='audit_market_relic'",[guildId,userId]);
           behavioralChecks.push(
-            {name:'Pazar ilanı envanterden güvenli ayırır',expected:'bir adet eşya ilanda olmalı ve bir adet envanterde kalmalı',actual:listing.status+' / '+(inventory.rows[0]?.quantity||0),passed:listing.status==='listed'&&Number(inventory.rows[0]?.quantity)===1},
-            {name:'Pazar ilan iptali eşyayı iade eder',expected:'iptal sonrası iki eşya envantere dönmeli',actual:cancelled.status+' / '+(inventory.rows[0]?.quantity||0),passed:cancelled.status==='cancelled'&&Number(inventory.rows[0]?.quantity)===2}
+            {name:'Pazar ilanı envanterden güvenli ayırır',expected:'bir adet eşya ilanda olmalı ve bir adet envanterde kalmalı',actual:listing.status+' / '+(inventoryAfterListing.rows[0]?.quantity||0),passed:listing.status==='listed'&&Number(inventoryAfterListing.rows[0]?.quantity)===1},
+            {name:'Pazar ilan iptali eşyayı iade eder',expected:'iptal sonrası iki eşya envantere dönmeli',actual:cancelled.status+' / '+(inventoryAfterCancel.rows[0]?.quantity||0),passed:cancelled.status==='cancelled'&&Number(inventoryAfterCancel.rows[0]?.quantity)===2}
           );
           const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
         } else if (commandName === 'sera') {
