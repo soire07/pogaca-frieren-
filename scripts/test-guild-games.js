@@ -37,9 +37,11 @@ import { answerGuildMiniGame } from '../guild-games.js';
 test('guild mini-game slash command exposes start and leaderboard actions', () => {
   const schema = miniGameCommand.data.toJSON();
   assert.equal(schema.name, 'loncaoyun');
-  assert.deepEqual(schema.options.map(option => option.name), ['baslat','siralam']);
+  assert.deepEqual(schema.options.map(option => option.name), ['baslat','takim-siralam','siralam']);
   const start = schema.options.find(option => option.name === 'baslat');
   assert.deepEqual(start.options[0].choices.map(choice => choice.value), ['bilgi','kelime','hafiza','tahmin']);
+  assert.equal(start.options[1].name,'takimli');
+  assert.equal(start.options[1].type,5);
 });
 
 test('mini-game button router ignores unrelated interactions', async () => {
