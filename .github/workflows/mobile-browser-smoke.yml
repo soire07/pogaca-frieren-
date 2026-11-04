@@ -11,8 +11,9 @@ on:
       - 'card-variants.js'
       - 'scripts/mobile-browser-smoke.mjs'
       - 'scripts/start-public-site-smoke-server.mjs'
+      - '.github/workflows/mobile-browser-smoke.yml'
   pull_request:
-    types: [opened, reopened]
+    types: [opened, reopened, synchronize]
     paths:
       - 'public-site.js'
       - 'site-auth.js'
