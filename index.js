@@ -19,7 +19,6 @@ import { initCompanionSchema } from './companions.js';
 import { initFishingSchema } from './fishing.js';
 import { initFarmSchema } from './farming.js';
 import { initCharacterWishlistSchema } from './character-wishlist.js';
-import { ensurePlayerExperienceSchema } from './player-experience.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { runCommandTestSuite } from './scripts/live-command-test.js';
@@ -409,7 +408,6 @@ client.on(Events.MessageCreate, async message => {
 await loadCommands();
 await initDatabase();
 await ensureAdventurerPlatformTables(pool);
-await ensurePlayerExperienceSchema(pool);
 await ensurePlayerMarketTables(pool);
 await ensureSocialPlatformTables(pool);
 await Promise.all([ensureCreatureSchema(), initCompanionSchema(pool), initFishingSchema(pool), initFarmSchema(pool), initCharacterWishlistSchema(pool)]);
