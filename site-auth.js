@@ -293,6 +293,10 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
   const url=new URL(req.url,'http://localhost'), path=url.pathname;
   const routes=['/login','/register','/forgot-password','/reset-password','/verify-email','/resend-verification','/logout'];
   if(!routes.includes(path))return false;
+  if(req.method==='POST'&&!isSameOriginRequest(req,baseUrl())){
+    send(res,403,page('İstek reddedildi','<h1>İstek kaynağı doğrulanamadı</h1>'));
+    return true;
+  }
   if(path==='/logout'&&req.method==='GET'){
     res.writeHead(302,{Location:'/login?status=logged_out','Cache-Control':'no-store','Set-Cookie':COOKIE+'=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'});res.end();return true;
   }
