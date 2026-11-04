@@ -132,7 +132,8 @@ test('single-use Discord link codes connect only the intended profile to a web a
   await ensureAdventurerPlatformTables(pool);
   const guildId='99000000000000103';
   const userId=makeIds('73000000000000000',1)[0];
-  const accountId='site_'+randomUUID();
+  const accountUuid=randomUUID();
+  const accountId='site_'+accountUuid;
   await ensureUser(guildId,userId);
   try {
     await pool.query("UPDATE users SET character_name='Test Maceracı',class_name='Büyücü',level=7,xp=360,coins=125,hp=80,mana=60 WHERE guild_id=$1 AND user_id=$2",[guildId,userId]);
@@ -262,7 +263,7 @@ test('linked adventurer inventory is account-scoped and includes equipment and R
     assert.ok(listed);
     assert.equal(listed.joined,true);
   } finally {
-    await pool.query('DELETE FROM site_discord_links WHERE account_id=$1',[accountId]);
+    await pool.query('DELETE FROM site_discord_links WHERE account_id=$1',[accountUuid]);
     if(eventId) await pool.query('DELETE FROM guild_events WHERE event_id=$1',[eventId]);
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
   }
