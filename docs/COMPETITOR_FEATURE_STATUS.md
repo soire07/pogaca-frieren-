@@ -35,11 +35,12 @@ Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal
 
 ### Güncel CI kanıtı — 2026-11-04
 
-- **748/748** ana bot/regresyon testi başarılı.
-- **31/31** Discord komut senaryosu başarılı.
-- **89/89** izole PostgreSQL entegrasyon senaryosu başarılı: 56 gameplay/command, 2 arena, 7 seasons/events/adventurer, 18 platform integration ve 6 social.
-- Frieren AI CI, Owner Panel testleri, Owner Panel performance checks ve slash-command validation başarılı.
-- İzole PostgreSQL sonuçları geçici test veritabanına aittir; üretim veritabanı veya canlı Discord testi değildir.
+- **795/795** ana bot/regresyon testi başarılı.
+- **31/31** komut sözleşmesi/regresyon testi başarılı.
+- İzole komut denetimi **77 senaryo** kapsadı: **67 PASS, 0 FAIL, 10 INCONCLUSIVE**. INCONCLUSIVE kayıtlar başarısızlık değildir; yeterli kanıt bulunmadığı için doğrulanmamıştır.
+- **103/103** disposable PostgreSQL entegrasyon testi başarılı: market, arena, sezon/etkinlik, ev/kozmetik, yoldaş/balıkçılık/sera/yaratık/wishlist/pazar, sosyal ve lonca oyunları.
+- Güncel PR HEAD üzerinde 6/6 GitHub Actions workflow başarılı.
+- PostgreSQL sonuçları geçici `frieren_audit` veritabanına aittir; üretim veritabanına yazım veya canlı Discord E2E değildir.
 
 ### Henüz tamamlanmış sayılmayacaklar
 
