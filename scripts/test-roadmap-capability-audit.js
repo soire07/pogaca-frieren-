@@ -13,6 +13,12 @@ test('roadmap action parsing keeps the capability separate from the requested op
   assert.deepEqual(splitRoadmapAction('Unlock personal home features'), {
     action: 'Unlock', capability: 'personal home features'
   });
+  assert.deepEqual(splitRoadmapAction('Earn milestones for personal home features'), {
+    action: 'Earn milestones for', capability: 'personal home features'
+  });
+  assert.deepEqual(splitRoadmapAction('Review history for personal home features'), {
+    action: 'Review history for', capability: 'personal home features'
+  });
   assert.deepEqual(splitRoadmapAction('A unique boss invasion'), {
     action: 'Unclassified', capability: 'A unique boss invasion'
   });
@@ -31,6 +37,17 @@ test('Turkish diacritics normalize without merging distinct category scopes', ()
   assert.equal(report.repeatedCapabilityGroups, 1);
   assert.equal(report.repeatedVariantCount, 1);
   assert.deepEqual(report.errors, ['count ile toplam özellik kayıt sayısı eşleşmiyor.']);
+});
+
+test('full inventory normalizes compound action phrases into 325 capability groups', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const inventory = JSON.parse(await readFile(new URL('../feature-inventory.json', import.meta.url), 'utf8'));
+  const report = auditRoadmapCapabilities(inventory);
+  assert.equal(report.roadmapCount, 1675);
+  assert.equal(report.capabilityCount, 325);
+  assert.equal(report.repeatedCapabilityGroups, 225);
+  assert.equal(report.repeatedVariantCount, 1350);
+  assert.deepEqual(report.errors, []);
 });
 
 test('same capability in different categories remains separate', () => {
