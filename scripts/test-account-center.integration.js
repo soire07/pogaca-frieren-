@@ -90,7 +90,7 @@ test('account export includes linked game and support data while excluding secre
     assert.equal(Object.hasOwn(exported.accountData.site_profile_preferences[0],'access_token_hash'),false);
     assert.equal(exported.supportTickets.length,1);
     assert.equal(exported.supportTickets[0].replies.length,1);
-    assert.equal(exported.supportTickets[0].statusHistory.length,2);
+    assert.equal(exported.supportTickets[0].statusHistory.length,3);
     assert.match(exported.deletionScope,/Discord-owned RPG profiles and guild game records remain intact/);
 
     assert.equal((await deleteSiteAccount(pool,accountId,'wrong confirmation')).status,'confirmation_required');
