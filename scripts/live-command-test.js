@@ -1,5 +1,6 @@
 import { withIsolatedTestSchema, ensureUser, pool } from '../database/db.js';
 import { buildCommandEvidence } from './command-test-evidence.js';
+import { ensureCardVariantSchema } from '../card-variants.js';
 import { equipmentItems, equipmentBonus } from '../equipment-data.js';
 import { applyEquipmentSetBonus } from '../rpg-mechanics.js';
 import { buildCoopTestUserIds } from './coop-test-users.js';
@@ -251,6 +252,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
   const unknown = requestedNames.filter(name => !commandMap.has(name));
   const runContext = createIsolatedTestRunContext(Math.max(1, commands.length));
   return withIsolatedTestSchema(async () => {
+    await ensureCardVariantSchema(pool);
     const results = [];
     let index = 0;
     for (const command of commands) {

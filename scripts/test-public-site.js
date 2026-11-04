@@ -46,6 +46,7 @@ test('account data export is authenticated and delivered as a no-store JSON atta
   if(sql.includes('FROM frieren_site_accounts'))return{rows:[{id:accountId.slice(5),username:'Gezgin',email:'member@example.com'}],rowCount:1};
   if(sql.includes('FROM site_discord_links'))return{rows:[],rowCount:0};
   if(sql.includes('FROM frieren_support_tickets'))return{rows:[],rowCount:0};
+  if(sql.includes("column_name='account_id'"))return{rows:[],rowCount:0};
   throw new Error('Unexpected export query: '+sql);
  }};
  const response=res();

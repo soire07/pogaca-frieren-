@@ -22,6 +22,7 @@ function fixture({eventType='boss_raid',teamCount=0,existing=false,teamMember=tr
  };
  return{db,calls};
 }
+const teamA='123e4567-e89b-42d3-a456-426614174001';
 const input={guildId:'1539562273197260860',userId:'123456789012345678',eventId:'123e4567-e89b-42d3-a456-426614174000'};
 
 test('boss raid signup requires a real team UUID',async()=>{
