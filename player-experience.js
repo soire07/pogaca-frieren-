@@ -12,6 +12,7 @@ export const HOME_ROOMS=Object.freeze([
  {key:'guild_hall',name:'Lonca Salonu',level:35,cost:8500},
  {key:'seasonal',name:'Mevsim Odası',level:40,cost:10000}
 ]);
+export const HOME_DECORATIONS=Object.freeze(['book_shelf','mana_lamp','crystal_vase','fern_herbarium','trophy_case','star_map','alchemy_table','workbench']);
 export const PLAYER_COSMETICS=Object.freeze([
  {key:'moon_frame',slot:'profile_frame',name:'Ay Işığı Çerçevesi',level:3,cost:500},
  {key:'fern_frame',slot:'profile_frame',name:'Fern Çerçevesi',level:12,cost:1800},
@@ -42,7 +43,7 @@ export function validateHomeLayout(layout){
  const positions=new Set();
  return layout.map(x=>{
   const roomKey=String(x?.roomKey||''),decorationKey=String(x?.decorationKey||''),position=Number(x?.position);
-  if(!/^[a-z0-9_]{2,32}$/.test(roomKey)||!/^[a-z0-9_]{2,40}$/.test(decorationKey)||!Number.isInteger(position)||position<0||position>11||positions.has(position))throw new Error('HOME_LAYOUT_INVALID');
+  if(!/^[a-z0-9_]{2,32}$/.test(roomKey)||!HOME_DECORATIONS.includes(decorationKey)||!Number.isInteger(position)||position<0||position>11||positions.has(position))throw new Error('HOME_LAYOUT_INVALID');
   positions.add(position);return {roomKey,decorationKey,position};
  });
 }
@@ -62,13 +63,13 @@ export async function ensurePlayerExperienceSchema(db){
  await db.query("INSERT INTO player_homes(guild_id,user_id) SELECT guild_id,user_id FROM users ON CONFLICT DO NOTHING");
 }
 export async function getPlayerHome(db,{guildId,userId}){
- player(guildId,userId);await ensureUser(guildId,userId,db);
+ player(guildId,userId);await ensureUser(guildId,userId,db);await db.query("INSERT INTO player_home_rooms(guild_id,user_id,room_key) VALUES($1,$2,'starter') ON CONFLICT DO NOTHING",[guildId,userId]);await db.query('INSERT INTO player_homes(guild_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[guildId,userId]);
  const [h,r]=await Promise.all([db.query('SELECT active_room,layout FROM player_homes WHERE guild_id=$1 AND user_id=$2',[guildId,userId]),db.query('SELECT room_key,unlocked_at FROM player_home_rooms WHERE guild_id=$1 AND user_id=$2 ORDER BY unlocked_at',[guildId,userId])]);
  return {home:h.rows[0]||{active_room:'starter',layout:[]},rooms:r.rows};
 }
 export async function unlockHomeRoom(pool,{guildId,userId,roomKey}){
  player(guildId,userId);const room=HOME_ROOMS.find(x=>x.key===roomKey);if(!room)return {status:'invalid_room'};
- await ensureUser(guildId,userId,pool);const c=await pool.connect();
+ await ensureUser(guildId,userId,pool);await pool.query("INSERT INTO player_home_rooms(guild_id,user_id,room_key) VALUES($1,$2,'starter') ON CONFLICT DO NOTHING",[guildId,userId]);const c=await pool.connect();
  try{await c.query('BEGIN');const p=await c.query('SELECT level,coins FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',[guildId,userId]);if(!p.rowCount){await c.query('ROLLBACK');return {status:'player_missing'};}
  const owned=await c.query('SELECT 1 FROM player_home_rooms WHERE guild_id=$1 AND user_id=$2 AND room_key=$3',[guildId,userId,roomKey]);if(owned.rowCount){await c.query('ROLLBACK');return {status:'already_unlocked'};}
  if(Number(p.rows[0].level)<room.level){await c.query('ROLLBACK');return {status:'level_locked',requiredLevel:room.level};}
@@ -78,7 +79,7 @@ export async function unlockHomeRoom(pool,{guildId,userId,roomKey}){
  }catch(e){await c.query('ROLLBACK').catch(()=>{});throw e;}finally{c.release();}
 }
 export async function saveHomeLayout(db,{guildId,userId,layout,activeRoom='starter'}){
- player(guildId,userId);const clean=validateHomeLayout(layout);await ensureUser(guildId,userId,db);const r=await db.query('SELECT room_key FROM player_home_rooms WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);const owned=new Set(r.rows.map(x=>x.room_key));if(!owned.has(activeRoom)||clean.some(x=>!owned.has(x.roomKey)))return {status:'room_locked'};
+ player(guildId,userId);const clean=validateHomeLayout(layout);await ensureUser(guildId,userId,db);await db.query("INSERT INTO player_home_rooms(guild_id,user_id,room_key) VALUES($1,$2,'starter') ON CONFLICT DO NOTHING",[guildId,userId]);const r=await db.query('SELECT room_key FROM player_home_rooms WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);const owned=new Set(r.rows.map(x=>x.room_key));if(!owned.has(activeRoom)||clean.some(x=>!owned.has(x.roomKey)))return {status:'room_locked'};
  await db.query('INSERT INTO player_homes(guild_id,user_id,active_room,layout) VALUES($1,$2,$3,$4::jsonb) ON CONFLICT(guild_id,user_id) DO UPDATE SET active_room=EXCLUDED.active_room,layout=EXCLUDED.layout,updated_at=NOW()',[guildId,userId,activeRoom,JSON.stringify(clean)]);return {status:'saved',activeRoom,layout:clean};
 }
 export async function purchaseCosmetic(pool,{guildId,userId,cosmeticKey}){
