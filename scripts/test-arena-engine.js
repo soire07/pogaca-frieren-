@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createArenaState, getArenaCurrentPlayer, resolveArenaTurn } from '../arena-engine.js';
+import { ARENA_ELEMENTS, createArenaState, getArenaCurrentPlayer, getArenaElementEffect, resolveArenaTurn } from '../arena-engine.js';
 
 const teamA = ['10000000000000001','10000000000000002','10000000000000003'].map((userId, i) => ({
   userId, name: 'A' + i, hp: 100, maxHp: 100, mana: 100, maxMana: 100, attack: 40, defense: 10
@@ -74,4 +74,41 @@ test('defeated players are skipped and a team is declared winner only after all 
 test('finished matches reject additional turns', () => {
   const state = { ...create(), status: 'finished', winner: 'A' };
   assert.throws(() => resolveArenaTurn(state, { actorId: teamA[0].userId, targetId: teamB[0].userId }), /ARENA_MATCH_NOT_ACTIVE/);
+});
+
+test('1v1 arena states require one valid player per side and finish correctly', () => {
+  const duel=createArenaState({
+    matchId:'arena-duel-0001',mode:'1v1',
+    teamA:[{...teamA[0],hp:100,attack:40,element:'fire'}],
+    teamB:[{...teamB[0],hp:30,attack:30,element:'ice'}]
+  });
+  assert.equal(duel.mode,'1v1');
+  assert.equal(duel.players.length,2);
+  const result=resolveArenaTurn(duel,{actorId:teamA[0].userId,targetId:teamB[0].userId});
+  assert.equal(result.event.elementEffect,'advantage');
+  assert.equal(result.event.damage,50);
+  assert.equal(result.state.status,'finished');
+  assert.equal(result.state.winner,'A');
+  assert.throws(()=>createArenaState({matchId:'arena-duel-0001',mode:'1v1',teamA:teamA.slice(0,2),teamB:teamB.slice(0,2)}),/ARENA_REQUIRES_TWO_PLAYERS/);
+});
+
+test('element cycle and light/dark opposition apply deterministic damage multipliers', () => {
+  assert.deepEqual(ARENA_ELEMENTS,['fire','ice','lightning','light','dark','neutral']);
+  assert.deepEqual(getArenaElementEffect('fire','ice'),{multiplier:1.25,effect:'advantage'});
+  assert.deepEqual(getArenaElementEffect('ice','fire'),{multiplier:0.8,effect:'disadvantage'});
+  assert.deepEqual(getArenaElementEffect('light','dark'),{multiplier:1.25,effect:'advantage'});
+  assert.deepEqual(getArenaElementEffect('dark','light'),{multiplier:0.8,effect:'disadvantage'});
+  assert.deepEqual(getArenaElementEffect('neutral','fire'),{multiplier:1,effect:'neutral'});
+});
+
+test('elemental advantage and resistance modify 3v3 damage without mutating the original state', () => {
+  const state=createArenaState({
+    matchId:'arena-element-0001',
+    teamA:teamA.map((player,index)=>({...player,element:index===0?'fire':'neutral'})),
+    teamB:teamB.map((player,index)=>({...player,element:index===0?'ice':'neutral'}))
+  });
+  const result=resolveArenaTurn(state,{actorId:teamA[0].userId,targetId:teamB[0].userId});
+  assert.equal(result.event.damage,45);
+  assert.equal(result.event.elementMultiplier,1.25);
+  assert.equal(state.players[3].hp,100);
 });
