@@ -97,7 +97,7 @@ export async function getNotificationPreferences(db,guildId,userId) {
     'SELECT category,enabled FROM frieren_notification_preferences WHERE guild_id=$1 AND user_id=$2',
     [guildId,userId]
   );
-  const preferences=Object.fromEntries(NOTIFICATION_CATEGORIES.map(category=>[category,false]));
+  const preferences={anime_news:false,event_reminders:true,boss_raid_reminders:true};
   for(const row of result.rows||[]) if(NOTIFICATION_CATEGORIES.includes(row.category)) preferences[row.category]=Boolean(row.enabled);
   return preferences;
 }
@@ -174,4 +174,18 @@ export async function releaseAnimeNewsDigestClaim(db,guildId,userId) {
     [guildId,userId]
   );
   return result.rowCount===1;
+}
+
+export async function getEventReminderRecipients(db,eventId,category) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(eventId||''))) throw new Error('NEWS_BIRD_EVENT_ID_INVALID');
+  if (!['event_reminders','boss_raid_reminders'].includes(category)) throw new Error('NEWS_BIRD_CATEGORY_INVALID');
+  const result=await db.query(
+    `SELECT p.user_id FROM guild_event_participants p
+     LEFT JOIN frieren_notification_preferences n
+       ON n.guild_id=p.guild_id AND n.user_id=p.user_id AND n.category=$2
+     WHERE p.event_id=$1 AND COALESCE(n.enabled,TRUE)=TRUE
+     ORDER BY p.joined_at,p.user_id`,
+    [eventId,category]
+  );
+  return result.rows.map(row=>row.user_id);
 }
