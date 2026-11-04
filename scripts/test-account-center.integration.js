@@ -34,7 +34,7 @@ test('account export includes linked game and support data while excluding secre
   const [ownerUser,buyerUser]=users;
   const accountUuid=randomUUID();
   const accountId='site_'+accountUuid;
-  let listingId,ticketId;
+  let listingId,ticketId,noteId;
   try {
     for(const userId of users) await ensureUser(guildId,userId);
     await pool.query(`
@@ -57,6 +57,23 @@ test('account export includes linked game and support data while excluding secre
         account_id UUID NOT NULL,
         action TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS site_profile_preference_details(
+        detail_id UUID PRIMARY KEY,
+        preference_id UUID NOT NULL REFERENCES site_profile_preferences(account_id) ON DELETE CASCADE,
+        detail TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS account_export_fk_player_notes(
+        note_id UUID PRIMARY KEY,
+        guild_id TEXT NOT NULL,
+        player_ref TEXT NOT NULL,
+        note TEXT NOT NULL,
+        FOREIGN KEY(guild_id,player_ref) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+      );
+      CREATE TABLE IF NOT EXISTS account_export_fk_note_revisions(
+        revision_id UUID PRIMARY KEY,
+        note_id UUID NOT NULL REFERENCES account_export_fk_player_notes(note_id) ON DELETE CASCADE,
+        body TEXT NOT NULL
+      );
     `);
     await pool.query(
       "INSERT INTO frieren_site_accounts(id,username,email,password_hash,email_verified_at) VALUES($1,$2,$3,'test-hash',NOW())",
@@ -64,11 +81,15 @@ test('account export includes linked game and support data while excluding secre
     );
     await pool.query("INSERT INTO site_discord_links(account_id,guild_id,user_id) VALUES($1,$2,$3)",[accountUuid,guildId,ownerUser]);
     await pool.query("INSERT INTO site_profile_preferences(account_id,theme,profile_visibility,access_token_hash) VALUES($1,'night','public','must-not-export')",[accountUuid]);
+    await pool.query("INSERT INTO site_profile_preference_details(detail_id,preference_id,detail) VALUES($1,$2,'linked account preference detail')",[randomUUID(),accountUuid]);
     await pool.query("INSERT INTO owner_audit_records(account_id,action) VALUES($1,'account-created')",[accountUuid]);
     await pool.query("INSERT INTO users(guild_id,user_id,character_name,coins) VALUES($1,$2,'Exported Fern',1234) ON CONFLICT(guild_id,user_id) DO UPDATE SET character_name=EXCLUDED.character_name,coins=EXCLUDED.coins",[guildId,ownerUser]);
     await pool.query("INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'export_relic',2)",[guildId,ownerUser]);
     await pool.query("INSERT INTO anime_character_collection(guild_id,user_id,character_name,anime,rarity,quantity) VALUES($1,$2,'Fern','Frieren','legendary',1)",[guildId,ownerUser]);
     await pool.query("INSERT INTO achievement_claims(guild_id,user_id,achievement_key) VALUES($1,$2,'export_test_achievement')",[guildId,ownerUser]);
+    noteId=randomUUID();
+    await pool.query("INSERT INTO account_export_fk_player_notes(note_id,guild_id,player_ref,note) VALUES($1,$2,$3,'user-linked note')",[noteId,guildId,ownerUser]);
+    await pool.query("INSERT INTO account_export_fk_note_revisions(revision_id,note_id,body) VALUES($1,$2,'linked note revision')",[randomUUID(),noteId]);
 
     const [lowUser,highUser]=[ownerUser,buyerUser].sort();
     await pool.query("INSERT INTO social_friend_requests(request_id,guild_id,requester_id,target_id,status) VALUES($1,$2,$3,$4,'accepted')",[randomUUID(),guildId,ownerUser,buyerUser]);
@@ -111,6 +132,9 @@ test('account export includes linked game and support data while excluding secre
     assert.equal(exported.linkedProfiles[0].gameData.social_relationships.length,1,'both sides of a social relationship must be exported');
     assert.equal(exported.linkedProfiles[0].gameData.social_coin_gifts.length,1,'sender/recipient gift records must be exported');
     assert.equal(exported.linkedProfiles[0].gameData.social_reputation_votes.length,1,'giver/recipient reputation records must be exported');
+    assert.equal(exported.linkedProfiles[0].gameData.account_export_fk_player_notes.length,1,'composite foreign keys to a user must seed export even without a user_id-named column');
+    assert.equal(exported.linkedProfiles[0].gameData.account_export_fk_note_revisions.length,1,'foreign-key descendants of user-linked rows must be exported');
+    assert.equal(exported.accountData.site_profile_preference_details.length,1,'foreign-key descendants of account-owned rows must be exported');
     assert.equal(exported.accountData.site_profile_preferences[0].theme,'night');
     assert.equal(Object.hasOwn(exported.accountData.site_profile_preferences[0],'access_token_hash'),false);
     assert.equal(exported.supportTickets.length,1);
@@ -126,6 +150,8 @@ test('account export includes linked game and support data while excluding secre
     assert.equal((await pool.query('SELECT 1 FROM frieren_site_accounts WHERE id=$1',[accountUuid])).rowCount,0);
     assert.equal((await pool.query('SELECT 1 FROM site_discord_links WHERE account_id=$1',[accountUuid])).rowCount,0);
     assert.equal((await pool.query('SELECT 1 FROM site_profile_preferences WHERE account_id=$1',[accountUuid])).rowCount,0);
+    assert.equal((await pool.query('SELECT 1 FROM site_profile_preference_details WHERE preference_id=$1',[accountUuid])).rowCount,0,'account-owned descendants must cascade with the account preference');
+    assert.equal((await pool.query('SELECT 1 FROM account_export_fk_player_notes WHERE note_id=$1',[noteId])).rowCount,1,'Discord-owned RPG records must remain after portal account deletion');
     assert.equal((await pool.query('SELECT 1 FROM frieren_support_tickets WHERE account_id=$1',[accountUuid])).rowCount,0);
     assert.equal((await pool.query('SELECT 1 FROM frieren_support_ticket_messages WHERE ticket_id=$1',[ticketId])).rowCount,0);
     assert.equal((await pool.query('SELECT 1 FROM frieren_support_ticket_events WHERE ticket_id=$1',[ticketId])).rowCount,0);
