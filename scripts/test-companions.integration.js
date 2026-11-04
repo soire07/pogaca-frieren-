@@ -2,11 +2,11 @@ import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import {pool,initDatabase} from '../database/db.js';
 import {adoptCompanion,careForCompanion,equipCompanionCosmetic,evolveCompanion,getCompanion,initCompanionSchema} from '../companions.js';
-const guild='companion-audit-guild',user='companion-audit-user',poorUser='companion-audit-poor',lockUser='companion-audit-lock',evolutionUser='companion-audit-evolution',evolutionPoor='companion-audit-evolution-poor';
+const guild='companion-audit-guild',user='companion-audit-user',poorUser='companion-audit-poor',lockUser='companion-audit-lock',evolutionUser='companion-audit-evolution',evolutionPoor='companion-audit-evolution-poor',evolutionRace='companion-audit-evolution-race';
 before(async()=>{
  await initDatabase();await initCompanionSchema(pool);
- await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id IN ($2,$3,$4,$5,$6)',[guild,user,poorUser,lockUser,evolutionUser,evolutionPoor]);
- await pool.query('INSERT INTO users(guild_id,user_id,coins) VALUES($1,$2,1000),($1,$3,0),($1,$4,1000),($1,$5,20000),($1,$6,500)',[guild,user,poorUser,lockUser,evolutionUser,evolutionPoor]);
+ await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id IN ($2,$3,$4,$5,$6,$7)',[guild,user,poorUser,lockUser,evolutionUser,evolutionPoor,evolutionRace]);
+ await pool.query('INSERT INTO users(guild_id,user_id,coins) VALUES($1,$2,1000),($1,$3,0),($1,$4,1000),($1,$5,20000),($1,$6,500),($1,$7,20000)',[guild,user,poorUser,lockUser,evolutionUser,evolutionPoor,evolutionRace]);
 });
 after(async()=>{await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id IN ($2,$3,$4,$5,$6)',[guild,user,poorUser,lockUser,evolutionUser,evolutionPoor]);await pool.end();});
 test('concurrent adoption charges once and persists exactly one companion',async()=>{
@@ -110,17 +110,18 @@ test('companion evolution rejects insufficient funds without changing form or hi
 });
 
 test('concurrent evolution attempts cannot charge or record the same stage twice',async()=>{
- await adoptCompanion(pool,{guildId:guild,userId:evolutionUser,companionKey:'flamme_fox'}).catch(()=>{});
- await pool.query('UPDATE user_companions SET xp=8100,level=10,evolution_stage=0 WHERE guild_id=$1 AND user_id=$2',[guild,evolutionUser]);
- const before=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,evolutionUser]);
+  const adopted=await adoptCompanion(pool,{guildId:guild,userId:evolutionRace,companionKey:'flamme_fox'});
+ assert.equal(adopted.status,'adopted');
+ await pool.query('UPDATE user_companions SET xp=8100,level=10 WHERE guild_id=$1 AND user_id=$2',[guild,evolutionRace]);
+ const before=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,evolutionRace]);
  const results=await Promise.all([
-  evolveCompanion(pool,{guildId:guild,userId:evolutionUser}),
-  evolveCompanion(pool,{guildId:guild,userId:evolutionUser})
+  evolveCompanion(pool,{guildId:guild,userId:evolutionRace}),
+  evolveCompanion(pool,{guildId:guild,userId:evolutionRace})
  ]);
  assert.equal(results.filter(result=>result.status==='evolved').length,1);
  assert.equal(results.filter(result=>result.status==='level_locked').length,1);
- const after=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,evolutionUser]);
+ const after=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,evolutionRace]);
  assert.equal(Number(after.rows[0].coins),Number(before.rows[0].coins)-1000);
- const history=await pool.query('SELECT COUNT(*)::int AS count FROM user_companion_evolution_history WHERE guild_id=$1 AND user_id=$2 AND stage=1',[guild,evolutionUser]);
+ const history=await pool.query('SELECT COUNT(*)::int AS count FROM user_companion_evolution_history WHERE guild_id=$1 AND user_id=$2 AND stage=1',[guild,evolutionRace]);
  assert.equal(history.rows[0].count,1);
 });
