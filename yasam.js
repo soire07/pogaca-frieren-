@@ -14,7 +14,7 @@ export default {
  .addSubcommand(s=>s.setName('kozmetik-al').setDescription('Kozmetik satın al.').addStringOption(o=>o.setName('esya').setDescription('Kozmetik').setRequired(true).addChoices(...cosmetics)))
  .addSubcommand(s=>s.setName('kozmetik-kus').setDescription('Sahip olduğun kozmetiği kuşan.').addStringOption(o=>o.setName('esya').setDescription('Kozmetik').setRequired(true).addChoices(...cosmetics)))
  .addSubcommand(s=>s.setName('preset').setDescription('Mevcut kozmetik görünümünü kaydet.').addStringOption(o=>o.setName('ad').setDescription('Preset adı').setRequired(true).setMaxLength(32)))
- .addSubcommand(s=>s.setName('etkinlik-odul').setDescription('Bitmiş etkinlik katılım ödülünü al.').addStringOption(o=>o.setName('id').setDescription('Etkinlik UUID').setRequired(true)).addStringOption(o=>o.setName('hedef').setDescription('Ödül aşaması').setRequired(true).addChoices({name:'Katılımcı',value:'participant'},{name:'Düzenli',value:'regular'},{name:'Emektar',value:'veteran'}))),
+ .addSubcommand(s=>s.setName('etkinlik-odul').setDescription('Bitmiş etkinlik katılım ödülünü al.').addStringOption(o=>o.setName('id').setDescription('Etkinlik UUID').setRequired(true)).addStringOption(o=>o.setName('hedef').setDescription('Ödül aşaması').setRequired(true).addChoices({name:'Katılımcı',value:'participant'},{name:'Yoklama',value:'checkin'}))),
  async execute(i){
   if(!i.guildId)return reply(i,'Bu özellik sunucularda kullanılabilir.');
   const base={guildId:i.guildId,userId:i.user.id},action=i.options.getSubcommand();
