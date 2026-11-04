@@ -79,7 +79,7 @@ test('/ready returns JSON 200 when Discord and PostgreSQL are healthy', async ()
     res,
     {
       client: { isReady: () => true },
-      db: { query: async sql => { databaseQueries += 1; assert.equal(sql, 'SELECT 1'); return { rows: [{ '?column?': 1 }] }; },
+      db: { query: async sql => { databaseQueries += 1; assert.equal(sql, 'SELECT 1'); return { rows: [{ '?column?': 1 }] }; } },
     },
   );
 
