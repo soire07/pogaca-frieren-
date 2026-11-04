@@ -32,6 +32,7 @@ export default {
         guildId: interaction.guildId, channelId: interaction.channelId,
         userId: interaction.user.id, gameType
       });
+      if (session.status === 'channel_active') return interaction.reply({ content: 'Bu kanalda zaten devam eden bir oyun var. Süresi dolduğunda yeni tur başlatabilirsin.', flags: MessageFlags.Ephemeral });
       const embed = new EmbedBuilder()
         .setColor(0x9b8cff)
         .setTitle('🏰 ' + session.game_label)
