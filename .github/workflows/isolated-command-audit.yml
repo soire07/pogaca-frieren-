@@ -2,9 +2,20 @@ name: Frieren isolated command audit
 on:
   pull_request:
     branches: [main]
+    paths:
+      - "*.js"
+      - "commands/**"
+      - "database/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
   workflow_dispatch:
 permissions:
   contents: read
+
+concurrency:
+  group: frieren-isolated-audit-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   audit:
     runs-on: ubuntu-latest

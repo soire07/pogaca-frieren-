@@ -1,10 +1,9 @@
 name: Register Poğaça commands after Discord daily quota reset
 
-# One safe attempt per day. The deployment script reads current state and skips writes
-# when the production command definitions already match. It never targets the test guild.
+# Manual one-off retry after Discord's daily quota reset. The separate
+# retry-production-command-sync workflow owns the single scheduled retry.
 on:
-  schedule:
-    - cron: "35 0 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read

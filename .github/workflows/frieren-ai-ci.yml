@@ -41,5 +41,8 @@ jobs:
         run: npm install
       - name: Install Frieren AI dependencies
         run: npm install --prefix ai-agent
-      - name: Run syntax, command audits, and automated tests
-        run: npm run check
+      - name: Run focused Frieren AI syntax and regression tests
+        run: |
+          node --check ai-agent/index.js
+          node --check ai-agent/register-commands.js
+          node --test --test-concurrency=1 ai-agent/*.test.js

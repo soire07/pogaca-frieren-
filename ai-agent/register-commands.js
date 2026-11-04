@@ -1,16 +1,17 @@
 import 'dotenv/config';
 import { REST, Routes, SlashCommandBuilder } from 'discord.js';
+import { getFrierenAiCommandRoute, registerCommandsIfChanged, FRIEREN_AI_TEST_GUILD_ID } from './command-registration-target.js';
 
-const required = ['DISCORD_TOKEN'];
+const required = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DISCORD_GUILD_ID'];
 const missing = required.filter(key => !process.env[key]?.trim());
 if (missing.length) {
   console.error('Missing required environment variables: ' + missing.join(', '));
   process.exit(1);
 }
 
-const TEST_GUILD_ID = '1564945192803639356';
-const configuredGuildId = process.env.DISCORD_GUILD_ID?.trim();
-if (configuredGuildId && configuredGuildId !== TEST_GUILD_ID) {
+const TEST_GUILD_ID = FRIEREN_AI_TEST_GUILD_ID;
+const configuredGuildId = process.env.DISCORD_GUILD_ID.trim();
+if (configuredGuildId !== TEST_GUILD_ID) {
   console.error('Frieren AI command registration is restricted to the test guild 1564945192803639356. Global and production-guild registration are disabled.');
   process.exit(1);
 }
@@ -57,11 +58,12 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 const botUser = await rest.get(Routes.user());
 const applicationId = botUser.id;
 const configuredClientId = process.env.DISCORD_CLIENT_ID?.trim();
-if (configuredClientId && configuredClientId !== applicationId) {
+if (configuredClientId !== applicationId) {
   console.error('DISCORD_CLIENT_ID does not match the bot account identified by DISCORD_TOKEN.');
   process.exit(1);
 }
-const route = Routes.applicationGuildCommands(applicationId, TEST_GUILD_ID);
-
-await rest.put(route, { body: commands });
-console.log('Frieren AI test-guild commands registered: 4 primary command paths plus 4 /frieren-bellek subcommands.');
+const route = getFrierenAiCommandRoute(applicationId);
+const registration = await registerCommandsIfChanged(rest, route, commands);
+console.log(registration.changed
+  ? 'Frieren AI test-guild commands updated: ' + registration.count + ' command definitions.'
+  : 'Frieren AI test-guild commands already match; skipped Discord write to preserve daily quota.');

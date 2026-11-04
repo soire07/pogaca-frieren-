@@ -18,7 +18,7 @@ permissions:
 
 concurrency:
   group: pogaca-rpg-test-command-registration
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   register-test-commands:

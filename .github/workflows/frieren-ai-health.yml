@@ -6,7 +6,7 @@ on:
     paths:
       - '.github/workflows/frieren-ai-health.yml'
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -19,7 +19,7 @@ concurrency:
 jobs:
   health:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 2
     steps:
       - name: Check Frieren AI liveness and readiness
         shell: bash
@@ -27,14 +27,14 @@ jobs:
           HEALTH_URL: https://pogaca-frieren-kltd.onrender.com/live
         run: |
           response_file="$RUNNER_TEMP/frieren-health.json"
-          for attempt in {1..8}; do
-            http_code="$(curl --silent --show-error --connect-timeout 10 --max-time 20 -o "$response_file" -w '%{http_code}' "$HEALTH_URL" 2>&1)" || true
+          for attempt in {1..3}; do
+            http_code="$(curl --silent --show-error --connect-timeout 5 --max-time 10 -o "$response_file" -w '%{http_code}' "$HEALTH_URL" 2>&1)" || true
             if [[ "$http_code" == "200" ]] && node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const j=JSON.parse(s);const r=j.readiness||{};process.exit(j.status==='alive' && j.ready===true && r.status==='ok' && r.discordReady===true && r.memoryDatabaseReady===true && r.modelConfigured===true && r.bridgeConfigured===true ? 0 : 1)}catch{process.exit(1)}})" < "$response_file"; then
               echo "Frieren AI liveness and readiness passed (Discord, memory DB, model, and test bridge ready)."
               exit 0
             fi
-            echo "::warning::Health attempt $attempt/8 failed; HTTP $http_code."
-            if [[ "$attempt" -lt 8 ]]; then sleep 5; fi
+            echo "::warning::Health attempt $attempt/3 failed; HTTP $http_code."
+            if [[ "$attempt" -lt 3 ]]; then sleep 5; fi
           done
-          echo "::error::Frieren AI is not fully ready after 8 attempts."
+          echo "::error::Frieren AI is not fully ready after 3 attempts."
           exit 1
