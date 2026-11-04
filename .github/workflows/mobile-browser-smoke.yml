@@ -1,6 +1,17 @@
 name: Mobile browser smoke
 on:
+  push:
+    branches: [fix/solo-boss-reward-idempotency-mainline]
+    paths:
+      - 'public-site.js'
+      - 'site-auth.js'
+      - 'owner-dashboard.js'
+      - 'account-center.js'
+      - 'news-birds.js'
+      - 'card-variants.js'
+      - 'scripts/mobile-browser-smoke.mjs'
   pull_request:
+    types: [opened, reopened]
     paths:
       - 'public-site.js'
       - 'site-auth.js'
@@ -82,4 +93,5 @@ jobs:
       - name: Test Android Chrome, iOS Safari, desktop Chromium and OAuth redirect on preview
         env:
           MOBILE_SMOKE_BASE_URL: ${{ steps.preview.outputs.base_url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: node scripts/mobile-browser-smoke.mjs
