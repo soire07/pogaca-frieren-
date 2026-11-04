@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeSupportTicketInput, createSupportTicket, listSupportTickets, exportSiteAccountData, deleteSiteAccount } from '../account-center.js';
+import { normalizeSupportTicketInput, createSupportTicket, listSupportTickets, listSupportTicketMessages, replySupportTicket, updateSupportTicketStatus, exportSiteAccountData, deleteSiteAccount } from '../account-center.js';
 
 const accountId='site_123e4567-e89b-12d3-a456-426614174000';
 
@@ -48,4 +48,38 @@ test('account deletion requires the explicit confirmation phrase',async()=>{
  assert.equal(connected,false);
  assert.equal((await deleteSiteAccount(db,accountId,'HESABIMI SIL')).status,'deleted');
  assert.equal(connected,true);
+});
+
+
+test('support conversations are account-scoped and preserve ordered reply history',async()=>{
+ const calls=[];
+ const db={async query(sql,params){
+  calls.push({sql,params});
+  if(sql.includes('SELECT ticket_id FROM frieren_support_tickets'))return{rows:[{ticket_id:'123e4567-e89b-42d3-a456-426614174000'}],rowCount:1};
+  if(sql.includes('INSERT INTO frieren_support_ticket_messages'))return{rows:[{message_id:'message-1',author_type:'account',message:'More details'}],rowCount:1};
+  if(sql.includes('FROM frieren_support_ticket_messages'))return{rows:[{message_id:'message-1',author_type:'account',message:'More details'}],rowCount:1};
+  if(sql.includes('INSERT INTO frieren_support_ticket_events'))return{rows:[],rowCount:1};
+  if(sql.includes('UPDATE frieren_support_tickets SET updated_at'))return{rows:[{ticket_id:'123e4567-e89b-42d3-a456-426614174000'}],rowCount:1};
+  throw new Error('Unexpected query: '+sql);
+ }};
+ const ticketId='123e4567-e89b-42d3-a456-426614174000';
+ const reply=await replySupportTicket(db,accountId,ticketId,'More details');
+ assert.equal(reply.status,'replied');
+ const messages=await listSupportTicketMessages(db,accountId,ticketId);
+ assert.equal(messages[0].message,'More details');
+ assert.ok(calls.every(call=>call.params.includes('123e4567-e89b-12d3-a456-426614174000')||call.params.includes(ticketId)));
+});
+
+test('support status transitions are recorded and closed tickets cannot be reopened by account replies',async()=>{
+ const calls=[];
+ const db={async query(sql,params){
+  calls.push({sql,params});
+  if(sql.includes('SELECT ticket_id,status FROM frieren_support_tickets'))return{rows:[{ticket_id:'123e4567-e89b-42d3-a456-426614174000',status:'in_progress'}],rowCount:1};
+  if(sql.includes('UPDATE frieren_support_tickets SET status'))return{rows:[{ticket_id:'123e4567-e89b-42d3-a456-426614174000',status:'closed'}],rowCount:1};
+  if(sql.includes('INSERT INTO frieren_support_ticket_events'))return{rows:[],rowCount:1};
+  throw new Error('Unexpected query: '+sql);
+ }};
+ const ticketId='123e4567-e89b-42d3-a456-426614174000';
+ assert.equal((await updateSupportTicketStatus(db,accountId,ticketId,'closed','support')).status,'updated');
+ assert.ok(calls.some(call=>call.sql.includes('frieren_support_ticket_events')));
 });
