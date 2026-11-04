@@ -304,6 +304,8 @@ export async function createGuildEvent(db = pool, { guildId,title,description=''
   if(cleanTitle.length<3||cleanTitle.length>100||cleanDescription.length>1000||!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime())||end<=start||start<=new Date()) throw new Error('EVENT_INPUT_INVALID');
   const cap=maxParticipants==null?null:Number(maxParticipants);
   if(cap!==null&&(!Number.isInteger(cap)||cap<1||cap>500)) throw new Error('EVENT_CAPACITY_INVALID');
+  const allowedEventTypes=new Set(['community','boss_raid','tournament','anime_night']);
+  if(!allowedEventTypes.has(String(eventType))) throw new Error('EVENT_TYPE_INVALID');
   const id=randomUUID();
   await db.query('INSERT INTO guild_events(event_id,guild_id,title,description,event_type,starts_at,ends_at,max_participants,created_by,channel_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
     [id,guildId,cleanTitle,cleanDescription,String(eventType).slice(0,30),start.toISOString(),end.toISOString(),cap,createdBy,channelId]);
@@ -332,7 +334,7 @@ export async function claimDueGuildEventReminders(db = pool, limit = 20, now = n
      SET reminder_claimed_at=$1
      FROM due
      WHERE e.event_id=due.event_id
-     RETURNING e.event_id,e.guild_id,e.channel_id,e.title,e.description,e.starts_at,e.reminder_claimed_at,
+     RETURNING e.event_id,e.guild_id,e.channel_id,e.title,e.description,e.event_type,e.starts_at,e.reminder_claimed_at,
        ARRAY(SELECT p.user_id FROM guild_event_participants p
              WHERE p.event_id=e.event_id ORDER BY p.joined_at,p.user_id LIMIT 100) AS attendee_ids`,
     [at.toISOString(), batchSize]
