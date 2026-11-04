@@ -55,6 +55,14 @@ export async function ensureGuildTeamLeagueSchema(db){
    opponent_score INTEGER NOT NULL CHECK(opponent_score BETWEEN 0 AND 99),
    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(fixture_id,team_id)
   );
+  ALTER TABLE guild_event_participants ADD COLUMN IF NOT EXISTS team_id UUID;
+  DO $ BEGIN
+   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='guild_event_participants_team_id_fk') THEN
+    ALTER TABLE guild_event_participants ADD CONSTRAINT guild_event_participants_team_id_fk
+     FOREIGN KEY(guild_id,team_id) REFERENCES guild_teams(guild_id,team_id) ON DELETE RESTRICT;
+   END IF;
+  END $;
+  CREATE INDEX IF NOT EXISTS guild_event_participants_team_id_idx ON guild_event_participants(event_id,team_id,user_id);
   CREATE INDEX IF NOT EXISTS guild_team_league_table_idx ON guild_team_league_entries(league_id,points DESC,wins DESC,goals_for DESC);
   CREATE INDEX IF NOT EXISTS guild_team_fixtures_schedule_idx ON guild_team_fixtures(league_id,scheduled_at,round_number);
  `);
