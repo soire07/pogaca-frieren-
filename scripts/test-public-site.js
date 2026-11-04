@@ -364,6 +364,16 @@ test('adventurer account linking rejects invalid CSRF before opening a database 
   assert.equal(connected,false);
 });
 
+test('player experience web mutations reject invalid CSRF before database access',async()=>{
+ let connected=false;
+ const db={connect:async()=>{connected=true;throw new Error('must not connect');},query:async()=>{connected=true;throw new Error('must not query');}};
+ const response=res();
+ const post=sitePost('/maceraci/yasam',{csrf:'invalid',guildId:'1539562273197260860',action:'unlock-room',roomKey:'library'});
+ assert.equal(await handlePublicSiteRequest(post,response,{db}),true);
+ assert.equal(response.status,403);
+ assert.equal(connected,false);
+});
+
 test('player experience web page is scoped to the linked character and shows home cosmetics and event progress',async()=>{
  const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20};
  const db={async query(sql){
