@@ -19,6 +19,18 @@ Kapsam dışı: log görüntüleme/analizi ve bu üç sistem dışında kalan bo
 
 Bu belge bir başlangıç envanteridir; tamamlanma beyanı değildir. Özellik, yalnızca kaynak kodda karşılığı bulunduğunda "mevcut" sayılır. Otomatik test, gerçek Discord etkileşimi ve canlı servis doğrulaması ayrı kanıt türleridir.
 
+## Mimari karar — 2026-11-04
+
+Hedef mimari ve servis sınırları `docs/ARCHITECTURE.md` içinde tek kaynak olarak tanımlandı. Karar: tek depo, mevcut iki Render servisi; Poğaça içinde oyuncu web sitesi ve Owner Panel; ayrı teknik Frieren AI; Neural Guardian mevcut Guardian modülleri + GitHub Actions; Frieren Neural oyuncu sohbeti/hafızası olarak Poğaça tarafında kalır. Yeni mikroservis, ücretli servis veya Vercel deployment eklenmez.
+
+- Discord ve web adaptörleri aynı use-case/domain servislerini çağırır; iş kuralları route/komutlarda çoğaltılmaz.
+- Oyuncu, teknik AI ve owner kimlik/veri/izin alanları ayrıdır; oyuncu verisi guild + user kapsamında tutulur.
+- Migration kararı: mevcut `ensure*Schema` kurulumları korunur; önce schema baseline, ardından advisory-lock/checksum tabanlı sürümlü SQL migration runner hazırlanır. Kırıcı toplu şema dönüşümü yapılmaz.
+- Güvenli onarım zinciri: Guardian olay tekilleştirme/öncelik → Frieren AI inceleme ve hedefli test → sınırlı PR → bağımsız CI/Guardian → Owner Panel kanıtı → açık owner onayı → tek merge/deploy → canlı doğrulama.
+- Uygulama bağımlılık sırası: platform/migration temeli → koleksiyon/pazar → turnuva/arena → topluluk → web panel → AI/Guardian/Owner Panel uçtan uca iş akışı.
+
+Bu karar mimariyi ve hedefi netleştirir; 1.675 planlı roadmap kaydının uygulandığı veya canlı ortamın doğrulandığı anlamına gelmez.
+
 ## Mevcut mimari
 
 - Tek kaynak depo: `soire07/pogaca-frieren-`.
