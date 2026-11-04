@@ -256,7 +256,12 @@ export async function getAdventurerDashboard(db = pool, accountId) {
          JOIN site_discord_links linked ON linked.guild_id=mine.guild_id AND linked.user_id=mine.user_id
          WHERE mine.event_id=e.event_id AND linked.account_id=$2
        ) AS joined,
-       (SELECT mine.team_key FROM guild_event_participants mine JOIN site_discord_links linked ON linked.guild_id=mine.guild_id AND linked.user_id=mine.user_id WHERE mine.event_id=e.event_id AND linked.account_id=$2 LIMIT 1) AS joined_team
+       (SELECT mine.team_key FROM guild_event_participants mine JOIN site_discord_links linked ON linked.guild_id=mine.guild_id AND linked.user_id=mine.user_id WHERE mine.event_id=e.event_id AND linked.account_id=$2 LIMIT 1) AS joined_team_key,
+       (SELECT mine.team_id FROM guild_event_participants mine JOIN site_discord_links linked ON linked.guild_id=mine.guild_id AND linked.user_id=mine.user_id WHERE mine.event_id=e.event_id AND linked.account_id=$2 LIMIT 1) AS joined_team_id,
+       (SELECT t.team_name FROM guild_event_participants mine JOIN site_discord_links linked ON linked.guild_id=mine.guild_id AND linked.user_id=mine.user_id JOIN guild_teams t ON t.guild_id=mine.guild_id AND t.team_id=mine.team_id WHERE mine.event_id=e.event_id AND linked.account_id=$2 LIMIT 1) AS joined_team_name,
+       (SELECT COALESCE(json_agg(json_build_object('team_id',t.team_id,'team_name',t.team_name) ORDER BY t.team_name),'[]'::json)
+        FROM guild_team_members tm JOIN guild_teams t ON t.guild_id=tm.guild_id AND t.team_id=tm.team_id
+        WHERE tm.guild_id=e.guild_id AND tm.user_id IN (SELECT linked_team.user_id FROM site_discord_links linked_team WHERE linked_team.account_id=$2 AND linked_team.guild_id=e.guild_id)) AS available_teams
      FROM guild_events e LEFT JOIN guild_event_participants p ON p.event_id=e.event_id
      WHERE e.guild_id=ANY($1::text[]) AND e.status='scheduled' AND e.ends_at>NOW()
      GROUP BY e.event_id ORDER BY e.starts_at ASC LIMIT 20`,
@@ -377,30 +382,34 @@ export async function listGuildEvents(db = pool,guildId,limit=10) {
   return result.rows;
 }
 
-export async function joinGuildEvent(db = pool,{guildId,eventId,userId,teamKey=null}) {
+export async function joinGuildEvent(db = pool,{guildId,eventId,userId,teamId=null}) {
   if(!DISCORD_ID.test(String(guildId||''))||!DISCORD_ID.test(String(userId||''))) throw new Error('EVENT_INPUT_INVALID');
   await ensureUser(guildId,userId,db);
-  const selectedTeam=teamKey===null||teamKey===''?null:String(teamKey).toUpperCase();
-  if(selectedTeam!==null&&!['A','B'].includes(selectedTeam))throw new Error('EVENT_TEAM_INVALID');
+  const selectedTeamId=teamId===null||teamId===''?null:String(teamId);
+  if(selectedTeamId!==null&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selectedTeamId))throw new Error('EVENT_TEAM_INVALID');
   const client=await db.connect();
   try {
     await client.query('BEGIN');
     const event=await client.query("SELECT event_id,event_type,max_participants FROM guild_events WHERE event_id=$1 AND guild_id=$2 AND status='scheduled' AND starts_at>NOW() FOR UPDATE",[eventId,guildId]);
     if(!event.rowCount){await client.query('ROLLBACK');return {status:'unavailable'};}
-    if(event.rows[0].event_type==='boss_raid'&&!selectedTeam){await client.query('ROLLBACK');return {status:'team_required'};}
-    if(event.rows[0].event_type!=='boss_raid'&&selectedTeam){await client.query('ROLLBACK');return {status:'team_not_supported'};}
-    const existing=await client.query('SELECT team_key FROM guild_event_participants WHERE event_id=$1 AND user_id=$2',[eventId,userId]);
-    if(existing.rowCount){await client.query('ROLLBACK');return {status:'already_joined',teamKey:existing.rows[0].team_key||null};}
+    if(event.rows[0].event_type==='boss_raid'&&!selectedTeamId){await client.query('ROLLBACK');return {status:'team_required'};}
+    if(event.rows[0].event_type!=='boss_raid'&&selectedTeamId){await client.query('ROLLBACK');return {status:'team_not_supported'};}
+    const existing=await client.query('SELECT team_key,team_id FROM guild_event_participants WHERE event_id=$1 AND user_id=$2',[eventId,userId]);
+    if(existing.rowCount){await client.query('ROLLBACK');return {status:'already_joined',teamKey:existing.rows[0].team_key||null,teamId:existing.rows[0].team_id||null};}
     const count=await client.query('SELECT COUNT(*)::int AS count FROM guild_event_participants WHERE event_id=$1',[eventId]);
     if(event.rows[0].max_participants&&count.rows[0].count>=event.rows[0].max_participants){await client.query('ROLLBACK');return {status:'full'};}
-    if(selectedTeam){
-      const teamCount=await client.query('SELECT COUNT(*)::int AS count FROM guild_event_participants WHERE event_id=$1 AND team_key=$2',[eventId,selectedTeam]);
+    let selectedTeamName=null;
+    if(selectedTeamId){
+      const team=await client.query('SELECT t.team_id,t.team_name FROM guild_teams t JOIN guild_team_members m ON m.guild_id=t.guild_id AND m.team_id=t.team_id WHERE t.guild_id=$1 AND t.team_id=$2 AND m.user_id=$3 FOR UPDATE OF t',[guildId,selectedTeamId,userId]);
+      if(!team.rowCount){await client.query('ROLLBACK');return {status:'not_team_member'};}
+      selectedTeamName=team.rows[0].team_name;
+      const teamCount=await client.query('SELECT COUNT(*)::int AS count FROM guild_event_participants WHERE event_id=$1 AND team_id=$2',[eventId,selectedTeamId]);
       if(Number(teamCount.rows[0]?.count||0)>=5){await client.query('ROLLBACK');return {status:'team_full'};}
     }
-    const inserted=await client.query('INSERT INTO guild_event_participants(event_id,guild_id,user_id,team_key) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING user_id,team_key',[eventId,guildId,userId,selectedTeam]);
+    const inserted=await client.query('INSERT INTO guild_event_participants(event_id,guild_id,user_id,team_id) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING user_id,team_id',[eventId,guildId,userId,selectedTeamId]);
     if(inserted.rowCount) await client.query("INSERT INTO guild_event_progress(event_id,guild_id,user_id,progress_key,progress) VALUES($1,$2,$3,'participation',1) ON CONFLICT(event_id,user_id,progress_key) DO UPDATE SET progress=GREATEST(guild_event_progress.progress,1),updated_at=NOW()",[eventId,guildId,userId]);
     await client.query('COMMIT');
-    return {status:inserted.rowCount?'joined':'already_joined',teamKey:inserted.rows[0]?.team_key||null};
+    return {status:inserted.rowCount?'joined':'already_joined',teamId:inserted.rows[0]?.team_id||null,teamName:selectedTeamName};
   }catch(error){await client.query('ROLLBACK').catch(()=>{});throw error;}
   finally{client.release();}
 }
