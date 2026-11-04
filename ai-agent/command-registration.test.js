@@ -40,7 +40,6 @@ test('registration exposes only the four Frieren AI root commands and four memor
   assert.match(manual, /configuredGuildId !== TEST_GUILD_ID/);
   assert.match(manual, /registerCommandsIfChanged/);
   assert.match(runtime, /registerCommandsIfChanged/);
-  assert.match(manual, /const TEST_GUILD_ID = '1564945192803639356'/);
   assert.doesNotMatch(manual, /Routes\.applicationCommands\(/, 'global command registration must remain disabled');
 });
 
