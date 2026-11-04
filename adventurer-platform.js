@@ -3,7 +3,7 @@ import { pool, ensureUser } from './database/db.js';
 import { ensurePlayerExperienceSchema } from './player-experience.js';
 
 const DISCORD_ID = /^\d{17,20}$/;
-const ACCOUNT_ID = /^site_[0-9a-f-]{36}$/i;
+const ACCOUNT_ID = /^(?:site_)?[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const hash = value => createHash('sha256').update(String(value)).digest('hex');
 
 export async function ensureAdventurerPlatformTables(db = pool) {
