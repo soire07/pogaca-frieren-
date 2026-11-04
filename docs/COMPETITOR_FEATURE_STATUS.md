@@ -1,7 +1,7 @@
 # Rakip Özellik Backlog'u — Mevcut Kodla İlk Eşleştirme
 
 > Denetim tarihi: 2026-11-04  
-> İncelenen kod tabanı: `fix/solo-boss-reward-idempotency-mainline` @ `8cdc98d17aa47d3a3c9aa70626c32dbf1174dea6` (kod); güncel envanter 2.015 kayıt / 340 mevcut / 1.675 planlı  
+> İncelenen kod tabanı: `fix/solo-boss-reward-idempotency-mainline` @ `8cdc98d17aa47d3a3c9aa70626c32dbf1174dea6` (kod); güncel envanter 2.016 kayıt / 341 mevcut / 1.675 planlı  
 > Kaynak listeler: `docs/COMPETITOR_FEATURE_MATRIX.md`, `docs/ENTERTAINMENT_FEATURE_BACKLOG.md`  
 > Bu belge ilk kaynak/test eşleştirmesidir; canlı Discord doğrulaması veya tamamlanma beyanı değildir.
 
@@ -11,7 +11,7 @@
 
 ### Envanter sayacı
 
-Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal portalı için kanıt bağlantılı kayıtlar eklendi: **2.015 toplam kayıt = 340 mevcut/kod karşılığı olan özellik + 1.675 planlanan aday**. `auditComplete=false` korunuyor; 1.675 roadmap kaydı planlı kalıyor.
+Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal portalı için kanıt bağlantılı kayıtlar eklendi: **2.016 toplam kayıt = 341 mevcut/kod karşılığı olan özellik + 1.675 planlanan aday**. `auditComplete=false` korunuyor; 1.675 roadmap kaydı planlı kalıyor.
 
 ### Bu dalda taşınan / bağlanan modüller
 
