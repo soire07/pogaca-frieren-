@@ -1,0 +1,32 @@
+name: Mobile browser smoke
+on:
+  pull_request:
+    paths:
+      - 'public-site.js'
+      - 'site-auth.js'
+      - 'owner-dashboard.js'
+      - 'account-center.js'
+      - 'news-birds.js'
+      - 'card-variants.js'
+      - 'scripts/mobile-browser-smoke.mjs'
+      - '.github/workflows/mobile-browser-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: npm install --no-save playwright@1.56.1
+      - name: Install Chromium and WebKit
+        run: npx playwright install --with-deps chromium webkit
+      - name: Test mobile layouts and live owner OAuth redirect
+        env:
+          MOBILE_SMOKE_BASE_URL: https://frierenbot.vercel.app
+        run: node scripts/mobile-browser-smoke.mjs
