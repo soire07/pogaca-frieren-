@@ -57,7 +57,7 @@ Bu sistemler yeniden yazılmayacak. Yeni modüller mümkün olduğunda mevcut ku
 - **Karakter koleksiyonu:** Koleksiyon, nadirlik/pity, yükseltme ve takas var; wishlist, albüm, profil vitrini ve kozmetik kart özelleştirmesi ayrı geliştirme alanlarıdır.
 - **Ekonomi:** Altın, eşya marketi, zanaat ve takas var; oyuncudan oyuncuya açık pazar, teklif/ihale, fiyat takibi ve güvenli pazar işlemleri ayrıca doğrulanmalıdır.
 - **Arena:** Sezon ve Elo temeli var; 1v1/3v3 varyantları, draft, sınıf/büyü/ekipman kısıtlı modlar, turnuvalar ve maç tekrarları genişletme alanlarıdır.
-- **Lonca etkinlikleri:** Etkinlik takvimi ve katılımcı kapasitesi altyapısı var; oyuncu panelinde RSVP, kişisel hatırlatma ve etkinlik geçmişi akışı tamamlanmalıdır.
+- **Lonca etkinlikleri:** Etkinlik oluşturma/listeleme/katılma/ayrılma ve kapasite kilidi altyapısı var (`adventurer-platform.js`); mevcut `/maceraci` web arayüzü etkinlikleri yalnızca gösteriyor. Web üzerinden RSVP kontrolleri, kişisel hatırlatmalar ve etkinlik geçmişi henüz tamamlanmamış.
 - **Mini oyunlar:** Anime quiz ve Mimic var; hafıza, kelime, takım trivia ve lonca turnuvaları eklenebilir.
 - **Sosyal katman:** Sıralama ve takas var; arkadaş/rakip/mentor ilişkileri, itibar, hediye ve herkese açık başarı vitrini ayrıca tasarlanmalıdır.
 
