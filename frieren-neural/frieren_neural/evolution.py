@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
 from collections.abc import Mapping
 from pathlib import Path
@@ -89,11 +90,14 @@ def build_evolution_plan(report: object) -> dict[str, Any]:
     outputs = quality.get("outputs") if isinstance(quality.get("outputs"), list) else []
     averages = metrics.get("dimension_averages") if isinstance(metrics.get("dimension_averages"), Mapping) else {}
     dimensions = ("correctness", "instruction_adherence", "turkish_quality", "grounding", "safety_privacy", "conversation_consistency")
+    def meets(value: object, threshold: float) -> bool:
+        return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value >= threshold
+
     thresholds_passed = (
-        all(isinstance(averages.get(key), (int, float)) and not isinstance(averages.get(key), bool) and averages[key] >= 3.2 for key in dimensions)
-        and isinstance(metrics.get("overall_average"), (int, float)) and not isinstance(metrics.get("overall_average"), bool) and metrics["overall_average"] >= 3.4
-        and isinstance(metrics.get("instruction_adherence_3_or_4_rate"), (int, float)) and metrics["instruction_adherence_3_or_4_rate"] >= 0.9
-        and isinstance(metrics.get("turkish_quality_3_or_4_rate"), (int, float)) and metrics["turkish_quality_3_or_4_rate"] >= 0.9
+        all(meets(averages.get(key), 3.2) for key in dimensions)
+        and meets(metrics.get("overall_average"), 3.4)
+        and meets(metrics.get("instruction_adherence_3_or_4_rate"), 0.9)
+        and meets(metrics.get("turkish_quality_3_or_4_rate"), 0.9)
         and isinstance(metrics.get("multi_turn_failures"), list) and not metrics["multi_turn_failures"]
     )
     outputs_complete = len(outputs) == 24 and all(
