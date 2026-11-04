@@ -375,7 +375,7 @@ test('public home showcase is visible only after explicit opt-in',async()=>{
  }};
  const account={id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'};
  const response=res();
- assert.equal(await handlePublicSiteRequest(request('/maceraci/ev?guildId=1539562273197260860&userId='+profile.user_id,account),response,{db}),true);
+ assert.equal(await handlePublicSiteRequest({method:'GET',url:'/maceraci/ev?guildId=1539562273197260860&userId='+profile.user_id,headers:{}},response,{db}),true);
  assert.equal(response.status,200);
  assert.match(response.body,/Topluluk Ev Vitrini/);
  assert.match(response.body,/Fern/);
