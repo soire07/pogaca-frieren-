@@ -37,7 +37,16 @@ for (const scenario of scenarios) {
       }));
       if (!layout.viewport || !layout.form) throw new Error(scenario.name + ' ' + route + ' missing mobile viewport or form');
       const authFields = await page.locator('input[name="csrf"]').count();
-      if (!authFields) throw new Error(scenario.name + ' ' + route + ' missing CSRF-protected form');
+      if (!authFields) {
+        const diagnostics = await page.evaluate(() => ({
+          title: document.title,
+          url: location.href,
+          forms: [...document.forms].map(form => form.getAttribute('action')),
+          inputs: [...document.querySelectorAll('input')].map(input => ({ name: input.name, type: input.type })),
+          body: document.body.innerText.slice(0, 240)
+        }));
+        throw new Error(scenario.name + ' ' + route + ' missing CSRF-protected form: ' + JSON.stringify(diagnostics));
+      }
       if (layout.documentWidth > layout.width + 1) throw new Error(scenario.name + ' ' + route + ' horizontal overflow: ' + layout.documentWidth + ' > ' + layout.width);
       if (layout.controls.some(control => control.left < -1 || control.right > layout.width + 1 || control.height < 44)) {
         throw new Error(scenario.name + ' ' + route + ' has clipped or undersized controls: ' + JSON.stringify(layout.controls));
