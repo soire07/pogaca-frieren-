@@ -46,9 +46,10 @@ export default {
           startsAt: interaction.options.getString('baslangic'),
           endsAt: interaction.options.getString('bitis'),
           description: interaction.options.getString('aciklama') || '',
-          maxParticipants: interaction.options.getInteger('kapasite')
+          maxParticipants: interaction.options.getInteger('kapasite'),
+          channelId: interaction.channelId
         });
-        return interaction.reply({ content: `Etkinlik oluşturuldu. Kimlik: \`${result.eventId}\`\nKayıtlar **/etkinlik katil** ile açıldı.`, flags: MessageFlags.Ephemeral });
+        return interaction.reply({ content: `Etkinlik oluşturuldu. Başlangıçtan 30 dakika önce bu kanalda hatırlatma gönderilecek. Kimlik: \`${result.eventId}\`\nKayıtlar **/etkinlik katil** ile açıldı.`, flags: MessageFlags.Ephemeral });
       } catch (error) {
         if (error.message === 'EVENT_INPUT_INVALID') return interaction.reply({ content: 'Başlık ve tarihleri kontrol et. Başlangıç gelecekte olmalı; bitiş başlangıçtan sonra gelmeli ve ISO 8601 saat dilimi içermeli.', flags: MessageFlags.Ephemeral });
         throw error;

@@ -35,6 +35,28 @@ function validReport() {
   };
 }
 
+function validEvolutionPlan(report) {
+  return {
+    schema_version: 1,
+    status: 'eligible_for_guard_review',
+    mode: 'guardian_supervised',
+    gates: {
+      ci_passed: true,
+      quality_ready: true,
+      quality_thresholds_passed: true,
+      benchmark_outputs_complete: true,
+      baseline_improved: true,
+      review_policy_valid: true,
+      provenance_valid: true,
+    },
+    tasks: [],
+    requires_guard_review: true,
+    apply_changes: false,
+    source_commit_sha: report.source_commit_sha,
+    artifact_sha256: report.artifact_sha256,
+  };
+}
+
 function request(body, { authorization = 'Bearer ' + OIDC, githubToken = TOKEN, contentType = 'application/json', url = '/internal/neural-quality-report' } = {}) {
   const bytes = Buffer.isBuffer(body) ? body : Buffer.from(typeof body === 'string' ? body : JSON.stringify(body));
   return {
@@ -132,4 +154,62 @@ test('Neural report endpoint fails closed when Guardian storage is unavailable',
   const result = await handleNeuralQualityReportRequest(request(validReport()), deps.options);
   assert.equal(result.status, 500);
   assert.equal(result.payload.error, 'guardian_report_storage_failed');
+});
+
+test('Guardian accepts a bounded proposal-only evolution plan with matching provenance', async () => {
+  const deps = dependencies();
+  const report = validReport();
+  report.evolution_plan = validEvolutionPlan(report);
+  const result = await handleNeuralQualityReportRequest(request(report), deps.options);
+  assert.equal(result.status, 202);
+  assert.equal(deps.saved.length, 1);
+  assert.equal(deps.saved[0].report.evolution_plan.apply_changes, false);
+  assert.equal(deps.saved[0].report.evolution_plan.requires_guard_review, true);
+});
+
+test('Guardian rejects an evolution plan that authorizes automatic changes', async () => {
+  const deps = dependencies();
+  const report = validReport();
+  report.evolution_plan = validEvolutionPlan(report);
+  report.evolution_plan.apply_changes = true;
+  const result = await handleNeuralQualityReportRequest(request(report), deps.options);
+  assert.equal(result.status, 422);
+  assert.ok(result.payload.reasons.includes('EVOLUTION_PLAN_AUTOMATIC_APPLY_FORBIDDEN'));
+  assert.equal(deps.saved.length, 0);
+});
+
+test('Guardian rejects evolution plans with mismatched commit or artifact fingerprints', async () => {
+  for (const field of ['source_commit_sha', 'artifact_sha256']) {
+    const deps = dependencies();
+    const report = validReport();
+    report.evolution_plan = validEvolutionPlan(report);
+    report.evolution_plan[field] = field === 'source_commit_sha' ? 'e'.repeat(40) : 'f'.repeat(64);
+    const result = await handleNeuralQualityReportRequest(request(report), deps.options);
+    assert.equal(result.status, 422);
+    assert.equal(deps.saved.length, 0);
+  }
+});
+
+test('Guardian rejects an eligible plan when the quality report is not ready', async () => {
+  const deps = dependencies();
+  const report = validReport();
+  report.decision = 'NOT READY';
+  report.blocking_reasons = ['human_review_missing'];
+  report.evolution_plan = validEvolutionPlan(report);
+  const result = await handleNeuralQualityReportRequest(request(report), deps.options);
+  assert.equal(result.status, 422);
+  assert.ok(result.payload.reasons.includes('EVOLUTION_PLAN_ELIGIBILITY_NOT_SUPPORTED'));
+  assert.equal(deps.saved.length, 0);
+});
+
+test('Guardian refuses to store a plan claiming CI success when matching CI evidence is unavailable', async () => {
+  const deps = dependencies({
+    fetchImpl: async () => ({ ok: true, json: async () => ({ workflow_runs: [] }) }),
+  });
+  const report = validReport();
+  report.evolution_plan = validEvolutionPlan(report);
+  const result = await handleNeuralQualityReportRequest(request(report), deps.options);
+  assert.equal(result.status, 422);
+  assert.equal(result.payload.error, 'evolution_plan_ci_evidence_unverified');
+  assert.equal(deps.saved.length, 0);
 });

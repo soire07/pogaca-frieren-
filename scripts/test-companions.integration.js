@@ -1,0 +1,75 @@
+import test,{before,after} from 'node:test';
+import assert from 'node:assert/strict';
+import {pool,initDatabase} from '../database/db.js';
+import {adoptCompanion,careForCompanion,equipCompanionCosmetic,getCompanion,initCompanionSchema} from '../companions.js';
+const guild='companion-audit-guild',user='companion-audit-user',poorUser='companion-audit-poor',lockUser='companion-audit-lock';
+before(async()=>{
+ await initDatabase();await initCompanionSchema(pool);
+ await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id IN ($2,$3,$4)',[guild,user,poorUser,lockUser]);
+ await pool.query('INSERT INTO users(guild_id,user_id,coins) VALUES($1,$2,1000),($1,$3,0),($1,$4,1000)',[guild,user,poorUser,lockUser]);
+});
+after(async()=>{await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id IN ($2,$3,$4)',[guild,user,poorUser,lockUser]);await pool.end();});
+test('concurrent adoption charges once and persists exactly one companion',async()=>{
+ const results=await Promise.all([
+  adoptCompanion(pool,{guildId:guild,userId:user,companionKey:'flamme_fox'}),
+  adoptCompanion(pool,{guildId:guild,userId:user,companionKey:'moon_owl'})
+ ]);
+ assert.equal(results.filter(x=>x.status==='adopted').length,1);
+ assert.equal(results.filter(x=>x.status==='already_has_companion').length,1);
+ const balance=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);
+ assert.equal(Number(balance.rows[0].coins),1000-results.find(x=>x.status==='adopted').companion.cost);
+ assert.ok(await getCompanion(pool,guild,user));
+});
+test('companion care serializes cooldowns, bounds stats and charges training atomically',async()=>{
+ const beforeBalance=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);
+ const trained=await Promise.all([
+  careForCompanion(pool,{guildId:guild,userId:user,action:'train'}),
+  careForCompanion(pool,{guildId:guild,userId:user,action:'train'})
+ ]);
+ assert.equal(trained.filter(x=>x.status==='cared').length,1);
+ assert.equal(trained.filter(x=>x.status==='cooldown').length,1);
+ const pet=await getCompanion(pool,guild,user);
+ assert.equal(Number(pet.xp),25);assert.equal(Number(pet.level),1);
+ assert.ok(pet.happiness>=0&&pet.happiness<=100);
+ assert.ok(pet.energy>=0&&pet.energy<=100);
+ assert.ok(pet.hunger>=0&&pet.hunger<=100);
+ const balance=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);
+ assert.equal(Number(balance.rows[0].coins),Number(beforeBalance.rows[0].coins)-100);
+});
+test('insufficient funds and missing companion do not mutate player state',async()=>{
+ const noPet=await careForCompanion(pool,{guildId:guild,userId:poorUser,action:'feed'});
+ assert.equal(noPet.status,'no_companion');
+ const adoption=await adoptCompanion(pool,{guildId:guild,userId:poorUser,companionKey:'flamme_fox'});
+ assert.equal(adoption.status,'insufficient_funds');
+ const balance=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,poorUser]);
+ assert.equal(Number(balance.rows[0].coins),0);
+});
+
+test('companion cosmetics charge once, can be re-equipped free and can be reset',async()=>{
+ const before=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);
+ const first=await equipCompanionCosmetic(pool,{guildId:guild,userId:user,cosmeticKey:'starlight_ribbon'});
+ assert.equal(first.status,'equipped');
+ const afterPurchase=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);
+ assert.equal(Number(afterPurchase.rows[0].coins),Number(before.rows[0].coins)-250);
+ const again=await equipCompanionCosmetic(pool,{guildId:guild,userId:user,cosmeticKey:'starlight_ribbon'});
+ assert.equal(again.status,'equipped');assert.equal(again.alreadyOwned,true);
+ const afterAgain=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);
+ assert.equal(Number(afterAgain.rows[0].coins),Number(afterPurchase.rows[0].coins));
+ assert.equal((await getCompanion(pool,guild,user)).cosmetic.key,'starlight_ribbon');
+ assert.equal((await equipCompanionCosmetic(pool,{guildId:guild,userId:user,cosmeticKey:'default'})).status,'equipped');
+ assert.equal((await getCompanion(pool,guild,user)).cosmetic,null);
+});
+
+
+test('concurrent companion training and cosmetic equip complete with a consistent lock order',async()=>{
+ const adopted=await adoptCompanion(pool,{guildId:guild,userId:lockUser,companionKey:'flamme_fox'});
+ assert.equal(adopted.status,'adopted');
+ const results=await Promise.all([
+  careForCompanion(pool,{guildId:guild,userId:lockUser,action:'train'}),
+  equipCompanionCosmetic(pool,{guildId:guild,userId:lockUser,cosmeticKey:'frost_cloak'})
+ ]);
+ assert.equal(results[0].status,'cared');
+ assert.equal(results[1].status,'equipped');
+ const balance=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guild,lockUser]);
+ assert.equal(Number(balance.rows[0].coins),1000-adopted.companion.cost-100-400);
+});

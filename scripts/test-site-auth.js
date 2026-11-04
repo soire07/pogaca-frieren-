@@ -2,11 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   validateSiteUsername, validateSiteEmail, validateSiteLoginIdentifier, hashSitePassword, verifySitePassword,
-  createSiteCsrfToken, verifySiteCsrfToken, consumeSmtpBuffer, smtpFailureDetails, sendGmailApi, handleSiteAuthRequest
+  createSiteCsrfToken, verifySiteCsrfToken, consumeSmtpBuffer, smtpFailureDetails, sendGmailApi, handleSiteAuthRequest, isSameOriginRequest
 } from '../site-auth.js';
 import { createPublicSiteSession, readPublicSiteSession } from '../owner-dashboard.js';
 
 const secret = 'site-auth-test-secret-with-at-least-32-characters';
+
+test('same-origin request guard accepts the configured site host and rejects cross-site origins', () => {
+  assert.equal(isSameOriginRequest({ headers: { origin: 'https://site.example', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), true);
+  assert.equal(isSameOriginRequest({ headers: { origin: 'https://evil.example', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), false);
+  assert.equal(isSameOriginRequest({ headers: { 'sec-fetch-site': 'cross-site', origin: 'https://site.example', host: 'site.example' } }, 'https://site.example'), false);
+  assert.equal(isSameOriginRequest({ headers: {} }, 'https://site.example'), true);
+});
+
 
 function response() {
   return { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body) { this.body = body; } };
