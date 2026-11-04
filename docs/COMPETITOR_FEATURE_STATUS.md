@@ -1,7 +1,7 @@
 # Rakip Özellik Backlog'u — Mevcut Kodla İlk Eşleştirme
 
 > Denetim tarihi: 2026-11-04  
-> İncelenen kod tabanı: `fix/solo-boss-reward-idempotency-mainline` @ `8cdc98d17aa47d3a3c9aa70626c32dbf1174dea6` (kod); güncel envanter 2.017 kayıt / 342 mevcut / 1.675 planlı  
+> İncelenen kod tabanı: `fix/solo-boss-reward-idempotency-mainline` @ `99d25d0b72fb0052bd2aa2adc89c61db95a706be` (kod); güncel envanter 2.018 kayıt / 343 mevcut / 1.675 planlı  
 > Kaynak listeler: `docs/COMPETITOR_FEATURE_MATRIX.md`, `docs/ENTERTAINMENT_FEATURE_BACKLOG.md`  
 > Bu belge ilk kaynak/test eşleştirmesidir; canlı Discord doğrulaması veya tamamlanma beyanı değildir.
 
@@ -11,7 +11,7 @@
 
 ### Envanter sayacı
 
-Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal portalı için kanıt bağlantılı kayıtlar eklendi: **2.017 toplam kayıt = 342 mevcut/kod karşılığı olan özellik + 1.675 planlanan aday**. `auditComplete=false` korunuyor; 1.675 roadmap kaydı planlı kalıyor.
+Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal portalı için kanıt bağlantılı kayıtlar eklendi: **2.018 toplam kayıt = 343 mevcut/kod karşılığı olan özellik + 1.675 planlanan aday**. `auditComplete=false` korunuyor; 1.675 roadmap kaydı planlı kalıyor.
 
 ### Bu dalda taşınan / bağlanan modüller
 
@@ -224,3 +224,11 @@ Bu liste, sonraki uygulama grubunun tekrar yazılmaması gereken kontrol noktas�
 | ENT-040 | Olta geliştirme ve sarf yem ekonomisi | PR #217 içinde eklendi / doğrulama gerekli | `fishing.js`, `balik.js`; Ahşap → Buz Kristali → Mana Dokuma olta, 3 yem türü, bölgesel ağırlık bonusları, altın/yem transaction'ları ve avda stok tüketimi. `scripts/test-fishing.js` + `scripts/test-fishing.integration.js`; canlı Discord doğrulaması bekliyor. |
 
 | ARENA-005 | 1v1/3v3 düello ve element tabanlı savaş | PR #217 içinde eklendi / doğrulama gerekli | `arena-engine.js`, `arena-queue.js`, `arena.js`; mod bazlı ayrı kuyruklar, element seçimi ve hasar çarpanları. Birim, komut sözleşmesi ve izole PostgreSQL testleri eklendi; canlı Discord doğrulaması bekliyor. |
+
+
+## Son kaynak uzlaştırması — 2026-11-04
+
+- Güncel PR #217 kod başlığı `99d25d0b72fb0052bd2aa2adc89c61db95a706be` ve `feature-inventory.json` doğrulaması: **2.018 kayıt = 343 `implemented_needs_runtime_test` + 1.675 `planned`**. Bu, 343 özelliğin canlı doğrulandığı anlamına gelmez.
+- Bu dosyanın önceki paragraflarındaki 2.017/342 sayıları ve eski ENT-015/ENT-016 gibi durum cümleleri tarihsel ilk eşleştirmedir. Güncel kod davranışı için güncel envanter, `arena.js`, `arena-engine.js`, `arena-queue.js` ve bunların testleri esas alınmalıdır. 1v1/3v3 kuyruk ve element mekaniği artık kod/test kanıtına bağlanmıştır; canlı Discord/Render akışı yine doğrulanmamıştır.
+- PR #217'nin en son commit'i için altı GitHub Actions workflow'u tamamlanmış ve başarılı görünmektedir. Bu, 99d25d0 commit'indeki tüm test sayılarının veya canlı etkileşimlerin bağımsız kanıtı değildir; ayrıntılı test sayıları yalnızca ilgili workflow log/artifact çıktısından alınmalıdır.
+- Güncel envanterdeki 343 kayıt `implemented_needs_runtime_test` durumundadır; 1.675 roadmap kaydı planlıdır. Hiçbiri bu notla otomatik olarak `live_verified` sayılmaz.
