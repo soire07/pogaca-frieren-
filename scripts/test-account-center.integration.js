@@ -135,8 +135,8 @@ test('account export includes linked game and support data while excluding secre
     assert.ok(exported.linkedProfiles[0].gameData.users?.some(row=>row.guild_id===guildId&&row.user_id===ownerUser),'the linked Discord user row must be present as the FK traversal root');
     const noteForeignKey=await pool.query(
       "SELECT child.relname AS child_table,parent.relname AS parent_table,"+
-      "ARRAY_AGG(child_column.attname ORDER BY child_key.ordinality) AS child_columns,"+
-      "ARRAY_AGG(parent_column.attname ORDER BY child_key.ordinality) AS parent_columns "+
+      "ARRAY_AGG(child_column.attname::text ORDER BY child_key.ordinality) AS child_columns,"+
+      "ARRAY_AGG(parent_column.attname::text ORDER BY child_key.ordinality) AS parent_columns "+
       "FROM pg_constraint relation JOIN pg_class child ON child.oid=relation.conrelid "+
       "JOIN pg_namespace child_schema ON child_schema.oid=child.relnamespace "+
       "JOIN pg_class parent ON parent.oid=relation.confrelid JOIN pg_namespace parent_schema ON parent_schema.oid=parent.relnamespace "+
@@ -148,6 +148,8 @@ test('account export includes linked game and support data while excluding secre
       "AND child.relname='account_export_fk_player_notes' GROUP BY child.relname,parent.relname,relation.oid"
     );
     assert.equal(noteForeignKey.rowCount,1,'the composite user foreign key must be visible to the export query');
+    assert.deepEqual(noteForeignKey.rows[0].child_columns,['guild_id','player_ref']);
+    assert.deepEqual(noteForeignKey.rows[0].parent_columns,['guild_id','user_id']);
     assert.deepEqual(noteForeignKey.rows[0].child_columns,['guild_id','player_ref']);
     assert.deepEqual(noteForeignKey.rows[0].parent_columns,['guild_id','user_id']);
     const directNote=await pool.query('SELECT 1 FROM account_export_fk_player_notes WHERE guild_id::text=$1 AND player_ref::text=$2',[guildId,ownerUser]);
