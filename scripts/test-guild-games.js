@@ -56,7 +56,10 @@ function fakeGameDb({ session, alreadyAnswered = false, failScore = false }) {
     async query(sql, params = []) {
       calls.push({ sql, params });
       if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rowCount: 0, rows: [] };
-      if (sql.startsWith('SELECT session_id,guild_id,channel_id')) return { rowCount: session ? 1 : 0, rows: session ? [session] : [] };
+      if (sql.startsWith('SELECT session_id,guild_id,channel_id')) {
+        const matches = session && session.guild_id === params[1] && session.channel_id === params[2];
+        return { rowCount: matches ? 1 : 0, rows: matches ? [session] : [] };
+      }
       if (sql.startsWith('UPDATE guild_game_sessions')) return { rowCount: 1, rows: [] };
       if (sql.startsWith('INSERT INTO guild_game_answers')) return { rowCount: alreadyAnswered ? 0 : 1, rows: alreadyAnswered ? [] : [{ correct: params[4] }] };
       if (sql.includes('INSERT INTO guild_game_scores')) {
