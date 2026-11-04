@@ -2,7 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { initDatabase, pool, ensureUser } from '../database/db.js';
-import { ensureGuildTeamLeagueSchema } from '../guild-team-leagues.js';
+import {
+  ensureGuildTeamLeagueSchema, createGuildTeam, joinGuildTeam, createGuildTeamLeague,
+  registerGuildTeamForLeague, scheduleGuildTeamLeague, reportGuildTeamFixtureScore,
+  getGuildTeamLeagueDashboard
+} from '../guild-team-leagues.js';
 import {
   ensureAdventurerPlatformTables, ensureActiveArenaSeason, settleArenaMatch, createGuildEvent, joinGuildEvent,
   leaveGuildEvent, listGuildEvents, claimDueGuildEventReminders, markGuildEventReminderSent, releaseGuildEventReminderClaim, createSiteLinkToken, redeemSiteLinkToken, getAdventurerDashboard, getAdventurerInventory
@@ -309,5 +313,65 @@ test('scheduled boss raid events preserve their type and appear in the guild cal
     );
   } finally {
     if (eventId) await pool.query('DELETE FROM guild_events WHERE event_id=$1', [eventId]);
+  }
+});
+
+test('guild teams, raid signup and league fixtures persist real UUID relationships and settle standings once', async () => {
+  assertIsolatedAuditDatabase();
+  await initDatabase();
+  await ensureAdventurerPlatformTables(pool);
+  await ensureGuildTeamLeagueSchema(pool);
+  const guildId='99000000000000120';
+  const users=makeIds('73000000000000000',4);
+  for(const userId of users) await ensureUser(guildId,userId);
+  const [captainA,memberA,captainB,memberB]=users;
+  let teamA,teamB,leagueId,eventId;
+  try {
+    const createdA=await createGuildTeam(pool,{guildId,captainId:captainA,name:'İzole Fern Takımı'});
+    const createdB=await createGuildTeam(pool,{guildId,captainId:captainB,name:'İzole Himmel Takımı'});
+    assert.equal(createdA.status,'created');
+    assert.equal(createdB.status,'created');
+    teamA=createdA.team.team_id;
+    teamB=createdB.team.team_id;
+    assert.equal((await joinGuildTeam(pool,{guildId,userId:memberA,teamId:teamA})).status,'joined');
+    assert.equal((await joinGuildTeam(pool,{guildId,userId:memberB,teamId:teamB})).status,'joined');
+
+    const start=new Date(Date.now()+60*60_000).toISOString();
+    const end=new Date(Date.now()+3*60*60_000).toISOString();
+    eventId=(await createGuildEvent(pool,{guildId,createdBy:captainA,title:'UUID Takım Baskını',description:'Gerçek takım bağlantısı',eventType:'boss_raid',startsAt:start,endsAt:end,maxParticipants:10})).eventId;
+    const raidJoin=await joinGuildEvent(pool,{guildId,eventId,userId:memberA,teamId:teamA});
+    assert.equal(raidJoin.status,'joined');
+    assert.equal(raidJoin.teamId,teamA);
+    assert.equal((await joinGuildEvent(pool,{guildId,eventId,userId:memberA,teamId:teamA})).status,'already_joined');
+    assert.equal((await joinGuildEvent(pool,{guildId,eventId,userId:memberB,teamId:teamA})).status,'not_team_member');
+    const savedParticipant=await pool.query('SELECT team_id FROM guild_event_participants WHERE event_id=$1 AND user_id=$2',[eventId,memberA]);
+    assert.equal(savedParticipant.rows[0].team_id,teamA);
+
+    const league=await createGuildTeamLeague(pool,{guildId,creatorId:captainA,name:'İzole Sezon',startsAt:start,endsAt:end});
+    leagueId=league.league_id;
+    assert.equal((await registerGuildTeamForLeague(pool,{guildId,teamId:teamA,leagueId,actorId:captainA})).status,'registered');
+    assert.equal((await registerGuildTeamForLeague(pool,{guildId,teamId:teamB,leagueId,actorId:captainB})).status,'registered');
+    const scheduled=await scheduleGuildTeamLeague(pool,{guildId,leagueId,actorId:captainA,startsAt:start,intervalDays:7});
+    assert.equal(scheduled.status,'scheduled');
+    assert.equal(scheduled.fixtureCount,1);
+    const fixture=scheduled.fixtures[0];
+    const homeCaptain=fixture.homeTeamId===teamA?captainA:captainB;
+    const awayCaptain=fixture.awayTeamId===teamA?captainA:captainB;
+    const first=await reportGuildTeamFixtureScore(pool,{guildId,fixtureId:fixture.fixtureId,teamId:fixture.homeTeamId,actorId:homeCaptain,ownScore:2,opponentScore:1});
+    assert.equal(first.status,'awaiting_confirmation');
+    const second=await reportGuildTeamFixtureScore(pool,{guildId,fixtureId:fixture.fixtureId,teamId:fixture.awayTeamId,actorId:awayCaptain,ownScore:1,opponentScore:2});
+    assert.equal(second.status,'completed');
+    assert.equal((await reportGuildTeamFixtureScore(pool,{guildId,fixtureId:fixture.fixtureId,teamId:fixture.homeTeamId,actorId:homeCaptain,ownScore:2,opponentScore:1})).status,'unavailable');
+    const dashboard=await getGuildTeamLeagueDashboard(pool,guildId,leagueId);
+    assert.equal(dashboard.fixtures.length,1);
+    assert.equal(dashboard.fixtures[0].status,'completed');
+    assert.equal(Number(dashboard.table.find(row=>row.team_id===teamA).points),3);
+    assert.equal(Number(dashboard.table.find(row=>row.team_id===teamB).points),0);
+    assert.equal(await getGuildTeamLeagueDashboard(pool,'99000000000000121',leagueId),null);
+  } finally {
+    if(eventId) await pool.query('DELETE FROM guild_events WHERE event_id=$1',[eventId]);
+    if(leagueId) await pool.query('DELETE FROM guild_team_leagues WHERE league_id=$1',[leagueId]);
+    if(teamA||teamB) await pool.query('DELETE FROM guild_teams WHERE guild_id=$1 AND team_id=ANY($2::uuid[])',[guildId,[teamA,teamB].filter(Boolean)]);
+    await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[guildId,users]);
   }
 });
