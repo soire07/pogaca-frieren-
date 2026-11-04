@@ -56,7 +56,7 @@ test('Discord OAuth state is self-verifying without a browser cookie', async () 
 test('owner session accepts a valid signed session for the configured owner', () => {
   const token = createOwnerSession(secret, 2_000);
   assert.equal(verifyOwnerSession(token, secret, 1_000), true);
-  assert.equal(JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString()).mfa, true);
+  assert.equal(JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString()).ownerOAuth, true);
 });
 
 test('owner session rejects expired sessions', () => {
@@ -662,7 +662,7 @@ test('owner navigation provides a safe public-site preview shortcut', () => {
 });
 
 
-test('Discord owner OAuth requires TOTP enrollment before issuing an owner session', async () => {
+test('Discord owner OAuth issues the owner session directly without an authenticator challenge', async () => {
   const previous = {
     CLIENT_ID: process.env.CLIENT_ID,
     DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
@@ -675,14 +675,10 @@ test('Discord owner OAuth requires TOTP enrollment before issuing an owner sessi
   globalThis.fetch = async url => String(url).includes('/oauth2/token')
     ? { ok: true, json: async () => ({ access_token: 'temporary-discord-access-token' }) }
     : { ok: true, json: async () => ({ id: ownerId, username: 'owner', avatar: null }) };
-  let pendingSettings = null;
-  const db = { query: async (sql, params = []) => {
-    if (sql.includes("SELECT setting_value FROM owner_settings")) return { rows: [] };
-    if (sql.includes("INSERT INTO owner_settings") && sql.includes("'owner_totp'")) {
-      pendingSettings = JSON.parse(params[0]);
-      return { rows: [], rowCount: 1 };
-    }
-    throw new Error('Unexpected database query in owner OAuth test');
+  const dbQueries = [];
+  const db = { query: async (sql) => {
+    dbQueries.push(String(sql));
+    throw new Error('Owner OAuth must not require TOTP database state');
   } };
   const req = new EventEmitter();
   req.method = 'GET';
@@ -691,13 +687,16 @@ test('Discord owner OAuth requires TOTP enrollment before issuing an owner sessi
   const response = { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body = '') { this.body = body; } };
   try {
     await handleOwnerDashboardRequest(req, response, { client: {}, db });
-    assert.equal(response.status, 302);
-    assert.equal(response.headers.Location, '/owner/setup-2fa');
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.Location, '/owner');
     assert.ok(Array.isArray(response.headers['Set-Cookie']));
-    assert.ok(response.headers['Set-Cookie'].some(cookie => cookie.startsWith('frieren_owner_second_factor=')));
-    assert.ok(!response.headers['Set-Cookie'].some(cookie => cookie.startsWith('frieren_owner_session=')));
-    assert.equal(pendingSettings.enabled, false);
-    assert.equal(pendingSettings.pendingSecret.split('.').length, 3);
+    assert.ok(response.headers['Set-Cookie'].some(cookie => cookie.startsWith('frieren_owner_session=') && /SameSite=Lax/.test(cookie)));
+    assert.ok(response.headers['Set-Cookie'].some(cookie => cookie.startsWith('frieren_site_session=')));
+    assert.ok(response.headers['Set-Cookie'].some(cookie => cookie.startsWith('frieren_owner_second_factor=') && /Max-Age=0/.test(cookie)));
+    assert.equal(dbQueries.length, 0);
+    const ownerCookie = response.headers['Set-Cookie'].find(cookie => cookie.startsWith('frieren_owner_session='));
+    const token = decodeURIComponent(ownerCookie.split(';')[0].slice('frieren_owner_session='.length));
+    assert.equal(verifyOwnerSession(token, secret), true);
   } finally {
     globalThis.fetch = previousFetch;
     for (const [key, value] of Object.entries(previous)) {
