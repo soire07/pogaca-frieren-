@@ -217,3 +217,14 @@ test('password reset request returns the same generic response without exposing 
     else process.env.SITE_SMTP_APP_PASSWORD = previousPassword;
   }
 });
+
+
+test('site account required notice is shown when a Discord-only session opens the player portal', async () => {
+  const res = response();
+  assert.equal(await handleSiteAuthRequest({ method: 'GET', url: '/login?status=site_account_required', headers: {} }, res, {
+    db: fakeDb(), sessionSecret: secret, createSession: createPublicSiteSession
+  }), true);
+  assert.equal(res.status, 200);
+  assert.match(res.body, /Maceracı paneli için önce Frieren web hesabınla giriş yap/);
+  assert.match(res.body, /href="\\/register"/);
+});
