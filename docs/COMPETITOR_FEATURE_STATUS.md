@@ -222,3 +222,5 @@ Bu liste, sonraki uygulama grubunun tekrar yazılmaması gereken kontrol noktas�
 | ENT-039 | Lonca Oyun Salonu — bilgi, kelime, hafıza ve bilmece | PR #217 içinde eklendi / doğrulama gerekli | `guild-games.js`, `loncaoyun.js`; ortak 60 saniyelik tur, tek cevap, guild/channel izolasyonu, kalıcı skor ve sıralama. Unit + izole PostgreSQL testleri eklendi; canlı Discord slash komut kaydı ve gerçek kullanıcı akışı henüz doğrulanmadı. |
 
 | ENT-040 | Olta geliştirme ve sarf yem ekonomisi | PR #217 içinde eklendi / doğrulama gerekli | `fishing.js`, `balik.js`; Ahşap → Buz Kristali → Mana Dokuma olta, 3 yem türü, bölgesel ağırlık bonusları, altın/yem transaction'ları ve avda stok tüketimi. `scripts/test-fishing.js` + `scripts/test-fishing.integration.js`; canlı Discord doğrulaması bekliyor. |
+
+| ARENA-005 | 1v1/3v3 düello ve element tabanlı savaş | PR #217 içinde eklendi / doğrulama gerekli | `arena-engine.js`, `arena-queue.js`, `arena.js`; mod bazlı ayrı kuyruklar, element seçimi ve hasar çarpanları. Birim, komut sözleşmesi ve izole PostgreSQL testleri eklendi; canlı Discord doğrulaması bekliyor. |
