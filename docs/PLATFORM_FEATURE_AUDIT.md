@@ -2,16 +2,16 @@
 
 ## Güncel ek denetim — 2026-11-04
 
-Bu bölüm, 2026-11-01 tarihli başlangıç notunu entegrasyon dalı `feat/frieren-platform-expansion-batch` için günceller; bu dal ana dala merge edilmiş değildir.
+Bu bölüm, 2026-11-01 tarihli başlangıç notunu PR #217 üzerindeki güncel bütünleşik onarım dalı `fix/solo-boss-reward-idempotency-mainline` için günceller; PR hâlâ taslaktır ve ana dala merge edilmemiştir.
 
 - Özellik envanteri: **2.015 kayıt**; **340 mevcut/kod karşılığı olan kayıt** ve **1.675 planlı roadmap adayı**.
 - `auditComplete=false` korunuyor. Kod/test kanıtı canlı Discord veya canlı web doğrulaması yerine geçmez.
-- Yeni kanıt bağlantılı kayıtlar: ENT-031–ENT-037 ve WEB-016–WEB-017.
+- Yeni kanıt bağlantılı kayıtlar: ENT-031–ENT-037, WEB-016–WEB-017 ve SOCIAL-005.
 - Rakip karşılaştırması Dyno, MEE6, Carl-bot, Tatsu ve UnbelievaBoat resmî sayfalarıyla güncellendi; kaynaklar ve ücretsiz/premium sınır notları `docs/COMPETITOR_FEATURE_MATRIX.md` içinde.
 - Poğaça modülleri: yoldaş, balıkçılık, sera, yaratık arşivi, karakter wishlist, Anime Quiz kalıcı puan ve Lonca etkinlik hatırlatmaları.
-- Web modülleri: Discord OAuth bağlantısı, yetkili sunucu seçimi, sunucu bazlı Frieren modül anahtarları, bağlı karakterin envanter/ekipman görünümü (`/maceraci/envanter`), escrow tabanlı oyuncu pazarı (`/pazar`) ve etkinlik RSVP/ayrılma formları (`/maceraci`).
-- Son tam bot kontrolü **725/725** test ve **31/31** komut senaryosu ile başarılı; slash command doğrulaması ve Owner Panel testleri başarılı. İzole PostgreSQL denetiminin önceki tamamlanmış sonucu **82/82** idi; yeni web envanteri/RSVP entegrasyon testi genişletilmiş denetim paketine eklendi. Bu testler canlı Discord/web tarayıcı doğrulaması değildir.
-- PR #219, PR #217 üzerine yığılmış taslak PR'dır. Merge, Render deploy, Discord komut kaydı ve üretim DB değişikliği yapılmadı.
+- Web modülleri: Discord OAuth bağlantısı, yetkili sunucu seçimi, sunucu bazlı Frieren modül anahtarları, bağlı karakterin envanter/ekipman/koleksiyon görünümü (`/maceraci/envanter`, `/maceraci/koleksiyon`), escrow tabanlı oyuncu pazarı (`/pazar`), etkinlik RSVP/ayrılma formları (`/maceraci`) ve arkadaş/rakip/istek/itibar işlemleri (`/maceraci/sosyal`).
+- Güncel HEAD `8cdc98d17aa47d3a3c9aa70626c32dbf1174dea6` için **748/748** ana bot testi, **31/31** komut senaryosu ve **89/89** izole PostgreSQL entegrasyon senaryosu başarılı; Frieren AI CI, Owner Panel testleri/performance checks ve slash-command validation da başarılı. Bu testler canlı Discord/web tarayıcı doğrulaması değildir.
+- PR #217 açık taslak durumundadır. Merge, Render deploy, Discord komut kaydı ve üretim DB değişikliği yapılmadı.
 
 Son denetim: 2026-11-01  
 Kapsam: Poğaça Frieren, Frieren AI ve Frieren Owner Panel / web sitesi.  
@@ -43,7 +43,7 @@ Bu belge bir başlangıç envanteridir; tamamlanma beyanı değildir. Özellik, 
 ### Kanıt ve sınır
 - Rakip bot/web karşılaştırmasından gelen 10 ek kayıt (`ENT-031–038`, `WEB-016–017`) eklendi. Bunlar kodda mevcut işlevleri temsil eder; canlı Discord/web akışlarının tamamı doğrulanmış değildir.
 - Depodaki `feature-inventory.json` 340 mevcut özellik kaydı içeriyor; toplam 2.015 kayıt (340 mevcut + 1.675 planlanan); başlangıç hedefi 2.000. Planlanan 1.675 satır, normalize edildiğinde 325 temel yetenek grubuna ayrılıyor: 225 grup yedi işlem fiiliyle (1.575 satır), 50 tek işlemli ve 50 fiilsiz tekil kayıt. Ayrıntı: `docs/ROADMAP_CAPABILITY_INDEX.md`.
-- Envanterin `auditComplete` alanı `false`. Bu nedenle 335 sayısı tüm bot özelliklerinin eksiksiz envanteri değildir.
+- Envanterin `auditComplete` alanı `false`. Bu nedenle 340 kayıt sayısı tüm bot özelliklerinin eksiksiz envanteri değildir.
 - 340 kaydın tamamı `implemented_needs_runtime_test` durumunda. Bu, kaynakta uygulama bulunduğunu belirtir; her özelliğin canlı Discord'da gerçek kullanıcıyla uçtan uca doğrulandığını göstermez.
 - 2026-11-04 doğrulaması: 748/748 ana bot testi, 31/31 komut senaryosu ve 89/89 izole PostgreSQL entegrasyon senaryosu başarılı. Frieren AI CI, Owner Panel testleri/performance checks ve slash-command validation da başarılı. Bunlar sentetik Discord etkileşimleri ve izole test veritabanı kullanır; gerçek kullanıcı hesabıyla manuel Discord veya canlı tarayıcı testi değildir.
 - Moderasyon ve genel sunucu yönetimi Poğaça'nın hedef kapsamı değildir.
@@ -111,4 +111,4 @@ Bu belge bir başlangıç envanteridir; tamamlanma beyanı değildir. Özellik, 
 
 ## Başlangıç durumu
 
-Bu denetimde yeni özellik kodu PR #219 taslağına eklendi; üretim verisi değiştirilmedi ve canlı dağıtım yapılmadı. CI kanıtı: önceki doğrulanmış dal noktasında 715/715 ana bot testi, 31/31 komut senaryosu ve 82/82 izole PostgreSQL entegrasyon testi. Güncel HEAD için yeni PostgreSQL genişletilmiş denetimi henüz çalışıyor. Canlı Discord ve Render doğrulaması merge/deploy sonrasına bırakılmıştır.
+Güncel uygulama PR #217 taslağında tutuluyor; üretim verisi değiştirilmedi ve canlı dağıtım yapılmadı. 2026-11-04 doğrulaması: 748/748 ana bot testi, 31/31 komut senaryosu, 89/89 izole PostgreSQL senaryosu ve ilgili Frieren AI/Owner Panel CI kontrolleri başarılı. Canlı Discord, OAuth callback ve gerçek mobil/masaüstü tarayıcı doğrulaması henüz yapılmadı.
