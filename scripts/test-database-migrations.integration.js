@@ -39,9 +39,6 @@ test('versioned migrations apply, remain idempotent, and roll back a failed migr
       'CREATE TABLE rehearsal_records(id INTEGER PRIMARY KEY, value TEXT NOT NULL);', 'utf8');
     await writeFile(join(directory, '0002_add_rehearsal_index.sql'),
       'CREATE INDEX rehearsal_records_value_idx ON rehearsal_records(value);', 'utf8');
-    await writeFile(join(directory, '0003_intentionally_failing.sql'),
-      'ALTER TABLE rehearsal_records ADD COLUMN transient_value TEXT; SELECT 1/0;', 'utf8');
-
     const first = await runDatabaseMigrations(scopedDb, { migrationsDir: directory });
     assert.equal(first.currentVersion, 2);
     assert.deepEqual(first.applied, [1, 2]);
@@ -53,6 +50,8 @@ test('versioned migrations apply, remain idempotent, and roll back a failed migr
       client.release();
     }
 
+    await writeFile(join(directory, '0003_intentionally_failing.sql'),
+      'ALTER TABLE rehearsal_records ADD COLUMN transient_value TEXT; SELECT 1/0;', 'utf8');
     await assert.rejects(
       runDatabaseMigrations(scopedDb, { migrationsDir: directory }),
       /division by zero/i
