@@ -56,7 +56,8 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           GUILD_IDS: ""
           TEST_GUILD_ID: "1564945192803639356"
-          TEST_COMMAND_NAMES: "karakter,envanter,sinifrehberi,buyupratik,dinlen,gunluk,kesif,rehber"
+          # Keep the test guild to five core gameplay surfaces: profile, inventory, magic, exploration and guide.
+          TEST_COMMAND_NAMES: "karakter,envanter,buyupratik,kesif,rehber"
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
