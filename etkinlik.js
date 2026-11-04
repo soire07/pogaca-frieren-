@@ -19,6 +19,7 @@ export default {
       .addStringOption(option => option.setName('baslangic').setDescription('ISO tarih/saat, ör. 2026-11-10T20:00:00+03:00').setRequired(true))
       .addStringOption(option => option.setName('bitis').setDescription('ISO tarih/saat ve saat dilimi').setRequired(true))
       .addStringOption(option => option.setName('aciklama').setDescription('Etkinlik açıklaması').setMaxLength(1000))
+      .addStringOption(option => option.setName('tur').setDescription('Etkinlik türü').addChoices({ name: 'Topluluk', value: 'community' }, { name: 'Boss / Raid', value: 'boss_raid' }, { name: 'Takım Turnuvası', value: 'tournament' }, { name: 'Anime Gecesi', value: 'anime_night' }))
       .addIntegerOption(option => option.setName('kapasite').setDescription('En fazla katılımcı (boş: sınırsız)').setMinValue(1).setMaxValue(500))),
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({ content: 'Etkinlikler yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
@@ -53,12 +54,14 @@ export default {
           startsAt: interaction.options.getString('baslangic'),
           endsAt: interaction.options.getString('bitis'),
           description: interaction.options.getString('aciklama') || '',
+          eventType: interaction.options.getString('tur') || 'community',
           maxParticipants: interaction.options.getInteger('kapasite'),
           channelId: interaction.channelId
         });
         return interaction.reply({ content: `Etkinlik oluşturuldu. Başlangıçtan 30 dakika önce bu kanalda hatırlatma gönderilecek. Kimlik: \`${result.eventId}\`\nKayıtlar **/etkinlik katil** ile açıldı.`, flags: MessageFlags.Ephemeral });
       } catch (error) {
         if (error.message === 'EVENT_INPUT_INVALID') return interaction.reply({ content: 'Başlık ve tarihleri kontrol et. Başlangıç gelecekte olmalı; bitiş başlangıçtan sonra gelmeli ve ISO 8601 saat dilimi içermeli.', flags: MessageFlags.Ephemeral });
+        if (error.message === 'EVENT_TYPE_INVALID') return interaction.reply({ content: 'Etkinlik türü geçersiz.', flags: MessageFlags.Ephemeral });
         throw error;
       }
     }
