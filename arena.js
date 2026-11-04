@@ -57,6 +57,7 @@ export default {
     .addSubcommand(command => command.setName('katil').setDescription('1v1 veya 3v3 eşleştirme kuyruğuna katıl.')
       .addStringOption(option=>option.setName('mod').setDescription('Arena modu').addChoices({name:'1v1 Düello',value:'1v1'},{name:'3v3 Takım Savaşı',value:'3v3'}))
       .addStringOption(option=>option.setName('element').setDescription('Savaş elementin').addChoices(...ARENA_ELEMENTS.map(value=>({name:({fire:'Ateş',ice:'Buz',lightning:'Yıldırım',light:'Işık',dark:'Karanlık',neutral:'Nötr'})[value],value}))))
+    )
     .addSubcommand(command => command.setName('durum').setDescription('Kuyruk veya devam eden maç durumunu gör.'))
     .addSubcommand(command => command.setName('ayril').setDescription('Eşleştirme kuyruğundan ayrıl.'))
     .addSubcommand(command => command.setName('siralam').setDescription('Bu sezonun arena sıralamasını gör.')),
