@@ -5,7 +5,7 @@ import { initDatabase, pool, ensureUser } from '../database/db.js';
 import {
   ensureGuildTeamLeagueSchema, createGuildTeam, joinGuildTeam, createGuildTeamLeague,
   registerGuildTeamForLeague, scheduleGuildTeamLeague, reportGuildTeamFixtureScore,
-  getGuildTeamLeagueDashboard
+  getGuildTeamLeagueDashboard, validateGuildEventRaidTeam
 } from '../guild-team-leagues.js';
 import {
   ensureAdventurerPlatformTables, ensureActiveArenaSeason, settleArenaMatch, createGuildEvent, joinGuildEvent,
@@ -337,7 +337,7 @@ test('guild teams, raid signup and league fixtures persist real UUID relationshi
     for(const userId of membersA) assert.equal((await joinGuildTeam(pool,{guildId,userId,teamId:teamA})).status,'joined');
     assert.equal((await joinGuildTeam(pool,{guildId,userId:memberB,teamId:teamB})).status,'joined');
 
-    const start=new Date(Date.now()+60*60_000).toISOString();
+    const start=new Date(Date.now()+20*60_000).toISOString();
     const end=new Date(Date.now()+3*60*60_000).toISOString();
     eventId=(await createGuildEvent(pool,{guildId,createdBy:captainA,title:'UUID Takım Baskını',description:'Gerçek takım bağlantısı',eventType:'boss_raid',startsAt:start,endsAt:end,maxParticipants:10})).eventId;
     const raidJoin=await joinGuildEvent(pool,{guildId,eventId,userId:memberA,teamId:teamA});
@@ -347,6 +347,12 @@ test('guild teams, raid signup and league fixtures persist real UUID relationshi
     assert.equal((await joinGuildEvent(pool,{guildId,eventId,userId:memberB,teamId:teamA})).status,'not_team_member');
     for(const userId of membersA.slice(1)) assert.equal((await joinGuildEvent(pool,{guildId,eventId,userId,teamId:teamA})).status,'joined');
     assert.equal((await joinGuildEvent(pool,{guildId,eventId,userId:captainA,teamId:teamA})).status,'team_full');
+    assert.equal((await joinGuildEvent(pool,{guildId,eventId,userId:memberB,teamId:teamB})).status,'joined');
+    const validRaidTeam=await validateGuildEventRaidTeam(pool,{guildId,eventId,userIds:[memberA,membersA[1]],leaderId:memberA});
+    assert.equal(validRaidTeam.status,'valid');
+    assert.equal(validRaidTeam.teamId,teamA);
+    const mixedRaidTeam=await validateGuildEventRaidTeam(pool,{guildId,eventId,userIds:[memberA,memberB],leaderId:memberA});
+    assert.equal(mixedRaidTeam.status,'team_mismatch_or_unregistered');
     const savedParticipant=await pool.query('SELECT team_id FROM guild_event_participants WHERE event_id=$1 AND user_id=$2',[eventId,memberA]);
     assert.equal(savedParticipant.rows[0].team_id,teamA);
 
