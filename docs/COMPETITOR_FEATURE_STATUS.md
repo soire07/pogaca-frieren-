@@ -62,7 +62,7 @@ Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal
 |---|---|---|---|
 | ENT-001 | Yoldaş sahiplenme | Entegrasyon dalında mevcut; henüz ana dala alınmadı | `companions.js`, `yoldas.js`; izole PostgreSQL testi var. |
 | ENT-002 | Yoldaş besleme ve bakım | Entegrasyon dalında mevcut; henüz ana dala alınmadı | Besleme/oyun/eğitim, mutluluk/enerji/açlık ve cooldown: `companions.js`, `yoldas.js`. |
-| ENT-003 | Yoldaş XP, eğitim ve evrim | Kısmi; entegrasyon dalında mevcut | XP/seviye/eğitim var; evrim sistemi kanıtlanmadı. |
+| ENT-003 | Yoldaş XP, eğitim ve evrim | Kısmi; PR #217 içinde genişletildi | Dört yoldaş türü için üç aşamalı evrim, 10/25/40 seviye eşikleri, altın maliyetleri ve evrim geçmişi eklendi. İzole PostgreSQL regresyon testi CI bekliyor; rol bazlı destek görevleri ve dokuz rolün tamamı hâlâ eksik. |
 | ENT-004 | Yoldaş odası ve kozmetik | Kısmi; entegrasyon dalında mevcut | Kozmetik görünüm satın alma/giydirme var; oda/dekorasyon yok. |
 | ENT-005 | Balıkçılık, olta ve yem | Entegrasyon dalında mevcut; henüz ana dala alınmadı | `fishing.js`, `balik.js`; bölge, katalog ve cooldown var. Olta/yem yükseltmesi ayrıca doğrulanmalı. |
 | ENT-006 | Bölgeye göre balık türü/nadirlik | Entegrasyon dalında mevcut; henüz ana dala alınmadı | Bölge kilidi, tür ve nadirlik kataloğu: `fishing.js`. |
@@ -80,7 +80,7 @@ Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal
 | ENT-018 | Kart albümü, seri, nadirlik ve varyant | Kısmi | Anime karakter koleksiyonu ve nadirlik filtresi var: `kimimben.js`, `koleksiyon.js`. Kart baskı/seri/varyant kataloğu bulunamadı. |
 | ENT-019 | Wishlist, favori, not ve profil rozeti | Kısmi; entegrasyon dalında mevcut | Karakter wishlist var (`character-wishlist.js`, `karakteristek.js`); favori/not/rozet ayrı ayrı yok. |
 | ENT-020 | Karakter/kart takası ve iki taraflı onay | Mevcut / doğrulama gerekli | Karakter kopyası teklifi, alıcı kabul/red ve PostgreSQL transaction akışı var: `takasteklif.js`, `trade-transaction.js`. Kart kozmetiği takasıyla aynı kapsam değildir. |
-| ENT-021 | Oyuncu pazarı, arama ve filtre | Kısmi; PR #219 taslağında mevcut | Discord `/pazar` komutları ve web `/pazar` sayfası aynı escrow/transaction servislerini kullanıyor; ilan, satın alma, iptal ve geçmiş var. Arama/kategori filtreleri ve teklif pazarlığı eksik: `player-market.js`, `pazar.js`, `public-site.js`. |
+| ENT-021 | Oyuncu pazarı, arama ve filtre | Kısmi; PR #217 içinde mevcut | Discord `/pazar` komutları ve web `/pazar` sayfası aynı escrow/transaction servislerini kullanıyor; ilan, satın alma, iptal ve geçmiş var. Arama/kategori filtreleri ve teklif pazarlığı eksik: `player-market.js`, `pazar.js`, `public-site.js`. |
 | ENT-022 | Teklif, kabul, iptal ve işlem geçmişi | Kısmi | `/pazar` doğrudan satın alma, satıcı iptali ve işlem geçmişi sağlıyor; pazarlık/teklif kabul akışı yok. Karakter takasındaki iki taraflı onay ayrı kalıyor. |
 | ENT-023 | Trivia, kelime, hafıza ve tahmin oyunları | Kısmi | Anime quiz ve rastgele karakter keşfi var. Kelime/hafıza oyunları ve takım mini oyunları bulunamadı. |
 | ENT-024 | Takım mini oyunları ve günlük skor | Bulunamadı | Takım mini oyun skoru/oturum sistemi bulunamadı. |
@@ -90,7 +90,7 @@ Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal
 | ENT-028 | Arkadaş/ekip ve ortak ilerleme | Kısmi | Co-op zindan/raid mevcut. Kalıcı arkadaş listesi ve ortak ilerleme panosu bulunamadı. |
 | ENT-029 | Profil/duyuru/başarı görsel editörü | Bulunamadı | Kullanıcıya açık görsel/Embed editörü ve canlı önizleme bulunamadı. |
 | ENT-030 | Ses kuyruğu ve playlist | Bulunamadı | Müzik çalma/kuyruk modülü bulunamadı. |
-| ENT-031 | Yoldaş sahiplenme, bakım, eğitim ve kozmetik | Mevcut / doğrulama gerekli | `companions.js`, `yoldas.js`; sahiplenme, besleme, oyun, eğitim, kozmetik ve tutarlı transaction kilit sırası. Unit + izole PostgreSQL testleri var; tüm yoldaş arketipleri/evrim henüz yok. |
+| ENT-031 | Yoldaş sahiplenme, bakım, eğitim ve kozmetik | Mevcut / doğrulama gerekli | `companions.js`, `yoldas.js`; dört tür, bakım/eğitim, kozmetik ve üç aşamalı evrim. Evrim geçmişi `/yoldas gecmis` ile görüntülenebilir. Yeni evrim transaction ve concurrency testleri PR #217 CI sonucunu bekliyor; dokuz rol ve destek görevleri kapsamı tamamlanmadı. |
 | ENT-032 | Bölgesel balıkçılık ve koleksiyon defteri | Mevcut / doğrulama gerekli | `fishing.js`, `balik.js`; bölge/seviye kilidi, nadirlik, cooldown ve balık defteri. Unit + izole PostgreSQL testleri var; olta/yem yükseltmesi henüz yok. |
 | ENT-033 | Büyülü Sera ekim ve mevsimsel hasat | Mevcut / doğrulama gerekli | `farming.js`, `sera.js`; tek aktif ekim, zamanlı hasat, mevsim verimi ve envanter kaydı. Unit + izole PostgreSQL testleri var; tam hava simülasyonu henüz yok. |
 | ENT-034 | Yaratık spawn, süreli ilk yakalayan ve arşiv | Mevcut / doğrulama gerekli | `creatures.js`, `yaratik.js`; spawn cooldown, atomik ilk claim, koleksiyon ve wishlist eşleşmesi. Unit + izole PostgreSQL testleri var; canlı Message Content intent ve kanal gönderimi henüz doğrulanmadı. |
@@ -108,9 +108,9 @@ Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal
 | WEB-003 | Sunucuya özel modül ayarları | Entegrasyon dalında mevcut; henüz ana dala alınmadı | Guild Dashboard feature gate ayarları ve yetki kontrolü var; testleri var: `guild-dashboard.js`, `guild-feature-settings.js`. |
 | WEB-004 | Aranabilir komut arşivi | Mevcut / doğrulama gerekli | `/komutlar` sayfası dinamik, aramalı ve kategorili; testleri mevcut: `public-site.js`, `scripts/test-public-site.js`. |
 | WEB-005 | Maceracı profili | Mevcut / doğrulama gerekli | `/maceraci` bağlı karakterin seviye, XP, altın, HP/mana ve etkinliklerini gösteriyor. Daha geniş profil vitrini eksik olabilir: `public-site.js`. |
-| WEB-006 | Envanter/kart/yoldaş web görünümü | Kısmi; PR #219 taslağında envanter mevcut | `/maceraci/envanter?guildId=...` bağlı karakterin envanter ve ekipmanını sunucu kapsamıyla gösteriyor. Kart albümü ve yoldaş web görünümü hâlâ eksik: `public-site.js`, `adventurer-platform.js`. |
-| WEB-007 | Web oyuncu pazarı | Mevcut / doğrulama gerekli | PR #219 taslağındaki `/pazar` sayfası ilan listeleme, satışa çıkarma, satın alma, satıcı iptali ve işlem geçmişini mevcut escrow servisine bağlar. CSRF ve hesap/sunucu kapsamı testleri var; canlı tarayıcı akışı henüz doğrulanmadı. |
-| WEB-008 | Web etkinlik takvimi ve RSVP | Kısmi; PR #219 taslağında RSVP mevcut | `/maceraci` yaklaşan etkinlikleri listeler ve bağlı karakter için CSRF korumalı katıl/ayrıl formları sunar. Hatırlatma tercihleri ve tam takvim görünümü eksik; canlı Discord teslimi ayrıca doğrulanmalı. |
+| WEB-006 | Envanter/kart/yoldaş web görünümü | Kısmi; PR #217 içinde envanter mevcut | `/maceraci/envanter?guildId=...` bağlı karakterin envanter ve ekipmanını sunucu kapsamıyla gösteriyor. Kart albümü ve yoldaş web görünümü hâlâ eksik: `public-site.js`, `adventurer-platform.js`. |
+| WEB-007 | Web oyuncu pazarı | Mevcut / doğrulama gerekli | PR #217 içindeki `/pazar` sayfası ilan listeleme, satışa çıkarma, satın alma, satıcı iptali ve işlem geçmişini mevcut escrow servisine bağlar. CSRF ve hesap/sunucu kapsamı testleri var; canlı tarayıcı akışı henüz doğrulanmadı. |
+| WEB-008 | Web etkinlik takvimi ve RSVP | Kısmi; PR #217 içinde RSVP mevcut | `/maceraci` yaklaşan etkinlikleri listeler ve bağlı karakter için CSRF korumalı katıl/ayrıl formları sunar. Hatırlatma tercihleri ve tam takvim görünümü eksik; canlı Discord teslimi ayrıca doğrulanmalı. |
 | WEB-009 | Analitik ve grafikler | Kısmi | Owner Panel'de RPG ve servis metrikleri var; kullanıcı/sunucu yöneticisi self-service analitik paneli bulunamadı. |
 | WEB-010 | Görsel mesaj/Embed editörü | Bulunamadı | Görsel editör ve canlı önizleme bulunamadı. |
 | WEB-011 | Özel komut/büyü otomasyon oluşturucusu | Bulunamadı | Güvenli trigger/condition/action oluşturucu bulunamadı. |
@@ -127,7 +127,7 @@ Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal
 
 - Yoldaş Akademisi, balıkçılık, Büyülü Sera, yaratık spawn/yakalama ve wishlist.
 - Discord OAuth bağlantısı, yetkili sunucu seçimi ve sunucu bazlı feature gate paneli.
-- Bu modüller PR #185 kaynak dalında geliştirildi; güncel ana kodla uyumlandırılmış sürümleri artık PR #219 / `feat/frieren-platform-expansion-batch` içinde. Ana dala henüz alınmadı.
+- Bu modüller ilk olarak PR #185 kaynak dalında geliştirildi; seçilen ve güncel ana kodla uyumlandırılan sürümleri PR #217 / `fix/solo-boss-reward-idempotency-mainline` içinde. Ara PR #219 kapatıldı ve merge edilmedi; ilgili kodlar #217'ye entegre edildi. #217 de henüz ana dala alınmadı.
 
 ### PR #185 doğrulama kanıtı
 
@@ -137,7 +137,7 @@ Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal
 - Bu testler CI içindeki geçici `frieren_audit` veritabanını kullandı; canlı Discord veya üretim veritabanı doğrulaması değildir.
 - PR #185 açık ve taslak; merge/deploy yapılmadı.
 
-PR #185 dalı ile güncel ana kod tarihçesi ayrışmış durumda. PR #185 bütünüyle merge/cherry-pick edilmemeli. Gerekli modüller PR #219'da seçilerek taşındı; komut kaydı, DB şeması, `index.js`, `package.json`, feature gate ve test workflow'ları güncel kodla uyumlandırıldı. Aynı özellikler yeniden yazılmamalı.
+PR #185 dalı ile güncel ana kod tarihçesi ayrışmış durumda. PR #185 bütünüyle merge/cherry-pick edilmemeli. Gerekli modüller önceki entegrasyon dalından seçilerek PR #217'ye taşındı; komut kaydı, DB şeması, `index.js`, `package.json`, feature gate ve test workflow'ları güncel kodla uyumlandırıldı. PR #219 kapalı ve merge edilmemiştir. Aynı özellikler yeniden yazılmamalı.
 
 ### Envanterle eşleştirme — önemli sınır
 
@@ -147,13 +147,13 @@ Aktif 2.000 kayıtlı `feature-inventory.json` içinde:
 - `ROADMAP-0938`: karakter wishlist kaydı hâlâ `planned`.
 - Balıkçılık, sera/çiftçilik ve yaratık spawn/yakalama için bu aramada doğrudan eşleşen ayrı kayıt bulunamadı.
 
-PR #219'daki temel yoldaş sistemi, bu 134 roadmap kaydının tamamını karşılamaz. Örneğin dokuz farklı yoldaş rolü, pet destek bonusları, bakım serileri, kilometre taşı kozmetikleri ve geçmiş/karşılaştırma işlevlerinin hepsi uygulanmış değildir. Bu kayıtları topluca `implemented` yapmayacağız. Önce her birini gerçek davranışla eşleştireceğiz; balıkçılık/sera/yaratık için benzersiz kayıtlar ENT-032–034 olarak eklendi; yeni kodun alt davranışları bunların ötesinde ayrıca eşleştirilmeli.
+PR #217'deki temel ve evrimleşebilen yoldaş sistemi, bu 134 roadmap kaydının tamamını karşılamaz. Örneğin dokuz farklı yoldaş rolü, pet destek bonusları, bakım serileri, kilometre taşı kozmetikleri ve geçmiş/karşılaştırma işlevlerinin hepsi uygulanmış değildir. Bu kayıtları topluca `implemented` yapmayacağız. Önce her birini gerçek davranışla eşleştireceğiz; balıkçılık/sera/yaratık için benzersiz kayıtlar ENT-032–034 olarak eklendi; yeni kodun alt davranışları bunların ötesinde ayrıca eşleştirilmeli.
 
 ### PR #185 kod incelemesinde bulunan düzeltme adayları
 
-1. **Yoldaş transaction kilit sırası — giderildi:** `careForCompanion()` ve kozmetik donatma işlemleri kullanıcı satırı → yoldaş satırı sırasını kullanıyor. Eşzamanlı eğitim/kozmetik PostgreSQL regresyon testi PR #219 dalında eklendi.
+1. **Yoldaş transaction kilit sırası — giderildi:** `careForCompanion()` ve kozmetik donatma işlemleri kullanıcı satırı → yoldaş satırı sırasını kullanıyor. Eşzamanlı eğitim/kozmetik PostgreSQL regresyon testi PR #217 dalında eklendi.
 2. **Discord OAuth redirect varsayılanı — kod/test düzeltildi:** Lonca paneli Render servis origin'ini `SITE_BASE_URL`/`RENDER_EXTERNAL_URL` üzerinden kullanıyor; `.env.example` callback değişkenlerini belgeliyor ve varsayılan callback için regresyon testi var. Canlı OAuth için Render değişkeni ile Discord Developer Portal callback URI'sinin aynı olması hâlâ operasyonel olarak doğrulanmalı.
-3. **Dal uyumsuzluğu:** PR #185 eski ve ayrışmış kaynak dalıdır. PR #219 bu özelliklerin güncel ana kodla uyarlanmış sürümünü içerir; PR #185 topluca merge edilmemeli.
+3. **Dal uyumsuzluğu:** PR #185 eski ve ayrışmış kaynak dalıdır. PR #217 bu özelliklerin güncel ana kodla uyarlanmış sürümünü içerir; PR #185 topluca merge edilmemeli.
 
 ## Önemli mevcut özellikler — tekrar eklenmeyecek
 
@@ -193,7 +193,7 @@ PR #219'daki temel yoldaş sistemi, bu 134 roadmap kaydının tamamını karşı
 
 ### Bu entegrasyon dalında hâlâ tamamlanmamış rakip backlog alanları
 
-- Yoldaş evrimi, oda/dekorasyon ve gelişmiş kozmetik.
+- Dokuz yoldaş rolünün tümü, rol bazlı destek görevleri ve sınıf sinerjisi; oda/dekorasyon ve gelişmiş kozmetik.
 - Olta/yem yükseltmesi ve balık görevleri.
 - Tam mevsim/hava simülasyonu.
 - Yaratık varyantları için pity/garanti sayaçları ve geniş nadirlik dengesi.
@@ -208,3 +208,11 @@ PR #219'daki temel yoldaş sistemi, bu 134 roadmap kaydının tamamını karşı
 - Veri dışa aktarma/silme ve tüm dashboard akışlarının gerçek mobil tarayıcı doğrulaması.
 
 Bu liste, sonraki uygulama grubunun tekrar yazılmaması gereken kontrol noktasıdır. Her madde için kaynak kod + test + yetki/veri güvenliği kanıtı bulunmadan “tamamlandı” denmeyecek.
+
+## PR #217 bütünleşik takip — 2026-11-04
+
+- PR #219 kapatıldı ve merge edilmedi; seçilen entegrasyon kodu PR #217 dalında tutuluyor.
+- Yoldaş sistemine dört tür için üç aşamalı evrim, 10/25/40 seviye eşikleri, altın maliyetleri, transaction tabanlı ücret kesintisi, evrim geçmişi tablosu ve /yoldas evrim /yoldas gecmis komutları eklendi.
+- Public home showcase GET rotası POST mutasyon bloğunun dışına taşındı. Önceki konumda GET isteği route handler tarafından karşılanmıyordu; vitrin ayrıca istasyon durumlarını kendi verisinden üretiyor.
+- Özel ev vitrininin varsayılan olarak 404 dönmesini doğrulayan regresyon testi eklendi.
+- Bu değişikliklerin CI ve izole PostgreSQL sonuçları tamamlanmadan doğrulanmış sayılmaz. Üretim DB, Discord, Render veya Vercel üzerinde değişiklik yapılmadı.
