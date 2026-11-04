@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import command from '../pazar.js';
 import { getCommandFeatureKeys } from '../guild-feature-settings.js';
 import { listPlayerMarketListings, createPlayerMarketOffer, listPlayerMarketOffers, resolvePlayerMarketOffer, cancelPlayerMarketOffer, getPlayerMarketOffers, normalizePlayerMarketPriceAlertInput, createPlayerMarketPriceAlert, listPlayerMarketPriceAlerts, cancelPlayerMarketPriceAlert, claimDuePlayerMarketPriceAlerts, markPlayerMarketPriceAlertNotified, releasePlayerMarketPriceAlertClaim } from '../player-market.js';
@@ -102,4 +103,18 @@ test('price-alert delivery claims are concurrent-safe and only match active list
   assert.match(captured.sql, /LOWER\(l\.item_key\)=LOWER\(a\.item_key\)/);
   assert.match(captured.sql, /l\.price_coins<=a\.target_price/);
   assert.deepEqual(captured.params, [15]);
+});
+
+
+test('main runtime delivers price alerts by Discord DM, finalizes only after success and releases retryable failures',async()=>{
+ const source=await readFile(new URL('../index.js',import.meta.url),'utf8');
+ const start=source.indexOf('async function processDuePlayerMarketPriceAlerts');
+ const end=source.indexOf('let newsBirdSweepRunning',start);
+ assert.ok(start>=0&&end>start,'price alert worker must exist');
+ const worker=source.slice(start,end);
+ assert.match(worker,/readyClient\.users\.fetch\(alert\.user_id\)/);
+ assert.match(worker,/await user\.send\(/);
+ assert.match(worker,/markPlayerMarketPriceAlertNotified\(pool, alert\.alert_id, alert\.claimed_at\)/);
+ assert.match(worker,/releasePlayerMarketPriceAlertClaim\(pool, alert\.alert_id, alert\.claimed_at\)/);
+ assert.match(worker,/cancelPlayerMarketPriceAlert\(pool, \{ guildId: alert\.guild_id, userId: alert\.user_id, alertId: alert\.alert_id \}\)/);
 });
