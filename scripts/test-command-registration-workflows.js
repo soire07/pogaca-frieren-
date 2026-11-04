@@ -4,11 +4,12 @@ import { readFile } from 'node:fs/promises';
 
 const workflow = name => readFile(new URL('../.github/workflows/' + name, import.meta.url), 'utf8');
 
-test('production command sync has one scheduled attempt and is pinned to the main guild', async () => {
+test('production command sync is manual-only and pinned to the main guild', async () => {
   const retry = await workflow('retry-production-command-sync.yml');
   const fallback = await workflow('register-production-after-quota-reset.yml');
 
-  assert.ok(retry.includes('cron: "30 4 * * *"'));
+  assert.ok(!retry.includes('schedule:'), 'production command registration must never run on a schedule');
+  assert.ok(retry.includes('workflow_dispatch:'), 'production command registration requires an explicit manual trigger');
   assert.ok(retry.includes('GUILD_IDS: "1539562273197260860"'));
   assert.ok(retry.includes('test -z "${TEST_GUILD_ID:-}"'));
   assert.ok(!fallback.includes('schedule:'), 'the quota-reset workflow must remain manual-only');
