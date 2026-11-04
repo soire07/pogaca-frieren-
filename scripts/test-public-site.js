@@ -98,7 +98,7 @@ test('guild workshop is permission-gated and renders embed, custom spell and aut
  const response=res();
  assert.equal(await handlePublicSiteRequest(request('/maceraci/atolye?guildId='+profile.guild_id,{id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'}),response,{db,client}),true);
  assert.equal(response.status,200);
- assert.match(response.body,/Görsel Embed Tasarımcısı/);assert.match(response.body,/embed-live-preview/);assert.match(response.body,/embed-preview-description/);assert.match(response.body,/Önizleme yalnızca tarayıcında çalışır/);
+ assert.match(response.body,/Görsel Embed Tasarımcısı/);assert.match(response.body,/embed-live-preview/);assert.match(response.body,/embed-preview-description/);assert.match(response.body,/Önizleme yalnızca tarayıcında çalışır/);assert.match(response.body,/src=\"\/assets\/embed-preview.js\"/);assert.doesNotMatch(response.body,/<script>\s*\(\(\)=>/);assert.match(response.headers['Content-Security-Policy'],/script-src 'self'/);
  assert.match(response.body,/Özel Komut \/ Büyü Oluşturucu/);
  assert.match(response.body,/Büyü Otomasyonu Oluşturucu/);
 });
