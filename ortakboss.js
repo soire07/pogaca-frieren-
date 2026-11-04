@@ -27,7 +27,8 @@ export default {
     .setDescription('En fazla dört oyuncuyla takım rolleri kullanarak ortak boss baskını yap.')
     .addUserOption(o => o.setName('takim_arkadasi').setDescription('Birinci takım arkadaşı').setRequired(true))
     .addUserOption(o => o.setName('takim_arkadasi_2').setDescription('İkinci takım arkadaşı (isteğe bağlı)').setRequired(false))
-    .addUserOption(o => o.setName('takim_arkadasi_3').setDescription('Üçüncü takım arkadaşı (isteğe bağlı)').setRequired(false)),
+    .addUserOption(o => o.setName('takim_arkadasi_3').setDescription('Üçüncü takım arkadaşı (isteğe bağlı)').setRequired(false))
+    .addStringOption(o => o.setName('etkinlik_id').setDescription('Takvimdeki Boss / Raid etkinliğinin kimliği (isteğe bağlı)').setMaxLength(36).setRequired(false)),
 
   async execute(interaction) {
     if (!interaction.guildId || !interaction.channel) return interaction.reply({ content: 'Ortak boss baskını yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
@@ -124,6 +125,30 @@ export default {
     try {
       await db.query('BEGIN');
       const ids = team.map(x => x.id).sort();
+      const calendarEventId = interaction.options.getString('etkinlik_id');
+      if (calendarEventId) {
+        const linkedEvent = await db.query(
+          `SELECT e.event_id FROM guild_events e
+           WHERE e.event_id=$1 AND e.guild_id=$2 AND e.event_type='boss_raid'
+             AND e.status='scheduled' AND e.starts_at<=NOW()+INTERVAL '30 minutes' AND e.ends_at>NOW()
+             AND NOT EXISTS (
+               SELECT 1 FROM unnest($3::text[]) AS member(user_id)
+               WHERE NOT EXISTS (
+                 SELECT 1 FROM guild_event_participants p
+                 WHERE p.event_id=e.event_id AND p.guild_id=e.guild_id AND p.user_id=member.user_id
+               )
+             )
+           FOR UPDATE`,
+          [calendarEventId, interaction.guildId, ids]
+        );
+        if (!linkedEvent.rowCount) {
+          await db.query('ROLLBACK');
+          return interaction.editReply({
+            content: 'Takvim baskını geçersiz, henüz başlama penceresinde değil veya takım üyelerinin tamamı bu Boss / Raid etkinliğine kayıtlı değil.',
+            components: []
+          });
+        }
+      }
       const result = await db.query(
         `SELECT user_id,level,xp,coins,hp,max_hp,mana,max_mana,attack,defense,class_name,active_build,last_boss_at,
          COALESCE((SELECT attack_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_attack,
