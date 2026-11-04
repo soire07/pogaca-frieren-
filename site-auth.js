@@ -88,7 +88,8 @@ const messages = {
   csrf:'Formun süresi doldu. Sayfayı yenileyip tekrar dene.',
   rate_limited:'Çok fazla deneme yapıldı. Bir süre sonra yeniden dene.',
   mail_unavailable:'E-posta gönderimi henüz yapılandırılmadı. Site yöneticisi Gmail API bağlantısını tamamlamalı.',
-  mail_error:'E-posta gönderilemedi. Biraz sonra yeniden dene.'
+  mail_error:'E-posta gönderilemedi. Biraz sonra yeniden dene.',
+  site_account_required:'Maceracı paneli için önce Frieren web hesabınla giriş yap veya yeni bir hesap oluştur. Discord karakterini web hesabına daha sonra bağlayabilirsin.'
 };
 function formToken(secret) { return '<input type="hidden" name="csrf" value="' + createSiteCsrfToken(secret) + '">'; }
 function authPage(mode, secret, status = '', token = '') {
