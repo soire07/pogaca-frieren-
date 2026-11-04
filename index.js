@@ -163,7 +163,7 @@ async function processDueGuildEventReminders(readyClient = client) {
           content: (event.event_type === 'boss_raid' ? '⚔️ **Boss / Raid etkinliği 30 dakika içinde başlıyor!**\\n' : event.event_type === 'tournament' ? '🏆 **Takım turnuvası 30 dakika içinde başlıyor!**\\n' : '⏰ **Lonca etkinliği 30 dakika içinde başlıyor!**\\n') +
             '**' + String(event.title).slice(0, 100) + '** · ' + when +
             (event.description ? '\\n' + String(event.description).slice(0, 700) : '') +
-            (event.event_type === 'boss_raid' ? '\\nKatılan maceracılar /ortakboss komutuyla baskın takımını başlatabilir.' : '') +
+            (event.event_type === 'boss_raid' ? '\\nKatılan maceracılar /ortakboss komutundaki etkinlik_id alanına \\`' + event.event_id + '\\` yazarak baskını başlatabilir.' : '') +
             (attendees.length ? '\\n\\nKayıtlı maceracılar: ' + attendees.map(id => '<@' + id + '>').join(' ') : ''),
           allowedMentions: { parse: [], users: attendees }
         });
