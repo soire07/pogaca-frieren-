@@ -10,7 +10,7 @@ Generated from `feature-inventory.json` on 2026-11-04. This derived index preser
 - Single-operation groups: **50 groups / 50 records**
 - Standalone groups without an operation prefix: **50 groups / 50 records**
 - Arithmetic: **1,575 + 50 + 50 = 1,675**
-- The existing inventory contains 325 base implemented records plus 10 competitor-derived records, 5 social platform/web evidence records and 1 guild mini-game record (341 total). Equal counts do not prove semantic equivalence.
+- The existing inventory contains 325 base implemented records plus 10 competitor-derived records, 5 social platform/web evidence records, 1 guild mini-game record and 1 fishing progression record (342 total). Equal counts do not prove semantic equivalence.
 
 ## Method and limits
 
