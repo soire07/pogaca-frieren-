@@ -400,7 +400,7 @@ export async function joinGuildEvent(db = pool,{guildId,eventId,userId,teamId=nu
     if(event.rows[0].max_participants&&count.rows[0].count>=event.rows[0].max_participants){await client.query('ROLLBACK');return {status:'full'};}
     let selectedTeamName=null;
     if(selectedTeamId){
-      const team=await client.query('SELECT t.team_id,t.team_name FROM guild_teams t JOIN guild_team_members m ON m.guild_id=t.guild_id AND m.team_id=t.team_id WHERE t.guild_id=$1 AND t.team_id=$2 AND m.user_id=$3 FOR UPDATE OF t',[guildId,selectedTeamId,userId]);
+      const team=await client.query('SELECT t.team_id,t.team_name FROM guild_teams t JOIN guild_team_members m ON m.guild_id=t.guild_id AND m.team_id=t.team_id WHERE t.guild_id=$1 AND t.team_id=$2 AND m.user_id=$3 FOR UPDATE OF t,m',[guildId,selectedTeamId,userId]);
       if(!team.rowCount){await client.query('ROLLBACK');return {status:'not_team_member'};}
       selectedTeamName=team.rows[0].team_name;
       const teamCount=await client.query('SELECT COUNT(*)::int AS count FROM guild_event_participants WHERE event_id=$1 AND team_id=$2',[eventId,selectedTeamId]);
