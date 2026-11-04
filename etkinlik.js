@@ -80,7 +80,7 @@ export default {
     const eventId = interaction.options.getString('id');
     if (action === 'katil') {
       const result = await joinGuildEvent(pool, { guildId: interaction.guildId, eventId, userId: interaction.user.id, teamId: interaction.options.getString('takim') || null });
-      const messages = { joined: result.teamName ? 'Boss/raid kaydın **'+result.teamName+'** takımına oluşturuldu.' : 'Etkinliğe kaydın oluşturuldu.', team_required: 'Boss/raid etkinliği için önce bir lonca takımı kur veya katıl, sonra takım UUID’sini seç.', not_team_member: 'Bu takımın üyesi değilsin.', team_full: 'Seçtiğin raid takımı dolu.', team_not_supported: 'Bu etkinlik türünde takım seçimi desteklenmiyor.', already_joined: 'Bu etkinliğe zaten kayıtlısın.', full: 'Etkinlik kapasitesi doldu.', unavailable: 'Etkinlik bulunamadı veya kayıt süresi kapandı.' };
+      const messages = { joined: result.teamName ? 'Boss/raid kaydın **'+result.teamName+'** takımına oluşturuldu.' : 'Etkinliğe kaydın oluşturuldu.', team_required: 'Boss/raid etkinliği için önce bir lonca takımı kur veya katıl, sonra takım UUID’sini seç.', not_team_member: 'Bu takımın üyesi değilsin.', invalid_team: 'Takım kimliği geçersiz. /etkinlik takimlar ile güncel UUID listesini al.', team_full: 'Seçtiğin raid takımı dolu.', team_not_supported: 'Bu etkinlik türünde takım seçimi desteklenmiyor.', already_joined: 'Bu etkinliğe zaten kayıtlısın.', full: 'Etkinlik kapasitesi doldu.', unavailable: 'Etkinlik bulunamadı veya kayıt süresi kapandı.' };
       return interaction.reply({ content: messages[result.status] || 'Kayıt tamamlanamadı.', flags: MessageFlags.Ephemeral });
     }
     if (action === 'yoklama') {
