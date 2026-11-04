@@ -19,6 +19,7 @@ import { ensurePlayerMarketTables, claimDuePlayerMarketPriceAlerts, markPlayerMa
 import { ensureSocialPlatformTables } from './social-platform.js';
 import { ensureAccountCenterSchema } from './account-center.js';
 import { ensureNewsBirdSchema, pollAnimeNewsFeed, claimDueAnimeNewsDigests, markAnimeNewsDigestSent, releaseAnimeNewsDigestClaim, getEventReminderRecipients, setNotificationPreference } from './news-birds.js';
+import { ensureCardVariantSchema } from './card-variants.js';
 import { initCompanionSchema } from './companions.js';
 import { initFishingSchema } from './fishing.js';
 import { initFarmSchema } from './farming.js';
@@ -496,6 +497,7 @@ await ensurePlayerMarketTables(pool);
 await ensureSocialPlatformTables(pool);
 await ensureAccountCenterSchema(pool);
 await ensureNewsBirdSchema(pool);
+await ensureCardVariantSchema(pool);
 await ensureGuildGameTables(pool);
 await Promise.all([ensureCreatureSchema(), initCompanionSchema(pool), initFishingSchema(pool), initFarmSchema(pool), initCharacterWishlistSchema(pool), ensurePlayerExperienceSchema(pool)]);
 await initOwnerAdminSchema(pool);
