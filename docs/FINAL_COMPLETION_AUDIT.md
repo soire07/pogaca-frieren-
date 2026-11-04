@@ -157,7 +157,7 @@ Bu düzeltme yalnızca PR #217 dalındadır. PR hâlâ taslak ve birleştirilmem
 - docs/COMPETITOR_FEATURE_STATUS.md kodun mevcut durumuna göre uzlaştırıldı; tamamlanmış temel işlevler ile canlı kanıt gerektiren işler ayrı tutuldu.
 
 ### Henüz tamamlanmış sayılamayacak yayın kapıları
-- Owner Panel'de destek personelinin yanıt yazması ve ticket durumunu değiştirmesi için yetkili UI/route entegrasyonu.
+- Owner Panel `/owner/support` destek gelen kutusu, personel yanıtı ve durum değiştirme arayüzü eklendi; Discord OAuth owner session, CSRF ve sabit Owner ID kontrolleri var. Canlı kullanıcı akışı henüz doğrulanmadı.
 - Export allowlist'inin tüm kullanıcı veri tabloları, pazar teklifleri, sosyal/arena/oyun ilişkileri ve saklama/yedek politikasıyla tam uzlaştırılması. Mevcut export kapsamı genişletildi fakat veritabanındaki bütün kullanıcı verisi garantisi verilmez.
 - Embed'in Discord'a kontrollü gönderimi ve otomasyonların tüm gerçek tetikleyici/başarısız gönderi senaryolarının Discord E2E doğrulaması.
 - Yetkili Discord hesabıyla OAuth consent/callback/session tamamlanması; mobil ve masaüstünde authenticated panel route'larının gerçek tarayıcı E2E testi. Smoke şu anda giriş/kayıt layout'u ve OAuth başlangıç yönlendirmesini doğrular.
