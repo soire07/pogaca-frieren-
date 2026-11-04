@@ -2,7 +2,7 @@
 
 > Denetim başlangıcı: 2026-11-04  
 > İncelenen PR: #217  
-> İncelenen kod başlığı: `99d25d0b72fb0052bd2aa2adc89c61db95a706be`  
+> İncelenen kod başlığı: `4ea372ebd4f6e241e6864478619a4d40184e9f5a`  
 > Bu belge bir başlangıç denetim kaydıdır; eksik özelliklerin uygulandığı veya canlı sistemin doğrulandığı anlamına gelmez.
 
 ## 1. Tek kaynak envanterinin gerçek sayıları
@@ -26,8 +26,9 @@ PR #217 açıklaması hâlâ 2.015 kayıt / 340 kod karşılığı bildirirken, 
 ## 3. PR ve doğrulama sınırı
 
 - PR #217 açık, taslak ve birleştirilmemiştir.
-- İncelenen head için GitHub Actions'ta 6/6 iş akışı tamamlanmış ve başarılı görünmektedir: Poğaça checks, slash-command validation, Frieren AI CI, Owner Panel performance, Owner Panel tests ve isolated command audit.
-- Bu CI sonucu yalnızca belirtilen commit için geçerlidir. Yeni commit'ler eklenirse yeniden doğrulama gerekir.
+- Önceki HEAD'e ait test kanıtları yeni HEAD için geçerli sayılmaz.
+- `4ea372e` HEAD'i için 6 workflow run başlatılmıştır: Poğaça checks, slash-command validation, Frieren AI CI, Owner Panel performance, Owner Panel tests ve Mobile browser smoke. Son gözlemde 6/6 iş queued durumundaydı; başarı/başarısızlık sonucu henüz yok.
+- Commit combined status henüz boş; yeni HEAD için CI doğrulaması bekleniyor.
 - Otomatik test ve izole PostgreSQL testleri canlı Discord etkileşimi, gerçek OAuth tarayıcı akışı, Render runtime veya üretim veritabanı doğrulaması değildir.
 - Bu denetim sırasında merge, Discord komut kaydı, Render/Vercel dağıtımı veya üretim veritabanı yazımı yapılmamıştır.
 
@@ -136,3 +137,11 @@ Bu belge, bütünleşik tamamlama çalışmasının denetim tabanıdır. Her tam
 ### Yayın sınırı
 
 Bu düzeltme yalnızca PR #217 dalındadır. PR hâlâ taslak ve birleştirilmemiştir; Render/Vercel dağıtımı, üretim DB yazımı, canlı Discord komut kaydı veya canlı OAuth/browser E2E yapılmadı. Render'da gözlenen `SITE_ACCOUNT_INVALID` hatasının canlı ortamda giderildiği henüz iddia edilmez.
+
+
+## 11. Sonraki bütünleşik çalışma turu — 2026-11-04
+
+- İncelenen güncel PR head: `4ea372ebd4f6e241e6864478619a4d40184e9f5a`; PR #217 açık, taslak, merge edilmemiş ve mergeable.
+- PR #217 içindeki özellik durumu, doğrudan kod/test dosyalarıyla yeniden karşılaştırıldı. Rakip özellik tablosunda kart varyantları, pazar fiyat alarmı servisleri, Embed/özel komut/otomasyon atölyesi, bildirim tercihleri, web destek merkezi ve hesap export/silme akışlarının mevcut altyapısı eksik görünüyordu. `docs/COMPETITOR_FEATURE_STATUS.md` bu 12 satırda mevcut kodla uzlaştırıldı; kısmi özellikler tamamlandı olarak işaretlenmedi.
+- Tamamlanması gereken başlıca ürün boşlukları: paylaşılabilir profil + rozet vitrini/gizlilik; takım ligi ve sezon fikstürü; etkinlikten raid takımına doğrudan katılım; Embed canlı önizleme ve güvenli otomasyon yürütme; kart/yoldaş web koleksiyon vitrini; fiyat alarmı gerçek tetikleme/teslimi; destek bileti yanıt/durum geçmişi; export/delete veri kapsamı ve mobil/OAuth gerçek E2E.
+- Bu dokümantasyon uzlaştırması oyun kodunu veya veritabanını değiştirmedi. Üretim DB, Discord komut kaydı, Render/Vercel deploy ve PR merge yapılmadı.
