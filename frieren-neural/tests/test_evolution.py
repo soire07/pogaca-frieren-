@@ -92,7 +92,7 @@ def test_missing_benchmark_outputs_or_baseline_fingerprint_blocks_guard_review()
     report = _ready_report()
     report["quality_report"]["outputs"] = []
     plan = build_evolution_plan(report)
-    assert plan["status"] == "improvement_proposed"
+    assert plan["status"] == "blocked"
     assert plan["gates"]["benchmark_outputs_complete"] is False
     assert plan["apply_changes"] is False
 
@@ -107,7 +107,7 @@ def test_report_commit_or_artifact_mismatch_fails_closed():
     report = _ready_report()
     report["quality_report"]["source_commit_sha"] = "d" * 40
     plan = build_evolution_plan(report)
-    assert plan["status"] == "improvement_proposed"
+    assert plan["status"] == "blocked"
     assert plan["gates"]["provenance_valid"] is False
 
     report = _ready_report()
