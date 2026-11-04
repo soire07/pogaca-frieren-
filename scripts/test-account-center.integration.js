@@ -31,7 +31,7 @@ test('account export includes linked game and support data while excluding secre
   await ensureSocialPlatformTables(pool);
   await ensureAccountCenterSchema(pool);
 
-  const guildId='99000000000000130';
+  const guildId=makeIds('99000000000000000',1)[0];
   const users=makeIds('74000000000000000',2);
   const [ownerUser,buyerUser]=users;
   const accountUuid=randomUUID();
