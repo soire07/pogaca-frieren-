@@ -17,6 +17,12 @@ function request(path = '/', user = visitor) {
   return { method: 'GET', url: path, headers: { cookie } };
 }
 
+test('public command catalog includes the new guild mini-game command', async () => {
+  const response = res();
+  await handlePublicSiteRequest(request('/'), response);
+  assert.match(response.body,/\\/loncaoyun/);
+});
+
 test('anonymous visitors must authenticate before viewing the homepage', async () => {
   const response = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/', headers: {} }, response), true);
