@@ -68,6 +68,29 @@ export async function ensureGuildTeamLeagueSchema(db){
  `);
 }
 
+export async function validateGuildEventRaidTeam(db,{guildId,eventId,userIds,leaderId}) {
+ if(!validIds(guildId,leaderId)||!UUID.test(String(eventId||''))||!Array.isArray(userIds)||userIds.length<2||userIds.length>4||new Set(userIds).size!==userIds.length||userIds.some(id=>!DISCORD_ID.test(String(id||'')))||!userIds.includes(leaderId)) return {status:'invalid_input'};
+ const result=await db.query(
+  `SELECT e.event_id,captain.team_id
+   FROM guild_events e
+   JOIN guild_event_participants captain
+     ON captain.event_id=e.event_id AND captain.guild_id=e.guild_id
+    AND captain.user_id=$4 AND captain.team_id IS NOT NULL
+   WHERE e.event_id=$1 AND e.guild_id=$2 AND e.event_type='boss_raid'
+     AND e.status='scheduled' AND e.starts_at<=NOW()+INTERVAL '30 minutes' AND e.ends_at>NOW()
+     AND NOT EXISTS (
+       SELECT 1 FROM unnest($3::text[]) AS member(user_id)
+       LEFT JOIN guild_event_participants participant
+         ON participant.event_id=e.event_id AND participant.guild_id=e.guild_id
+        AND participant.user_id=member.user_id
+       WHERE participant.user_id IS NULL OR participant.team_id IS DISTINCT FROM captain.team_id
+     )
+   FOR UPDATE OF e`,
+  [eventId,guildId,userIds,leaderId]
+ );
+ return result.rowCount?{status:'valid',teamId:result.rows[0].team_id}:{status:'team_mismatch_or_unregistered'};
+}
+
 export async function listGuildTeams(db,guildId){
  if(!DISCORD_ID.test(String(guildId||'')))throw new Error('TEAM_GUILD_INVALID');
  const result=await db.query('SELECT t.team_id,t.team_name,t.captain_id,COUNT(m.user_id)::int AS member_count FROM guild_teams t LEFT JOIN guild_team_members m ON m.guild_id=t.guild_id AND m.team_id=t.team_id WHERE t.guild_id=$1 GROUP BY t.team_id,t.team_name,t.captain_id ORDER BY t.team_name LIMIT 50',[guildId]);
