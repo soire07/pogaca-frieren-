@@ -33,6 +33,18 @@ export const PLAYER_COSMETICS=Object.freeze([
  {key:'relic_display',slot:'collection_display',name:'Kadim Eser Sergisi',level:12,cost:1700},
  {key:'star_display',slot:'collection_display',name:'Yıldız Koleksiyonu Sergisi',level:30,cost:4200}
 ]);
+export const HOME_STATIONS=Object.freeze([
+ {roomKey:'library',name:'Büyü Arşivi',commands:['/buyu','/buyuogren','/buyupratik']},
+ {roomKey:'alchemy',name:'Simya Tezgahı',commands:['/yasam iksir-demle']},
+ {roomKey:'garden',name:'Gezgin Bahçesi',commands:['/bahce durum','/bahce tohum-ek','/bahce hasat']},
+ {roomKey:'workshop',name:'Zanaat Atölyesi',commands:['/zanaat']},
+ {roomKey:'guild_hall',name:'Lonca Salonu',commands:['/etkinlik']},
+ {roomKey:'trophy',name:'Zafer Salonu',commands:['/basarimlar','/yasam kupalar']}
+]);
+export const ALCHEMY_RECIPES=Object.freeze([
+ {key:'healing_potion',name:'Şifa İksiri',output:'🧪 Şifa İksiri',materials:[{item:'💎 Mana Kristali',quantity:1},{item:'🥐 Büyülü Poğaça Kutusu',quantity:1}]},
+ {key:'star_potion',name:'Yıldız İksiri',output:'🌠 Yıldız İksiri',materials:[{item:'💎 Mana Kristali',quantity:2},{item:'📖 Yasak Büyü Kitabı',quantity:1}]}
+]);
 export const EVENT_MILESTONES=Object.freeze([
  {key:'participant',progressKey:'participation',target:1,coins:100,xp:25,cosmeticKey:'spring_theme'},
  {key:'checkin',progressKey:'checkin',target:1,coins:150,xp:40,cosmeticKey:'winter_theme'}
@@ -86,6 +98,25 @@ export async function getPublicPlayerHome(db,{guildId,userId}){
   db.query('SELECT slot,cosmetic_key FROM player_cosmetic_loadout WHERE guild_id=$1 AND user_id=$2 ORDER BY slot',[guildId,userId])
  ]);
  return {profile:result.rows[0],home:{active_room:result.rows[0].active_room,layout:result.rows[0].layout},rooms:rooms.rows,trophies,loadout:loadout.rows};
+}
+export async function brewHomePotion(pool,{guildId,userId,recipeKey}){
+ player(guildId,userId);const recipe=ALCHEMY_RECIPES.find(x=>x.key===recipeKey);if(!recipe)return {status:'invalid_recipe'};await ensureUser(guildId,userId,pool);const c=await pool.connect();
+ try{
+  await c.query('BEGIN');
+  const p=await c.query('SELECT user_id FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',[guildId,userId]);
+  if(!p.rowCount){await c.query('ROLLBACK');return {status:'player_missing'};}
+  const room=await c.query("SELECT 1 FROM player_home_rooms WHERE guild_id=$1 AND user_id=$2 AND room_key='alchemy' FOR UPDATE",[guildId,userId]);
+  if(!room.rowCount){await c.query('ROLLBACK');return {status:'station_locked'};}
+  for(const material of recipe.materials){
+   const found=await c.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3 FOR UPDATE',[guildId,userId,material.item]);
+   const quantity=Number(found.rows[0]?.quantity||0);
+   if(quantity<material.quantity){await c.query('ROLLBACK');return {status:'missing_material',material:material.item,required:material.quantity,available:quantity};}
+   if(quantity===material.quantity)await c.query('DELETE FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,userId,material.item]);
+   else await c.query('UPDATE inventory SET quantity=quantity-$4 WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,userId,material.item,material.quantity]);
+  }
+  await c.query('INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1) ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1',[guildId,userId,recipe.output]);
+  await c.query('COMMIT');return {status:'brewed',recipe,output:recipe.output};
+ }catch(e){await c.query('ROLLBACK').catch(()=>{});throw e;}finally{c.release();}
 }
 export async function getPlayerHome(db,{guildId,userId}){
  player(guildId,userId);await ensureUser(guildId,userId,db);await db.query("INSERT INTO player_home_rooms(guild_id,user_id,room_key) VALUES($1,$2,'starter') ON CONFLICT DO NOTHING",[guildId,userId]);await db.query('INSERT INTO player_homes(guild_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[guildId,userId]);
