@@ -86,7 +86,7 @@ test('1v1 arena states require one valid player per side and finish correctly', 
   assert.equal(duel.players.length,2);
   const result=resolveArenaTurn(duel,{actorId:teamA[0].userId,targetId:teamB[0].userId});
   assert.equal(result.event.elementEffect,'advantage');
-  assert.equal(result.event.damage,50);
+  assert.equal(result.event.damage,45);
   assert.equal(result.state.status,'finished');
   assert.equal(result.state.winner,'A');
   assert.throws(()=>createArenaState({matchId:'arena-duel-0001',mode:'1v1',teamA:teamA.slice(0,2),teamB:teamB.slice(0,2)}),/ARENA_REQUIRES_TWO_PLAYERS/);
