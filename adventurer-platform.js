@@ -384,9 +384,9 @@ export async function listGuildEvents(db = pool,guildId,limit=10) {
 
 export async function joinGuildEvent(db = pool,{guildId,eventId,userId,teamId=null}) {
   if(!DISCORD_ID.test(String(guildId||''))||!DISCORD_ID.test(String(userId||''))) throw new Error('EVENT_INPUT_INVALID');
-  await ensureUser(guildId,userId,db);
   const selectedTeamId=teamId===null||teamId===''?null:String(teamId);
-  if(selectedTeamId!==null&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selectedTeamId))throw new Error('EVENT_TEAM_INVALID');
+  if(selectedTeamId!==null&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selectedTeamId))return {status:'invalid_team'};
+  await ensureUser(guildId,userId,db);
   const client=await db.connect();
   try {
     await client.query('BEGIN');
