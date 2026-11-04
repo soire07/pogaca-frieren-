@@ -148,6 +148,7 @@ export function getCommandFeatureKeys(commandName) {
   if (/zanaat|craft|uret|üret/.test(name)) keys.push('crafting');
   if (/hikaye|hikâye|story/.test(name) || name === 'npc') keys.push('story');
   if (/^sosyal$|social/.test(name)) keys.push('social');
+  if (/loncaoyun|guildgame/.test(name)) keys.push('rpg');
   if (/rpg|savas|savaş|dovus|dövüş|arena|siralama|liderlik/.test(name) || RPG_COMMAND_NAMES.has(name)) keys.push('rpg');
   if (keys.some(key => key !== 'animeQuiz')) keys.push('rpg');
   return [...new Set(keys)];
@@ -158,6 +159,7 @@ export function getComponentCommandName(customId) {
   if (id.startsWith('charpanel:')) return 'karakter';
   if (id.startsWith('market_')) return 'market';
   if (id.startsWith('creature_catch:')) return 'yaratik';
+  if (id.startsWith('guildgame:')) return 'loncaoyun';
   if (id.startsWith('trade_accept:') || id.startsWith('trade_decline:')) return 'takasteklif';
   return null;
 }
