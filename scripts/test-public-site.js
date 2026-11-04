@@ -478,6 +478,20 @@ test('web social mutations reject a guild not linked to the authenticated site a
   const response=res(),post=sitePost('/maceraci/sosyal',{csrf:createSiteCsrfToken(secret),guildId:'1539562273197260860',action:'request',targetId:'223456789012345678'});
   assert.equal(await handlePublicSiteRequest(post,response,{db}),true);assert.equal(response.status,403);assert.equal(queries,1);
 });
+test('web social friend request uses the linked character and redirects after creating a guild-scoped request',async()=>{
+  const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern'};
+  const queries=[];
+  const db={
+    async query(sql){queries.push(sql);if(sql.includes('FROM site_discord_links'))return{rows:[profile],rowCount:1};throw new Error('Unexpected pool query: '+sql);},
+    async connect(){return{async query(sql,params){queries.push(sql);if(sql==='BEGIN'||sql==='COMMIT'||sql==='ROLLBACK')return{rows:[],rowCount:1};if(sql.includes('SELECT user_id FROM users'))return{rows:[{user_id:profile.user_id},{user_id:'223456789012345678'}],rowCount:2};if(sql.includes('SELECT relationship_type FROM social_relationships'))return{rows:[],rowCount:0};if(sql.startsWith('UPDATE social_friend_requests'))return{rows:[],rowCount:0};if(sql.includes('SELECT request_id,requester_id FROM social_friend_requests'))return{rows:[],rowCount:0};if(sql.startsWith('INSERT INTO social_friend_requests'))return{rows:[{request_id:'123e4567-e89b-42d3-a456-426614174000'}],rowCount:1};throw new Error('Unexpected client query: '+sql+' '+JSON.stringify(params));},release(){}};}
+  };
+  const response=res();
+  const post=sitePost('/maceraci/sosyal',{csrf:createSiteCsrfToken(secret),guildId:profile.guild_id,action:'request',targetId:'223456789012345678'});
+  assert.equal(await handlePublicSiteRequest(post,response,{db}),true);
+  assert.equal(response.status,303);
+  assert.match(response.headers.Location,/status=request_sent/);
+  assert.ok(queries.some(sql=>sql.includes('social_friend_requests')));
+});
 test('main startup initializes all player-facing collection schemas before serving the web portal', async () => {
   const source=await readFile(new URL('../index.js',import.meta.url),'utf8');
   for(const moduleName of ['companions.js','fishing.js','farming.js','character-wishlist.js'])assert.ok(source.includes("from './"+moduleName+"'"));
