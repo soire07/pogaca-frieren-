@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import command from '../pazar.js';
 import { getCommandFeatureKeys } from '../guild-feature-settings.js';
-import { listPlayerMarketListings } from '../player-market.js';
+import { listPlayerMarketListings, createPlayerMarketOffer, listPlayerMarketOffers, resolvePlayerMarketOffer, cancelPlayerMarketOffer, getPlayerMarketOffers } from '../player-market.js';
 
 test('player market command exposes listing, purchase, cancellation and history actions', () => {
   const json = command.data.toJSON();
   assert.equal(json.name, 'pazar');
-  assert.deepEqual(json.options.map(option => option.name), ['liste','sat','al','iptal','gecmis']);
+  assert.deepEqual(json.options.map(option => option.name), ['liste','sat','al','iptal','gecmis','teklif-ver','teklifler','teklif-kabul','teklif-reddet','teklif-iptal']);
   assert.equal(getCommandFeatureKeys('pazar').includes('playerMarket'), true);
   assert.equal(getCommandFeatureKeys('pazar').includes('economy'), true);
   assert.equal(getCommandFeatureKeys('pazar').includes('trading'), true);
@@ -42,4 +42,11 @@ test('web market ignores out-of-range price filters and accepts only known sort 
   assert.doesNotMatch(calls[0].sql,/price_coins >=/);
   assert.doesNotMatch(calls[0].sql,/price_coins <=/);
   assert.deepEqual(calls[0].params,['1539562273197260860',20]);
+});
+
+
+test('player market exposes safe offer negotiation service entry points', () => {
+  for (const action of [createPlayerMarketOffer, listPlayerMarketOffers, resolvePlayerMarketOffer, cancelPlayerMarketOffer, getPlayerMarketOffers]) {
+    assert.equal(typeof action, 'function');
+  }
 });
