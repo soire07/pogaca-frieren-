@@ -4,7 +4,7 @@ import { randomInt } from 'node:crypto';
 import { pool, withIsolatedTestSchema } from '../database/db.js';
 import { ensureGuildGameTables, startGuildMiniGame, answerGuildMiniGame, getGuildGameLeaderboard } from '../guild-games.js';
 
-const dedicatedAuditDatabase = /^postgres(?:ql)?:\\/\\/postgres:postgres@localhost:5432\\/frieren_audit(?:\\?|$)/.test(process.env.DATABASE_URL || '');
+const dedicatedAuditDatabase = /^postgres(?:ql)?:\/\/postgres:postgres@localhost:5432\/frieren_audit(?:\?|$)/.test(process.env.DATABASE_URL || '');
 function snowflake(prefix) { return prefix + String(randomInt(0,281_474_976_710_655)).padStart(15,'0'); }
 
 test('guild mini-games persist scores once, isolate guild/channel and reject expired answers', {
