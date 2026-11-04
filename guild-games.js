@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-const DISCORD_ID = /^\\d{17,20}$/;
+const DISCORD_ID = /^\d{17,20}$/;
 const SESSION_ID = /^[0-9a-f-]{36}$/i;
 export const GUILD_GAME_DURATION_MS = 60_000;
 export const GUILD_GAME_POINTS = 10;
@@ -124,7 +124,7 @@ export async function ensureGuildGameTables(db) {
 
 export async function startGuildMiniGame(db, { guildId, channelId, userId, gameType, random = Math.random, now = new Date() }) {
   validateIds(guildId, userId);
-  if (!/^\\d{17,20}$/.test(String(channelId || ''))) throw new Error('GUILD_GAME_CHANNEL_INVALID');
+  if (!/^\d{17,20}$/.test(String(channelId || ''))) throw new Error('GUILD_GAME_CHANNEL_INVALID');
   const question = createGuildGameQuestion(gameType, random);
   const sessionId = randomUUID();
   const expiresAt = new Date(new Date(now).getTime() + GUILD_GAME_DURATION_MS);
@@ -161,7 +161,7 @@ export async function startGuildMiniGame(db, { guildId, channelId, userId, gameT
 
 export async function answerGuildMiniGame(db, { guildId, channelId, sessionId, userId, answerIndex, now = new Date() }) {
   validateIds(guildId, userId);
-  if (!/^\\d{17,20}$/.test(String(channelId || ''))) throw new Error('GUILD_GAME_CHANNEL_INVALID');
+  if (!/^\d{17,20}$/.test(String(channelId || ''))) throw new Error('GUILD_GAME_CHANNEL_INVALID');
   if (!SESSION_ID.test(String(sessionId || ''))) throw new Error('GUILD_GAME_SESSION_INVALID');
   const index = Number(answerIndex);
   if (!Number.isInteger(index) || index < 0 || index > 3) throw new Error('GUILD_GAME_ANSWER_INVALID');
@@ -226,7 +226,7 @@ export async function answerGuildMiniGame(db, { guildId, channelId, sessionId, u
 }
 
 export async function getGuildGameLeaderboard(db, guildId, limit = 10) {
-  if (!/^\\d{17,20}$/.test(String(guildId || ''))) throw new Error('GUILD_GAME_GUILD_INVALID');
+  if (!/^\d{17,20}$/.test(String(guildId || ''))) throw new Error('GUILD_GAME_GUILD_INVALID');
   const size = Math.max(1, Math.min(25, Math.trunc(Number(limit) || 10)));
   const result = await db.query(
     `SELECT user_id,points,correct_answers,played_games
