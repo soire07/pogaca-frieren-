@@ -5,6 +5,8 @@ if (!/^https:\/\//i.test(configuredBaseUrl)) throw new Error('MOBILE_SMOKE_BASE_
 const parsedBaseUrl = new URL(configuredBaseUrl);
 if (!/vercel\.app$/i.test(parsedBaseUrl.hostname) || parsedBaseUrl.hostname === 'frierenbot.vercel.app') throw new Error('Browser smoke accepts only a Vercel preview hostname.');
 const baseUrl = parsedBaseUrl.origin.replace(/\/$/, '');
+const bypassSecret = String(process.env.VERCEL_AUTOMATION_BYPASS_SECRET || '').trim();
+const protectionHeaders = bypassSecret ? { 'x-vercel-protection-bypass': bypassSecret, 'x-vercel-set-bypass-cookie': 'true' } : {};
 const scenarios = [
   { name: 'Android Chrome viewport', engine: chromium, viewport: { width: 412, height: 915 }, isMobile: true },
   { name: 'iOS Safari viewport', engine: webkit, viewport: { width: 390, height: 844 }, isMobile: true },
@@ -18,11 +20,15 @@ for (const scenario of scenarios) {
       viewport: scenario.viewport,
       deviceScaleFactor: 2,
       isMobile: scenario.isMobile,
-      hasTouch: true
+      hasTouch: true,
+      extraHTTPHeaders: protectionHeaders
     });
     const page = await context.newPage();
     for (const route of ['/login', '/register']) {
       const response = await page.goto(baseUrl + route, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      if (page.url().startsWith('https://vercel.com/login')) {
+        throw new Error('Vercel preview protection blocked the browser smoke. Configure the GitHub Actions secret VERCEL_AUTOMATION_BYPASS_SECRET from the Frierenbot Vercel project protection settings.');
+      }
       if (!response || response.status() !== 200) throw new Error(scenario.name + ' ' + route + ' HTTP ' + (response?.status() || 'no response'));
       const layout = await page.evaluate(() => ({
         width: window.innerWidth,
@@ -59,7 +65,7 @@ for (const scenario of scenarios) {
   }
 }
 
-const api = await request.newContext({ timeout: 30000 });
+const api = await request.newContext({ timeout: 30000, extraHTTPHeaders: protectionHeaders });
 try {
   const response = await api.get(baseUrl + '/owner/login', { maxRedirects: 0 });
   const location = response.headers()['location'] || '';
