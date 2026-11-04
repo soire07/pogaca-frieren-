@@ -36,7 +36,7 @@ for (const scenario of scenarios) {
       if (!authFields) throw new Error(scenario.name + ' ' + route + ' missing CSRF-protected form');
       if (layout.documentWidth > layout.width + 1) throw new Error(scenario.name + ' ' + route + ' horizontal overflow: ' + layout.documentWidth + ' > ' + layout.width);
       if (layout.controls.some(control => control.left < -1 || control.right > layout.width + 1 || control.height < 32)) {
-        throw new Error(scenario.name + ' ' + route + ' has clipped or undersized controls');
+        throw new Error(scenario.name + ' ' + route + ' has clipped or undersized controls: ' + JSON.stringify(layout.controls));
       }
     }
     await context.close();
