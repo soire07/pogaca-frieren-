@@ -39,3 +39,14 @@ test('Discord command sync skips unchanged definitions and unnecessary global wr
   assert.ok(source.includes('skipped command write to preserve daily quota'));
   assert.ok(source.includes('No legacy global commands found; skipped unnecessary global command write.'));
 });
+
+
+test('mobile browser smoke runs once per PR update and cancels superseded runs', async () => {
+  const source = await workflow('mobile-browser-smoke.yml');
+  const triggerBlock = source.split('permissions:')[0];
+  assert.ok(triggerBlock.includes('pull_request:'), 'PR updates must run the mobile smoke');
+  assert.ok(triggerBlock.includes('workflow_dispatch:'), 'manual diagnostics must remain available');
+  assert.ok(!triggerBlock.includes('push:'), 'the same PR branch push must not duplicate the pull_request run');
+  assert.ok(source.includes('group: mobile-browser-smoke-'));
+  assert.ok(source.includes('cancel-in-progress: true'));
+});
