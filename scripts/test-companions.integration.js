@@ -8,7 +8,7 @@ before(async()=>{
  await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id IN ($2,$3,$4,$5,$6,$7)',[guild,user,poorUser,lockUser,evolutionUser,evolutionPoor,evolutionRace]);
  await pool.query('INSERT INTO users(guild_id,user_id,coins) VALUES($1,$2,1000),($1,$3,0),($1,$4,1000),($1,$5,20000),($1,$6,500),($1,$7,20000)',[guild,user,poorUser,lockUser,evolutionUser,evolutionPoor,evolutionRace]);
 });
-after(async()=>{await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id IN ($2,$3,$4,$5,$6)',[guild,user,poorUser,lockUser,evolutionUser,evolutionPoor]);await pool.end();});
+after(async()=>{await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id IN ($2,$3,$4,$5,$6,$7)',[guild,user,poorUser,lockUser,evolutionUser,evolutionPoor,evolutionRace]);await pool.end();});
 test('concurrent adoption charges once and persists exactly one companion',async()=>{
  const results=await Promise.all([
   adoptCompanion(pool,{guildId:guild,userId:user,companionKey:'flamme_fox'}),
