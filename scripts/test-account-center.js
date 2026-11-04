@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeSupportTicketInput, createSupportTicket, listSupportTickets, listSupportTicketMessages, replySupportTicket, updateSupportTicketStatus, exportSiteAccountData, deleteSiteAccount } from '../account-center.js';
+import { normalizeSupportTicketInput, createSupportTicket, listSupportTickets, listSupportTicketMessages, replySupportTicket, updateSupportTicketStatus, listSupportTicketsForOwner, getSupportTicketForOwner, replySupportTicketFromOwner, updateSupportTicketStatusFromOwner, exportSiteAccountData, deleteSiteAccount } from '../account-center.js';
 
 const accountId='site_123e4567-e89b-12d3-a456-426614174000';
 
@@ -87,5 +87,25 @@ test('support status transitions are recorded and closed tickets cannot be reope
  }};
  const ticketId='123e4567-e89b-42d3-a456-426614174000';
  assert.equal((await updateSupportTicketStatus(db,accountId,ticketId,'closed','support')).status,'updated');
+ assert.ok(calls.some(call=>call.sql.includes('frieren_support_ticket_events')));
+});
+
+
+test('owner support actions require the fixed owner identity and append staff replies/status events',async()=>{
+ const calls=[];
+ const db={async query(sql,params){
+  calls.push({sql,params});
+  if(sql.includes('SELECT ticket_id,status FROM frieren_support_tickets'))return{rows:[{ticket_id:'123e4567-e89b-42d3-a456-426614174000',status:'open'}],rowCount:1};
+  if(sql.includes('INSERT INTO frieren_support_ticket_messages'))return{rows:[{message_id:'staff-message',author_type:'support',message:'We fixed it.'}],rowCount:1};
+  if(sql.includes('UPDATE frieren_support_tickets SET updated_at'))return{rows:[],rowCount:1};
+  if(sql.includes('UPDATE frieren_support_tickets SET status'))return{rows:[{ticket_id:'123e4567-e89b-42d3-a456-426614174000',status:'closed'}],rowCount:1};
+  if(sql.includes('INSERT INTO frieren_support_ticket_events'))return{rows:[],rowCount:1};
+  throw new Error('Unexpected query: '+sql);
+ }};
+ const ticketId='123e4567-e89b-42d3-a456-426614174000';
+ await assert.rejects(()=>replySupportTicketFromOwner(db,ticketId,'123456789012345678','We fixed it.'),/SUPPORT_TICKET_OWNER_REQUIRED/);
+ assert.equal((await replySupportTicketFromOwner(db,ticketId,'1553794496234262641','We fixed it.')).status,'replied');
+ assert.equal((await updateSupportTicketStatusFromOwner(db,ticketId,'1553794496234262641','closed')).status,'updated');
+ assert.ok(calls.some(call=>call.sql.includes("VALUES($1,$2,'support'")));
  assert.ok(calls.some(call=>call.sql.includes('frieren_support_ticket_events')));
 });
