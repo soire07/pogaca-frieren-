@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { initDatabase, pool, ensureUser } from '../database/db.js';
 import { ensureAdventurerPlatformTables } from '../adventurer-platform.js';
 import { ensurePlayerMarketTables } from '../player-market.js';
+import { ensureSocialPlatformTables } from '../social-platform.js';
 import {
   ensureAccountCenterSchema, createSupportTicket, replySupportTicketFromOwner,
   updateSupportTicketStatusFromOwner, exportSiteAccountData, deleteSiteAccount
@@ -25,6 +26,7 @@ test('account export includes linked game and support data while excluding secre
   await initDatabase();
   await ensureAdventurerPlatformTables(pool);
   await ensurePlayerMarketTables(pool);
+  await ensureSocialPlatformTables(pool);
   await ensureAccountCenterSchema(pool);
 
   const guildId='99000000000000130';
@@ -68,6 +70,12 @@ test('account export includes linked game and support data while excluding secre
     await pool.query("INSERT INTO anime_character_collection(guild_id,user_id,character_name,anime,rarity,quantity) VALUES($1,$2,'Fern','Frieren','legendary',1)",[guildId,ownerUser]);
     await pool.query("INSERT INTO achievement_claims(guild_id,user_id,achievement_key) VALUES($1,$2,'export_test_achievement')",[guildId,ownerUser]);
 
+    const [lowUser,highUser]=[ownerUser,buyerUser].sort();
+    await pool.query("INSERT INTO social_friend_requests(request_id,guild_id,requester_id,target_id,status) VALUES($1,$2,$3,$4,'accepted')",[randomUUID(),guildId,ownerUser,buyerUser]);
+    await pool.query("INSERT INTO social_relationships(guild_id,user_low_id,user_high_id,relationship_type,created_by) VALUES($1,$2,$3,'friend',$4)",[guildId,lowUser,highUser,ownerUser]);
+    await pool.query("INSERT INTO social_coin_gifts(gift_id,guild_id,sender_id,recipient_id,amount,note) VALUES($1,$2,$3,$4,25,'export test')",[randomUUID(),guildId,ownerUser,buyerUser]);
+    await pool.query("INSERT INTO social_reputation_votes(guild_id,giver_id,recipient_id,week_start) VALUES($1,$2,$3,CURRENT_DATE)",[guildId,ownerUser,buyerUser]);
+
     listingId=randomUUID();
     await pool.query("INSERT INTO player_market_listings(listing_id,guild_id,seller_id,item_key,quantity,price_coins) VALUES($1,$2,$3,'export_relic',1,250)",[listingId,guildId,ownerUser]);
     await pool.query("INSERT INTO player_market_offers(offer_id,listing_id,guild_id,buyer_id,offer_coins) VALUES($1,$2,$3,$4,200)",[randomUUID(),listingId,guildId,buyerUser]);
@@ -99,6 +107,10 @@ test('account export includes linked game and support data while excluding secre
     assert.equal(exported.linkedProfiles[0].achievements.some(row=>row.achievement_key==='export_test_achievement'),true);
     assert.equal(exported.linkedProfiles[0].marketHistory.length,1);
     assert.equal(exported.linkedProfiles[0].marketOffers.length,1);
+    assert.equal(exported.linkedProfiles[0].gameData.social_friend_requests.length,1,'requester/target references must be exported');
+    assert.equal(exported.linkedProfiles[0].gameData.social_relationships.length,1,'both sides of a social relationship must be exported');
+    assert.equal(exported.linkedProfiles[0].gameData.social_coin_gifts.length,1,'sender/recipient gift records must be exported');
+    assert.equal(exported.linkedProfiles[0].gameData.social_reputation_votes.length,1,'giver/recipient reputation records must be exported');
     assert.equal(exported.accountData.site_profile_preferences[0].theme,'night');
     assert.equal(Object.hasOwn(exported.accountData.site_profile_preferences[0],'access_token_hash'),false);
     assert.equal(exported.supportTickets.length,1);
