@@ -14,6 +14,7 @@ import { listOwnerDailyQuests, saveOwnerDailyQuest, setOwnerDailyQuestActive } f
 import { listOwnerRpgContent, saveOwnerRpgContent, setOwnerRpgContentActive } from './owner-rpg-content.js';
 import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceAction } from './owner-render-control.js';
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
+import { listSupportTicketsForOwner, getSupportTicketForOwner, replySupportTicketFromOwner, updateSupportTicketStatusFromOwner } from './account-center.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
 import { classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks } from './guardian/automation.js';
 import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, reserveGuardianRepairDispatch, finishGuardianRepairDispatch, updateGuardianRepairStatus, getGuardianMonitorState, getLatestGuardianQualityReport } from './guardian/store.js';
@@ -756,6 +757,22 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     return true;
   }
 
+  if (url.pathname === '/owner/support' && req.method === 'GET') {
+    try {
+      const tickets = await listSupportTicketsForOwner(db, 75);
+      const selectedId = String(url.searchParams.get('ticket') || '');
+      const selected = selectedId ? await getSupportTicketForOwner(db, selectedId) : null;
+      const rows = tickets.map(ticket => '<article class="panel"><h3>' + escapeHtml(ticket.subject) + '</h3><p>' + escapeHtml(ticket.category) + ' · ' + escapeHtml(ticket.status) + ' · ' + escapeHtml(ticket.account_id) + '</p><p class="small">' + escapeHtml(ticket.ticket_id) + '</p><a class="btn secondary" href="/owner/support?ticket=' + encodeURIComponent(ticket.ticket_id) + '">Talebi aç</a></article>').join('');
+      const thread = selected ? '<section class="panel"><h2>' + escapeHtml(selected.subject) + '</h2><p>' + escapeHtml(selected.message) + '</p><p class="small">Hesap: ' + escapeHtml(selected.account_id) + ' · Durum: ' + escapeHtml(selected.status) + '</p><div class="columns">' + selected.replies.map(item => '<article class="panel"><b>' + (item.author_type === 'support' ? 'Destek ekibi' : 'Kullanıcı') + '</b><p>' + escapeHtml(item.message) + '</p><small>' + escapeHtml(new Date(item.created_at).toLocaleString('tr-TR')) + '</small></article>').join('') + '</div><h3>Durum geçmişi</h3><ul>' + selected.statusHistory.map(item => '<li>' + escapeHtml(item.previous_status || 'oluşturuldu') + ' → ' + escapeHtml(item.new_status) + ' · ' + escapeHtml(new Date(item.created_at).toLocaleString('tr-TR')) + '</li>').join('') + '</ul>' + (selected.status === 'closed' ? '<p class="notice">Bu talep kapalı.</p>' : '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(session.csrf) + '"><input type="hidden" name="action" value="support-reply"><input type="hidden" name="ticketId" value="' + escapeHtml(selected.ticket_id) + '"><label>Yanıt</label><textarea name="message" maxlength="5000" required></textarea><button class="btn">Yanıtı gönder</button></form><form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(session.csrf) + '"><input type="hidden" name="action" value="support-status"><input type="hidden" name="ticketId" value="' + escapeHtml(selected.ticket_id) + '"><label>Durum</label><select name="status"><option value="open">Açık</option><option value="in_progress">İnceleniyor</option><option value="closed">Kapalı</option></select><button class="btn secondary">Durumu güncelle</button></form>') + '</section>' : '';
+      const content = '<section class="hero"><span class="tag">OWNER · PRIVATE</span><h1>Destek merkezi</h1><p class="muted">Kullanıcı talepleri, personel yanıtları ve durum geçmişi. Bu ekran yalnızca Discord OAuth ile doğrulanmış Owner oturumuna açıktır.</p><a class="btn secondary" href="/owner">Owner Paneli</a></section>' + (url.searchParams.get('notice') === 'support_reply_saved' ? '<p class="notice">Yanıt kaydedildi.</p>' : url.searchParams.get('notice') === 'support_status_saved' ? '<p class="notice">Talep durumu güncellendi.</p>' : '') + thread + '<section class="panel"><h2>Son destek talepleri</h2>' + (rows || '<p class="muted">Henüz destek talebi yok.</p>') + '</section>';
+      send(res, 200, page('Destek Merkezi', content));
+    } catch (error) {
+      console.error('Owner support page failed:', error?.message || error);
+      send(res, 500, page('Destek Merkezi', '<h1>Destek kayıtları yüklenemedi</h1><a href="/owner">Owner Paneline dön</a>'));
+    }
+    return true;
+  }
+
   if (url.pathname === '/owner/frieren-ai/health' && req.method === 'GET') {
     const aiBase = (process.env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).replace(/\/$/, '');
     const healthSecret = process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
@@ -896,6 +913,16 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
       const form = await readForm(req);
       if (!safeStringEqual(form.get('csrf'), session.csrf)) return send(res, 403, page('İstek reddedildi', '<h1>CSRF doğrulaması başarısız</h1>'));
       const action = form.get('action');
+      if (action === 'support-reply') {
+        const result = await replySupportTicketFromOwner(db, String(form.get('ticketId') || ''), OWNER_ID, String(form.get('message') || ''));
+        redirect(res, '/owner/support?ticket=' + encodeURIComponent(String(form.get('ticketId') || '')) + '&notice=' + (result.status === 'replied' ? 'support_reply_saved' : 'invalid'));
+        return true;
+      }
+      if (action === 'support-status') {
+        const result = await updateSupportTicketStatusFromOwner(db, String(form.get('ticketId') || ''), OWNER_ID, String(form.get('status') || ''));
+        redirect(res, '/owner/support?ticket=' + encodeURIComponent(String(form.get('ticketId') || '')) + '&notice=' + (result.status === 'updated' ? 'support_status_saved' : 'invalid'));
+        return true;
+      }
 if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         const enabled = form.get('enabled') === 'true';
         await db.query(`WITH changed AS (
