@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRoundRobinFixtures, createGuildTeam, joinGuildTeam, reportGuildTeamFixtureScore } from '../guild-team-leagues.js';
+import { buildRoundRobinFixtures, createGuildTeam, joinGuildTeam, reportGuildTeamFixtureScore, ensureGuildTeamLeagueSchema } from '../guild-team-leagues.js';
 
 const guildId='1539562273197260860';
 const captain='123456789012345678';
@@ -81,4 +81,12 @@ test('fixture score is not finalized until both team captains confirm the same r
 
 test('fixture reports reject scores outside the bounded range',async()=>{
  await assert.rejects(()=>reportGuildTeamFixtureScore({}, {guildId,fixtureId,teamId:teamA,actorId:captain,ownScore:100,opponentScore:0}),/FIXTURE_SCORE_INVALID/);
+});
+
+test('raid participation schema links signups to real guild team UUIDs and preserves legacy A/B rows',async()=>{
+ const statements=[];
+ await ensureGuildTeamLeagueSchema({async query(sql){statements.push(sql);return{rows:[],rowCount:0};}});
+ assert.match(statements[0],/ADD COLUMN IF NOT EXISTS team_id UUID/);
+ assert.match(statements[0],/FOREIGN KEY\(guild_id,team_id\) REFERENCES guild_teams\(guild_id,team_id\) ON DELETE RESTRICT/);
+ assert.match(statements[0],/guild_event_participants_team_id_idx/);
 });
