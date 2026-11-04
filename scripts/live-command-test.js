@@ -1138,8 +1138,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           );
         } else if (commandName === 'karaktercek') {
           await pool.query('UPDATE users SET last_free_character_at=NULL,free_character_pity_count=0 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
-          const buttonSimulation = { ownerId: userId, users: [{ id: userId }, { id: '900000000000000002' }], componentEffects: [] };
-          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects, buttonSimulation);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
           interaction.user.id = userId;
           interaction.member = makeMember(userId);
           await command.execute(interaction);
@@ -1307,7 +1306,8 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             'UPDATE users SET pity_count=0,character_draw_count=0,character_draw_cooldown_until=NULL,last_character_draw_at=NULL WHERE guild_id=$1 AND user_id=$2',
             [guildId, userId]
           );
-          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          const buttonSimulation = { ownerId: userId, users: [{ id: userId }, { id: '900000000000000002' }], componentEffects: [] };
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects, buttonSimulation);
           interaction.user.id = userId;
           interaction.member = makeMember(userId);
           await command.execute(interaction);
