@@ -472,6 +472,7 @@ test('public home showcase is visible only after explicit opt-in',async()=>{
   if(sql.includes('FROM player_home_rooms'))return {rows:[{room_key:'starter'}],rowCount:1};
   if(sql.includes('FROM achievement_claims'))return {rows:[{achievement_key:'first_boss',display_slot:0}],rowCount:1};
   if(sql.includes('FROM player_cosmetic_loadout'))return {rows:[{slot:'profile_frame',cosmetic_key:'moon_frame'}],rowCount:1};
+  if(sql.includes('FROM user_companions'))return {rows:[],rowCount:0};
   throw new Error('Unexpected public home query: '+sql);
  }};
  const account={id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'};
