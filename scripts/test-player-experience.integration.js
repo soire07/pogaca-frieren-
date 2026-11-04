@@ -37,6 +37,7 @@ test('cosmetic purchase is single-charge, equip is ownership-gated and presets p
  assert.equal((await applyCosmeticPreset(pool,{guildId:guild,userId:user,presetName:'Eksik'})).status,'preset_missing');
 });
 test('event registration and check-in progress award each milestone once',async()=>{
+ const before=await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);
  await joinGuildEvent(pool,{guildId:guild,eventId,userId:user});
  await pool.query('UPDATE guild_events SET starts_at=NOW()-INTERVAL \'1 minute\' WHERE event_id=$1',[eventId]);
  assert.equal((await checkInGuildEvent(pool,{guildId:guild,userId:user,eventId})).status,'checked_in');
@@ -51,6 +52,6 @@ test('event registration and check-in progress award each milestone once',async(
  assert.equal((await claimEventMilestone(pool,{guildId:guild,userId:user,eventId,rewardKey:'checkin'})).status,'claimed');
  assert.equal((await claimEventMilestone(pool,{guildId:guild,userId:user,eventId,rewardKey:'checkin'})).status,'already_claimed');
  const balance=await pool.query('SELECT coins,xp FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);
- assert.equal(Number(balance.rows[0].coins),50000+100+150);
- assert.equal(Number(balance.rows[0].xp),25+40);
+ assert.equal(Number(balance.rows[0].coins),Number(before.rows[0].coins)+100+150);
+ assert.equal(Number(balance.rows[0].xp),Number(before.rows[0].xp)+25+40);
 });
