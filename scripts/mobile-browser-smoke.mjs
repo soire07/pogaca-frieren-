@@ -27,8 +27,9 @@ for (const scenario of scenarios) {
         form: Boolean(document.querySelector('form')),
         controls: [...document.querySelectorAll('input,button,select,textarea')].map(node => {
           const rect = node.getBoundingClientRect();
-          return { left: rect.left, right: rect.right, height: rect.height };
-        })
+          const style = window.getComputedStyle(node);
+          return { left: rect.left, right: rect.right, height: rect.height, visible: style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0 && node.type !== 'hidden' };
+        }).filter(control => control.visible)
       }));
       if (!layout.viewport || !layout.form) throw new Error(scenario.name + ' ' + route + ' missing mobile viewport or form');
       const authFields = await page.locator('input[name="csrf"]').count();
