@@ -138,7 +138,19 @@ Güncel uygulama PR #217 taslağında tutuluyor; üretim verisi değiştirilmedi
 ## Roadmap kalite denetimi — 2026-11-04
 
 - Yeni `scripts/roadmap-capability-audit.js`, roadmap kayıtlarını işlem fiili + temel yetenek olarak ayırır; aynı kategori ve temel yetenek altındaki Preview/Unlock/Track/Compare gibi varyantları ayrı bağımsız ürün yeteneği olarak saymaz.
-- Mevcut 1.675 roadmap kaydı 25 kategoride dağılmıştır. İşlem fiili çıkarılıp kategori kapsamı korunarak normalleştirildiğinde **775 kategori/yetenek grubu** elde edilir; dolayısıyla kayıt sayısı tek başına 1.675 bağımsız ürün yeteneği kanıtı değildir.
+- Mevcut 1.675 roadmap kaydı 25 kategoride dağılmıştır. `Earn milestones for` ve `Review history for` gibi birleşik işlem önekleri tek parça çıkarıldığında kategori kapsamı korunarak **325 kategori/yetenek grubu** elde edilir: 225 grup yedi işlem varyantı (1.575 kayıt), 50 tek işlem grubu ve 50 öneksiz bağımsız kayıt. Önceki denetim kodu birleşik önekleri yalnızca `Earn`/`Review` olarak kestiği için hatalı 775 sayısını raporlamıştı; kod ve regresyon testi düzeltildi.
 - Bu denetim kayıtları otomatik silmez veya mevcut/planned statülerini değiştirmez. Tekrarlanan varyantlar ürün gereksinimi, ayrı davranış veya yalnızca görünüm/CRUD işlemi olup olmadığına göre insan incelemesi gerektirir.
 - Denetim `npm run check` ve `npm test` akışına eklendi; `scripts/test-roadmap-capability-audit.js` Türkçe normalizasyonu, kategori ayrımı, işlem fiili ayrıştırması ve envanter sayaçlarını test eder.
 - Sonraki uygulama paketleri 775 temel yetenek grubuna göre tanımlanmalı; her temel yetenek için Discord/web yüzeyleri, veri modeli, izin kapsamı ve test kanıtı ayrı izlenmelidir. Roadmap kayıt sayısı, uygulama yüzeyi veya test sayısı olarak raporlanmamalıdır.
+
+
+## Kişisel yaşam, kozmetik ve etkinlik ilerlemesi — 2026-11-04
+
+- Yeni `player-experience.js`, kişisel ev, genel oyuncu kozmetikleri ve etkinlik ödül ilerlemesi için ortak guild/user kapsamlı servis katmanıdır. Discord ve web yüzeyleri aynı servisleri kullanır.
+- Kişisel ev: dokuz açılabilir oda, sekiz izinli dekorasyon anahtarı, oda sahipliği kontrolü ve en fazla 12 konumlu JSON yerleşimi. Ev kayıtları ilk erişimde oluşturulur; her bot başlangıcında tüm oyuncu tablosu taranmaz.
+- Genel kozmetik: profil çerçevesi, isimlik, başlık efekti, büyü izi, zafer pozu, avatar kenarı, lonca sancağı, mevsim teması ve koleksiyon sergisi olmak üzere dokuz görünüm yuvası; 18 oyun içi altın/seviye koşullu öğe; sahiplik, kuşanma ve görünüm preset'i kaydetme/uygulama.
+- Etkinlik ilerlemesi: `/etkinlik katil` kaydı katılım ilerlemesini aynı transaction içinde bir kez artırır. `/etkinlik yoklama` yalnızca kayıtlı katılımcıya, etkinlik başladıktan sonra tek seferlik check-in verir. Etkinlik bittikten sonra katılım ve yoklama ödülleri benzersiz claim anahtarıyla transaction içinde tek kez verilir.
+- Discord yüzeyi: `/yasam` ev, oda açma, yerleşim, dekorasyon kataloğu, kozmetik satın alma/kuşanma ve preset kaydetme/uygulama/etkinlik ödülü alt komutlarını sunar.
+- Web yüzeyi: `/maceraci/yasam?guildId=...` yalnızca oturumun bağlı olduğu Discord karakterini gösterir. Ev/kozmetik/preset/etkinlik işlemleri CSRF doğrulamalı POST ve linked-guild kontrolünden geçer.
+- İzole PostgreSQL entegrasyon testi `scripts/test-player-experience.integration.js` ile CI'a eklendi; birim testleri `scripts/test-player-experience.js` ile `npm test` içine eklendi. Bu yeni testlerin son HEAD üzerindeki sonucu CI tamamlanmadan başarılı kabul edilmez.
+- Bu paket, roadmap'teki 67 Housing, 67 Cosmetics ve 67 Events kaydının tamamlandığı anlamına gelmez. Özellikle oda görsel sürükle-bırak düzenleyicisi, genişletilmiş sezon para birimi/görevleri, tüm kozmetik kaynak/elde etme geçmişi ve etkinlik geçmişi/karşılaştırma görünümleri hâlâ ayrı doğrulama gerektirir. Envanter kayıtları `planned` kalır; `auditComplete=false` korunur.
