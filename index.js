@@ -20,6 +20,7 @@ import { ensureSocialPlatformTables } from './social-platform.js';
 import { ensureAccountCenterSchema } from './account-center.js';
 import { ensureNewsBirdSchema, pollAnimeNewsFeed, claimDueAnimeNewsDigests, markAnimeNewsDigestSent, releaseAnimeNewsDigestClaim, getEventReminderRecipients, setNotificationPreference } from './news-birds.js';
 import { ensureCardVariantSchema } from './card-variants.js';
+import { ensureGuildWorkshopSchema, runGuildSpellAutomations } from './guild-workshop.js';
 import { initCompanionSchema } from './companions.js';
 import { initFishingSchema } from './fishing.js';
 import { initFarmSchema } from './farming.js';
@@ -215,6 +216,7 @@ async function processDueGuildEventReminders(readyClient = client) {
             (attendees.length ? '\\n\\nKayıtlı maceracılar: ' + attendees.map(id => '<@' + id + '>').join(' ') : ''),
           allowedMentions: { parse: [], users: attendees }
         });
+        await runGuildSpellAutomations(pool,readyClient,event.guild_id,'event_reminder',{event:event.title,boss:event.title}).catch(error=>console.warn('Etkinlik otomasyonu çalıştırılamadı:',error?.message||error));
         await markGuildEventReminderSent(pool, event.event_id, event.reminder_claimed_at);
       } catch (error) {
         await releaseGuildEventReminderClaim(pool, event.event_id, event.reminder_claimed_at).catch(() => false);
@@ -498,6 +500,7 @@ await ensureSocialPlatformTables(pool);
 await ensureAccountCenterSchema(pool);
 await ensureNewsBirdSchema(pool);
 await ensureCardVariantSchema(pool);
+await ensureGuildWorkshopSchema(pool);
 await ensureGuildGameTables(pool);
 await Promise.all([ensureCreatureSchema(), initCompanionSchema(pool), initFishingSchema(pool), initFarmSchema(pool), initCharacterWishlistSchema(pool), ensurePlayerExperienceSchema(pool)]);
 await initOwnerAdminSchema(pool);
