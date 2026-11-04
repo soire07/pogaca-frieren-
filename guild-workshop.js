@@ -106,11 +106,13 @@ export async function ensureGuildWorkshopSchema(db) {
       template_id UUID REFERENCES guild_embed_templates(template_id) ON DELETE SET NULL,
       cooldown_seconds INTEGER NOT NULL DEFAULT 60 CHECK(cooldown_seconds BETWEEN 30 AND 3600),
       last_triggered_at TIMESTAMPTZ,
+      claimed_at TIMESTAMPTZ,
       enabled BOOLEAN NOT NULL DEFAULT TRUE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE(guild_id,trigger_key,name)
     );
+    ALTER TABLE guild_spell_automations ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ;
     CREATE INDEX IF NOT EXISTS guild_spell_automations_due_idx
       ON guild_spell_automations(guild_id,trigger_key,last_triggered_at) WHERE enabled=TRUE;
   `);
@@ -192,9 +194,10 @@ export async function runGuildSpellAutomations(db,client,guildId,triggerKey,cont
        SELECT automation_id FROM guild_spell_automations
        WHERE guild_id=$1 AND trigger_key=$2 AND enabled=TRUE
          AND (last_triggered_at IS NULL OR last_triggered_at<=NOW()-make_interval(secs=>cooldown_seconds))
+         AND (claimed_at IS NULL OR claimed_at<=NOW()-INTERVAL '10 minutes')
        ORDER BY created_at LIMIT 10 FOR UPDATE SKIP LOCKED
      ), claimed AS (
-       UPDATE guild_spell_automations a SET last_triggered_at=NOW()
+       UPDATE guild_spell_automations a SET claimed_at=NOW()
        FROM due WHERE a.automation_id=due.automation_id RETURNING a.*
      )
      SELECT c.*,t.title AS embed_title,t.description AS embed_description,t.color AS embed_color,
@@ -220,8 +223,12 @@ export async function runGuildSpellAutomations(db,client,guildId,triggerKey,cont
         embeds.push(embed);
       }
       await channel.send({content,embeds,allowedMentions:{parse:[]}});
+      await db.query('UPDATE guild_spell_automations SET last_triggered_at=NOW(),claimed_at=NULL WHERE automation_id=$1 AND claimed_at IS NOT NULL',[rule.automation_id]);
       sent++;
-    }catch(error){skipped++;console.warn('Lonca büyü otomasyonu gönderilemedi:',error?.message||error);}
+    }catch(error){
+      await db.query('UPDATE guild_spell_automations SET claimed_at=NULL WHERE automation_id=$1',[rule.automation_id]).catch(()=>{});
+      skipped++;console.warn('Lonca büyü otomasyonu gönderilemedi:',error?.message||error);
+    }
   }
   return {sent,skipped};
 }
