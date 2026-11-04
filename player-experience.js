@@ -34,7 +34,7 @@ export const PLAYER_COSMETICS=Object.freeze([
  {key:'star_display',slot:'collection_display',name:'Yıldız Koleksiyonu Sergisi',level:30,cost:4200}
 ]);
 export const HOME_STATIONS=Object.freeze([
- {roomKey:'library',name:'Büyü Arşivi',commands:['/buyu','/buyuogren','/buyupratik']},
+ {roomKey:'library',name:'Büyü Arşivi',commands:['/buyular','/buyuogren','/buyupratik']},
  {roomKey:'alchemy',name:'Simya Tezgahı',commands:['/yasam iksir-demle']},
  {roomKey:'garden',name:'Gezgin Bahçesi',commands:['/bahce durum','/bahce tohum-ek','/bahce hasat']},
  {roomKey:'workshop',name:'Zanaat Atölyesi',commands:['/zanaat']},
