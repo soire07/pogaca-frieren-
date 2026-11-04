@@ -364,6 +364,25 @@ test('adventurer account linking rejects invalid CSRF before opening a database 
   assert.equal(connected,false);
 });
 
+test('public home showcase is visible only after explicit opt-in',async()=>{
+ const profile={user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20,active_room:'starter',layout:[],is_public:true};
+ const db={async query(sql){
+  if(sql.includes('FROM player_homes h JOIN users u'))return {rows:[profile],rowCount:1};
+  if(sql.includes('FROM player_home_rooms'))return {rows:[{room_key:'starter'}],rowCount:1};
+  if(sql.includes('FROM achievement_claims'))return {rows:[{achievement_key:'first_boss',display_slot:0}],rowCount:1};
+  if(sql.includes('FROM player_cosmetic_loadout'))return {rows:[{slot:'profile_frame',cosmetic_key:'moon_frame'}],rowCount:1};
+  throw new Error('Unexpected public home query: '+sql);
+ }};
+ const account={id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'};
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/maceraci/ev?guildId=1539562273197260860&userId='+profile.user_id,account),response,{db}),true);
+ assert.equal(response.status,200);
+ assert.match(response.body,/Topluluk Ev Vitrini/);
+ assert.match(response.body,/Fern/);
+ assert.match(response.body,/first_boss/);
+ assert.match(response.body,/Ay Işığı Çerçevesi/);
+});
+
 test('player experience web mutations reject invalid CSRF before database access',async()=>{
  let connected=false;
  const db={connect:async()=>{connected=true;throw new Error('must not connect');},query:async()=>{connected=true;throw new Error('must not query');}};
