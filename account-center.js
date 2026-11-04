@@ -5,6 +5,12 @@ const CATEGORIES = new Set(['technical','bug','account','gameplay','other']);
 const SENSITIVE_TABLE = /(?:auth|session|credential|token|secret|owner|support|oauth|audit|log)/i;
 const ACCOUNT_DELETE_EXCLUDED_TABLE = /(?:owner|audit|log|support)/i;
 const SENSITIVE_COLUMN = /password|secret|token|credential|session|api.?key|private.?key|hash/i;
+const USER_REFERENCE_COLUMNS = new Set([
+  'user_id','requester_id','target_id','recipient_id','sender_id','giver_id','actor_id','author_id',
+  'created_by','updated_by','reported_by','captain_id','owner_id','seller_id','buyer_id',
+  'from_user_id','to_user_id','player_id','member_id','inviter_id','claimed_by','approved_by',
+  'moderator_id','challenger_id','opponent_id','winner_id','loser_id','assigned_to','reviewed_by'
+]);
 
 async function withAccountTransaction(db, operation) {
   if (typeof db.connect !== 'function') return operation(db);
@@ -256,7 +262,7 @@ export async function exportSiteAccountData(db, accountId) {
       db.query('SELECT achievement_key,claimed_at FROM achievement_claims WHERE guild_id=$1 AND user_id=$2 ORDER BY claimed_at', [profile.guild_id, profile.user_id]),
       db.query('SELECT listing_id,item_key,quantity,price_coins,status,created_at,resolved_at FROM player_market_listings WHERE guild_id=$1 AND (seller_id=$2 OR buyer_id=$2) ORDER BY created_at DESC', [profile.guild_id, profile.user_id]),
       db.query('SELECT o.offer_id,o.listing_id,o.buyer_id,o.offer_coins,o.status,o.created_at,o.resolved_at,l.seller_id,l.item_key FROM player_market_offers o JOIN player_market_listings l ON l.listing_id=o.listing_id AND l.guild_id=o.guild_id WHERE o.guild_id=$1 AND (o.buyer_id=$2 OR l.seller_id=$2) ORDER BY o.created_at DESC', [profile.guild_id, profile.user_id]),
-      db.query("SELECT table_name,column_name FROM information_schema.columns WHERE table_schema=current_schema() AND column_name IN ('guild_id','user_id') ORDER BY table_name,ordinal_position")
+      db.query("SELECT table_name,column_name FROM information_schema.columns WHERE table_schema=current_schema() AND column_name IN ('guild_id','user_id','requester_id','target_id','recipient_id','sender_id','giver_id','actor_id','author_id','created_by','updated_by','reported_by','captain_id','owner_id','seller_id','buyer_id','from_user_id','to_user_id','player_id','member_id','inviter_id','claimed_by','approved_by','moderator_id','challenger_id','opponent_id','winner_id','loser_id','assigned_to','reviewed_by') ORDER BY table_name,ordinal_position")
     ]);
     const columnsByTable = new Map();
     for (const column of tableColumns.rows || []) {
@@ -266,18 +272,101 @@ export async function exportSiteAccountData(db, accountId) {
     }
     const gameData = {};
     for (const [table, columns] of columnsByTable) {
-      if (!columns.includes('user_id')) continue;
+      const userColumns = columns.filter(name => USER_REFERENCE_COLUMNS.has(name));
+      if (!userColumns.length) continue;
       const metadata = await db.query(
         'SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=$1 ORDER BY ordinal_position',
         [table]
       );
       const selected = (metadata.rows || []).map(row => row.column_name)
         .filter(name => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) && !SENSITIVE_COLUMN.test(name));
-      if (!selected.includes('user_id')) continue;
+      const safeUserColumns = userColumns.filter(name => selected.includes(name));
+      if (!safeUserColumns.length) continue;
       const projection = selected.map(name => '"' + name + '"').join(',');
+      const identityPredicate = safeUserColumns.map(name => '"' + name + '"=
+    return { ...profile, inventory: inventory.rows, collections: collections.rows, achievements: achievements.rows, marketHistory: marketHistory.rows, marketOffers: marketOffers.rows, gameData };
+  }));
+  const accountTableColumns = await db.query("SELECT table_name,column_name,data_type FROM information_schema.columns WHERE table_schema=current_schema() AND column_name='account_id' ORDER BY table_name,ordinal_position");
+  const accountColumnsByTable = new Map();
+  const accountIdTypes = new Map();
+  for (const column of accountTableColumns.rows || []) {
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(String(column.table_name||'')) || SENSITIVE_TABLE.test(column.table_name)) continue;
+    if (!accountColumnsByTable.has(column.table_name)) accountColumnsByTable.set(column.table_name, []);
+    accountColumnsByTable.get(column.table_name).push(column.column_name);
+    if (column.column_name === 'account_id') accountIdTypes.set(column.table_name, column.data_type);
+  }
+  const accountData = {};
+  for (const [table, columns] of accountColumnsByTable) {
+    if (!columns.includes('account_id') || columns.includes('user_id')) continue;
+    const metadata = await db.query('SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=$1 ORDER BY ordinal_position',[table]);
+    const selected = (metadata.rows || []).map(row => row.column_name).filter(name => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) && !SENSITIVE_COLUMN.test(name));
+    if (!selected.includes('account_id')) continue;
+    const projection = selected.map(name => '"' + name + '"').join(',');
+    const accountType = accountIdTypes.get(table);
+    const rows = accountType === 'uuid'
+      ? await db.query('SELECT ' + projection + ' FROM "' + table + '" WHERE account_id=$1',[id])
+      : await db.query('SELECT ' + projection + ' FROM "' + table + '" WHERE account_id IN ($1,$2)',[accountId,id]);
+    accountData[table] = rows.rows;
+  }
+  const ticketsResult = await db.query(
+    'SELECT ticket_id,category,subject,message,status,created_at,updated_at FROM frieren_support_tickets WHERE account_id=$1 ORDER BY created_at,ticket_id',
+    [id]
+  );
+  const tickets = await Promise.all(ticketsResult.rows.map(async ticket => {
+    const [messages, events] = await Promise.all([
+      db.query('SELECT author_type,author_id,message,created_at FROM frieren_support_ticket_messages WHERE ticket_id=$1 ORDER BY created_at,message_id',[ticket.ticket_id]),
+      db.query('SELECT actor_type,previous_status,new_status,created_at FROM frieren_support_ticket_events WHERE ticket_id=$1 ORDER BY created_at,event_id',[ticket.ticket_id])
+    ]);
+    return { ...ticket, replies:messages.rows, statusHistory:events.rows };
+  }));
+  return {
+    schemaVersion: 2,
+    exportedAt: new Date().toISOString(),
+    account: accountResult.rows[0],
+    accountData,
+    linkedProfiles,
+    supportTickets: tickets,
+    deletionScope: 'Deleting the site account removes this portal identity and its Discord links. Discord-owned RPG profiles and guild game records remain intact.'
+  };
+}
+
+export async function deleteSiteAccount(db, accountId, confirmation) {
+  if (confirmation !== 'HESABIMI SIL') return { status: 'confirmation_required' };
+  const id = accountUuid(accountId);
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const account = await client.query('SELECT id FROM frieren_site_accounts WHERE id=$1 FOR UPDATE', [id]);
+    if (!account.rowCount) {
+      await client.query('ROLLBACK');
+      return { status: 'not_found' };
+    }
+    const accountTables = await client.query("SELECT table_name,data_type FROM information_schema.columns WHERE table_schema=current_schema() AND column_name='account_id'");
+    for (const table of accountTables.rows || []) {
+      const name = String(table.table_name || '');
+      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) || ACCOUNT_DELETE_EXCLUDED_TABLE.test(name)) continue;
+      if (table.data_type === 'uuid') {
+        await client.query('DELETE FROM "' + name + '" WHERE account_id=$1',[id]);
+      } else {
+        await client.query('DELETE FROM "' + name + '" WHERE account_id IN ($1,$2)',[accountId,id]);
+      }
+    }
+    await client.query('DELETE FROM frieren_support_tickets WHERE account_id=$1', [id]);
+    await client.query('DELETE FROM site_discord_links WHERE account_id=$1', [id]);
+    await client.query('DELETE FROM frieren_site_accounts WHERE id=$1', [id]);
+    await client.query('COMMIT');
+    return { status: 'deleted', discordGameDataPreserved: true };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+ + (columns.includes('guild_id') ? 2 : 1)).join(' OR ');
       const rows = columns.includes('guild_id')
-        ? await db.query('SELECT ' + projection + ' FROM "' + table + '" WHERE guild_id=$1 AND user_id=$2', [profile.guild_id, profile.user_id])
-        : await db.query('SELECT ' + projection + ' FROM "' + table + '" WHERE user_id=$1', [profile.user_id]);
+        ? await db.query('SELECT ' + projection + ' FROM "' + table + '" WHERE guild_id=$1 AND (' + identityPredicate + ')', [profile.guild_id, profile.user_id])
+        : await db.query('SELECT ' + projection + ' FROM "' + table + '" WHERE (' + identityPredicate + ')', [profile.user_id]);
       gameData[table] = rows.rows;
     }
     return { ...profile, inventory: inventory.rows, collections: collections.rows, achievements: achievements.rows, marketHistory: marketHistory.rows, marketOffers: marketOffers.rows, gameData };
