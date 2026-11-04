@@ -2,7 +2,7 @@ import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import {pool,initDatabase} from '../database/db.js';
 import {ensureAdventurerPlatformTables,createGuildEvent,joinGuildEvent} from '../adventurer-platform.js';
-import {HOME_ROOMS,PLAYER_COSMETICS,getPlayerHome,unlockHomeRoom,saveHomeLayout,purchaseCosmetic,equipCosmetic,saveCosmeticPreset,checkInGuildEvent,claimEventMilestone} from '../player-experience.js';
+import {HOME_ROOMS,PLAYER_COSMETICS,getPlayerHome,unlockHomeRoom,saveHomeLayout,purchaseCosmetic,equipCosmetic,saveCosmeticPreset,applyCosmeticPreset,checkInGuildEvent,claimEventMilestone} from '../player-experience.js';
 const guild='1539562273197260860',user='123456789012345678';
 let eventId;
 before(async()=>{
@@ -34,6 +34,8 @@ test('cosmetic purchase is single-charge, equip is ownership-gated and presets p
  assert.equal(Number(after.rows[0].coins),Number(before.rows[0].coins)-item.cost);
  assert.equal((await equipCosmetic(pool,{guildId:guild,userId:user,cosmeticKey:item.key})).status,'equipped');
  assert.equal((await saveCosmeticPreset(pool,{guildId:guild,userId:user,presetName:'Gece'})).status,'saved');
+ assert.equal((await applyCosmeticPreset(pool,{guildId:guild,userId:user,presetName:'Gece'})).status,'applied');
+ assert.equal((await applyCosmeticPreset(pool,{guildId:guild,userId:user,presetName:'Eksik'})).status,'preset_missing');
 });
 test('event registration and check-in progress award each milestone once',async()=>{
  await joinGuildEvent(pool,{guildId:guild,eventId,userId:user});
