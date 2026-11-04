@@ -66,6 +66,32 @@ test('authenticated homepage is the account-scoped player dashboard', async () =
   assert.equal(queries[0].params[0], accountId.replace(/^site_/, ''));
 });
 
+test('player collection page is scoped to the linked guild and shows existing game collections', async () => {
+  const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:12,xp:1440,coins:900,hp:80,max_hp:100,mana:65,max_mana:100};
+  const accountId='site_123e4567-e89b-12d3-a456-426614174000';
+  const db={async query(sql){
+    if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};
+    if(sql.includes('FROM inventory i'))return{rows:[],rowCount:0};
+    if(sql.includes('FROM user_companions'))return{rows:[{companion_key:'moon_owl',cosmetic_key:'default',xp:300,level:3,happiness:80,energy:90,hunger:10}]};
+    if(sql.includes('FROM user_fish_collection'))return{rows:[{fish_key:'silver_trout',quantity:2}]};
+    if(sql.includes('FROM user_farm_plots'))return{rows:[{seed_key:'winter_berry',harvest_at:new Date(Date.now()-1000).toISOString(),ready:true}]};
+    if(sql.includes('FROM user_creature_collection'))return{rows:[{creature_key:'mana_slime',quantity:1}]};
+    if(sql.includes('FROM user_creature_wishlist'))return{rows:[{creature_key:'frost_hare'}]};
+    if(sql.includes('FROM user_character_wishlist'))return{rows:[{character_name:'Frieren',created_at:new Date().toISOString()}]};
+    throw new Error('Unexpected collection query: '+sql);
+  }};
+  const response=res();
+  assert.equal(await handlePublicSiteRequest(request('/maceraci/koleksiyon?guildId='+profile.guild_id,{id:accountId,username:'Gezgin'}),response,{db}),true);
+  assert.equal(response.status,200);
+  for(const expected of ['Fern','Ay Baykuşu','Gümüş Alabalık','Kuzey Meyvesi','Mana Slime','Buz Tavşanı','Frieren','Seviye 3'])assert.ok(response.body.includes(expected),expected);
+});
+test('player collection page rejects guilds not linked to the signed-in site account', async () => {
+  const accountId='site_123e4567-e89b-12d3-a456-426614174000';
+  const db={async query(sql){if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[],rowCount:0};throw new Error('Collection queries must not run for an unlinked guild');}};
+  const response=res();
+  assert.equal(await handlePublicSiteRequest(request('/maceraci/koleksiyon?guildId=1539562273197260860',{id:accountId,username:'Gezgin'}),response,{db}),true);
+  assert.equal(response.status,403);
+});
 test('player homepage fails closed when its database is unavailable', async () => {
   const response = res();
   assert.equal(await handlePublicSiteRequest(request('/'), response, {}), true);
@@ -420,4 +446,10 @@ test('web event RSVP uses the linked Discord character and redirects after joini
   assert.equal(await handlePublicSiteRequest(post,response,{db}),true);
   assert.equal(response.status,303);
   assert.match(response.headers.Location,/status=joined/);
+});
+
+test('main startup initializes all player-facing collection schemas before serving the web portal', async () => {
+  const source=await readFile(new URL('../index.js',import.meta.url),'utf8');
+  for(const moduleName of ['companions.js','fishing.js','farming.js','character-wishlist.js'])assert.ok(source.includes("from './"+moduleName+"'"));
+  assert.match(source,/await Promise\.all\(\[[\s\S]*ensureCreatureSchema\(\)[\s\S]*initCompanionSchema\(pool\)[\s\S]*initFishingSchema\(pool\)[\s\S]*initFarmSchema\(pool\)[\s\S]*initCharacterWishlistSchema\(pool\)[\s\S]*\]\)/);
 });

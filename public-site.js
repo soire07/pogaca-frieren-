@@ -1,5 +1,10 @@
 
 import { readFile } from 'node:fs/promises';
+import { getCompanion } from './companions.js';
+import { getFishCollection } from './fishing.js';
+import { getFarmPlot } from './farming.js';
+import { getCreatureCollection, getCreatureWishlist } from './creatures.js';
+import { getCharacterWishlist } from './character-wishlist.js';
 import { readPublicSiteSession, createPublicSiteSession } from './owner-dashboard.js';
 import { handleSiteAuthRequest, createSiteCsrfToken, verifySiteCsrfToken } from './site-auth.js';
 import {
@@ -88,7 +93,7 @@ function adventurerPanel(user, data, status) {
     const hp = Math.max(0, Math.min(100, Number(profile.hp) / Math.max(1, Number(profile.max_hp)) * 100));
     const mana = Math.max(0, Math.min(100, Number(profile.mana) / Math.max(1, Number(profile.max_mana)) * 100));
     const guild = encodeURIComponent(profile.guild_id);
-    return '<article class="card"><div class="eyebrow">SUNUCU · ' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + Number(profile.level) + '</p><div class="stats"><span><b>' + Number(profile.xp) + '</b> XP</span><span><b>' + Number(profile.coins) + '</b> Altın</span><span><b>' + Number(profile.rating) + '</b> MMR</span></div><p>HP ' + Number(profile.hp) + '/' + Number(profile.max_hp) + '</p><div class="progress"><i style="width:' + hp.toFixed(1) + '%"></i></div><p>Mana ' + Number(profile.mana) + '/' + Number(profile.max_mana) + '</p><div class="progress"><i style="width:' + mana.toFixed(1) + '%"></i></div><p>' + esc(profile.season_name || 'Sezon başlamadı') + ' · ' + Number(profile.wins) + ' galibiyet / ' + Number(profile.losses) + ' mağlubiyet</p><div class="actions"><a class="btn ghost" href="/maceraci/envanter?guildId=' + guild + '">Envanterim</a><a class="btn ghost" href="/pazar?guildId=' + guild + '">Kuzey Pazarı</a></div></article>';
+    return '<article class="card"><div class="eyebrow">SUNUCU · ' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + Number(profile.level) + '</p><div class="stats"><span><b>' + Number(profile.xp) + '</b> XP</span><span><b>' + Number(profile.coins) + '</b> Altın</span><span><b>' + Number(profile.rating) + '</b> MMR</span></div><p>HP ' + Number(profile.hp) + '/' + Number(profile.max_hp) + '</p><div class="progress"><i style="width:' + hp.toFixed(1) + '%"></i></div><p>Mana ' + Number(profile.mana) + '/' + Number(profile.max_mana) + '</p><div class="progress"><i style="width:' + mana.toFixed(1) + '%"></i></div><p>' + esc(profile.season_name || 'Sezon başlamadı') + ' · ' + Number(profile.wins) + ' galibiyet / ' + Number(profile.losses) + ' mağlubiyet</p><div class="actions"><a class="btn ghost" href="/maceraci/envanter?guildId=' + guild + '">Envanterim</a><a class="btn ghost" href="/maceraci/koleksiyon?guildId=' + guild + '">Koleksiyonum</a><a class="btn ghost" href="/pazar?guildId=' + guild + '">Kuzey Pazarı</a></div></article>';
   }).join('');
   const events = data.events.map(event => {
     const action = event.joined ? 'leave' : 'join';
@@ -110,6 +115,31 @@ function portalGuildPicker(user, profiles, route, title) {
   return page(title, '<main class="wrap" style="padding:54px 0 80px"><div class="eyebrow">✧ MACERACI LONCASI</div><h1 class="hero-title">Sunucunu <em>seç.</em></h1><p class="lead">İşlemler yalnızca Discord hesabına bağladığın karakterin bulunduğu sunucuda yapılır.</p><div class="portal-grid">' + cards + '</div></main>', user);
 }
 
+
+async function loadAdventurerCollections(db, guildId, userId) {
+  const [companion, fish, farm, creatures, creatureWishlist, characterWishlist] = await Promise.all([
+    getCompanion(db, guildId, userId), getFishCollection(db, guildId, userId), getFarmPlot(db, guildId, userId),
+    getCreatureCollection(db, guildId, userId), getCreatureWishlist(db, guildId, userId), getCharacterWishlist(db, guildId, userId)
+  ]);
+  return { companion, fish, farm, creatures, creatureWishlist, characterWishlist };
+}
+
+function adventurerCollectionPage(user, profile, collection) {
+  const guild = encodeURIComponent(profile.guild_id);
+  const companion = collection.companion
+    ? '<article class="card"><div class="eyebrow">YOLDAŞ AKADEMİSİ</div><h2>' + esc(collection.companion.catalog?.name || collection.companion.companion_key) + '</h2><p>Seviye ' + Number(collection.companion.level) + ' · ' + Number(collection.companion.xp) + ' XP</p><p>Mutluluk ' + Number(collection.companion.happiness) + '/100 · Enerji ' + Number(collection.companion.energy) + '/100 · Açlık ' + Number(collection.companion.hunger) + '/100</p></article>'
+    : '<article class="card"><div class="eyebrow">YOLDAŞ AKADEMİSİ</div><h2>Henüz yoldaşın yok</h2><p>Discord’da /yoldas sahiplen komutuyla ilk yoldaşını seçebilirsin.</p></article>';
+  const fishEntries = collection.fish.entries.map(row => '<li>' + esc(row.fish?.emoji || '🐟') + ' ' + esc(row.fish?.name || row.fish_key) + ' × ' + Number(row.quantity) + ' <span class="market-meta">· ' + esc(row.fish?.rarity || 'Bilinmiyor') + '</span></li>').join('');
+  const creatureEntries = collection.creatures.entries.map(row => '<li>' + (row.creature?.variant === 'shiny' ? '✨ ' : '') + esc(row.creature?.emoji || '✧') + ' ' + esc(row.creature?.name || row.creature_key) + ' × ' + Number(row.quantity) + ' <span class="market-meta">· ' + esc(row.creature?.rarity || 'Bilinmiyor') + '</span></li>').join('');
+  const creatureWishes = collection.creatureWishlist.map(item => '<li>' + esc(item.emoji) + ' ' + esc(item.name) + ' · ' + esc(item.rarity) + '</li>').join('');
+  const characterWishes = collection.characterWishlist.map(item => '<li>' + esc(item.character?.emoji || '🎴') + ' ' + esc(item.character_name) + ' · ' + esc(item.character?.rarity || 'Karakter') + '</li>').join('');
+  const farm = collection.farm
+    ? '<p><b>' + esc(collection.farm.seed?.name || collection.farm.seed_key) + '</b> · ' + (collection.farm.ready ? 'Hasada hazır' : 'Yetişiyor') + '</p><p class="market-meta">Hasat zamanı: ' + esc(new Date(collection.farm.harvest_at).toLocaleString('tr-TR', { dateStyle:"medium", timeStyle:"short", timeZone:"Europe/Istanbul" })) + '</p>'
+    : '<p>Şu anda ekili bitkin yok. Discord’da /sera ekim ile başlayabilirsin.</p>';
+  const content = '<main class="wrap" style="padding:54px 0 80px"><div class="eyebrow">✧ MACERACI KOLEKSİYONU</div><h1 class="hero-title">' + esc(profile.character_name || 'Maceracı') + ' <em>Arşivi</em></h1><p class="lead">Yoldaşın, balık defterin, yaratıkların ve takip ettiğin karakterler. Veriler seçili Discord sunucusundan okunur.</p><div class="portal-actions"><a class="btn ghost" href="/maceraci">Maceracı paneli</a><a class="btn ghost" href="/maceraci/envanter?guildId=' + guild + '">Envanterim</a><a class="btn ghost" href="/pazar?guildId=' + guild + '">Kuzey Pazarı</a></div><section class="section"><div class="portal-grid">' + companion + '<article class="card"><div class="eyebrow">KUZEY BALIK DEFTERİ</div><h2>' + Number(collection.fish.unique) + '/' + Number(collection.fish.totalSpecies) + ' tür</h2><p>' + Number(collection.fish.caught) + ' toplam yakalama</p><ul>' + (fishEntries || '<li>Henüz balık yakalamadın.</li>') + '</ul></article><article class="card"><div class="eyebrow">BÜYÜLÜ SERA</div><h2>Bitki durumun</h2>' + farm + '</article><article class="card"><div class="eyebrow">YARATIK ARŞİVİ</div><h2>' + Number(collection.creatures.unique) + '/' + Number(collection.creatures.totalSpecies) + ' varyant</h2><p>' + Number(collection.creatures.total) + ' toplam yakalama</p><ul>' + (creatureEntries || '<li>Henüz yaratık yakalamadın.</li>') + '</ul></article><article class="card"><div class="eyebrow">YARATIK İSTEK LİSTESİ</div><h2>' + collection.creatureWishlist.length + ' takip</h2><ul>' + (creatureWishes || '<li>Henüz takip ettiğin yaratık yok.</li>') + '</ul></article><article class="card"><div class="eyebrow">KARAKTER İSTEK LİSTESİ</div><h2>' + collection.characterWishlist.length + '/10 hedef</h2><ul>' + (characterWishes || '<li>Henüz takip ettiğin karakter yok.</li>') + '</ul></article></div></section></main>';
+  return page('Maceracı Koleksiyonu', content, user);
+}
+
 function adventurerInventoryPage(user, data) {
   const items = data.items.map(item => '<article class="card"><h3>' + esc(item.item_key) + '</h3><p>Adet: <b>' + Number(item.quantity) + '</b></p><p class="market-meta">' + (item.slot ? 'Takılı: ' + esc(({weapon:'Silah',armor:'Zırh',ring1:'Yüzük I',ring2:'Yüzük II'})[item.slot] || item.slot) : 'Envanter') + '</p></article>').join('');
   const guild = encodeURIComponent(data.profile.guild_id);
@@ -117,7 +147,7 @@ function adventurerInventoryPage(user, data) {
   return page('Maceracı Envanteri', content, user);
 }
 
-function playerMarketPage(user, data, listings, history, status) {
+function playerMarketPage(user, data, listings, history, status, filters = {}) {
   const notices = {listed:'İlanın oluşturuldu; eşya emanet kasasına alındı.',purchased:'Satın alma tamamlandı; altın ve eşya aynı işlemde aktarıldı.',cancelled:'İlan iptal edildi; eşyan envanterine geri döndü.',unavailable:'İlan artık kullanılamıyor.',insufficient_funds:'Bu ilan için yeterli altının yok.',insufficient_items:'Satış için yeterli eşyan yok.',equipped_item:'Takılı ekipman pazara konulamaz.',listing_limit:'En fazla 10 aktif ilan açabilirsin.',self_purchase:'Kendi ilanını satın alamazsın.',not_owner:'Yalnızca kendi ilanını iptal edebilirsin.',invalid:'Gönderilen bilgiler geçersiz.'};
   const guild = encodeURIComponent(data.profile.guild_id);
   const csrf = esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET));
@@ -131,8 +161,9 @@ function playerMarketPage(user, data, listings, history, status) {
     return '<article class="card"><div class="eyebrow">' + (own ? 'SENİN İLANIN' : 'KUZEY PAZARI') + '</div><h3>' + esc(item.item_key) + ' ×' + Number(item.quantity) + '</h3><p class="market-price">' + Number(item.price_coins).toLocaleString('tr-TR') + ' altın</p><p class="market-meta">' + esc(new Date(item.created_at).toLocaleString('tr-TR',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Istanbul'})) + '</p>' + action + '</article>';
   }).join('');
   const historyCards = history.map(item => '<article class="card"><h3>' + esc(item.item_key) + ' ×' + Number(item.quantity) + '</h3><p>' + Number(item.price_coins).toLocaleString('tr-TR') + ' altın · ' + (item.status === 'sold' ? 'Satıldı' : item.status === 'cancelled' ? 'İptal edildi' : 'Aktif') + '</p></article>').join('');
+  const filterForm = '<article class="card"><h2>İlanları filtrele</h2><form method="get" action="/pazar"><input type="hidden" name="guildId" value="' + guild + '"><label for="market-search">Eşya ara</label><input id="market-search" name="q" maxlength="60" value="' + esc(filters.query || '') + '" placeholder="Örn. mana"><div class="form-row"><div><label for="market-min">En düşük fiyat</label><input id="market-min" type="number" name="min" min="0" max="1000000" value="' + esc(filters.minPrice || '') + '"></div><div><label for="market-max">En yüksek fiyat</label><input id="market-max" type="number" name="max" min="0" max="1000000" value="' + esc(filters.maxPrice || '') + '"></div></div><label for="market-sort">Sıralama</label><select id="market-sort" name="sort"><option value="price_asc"' + (filters.sort === 'price_asc' || !filters.sort ? ' selected' : '') + '>En düşük fiyat</option><option value="price_desc"' + (filters.sort === 'price_desc' ? ' selected' : '') + '>En yüksek fiyat</option><option value="newest"' + (filters.sort === 'newest' ? ' selected' : '') + '>En yeni ilan</option></select><button class="btn ghost" type="submit">Filtrele</button><a class="btn ghost" href="/pazar?guildId=' + guild + '">Filtreleri temizle</a></form></article>';
   const sellForm = '<article class="card"><h2>Eşyanı satışa çıkar</h2><form method="post" action="/pazar/sat"><input type="hidden" name="csrf" value="' + csrf + '"><input type="hidden" name="guildId" value="' + guild + '"><label for="market-item">Eşya</label><select id="market-item" name="itemKey" required>' + (options || '<option value="">Satılabilir eşya yok</option>') + '</select><label for="market-quantity">Adet</label><input id="market-quantity" type="number" name="quantity" min="1" max="1000" value="1" required><label for="market-price">Toplam fiyat (altın)</label><input id="market-price" type="number" name="priceCoins" min="1" max="1000000" required><button class="btn" type="submit"' + (options ? '' : ' disabled') + '>Emanet kasasına koy ve ilan aç</button></form><p class="market-meta">İlan açıldığında eşya emanet kasasına taşınır. Satış veya iptal tamamlanana kadar envanterinde harcanamaz.</p></article>';
-  const content = '<main class="wrap" style="padding:54px 0 80px"><div class="eyebrow">✧ KUZEY PAZARI</div><h1 class="hero-title">Maceracı <em>pazarı.</em></h1><p class="lead">' + esc(data.profile.character_name || 'Maceracı') + ' · ' + Number(data.profile.coins) + ' altın · Bu pazar yalnızca seçili Discord sunucusuna aittir.</p>' + (notices[status] ? '<p class="notice" role="status">' + notices[status] + '</p>' : '') + '<div class="portal-actions"><a class="btn ghost" href="/maceraci/envanter?guildId=' + guild + '">Envanterim</a><a class="btn ghost" href="/maceraci">Maceracı paneli</a></div><section class="section"><div class="portal-grid">' + sellForm + '</div></section><section class="section"><div class="section-head"><h2>Aktif ilanlar</h2><p>Fiyatı düşük olan ilanlar önce gösterilir. Satın alma atomik olarak tamamlanır.</p></div><div class="portal-grid">' + (active || '<article class="card"><p>Şu anda aktif ilan yok.</p></article>') + '</div></section><section class="section"><div class="section-head"><h2>İşlem geçmişim</h2></div><div class="portal-grid">' + (historyCards || '<article class="card"><p>Henüz pazar işlemin yok.</p></article>') + '</div></section></main>';
+  const content = '<main class="wrap" style="padding:54px 0 80px"><div class="eyebrow">✧ KUZEY PAZARI</div><h1 class="hero-title">Maceracı <em>pazarı.</em></h1><p class="lead">' + esc(data.profile.character_name || 'Maceracı') + ' · ' + Number(data.profile.coins) + ' altın · Bu pazar yalnızca seçili Discord sunucusuna aittir.</p>' + (notices[status] ? '<p class="notice" role="status">' + notices[status] + '</p>' : '') + '<div class="portal-actions"><a class="btn ghost" href="/maceraci/envanter?guildId=' + guild + '">Envanterim</a><a class="btn ghost" href="/maceraci">Maceracı paneli</a></div><section class="section"><div class="portal-grid">' + sellForm + filterForm + '</div></section><section class="section"><div class="section-head"><h2>Aktif ilanlar</h2><p>Arama, fiyat aralığı ve sıralama filtreleri seçili sunucunun aktif ilanlarına uygulanır. Satın alma atomik olarak tamamlanır.</p></div><div class="portal-grid">' + (active || '<article class="card"><p>Şu anda aktif ilan yok.</p></article>') + '</div></section><section class="section"><div class="section-head"><h2>İşlem geçmişim</h2></div><div class="portal-grid">' + (historyCards || '<article class="card"><p>Henüz pazar işlemin yok.</p></article>') + '</div></section></main>';
   return page('Kuzey Pazarı', content, user);
 }
 
@@ -207,7 +238,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/maceraci', '/maceraci/envanter', '/pazar']);
+  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/maceraci', '/maceraci/envanter', '/maceraci/koleksiyon', '/pazar']);
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname)) return false;
   const user = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
   if (!user) {
@@ -235,7 +266,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });
     res.end(html); return true;
   }
-  if (url.pathname === '/maceraci/envanter' || url.pathname === '/pazar') {
+  if (url.pathname === '/maceraci/envanter' || url.pathname === '/maceraci/koleksiyon' || url.pathname === '/pazar') {
     if (!db) { res.writeHead(503, { 'Content-Type':'text/plain; charset=utf-8', 'Cache-Control':'no-store' }); res.end('Panel veritabanı kullanılamıyor.'); return true; }
     const guildId=String(url.searchParams.get('guildId')||'');
     if(!guildId){
@@ -247,9 +278,12 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(!/^\d{17,20}$/.test(guildId)){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Sunucu seçimi geçersiz.');return true;}
     const data=await getAdventurerInventory(db,user.id,guildId);
     if(!data){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter web hesabına bağlı değil.');return true;}
+    const filters={query:url.searchParams.get('q')||'',minPrice:url.searchParams.get('min')||'',maxPrice:url.searchParams.get('max')||'',sort:url.searchParams.get('sort')||'price_asc'};
     const html=url.pathname==='/pazar'
-      ?playerMarketPage(user,data,await listPlayerMarketListings(db,guildId,20),await getPlayerMarketHistory(db,guildId,data.profile.user_id,15),url.searchParams.get('status'))
-      :adventurerInventoryPage(user,data);
+      ?playerMarketPage(user,data,await listPlayerMarketListings(db,guildId,20,filters),await getPlayerMarketHistory(db,guildId,data.profile.user_id,15),url.searchParams.get('status'),filters)
+      :url.pathname==='/maceraci/koleksiyon'
+        ?adventurerCollectionPage(user,data.profile,await loadAdventurerCollections(db,guildId,data.profile.user_id))
+        :adventurerInventoryPage(user,data);
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
     res.end(html);return true;
   }
