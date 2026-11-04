@@ -22,6 +22,8 @@ test('event calendar exposes list, join, leave and creation actions with bounded
   assert.ok(leagueCreate.options.find(option=>option.name==='ad').required);
   assert.ok(leagueCreate.options.find(option=>option.name==='baslangic').required);
   assert.ok(leagueCreate.options.find(option=>option.name==='bitis').required);
+  const join=schema.options.find(option=>option.name==='katil');
+  assert.deepEqual(join.options.find(option=>option.name==='takim').choices.map(choice=>choice.value),['A','B']);
   const create=schema.options.find(option=>option.name==='olustur');
   assert.ok(create.options.find(option=>option.name==='baslik').required);
   assert.ok(create.options.find(option=>option.name==='baslangic').required);
