@@ -3,12 +3,67 @@ name: Owner Panel Performance Checks
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'owner-dashboard.js'
+      - 'owner-admin.js'
+      - 'owner-metrics.js'
+      - 'owner-workspaces.js'
+      - 'owner-rpg-quests.js'
+      - 'owner-rpg-content.js'
+      - 'owner-render-control.js'
+      - 'rpg-content-catalog.js'
+      - 'rpg-mechanics.js'
+      - 'gunlukgorev.js'
+      - 'zindan.js'
+      - 'iblisavasi.js'
+      - 'ortakboss.js'
+      - 'database/db.js'
+      - 'scripts/test-owner-dashboard.js'
+      - 'scripts/test-owner-workspaces.js'
+      - 'scripts/test-owner-admin.js'
+      - 'scripts/test-owner-history.js'
+      - 'scripts/test-owner-metrics.js'
+      - 'scripts/test-owner-platform.js'
+      - 'scripts/test-owner-quests.js'
+      - 'scripts/test-owner-rpg-content.js'
+      - 'scripts/test-owner-render-control.js'
+      - 'scripts/check-gameplay-integrity.js'
   push:
     branches: [main, optimize-owner-panel-complete]
+    paths:
+      - 'owner-dashboard.js'
+      - 'owner-admin.js'
+      - 'owner-metrics.js'
+      - 'owner-workspaces.js'
+      - 'owner-rpg-quests.js'
+      - 'owner-rpg-content.js'
+      - 'owner-render-control.js'
+      - 'rpg-content-catalog.js'
+      - 'rpg-mechanics.js'
+      - 'gunlukgorev.js'
+      - 'zindan.js'
+      - 'iblisavasi.js'
+      - 'ortakboss.js'
+      - 'database/db.js'
+      - 'scripts/test-owner-dashboard.js'
+      - 'scripts/test-owner-workspaces.js'
+      - 'scripts/test-owner-admin.js'
+      - 'scripts/test-owner-history.js'
+      - 'scripts/test-owner-metrics.js'
+      - 'scripts/test-owner-platform.js'
+      - 'scripts/test-owner-quests.js'
+      - 'scripts/test-owner-rpg-content.js'
+      - 'scripts/test-owner-render-control.js'
+      - 'scripts/check-gameplay-integrity.js'
+      - '.github/workflows/owner-panel-performance.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: owner-panel-performance-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
