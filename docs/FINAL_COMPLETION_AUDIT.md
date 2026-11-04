@@ -124,7 +124,7 @@ Bu belge, bütünleşik tamamlama çalışmasının denetim tabanıdır. Her tam
 
 - Ana Poğaça Render servisi: ücretsiz plan, `main` dalı, commit ile otomatik dağıtım açık, health check `/health`. İnceleme anında canlı deploy commit'i `bf1b29aaf40d82fa581cbf4c5bb86f6095961a33`; PR #217 dalındaki değişiklikler bu servise dağıtılmadı.
 - Frieren AI Render servisi: ücretsiz plan, aynı GitHub deposunun `ai-agent` kök dizini, `main` dalı ve otomatik dağıtım açık. Render servis URL'si `https://pogaca-frieren-kltd.onrender.com`; Render servis ayarında health check path boş. Son uygulama logları health server'ın başladığını, AI PostgreSQL bağlantısının doğrulandığını ve slash komutlarının yalnızca test sunucusuna kaydedildiğini gösteriyor.
-- Vercel'de `frierenbot` projesi aynı GitHub deposuna bağlı ve Hobby planında. Bu denetimde Vercel production deployment/runtime sonucu doğrulanmadı; dağıtım tetiklenmedi.
+- Vercel'de `frierenbot` projesi aynı GitHub deposuna bağlı ve Hobby planında. Son listelenen production deployment `READY` durumunda; `main` dalındaki `052aebb2547212128a710c4a0c97baf529aeb458` commit'inden, 2026-11-02 13:58:59 UTC'de oluşturulmuş. Bu metadata deploy'un hazır olduğunu gösterir; gerçek tarayıcı/OAuth akışının doğrulandığı anlamına gelmez. Bu denetimde Vercel dağıtımı tetiklenmedi.
 
 ### Render hata günlüğü ve düzeltme
 
