@@ -377,3 +377,5 @@ test('guild teams, raid signup and league fixtures persist real UUID relationshi
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[guildId,users]);
   }
 });
+
+test.after(async()=>{await pool.end();});
