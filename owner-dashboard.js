@@ -603,7 +603,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + (result.status === 'proposal_only' && !process.env.FRIEREN_GITHUB_TOKEN && job.repair_dispatch_status !== 'dispatched' ? '<p class="notice warn">PR oluşturma düğmesi için FRIEREN_GITHUB_TOKEN yapılandırılmalı.</p>' : '')
       + '</article>';
   }).join('') : '<p class="muted">Henüz Frieren AI inceleme görevi yok.</p>';
-  const monitorInterval = Math.max(60_000, Math.min(Number(process.env.GUARDIAN_SCAN_INTERVAL_MS) || 300_000, 1_800_000));
+  const monitorInterval = Math.max(60_000, Math.min(Number(process.env.GUARDIAN_SCAN_INTERVAL_MS) || 600_000, 1_800_000));
   const monitorAge = monitorState?.last_tick_at ? Date.now() - new Date(monitorState.last_tick_at).getTime() : Infinity;
   const monitorStatus = monitorAge <= monitorInterval * 2 + 30_000 ? 'Aktif' : monitorState?.last_tick_at ? 'Gecikmiş' : 'Başlatılıyor';
   const systemCards = '<div class="grid">'
