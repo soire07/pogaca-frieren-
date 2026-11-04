@@ -695,7 +695,7 @@ test('Discord OAuth never creates an owner session for a non-owner Discord accou
   try {
     await handleOwnerDashboardRequest(req, response, { client: {}, db: { query: async () => { throw new Error('DB must not be queried'); } } });
     assert.equal(response.status, 403);
-    assert.ok(!response.headers['Set-Cookie']?.some(cookie => cookie.startsWith('frieren_owner_session=')));
+    assert.doesNotMatch(String(response.headers['Set-Cookie'] || ''), /frieren_owner_session=/);
     assert.match(response.body, /yalnızca site sahibine açıktır/);
   } finally {
     globalThis.fetch = previousFetch;
