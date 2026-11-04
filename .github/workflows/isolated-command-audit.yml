@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: frieren-isolated-audit-${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: true
+  group: frieren-isolated-audit-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
 jobs:
   audit:
     runs-on: ubuntu-latest
