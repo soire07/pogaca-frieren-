@@ -85,7 +85,7 @@ export async function scanPendingGuardianRepairDispatches(db, onDispatch = async
 export function startGuardianMonitor({
   db,
   client,
-  intervalMs = Number(process.env.GUARDIAN_SCAN_INTERVAL_MS) || 300_000,
+  intervalMs = Number(process.env.GUARDIAN_SCAN_INTERVAL_MS) || 600_000,
   setIntervalImpl = setInterval,
   clearIntervalImpl = clearInterval,
   onIncident = async () => {},
