@@ -46,9 +46,12 @@ A candidate is not eligible for Guard review unless all of the following are tru
 - CI reports success with zero failed and zero skipped tests.
 - The model quality report is READY FOR STAGED TEST.
 - Two-reviewer human scoring is complete.
-- No critical safety/privacy failure or fabricated-claim flag is present.
-- The comparable baseline is available and the candidate is measured as improved.
-- Source commit SHA and model artifact SHA-256 are valid and recorded.
+- All 24 benchmark outputs are present, ordered, and non-empty.
+- All six quality dimensions average at least 3.2; overall average is at least 3.4.
+- Instruction-adherence and Turkish-quality 3-or-4 rates are each at least 0.9.
+- No critical safety/privacy failure, fabricated claim, or multi-turn failure is present.
+- The comparable baseline is available, has a valid SHA-256 fingerprint, and the candidate is measured as improved.
+- Source commit SHA and model artifact SHA-256 match the quality report; checkpoint and artifact fingerprints match.
 
 Passing these gates means eligible for Guard review, not approved, deployed, or self-promoted. The planner always emits apply_changes: false.
 
@@ -73,4 +76,4 @@ Guard must not be disabled merely because Neural can repair some classes of fail
 
 frieren_neural.evolution.build_evolution_plan implements the deterministic evidence gate and bounded task planner. The frieren-neural-plan-evolution command accepts an evidence envelope containing ci, quality_report, source_commit_sha and artifact_sha256.
 
-The current slice is deliberately proposal-only. It does not yet perform code edits, train models, persist memory, call Guard, merge pull requests, or deploy. Those integrations must be implemented against the existing Guardian OIDC and incident contracts, with contract tests on both sides before enabling dispatch.
+The planner now rejects incomplete benchmark sets, missing reviewer count, missing or mismatched report provenance, missing baseline fingerprints, non-finite or below-threshold metrics, multi-turn regressions, and incomplete CI evidence. It remains deliberately proposal-only. It does not yet perform code edits, train models, persist memory, call Guard, merge pull requests, or deploy. Guard's current OIDC verifier is pinned to a different validation branch and workflow; changing that trust boundary requires a coordinated Guard-side change and contract tests on both sides before enabling dispatch.
