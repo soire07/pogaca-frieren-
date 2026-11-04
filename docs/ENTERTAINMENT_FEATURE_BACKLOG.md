@@ -142,3 +142,12 @@ Aşağıdaki backlog maddelerinin ilk uygulama dilimi PR #219 / `feat/frieren-pl
 Web tarafında WEB-001–003 için Discord OAuth bağlantısı, yetkili sunucu seçimi ve sunucu bazlı modül/komut anahtarları mevcut. PR #219 taslağında WEB-006 envanter/ekipman görünümü, WEB-007 escrow tabanlı web pazarı ve WEB-008 etkinlik RSVP/ayrılma akışları da eklendi. Kart/yoldaş web görünümü, pazar arama/teklifleri ve etkinlik hatırlatma tercihleri eksik. CI/izole PostgreSQL testleri canlı OAuth, mobil tarayıcı veya Discord teslimi yerine geçmez.
 
 Yeni uygulama grubu, yukarıdaki tamamlanmamış alt davranışları mevcut kodla tekrar karşılaştırarak sürdürülmelidir; aynı özellik ailesi için ikinci modül/komut oluşturulmamalıdır.
+
+
+## Sosyal platform — Discord ve web portalı (2026-11-04)
+
+- Discord `/sosyal` komutu 11 alt işlem sunar: arkadaşlık isteği, kabul/red, gelen istekler, arkadaş listesi/silme, rakip belirleme/listeleme, altın hediyesi ve haftalık itibar.
+- Arkadaşlık onayı yalnızca hedef kullanıcı tarafından verilir; guild kapsamı, 7 günlük istek süresi, tekrar engeli ve rakip/arkadaş ilişki tutarlılığı PostgreSQL ile korunur.
+- Altın hediyeleri kilitli transaction ve hediye defteriyle atomiktir; haftalık itibar giver/week unique kısıtıyla tekilleştirilir.
+- Web `/maceraci/sosyal` bağlı karakterin arkadaş/rakip/istek/itibar görünümünü ve işlemlerini sunar. GET ve POST, hesap bağlantısı, CSRF ve lonca `social` feature gate ile korunur.
+- PostgreSQL sosyal testleri 6/6; web sosyal route testleri `scripts/test-public-site.js` içinde. Canlı Discord ve gerçek mobil/masaüstü tarayıcı doğrulaması henüz yapılmadı.

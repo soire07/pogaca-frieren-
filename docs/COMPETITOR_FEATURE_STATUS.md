@@ -1,7 +1,7 @@
 # Rakip Özellik Backlog'u — Mevcut Kodla İlk Eşleştirme
 
 > Denetim tarihi: 2026-11-04  
-> İncelenen kod tabanı: `feat/frieren-platform-expansion-batch` @ `bef213d891080aac4414ca418b8b46029f115be7` (kod); güncel envanter 2.010 kayıt / 335 mevcut / 1.675 planlı  
+> İncelenen kod tabanı: `fix/solo-boss-reward-idempotency-mainline` @ `81ff29518f0067b4b7bb3bb5e0c8da9874b7f3bd` (kod); güncel envanter 2.015 kayıt / 340 mevcut / 1.675 planlı  
 > Kaynak listeler: `docs/COMPETITOR_FEATURE_MATRIX.md`, `docs/ENTERTAINMENT_FEATURE_BACKLOG.md`  
 > Bu belge ilk kaynak/test eşleştirmesidir; canlı Discord doğrulaması veya tamamlanma beyanı değildir.
 
@@ -11,7 +11,7 @@
 
 ### Envanter sayacı
 
-Bu dalda 10 yeni, kanıt bağlantılı özellik kaydı eklendi: **2.010 toplam kayıt = 335 mevcut özellik + 1.675 planlanan aday**. `auditComplete=false` korunuyor; 1.675 roadmap kaydı planlı kalıyor.
+Bu dalda ilk entegrasyon paketine ek olarak sosyal özellik ailesi ve web sosyal portalı için kanıt bağlantılı kayıtlar eklendi: **2.015 toplam kayıt = 340 mevcut/kod karşılığı olan özellik + 1.675 planlanan aday**. `auditComplete=false` korunuyor; 1.675 roadmap kaydı planlı kalıyor.
 
 ### Bu dalda taşınan / bağlanan modüller
 
@@ -26,13 +26,20 @@ Bu dalda 10 yeni, kanıt bağlantılı özellik kaydı eklendi: **2.010 toplam k
 - **Komut/özellik anahtarları:** `guild-feature-settings.js` ve `index.js` içinde komut ve component etkileşimleri guild modül anahtarlarıyla denetleniyor.
 - **Site komut kataloğu:** yeni RPG komutları arşiv listesine ve regresyon testlerine eklendi.
 
-### Güncel CI kanıtı
+### Sosyal platform ve web entegrasyonu — PR #217
 
-- Son commit için **Frieren Bot CI: başarılı**.
-- Son commit için **Validate bot code and slash commands: başarılı**.
-- Son tamamlanmış doğrulama noktası `ee01df57a1e76a58a102b3907e4ef8ed3dcba140`: **715/715 ana bot testi**, **31/31 komut senaryosu**, **82/82 izole PostgreSQL senaryosu** başarılı.
-- Güncel HEAD `bef213d891080aac4414ca418b8b46029f115be7`: Frieren Bot CI, slash command doğrulaması ve Owner Panel testleri başarılı. İzole PostgreSQL workflow'u yeni escrow testleriyle tekrar çalışıyor; pazar ve oyuncu pazarı escrow adımları geçti, arena adımı sürüyor. Bu güncel tur henüz 82/82 diye raporlanamaz.
-- Sonuçlar CI'ın geçici PostgreSQL veritabanına aittir; üretim veritabanı veya canlı Discord testi değildir.
+- `social-platform.js` ve `/sosyal`: guild kapsamlı arkadaşlık isteği/onay/red, arkadaş/rakip listeleri, rakiplik, atomik altın hediyesi ve haftalık itibar.
+- `/maceraci/sosyal`: bağlı Discord karakteri üzerinden aynı servisleri kullanan web paneli; arkadaşlar, rakipler, gelen istekler, itibar, istek gönderme/kabul/red, hediye ve itibar formları.
+- Web GET/POST işlemleri hesap-bağlı guild doğrulaması, CSRF ve `social` guild feature gate kontrollerine tabidir.
+- Sosyal PostgreSQL entegrasyonu 6/6; web sosyal route testleri `scripts/test-public-site.js` içinde.
+
+### Güncel CI kanıtı — 2026-11-04
+
+- **748/748** ana bot/regresyon testi başarılı.
+- **31/31** Discord komut senaryosu başarılı.
+- **89/89** izole PostgreSQL entegrasyon senaryosu başarılı: 56 gameplay/command, 2 arena, 7 seasons/events/adventurer, 18 platform integration ve 6 social.
+- Frieren AI CI, Owner Panel testleri, Owner Panel performance checks ve slash-command validation başarılı.
+- İzole PostgreSQL sonuçları geçici test veritabanına aittir; üretim veritabanı veya canlı Discord testi değildir.
 
 ### Henüz tamamlanmış sayılmayacaklar
 

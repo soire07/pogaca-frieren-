@@ -4,7 +4,7 @@
 
 Bu bölüm, 2026-11-01 tarihli başlangıç notunu entegrasyon dalı `feat/frieren-platform-expansion-batch` için günceller; bu dal ana dala merge edilmiş değildir.
 
-- Özellik envanteri: **2.010 kayıt**; **335 mevcut/kod karşılığı olan kayıt** ve **1.675 planlı roadmap adayı**.
+- Özellik envanteri: **2.015 kayıt**; **340 mevcut/kod karşılığı olan kayıt** ve **1.675 planlı roadmap adayı**.
 - `auditComplete=false` korunuyor. Kod/test kanıtı canlı Discord veya canlı web doğrulaması yerine geçmez.
 - Yeni kanıt bağlantılı kayıtlar: ENT-031–ENT-037 ve WEB-016–WEB-017.
 - Rakip karşılaştırması Dyno, MEE6, Carl-bot, Tatsu ve UnbelievaBoat resmî sayfalarıyla güncellendi; kaynaklar ve ücretsiz/premium sınır notları `docs/COMPETITOR_FEATURE_MATRIX.md` içinde.
@@ -42,10 +42,10 @@ Bu belge bir başlangıç envanteridir; tamamlanma beyanı değildir. Özellik, 
 
 ### Kanıt ve sınır
 - Rakip bot/web karşılaştırmasından gelen 10 ek kayıt (`ENT-031–038`, `WEB-016–017`) eklendi. Bunlar kodda mevcut işlevleri temsil eder; canlı Discord/web akışlarının tamamı doğrulanmış değildir.
-- Depodaki `feature-inventory.json` 335 mevcut özellik kaydı içeriyor; toplam 2.010 kayıt (335 mevcut + 1.675 planlanan); başlangıç hedefi 2.000. Planlanan 1.675 satır, normalize edildiğinde 325 temel yetenek grubuna ayrılıyor: 225 grup yedi işlem fiiliyle (1.575 satır), 50 tek işlemli ve 50 fiilsiz tekil kayıt. Ayrıntı: `docs/ROADMAP_CAPABILITY_INDEX.md`.
+- Depodaki `feature-inventory.json` 340 mevcut özellik kaydı içeriyor; toplam 2.015 kayıt (340 mevcut + 1.675 planlanan); başlangıç hedefi 2.000. Planlanan 1.675 satır, normalize edildiğinde 325 temel yetenek grubuna ayrılıyor: 225 grup yedi işlem fiiliyle (1.575 satır), 50 tek işlemli ve 50 fiilsiz tekil kayıt. Ayrıntı: `docs/ROADMAP_CAPABILITY_INDEX.md`.
 - Envanterin `auditComplete` alanı `false`. Bu nedenle 335 sayısı tüm bot özelliklerinin eksiksiz envanteri değildir.
-- 335 kaydın tamamı `implemented_needs_runtime_test` durumunda. Bu, kaynakta uygulama bulunduğunu belirtir; her özelliğin canlı Discord'da gerçek kullanıcıyla uçtan uca doğrulandığını göstermez.
-- Önceki CI kanıtları: 715/715 ana bot testi, 31/31 komut senaryosu ve 82/82 izole PostgreSQL entegrasyon testi başarılıydı. 2026-11-04 tarihli güncel HEAD `bef213d891080aac4414ca418b8b46029f115be7` için ana bot CI, komut doğrulaması ve Owner Panel testleri başarılı; genişletilmiş PostgreSQL denetimi yeni pazar escrow testiyle tekrar çalışıyor ve henüz tamamlanmadı. Bunlar sentetik Discord etkileşimleri ve izole test veritabanı kullanır; gerçek kullanıcı hesabıyla manuel Discord testi değildir.
+- 340 kaydın tamamı `implemented_needs_runtime_test` durumunda. Bu, kaynakta uygulama bulunduğunu belirtir; her özelliğin canlı Discord'da gerçek kullanıcıyla uçtan uca doğrulandığını göstermez.
+- 2026-11-04 doğrulaması: 748/748 ana bot testi, 31/31 komut senaryosu ve 89/89 izole PostgreSQL entegrasyon senaryosu başarılı. Frieren AI CI, Owner Panel testleri/performance checks ve slash-command validation da başarılı. Bunlar sentetik Discord etkileşimleri ve izole test veritabanı kullanır; gerçek kullanıcı hesabıyla manuel Discord veya canlı tarayıcı testi değildir.
 - Moderasyon ve genel sunucu yönetimi Poğaça'nın hedef kapsamı değildir.
 
 ## 2. Frieren AI
