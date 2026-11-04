@@ -2,7 +2,7 @@ import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { pool, initDatabase } from '../database/db.js';
 import { fishAtZone, getFishCollection, getFishingGear, initFishingSchema, upgradeFishingRod, purchaseFishingBait } from '../fishing.js';
-const guildId='fishing-audit-guild', userId='fishing-audit-user';
+const guildId='99000000000000004', userId='82000000000000001';
 before(async () => {
   await initDatabase(); await initFishingSchema(pool);
   await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
