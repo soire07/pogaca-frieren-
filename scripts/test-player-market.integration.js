@@ -170,6 +170,7 @@ test('market offers are unique per buyer, seller acceptance settles item and coi
     assert.equal(offers.filter(x=>x.status==='offer_created').length,1);
     assert.equal(offers.filter(x=>x.status==='already_offered').length,1);
     const offer=offers.find(x=>x.status==='offer_created').offer;
+    assert.equal(Number((await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,buyerId])).rows[0].coins),500,'creating a non-binding offer must not reserve buyer coins');
     const sellerView=await listPlayerMarketOffers(pool,{guildId,actorId:sellerId,listingId:listing.listing_id});
     assert.equal(sellerView.status,'listed');assert.equal(sellerView.offers.length,1);
     const accepted=await resolvePlayerMarketOffer(pool,{guildId,sellerId,offerId:offer.offer_id,decision:'accept'});
