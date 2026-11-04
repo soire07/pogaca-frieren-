@@ -1,6 +1,6 @@
 import { ensureUser } from './database/db.js';
 
-const ID=/^\\d{17,20}$/;
+const ID=/^\d{17,20}$/;
 export const HOME_ROOMS=Object.freeze([
  {key:'starter',name:'Gezgin Odası',level:1,cost:0},
  {key:'library',name:'Büyü Kütüphanesi',level:5,cost:1500},
@@ -94,7 +94,7 @@ export async function equipCosmetic(pool,{guildId,userId,cosmeticKey}){
  }catch(e){await c.query('ROLLBACK').catch(()=>{});throw e;}finally{c.release();}
 }
 export async function saveCosmeticPreset(db,{guildId,userId,presetName}){
- player(guildId,userId);const name=String(presetName||'').trim();if(!/^[\\p{L}\\p{N} _-]{1,32}$/u.test(name))return {status:'invalid_preset'};const r=await db.query('SELECT slot,cosmetic_key FROM player_cosmetic_loadout WHERE guild_id=$1 AND user_id=$2 ORDER BY slot',[guildId,userId]);await db.query('INSERT INTO player_cosmetic_presets(guild_id,user_id,preset_name,loadout) VALUES($1,$2,$3,$4::jsonb) ON CONFLICT(guild_id,user_id,preset_name) DO UPDATE SET loadout=EXCLUDED.loadout,updated_at=NOW()',[guildId,userId,name,JSON.stringify(r.rows)]);return {status:'saved',presetName:name};
+ player(guildId,userId);const name=String(presetName||'').trim();if(!/^[\p{L}\p{N} _-]{1,32}$/u.test(name))return {status:'invalid_preset'};const r=await db.query('SELECT slot,cosmetic_key FROM player_cosmetic_loadout WHERE guild_id=$1 AND user_id=$2 ORDER BY slot',[guildId,userId]);await db.query('INSERT INTO player_cosmetic_presets(guild_id,user_id,preset_name,loadout) VALUES($1,$2,$3,$4::jsonb) ON CONFLICT(guild_id,user_id,preset_name) DO UPDATE SET loadout=EXCLUDED.loadout,updated_at=NOW()',[guildId,userId,name,JSON.stringify(r.rows)]);return {status:'saved',presetName:name};
 }
 export async function checkInGuildEvent(pool,{guildId,userId,eventId}) {
  player(guildId,userId);
