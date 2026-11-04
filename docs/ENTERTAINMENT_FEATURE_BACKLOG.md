@@ -158,3 +158,10 @@ Yeni uygulama grubu, yukarıdaki tamamlanmamış alt davranışları mevcut kodl
 - Public home showcase GET route yerleşimi düzeltildi; herkese açık olmayan evler için 404 gizlilik testi eklendi.
 - Bu değişiklikler PR #217 içinde; CI/izole PostgreSQL doğrulaması bekleniyor. Önceki PR #219 kapatıldı ve merge edilmedi.
 - Teklif pazarlığı Discord ve web'e eklendi: teklif ver, gelen teklifleri gör, kabul et/reddet ve geri çek. Teklifler non-binding; kabul edilene kadar bakiye bloke edilmez. 773/773 otomatik test, 31/31 komut senaryosu ve 100/100 izole PostgreSQL entegrasyon senaryosu geçti.
+
+## 6. Lonca Oyun Salonu — PR #217 ek paketi
+
+- `/loncaoyun baslat` ile Frieren bilgi yarışı, büyülü kelime, hafıza mührü veya bilmece sandığı başlatılır; aynı kanalda aynı anda tek aktif tur bulunur.
+- Her oyuncu tur başına bir cevap verebilir. Doğru cevap 10 lonca puanı kazandırır; yanlış cevap tekrar denenemez. `/loncaoyun siralam` sunucuya özel skorları listeler.
+- PostgreSQL cevap transaction'ı, oturum satırı kilidi, kanal/guild kapsamı, benzersiz oyuncu cevabı ve 30 günlük oturum temizliğiyle koruma sağlanır.
+- ENT-023 kısmen karşılandı; ayrı takım kaptanı/rol seçimi, takım puanı ve günlük turnuva ENT-024 için sonraki eksik kapsamdır.
