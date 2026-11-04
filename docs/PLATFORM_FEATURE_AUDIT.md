@@ -4,7 +4,7 @@
 
 Bu bölüm, 2026-11-01 tarihli başlangıç notunu PR #217 üzerindeki güncel bütünleşik onarım dalı `fix/solo-boss-reward-idempotency-mainline` için günceller; PR hâlâ taslaktır ve ana dala merge edilmemiştir.
 
-- Özellik envanteri: **2.017 kayıt**; **342 mevcut/kod karşılığı olan kayıt** ve **1.675 planlı roadmap adayı**.
+- Özellik envanteri: **2.018 kayıt**; **343 mevcut/kod karşılığı olan kayıt** ve **1.675 planlı roadmap adayı**.
 - `auditComplete=false` korunuyor. Kod/test kanıtı canlı Discord veya canlı web doğrulaması yerine geçmez.
 - Yeni kanıt bağlantılı kayıtlar: ENT-031–ENT-037, WEB-016–WEB-017 ve SOCIAL-005.
 - Rakip karşılaştırması Dyno, MEE6, Carl-bot, Tatsu ve UnbelievaBoat resmî sayfalarıyla güncellendi; kaynaklar ve ücretsiz/premium sınır notları `docs/COMPETITOR_FEATURE_MATRIX.md` içinde.
@@ -54,7 +54,7 @@ Bu karar mimariyi ve hedefi netleştirir; 1.675 planlı roadmap kaydının uygul
 
 ### Kanıt ve sınır
 - Rakip bot/web karşılaştırmasından gelen 10 ek kayıt (`ENT-031–038`, `WEB-016–017`) eklendi. Bunlar kodda mevcut işlevleri temsil eder; canlı Discord/web akışlarının tamamı doğrulanmış değildir.
-- Depodaki `feature-inventory.json` 342 mevcut özellik kaydı içeriyor; toplam 2.017 kayıt (342 mevcut + 1.675 planlanan); başlangıç hedefi 2.000. Planlanan 1.675 satır, normalize edildiğinde 325 temel yetenek grubuna ayrılıyor: 225 grup yedi işlem fiiliyle (1.575 satır), 50 tek işlemli ve 50 fiilsiz tekil kayıt. Ayrıntı: `docs/ROADMAP_CAPABILITY_INDEX.md`.
+- Depodaki `feature-inventory.json` 343 mevcut özellik kaydı içeriyor; toplam 2.018 kayıt (343 mevcut + 1.675 planlanan); başlangıç hedefi 2.000. Planlanan 1.675 satır, normalize edildiğinde 325 temel yetenek grubuna ayrılıyor: 225 grup yedi işlem fiiliyle (1.575 satır), 50 tek işlemli ve 50 fiilsiz tekil kayıt. Ayrıntı: `docs/ROADMAP_CAPABILITY_INDEX.md`.
 - Envanterin `auditComplete` alanı `false`. Bu nedenle 340 kayıt sayısı tüm bot özelliklerinin eksiksiz envanteri değildir.
 - 340 kaydın tamamı `implemented_needs_runtime_test` durumunda. Bu, kaynakta uygulama bulunduğunu belirtir; her özelliğin canlı Discord'da gerçek kullanıcıyla uçtan uca doğrulandığını göstermez.
 - 2026-11-04 doğrulaması: 748/748 ana bot testi, 31/31 komut senaryosu ve 89/89 izole PostgreSQL entegrasyon senaryosu başarılı. Frieren AI CI, Owner Panel testleri/performance checks ve slash-command validation da başarılı. Bunlar sentetik Discord etkileşimleri ve izole test veritabanı kullanır; gerçek kullanıcı hesabıyla manuel Discord veya canlı tarayıcı testi değildir.
