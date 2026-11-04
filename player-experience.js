@@ -49,7 +49,7 @@ export function validateHomeLayout(layout){
 }
 export async function ensurePlayerExperienceSchema(db){
  await db.query(`
- CREATE TABLE IF NOT EXISTS player_homes(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,active_room TEXT NOT NULL DEFAULT 'starter',layout JSONB NOT NULL DEFAULT '[]'::jsonb,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
+ CREATE TABLE IF NOT EXISTS player_homes(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,active_room TEXT NOT NULL DEFAULT 'starter',layout JSONB NOT NULL DEFAULT '[]'::jsonb,is_public BOOLEAN NOT NULL DEFAULT FALSE,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
  CREATE TABLE IF NOT EXISTS player_home_rooms(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,room_key TEXT NOT NULL,unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id,room_key),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
  CREATE TABLE IF NOT EXISTS player_home_trophies(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,achievement_key TEXT NOT NULL,display_slot INTEGER NOT NULL CHECK(display_slot BETWEEN 0 AND 5),displayed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id,achievement_key),UNIQUE(guild_id,user_id,display_slot),FOREIGN KEY(guild_id,user_id,achievement_key) REFERENCES achievement_claims(guild_id,user_id,achievement_key) ON DELETE CASCADE);
  CREATE TABLE IF NOT EXISTS player_cosmetic_ownership(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,cosmetic_key TEXT NOT NULL,acquired_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),acquisition_source TEXT NOT NULL DEFAULT 'shop',PRIMARY KEY(guild_id,user_id,cosmetic_key),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
@@ -60,6 +60,7 @@ export async function ensurePlayerExperienceSchema(db){
  CREATE TABLE IF NOT EXISTS guild_event_reward_claims(event_id UUID NOT NULL REFERENCES guild_events(event_id) ON DELETE CASCADE,guild_id TEXT NOT NULL,user_id TEXT NOT NULL,reward_key VARCHAR(40) NOT NULL,coins INTEGER NOT NULL CHECK(coins>=0),xp INTEGER NOT NULL CHECK(xp>=0),cosmetic_key TEXT,claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(event_id,user_id,reward_key),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
  CREATE INDEX IF NOT EXISTS guild_event_progress_player_idx ON guild_event_progress(guild_id,user_id,updated_at DESC);
  `);
+ await db.query('ALTER TABLE player_homes ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE');
  await db.query("ALTER TABLE player_cosmetic_ownership ADD COLUMN IF NOT EXISTS acquisition_source TEXT NOT NULL DEFAULT 'shop'");
  await db.query('ALTER TABLE guild_event_reward_claims ADD COLUMN IF NOT EXISTS cosmetic_key TEXT');
 }
@@ -73,10 +74,23 @@ export async function placeHomeTrophy(pool,{guildId,userId,achievementKey,displa
  player(guildId,userId);const key=String(achievementKey||'').trim(),slot=Number(displaySlot);if(!/^[a-z0-9_:-]{2,80}$/i.test(key)||!Number.isInteger(slot)||slot<0||slot>5)return {status:'invalid_trophy'};const c=await pool.connect();
  try{await c.query('BEGIN');const room=await c.query("SELECT 1 FROM player_home_rooms WHERE guild_id=$1 AND user_id=$2 AND room_key='trophy' FOR UPDATE",[guildId,userId]);if(!room.rowCount){await c.query('ROLLBACK');return {status:'room_locked'};}const earned=await c.query('SELECT 1 FROM achievement_claims WHERE guild_id=$1 AND user_id=$2 AND achievement_key=$3',[guildId,userId,key]);if(!earned.rowCount){await c.query('ROLLBACK');return {status:'trophy_missing'};}await c.query('DELETE FROM player_home_trophies WHERE guild_id=$1 AND user_id=$2 AND achievement_key=$3',[guildId,userId,key]);await c.query('INSERT INTO player_home_trophies(guild_id,user_id,achievement_key,display_slot) VALUES($1,$2,$3,$4) ON CONFLICT(guild_id,user_id,display_slot) DO UPDATE SET achievement_key=EXCLUDED.achievement_key,displayed_at=NOW()',[guildId,userId,key,slot]);await c.query('COMMIT');return {status:'placed',achievementKey:key,displaySlot:slot};}catch(e){await c.query('ROLLBACK').catch(()=>{});throw e;}finally{c.release();}
 }
+export async function setHomeVisibility(db,{guildId,userId,isPublic}){
+ player(guildId,userId);if(typeof isPublic!=='boolean')return {status:'invalid_visibility'};await ensureUser(guildId,userId,db);await db.query("INSERT INTO player_home_rooms(guild_id,user_id,room_key) VALUES($1,$2,'starter') ON CONFLICT DO NOTHING",[guildId,userId]);await db.query('INSERT INTO player_homes(guild_id,user_id,is_public) VALUES($1,$2,$3) ON CONFLICT(guild_id,user_id) DO UPDATE SET is_public=EXCLUDED.is_public,updated_at=NOW()',[guildId,userId,isPublic]);return {status:'updated',isPublic};
+}
+export async function getPublicPlayerHome(db,{guildId,userId}){
+ player(guildId,userId);const result=await db.query('SELECT u.user_id,u.character_name,u.class_name,u.level,h.active_room,h.layout,h.is_public FROM player_homes h JOIN users u ON u.guild_id=h.guild_id AND u.user_id=h.user_id WHERE h.guild_id=$1 AND h.user_id=$2 AND h.is_public=TRUE',[guildId,userId]);
+ if(!result.rowCount)return null;
+ const [rooms,trophies,loadout]=await Promise.all([
+  db.query('SELECT room_key FROM player_home_rooms WHERE guild_id=$1 AND user_id=$2 ORDER BY unlocked_at',[guildId,userId]),
+  getHomeTrophies(db,{guildId,userId}),
+  db.query('SELECT slot,cosmetic_key FROM player_cosmetic_loadout WHERE guild_id=$1 AND user_id=$2 ORDER BY slot',[guildId,userId])
+ ]);
+ return {profile:result.rows[0],home:{active_room:result.rows[0].active_room,layout:result.rows[0].layout},rooms:rooms.rows,trophies,loadout:loadout.rows};
+}
 export async function getPlayerHome(db,{guildId,userId}){
  player(guildId,userId);await ensureUser(guildId,userId,db);await db.query("INSERT INTO player_home_rooms(guild_id,user_id,room_key) VALUES($1,$2,'starter') ON CONFLICT DO NOTHING",[guildId,userId]);await db.query('INSERT INTO player_homes(guild_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[guildId,userId]);
- const [h,r]=await Promise.all([db.query('SELECT active_room,layout FROM player_homes WHERE guild_id=$1 AND user_id=$2',[guildId,userId]),db.query('SELECT room_key,unlocked_at FROM player_home_rooms WHERE guild_id=$1 AND user_id=$2 ORDER BY unlocked_at',[guildId,userId])]);
- return {home:h.rows[0]||{active_room:'starter',layout:[]},rooms:r.rows};
+ const [h,r]=await Promise.all([db.query('SELECT active_room,layout,is_public FROM player_homes WHERE guild_id=$1 AND user_id=$2',[guildId,userId]),db.query('SELECT room_key,unlocked_at FROM player_home_rooms WHERE guild_id=$1 AND user_id=$2 ORDER BY unlocked_at',[guildId,userId])]);
+ return {home:h.rows[0]||{active_room:'starter',layout:[],is_public:false},rooms:r.rows};
 }
 export async function unlockHomeRoom(pool,{guildId,userId,roomKey}){
  player(guildId,userId);const room=HOME_ROOMS.find(x=>x.key===roomKey);if(!room)return {status:'invalid_room'};
