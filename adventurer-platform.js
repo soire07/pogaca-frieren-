@@ -1,5 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { pool, ensureUser } from './database/db.js';
+import { ensurePlayerExperienceSchema } from './player-experience.js';
 
 const DISCORD_ID = /^\d{17,20}$/;
 const ACCOUNT_ID = /^site_[0-9a-f-]{36}$/i;
@@ -93,6 +94,7 @@ export async function ensureAdventurerPlatformTables(db = pool) {
       FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
     );
   `);
+  await ensurePlayerExperienceSchema(db);
 }
 
 export async function ensureActiveArenaSeason(db = pool, guildId) {
