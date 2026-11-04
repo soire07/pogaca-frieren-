@@ -35,12 +35,15 @@ test('account export returns linked profile, inventory, card collection and scop
   if(sql.includes('FROM player_market_offers'))return{rows:[{offer_id:'offer-1',buyer_id:'123456789012345678',offer_coins:150,status:'pending'}],rowCount:1};
   if(sql.includes('FROM anime_character_collection'))return{rows:[{character_name:'Frieren',quantity:1}],rowCount:1};
   if(sql.includes('information_schema.columns')&&sql.includes("column_name IN ('guild_id','user_id')"))return{rows:[{table_name:'user_fish_collection',column_name:'guild_id'},{table_name:'user_fish_collection',column_name:'user_id'},{table_name:'guild_private_tokens',column_name:'guild_id'},{table_name:'guild_private_tokens',column_name:'user_id'},{table_name:'user_preferences',column_name:'user_id'}],rowCount:5};
+  if(sql.includes("column_name='account_id'"))return{rows:[{table_name:'site_user_preferences',column_name:'account_id'},{table_name:'frieren_support_tickets',column_name:'account_id'}],rowCount:2};
   if(sql.includes('information_schema.columns')&&sql.includes('table_name=$1')&&params?.[0]==='user_fish_collection')return{rows:[{column_name:'guild_id'},{column_name:'user_id'},{column_name:'fish_key'},{column_name:'quantity'},{column_name:'access_token'}],rowCount:5};
   if(sql.includes('information_schema.columns')&&sql.includes('table_name=$1')&&params?.[0]==='guild_private_tokens')return{rows:[{column_name:'guild_id'},{column_name:'user_id'},{column_name:'private_token'}],rowCount:3};
   if(sql.includes('information_schema.columns')&&sql.includes('table_name=$1')&&params?.[0]==='user_preferences')return{rows:[{column_name:'user_id'},{column_name:'preference_key'},{column_name:'preference_value'}],rowCount:3};
+  if(sql.includes('information_schema.columns')&&sql.includes('table_name=$1')&&params?.[0]==='site_user_preferences')return{rows:[{column_name:'account_id'},{column_name:'preference_key'},{column_name:'preference_value'},{column_name:'refresh_token_encrypted'}],rowCount:4};
   if(sql.includes('FROM "user_fish_collection"'))return{rows:[{guild_id:'1539562273197260860',user_id:'123456789012345678',fish_key:'silver_trout',quantity:2}],rowCount:1};
   if(sql.includes('FROM "guild_private_tokens"'))return{rows:[{guild_id:'1539562273197260860',user_id:'123456789012345678',private_token:'should-not-export'}],rowCount:1};
   if(sql.includes('FROM "user_preferences"'))return{rows:[{user_id:'123456789012345678',preference_key:'theme',preference_value:'dark'}],rowCount:1};
+  if(sql.includes('FROM "site_user_preferences"'))return{rows:[{account_id:'123e4567-e89b-12d3-a456-426614174000',preference_key:'profile_visibility',preference_value:'public'}],rowCount:1};
   return{rows:[],rowCount:0};
  }};
  const result=await exportSiteAccountData(db,accountId);
@@ -50,6 +53,8 @@ test('account export returns linked profile, inventory, card collection and scop
  assert.equal(result.linkedProfiles[0].gameData.user_fish_collection[0].fish_key,'silver_trout');
  assert.equal(result.linkedProfiles[0].marketOffers[0].offer_id,'offer-1');
  assert.equal(result.linkedProfiles[0].gameData.user_preferences[0].preference_key,'theme');
+ assert.equal(result.accountData.site_user_preferences[0].preference_key,'profile_visibility');
+ assert.ok(!JSON.stringify(result).includes('refresh_token_encrypted'));
  assert.ok(!JSON.stringify(result).includes('access_token'));
  assert.ok(!JSON.stringify(result).includes('guild_private_tokens'));
  assert.ok(!JSON.stringify(result).includes('should-not-export'));
