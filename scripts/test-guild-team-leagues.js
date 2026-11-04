@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRoundRobinFixtures, createGuildTeam, joinGuildTeam, reportGuildTeamFixtureScore, ensureGuildTeamLeagueSchema } from '../guild-team-leagues.js';
+import { buildRoundRobinFixtures, createGuildTeam, joinGuildTeam, reportGuildTeamFixtureScore, ensureGuildTeamLeagueSchema, validateGuildEventRaidTeam } from '../guild-team-leagues.js';
 
 const guildId='1539562273197260860';
 const captain='123456789012345678';
@@ -89,4 +89,25 @@ test('raid participation schema links signups to real guild team UUIDs and prese
  assert.match(statements[0],/ADD COLUMN IF NOT EXISTS team_id UUID/);
  assert.match(statements[0],/FOREIGN KEY\(guild_id,team_id\) REFERENCES guild_teams\(guild_id,team_id\) ON DELETE RESTRICT/);
  assert.match(statements[0],/guild_event_participants_team_id_idx/);
+});
+
+
+test('raid event requires every participant to share the leader\'s registered team UUID',async()=>{
+ const calls=[];
+ const db={async query(sql,params){
+  calls.push({sql,params});
+  return {rows:[{event_id:fixtureId,team_id:teamA}],rowCount:1};
+ }};
+ const result=await validateGuildEventRaidTeam(db,{guildId,eventId:fixtureId,userIds:[captain,member],leaderId:captain});
+ assert.equal(result.status,'valid');
+ assert.equal(result.teamId,teamA);
+ assert.match(calls[0].sql,/participant\.team_id IS DISTINCT FROM captain\.team_id/);
+ assert.deepEqual(calls[0].params,[fixtureId,guildId,[captain,member],captain]);
+});
+
+test('raid event rejects mixed or legacy A/B-only registrations and malformed rosters',async()=>{
+ const db={async query(){return {rows:[],rowCount:0};}};
+ assert.equal((await validateGuildEventRaidTeam(db,{guildId,eventId:fixtureId,userIds:[captain,member],leaderId:captain})).status,'team_mismatch_or_unregistered');
+ assert.equal((await validateGuildEventRaidTeam(db,{guildId,eventId:fixtureId,userIds:[captain,member, '323456789012345678','423456789012345678','523456789012345678'],leaderId:captain})).status,'invalid_input');
+ assert.equal((await validateGuildEventRaidTeam(db,{guildId,eventId:fixtureId,userIds:[captain,captain],leaderId:captain})).status,'invalid_input');
 });
