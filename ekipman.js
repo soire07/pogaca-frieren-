@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentSlots, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
+import { applyEquipmentSetBonus } from './rpg-mechanics.js';
 
 const rarityEmoji = { Yaygın: '⚪', Nadir: '🔹', Destansı: '🟣', Efsanevi: '🟡' };
 
@@ -67,7 +68,8 @@ export default {
           'SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2',
           [interaction.guildId, interaction.user.id]
         );
-        const gear = equipmentBonus(remaining.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean));
+        const remainingItems = remaining.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean);
+        const gear = applyEquipmentSetBonus(remainingItems, equipmentBonus(remainingItems));
         const effectiveMaxHp = Math.min(2000, Number(baseStats.rows[0].max_hp) + gear.hp);
         const effectiveMaxMana = Math.min(2000, Number(baseStats.rows[0].max_mana) + gear.mana);
         await db.query(
@@ -123,7 +125,8 @@ export default {
         'SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2',
         [interaction.guildId, interaction.user.id]
       );
-      const gear = equipmentBonus(allEquipped.rows.map(row => equipmentItems.find(entry => entry.name === row.item_key)).filter(Boolean));
+      const equippedItems = allEquipped.rows.map(row => equipmentItems.find(entry => entry.name === row.item_key)).filter(Boolean);
+      const gear = applyEquipmentSetBonus(equippedItems, equipmentBonus(equippedItems));
       const effectiveMaxHp = Math.min(2000, Number(baseStats.rows[0].max_hp) + gear.hp);
       const effectiveMaxMana = Math.min(2000, Number(baseStats.rows[0].max_mana) + gear.mana);
       await db.query(
