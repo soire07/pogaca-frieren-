@@ -472,7 +472,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   }
   if (url.pathname === '/maceraci/bildirimler') {
     const guildId=String(url.searchParams.get('guildId')||'');
-    if(!/^\\d{17,20}$/.test(guildId)){const dashboard=await getAdventurerDashboard(db,user.id);const html=portalGuildPicker(user,dashboard.profiles,url.pathname,'Bildirim Tercihleri');res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end(html);return true;}
+    if(!/^\d{17,20}$/.test(guildId)){const dashboard=await getAdventurerDashboard(db,user.id);const html=portalGuildPicker(user,dashboard.profiles,url.pathname,'Bildirim Tercihleri');res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end(html);return true;}
     const profile=await getLinkedAdventurer(db,user.id,guildId);
     if(!profile){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter web hesabına bağlı değil.');return true;}
     const preferences=await getNotificationPreferences(db,guildId,profile.user_id);
