@@ -5,7 +5,11 @@ import {
   cancelPlayerMarketListing,
   createPlayerMarketListing,
   getPlayerMarketHistory,
-  listPlayerMarketListings
+  listPlayerMarketListings,
+  createPlayerMarketOffer,
+  listPlayerMarketOffers,
+  resolvePlayerMarketOffer,
+  cancelPlayerMarketOffer
 } from './player-market.js';
 
 const safeText = value => String(value || '').replace(/[\x00-\x1f\x7f]/g, '').replace(/[`*_~|]/g, '\\$&').slice(0, 120);
@@ -23,7 +27,18 @@ export default {
       .addStringOption(option => option.setName('ilan').setDescription('İlan UUID').setMaxLength(36).setRequired(true)))
     .addSubcommand(command => command.setName('iptal').setDescription('Kendi ilanını iptal edip eşyayı geri al.')
       .addStringOption(option => option.setName('ilan').setDescription('İlan UUID').setMaxLength(36).setRequired(true)))
-    .addSubcommand(command => command.setName('gecmis').setDescription('Pazar işlem geçmişini göster.')),
+    .addSubcommand(command => command.setName('gecmis').setDescription('Pazar işlem geçmişini göster.'))
+    .addSubcommand(command => command.setName('teklif-ver').setDescription('Bir ilana pazarlık teklifi gönder.')
+      .addStringOption(option => option.setName('ilan').setDescription('İlan UUID').setMaxLength(36).setRequired(true))
+      .addIntegerOption(option => option.setName('fiyat').setDescription('Teklifin (altın)').setMinValue(1).setMaxValue(1000000).setRequired(true)))
+    .addSubcommand(command => command.setName('teklifler').setDescription('Bir ilan için gelen veya gönderdiğin teklifleri göster.')
+      .addStringOption(option => option.setName('ilan').setDescription('İlan UUID').setMaxLength(36).setRequired(true)))
+    .addSubcommand(command => command.setName('teklif-kabul').setDescription('Bir alıcı teklifini kabul et.')
+      .addStringOption(option => option.setName('teklif').setDescription('Teklif UUID').setMaxLength(36).setRequired(true)))
+    .addSubcommand(command => command.setName('teklif-reddet').setDescription('Bir alıcı teklifini reddet.')
+      .addStringOption(option => option.setName('teklif').setDescription('Teklif UUID').setMaxLength(36).setRequired(true)))
+    .addSubcommand(command => command.setName('teklif-iptal').setDescription('Gönderdiğin bekleyen teklifi geri çek.')
+      .addStringOption(option => option.setName('teklif').setDescription('Teklif UUID').setMaxLength(36).setRequired(true))),
   async execute(interaction) {
     if (!interaction.guildId) {
       return interaction.reply({ content: 'Kuzey Pazarı yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
@@ -82,6 +97,57 @@ export default {
         unavailable: 'İlan aktif değil veya bulunamadı.'
       };
       return interaction.reply({ content: messages[result.status] || 'İlan iptal edilemedi.', flags: MessageFlags.Ephemeral });
+    }
+    if (action === 'teklif-ver') {
+      const result = await createPlayerMarketOffer(pool, {
+        guildId: interaction.guildId,
+        buyerId: interaction.user.id,
+        listingId: interaction.options.getString('ilan'),
+        offerCoins: interaction.options.getInteger('fiyat')
+      });
+      const messages = {
+        offer_created: 'Teklifin satıcıya iletildi. Altın, satıcı kabul ederse tahsil edilir. Teklif ID: `' + result.offer.offer_id + '`',
+        already_offered: 'Bu ilan için zaten bekleyen bir teklifin var: `' + result.offerId + '`',
+        self_offer: 'Kendi ilanına teklif veremezsin.',
+        unavailable: 'İlan artık aktif değil veya bulunamadı.',
+        buyer_missing: 'Oyuncu kaydın bulunamadı.'
+      };
+      return interaction.reply({ content: messages[result.status] || 'Teklif oluşturulamadı.', flags: MessageFlags.Ephemeral });
+    }
+    if (action === 'teklifler') {
+      const result = await listPlayerMarketOffers(pool, {
+        guildId: interaction.guildId,
+        actorId: interaction.user.id,
+        listingId: interaction.options.getString('ilan')
+      });
+      if (result.status !== 'listed') return interaction.reply({ content: result.status === 'forbidden' ? 'Bu ilanın tekliflerini görüntüleme yetkin yok.' : 'İlan bulunamadı.', flags: MessageFlags.Ephemeral });
+      const lines = result.offers.map(offer => '• <@' + offer.buyer_id + '> — **' + Number(offer.offer_coins).toLocaleString('tr-TR') + ' altın** · ' + offer.status + ' · `' + offer.offer_id + '`');
+      return interaction.reply({ content: '**İlan Teklifleri**\\n' + (lines.join('\\n') || 'Henüz teklif yok.'), flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+    }
+    if (action === 'teklif-kabul' || action === 'teklif-reddet') {
+      const result = await resolvePlayerMarketOffer(pool, {
+        guildId: interaction.guildId,
+        sellerId: interaction.user.id,
+        offerId: interaction.options.getString('teklif'),
+        decision: action === 'teklif-kabul' ? 'accept' : 'reject'
+      });
+      const messages = {
+        accepted: 'Teklif kabul edildi. **' + safeText(result.itemKey) + '** ×' + result.quantity + ' alıcıya aktarıldı; **' + result.offerCoins + ' altın** hesabına eklendi.',
+        rejected: 'Teklif reddedildi.',
+        not_owner: 'Teklifi yalnızca ilanın sahibi kabul veya reddedebilir.',
+        insufficient_funds: 'Alıcının kabul anında yeterli altını bulunmuyor; teklif beklemede kaldı.',
+        unavailable: 'Teklif artık beklemede değil veya ilan aktif değil.'
+      };
+      return interaction.reply({ content: messages[result.status] || 'Teklif işlenemedi.', flags: MessageFlags.Ephemeral });
+    }
+    if (action === 'teklif-iptal') {
+      const result = await cancelPlayerMarketOffer(pool, {
+        guildId: interaction.guildId,
+        buyerId: interaction.user.id,
+        offerId: interaction.options.getString('teklif')
+      });
+      const messages = { cancelled: 'Teklif geri çekildi.', not_owner: 'Yalnızca kendi teklifini geri çekebilirsin.', unavailable: 'Teklif beklemede değil veya bulunamadı.' };
+      return interaction.reply({ content: messages[result.status] || 'Teklif geri çekilemedi.', flags: MessageFlags.Ephemeral });
     }
     if (action === 'gecmis') {
       const history = await getPlayerMarketHistory(pool, interaction.guildId, interaction.user.id, 10);
