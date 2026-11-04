@@ -587,17 +587,17 @@ export async function initDatabase() {
   console.log('PostgreSQL tabloları hazır.');
 }
 
-export async function ensureUser(guildId, userId) {
-  await pool.query(
+export async function ensureUser(guildId, userId, db = pool) {
+  await db.query(
     'INSERT INTO users (guild_id, user_id) VALUES ($1, $2) ON CONFLICT (guild_id, user_id) DO NOTHING',
     [guildId, userId]
   );
-  await pool.query(
+  await db.query(
     'INSERT INTO user_talents (guild_id,user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
     [guildId, userId]
   );
   // Zoltraak is the starter spell for every adventurer; existing users receive it too.
-  await pool.query(
+  await db.query(
     "INSERT INTO learned_spells (guild_id, user_id, spell_key) VALUES ($1, $2, 'zoltraak') ON CONFLICT DO NOTHING",
     [guildId, userId]
   );

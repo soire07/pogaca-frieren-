@@ -123,7 +123,7 @@ export function getArenaRankName(rating) {
 
 export async function getArenaRating(db = pool, guildId, userId) {
   if (!DISCORD_ID.test(String(guildId || '')) || !DISCORD_ID.test(String(userId || ''))) throw new Error('ARENA_RATING_INPUT_INVALID');
-  await ensureUser(guildId, userId);
+  await ensureUser(guildId, userId, db);
   const season = await ensureActiveArenaSeason(db, guildId);
   await db.query('INSERT INTO arena_ratings(season_id,guild_id,user_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING', [season.season_id,guildId,userId]);
   const result = await db.query('SELECT rating,wins,losses,matches,points FROM arena_ratings WHERE season_id=$1 AND guild_id=$2 AND user_id=$3', [season.season_id,guildId,userId]);
@@ -198,7 +198,7 @@ export async function getArenaLeaderboard(db = pool, guildId, limit = 10) {
 
 export async function createSiteLinkToken(db = pool, { guildId, userId }) {
   if (!DISCORD_ID.test(String(guildId || '')) || !DISCORD_ID.test(String(userId || ''))) throw new Error('SITE_LINK_INPUT_INVALID');
-  await ensureUser(guildId,userId);
+  await ensureUser(guildId,userId,db);
   const token=randomBytes(24).toString('base64url');
   await db.query('DELETE FROM site_link_tokens WHERE expires_at<=NOW()');
   await db.query('INSERT INTO site_link_tokens(token_hash,guild_id,user_id,expires_at) VALUES($1,$2,$3,NOW()+INTERVAL \'10 minutes\')',[hash(token),guildId,userId]);

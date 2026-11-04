@@ -370,7 +370,7 @@ test('web event RSVP uses the linked Discord character and redirects after joini
   const db={
     async query(sql){
       if(sql.includes('FROM site_discord_links')) return {rows:[profile],rowCount:1};
-      if(sql.startsWith('INSERT INTO users')) return {rows:[],rowCount:1};
+      if(sql.startsWith('INSERT INTO users')||sql.startsWith('INSERT INTO user_talents')||sql.startsWith('INSERT INTO learned_spells')) return {rows:[],rowCount:1};
       throw new Error('Unexpected pool query: '+sql);
     },
     async connect(){

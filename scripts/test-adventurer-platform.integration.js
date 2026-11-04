@@ -253,7 +253,13 @@ test('linked adventurer inventory is account-scoped and includes equipment and R
     assert.equal((await redeemSiteLinkToken(pool,accountId,link.token)).status,'linked');
     const event=await createGuildEvent(pool,{guildId,title:'Portal RSVP Fixture',startsAt:new Date(Date.now()+3600000).toISOString(),endsAt:new Date(Date.now()+7200000).toISOString(),createdBy:userId});
     eventId=event.eventId;
+    await pool.query('DELETE FROM user_talents WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+    await pool.query('DELETE FROM learned_spells WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
     assert.equal((await joinGuildEvent(pool,{guildId,eventId,userId})).status,'joined');
+    const talentCount=await pool.query('SELECT COUNT(*)::int AS count FROM user_talents WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+    const starterSpell=await pool.query("SELECT COUNT(*)::int AS count FROM learned_spells WHERE guild_id=$1 AND user_id=$2 AND spell_key='zoltraak'",[guildId,userId]);
+    assert.equal(talentCount.rows[0].count,1);
+    assert.equal(starterSpell.rows[0].count,1);
     const inventory=await getAdventurerInventory(pool,accountId,guildId);
     assert.equal(inventory.profile.user_id,userId);
     assert.ok(inventory.items.some(item=>item.item_key==='Mana Kristali'&&Number(item.quantity)===2));
