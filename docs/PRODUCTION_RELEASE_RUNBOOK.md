@@ -6,7 +6,8 @@ This runbook is a release gate for Poğaça Frieren. It does not authorize a pro
 
 - PR #217 must remain unmerged until the same final HEAD passes all required CI and isolated PostgreSQL checks.
 - Production PostgreSQL and live player rows must not be used for rehearsal.
-- Discord command registration remains a separate, explicit operation. Do not enable automatic registration on merge or deploy.
+- Discord command registration remains a separate, explicit operation. Both production registration workflows are manual-only; no schedule may write to Discord.
+- The registration script performs read-before-write and skips unchanged definitions to preserve Discord's daily command-create quota.
 - Vercel Preview readiness is not proof that the production domain serves the PR code.
 - Keep the feature inventory's `auditComplete=false`; do not promote runtime-unverified entries to complete.
 
