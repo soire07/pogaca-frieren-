@@ -104,10 +104,10 @@ test('Poğaça page describes verified starter commands and includes a bot invit
 test('owner link is only rendered for the configured bot owner', async () => {
   const owner = res();
   const ownerUser = { id: '1553794496234262641', username: 'Owner', avatar: null };
-  await handlePublicSiteRequest(request('/', ownerUser), owner);
+  await handlePublicSiteRequest(request('/kesfet', ownerUser), owner);
   assert.match(owner.body, /href="\/owner"/);
   const visitorResponse = res();
-  await handlePublicSiteRequest(request('/', visitor), visitorResponse);
+  await handlePublicSiteRequest(request('/kesfet', visitor), visitorResponse);
   assert.doesNotMatch(visitorResponse.body, /href="\/owner"/);
 });
 
@@ -145,7 +145,7 @@ test('registration and login pages expose username and password forms', async ()
 
 test('site profile uses dedicated brand avatar and banner assets', async () => {
   const response = res();
-  await handlePublicSiteRequest(request('/', visitor), response);
+  await handlePublicSiteRequest(request('/kesfet', visitor), response);
   assert.match(response.body, /site-avatar\.webp/);
   assert.match(response.body, /profile-banner[\s\S]*?src="\/assets\/site-banner\.webp"/);
   const stylesheet = res();
@@ -197,7 +197,7 @@ test('registration page reports that email delivery must be configured before si
 
 test('mobile public pages keep card actions and hero media within the viewport', async () => {
   const response = res();
-  await handlePublicSiteRequest(request('/'), response);
+  await handlePublicSiteRequest(request('/kesfet'), response);
   assert.match(response.body, /assets\/site\.css/);
   const stylesheet = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
@@ -248,7 +248,7 @@ test('command catalogue handles an unavailable command collection without throwi
 
 test('homepage declares the existing Frieren brand favicon and serves the SVG asset publicly', async () => {
   const homepage = res();
-  await handlePublicSiteRequest(request('/'), homepage);
+  await handlePublicSiteRequest(request('/kesfet'), homepage);
   assert.match(homepage.body, /<link rel="icon" type="image\/svg\+xml" href="\/assets\/site-avatar\.svg">/);
   assert.match(homepage.body, /href="\/lonca">Maceracı Loncası/);
   assert.match(homepage.body, /Frieren modüllerini düzenle/);
@@ -261,7 +261,7 @@ test('homepage declares the existing Frieren brand favicon and serves the SVG as
 
 test('homepage advertises an installable Frieren web app manifest and brand icon', async () => {
   const homepage = res();
-  await handlePublicSiteRequest(request('/'), homepage);
+  await handlePublicSiteRequest(request('/kesfet'), homepage);
   assert.match(homepage.body, /<link rel="manifest" href="\/site\.webmanifest">/);
   assert.match(homepage.body, /name="mobile-web-app-capable"/);
   const manifestResponse = res();
