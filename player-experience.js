@@ -97,7 +97,7 @@ export async function saveCosmeticPreset(db,{guildId,userId,presetName}){
 export async function applyCosmeticPreset(pool,{guildId,userId,presetName}) {
  player(guildId,userId);
  const name=String(presetName||'').trim();
- if(!/^[\\p{L}\\p{N} _-]{1,32}$/u.test(name)) return {status:'invalid_preset'};
+ if(!/^[\p{L}\p{N} _-]{1,32}$/u.test(name)) return {status:'invalid_preset'};
  const c=await pool.connect();
  try {
   await c.query('BEGIN');
