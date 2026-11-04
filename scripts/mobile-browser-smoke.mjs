@@ -51,8 +51,13 @@ try {
   if (response.status() !== 302 || !location.startsWith('https://discord.com/oauth2/authorize')) {
     throw new Error('Owner OAuth redirect is not healthy: HTTP ' + response.status() + ' ' + location.slice(0, 120));
   }
+  const authorize = new URL(location);
+  const state = authorize.searchParams.get('state') || '';
   if (!stateCookie.includes('frieren_owner_oauth_state')) throw new Error('Owner OAuth state cookie is missing');
-  process.stdout.write('PASS owner OAuth authorize redirect and state cookie\n');
+  if (!authorize.searchParams.get('client_id') || !authorize.searchParams.get('redirect_uri') || authorize.searchParams.get('response_type') !== 'code' || !/^[a-f0-9]{64}$/i.test(state)) {
+    throw new Error('Owner OAuth authorization request is missing valid client, callback, response type or state');
+  }
+  process.stdout.write('PASS owner OAuth authorize redirect, state cookie and OAuth parameters\n');
 } finally {
   await api.dispose();
 }
