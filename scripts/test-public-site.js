@@ -596,3 +596,16 @@ test('private home showcase remains unavailable without explicit opt-in',async()
  assert.equal(response.status,404);
  assert.match(response.body,/Bu ev paylaşılmıyor/);
 });
+
+
+test('Discord-only sessions are redirected to the site account login before player dashboard queries', async () => {
+  for (const path of ['/', '/maceraci']) {
+    let queryCount = 0;
+    const db = { async query() { queryCount += 1; throw new Error('Dashboard query must not run for a Discord-only session'); } };
+    const response = res();
+    assert.equal(await handlePublicSiteRequest(request(path, visitor), response, { db }), true);
+    assert.equal(response.status, 302, path);
+    assert.equal(response.headers.Location, '/login?status=site_account_required', path);
+    assert.equal(queryCount, 0, path);
+  }
+});
