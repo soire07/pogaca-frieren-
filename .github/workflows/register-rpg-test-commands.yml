@@ -2,14 +2,8 @@ name: Register Poğaça RPG test commands
 
 # Test-only allowlist. This workflow never writes to the production guild and never touches
 # the separate Frieren AI application's commands.
+# Manual only: test-guild registration is never triggered by a production merge.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/register-rpg-test-commands.yml"
-      - "deploy-commands.js"
-      - "commands/**"
-      - "*.js"
   workflow_dispatch:
 
 permissions:
