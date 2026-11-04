@@ -41,8 +41,9 @@ test('rod and bait improve weighted fishing outcomes without adding fish outside
   const baseTotal=base.reduce((sum,item)=>sum+item.weight,0);
   const upgradedTotal=upgraded.reduce((sum,item)=>sum+item.weight,0);
   assert.ok(upgradedRare/upgradedTotal>baseRare/baseTotal);
-  const frost=getFishingWeightTable('kuzey_kiyisi',{baitKey:'frost'});
-  const frostBase=base.find(item=>item.fish.key==='frost_carp').weight;
+  const frostBaseTable=getFishingWeightTable('buzul_golu');
+  const frost=getFishingWeightTable('buzul_golu',{baitKey:'frost'});
+  const frostBase=frostBaseTable.find(item=>item.fish.key==='frost_carp').weight;
   const frostBoost=frost.find(item=>item.fish.key==='frost_carp').weight;
   assert.ok(frostBoost>frostBase);
   assert.ok(upgraded.every(item=>item.fish.zones.includes('kuzey_kiyisi')));
