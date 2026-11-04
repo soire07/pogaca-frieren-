@@ -364,6 +364,30 @@ test('adventurer account linking rejects invalid CSRF before opening a database 
   assert.equal(connected,false);
 });
 
+test('player experience web page is scoped to the linked character and shows home cosmetics and event progress',async()=>{
+ const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20};
+ const db={async query(sql){
+  if(sql.includes('FROM site_discord_links'))return {rows:[profile],rowCount:1};
+  if(sql.startsWith('INSERT INTO users')||sql.startsWith('INSERT INTO user_talents')||sql.startsWith('INSERT INTO learned_spells')||sql.startsWith('INSERT INTO player_home_rooms')||sql.startsWith('INSERT INTO player_homes'))return {rows:[],rowCount:1};
+  if(sql.includes('SELECT active_room,layout FROM player_homes'))return {rows:[{active_room:'starter',layout:[]}],rowCount:1};
+  if(sql.includes('SELECT room_key,unlocked_at FROM player_home_rooms'))return {rows:[{room_key:'starter'}],rowCount:1};
+  if(sql.includes('FROM player_cosmetic_ownership'))return {rows:[],rowCount:0};
+  if(sql.includes('FROM player_cosmetic_loadout'))return {rows:[],rowCount:0};
+  if(sql.includes('FROM player_cosmetic_presets'))return {rows:[],rowCount:0};
+  if(sql.includes('FROM guild_events'))return {rows:[{event_id:'123e4567-e89b-42d3-a456-426614174000',title:'Zindan Gecesi',ends_at:new Date(Date.now()+3600000).toISOString(),participation:1,checkin:0}],rowCount:1};
+  throw new Error('Unexpected player experience query: '+sql);
+ }};
+ const response=res();
+ const account={id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'};
+ assert.equal(await handlePublicSiteRequest(request('/maceraci/yasam?guildId='+profile.guild_id,account),response,{db}),true);
+ assert.equal(response.status,200);
+ assert.match(response.body,/Kişisel Ev/);
+ assert.match(response.body,/Genel Kozmetikler/);
+ assert.match(response.body,/Etkinlik İlerlemesi/);
+ assert.match(response.body,/Zindan Gecesi/);
+ assert.match(response.body,/book_shelf/);
+});
+
 test('adventurer inventory page is account- and guild-scoped and displays equipped items', async () => {
   const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:12,xp:1440,coins:900,hp:80,max_hp:100,mana:65,max_mana:100};
   const db={async query(sql){
