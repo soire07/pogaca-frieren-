@@ -10,6 +10,10 @@ const BASELINE = {
   checksum: createHash('sha256').update('frieren-legacy-schema-baseline-v1').digest('hex')
 };
 
+function stripDollarQuotedBodies(source) {
+  return String(source).replace(/(\$[A-Za-z0-9_]*\$)[\s\S]*?\1/g, ' ');
+}
+
 function checksum(source) {
   return createHash('sha256').update(source, 'utf8').digest('hex');
 }
@@ -32,7 +36,7 @@ async function discoverMigrations(directory) {
     if (version < 1) throw new Error('DB_MIGRATION_VERSION_RESERVED:' + entry.name);
     const sql = await readFile(new URL(entry.name, directory), 'utf8');
     if (!sql.trim()) throw new Error('DB_MIGRATION_EMPTY:' + entry.name);
-    if (/^\s*(BEGIN|COMMIT|ROLLBACK)\b/im.test(sql)) {
+    if (/^\s*(BEGIN|COMMIT|ROLLBACK)\b/im.test(stripDollarQuotedBodies(sql))) {
       throw new Error('DB_MIGRATION_TRANSACTION_CONTROL_FORBIDDEN:' + entry.name);
     }
     migrations.push({ version, name: entry.name, sql, checksum: checksum(sql) });

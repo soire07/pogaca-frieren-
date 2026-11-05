@@ -40,8 +40,8 @@ test('Frieren Security workspace clearly distinguishes active platform protectio
   const html = renderOwnerSecurityWorkspace();
   assert.match(html, /Güvenlik merkezi/);
   assert.match(html, /Otomatik DDoS azaltma/);
-  assert.match(html, /Henüz bağlanmadı/);
-  assert.match(html, /Kurulum bekliyor/);
+  assert.match(html, /Anahtar eksik/);
+  assert.match(html, /Kontrol edilemedi/);
   assert.match(html, /SHA-256/);
   assert.doesNotMatch(html, /gerçek zamanlı saldırı algılandı/i);
 });
@@ -386,7 +386,10 @@ async function runOwnerGet(url, { cookie = true } = {}) {
   try {
     await handleOwnerDashboardRequest(req, response, {
       client: {},
-      db: { query: async () => { throw new Error('security workspace must not query unrelated data'); } }
+      db: { query: async sql => {
+        if (String(sql).includes('FROM owner_guardian_incidents') || String(sql).includes('FROM owner_guardian_evidence_chain')) return { rows: [] };
+        throw new Error('security workspace must not query unrelated data');
+      } }
     });
     return response;
   } finally {
@@ -409,7 +412,7 @@ test('authenticated Frieren Security route renders independently without queryin
   assert.equal(response.status, 200);
   assert.match(response.body, /PRIVATE SECURITY CENTER/);
   assert.match(response.body, /FRIEREN SECURITY/);
-  assert.match(response.body, /Kurulum bekliyor/);
+  assert.match(response.body, /Anahtar eksik/);
 });
 
 test('owner action endpoint rejects requests without an authenticated owner session', async () => {
@@ -1089,6 +1092,29 @@ test('synthetic Frieren AI → authenticated Owner Panel review → explicit own
       else process.env[key] = value;
     }
   }
+});
+
+test('Frieren Security renders real Guard incidents, verified network attribution and chain integrity', () => {
+  const html = renderOwnerSecurityWorkspace({
+    ingestConfigured: true,
+    incidents: [{
+      id: 42, title: 'WAF blocked request', severity: 'high', summary: 'Rate threshold exceeded',
+      code: 'WAF_BLOCK', status: 'open', occurrence_count: 1, last_seen: '2026-11-05T12:00:00Z', system: 'guardian'
+    }],
+    evidenceEvents: [{
+      sequence_no: 3, event_id: 'guard-event-0003', severity: 'high',
+      received_at: '2026-11-05T12:00:00Z', source: 'frieren_guard', client_ip: '198.51.100.42',
+      ip_source: 'trusted_proxy', event_hash: 'a'.repeat(64)
+    }],
+    chainStatus: { valid: true, checked: 3, truncated: false, firstInvalidSequence: null }
+  });
+  assert.match(html, /WAF blocked request/);
+  assert.match(html, /Canlı olay alındı/);
+  assert.match(html, /UPDATE\/DELETE\/TRUNCATE/);
+  assert.match(html, /198\.51\.100\.42/);
+  assert.match(html, /trusted_proxy/);
+  assert.match(html, /Bütünlük doğrulandı/);
+  assert.match(html, /SHA-256/);
 });
 
 test('Guardian workspace hides generic workflow history from the single-run evidence slot', () => {
