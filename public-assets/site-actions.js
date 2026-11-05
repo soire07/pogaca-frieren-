@@ -22,7 +22,6 @@
     const submitter = event.submitter;
     if (submitter instanceof HTMLButtonElement && submitter.type === 'submit') {
       submitter.dataset.originalLabel = submitter.textContent || '';
-      submitter.disabled = true;
       submitter.setAttribute('aria-busy', 'true');
       submitter.textContent = 'Büyü işleniyor…';
     }
@@ -31,7 +30,6 @@
     document.querySelectorAll('form[aria-busy="true"]').forEach(form => {
       form.removeAttribute('aria-busy');
       form.querySelectorAll('button[data-original-label]').forEach(button => {
-        button.disabled = false;
         button.textContent = button.dataset.originalLabel || button.textContent;
         button.removeAttribute('aria-busy');
         delete button.dataset.originalLabel;
