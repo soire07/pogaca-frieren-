@@ -52,6 +52,11 @@ export function findRelevantExcerpt(source, terms, maxLength = 1800) {
   return source.slice(start, start + limit);
 }
 
+export function normalizeCodeContextText(value) {
+  if (typeof value === 'string') return value;
+  return value && typeof value.text === 'string' ? value.text : '';
+}
+
 const GUARDIAN_CONTEXT_FILES = Object.freeze([
   'guardian/automation.js',
   'guardian/automation.test.js',
