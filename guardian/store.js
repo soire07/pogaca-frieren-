@@ -256,7 +256,7 @@ export async function reserveGuardianRepairDispatch(db, jobId, approvalFingerpri
        repair_dispatch_at=NOW(),
        repair_dispatch_attempts=repair_dispatch_attempts+1
      FROM owner_guardian_incidents AS i
-     WHERE j.id=$1 AND j.repair_approval_fingerprint=$2 AND j.repair_approved_by IS NOT NULL
+     WHERE j.id=$1 AND j.repair_approval_fingerprint=$2::char(64) AND j.repair_approved_by IS NOT NULL
        AND i.id=j.incident_id AND i.status='awaiting_approval'
        AND NOT EXISTS (
          SELECT 1 FROM owner_settings s
