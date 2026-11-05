@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import OpenAI from 'openai';
 import { resolveAiModel } from './config.js';
-import { collectCodeContext as collectGuardianCodeContext } from './code-context.js';
+import { isNeuralConfigured, generateNeuralReply, buildNeuralPrompt } from './neural-client.js';
+import { collectCodeContext as collectGuardianCodeContext, normalizeCodeContextText } from './code-context.js';
 import { createMemoryStore, shouldUseConversationHistory } from './memory-store.js';
 import { buildConversationContextMessages } from './conversation-context.js';
 import { isExplicitMemoryOverviewQuestion } from './memory-intent.js';
@@ -50,7 +51,8 @@ const groqKey = process.env.GROQ_API_KEY?.trim();
 const groq = groqKey ? new OpenAI({ apiKey: groqKey, baseURL: 'https://api.groq.com/openai/v1', timeout: 45_000, maxRetries: 1 }) : null;
 const memoryStore = process.env.DATABASE_URL?.trim() ? createMemoryStore(process.env.DATABASE_URL.trim()) : null;
 let memoryDatabaseReady = false;
-const modelConfigured = Boolean(groq);
+const neuralConfigured = isNeuralConfigured(process.env);
+const modelConfigured = Boolean(neuralConfigured || groq);
 const bridgeConfig = resolveAiBridgeConfig(process.env);
 const bridgeConfigured = bridgeConfig.configured;
 
@@ -238,7 +240,8 @@ if (memoryStore) {
 } else {
   console.error('Frieren AI hafıza veritabanı yapılandırılmamış; FRIEREN_AI_DATABASE_URL kontrol edilmeli.');
 }
-if (!modelConfigured) console.error('Groq API anahtarı yapılandırılmamış; /frieren-ai yanıt veremez.');
+if (!modelConfigured) console.error('Frieren Neural API veya Groq sağlayıcısı yapılandırılmamış; /frieren-ai yanıt veremez.');
+if (neuralConfigured) console.log('Frieren AI yanıt sağlayıcısı: Frieren Neural API (Groq sohbet yedeği kullanılmayacak).');
 if (!bridgeConfigured) console.warn('Poğaça Frieren komut test köprüsü yapılandırılmamış; /frieren-komut-denetle kullanılamaz.');
 
 const commands = [
@@ -285,6 +288,7 @@ const collectCodeContext = question => collectGuardianCodeContext({
   question,
   sourceCommitSha: process.env.RENDER_GIT_COMMIT || process.env.GITHUB_SHA || null,
 });
+
 function isConversationalQuestion(question) {
   const normalized = question.toLocaleLowerCase('tr-TR')
     .normalize('NFKD')
@@ -330,12 +334,13 @@ async function answerCodeQuestion(question, userId, conversationId) {
       return { ok: false, message: 'Kalıcı belleğe kayıt yapılamadı. Veritabanı bağlantısını kontrol etmek gerekiyor.' };
     }
   }
-  if (!groq) return {
+  if (!groq && !isNeuralConfigured(process.env)) return {
     ok: false,
-    message: 'Groq API anahtarı ayarlanmamış. Render ortam değişkenlerine GROQ_API_KEY eklenmeli. Ücretli API sağlayıcısına otomatik geçiş yapılmaz. /frieren-test otomatik testleri çalıştırmaya devam eder.'
+    message: 'Frieren Neural API yapılandırılmamış. FRIEREN_NEURAL_API_URL ve en az 32 karakterlik FRIEREN_NEURAL_API_TOKEN ayarlanmalı; Groq anahtarı zorunlu değildir.'
   };
   const conversational = isConversationalQuestion(question);
-  const context = conversational ? '' : await collectCodeContext(question);
+  const contextResult = conversational ? '' : await collectCodeContext(question);
+  const context = normalizeCodeContextText(contextResult);
   if (!context && !conversational) return { ok: false, message: 'Bu soruyla ilişkili kaynak dosyası bulunamadı. Daha belirgin bir komut veya mekanik adıyla yeniden dene.' };
   let memories = [];
   if (memoryStore && userId) {
@@ -363,8 +368,26 @@ async function answerCodeQuestion(question, userId, conversationId) {
     const content = result?.choices?.[0]?.message?.content;
     return typeof content === 'string' ? content.trim() : '';
   };
-  let response;
   let message = '';
+  if (isNeuralConfigured(process.env)) {
+    try {
+      const prompt = buildNeuralPrompt({
+        systemPrompt,
+        conversationHistory,
+        memoryContext,
+        question,
+        context,
+        conversational,
+      });
+      const result = await generateNeuralReply({ env: process.env, prompt });
+      message = result.text;
+    } catch (error) {
+      console.error('Frieren Neural isteği başarısız:', redactSecrets(error?.message || String(error)));
+      return { ok: false, message: 'Frieren Neural şu anda yanıt üretemedi. Güvenli biçimde Groq sağlayıcısına geçiş yapılmadı; model/API sağlık durumunu kontrol etmek gerekiyor.' };
+    }
+    if (!message) return { ok: false, message: 'Frieren Neural boş yanıt döndürdü. Bu istek tamamlanmadı.' };
+  } else {
+  let response;
   try {
     response = await groq.chat.completions.create({
       reasoning_effort: 'low',
@@ -430,6 +453,7 @@ async function answerCodeQuestion(question, userId, conversationId) {
       usage: response?.usage ?? null,
     }));
     return { ok: false, message: 'Model iki denemede de boş yanıt döndürdü. Bu inceleme tamamlanmadı; kodda değişiklik yapılmadı. Sağlayıcı/model yanıtı Render kayıtlarına eklendi.' };
+  }
   }
   if (memoryStore && userId && conversational) {
     try {
@@ -730,8 +754,8 @@ client.on(Events.InteractionCreate, async interaction => {
     const hours = Math.floor(uptimeSeconds / 3600);
     const minutes = Math.floor((uptimeSeconds % 3600) / 60);
     const seconds = uptimeSeconds % 60;
-    const provider = process.env.FRIEREN_MODEL_PROVIDER || 'groq';
-    const model = process.env.FRIEREN_MODEL || 'openai/gpt-oss-20b';
+    const provider = isNeuralConfigured(process.env) ? 'Frieren Neural' : (groq ? (process.env.FRIEREN_MODEL_PROVIDER || 'groq') : 'Yapılandırılmamış');
+    const model = isNeuralConfigured(process.env) ? (process.env.FRIEREN_NEURAL_MODEL || 'ufakai/ufakzeka-1') : (process.env.FRIEREN_MODEL || 'openai/gpt-oss-20b');
     const embed = new EmbedBuilder()
       .setTitle('Frieren AI — Servis Durumu')
       .setColor(client.isReady() ? 0x57F287 : 0xED4245)
@@ -740,7 +764,7 @@ client.on(Events.InteractionCreate, async interaction => {
         { name: 'Gateway gecikmesi', value: client.ws.ping >= 0 ? client.ws.ping + ' ms' : 'Ölçülemiyor', inline: true },
         { name: 'Çalışma süresi', value: hours + ' sa ' + minutes + ' dk ' + seconds + ' sn', inline: true },
         { name: 'Bağlı sunucu sayısı', value: String(client.guilds.cache.size), inline: true },
-        { name: 'Yapay zekâ sağlayıcısı', value: provider + (groq ? ' — API hazır' : ' — GROQ_API_KEY eksik'), inline: true },
+        { name: 'Yapay zekâ sağlayıcısı', value: provider + ((isNeuralConfigured(process.env) || groq) ? ' — API yapılandırılmış' : ' — API eksik'), inline: true },
         { name: 'Model', value: model, inline: true },
         { name: 'Kalıcı bellek', value: memoryStore ? 'Yapılandırılmış' : 'Yapılandırılmamış', inline: true }
       )
