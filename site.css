@@ -285,3 +285,16 @@ body.site-menu-open{overflow:hidden}
  .topbar{padding-left:62px}
 }
 @media(prefers-reduced-motion:reduce){.site-sidebar,.site-menu-toggle{transition:none!important}.site-sidebar{transform:none}}
+
+
+/* Polished horizontal overflow control; SVG dots avoid platform-dependent glyph rendering. */
+.site-menu-toggle{width:44px;height:44px;border:1px solid #cdb5ef35;border-radius:14px;background:linear-gradient(145deg,#292139f5,#171321f5);color:#eee5ff;box-shadow:0 8px 24px #05030d88, inset 0 1px #ffffff12;}
+.site-menu-toggle:hover{background:linear-gradient(145deg,#38294d,#211a31);border-color:#d7b9ff88;box-shadow:0 10px 28px #05030dcc,0 0 18px #b58ce52b;}
+.site-menu-toggle:focus-visible{outline:2px solid #d7b9ff;outline-offset:3px;}
+.site-menu-dots{display:block;width:20px;height:20px;overflow:visible;}
+.site-menu-dots circle{fill:currentColor;transition:transform .16s ease,opacity .16s ease;transform-origin:center;}
+.site-menu-toggle:hover .site-menu-dots circle:nth-child(1){transform:translateY(-1px);}
+.site-menu-toggle:hover .site-menu-dots circle:nth-child(2){transform:translateY(1px);}
+.site-menu-toggle:hover .site-menu-dots circle:nth-child(3){transform:translateY(-1px);}
+@media(max-width:560px){.site-menu-toggle{width:42px;height:42px;border-radius:13px}.site-menu-dots{width:19px;height:19px}}
+@media(prefers-reduced-motion:reduce){.site-menu-dots circle{transition:none}}
