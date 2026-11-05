@@ -103,8 +103,8 @@ for (const scenario of scenarios) {
     if (actionEvents.length !== 2 || actionEvents[0].value !== 'feature-save' || actionEvents[0].disabled || !actionEvents[1].prevented) {
       throw new Error(scenario.name + ' shared action handler broke named form controls or duplicate-submit protection: ' + JSON.stringify(actionEvents));
     }
-    const playerPage = await page.goto(baseUrl + '/kesfet', { waitUntil: 'domcontentloaded', timeout: 45000 });
-    if (!playerPage || playerPage.status() !== 200) throw new Error(scenario.name + ' authenticated site page HTTP ' + (playerPage?.status() || 'no response'));
+    const restoredPlayerPage = await page.goto(baseUrl + '/kesfet', { waitUntil: 'domcontentloaded', timeout: 45000 });
+    if (!restoredPlayerPage || restoredPlayerPage.status() !== 200) throw new Error(scenario.name + ' restored authenticated site page HTTP ' + (restoredPlayerPage?.status() || 'no response'));
     const menuToggle = page.locator('#site-menu-toggle');
     const sidebar = page.locator('#site-sidebar');
     if (await menuToggle.count() !== 1) throw new Error(scenario.name + ' missing compact navigation toggle');
