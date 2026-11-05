@@ -721,6 +721,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   if (req.method === 'DELETE' && url.pathname === '/maceraci/profil/media') {
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil veritabanı kullanılamıyor.');return true;}
     if(!verifySiteCsrfToken(String(req.headers['x-csrf-token']||''),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Güvenlik doğrulaması başarısız.');return true;}
     try{const kind=String(url.searchParams.get('kind')||'');await deleteProfileMedia(db,session.id,kind);res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({status:'deleted',kind}));}
     catch(error){if(String(error?.message||'').startsWith('PROFILE_MEDIA_')){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Görsel türü geçersiz.');return true;}throw error;}
