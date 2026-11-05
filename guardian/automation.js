@@ -14,19 +14,20 @@ const REPAIR_WORKFLOW = 'frieren-ai-self-repair.yml';
 const REPOSITORY = 'soire07/pogaca-frieren-';
 
 export function buildGuardianRepairTrackingUrls(apiBase, incidentId) {
-  const base = String(apiBase || '').replace(/\\/+$/, '');
   const id = Number(incidentId);
-  if (!/^https:\\/\\//i.test(base) || !Number.isSafeInteger(id) || id <= 0) {
+  let parsed;
+  try { parsed = new URL(String(apiBase || '')); } catch {}
+  if (parsed?.protocol !== 'https:' || !Number.isSafeInteger(id) || id <= 0) {
     throw new Error('INVALID_GUARDIAN_REPAIR_TRACKING_INPUT');
   }
   const branchName = 'ai-repair/guardian-' + id;
-  const runs = new URL('/repos/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml/runs', base);
+  const runs = new URL('/repos/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml/runs', parsed.origin);
   runs.search = new URLSearchParams({
     branch: GUARDIAN_REPAIR_BRANCH,
     event: 'workflow_dispatch',
     per_page: '30',
   }).toString();
-  const pulls = new URL('/repos/soire07/pogaca-frieren-/pulls', base);
+  const pulls = new URL('/repos/soire07/pogaca-frieren-/pulls', parsed.origin);
   pulls.search = new URLSearchParams({
     state: 'all',
     head: 'soire07:' + branchName,
@@ -266,7 +267,7 @@ export async function processPendingGuardianRepairDispatch({
     'Content-Type': 'application/json',
   };
   const runsUrl = 'https://api.github.com/repos/' + REPOSITORY + '/actions/workflows/' + REPAIR_WORKFLOW
-    + '/runs?branch=' + encodeURIComponent(REPAIR_BRANCH) + '&event=workflow_dispatch&per_page=100';
+    + '/runs?branch=' + encodeURIComponent(GUARDIAN_REPAIR_BRANCH) + '&event=workflow_dispatch&per_page=100';
 
   try {
     const existingResponse = await fetchImpl(runsUrl, {
@@ -297,7 +298,7 @@ export async function processPendingGuardianRepairDispatch({
         && ['failure', 'cancelled', 'timed_out', 'action_required', 'startup_failure'].includes(existingRun.conclusion);
       if (terminalFailure) {
         const branchName = 'ai-repair/guardian-' + Number(incident.id);
-        const query = new URLSearchParams({ state: 'all', head: 'soire07:' + branchName, base: REPAIR_BRANCH });
+        const query = new URLSearchParams({ state: 'all', head: 'soire07:' + branchName, base: GUARDIAN_REPAIR_BRANCH });
         const prResponse = await fetchImpl('https://api.github.com/repos/' + REPOSITORY + '/pulls?' + query.toString(), {
           method: 'GET', headers, signal: AbortSignal.timeout(12_000),
         });
@@ -354,7 +355,7 @@ export async function processPendingGuardianRepairDispatch({
       : 'guardian.repair.workflow_dispatched';
     await db.query(
       'INSERT INTO owner_audit_logs(actor_id,action,target,details) VALUES($1,$2,$3,$4::jsonb)',
-      [actorId, auditAction, String(incident.id), JSON.stringify({ jobId: job.id, workflow: REPAIR_WORKFLOW, baseBranch: REPAIR_BRANCH })]
+      [actorId, auditAction, String(incident.id), JSON.stringify({ jobId: job.id, workflow: REPAIR_WORKFLOW, baseBranch: GUARDIAN_REPAIR_BRANCH })]
     ).catch(() => {});
     return { status: 'dispatched', jobId: Number(job.id), workflowUrl };
   } catch (error) {
