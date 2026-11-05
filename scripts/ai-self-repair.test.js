@@ -429,3 +429,17 @@ test('Guardian repair uses three attempts by default when generated diffs are st
   );
   assert.equal(calls, 3);
 });
+
+test('repair context resolves Turkish capital dotted-I affected-file labels exactly', async () => {
+  const files = { 'rpg-mechanics.js': 'export function unrelatedMechanic() { return 1; }' };
+  const context = await collectRepairContext(
+    'Guardian incident #51\\nİlgili dosyalar: rpg-mechanics.js',
+    {
+      execFile: () => 'rpg-mechanics.js\\0',
+      statImpl: async path => ({ isFile: () => true, size: files[path].length }),
+      readFileImpl: async path => files[path],
+    },
+  );
+  assert.match(context, /### rpg-mechanics\\.js/);
+  assert.match(context, /unrelatedMechanic/);
+});
