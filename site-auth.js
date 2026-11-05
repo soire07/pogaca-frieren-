@@ -71,8 +71,12 @@ export function isSameOriginRequest(req, siteBaseUrl = process.env.SITE_BASE_URL
   // therefore different from SITE_BASE_URL (the backend/OAuth callback host).
   // Trust only explicitly configured public origins; never infer trust from
   // the incoming Host header alone.
-  const configuredOrigins = String(process.env.SITE_AUTH_ALLOWED_ORIGINS || 'https://frierenbot.vercel.app')
-    .split(',').map(value => value.trim()).filter(Boolean);
+  // The canonical production browser origin is always trusted. Environment
+  // configuration may add origins, but must never be able to remove this one.
+  const configuredOrigins = [
+    'https://frierenbot.vercel.app',
+    ...String(process.env.SITE_AUTH_ALLOWED_ORIGINS || '').split(',')
+  ].map(value => value.trim()).filter(Boolean);
   for (const value of configuredOrigins) {
     try { allowed.add(new URL(value).origin); } catch {}
   }
