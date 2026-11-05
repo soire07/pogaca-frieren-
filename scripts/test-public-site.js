@@ -181,8 +181,8 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /KULLANICI MERKEZİ/);
   assert.match(response.body, /Başarım Vitrini/);
   assert.match(response.body, /Kişisel Yaşam Alanım/);
-  assert.match(response.body, /href="\\/maceraci\\/profil#leaderboards"/);
-  assert.match(response.body, /href="\\/maceraci\\/profil#privacy"/);
+  assert.ok(response.body.includes('href="/maceraci/profil#leaderboards"'));
+  assert.ok(response.body.includes('href="/maceraci/profil#privacy"'));
   assert.match(response.body, /gif-gallery/);
   assert.match(response.body, /profile-avatar/);
   assert.equal((response.body.match(/loading="lazy"/g) || []).length, 18);
@@ -1107,7 +1107,7 @@ test('public profile preferences are CSRF protected and saved only for the linke
   showCollections:'false',showActivity:'false',showCosmetics:'true',activeTitle:'Kıdemli Maceracı'
  },accountId),valid,{db}),true);
  assert.equal(valid.status,303);
- assert.match(valid.headers.Location,/maceraci\\/profil/);
+ assert.ok(valid.headers.Location.includes('/maceraci/profil'));
  assert.ok(calls.some(call=>call.sql.includes('INSERT INTO player_profile_settings')));
 });
 
