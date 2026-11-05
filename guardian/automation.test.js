@@ -466,20 +466,16 @@ test('automatic dispatch retry respects the emergency stop before reserving or c
 });
 
 
-test('successful GitHub dispatch is not reported as persisted when Guardian state update returns false', async () => {
-  const result = await processGuardianIncident({
+test('successful approved GitHub dispatch is not reported as persisted when Guardian state update returns false', async () => {
+  const result = await processPendingGuardianRepairDispatch({
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
+    job: { id: 90, result: review, repair_approved_by: '1553794496234262641', repair_approval_fingerprint: getGuardianProposalFingerprint(review) },
     incident,
-    env: {
-      FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
-      FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
-    },
-    fetchImpl: async url => String(url).includes('/internal/guardian-review')
-      ? { ok: true, status: 200, json: async () => review }
+    env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
+    fetchImpl: async (_url, options) => options.method === 'GET'
+      ? { ok: true, status: 200, json: async () => ({ workflow_runs: [] }) }
       : { ok: true, status: 204, json: async () => ({}) },
     store: {
-      createGuardianReviewJob: async () => ({ id: 90, status: 'queued' }),
-      finishGuardianReviewJob: async () => true,
       reserveGuardianRepairDispatch: async () => ({ id: 90 }),
       finishGuardianRepairDispatch: async () => false,
     },
