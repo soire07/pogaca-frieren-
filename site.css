@@ -378,3 +378,23 @@ body.site-menu-open{overflow:hidden}
  .profile-achievement>b{margin-left:50px}
  .profile-xp-day{grid-template-columns:70px minmax(50px,1fr) 62px;gap:7px;font-size:.72rem}
 }
+
+
+/* Server-allowlisted Owner identity: crimson blood XP and an exclusive profile frame. */
+.site-owner-badge{display:inline-flex;align-items:center;padding:3px 9px;border:1px solid #ff647b99;border-radius:999px;background:linear-gradient(135deg,#4a0715,#8e1029);color:#ffe1e6;font-size:.68rem;font-weight:950;letter-spacing:.16em;text-shadow:0 0 10px #ff536d88;box-shadow:0 0 14px #d51d3c44}
+.site-account-card.is-owner{border-color:#e43c5b99;background:linear-gradient(135deg,#3a0b18,#170d18 70%);box-shadow:0 0 18px #c51d3b2b}
+.site-account-card.is-owner>img{border:2px solid #ed536d;box-shadow:0 0 12px #d51d3c77}
+.site-account-card.is-owner .site-account-copy>strong{color:#ffe1e6}
+.site-account-card.is-owner .site-owner-badge{font-size:7px}
+.xp-progress.is-owner .xp-progress-track{border-color:#f04b6899;background:#260b14;box-shadow:0 0 15px #d51d3c55,inset 0 0 7px #050207}
+.xp-progress.is-owner .xp-progress-track>i{position:relative;overflow:hidden;background:linear-gradient(105deg,#360711,#8d1029,#f0445f,#7a0b24,#d52b49,#360711);background-size:260% 100%;animation:frieren-owner-blood-flow 3.2s linear infinite;box-shadow:0 0 13px #f0445f99}
+.xp-progress.is-owner .xp-progress-track>i::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 5px 8px at 18% 100%,#ff8a9a 0 45%,transparent 70%),radial-gradient(ellipse 4px 7px at 63% 100%,#c51d3b 0 48%,transparent 72%),radial-gradient(ellipse 3px 6px at 88% 100%,#ff667d 0 45%,transparent 72%);opacity:.9;animation:frieren-owner-blood-drip 1.8s ease-in-out infinite alternate}
+@keyframes frieren-owner-blood-flow{from{background-position:0% 50%}to{background-position:260% 50%}}
+@keyframes frieren-owner-blood-drip{from{transform:translateY(-1px);opacity:.65}to{transform:translateY(1px);opacity:1}}
+.profile-identity.is-owner h1{color:#fff0f2;text-shadow:0 0 18px #d51d3c44}
+.profile-identity.is-owner .owner-special-title{color:#ff9aaa!important;text-shadow:0 0 12px #d51d3c66;letter-spacing:.08em}
+.profile-owner-frame{position:relative;display:grid;place-items:center;flex:0 0 88px;width:88px;height:88px;padding:5px;border:2px solid #ed536d;border-radius:50%;background:conic-gradient(from 20deg,#3b0711,#f0445f,#7b0d25,#ff9aaa,#4a0715,#f0445f);box-shadow:0 0 0 3px #260912,0 0 22px #d51d3c88,inset 0 0 10px #ff9aaa66}
+.profile-owner-frame>img{display:block;width:100%;height:100%;object-fit:cover;border:3px solid #260912;border-radius:50%;background:#260912}
+.profile-owner-frame::after{content:"";position:absolute;right:3px;bottom:2px;width:10px;height:15px;border-radius:50% 50% 55% 55%;background:linear-gradient(#ff9aaa,#9d102b 70%);box-shadow:0 0 10px #f0445f99;transform:rotate(22deg)}
+@media(max-width:560px){.profile-owner-frame{flex-basis:74px;width:74px;height:74px;padding:4px}}
+@media(prefers-reduced-motion:reduce){.xp-progress.is-owner .xp-progress-track>i{animation:none!important;background-position:50% 50%}.xp-progress.is-owner .xp-progress-track>i::after{animation:none!important;transform:none}}

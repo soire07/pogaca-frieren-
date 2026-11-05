@@ -1136,12 +1136,14 @@ test('public home privacy settings hide opt-out achievements, collections, cosme
 });
 
 
-test('player profile route renders account-scoped progression, rankings, privacy controls and VIP XP', async () => {
+test('owner profile overrides VIP and renders the exclusive role, title, blood XP and profile frame', async () => {
   const accountId='site_123e4567-e89b-12d3-a456-426614174000';
   const guildId='1539562273197260860';
   const profile={guild_id:guildId,user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:12,xp:1440,coins:900,hp:80,max_hp:100,mana:65,max_mana:100};
   const previousVipAccounts=process.env.FRIEREN_VIP_ACCOUNT_IDS;
+  const previousOwnerAccounts=process.env.FRIEREN_OWNER_ACCOUNT_IDS;
   process.env.FRIEREN_VIP_ACCOUNT_IDS=accountId;
+  process.env.FRIEREN_OWNER_ACCOUNT_IDS=accountId;
   const db={async query(sql){
     if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return{rows:[],rowCount:0};
     if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};
@@ -1162,14 +1164,27 @@ test('player profile route renders account-scoped progression, rankings, privacy
     const response=res();
     assert.equal(await handlePublicSiteRequest(request('/maceraci/profil?guildId='+guildId,{id:accountId,username:'Gezgin'}),response,{db}),true);
     assert.equal(response.status,200);
-    for(const expected of ['Maceracı Profili','Fern','VIP','xp-progress is-vip','İlerleme Merkezi','Savaş İstatistiklerim','Başarım Vitrini','Sıralamalar','Gizlilik ayarları','Yıldız Büyücüsü','Kozmetiklerini düzenle','Vitrin 6'])assert.ok(response.body.includes(expected),expected);
+    for(const expected of ['Maceracı Profili','Fern','OWNER','Kurucu · Owner','xp-progress is-owner','profile-owner-frame','İlerleme Merkezi','Savaş İstatistiklerim','Başarım Vitrini','Sıralamalar','Gizlilik ayarları','Yıldız Büyücüsü','Kozmetiklerini düzenle','Vitrin 6'])assert.ok(response.body.includes(expected),expected);
     assert.match(response.body,/action="\/maceraci\/yasam"/);
     assert.match(response.body,/href="\/maceraci\/ev\?guildId=/);
+    assert.equal(response.body.includes('href="/owner"'),false);
     assert.equal(response.headers['Cache-Control'],'no-store');
   } finally {
     if(previousVipAccounts===undefined)delete process.env.FRIEREN_VIP_ACCOUNT_IDS;
     else process.env.FRIEREN_VIP_ACCOUNT_IDS=previousVipAccounts;
+    if(previousOwnerAccounts===undefined)delete process.env.FRIEREN_OWNER_ACCOUNT_IDS;
+    else process.env.FRIEREN_OWNER_ACCOUNT_IDS=previousOwnerAccounts;
   }
+});
+
+// Owner identity is account-allowlisted; it must never inherit VIP styling or bypass Discord OAuth.
+test('Owner blood XP and profile frame styles honor reduced-motion preferences', async () => {
+  const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
+  assert.match(css,/\.xp-progress\.is-owner \.xp-progress-track>i\{[^}]*animation:frieren-owner-blood-flow/);
+  assert.match(css,/\.profile-owner-frame::after/);
+  assert.match(css,/\.xp-progress\.is-owner \.xp-progress-track>i::after/);
+  assert.match(css,/@media\s*\(prefers-reduced-motion:reduce\)/);
+  assert.match(css,/\.xp-progress\.is-owner \.xp-progress-track>i\{animation:none!important/);
 });
 
 test('VIP XP animation is accessible and disabled for reduced-motion preferences', async () => {
