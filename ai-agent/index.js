@@ -816,7 +816,7 @@ client.on(Events.InteractionCreate, async interaction => {
         { name: 'Gateway gecikmesi', value: client.ws.ping >= 0 ? client.ws.ping + ' ms' : 'Ölçülemiyor', inline: true },
         { name: 'Çalışma süresi', value: hours + ' sa ' + minutes + ' dk ' + seconds + ' sn', inline: true },
         { name: 'Bağlı sunucu sayısı', value: String(client.guilds.cache.size), inline: true },
-        { name: 'Yapay zekâ sağlayıcısı', value: provider + ((neuralConfigured || (!neuralRequested && groq)) ? ' — API yapılandırılmış' : ' — API eksik'), inline: true }
+        { name: 'Yapay zekâ sağlayıcısı', value: provider + ((neuralConfigured || (!neuralRequested && groq)) ? ' — API yapılandırılmış' : ' — API eksik'), inline: true },
         { name: 'Model', value: model, inline: true },
         { name: 'Kalıcı bellek', value: memoryStore ? 'Yapılandırılmış' : 'Yapılandırılmamış', inline: true }
       )
