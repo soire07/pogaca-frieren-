@@ -86,17 +86,24 @@ export function buildGuardianRepairTask(incident = {}, review = {}) {
     'Çözüm: ' + redactGuardianText(review.suggestedFix, 180),
     'İlgili dosyalar: ' + safeList(review.affectedFiles, 5, 100).join(', '),
     'Test planı: ' + safeList(review.tests, 3, 100).join('; '),
-    'Görev: Kaynak kodu ve testleri incele; var olan testi tekrarlama. Kök nedeni en fazla dört izinli mevcut JavaScript dosyasında düzelt.',
-    'Çıktı yalnızca diff --git ile başlayan unified diff olmalı. Bağlam yetersizse yalnızca REPAIR_CONTEXT_INSUFFICIENT yaz. npm run check başarılı olmadan PR açma; merge/deploy yapma.',
+    'Görev: Frieren AI tarafından sağlanan unified diff yamayı yeniden model çağrısı yapmadan doğrula; en fazla dört izinli mevcut JavaScript dosyasıyla sınırlı kal.',
+    'Yamayı değiştirme veya yeniden üretme. Git apply --check, güvenlik/path kontrolleri ve npm run check başarılı olmadan PR açma; merge/deploy yapma.',
   ];
   return lines.join('\n').slice(0, 1000);
 }
 
+export function buildGuardianRepairPatch(review = {}) {
+  const patch = typeof review.proposedPatch === 'string' ? review.proposedPatch.trim() : '';
+  if (!patch || patch.length > 10_000 || !patch.startsWith('diff --git ')) {
+    throw new Error('GUARDIAN_REPAIR_PATCH_INVALID');
+  }
+  return patch;
+}
+
 export function isRepairableProposal(review) {
+  try { buildGuardianRepairPatch(review); } catch { return false; }
   return review?.status === 'proposal_only'
     && ['medium', 'high'].includes(review.confidence)
-    && typeof review.proposedPatch === 'string'
-    && review.proposedPatch.trim().length > 0
     && Array.isArray(review.affectedFiles)
     && review.affectedFiles.length > 0
     && Array.isArray(review.tests)
@@ -337,6 +344,7 @@ export async function processPendingGuardianRepairDispatch({
           ref: GUARDIAN_REPAIR_BRANCH,
           inputs: {
             task: buildGuardianRepairTask(incident, review),
+            proposed_patch: buildGuardianRepairPatch(review),
             mode: 'repair',
             base_branch: GUARDIAN_REPAIR_BRANCH,
             incident_id: String(incident.id),
