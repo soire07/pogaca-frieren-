@@ -1177,6 +1177,7 @@ test('owner profile overrides VIP and renders the exclusive role, title, blood X
   }
 });
 
+// Owner identity is account-allowlisted; it must never inherit VIP styling or bypass Discord OAuth.
 test('Owner blood XP and profile frame styles honor reduced-motion preferences', async () => {
   const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
   assert.match(css,/\.xp-progress\.is-owner \.xp-progress-track>i\{[^}]*animation:frieren-owner-blood-flow/);
