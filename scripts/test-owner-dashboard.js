@@ -72,12 +72,13 @@ test('Guardian repair approval is explicit and disappears after approval is pers
   try {
     const pending = renderOwnerGuardianWorkspace(base);
     assert.match(pending, /Bu öneri için izole düzeltme ve test sürecini başlatmayı onaylıyorum/);
-    assert.match(pending, /Onayla ve izole testi başlat/);
+    assert.match(pending, /Sorunu Çöz/);
+    assert.match(pending, /guardian-create-pr/);
     const approved = renderOwnerGuardianWorkspace({
       ...base,
       jobs: [{ ...base.jobs[0], repair_approved_by: ownerId, repair_approved_at: '2026-11-02T10:02:00Z', repair_approval_fingerprint: 'a'.repeat(64) }],
     });
-    assert.doesNotMatch(approved, /Onayla ve izole testi başlat/);
+    assert.doesNotMatch(approved, /Sorunu Çöz/);
     assert.match(approved, /Owner onayı kayıtlı/);
   } finally {
     if (previousToken === undefined) delete process.env.FRIEREN_GITHUB_TOKEN;
@@ -97,6 +98,7 @@ test('Guardian workspace renders incidents and review proposals as unapplied', (
   assert.match(html, /Önerilen yama taslağı \(uygulanmadı\)/);
   assert.match(html, /İnsan incelemesi gerekli/);
   assert.match(html, /guardian-review/);
+  assert.match(html, /Sorunu Çöz/);
 });
 
 const secret = 'test-session-secret-that-is-at-least-32-characters-long';
