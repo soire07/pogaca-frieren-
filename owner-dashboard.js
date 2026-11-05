@@ -584,6 +584,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + (evidence.length ? '<details><summary>Kanıt kayıtları (' + evidence.length + ')</summary>' + evidence.map(item => '<div class="small">' + escapeHtml(item.file || '') + (item.line ? ':' + Number(item.line) : '') + ' ' + escapeHtml(item.message || '') + '</div>').join('') + '</details>' : '')
       + '<div class="actions">'
       + (canReview && !emergencyStop ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-review"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><button class="btn">Sorunu çöz</button><span class="small">Önce Frieren AI kök nedeni ve güvenli yama taslağını hazırlar; kodu otomatik değiştirmez.</span></form>' : '')
+      + (canReview && !emergencyStop ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-review"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Frieren AI incelemesini başlat</label><button class="btn">Sorunu Çöz</button></form>' : '')
       + (!['resolved','ignored'].includes(incident.status) ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-resolve"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Sorunu kontrol ettim</label><button class="btn secondary">Çözüldü işaretle</button></form>' : '')
       + '</div></article>';
   }).join('') : '<p class="muted">Henüz Guardian olayı kaydedilmedi. İlk taramayı başlatabilirsin.</p>';
@@ -604,7 +605,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + (result.proposedPatch ? '<details><summary>Önerilen yama taslağı (uygulanmadı)</summary><pre>' + escapeHtml(result.proposedPatch) + '</pre></details>' : '')
       + (result.status === 'insufficient_context' ? '<p class="notice warn">Kaynak bağlamı yetersiz; tahminle düzeltme hazırlanmadı.</p>' : '')
       + (result.status === 'proposal_only' && !isRepairableProposal(result) ? '<p class="notice warn">Güven, dosya veya test planı yeterli değil; bu öneri için onarım workflow\'u başlatılamaz.</p>' : '')
-      + (result.status === 'proposal_only' && job.repair_dispatch_status === 'dispatched' && !String(job.repair_run_url || '').startsWith('https://github.com/soire07/pogaca-frieren-/actions/runs/') ? '<p class="notice">GitHub Actions tetikleme isteği kabul edildi; tekil workflow çalıştırma kimliği henüz kaydedilmedi. <a href="https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml" target="_blank" rel="noopener noreferrer">Workflow geçmişini aç</a></p>' : '')
+      + (result.status === 'proposal_only' && job.repair_dispatch_status === 'dispatched' ? '<p class="notice">Onarım workflow\'u başlatıldı. <a href="https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml" target="_blank" rel="noopener noreferrer">GitHub Actions workflow geçmişini aç</a></p>' : '')
       + (result.status === 'proposal_only' && repairApproved && !['dispatched','dispatching'].includes(job.repair_dispatch_status || '') ? '<p class="notice">Owner onayı kayıtlı. Guardian yalnızca bu onaylı öneri için izole test workflow\'unu yeniden deneyecek.</p>' : '')
       + (result.status === 'proposal_only' && job.repair_dispatch_status === 'dispatching' ? '<p class="notice warn">Onarım workflow başlatma isteği gönderiliyor veya sonucu bekleniyor. Tekrar tetiklemek yerine önce GitHub Actions geçmişini kontrol et.</p>' : '')
       + (job.repair_run_status ? '<p class="small">Son kaydedilen workflow (geçmiş kanıt): ' + escapeHtml(job.repair_run_status) + (job.repair_run_conclusion ? ' · Sonuç: ' + escapeHtml(job.repair_run_conclusion) : '') + '</p>' : '')
@@ -1059,7 +1060,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         redirect(res, '/owner/guardian?notice=guardian_scan_complete');
         return true;
       }
-      if (action === 'guardian-review') {
+      if (action === 'guardian-review' && form.get('confirm') === 'yes') {
         await assertGuardianAutomationEnabled(db);
         let job = null;
         try {
