@@ -59,7 +59,7 @@ export function validatePatchPaths(patch, { task = '', incidentId = '' } = {}) {
       throw new Error('REPAIR_PATCH_FEATURE_NOT_ALLOWED');
     }
     const hunkHeaders = section.match(/^@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@(?: .*)?$/gm) || [];
-    if (!hunkHeaders.length) throw new Error('REPAIR_PATCH_HUNK_INVALID');
+    if (!hunkHeaders.length) throw new Error('REPAIR_PATCH_HUNK_REQUIRED');
     const hunkStart = section.search(/^@@ /m);
     const hunkBody = section.slice(hunkStart).split('\n').slice(1);
     if (hunkBody.some(line => line && !line.startsWith('@@ ') && ![' ', '+', '-', '\\'].includes(line[0]))) {
@@ -70,6 +70,9 @@ export function validatePatchPaths(patch, { task = '', incidentId = '' } = {}) {
     if (!oldPath || !newPath) throw new Error('REPAIR_PATCH_MUST_UPDATE_EXISTING_FILE');
     if (oldPath[1] !== header[1]) throw new Error('REPAIR_PATH_MISMATCH');
     if (newPath[1] !== header[2]) throw new Error('REPAIR_PATH_MISMATCH');
+    // A syntactically shaped hunk with context only is still not a repair.
+    const hasChangedLine = /^(?:\+(?!\+\+)|-(?!--))/m.test(section);
+    if (!hasChangedLine) throw new Error('REPAIR_PATCH_HUNK_REQUIRED');
     files.push(header[1]);
   }
   const uniqueFiles = [...new Set(files)];
