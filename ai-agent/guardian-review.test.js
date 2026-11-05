@@ -154,7 +154,7 @@ test('actual Guardian context collector includes implementation and tests, redac
       'ai-agent/code-context.js',
     ];
     for (const file of files) {
-      await writeFile(path.join(rootDir, file), 'const DATABASE_URL="postgres://secret-value";\\nconst FRIEREN_API_TOKEN="frieren-token-secret";\\nconst GITHUB_TOKEN="github-token-secret";\\nconst SIGNING_PRIVATE_KEY="private-key-secret";\\n// ' + file + '\\n');
+      await writeFile(path.join(rootDir, file), 'const DATABASE_URL="postgres://secret-value";\\nconst FRIEREN_API_TOKEN="frieren-token-secret";\\nconst GITHUB_TOKEN="github-token-secret";\\nconst SIGNING_PRIVATE_KEY="private-key-secret";\\nconst requestHeaders = { authorization: "Bearer authorization-secret" };\\n// ' + file + '\\n');
     }
     const context = await collectCodeContext({
       rootDir,
@@ -166,7 +166,7 @@ test('actual Guardian context collector includes implementation and tests, redac
       assert.ok(context.files.includes(file), 'missing mandatory context file: ' + file);
       assert.ok(context.text.includes('FILE: ' + file));
     }
-    assert.doesNotMatch(context.text, /secret-value|frieren-token-secret|github-token-secret|private-key-secret/);
+    assert.doesNotMatch(context.text, /secret-value|frieren-token-secret|github-token-secret|private-key-secret|authorization-secret/);
     assert.match(context.contextHash, /^[a-f0-9]{64}$/);
     assert.equal(context.sourceCommitSha, 'd'.repeat(40));
   } finally {
