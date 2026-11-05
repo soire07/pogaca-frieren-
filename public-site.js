@@ -76,7 +76,7 @@ function page(title, content, user, seo = {}) {
       '<div class="site-sidebar-intro"><span>✧ YOLCULUK REHBERİ</span><p>Keşfet, karakterini geliştir ve macerana kaldığın yerden devam et.</p></div>' +
       '<nav class="site-sidebar-nav" aria-label="Frieren ana menüsü">' +
         navGroup('oyuncu', 'BAŞLANGIÇ', [
-          navLink('/', '⌂', 'Oyuncu Paneli', 'Hesabın ve genel görünüm'),
+          navLink('/', '⌂', 'Kullanıcı Paneli', 'Kişisel alanın ve genel görünüm'),
           navLink('/kesfet', '✧', 'Keşfet', 'Frieren dünyasını tanı')
         ]) +
         navGroup('macera', 'MACERACI ALANI', [
