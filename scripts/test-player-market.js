@@ -129,12 +129,12 @@ test('web market category filters are parameterized and use canonical RPG catalo
   const calls = [];
   const db = { async query(sql, params) { calls.push({ sql, params }); return { rows: [] }; } };
   await listPlayerMarketListings(db, '1539562273197260860', 20, { category: 'fishing' });
-  assert.match(calls[0].sql, /item_key = ANY\\(\\$2::text\\[\\]\\)/);
+  assert.ok(calls[0].sql.includes('item_key = ANY($2::text[])'));
   assert.ok(calls[0].params[1].includes('silver_trout'));
   assert.equal(calls[0].params.at(-1), 20);
   calls.length = 0;
   await listPlayerMarketListings(db, '1539562273197260860', 20, { category: 'other' });
-  assert.match(calls[0].sql, /NOT \\(item_key = ANY\\(\\$2::text\\[\\]\\)\\)/);
+  assert.ok(calls[0].sql.includes('NOT (item_key = ANY($2::text[]))'));
   assert.ok(Array.isArray(calls[0].params[1]));
   assert.equal(normalizePlayerMarketCategory('equipment'), 'equipment');
   assert.equal(normalizePlayerMarketCategory('invalid'), 'all');
