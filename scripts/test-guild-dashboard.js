@@ -83,7 +83,11 @@ function siteRequest(path, method = 'GET', body = '', extraHeaders = {}) {
   return {
     method, url: path, headers: {
       cookie,
-      ...(method === 'POST' ? { 'content-type': 'application/x-www-form-urlencoded' } : {}),
+      ...(method === 'POST' ? {
+        'content-type': 'application/x-www-form-urlencoded',
+        origin: 'https://frierenbot.vercel.app',
+        'sec-fetch-site': 'same-origin'
+      } : {}),
       ...extraHeaders
     },
     async *[Symbol.asyncIterator]() { if (body) yield Buffer.from(body); }
