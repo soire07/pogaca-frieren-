@@ -59,16 +59,21 @@ export function parseGuardianReview(content) {
 export async function reviewGuardianIncident({ groq, model, incident, collectCodeContext }) {
   if (!groq) throw new Error('FRIEREN_AI_MODEL_NOT_CONFIGURED');
   const normalized = normalizeGuardianReviewIncident(incident);
-  const context = await collectCodeContext([
+  const contextResult = await collectCodeContext([
     normalized.system, normalized.code, normalized.title, normalized.summary,
     ...normalized.evidence.map(item => item.file + ' ' + item.message),
   ].join(' '));
+  const context = typeof contextResult === 'string' ? contextResult : String(contextResult?.text || '');
+  const contextMetadata = typeof contextResult === 'object' && contextResult
+    ? { sourceContextFiles: Array.isArray(contextResult.files) ? contextResult.files.slice(0, 12) : [], sourceContextHash: /^[a-f0-9]{64}$/i.test(String(contextResult.contextHash || '')) ? contextResult.contextHash : null, sourceCommitSha: /^[a-f0-9]{40}$/i.test(String(contextResult.sourceCommitSha || '')) ? contextResult.sourceCommitSha : null }
+    : { sourceContextFiles: [], sourceContextHash: null, sourceCommitSha: null };
   if (!context) {
     return {
       status: 'insufficient_context',
       rootCause: 'İlgili kaynak kod bağlamı bulunamadı; tahmin yürütülmedi.',
       confidence: 'low', affectedFiles: [], suggestedFix: '', proposedPatch: '',
       tests: [], risks: ['Kaynak dosya bağlamı eksik.'], requiresHumanReview: true, applied: false,
+      ...contextMetadata,
     };
   }
   const response = await groq.chat.completions.create({
@@ -112,5 +117,5 @@ export async function reviewGuardianIncident({ groq, model, incident, collectCod
   });
   const content = response?.choices?.[0]?.message?.content;
   if (typeof content !== 'string' || !content.trim()) throw new Error('GUARDIAN_REVIEW_EMPTY_RESPONSE');
-  return parseGuardianReview(content);
+  return { ...parseGuardianReview(content), ...contextMetadata };
 }
