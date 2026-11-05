@@ -412,7 +412,7 @@ test('authenticated Frieren Security route renders independently without queryin
   assert.equal(response.status, 200);
   assert.match(response.body, /PRIVATE SECURITY CENTER/);
   assert.match(response.body, /FRIEREN SECURITY/);
-  assert.match(response.body, /Kurulum bekliyor/);
+  assert.match(response.body, /Anahtar eksik/);
 });
 
 test('owner action endpoint rejects requests without an authenticated owner session', async () => {
