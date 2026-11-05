@@ -90,11 +90,15 @@ test('Guardian incident has a one-click safe AI analysis action without implying
     csrf: 'csrf-test',
     incidents: [{ id: 77, title: 'Synthetic incident', severity: 'high', system: 'pogaca_frieren', code: 'TEST', status: 'open', occurrence_count: 1, last_seen: '2026-11-05T10:00:00Z', summary: 'Synthetic summary', evidence: [] }],
   });
-  assert.match(html, /name="action" value="guardian-review"/);
-  assert.match(html, /name="incidentId" value="77"/);
-  assert.match(html, /Sorunu çöz/);
-  assert.match(html, /kodu otomatik değiştirmez/);
-  assert.doesNotMatch(html, /name="confirm" value="yes" required/);
+  const reviewForm = [...html.matchAll(/<form\\b[\\s\\S]*?<\\/form>/g)]
+    .map(match => match[0])
+    .find(form => /name="action" value="guardian-review"/.test(form));
+  assert.ok(reviewForm, 'Guardian review form should be rendered');
+  assert.match(reviewForm, /name="incidentId" value="77"/);
+  assert.match(reviewForm, /Sorunu çöz/);
+  assert.doesNotMatch(reviewForm, /name="confirm" value="yes" required/);
+  assert.match(reviewForm, /kodu otomatik değiştirmez/);
+  assert.match(html, /name="confirm" value="yes" required/, 'Other Guardian actions must retain their explicit confirmation');
 });
 
 test('Guardian workspace renders incidents and review proposals as unapplied', () => {
