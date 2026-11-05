@@ -51,7 +51,7 @@ export const EVENT_MILESTONES=Object.freeze([
 ]);
 const player=(g,u)=>{if(!ID.test(String(g||''))||!ID.test(String(u||'')))throw new Error('PLAYER_FEATURE_ID_INVALID');};
 export const DEFAULT_PLAYER_PROFILE_SETTINGS=Object.freeze({
- show_stats:false,show_achievements:true,show_collections:false,show_activity:false,show_cosmetics:true,active_title:null
+ show_stats:false,show_achievements:true,show_collections:true,show_activity:false,show_cosmetics:true,active_title:null
 });
 export function normalizeProfileSettings(input={}){
  const keys=['showStats','showAchievements','showCollections','showActivity','showCosmetics'];
@@ -88,7 +88,7 @@ export function validateHomeLayout(layout){
 }
 export async function ensurePlayerExperienceSchema(db){
  await db.query(`
- CREATE TABLE IF NOT EXISTS player_profile_settings(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,show_stats BOOLEAN NOT NULL DEFAULT FALSE,show_achievements BOOLEAN NOT NULL DEFAULT TRUE,show_collections BOOLEAN NOT NULL DEFAULT FALSE,show_activity BOOLEAN NOT NULL DEFAULT FALSE,show_cosmetics BOOLEAN NOT NULL DEFAULT TRUE,active_title TEXT,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
+ CREATE TABLE IF NOT EXISTS player_profile_settings(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,show_stats BOOLEAN NOT NULL DEFAULT FALSE,show_achievements BOOLEAN NOT NULL DEFAULT TRUE,show_collections BOOLEAN NOT NULL DEFAULT TRUE,show_activity BOOLEAN NOT NULL DEFAULT FALSE,show_cosmetics BOOLEAN NOT NULL DEFAULT TRUE,active_title TEXT,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
  CREATE TABLE IF NOT EXISTS player_homes(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,active_room TEXT NOT NULL DEFAULT 'starter',layout JSONB NOT NULL DEFAULT '[]'::jsonb,is_public BOOLEAN NOT NULL DEFAULT FALSE,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
  CREATE TABLE IF NOT EXISTS player_home_rooms(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,room_key TEXT NOT NULL,unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id,room_key),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
  CREATE TABLE IF NOT EXISTS player_home_trophies(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,achievement_key TEXT NOT NULL,display_slot INTEGER NOT NULL CHECK(display_slot BETWEEN 0 AND 5),displayed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id,achievement_key),UNIQUE(guild_id,user_id,display_slot),FOREIGN KEY(guild_id,user_id,achievement_key) REFERENCES achievement_claims(guild_id,user_id,achievement_key) ON DELETE CASCADE);
