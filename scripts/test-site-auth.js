@@ -32,6 +32,29 @@ test('Vercel public origin is trusted through the Render proxy while unlisted or
   }
 });
 
+test('canonical production Vercel origin stays trusted when optional allowlist is empty or overridden', () => {
+  const previous = process.env.SITE_AUTH_ALLOWED_ORIGINS;
+  const request = { headers: {
+    origin: 'https://frierenbot.vercel.app',
+    'sec-fetch-site': 'same-site',
+    host: 'pogaca-frieren.onrender.com',
+    'x-forwarded-host': 'pogaca-frieren.onrender.com',
+    'x-forwarded-proto': 'https'
+  } };
+  try {
+    process.env.SITE_AUTH_ALLOWED_ORIGINS = '';
+    assert.equal(isSameOriginRequest(request, 'https://pogaca-frieren.onrender.com'), true);
+    process.env.SITE_AUTH_ALLOWED_ORIGINS = 'https://attacker.example';
+    assert.equal(isSameOriginRequest(request, 'https://pogaca-frieren.onrender.com'), true);
+    assert.equal(isSameOriginRequest({ headers: {
+      ...request.headers, origin: 'https://unlisted-attacker.example'
+    } }, 'https://pogaca-frieren.onrender.com'), false);
+  } finally {
+    if (previous === undefined) delete process.env.SITE_AUTH_ALLOWED_ORIGINS;
+    else process.env.SITE_AUTH_ALLOWED_ORIGINS = previous;
+  }
+});
+
 test('same-origin request guard accepts the configured site host and rejects cross-site origins', () => {
   assert.equal(isSameOriginRequest({ headers: { origin: 'https://site.example', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), true);
   assert.equal(isSameOriginRequest({ headers: { origin: 'https://evil.example', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), false);
