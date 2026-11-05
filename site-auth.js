@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import tls from 'node:tls';
+import { resolveVerifiedClientIp } from './security/client-ip.js';
 
 const scrypt = promisify(scryptCallback);
 const COOKIE = 'frieren_site_session';
@@ -305,7 +306,7 @@ function limited(key,max,now=Date.now()) {
   let v=attempts.get(key); if(!v||v.until<=now){attempts.set(key,{count:1,until:now+900000});return false;}
   v.count++; return v.count>max;
 }
-function ip(req) { const v=String(req.headers['x-forwarded-for']||'').split(',')[0].trim(); return /^[0-9a-fA-F:.]{3,64}$/.test(v)?v:'unknown'; }
+function ip(req) { return resolveVerifiedClientIp(req).clientIp || 'unknown'; }
 async function formBody(req) {
   let size=0, chunks=[];
   for await(const chunk of req){size+=chunk.length;if(size>LIMIT)throw new Error('BODY_TOO_LARGE');chunks.push(chunk);}
