@@ -32,7 +32,7 @@ test('client IP resolution ignores spoofed forwarding headers from an untrusted 
   const result = resolveVerifiedClientIp({
     headers: { 'x-forwarded-for': '203.0.113.99' },
     socket: { remoteAddress: '198.51.100.7' },
-  }, { trustedProxyIps: ['10.0.0.8'] });
+  }, { trustedProxyIps: ['10.0.0.8', '10.0.0.9'] });
   assert.deepEqual(result, { clientIp: null, source: 'unverified_proxy' });
 });
 
