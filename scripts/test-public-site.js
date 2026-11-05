@@ -1167,6 +1167,7 @@ test('owner profile overrides VIP and renders the exclusive role, title, blood X
     for(const expected of ['Maceracı Profili','Fern','OWNER','Kurucu · Owner','xp-progress is-owner','profile-owner-frame','İlerleme Merkezi','Savaş İstatistiklerim','Başarım Vitrini','Sıralamalar','Gizlilik ayarları','Yıldız Büyücüsü','Kozmetiklerini düzenle','Vitrin 6'])assert.ok(response.body.includes(expected),expected);
     assert.match(response.body,/action="\/maceraci\/yasam"/);
     assert.match(response.body,/href="\/maceraci\/ev\?guildId=/);
+    assert.doesNotMatch(response.body,/href="\\/owner"/);
     assert.equal(response.headers['Cache-Control'],'no-store');
   } finally {
     if(previousVipAccounts===undefined)delete process.env.FRIEREN_VIP_ACCOUNT_IDS;
