@@ -165,14 +165,20 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /site-menu-toggle/);
   assert.match(response.body, /aria-controls="site-sidebar"/);
   assert.match(response.body, /data-nav-group="oyuncu"/);
-  assert.match(response.body, /data-nav-group="macera"/);
+  assert.match(response.body, /data-nav-group="kullanici"/);
+  assert.match(response.body, /KULLANICI MERKEZİ/);
+  assert.match(response.body, /Başarım Vitrini/);
+  assert.match(response.body, /Kişisel Yaşam Alanım/);
   assert.match(response.body, /data-nav-group="dunya"/);
   assert.ok(response.body.includes('data-nav-path="/" href="/"'));
   assert.ok(response.body.includes('<strong>Kullanıcı Paneli</strong>'));
   assert.ok(!response.body.includes('data-nav-path="/maceraci" href="/maceraci"'));
   assert.match(response.body, /site-navigation.js/);
   assert.match(response.body, /data-nav-group="oyuncu"/);
-  assert.match(response.body, /data-nav-group="macera"/);
+  assert.match(response.body, /data-nav-group="kullanici"/);
+  assert.match(response.body, /KULLANICI MERKEZİ/);
+  assert.match(response.body, /Başarım Vitrini/);
+  assert.match(response.body, /Kişisel Yaşam Alanım/);
   assert.match(response.body, /gif-gallery/);
   assert.match(response.body, /profile-avatar/);
   assert.equal((response.body.match(/loading="lazy"/g) || []).length, 18);
@@ -186,6 +192,8 @@ test('authenticated homepage is the account-scoped player dashboard', async () =
   const event = { event_id:'event-home', guild_id:profile.guild_id, title:'Zindan Gecesi', description:'Topluluk etkinliği', event_type:'community', starts_at:new Date(Date.now()+3600000).toISOString(), ends_at:new Date(Date.now()+7200000).toISOString(), max_participants:12, participants:5 };
   const accountId = 'site_123e4567-e89b-12d3-a456-426614174000';
   const queries = [];
+  const previousVipAccounts = process.env.FRIEREN_VIP_ACCOUNT_IDS;
+  process.env.FRIEREN_VIP_ACCOUNT_IDS = accountId;
   const db = { async query(sql, params) {
     queries.push({ sql, params });
     if (sql.includes('FROM site_discord_links l JOIN users u')) return { rows:[profile], rowCount:1 };
@@ -199,7 +207,12 @@ test('authenticated homepage is the account-scoped player dashboard', async () =
   assert.match(response.body, /Fern/);
   assert.match(response.body, /1180/);
   assert.match(response.body, /Zindan Gecesi/);
+  assert.match(response.body, /site-account-card is-vip/);
+  assert.match(response.body, /xp-progress is-vip/);
+  assert.match(response.body, /role="progressbar"/);
   assert.ok(response.body.includes('action="/maceraci/link"'));
+  if (previousVipAccounts === undefined) delete process.env.FRIEREN_VIP_ACCOUNT_IDS;
+  else process.env.FRIEREN_VIP_ACCOUNT_IDS = previousVipAccounts;
   assert.equal(queries.length, 2);
   assert.equal(queries[0].params[0], accountId.replace(/^site_/, ''));
 });
