@@ -166,8 +166,12 @@ img{max-width:100%}
 .hero h1{letter-spacing:-.035em;text-wrap:balance}
 .hero .lead{max-width:570px}
 .hero-art{min-height:320px}
-.profile-banner-art{display:grid;place-items:center;height:112px;background:radial-gradient(circle at 50% 50%,#a77be34a,transparent 34%),linear-gradient(120deg,#0d0a1d,#211638 55%,#0b1023);border-bottom:1px solid #d4b7ff35}
-.profile-banner-art span{display:grid;place-items:center;width:68px;height:68px;border:1px solid #d9c1ff77;border-radius:50%;color:#f0dfff;font:38px Georgia,serif;box-shadow:0 0 38px #b78cff45,inset 0 0 24px #b78cff24}
+.profile-banner-art{height:184px;background:#100b22;border-bottom:1px solid #d4b7ff35;position:relative}
+.profile-banner-art:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,#0b0a1c55,transparent 60%,#0b0a1c22)}
+.profile-banner-art img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 48%}
+.profile-label{display:block;color:#d2b3f6;font-size:9px;font-weight:800;letter-spacing:.18em;margin-bottom:4px}
+.profile-info h3{overflow-wrap:anywhere}
+@media(max-width:560px){.profile-banner-art{height:132px}.profile-info{gap:12px}.profile-avatar{margin-top:-38px}}
 .topbar nav{overscroll-behavior-x:contain;scrollbar-width:none}
 .topbar nav::-webkit-scrollbar{display:none}
 @media(max-width:850px){.hero{margin-top:14px;padding:34px 24px;min-height:0}.hero-art{min-height:270px}}

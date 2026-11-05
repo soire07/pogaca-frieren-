@@ -41,6 +41,7 @@ import { handlePublicSiteRequest } from './public-site.js';
 import { shouldSkipFallbackResponse } from './guardian/http-response-guard.js';
 import { withHttpErrorBoundary } from './guardian/http-error-boundary.js';
 import { handleHealthRequest } from './guardian/health-route.js';
+import { handleGuardianSecurityEventRequest } from './guardian/security-events.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -541,6 +542,8 @@ const PORT = process.env.PORT || 3000;
 let uptimeRobotCache = null;
 
 createServer(withHttpErrorBoundary(async (req, res) => {
+  const guardianEventSecret = String(process.env.FRIEREN_GUARD_EVENT_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+  if (await handleGuardianSecurityEventRequest(req, res, { db: pool, secret: guardianEventSecret })) return;
   if (await handleHealthRequest(req, res, { client, db: pool })) return;
   if (req.method === 'POST' && req.url === '/internal/neural-quality-report') {
     const result = await handleNeuralQualityReportRequest(req, {

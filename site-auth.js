@@ -1,6 +1,8 @@
 import { createHash, createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import tls from 'node:tls';
+import { resolveVerifiedClientIp } from './security/client-ip.js';
+import { normalizeGuardianSecurityEvent, recordGuardianSecurityEvent } from './guardian/security-events.js';
 
 const scrypt = promisify(scryptCallback);
 const COOKIE = 'frieren_site_session';
@@ -305,7 +307,31 @@ function limited(key,max,now=Date.now()) {
   let v=attempts.get(key); if(!v||v.until<=now){attempts.set(key,{count:1,until:now+900000});return false;}
   v.count++; return v.count>max;
 }
-function ip(req) { const v=String(req.headers['x-forwarded-for']||'').split(',')[0].trim(); return /^[0-9a-fA-F:.]{3,64}$/.test(v)?v:'unknown'; }
+async function reportAuthSecurityEvent(db, req, { code, severity, summary }) {
+  if (typeof db?.connect !== 'function') return;
+  try {
+    const event = normalizeGuardianSecurityEvent({
+      eventId: 'auth-' + randomBytes(16).toString('hex'),
+      source: 'frieren_guard',
+      code,
+      severity,
+      title: code === 'AUTH_ORIGIN_REJECTED' ? 'Cross-origin account request blocked' : 'Account rate limit triggered',
+      summary,
+      observedAt: new Date().toISOString(),
+      evidence: [{ message: String(req?.method || 'POST') + ' ' + new URL(req?.url || '/', 'http://localhost').pathname }],
+    });
+    await recordGuardianSecurityEvent(db, event, resolveVerifiedClientIp(req));
+  } catch (error) {
+    console.warn('[FRIEREN_GUARD_AUTH_EVENT_FAILED]', String(error?.code || error?.name || 'EVENT_FAILED').slice(0, 80));
+  }
+}
+function authRateLimited(req, action, identity, peerLimit, identityLimit) {
+  const address = ip(req);
+  const identityKey = hash(String(identity || 'anonymous').trim().toLowerCase()).slice(0, 24);
+  return limited(action + ':peer:' + address, peerLimit)
+    || limited(action + ':identity:' + address + ':' + identityKey, identityLimit);
+}
+function ip(req) { return resolveVerifiedClientIp(req).clientIp || 'unknown'; }
 async function formBody(req) {
   let size=0, chunks=[];
   for await(const chunk of req){size+=chunk.length;if(size>LIMIT)throw new Error('BODY_TOO_LARGE');chunks.push(chunk);}
@@ -392,13 +418,16 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
         host: safeHeader(headers.host), forwardedHost: safeHeader(headers['x-forwarded-host']),
         forwardedProto: safeHeader(headers['x-forwarded-proto'])
       }));
+      await reportAuthSecurityEvent(db, req, {
+        code: 'AUTH_ORIGIN_REJECTED', severity: 'high',
+        summary: 'Cross-origin account request was rejected before account database access.',
+      });
       send(res,403,page('İstek reddedildi','<h1>İstek kaynağı doğrulanamadı</h1>'));
       return true;
     }
     await schema(db);
-    const addr=ip(req);
     if(path==='/register'){
-      if(limited('reg:'+addr,5)){send(res,429,authPage('register',sessionSecret,'rate_limited'));return true;}
+      if(authRateLimited(req,'register',f.email||f.username,100,5)){await reportAuthSecurityEvent(db,req,{code:'AUTH_RATE_LIMIT_TRIGGERED',severity:'high',summary:'Repeated register requests exceeded the account security threshold.'});send(res,429,authPage('register',sessionSecret,'rate_limited'));return true;}
       const username=validateSiteUsername(f.username),email=validateSiteEmail(f.email),password=String(f.password||'');
       if(!username||!email||password!==String(f.confirmPassword||'')||password.length<8||password.length>128){send(res,400,authPage('register',sessionSecret,'invalid_input'));return true;}
       if(!mailReady()){send(res,503,authPage('register',sessionSecret,'mail_unavailable'));return true;}
@@ -409,7 +438,7 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
       send(res,201,authPage('login',sessionSecret,'registered'));return true;
     }
     if(path==='/login'){
-      if(limited('login:'+addr,10)){send(res,429,authPage('login',sessionSecret,'rate_limited'));return true;}
+      if(authRateLimited(req,'login',f.username,300,10)){await reportAuthSecurityEvent(db,req,{code:'AUTH_RATE_LIMIT_TRIGGERED',severity:'high',summary:'Repeated login requests exceeded the account security threshold.'});send(res,429,authPage('login',sessionSecret,'rate_limited'));return true;}
       const identifier=validateSiteLoginIdentifier(f.username),password=String(f.password||'');
       const found=identifier?await db.query('SELECT id,username,password_hash,email_verified_at FROM frieren_site_accounts WHERE LOWER(username)=LOWER($1) OR LOWER(email)=LOWER($1) LIMIT 1',[identifier]):{rows:[]};
       const account=found.rows?.[0],valid=await verifySitePassword(password,account?.password_hash||'invalid');
@@ -419,7 +448,7 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
       res.writeHead(302,{Location:'/', 'Cache-Control':'no-store','Set-Cookie':COOKIE+'='+encodeURIComponent(session)+'; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age='+SESSION_TTL});res.end();return true;
     }
     if(path==='/forgot-password'){
-      if(limited('forgot:'+addr,4)){send(res,429,authPage('forgot',sessionSecret,'rate_limited'));return true;}
+      if(authRateLimited(req,'forgot',f.email,100,4)){await reportAuthSecurityEvent(db,req,{code:'AUTH_RATE_LIMIT_TRIGGERED',severity:'medium',summary:'Repeated forgot-password requests exceeded the account security threshold.'});send(res,429,authPage('forgot',sessionSecret,'rate_limited'));return true;}
       const email=validateSiteEmail(f.email);
       if(email&&mailReady()){
         const found=await db.query('SELECT id,email FROM frieren_site_accounts WHERE LOWER(email)=LOWER($1) AND email_verified_at IS NOT NULL LIMIT 1',[email]);
@@ -433,7 +462,7 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
       send(res,200,authPage('forgot',sessionSecret,'email_sent'));return true;
     }
     if(path==='/resend-verification'){
-      if(limited('resend:'+addr,4)){send(res,429,authPage('resend',sessionSecret,'rate_limited'));return true;}
+      if(authRateLimited(req,'resend',f.email,100,4)){await reportAuthSecurityEvent(db,req,{code:'AUTH_RATE_LIMIT_TRIGGERED',severity:'medium',summary:'Repeated resend-verification requests exceeded the account security threshold.'});send(res,429,authPage('resend',sessionSecret,'rate_limited'));return true;}
       const email=validateSiteEmail(f.email);
       if(email&&mailReady()){
         const found=await db.query('SELECT id,email FROM frieren_site_accounts WHERE LOWER(email)=LOWER($1) AND email_verified_at IS NULL LIMIT 1',[email]);
@@ -447,7 +476,7 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
       send(res,200,authPage('resend',sessionSecret,'email_sent'));return true;
     }
     if(path==='/reset-password'){
-      if(limited('reset:'+addr,8)){send(res,429,authPage('reset',sessionSecret,'rate_limited'));return true;}
+      if(authRateLimited(req,'reset',f.token,200,8)){await reportAuthSecurityEvent(db,req,{code:'AUTH_RATE_LIMIT_TRIGGERED',severity:'medium',summary:'Repeated reset-password requests exceeded the account security threshold.'});send(res,429,authPage('reset',sessionSecret,'rate_limited'));return true;}
       const token=String(f.token||''),password=String(f.password||'');
       if(!/^[a-f0-9]{64}$/.test(token)||password!==String(f.confirmPassword||'')||password.length<8||password.length>128){send(res,400,authPage('reset',sessionSecret,'invalid_input',token));return true;}
       const passwordHash=await hashSitePassword(password);
