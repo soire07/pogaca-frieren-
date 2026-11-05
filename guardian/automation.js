@@ -69,7 +69,7 @@ export function buildGuardianRepairTask(incident = {}, review = {}) {
   return lines.join('\n').slice(0, 1000);
 }
 
-function isRepairableProposal(review) {
+export function isRepairableProposal(review) {
   return review?.status === 'proposal_only'
     && ['medium', 'high'].includes(review.confidence)
     && typeof review.proposedPatch === 'string'
