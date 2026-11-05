@@ -736,8 +736,10 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       else if(action==='set-visibility')status=(await setHomeVisibility(db,{guildId,userId:profile.user_id,isPublic:String(form.get('isPublic'))==='true'})).status;
       else if(action==='place-trophy')status=(await placeHomeTrophy(db,{guildId,userId:profile.user_id,achievementKey:String(form.get('achievementKey')||''),displaySlot:Number(form.get('displaySlot'))})).status;
       else if(action==='set-profile-settings'){
-        const saved=await setPlayerProfileSettings(db,{guildId,userId:profile.user_id,settings:{showStats:String(form.get('showStats'))==='true',showAchievements:String(form.get('showAchievements'))==='true',showCollections:String(form.get('showCollections'))==='true',showActivity:String(form.get('showActivity'))==='true',showCosmetics:String(form.get('showCosmetics'))==='true',activeTitle:String(form.get('activeTitle')||'')}});
-        status=saved.status==='updated'?'profile_saved':saved.status;
+        try{
+          const saved=await setPlayerProfileSettings(db,{guildId,userId:profile.user_id,settings:{showStats:String(form.get('showStats'))==='true',showAchievements:String(form.get('showAchievements'))==='true',showCollections:String(form.get('showCollections'))==='true',showActivity:String(form.get('showActivity'))==='true',showCosmetics:String(form.get('showCosmetics'))==='true',activeTitle:String(form.get('activeTitle')||'')}});
+          status=saved.status==='updated'?'profile_saved':saved.status;
+        }catch(error){if(error?.message==='PROFILE_SETTINGS_INVALID')status='invalid';else throw error;}
         res.writeHead(303,{Location:'/maceraci/profil?'+new URLSearchParams({guildId,status}).toString(),'Cache-Control':'no-store'});res.end();return true;
       }
       else if(action==='check-in')status=(await checkInGuildEvent(db,{guildId,userId:profile.user_id,eventId:String(form.get('eventId')||'')})).status;
