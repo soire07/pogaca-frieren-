@@ -151,6 +151,14 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /class="skip-link" href="#main-content"/);
   assert.match(response.body, /<main id="main-content"/);
   assert.match(response.body, /aria-label="Ana gezinme"/);
+  assert.match(response.body, /site-menu-toggle/);
+  assert.match(response.body, /aria-controls="site-sidebar"/);
+  assert.match(response.body, /aria-label="Frieren ana menüsü"/);
+  assert.match(response.body, /href="\\/">Oyuncu Paneli/);
+  assert.match(response.body, /href="\\/maceraci">Maceracı Paneli/);
+  assert.match(response.body, /site-navigation.js/);
+  assert.match(response.body, /data-nav-group="oyuncu"/);
+  assert.match(response.body, /data-nav-group="macera"/);
   assert.match(response.body, /gif-gallery/);
   assert.match(response.body, /href="\/assets\/site\.css"/);
   assert.match(response.body, /profile-avatar/);
