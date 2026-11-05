@@ -1090,3 +1090,18 @@ test('synthetic Frieren AI → authenticated Owner Panel review → explicit own
     }
   }
 });
+
+test('Guardian workspace hides generic workflow history from the single-run evidence slot', () => {
+  const job = {
+    id: 990055, incident_id: 990054, incident_title: 'Synthetic refresh test',
+    agent: 'frieren_ai', system: 'guardian', status: 'completed',
+    created_at: '2026-11-05T00:00:00Z', result: { status: 'proposal_only' },
+    repair_dispatch_status: 'dispatched',
+    repair_run_url: 'https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml',
+  };
+  const listOnly = renderOwnerGuardianWorkspace({ jobs: [job] });
+  assert.doesNotMatch(listOnly, /Tekil workflow çalıştırmasını aç/);
+  job.repair_run_url = 'https://github.com/soire07/pogaca-frieren-/actions/runs/42018567895';
+  const exact = renderOwnerGuardianWorkspace({ jobs: [job] });
+  assert.match(exact, /Tekil workflow çalıştırmasını aç/);
+});
