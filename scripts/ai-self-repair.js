@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { appendFile, readFile, stat } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
-const MAX_CONTEXT_CHARS = 22_000;
+const MAX_CONTEXT_CHARS = 32_000;
 const MAX_PATCH_CHARS = 12_000;
 const MAX_PATCH_FILES = 4;
 const MAX_COMPLETION_TOKENS = 8192;
@@ -102,7 +102,7 @@ export async function collectRepairContext(task, {
   // Guardian review tasks include an explicit affected-file list. Prefer those
   // exact, allowlisted paths over fuzzy keyword matches so relevant code is not
   // displaced by unrelated files that happen to share generic words.
-  const fileList = taskText.match(/(?:ilgili dosyalar|affected files)\s*:\s*([^\n]+)/i)?.[1] || '';
+  const fileList = taskText.match(/(?:[İIıi]lgili dosyalar|affected files)\s*:\s*([^\n]+)/i)?.[1] || '';
   const explicitPaths = [...new Set(fileList.split(',').map(value => value.trim())
     .filter(path => isAllowedRepairPath(path, { allowProtectedIndexJs })))].filter(path => tracked.includes(path));
   const explicitRank = new Map(explicitPaths.map((path, index) => [path, index]));
@@ -111,7 +111,8 @@ export async function collectRepairContext(task, {
     try {
       const info = await statImpl(path);
       if (!info.isFile() || info.size > 60_000) continue;
-      const content = String(await readFileImpl(path, 'utf8')).slice(0, 5_000);
+      const contentLimit = explicitRank.has(path) ? MAX_CONTEXT_CHARS - 100 : 5_000;
+      const content = String(await readFileImpl(path, 'utf8')).slice(0, contentLimit);
       candidates.push({
         path,
         content,
