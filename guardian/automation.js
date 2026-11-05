@@ -94,7 +94,7 @@ export function buildGuardianRepairTask(incident = {}, review = {}) {
 
 export function buildGuardianRepairPatch(review = {}) {
   const patch = typeof review.proposedPatch === 'string' ? review.proposedPatch.trim() : '';
-  const headers = [...patch.matchAll(/^diff --git a\/([^\s]+) b\/([^\\s]+)$/gm)];
+  const headers = [...patch.matchAll(/^diff --git a\/([^\s]+) b\/([^\s]+)$/gm)];
   const affected = new Set(Array.isArray(review.affectedFiles) ? review.affectedFiles : []);
   const files = headers.map(match => match[1]);
   if (!patch || patch.length > 10_000 || !patch.startsWith('diff --git ')
