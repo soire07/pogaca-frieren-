@@ -8,6 +8,30 @@ import { createPublicSiteSession, readPublicSiteSession } from '../owner-dashboa
 
 const secret = 'site-auth-test-secret-with-at-least-32-characters';
 
+test('Vercel public origin is trusted through the Render proxy while unlisted origins remain blocked', () => {
+  const previous = process.env.SITE_AUTH_ALLOWED_ORIGINS;
+  process.env.SITE_AUTH_ALLOWED_ORIGINS = 'https://frierenbot.vercel.app';
+  try {
+    const proxied = { headers: {
+      origin: 'https://frierenbot.vercel.app',
+      'sec-fetch-site': 'same-site',
+      host: 'pogaca-frieren.onrender.com',
+      'x-forwarded-host': 'pogaca-frieren.onrender.com',
+      'x-forwarded-proto': 'https'
+    } };
+    assert.equal(isSameOriginRequest(proxied, 'https://pogaca-frieren.onrender.com'), true);
+    assert.equal(isSameOriginRequest({ headers: {
+      ...proxied.headers, origin: 'https://attacker.example'
+    } }, 'https://pogaca-frieren.onrender.com'), false);
+    assert.equal(isSameOriginRequest({ headers: {
+      ...proxied.headers, origin: 'https://frierenbot.vercel.app', 'sec-fetch-site': 'cross-site'
+    } }, 'https://pogaca-frieren.onrender.com'), false);
+  } finally {
+    if (previous === undefined) delete process.env.SITE_AUTH_ALLOWED_ORIGINS;
+    else process.env.SITE_AUTH_ALLOWED_ORIGINS = previous;
+  }
+});
+
 test('same-origin request guard accepts the configured site host and rejects cross-site origins', () => {
   assert.equal(isSameOriginRequest({ headers: { origin: 'https://site.example', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), true);
   assert.equal(isSameOriginRequest({ headers: { origin: 'https://evil.example', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), false);
