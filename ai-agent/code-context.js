@@ -119,7 +119,9 @@ export async function collectCodeContext({ rootDir, question, sourceCommitSha = 
       ? Math.max(0, Math.floor(mandatoryBudget / mandatory.length) - item.relative.length - 24)
       : safeBudget - used - item.relative.length - 24;
     if (remaining <= 0) continue;
-    const safe = item.source.replace(SECRET_PATTERN, '$1=[REDACTED]');
+    const safe = item.source
+      .replace(/\b(AUTHORIZATION\s*[:=]\s*)[^\r\n]+/gi, '$1[REDACTED]')
+      .replace(SECRET_PATTERN, '$1=[REDACTED]');
     const excerpt = findRelevantExcerpt(safe, terms, Math.min(safe.length, required ? 650 : 1200, remaining));
     if (!excerpt) continue;
     snippets.push('FILE: ' + item.relative + '\n' + excerpt);
