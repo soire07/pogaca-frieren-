@@ -570,7 +570,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
   })[notice] || '';
   const incidentHtml = incidents.length ? incidents.map(incident => {
     const evidence = Array.isArray(incident.evidence) ? incident.evidence : [];
-    const canReview = !['in_review','resolved','ignored'].includes(incident.status);
+    const canReview = !['in_review','awaiting_approval','resolved','ignored'].includes(incident.status);
     return '<article class="rowitem"><div class="actions"><strong>#' + Number(incident.id) + ' · ' + escapeHtml(incident.title) + '</strong><span class="tag ' + (incident.severity === 'critical' || incident.severity === 'high' ? 'warn' : '') + '">' + escapeHtml(incident.severity) + '</span></div>'
       + '<div class="small">' + escapeHtml(incident.system) + ' · ' + escapeHtml(incident.code) + ' · ' + escapeHtml(incident.status) + ' · ' + Number(incident.occurrence_count) + ' tekrar · Son görülme ' + escapeHtml(new Date(incident.last_seen).toLocaleString('tr-TR')) + '</div>'
       + '<p>' + escapeHtml(incident.summary) + '</p>'
