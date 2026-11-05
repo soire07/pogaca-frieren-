@@ -302,3 +302,12 @@ body.site-menu-open{overflow:hidden}
 .site-menu-toggle:hover .site-menu-dots circle:nth-child(3){transform:translateY(-1px);}
 @media(max-width:560px){.site-menu-toggle{width:42px;height:42px;border-radius:13px}.site-menu-dots{width:19px;height:19px}}
 @media(prefers-reduced-motion:reduce){.site-menu-dots circle{transition:none}}
+
+
+/* Public adventurer banner: visual representation of the equipped guild-banner cosmetic. */
+.player-banner{position:relative;isolation:isolate;display:flex;align-items:flex-end;min-height:190px;overflow:hidden;padding:clamp(22px,4vw,38px);border:1px solid #d9c4ff66;border-radius:24px;background:linear-gradient(120deg,#0b1024,#292044 58%,#101b31);box-shadow:0 18px 48px #05040d66}
+.player-banner:before{content:"";position:absolute;inset:0;z-index:-1;opacity:.65;background-image:radial-gradient(2px 2px at 12% 24%,#fff 99%,transparent),radial-gradient(1.5px 1.5px at 36% 66%,#f0ddff 99%,transparent),radial-gradient(2px 2px at 76% 19%,#fff 99%,transparent),radial-gradient(1px 1px at 91% 70%,#e4cfff 99%,transparent);background-size:180px 140px,230px 190px,270px 210px,160px 170px}
+.player-banner--frieren{background:radial-gradient(ellipse at 82% 18%,#c6a6ff66,transparent 35%),linear-gradient(115deg,#111026,#3b2c58 58%,#151c35)}
+.player-banner--north{background:radial-gradient(ellipse at 78% 16%,#93b8e955,transparent 38%),linear-gradient(115deg,#0b172b,#233d5c 58%,#111a31)}
+.player-banner-content{max-width:760px}.player-banner h2{margin:8px 0;font:clamp(26px,4vw,42px)/1.15 Georgia,serif;color:#f5eaff;text-shadow:0 3px 24px #08061299}.player-banner p{margin:0;color:#e1d8f3}
+@media(max-width:560px){.player-banner{min-height:150px;padding:20px;border-radius:18px}.player-banner h2{font-size:26px}}
