@@ -270,7 +270,7 @@ function redirect(res, location = '/owner') {
   res.end();
 }
 
-function renderRenderMetrics(metrics, overview) {
+function renderRenderMetrics(metrics, overview, metricRange = '1h') {
   if (metrics?.status === 'available') {
     return '<section class="panel metrics-panel"><div class="metric-heading"><div><h2>Render kaynak kullanımı</h2><p class="muted">Gerçek Render servis metrikleri · Son 60 dakika</p></div><span class="tag good">RENDER API BAĞLI</span></div>'
       + '<div class="metric-grid"><div class="stat"><small>CPU kullanımı</small><strong>' + metrics.cpuPercent.toFixed(1) + '%</strong><div class="small">' + metrics.cpuUsed.toFixed(3) + ' / ' + metrics.cpuCapacity.toFixed(2) + ' CPU</div></div>'
