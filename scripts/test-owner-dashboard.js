@@ -3,7 +3,7 @@ import { GUARDIAN_REPAIR_BRANCH, buildGuardianRepairTrackingUrls } from '../guar
 import { createHmac } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, renderOwnerSecurityWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, renderOwnerSecurityWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest, getOwnerActionErrorDestination } from '../owner-dashboard.js';
 
 
 
@@ -1104,4 +1104,11 @@ test('Guardian workspace hides generic workflow history from the single-run evid
   job.repair_run_url = 'https://github.com/soire07/pogaca-frieren-/actions/runs/42018567895';
   const exact = renderOwnerGuardianWorkspace({ jobs: [job] });
   assert.match(exact, /Tekil workflow çalıştırmasını aç/);
+});
+
+
+test('Guardian action failures return to the Guardian workspace', () => {
+  assert.equal(getOwnerActionErrorDestination('guardian-refresh-pr'), '/owner/guardian');
+  assert.equal(getOwnerActionErrorDestination('guardian-review'), '/owner/guardian');
+  assert.equal(getOwnerActionErrorDestination('rpg-resource-adjust'), '/owner');
 });
