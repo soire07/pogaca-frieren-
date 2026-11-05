@@ -47,7 +47,7 @@ test('canonical production Vercel origin stays trusted when optional allowlist i
     process.env.SITE_AUTH_ALLOWED_ORIGINS = 'https://attacker.example';
     assert.equal(isSameOriginRequest(request, 'https://pogaca-frieren.onrender.com'), true);
     assert.equal(isSameOriginRequest({ headers: {
-      ...request.headers, origin: 'https://attacker.example'
+      ...request.headers, origin: 'https://unlisted-attacker.example'
     } }, 'https://pogaca-frieren.onrender.com'), false);
   } finally {
     if (previous === undefined) delete process.env.SITE_AUTH_ALLOWED_ORIGINS;
