@@ -232,15 +232,23 @@ export async function approveGuardianRepair(db, { jobId, actorId }) {
       || row.result?.status !== 'proposal_only' || ['dispatching','dispatched'].includes(row.repair_dispatch_status)) return null;
   const fingerprint = getGuardianProposalFingerprint(row.result);
   const updated = await db.query(
-    `UPDATE owner_guardian_jobs j SET
-       repair_approved_by=$2,repair_approved_at=NOW(),repair_approval_fingerprint=$3
-     FROM owner_guardian_incidents i
-     WHERE j.id=$1 AND i.id=j.incident_id AND i.status='awaiting_approval'
-       AND j.status='completed' AND j.result=$4::jsonb
-       AND j.result->>'status'='proposal_only'
-       AND j.repair_dispatch_status IN ('not_requested','failed')
-       AND NOT EXISTS (SELECT 1 FROM owner_settings s WHERE s.setting_key='guardian_emergency_stop' AND s.setting_value->>'enabled'='true')
-     RETURNING j.id,j.result,j.repair_approved_by,j.repair_approved_at,j.repair_approval_fingerprint`,
+    `WITH changed AS (
+       UPDATE owner_guardian_jobs j SET
+         repair_approved_by=$2,repair_approved_at=NOW(),repair_approval_fingerprint=$3
+       FROM owner_guardian_incidents i
+       WHERE j.id=$1 AND i.id=j.incident_id AND i.status='awaiting_approval'
+         AND j.status='completed' AND j.result=$4::jsonb
+         AND j.result->>'status'='proposal_only'
+         AND j.repair_dispatch_status IN ('not_requested','failed')
+         AND NOT EXISTS (SELECT 1 FROM owner_settings s WHERE s.setting_key='guardian_emergency_stop' AND s.setting_value->>'enabled'='true')
+       RETURNING j.id,j.incident_id,j.result,j.repair_approved_by,j.repair_approved_at,j.repair_approval_fingerprint
+     ), logged AS (
+       INSERT INTO owner_audit_logs(actor_id,action,target,details)
+       SELECT $2,'guardian.repair.owner_approved',incident_id::text,
+         jsonb_build_object('jobId',id,'approvalFingerprint',repair_approval_fingerprint)
+       FROM changed RETURNING id
+     )
+     SELECT changed.* FROM changed JOIN logged ON TRUE`,
     [id, String(actorId), fingerprint, JSON.stringify(row.result)]
   );
   return updated.rows?.[0] || null;
