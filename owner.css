@@ -282,3 +282,13 @@
 .metric-range-form select{min-width:150px;flex:1}
 .metric-range-form .btn{white-space:nowrap}
 @media(max-width:560px){.metric-range-form{display:grid;grid-template-columns:minmax(0,1fr)}.metric-range-form .btn{width:100%}}
+
+
+/* Owner Panel actions share the site-wide interaction contract and touch sizing. */
+.btn{min-height:44px;touch-action:manipulation;cursor:pointer;transition:transform .18s ease,filter .18s ease,box-shadow .18s ease}
+.btn:hover{filter:brightness(1.08)}
+.btn:active{transform:translateY(0) scale(.985)}
+.btn:focus-visible{outline:2px solid #ead8ff;outline-offset:3px}
+.btn:disabled,.btn[aria-disabled="true"]{cursor:not-allowed;opacity:.58;filter:saturate(.45);transform:none;box-shadow:none}
+form[aria-busy="true"] button[type="submit"]{cursor:wait}
+@media(prefers-reduced-motion:reduce){.btn{transition:none!important}.btn:hover,.btn:active{transform:none}}
