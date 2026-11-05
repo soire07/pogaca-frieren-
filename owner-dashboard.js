@@ -1067,7 +1067,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
           approvalRecorded: Boolean(approval),
           dispatchStatus: dispatch.status,
           baseBranch: 'guardian-isolated-repair-test',
-        });
+        }).catch(error => console.error('Guardian owner approval audit failed:', error?.message || error));
         redirect(res, '/owner/guardian?notice=guardian_pr_dispatched');
         return true;
       }
