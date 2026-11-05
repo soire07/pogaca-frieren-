@@ -443,3 +443,18 @@ test('repair context resolves Turkish capital dotted-I affected-file labels exac
   assert.match(context, /### rpg-mechanics\.js/);
   assert.match(context, /unrelatedMechanic/);
 });
+
+test('repair context keeps the full bounded contents of an explicitly affected file', async () => {
+  const source = 'const unrelated = true;\\n'.repeat(260) + 'export function guardianRepairRegressionTarget() { return true; }';
+  const context = await collectRepairContext(
+    'Guardian incident #52\\nİlgili dosyalar: guardian/automation.test.js',
+    {
+      execFile: () => 'guardian/automation.test.js\\0',
+      statImpl: async () => ({ isFile: () => true, size: source.length }),
+      readFileImpl: async () => source,
+    },
+  );
+  assert.match(context, /guardianRepairRegressionTarget/);
+  assert.ok(context.length > 5_000);
+  assert.ok(context.length <= 32_000);
+});
