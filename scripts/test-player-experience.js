@@ -33,6 +33,8 @@ test('home stations reference existing commands and alchemy recipes consume know
 
 test('profile settings normalize all privacy flags and reject malformed values',()=>{
  assert.equal(typeof playerExperience.normalizeProfileSettings,'function');
+ assert.equal(playerExperience.DEFAULT_PLAYER_PROFILE_SETTINGS.show_collections,true);
+ assert.equal(playerExperience.DEFAULT_PLAYER_PROFILE_SETTINGS.show_activity,false);
  assert.deepEqual(playerExperience.normalizeProfileSettings({
   showStats:true,showAchievements:false,showCollections:true,showActivity:false,showCosmetics:true,activeTitle:'Kıdemli Maceracı'
  }),{showStats:true,showAchievements:false,showCollections:true,showActivity:false,showCosmetics:true,activeTitle:'Kıdemli Maceracı'});
@@ -57,4 +59,17 @@ test('profile settings update only when selected title is owned by the linked pl
  }});
  assert.equal(denied.status,'title_not_owned');
  assert.equal(deniedCalls.some(sql=>sql.includes('INSERT INTO player_profile_settings')),false);
+});
+
+
+test('missing profile preferences return conservative defaults without exposing new private sections',async()=>{
+ assert.equal(typeof playerExperience.getPlayerProfileSettings,'function');
+ const db={async query(sql){if(sql.includes('FROM player_profile_settings'))return{rows:[],rowCount:0};return{rows:[],rowCount:0};}};
+ const settings=await playerExperience.getPlayerProfileSettings(db,{guildId:'1539562273197260860',userId:'123456789012345678'});
+ assert.equal(settings.show_stats,false);
+ assert.equal(settings.show_achievements,true);
+ assert.equal(settings.show_collections,true);
+ assert.equal(settings.show_activity,false);
+ assert.equal(settings.show_cosmetics,true);
+ assert.equal(settings.active_title,null);
 });
