@@ -96,9 +96,11 @@ test('Guardian incident has a one-click safe AI analysis action without implying
     .find(form => /name="action" value="guardian-review"/.test(form));
   assert.ok(reviewForm, 'Guardian review form should be rendered');
   assert.match(reviewForm, /name="incidentId" value="77"/);
-  assert.match(reviewForm, /Sorunu çöz/);
-  assert.doesNotMatch(reviewForm, /name="confirm" value="yes" required/);
+  assert.match(reviewForm, /Sorunu Çöz/);
+  assert.match(reviewForm, /name="confirm" value="yes"/);
+  assert.doesNotMatch(reviewForm, /type="checkbox" name="confirm"/);
   assert.match(reviewForm, /kodu otomatik değiştirmez/);
+  assert.equal([...html.matchAll(/name="action" value="guardian-review"/g)].length, 1, 'Guardian incident must render one working review action');
   assert.match(html, /name="confirm" value="yes" required/, 'Other Guardian actions must retain their explicit confirmation');
 });
 
