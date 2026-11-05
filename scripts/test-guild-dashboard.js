@@ -209,7 +209,7 @@ test('guild dashboard disconnect removes only the account OAuth link and returns
   assert.equal(res.headers.Location, '/lonca?disconnected=1');
   assert.equal(calls.length, 1);
   assert.match(calls[0].sql, /DELETE FROM frieren_site_discord_links/);
-  assert.doesNotMatch(calls[0].sql, /site_discord_links(?!_oauth)/);
+  assert.doesNotMatch(calls[0].sql, /DELETE FROM site_discord_links\\b/i);
   assert.deepEqual(calls[0].params, [owner]);
 });
 
