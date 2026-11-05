@@ -62,7 +62,7 @@ test('same-origin request guard accepts the configured site host and rejects cro
   assert.equal(isSameOriginRequest({ headers: { 'sec-fetch-site': 'same-site', origin: 'https://site.example', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), true);
   assert.equal(isSameOriginRequest({ headers: { 'sec-fetch-site': 'same-site', origin: 'https://evil.example', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), false);
   assert.equal(isSameOriginRequest({ headers: { 'sec-fetch-site': 'same-site', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), false);
-  assert.equal(isSameOriginRequest({ headers: {} }, 'https://site.example'), true);
+  assert.equal(isSameOriginRequest({ headers: {} }, 'https://site.example'), false);
 });
 
 
@@ -96,7 +96,12 @@ function response() {
 }
 function post(path, fields) {
   const body = new URLSearchParams(fields).toString();
-  return { method: 'POST', url: path, headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-forwarded-for': '203.0.113.10' }, async *[Symbol.asyncIterator]() { yield Buffer.from(body); } };
+  return { method: 'POST', url: path, headers: {
+    'content-type': 'application/x-www-form-urlencoded',
+    'x-forwarded-for': '203.0.113.10',
+    origin: 'https://frierenbot.vercel.app',
+    'sec-fetch-site': 'same-origin'
+  }, async *[Symbol.asyncIterator]() { yield Buffer.from(body); } };
 }
 function fakeDb() {
   const calls = [];
