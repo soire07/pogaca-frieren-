@@ -45,6 +45,11 @@ export function getFrierenAiGuardianEndpoint(env = process.env) {
   return new URL('/internal/guardian-review', parsed).toString();
 }
 
+
+export function getOwnerActionErrorDestination(action) {
+  return String(action || '').startsWith('guardian-') ? '/owner/guardian' : '/owner';
+}
+
 export const OWNER_PANEL_SECTIONS = Object.freeze([
   { id: 'overview', label: 'Genel Bakış', command: '/owner' },
   { id: 'system', label: 'Sistem Durumu', command: '/owner-bilgi' },
@@ -945,10 +950,12 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   }
 
   if (url.pathname === '/owner/action' && req.method === 'POST') {
+    let actionName = '';
     try {
       const form = await readForm(req);
       if (!safeStringEqual(form.get('csrf'), session.csrf)) return send(res, 403, page('İstek reddedildi', '<h1>CSRF doğrulaması başarısız</h1>'));
       const action = form.get('action');
+      actionName = String(action || '');
       if (action === 'support-reply') {
         const result = await replySupportTicketFromOwner(db, String(form.get('ticketId') || ''), OWNER_ID, String(form.get('message') || ''));
         redirect(res, '/owner/support?ticket=' + encodeURIComponent(String(form.get('ticketId') || '')) + '&notice=' + (result.status === 'replied' ? 'support_reply_saved' : 'invalid'));
@@ -1364,7 +1371,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         });
         notice = result ? 'announcement_sent' : 'invalid';
       }
-      redirect(res, '/owner?notice=' + notice);
+      redirect(res, getOwnerActionErrorDestination(actionName) + '?notice=' + notice);
     } catch (error) {
       const code = String(error?.message || '');
       console.error('Owner dashboard action failed:', code || 'unknown error');
