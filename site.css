@@ -470,3 +470,9 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
  .site-nav-arrow{font-size:13px}
  .site-sidebar-foot{padding:11px 7px 3px;font-size:9px}
 }
+
+/* Class identity badge in each linked character card. */
+.adventurer-character-card{position:relative;padding-right:78px;min-height:190px}
+.adventurer-class-emblem{position:absolute;top:16px;right:16px;width:54px;height:54px;display:grid;place-items:center;border:1px solid #c7a9ff66;border-radius:16px;background:linear-gradient(145deg,#a78bfa2b,#241b3c);box-shadow:0 8px 24px #08051155;color:#eadcff}
+.adventurer-class-emblem svg{width:31px;height:31px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:520px){.adventurer-character-card{padding-right:72px}.adventurer-class-emblem{width:48px;height:48px;top:13px;right:13px}.adventurer-class-emblem svg{width:28px;height:28px}}
