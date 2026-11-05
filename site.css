@@ -200,7 +200,7 @@ img{max-width:100%}
 
 /* Frieren left navigation drawer */
 .topbar{justify-content:space-between;min-height:66px;padding-left:76px}
-.site-menu-toggle{position:fixed;z-index:42;left:14px;top:50%;display:grid;place-items:center;width:46px;height:54px;padding:0;border:1px solid #d9c1ff88;border-radius:16px;background:linear-gradient(155deg,#392951f5,#171326f5);color:#f4e8ff;font:800 29px/1 Georgia,serif;box-shadow:0 12px 34px #05030d99,0 0 24px #bd96ff24;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s}
+.site-menu-toggle{position:fixed;z-index:42;left:14px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:46px;height:54px;padding:0;border:1px solid #d9c1ff88;border-radius:16px;background:linear-gradient(155deg,#392951f5,#171326f5);color:#f4e8ff;font:800 29px/1 Georgia,serif;box-shadow:0 12px 34px #05030d99,0 0 24px #bd96ff24;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s}
 .site-menu-toggle:hover{transform:translateY(-50%) translateX(2px);border-color:#f1ddff;box-shadow:0 14px 38px #05030dcc,0 0 30px #bd96ff44}
 .site-menu-backdrop{position:fixed;z-index:39;inset:0;width:100%;height:100%;padding:0;border:0;background:#05030dcc;backdrop-filter:blur(4px);cursor:pointer}
 .site-menu-backdrop[hidden],.site-sidebar[hidden]{display:none}
@@ -229,4 +229,4 @@ img{max-width:100%}
 body.site-menu-open{overflow:hidden}
 @media(max-width:850px){.topbar{padding-left:72px}.site-menu-toggle{left:10px;width:44px;height:50px;border-radius:14px}}
 @media(max-width:560px){.topbar{padding:9px 13px 9px 66px;min-height:60px}.site-sidebar{padding:13px 11px 10px;width:min(330px,calc(100vw - 48px))}.site-sidebar-intro{padding:13px 8px 9px}.site-nav-link{min-height:50px}.site-menu-toggle{left:9px;width:42px;height:48px}}
-@media(prefers-reduced-motion:reduce){.site-menu-toggle,.site-sidebar,.site-nav-link{transition:none!important}.site-menu-toggle:hover,.site-nav-link:hover{transform:none}}
+@media(prefers-reduced-motion:reduce){.site-menu-toggle,.site-sidebar,.site-nav-link{transition:none!important}.site-menu-toggle:hover{transform:translateY(-50%)}.site-nav-link:hover{transform:none}}
