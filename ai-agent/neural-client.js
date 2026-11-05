@@ -1,6 +1,10 @@
 const MAX_PROMPT_CHARS = 1900;
 const REQUEST_TIMEOUT_MS = 45_000;
 
+export function isNeuralRequested(env = process.env) {
+  return Boolean(String(env.FRIEREN_NEURAL_API_URL || '').trim() || String(env.FRIEREN_NEURAL_API_TOKEN || '').trim());
+}
+
 export function isNeuralConfigured(env = process.env) {
   const url = String(env.FRIEREN_NEURAL_API_URL || '').trim();
   const token = String(env.FRIEREN_NEURAL_API_TOKEN || '').trim();
