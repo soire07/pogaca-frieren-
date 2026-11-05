@@ -106,6 +106,8 @@ export async function reviewGuardianIncident({ groq, model, incident, collectCod
             'If no safe code change is justified, set proposedPatch to an empty string and tests to an empty array.',
             'Patch yalnızca öneridir; uygulanmış değildir.',
             'Gerekli regresyon testini belirt ve aynı testin zaten var olup olmadığını kontrol et.',
+            'Önce sourceContext içindeki hem uygulama hem test dosyalarını incele; mevcut assertion aynı davranışı zaten doğruluyorsa yeni test veya yama önerme.',
+            'Mevcut test kapsamı yeterliyse proposedPatch boş, tests boş olmalı ve rootCause alanında mevcut kapsamın bulunduğu açıkça belirtilmeli.',
             'Kanıtı olmayan dosya veya fonksiyon adı uydurma.',
             'Sırlar ve kullanıcı verileri rapora eklenmemeli.',
           ],
