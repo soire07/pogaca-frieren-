@@ -131,7 +131,7 @@ function authPage(mode, secret, status = '', token = '') {
   let body = '';
   if (mode === 'register') body = '<h1>Yolculuğa katıl</h1><p>Frieren hesabını oluştur. Kullanıcı adın ve şifren sana ait olacak.</p>' + notice +
     '<form method="post" action="/register" autocomplete="on">' + formToken(secret) +
-    '<label>Kullanıcı adı</label><input name="username" minlength="3" maxlength="24" pattern="[\\p{L}\\p{N}_.-]{3,24}" autocomplete="username" required>' +
+    '<label>Kullanıcı adı</label><input name="username" minlength="3" maxlength="24" pattern="[\\p{L}\\p{N}_.\\-]{3,24}" autocomplete="username" required>' +
     '<label>E-posta adresi</label><input name="email" type="email" maxlength="254" autocomplete="email" required>' +
     '<label>Şifre</label><input name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>' +
     '<label>Şifreyi tekrar gir</label><input name="confirmPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" required><button class="btn">Hesap oluştur</button></form>' +
