@@ -26,6 +26,11 @@ for (const scenario of scenarios) {
     for (const route of ['/login', '/register']) {
       const response = await page.goto(baseUrl + route, { waitUntil: 'domcontentloaded', timeout: 45000 });
       if (!response || response.status() !== 200) throw new Error(scenario.name + ' ' + route + ' HTTP ' + (response?.status() || 'no response'));
+      // The auth page loads the shared stylesheet as a separate request. Safari
+      // can report its pre-style native control geometry immediately after
+      // DOMContentLoaded; wait for stylesheets and fonts before measuring.
+      await page.waitForLoadState('networkidle', { timeout: 15000 });
+      await page.evaluate(() => document.fonts?.ready);
       const layout = await page.evaluate(() => ({
         width: window.innerWidth,
         documentWidth: document.documentElement.scrollWidth,
