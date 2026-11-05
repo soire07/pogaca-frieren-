@@ -153,11 +153,11 @@ test('emergency stop enabled during AI review blocks the later workflow POST', a
       finishGuardianRepairDispatch: async (_db, args) => { finished.push(args); return true; },
     },
   });
-  assert.equal(result.status, 'emergency_stop');
-  assert.equal(stateReads, 2);
-  assert.equal(reservations, 1);
+  assert.equal(result.status, 'proposal_ready');
+  assert.equal(stateReads, 1);
+  assert.equal(reservations, 0);
   assert.equal(posts, 0);
-  assert.equal(finished[0].status, 'failed');
+  assert.equal(finished.length, 0);
 });
 
 test('failed Guardian AI review preserves the sanitized upstream error without dispatching', async () => {
@@ -188,7 +188,7 @@ test('failed Guardian AI review preserves the sanitized upstream error without d
 });
 
 test('failed GitHub repair dispatch preserves a sanitized API permission error', async () => {
-  const finished = [];
+  let requestsForGithub = 0;
   const result = await processGuardianIncident({
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
     incident,
@@ -196,24 +196,21 @@ test('failed GitHub repair dispatch preserves a sanitized API permission error',
       FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
       FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
     },
-    fetchImpl: async url => String(url).includes('/internal/guardian-review')
-      ? { ok: true, status: 200, json: async () => review }
-      : {
-          ok: false,
-          status: 403,
-          json: async () => ({ message: 'Resource not accessible by personal access token' }),
-        },
+    fetchImpl: async url => {
+      if (String(url).includes('/internal/guardian-review')) return { ok: true, status: 200, json: async () => review };
+      requestsForGithub += 1;
+      return { ok: false, status: 403, json: async () => ({ message: 'Resource not accessible by personal access token' }) };
+    },
     store: {
       createGuardianReviewJob: async () => ({ id: 13, status: 'queued' }),
       finishGuardianReviewJob: async () => true,
-      reserveGuardianRepairDispatch: async () => ({ id: 13 }),
-      finishGuardianRepairDispatch: async (_db, args) => { finished.push(args); return true; },
+      reserveGuardianRepairDispatch: async () => { throw new Error('must not dispatch before approval'); },
+      finishGuardianRepairDispatch: async () => { throw new Error('must not dispatch before approval'); },
     },
   });
-  assert.equal(result.status, 'dispatch_failed');
-  assert.equal(result.reason, 'GUARDIAN_GITHUB_DISPATCH_HTTP_403_Resource_not_accessible_by_personal_access_token');
-  assert.equal(finished.length, 1);
-  assert.equal(finished[0].status, 'failed');
+  assert.equal(result.status, 'proposal_ready');
+  assert.equal(requestsForGithub, 0);
+  assert.equal(finished.length, 0);
 });
 
 test('low-confidence or incomplete AI proposals never dispatch a repair workflow', async () => {
