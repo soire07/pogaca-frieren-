@@ -8,7 +8,7 @@ function normalizeIp(value) {
 }
 
 export function resolveVerifiedClientIp(req, {
-  trustedProxyIps = String(process.env.GUARDIAN_TRUSTED_PROXY_IPS || '').split(','),
+  trustedProxyIps = String(process.env.GUARDIAN_TRUSTED_PROXY_IPS || process.env.SITE_TRUSTED_PROXY_IPS || '').split(','),
 } = {}) {
   const peer = normalizeIp(req?.socket?.remoteAddress || req?.connection?.remoteAddress);
   if (!peer) return { clientIp: null, source: 'unverified_peer' };
