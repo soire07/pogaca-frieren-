@@ -113,7 +113,6 @@ function page(title, content, user, seo = {}) {
   const navLink = (path, icon, label, hint) => '<a class="site-nav-link" data-nav-path="' + path + '" href="' + path + '"><span class="site-nav-icon" aria-hidden="true">' + icon + '</span><span class="site-nav-copy"><strong>' + esc(label) + '</strong><small>' + esc(hint) + '</small></span><span class="site-nav-arrow" aria-hidden="true">↗</span></a>';
   const navGroup = (id, title, links) => '<section class="site-nav-group" data-nav-group="' + id + '"><h2>' + title + '</h2>' + links.join('') + '</section>';
   const sidebar = '<button class="site-menu-toggle" id="site-menu-toggle" type="button" aria-controls="site-sidebar" aria-expanded="false" aria-label="Menüyü aç"><svg class="site-menu-dots" viewBox="0 0 24 24" focusable="false" aria-hidden="true"><circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle></svg></button>' +
-    '<button class="site-menu-backdrop" id="site-menu-backdrop" type="button" aria-label="Menüyü kapat" hidden></button>' +
     '<aside class="site-sidebar" id="site-sidebar" aria-label="Frieren ana menüsü" hidden>' +
       '<div class="site-sidebar-head"><a class="site-sidebar-brand" href="/"><span class="brand-mark">✧</span><span>FRIEREN<small>THE ARCANE JOURNEY</small></span></a><button class="site-menu-close" id="site-menu-close" type="button" aria-label="Menüyü kapat">×</button></div>' +
       accountCard +
