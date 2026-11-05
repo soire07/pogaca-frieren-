@@ -201,7 +201,14 @@ test('authenticated homepage is the account-scoped player dashboard', async () =
     throw new Error('Unexpected query: ' + sql);
   }};
   const response = res();
-  assert.equal(await handlePublicSiteRequest(request('/', { id:accountId, username:'Gezgin' }), response, { db }), true);
+  let handled;
+  try {
+    handled = await handlePublicSiteRequest(request('/', { id:accountId, username:'Gezgin' }), response, { db });
+  } finally {
+    if (previousVipAccounts === undefined) delete process.env.FRIEREN_VIP_ACCOUNT_IDS;
+    else process.env.FRIEREN_VIP_ACCOUNT_IDS = previousVipAccounts;
+  }
+  assert.equal(handled, true);
   assert.equal(response.status, 200);
   assert.match(response.body, /Maceracı Paneli/);
   assert.match(response.body, /Fern/);
@@ -211,8 +218,7 @@ test('authenticated homepage is the account-scoped player dashboard', async () =
   assert.match(response.body, /xp-progress is-vip/);
   assert.match(response.body, /role="progressbar"/);
   assert.ok(response.body.includes('action="/maceraci/link"'));
-  if (previousVipAccounts === undefined) delete process.env.FRIEREN_VIP_ACCOUNT_IDS;
-  else process.env.FRIEREN_VIP_ACCOUNT_IDS = previousVipAccounts;
+
   assert.equal(queries.length, 2);
   assert.equal(queries[0].params[0], accountId.replace(/^site_/, ''));
 });
