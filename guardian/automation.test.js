@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGuardianRepairTask, processGuardianIncident, processPendingGuardianRepairDispatch, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks } from './automation.js';
+import { buildGuardianRepairTask, processGuardianIncident, processPendingGuardianRepairDispatch, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, getGuardianProposalFingerprint } from './automation.js';
 
 const incident = {
   id: 42,
@@ -76,22 +76,15 @@ test('autonomous incident handling respects the emergency stop before contacting
   assert.equal(jobs, 0);
 });
 
-test('high-severity incidents are reviewed and dispatched to the isolated repair branch', async () => {
+test('high-severity incidents are reviewed but repair dispatch waits for explicit owner approval', async () => {
   const calls = [];
   const store = {
     createGuardianReviewJob: async (_db, args) => { calls.push(['create', args]); return { id: 9, status: 'queued' }; },
     finishGuardianReviewJob: async (_db, args) => { calls.push(['finishReview', args]); return true; },
-    reserveGuardianRepairDispatch: async (_db, id) => { calls.push(['reserve', id]); return { id }; },
-    finishGuardianRepairDispatch: async (_db, args) => { calls.push(['finishDispatch', args]); return true; },
+    reserveGuardianRepairDispatch: async () => { throw new Error('repair dispatch must wait for owner approval'); },
+    finishGuardianRepairDispatch: async () => { throw new Error('repair dispatch must wait for owner approval'); },
   };
   const requests = [];
-  const fetchImpl = async (url, options) => {
-    requests.push({ url: String(url), options });
-    if (String(url).includes('/internal/guardian-review')) {
-      return { ok: true, status: 200, json: async () => review };
-    }
-    return { ok: true, status: 204, json: async () => ({}) };
-  };
   const result = await processGuardianIncident({
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
     incident,
@@ -100,24 +93,39 @@ test('high-severity incidents are reviewed and dispatched to the isolated repair
       FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
       FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
     },
-    fetchImpl,
+    fetchImpl: async (url, options) => {
+      requests.push({ url: String(url), options });
+      return { ok: true, status: 200, json: async () => review };
+    },
     store,
   });
-  assert.equal(result.status, 'dispatched');
-  assert.equal(requests.length, 2);
+  assert.equal(result.status, 'proposal_ready');
+  assert.equal(result.approvalRequired, true);
+  assert.equal(requests.length, 1);
   assert.equal(requests[0].url, 'https://pogaca-frieren-kltd.onrender.com/internal/guardian-review');
-  assert.equal(requests[1].url, 'https://api.github.com/repos/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml/dispatches');
-  assert.equal(requests[1].options.headers.Authorization, 'Bearer ' + 'y'.repeat(48));
-  const payload = JSON.parse(requests[1].options.body);
-  assert.equal(payload.ref, 'guardian-isolated-repair-test');
-  assert.equal(payload.inputs.mode, 'repair');
-  assert.equal(payload.inputs.base_branch, 'guardian-isolated-repair-test');
-  assert.equal(payload.inputs.incident_id, '42');
   assert.ok(calls.some(([name]) => name === 'finishReview'));
-  assert.ok(calls.some(([name]) => name === 'finishDispatch'));
+  assert.equal(calls.some(([name]) => name === 'reserve'), false);
 });
 
-test('emergency stop enabled during AI review blocks the later workflow POST', async () => {
+test('pending repair dispatch refuses proposals without a persisted owner approval fingerprint', async () => {
+  let requests = 0;
+  let reservations = 0;
+  const result = await processPendingGuardianRepairDispatch({
+    db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
+    job: { id: 9, result: review },
+    incident,
+    env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
+    fetchImpl: async () => { requests += 1; throw new Error('must not contact GitHub'); },
+    store: {
+      reserveGuardianRepairDispatch: async () => { reservations += 1; return { id: 9 }; },
+      finishGuardianRepairDispatch: async () => true,
+    },
+  });
+  assert.equal(result.status, 'approval_required');
+  assert.equal(requests, 0);
+  assert.equal(reservations, 0);
+});
+test('automatic Guardian review never dispatches a repair workflow', async () => {
   let stateReads = 0;
   let posts = 0;
   let reservations = 0;
@@ -145,11 +153,11 @@ test('emergency stop enabled during AI review blocks the later workflow POST', a
       finishGuardianRepairDispatch: async (_db, args) => { finished.push(args); return true; },
     },
   });
-  assert.equal(result.status, 'emergency_stop');
-  assert.equal(stateReads, 2);
-  assert.equal(reservations, 1);
+  assert.equal(result.status, 'proposal_ready');
+  assert.equal(stateReads, 1);
+  assert.equal(reservations, 0);
   assert.equal(posts, 0);
-  assert.equal(finished[0].status, 'failed');
+  assert.equal(finished.length, 0);
 });
 
 test('failed Guardian AI review preserves the sanitized upstream error without dispatching', async () => {
@@ -179,8 +187,8 @@ test('failed Guardian AI review preserves the sanitized upstream error without d
   assert.equal(finished[0].error, 'GUARDIAN_AI_HTTP_400_GROQ_INVALID_REQUEST');
 });
 
-test('failed GitHub repair dispatch preserves a sanitized API permission error', async () => {
-  const finished = [];
+test('Guardian AI proposal does not contact GitHub before Owner approval', async () => {
+  let requestsForGithub = 0;
   const result = await processGuardianIncident({
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
     incident,
@@ -188,24 +196,20 @@ test('failed GitHub repair dispatch preserves a sanitized API permission error',
       FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
       FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
     },
-    fetchImpl: async url => String(url).includes('/internal/guardian-review')
-      ? { ok: true, status: 200, json: async () => review }
-      : {
-          ok: false,
-          status: 403,
-          json: async () => ({ message: 'Resource not accessible by personal access token' }),
-        },
+    fetchImpl: async url => {
+      if (String(url).includes('/internal/guardian-review')) return { ok: true, status: 200, json: async () => review };
+      requestsForGithub += 1;
+      return { ok: false, status: 403, json: async () => ({ message: 'Resource not accessible by personal access token' }) };
+    },
     store: {
       createGuardianReviewJob: async () => ({ id: 13, status: 'queued' }),
       finishGuardianReviewJob: async () => true,
-      reserveGuardianRepairDispatch: async () => ({ id: 13 }),
-      finishGuardianRepairDispatch: async (_db, args) => { finished.push(args); return true; },
+      reserveGuardianRepairDispatch: async () => { throw new Error('must not dispatch before approval'); },
+      finishGuardianRepairDispatch: async () => { throw new Error('must not dispatch before approval'); },
     },
   });
-  assert.equal(result.status, 'dispatch_failed');
-  assert.equal(result.reason, 'GUARDIAN_GITHUB_DISPATCH_HTTP_403_Resource_not_accessible_by_personal_access_token');
-  assert.equal(finished.length, 1);
-  assert.equal(finished[0].status, 'failed');
+  assert.equal(result.status, 'proposal_ready');
+  assert.equal(requestsForGithub, 0);
 });
 
 test('low-confidence or incomplete AI proposals never dispatch a repair workflow', async () => {
@@ -247,7 +251,7 @@ test('failed repair dispatch retries from the saved AI proposal without repeatin
   };
   const result = await processPendingGuardianRepairDispatch({
     db: { query: async () => ({ rows: [] }) },
-    job: { id: 9, result: review, repair_dispatch_attempts: 1 },
+    job: { id: 9, result: review, repair_dispatch_attempts: 1, repair_approved_by: '1553794496234262641', repair_approval_fingerprint: getGuardianProposalFingerprint(review) },
     incident,
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl,
@@ -258,7 +262,11 @@ test('failed repair dispatch retries from the saved AI proposal without repeatin
   assert.equal(requests[0].options.method, 'GET');
   assert.equal(requests[1].options.method, 'POST');
   assert.equal(requests[1].url.endsWith('/dispatches'), true);
-  assert.equal(JSON.parse(requests[1].options.body).inputs.mode, 'repair');
+  const payload = JSON.parse(requests[1].options.body);
+  assert.equal(payload.ref, 'guardian-isolated-repair-test');
+  assert.equal(payload.inputs.mode, 'repair');
+  assert.equal(payload.inputs.base_branch, 'guardian-isolated-repair-test');
+  assert.equal(payload.inputs.incident_id, '42');
   assert.equal(calls[0][0], 'reserve');
   assert.equal(calls[1][1].status, 'dispatched');
 });
@@ -272,7 +280,7 @@ test('failed repair dispatch detects an already-started workflow and does not di
   let posts = 0;
   const result = await processPendingGuardianRepairDispatch({
     db: { query: async () => ({ rows: [] }) },
-    job: { id: 9, result: review },
+    job: { id: 9, result: review, repair_approved_by: '1553794496234262641', repair_approval_fingerprint: getGuardianProposalFingerprint(review) },
     incident,
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async (_url, options) => {
@@ -295,7 +303,7 @@ test('repair retry replaces a terminal failed workflow when no PR was created', 
   const requests = [];
   const result = await processPendingGuardianRepairDispatch({
     db: { query: async () => ({ rows: [] }) },
-    job: { id: 15, result: review },
+    job: { id: 15, result: review, repair_approved_by: '1553794496234262641', repair_approval_fingerprint: getGuardianProposalFingerprint(review) },
     incident: { ...incident, id: 43 },
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async (url, options) => {
@@ -321,7 +329,7 @@ test('repair retry does not duplicate a terminal failed workflow that already cr
   let posts = 0;
   const result = await processPendingGuardianRepairDispatch({
     db: { query: async () => ({ rows: [] }) },
-    job: { id: 16, result: review },
+    job: { id: 16, result: review, repair_approved_by: '1553794496234262641', repair_approval_fingerprint: getGuardianProposalFingerprint(review) },
     incident: { ...incident, id: 44 },
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async (url, options) => {
@@ -347,7 +355,7 @@ test('repair retry does not confuse incident 4 with a workflow for incident 42',
   let posts = 0;
   const result = await processPendingGuardianRepairDispatch({
     db: { query: async () => ({ rows: [] }) },
-    job: { id: 14, result: review },
+    job: { id: 14, result: review, repair_approved_by: '1553794496234262641', repair_approval_fingerprint: getGuardianProposalFingerprint(review) },
     incident: { ...incident, id: 4 },
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async (_url, options) => {
@@ -375,7 +383,7 @@ test('failed repair dispatch does not send when workflow reconciliation is unava
   };
   const result = await processPendingGuardianRepairDispatch({
     db: { query: async () => ({ rows: [] }) },
-    job: { id: 9, result: review },
+    job: { id: 9, result: review, repair_approved_by: '1553794496234262641', repair_approval_fingerprint: getGuardianProposalFingerprint(review) },
     incident,
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async (_url, options) => {
@@ -395,7 +403,7 @@ test('repair retry fails closed when GitHub workflow reconciliation is truncated
   let posts = 0;
   const result = await processPendingGuardianRepairDispatch({
     db: { query: async () => ({ rows: [] }) },
-    job: { id: 19, result: review },
+    job: { id: 19, result: review, repair_approved_by: '1553794496234262641', repair_approval_fingerprint: getGuardianProposalFingerprint(review) },
     incident: { ...incident, id: 45 },
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async (_url, options) => {
@@ -426,7 +434,7 @@ test('automatic dispatch retry rechecks emergency stop after workflow reconcilia
     db: { query: async () => ({
       rows: [{ setting_value: { enabled: ++stateReads > 1 } }],
     }) },
-    job: { id: 12, result: review },
+    job: { id: 12, result: review, repair_approved_by: '1553794496234262641', repair_approval_fingerprint: getGuardianProposalFingerprint(review) },
     incident,
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async (_url, options) => {
@@ -450,7 +458,7 @@ test('automatic dispatch retry respects the emergency stop before reserving or c
   let reservations = 0;
   const result = await processPendingGuardianRepairDispatch({
     db: { query: async () => ({ rows: [{ setting_value: { enabled: true } }] }) },
-    job: { id: 9, result: review },
+    job: { id: 9, result: review, repair_approved_by: '1553794496234262641', repair_approval_fingerprint: getGuardianProposalFingerprint(review) },
     incident,
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async () => { requests += 1; throw new Error('must not request'); },
@@ -462,20 +470,16 @@ test('automatic dispatch retry respects the emergency stop before reserving or c
 });
 
 
-test('successful GitHub dispatch is not reported as persisted when Guardian state update returns false', async () => {
-  const result = await processGuardianIncident({
+test('successful approved GitHub dispatch is not reported as persisted when Guardian state update returns false', async () => {
+  const result = await processPendingGuardianRepairDispatch({
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
+    job: { id: 90, result: review, repair_approved_by: '1553794496234262641', repair_approval_fingerprint: getGuardianProposalFingerprint(review) },
     incident,
-    env: {
-      FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
-      FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
-    },
-    fetchImpl: async url => String(url).includes('/internal/guardian-review')
-      ? { ok: true, status: 200, json: async () => review }
+    env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
+    fetchImpl: async (_url, options) => options.method === 'GET'
+      ? { ok: true, status: 200, json: async () => ({ workflow_runs: [] }) }
       : { ok: true, status: 204, json: async () => ({}) },
     store: {
-      createGuardianReviewJob: async () => ({ id: 90, status: 'queued' }),
-      finishGuardianReviewJob: async () => true,
       reserveGuardianRepairDispatch: async () => ({ id: 90 }),
       finishGuardianRepairDispatch: async () => false,
     },
@@ -489,7 +493,7 @@ test('retry reports an existing workflow without claiming persistence when state
   let posts = 0;
   const result = await processPendingGuardianRepairDispatch({
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
-    job: { id: 91, result: review },
+    job: { id: 91, result: review, repair_approved_by: '1553794496234262641', repair_approval_fingerprint: getGuardianProposalFingerprint(review) },
     incident,
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async (_url, options) => {

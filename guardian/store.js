@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { createGuardianIncident } from './core.js';
 
 function boundedInteger(value, fallback, maximum) {
@@ -213,16 +214,58 @@ export async function getLatestGuardianJob(db, incidentId) {
   return result.rows?.[0] || null;
 }
 
-export async function reserveGuardianRepairDispatch(db, jobId) {
+export function getGuardianProposalFingerprint(result) {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('INVALID_GUARDIAN_PROPOSAL');
+  return createHash('sha256').update(JSON.stringify(result)).digest('hex');
+}
+
+export async function approveGuardianRepair(db, { jobId, actorId }) {
   const id = Number(jobId);
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error('INVALID_GUARDIAN_JOB_ID');
+  const current = await db.query(
+    `SELECT j.result,j.status,j.repair_dispatch_status,i.status AS incident_status
+     FROM owner_guardian_jobs j JOIN owner_guardian_incidents i ON i.id=j.incident_id
+     WHERE j.id=$1 LIMIT 1`, [id]
+  );
+  const row = current.rows?.[0];
+  if (!row || row.status !== 'completed' || row.incident_status !== 'awaiting_approval'
+      || row.result?.status !== 'proposal_only' || ['dispatching','dispatched'].includes(row.repair_dispatch_status)) return null;
+  const fingerprint = getGuardianProposalFingerprint(row.result);
+  const updated = await db.query(
+    `WITH changed AS (
+       UPDATE owner_guardian_jobs j SET
+         repair_approved_by=$2,repair_approved_at=NOW(),repair_approval_fingerprint=$3
+       FROM owner_guardian_incidents i
+       WHERE j.id=$1 AND i.id=j.incident_id AND i.status='awaiting_approval'
+         AND j.status='completed' AND j.result=$4::jsonb
+         AND j.result->>'status'='proposal_only'
+         AND j.repair_dispatch_status IN ('not_requested','failed')
+         AND NOT EXISTS (SELECT 1 FROM owner_settings s WHERE s.setting_key='guardian_emergency_stop' AND s.setting_value->>'enabled'='true')
+       RETURNING j.id,j.incident_id,j.result,j.repair_approved_by,j.repair_approved_at,j.repair_approval_fingerprint
+     ), logged AS (
+       INSERT INTO owner_audit_logs(actor_id,action,target,details)
+       SELECT $2,'guardian.repair.owner_approved',incident_id::text,
+         jsonb_build_object('jobId',id,'approvalFingerprint',repair_approval_fingerprint)
+       FROM changed RETURNING id
+     )
+     SELECT changed.* FROM changed JOIN logged ON TRUE`,
+    [id, String(actorId), fingerprint, JSON.stringify(row.result)]
+  );
+  return updated.rows?.[0] || null;
+}
+
+export async function reserveGuardianRepairDispatch(db, jobId, approvalFingerprint) {
+  const id = Number(jobId);
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error('INVALID_GUARDIAN_JOB_ID');
+  if (!/^[a-f0-9]{64}$/i.test(String(approvalFingerprint || ''))) throw new Error('GUARDIAN_REPAIR_APPROVAL_REQUIRED');
   const result = await db.query(
     `UPDATE owner_guardian_jobs AS j SET
        repair_dispatch_status='dispatching',
        repair_dispatch_at=NOW(),
        repair_dispatch_attempts=repair_dispatch_attempts+1
      FROM owner_guardian_incidents AS i
-     WHERE j.id=$1 AND i.id=j.incident_id AND i.status='awaiting_approval'
+     WHERE j.id=$1 AND j.repair_approval_fingerprint=$2::char(64) AND j.repair_approved_by IS NOT NULL
+       AND i.id=j.incident_id AND i.status='awaiting_approval'
        AND NOT EXISTS (
          SELECT 1 FROM owner_settings s
          WHERE s.setting_key='guardian_emergency_stop'
@@ -234,7 +277,7 @@ export async function reserveGuardianRepairDispatch(db, jobId) {
          OR (repair_dispatch_status='dispatching' AND repair_dispatch_at < NOW()-INTERVAL '15 minutes')
        )
      RETURNING j.*`,
-    [id]
+    [id, String(approvalFingerprint)]
   );
   return result.rows?.[0] || null;
 }
@@ -243,11 +286,13 @@ export async function listPendingGuardianRepairDispatches(db, limit = 5) {
   const safeLimit = boundedInteger(limit, 5, 25);
   const result = await db.query(
     `SELECT j.id,j.incident_id,j.result,j.repair_dispatch_status,j.repair_dispatch_at,
-            j.repair_dispatch_attempts,j.created_at AS job_created_at,
+            j.repair_dispatch_attempts,j.repair_approved_by,j.repair_approval_fingerprint,
+            j.created_at AS job_created_at,
             i.system,i.code,i.severity,i.title,i.summary,i.evidence
      FROM owner_guardian_jobs j
      JOIN owner_guardian_incidents i ON i.id=j.incident_id
      WHERE j.status='completed' AND i.status='awaiting_approval'
+       AND j.repair_approved_by IS NOT NULL AND j.repair_approval_fingerprint IS NOT NULL
        AND j.result->>'status'='proposal_only'
        AND j.repair_dispatch_attempts < 3
        AND (

@@ -3,8 +3,11 @@ import {
   finishGuardianReviewJob,
   reserveGuardianRepairDispatch,
   finishGuardianRepairDispatch,
+  getGuardianProposalFingerprint,
 } from './store.js';
 import { redactGuardianText } from './core.js';
+
+export { getGuardianProposalFingerprint };
 
 const REPAIR_BRANCH = 'guardian-isolated-repair-test';
 const REPAIR_WORKFLOW = 'frieren-ai-self-repair.yml';
@@ -66,7 +69,7 @@ export function buildGuardianRepairTask(incident = {}, review = {}) {
   return lines.join('\n').slice(0, 1000);
 }
 
-function isRepairableProposal(review) {
+export function isRepairableProposal(review) {
   return review?.status === 'proposal_only'
     && ['medium', 'high'].includes(review.confidence)
     && typeof review.proposedPatch === 'string'
@@ -191,63 +194,7 @@ export async function processGuardianIncident({
     return { status: 'reviewed_only', jobId: Number(job.id) };
   }
 
-  const githubToken = String(env.FRIEREN_GITHUB_TOKEN || '').trim();
-  if (githubToken.length < 32) {
-    return { status: 'reviewed_only', jobId: Number(job.id), reason: 'GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED' };
-  }
-
-  const reserved = await store.reserveGuardianRepairDispatch(db, job.id);
-  if (!reserved) return { status: 'dispatch_not_reserved', jobId: Number(job.id) };
-
-  const workflowUrl = 'https://github.com/' + REPOSITORY + '/actions/workflows/' + REPAIR_WORKFLOW;
-  try {
-    const latestEmergencyState = await db.query(
-      "SELECT setting_value FROM owner_settings WHERE setting_key='guardian_emergency_stop' LIMIT 1"
-    );
-    if (latestEmergencyState.rows?.[0]?.setting_value?.enabled === true) {
-      await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'failed' });
-      return { status: 'emergency_stop' };
-    }
-    const response = await fetchImpl(
-      'https://api.github.com/repos/' + REPOSITORY + '/actions/workflows/' + REPAIR_WORKFLOW + '/dispatches',
-      {
-        method: 'POST',
-        headers: {
-          Accept: 'application/vnd.github+json',
-          Authorization: 'Bearer ' + githubToken,
-          'X-GitHub-Api-Version': '2022-11-28',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ref: REPAIR_BRANCH,
-          inputs: {
-            task: buildGuardianRepairTask(incident, review),
-            mode: 'repair',
-            base_branch: REPAIR_BRANCH,
-            incident_id: String(incident.id),
-          },
-        }),
-        signal: AbortSignal.timeout(12_000),
-      }
-    );
-    await assertGithubWorkflowDispatched(response);
-    const persisted = await persistDispatchedState(store, db, job.id, workflowUrl);
-    if (!persisted) {
-      return { status: 'dispatch_state_unconfirmed', jobId: Number(job.id), workflowUrl };
-    }
-    await db.query(
-      'INSERT INTO owner_audit_logs(actor_id,action,target,details) VALUES($1,$2,$3,$4::jsonb)',
-      [actorId, 'guardian.repair.workflow_dispatched', String(incident.id), JSON.stringify({ jobId: job.id, workflow: REPAIR_WORKFLOW, baseBranch: REPAIR_BRANCH })]
-    ).catch(() => {});
-    return { status: 'dispatched', jobId: Number(job.id), workflowUrl };
-  } catch (error) {
-    const reason = safeErrorCode(error);
-    await store.finishGuardianRepairDispatch(db, {
-      jobId: job.id,
-      status: 'failed',
-    }).catch(() => {});
-    return { status: 'dispatch_failed', jobId: Number(job.id), reason };
-  }
+  return { status: 'proposal_ready', jobId: Number(job.id), approvalRequired: true };
 }
 
 
@@ -280,10 +227,14 @@ export async function processPendingGuardianRepairDispatch({
   }
   const review = job.result && typeof job.result === 'object' ? job.result : {};
   if (!isRepairableProposal(review)) return { status: 'retry_skipped', reason: 'SAVED_PROPOSAL_NOT_REPAIRABLE' };
+  const approvalFingerprint = getGuardianProposalFingerprint(review);
+  if (!job.repair_approved_by || job.repair_approval_fingerprint !== approvalFingerprint) {
+    return { status: 'approval_required', jobId: Number(job.id) };
+  }
   const githubToken = String(env.FRIEREN_GITHUB_TOKEN || '').trim();
   if (githubToken.length < 32) return { status: 'not_configured', reason: 'GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED' };
 
-  const reserved = await store.reserveGuardianRepairDispatch(db, job.id);
+  const reserved = await store.reserveGuardianRepairDispatch(db, job.id, approvalFingerprint);
   if (!reserved) return { status: 'dispatch_not_reserved', jobId: Number(job.id) };
   const workflowUrl = 'https://github.com/' + REPOSITORY + '/actions/workflows/' + REPAIR_WORKFLOW;
   const headers = {
@@ -376,9 +327,12 @@ export async function processPendingGuardianRepairDispatch({
     if (!persisted) {
       return { status: 'dispatch_state_unconfirmed', jobId: Number(job.id), workflowUrl };
     }
+    const auditAction = actorId === 'guardian-auto'
+      ? 'guardian.repair.workflow_redispatched'
+      : 'guardian.repair.workflow_dispatched';
     await db.query(
       'INSERT INTO owner_audit_logs(actor_id,action,target,details) VALUES($1,$2,$3,$4::jsonb)',
-      [actorId, 'guardian.repair.workflow_redispatched', String(incident.id), JSON.stringify({ jobId: job.id, workflow: REPAIR_WORKFLOW, baseBranch: REPAIR_BRANCH })]
+      [actorId, auditAction, String(incident.id), JSON.stringify({ jobId: job.id, workflow: REPAIR_WORKFLOW, baseBranch: REPAIR_BRANCH })]
     ).catch(() => {});
     return { status: 'dispatched', jobId: Number(job.id), workflowUrl };
   } catch (error) {

@@ -16,8 +16,8 @@ import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceA
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 import { listSupportTicketsForOwner, getSupportTicketForOwner, replySupportTicketFromOwner, updateSupportTicketStatusFromOwner } from './account-center.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
-import { classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks } from './guardian/automation.js';
-import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, reserveGuardianRepairDispatch, finishGuardianRepairDispatch, updateGuardianRepairStatus, getGuardianMonitorState, getLatestGuardianQualityReport } from './guardian/store.js';
+import { classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, processPendingGuardianRepairDispatch, isRepairableProposal } from './guardian/automation.js';
+import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, approveGuardianRepair, updateGuardianRepairStatus, getGuardianMonitorState, getLatestGuardianQualityReport } from './guardian/store.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -562,6 +562,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
     guardian_not_configured: 'Frieren AI köprüsü yapılandırılmamış. Gerekli gizli anahtar Owner Panel sunucu ortamında bulunamadı.',
     guardian_review_failed: 'Frieren AI incelemesi tamamlanamadı. Olay ve hata kaydı korundu.',
     guardian_pr_dispatched: 'Güvenli onarım workflow\'u başlatıldı. Testler geçerse ayrı bir PR açılacak; birleştirme ve dağıtım yapılmayacak.',
+    guardian_pr_dispatching: 'Onaylı onarım workflow isteği zaten işleniyor. Yeni bir istek gönderilmedi; sonucu yenileyebilirsin.',
     guardian_github_not_configured: 'GitHub Actions tetikleme anahtarı eksik. Poğaça Render ortamına FRIEREN_GITHUB_TOKEN eklenmeli.',
     guardian_pr_dispatch_failed: 'Onarım workflow\'u başlatılamadı. Job kaydı korundu; hata ayrıntıları sırları açığa çıkarmadan kaydedildi.',
     guardian_pr_status_failed: 'GitHub workflow veya PR durumu alınamadı. Token izinlerini ve Actions durumunu kontrol et.',
@@ -569,7 +570,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
   })[notice] || '';
   const incidentHtml = incidents.length ? incidents.map(incident => {
     const evidence = Array.isArray(incident.evidence) ? incident.evidence : [];
-    const canReview = !['in_review','resolved','ignored'].includes(incident.status);
+    const canReview = !['in_review','awaiting_approval','resolved','ignored'].includes(incident.status);
     return '<article class="rowitem"><div class="actions"><strong>#' + Number(incident.id) + ' · ' + escapeHtml(incident.title) + '</strong><span class="tag ' + (incident.severity === 'critical' || incident.severity === 'high' ? 'warn' : '') + '">' + escapeHtml(incident.severity) + '</span></div>'
       + '<div class="small">' + escapeHtml(incident.system) + ' · ' + escapeHtml(incident.code) + ' · ' + escapeHtml(incident.status) + ' · ' + Number(incident.occurrence_count) + ' tekrar · Son görülme ' + escapeHtml(new Date(incident.last_seen).toLocaleString('tr-TR')) + '</div>'
       + '<p>' + escapeHtml(incident.summary) + '</p>'
@@ -584,6 +585,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
     const affected = Array.isArray(result.affectedFiles) ? result.affectedFiles : [];
     const tests = Array.isArray(result.tests) ? result.tests : [];
     const risks = Array.isArray(result.risks) ? result.risks : [];
+    const repairApproved = Boolean(job.repair_approved_at && job.repair_approval_fingerprint);
     return '<article class="rowitem"><div class="actions"><strong>İş #' + Number(job.id) + ' · ' + escapeHtml(job.incident_title || 'Guardian incelemesi') + '</strong><span class="tag">' + escapeHtml(job.status) + '</span></div>'
       + '<div class="small">' + escapeHtml(job.agent) + ' · ' + escapeHtml(job.system) + ' · ' + escapeHtml(new Date(job.created_at).toLocaleString('tr-TR')) + '</div>'
       + (result.rootCause ? '<p><strong>Kök neden değerlendirmesi:</strong> ' + escapeHtml(result.rootCause) + '</p>' : '')
@@ -594,7 +596,9 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + (risks.length ? '<p class="small">Riskler: ' + risks.map(escapeHtml).join(' · ') + '</p>' : '')
       + (result.proposedPatch ? '<details><summary>Önerilen yama taslağı (uygulanmadı)</summary><pre>' + escapeHtml(result.proposedPatch) + '</pre></details>' : '')
       + (result.status === 'insufficient_context' ? '<p class="notice warn">Kaynak bağlamı yetersiz; tahminle düzeltme hazırlanmadı.</p>' : '')
+      + (result.status === 'proposal_only' && !isRepairableProposal(result) ? '<p class="notice warn">Güven, dosya veya test planı yeterli değil; bu öneri için onarım workflow\'u başlatılamaz.</p>' : '')
       + (result.status === 'proposal_only' && job.repair_dispatch_status === 'dispatched' ? '<p class="notice">Onarım workflow\'u başlatıldı. <a href="https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml" target="_blank" rel="noopener noreferrer">GitHub Actions sonuçlarını aç</a></p>' : '')
+      + (result.status === 'proposal_only' && repairApproved && !['dispatched','dispatching'].includes(job.repair_dispatch_status || '') ? '<p class="notice">Owner onayı kayıtlı. Guardian yalnızca bu onaylı öneri için izole test workflow\'unu yeniden deneyecek.</p>' : '')
       + (result.status === 'proposal_only' && job.repair_dispatch_status === 'dispatching' ? '<p class="notice warn">Onarım workflow başlatma isteği gönderiliyor veya sonucu bekleniyor. Tekrar tetiklemek yerine önce GitHub Actions geçmişini kontrol et.</p>' : '')
       + (job.repair_run_status ? '<p class="small">Son kaydedilen workflow (geçmiş kanıt): ' + escapeHtml(job.repair_run_status) + (job.repair_run_conclusion ? ' · Sonuç: ' + escapeHtml(job.repair_run_conclusion) : '') + '</p>' : '')
       + (job.repair_checks_status && job.repair_checks_status !== 'unknown' ? '<p class="small">PR kontrolleri: ' + escapeHtml(job.repair_checks_status) + '</p>' : '')
@@ -602,7 +606,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + (job.repair_pr_url ? '<p><a href="' + escapeHtml(job.repair_pr_url) + '" target="_blank" rel="noopener noreferrer">Son kaydedilen onarım PR #' + Number(job.repair_pr_number || 0) + ' kanıtını aç</a> · ' + escapeHtml(job.repair_pr_state || '') + '</p>' : '')
       + (job.repair_dispatch_status === 'dispatched' && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-refresh-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> GitHub sonucunu sorgulamayı onaylıyorum</label><button class="btn secondary">Sonucu yenile</button></form>' : '')
 
-      + (result.status === 'proposal_only' && !emergencyStop && !['dispatched','dispatching'].includes(job.repair_dispatch_status || 'not_requested') && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-create-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu analizden testli bir düzeltme PR\'si hazırlanmasını onaylıyorum</label><button class="btn">Düzeltme PR\'si hazırla</button></form>' : '')
+      + (result.status === 'proposal_only' && isRepairableProposal(result) && !repairApproved && !emergencyStop && !['dispatched','dispatching'].includes(job.repair_dispatch_status || 'not_requested') && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-create-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu öneri için izole düzeltme ve test sürecini başlatmayı onaylıyorum</label><button class="btn">Onayla ve izole testi başlat</button></form>' : '')
       + (result.status === 'proposal_only' && !process.env.FRIEREN_GITHUB_TOKEN && job.repair_dispatch_status !== 'dispatched' ? '<p class="notice warn">PR oluşturma düğmesi için FRIEREN_GITHUB_TOKEN yapılandırılmalı.</p>' : '')
       + '</article>';
   }).join('') : '<p class="muted">Henüz Frieren AI inceleme görevi yok.</p>';
@@ -1029,55 +1033,36 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         const incident = await getGuardianIncident(db, form.get('incidentId'));
         if (!incident) throw new Error('GUARDIAN_INCIDENT_NOT_FOUND');
         const job = await getLatestGuardianJob(db, incident.id);
-        if (!job || job.status !== 'completed' || job.result?.status !== 'proposal_only') {
+        if (!job || job.status !== 'completed' || !isRepairableProposal(job.result)) {
           throw new Error('GUARDIAN_REPAIR_REVIEW_REQUIRED');
         }
         if (job.repair_dispatch_status === 'dispatched') {
           redirect(res, '/owner/guardian?notice=guardian_pr_dispatched');
           return true;
         }
-        const reserved = await reserveGuardianRepairDispatch(db, job.id);
-        if (!reserved) throw new Error('GUARDIAN_REPAIR_ALREADY_DISPATCHED_OR_RUNNING');
-        const review = job.result || {};
-        const task = [
-          'Guardian incident #' + incident.id + ' · ' + incident.system + ' · ' + incident.code,
-          'Başlık: ' + incident.title,
-          'Olay: ' + incident.summary,
-          'Frieren AI kök neden: ' + String(review.rootCause || '').slice(0, 300),
-          'Önerilen çözüm: ' + String(review.suggestedFix || '').slice(0, 300),
-          'İlgili dosyalar: ' + (Array.isArray(review.affectedFiles) ? review.affectedFiles.slice(0, 5).join(', ') : ''),
-          'Test planı: ' + (Array.isArray(review.tests) ? review.tests.slice(0, 4).join('; ') : ''),
-          'Riskler: ' + (Array.isArray(review.risks) ? review.risks.slice(0, 3).join('; ') : ''),
-          'Frieren AI yama önerisi: ' + String(review.proposedPatch || '').slice(0, 350),
-          'Öneriyi körlemesine uygulama; mevcut kodu tekrar incele, ilgili testleri kontrol et, en fazla 4 güvenli JavaScript dosyasında minimal patch hazırla.',
-        ].join('\n').slice(0, 1200);
-        try {
-          const workflowUrl = 'https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml';
-          await assertGuardianAutomationEnabled(db);
-          const response = await fetch('https://api.github.com/repos/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml/dispatches', {
-            method: 'POST',
-            headers: {
-              Accept: 'application/vnd.github+json',
-              Authorization: 'Bearer ' + token,
-              'X-GitHub-Api-Version': '2022-11-28',
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              ref: 'main',
-              inputs: { task, base_branch: 'main', incident_id: String(incident.id) },
-            }),
-            signal: AbortSignal.timeout(12_000),
-          });
-          if (response.status !== 204) throw new Error('GUARDIAN_GITHUB_DISPATCH_HTTP_' + response.status);
-          await finishGuardianRepairDispatch(db, { jobId: job.id, status: 'dispatched', workflowUrl });
-          await auditOwnerAction(db, OWNER_ID, 'guardian.repair.workflow_dispatched', String(incident.id), {
-            jobId: job.id, workflow: 'frieren-ai-self-repair.yml', baseBranch: 'main',
-          }).catch(error => console.error('Guardian dispatch audit failed:', error?.message || error));
-          redirect(res, '/owner/guardian?notice=guardian_pr_dispatched');
-        } catch (error) {
-          await finishGuardianRepairDispatch(db, { jobId: job.id, status: 'failed' }).catch(() => {});
-          throw error;
+        await approveGuardianRepair(db, { jobId: job.id, actorId: OWNER_ID });
+        const approvedJob = await getLatestGuardianJob(db, incident.id);
+        if (!approvedJob?.repair_approved_by || !approvedJob?.repair_approval_fingerprint) {
+          throw new Error('GUARDIAN_REPAIR_APPROVAL_NOT_RECORDED');
         }
+        if (approvedJob.repair_dispatch_status === 'dispatching') {
+          redirect(res, '/owner/guardian?notice=guardian_pr_dispatching');
+          return true;
+        }
+        const dispatch = await processPendingGuardianRepairDispatch({
+          db,
+          job: approvedJob,
+          incident,
+          env: process.env,
+          fetchImpl: fetch,
+          actorId: OWNER_ID,
+        });
+        if (!['dispatched','already_dispatched'].includes(dispatch.status)) {
+          const prefix = dispatch.status === 'reconciliation_unavailable' || dispatch.status === 'reconciliation_incomplete'
+            ? 'GUARDIAN_GITHUB_READ_' : 'GUARDIAN_GITHUB_';
+          throw new Error(prefix + String(dispatch.status || 'dispatch_failed').toUpperCase());
+        }
+        redirect(res, '/owner/guardian?notice=guardian_pr_dispatched');
         return true;
       }
       if (action === 'guardian-refresh-pr' && form.get('confirm') === 'yes') {
@@ -1093,7 +1078,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
           'X-GitHub-Api-Version': '2022-11-28',
         };
         const apiBase = 'https://api.github.com/repos/soire07/pogaca-frieren-';
-        const runsResponse = await fetch(apiBase + '/actions/workflows/frieren-ai-self-repair.yml/runs?branch=feat%2Fguardian-autonomous-repair-v2&event=workflow_dispatch&per_page=30', {
+        const runsResponse = await fetch(apiBase + '/actions/workflows/frieren-ai-self-repair.yml/runs?branch=guardian-isolated-repair-test&event=workflow_dispatch&per_page=30', {
           headers, signal: AbortSignal.timeout(10_000),
         });
         if (!runsResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + runsResponse.status);
@@ -1111,7 +1096,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         const query = new URLSearchParams({
           state: 'all',
           head: 'soire07:' + branchName,
-          base: 'main',
+          base: 'guardian-isolated-repair-test',
         });
         const prResponse = await fetch(apiBase + '/pulls?' + query.toString(), {
           headers, signal: AbortSignal.timeout(10_000),
