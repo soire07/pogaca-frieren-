@@ -835,7 +835,7 @@ test('Google Search Console verification file is publicly served at the root pat
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/google1941de4c3bd5e8ea.html', headers: {} }, response), true);
   assert.equal(response.status, 200);
   assert.equal(response.headers['Content-Type'], 'text/html; charset=utf-8');
-  assert.equal(response.body, 'google-site-verification: google1941de4c3bd5e8ea.html\\n');
+  assert.equal(response.body, 'google-site-verification: google1941de4c3bd5e8ea.html\n');
 });
 
 test('anonymous search crawlers can read robots.txt and the XML sitemap', async () => {
