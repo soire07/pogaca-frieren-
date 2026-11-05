@@ -115,6 +115,9 @@ export async function initOwnerAdminSchema(db) {
       finished_at TIMESTAMPTZ,
       repair_dispatch_status VARCHAR(16) NOT NULL DEFAULT 'not_requested' CHECK (repair_dispatch_status IN ('not_requested','dispatching','dispatched','failed')),
       repair_dispatch_at TIMESTAMPTZ,
+      repair_approved_by TEXT,
+      repair_approved_at TIMESTAMPTZ,
+      repair_approval_fingerprint CHAR(64),
       repair_workflow_url TEXT,
       repair_run_id BIGINT,
       repair_run_url TEXT,
@@ -126,6 +129,9 @@ export async function initOwnerAdminSchema(db) {
       repair_checks_status VARCHAR(16) NOT NULL DEFAULT 'unknown'
     );
     ALTER TABLE owner_guardian_jobs ADD COLUMN IF NOT EXISTS repair_dispatch_attempts INTEGER NOT NULL DEFAULT 0 CHECK (repair_dispatch_attempts >= 0 AND repair_dispatch_attempts <= 3);
+    ALTER TABLE owner_guardian_jobs ADD COLUMN IF NOT EXISTS repair_approved_by TEXT;
+    ALTER TABLE owner_guardian_jobs ADD COLUMN IF NOT EXISTS repair_approved_at TIMESTAMPTZ;
+    ALTER TABLE owner_guardian_jobs ADD COLUMN IF NOT EXISTS repair_approval_fingerprint CHAR(64);
     CREATE INDEX IF NOT EXISTS idx_owner_guardian_jobs_recent ON owner_guardian_jobs(created_at DESC);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_owner_guardian_jobs_active
       ON owner_guardian_jobs(incident_id,agent) WHERE status IN ('queued','running');
