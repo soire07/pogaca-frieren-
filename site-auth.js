@@ -324,33 +324,13 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
   const url=new URL(req.url,'http://localhost'), path=url.pathname;
   const routes=['/login','/register','/forgot-password','/reset-password','/verify-email','/resend-verification','/logout'];
   if(!routes.includes(path))return false;
-  if(req.method==='POST'&&!isSameOriginRequest(req,baseUrl())){
-    const headers = req.headers || {};
-    const safeOrigin = value => {
-      try { return new URL(String(value || '')).origin.slice(0, 160); } catch { return value ? '[invalid]' : null; }
-    };
-    const safeHeader = value => String(value || '').replace(/[\\r\\n\\t]/g, '').slice(0, 160) || null;
-    // Temporary, privacy-safe diagnostics: never record cookies, tokens, body,
-    // credentials, client IPs, or arbitrary request headers.
-    console.warn('[SITE_AUTH_ORIGIN_REJECTED]', JSON.stringify({
-      method: req.method,
-      path,
-      origin: safeOrigin(headers.origin),
-      secFetchSite: safeHeader(headers['sec-fetch-site']),
-      host: safeHeader(headers.host),
-      forwardedHost: safeHeader(headers['x-forwarded-host']),
-      forwardedProto: safeHeader(headers['x-forwarded-proto'])
-    }));
-    send(res,403,page('İstek reddedildi','<h1>İstek kaynağı doğrulanamadı</h1>'));
-    return true;
-  }
   if(path==='/logout'&&req.method==='GET'){
     res.writeHead(302,{Location:'/login?status=logged_out','Cache-Control':'no-store','Set-Cookie':COOKIE+'=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'});res.end();return true;
   }
   if(!db||!sessionSecret||sessionSecret.length<32){send(res,503,page('Kurulum gerekli','<h1>Hesap sistemi geçici olarak kullanılamıyor</h1>'));return true;}
   try {
-    await schema(db);
     if(req.method==='GET'){
+      await schema(db);
       if(path==='/verify-email'){
         const t=String(url.searchParams.get('token')||'');
         const result=/^[a-f0-9]{64}$/.test(t)?await db.query("UPDATE frieren_site_accounts SET email_verified_at=NOW(),verification_token_hash=NULL,verification_expires_at=NULL,updated_at=NOW() WHERE verification_token_hash=$1 AND verification_expires_at>NOW() RETURNING id",[hash(t)]):{rowCount:0};
@@ -371,6 +351,41 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
       const mode=path==='/register'?'register':path==='/forgot-password'?'forgot':path==='/resend-verification'?'resend':'login';
       send(res,403,authPage(mode,sessionSecret,'csrf'));return true;
     }
+
+    // The Vercel-to-Render proxy has been observed corrupting Origin and
+    // Fetch Metadata headers. A valid, time-bounded signed CSRF token is
+    // required before this fallback is considered. Explicit cross-site
+    // signals and syntactically valid untrusted origins remain blocked.
+    const headers = req.headers || {};
+    const fetchSite = String(headers['sec-fetch-site'] || '').trim().toLowerCase();
+    const originHeader = String(headers.origin || '').trim();
+    const refererHeader = String(headers.referer || '').trim();
+    let explicitlyUntrusted = fetchSite === 'cross-site';
+    if (!explicitlyUntrusted && originHeader) {
+      try {
+        explicitlyUntrusted = !isSameOriginRequest({ headers: { origin: originHeader } }, baseUrl());
+      } catch { /* malformed proxy metadata is handled by the signed-CSRF fallback */ }
+    } else if (!explicitlyUntrusted && refererHeader) {
+      try {
+        const refererOrigin = new URL(refererHeader).origin;
+        explicitlyUntrusted = !isSameOriginRequest({ headers: { origin: refererOrigin } }, baseUrl());
+      } catch { /* malformed proxy metadata is handled by the signed-CSRF fallback */ }
+    }
+    if (explicitlyUntrusted) {
+      const safeOrigin = value => {
+        try { return new URL(String(value || '')).origin.slice(0, 160); } catch { return value ? '[invalid]' : null; }
+      };
+      const safeHeader = value => String(value || '').replace(/[\\r\\n\\t]/g, '').slice(0, 160) || null;
+      console.warn('[SITE_AUTH_ORIGIN_REJECTED]', JSON.stringify({
+        method: req.method, path, origin: safeOrigin(headers.origin),
+        secFetchSite: safeHeader(headers['sec-fetch-site']),
+        host: safeHeader(headers.host), forwardedHost: safeHeader(headers['x-forwarded-host']),
+        forwardedProto: safeHeader(headers['x-forwarded-proto'])
+      }));
+      send(res,403,page('İstek reddedildi','<h1>İstek kaynağı doğrulanamadı</h1>'));
+      return true;
+    }
+    await schema(db);
     const addr=ip(req);
     if(path==='/register'){
       if(limited('reg:'+addr,5)){send(res,429,authPage('register',sessionSecret,'rate_limited'));return true;}
