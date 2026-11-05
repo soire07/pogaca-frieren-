@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { getRenderServiceMetrics, renderMetricBars } from './owner-metrics.js';
+import { getRenderServiceMetrics, renderMetricBars, normalizeRenderMetricRange, RENDER_METRIC_RANGES } from './owner-metrics.js';
 import {
   auditOwnerAction, getOwnerOverview, getMaintenanceState, listPendingApprovals,
   reviewApproval, listUserMemories, deleteUserMemory, setMaintenanceState,
@@ -270,18 +270,20 @@ function redirect(res, location = '/owner') {
   res.end();
 }
 
-function renderRenderMetrics(metrics, overview) {
+export function renderRenderMetrics(metrics, overview, metricRange = '1h') {
+  const rangeOptions = Object.entries(RENDER_METRIC_RANGES).map(([value, range]) => '<option value="' + value + '"' + (value === metricRange ? ' selected' : '') + '>' + escapeHtml(range.label) + '</option>').join('');
+  const rangeForm = '<form method="get" action="/owner" class="metric-range-form"><label for="owner-metric-range">Grafik zaman aralığı</label><select id="owner-metric-range" name="metricRange">' + rangeOptions + '</select><button class="btn secondary" type="submit">Aralığı uygula</button></form>';
   if (metrics?.status === 'available') {
-    return '<section class="panel metrics-panel"><div class="metric-heading"><div><h2>Render kaynak kullanımı</h2><p class="muted">Gerçek Render servis metrikleri · Son 60 dakika</p></div><span class="tag good">RENDER API BAĞLI</span></div>'
+    return '<section class="panel metrics-panel"><div class="metric-heading"><div><h2>Render kaynak kullanımı</h2><p class="muted">Gerçek Render servis metrikleri · ' + escapeHtml(metrics.rangeLabel || 'Son 1 saat') + '</p></div><span class="tag good">RENDER API BAĞLI</span></div>' + rangeForm
       + '<div class="metric-grid"><div class="stat"><small>CPU kullanımı</small><strong>' + metrics.cpuPercent.toFixed(1) + '%</strong><div class="small">' + metrics.cpuUsed.toFixed(3) + ' / ' + metrics.cpuCapacity.toFixed(2) + ' CPU</div></div>'
       + '<div class="stat"><small>RAM kullanımı</small><strong>' + metrics.memoryPercent.toFixed(1) + '%</strong><div class="small">' + formatBytes(metrics.memoryUsedBytes) + ' / ' + formatBytes(metrics.memoryLimitBytes) + '</div></div></div>'
       + '<div class="columns metric-charts"><div><h3>CPU · Son 24 ölçüm</h3>' + renderMetricBars(metrics.points, 'cpuPercent', 'Render CPU kullanımı yüzdesi') + '</div><div><h3>RAM · Son 24 ölçüm</h3>' + renderMetricBars(metrics.points, 'memoryPercent', 'Render RAM kullanımı yüzdesi') + '</div></div>'
-      + '<p class="small">Son ölçüm: ' + escapeHtml(new Date(metrics.updatedAt).toLocaleString('tr-TR')) + ' · Ölçüm aralığı 60 saniye</p></section>';
+      + '<p class="small">Son ölçüm: ' + escapeHtml(new Date(metrics.updatedAt).toLocaleString('tr-TR')) + ' · Örnekleme: ' + Math.round(Number(metrics.resolutionSeconds || 60) / 60) + ' dakika · En fazla 36 grafik noktası</p></section>';
   }
   const statusText = metrics?.status === 'not_configured'
     ? 'Render API anahtarı henüz tanımlanmadı. Render CPU/RAM grafikleri için RENDER_API_KEY ortam değişkeni eklenmeli.'
     : (metrics?.message || 'Render metrikleri şu anda alınamıyor.');
-  return '<section class="panel metrics-panel"><div class="metric-heading"><div><h2>Render kaynak kullanımı</h2><p class="muted">Render host metrikleri henüz bağlı değil.</p></div><span class="tag warn">YEREL ÖLÇÜM</span></div>'
+  return '<section class="panel metrics-panel"><div class="metric-heading"><div><h2>Render kaynak kullanımı</h2><p class="muted">Render host metrikleri henüz bağlı değil.</p></div><span class="tag warn">YEREL ÖLÇÜM</span></div>' + rangeForm
     + '<div class="metric-grid"><div class="stat"><small>Node.js RSS</small><strong>' + formatBytes(overview.rssBytes) + '</strong><div class="small">Bu süreç için ayrılan fiziksel bellek</div></div>'
     + '<div class="stat"><small>Node.js heap</small><strong>' + formatBytes(overview.heapUsedBytes) + '</strong><div class="small">JavaScript heap kullanımı</div></div></div>'
     + '<div class="notice warn">' + escapeHtml(statusText) + '</div><p class="small">Yerel Node.js bellek ölçümleri Render servisinin toplam RAM kullanımının yerine geçmez. CPU yüzdesi bu durumda gösterilmez.</p></section>';
@@ -391,7 +393,7 @@ export async function getFrierenAIReadiness({
   } catch { return null; }
 }
 
-function renderDashboard({ session, overview, client, approvals, memories, memoryUser, memoryGuild, memoryKey, notice, activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild }) {
+function renderDashboard({ session, overview, client, approvals, memories, memoryUser, memoryGuild, memoryKey, notice, activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild, metricRange = '1h' }) {
   const featureLabels = { commands: 'Tüm komutlar', rpg: 'RPG sistemi', character: 'Karakter sistemi', magic: 'Büyü ve yetenekler', equipment: 'Ekipman ve eşyalar', economy: 'Ekonomi ve mağaza', quests: 'Görevler', dungeons: 'Zindanlar', bosses: 'Boss sistemi', trading: 'Takas', messageXp: 'Mesaj XP kazanımı', aiChat: 'Frieren sohbet etkileşimi' };
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
@@ -488,7 +490,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
       <section class="panel" id="partners"><h2>Partnerlik yönetimi</h2><p class="muted">Partner sunucularını kaydet, davet bağlantılarını güncelle ve kayıtları denetim altında tut.</p><form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="partner-save"><label>Partner sunucu adı</label><input name="partnerName" maxlength="80" required><label>Discord sunucu ID</label><input name="partnerGuildId" inputmode="numeric" pattern="[0-9]{17,20}" required><label>Discord davet bağlantısı</label><input name="partnerInvite" type="url" placeholder="https://discord.gg/..." required><button class="btn">Partner ekle / güncelle</button></form>${partnerHtml}</section>
       <section class="panel" id="behavior"><h2>Bot davranışları ve komutlar</h2><p class="muted">Ayarlar seçilen sunucuyla sınırlıdır. Komut kapatma gerçek etkileşim yönlendirmesinde uygulanır.</p><div class="columns">${featureManagementHtml}</div></section>
       <section class="panel" id="rpg"><h2>RPG sistem istatistikleri</h2>${rpgHtml}</section>
-      ${renderRenderMetrics(renderMetrics, overview)}
+      ${renderRenderMetrics(renderMetrics, overview, metricRange)}
       <div class="actions"><a class="btn secondary" href="/owner">Durumu yenile</a><span class="small">Canlı süreç ölçümleri · Son sayfa yüklemesi</span></div>
     </section>
     <div class="columns">
@@ -1390,9 +1392,10 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         db, [...(client?.guilds?.cache?.keys?.() || [])]
       ), 10_000)
     ]);
+    const metricRange = normalizeRenderMetricRange(url.searchParams.get('metricRange'));
     const renderMetrics = getStaleOwnerData(
-      'render-metrics:pogaca',
-      () => getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.pogaca.id }),
+      'render-metrics:pogaca:' + metricRange,
+      () => getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.pogaca.id, range: metricRange }),
       { status: 'loading', source: 'render', points: [], message: 'Render metrikleri arka planda yenileniyor.' }
     );
     const renderServices = getStaleOwnerData(
@@ -1411,9 +1414,9 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
     const frierenService = renderServices?.services?.frieren_ai;
     const aiReadiness = frierenService?.healthPayload || null;
     const aiRenderMetrics = getStaleOwnerData(
-      'render-metrics:frieren-ai',
+      'render-metrics:frieren-ai:' + metricRange,
       () => frierenService?.status === 'running' && frierenService?.apiConfigured && !frierenService?.apiError
-        ? getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.frieren_ai.id, apiKey: process.env.RENDER_FRIEREN_AI_API_KEY })
+        ? getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.frieren_ai.id, apiKey: process.env.RENDER_FRIEREN_AI_API_KEY, range: metricRange })
         : Promise.resolve({ status: 'unavailable', source: 'render', points: [], message: frierenService?.suspended ? 'Frieren AI askıda; metrik sorgusu yapılmadı.' : 'Frieren AI servis durumu doğrulandıktan sonra metrikler alınacak.' }),
       { status: 'loading', source: 'render', points: [], message: 'Frieren AI metrikleri arka planda yenileniyor.' }
     );
@@ -1424,7 +1427,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
       ? await searchOwnerMemories(db, { userId: memoryUser, guildId: memoryGuild, key: memoryKey, limit: 30 }) : [];
     send(res, 200, renderDashboard({
       session, overview, client, approvals, memories, memoryUser,
-      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild
+      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild, metricRange
     }));
   } catch (error) {
     console.error('Owner dashboard load failed:', error?.message || error);

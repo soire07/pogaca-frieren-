@@ -325,13 +325,14 @@ function basePage(title, body) {
     '</style></head><body><nav class="guild-topnav"><a href="/">✧ FRIEREN</a><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/lonca">Maceracı Loncası</a><a href="/frieren-ai">Frieren AI</a></nav>' + body + '<footer class="guild-footer">© Frieren Platform · Maceracı Loncası</footer></body></html>';
 }
 
-function renderConnectPage(user, error = '') {
-  const notice = error ? '<div class="guild-error">' + esc(error) + '</div>' : '';
+function renderConnectPage(user, error = '', disconnected = false) {
+  const notice = error ? '<div class="guild-error">' + esc(error) + '</div>'
+    : disconnected ? '<div class="guild-note" role="status">Discord bağlantısı kesildi. Site hesabın ve RPG karakter bağlantıların korunuyor.</div>' : '';
   return basePage('Maceracı Loncası', '<main class="guild-wrap"><section class="guild-hero"><div class="guild-eyebrow">✧ FRIEREN · MACERACI LONCASI ✧</div><h1>Sunucunu loncaya bağla.</h1><p>Merhaba ' + esc(user.username) + '. Discord hesabını güvenli şekilde bağla; yönetme yetkin olan sunucuları seç ve Poğaça Frieren özelliklerini buradan düzenle.</p>' + notice +
     '<div class="guild-actions"><a class="guild-btn" href="/discord/connect">Discord hesabını bağla</a><a class="guild-btn secondary" href="/pogaca">Poğaça Frieren’i keşfet</a></div><div class="guild-note">Yalnızca Discord üzerinde <strong>Sunucuyu Yönet</strong> veya <strong>Yönetici</strong> iznine sahip olduğun sunucular gösterilir. Discord erişim anahtarları şifrelenmiş olarak saklanır; bot tokenı veya sunucu yönetim yetkisi istenmez.</div></section></main>');
 }
 
-function renderGuildList(user, link, guilds) {
+function renderGuildList(user, link, guilds, csrf) {
   const cards = guilds.map(guild => {
     const icon = guild.icon
       ? '<img class="guild-icon" src="https://cdn.discordapp.com/icons/' + esc(guild.id) + '/' + esc(guild.icon) + '.png?size=96" alt="">'
@@ -341,7 +342,7 @@ function renderGuildList(user, link, guilds) {
       : '<a class="guild-btn secondary" href="/pogaca">Önce Poğaça Frieren’i ekle</a>';
     return '<article class="guild-card">' + icon + '<h3>' + esc(guild.name) + '</h3><p class="guild-status">' + (guild.botPresent ? 'Poğaça Frieren bağlı' : 'Poğaça Frieren henüz bu sunucuda değil') + '</p>' + action + '</article>';
   }).join('');
-  return basePage('Sunucu seçimi', '<main class="guild-wrap"><section class="guild-hero"><div class="guild-eyebrow">✧ LONCA KAPISI AÇILDI ✧</div><h1>Hangi sunucuyu yönetiyoruz?</h1><p>Discord hesabı: <strong>' + esc(link.username) + '</strong>. Sadece yönetme iznine sahip olduğun sunucular listelenir.</p><div class="guild-actions"><a class="guild-btn secondary" href="/discord/connect">Discord hesabını yeniden bağla</a></div></section><section class="guild-grid">' + (cards || '<div class="guild-note">Yönetebildiğin bir sunucu bulunamadı. Discord sunucu izinlerini kontrol et.</div>') + '</section></main>');
+  return basePage('Sunucu seçimi', '<main class="guild-wrap"><section class="guild-hero"><div class="guild-eyebrow">✧ LONCA KAPISI AÇILDI ✧</div><h1>Hangi sunucuyu yönetiyoruz?</h1><p>Discord hesabı: <strong>' + esc(link.username) + '</strong>. Sadece yönetme iznine sahip olduğun sunucular listelenir.</p><div class="guild-actions"><a class="guild-btn secondary" href="/discord/connect">Discord hesabını yeniden bağla</a><form method="post" action="/discord/disconnect"><input type="hidden" name="csrf" value="' + esc(csrf) + '"><button class="guild-save guild-disconnect" type="submit">Discord bağlantısını kes</button></form></div><p class="guild-copy">Bu işlem yalnızca Lonca panelinin Discord OAuth anahtarlarını kaldırır; site hesabını veya RPG karakter bağlantılarını silmez.</p></section><section class="guild-grid">' + (cards || '<div class="guild-note">Yönetebildiğin bir sunucu bulunamadı. Discord sunucu izinlerini kontrol et.</div>') + '</section></main>');
 }
 
 function renderGuildSettings(user, guild, settings, csrf, saved = false) {
@@ -394,7 +395,7 @@ export async function handleGuildDashboardRequest(req, res, { client, db, env = 
   const url = new URL(req.url, 'http://localhost');
   const path = url.pathname;
   const handledPath = path === '/lonca' || path.startsWith('/lonca/') ||
-    path === '/discord/connect' || path === '/discord/callback' || path === '/api/lonca/features';
+    path === '/discord/connect' || path === '/discord/callback' || path === '/discord/disconnect' || path === '/api/lonca/features';
   if (!handledPath) return false;
   const secret = String(env.ADMIN_SESSION_SECRET || '');
   const user = getSession(req, secret);
@@ -436,6 +437,24 @@ export async function handleGuildDashboardRequest(req, res, { client, db, env = 
       return true;
     }
 
+    if (path === '/discord/disconnect' && req.method === 'POST') {
+      if (!String(req.headers['content-type'] || '').toLowerCase().includes('application/x-www-form-urlencoded')) {
+        send(res, 415, basePage('Geçersiz form', '<main class="guild-wrap"><h1>Form biçimi desteklenmiyor.</h1></main>'));
+        return true;
+      }
+      const form = await readForm(req);
+      if (!verifySiteCsrfToken(form.csrf, secret)) {
+        send(res, 403, basePage('Güvenlik doğrulaması', '<main class="guild-wrap"><h1>Formun süresi doldu. Sayfayı yenile.</h1></main>'));
+        return true;
+      }
+      await db.query(
+        'WITH removed_states AS (DELETE FROM frieren_site_oauth_states WHERE account_id=$1 RETURNING account_id) DELETE FROM frieren_site_discord_links WHERE account_id=$1 RETURNING discord_user_id',
+        [user.id]
+      );
+      redirect(res, '/lonca?disconnected=1');
+      return true;
+    }
+
     if (path === '/discord/callback' && req.method === 'GET') {
       const config = oauthConfig(env);
       const state = url.searchParams.get('state');
@@ -457,14 +476,14 @@ export async function handleGuildDashboardRequest(req, res, { client, db, env = 
         redirect(res, '/lonca');
         return true;
       }
-      send(res, 200, renderConnectPage(user));
+      send(res, 200, renderConnectPage(user, '', url.searchParams.get('disconnected') === '1'));
       return true;
     }
     const botGuildIds = new Set([...(client?.guilds?.cache?.keys?.() || [])].map(String));
     const manageableGuilds = filterManageableGuilds(linked.guilds, botGuildIds);
 
     if (req.method === 'GET' && path === '/lonca') {
-      send(res, 200, renderGuildList(user, linked, manageableGuilds));
+      send(res, 200, renderGuildList(user, linked, manageableGuilds, createSiteCsrfToken(secret)));
       return true;
     }
 

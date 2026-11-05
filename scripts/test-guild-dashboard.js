@@ -165,6 +165,64 @@ test('guild dashboard lists only manageable servers where the bot is installed',
   assert.match(res.body, /Lonca panelini aç/);
 });
 
+test('guild dashboard exposes a CSRF-protected Discord disconnect control', async () => {
+  process.env.ADMIN_SESSION_SECRET = secret;
+  const res = response();
+  await handleGuildDashboardRequest(siteRequest('/lonca'), res, {
+    db: linkedDb(), env, client: discordClient, fetchImpl: discordFetch
+  });
+  assert.equal(res.status, 200);
+  assert.match(res.body, /action="\/discord\/disconnect"/);
+  assert.match(res.body, /Discord bağlantısını kes/);
+  assert.match(res.body, /site hesabını veya RPG karakter bağlantılarını silmez/i);
+});
+
+test('guild dashboard rejects Discord disconnect without valid CSRF before deleting OAuth credentials', async () => {
+  process.env.ADMIN_SESSION_SECRET = secret;
+  let deleteCalls = 0;
+  const db = { async query(sql) {
+    if (sql.includes('DELETE FROM frieren_site_discord_links')) deleteCalls++;
+    return { rows: [], rowCount: 0 };
+  }};
+  const body = new URLSearchParams({ csrf: 'invalid' }).toString();
+  const res = response();
+  await handleGuildDashboardRequest(siteRequest('/discord/disconnect', 'POST', body), res, { db, env });
+  assert.equal(res.status, 403);
+  assert.equal(deleteCalls, 0);
+});
+
+test('guild dashboard disconnect removes only the account OAuth link and returns to the connect screen', async () => {
+  process.env.ADMIN_SESSION_SECRET = secret;
+  const calls = [];
+  const db = { async query(sql, params = []) {
+    calls.push({ sql, params });
+    if (sql.includes('DELETE FROM frieren_site_discord_links')) {
+      return { rows: [{ discord_user_id: '111111111111111111' }], rowCount: 1 };
+    }
+    return { rows: [], rowCount: 0 };
+  }};
+  const csrf = createSiteCsrfToken(secret);
+  const body = new URLSearchParams({ csrf }).toString();
+  const res = response();
+  await handleGuildDashboardRequest(siteRequest('/discord/disconnect', 'POST', body), res, { db, env });
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.Location, '/lonca?disconnected=1');
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].sql, /DELETE FROM frieren_site_discord_links/);
+  assert.equal(calls[0].sql.includes('DELETE FROM site_discord_links'), false);
+  assert.deepEqual(calls[0].params, [owner]);
+});
+
+test('guild dashboard confirms Discord OAuth disconnection without deleting the site account', async () => {
+  process.env.ADMIN_SESSION_SECRET = secret;
+  const res = response();
+  const db = { async query() { return { rows: [], rowCount: 0 }; } };
+  await handleGuildDashboardRequest(siteRequest('/lonca?disconnected=1'), res, { db, env });
+  assert.equal(res.status, 200);
+  assert.match(res.body, /Discord bağlantısı kesildi/i);
+  assert.match(res.body, /Discord hesabını bağla/);
+});
+
 test('guild dashboard writes a feature override only after Discord permission and CSRF checks', async () => {
   process.env.ADMIN_SESSION_SECRET = secret;
   const csrf = createSiteCsrfToken(secret);

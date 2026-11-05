@@ -145,14 +145,16 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.equal(response.status, 200);
   assert.match(response.body, /Bin yıllık/);
   assert.match(response.body, /Gezgin/);
-  assert.match(response.body, /class="profile-banner"/);
-  assert.match(response.body, /profile-banner[\s\S]*?src="\/assets\/site-banner\.webp"/);
-  assert.match(response.body, /class="wrap home-banner"/);
-  assert.match(response.body, /assets\/site-banner\.webp/);
+  assert.match(response.body, /class="profile-banner profile-banner-art"/);
+  assert.doesNotMatch(response.body, /site-banner\.webp/);
+  assert.doesNotMatch(response.body, /class="wrap home-banner"/);
+  assert.match(response.body, /class="skip-link" href="#main-content"/);
+  assert.match(response.body, /<main id="main-content"/);
+  assert.match(response.body, /aria-label="Ana gezinme"/);
   assert.match(response.body, /gif-gallery/);
   assert.match(response.body, /href="\/assets\/site\.css"/);
   assert.match(response.body, /profile-avatar/);
-  assert.equal((response.body.match(/loading="lazy"/g) || []).length, 18);
+  assert.equal((response.body.match(/loading="lazy"/g) || []).length, 17);
   assert.equal((response.body.match(/class="gif-item"/g) || []).length, 16);
   assert.match(response.body, /68/);
 });
@@ -286,21 +288,17 @@ test('registration and login pages expose username and password forms', async ()
   assert.match(login.body, /action="\/login"/);
 });
 
-test('site profile uses dedicated brand avatar and banner assets', async () => {
+test('homepage uses the brand avatar and a lightweight custom profile header instead of the rejected banner', async () => {
   const response = res();
   await handlePublicSiteRequest(request('/kesfet', visitor), response);
-  assert.match(response.body, /site-avatar\.webp/);
-  assert.match(response.body, /profile-banner[\s\S]*?src="\/assets\/site-banner\.webp"/);
+  assert.ok(response.body.includes('site-avatar.webp'));
+  assert.ok(response.body.includes('profile-banner-art'));
+  assert.equal(response.body.includes('site-banner.webp'), false);
   const stylesheet = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
-  assert.match(String(stylesheet.body), /\.profile-banner\{[^}]*aspect-ratio:1672\/941/);
-  assert.match(String(stylesheet.body), /\.profile-banner img\{display:block;width:100%;height:100%;max-width:none;object-fit:contain/);
-  assert.match(String(stylesheet.body), /\.home-banner\{[^}]*aspect-ratio:1672\/941/);
-  assert.match(String(stylesheet.body), /\.home-banner img\{display:block;width:100%;height:auto;aspect-ratio:1672\/941;object-fit:contain/);
-  assert.doesNotMatch(String(stylesheet.body), /\.home-banner\{[^}]*aspect-ratio:640\/177/);
-  assert.doesNotMatch(String(stylesheet.body), /\.profile-banner\{[^}]*url\(['"]?\/assets\/site-banner\.webp/);
+  assert.ok(String(stylesheet.body).includes('.profile-banner-art{display:grid'));
+  assert.ok(String(stylesheet.body).includes('.hero{position:relative;isolation:isolate'));
 });
-
 test('shared stylesheet is publicly cacheable for authenticated and auth pages', async () => {
   const response = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, response);
@@ -347,6 +345,8 @@ test('mobile public pages keep card actions and hero media within the viewport',
   assert.match(String(stylesheet.body), /max-width:560px/);
   assert.match(String(stylesheet.body), /\.actions \.btn\{flex:1 1 100%;width:100%\}/);
   assert.match(String(stylesheet.body), /focus-visible/);
+  assert.ok(String(stylesheet.body).includes('.skip-link:focus'));
+  assert.match(String(stylesheet.body), /overscroll-behavior-x:contain/);
 });
 
 test('Owner Panel mobile rendering defers offscreen sections and avoids animated hero GIF decoding', async () => {
@@ -379,6 +379,39 @@ test('command catalogue is authenticated, dynamic, searchable and safely escapes
   assert.match(response.body, /Anime &amp; Eğlence/);
   assert.doesNotMatch(response.body, /<script>alert\(1\)<\/script>/);
   assert.match(response.body, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+});
+
+test('command catalogue mirrors Discord subcommands, required options, choices and default permissions', async () => {
+  const response = res();
+  const commands = new Map([['yonetim', { data: {
+    name: 'yonetim',
+    description: 'Sunucu bağlantı araçları.',
+    default_member_permissions: '32',
+    dm_permission: false,
+    options: [{
+      type: 1,
+      name: 'bagla',
+      description: 'Karakter bağlantısını başlat.',
+      options: [{
+        type: 3,
+        name: 'kod',
+        description: 'Tek kullanımlık bağlantı kodu.',
+        required: true,
+        choices: [{ name: 'Örnek kod', value: 'ornek-kod' }]
+      }]
+    }]
+  }}]]);
+  await handlePublicSiteRequest(request('/komutlar'), response, { client: { commands } });
+  assert.equal(response.status, 200);
+  assert.match(response.body, /Parametreler ve kullanım/);
+  assert.match(response.body, /Alt komut/);
+  assert.match(response.body, /--bagla/);
+  assert.match(response.body, /--kod/);
+  assert.match(response.body, /Zorunlu/);
+  assert.match(response.body, /Örnek kod/);
+  assert.match(response.body, /Gerekli: Sunucuyu Yönet/);
+  assert.match(response.body, /DM kullanımına kapalı/);
+  assert.match(response.body, /command-options/);
 });
 
 test('command catalogue handles an unavailable command collection without throwing', async () => {
@@ -853,3 +886,5 @@ test('anonymous search crawlers can read robots.txt and the XML sitemap', async 
   assert.match(sitemap.headers['Content-Type'], /application\/xml/);
   assert.match(sitemap.body, /<loc>https:\/\/frierenbot\.vercel\.app\/tanitim<\/loc>/);
 });
+
+test('market page registers live price preview and category controls', async () => { const source = await readFile(new URL('../public-site.js', import.meta.url), 'utf8'); assert.ok(source.includes('market-preview.js')); assert.ok(source.includes('name="category"')); assert.ok(source.includes('market-category')); assert.ok(source.includes('Eşya kategorisi')); });

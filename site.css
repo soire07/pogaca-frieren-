@@ -152,3 +152,47 @@ img{max-width:100%}
  outline:2px solid #e4cfff;
  outline-offset:3px;
 }
+
+
+/* Unified landing-page refresh: reduce duplicate artwork, improve focus and mobile navigation. */
+.skip-link{position:fixed;top:10px;left:10px;z-index:1000;transform:translateY(-160%);padding:11px 15px;border:1px solid #d9c1ff;border-radius:12px;background:#120d22;color:#fff;font-weight:800;box-shadow:0 8px 28px #0009}
+.skip-link:focus{transform:translateY(0)}
+#main-content{scroll-margin-top:88px}
+.topbar nav a{padding:7px 2px;border-bottom:1px solid transparent;transition:color .18s,border-color .18s}
+.topbar nav a:hover,.topbar nav a:focus-visible{color:#fff;border-bottom-color:#c9a8ff}
+.topbar nav a:focus-visible{outline-offset:4px}
+.hero{position:relative;isolation:isolate;overflow:hidden;margin-top:22px;padding:clamp(30px,5vw,64px);min-height:440px;border:1px solid #c6a6ff42;border-radius:30px;background:radial-gradient(ellipse at 82% 12%,#9369d638,transparent 38%),radial-gradient(ellipse at 8% 90%,#513b8740,transparent 42%),linear-gradient(135deg,#090817ed,#17122beF 55%,#0d1022f2);box-shadow:0 28px 80px #03020b88,inset 0 1px #ffffff14}
+.hero:before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.34;background-image:radial-gradient(1.5px 1.5px at 12% 22%,#fff 99%,transparent),radial-gradient(1px 1px at 68% 17%,#f0ddff 99%,transparent),radial-gradient(2px 2px at 88% 72%,#d8c1ff 99%,transparent);background-size:190px 170px,230px 210px,270px 230px}
+.hero h1{letter-spacing:-.035em;text-wrap:balance}
+.hero .lead{max-width:570px}
+.hero-art{min-height:320px}
+.profile-banner-art{display:grid;place-items:center;height:112px;background:radial-gradient(circle at 50% 50%,#a77be34a,transparent 34%),linear-gradient(120deg,#0d0a1d,#211638 55%,#0b1023);border-bottom:1px solid #d4b7ff35}
+.profile-banner-art span{display:grid;place-items:center;width:68px;height:68px;border:1px solid #d9c1ff77;border-radius:50%;color:#f0dfff;font:38px Georgia,serif;box-shadow:0 0 38px #b78cff45,inset 0 0 24px #b78cff24}
+.topbar nav{overscroll-behavior-x:contain;scrollbar-width:none}
+.topbar nav::-webkit-scrollbar{display:none}
+@media(max-width:850px){.hero{margin-top:14px;padding:34px 24px;min-height:0}.hero-art{min-height:270px}}
+@media(max-width:560px){.hero{padding:28px 18px;border-radius:22px}.hero-art{min-height:230px}.profile-banner-art{height:88px}.profile-banner-art span{width:56px;height:56px;font-size:31px}.topbar nav{max-width:100%;padding-bottom:8px}}
+@media(prefers-reduced-motion:reduce){.topbar nav a{transition:none}}
+
+
+/* Command reference: mirror Discord's live option schema in a compact readable tree. */
+.command-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.command-meta span{max-width:100%;padding:4px 8px;border:1px solid var(--line);border-radius:999px;color:#cfc4e3;font-size:10px;overflow-wrap:anywhere}
+.command-details{margin-top:13px;border-top:1px solid var(--line);padding-top:10px}
+.command-details summary{cursor:pointer;color:#ead8ff;font-size:12px;font-weight:800;min-height:36px;display:flex;align-items:center}
+.command-options,.command-choices{list-style:none;margin:8px 0 0;padding:0}
+.command-option{margin:8px 0;padding:10px;border:1px solid #e8dafa24;border-radius:12px;background:#09081755}
+.command-option-head{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+.command-option-head code{color:#f1dfff;font-size:12px}
+.command-option-head span{font-size:10px;color:var(--muted)}
+.command-option-head .required{color:#ffcfdb}
+.command-option-head .optional{color:#c9c1dc}
+.command-option p{margin:7px 0 0;font-size:12px}
+.command-choice-label,.command-constraints,.command-no-options{font-size:11px;color:#bfb3d4}
+.command-choices{display:flex;flex-wrap:wrap;gap:6px}
+.command-choices li{padding:3px 7px;border-radius:7px;background:#b89be51a;color:#e8dcf7;font-size:11px}
+@media(max-width:560px){.command-meta span{font-size:9px}.command-option{padding:9px}.command-details summary{min-height:42px}}
+
+
+.market-price-preview{display:block;margin:10px 0;padding:11px 13px;border:1px solid #b99be544;border-radius:10px;background:#9b78d414;color:#eadfff;font-size:12px;font-weight:700;line-height:1.5}
+.market-price-preview:empty{display:none}

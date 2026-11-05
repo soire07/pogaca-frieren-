@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import command from '../pazar.js';
 import { getCommandFeatureKeys } from '../guild-feature-settings.js';
-import { listPlayerMarketListings, createPlayerMarketOffer, listPlayerMarketOffers, resolvePlayerMarketOffer, cancelPlayerMarketOffer, getPlayerMarketOffers, normalizePlayerMarketPriceAlertInput, createPlayerMarketPriceAlert, listPlayerMarketPriceAlerts, cancelPlayerMarketPriceAlert, claimDuePlayerMarketPriceAlerts, markPlayerMarketPriceAlertNotified, releasePlayerMarketPriceAlertClaim } from '../player-market.js';
+import { listPlayerMarketListings, normalizePlayerMarketCategory, createPlayerMarketOffer, listPlayerMarketOffers, resolvePlayerMarketOffer, cancelPlayerMarketOffer, getPlayerMarketOffers, normalizePlayerMarketPriceAlertInput, createPlayerMarketPriceAlert, listPlayerMarketPriceAlerts, cancelPlayerMarketPriceAlert, claimDuePlayerMarketPriceAlerts, markPlayerMarketPriceAlertNotified, releasePlayerMarketPriceAlertClaim } from '../player-market.js';
 
 test('player market command exposes listing, purchase, cancellation and history actions', () => {
   const json = command.data.toJSON();
@@ -123,4 +123,19 @@ test('market price alert worker uses a bounded five-minute sweep rather than fre
  const source=await readFile(new URL('../index.js',import.meta.url),'utf8');
  assert.match(source,/setInterval\(\(\) => void processDuePlayerMarketPriceAlerts\(readyClient\), 5 \* 60_000\)/);
  assert.doesNotMatch(source,/processDuePlayerMarketPriceAlerts\(readyClient\)\s*;\s*\}, 30_000/);
+});
+
+test('web market category filters are parameterized and use canonical RPG catalog keys', async () => {
+  const calls = [];
+  const db = { async query(sql, params) { calls.push({ sql, params }); return { rows: [] }; } };
+  await listPlayerMarketListings(db, '1539562273197260860', 20, { category: 'fishing' });
+  assert.ok(calls[0].sql.includes('item_key = ANY($2::text[])'));
+  assert.ok(calls[0].params[1].includes('silver_trout'));
+  assert.equal(calls[0].params.at(-1), 20);
+  calls.length = 0;
+  await listPlayerMarketListings(db, '1539562273197260860', 20, { category: 'other' });
+  assert.ok(calls[0].sql.includes('NOT (item_key = ANY($2::text[]))'));
+  assert.ok(Array.isArray(calls[0].params[1]));
+  assert.equal(normalizePlayerMarketCategory('equipment'), 'equipment');
+  assert.equal(normalizePlayerMarketCategory('invalid'), 'all');
 });
