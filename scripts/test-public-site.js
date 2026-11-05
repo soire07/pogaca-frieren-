@@ -1229,3 +1229,12 @@ test('profile interaction script is served and wires search, sorting, activity f
     assert.ok(String(response.body).includes(feature), feature);
   }
 });
+
+
+test('authentication and guild management forms load the shared functional button handler', async () => {
+  const auth = await readFile(new URL('../site-auth.js', import.meta.url), 'utf8');
+  const guild = await readFile(new URL('../guild-dashboard.js', import.meta.url), 'utf8');
+  assert.match(auth, /site-actions\.js/);
+  assert.match(guild, /site-actions\.js/);
+  assert.match(guild, /\.guild-save:hover/);
+});
