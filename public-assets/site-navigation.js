@@ -65,7 +65,7 @@
     }
   });
 
-  const currentPath = window.location.pathname.replace(/\\/$/, '') || '/';
+  const currentPath = window.location.pathname.replace(/\/$/, '') || '/';
   sidebar.querySelectorAll('[data-nav-path]').forEach(link => {
     if (link.getAttribute('data-nav-path') === currentPath) link.setAttribute('aria-current', 'page');
   });
