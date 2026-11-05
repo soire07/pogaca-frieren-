@@ -562,6 +562,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
     guardian_not_configured: 'Frieren AI köprüsü yapılandırılmamış. Gerekli gizli anahtar Owner Panel sunucu ortamında bulunamadı.',
     guardian_review_failed: 'Frieren AI incelemesi tamamlanamadı. Olay ve hata kaydı korundu.',
     guardian_pr_dispatched: 'Güvenli onarım workflow\'u başlatıldı. Testler geçerse ayrı bir PR açılacak; birleştirme ve dağıtım yapılmayacak.',
+    guardian_pr_dispatching: 'Onaylı onarım workflow isteği zaten işleniyor. Yeni bir istek gönderilmedi; sonucu yenileyebilirsin.',
     guardian_github_not_configured: 'GitHub Actions tetikleme anahtarı eksik. Poğaça Render ortamına FRIEREN_GITHUB_TOKEN eklenmeli.',
     guardian_pr_dispatch_failed: 'Onarım workflow\'u başlatılamadı. Job kaydı korundu; hata ayrıntıları sırları açığa çıkarmadan kaydedildi.',
     guardian_pr_status_failed: 'GitHub workflow veya PR durumu alınamadı. Token izinlerini ve Actions durumunu kontrol et.',
@@ -1042,6 +1043,10 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         const approvedJob = await getLatestGuardianJob(db, incident.id);
         if (!approvedJob?.repair_approved_by || !approvedJob?.repair_approval_fingerprint) {
           throw new Error('GUARDIAN_REPAIR_APPROVAL_NOT_RECORDED');
+        }
+        if (approvedJob.repair_dispatch_status === 'dispatching') {
+          redirect(res, '/owner/guardian?notice=guardian_pr_dispatching');
+          return true;
         }
         const dispatch = await processPendingGuardianRepairDispatch({
           db,
