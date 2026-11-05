@@ -10,6 +10,7 @@ import {
   generateRepairPatchWithRetry,
   verifyGroqConnection,
   applyRepairPatch,
+  checkRepairPatch,
   formatRepairFilesOutput,
   collectRepairContext,
 } from './ai-self-repair.js';
@@ -242,6 +243,37 @@ test('repair patch generation rejects model output without a safe diff', async (
   );
 });
 
+
+test('Frieren AI supplied patch is validated without calling any model provider', () => {
+  const calls = [];
+  const execFile = (args, options = {}) => {
+    calls.push({ args, options });
+    if (args[0] === 'status') return '';
+    if (args[0] === 'apply' && args[1] === '--check') return '';
+    throw new Error('UNEXPECTED_COMMAND');
+  };
+  const checked = checkRepairPatch(validPatch, { execFile, task: 'fix readiness' });
+  assert.deepEqual(checked.files, ['rpg-mechanics.js']);
+  assert.equal(checked.patch, validPatch + '\n');
+  assert.deepEqual(calls.map(item => item.args.slice(0, 2)), [
+    ['status', '--porcelain'],
+    ['apply', '--check'],
+  ]);
+});
+
+test('Frieren AI patch validation rejects dirty worktrees and unsafe paths before applying', () => {
+  assert.throws(() => checkRepairPatch(validPatch, {
+    execFile: args => args[0] === 'status' ? ' M unrelated.js\n' : '',
+  }), { message: 'REPAIR_WORKTREE_NOT_CLEAN' });
+  const unsafePatch = validPatch.replaceAll('rpg-mechanics.js', 'owner-dashboard.js');
+  assert.throws(() => checkRepairPatch(unsafePatch, { execFile: () => '' }), { message: 'REPAIR_PATH_NOT_ALLOWED' });
+});
+
+test('repair entry point no longer imports or requires a Groq/model provider', async () => {
+  const source = await readFile(new URL('./ai-self-repair.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /createAiModelProvider|GROQ_API_KEY|FRIEREN_MODEL/);
+  assert.match(source, /FRIEREN_REPAIR_PATCH/);
+});
 
 test('repair patch refuses to run when the isolated worktree is already dirty', () => {
   const calls = [];
