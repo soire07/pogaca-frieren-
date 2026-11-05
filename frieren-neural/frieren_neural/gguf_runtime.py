@@ -78,12 +78,13 @@ def load_model(path: str | None = None) -> Any:
         raise RuntimeError("llama-cpp-python is required for FRIEREN_MODEL_BACKEND=ufakzeka.") from error
 
     target = ensure_model_file(Path(path) if path else None)
-    threads = max(1, min(4, int(os.environ.get("FRIEREN_MODEL_THREADS", "2"))))
+    threads = max(1, min(2, int(os.environ.get("FRIEREN_MODEL_THREADS", "2"))))
+    context_size = max(1024, min(2048, int(os.environ.get("FRIEREN_CONTEXT_SIZE", "2048"))))
     return Llama(
         model_path=str(target),
-        n_ctx=4096,
+        n_ctx=context_size,
         n_threads=threads,
-        n_batch=128,
+        n_batch=64,
         n_gpu_layers=0,
         use_mmap=True,
         verbose=False,
