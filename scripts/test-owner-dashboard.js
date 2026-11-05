@@ -2,12 +2,32 @@ import test from 'node:test';
 import { createHmac } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, renderOwnerSecurityWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
 
 
 test('Guardian has a dedicated private Owner Panel section', () => {
   assert.ok(OWNER_PANEL_SECTIONS.some(section => section.id === 'guardian'));
   assert.match(renderOwnerNavigation(), /href="\/owner\/guardian"/);
+});
+
+
+test('Frieren Security is an independent first navigation tab without changing existing sections', () => {
+  const navigation = renderOwnerNavigation();
+  assert.ok(navigation.indexOf('FRIEREN SECURITY') < navigation.indexOf('GENEL'));
+  assert.match(navigation, /href="\\/owner\\/security"/);
+  for (const id of ['overview', 'system', 'guardian', 'memories', 'approvals', 'rpg']) {
+    assert.ok(OWNER_PANEL_SECTIONS.some(section => section.id === id));
+  }
+});
+
+test('Frieren Security workspace clearly distinguishes active platform protection from integrations not yet connected', () => {
+  const html = renderOwnerSecurityWorkspace();
+  assert.match(html, /Güvenlik merkezi/);
+  assert.match(html, /Otomatik DDoS azaltma/);
+  assert.match(html, /Henüz bağlanmadı/);
+  assert.match(html, /Kurulum bekliyor/);
+  assert.match(html, /SHA-256/);
+  assert.doesNotMatch(html, /gerçek zamanlı saldırı algılandı/i);
 });
 
 test('Guardian AI bridge endpoint requires HTTPS and targets the private review route', () => {
