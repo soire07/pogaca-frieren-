@@ -448,7 +448,7 @@ export async function handleGuildDashboardRequest(req, res, { client, db, env = 
         return true;
       }
       await db.query(
-        'WITH removed_states AS (DELETE FROM frieren_site_oauth_states WHERE account_id=$1) DELETE FROM frieren_site_discord_links WHERE account_id=$1 RETURNING discord_user_id',
+        'WITH removed_states AS (DELETE FROM frieren_site_oauth_states WHERE account_id=$1 RETURNING account_id) DELETE FROM frieren_site_discord_links WHERE account_id=$1 RETURNING discord_user_id',
         [user.id]
       );
       redirect(res, '/lonca?disconnected=1');
