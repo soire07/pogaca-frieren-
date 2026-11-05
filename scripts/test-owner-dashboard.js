@@ -20,6 +20,35 @@ test('Guardian emergency stop is enforced server-side', async () => {
   assert.equal(await assertGuardianAutomationEnabled({ query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) }), undefined);
 });
 
+test('Guardian repair approval is explicit and disappears after approval is persisted', () => {
+  const previousToken = process.env.FRIEREN_GITHUB_TOKEN;
+  process.env.FRIEREN_GITHUB_TOKEN = 'test-github-token-long-enough-for-render';
+  const base = {
+    csrf: 'csrf-test',
+    incidents: [],
+    jobs: [{
+      id: 9, incident_id: 7, incident_title: 'RPG timeout', agent: 'frieren_ai',
+      system: 'pogaca_frieren', status: 'completed', created_at: '2026-11-02T10:01:00Z',
+      repair_dispatch_status: 'not_requested',
+      result: { status: 'proposal_only', rootCause: 'Timeout guard missing', confidence: 'high', proposedPatch: 'diff --git a/file.js b/file.js', tests: ['timeout regression'] },
+    }],
+  };
+  try {
+    const pending = renderOwnerGuardianWorkspace(base);
+    assert.match(pending, /Bu öneri için izole düzeltme ve test sürecini başlatmayı onaylıyorum/);
+    assert.match(pending, /Onayla ve izole testi başlat/);
+    const approved = renderOwnerGuardianWorkspace({
+      ...base,
+      jobs: [{ ...base.jobs[0], repair_approved_by: ownerId, repair_approved_at: '2026-11-02T10:02:00Z', repair_approval_fingerprint: 'a'.repeat(64) }],
+    });
+    assert.doesNotMatch(approved, /Onayla ve izole testi başlat/);
+    assert.match(approved, /Owner onayı kayıtlı/);
+  } finally {
+    if (previousToken === undefined) delete process.env.FRIEREN_GITHUB_TOKEN;
+    else process.env.FRIEREN_GITHUB_TOKEN = previousToken;
+  }
+});
+
 test('Guardian workspace renders incidents and review proposals as unapplied', () => {
   const html = renderOwnerGuardianWorkspace({
     csrf: 'csrf-test',
