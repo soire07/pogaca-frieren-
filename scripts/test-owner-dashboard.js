@@ -645,6 +645,7 @@ test('bot control center separates the main bot from the suspended AI service', 
   assert.doesNotMatch(html.slice(html.indexOf('<h3>Poğaça Frieren</h3>'), html.indexOf('<h3>Frieren AI</h3>')), /value="suspend"/);
   assert.match(html, /Owner Panel bu servis üzerinde çalışıyor/);
   assert.match(html, /csrf-token/);
+  assert.match(html, /site-actions\.js/);
 });
 
 test('bot control center hides lifecycle controls until a server-side Render API key is configured', () => {
