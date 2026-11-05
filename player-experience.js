@@ -121,7 +121,8 @@ export async function getPublicPlayerHome(db,{guildId,userId}){
  player(guildId,userId);await ensurePlayerExperienceSchema(db);
  const result=await db.query('SELECT u.user_id,u.character_name,u.class_name,u.level,u.xp,u.boss_defeats,u.dungeon_wins,h.active_room,h.layout,h.is_public FROM player_homes h JOIN users u ON u.guild_id=h.guild_id AND u.user_id=h.user_id WHERE h.guild_id=$1 AND h.user_id=$2 AND h.is_public=TRUE',[guildId,userId]);
  if(!result.rowCount)return null;
- const settings=await getPlayerProfileSettings(db,{guildId,userId});
+ const settingsResult=await db.query('SELECT show_stats,show_achievements,show_collections,show_activity,show_cosmetics,active_title FROM player_profile_settings WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+ const settings=settingsResult.rows[0]||{...DEFAULT_PLAYER_PROFILE_SETTINGS};
  const [rooms,trophies,loadout,activity]=await Promise.all([
   db.query('SELECT room_key FROM player_home_rooms WHERE guild_id=$1 AND user_id=$2 ORDER BY unlocked_at',[guildId,userId]),
   settings.show_achievements?getHomeTrophies(db,{guildId,userId}):Promise.resolve([]),
