@@ -24,8 +24,8 @@ test('Frieren Security workspace clearly distinguishes active platform protectio
   const html = renderOwnerSecurityWorkspace();
   assert.match(html, /Güvenlik merkezi/);
   assert.match(html, /Otomatik DDoS azaltma/);
-  assert.match(html, /Henüz bağlanmadı/);
-  assert.match(html, /Kurulum bekliyor/);
+  assert.match(html, /Anahtar eksik/);
+  assert.match(html, /Henüz delil yok/);
   assert.match(html, /SHA-256/);
   assert.doesNotMatch(html, /gerçek zamanlı saldırı algılandı/i);
 });
@@ -907,4 +907,25 @@ test('Owner analytics exposes bounded time filters and labels the selected windo
   assert.match(html, /Son 24 saat/);
   assert.match(html, /15 dakika/);
   assert.match(html, /36 grafik noktası/);
+});
+
+test('Frieren Security renders real Guard incidents, verified network attribution and chain integrity', () => {
+  const html = renderOwnerSecurityWorkspace({
+    ingestConfigured: true,
+    incidents: [{
+      id: 42, title: 'WAF blocked request', severity: 'high', summary: 'Rate threshold exceeded',
+      code: 'WAF_BLOCK', status: 'open', occurrence_count: 1, last_seen: '2026-11-05T12:00:00Z', system: 'guardian'
+    }],
+    evidenceEvents: [{
+      sequence_no: 3, event_id: 'guard-event-0003', severity: 'high',
+      received_at: '2026-11-05T12:00:00Z', client_ip: '198.51.100.42',
+      ip_source: 'trusted_proxy', event_hash: 'a'.repeat(64)
+    }],
+    chainStatus: { valid: true, checked: 3, truncated: false, firstInvalidSequence: null }
+  });
+  assert.match(html, /WAF blocked request/);
+  assert.match(html, /198\.51\.100\.42/);
+  assert.match(html, /trusted_proxy/);
+  assert.match(html, /Bütünlük doğrulandı/);
+  assert.match(html, /SHA-256/);
 });
