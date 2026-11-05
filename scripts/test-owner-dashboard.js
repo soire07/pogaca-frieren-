@@ -600,3 +600,536 @@ test('owner dungeon and boss content disable is reversible and keeps at least on
   }, db, discordClient);
   assert.equal(response.status, 303);
   assert.equal(response.headers.Location, '/owner/pogaca?guildId=' + guildId + '&notice=content_disabled');
+  assert.ok(calls.some(call => call.sql.includes('owner_audit_logs')));
+  assert.ok(calls.some(call => call.sql === 'COMMIT'));
+});
+
+
+test('bot control center separates the main bot from the suspended AI service', () => {
+  const html = renderOwnerControlCenter({
+    apiConfigured: true,
+    services: {
+      pogaca: { key: 'pogaca', apiConfigured: true, name: 'Poğaça Frieren', id: 'srv-main', url: 'https://pogaca-frieren.onrender.com', dashboardUrl: 'https://dashboard.render.com/web/srv-main', plan: 'free', status: 'running', health: 'healthy', suspended: false, suspenders: [], allowedActions: ['restart'] },
+      frieren_ai: { key: 'frieren_ai', apiConfigured: true, name: 'Frieren AI', id: 'srv-ai', url: 'https://frieren-ai-agent.onrender.com', dashboardUrl: 'https://dashboard.render.com/web/srv-ai', plan: 'free', status: 'suspended', health: 'suspended', suspended: true, suspenders: ['user'], allowedActions: ['restart','suspend','resume'] }
+    }
+  }, { maintenance: false }, 'csrf-token',
+  { status: 'available', cpuPercent: 12.3, memoryPercent: 45.6 },
+  { status: 'available', cpuPercent: 5.5, memoryPercent: 30.1 });
+  assert.match(html, /Bot Kontrol Merkezi/);
+  assert.match(html, /CPU 12\.3% · RAM 45\.6%/);
+  assert.match(html, /CPU 5\.5% · RAM 30\.1%/);
+  assert.match(html, /Poğaça Frieren/);
+  assert.match(html, /Frieren AI/);
+  assert.match(html, /Askıya alınmış/);
+  assert.match(html, /Askıya alma kaynağı: user/);
+  assert.match(html, /value="resume"/);
+  assert.match(html, /value="restart"/);
+  assert.doesNotMatch(html.slice(html.indexOf('<h3>Poğaça Frieren</h3>'), html.indexOf('<h3>Frieren AI</h3>')), /value="suspend"/);
+  assert.match(html, /Owner Panel bu servis üzerinde çalışıyor/);
+  assert.match(html, /csrf-token/);
+});
+
+test('bot control center hides lifecycle controls until a server-side Render API key is configured', () => {
+  const html = renderOwnerControlCenter({
+    apiConfigured: false,
+    services: {
+      pogaca: { key: 'pogaca', status: 'running', health: 'healthy', suspended: null },
+      frieren_ai: { key: 'frieren_ai', status: 'unknown', health: 'unavailable', suspended: null }
+    }
+  }, {}, 'csrf-token');
+  assert.match(html, /RENDER_POGACA_API_KEY/);
+  assert.match(html, /RENDER_FRIEREN_AI_API_KEY/);
+  assert.match(html, /RENDER_POGACA_SERVICE_ID/);
+  assert.match(html, /RENDER_FRIEREN_AI_SERVICE_ID/);
+  assert.doesNotMatch(html, /name="action" value="render-service-action"/);
+  assert.doesNotMatch(html, /test-token|server-only-token/);
+});
+
+test('owner Render action route resumes Frieren AI through the server-side API and audits it', async () => {
+  const previousKey = process.env.RENDER_FRIEREN_AI_API_KEY;
+  const previousFetch = globalThis.fetch;
+  process.env.RENDER_FRIEREN_AI_API_KEY = 'server-only-test-token';
+  let request = null;
+  const calls = [];
+  const client = {
+    query: async (sql, params) => {
+      calls.push({ sql, params });
+      if (sql.includes('INSERT INTO owner_audit_logs')) return { rows: [{ id: 77 }] };
+      if (sql.includes('SELECT id FROM owner_audit_logs')) return { rows: [] };
+      return { rows: [] };
+    },
+    release() { calls.push({ sql: 'RELEASE' }); }
+  };
+  const db = { connect: async () => client };
+  globalThis.fetch = async (url, options) => {
+    request = { url: String(url), options };
+    return { ok: true, status: 202, json: async () => ({ message: 'Service resumed' }) };
+  };
+  try {
+    const { response } = await runOwnerPost({
+      action: 'render-service-action', serviceKey: 'frieren_ai', serviceAction: 'resume',
+      csrf: 'session', confirm: 'yes', reason: 'AI testlerini çalıştıracağım'
+    }, db);
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.Location, '/owner?notice=service_action_accepted&serviceAction=resume');
+    assert.ok(request.url.endsWith('/resume'));
+    assert.equal(request.options.headers.Authorization, 'Bearer server-only-test-token');
+    assert.ok(calls.some(call => call.sql.includes('INSERT INTO owner_audit_logs')));
+    assert.ok(calls.some(call => call.sql.includes('UPDATE owner_audit_logs')));
+    assert.ok(calls.some(call => call.sql === 'COMMIT'));
+  } finally {
+    if (previousKey === undefined) delete process.env.RENDER_FRIEREN_AI_API_KEY;
+    else process.env.RENDER_FRIEREN_AI_API_KEY = previousKey;
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test('owner Render action route refuses to suspend the service that hosts its own panel', async () => {
+  const previousKey = process.env.RENDER_API_KEY;
+  const previousFetch = globalThis.fetch;
+  process.env.RENDER_API_KEY = 'server-only-test-token';
+  let fetched = false;
+  globalThis.fetch = async () => { fetched = true; throw new Error('must not fetch'); };
+  try {
+    const db = { connect: async () => { throw new Error('database must not be touched'); } };
+    const { response } = await runOwnerPost({
+      action: 'render-service-action', serviceKey: 'pogaca', serviceAction: 'suspend',
+      csrf: 'session', confirm: 'yes', reason: 'Paneli durdurma testi'
+    }, db);
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.Location, '/owner?notice=invalid');
+    assert.equal(fetched, false);
+  } finally {
+    if (previousKey === undefined) delete process.env.RENDER_API_KEY;
+    else process.env.RENDER_API_KEY = previousKey;
+    globalThis.fetch = previousFetch;
+  }
+});
+
+
+test('site OAuth state supports separate registration and login modes', async () => {
+  const { createOwnerOAuthState, getOwnerOAuthFlow } = await import('../owner-dashboard.js');
+  const now = 1800000000000;
+  for (const flow of ['register', 'login', 'owner']) {
+    const state = createOwnerOAuthState(secret, now, flow);
+    assert.equal(getOwnerOAuthFlow(state, secret, now + 1000), flow);
+  }
+});
+
+test('legacy public Discord OAuth callbacks redirect to password registration before token exchange', async () => {
+  const { createOwnerOAuthState } = await import('../owner-dashboard.js');
+  const previous = {
+    CLIENT_ID: process.env.CLIENT_ID,
+    DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
+    ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET,
+    OWNER_DASHBOARD_REDIRECT_URI: process.env.OWNER_DASHBOARD_REDIRECT_URI,
+    fetch: globalThis.fetch
+  };
+  process.env.CLIENT_ID = 'test-client-id';
+  process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
+  process.env.ADMIN_SESSION_SECRET = secret;
+  process.env.OWNER_DASHBOARD_REDIRECT_URI = 'https://pogaca-frieren.onrender.com/owner/callback';
+  const state = createOwnerOAuthState(secret, Date.now(), 'register');
+  const queries = [];
+  const db = { async query(sql, params) { queries.push({ sql: String(sql), params }); return { rowCount: 0, rows: [] }; } };
+  let fetchCalled = false;
+  globalThis.fetch = async () => { fetchCalled = true; throw new Error('Public site OAuth must not call Discord'); };
+  const req = { method: 'GET', url: '/owner/callback?code=legacy-code&state=' + encodeURIComponent(state), headers: {} };
+  const response = { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body = '') { this.body = body; } };
+  try {
+    assert.equal(await handleOwnerDashboardRequest(req, response, { client: {}, db }), true);
+    assert.equal(response.status, 302);
+    assert.equal(response.headers.Location, '/register');
+    assert.equal(fetchCalled, false);
+    assert.equal(queries.length, 0);
+    assert.doesNotMatch(String(response.headers['Set-Cookie'] || ''), /frieren_site_session=/);
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (key === 'fetch') globalThis.fetch = value;
+      else if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+test('owner activity workspace renders paginated audit and test history safely', () => {
+  const html = renderOwnerActivityWorkspace({
+    action: 'memory.update',
+    target: '123',
+    audit: { page: 2, limit: 20, total: 24, rows: [{ id: 12, actor_id: '1553794496234262641', action: 'memory.update', target: '<script>', created_at: '2026-11-01T00:00:00Z' }] },
+    errors: { page: 1, limit: 20, total: 1, rows: [{ id: 4, scope: 'discord', error_type: 'GatewayError', error_message: '<script>alert(1)</script>', created_at: '2026-11-01T00:00:00Z' }] },
+    errorScope: 'discord',
+    testRuns: { page: 2, limit: 10, total: 21, rows: [{ id: 3, target: '<img src=x>', status: 'FAIL', summary: { total: 4, pass: 3, fail: 1 }, details: { testFiles: ['scripts/test-request.js'], failedStages: ['<script>alert(1)</script>'] }, created_at: '2026-11-01T00:00:00Z' }] }
+  });
+  assert.match(html, /Denetim ve test geçmişi/);
+  assert.match(html, /Önceki/);
+  assert.match(html, /Önceki testler/);
+  assert.match(html, /memory.update/);
+  assert.match(html, /Hata kayıtları/);
+  assert.match(html, /GatewayError/);
+  assert.match(html, /&lt;script&gt;/);
+  assert.match(html, /name="errorScope"/);
+  assert.doesNotMatch(html, /<script>/);
+  assert.doesNotMatch(html, /<img src=x>/);
+  assert.match(html, /&lt;script&gt;/);
+});
+
+test('owner scenario tests target the separately hosted Frieren AI service over HTTPS', () => {
+  assert.equal(
+    getFrierenAiScenarioEndpoint({}),
+    'https://pogaca-frieren-kltd.onrender.com/internal/test-scenario'
+  );
+  assert.equal(
+    getFrierenAiScenarioEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://ai.example.test/base/' }),
+    'https://ai.example.test/internal/test-scenario'
+  );
+  assert.throws(() => getFrierenAiScenarioEndpoint({ FRIEREN_AI_PUBLIC_URL: 'http://127.0.0.1:10001' }), /INVALID_FRIEREN_AI_PUBLIC_URL/);
+});
+
+test('owner navigation provides a safe public-site preview shortcut', () => {
+  assert.match(renderOwnerNavigation(), /Ana siteyi önizle/);
+  assert.match(renderOwnerNavigation(), /href="\/" target="_blank" rel="noopener"/);
+});
+
+
+test('Discord OAuth never creates an owner session for a non-owner Discord account', async () => {
+  const previous = {
+    CLIENT_ID: process.env.CLIENT_ID,
+    DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
+    ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET
+  };
+  const previousFetch = globalThis.fetch;
+  process.env.CLIENT_ID = 'test-client-id';
+  process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
+  process.env.ADMIN_SESSION_SECRET = secret;
+  globalThis.fetch = async url => String(url).includes('/oauth2/token')
+    ? { ok: true, json: async () => ({ access_token: 'temporary-discord-access-token' }) }
+    : { ok: true, json: async () => ({ id: '1553794496234262642', username: 'not-owner', avatar: null }) };
+  const req = new EventEmitter();
+  req.method = 'GET';
+  req.url = '/owner/callback?state=' + encodeURIComponent(createOwnerOAuthState(secret)) + '&code=oauth-test-code';
+  req.headers = {};
+  const response = { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body = '') { this.body = body; } };
+  try {
+    await handleOwnerDashboardRequest(req, response, { client: {}, db: { query: async () => { throw new Error('DB must not be queried'); } } });
+    assert.equal(response.status, 403);
+    assert.doesNotMatch(String(response.headers['Set-Cookie'] || ''), /frieren_owner_session=/);
+    assert.match(response.body, /yalnızca site sahibine açıktır/);
+  } finally {
+    globalThis.fetch = previousFetch;
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
+test('Discord owner OAuth issues the owner session directly without an authenticator challenge', async () => {
+  const previous = {
+    CLIENT_ID: process.env.CLIENT_ID,
+    DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
+    ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET
+  };
+  const previousFetch = globalThis.fetch;
+  process.env.CLIENT_ID = 'test-client-id';
+  process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
+  process.env.ADMIN_SESSION_SECRET = secret;
+  globalThis.fetch = async url => String(url).includes('/oauth2/token')
+    ? { ok: true, json: async () => ({ access_token: 'temporary-discord-access-token' }) }
+    : { ok: true, json: async () => ({ id: ownerId, username: 'owner', avatar: null }) };
+  const dbQueries = [];
+  const db = { query: async (sql) => {
+    dbQueries.push(String(sql));
+    throw new Error('Owner OAuth must not require TOTP database state');
+  } };
+  const req = new EventEmitter();
+  req.method = 'GET';
+  req.url = '/owner/callback?state=' + encodeURIComponent(createOwnerOAuthState(secret)) + '&code=oauth-test-code';
+  req.headers = {};
+  const response = { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body = '') { this.body = body; } };
+  try {
+    await handleOwnerDashboardRequest(req, response, { client: {}, db });
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.Location, '/owner');
+    assert.ok(Array.isArray(response.headers['Set-Cookie']));
+    assert.ok(response.headers['Set-Cookie'].some(cookie => cookie.startsWith('frieren_owner_session=') && /SameSite=Lax/.test(cookie)));
+    assert.ok(response.headers['Set-Cookie'].some(cookie => cookie.startsWith('frieren_site_session=')));
+    assert.ok(response.headers['Set-Cookie'].some(cookie => cookie.startsWith('frieren_owner_second_factor=') && /Max-Age=0/.test(cookie)));
+    assert.equal(dbQueries.length, 0);
+    const ownerCookie = response.headers['Set-Cookie'].find(cookie => cookie.startsWith('frieren_owner_session='));
+    const token = decodeURIComponent(ownerCookie.split(';')[0].slice('frieren_owner_session='.length));
+    assert.equal(verifyOwnerSession(token, secret), true);
+  } finally {
+    globalThis.fetch = previousFetch;
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
+
+test('owner support inbox is protected by the Discord owner session and renders staff reply controls',async()=>{
+ const previous={CLIENT_ID:process.env.CLIENT_ID,DISCORD_CLIENT_SECRET:process.env.DISCORD_CLIENT_SECRET,ADMIN_SESSION_SECRET:process.env.ADMIN_SESSION_SECRET};
+ process.env.CLIENT_ID='test-client-id';process.env.DISCORD_CLIENT_SECRET='test-discord-secret';process.env.ADMIN_SESSION_SECRET=secret;
+ const token=createOwnerSession(secret,Math.floor(Date.now()/1000)+3600);
+ const ticketId='123e4567-e89b-42d3-a456-426614174000';
+ const db={async query(sql){
+  if(sql.includes('ORDER BY CASE status'))return{rows:[{ticket_id:ticketId,account_id:'123e4567-e89b-12d3-a456-426614174000',category:'bug',subject:'OAuth issue',message:'Callback failed',status:'open',created_at:new Date().toISOString(),updated_at:new Date().toISOString()}],rowCount:1};
+  if(sql.includes('WHERE ticket_id=$1'))return{rows:[{ticket_id:ticketId,account_id:'123e4567-e89b-12d3-a456-426614174000',category:'bug',subject:'OAuth issue',message:'Callback failed',status:'open'}],rowCount:1};
+  if(sql.includes('FROM frieren_support_ticket_messages'))return{rows:[{author_type:'account',message:'Callback failed'}],rowCount:1};
+  if(sql.includes('FROM frieren_support_ticket_events'))return{rows:[{previous_status:null,new_status:'open'}],rowCount:1};
+  throw new Error('Unexpected support query: '+sql);
+ }};
+ const req={method:'GET',url:'/owner/support?ticket='+ticketId,headers:{cookie:'frieren_owner_session='+encodeURIComponent(token)}};
+ const response={status:0,headers:{},body:'',writeHead(status,headers={}){this.status=status;this.headers=headers;},end(body=''){this.body=body;}};
+ try{
+  assert.equal(await handleOwnerDashboardRequest(req,response,{client:{},db}),true);
+  assert.equal(response.status,200);
+  assert.match(response.body,/Destek merkezi/);
+  assert.match(response.body,/Yanıtı gönder/);
+  assert.match(response.body,/support-status/);
+ }finally{for(const [key,value] of Object.entries(previous)){if(value===undefined)delete process.env[key];else process.env[key]=value;}}
+});
+
+test('owner support reply action requires owner session and CSRF before writing a staff message',async()=>{
+ let inserted=false;
+ const db={async query(sql){
+  if(sql.includes('SELECT ticket_id,status FROM frieren_support_tickets'))return{rows:[{ticket_id:'123e4567-e89b-42d3-a456-426614174000',status:'open'}],rowCount:1};
+  if(sql.includes('INSERT INTO frieren_support_ticket_messages')){inserted=true;return{rows:[{message_id:'staff-1'}],rowCount:1};}
+  if(sql.includes('UPDATE frieren_support_tickets SET updated_at'))return{rows:[],rowCount:1};
+  if(sql.includes('INSERT INTO frieren_support_ticket_events'))return{rows:[],rowCount:1};
+  throw new Error('Unexpected support action query: '+sql);
+ }};
+ const {response}=await runOwnerPost({action:'support-reply',csrf:'session',ticketId:'123e4567-e89b-42d3-a456-426614174000',message:'We are investigating.'},db);
+ assert.equal(response.status,303);
+ assert.match(response.headers.Location,/support_reply_saved/);
+ assert.equal(inserted,true);
+});
+
+test('Owner analytics exposes bounded time filters and labels the selected window', () => {
+  const html = renderRenderMetrics({
+    status: 'available',
+    range: '24h',
+    rangeLabel: 'Son 24 saat',
+    resolutionSeconds: 900,
+    cpuPercent: 12.5,
+    cpuUsed: 0.5,
+    cpuCapacity: 4,
+    memoryPercent: 44.2,
+    memoryUsedBytes: 512,
+    memoryLimitBytes: 1024,
+    updatedAt: '2026-11-05T12:00:00.000Z',
+    points: [{ cpuPercent: 12.5, memoryPercent: 44.2 }]
+  }, { rssBytes: 1024, heapUsedBytes: 512 }, '24h');
+  assert.match(html, /name="metricRange"/);
+  assert.match(html, /value="1h"/);
+  assert.match(html, /value="6h"/);
+  assert.match(html, /value="24h" selected/);
+  assert.match(html, /Son 24 saat/);
+  assert.match(html, /15 dakika/);
+  assert.match(html, /36 grafik noktası/);
+});
+
+
+test('synthetic Frieren AI → authenticated Owner Panel review → explicit owner approval → isolated workflow dispatch', async () => {
+  const incident = {
+    id: 990052,
+    system: 'pogaca_frieren',
+    code: 'SYNTHETIC_OWNER_PANEL_E2E',
+    severity: 'critical',
+    status: 'open',
+    title: 'Synthetic Owner Panel repair flow',
+    summary: 'Disposable fixture used only to verify the authenticated HTTP action path.',
+    evidence: [{ type: 'synthetic', source: 'owner-panel-e2e' }],
+    review_attempts: 0,
+    last_review_at: null,
+  };
+  const job = {
+    id: 990053,
+    incident_id: incident.id,
+    agent: 'frieren_ai',
+    status: 'queued',
+    result: null,
+    repair_dispatch_status: 'not_requested',
+    repair_dispatch_attempts: 0,
+    repair_approved_by: null,
+    repair_approval_fingerprint: null,
+  };
+  const proposal = {
+    status: 'proposal_only',
+    confidence: 'high',
+    rootCause: 'A synthetic regression fixture requires an explicit owner approval boundary.',
+    affectedFiles: ['guardian/automation.test.js'],
+    suggestedFix: 'Keep the repair isolated and require a fingerprint-bound owner approval.',
+    proposedPatch: 'diff --git a/guardian/automation.test.js b/guardian/automation.test.js\n',
+    tests: ['Verify the Owner Panel approval route dispatches only to the isolated workflow.'],
+    risks: ['Synthetic test only; no live source, database or player data is changed.'],
+    requiresHumanReview: true,
+    applied: false,
+  };
+  const state = { incident, job, emergencyStop: false, githubRequests: [] };
+  const db = {
+    async query(sql, params = []) {
+      if (sql.includes("SELECT setting_value FROM owner_settings WHERE setting_key='guardian_emergency_stop'")) {
+        return { rows: [{ setting_value: { enabled: state.emergencyStop } }] };
+      }
+      if (sql.includes('WITH stale AS (')) return { rows: [] };
+      if (sql.includes("SELECT * FROM owner_guardian_jobs") && sql.includes("status IN ('queued','running')")) {
+        return { rows: [] };
+      }
+      if (sql.includes('INSERT INTO owner_guardian_jobs')) {
+        state.incident.status = 'in_review';
+        return { rows: [{ ...state.job }] };
+      }
+      if (sql.includes('WITH target AS MATERIALIZED')) {
+        state.job.status = params[1];
+        state.job.result = JSON.parse(params[2]);
+        state.incident.status = params[3];
+        return { rows: [{ incident_id: state.incident.id }] };
+      }
+      if (sql.includes('SELECT * FROM owner_guardian_incidents WHERE id=$1 LIMIT 1')) {
+        return { rows: [{ ...state.incident }] };
+      }
+      if (sql.includes('SELECT * FROM owner_guardian_jobs WHERE incident_id=$1')) {
+        return { rows: [{ ...state.job }] };
+      }
+      if (sql.includes('SELECT j.result,j.status,j.repair_dispatch_status,i.status AS incident_status')) {
+        return { rows: [{
+          result: state.job.result,
+          status: state.job.status,
+          repair_dispatch_status: state.job.repair_dispatch_status,
+          incident_status: state.incident.status,
+        }] };
+      }
+      if (sql.includes('WITH changed AS (') && sql.includes('guardian.repair.owner_approved')) {
+        const [jobId, actorId, fingerprint] = params;
+        if (Number(jobId) !== state.job.id || state.incident.status !== 'awaiting_approval'
+          || state.job.status !== 'completed' || state.emergencyStop) return { rows: [] };
+        state.job.repair_approved_by = String(actorId);
+        state.job.repair_approval_fingerprint = fingerprint;
+        state.job.repair_approved_at = '2026-11-05T00:00:00.000Z';
+        return { rows: [{ ...state.job }] };
+      }
+      if (sql.includes('UPDATE owner_guardian_jobs AS j SET')) {
+        const [jobId, fingerprint] = params;
+        if (Number(jobId) !== state.job.id || state.job.repair_approved_by !== ownerId
+          || state.job.repair_approval_fingerprint !== fingerprint || state.emergencyStop) return { rows: [] };
+        state.job.repair_dispatch_status = 'dispatching';
+        state.job.repair_dispatch_attempts += 1;
+        return { rows: [{ ...state.job }] };
+      }
+      if (sql.includes('UPDATE owner_guardian_jobs SET repair_dispatch_status=$2')) {
+        const [jobId, status, workflowUrl] = params;
+        if (Number(jobId) !== state.job.id || state.job.repair_dispatch_status !== 'dispatching') return { rows: [] };
+        state.job.repair_dispatch_status = status;
+        if (workflowUrl) state.job.repair_workflow_url = workflowUrl;
+        return { rows: [{ id: state.job.id }] };
+      }
+      if (sql.includes('INSERT INTO owner_audit_logs')) return { rows: [{ id: 1 }] };
+      throw new Error('Unexpected Owner Panel E2E query: ' + sql.slice(0, 120));
+    },
+  };
+
+  const previous = {
+    fetch: globalThis.fetch,
+    FRIEREN_AI_PUBLIC_URL: process.env.FRIEREN_AI_PUBLIC_URL,
+    FRIEREN_AI_BRIDGE_SECRET: process.env.FRIEREN_AI_BRIDGE_SECRET,
+    FRIEREN_GITHUB_TOKEN: process.env.FRIEREN_GITHUB_TOKEN,
+  };
+  process.env.FRIEREN_AI_PUBLIC_URL = 'https://frieren-ai.synthetic.invalid';
+  process.env.FRIEREN_AI_BRIDGE_SECRET = 'synthetic-bridge-secret-that-is-long-enough';
+  process.env.FRIEREN_GITHUB_TOKEN = 'synthetic-github-token-that-is-long-enough';
+  globalThis.fetch = async (url, options = {}) => {
+    const target = String(url);
+    state.githubRequests.push({ url: target, method: options.method || 'GET', body: options.body || null });
+    if (target === 'https://frieren-ai.synthetic.invalid/internal/guardian-review') {
+      assert.equal(options.method, 'POST');
+      assert.equal(options.headers.Authorization, 'Bearer ' + process.env.FRIEREN_AI_BRIDGE_SECRET);
+      return { ok: true, status: 200, json: async () => proposal };
+    }
+    if (target.includes('/actions/workflows/frieren-ai-self-repair.yml/runs?')) {
+      assert.equal(options.method, 'GET');
+      return { ok: true, status: 200, json: async () => ({ workflow_runs: [], total_count: 0 }) };
+    }
+    if (target.endsWith('/actions/workflows/frieren-ai-self-repair.yml/dispatches')) {
+      assert.equal(options.method, 'POST');
+      return { ok: true, status: 204, json: async () => ({}) };
+    }
+    throw new Error('Unexpected outbound request in synthetic E2E: ' + target);
+  };
+
+  try {
+    const review = await runOwnerPost({
+      action: 'guardian-review', csrf: 'session', confirm: 'yes', incidentId: incident.id,
+    }, db);
+    assert.equal(review.response.status, 303);
+    assert.equal(review.response.headers.Location, '/owner/guardian?notice=guardian_review_complete');
+    assert.equal(state.job.status, 'completed');
+    assert.equal(state.incident.status, 'awaiting_approval');
+    assert.equal(state.job.result.status, 'proposal_only');
+    assert.equal(state.job.repair_approved_by, null);
+    assert.equal(state.githubRequests.length, 1);
+    assert.match(state.githubRequests[0].url, /frieren-ai\.synthetic\.invalid\/internal\/guardian-review$/);
+
+    const approval = await runOwnerPost({
+      action: 'guardian-create-pr', csrf: 'session', confirm: 'yes', incidentId: incident.id,
+    }, db);
+    assert.equal(approval.response.status, 303);
+    assert.equal(approval.response.headers.Location, '/owner/guardian?notice=guardian_pr_dispatched');
+    assert.equal(state.job.repair_approved_by, ownerId);
+    assert.match(state.job.repair_approval_fingerprint, /^[a-f0-9]{64}$/);
+    assert.equal(state.job.repair_dispatch_status, 'dispatched');
+    assert.equal(state.githubRequests.length, 3);
+    const dispatch = JSON.parse(state.githubRequests[2].body);
+    assert.equal(dispatch.ref, 'guardian-isolated-repair-test-v2');
+    assert.equal(dispatch.inputs.base_branch, 'guardian-isolated-repair-test-v2');
+    assert.equal(dispatch.inputs.incident_id, String(incident.id));
+    assert.equal(dispatch.inputs.mode, 'repair');
+    assert.doesNotMatch(state.githubRequests[2].url, /merge|deploy/i);
+  } finally {
+    globalThis.fetch = previous.fetch;
+    for (const [key, value] of Object.entries(previous)) {
+      if (key === 'fetch') continue;
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
+test('Frieren Security renders real Guard incidents, verified network attribution and chain integrity', () => {
+  const html = renderOwnerSecurityWorkspace({
+    ingestConfigured: true,
+    incidents: [{
+      id: 42, title: 'WAF blocked request', severity: 'high', summary: 'Rate threshold exceeded',
+      code: 'WAF_BLOCK', status: 'open', occurrence_count: 1, last_seen: '2026-11-05T12:00:00Z', system: 'guardian'
+    }],
+    evidenceEvents: [{
+      sequence_no: 3, event_id: 'guard-event-0003', severity: 'high',
+      received_at: '2026-11-05T12:00:00Z', source: 'frieren_guard', client_ip: '198.51.100.42',
+      ip_source: 'trusted_proxy', event_hash: 'a'.repeat(64)
+    }],
+    chainStatus: { valid: true, checked: 3, truncated: false, firstInvalidSequence: null }
+  });
+  assert.match(html, /WAF blocked request/);
+  assert.match(html, /Canlı olay alındı/);
+  assert.match(html, /UPDATE\/DELETE\/TRUNCATE/);
+  assert.match(html, /198\.51\.100\.42/);
+  assert.match(html, /trusted_proxy/);
+  assert.match(html, /Bütünlük doğrulandı/);
+  assert.match(html, /SHA-256/);
+});
+
+test('Guardian workspace hides generic workflow history from the single-run evidence slot', () => {
+  const job = {
+    id: 990055, incident_id: 990054, incident_title: 'Synthetic refresh test',
+    agent: 'frieren_ai', system: 'guardian', status: 'completed',
+    created_at: '2026-11-05T00:00:00Z', result: { status: 'proposal_only' },
+    repair_dispatch_status: 'dispatched',
+    repair_run_url: 'https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml',
+  };
+  const listOnly = renderOwnerGuardianWorkspace({ jobs: [job] });
+  assert.doesNotMatch(listOnly, /Tekil workflow çalıştırmasını aç/);
+  job.repair_run_url = 'https://github.com/soire07/pogaca-frieren-/actions/runs/42018567895';
+  const exact = renderOwnerGuardianWorkspace({ jobs: [job] });
+  assert.match(exact, /Tekil workflow çalıştırmasını aç/);
+});
