@@ -145,10 +145,12 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.equal(response.status, 200);
   assert.match(response.body, /Bin yıllık/);
   assert.match(response.body, /Gezgin/);
-  assert.match(response.body, /class="profile-banner"/);
-  assert.match(response.body, /profile-banner[\s\S]*?src="\/assets\/site-banner\.webp"/);
-  assert.match(response.body, /class="wrap home-banner"/);
-  assert.match(response.body, /assets\/site-banner\.webp/);
+  assert.match(response.body, /class="profile-banner profile-banner-art"/);
+  assert.doesNotMatch(response.body, /site-banner\.webp/);
+  assert.doesNotMatch(response.body, /class="wrap home-banner"/);
+  assert.match(response.body, /class="skip-link" href="#main-content"/);
+  assert.match(response.body, /<main id="main-content"/);
+  assert.match(response.body, /aria-label="Ana gezinme"/);
   assert.match(response.body, /gif-gallery/);
   assert.match(response.body, /href="\/assets\/site\.css"/);
   assert.match(response.body, /profile-avatar/);
@@ -286,21 +288,17 @@ test('registration and login pages expose username and password forms', async ()
   assert.match(login.body, /action="\/login"/);
 });
 
-test('site profile uses dedicated brand avatar and banner assets', async () => {
+test('homepage uses the brand avatar and a lightweight custom profile header instead of the rejected banner', async () => {
   const response = res();
   await handlePublicSiteRequest(request('/kesfet', visitor), response);
-  assert.match(response.body, /site-avatar\.webp/);
-  assert.match(response.body, /profile-banner[\s\S]*?src="\/assets\/site-banner\.webp"/);
+  assert.match(response.body, /site-avatar\\.webp/);
+  assert.match(response.body, /profile-banner-art/);
+  assert.doesNotMatch(response.body, /site-banner\\.webp/);
   const stylesheet = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
-  assert.match(String(stylesheet.body), /\.profile-banner\{[^}]*aspect-ratio:1672\/941/);
-  assert.match(String(stylesheet.body), /\.profile-banner img\{display:block;width:100%;height:100%;max-width:none;object-fit:contain/);
-  assert.match(String(stylesheet.body), /\.home-banner\{[^}]*aspect-ratio:1672\/941/);
-  assert.match(String(stylesheet.body), /\.home-banner img\{display:block;width:100%;height:auto;aspect-ratio:1672\/941;object-fit:contain/);
-  assert.doesNotMatch(String(stylesheet.body), /\.home-banner\{[^}]*aspect-ratio:640\/177/);
-  assert.doesNotMatch(String(stylesheet.body), /\.profile-banner\{[^}]*url\(['"]?\/assets\/site-banner\.webp/);
+  assert.match(String(stylesheet.body), /\\.profile-banner-art\\{display:grid/);
+  assert.match(String(stylesheet.body), /\\.hero\\{position:relative;isolation:isolate/);
 });
-
 test('shared stylesheet is publicly cacheable for authenticated and auth pages', async () => {
   const response = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, response);
@@ -347,6 +345,8 @@ test('mobile public pages keep card actions and hero media within the viewport',
   assert.match(String(stylesheet.body), /max-width:560px/);
   assert.match(String(stylesheet.body), /\.actions \.btn\{flex:1 1 100%;width:100%\}/);
   assert.match(String(stylesheet.body), /focus-visible/);
+  assert.match(String(stylesheet.body), /\\.skip-link:focus/);
+  assert.match(String(stylesheet.body), /overscroll-behavior-x:contain/);
 });
 
 test('Owner Panel mobile rendering defers offscreen sections and avoids animated hero GIF decoding', async () => {
