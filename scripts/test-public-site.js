@@ -314,7 +314,8 @@ test('homepage renders the signed-in user profile with the completed starry bann
   await handlePublicSiteRequest(request('/kesfet', visitor), response);
   assert.ok(response.body.includes('site-avatar.webp'));
   assert.ok(response.body.includes('profile-banner-art'));
-  assert.ok(response.body.includes('site-profile-banner.svg'));
+  assert.ok(response.body.includes('site-banner.svg'));
+  assert.ok(!response.body.includes('site-profile-banner.svg'));
   assert.ok(response.body.includes('MACERACI HESABI'));
   assert.ok(response.body.includes('Gezgin'));
   assert.equal(response.body.includes('site-banner.webp'), false);
@@ -1015,15 +1016,6 @@ test('player home visibility and layout controls persist only for the linked acc
   assert.deepEqual(JSON.parse(writes[1].params[3]), [{ roomKey: 'starter', decorationKey: 'book_shelf', position: 0 }]);
 });
 
-
-test('home page uses the Frieren character banner asset in its profile showcase', async () => {
-  const response = res();
-  const client = { guilds: { cache: { size: 1 } }, commands: { size: 1 }, isReady: () => true };
-  await handlePublicSiteRequest(request('/'), response, { client });
-  assert.equal(response.status, 200);
-  assert.match(response.body, /\/assets\/site-banner\.svg/);
-  assert.doesNotMatch(response.body, /\/assets\/site-profile-banner\.svg/);
-});
 
 test('public adventurer profile renders the equipped Frieren or Northern guild banner', () => {
   const user = { id: visitor.id, username: visitor.username, avatarUrl: '/assets/site-avatar.webp' };
