@@ -18,7 +18,7 @@ function request(path = '/', user = visitor) {
 }
 
 test('account-only player routes reject legacy Discord sessions before querying account data', async () => {
-  const routes=['/maceraci','/maceraci/yasam','/maceraci/atolye','/maceraci/bildirimler','/maceraci/envanter','/maceraci/koleksiyon','/maceraci/sosyal','/pazar','/destek'];
+  const routes=['/maceraci','/maceraci/profil','/maceraci/yasam','/maceraci/atolye','/maceraci/bildirimler','/maceraci/envanter','/maceraci/koleksiyon','/maceraci/sosyal','/pazar','/destek'];
   for(const route of routes){
     let queries=0;
     const response=res();
@@ -1129,4 +1129,48 @@ test('public home privacy settings hide opt-out achievements, collections, cosme
  assert.doesNotMatch(response.body,/Anime Kart Koleksiyonu/);
  assert.doesNotMatch(response.body,/Kuşanılan Kozmetikler/);
  assert.doesNotMatch(response.body,/Son Macera Etkinlikleri/);
+});
+
+
+test('player profile route renders account-scoped progression, rankings, privacy controls and VIP XP', async () => {
+  const accountId='site_123e4567-e89b-12d3-a456-426614174000';
+  const guildId='1539562273197260860';
+  const profile={guild_id:guildId,user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:12,xp:1440,coins:900,hp:80,max_hp:100,mana:65,max_mana:100};
+  const previousVipAccounts=process.env.FRIEREN_VIP_ACCOUNT_IDS;
+  process.env.FRIEREN_VIP_ACCOUNT_IDS=accountId;
+  const db={async query(sql){
+    if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return{rows:[],rowCount:0};
+    if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};
+    if(sql.includes('SELECT show_stats,show_achievements'))return{rows:[{show_stats:true,show_achievements:true,show_collections:true,show_activity:true,show_cosmetics:true,active_title:'Yıldız Büyücüsü'}],rowCount:1};
+    if(sql.includes('SELECT created_at,boss_defeats'))return{rows:[{created_at:'2025-01-01T00:00:00Z',boss_defeats:8,dungeon_wins:5,exploration_count:12,daily_streak:4,best_daily_streak:9}],rowCount:1};
+    if(sql.includes('SELECT title,unlocked_at'))return{rows:[{title:'Yıldız Büyücüsü',unlocked_at:'2025-02-01T00:00:00Z'}],rowCount:1};
+    if(sql.includes('FROM achievement_claims a LEFT JOIN player_home_trophies'))return{rows:[{achievement_key:'first_boss',claimed_at:'2025-02-02T00:00:00Z',display_slot:5}],rowCount:1};
+    if(sql.includes('SELECT activity_type,activity_label'))return{rows:[{activity_type:'Macera',activity_label:'Zindan tamamlandı',activity_at:'2025-02-03T00:00:00Z',xp_awarded:80}],rowCount:1};
+    if(sql.includes('SELECT (SELECT COUNT(DISTINCT character_name)'))return{rows:[{anime_cards:12,anime_copies:18,journal_entries:7}],rowCount:1};
+    if(sql.includes('SELECT s.name AS season_name'))return{rows:[{season_name:'Sezon 2026',rating:1180,wins:4,losses:2,matches:6}],rowCount:1};
+    if(sql.includes('WITH xp_board'))return{rows:['xp','boss','dungeon','arena','daily_adventure_xp','collection','achievements'].map(board=>({board,players:[{character_name:'Fern',xp:1440,boss_defeats:8,dungeon_wins:5,rating:1180,wins:4,losses:2,anime_cards:12,achievements:1}]})),rowCount:7};
+    if(sql.includes('SELECT is_public FROM player_homes'))return{rows:[{is_public:true}],rowCount:1};
+    if(sql.includes('SELECT slot,cosmetic_key FROM player_cosmetic_loadout'))return{rows:[{slot:'profile_frame',cosmetic_key:'moon_frame'}],rowCount:1};
+    if(sql.includes('SELECT TO_CHAR(date_trunc'))return{rows:[{day_label:'2026-11-04',xp:80}],rowCount:1};
+    throw new Error('Unexpected profile query: '+sql);
+  }};
+  try {
+    const response=res();
+    assert.equal(await handlePublicSiteRequest(request('/maceraci/profil?guildId='+guildId,{id:accountId,username:'Gezgin'}),response,{db}),true);
+    assert.equal(response.status,200);
+    for(const expected of ['Maceracı Profili','Fern','VIP','xp-progress is-vip','İlerleme Merkezi','Savaş İstatistiklerim','Başarım Vitrini','Sıralamalar','Gizlilik ayarları','Yıldız Büyücüsü','Kozmetiklerini düzenle','Vitrin 6'])assert.ok(response.body.includes(expected),expected);
+    assert.match(response.body,/action="\/maceraci\/yasam"/);
+    assert.match(response.body,/href="\/maceraci\/ev\?guildId=/);
+    assert.equal(response.headers['Cache-Control'],'no-store');
+  } finally {
+    if(previousVipAccounts===undefined)delete process.env.FRIEREN_VIP_ACCOUNT_IDS;
+    else process.env.FRIEREN_VIP_ACCOUNT_IDS=previousVipAccounts;
+  }
+});
+
+test('VIP XP animation is accessible and disabled for reduced-motion preferences', async () => {
+  const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
+  assert.match(css,/\.xp-progress\.is-vip \.xp-progress-track>i\{[^}]*animation:frieren-vip-xp-flow/);
+  assert.match(css,/@media\s*\(prefers-reduced-motion:reduce\)/);
+  assert.match(css,/\.xp-progress\.is-vip \.xp-progress-track>i\{animation:none!important/);
 });
