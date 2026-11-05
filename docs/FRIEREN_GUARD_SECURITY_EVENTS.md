@@ -1,5 +1,7 @@
 # Frieren Guard security event delivery
 
+> **Entegrasyon durumu:** Bu belge alıcı endpoint sözleşmesini ve örnek istemci kodunu tanımlar. İçindeki JavaScript snippet çalışan Frieren Guard servisine kurulmuş bir gönderici değildir. Canlı bağlantı, Guard'ın kendi deposunda istemci entegrasyonu yapılıp imzalı olayın bu endpoint'e ulaştığı doğrulanınca tamamlanmış sayılır.
+
 ## Endpoint
 
 Send signed JSON events to:
@@ -56,7 +58,7 @@ Until the real proxy egress IPs are configured, the panel may show the Render ne
 
 ## Evidence integrity and Owner Panel
 
-Each accepted event is appended in one PostgreSQL transaction to `owner_guardian_evidence_chain`. Its SHA-256 hash includes the canonical payload and previous event hash. Duplicate IDs do not create a second row. A database trigger rejects UPDATE and DELETE; the Owner Panel verifies the chain and reports the first invalid sequence.
+Each accepted event is appended in one PostgreSQL transaction to `owner_guardian_evidence_chain`. Its SHA-256 hash includes the canonical payload and previous event hash. Duplicate IDs do not create a second row. Database triggers reject UPDATE, DELETE and TRUNCATE; the Owner Panel verifies the chain and reports the first invalid sequence.
 
 The Owner Panel shows recent verified events at `/owner/security`. Critical/high incidents are subsequently picked up by the existing Guardian review monitor and sent to Frieren AI. AI output remains a proposal; merge and deployment still require explicit owner approval.
 

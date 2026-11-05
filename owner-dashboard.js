@@ -665,6 +665,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
 
 
 export function renderOwnerSecurityWorkspace({ incidents = [], evidenceEvents = [], chainStatus = null, ingestConfigured = false } = {}) {
+  const senderVerified = evidenceEvents.some(item => item.source === 'frieren_guard');
   const chainLabel = !chainStatus ? 'Kontrol edilemedi'
     : !chainStatus.valid ? 'Bütünlük hatası'
       : chainStatus.checked === 0 ? 'Henüz delil yok'
@@ -691,11 +692,11 @@ export function renderOwnerSecurityWorkspace({ incidents = [], evidenceEvents = 
     + '<section class="security-hero"><span class="security-kicker">✦ FRIEREN SECURITY CENTER</span><h1>Güvenlik merkezi</h1><p>Poğaça Frieren altyapısı ve Frieren web platformu için güvenlik görünümü. Bu alan yalnızca doğrulanmış Owner oturumuna açıktır; Frieren AI kendi mühendislik görevini sürdürür, Frieren Guard ise güvenlik olaylarını izlemek üzere ayrı rolde kalır.</p></section>'
     + '<div class="security-grid">'
     + '<article class="security-card"><small>Vercel platform koruması</small><strong>Otomatik DDoS azaltma</strong><p>Vercel platform katmanındaki DDoS koruması tüm planlarda otomatik uygulanır.</p></article>'
-    + '<article class="security-card"><small>Frieren Guard olay alımı</small><strong>' + (ingestConfigured ? 'İmzalı alım hazır' : 'Anahtar eksik') + '</strong><p>' + (ingestConfigured ? incidents.length + ' güvenlik olayı kayıtlı; yeni olaylar HMAC imzasıyla kabul edilir.' : 'Guard olaylarını kabul etmek için ortak imza anahtarı yapılandırılmalı.') + '</p></article>'
+    + '<article class="security-card"><small>Frieren Guard olay alımı</small><strong>' + (ingestConfigured ? (senderVerified ? 'Canlı olay alındı' : 'Gönderici doğrulanmadı') : 'Anahtar eksik') + '</strong><p>' + (ingestConfigured ? (senderVerified ? 'Frieren Guard kaynaklı imzalı olay delil zincirinde doğrulandı.' : 'Alıcı HMAC doğrulaması için yapılandırıldı; Guard göndericisi henüz canlı olayla doğrulanmadı.') : 'Guard olaylarını kabul etmek için ortak imza anahtarı yapılandırılmalı.') + '</p></article>'
     + '<article class="security-card"><small>Delil zinciri</small><strong>' + chainLabel + '</strong><p>' + Number(chainStatus?.checked || 0) + ' kayıt denetlendi' + (chainStatus?.firstInvalidSequence ? ' · bozuk sıra #' + Number(chainStatus.firstInvalidSequence) : '') + '.</p></article>'
     + '</div>'
     + '<section class="panel"><h2>Gerçek güvenlik olayları</h2><p class="muted">Frieren Guard tarafından kaydedilen olaylar listelenir; harici Guard bildirimleri HMAC imzasıyla doğrulanır.</p>' + incidentHtml + '</section>'
-    + '<section class="panel"><h2>IP ve delil bütünlüğü</h2><p class="muted">Ağ adresi yalnızca doğrudan soket eş adresinden veya açıkça güvenilen proxy listesinden türetilir. X-Forwarded-For tek başına kabul edilmez.</p>' + evidenceHtml + '<div class="security-note"><strong>Delil doğruluğu:</strong> Her olay zaman damgası ve HMAC imzasıyla doğrulanır; kayıtlar önceki SHA-256 özetiyle zincirlenir ve uygulama seviyesinde UPDATE/DELETE işlemleri tetikleyiciyle reddedilir. Bu mekanizma sonradan değişikliği tespit etmeye yardımcı olur; tek başına olayın kaynağını veya hukuki geçerliliğini kanıtlamaz.</div></section>';
+    + '<section class="panel"><h2>IP ve delil bütünlüğü</h2><p class="muted">Ağ adresi yalnızca doğrudan soket eş adresinden veya açıkça güvenilen proxy listesinden türetilir. X-Forwarded-For tek başına kabul edilmez.</p>' + evidenceHtml + '<div class="security-note"><strong>Delil doğruluğu:</strong> Her olay zaman damgası ve HMAC imzasıyla doğrulanır; kayıtlar önceki SHA-256 özetiyle zincirlenir ve veritabanı tetikleyicileri UPDATE/DELETE/TRUNCATE işlemlerini reddeder. Bu mekanizma sonradan değişikliği tespit etmeye yardımcı olur; tek başına olayın kaynağını veya hukuki geçerliliğini kanıtlamaz.</div></section>';
 }
 
 export async function handleOwnerDashboardRequest(req, res, { client, db }) {

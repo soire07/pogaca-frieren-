@@ -1103,12 +1103,14 @@ test('Frieren Security renders real Guard incidents, verified network attributio
     }],
     evidenceEvents: [{
       sequence_no: 3, event_id: 'guard-event-0003', severity: 'high',
-      received_at: '2026-11-05T12:00:00Z', client_ip: '198.51.100.42',
+      received_at: '2026-11-05T12:00:00Z', source: 'frieren_guard', client_ip: '198.51.100.42',
       ip_source: 'trusted_proxy', event_hash: 'a'.repeat(64)
     }],
     chainStatus: { valid: true, checked: 3, truncated: false, firstInvalidSequence: null }
   });
   assert.match(html, /WAF blocked request/);
+  assert.match(html, /Canlı olay alındı/);
+  assert.match(html, /UPDATE\/DELETE\/TRUNCATE/);
   assert.match(html, /198\.51\.100\.42/);
   assert.match(html, /trusted_proxy/);
   assert.match(html, /Bütünlük doğrulandı/);
