@@ -169,8 +169,8 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /KULLANICI MERKEZİ/);
   assert.match(response.body, /Başarım Vitrini/);
   assert.match(response.body, /Kişisel Yaşam Alanım/);
-  assert.match(response.body, /href="\\/maceraci\\/profil#leaderboards"/);
-  assert.match(response.body, /href="\\/maceraci\\/profil#privacy"/);
+  assert.ok(response.body.includes('href="/maceraci/profil#leaderboards"'));
+  assert.ok(response.body.includes('href="/maceraci/profil#privacy"'));
   assert.match(response.body, /data-nav-group="dunya"/);
   assert.ok(response.body.includes('data-nav-path="/" href="/"'));
   assert.ok(response.body.includes('<strong>Kullanıcı Paneli</strong>'));
