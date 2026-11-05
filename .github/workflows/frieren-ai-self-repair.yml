@@ -23,10 +23,10 @@ on:
       base_branch:
         description: "Isolated branch to test against"
         required: true
-        default: "guardian-isolated-repair-test"
+        default: "guardian-isolated-repair-test-v2"
         type: choice
         options:
-          - guardian-isolated-repair-test
+          - guardian-isolated-repair-test-v2
 
 permissions:
   contents: write
@@ -46,7 +46,7 @@ jobs:
           BASE_BRANCH: ${{ inputs.base_branch }}
         run: |
           case "$BASE_BRANCH" in
-            guardian-isolated-repair-test) ;;
+            guardian-isolated-repair-test-v2) ;;
             *) echo "Unsupported repair target branch"; exit 1 ;;
           esac
           if [ "$GITHUB_REF_NAME" != "$BASE_BRANCH" ]; then
