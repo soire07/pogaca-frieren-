@@ -57,9 +57,12 @@ export function verifySiteCsrfToken(token, secret, now = Date.now()) {
 export function isSameOriginRequest(req, siteBaseUrl = process.env.SITE_BASE_URL) {
   const headers = req?.headers || {};
   const fetchSite = String(headers['sec-fetch-site'] || '').toLowerCase();
-  if (fetchSite && !['same-origin', 'none'].includes(fetchSite)) return false;
+  if (fetchSite && !['same-origin', 'same-site', 'none'].includes(fetchSite)) return false;
   const originHeader = headers.origin;
-  if (!originHeader) return true;
+  // A same-site request can still come from a sibling subdomain. Require an
+  // explicit Origin match before accepting it; CSRF token validation remains
+  // an independent check in the form handler.
+  if (!originHeader) return fetchSite !== 'same-site';
   let origin;
   try { origin = new URL(originHeader).origin; } catch { return false; }
   const allowed = new Set();
