@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildNeuralPrompt, generateNeuralReply, isNeuralConfigured } from './neural-client.js';
+import { buildNeuralPrompt, generateNeuralReply, isNeuralConfigured, isNeuralRequested } from './neural-client.js';
 
 const env = {
   FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
@@ -9,9 +9,12 @@ const env = {
 
 test('Neural provider requires HTTPS and a sufficiently long token', () => {
   assert.equal(isNeuralConfigured(env), true);
+  assert.equal(isNeuralRequested(env), true);
+  assert.equal(isNeuralRequested({ FRIEREN_NEURAL_API_URL: env.FRIEREN_NEURAL_API_URL }), true);
   assert.equal(isNeuralConfigured({ ...env, FRIEREN_NEURAL_API_URL: 'http://neural.example.test' }), false);
   assert.equal(isNeuralConfigured({ ...env, FRIEREN_NEURAL_API_TOKEN: 'short' }), false);
   assert.equal(isNeuralConfigured({}), false);
+  assert.equal(isNeuralRequested({}), false);
 });
 
 test('Neural prompt preserves the current request and stays inside the API input limit', () => {
