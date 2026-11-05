@@ -65,7 +65,7 @@ test('Guardian repair handoff accepts only a bounded unified diff from Frieren A
   assert.throws(() => buildGuardianRepairPatch({ proposedPatch: '' }), { message: 'GUARDIAN_REPAIR_PATCH_INVALID' });
   assert.throws(() => buildGuardianRepairPatch({ affectedFiles: ['commands/example.js'], proposedPatch: 'not a diff' }), { message: 'GUARDIAN_REPAIR_PATCH_INVALID' });
   assert.throws(() => buildGuardianRepairPatch({ affectedFiles: ['commands/example.js'], proposedPatch: 'diff --git a/other.js b/other.js' }), { message: 'GUARDIAN_REPAIR_PATCH_INVALID' });
-  assert.throws(() => buildGuardianRepairPatch({ affectedFiles: ['commands/example.js'], proposedPatch: 'diff --git a/commands/example.js b/commands/example.js\\n' + 'x'.repeat(10_001) }), { message: 'GUARDIAN_REPAIR_PATCH_INVALID' });
+  assert.throws(() => buildGuardianRepairPatch({ affectedFiles: ['commands/example.js'], proposedPatch: 'diff --git a/commands/example.js b/commands/example.js\n' + 'x'.repeat(10_001) }), { message: 'GUARDIAN_REPAIR_PATCH_INVALID' });
 });
 
 test('autonomous incident handling respects the emergency stop before contacting Frieren AI', async () => {
