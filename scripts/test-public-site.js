@@ -813,3 +813,33 @@ test('adventurer calendar exposes direct raid signup with the real guild team UU
  assert.match(response.body,/Fern Takımı/);
  assert.doesNotMatch(response.body,/name="teamKey"/);
 });
+
+
+test('anonymous search crawlers can read the dedicated Frieren Bot identity landing page', async () => {
+  const response = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/tanitim', headers: {} }, response), true);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers['X-Robots-Tag'], 'index, follow');
+  assert.match(response.body, /<title>Frieren Bot \| Poğaça Frieren Discord RPG/);
+  assert.match(response.body, /rel="canonical" href="https:\/\/frierenbot\.vercel\.app\/tanitim"/);
+  assert.match(response.body, /name="robots" content="index,follow"/);
+  assert.match(response.body, /Poğaça Frieren/);
+  assert.match(response.body, /Soiree/);
+  assert.match(response.body, /application\/ld\+json/);
+  assert.match(response.body, /https:\/\/github\.com\/soire07/);
+});
+
+test('anonymous search crawlers can read robots.txt and the XML sitemap', async () => {
+  const robots = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/robots.txt', headers: {} }, robots), true);
+  assert.equal(robots.status, 200);
+  assert.match(robots.headers['Content-Type'], /text\/plain/);
+  assert.match(robots.body, /Allow: \/tanitim/);
+  assert.match(robots.body, /Sitemap: https:\/\/frierenbot\.vercel\.app\/sitemap\.xml/);
+
+  const sitemap = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/sitemap.xml', headers: {} }, sitemap), true);
+  assert.equal(sitemap.status, 200);
+  assert.match(sitemap.headers['Content-Type'], /application\/xml/);
+  assert.match(sitemap.body, /<loc>https:\/\/frierenbot\.vercel\.app\/tanitim<\/loc>/);
+});
