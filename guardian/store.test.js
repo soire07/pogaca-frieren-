@@ -7,6 +7,8 @@ import {
   createGuardianReviewJob,
   finishGuardianReviewJob,
   resolveGuardianIncident,
+  approveGuardianRepair,
+  getGuardianProposalFingerprint,
   reserveGuardianRepairDispatch,
   listPendingGuardianRepairDispatches,
   finishGuardianRepairDispatch,
@@ -142,6 +144,39 @@ test('Guardian resolution writes an audit record in the same SQL statement', asy
   assert.match(sql, /GUARDIAN_INCIDENT_RESOLVED/);
 });
 
+test('Guardian owner approval stores a fingerprint bound to the exact saved proposal', async () => {
+  const proposal = { status: 'proposal_only', rootCause: 'bounded timeout missing', proposedPatch: 'diff --git a/a.js b/a.js' };
+  const calls = [];
+  const db = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    if (sql.startsWith('SELECT j.result')) {
+      return { rows: [{ result: proposal, status: 'completed', repair_dispatch_status: 'not_requested', incident_status: 'awaiting_approval' }] };
+    }
+    return { rows: [{ id: 8, result: proposal, repair_approved_by: 'owner-1', repair_approval_fingerprint: params[2] }] };
+  } };
+  const approved = await approveGuardianRepair(db, { jobId: 8, actorId: 'owner-1' });
+  assert.equal(approved.id, 8);
+  assert.equal(approved.repair_approved_by, 'owner-1');
+  assert.equal(approved.repair_approval_fingerprint, getGuardianProposalFingerprint(proposal));
+  assert.equal(calls.length, 2);
+  assert.match(calls[1].sql, /repair_approved_by=\$2,repair_approved_at=NOW\(\),repair_approval_fingerprint=\$3/);
+  assert.match(calls[1].sql, /j\.result=\$4::jsonb/);
+  assert.match(calls[1].sql, /i\.status='awaiting_approval'/);
+  assert.match(calls[1].sql, /guardian_emergency_stop/);
+  assert.equal(calls[1].params[1], 'owner-1');
+  assert.deepEqual(JSON.parse(calls[1].params[3]), proposal);
+});
+
+test('Guardian owner approval refuses resolved incidents and does not write approval metadata', async () => {
+  let calls = 0;
+  const db = { query: async () => {
+    calls += 1;
+    return { rows: [{ result: { status: 'proposal_only' }, status: 'completed', repair_dispatch_status: 'not_requested', incident_status: 'resolved' }] };
+  } };
+  assert.equal(await approveGuardianRepair(db, { jobId: 8, actorId: 'owner-1' }), null);
+  assert.equal(calls, 1);
+});
+
 test('Guardian repair workflow dispatch is reserved once and records its workflow link', async () => {
   const calls = [];
   const db = { query: async (sql, params) => {
@@ -152,7 +187,7 @@ test('Guardian repair workflow dispatch is reserved once and records its workflo
     if (sql.includes('SET repair_dispatch_status=$2')) return { rows: [{ id: 8 }] };
     throw new Error('Unexpected Guardian dispatch query');
   } };
-  const reserved = await reserveGuardianRepairDispatch(db, 8);
+  const reserved = await reserveGuardianRepairDispatch(db, 8, 'a'.repeat(64));
   assert.equal(reserved.id, 8);
   assert.match(calls[0].sql, /repair_dispatch_attempts=repair_dispatch_attempts\+1/);
   assert.match(calls[0].sql, /repair_dispatch_attempts < 3/);
@@ -232,7 +267,7 @@ test('Guardian quality report storage is idempotent and keeps bounded history', 
 test('Guardian repair dispatch reservation is bounded and reclaims stale dispatch leases', async () => {
   let sql = '';
   const db = { query: async statement => { sql = statement; return { rows: [{ id: 8, repair_dispatch_attempts: 2 }] }; } };
-  const reserved = await reserveGuardianRepairDispatch(db, 8);
+  const reserved = await reserveGuardianRepairDispatch(db, 8, 'a'.repeat(64));
   assert.equal(reserved.repair_dispatch_attempts, 2);
   assert.match(sql, /repair_dispatch_attempts=repair_dispatch_attempts\+1/);
   assert.match(sql, /repair_dispatch_attempts < 3/);
@@ -245,7 +280,7 @@ test('Guardian repair reservation requires the incident to remain awaiting appro
     sql = statement;
     return { rows: [] };
   } };
-  const reserved = await reserveGuardianRepairDispatch(db, 8);
+  const reserved = await reserveGuardianRepairDispatch(db, 8, 'a'.repeat(64));
   assert.equal(reserved, null, 'resolved or ignored incidents must not dispatch a repair');
   assert.match(sql, /FROM owner_guardian_incidents AS i/);
   assert.match(sql, /i\.status='awaiting_approval'/);
@@ -267,6 +302,8 @@ test('Guardian retry scan selects only bounded failed or stale dispatches with s
   const db = { query: async (sql, values) => {
     params = values;
     assert.ok(sql.includes('not_requested'));
+    assert.match(sql, /repair_approved_by IS NOT NULL/);
+    assert.match(sql, /repair_approval_fingerprint IS NOT NULL/);
     assert.match(sql, /repair_dispatch_status='dispatching'/);
     assert.match(sql, /repair_dispatch_attempts < 3/);
     assert.match(sql, /status='awaiting_approval'/);
