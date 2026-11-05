@@ -16,7 +16,7 @@ import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceA
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 import { listSupportTicketsForOwner, getSupportTicketForOwner, replySupportTicketFromOwner, updateSupportTicketStatusFromOwner } from './account-center.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
-import { classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, processPendingGuardianRepairDispatch } from './guardian/automation.js';
+import { classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, processPendingGuardianRepairDispatch, isRepairableProposal } from './guardian/automation.js';
 import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, approveGuardianRepair, updateGuardianRepairStatus, getGuardianMonitorState, getLatestGuardianQualityReport } from './guardian/store.js';
 
 const OWNER_ID = '1553794496234262641';
@@ -596,6 +596,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + (risks.length ? '<p class="small">Riskler: ' + risks.map(escapeHtml).join(' · ') + '</p>' : '')
       + (result.proposedPatch ? '<details><summary>Önerilen yama taslağı (uygulanmadı)</summary><pre>' + escapeHtml(result.proposedPatch) + '</pre></details>' : '')
       + (result.status === 'insufficient_context' ? '<p class="notice warn">Kaynak bağlamı yetersiz; tahminle düzeltme hazırlanmadı.</p>' : '')
+      + (result.status === 'proposal_only' && !isRepairableProposal(result) ? '<p class="notice warn">Güven, dosya veya test planı yeterli değil; bu öneri için onarım workflow\'u başlatılamaz.</p>' : '')
       + (result.status === 'proposal_only' && job.repair_dispatch_status === 'dispatched' ? '<p class="notice">Onarım workflow\'u başlatıldı. <a href="https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml" target="_blank" rel="noopener noreferrer">GitHub Actions sonuçlarını aç</a></p>' : '')
       + (result.status === 'proposal_only' && repairApproved && !['dispatched','dispatching'].includes(job.repair_dispatch_status || '') ? '<p class="notice">Owner onayı kayıtlı. Guardian yalnızca bu onaylı öneri için izole test workflow\'unu yeniden deneyecek.</p>' : '')
       + (result.status === 'proposal_only' && job.repair_dispatch_status === 'dispatching' ? '<p class="notice warn">Onarım workflow başlatma isteği gönderiliyor veya sonucu bekleniyor. Tekrar tetiklemek yerine önce GitHub Actions geçmişini kontrol et.</p>' : '')
@@ -605,7 +606,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + (job.repair_pr_url ? '<p><a href="' + escapeHtml(job.repair_pr_url) + '" target="_blank" rel="noopener noreferrer">Son kaydedilen onarım PR #' + Number(job.repair_pr_number || 0) + ' kanıtını aç</a> · ' + escapeHtml(job.repair_pr_state || '') + '</p>' : '')
       + (job.repair_dispatch_status === 'dispatched' && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-refresh-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> GitHub sonucunu sorgulamayı onaylıyorum</label><button class="btn secondary">Sonucu yenile</button></form>' : '')
 
-      + (result.status === 'proposal_only' && !repairApproved && !emergencyStop && !['dispatched','dispatching'].includes(job.repair_dispatch_status || 'not_requested') && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-create-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu öneri için izole düzeltme ve test sürecini başlatmayı onaylıyorum</label><button class="btn">Onayla ve izole testi başlat</button></form>' : '')
+      + (result.status === 'proposal_only' && isRepairableProposal(result) && !repairApproved && !emergencyStop && !['dispatched','dispatching'].includes(job.repair_dispatch_status || 'not_requested') && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-create-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu öneri için izole düzeltme ve test sürecini başlatmayı onaylıyorum</label><button class="btn">Onayla ve izole testi başlat</button></form>' : '')
       + (result.status === 'proposal_only' && !process.env.FRIEREN_GITHUB_TOKEN && job.repair_dispatch_status !== 'dispatched' ? '<p class="notice warn">PR oluşturma düğmesi için FRIEREN_GITHUB_TOKEN yapılandırılmalı.</p>' : '')
       + '</article>';
   }).join('') : '<p class="muted">Henüz Frieren AI inceleme görevi yok.</p>';
@@ -1032,7 +1033,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         const incident = await getGuardianIncident(db, form.get('incidentId'));
         if (!incident) throw new Error('GUARDIAN_INCIDENT_NOT_FOUND');
         const job = await getLatestGuardianJob(db, incident.id);
-        if (!job || job.status !== 'completed' || job.result?.status !== 'proposal_only') {
+        if (!job || job.status !== 'completed' || !isRepairableProposal(job.result)) {
           throw new Error('GUARDIAN_REPAIR_REVIEW_REQUIRED');
         }
         if (job.repair_dispatch_status === 'dispatched') {
