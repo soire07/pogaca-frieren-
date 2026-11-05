@@ -68,6 +68,12 @@ class GenerateRequest(BaseModel):
     top_k: int = Field(default=40, ge=1, le=128)
 
 
+def generate_text(*args, **kwargs):
+    """Lazy compatibility seam for scratch-backend generation and tests."""
+    from .training import generate_text as _generate_text
+    return _generate_text(*args, **kwargs)
+
+
 @lru_cache(maxsize=1)
 def _load_runtime(checkpoint_path: str, device: str):
     # Keep PyTorch out of the lightweight GGUF serving process.
@@ -145,8 +151,6 @@ def _generate_reply(prompt: str, *, max_new_tokens: int, temperature: float, top
         return completion, 0, MODEL_ID
 
     from .chat_format import format_benchmark_prompt
-    from .training import generate_text
-
     model, tokenizer, metadata = _load_active_runtime()
     generation_prompt = format_benchmark_prompt(prompt)
     result = generate_text(
