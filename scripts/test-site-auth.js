@@ -535,7 +535,7 @@ test('site account lifecycle completes registration, email verification, login, 
     return { method: 'POST', url: path, headers: {
       'content-type': 'application/x-www-form-urlencoded',
       origin: 'https://frierenbot.vercel.app', 'sec-fetch-site': 'same-origin'
-    }, async *[Symbol.asyncIterator]() { yield Buffer.from(body); } };
+    }, socket: { remoteAddress: '192.0.2.123' }, async *[Symbol.asyncIterator]() { yield Buffer.from(body); } };
   };
   const get = path => ({ method: 'GET', url: path, headers: {} });
   try {
