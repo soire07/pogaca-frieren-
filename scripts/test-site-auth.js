@@ -206,7 +206,7 @@ test('username and email validation normalizes email and rejects malformed ident
 
 test('Turkish Unicode account names are accepted, normalized and safe for login', () => {
   assert.equal(validateSiteUsername(' Soirəe '), 'Soirəe');
-  assert.equal(validateSiteUsername('Soire\\u0301e'), 'Soirée');
+  assert.equal(validateSiteUsername('Soire\u0301e'), 'Soirée');
   assert.equal(validateSiteLoginIdentifier(' Soirəe '), 'soirəe');
   assert.equal(validateSiteUsername('Soirəe with space'), null);
   assert.equal(validateSiteUsername('Soirəe😀'), null);
@@ -219,7 +219,7 @@ test('registration form advertises Unicode letter and number support', async () 
     db: fakeDb(), sessionSecret: secret
   }), true);
   assert.equal(res.status, 200);
-  assert.match(res.body, /\\[\\p\\{L\\}\\p\\{N\\}_.-\\]\\{3,24\\}/);
+  assert.ok(res.body.includes('pattern="[\\p{L}\\p{N}_.-]{3,24}"'));
 });
 
 test('password hashing uses salted scrypt and verifies only the matching password', async () => {
