@@ -1,9 +1,25 @@
 import test from 'node:test';
+import { GUARDIAN_REPAIR_BRANCH, buildGuardianRepairTrackingUrls } from '../guardian/automation.js';
 import { createHmac } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
 import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, renderOwnerSecurityWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
 
+
+
+test('Guardian repair status polling tracks the same isolated branch used for workflow dispatch', () => {
+  assert.equal(GUARDIAN_REPAIR_BRANCH, 'guardian-isolated-repair-test-v2');
+  const urls = buildGuardianRepairTrackingUrls('https://api.github.com/', 990053);
+  const runs = new URL(urls.runsUrl);
+  const pulls = new URL(urls.pullRequestsUrl);
+  assert.equal(runs.searchParams.get('branch'), GUARDIAN_REPAIR_BRANCH);
+  assert.equal(runs.searchParams.get('event'), 'workflow_dispatch');
+  assert.equal(pulls.searchParams.get('base'), GUARDIAN_REPAIR_BRANCH);
+  assert.equal(pulls.searchParams.get('head'), 'soire07:ai-repair/guardian-990053');
+  assert.equal(urls.branchName, 'ai-repair/guardian-990053');
+  assert.throws(() => buildGuardianRepairTrackingUrls('http://api.github.com', 1), { message: 'INVALID_GUARDIAN_REPAIR_TRACKING_INPUT' });
+  assert.throws(() => buildGuardianRepairTrackingUrls('https://api.github.com', 0), { message: 'INVALID_GUARDIAN_REPAIR_TRACKING_INPUT' });
+});
 
 test('Guardian has a dedicated private Owner Panel section', () => {
   assert.ok(OWNER_PANEL_SECTIONS.some(section => section.id === 'guardian'));
