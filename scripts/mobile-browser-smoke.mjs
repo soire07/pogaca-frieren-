@@ -83,6 +83,13 @@ for (const scenario of scenarios) {
     await page.locator('#site-menu-backdrop').click({ position: { x: 4, y: 4 } });
     await page.waitForFunction(() => document.getElementById('site-sidebar')?.hidden === true);
     if (await menuToggle.getAttribute('aria-expanded') !== 'false' || await sidebar.isVisible()) throw new Error(scenario.name + ' outside click did not close navigation');
+    await menuToggle.click();
+    await sidebar.getByRole('link', { name: /Kullanıcı Paneli/ }).click();
+    await page.waitForURL(url => url.pathname === '/');
+    if (page.url().split('?')[0] !== baseUrl + '/') throw new Error(scenario.name + ' user panel shortcut did not navigate to the account dashboard');
+    if (!(await page.getByRole('heading', { name: /Maceracı Paneli/ }).count())) throw new Error(scenario.name + ' player dashboard heading is missing');
+    if (!(await page.getByText('Henüz bağlı karakter yok').count())) throw new Error(scenario.name + ' expected isolated empty-character state is missing');
+    if (!(await page.locator('form[action="/maceraci/link"]').count())) throw new Error(scenario.name + ' character-link form is missing from the user dashboard');
     await context.close();
     process.stdout.write('PASS ' + scenario.name + ' /login /register and authenticated left navigation\n');
   } finally {
