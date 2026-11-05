@@ -169,6 +169,8 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /KULLANICI MERKEZİ/);
   assert.match(response.body, /Başarım Vitrini/);
   assert.match(response.body, /Kişisel Yaşam Alanım/);
+  assert.match(response.body, /href="\\/maceraci\\/profil#leaderboards"/);
+  assert.match(response.body, /href="\\/maceraci\\/profil#privacy"/);
   assert.match(response.body, /data-nav-group="dunya"/);
   assert.ok(response.body.includes('data-nav-path="/" href="/"'));
   assert.ok(response.body.includes('<strong>Kullanıcı Paneli</strong>'));
@@ -179,6 +181,8 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /KULLANICI MERKEZİ/);
   assert.match(response.body, /Başarım Vitrini/);
   assert.match(response.body, /Kişisel Yaşam Alanım/);
+  assert.match(response.body, /href="\\/maceraci\\/profil#leaderboards"/);
+  assert.match(response.body, /href="\\/maceraci\\/profil#privacy"/);
   assert.match(response.body, /gif-gallery/);
   assert.match(response.body, /profile-avatar/);
   assert.equal((response.body.match(/loading="lazy"/g) || []).length, 18);
@@ -1057,8 +1061,9 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
    {board:'boss',players:[{user_id:userId,character_name:'Fern',boss_defeats:12}]},
    {board:'dungeon',players:[{user_id:userId,character_name:'Fern',dungeon_wins:8}]},
    {board:'arena',players:[{user_id:userId,character_name:'Fern',rating:1420}]},
-   {board:'daily_adventure_xp',players:[{user_id:userId,character_name:'Fern',xp:50}]}
-  ],rowCount:5};
+   {board:'daily_adventure_xp',players:[{user_id:userId,character_name:'Fern',xp:50}]},
+   {board:'achievements',players:[{user_id:userId,character_name:'Fern',achievements:2}]}
+  ],rowCount:6};
   if(sql.includes('FROM player_profile_settings'))return{rows:[{show_stats:false,show_achievements:true,show_collections:false,show_activity:false,show_cosmetics:true,active_title:'Kıdemli Maceracı'}],rowCount:1};
   if(sql.includes('FROM player_homes'))return{rows:[{is_public:true}],rowCount:1};
   if(sql.includes('FROM player_cosmetic_loadout'))return{rows:[{slot:'profile_frame',cosmetic_key:'moon_frame'}],rowCount:1};
@@ -1074,6 +1079,7 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/dungeon_25/);
  assert.match(response.body,/En yüksek ödüllü başarımlar/);
  assert.match(response.body,/Sıralamalar/);
+ assert.match(response.body,/Başarım sayısı/);
  assert.match(response.body,/Son 24 saat macera XP/);
  assert.match(response.body,/Gizlilik ayarları/);
  assert.ok(calls.every(call=>!call.params||!call.params.includes('999999999999999999')));
