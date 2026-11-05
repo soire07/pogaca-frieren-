@@ -58,7 +58,7 @@ async function enrichSiteUser(db,client,user) {
   try {
     const linked=await db.query('SELECT user_id FROM site_discord_links WHERE account_id=$1 LIMIT 1',[user.id.slice(5)]);
     const discordId=String(linked.rows?.[0]?.user_id||'');
-    if(/^\\d{17,20}$/.test(discordId)&&client?.users?.fetch){
+    if(/^\d{17,20}$/.test(discordId)&&client?.users?.fetch){
       try { const discordUser=client.users.cache?.get(discordId)||await client.users.fetch(discordId); const avatar=discordUser?.displayAvatarURL?.({extension:'webp',size:256}); if(avatar){enriched.discordAvatarUrl=avatar;enriched.avatarUrl=avatar;} } catch {}
     }
   } catch {}
