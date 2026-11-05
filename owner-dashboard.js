@@ -1040,7 +1040,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
           redirect(res, '/owner/guardian?notice=guardian_pr_dispatched');
           return true;
         }
-        const approval = await approveGuardianRepair(db, { jobId: job.id, actorId: OWNER_ID });
+        await approveGuardianRepair(db, { jobId: job.id, actorId: OWNER_ID });
         const approvedJob = await getLatestGuardianJob(db, incident.id);
         if (!approvedJob?.repair_approved_by || !approvedJob?.repair_approval_fingerprint) {
           throw new Error('GUARDIAN_REPAIR_APPROVAL_NOT_RECORDED');
