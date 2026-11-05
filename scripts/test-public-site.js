@@ -1174,3 +1174,19 @@ test('VIP XP animation is accessible and disabled for reduced-motion preferences
   assert.match(css,/@media\s*\(prefers-reduced-motion:reduce\)/);
   assert.match(css,/\.xp-progress\.is-vip \.xp-progress-track>i\{animation:none!important/);
 });
+
+
+test('profile section shortcuts survive the linked-guild selection step', async () => {
+  const accountId='site_123e4567-e89b-12d3-a456-426614174000';
+  const guildId='1539562273197260860';
+  const profile={guild_id:guildId,user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:12,xp:1440,coins:900,hp:80,max_hp:100,mana:65,max_mana:100};
+  const db={async query(sql){
+    if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};
+    if(sql.includes('SELECT e.event_id,e.guild_id'))return{rows:[],rowCount:0};
+    throw new Error('Unexpected guild-picker query: '+sql);
+  }};
+  const response=res();
+  assert.equal(await handlePublicSiteRequest(request('/maceraci/profil#achievements',{id:accountId,username:'Gezgin'}),response,{db}),true);
+  assert.equal(response.status,200);
+  assert.ok(response.body.includes('/maceraci/profil?guildId='+guildId+'#achievements'));
+});
