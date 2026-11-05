@@ -85,7 +85,7 @@ test('origin rejection diagnostics run before database access', async () => {
     assert.equal(db.calls.length, 0);
     assert.equal(entries.length, 1);
     assert.match(entries[0], /SITE_AUTH_ORIGIN_REJECTED/);
-    assert.match(entries[0], /unlisted-attacker\\.example/);
+    assert.match(entries[0], /unlisted-attacker\.example/);
   } finally {
     console.warn = originalWarn;
   }
