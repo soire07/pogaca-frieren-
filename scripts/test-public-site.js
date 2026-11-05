@@ -1164,7 +1164,7 @@ test('owner profile overrides VIP and renders the exclusive role, title, blood X
     const response=res();
     assert.equal(await handlePublicSiteRequest(request('/maceraci/profil?guildId='+guildId,{id:accountId,username:'Gezgin'}),response,{db}),true);
     assert.equal(response.status,200);
-    for(const expected of ['Maceracı Profili','Fern','OWNER','Kurucu · Owner','xp-progress is-owner','profile-owner-frame','İlerleme Merkezi','Savaş İstatistiklerim','Başarım Vitrini','Sıralamalar','Gizlilik ayarları','Yıldız Büyücüsü','Kozmetiklerini düzenle','Vitrin 6'])assert.ok(response.body.includes(expected),expected);
+    for(const expected of ['Maceracı Profili','Fern','OWNER','Kurucu · Owner','xp-progress is-owner','profile-owner-frame','profile-quick-nav','profile-achievement-search','profile-achievement-sort','profile-activity-filter','profile-preview-toggle','profile-settings-reset','İlerleme Merkezi','Savaş İstatistiklerim','Başarım Vitrini','Sıralamalar','Gizlilik ayarları','Yıldız Büyücüsü','Kozmetiklerini düzenle','Vitrin 6'])assert.ok(response.body.includes(expected),expected);
     assert.match(response.body,/action="\/maceraci\/yasam"/);
     assert.match(response.body,/href="\/maceraci\/ev\?guildId=/);
     assert.equal(response.body.includes('href="/owner"'),false);
@@ -1208,4 +1208,46 @@ test('profile section shortcuts survive the linked-guild selection step', async 
   assert.equal(await handlePublicSiteRequest(request('/maceraci/profil#achievements',{id:accountId,username:'Gezgin'}),response,{db}),true);
   assert.equal(response.status,200);
   assert.ok(response.body.includes('/maceraci/profil?guildId='+guildId+'#achievements'));
+});
+
+
+test('global site action script confirms destructive actions and prevents duplicate form submissions', async () => {
+  const response = res();
+  assert.equal(await handlePublicSiteRequest(request('/assets/site-actions.js'), response, {}), true);
+  assert.equal(response.status, 200);
+  assert.match(String(response.body), /pendingForms/);
+  assert.match(String(response.body), /window\.confirm/);
+  assert.match(String(response.body), /Büyü işleniyor/);
+  assert.doesNotMatch(String(response.body), /submitter\.disabled\s*=/);
+});
+
+test('profile interaction script is served and wires search, sorting, activity filters and privacy preview', async () => {
+  const response = res();
+  assert.equal(await handlePublicSiteRequest(request('/assets/profile-interactions.js'), response, {}), true);
+  assert.equal(response.status, 200);
+  for (const feature of ['data-profile-achievement-search','data-profile-achievement-sort','data-profile-activity-filter','profile-preview-toggle','profile-settings-reset']) {
+    assert.ok(String(response.body).includes(feature), feature);
+  }
+});
+
+
+test('authentication and guild management forms load the shared functional button handler', async () => {
+  const auth = await readFile(new URL('../site-auth.js', import.meta.url), 'utf8');
+  const guild = await readFile(new URL('../guild-dashboard.js', import.meta.url), 'utf8');
+  assert.match(auth, /site-actions\.js/);
+  assert.match(guild, /site-actions\.js/);
+  assert.match(guild, /\.guild-save:hover/);
+});
+
+
+test('all site and panel button markup declares an explicit action type', async () => {
+  const paths = ['../public-site.js', '../site-auth.js', '../guild-dashboard.js', '../owner-dashboard.js'];
+  for (const path of paths) {
+    const source = await readFile(new URL(path, import.meta.url), 'utf8');
+    const buttons = [...source.matchAll(/<button\b[^>]*>/g)].map(match => match[0]);
+    assert.ok(buttons.length > 0, path + ' should contain its known action controls');
+    for (const button of buttons) {
+      assert.match(button, /\btype="(?:submit|button|reset)"/, path + ' has an untyped button: ' + button);
+    }
+  }
 });

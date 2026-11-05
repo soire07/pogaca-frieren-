@@ -68,6 +68,43 @@ for (const scenario of scenarios) {
     }
     const playerPage = await page.goto(baseUrl + '/kesfet', { waitUntil: 'domcontentloaded', timeout: 45000 });
     if (!playerPage || playerPage.status() !== 200) throw new Error(scenario.name + ' authenticated site page HTTP ' + (playerPage?.status() || 'no response'));
+    await page.setContent('<main class="profile-page"><input data-profile-achievement-search><select data-profile-achievement-sort><option value="date-desc">Yeni</option><option value="name-asc">Ad</option></select><output id="profile-achievement-count"></output><div id="profile-achievement-list"><article data-achievement-name="frieren" data-achievement-date="2" data-achievement-reward="20">Frieren</article><article data-achievement-name="fern" data-achievement-date="1" data-achievement-reward="10">Fern</article></div><div id="profile-activity-list"><li data-activity-type="macera">Macera</li><li data-activity-type="başarım">Başarım</li></div><button type="button" data-profile-activity-filter="all">Tümü</button><button type="button" data-profile-activity-filter="başarım">Başarım</button><form id="profile-settings-form"><select name="showStats"><option value="false" selected>Gizli</option><option value="true">Açık</option></select><select name="showAchievements"><option value="true" selected>Açık</option><option value="false">Gizli</option></select><select name="showCollections"><option value="true" selected>Açık</option><option value="false">Gizli</option></select><select name="showActivity"><option value="false" selected>Gizli</option><option value="true">Açık</option></select><select name="showCosmetics"><option value="true" selected>Açık</option><option value="false">Gizli</option></select><select name="activeTitle"><option value="">Varsayılan</option></select></form><section data-profile-privacy="showStats">İstatistik</section><section data-profile-privacy="showActivity">Günlük</section><button type="button" id="profile-preview-toggle">Önizleme</button><button type="button" id="profile-settings-reset">Sıfırla</button><p id="profile-preview-note" hidden>Önizleme notu</p></main>');
+    await page.addScriptTag({ url: baseUrl + '/assets/profile-interactions.js' });
+    await page.locator('[data-profile-achievement-search]').fill('frieren');
+    if (await page.locator('#profile-achievement-count').textContent() !== '1 / 2 başarım') throw new Error(scenario.name + ' achievement search did not filter');
+    await page.locator('[data-profile-achievement-search]').fill('');
+    await page.locator('[data-profile-achievement-sort]').selectOption('name-asc');
+    const sortedNames = await page.locator('#profile-achievement-list article').allTextContents();
+    if (sortedNames.join(',') !== 'Fern,Frieren') throw new Error(scenario.name + ' achievement sorting did not reorder entries');
+    await page.locator('[data-profile-activity-filter="başarım"]').click();
+    if (!(await page.locator('#profile-activity-list li[data-activity-type="macera"]').isHidden())) throw new Error(scenario.name + ' adventure journal filter did not hide other entries');
+    await page.locator('#profile-preview-toggle').click();
+    if (!(await page.locator('[data-profile-privacy="showStats"]').isHidden())) throw new Error(scenario.name + ' privacy preview did not hide disabled statistics');
+    await page.locator('select[name="showStats"]').selectOption('true');
+    if (await page.locator('[data-profile-privacy="showStats"]').isHidden()) throw new Error(scenario.name + ' privacy preview did not reflect draft changes');
+    await page.locator('#profile-settings-reset').click();
+    if (!(await page.locator('[data-profile-privacy="showStats"]').isHidden())) throw new Error(scenario.name + ' privacy reset did not restore default draft');
+    await page.locator('#profile-preview-toggle').click();
+    if (await page.locator('[data-profile-privacy="showStats"]').isHidden()) throw new Error(scenario.name + ' closing privacy preview did not restore profile sections');
+
+    await page.setContent('<form id="action-test" action="/unused"><input type="hidden" name="serverAction" value="kept"><button type="submit" name="action" value="feature-save">Kaydet</button></form>');
+    await page.addScriptTag({ url: baseUrl + '/assets/site-actions.js' });
+    await page.evaluate(() => {
+      window.siteSubmitEvents = [];
+      document.addEventListener('submit', event => {
+        window.siteSubmitEvents.push({ prevented: event.defaultPrevented, name: event.submitter?.name, value: event.submitter?.value, disabled: event.submitter?.disabled });
+        event.preventDefault();
+      });
+    });
+    const actionButton = page.locator('#action-test button[type="submit"]');
+    await actionButton.click();
+    await actionButton.click();
+    const actionEvents = await page.evaluate(() => window.siteSubmitEvents);
+    if (actionEvents.length !== 2 || actionEvents[0].value !== 'feature-save' || actionEvents[0].disabled || !actionEvents[1].prevented) {
+      throw new Error(scenario.name + ' shared action handler broke named form controls or duplicate-submit protection: ' + JSON.stringify(actionEvents));
+    }
+    const restoredPlayerPage = await page.goto(baseUrl + '/kesfet', { waitUntil: 'domcontentloaded', timeout: 45000 });
+    if (!restoredPlayerPage || restoredPlayerPage.status() !== 200) throw new Error(scenario.name + ' restored authenticated site page HTTP ' + (restoredPlayerPage?.status() || 'no response'));
     const menuToggle = page.locator('#site-menu-toggle');
     const sidebar = page.locator('#site-sidebar');
     if (await menuToggle.count() !== 1) throw new Error(scenario.name + ' missing compact navigation toggle');

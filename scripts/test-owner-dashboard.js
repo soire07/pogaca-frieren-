@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
 import { GUARDIAN_REPAIR_BRANCH, buildGuardianRepairTrackingUrls } from '../guardian/automation.js';
 import { createHmac } from 'node:crypto';
 import { EventEmitter } from 'node:events';
@@ -1157,4 +1158,37 @@ test('Guardian action failures return to the Guardian workspace', () => {
   assert.equal(getOwnerActionErrorDestination('guardian-refresh-pr'), '/owner/guardian');
   assert.equal(getOwnerActionErrorDestination('guardian-review'), '/owner/guardian');
   assert.equal(getOwnerActionErrorDestination('rpg-resource-adjust'), '/owner');
+});
+
+
+test('Owner Panel document loads shared submit feedback without changing named action controls', async () => {
+  const source = await readFile(new URL('../owner-dashboard.js', import.meta.url), 'utf8');
+  const actions = await readFile(new URL('../public-assets/site-actions.js', import.meta.url), 'utf8');
+  assert.match(source, /site-actions\.js/);
+  assert.match(source, /script-src 'self'/);
+  assert.match(actions, /pendingForms/);
+  assert.doesNotMatch(actions, /submitter\.disabled\s*=/);
+});
+
+
+test('Guardian proposal without GitHub permission shows a clear blocker instead of an inert button', () => {
+  const previousToken = process.env.FRIEREN_GITHUB_TOKEN;
+  delete process.env.FRIEREN_GITHUB_TOKEN;
+  try {
+    const html = renderOwnerGuardianWorkspace({
+      csrf: 'csrf-test',
+      incidents: [],
+      jobs: [{
+        id: 9, incident_id: 7, incident_title: 'RPG timeout', agent: 'frieren_ai',
+        system: 'pogaca_frieren', status: 'completed', created_at: '2026-11-02T10:01:00Z',
+        repair_dispatch_status: 'not_requested',
+        result: { status: 'proposal_only', rootCause: 'Timeout guard missing', confidence: 'high', affectedFiles: ['commands/example.js'], proposedPatch: 'diff --git a/commands/example.js b/commands/example.js', tests: ['timeout regression'] }
+      }]
+    });
+    assert.match(html, /Onarım düğmesi gösterilmiyor: GitHub yetkisi eksik/);
+    assert.doesNotMatch(html, /<button[^>]*disabled[^>]*>Sorunu Çöz/);
+  } finally {
+    if (previousToken === undefined) delete process.env.FRIEREN_GITHUB_TOKEN;
+    else process.env.FRIEREN_GITHUB_TOKEN = previousToken;
+  }
 });
