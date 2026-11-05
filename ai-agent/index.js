@@ -51,8 +51,9 @@ const groqKey = process.env.GROQ_API_KEY?.trim();
 const groq = groqKey ? new OpenAI({ apiKey: groqKey, baseURL: 'https://api.groq.com/openai/v1', timeout: 45_000, maxRetries: 1 }) : null;
 const memoryStore = process.env.DATABASE_URL?.trim() ? createMemoryStore(process.env.DATABASE_URL.trim()) : null;
 let memoryDatabaseReady = false;
+const neuralRequested = Boolean(String(process.env.FRIEREN_NEURAL_API_URL || '').trim() || String(process.env.FRIEREN_NEURAL_API_TOKEN || '').trim());
 const neuralConfigured = isNeuralConfigured(process.env);
-const modelConfigured = Boolean(neuralConfigured || groq);
+const modelConfigured = neuralRequested ? neuralConfigured : Boolean(groq);
 const bridgeConfig = resolveAiBridgeConfig(process.env);
 const bridgeConfigured = bridgeConfig.configured;
 
@@ -382,6 +383,10 @@ async function answerCodeQuestion(question, userId, conversationId) {
       return { ok: false, message: 'Kalıcı belleğe kayıt yapılamadı. Veritabanı bağlantısını kontrol etmek gerekiyor.' };
     }
   }
+  if (neuralRequested && !isNeuralConfigured(process.env)) return {
+    ok: false,
+    message: 'Frieren Neural ayarları eksik veya geçersiz. HTTPS FRIEREN_NEURAL_API_URL ve en az 32 karakterlik FRIEREN_NEURAL_API_TOKEN birlikte ayarlanmalı; Groq yedeğine geçilmedi.'
+  };
   if (!groq && !isNeuralConfigured(process.env)) return {
     ok: false,
     message: 'Frieren Neural API yapılandırılmamış. FRIEREN_NEURAL_API_URL ve en az 32 karakterlik FRIEREN_NEURAL_API_TOKEN ayarlanmalı; Groq anahtarı zorunlu değildir.'
@@ -801,7 +806,7 @@ client.on(Events.InteractionCreate, async interaction => {
     const hours = Math.floor(uptimeSeconds / 3600);
     const minutes = Math.floor((uptimeSeconds % 3600) / 60);
     const seconds = uptimeSeconds % 60;
-    const provider = isNeuralConfigured(process.env) ? 'Frieren Neural' : (groq ? (process.env.FRIEREN_MODEL_PROVIDER || 'groq') : 'Yapılandırılmamış');
+    const provider = neuralRequested ? (neuralConfigured ? 'Frieren Neural' : 'Frieren Neural (eksik yapılandırma)') : (groq ? (process.env.FRIEREN_MODEL_PROVIDER || 'groq') : 'Yapılandırılmamış');
     const model = isNeuralConfigured(process.env) ? (process.env.FRIEREN_NEURAL_MODEL || 'ufakai/ufakzeka-1') : (process.env.FRIEREN_MODEL || 'openai/gpt-oss-20b');
     const embed = new EmbedBuilder()
       .setTitle('Frieren AI — Servis Durumu')
@@ -811,7 +816,7 @@ client.on(Events.InteractionCreate, async interaction => {
         { name: 'Gateway gecikmesi', value: client.ws.ping >= 0 ? client.ws.ping + ' ms' : 'Ölçülemiyor', inline: true },
         { name: 'Çalışma süresi', value: hours + ' sa ' + minutes + ' dk ' + seconds + ' sn', inline: true },
         { name: 'Bağlı sunucu sayısı', value: String(client.guilds.cache.size), inline: true },
-        { name: 'Yapay zekâ sağlayıcısı', value: provider + ((isNeuralConfigured(process.env) || groq) ? ' — API yapılandırılmış' : ' — API eksik'), inline: true }
+        { name: 'Yapay zekâ sağlayıcısı', value: provider + ((neuralConfigured || (!neuralRequested && groq)) ? ' — API yapılandırılmış' : ' — API eksik'), inline: true }
         { name: 'Model', value: model, inline: true },
         { name: 'Kalıcı bellek', value: memoryStore ? 'Yapılandırılmış' : 'Yapılandırılmamış', inline: true }
       )
