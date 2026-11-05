@@ -59,7 +59,7 @@ export function validatePatchPaths(patch, { task = '', incidentId = '' } = {}) {
       throw new Error('REPAIR_PATCH_FEATURE_NOT_ALLOWED');
     }
     const hunkHeaders = section.match(/^@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@(?: .*)?$/gm) || [];
-    if (!hunkHeaders.length) throw new Error('REPAIR_PATCH_HUNK_REQUIRED');
+    if (!hunkHeaders.length) throw new Error('REPAIR_PATCH_HUNK_INVALID');
     const hunkStart = section.search(/^@@ /m);
     const hunkBody = section.slice(hunkStart).split('\n').slice(1);
     if (hunkBody.some(line => line && !line.startsWith('@@ ') && ![' ', '+', '-', '\\'].includes(line[0]))) {
