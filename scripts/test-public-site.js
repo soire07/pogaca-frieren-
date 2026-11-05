@@ -164,10 +164,10 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /data-nav-group="oyuncu"/);
   assert.match(response.body, /data-nav-group="macera"/);
   assert.match(response.body, /data-nav-group="dunya"/);
-  assert.match(response.body, /data-nav-path="\\/" href="\\/"/);
-  assert.match(response.body, /<strong>Oyuncu Paneli<\\/strong>/);
-  assert.match(response.body, /data-nav-path="\\/maceraci" href="\\/maceraci"/);
-  assert.match(response.body, /<strong>Maceracı Paneli<\\/strong>/);
+  assert.ok(response.body.includes('data-nav-path="/" href="/"'));
+  assert.ok(response.body.includes('<strong>Oyuncu Paneli</strong>'));
+  assert.ok(response.body.includes('data-nav-path="/maceraci" href="/maceraci"'));
+  assert.ok(response.body.includes('<strong>Maceracı Paneli</strong>'));
   assert.match(response.body, /site-navigation.js/);
   assert.match(response.body, /data-nav-group="oyuncu"/);
   assert.match(response.body, /data-nav-group="macera"/);
