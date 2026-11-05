@@ -1215,9 +1215,9 @@ test('global site action script confirms destructive actions and prevents duplic
   const response = res();
   assert.equal(await handlePublicSiteRequest(request('/assets/site-actions.js'), response, {}), true);
   assert.equal(response.status, 200);
-  assert.match(response.body, /pendingForms/);
-  assert.match(response.body, /window\.confirm/);
-  assert.match(response.body, /Büyü işleniyor/);
+  assert.match(String(response.body), /pendingForms/);
+  assert.match(String(response.body), /window\.confirm/);
+  assert.match(String(response.body), /Büyü işleniyor/);
 });
 
 test('profile interaction script is served and wires search, sorting, activity filters and privacy preview', async () => {
@@ -1225,6 +1225,6 @@ test('profile interaction script is served and wires search, sorting, activity f
   assert.equal(await handlePublicSiteRequest(request('/assets/profile-interactions.js'), response, {}), true);
   assert.equal(response.status, 200);
   for (const feature of ['data-profile-achievement-search','data-profile-achievement-sort','data-profile-activity-filter','profile-preview-toggle','profile-settings-reset']) {
-    assert.ok(response.body.includes(feature), feature);
+    assert.ok(String(response.body).includes(feature), feature);
   }
 });
