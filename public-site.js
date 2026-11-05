@@ -347,7 +347,7 @@ function playerProfilePage(user,profile,data,status){
  const vip=isVipSiteAccount(user),xp=playerXpProgress(profile,vip),settings=data.settings||{},guild=encodeURIComponent(profile.guild_id);
  const achievementById=new Map(RPG_ACHIEVEMENTS.map(item=>[item.id,item]));
  const earned=(data.achievements||[]).map(row=>({...row,meta:achievementById.get(row.achievement_key)}));
- const pinned=earned.filter(row=>row.display_slot!==null&&Number(row.display_slot)<=2).sort((a,b)=>Number(a.display_slot)-Number(b.display_slot));
+ const pinned=earned.filter(row=>row.display_slot!==null&&Number(row.display_slot)>=0&&Number(row.display_slot)<=5).sort((a,b)=>Number(a.display_slot)-Number(b.display_slot));
  const topRewards=[...earned].sort((a,b)=>Number(b.meta?.reward||0)-Number(a.meta?.reward||0)).slice(0,3);
  const titleOptions=(data.titles||[]).map(row=>'<option value="'+esc(row.title)+'"'+(settings.active_title===row.title?' selected':'')+'>'+esc(row.title)+'</option>').join('');
  const boolSelect=(name,label,value)=>'<label>'+label+'<select name="'+name+'"><option value="false"'+(value?'':' selected')+'>Gizli</option><option value="true"'+(value?' selected':'')+'>Herkese açık</option></select></label>';
