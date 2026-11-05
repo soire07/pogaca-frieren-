@@ -50,6 +50,33 @@ export const EVENT_MILESTONES=Object.freeze([
  {key:'checkin',progressKey:'checkin',target:1,coins:150,xp:40,cosmeticKey:'winter_theme'}
 ]);
 const player=(g,u)=>{if(!ID.test(String(g||''))||!ID.test(String(u||'')))throw new Error('PLAYER_FEATURE_ID_INVALID');};
+export const DEFAULT_PLAYER_PROFILE_SETTINGS=Object.freeze({
+ show_stats:false,show_achievements:true,show_collections:true,show_activity:false,show_cosmetics:true,active_title:null
+});
+export function normalizeProfileSettings(input={}){
+ const keys=['showStats','showAchievements','showCollections','showActivity','showCosmetics'];
+ if(!input||typeof input!=='object'||keys.some(key=>typeof input[key]!=='boolean'))throw new Error('PROFILE_SETTINGS_INVALID');
+ const title=input.activeTitle==null?'':String(input.activeTitle).trim();
+ if(title.length>80||/[\u0000-\u001f\u007f]/.test(title))throw new Error('PROFILE_SETTINGS_INVALID');
+ return {showStats:input.showStats,showAchievements:input.showAchievements,showCollections:input.showCollections,showActivity:input.showActivity,showCosmetics:input.showCosmetics,activeTitle:title||null};
+}
+export async function getPlayerProfileSettings(db,{guildId,userId}){
+ player(guildId,userId);await ensurePlayerExperienceSchema(db);
+ const result=await db.query('SELECT show_stats,show_achievements,show_collections,show_activity,show_cosmetics,active_title FROM player_profile_settings WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+ return result.rows[0]||{...DEFAULT_PLAYER_PROFILE_SETTINGS};
+}
+export async function setPlayerProfileSettings(db,{guildId,userId,settings}){
+ player(guildId,userId);const normalized=normalizeProfileSettings(settings);await ensurePlayerExperienceSchema(db);
+ if(normalized.activeTitle){
+  const title=await db.query('SELECT 1 FROM user_titles WHERE guild_id=$1 AND user_id=$2 AND title=$3',[guildId,userId,normalized.activeTitle]);
+  if(!title.rowCount)return {status:'title_not_owned'};
+ }
+ await db.query(
+  'INSERT INTO player_profile_settings(guild_id,user_id,show_stats,show_achievements,show_collections,show_activity,show_cosmetics,active_title) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(guild_id,user_id) DO UPDATE SET show_stats=EXCLUDED.show_stats,show_achievements=EXCLUDED.show_achievements,show_collections=EXCLUDED.show_collections,show_activity=EXCLUDED.show_activity,show_cosmetics=EXCLUDED.show_cosmetics,active_title=EXCLUDED.active_title,updated_at=NOW()',
+  [guildId,userId,normalized.showStats,normalized.showAchievements,normalized.showCollections,normalized.showActivity,normalized.showCosmetics,normalized.activeTitle]
+ );
+ return {status:'updated',settings:normalized};
+}
 export function validateHomeLayout(layout){
  if(!Array.isArray(layout)||layout.length>12)throw new Error('HOME_LAYOUT_INVALID');
  const positions=new Set();
@@ -61,6 +88,7 @@ export function validateHomeLayout(layout){
 }
 export async function ensurePlayerExperienceSchema(db){
  await db.query(`
+ CREATE TABLE IF NOT EXISTS player_profile_settings(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,show_stats BOOLEAN NOT NULL DEFAULT FALSE,show_achievements BOOLEAN NOT NULL DEFAULT TRUE,show_collections BOOLEAN NOT NULL DEFAULT TRUE,show_activity BOOLEAN NOT NULL DEFAULT FALSE,show_cosmetics BOOLEAN NOT NULL DEFAULT TRUE,active_title TEXT,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
  CREATE TABLE IF NOT EXISTS player_homes(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,active_room TEXT NOT NULL DEFAULT 'starter',layout JSONB NOT NULL DEFAULT '[]'::jsonb,is_public BOOLEAN NOT NULL DEFAULT FALSE,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
  CREATE TABLE IF NOT EXISTS player_home_rooms(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,room_key TEXT NOT NULL,unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id,room_key),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
  CREATE TABLE IF NOT EXISTS player_home_trophies(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,achievement_key TEXT NOT NULL,display_slot INTEGER NOT NULL CHECK(display_slot BETWEEN 0 AND 5),displayed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id,achievement_key),UNIQUE(guild_id,user_id,display_slot),FOREIGN KEY(guild_id,user_id,achievement_key) REFERENCES achievement_claims(guild_id,user_id,achievement_key) ON DELETE CASCADE);
@@ -90,14 +118,18 @@ export async function setHomeVisibility(db,{guildId,userId,isPublic}){
  player(guildId,userId);if(typeof isPublic!=='boolean')return {status:'invalid_visibility'};await ensureUser(guildId,userId,db);await db.query("INSERT INTO player_home_rooms(guild_id,user_id,room_key) VALUES($1,$2,'starter') ON CONFLICT DO NOTHING",[guildId,userId]);await db.query('INSERT INTO player_homes(guild_id,user_id,is_public) VALUES($1,$2,$3) ON CONFLICT(guild_id,user_id) DO UPDATE SET is_public=EXCLUDED.is_public,updated_at=NOW()',[guildId,userId,isPublic]);return {status:'updated',isPublic};
 }
 export async function getPublicPlayerHome(db,{guildId,userId}){
- player(guildId,userId);const result=await db.query('SELECT u.user_id,u.character_name,u.class_name,u.level,u.xp,h.active_room,h.layout,h.is_public FROM player_homes h JOIN users u ON u.guild_id=h.guild_id AND u.user_id=h.user_id WHERE h.guild_id=$1 AND h.user_id=$2 AND h.is_public=TRUE',[guildId,userId]);
+ player(guildId,userId);await ensurePlayerExperienceSchema(db);
+ const result=await db.query('SELECT u.user_id,u.character_name,u.class_name,u.level,u.xp,u.boss_defeats,u.dungeon_wins,h.active_room,h.layout,h.is_public FROM player_homes h JOIN users u ON u.guild_id=h.guild_id AND u.user_id=h.user_id WHERE h.guild_id=$1 AND h.user_id=$2 AND h.is_public=TRUE',[guildId,userId]);
  if(!result.rowCount)return null;
- const [rooms,trophies,loadout]=await Promise.all([
+ const settingsResult=await db.query('SELECT show_stats,show_achievements,show_collections,show_activity,show_cosmetics,active_title FROM player_profile_settings WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+ const settings=settingsResult.rows[0]||{...DEFAULT_PLAYER_PROFILE_SETTINGS};
+ const [rooms,trophies,loadout,activity]=await Promise.all([
   db.query('SELECT room_key FROM player_home_rooms WHERE guild_id=$1 AND user_id=$2 ORDER BY unlocked_at',[guildId,userId]),
-  getHomeTrophies(db,{guildId,userId}),
-  db.query('SELECT slot,cosmetic_key FROM player_cosmetic_loadout WHERE guild_id=$1 AND user_id=$2 ORDER BY slot',[guildId,userId])
+  settings.show_achievements?getHomeTrophies(db,{guildId,userId}):Promise.resolve([]),
+  settings.show_cosmetics?db.query('SELECT slot,cosmetic_key FROM player_cosmetic_loadout WHERE guild_id=$1 AND user_id=$2 ORDER BY slot',[guildId,userId]):Promise.resolve({rows:[]}),
+  settings.show_activity?db.query("SELECT 'Macera' AS activity_type,outcome_text AS activity_label,occurred_at AS activity_at,xp_awarded FROM adventure_history WHERE guild_id=$1 AND user_id=$2 UNION ALL SELECT 'Başarım',achievement_key,claimed_at,0 FROM achievement_claims WHERE guild_id=$1 AND user_id=$2 ORDER BY activity_at DESC LIMIT 8",[guildId,userId]):Promise.resolve({rows:[]})
  ]);
- return {profile:result.rows[0],home:{active_room:result.rows[0].active_room,layout:result.rows[0].layout},rooms:rooms.rows,trophies,loadout:loadout.rows};
+ return {profile:result.rows[0],home:{active_room:result.rows[0].active_room,layout:result.rows[0].layout},rooms:rooms.rows,trophies,loadout:loadout.rows,settings,activity:activity.rows};
 }
 export async function brewHomePotion(pool,{guildId,userId,recipeKey}){
  player(guildId,userId);const recipe=ALCHEMY_RECIPES.find(x=>x.key===recipeKey);if(!recipe)return {status:'invalid_recipe'};await ensureUser(guildId,userId,pool);const c=await pool.connect();

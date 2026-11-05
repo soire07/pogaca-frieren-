@@ -302,3 +302,79 @@ body.site-menu-open{overflow:hidden}
 .site-menu-toggle:hover .site-menu-dots circle:nth-child(3){transform:translateY(-1px);}
 @media(max-width:560px){.site-menu-toggle{width:42px;height:42px;border-radius:13px}.site-menu-dots{width:19px;height:19px}}
 @media(prefers-reduced-motion:reduce){.site-menu-dots circle{transition:none}}
+
+
+/* Account identity and accurate level progress in the compact player menu. */
+.site-account-card{display:flex;align-items:flex-start;gap:11px;margin:10px 2px 8px;padding:11px;border:1px solid #d8bcff35;border-radius:14px;background:linear-gradient(135deg,#ffffff0d,#a98bdb0b)}
+.site-account-card>img{flex:0 0 42px;width:42px;height:42px;object-fit:cover;border:1px solid #e5d5ff88;border-radius:50%}
+.site-account-copy{display:grid;gap:5px;min-width:0;flex:1}
+.site-account-copy>strong{display:flex;align-items:center;gap:7px;flex-wrap:wrap;color:#f7efff;font-size:12px}
+.site-account-copy>small{color:#bdb4d0;font-size:10px;overflow-wrap:anywhere}
+.site-vip-badge{display:inline-flex;align-items:center;padding:2px 7px;border:1px solid #f2d5ff88;border-radius:20px;background:#a855f733;color:#ffe2ff;font-size:8px;font-weight:900;letter-spacing:.14em}
+.xp-progress{display:grid;gap:5px;width:100%;margin:8px 0 12px}
+.xp-progress-label{display:flex;justify-content:space-between;gap:8px;color:#c9bddf;font-size:10px}
+.xp-progress-track{height:9px;overflow:hidden;border:1px solid #d8bcff28;border-radius:99px;background:#29263d}
+.xp-progress-track>i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#8b5cf6,#b99aff);transition:width .35s ease}
+.xp-progress>small{color:#a99fbc;font-size:9px}
+.xp-progress.is-vip .xp-progress-track{border-color:#f0b9ff99;box-shadow:0 0 13px #d946ef38}
+.xp-progress.is-vip .xp-progress-track>i{background:linear-gradient(105deg,#a855f7,#ec4899,#f59e0b,#22d3ee,#8b5cf6,#a855f7);background-size:300% 100%;animation:frieren-vip-xp-flow 4s linear infinite;box-shadow:0 0 12px #d946ef77}
+@keyframes frieren-vip-xp-flow{from{background-position:0% 50%}to{background-position:300% 50%}}
+.site-account-card.is-vip{border-color:#e879f988;box-shadow:0 0 18px #c026d333}
+@media(prefers-reduced-motion:reduce){.xp-progress-track>i{transition:none!important}.xp-progress.is-vip .xp-progress-track>i{animation:none!important;background-position:50% 50%}}
+
+
+/* Adventurer profile and progress center. */
+.profile-page{padding:38px 0 84px}
+.profile-hero{display:grid;gap:0;overflow:hidden;border:1px solid #d8bcff30;border-radius:22px;background:linear-gradient(145deg,#211b3b,#141225 72%)}
+.profile-hero .profile-banner{height:150px;overflow:hidden}
+.profile-hero .profile-banner img{width:100%;height:100%;object-fit:cover}
+.profile-identity{display:flex;align-items:center;gap:16px;padding:0 22px;margin-top:-30px;position:relative}
+.profile-identity>img{width:76px;height:76px;flex:0 0 76px;object-fit:cover;border:3px solid #211b3b;border-radius:50%;background:#211b3b;box-shadow:0 5px 22px #0008}
+.profile-identity h1{margin:3px 0;font-size:clamp(1.4rem,4vw,2.1rem);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.profile-identity p{margin:3px 0;color:#c6bddb}
+.profile-active-title{color:#e9c9ff!important;font-weight:700}
+.profile-xp-card{padding:4px 22px 8px}
+.profile-share-actions{padding:0 22px 20px}
+.profile-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:12px}
+.profile-stat-grid .card{display:grid;gap:5px;min-height:86px;align-content:center}
+.profile-stat-grid strong{font-size:1.5rem;color:#f3eaff}
+.profile-stat-grid span{font-size:.82rem;color:#bdb4d0}
+.profile-achievement-list{display:grid;gap:9px;margin-top:14px}
+.profile-achievement{display:flex;align-items:center;gap:12px;padding:13px 15px;border:1px solid #d8bcff25;border-radius:14px;background:#ffffff07}
+.profile-achievement-icon{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:12px;background:#a78bfa1c;font-size:1.25rem}
+.profile-achievement>div{display:grid;gap:4px;min-width:0;flex:1}
+.profile-achievement small,.profile-pinned small{color:#aaa1bd;font-size:.78rem}
+.profile-achievement>b{font-size:.82rem;color:#e8d8ff;white-space:nowrap}
+.profile-pinned-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.profile-pinned{display:grid;gap:6px;justify-items:center;text-align:center;padding:16px 10px;border:1px solid #c4a6ff45;border-radius:15px;background:linear-gradient(145deg,#9b7bd51c,#ffffff05)}
+.profile-pinned>span{font-size:1.7rem}
+.profile-columns,.profile-board-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:14px}
+.profile-board ol{display:grid;gap:8px;padding-left:22px;margin:12px 0 0}
+.profile-board li{padding:7px 0;border-bottom:1px solid #ffffff12}
+.profile-board li span{margin-right:10px}
+.profile-board li b{float:right;color:#e4d3ff}
+.profile-xp-day{display:grid;grid-template-columns:90px minmax(70px,1fr) 75px;align-items:center;gap:10px;margin:9px 0;font-size:.8rem}
+.profile-xp-day>span,.profile-xp-day>b{color:#c8bfd9}
+.profile-xp-day>div{height:9px;overflow:hidden;border-radius:99px;background:#29263d}
+.profile-xp-day i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#8b5cf6,#c4a5ff)}
+.profile-completion{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;list-style:none;padding:0}
+.profile-completion li{padding:8px 10px;border-radius:9px;background:#ffffff08;color:#b9b0cb;font-size:.86rem}
+.profile-completion li.is-complete{color:#b8f2d0;background:#36a56b18}
+.profile-settings-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:13px;align-items:end}
+.profile-settings-form label{display:grid;gap:6px;color:#d7cde8;font-size:.88rem}
+.profile-settings-form select{width:100%;min-height:42px;padding:9px 11px;border:1px solid #62577d;border-radius:10px;background:#17152c;color:#fff}
+.profile-settings-form button{grid-column:1/-1;justify-self:start}
+.profile-notice{border-color:#9a82d9;color:#e9dcff}
+.site-account-card{position:relative}
+.site-account-card.is-vip .site-account-copy>strong{color:#ffe1ff}
+@media(max-width:560px){
+ .profile-page{padding:24px 0 64px}
+ .profile-hero .profile-banner{height:112px}
+ .profile-identity{gap:11px;padding:0 14px;margin-top:-24px}
+ .profile-identity>img{width:62px;height:62px;flex-basis:62px}
+ .profile-xp-card{padding:4px 14px 8px}
+ .profile-share-actions{padding:0 14px 16px}
+ .profile-achievement{align-items:flex-start;flex-wrap:wrap}
+ .profile-achievement>b{margin-left:50px}
+ .profile-xp-day{grid-template-columns:70px minmax(50px,1fr) 62px;gap:7px;font-size:.72rem}
+}
