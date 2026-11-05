@@ -173,3 +173,22 @@ img{max-width:100%}
 @media(max-width:850px){.hero{margin-top:14px;padding:34px 24px;min-height:0}.hero-art{min-height:270px}}
 @media(max-width:560px){.hero{padding:28px 18px;border-radius:22px}.hero-art{min-height:230px}.profile-banner-art{height:88px}.profile-banner-art span{width:56px;height:56px;font-size:31px}.topbar nav{max-width:100%;padding-bottom:8px}}
 @media(prefers-reduced-motion:reduce){.topbar nav a{transition:none}}
+
+
+/* Command reference: mirror Discord's live option schema in a compact readable tree. */
+.command-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.command-meta span{max-width:100%;padding:4px 8px;border:1px solid var(--line);border-radius:999px;color:#cfc4e3;font-size:10px;overflow-wrap:anywhere}
+.command-details{margin-top:13px;border-top:1px solid var(--line);padding-top:10px}
+.command-details summary{cursor:pointer;color:#ead8ff;font-size:12px;font-weight:800;min-height:36px;display:flex;align-items:center}
+.command-options,.command-choices{list-style:none;margin:8px 0 0;padding:0}
+.command-option{margin:8px 0;padding:10px;border:1px solid #e8dafa24;border-radius:12px;background:#09081755}
+.command-option-head{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+.command-option-head code{color:#f1dfff;font-size:12px}
+.command-option-head span{font-size:10px;color:var(--muted)}
+.command-option-head .required{color:#ffcfdb}
+.command-option-head .optional{color:#c9c1dc}
+.command-option p{margin:7px 0 0;font-size:12px}
+.command-choice-label,.command-constraints,.command-no-options{font-size:11px;color:#bfb3d4}
+.command-choices{display:flex;flex-wrap:wrap;gap:6px}
+.command-choices li{padding:3px 7px;border-radius:7px;background:#b89be51a;color:#e8dcf7;font-size:11px}
+@media(max-width:560px){.command-meta span{font-size:9px}.command-option{padding:9px}.command-details summary{min-height:42px}}
