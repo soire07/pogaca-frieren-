@@ -163,6 +163,8 @@ test('Guardian owner approval stores a fingerprint bound to the exact saved prop
   assert.match(calls[1].sql, /j\.result=\$4::jsonb/);
   assert.match(calls[1].sql, /i\.status='awaiting_approval'/);
   assert.match(calls[1].sql, /guardian_emergency_stop/);
+  assert.match(calls[1].sql, /INSERT INTO owner_audit_logs/);
+  assert.match(calls[1].sql, /guardian\.repair\.owner_approved/);
   assert.equal(calls[1].params[1], 'owner-1');
   assert.deepEqual(JSON.parse(calls[1].params[3]), proposal);
 });
