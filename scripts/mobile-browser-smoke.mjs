@@ -119,7 +119,8 @@ for (const scenario of scenarios) {
     await sidebar.waitFor({ state: 'visible', timeout: 5000 });
     if (await menuToggle.getAttribute('aria-expanded') !== 'true' || !(await sidebar.isVisible())) throw new Error(scenario.name + ' menu did not open');
     const menuStyle = await sidebar.evaluate(node => { const r=node.getBoundingClientRect(); const s=getComputedStyle(node); return {left:r.left,top:r.top,width:r.width,position:s.position,backdrop:s.backdropFilter}; });
-    if (menuStyle.position !== 'fixed' || menuStyle.left > 24 || menuStyle.top > 80 || menuStyle.width > 340) throw new Error(scenario.name + ' navigation is not a compact anchored popover: ' + JSON.stringify(menuStyle));
+    const maxMenuWidth = scenario.isMobile ? 340 : 440;
+    if (menuStyle.position !== 'fixed' || menuStyle.left > 24 || menuStyle.top > 80 || menuStyle.width > maxMenuWidth || (!scenario.isMobile && menuStyle.width < 380)) throw new Error(scenario.name + ' navigation width or anchored popover layout is invalid: ' + JSON.stringify(menuStyle));
     if (!(await sidebar.getByRole('link', { name: /Kullanıcı Paneli/ }).count())) throw new Error(scenario.name + ' missing player interface shortcut');
     if (await sidebar.locator('[data-nav-path="/kesfet"]').getAttribute('aria-current') !== 'page') throw new Error(scenario.name + ' active navigation item is not marked');
     await page.keyboard.press('Escape');
