@@ -310,6 +310,22 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
   const routes=['/login','/register','/forgot-password','/reset-password','/verify-email','/resend-verification','/logout'];
   if(!routes.includes(path))return false;
   if(req.method==='POST'&&!isSameOriginRequest(req,baseUrl())){
+    const headers = req.headers || {};
+    const safeOrigin = value => {
+      try { return new URL(String(value || '')).origin.slice(0, 160); } catch { return value ? '[invalid]' : null; }
+    };
+    const safeHeader = value => String(value || '').replace(/[\\r\\n\\t]/g, '').slice(0, 160) || null;
+    // Temporary, privacy-safe diagnostics: never record cookies, tokens, body,
+    // credentials, client IPs, or arbitrary request headers.
+    console.warn('[SITE_AUTH_ORIGIN_REJECTED]', JSON.stringify({
+      method: req.method,
+      path,
+      origin: safeOrigin(headers.origin),
+      secFetchSite: safeHeader(headers['sec-fetch-site']),
+      host: safeHeader(headers.host),
+      forwardedHost: safeHeader(headers['x-forwarded-host']),
+      forwardedProto: safeHeader(headers['x-forwarded-proto'])
+    }));
     send(res,403,page('İstek reddedildi','<h1>İstek kaynağı doğrulanamadı</h1>'));
     return true;
   }

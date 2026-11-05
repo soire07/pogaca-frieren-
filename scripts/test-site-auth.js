@@ -66,6 +66,31 @@ test('same-origin request guard accepts the configured site host and rejects cro
 });
 
 
+test('origin rejection diagnostics run before database access', async () => {
+  const db = fakeDb();
+  const req = { method: 'POST', url: '/login', headers: {
+    origin: 'https://unlisted-attacker.example',
+    'sec-fetch-site': 'same-site',
+    host: 'pogaca-frieren.onrender.com',
+    'x-forwarded-host': 'pogaca-frieren.onrender.com',
+    'x-forwarded-proto': 'https'
+  }, async *[Symbol.asyncIterator]() {} };
+  const res = response();
+  const originalWarn = console.warn;
+  const entries = [];
+  console.warn = (...args) => entries.push(args.join(' '));
+  try {
+    assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret }), true);
+    assert.equal(res.status, 403);
+    assert.equal(db.calls.length, 0);
+    assert.equal(entries.length, 1);
+    assert.match(entries[0], /SITE_AUTH_ORIGIN_REJECTED/);
+    assert.match(entries[0], /unlisted-attacker\.example/);
+  } finally {
+    console.warn = originalWarn;
+  }
+});
+
 function response() {
   return { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body) { this.body = body; } };
 }
