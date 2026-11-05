@@ -52,11 +52,19 @@ function requireSiteAccount(res, accountId) {
 }
 
 
-function page(title, content, user) {
+function page(title, content, user, seo = {}) {
+  const description = seo.description || 'Frieren evreninde büyülü bir Discord RPG yolculuğu.';
+  const robots = seo.indexable ? 'index,follow' : 'noindex,nofollow';
+  const seoTags = seo.canonical
+    ? '<link rel="canonical" href="' + esc(seo.canonical) + '"><meta property="og:type" content="website"><meta property="og:title" content="' + esc(title) + '"><meta property="og:description" content="' + esc(description) + '"><meta property="og:url" content="' + esc(seo.canonical) + '"><meta property="og:image" content="' + esc(seo.image || 'https://frierenbot.vercel.app/assets/site-banner.webp') + '"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="' + esc(title) + '"><meta name="twitter:description" content="' + esc(description) + '">'
+    : '';
+  const structuredData = seo.structuredData
+    ? '<script type="application/ld+json">' + JSON.stringify(seo.structuredData).replace(/</g, '\\u003c') + '</script>'
+    : '';
   const avatar = user.avatarUrl || '/assets/site-avatar.webp';
   const ownerLink = user.id === OWNER_ID ? '<a href="/owner">Owner Panel</a>' : '';
   const guildLink = '<a href="/lonca">Maceracı Loncası</a>';
-  return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><meta name="description" content="Frieren evreninde büyülü bir Discord RPG yolculuğu."><link rel="icon" type="image/svg+xml" href="/assets/site-avatar.svg"><link rel="alternate icon" href="/assets/site-avatar.webp" type="image/webp"><link rel="manifest" href="/site.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><title>' + esc(title) + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css"></head><body><header class="topbar"><a class="brand" href="/"><span class="brand-mark">✧</span><span>FRIEREN<small>THE ARCANE JOURNEY</small></span></a><nav><a href="/">Oyuncu Paneli</a><a href="/kesfet">Keşfet</a><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/maceraci">Maceracı Paneli</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><div class="user-chip"><img src="' + esc(avatar) + '" alt=""><span>' + esc(user.username || 'Gezgin') + '</span><a href="/logout" title="Çıkış yap">↗</a></div></header>' + content + '<footer><div><strong>✧ FRIEREN</strong><span>Bir yolculuk, bin yıllık bir hikâye.</span></div><nav><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><small>© Frieren Platform · Developed by Soiree</small></footer></body></html>';
+  return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><meta name="description" content="' + esc(description) + '"><meta name="robots" content="' + robots + '">' + seoTags + structuredData + '<link rel="icon" type="image/svg+xml" href="/assets/site-avatar.svg"><link rel="alternate icon" href="/assets/site-avatar.webp" type="image/webp"><link rel="manifest" href="/site.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><title>' + esc(title) + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css"></head><body><header class="topbar"><a class="brand" href="/"><span class="brand-mark">✧</span><span>FRIEREN<small>THE ARCANE JOURNEY</small></span></a><nav><a href="/">Oyuncu Paneli</a><a href="/kesfet">Keşfet</a><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/maceraci">Maceracı Paneli</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><div class="user-chip"><img src="' + esc(avatar) + '" alt=""><span>' + esc(user.username || 'Gezgin') + '</span>' + (user.id ? '<a href="/logout" title="Çıkış yap">↗</a>' : '<a href="/login" title="Giriş yap">↗</a>') + '</div></header>' + content + '<footer><div><strong>✧ FRIEREN</strong><span>Bir yolculuk, bin yıllık bir hikâye.</span></div><nav><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><small>© Frieren Platform · Developed by Soiree</small></footer></body></html>';
 }
 function home(client, user) {
   const ready = client?.isReady?.() === true;
@@ -342,11 +350,80 @@ function aiPage(user) {
   return page('Frieren AI', '<main><section class="wrap" style="padding:65px 0 42px;text-align:center"><div class="eyebrow">AKILLI ASİSTAN · TEST · TEKNİK ANALİZ</div><h1 class="hero-title">Frieren <em>AI</em></h1><p class="lead" style="margin:auto">Poğaça Frieren’in teknik yol arkadaşı. Sohbet ve hafızadan kod denetimine, test senaryolarından hata raporlarına uzanan ayrı bir AI servisi.</p><div class="actions" style="justify-content:center"><a class="btn" href="/owner">AI kontrol merkezine git ↗</a>' + healthLink + '</div></section><section class="section"><div class="wrap grid"><article class="card"><div class="icon">✧</div><h3>Frieren sohbeti</h3><p>Karakter odaklı sohbet akışı ve izinli kullanıcı hafızası.</p></article><article class="card"><div class="icon">⌘</div><h3>Teknik denetim</h3><p>Komut sözleşmeleri, kod incelemesi ve hata teşhisi.</p></article><article class="card"><div class="icon">✓</div><h3>Test sistemi</h3><p>Senaryo bazlı testler, PASS/FAIL raporları ve kanıt odaklı doğrulama.</p></article></div></section><section class="section"><div class="wrap cta"><h2>İki bot, tek büyülü platform.</h2><p>RPG macerası ve teknik asistan birbirinden bağımsız servislerde çalışır.</p><a class="btn" href="/pogaca">Poğaça Frieren’i keşfet</a></div></section></main>', user);
 }
 
+function publicSeoLandingPage() {
+  const canonical = 'https://frierenbot.vercel.app/tanitim';
+  const description = 'Frieren Bot: Poğaça Frieren, Frieren evreninden ilham alan Discord RPG botu. Görevler, büyüler, zindanlar, boss savaşları, ekipman ve topluluk özellikleriyle maceraya katıl.';
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebSite',
+        '@id': canonical + '#website',
+        url: canonical,
+        name: 'Frieren Bot',
+        inLanguage: 'tr-TR',
+        publisher: { '@id': canonical + '#creator' }
+      },
+      {
+        '@type': 'Person',
+        '@id': canonical + '#creator',
+        name: 'Soiree',
+        url: 'https://github.com/soire07'
+      },
+      {
+        '@type': 'SoftwareApplication',
+        '@id': canonical + '#application',
+        name: 'Poğaça Frieren',
+        alternateName: 'Frieren Bot',
+        applicationCategory: 'GameApplication',
+        operatingSystem: 'Discord',
+        url: canonical,
+        description,
+        creator: { '@id': canonical + '#creator' }
+      }
+    ]
+  };
+  const content = '<main><section class="wrap hero"><div><div class="eyebrow">✧ FRIEREN EVRENİNDEN İLHAM ALAN DİSCORD RPG ✧</div><h1>Frieren Bot:<br><em>Poğaça Frieren</em></h1><p class="lead">Görevler, büyüler, zindanlar, boss savaşları, ekipman, koleksiyon ve topluluk etkinlikleriyle kendi maceranı yaz.</p><div class="actions"><a class="btn" href="/pogaca">Poğaça Frieren’i keşfet ✧</a><a class="btn ghost" href="/login">Web hesabına giriş yap</a></div><p class="muted">Proje geliştiricisi: <a href="https://github.com/soire07" rel="me noopener">Soiree · GitHub soire07</a></p></div><div class="hero-art"><img src="/assets/site-banner.webp" alt="Poğaça Frieren — Frieren Discord RPG" fetchpriority="high" decoding="async" width="1000" height="353"></div></section><section class="section"><div class="wrap"><div class="section-head"><div class="eyebrow">FRIEREN PLATFORM</div><h2>Bir evren, iki ayrı uzmanlık</h2><p>Poğaça Frieren RPG macerası ile Frieren AI teknik asistanı aynı platformda buluşuyor.</p></div><div class="grid"><article class="card"><h3>Poğaça Frieren Discord RPG</h3><p>Karakter gelişimi, görevler, büyüler, zindanlar, boss savaşları, ekonomi, envanter ve koleksiyon sistemleri.</p><a class="btn ghost" href="/pogaca">Bot özelliklerini incele →</a></article><article class="card"><h3>Frieren AI</h3><p>Sohbet, hafıza, kod denetimi, test senaryoları ve teknik hata analizi için ayrı asistan.</p><a class="btn ghost" href="/frieren-ai">Frieren AI hakkında →</a></article></div></div></section><section class="section"><div class="wrap cta"><h2>Kendi macerana başla.</h2><p>Frieren dünyasını Discord sunucunda keşfet.</p><a class="btn" href="/komutlar">Komut kataloğunu incele</a></div></section></main>';
+  return page('Frieren Bot | Poğaça Frieren Discord RPG', content, {
+    id: '',
+    username: 'Ziyaretçi',
+    avatarUrl: '/assets/site-avatar.webp'
+  }, {
+    description,
+    canonical,
+    image: 'https://frierenbot.vercel.app/assets/site-banner.webp',
+    indexable: true,
+    structuredData
+  });
+}
+
 export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   if (await handleGuildDashboardRequest(req, res, { client, db })) return true;
+  const url = new URL(req.url, 'http://localhost');
+  if (req.method === 'GET' && url.pathname === '/google1941de4c3bd5e8ea.html') {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public,max-age=3600', 'X-Content-Type-Options': 'nosniff' });
+    res.end('google-site-verification: google1941de4c3bd5e8ea.html\\n');
+    return true;
+  }
+  if (req.method === 'GET' && url.pathname === '/robots.txt') {
+    const body = 'User-agent: *\nAllow: /tanitim\nAllow: /sitemap.xml\nAllow: /assets/site-banner.webp\nAllow: /assets/site-avatar.webp\nAllow: /assets/site-avatar.svg\nAllow: /assets/site.css\nDisallow: /\nSitemap: https://frierenbot.vercel.app/sitemap.xml\n';
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public,max-age=3600', 'X-Content-Type-Options': 'nosniff' });
+    res.end(body);
+    return true;
+  }
+  if (req.method === 'GET' && url.pathname === '/sitemap.xml') {
+    const body = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://frierenbot.vercel.app/tanitim</loc></url></urlset>';
+    res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public,max-age=3600', 'X-Content-Type-Options': 'nosniff' });
+    res.end(body);
+    return true;
+  }
+  if (req.method === 'GET' && url.pathname === '/tanitim') {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public,max-age=300', 'X-Robots-Tag': 'index, follow', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin' });
+    res.end(publicSeoLandingPage());
+    return true;
+  }
   const authHandled = await handleSiteAuthRequest(req, res, { db, sessionSecret: process.env.ADMIN_SESSION_SECRET, createSession: createPublicSiteSession });
   if (authHandled) return true;
-  const url = new URL(req.url, 'http://localhost');
   if (req.method === 'GET' && url.pathname === '/hesap/veri') {
     const session = readPublicSiteSession(cookies(req)[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
     if (!requireSiteAccount(res, session?.id)) return true;
