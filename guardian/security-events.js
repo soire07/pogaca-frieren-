@@ -104,9 +104,9 @@ export async function recordGuardianSecurityEvent(db, event, {
     };
     const eventHash = createHash('sha256').update(previousHash + '\n' + canonicalJson(payload)).digest('hex');
     await client.query(
-      \`INSERT INTO owner_guardian_evidence_chain
+      `INSERT INTO owner_guardian_evidence_chain
         (event_id,source,observed_at,severity,client_ip,ip_source,payload,event_hash,previous_hash)
-       VALUES($1,$2,$3,$4,$5::inet,$6,$7::jsonb,$8,$9)\`,
+       VALUES($1,$2,$3,$4,$5::inet,$6,$7::jsonb,$8,$9)`,
       [event.eventId, event.source, event.observedAt, event.severity, safeIp, payload.ipSource, JSON.stringify(payload), eventHash, previousHash]
     );
     const evidence = [
