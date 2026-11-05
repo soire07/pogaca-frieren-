@@ -33,6 +33,37 @@ test('epic set bonus activates at two pieces and disappears when one is removed'
   assert.equal(inactive.setText, null);
 });
 
+test('equipment command equip and unequip resource caps include active rarity set bonuses', async () => {
+  const read = async path => (await import('node:fs/promises')).readFile(new URL(path, import.meta.url), 'utf8');
+  const [equipmentCommand, itemCommand] = await Promise.all([read('../ekipman.js'), read('../esyakullan.js')]);
+  assert.match(equipmentCommand, /applyEquipmentSetBonus\(remainingItems, equipmentBonus\(remainingItems\)\)/);
+  assert.match(equipmentCommand, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+  assert.match(itemCommand, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+
+  const legendary = equipmentItems.filter(item => ['demon_blade', 'demon_armor'].includes(item.id));
+  const epic = equipmentItems.filter(item => ['frieren_robe', 'rune_ring'].includes(item.id));
+  const legendaryCaps = applyEquipmentSetBonus(legendary, equipmentBonus(legendary));
+  const epicCaps = applyEquipmentSetBonus(epic, equipmentBonus(epic));
+  assert.equal(Math.min(2000, 100 + legendaryCaps.hp), 185);
+  assert.equal(Math.min(2000, 100 + epicCaps.mana), 165);
+  assert.equal(Math.min(2000, 100 + applyEquipmentSetBonus(legendary.slice(1), equipmentBonus(legendary.slice(1))).hp), 160);
+  assert.equal(Math.min(2000, 100 + applyEquipmentSetBonus(epic.slice(1), equipmentBonus(epic.slice(1))).mana), 120);
+});
+
+
+test('equipment overview totals include active legendary and epic set bonuses', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../ekipman.js', import.meta.url), 'utf8');
+  assert.match(source, /const totals = applyEquipmentSetBonus\(total, equipmentBonus\(total\)\)/);
+  const legendary = equipmentItems.filter(item => ['demon_blade', 'demon_armor'].includes(item.id));
+  const epic = equipmentItems.filter(item => ['frieren_robe', 'rune_ring'].includes(item.id));
+  const legendaryTotals = applyEquipmentSetBonus(legendary, equipmentBonus(legendary));
+  const epicTotals = applyEquipmentSetBonus(epic, equipmentBonus(epic));
+  assert.equal(legendaryTotals.attack, 20);
+  assert.equal(legendaryTotals.hp, 85);
+  assert.equal(epicTotals.defense, 13);
+  assert.equal(epicTotals.mana, 65);
+});
+
 test('level-scaled quest rewards include the chain completion bonus deterministically', () => {
   assert.deepEqual(getLevelScaledQuestReward(100, 80, 21, false), {
     multiplier: 1.2, coins: 120, xp: 96, completionBonus: false
@@ -55,4 +86,47 @@ test('combat HP and mana return to persistent base-stat ratios without exceeding
   assert.equal(restoreResourceRatio(50, 0, 100), 100);
   assert.equal(restoreResourceRatio(50, 150, 0), 0);
   assert.equal(restoreResourceRatio(Number.NaN, 150, 100), 0);
+});
+
+test('combined equipment, build, class and talent modifiers preserve base resources', async () => {
+  const { applyTalentBonus, getCharacterBuild, applyClassDefense } = await import('../rpg-mechanics.js');
+  const base = { hp: 75, max_hp: 100, mana: 40, max_mana: 80, attack: 50, defense: 30, talent_hp: 2, talent_mana: 1, talent_attack: 3, talent_defense: 2, class_name: 'Muhafız', active_build: 'avci' };
+  const before = { ...base };
+  const set = equipmentItems.filter(item => ['demon_blade', 'demon_armor'].includes(item.id));
+  const gear = applyEquipmentSetBonus(set, equipmentBonus(set));
+  const build = getCharacterBuild(base.active_build);
+  const maxHp = Math.round(applyTalentBonus((base.max_hp + gear.hp) * build.hp, base.talent_hp, 0.05));
+  const maxMana = Math.round(applyTalentBonus((base.max_mana + gear.mana) * build.mana, base.talent_mana, 0.05));
+  const attack = Math.round(applyTalentBonus((base.attack + gear.attack) * build.attack, base.talent_attack, 0.04));
+  const defense = Math.round(applyTalentBonus(applyClassDefense(base.defense + gear.defense, base.class_name) * build.defense, base.talent_defense, 0.04));
+  assert.deepEqual({ maxHp, maxMana, attack, defense }, { maxHp: 204, maxMana: 84, attack: 94, defense: 47 });
+  assert.deepEqual(base, before, 'temporary modifiers must not mutate persistent base stats');
+  assert.equal(restoreResourceRatio(maxHp * 0.6, maxHp, base.max_hp), 60);
+  assert.equal(restoreResourceRatio(maxMana * 0.25, maxMana, base.max_mana), 20);
+});
+
+test('equipment set bonuses are wired into exploration, solo/co-op boss and profile calculations', async () => {
+  const read = async path => (await import('node:fs/promises')).readFile(new URL(path, import.meta.url), 'utf8');
+  const [exploration, soloBoss, coOpBoss, profile] = await Promise.all([
+    read('../commands/rpg/kesif.js'),
+    read('../iblisavasi.js'),
+    read('../ortakboss.js'),
+    read('../profil.js')
+  ]);
+
+  assert.match(exploration, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+  assert.match(exploration, /effectiveMaxHp[\s\S]*?gear\.hp/);
+  assert.match(exploration, /effectiveMaxMana[\s\S]*?gear\.mana/);
+  assert.match(exploration, /effectiveDefense[\s\S]*?gear\.defense/);
+  assert.match(exploration, /gear\.setText[\s\S]*?Etkin ekipman seti/);
+
+  assert.match(soloBoss, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+  for (const stat of ['hp', 'mana', 'attack', 'defense']) assert.ok(soloBoss.includes('gearBonus.' + stat), 'solo boss must apply set bonus ' + stat);
+
+  assert.match(coOpBoss, /applyEquipmentSetBonus\(equipped, equipmentBonus\(equipped\)\)/);
+  for (const stat of ['hp', 'mana', 'attack', 'defense']) assert.ok(coOpBoss.includes('gear.' + stat), 'co-op boss must apply set bonus ' + stat);
+
+  assert.match(profile, /applyEquipmentSetBonus\(equippedItems, equipmentBonus\(equippedItems\)\)/);
+  assert.match(profile, /gear\.setText \|\| 'Henüz set bonusu etkin değil'/);
+  for (const stat of ['hp', 'mana', 'attack', 'defense']) assert.ok(profile.includes('gear.' + stat), 'profile must display set-adjusted ' + stat);
 });

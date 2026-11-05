@@ -4,7 +4,7 @@ import { getBossArtUrl } from './boss-art.js';
 import { settleDungeonRewards } from './rpg-reward-transactions.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio } from './rpg-mechanics.js';
+import { dungeonChoiceOutcome, dungeonEnemyStats, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, restoreResourceRatio, applyDefendingReduction, isFinalDungeonBossEnraged, shouldFinalDungeonBossSpecialAttack, calculateFinalDungeonBossRawDamage, getDungeonEventOutcome, canAssignPartyRole, isPartyWiped, getPartyRoleModifiers, applyTalentBonus, calculateDungeonFloorReward } from './rpg-mechanics.js';
 
 const FLOORS = 5;
 
@@ -16,7 +16,7 @@ function floorProgressBar(cleared, total = FLOORS, width = 10) {
 const COOLDOWN_MS = 30 * 60_000;
 const LOOT = ['Orman Kristali', 'Kadim Rün Parçası', 'Kuzey Mührü'];
 const FLOOR_NAMES = ['🌲 Köklerin Koridoru', '🗿 Kadim Harabeler', '🌫️ Sisli Geçit', '🔥 Küller Salonu', '👑 Mühürlü İblis Lordu'];
-const PARTY_ROLES = { tank: { label: '🛡️ Muhafız', hp: 1.25, attack: 0.85, defense: 1.4 }, healer: { label: '💚 Şifacı', hp: 1, attack: 0.9, defense: 1.05 }, damage: { label: '⚔️ Hasar Ustası', hp: 0.95, attack: 1.3, defense: 0.9 } };
+const PARTY_ROLES = { tank: { label: '🛡️ Muhafız', ...getPartyRoleModifiers('tank', 'dungeon') }, healer: { label: '💚 Şifacı', ...getPartyRoleModifiers('healer', 'dungeon') }, damage: { label: '⚔️ Hasar Ustası', ...getPartyRoleModifiers('damage', 'dungeon') } };
 
 export default {
   data: new SlashCommandBuilder()
@@ -109,9 +109,10 @@ export default {
       collector.on('collect', async c => {
         const role = c.customId.split(':')[2];
         const previous = chosenRoles.get(c.user.id);
-        const conflict = [...chosenRoles.entries()].some(([userId, selected]) =>
-          userId !== c.user.id && selected === role && (role === 'tank' || role === 'healer')
-        );
+        const assignedByOthers = [...chosenRoles.entries()]
+          .filter(([userId]) => userId !== c.user.id)
+          .map(([, selected]) => selected);
+        const conflict = !canAssignPartyRole(assignedByOthers, role);
         if (conflict) {
           await c.reply({ content: role === 'tank' ? 'Bu takımda Muhafız rolü zaten seçildi. Şifacı veya Hasar Ustası seç.' : 'Bu takımda Şifacı rolü zaten seçildi. Muhafız veya Hasar Ustası seç.', flags: MessageFlags.Ephemeral }).catch(() => {});
           return;
@@ -192,13 +193,13 @@ export default {
       const players = rawPlayers.map((p, i) => {
         const equipped = gearMap.get(p.user_id) || []; const bonus = applyEquipmentSetBonus(equipped, equipmentBonus(equipped));
         const role = PARTY_ROLES[roles[i]]; const build = getCharacterBuild(p.active_build);
-        const baseMaxHp = Math.min(2000, Number(p.max_hp) + bonus.hp) * (1 + Number(p.talent_hp) * 0.05);
+        const baseMaxHp = applyTalentBonus(Math.min(2000, Number(p.max_hp) + bonus.hp), p.talent_hp, 0.05);
         const maxHp = Math.round(baseMaxHp * build.hp * role.hp);
-        const maxMana = Math.min(500, Math.round((Number(p.max_mana) + bonus.mana) * build.mana * (1 + Number(p.talent_mana) * 0.05)));
+        const maxMana = Math.min(500, Math.round(applyTalentBonus((Number(p.max_mana) + bonus.mana) * build.mana, p.talent_mana, 0.05)));
         return { ...p, build, classProfile: getCharacterClass(p.class_name), level: Number(p.level), xp: Number(p.xp), mana: Math.min(maxMana, Math.round((Number(p.mana) / Math.max(1, Number(p.max_mana))) * maxMana)), maxMana, role: roles[i], roleLabel: role.label, maxHp,
           hp: Math.round((Number(p.hp) / Math.max(1, Number(p.max_hp))) * maxHp),
-          attack: Math.round(Math.min(500, Number(p.attack) + bonus.attack) * build.attack * role.attack * (1 + Number(p.talent_attack) * 0.04)),
-          defense: Math.round(Math.min(250, applyClassDefense(Number(p.defense) + bonus.defense, p.class_name) * build.defense * (1 + Number(p.talent_defense) * 0.04)) * role.defense) };
+          attack: Math.round(applyTalentBonus(Math.min(500, Number(p.attack) + bonus.attack) * build.attack * role.attack, p.talent_attack, 0.04)),
+          defense: Math.round(Math.min(250, applyTalentBonus(applyClassDefense(Number(p.defense) + bonus.defense, p.class_name) * build.defense, p.talent_defense, 0.04)) * role.defense) };
       });
       if (players.some(p => p.hp <= 0)) {
         await db.query('ROLLBACK');
@@ -215,9 +216,12 @@ export default {
       const avgLevel = Math.floor(players.reduce((n, p) => n + p.level, 0) / players.length);
       const hpNow = players.map(p => p.hp);
       let floorsCleared = 0, totalXp = 0, totalCoins = 0, turns = 0;
+      let defendedHits = 0, healerSupportEvents = 0;
+      const floorRewards = [];
       const log = [];
       const spellCasts = new Map();
       const chestRewards = [];
+      const floorHpSnapshots = [];
 
       for (let floor = 1; floor <= FLOORS; floor++) {
         const enemyStats = dungeonEnemyStats(floor, avgLevel, players.length, interaction.options.getString('zorluk') || 'normal');
@@ -228,8 +232,10 @@ export default {
         let bossRageAnnounced = false;
         const finalBoss = floor === FLOORS;
         let enemyPhase = 1;
+        const floorStartHp = hpNow.join('/');
         log.push(`**Kat ${floor}: ${FLOOR_NAMES[floor - 1]}** — ${maxEnemyHp} HP.`);
-        while (enemyHp > 0 && hpNow.some(hp => hp > 0) && turn < 10) {
+        log.push(`❤️ Kat ${floor} başlangıç HP: ${floorStartHp}`);
+        while (enemyHp > 0 && !isPartyWiped(hpNow) && turn < 10) {
           const currentPhase = finalBoss ? getBossPhase(enemyHp, maxEnemyHp) : 1;
           if (currentPhase > enemyPhase) {
             enemyPhase = currentPhase;
@@ -324,6 +330,7 @@ export default {
                 const classHeal = applyClassHealing(6, players[healerIndex].class_name);
                 const healed = Math.min(players[i].maxHp, hpNow[i] + classHeal);
                 if (healed > hpNow[i]) {
+                  healerSupportEvents++;
                   log.push(`💚 ${players[healerIndex].roleLabel} <@${players[healerIndex].user_id}> ${healed - hpNow[i]} HP iyileştirdi.`);
                   hpNow[i] = healed;
                 }
@@ -332,14 +339,16 @@ export default {
             const tankIndex = living.find(i => players[i].role === 'tank');
             const targetIndex = tankIndex !== undefined && Math.random() < 0.7 ? tankIndex : living[(turn + floor) % living.length];
             const target = players[targetIndex];
-            const enraged = finalBoss && enemyHp <= maxEnemyHp * 0.5;
-            const specialAttack = finalBoss && turn % 3 === 0;
-            const bossPower = finalBoss ? 1.35 : 1;
-            const rawIncoming = Math.max(1, Math.round(enemyDamage * bossPower * (0.9 + ((turn + floor) % 3) * 0.08) + (enraged ? 7 : 0) + (specialAttack ? 6 + bossPhaseSpecialBonus(enemyPhase) : 0)));
+            const enraged = isFinalDungeonBossEnraged(floor, FLOORS, enemyHp, maxEnemyHp);
+            const specialAttack = shouldFinalDungeonBossSpecialAttack(floor, FLOORS, turn);
+            const rawIncoming = calculateFinalDungeonBossRawDamage(enemyDamage, {
+              floor, totalFloors: FLOORS, turn, enraged, specialAttack, phase: enemyPhase
+            });
             let incoming = finalBoss
               ? calculateBossIncomingDamage(rawIncoming, Math.round(target.defense * 0.6), enemyPhase)
               : Math.max(1, Math.round(rawIncoming - target.defense * 0.3));
-            if (defending.has(targetIndex)) incoming = Math.max(1, Math.round(incoming * 0.45));
+            incoming = applyDefendingReduction(incoming, defending.has(targetIndex));
+            if (defending.has(targetIndex)) defendedHits++;
             hpNow[targetIndex] = Math.max(0, hpNow[targetIndex] - incoming);
             if (enraged && !bossRageAnnounced) { log.push('🔥 İblis Lordu öfke evresine girdi; saldırıları güçlendi!'); bossRageAnnounced = true; }
             if (specialAttack) log.push('☄️ İblis Lordu yıldız biçimli mana patlaması kullandı!');
@@ -351,8 +360,8 @@ export default {
           break;
         }
         floorsCleared++;
-        const floorXp = 25 + floor * 12 + avgLevel * 2;
-        const floorCoins = 20 + floor * 10;
+        const { xp: floorXp, coins: floorCoins } = calculateDungeonFloorReward(floor, avgLevel);
+        floorRewards.push({ floor, name: FLOOR_NAMES[floor - 1], xp: floorXp, coins: floorCoins });
         totalXp += floorXp; totalCoins += floorCoins;
         log.push(`✅ ${floor}. kat temizlendi: +${floorXp} XP, +${floorCoins} altın (kişi başı).`);
         const pathRow = new ActionRowBuilder().addComponents(
@@ -390,13 +399,13 @@ export default {
           chestRewards.push(pathLoot);
           log.push(`🎁 Yol seçiminin ödülü: ${pathLoot} (her oyuncuya).`);
         }
-        const eventRoll = Math.random();
-        if (eventRoll < 0.24) {
+        const eventOutcome = getDungeonEventOutcome(Math.random());
+        if (eventOutcome === 'hidden_chest') {
           const chestLoot = LOOT[Math.floor(Math.random() * LOOT.length)];
           chestRewards.push(chestLoot);
           totalCoins += 15 + floor * 5;
           log.push(`🧰 ${floor}. katta gizli sandık bulundu! Her oyuncu ${chestLoot} ve ek ${15 + floor * 5} altın kazanacak.`);
-        } else if (eventRoll < 0.42) {
+        } else if (eventOutcome === 'trap') {
           const living = hpNow.map((hp, index) => hp > 0 ? index : -1).filter(index => index >= 0);
           if (living.length) {
             const targetIndex = living[Math.floor(Math.random() * living.length)];
@@ -407,6 +416,12 @@ export default {
         } else {
           log.push(`🧭 ${floor}. katta yol güvenliydi; takım bir sonraki kata ilerliyor.`);
         }
+        const floorEndHp = hpNow.join('/');
+        floorHpSnapshots.push({ floor, start: floorStartHp, end: floorEndHp });
+        log.push(`❤️ Kat ${floor} sonrası, sonraki kata taşınan HP: ${floorEndHp}`);
+      }
+      if (floorHpSnapshots.length) {
+        log.push(`📊 Katlar arası HP aktarımı: ${floorHpSnapshots.map(snapshot => `Kat ${snapshot.floor} ${snapshot.start} → ${snapshot.end}`).join(' | ')}`);
       }
 
       const victory = floorsCleared === FLOORS;
@@ -461,6 +476,9 @@ export default {
         )
         .addFields(
           { name: '🗝️ Zindan ilerlemesi', value: `\`${floorProgressBar(floorsCleared)}\`\n**${floorsCleared}/${FLOORS} kat** · ${victory ? '🏆 İblis Lordu yenildi' : floorsCleared >= 3 ? '🔥 Derin katlara ulaşıldı' : '🌲 Yolculuk devam ediyor'}`, inline: false },
+          { name: '📚 Kat bazlı ödüller', value: floorRewards.map(reward => `${reward.floor}. kat temizlendi: ${reward.name} · +${reward.xp} XP, +${reward.coins} altın`).join('\n').slice(0,1024) || 'Henüz kat tamamlanmadı.', inline: false },
+          { name: '❤️ Katlar arası HP aktarımı', value: floorHpSnapshots.map(snapshot => `Kat ${snapshot.floor} ${snapshot.start} → ${snapshot.end}`).join('\n').slice(0,1024) || 'Kat geçişi yok.', inline: false },
+          { name: '🛡️ Takım savunması ve desteği', value: `Savunma azaltımı uygulandı: ${defendedHits} kez\nŞifacı ${healerSupportEvents} kez iyileştirdi.`, inline: true },
           { name: '🏅 Kalıcı unvanlar', value: milestoneText.slice(0,1024), inline: false },
           { name: '🎁 Kişi başı ödül', value: `✨ ${totalXp} XP\n🥐 ${totalCoins} altın`, inline: true },
           { name: '💎 Ganimet ve sandıklar', value: [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])].length ? [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])].map(item => `• ${item}`).join('\\n') : 'Bu sefer ganimet çıkmadı.', inline: true },

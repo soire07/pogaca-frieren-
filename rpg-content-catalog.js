@@ -30,3 +30,16 @@ export function selectDungeonForLevel(level, tiers = DEFAULT_DUNGEON_TIERS) {
     .sort((a, b) => Number(a.minLevel) - Number(b.minLevel));
   return unlocked.at(-1) || null;
 }
+
+/** Select an unlocked solo boss tier without biasing the available rotation. */
+export function selectSoloBossForLevel(level, bosses = DEFAULT_SOLO_BOSSES, random = Math.random) {
+  const playerLevel = Number(level);
+  if (!Number.isFinite(playerLevel)) return null;
+  const unlocked = [...(bosses || [])]
+    .filter(boss => Number.isFinite(Number(boss.minLevel)) && playerLevel >= Number(boss.minLevel))
+    .sort((a, b) => Number(a.minLevel) - Number(b.minLevel));
+  if (!unlocked.length) return null;
+  const sample = Number(random());
+  const normalized = Number.isFinite(sample) ? Math.max(0, Math.min(0.999999999999, sample)) : 0;
+  return unlocked[Math.floor(normalized * unlocked.length)];
+}

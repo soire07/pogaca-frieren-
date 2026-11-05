@@ -45,6 +45,9 @@ test('crafting validates bounded quantities and serializes the player before mat
   assert.match(craft, /if \(!consumed\.rowCount\) throw new Error/);
   assert.match(craft, /await db\.query\('ROLLBACK'\)/);
   assert.match(craft, /if \(!playerLock\.rowCount\)/);
+  assert.match(craft, /WITH craft_input AS/);
+  assert.match(craft, /craft_input\.craft_xp::numeric/);
+  assert.doesNotMatch(craft, /VALUES\(\$1,\$2,\$3,GREATEST\(1,FLOOR\(\$3\/100\.0/);
 });
 
 test('trade offers reserve only unexpired copies using the database clock', async () => {
@@ -61,11 +64,13 @@ test('trade offers reserve only unexpired copies using the database clock', asyn
     'trade creation must serialize the sender, verify collection copies, reserve active offers and use database time');
   assert.doesNotMatch(create, /Date\.now\(\)\s*\+\s*5\s*\*\s*60\s*\*\s*1000/);
   assert.match(schema, /status IN \('pending','accepted','declined','expired','invalid'\)/);
-
   const trade = await read('trade-transaction.js');
+  assert.match(trade, /expires_at > NOW\(\)\) AS is_active/);
+  assert.doesNotMatch(trade, /Date\.now\(\)/, 'offer expiry must use the PostgreSQL clock that created the expiry timestamp');
+
   const snapshot = trade.indexOf('SELECT from_user_id,to_user_id FROM trade_offers');
   const players = trade.indexOf('ORDER BY user_id FOR UPDATE', snapshot);
-  const offer = trade.indexOf('SELECT * FROM trade_offers WHERE offer_id=$1 AND guild_id=$2 FOR UPDATE', players);
+  const offer = trade.indexOf('SELECT *, (expires_at > NOW()) AS is_active FROM trade_offers WHERE offer_id=$1 AND guild_id=$2 FOR UPDATE', players);
   const collection = trade.indexOf('FROM anime_character_collection', offer);
   assert.ok(snapshot >= 0 && players > snapshot && offer > players && collection > offer,
     'production acceptance must lock participant rows, then the offer, then the collection');

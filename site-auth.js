@@ -54,8 +54,26 @@ export function verifySiteCsrfToken(token, secret, now = Date.now()) {
   const b = Buffer.from(p[2]);
   return a.length === b.length && timingSafeEqual(a,b);
 }
+export function isSameOriginRequest(req, siteBaseUrl = process.env.SITE_BASE_URL) {
+  const headers = req?.headers || {};
+  const fetchSite = String(headers['sec-fetch-site'] || '').toLowerCase();
+  if (fetchSite && !['same-origin', 'none'].includes(fetchSite)) return false;
+  const originHeader = headers.origin;
+  if (!originHeader) return true;
+  let origin;
+  try { origin = new URL(originHeader).origin; } catch { return false; }
+  const allowed = new Set();
+  try { if (siteBaseUrl) allowed.add(new URL(siteBaseUrl).origin); } catch {}
+  const host = String(headers['x-forwarded-host'] || headers.host || '').split(',')[0].trim();
+  const protocol = String(headers['x-forwarded-proto'] || 'https').split(',')[0].trim().toLowerCase();
+  if (host && ['http', 'https'].includes(protocol)) {
+    try { allowed.add(new URL(protocol + '://' + host).origin); } catch {}
+  }
+  return allowed.has(origin);
+}
+
 function page(title, body) {
-  return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><title>' + esc(title) + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css"><style>.auth-wrap{min-height:100vh;display:grid;place-items:center;padding:28px 18px}.auth-card{width:min(100%,520px);padding:clamp(22px,5vw,36px);border:1px solid #e8dafa55;border-radius:26px;background:linear-gradient(145deg,#34294cdd,#17152eee);box-shadow:0 24px 80px #05030d88;text-align:center}.auth-mark{width:86px;height:86px;border-radius:50%;object-fit:cover;border:2px solid #e8dafa88}.auth-card h1{font:38px Georgia,serif;margin:18px 0 8px}.auth-card p{color:var(--muted);line-height:1.65}.auth-card form{text-align:left;display:grid;gap:9px;margin-top:22px}.auth-card label{font-size:13px;color:#e8dcf7}.auth-card input{width:100%;padding:13px 14px;border:1px solid #e8dafa44;border-radius:12px;background:#100d1dcc;color:#fff;font:inherit;box-sizing:border-box}.auth-card button{width:100%;margin:10px 0;padding:13px 16px;border:0;border-radius:12px;cursor:pointer;font:inherit}.auth-card .auth-notice{padding:12px 14px;border:1px solid #f0c8a866;border-radius:12px;color:#ffe3b4}.auth-card a{color:#e3c9ff}.auth-links{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:18px}.auth-hint{font-size:12px!important}</style></head><body><main class="auth-wrap"><section class="auth-card"><img class="auth-mark" src="/assets/site-avatar.svg" alt="Frieren"><div class="eyebrow">✧ FRIEREN · THE ARCANE JOURNEY ✧</div>' + body + '</section></main></body></html>';
+  return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><title>' + esc(title) + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css"><style>.auth-wrap{min-height:100vh;display:grid;place-items:center;padding:28px 18px}.auth-card{width:min(100%,520px);padding:clamp(22px,5vw,36px);border:1px solid #e8dafa55;border-radius:26px;background:linear-gradient(145deg,#34294cdd,#17152eee);box-shadow:0 24px 80px #05030d88;text-align:center}.auth-mark{width:86px;height:86px;border-radius:50%;object-fit:cover;border:2px solid #e8dafa88}.auth-card h1{font:38px Georgia,serif;margin:18px 0 8px}.auth-card p{color:var(--muted);line-height:1.65}.auth-card form{text-align:left;display:grid;gap:9px;margin-top:22px}.auth-card label{font-size:13px;color:#e8dcf7}.auth-card input{width:100%;height:48px;min-height:48px;padding:12px 14px;border:1px solid #e8dafa44;border-radius:12px;background:#100d1dcc;color:#fff;font:inherit;line-height:20px;box-sizing:border-box;-webkit-appearance:none;appearance:none}.auth-card button{width:100%;height:48px;min-height:48px;margin:10px 0;padding:12px 16px;border:0;border-radius:12px;cursor:pointer;font:inherit;line-height:20px;-webkit-appearance:none;appearance:none}.auth-card .auth-notice{padding:12px 14px;border:1px solid #f0c8a866;border-radius:12px;color:#ffe3b4}.auth-card a{color:#e3c9ff}.auth-links{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:18px}.auth-hint{font-size:12px!important}.auth-wrap .auth-card input:not([type="hidden"]),.auth-wrap .auth-card select,.auth-wrap .auth-card textarea{display:block!important;width:100%!important;min-width:0!important;min-height:48px!important;height:48px!important;box-sizing:border-box!important;padding:12px 14px!important;line-height:20px!important;-webkit-appearance:none!important;appearance:none!important}.auth-wrap .auth-card button{display:block!important;width:100%!important;min-height:48px!important;height:48px!important;box-sizing:border-box!important;padding:12px 16px!important;line-height:20px!important;-webkit-appearance:none!important;appearance:none!important}</style></head><body><main class="auth-wrap"><section class="auth-card"><img class="auth-mark" src="/assets/site-avatar.svg" alt="Frieren"><div class="eyebrow">✧ FRIEREN · THE ARCANE JOURNEY ✧</div>' + body + '</section></main></body></html>';
 }
 const messages = {
   registered:'Kayıt oluşturuldu. E-posta adresine gönderilen doğrulama bağlantısını aç.',
@@ -70,7 +88,8 @@ const messages = {
   csrf:'Formun süresi doldu. Sayfayı yenileyip tekrar dene.',
   rate_limited:'Çok fazla deneme yapıldı. Bir süre sonra yeniden dene.',
   mail_unavailable:'E-posta gönderimi henüz yapılandırılmadı. Site yöneticisi Gmail API bağlantısını tamamlamalı.',
-  mail_error:'E-posta gönderilemedi. Biraz sonra yeniden dene.'
+  mail_error:'E-posta gönderilemedi. Biraz sonra yeniden dene.',
+  site_account_required:'Maceracı paneli için önce Frieren web hesabınla giriş yap veya yeni bir hesap oluştur. Discord karakterini web hesabına daha sonra bağlayabilirsin.'
 };
 function formToken(secret) { return '<input type="hidden" name="csrf" value="' + createSiteCsrfToken(secret) + '">'; }
 function authPage(mode, secret, status = '', token = '') {
@@ -274,6 +293,10 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
   const url=new URL(req.url,'http://localhost'), path=url.pathname;
   const routes=['/login','/register','/forgot-password','/reset-password','/verify-email','/resend-verification','/logout'];
   if(!routes.includes(path))return false;
+  if(req.method==='POST'&&!isSameOriginRequest(req,baseUrl())){
+    send(res,403,page('İstek reddedildi','<h1>İstek kaynağı doğrulanamadı</h1>'));
+    return true;
+  }
   if(path==='/logout'&&req.method==='GET'){
     res.writeHead(302,{Location:'/login?status=logged_out','Cache-Control':'no-store','Set-Cookie':COOKIE+'=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'});res.end();return true;
   }

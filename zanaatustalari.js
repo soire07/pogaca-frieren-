@@ -24,7 +24,7 @@ export default {
     const key = interaction.options.getString('kategori') || 'level';
     const board = BOARDS[key] || BOARDS.level;
     const { rows } = await pool.query(
-      `SELECT user_id, level, xp, successful_crafts FROM user_crafting_progress
+      `SELECT user_id, level, xp, successful_crafts, salvaged_items FROM user_crafting_progress
        WHERE guild_id=$1 ORDER BY ${board.column} DESC, user_id ASC LIMIT 10`,
       [interaction.guildId]
     );

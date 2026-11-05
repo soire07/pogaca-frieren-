@@ -1,14 +1,32 @@
 import 'dotenv/config';
-import { Client, Collection, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, Collection, EmbedBuilder, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
 import { readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { initDatabase, pool } from './database/db.js';
+import { runDatabaseMigrations } from './database/migrations.js';
 import { resolveTradeOffer } from './trade-transaction.js';
+import { CREATURE_SPAWN_CHANCE, claimCreature, deactivateCreatureSpawn, initCreatureSchema, maybeSpawnCreature, setCreatureSpawnMessageId } from './creatures.js';
+import { initGuildDashboardSchema } from './guild-dashboard.js';
 import { renderMarket, renderMarketItem, buyMarketItem, renderPurchaseResult, renderMarketInventory } from './market.js';
 import { levelForXp } from './utils.js';
 import { handleCharacterPanelInteraction } from './karakter.js';
 import { handleArenaInteraction } from './arena.js';
+import { ensureGuildGameTables } from './guild-games.js';
+import { handleGuildGameInteraction } from './loncaoyun.js';
+import { ensureAdventurerPlatformTables, claimDueGuildEventReminders, markGuildEventReminderSent, releaseGuildEventReminderClaim } from './adventurer-platform.js';
+import { ensurePlayerMarketTables, claimDuePlayerMarketPriceAlerts, markPlayerMarketPriceAlertNotified, releasePlayerMarketPriceAlertClaim, cancelPlayerMarketPriceAlert } from './player-market.js';
+import { ensureSocialPlatformTables } from './social-platform.js';
+import { ensureAccountCenterSchema } from './account-center.js';
+import { ensureNewsBirdSchema, pollAnimeNewsFeed, claimDueAnimeNewsDigests, markAnimeNewsDigestSent, releaseAnimeNewsDigestClaim, getEventReminderRecipients, setNotificationPreference } from './news-birds.js';
+import { ensureCardVariantSchema } from './card-variants.js';
+import { ensureGuildWorkshopSchema, runGuildSpellAutomations } from './guild-workshop.js';
+import { ensureGuildTeamLeagueSchema } from './guild-team-leagues.js';
+import { initCompanionSchema } from './companions.js';
+import { initFishingSchema } from './fishing.js';
+import { initFarmSchema } from './farming.js';
+import { initCharacterWishlistSchema } from './character-wishlist.js';
+import { ensurePlayerExperienceSchema } from './player-experience.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { runCommandTestSuite } from './scripts/live-command-test.js';
@@ -18,7 +36,7 @@ import { startGuardianMonitor } from './guardian/monitor.js';
 import { processGuardianIncident, processPendingGuardianRepairDispatch } from './guardian/automation.js';
 import { handleNeuralQualityReportRequest } from './guardian/neural-quality-report-route.js';
 import { saveGuardianQualityReport } from './guardian/quality-report-store.js';
-import { getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
+import { areGuildCommandFeaturesEnabled, getComponentCommandName, getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
 import { handlePublicSiteRequest } from './public-site.js';
 import { shouldSkipFallbackResponse } from './guardian/http-response-guard.js';
 import { withHttpErrorBoundary } from './guardian/http-error-boundary.js';
@@ -31,6 +49,11 @@ if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL eksik. Önce Render
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMembers, ...(process.env.ENABLE_MESSAGE_CONTENT_INTENT === 'true' ? [GatewayIntentBits.MessageContent] : [])] });
 client.commands = new Collection();
+let creatureSchemaReady;
+async function ensureCreatureSchema() {
+  if (!creatureSchemaReady) creatureSchemaReady = initCreatureSchema(pool).catch(error => { creatureSchemaReady = null; throw error; });
+  await creatureSchemaReady;
+}
 
 
 
@@ -95,6 +118,119 @@ async function sendPrivateInteractionError(interaction, content) {
   }
 }
 
+let marketPriceAlertSweepRunning = false;
+async function processDuePlayerMarketPriceAlerts(readyClient = client) {
+  if (marketPriceAlertSweepRunning || !readyClient?.isReady?.()) return;
+  marketPriceAlertSweepRunning = true;
+  try {
+    const due = await claimDuePlayerMarketPriceAlerts(pool, 20);
+    for (const alert of due) {
+      try {
+        const user = await readyClient.users.fetch(alert.user_id);
+        await user.send(
+          '🔔 **Kuzey Pazarı fiyat alarmı**\\n' +
+          '**' + String(alert.item_key).slice(0, 120) + '** artık **' +
+          Number(alert.price_coins).toLocaleString('tr-TR') + ' altın**. ' +
+          'Hedefin: ' + Number(alert.target_price).toLocaleString('tr-TR') +
+          ' altın veya altı. İlan: ' + alert.listing_id
+        );
+        await markPlayerMarketPriceAlertNotified(pool, alert.alert_id, alert.claimed_at);
+      } catch (error) {
+        if ([50007, 10013].includes(Number(error?.code))) {
+          await cancelPlayerMarketPriceAlert(pool, { guildId: alert.guild_id, userId: alert.user_id, alertId: alert.alert_id }).catch(() => {});
+        } else {
+          await releasePlayerMarketPriceAlertClaim(pool, alert.alert_id, alert.claimed_at).catch(() => false);
+          console.error('Pazar fiyat alarmı teslim edilemedi:', error?.message || error);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Pazar fiyat alarmı taraması başarısız:', error?.message || error);
+  } finally {
+    marketPriceAlertSweepRunning = false;
+  }
+}
+
+let newsBirdSweepRunning = false;
+async function processNewsBirdDigests(readyClient = client) {
+  if (newsBirdSweepRunning || !readyClient?.isReady?.()) return;
+  newsBirdSweepRunning = true;
+  try {
+    try { await pollAnimeNewsFeed(pool); }
+    catch (error) { console.warn('Haberci kuş RSS güncellemesi başarısız:', error?.message || error); }
+    const due = await claimDueAnimeNewsDigests(pool, 20);
+    for (const digest of due) {
+      try {
+        const user = await readyClient.users.fetch(digest.user_id);
+        const items = Array.isArray(digest.items) ? digest.items : [];
+        const lines = items.slice(0, 5).map(item =>
+          '• **' + String(item.title || '').slice(0, 180) + '**\\n' +
+          String(item.summary || '').slice(0, 180) + '\\n' + String(item.link || '')
+        );
+        const content = ('🐦 **Frieren Haberci Kuşu · Günlük anime özeti**\\n' + lines.join('\\n\\n')).slice(0, 1900);
+        if (!lines.length) {
+          await markAnimeNewsDigestSent(pool, digest.guild_id, digest.user_id);
+          continue;
+        }
+        await user.send({ content, allowedMentions: { parse: [] } });
+        await markAnimeNewsDigestSent(pool, digest.guild_id, digest.user_id);
+      } catch (error) {
+        if ([50007, 10013].includes(Number(error?.code))) {
+          await setNotificationPreference(pool, { guildId: digest.guild_id, userId: digest.user_id, category: 'anime_news', enabled: false }).catch(() => {});
+          await markAnimeNewsDigestSent(pool, digest.guild_id, digest.user_id).catch(() => false);
+        } else {
+          await releaseAnimeNewsDigestClaim(pool, digest.guild_id, digest.user_id).catch(() => false);
+          console.error('Haberci kuş bildirimi teslim edilemedi:', error?.message || error);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Haberci kuş taraması başarısız:', error?.message || error);
+  } finally {
+    newsBirdSweepRunning = false;
+  }
+}
+
+let eventReminderSweepRunning = false;
+async function processDueGuildEventReminders(readyClient = client) {
+  if (eventReminderSweepRunning || !readyClient?.isReady?.()) return;
+  eventReminderSweepRunning = true;
+  try {
+    const due = await claimDueGuildEventReminders(pool, 20, new Date());
+    for (const event of due) {
+      try {
+        const channel = await readyClient.channels.fetch(event.channel_id);
+        if (!channel?.isTextBased?.() || typeof channel.send !== 'function') {
+          await releaseGuildEventReminderClaim(pool, event.event_id, event.reminder_claimed_at);
+          continue;
+        }
+        const reminderCategory = event.event_type === 'boss_raid' ? 'boss_raid_reminders' : 'event_reminders';
+        const attendees = (await getEventReminderRecipients(pool,event.event_id,reminderCategory)).slice(0,100);
+        const when = new Date(event.starts_at).toLocaleString('tr-TR', {
+          dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Istanbul'
+        });
+        await channel.send({
+          content: (event.event_type === 'boss_raid' ? '⚔️ **Boss / Raid etkinliği 30 dakika içinde başlıyor!**\\n' : event.event_type === 'tournament' ? '🏆 **Takım turnuvası 30 dakika içinde başlıyor!**\\n' : '⏰ **Lonca etkinliği 30 dakika içinde başlıyor!**\\n') +
+            '**' + String(event.title).slice(0, 100) + '** · ' + when +
+            (event.description ? '\\n' + String(event.description).slice(0, 700) : '') +
+            (event.event_type === 'boss_raid' ? '\\nKatılan maceracılar /ortakboss komutundaki etkinlik_id alanına \\`' + event.event_id + '\\` yazarak baskını başlatabilir.' : '') +
+            (attendees.length ? '\\n\\nKayıtlı maceracılar: ' + attendees.map(id => '<@' + id + '>').join(' ') : ''),
+          allowedMentions: { parse: [], users: attendees }
+        });
+        await runGuildSpellAutomations(pool,readyClient,event.guild_id,'event_reminder',{event:event.title,boss:event.title}).catch(error=>console.warn('Etkinlik otomasyonu çalıştırılamadı:',error?.message||error));
+        await markGuildEventReminderSent(pool, event.event_id, event.reminder_claimed_at);
+      } catch (error) {
+        await releaseGuildEventReminderClaim(pool, event.event_id, event.reminder_claimed_at).catch(() => false);
+        console.error('Lonca etkinliği hatırlatması gönderilemedi:', error?.message || error);
+      }
+    }
+  } catch (error) {
+    console.error('Lonca etkinliği hatırlatma taraması başarısız:', error?.message || error);
+  } finally {
+    eventReminderSweepRunning = false;
+  }
+}
+
 client.once(Events.ClientReady, async readyClient => {
   // Slash komutları yalnızca deploy-commands.js / GitHub Actions tarafından kaydedilir.
   // Bot her yeniden başladığında komut listesini temizlemek, diğer sunuculardaki komutları
@@ -104,6 +240,12 @@ client.once(Events.ClientReady, async readyClient => {
     .map(guild => ({ name: guild.name, id: guild.id }))
     .sort((a, b) => a.name.localeCompare(b.name));
   console.log('Bağlı Discord sunucuları (ad/ID):', JSON.stringify(connectedGuilds));
+  void processDueGuildEventReminders(readyClient);
+  void processDuePlayerMarketPriceAlerts(readyClient);
+  void processNewsBirdDigests(readyClient);
+  setInterval(() => void processDueGuildEventReminders(readyClient), 60_000);
+  setInterval(() => void processDuePlayerMarketPriceAlerts(readyClient), 5 * 60_000);
+  setInterval(() => void processNewsBirdDigests(readyClient), 60 * 60_000);
   const activities = [
     'bin yıllık büyüler öğreniyor ✨',
     'Fern ile büyü çalışıyor 🔮',
@@ -156,8 +298,30 @@ client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isChatInputCommand() && await getMaintenanceState(pool)) {
       return sendPrivateInteractionError(interaction, 'Frieren şu anda bakım modunda. İşlemler kısa süreliğine durduruldu.');
     }
+    const componentCommandName = (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit())
+      ? getComponentCommandName(interaction.customId) : null;
+    if (componentCommandName && (!interaction.guildId || !(await areGuildCommandFeaturesEnabled(pool, interaction.guildId, componentCommandName)))) {
+      return sendPrivateInteractionError(interaction, componentCommandName === 'yaratik'
+        ? 'Yaratık Arşivi bu sunucuda devre dışı bırakılmış.'
+        : 'Bu modül bu sunucuda devre dışı bırakılmış.');
+    }
     if (await handleCharacterPanelInteraction(interaction)) return;
+    if (await handleGuildGameInteraction(interaction)) return;
     if (await handleArenaInteraction(interaction)) return;
+    if (interaction.isButton() && interaction.customId.startsWith('creature_catch:')) {
+      try {
+        const spawnId = interaction.customId.slice('creature_catch:'.length);
+        const result = await claimCreature(pool, { guildId: interaction.guildId, userId: interaction.user.id, spawnId });
+        if (result.status === 'caught') {
+          return interaction.update({ content: interaction.user.username + ', **' + (result.creature.variant === 'shiny' ? 'Parlak ' : '') + result.creature.name + '** yaratığını arşivine ekledi.', embeds: [], components: [] });
+        }
+        const message = result.status === 'expired' ? 'Bu yaratığın yakalama süresi doldu.' : 'Bu yaratık daha önce yakalandı veya artık aktif değil.';
+        return interaction.update({ content: message, embeds: [], components: [] });
+      } catch (error) {
+        console.error('Yaratık yakalama hatası:', error?.message || error);
+        return sendPrivateInteractionError(interaction, 'Yaratık arşive eklenemedi. Daha sonra tekrar dene.');
+      }
+    }
   if (interaction.isButton() && interaction.customId.startsWith('market_')) {
     const parts = interaction.customId.split(':');
     const action = parts[0];
@@ -283,6 +447,27 @@ client.on(Events.MessageCreate, async message => {
   if (!message.guild || message.author.bot) return;
   try {
     if (await getMaintenanceState(pool)) return;
+    if (Math.random() < CREATURE_SPAWN_CHANCE && await getGuildFeatureEnabled(pool, message.guild.id, 'creatures')) {
+      try {
+        await ensureCreatureSchema();
+        const spawn = await maybeSpawnCreature(pool, { guildId: message.guild.id, channelId: message.channel.id }, { force: true });
+        if (spawn.status === 'spawned') {
+          const row = new ActionRowBuilder().addComponents(new ButtonBuilder()
+            .setCustomId('creature_catch:' + spawn.spawnId).setLabel('Yaratığı yakala').setStyle(ButtonStyle.Success));
+          const embed = new EmbedBuilder().setColor(0x9a8bd2)
+            .setTitle((spawn.creature.variant === 'shiny' ? '✨ Parlak ' : '') + spawn.creature.emoji + ' Vahşi bir yaratık belirdi!')
+            .setDescription('**' + spawn.creature.name + '** burada dolaşıyor. İlk yakalayan, yaratığı arşivine ekler.\n\nYakalamak için **3 dakikan** var.');
+          try {
+            const notifyUserIds = (spawn.notifyUserIds || []).slice(0, 10);
+            const sent = await message.channel.send({
+              content: notifyUserIds.length ? notifyUserIds.map(id => '<@' + id + '>').join(' ') : undefined,
+              embeds: [embed], components: [row], allowedMentions: { parse: [], users: notifyUserIds }
+            });
+            await setCreatureSpawnMessageId(pool, spawn.spawnId, sent.id);
+          } catch (sendError) { await deactivateCreatureSpawn(pool, spawn.spawnId); throw sendError; }
+        }
+      } catch (error) { console.error('Yaratık spawn hatası:', error?.message || error); }
+    }
     const [aiChatEnabled, messageXpEnabled] = await Promise.all([
       getGuildFeatureEnabled(pool, message.guild.id, 'aiChat'),
       getGuildFeatureEnabled(pool, message.guild.id, 'messageXp'),
@@ -311,8 +496,22 @@ client.on(Events.MessageCreate, async message => {
 
 await loadCommands();
 await initDatabase();
+await ensureAdventurerPlatformTables(pool);
+await ensurePlayerMarketTables(pool);
+await ensureSocialPlatformTables(pool);
+await ensureAccountCenterSchema(pool);
+await ensureNewsBirdSchema(pool);
+await ensureCardVariantSchema(pool);
+await ensureGuildWorkshopSchema(pool);
+await ensureGuildGameTables(pool);
+await ensureGuildTeamLeagueSchema(pool);
+await Promise.all([ensureCreatureSchema(), initCompanionSchema(pool), initFishingSchema(pool), initFarmSchema(pool), initCharacterWishlistSchema(pool), ensurePlayerExperienceSchema(pool)]);
 await initOwnerAdminSchema(pool);
 await initGuildFeatureSettingsSchema(pool);
+await initGuildDashboardSchema(pool);
+// The legacy schema bootstrap remains the compatibility baseline; new schema changes use versioned SQL.
+// Run only against Poğaça DATABASE_URL after every existing schema initializer has completed.
+await runDatabaseMigrations(pool);
 const stopGuardianMonitor = startGuardianMonitor({
   db: pool, client,
   onIncident: async incident => {

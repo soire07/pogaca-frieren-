@@ -17,7 +17,7 @@ test('trade offers are persistent, expiring and single-use', async () => {
   assert.match(command, /reservedAmount/);
   assert.match(transaction, /reservedForOthers/);
   assert.match(command, /NOW\(\)\+INTERVAL '5 minutes'/);
-  assert.match(transaction, /SELECT \* FROM trade_offers WHERE offer_id=\$1 AND guild_id=\$2 FOR UPDATE/);
+  assert.match(transaction, /SELECT \*, \(expires_at > NOW\(\)\) AS is_active FROM trade_offers WHERE offer_id=\$1 AND guild_id=\$2 FOR UPDATE/);
   assert.ok(transaction.includes('acceptingUserId !== offer.to_user_id'));
   assert.match(transaction, /status='accepted'/);
   assert.match(transaction, /quantity=quantity-\$4/);
@@ -204,10 +204,10 @@ test('player profile includes persistent talent ranks and equipment rarity set b
   for (const field of ['talent_attack', 'talent_defense', 'talent_hp', 'talent_mana']) {
     assert.ok(source.includes(`AS ${field}`), 'missing profile talent field: ' + field);
   }
-  assert.match(source, /Number\(u\.talent_hp\) \* 0\.05/);
-  assert.match(source, /Number\(u\.talent_mana\) \* 0\.05/);
-  assert.match(source, /Number\(u\.talent_attack\) \* 0\.04/);
-  assert.match(source, /Number\(u\.talent_defense\) \* 0\.04/);
+  assert.match(source, /applyTalentBonus\(\(Number\(u\.max_hp\) \+ gear\.hp\) \* build\.hp, u\.talent_hp, 0\.05\)/);
+  assert.match(source, /applyTalentBonus\(\(Number\(u\.max_mana\) \+ gear\.mana\) \* build\.mana, u\.talent_mana, 0\.05\)/);
+  assert.match(source, /applyTalentBonus\(\(Number\(u\.attack\) \+ gear\.attack\) \* build\.attack, u\.talent_attack, 0\.04\)/);
+  assert.match(source, /applyTalentBonus\(applyClassDefense\(Number\(u\.defense\) \+ gear\.defense, u\.class_name\) \* build\.defense, u\.talent_defense, 0\.04\)/);
 });
 
 
@@ -257,13 +257,17 @@ test('co-op combat releases database locks before waiting for player turns and r
 test('solo boss victory commits final HP, mana, rewards, mastery and loot in one transaction', async () => {
   const source = await read('iblisavasi.js');
   const rewards = await read('rpg-reward-transactions.js');
+  const schema = await read('database/db.js');
   const victory = source.indexOf('if (bossHp <= 0)');
   const claim = source.indexOf('claimSoloBossReward', victory);
   assert.ok(victory >= 0 && claim > victory, 'boss victory must call the shared production reward transaction');
-  for (const required of ['UPDATE users SET hp=$3, mana=$4, coins=coins+$5, xp=xp+$6','last_boss_battle_id IS DISTINCT FROM $7','INSERT INTO spell_mastery','INSERT INTO inventory','await db.query(\'COMMIT\')']) {
+  for (const required of ['UPDATE users SET hp=$3, mana=$4, coins=coins+$5, xp=xp+$6','INSERT INTO rpg_reward_claims','INSERT INTO spell_mastery','INSERT INTO inventory','await db.query(\'COMMIT\')']) {
     assert.ok(rewards.includes(required), 'production solo reward transaction missing: ' + required);
   }
   assert.ok(rewards.includes("await db.query('ROLLBACK')"));
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS rpg_reward_claims/);
+  assert.match(schema, /PRIMARY KEY \(guild_id,user_id,reward_type,reward_id\)/);
+  assert.match(schema, /SELECT guild_id,user_id,'solo_boss',last_boss_battle_id/);
   assert.ok(source.includes('rewardResult.status'));
 });
 
@@ -448,10 +452,12 @@ test('trade acceptance serializes player, offer and collection rows in one stabl
   const command = await read('takasteklif.js');
   assert.ok(handler.includes('resolveTradeOffer(pool'));
   const playerLock = transaction.indexOf('SELECT user_id FROM users');
-  const offerLock = transaction.indexOf('SELECT * FROM trade_offers');
+  const offerLock = transaction.indexOf('SELECT *, (expires_at > NOW()) AS is_active FROM trade_offers');
   const collectionLock = transaction.indexOf('FROM anime_character_collection');
   assert.ok(playerLock >= 0 && offerLock > playerLock && collectionLock > offerLock,
     'production transaction must lock player rows, then the offer, then the collection');
+  assert.match(transaction, /expires_at > NOW\(\)\) AS is_active/);
+  assert.doesNotMatch(transaction, /Date\.now\(\)/, 'trade expiration must use the PostgreSQL clock');
   assert.ok(transaction.includes('ORDER BY user_id FOR UPDATE'),
     'both participants must be locked in deterministic order');
   const createBegin = command.indexOf("await db.query('BEGIN')");

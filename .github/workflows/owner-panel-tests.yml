@@ -29,6 +29,7 @@ on:
       - 'scripts/test-owner-rpg-content.js'
       - 'scripts/check-gameplay-integrity.js'
       - '.github/workflows/owner-panel-tests.yml'
+  workflow_dispatch:
   push:
     branches:
       - main

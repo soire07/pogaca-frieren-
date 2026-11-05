@@ -1,10 +1,35 @@
 # Frieren Platform — Birleşik Özellik Envanteri
 
+## Güncel ek denetim — 2026-11-04
+
+Bu bölüm, 2026-11-01 tarihli başlangıç notunu PR #217 üzerindeki güncel bütünleşik onarım dalı `fix/solo-boss-reward-idempotency-mainline` için günceller; PR hâlâ taslaktır ve ana dala merge edilmemiştir.
+
+- Özellik envanteri: **2.018 kayıt**; **343 mevcut/kod karşılığı olan kayıt** ve **1.675 planlı roadmap adayı**.
+- `auditComplete=false` korunuyor. Kod/test kanıtı canlı Discord veya canlı web doğrulaması yerine geçmez.
+- Yeni kanıt bağlantılı kayıtlar: ENT-031–ENT-037, WEB-016–WEB-017 ve SOCIAL-005.
+- Rakip karşılaştırması Dyno, MEE6, Carl-bot, Tatsu ve UnbelievaBoat resmî sayfalarıyla güncellendi; kaynaklar ve ücretsiz/premium sınır notları `docs/COMPETITOR_FEATURE_MATRIX.md` içinde.
+- Poğaça modülleri: yoldaş, balıkçılık, sera, yaratık arşivi, karakter wishlist, Anime Quiz kalıcı puan ve Lonca etkinlik hatırlatmaları.
+- Web modülleri: Discord OAuth bağlantısı, yetkili sunucu seçimi, sunucu bazlı Frieren modül anahtarları, bağlı karakterin envanter/ekipman/koleksiyon görünümü (`/maceraci/envanter`, `/maceraci/koleksiyon`), escrow tabanlı oyuncu pazarı (`/pazar`), etkinlik RSVP/ayrılma formları (`/maceraci`) ve arkadaş/rakip/istek/itibar işlemleri (`/maceraci/sosyal`).
+- Güncel HEAD `8cdc98d17aa47d3a3c9aa70626c32dbf1174dea6` için **748/748** ana bot testi, **31/31** komut senaryosu ve **89/89** izole PostgreSQL entegrasyon senaryosu başarılı; Frieren AI CI, Owner Panel testleri/performance checks ve slash-command validation da başarılı. Bu testler canlı Discord/web tarayıcı doğrulaması değildir.
+- PR #217 açık taslak durumundadır. Merge, Render deploy, Discord komut kaydı ve üretim DB değişikliği yapılmadı.
+
 Son denetim: 2026-11-01  
 Kapsam: Poğaça Frieren, Frieren AI ve Frieren Owner Panel / web sitesi.  
 Kapsam dışı: log görüntüleme/analizi ve bu üç sistem dışında kalan botlar veya projeler.
 
 Bu belge bir başlangıç envanteridir; tamamlanma beyanı değildir. Özellik, yalnızca kaynak kodda karşılığı bulunduğunda "mevcut" sayılır. Otomatik test, gerçek Discord etkileşimi ve canlı servis doğrulaması ayrı kanıt türleridir.
+
+## Mimari karar — 2026-11-04
+
+Hedef mimari ve servis sınırları `docs/ARCHITECTURE.md` içinde tek kaynak olarak tanımlandı. Karar: tek depo, mevcut iki Render servisi; Poğaça içinde oyuncu web sitesi ve Owner Panel; ayrı teknik Frieren AI; Neural Guardian mevcut Guardian modülleri + GitHub Actions; Frieren Neural oyuncu sohbeti/hafızası olarak Poğaça tarafında kalır. Yeni mikroservis, ücretli servis veya Vercel deployment eklenmez.
+
+- Discord ve web adaptörleri aynı use-case/domain servislerini çağırır; iş kuralları route/komutlarda çoğaltılmaz.
+- Oyuncu, teknik AI ve owner kimlik/veri/izin alanları ayrıdır; oyuncu verisi guild + user kapsamında tutulur.
+- Migration kararı: mevcut `ensure*Schema` kurulumları korunur; önce schema baseline, ardından advisory-lock/checksum tabanlı sürümlü SQL migration runner hazırlanır. Kırıcı toplu şema dönüşümü yapılmaz.
+- Güvenli onarım zinciri: Guardian olay tekilleştirme/öncelik → Frieren AI inceleme ve hedefli test → sınırlı PR → bağımsız CI/Guardian → Owner Panel kanıtı → açık owner onayı → tek merge/deploy → canlı doğrulama.
+- Uygulama bağımlılık sırası: platform/migration temeli → koleksiyon/pazar → turnuva/arena → topluluk → web panel → AI/Guardian/Owner Panel uçtan uca iş akışı.
+
+Bu karar mimariyi ve hedefi netleştirir; 1.675 planlı roadmap kaydının uygulandığı veya canlı ortamın doğrulandığı anlamına gelmez.
 
 ## Mevcut mimari
 
@@ -28,10 +53,11 @@ Bu belge bir başlangıç envanteridir; tamamlanma beyanı değildir. Özellik, 
 - Liderlik tabloları, oyuncu geçmişi ve RPG istatistikleri.
 
 ### Kanıt ve sınır
-- Depodaki `feature-inventory.json` 317 ayrı oyuncu özelliği kaydı içeriyor; hedef 2.000.
-- Envanterin `auditComplete` alanı `false`. Bu nedenle 317 sayısı tüm bot özelliklerinin eksiksiz envanteri değildir.
-- 317 kaydın tamamı `implemented_needs_runtime_test` durumunda. Bu, kaynakta uygulama bulunduğunu belirtir; her özelliğin canlı Discord'da gerçek kullanıcıyla uçtan uca doğrulandığını göstermez.
-- Önceki CI kanıtları: 62 oyuncu komut denetimi, 14 PostgreSQL entegrasyon testi ve genel bot testleri başarılıydı. Bunlar sentetik Discord etkileşimleri ve izole test veritabanı kullanır; gerçek kullanıcı hesabıyla manuel Discord testi değildir.
+- Rakip bot/web karşılaştırmasından gelen 10 ek kayıt (`ENT-031–038`, `WEB-016–017`) eklendi. Bunlar kodda mevcut işlevleri temsil eder; canlı Discord/web akışlarının tamamı doğrulanmış değildir.
+- Depodaki `feature-inventory.json` 343 mevcut özellik kaydı içeriyor; toplam 2.018 kayıt (343 mevcut + 1.675 planlanan); başlangıç hedefi 2.000. Planlanan 1.675 satır, normalize edildiğinde 325 temel yetenek grubuna ayrılıyor: 225 grup yedi işlem fiiliyle (1.575 satır), 50 tek işlemli ve 50 fiilsiz tekil kayıt. Ayrıntı: `docs/ROADMAP_CAPABILITY_INDEX.md`.
+- Envanterin `auditComplete` alanı `false`. Bu nedenle 340 kayıt sayısı tüm bot özelliklerinin eksiksiz envanteri değildir.
+- 340 kaydın tamamı `implemented_needs_runtime_test` durumunda. Bu, kaynakta uygulama bulunduğunu belirtir; her özelliğin canlı Discord'da gerçek kullanıcıyla uçtan uca doğrulandığını göstermez.
+- 2026-11-04 doğrulaması: 748/748 ana bot testi, 31/31 komut senaryosu ve 89/89 izole PostgreSQL entegrasyon senaryosu başarılı. Frieren AI CI, Owner Panel testleri/performance checks ve slash-command validation da başarılı. Bunlar sentetik Discord etkileşimleri ve izole test veritabanı kullanır; gerçek kullanıcı hesabıyla manuel Discord veya canlı tarayıcı testi değildir.
 - Moderasyon ve genel sunucu yönetimi Poğaça'nın hedef kapsamı değildir.
 
 ## 2. Frieren AI
@@ -97,4 +123,35 @@ Bu belge bir başlangıç envanteridir; tamamlanma beyanı değildir. Özellik, 
 
 ## Başlangıç durumu
 
-Bu ilk kayıt, mevcut kod ve belgelerden çıkarılmıştır. Henüz yeni özellik veya üretim verisi değiştirilmedi. Sonraki değişiklikler ayrı PR, CI ve canlı dağıtım kanıtlarıyla kaydedilecektir.
+Güncel uygulama PR #217 taslağında tutuluyor; üretim verisi değiştirilmedi ve canlı dağıtım yapılmadı. 2026-11-04 doğrulaması: 748/748 ana bot testi, 31/31 komut senaryosu, 89/89 izole PostgreSQL senaryosu ve ilgili Frieren AI/Owner Panel CI kontrolleri başarılı. Canlı Discord, OAuth callback ve gerçek mobil/masaüstü tarayıcı doğrulaması henüz yapılmadı.
+
+
+## Follow-up verification notes — 2026-11-04
+
+- Owner Panel login was simplified per owner request: Discord OAuth remains mandatory, the fixed Owner ID check remains server-side, and TOTP/Authenticator setup and verification are no longer part of the owner login route. Successful OAuth issues a signed owner session directly; non-owner OAuth identities are rejected before any owner session is issued. Regression coverage was added for both paths. This is not yet live OAuth/browser validation.
+- Versioned migration runner is now implemented in `database/migrations.js` and invoked after the legacy schema initializer sequence. It serializes runs with a PostgreSQL advisory lock, records immutable SHA-256 checksums, executes each SQL migration transactionally, and establishes a non-destructive legacy baseline at version 0.
+- Five unit-level migration runner tests cover ordering, idempotency, checksum drift, rollback/lock release, and invalid sequence/filename/transaction controls. No schema-changing SQL migration has been added yet; existing schema parity and real PostgreSQL migration proof remain release gates.
+- The last verified pre-follow-up CI head `fcb5688` completed all six PR workflows, including the isolated PostgreSQL audit. The newer OAuth/migration commits have not yet received attached workflow results; the prior 89/89 integration result must not be attributed to the newer HEAD.
+- PR #217 remains draft and GitHub currently reports the branch as not mergeable against `main`; the one-commit OAuth overlap must be reconciled before review. No production DB, live Discord, or Render deployment action was taken.
+
+
+## Roadmap kalite denetimi — 2026-11-04
+
+- Yeni `scripts/roadmap-capability-audit.js`, roadmap kayıtlarını işlem fiili + temel yetenek olarak ayırır; aynı kategori ve temel yetenek altındaki Preview/Unlock/Track/Compare gibi varyantları ayrı bağımsız ürün yeteneği olarak saymaz.
+- Mevcut 1.675 roadmap kaydı 25 kategoride dağılmıştır. `Earn milestones for` ve `Review history for` gibi birleşik işlem önekleri tek parça çıkarıldığında kategori kapsamı korunarak **325 kategori/yetenek grubu** elde edilir: 225 grup yedi işlem varyantı (1.575 kayıt), 50 tek işlem grubu ve 50 öneksiz bağımsız kayıt. Önceki denetim kodu birleşik önekleri yalnızca `Earn`/`Review` olarak kestiği için hatalı 775 sayısını raporlamıştı; kod ve regresyon testi düzeltildi.
+- Bu denetim kayıtları otomatik silmez veya mevcut/planned statülerini değiştirmez. Tekrarlanan varyantlar ürün gereksinimi, ayrı davranış veya yalnızca görünüm/CRUD işlemi olup olmadığına göre insan incelemesi gerektirir.
+- Denetim `npm run check` ve `npm test` akışına eklendi; `scripts/test-roadmap-capability-audit.js` Türkçe normalizasyonu, kategori ayrımı, işlem fiili ayrıştırması ve envanter sayaçlarını test eder.
+- Sonraki uygulama paketleri 325 temel yetenek grubuna göre tanımlanmalı; her temel yetenek için Discord/web yüzeyleri, veri modeli, izin kapsamı ve test kanıtı ayrı izlenmelidir. Roadmap kayıt sayısı, uygulama yüzeyi veya test sayısı olarak raporlanmamalıdır.
+
+
+## Kişisel yaşam, kozmetik ve etkinlik ilerlemesi — 2026-11-04
+
+- Yeni `player-experience.js`, kişisel ev, genel oyuncu kozmetikleri ve etkinlik ödül ilerlemesi için ortak guild/user kapsamlı servis katmanıdır. Discord ve web yüzeyleri aynı servisleri kullanır.
+- Kişisel ev: dokuz açılabilir oda, sekiz izinli dekorasyon anahtarı, oda sahipliği kontrolü, en fazla 12 konumlu JSON yerleşimi, mevcut achievement_claims kayıtlarından beslenen altı slotlu Zafer Salonu vitrini ve kullanıcı tarafından açılıp kapatılabilen public showcase. Public route yalnızca is_public=true kayıtlarını döndürür. Yeni tablolar bot başlangıcında mevcut şema hazırlıklarından sonra oluşturulur.
+- Genel kozmetik: profil çerçevesi, isimlik, başlık efekti, büyü izi, zafer pozu, avatar kenarı, lonca sancağı, mevsim teması ve koleksiyon sergisi olmak üzere dokuz görünüm yuvası; 18 oyun içi altın/seviye koşullu öğe; sahiplik, kuşanma, görünüm preset'i kaydetme/uygulama ve mağaza/etkinlik kaynağı ile edinim zamanını tutan geçmiş.
+- Etkinlik ilerlemesi: `/etkinlik katil` kaydı katılım ilerlemesini aynı transaction içinde bir kez artırır. `/etkinlik yoklama` ve web yaşam alanındaki yoklama formu yalnızca kayıtlı katılımcıya, etkinlik başladıktan sonra tek seferlik check-in verir. Etkinlik bittikten sonra katılım ve yoklama ödülleri benzersiz claim anahtarıyla transaction içinde tek kez verilir; bu ödüller altın/XP yanında ücretsiz Bahar Teması veya Kuzey Kışı Teması kozmetiği de açabilir.
+- Ev istasyonları: `/yasam istasyonlar` açılmış odalara bağlı iş istasyonlarını listeler. Simya Laboratuvarı `/yasam iksir-demle` ile mevcut envanter malzemelerini transaction içinde tüketerek iksir üretir; Gezgin Bahçesi mevcut `/bahce` ve `farming.js` servisini kullanır. Büyü Arşivi, Zanaat Atölyesi ve Lonca Salonu mevcut komutlara yönlendirir; bu komutların mevcut erişim koşulları ev sahibi olma şartıyla geriye dönük olarak kısıtlanmaz.
+- Discord yüzeyi: `/yasam` ev, oda açma, yerleşim, istasyonlar, simya, dekorasyon kataloğu, kupa vitrini, kozmetik satın alma/kuşanma, preset kaydetme/uygulama ve etkinlik ödülü alt komutlarını sunar.
+- Web yüzeyi: `/maceraci/yasam?guildId=...` yalnızca oturumun bağlı olduğu Discord karakterini gösterir. Ev/kozmetik/preset/etkinlik/simya işlemleri CSRF doğrulamalı POST ve linked-guild kontrolünden geçer; public home showcase yalnızca sahibinin açık paylaşım izniyle görünür.
+- İzole PostgreSQL entegrasyon testi `scripts/test-player-experience.integration.js` ile CI'a eklendi; birim testleri `scripts/test-player-experience.js` ile `npm test` içine eklendi. Bu yeni testlerin son HEAD üzerindeki sonucu CI tamamlanmadan başarılı kabul edilmez.
+- Bu paket, roadmap'teki 67 Housing, 67 Cosmetics ve 67 Events kaydının tamamlandığı anlamına gelmez. Görsel sürükle-bırak ev düzenleyicisi, büyü/zanâat sistemlerinde eve özel ek üretim bonusları, kozmetiklerin oyun içi önizleme efektleri, genişletilmiş sezon para birimi/görevleri ve uzun dönem etkinlik karşılaştırma görünümleri hâlâ ayrı doğrulama gerektirir. Envanter kayıtları `planned` kalır; `auditComplete=false` korunur.

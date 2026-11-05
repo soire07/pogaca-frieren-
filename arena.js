@@ -14,15 +14,17 @@ import {
   submitArenaTurn
 } from './arena-queue.js';
 import { getArenaRating, getArenaLeaderboard } from './adventurer-platform.js';
+import { ARENA_ELEMENTS } from './arena-engine.js';
 
 function arenaEmbed(state) {
+  const elementNames = {fire:'Ateş',ice:'Buz',lightning:'Yıldırım',light:'Işık',dark:'Karanlık',neutral:'Nötr'};
   const team = key => state.players
     .filter(player => player.team === key)
-    .map(player => `${player.alive ? '🟢' : '☠️'} **${player.name}** — ${player.hp}/${player.maxHp} HP · ${player.mana}/${player.maxMana} Mana`)
+    .map(player => `${player.alive ? '🟢' : '☠️'} **${player.name}** — ${player.hp}/${player.maxHp} HP · ${player.mana}/${player.maxMana} Mana · ${elementNames[player.element]||'Nötr'}`)
     .join('\n');
   const current = state.status === 'active' ? state.players[state.turnIndex] : null;
   const embed = new EmbedBuilder()
-    .setTitle('⚔️ 3v3 Büyücü Arenası')
+    .setTitle('⚔️ ' + (state.mode==='1v1'?'1v1 Düello':'3v3 Büyücü Arenası'))
     .setDescription(
       `**Tur ${state.round}** · ${state.turnCount} hamle\n\n**Takım A**\n${team('A')}\n\n**Takım B**\n${team('B')}`
     )
@@ -51,8 +53,11 @@ function selectTarget(state, actorId) {
 export default {
   data: new SlashCommandBuilder()
     .setName('arena')
-    .setDescription('3v3 Büyücü Arenasına katıl, sıranı gör veya kuyruktan ayrıl.')
-    .addSubcommand(command => command.setName('katil').setDescription('3v3 eşleştirme kuyruğuna katıl.'))
+    .setDescription('1v1 düello veya 3v3 Büyücü Arenasına katıl, sıranı gör veya kuyruktan ayrıl.')
+    .addSubcommand(command => command.setName('katil').setDescription('1v1 veya 3v3 eşleştirme kuyruğuna katıl.')
+      .addStringOption(option=>option.setName('mod').setDescription('Arena modu').addChoices({name:'1v1 Düello',value:'1v1'},{name:'3v3 Takım Savaşı',value:'3v3'}))
+      .addStringOption(option=>option.setName('element').setDescription('Savaş elementin').addChoices(...ARENA_ELEMENTS.map(value=>({name:({fire:'Ateş',ice:'Buz',lightning:'Yıldırım',light:'Işık',dark:'Karanlık',neutral:'Nötr'})[value],value}))))
+    )
     .addSubcommand(command => command.setName('durum').setDescription('Kuyruk veya devam eden maç durumunu gör.'))
     .addSubcommand(command => command.setName('ayril').setDescription('Eşleştirme kuyruğundan ayrıl.'))
     .addSubcommand(command => command.setName('siralam').setDescription('Bu sezonun arena sıralamasını gör.')),
@@ -64,21 +69,24 @@ export default {
     const subcommand = interaction.options.getSubcommand();
     if (subcommand === 'katil') {
       const rating = await getArenaRating(pool, interaction.guildId, interaction.user.id);
+      const mode=interaction.options.getString('mod')||'3v3';
+      const element=interaction.options.getString('element')||'neutral';
       const result = await enqueueArenaPlayer(pool, {
         guildId: interaction.guildId,
         userId: interaction.user.id,
-        rating: Number(rating.rating)
+        rating: Number(rating.rating),
+        mode,element
       });
       if (result.status === 'queued') {
         const queue = result.queue;
         return interaction.reply({
-          content: `⏳ 3v3 Arena kuyruğuna katıldın. Kuyrukta **${queue.queueSize}/6** oyuncu var; önünde **${queue.playersAhead}** oyuncu bulunuyor. Eşleşme oluşunca bu kanalda duyurulacak.`,
+          content: `⏳ ${mode} Arena kuyruğuna katıldın. Elementin: **${({fire:'Ateş',ice:'Buz',lightning:'Yıldırım',light:'Işık',dark:'Karanlık',neutral:'Nötr'})[element]}**. Kuyrukta **${queue.queueSize}/${queue.requiredPlayers}** oyuncu var; önünde **${queue.playersAhead}** oyuncu bulunuyor. Eşleşme oluşunca bu kanalda duyurulacak.`,
           flags: MessageFlags.Ephemeral
         });
       }
       const mentions = result.participants.map(player => `<@${player.userId}>`).join(' ');
       return interaction.reply({
-        content: `⚔️ **3v3 Arena maçı bulundu!** ${mentions}\nSırası gelen oyuncu aşağıdaki hamlelerden birini seçebilir.`,
+        content: `⚔️ **${mode} Arena maçı bulundu!** ${mentions}\nSırası gelen oyuncu aşağıdaki hamlelerden birini seçebilir.`,
         embeds: [arenaEmbed(result.state)],
         components: arenaButtons(result.matchId),
         allowedMentions: { users: result.participants.map(player => player.userId) }
@@ -88,13 +96,13 @@ export default {
       const status = await getArenaQueueStatus(pool, interaction.guildId, interaction.user.id);
       if (status.status === 'queued') {
         return interaction.reply({
-          content: `⏳ Kuyruktasın. **${status.queueSize}/6** oyuncu var; önünde **${status.playersAhead}** oyuncu bulunuyor.`,
+          content: `⏳ ${status.mode} kuyruğundasın. **${status.queueSize}/${status.requiredPlayers}** oyuncu var; önünde **${status.playersAhead}** oyuncu bulunuyor.`,
           flags: MessageFlags.Ephemeral
         });
       }
       if (status.status === 'in_match') {
         return interaction.reply({
-          content: 'Devam eden 3v3 maçın:',
+          content: 'Devam eden ' + (status.state.mode==='1v1'?'1v1 düellon':'3v3 maçın') + ':',
           embeds: [arenaEmbed(status.state)],
           components: arenaButtons(status.matchId),
           flags: MessageFlags.Ephemeral

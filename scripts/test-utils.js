@@ -90,7 +90,7 @@ test('multi-floor dungeon offers turn-based attack, spell and defense choices', 
   assert.match(source, /katlizindan:act:defend/);
   assert.match(source, /p\.mana >= spellCost/);
   assert.match(source, /p\.mana\s*-=\s*spellCost/);
-  assert.match(source, /incoming \* 0\.45/);
+  assert.match(source, /applyDefendingReduction\(incoming, defending\.has\(targetIndex\)\)/);
   assert.match(rewards, /mana=\$9/);
 });
 
@@ -100,7 +100,7 @@ test('dungeon and boss raid let each accepted player choose their own role', asy
   for (const source of [dungeon, raid]) {
     assert.match(source, /roleMessage\.createMessageComponentCollector/);
     assert.match(source, /chosenRoles\.set\(c\.user\.id, role\)/);
-    assert.match(source, /selected === role && \(role === 'tank' \|\| role === 'healer'\)/);
+    assert.match(source, /canAssignPartyRole\(assignedByOthers, role\)/);
     assert.match(source, /c\.customId\.endsWith\(interaction\.id\)/);
   }
   assert.match(dungeon, /katlizindan:role:tank/);
@@ -116,7 +116,7 @@ test('cooperative boss raid supports attack, mana spell, defense and mana persis
   assert.match(source, /raid:act:defend/);
   assert.match(source, /f\.mana >= spellCost/);
   assert.match(source, /f\.mana -= spellCost/);
-  assert.match(source, /incoming\*0\.45/);
+  assert.match(source, /applyDefendingReduction\(incoming,defending\.has\(i\)\)/);
   assert.match(rewards, /mana=\$9/);
   assert.match(source, /ComponentType\.Button/);
 });
@@ -332,7 +332,9 @@ test('final dungeon boss has three phases and stronger phase-scaled special atta
   assert.match(source, /const finalBoss = floor === FLOORS/);
   assert.match(source, /getBossPhase\(enemyHp, maxEnemyHp\)/);
   assert.match(source, /calculateBossIncomingDamage\(rawIncoming, Math\.round\(target\.defense \* 0\.6\), enemyPhase\)/);
-  assert.match(source, /bossPhaseSpecialBonus\(enemyPhase\)/);
+  assert.match(source, /calculateFinalDungeonBossRawDamage\(enemyDamage,/);
+  assert.match(source, /isFinalDungeonBossEnraged\(floor, FLOORS, enemyHp, maxEnemyHp\)/);
+  assert.match(source, /shouldFinalDungeonBossSpecialAttack\(floor, FLOORS, turn\)/);
   assert.match(source, /İblis Lordu ikinci evreye geçti/);
   assert.match(source, /İblis Lordu son evreye geçti/);
 });

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import adventurerCommand from '../maceraci.js';
 import eventCommand from '../etkinlik.js';
 import arenaCommand from '../arena.js';
+import lifeCommand from '../yasam.js';
 import { getArenaRankName } from '../adventurer-platform.js';
 
 test('adventurer web-link command is discoverable and exposes only the one-time link flow', () => {
@@ -14,12 +15,23 @@ test('adventurer web-link command is discoverable and exposes only the one-time 
 test('event calendar exposes list, join, leave and creation actions with bounded inputs', () => {
   const schema=eventCommand.data.toJSON();
   assert.equal(schema.name,'etkinlik');
-  assert.deepEqual(schema.options.map(option=>option.name),['liste','katil','ayril','olustur']);
+  assert.deepEqual(schema.options.map(option=>option.name),['liste','takim-olustur','takimlar','takim-katil','lig-olustur','lig-kayit','lig-fikstur','lig-durum','lig-skor','katil','ayril','yoklama','olustur']);
+  const teamCreate=schema.options.find(option=>option.name==='takim-olustur');
+  assert.ok(teamCreate.options.find(option=>option.name==='ad').required);
+  const leagueCreate=schema.options.find(option=>option.name==='lig-olustur');
+  assert.ok(leagueCreate.options.find(option=>option.name==='ad').required);
+  assert.ok(leagueCreate.options.find(option=>option.name==='baslangic').required);
+  assert.ok(leagueCreate.options.find(option=>option.name==='bitis').required);
+  const join=schema.options.find(option=>option.name==='katil');
+  assert.notEqual(join.options.find(option=>option.name==='takim').required,true);
+  assert.match(join.options.find(option=>option.name==='takim').description,/UUID/);
   const create=schema.options.find(option=>option.name==='olustur');
   assert.ok(create.options.find(option=>option.name==='baslik').required);
   assert.ok(create.options.find(option=>option.name==='baslangic').required);
   assert.ok(create.options.find(option=>option.name==='bitis').required);
   assert.equal(create.options.find(option=>option.name==='kapasite').max_value,500);
+  assert.ok(schema.options.some(option=>option.name==='lig-fikstur'));
+  assert.ok(schema.options.some(option=>option.name==='lig-skor'));
 });
 
 test('arena retains queue lifecycle and exposes the season leaderboard', () => {
@@ -36,3 +48,5 @@ test('seasonal MMR rank thresholds are stable and ordered', () => {
   assert.equal(getArenaRankName(1600),'Elmas');
   assert.equal(getArenaRankName(1800),'Efsane');
 });
+
+test('player experience command exposes home, cosmetics, presets and event rewards',()=>{ const schema=lifeCommand.data.toJSON(); assert.equal(schema.name,'yasam'); assert.deepEqual(schema.options.map(option=>option.name),['ev','paylasim','istasyonlar','iksir-demle','dekorasyonlar','kupalar','kupa-yerlestir','oda-ac','duzenle','kozmetik','kozmetik-al','kozmetik-kus','preset','preset-yukle','etkinlik-odul']); const purchase=schema.options.find(option=>option.name==='kozmetik-al'); assert.ok(purchase.options[0].choices.length<=25); });

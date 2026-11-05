@@ -41,7 +41,7 @@ test('both co-op modes require every teammate to choose a role and enforce uniqu
   for (const source of [dungeon, raid]) {
     assert.ok(source.includes('roleMessage.createMessageComponentCollector'));
     assert.ok(source.includes('chosenRoles.set(c.user.id, role)'));
-    assert.ok(source.includes("role === 'tank' || role === 'healer'"));
+    assert.ok(source.includes('canAssignPartyRole(assignedByOthers, role)'));
     assert.ok(source.includes('chosenRoles.size === team.length'));
     assert.ok(source.includes('Herkes rol seçmediği için'));
   }

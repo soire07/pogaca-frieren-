@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { pool, ensureUser } from './database/db.js';
-import { createArenaState, resolveArenaTurn } from './arena-engine.js';
+import { ARENA_ELEMENTS, createArenaState, resolveArenaTurn } from './arena-engine.js';
 import { settleArenaMatch } from './adventurer-platform.js';
 
 const DISCORD_ID = /^\d{17,20}$/;
@@ -13,12 +13,16 @@ export async function ensureArenaTables(db = pool) {
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
       rating INTEGER NOT NULL DEFAULT 1000 CHECK (rating BETWEEN 0 AND 5000),
+      mode TEXT NOT NULL DEFAULT '3v3' CHECK (mode IN ('1v1','3v3')),
+      element TEXT NOT NULL DEFAULT 'neutral' CHECK (element IN ('fire','ice','lightning','light','dark','neutral')),
       joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY (guild_id,user_id),
       FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
     );
+    ALTER TABLE arena_queue ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT '3v3';
+    ALTER TABLE arena_queue ADD COLUMN IF NOT EXISTS element TEXT NOT NULL DEFAULT 'neutral';
     CREATE INDEX IF NOT EXISTS idx_arena_queue_matchmaking
-      ON arena_queue(guild_id,rating DESC,joined_at,user_id);
+      ON arena_queue(guild_id,mode,rating DESC,joined_at,user_id);
     CREATE TABLE IF NOT EXISTS arena_matches (
       match_id TEXT PRIMARY KEY,
       guild_id TEXT NOT NULL,
@@ -48,29 +52,32 @@ export async function ensureArenaTables(db = pool) {
   `);
 }
 
-function validateInput({ guildId, userId, rating }) {
+function validateInput({ guildId, userId, rating, mode = '3v3', element = 'neutral' }) {
   if (!DISCORD_ID.test(String(guildId || ''))) throw new Error('ARENA_GUILD_ID_INVALID');
   if (!DISCORD_ID.test(String(userId || ''))) throw new Error('ARENA_PLAYER_ID_INVALID');
   const normalizedRating = Number(rating ?? 1000);
   if (!Number.isSafeInteger(normalizedRating) || normalizedRating < MIN_RATING || normalizedRating > MAX_RATING) {
     throw new Error('ARENA_RATING_INVALID');
   }
-  return normalizedRating;
+  if (!['1v1','3v3'].includes(mode)) throw new Error('ARENA_MODE_INVALID');
+  if (!ARENA_ELEMENTS.includes(element)) throw new Error('ARENA_ELEMENT_INVALID');
+  return { rating:normalizedRating,mode,element };
 }
 
-async function createMatchFromQueue(client, guildId) {
+async function createMatchFromQueue(client, guildId, mode) {
   const queued = await client.query(
-    `SELECT q.user_id,q.rating,q.joined_at,
+    `SELECT q.user_id,q.rating,q.element,q.joined_at,
             u.hp,u.max_hp,u.mana,u.max_mana,u.attack,u.defense,u.character_name
      FROM arena_queue q
      JOIN users u ON u.guild_id=q.guild_id AND u.user_id=q.user_id
-     WHERE q.guild_id=$1
+     WHERE q.guild_id=$1 AND q.mode=$2
      ORDER BY q.rating DESC,q.joined_at ASC,q.user_id ASC
-     LIMIT 6
+     LIMIT $3
      FOR UPDATE OF q`,
-    [guildId]
+    [guildId,mode,mode==='1v1'?2:6]
   );
-  if (queued.rowCount < 6) return null;
+  const teamSize=mode==='1v1'?1:3;
+  if (queued.rowCount < teamSize*2) return null;
 
   const ranked = queued.rows.map(row => ({
     userId: row.user_id,
@@ -81,13 +88,14 @@ async function createMatchFromQueue(client, guildId) {
     maxMana: Number(row.max_mana),
     attack: Number(row.attack),
     defense: Number(row.defense),
-    rating: Number(row.rating)
+    rating: Number(row.rating),
+    element: row.element || 'neutral'
   }));
-  // Snake-draft assignment balances the six highest queue ratings across both sides.
-  const teamA = [ranked[0], ranked[3], ranked[4]];
-  const teamB = [ranked[1], ranked[2], ranked[5]];
+  // 1v1 uses the two highest-priority compatible queue entries; 3v3 keeps the snake draft.
+  const teamA = mode==='1v1' ? [ranked[0]] : [ranked[0], ranked[3], ranked[4]];
+  const teamB = mode==='1v1' ? [ranked[1]] : [ranked[1], ranked[2], ranked[5]];
   const matchId = randomUUID();
-  const state = createArenaState({ matchId, teamA, teamB });
+  const state = createArenaState({ matchId, teamA, teamB, mode });
   await client.query(
     'INSERT INTO arena_matches(match_id,guild_id,status,state) VALUES($1,$2,\'active\',$3::jsonb)',
     [matchId, guildId, JSON.stringify(state)]
@@ -108,7 +116,7 @@ async function createMatchFromQueue(client, guildId) {
 }
 
 export async function enqueueArenaPlayer(db = pool, input) {
-  const rating = validateInput(input);
+  const { rating,mode,element } = validateInput(input);
   const guildId = String(input.guildId);
   const userId = String(input.userId);
   await ensureUser(guildId, userId);
@@ -129,10 +137,12 @@ export async function enqueueArenaPlayer(db = pool, input) {
       throw error;
     }
     await client.query(
-      'INSERT INTO arena_queue(guild_id,user_id,rating) VALUES($1,$2,$3) ON CONFLICT(guild_id,user_id) DO NOTHING',
-      [guildId, userId, rating]
+      `INSERT INTO arena_queue(guild_id,user_id,rating,mode,element) VALUES($1,$2,$3,$4,$5)
+       ON CONFLICT(guild_id,user_id) DO UPDATE SET rating=EXCLUDED.rating,mode=EXCLUDED.mode,element=EXCLUDED.element,
+         joined_at=CASE WHEN arena_queue.mode<>EXCLUDED.mode OR arena_queue.element<>EXCLUDED.element THEN NOW() ELSE arena_queue.joined_at END`,
+      [guildId, userId, rating,mode,element]
     );
-    match = await createMatchFromQueue(client, guildId);
+    match = await createMatchFromQueue(client, guildId,mode);
     if (!match) queueStatus = await getArenaQueueStatus(client, guildId, userId);
     await client.query('COMMIT');
   } catch (error) {
@@ -209,16 +219,18 @@ export async function getArenaQueueStatus(db = pool, guildId, userId) {
   );
   if (active.rowCount) return { status: 'in_match', matchId: active.rows[0].match_id, state: active.rows[0].state };
   const queued = await db.query(
-    `SELECT q.rating,q.joined_at,
-            (SELECT COUNT(*)::int FROM arena_queue allq WHERE allq.guild_id=q.guild_id) AS queue_size,
+    `SELECT q.rating,q.joined_at,q.mode,q.element,
+            (SELECT COUNT(*)::int FROM arena_queue allq WHERE allq.guild_id=q.guild_id AND allq.mode=q.mode) AS queue_size,
             (SELECT COUNT(*)::int FROM arena_queue ahead
-             WHERE ahead.guild_id=q.guild_id
+             WHERE ahead.guild_id=q.guild_id AND ahead.mode=q.mode
                AND (ahead.rating > q.rating OR (ahead.rating=q.rating AND (ahead.joined_at,ahead.user_id)<(q.joined_at,q.user_id)))) AS players_ahead
      FROM arena_queue q WHERE q.guild_id=$1 AND q.user_id=$2`,
     [guildId, userId]
   );
   return queued.rowCount
     ? { status: 'queued', rating: queued.rows[0].rating, joinedAt: queued.rows[0].joined_at,
+        mode:queued.rows[0].mode,element:queued.rows[0].element,
+        requiredPlayers:queued.rows[0].mode==='1v1'?2:6,
         queueSize: queued.rows[0].queue_size, playersAhead: queued.rows[0].players_ahead }
     : { status: 'not_queued' };
 }

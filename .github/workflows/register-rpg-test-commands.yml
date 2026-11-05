@@ -2,14 +2,8 @@ name: Register Poğaça RPG test commands
 
 # Test-only allowlist. This workflow never writes to the production guild and never touches
 # the separate Frieren AI application's commands.
+# Manual only: test-guild registration is never triggered by a production merge.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/register-rpg-test-commands.yml"
-      - "deploy-commands.js"
-      - "commands/**"
-      - "*.js"
   workflow_dispatch:
 
 permissions:
@@ -18,7 +12,7 @@ permissions:
 
 concurrency:
   group: pogaca-rpg-test-command-registration
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   register-test-commands:
@@ -56,7 +50,8 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           GUILD_IDS: ""
           TEST_GUILD_ID: "1564945192803639356"
-          TEST_COMMAND_NAMES: "karakter,envanter,sinifrehberi,buyupratik,dinlen,gunluk,kesif,rehber"
+          # Keep the test guild to five core gameplay surfaces: profile, inventory, magic, exploration and guide.
+          TEST_COMMAND_NAMES: "karakter,envanter,buyupratik,kesif,rehber"
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}

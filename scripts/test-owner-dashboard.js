@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { createHmac } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
 import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
@@ -56,7 +57,18 @@ test('Discord OAuth state is self-verifying without a browser cookie', async () 
 test('owner session accepts a valid signed session for the configured owner', () => {
   const token = createOwnerSession(secret, 2_000);
   assert.equal(verifyOwnerSession(token, secret, 1_000), true);
-  assert.equal(JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString()).mfa, true);
+  assert.equal(JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString()).ownerOAuth, true);
+});
+
+test('owner session rejects legacy TOTP-marked sessions after OAuth-only migration', () => {
+  const payload = Buffer.from(JSON.stringify({
+    sub: ownerId,
+    mfa: true,
+    exp: 2_000,
+    csrf: 'legacy-csrf-token-value-that-is-long-enough'
+  })).toString('base64url');
+  const signature = createHmac('sha256', secret).update(payload).digest('base64url');
+  assert.equal(verifyOwnerSession(payload + '.' + signature, secret, 1_000), false);
 });
 
 test('owner session rejects expired sessions', () => {
@@ -662,7 +674,39 @@ test('owner navigation provides a safe public-site preview shortcut', () => {
 });
 
 
-test('Discord owner OAuth requires TOTP enrollment before issuing an owner session', async () => {
+test('Discord OAuth never creates an owner session for a non-owner Discord account', async () => {
+  const previous = {
+    CLIENT_ID: process.env.CLIENT_ID,
+    DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
+    ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET
+  };
+  const previousFetch = globalThis.fetch;
+  process.env.CLIENT_ID = 'test-client-id';
+  process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
+  process.env.ADMIN_SESSION_SECRET = secret;
+  globalThis.fetch = async url => String(url).includes('/oauth2/token')
+    ? { ok: true, json: async () => ({ access_token: 'temporary-discord-access-token' }) }
+    : { ok: true, json: async () => ({ id: '1553794496234262642', username: 'not-owner', avatar: null }) };
+  const req = new EventEmitter();
+  req.method = 'GET';
+  req.url = '/owner/callback?state=' + encodeURIComponent(createOwnerOAuthState(secret)) + '&code=oauth-test-code';
+  req.headers = {};
+  const response = { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body = '') { this.body = body; } };
+  try {
+    await handleOwnerDashboardRequest(req, response, { client: {}, db: { query: async () => { throw new Error('DB must not be queried'); } } });
+    assert.equal(response.status, 403);
+    assert.doesNotMatch(String(response.headers['Set-Cookie'] || ''), /frieren_owner_session=/);
+    assert.match(response.body, /yalnızca site sahibine açıktır/);
+  } finally {
+    globalThis.fetch = previousFetch;
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
+test('Discord owner OAuth issues the owner session directly without an authenticator challenge', async () => {
   const previous = {
     CLIENT_ID: process.env.CLIENT_ID,
     DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
@@ -675,14 +719,10 @@ test('Discord owner OAuth requires TOTP enrollment before issuing an owner sessi
   globalThis.fetch = async url => String(url).includes('/oauth2/token')
     ? { ok: true, json: async () => ({ access_token: 'temporary-discord-access-token' }) }
     : { ok: true, json: async () => ({ id: ownerId, username: 'owner', avatar: null }) };
-  let pendingSettings = null;
-  const db = { query: async (sql, params = []) => {
-    if (sql.includes("SELECT setting_value FROM owner_settings")) return { rows: [] };
-    if (sql.includes("INSERT INTO owner_settings") && sql.includes("'owner_totp'")) {
-      pendingSettings = JSON.parse(params[0]);
-      return { rows: [], rowCount: 1 };
-    }
-    throw new Error('Unexpected database query in owner OAuth test');
+  const dbQueries = [];
+  const db = { query: async (sql) => {
+    dbQueries.push(String(sql));
+    throw new Error('Owner OAuth must not require TOTP database state');
   } };
   const req = new EventEmitter();
   req.method = 'GET';
@@ -691,19 +731,16 @@ test('Discord owner OAuth requires TOTP enrollment before issuing an owner sessi
   const response = { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body = '') { this.body = body; } };
   try {
     await handleOwnerDashboardRequest(req, response, { client: {}, db });
-    assert.equal(response.status, 302);
-    assert.equal(response.headers.Location, '/owner/setup-2fa');
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.Location, '/owner');
     assert.ok(Array.isArray(response.headers['Set-Cookie']));
-    const secondFactorCookie = response.headers['Set-Cookie'].find(cookie => cookie.startsWith('frieren_owner_second_factor='));
-    assert.ok(secondFactorCookie);
-    assert.match(secondFactorCookie, /SameSite=Lax/);
-    assert.doesNotMatch(secondFactorCookie, /SameSite=Strict/);
-    assert.match(secondFactorCookie, /Path=\/owner/);
-    assert.match(secondFactorCookie, /HttpOnly/);
-    assert.match(secondFactorCookie, /Secure/);
-    assert.ok(!response.headers['Set-Cookie'].some(cookie => cookie.startsWith('frieren_owner_session=')));
-    assert.equal(pendingSettings.enabled, false);
-    assert.equal(pendingSettings.pendingSecret.split('.').length, 3);
+    assert.ok(response.headers['Set-Cookie'].some(cookie => cookie.startsWith('frieren_owner_session=') && /SameSite=Lax/.test(cookie)));
+    assert.ok(response.headers['Set-Cookie'].some(cookie => cookie.startsWith('frieren_site_session=')));
+    assert.ok(response.headers['Set-Cookie'].some(cookie => cookie.startsWith('frieren_owner_second_factor=') && /Max-Age=0/.test(cookie)));
+    assert.equal(dbQueries.length, 0);
+    const ownerCookie = response.headers['Set-Cookie'].find(cookie => cookie.startsWith('frieren_owner_session='));
+    const token = decodeURIComponent(ownerCookie.split(';')[0].slice('frieren_owner_session='.length));
+    assert.equal(verifyOwnerSession(token, secret), true);
   } finally {
     globalThis.fetch = previousFetch;
     for (const [key, value] of Object.entries(previous)) {
@@ -711,4 +748,43 @@ test('Discord owner OAuth requires TOTP enrollment before issuing an owner sessi
       else process.env[key] = value;
     }
   }
+});
+
+
+test('owner support inbox is protected by the Discord owner session and renders staff reply controls',async()=>{
+ const previous={CLIENT_ID:process.env.CLIENT_ID,DISCORD_CLIENT_SECRET:process.env.DISCORD_CLIENT_SECRET,ADMIN_SESSION_SECRET:process.env.ADMIN_SESSION_SECRET};
+ process.env.CLIENT_ID='test-client-id';process.env.DISCORD_CLIENT_SECRET='test-discord-secret';process.env.ADMIN_SESSION_SECRET=secret;
+ const token=createOwnerSession(secret,Math.floor(Date.now()/1000)+3600);
+ const ticketId='123e4567-e89b-42d3-a456-426614174000';
+ const db={async query(sql){
+  if(sql.includes('ORDER BY CASE status'))return{rows:[{ticket_id:ticketId,account_id:'123e4567-e89b-12d3-a456-426614174000',category:'bug',subject:'OAuth issue',message:'Callback failed',status:'open',created_at:new Date().toISOString(),updated_at:new Date().toISOString()}],rowCount:1};
+  if(sql.includes('WHERE ticket_id=$1'))return{rows:[{ticket_id:ticketId,account_id:'123e4567-e89b-12d3-a456-426614174000',category:'bug',subject:'OAuth issue',message:'Callback failed',status:'open'}],rowCount:1};
+  if(sql.includes('FROM frieren_support_ticket_messages'))return{rows:[{author_type:'account',message:'Callback failed'}],rowCount:1};
+  if(sql.includes('FROM frieren_support_ticket_events'))return{rows:[{previous_status:null,new_status:'open'}],rowCount:1};
+  throw new Error('Unexpected support query: '+sql);
+ }};
+ const req={method:'GET',url:'/owner/support?ticket='+ticketId,headers:{cookie:'frieren_owner_session='+encodeURIComponent(token)}};
+ const response={status:0,headers:{},body:'',writeHead(status,headers={}){this.status=status;this.headers=headers;},end(body=''){this.body=body;}};
+ try{
+  assert.equal(await handleOwnerDashboardRequest(req,response,{client:{},db}),true);
+  assert.equal(response.status,200);
+  assert.match(response.body,/Destek merkezi/);
+  assert.match(response.body,/Yanıtı gönder/);
+  assert.match(response.body,/support-status/);
+ }finally{for(const [key,value] of Object.entries(previous)){if(value===undefined)delete process.env[key];else process.env[key]=value;}}
+});
+
+test('owner support reply action requires owner session and CSRF before writing a staff message',async()=>{
+ let inserted=false;
+ const db={async query(sql){
+  if(sql.includes('SELECT ticket_id,status FROM frieren_support_tickets'))return{rows:[{ticket_id:'123e4567-e89b-42d3-a456-426614174000',status:'open'}],rowCount:1};
+  if(sql.includes('INSERT INTO frieren_support_ticket_messages')){inserted=true;return{rows:[{message_id:'staff-1'}],rowCount:1};}
+  if(sql.includes('UPDATE frieren_support_tickets SET updated_at'))return{rows:[],rowCount:1};
+  if(sql.includes('INSERT INTO frieren_support_ticket_events'))return{rows:[],rowCount:1};
+  throw new Error('Unexpected support action query: '+sql);
+ }};
+ const {response}=await runOwnerPost({action:'support-reply',csrf:'session',ticketId:'123e4567-e89b-42d3-a456-426614174000',message:'We are investigating.'},db);
+ assert.equal(response.status,303);
+ assert.match(response.headers.Location,/support_reply_saved/);
+ assert.equal(inserted,true);
 });

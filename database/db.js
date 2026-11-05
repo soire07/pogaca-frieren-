@@ -164,6 +164,77 @@ export async function initDatabase() {
       PRIMARY KEY (guild_id, user_id, item_key),
       FOREIGN KEY (guild_id, user_id) REFERENCES users(guild_id, user_id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS rpg_reward_claims (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      reward_type TEXT NOT NULL,
+      reward_id TEXT NOT NULL,
+      claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id,user_id,reward_type,reward_id),
+      FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_rpg_reward_claims_user
+      ON rpg_reward_claims(guild_id,user_id,claimed_at DESC);
+    CREATE TABLE IF NOT EXISTS user_titles (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(guild_id,user_id,title),
+      FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_titles_user
+      ON user_titles(guild_id,user_id,unlocked_at DESC);
+    CREATE TABLE IF NOT EXISTS dungeon_milestone_claims (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      milestone_key TEXT NOT NULL,
+      claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(guild_id,user_id,milestone_key),
+      FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
+    CREATE OR REPLACE FUNCTION sync_rpg_progression_titles() RETURNS TRIGGER AS $$
+    BEGIN
+      IF NEW.level >= 10 THEN
+        INSERT INTO user_titles(guild_id,user_id,title) VALUES(NEW.guild_id,NEW.user_id,'Kıdemli Maceracı') ON CONFLICT DO NOTHING;
+      END IF;
+      IF NEW.level >= 25 THEN
+        INSERT INTO user_titles(guild_id,user_id,title) VALUES(NEW.guild_id,NEW.user_id,'Kıdemli Büyücü') ON CONFLICT DO NOTHING;
+      END IF;
+      IF NEW.boss_defeats >= 5 THEN
+        INSERT INTO user_titles(guild_id,user_id,title) VALUES(NEW.guild_id,NEW.user_id,'İblis Avcısı') ON CONFLICT DO NOTHING;
+      END IF;
+      IF NEW.dungeon_wins >= 5 THEN
+        INSERT INTO user_titles(guild_id,user_id,title) VALUES(NEW.guild_id,NEW.user_id,'Zindan Kaşifi') ON CONFLICT DO NOTHING;
+      END IF;
+      IF NEW.boss_defeats >= 10 AND NEW.dungeon_wins >= 10 THEN
+        INSERT INTO user_titles(guild_id,user_id,title) VALUES(NEW.guild_id,NEW.user_id,'Kuzeyin Efsanesi') ON CONFLICT DO NOTHING;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    DROP TRIGGER IF EXISTS trg_users_progression_titles_insert ON users;
+    CREATE TRIGGER trg_users_progression_titles_insert AFTER INSERT ON users
+      FOR EACH ROW EXECUTE FUNCTION sync_rpg_progression_titles();
+    DROP TRIGGER IF EXISTS trg_users_progression_titles_update ON users;
+    CREATE TRIGGER trg_users_progression_titles_update AFTER UPDATE OF level,boss_defeats,dungeon_wins ON users
+      FOR EACH ROW EXECUTE FUNCTION sync_rpg_progression_titles();
+    INSERT INTO user_titles(guild_id,user_id,title)
+    SELECT guild_id,user_id,title FROM users
+    CROSS JOIN LATERAL (VALUES
+      ('Kıdemli Maceracı',level>=10),
+      ('Kıdemli Büyücü',level>=25),
+      ('İblis Avcısı',boss_defeats>=5),
+      ('Zindan Kaşifi',dungeon_wins>=5),
+      ('Kuzeyin Efsanesi',boss_defeats>=10 AND dungeon_wins>=10)
+    ) AS milestones(title,unlocked)
+    WHERE unlocked
+    ON CONFLICT DO NOTHING;
+    INSERT INTO rpg_reward_claims(guild_id,user_id,reward_type,reward_id,claimed_at)
+    SELECT guild_id,user_id,'solo_boss',last_boss_battle_id,COALESCE(last_boss_win_at,NOW())
+    FROM users
+    WHERE last_boss_battle_id IS NOT NULL
+    ON CONFLICT(guild_id,user_id,reward_type,reward_id) DO NOTHING;
     CREATE TABLE IF NOT EXISTS active_rpg_encounters (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
@@ -465,6 +536,17 @@ export async function initDatabase() {
     );
     CREATE INDEX IF NOT EXISTS idx_moderation_target ON moderation_cases(guild_id, target_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_anime_collection_user ON anime_character_collection(guild_id, user_id);
+    CREATE TABLE IF NOT EXISTS anime_quiz_scores (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      points INTEGER NOT NULL DEFAULT 0 CHECK (points >= 0),
+      correct_answers INTEGER NOT NULL DEFAULT 0 CHECK (correct_answers >= 0),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id,user_id),
+      FOREIGN KEY (guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_anime_quiz_scores_leaderboard
+      ON anime_quiz_scores(guild_id,points DESC,correct_answers DESC);
     CREATE TABLE IF NOT EXISTS frieren_chat_messages (
       id BIGSERIAL PRIMARY KEY,
       guild_id TEXT NOT NULL,
@@ -493,6 +575,8 @@ export async function initDatabase() {
   await ensureArenaTables(pool);
   const { ensureAdventurerPlatformTables } = await import('../adventurer-platform.js');
   await ensureAdventurerPlatformTables(pool);
+  const { ensurePlayerMarketTables } = await import('../player-market.js');
+  await ensurePlayerMarketTables(pool);
   if (!testContext.getStore()) {
     await pool.query(`DELETE FROM frieren_chat_messages
       WHERE created_at < NOW() - INTERVAL '90 days'`);
@@ -503,17 +587,17 @@ export async function initDatabase() {
   console.log('PostgreSQL tabloları hazır.');
 }
 
-export async function ensureUser(guildId, userId) {
-  await pool.query(
+export async function ensureUser(guildId, userId, db = pool) {
+  await db.query(
     'INSERT INTO users (guild_id, user_id) VALUES ($1, $2) ON CONFLICT (guild_id, user_id) DO NOTHING',
     [guildId, userId]
   );
-  await pool.query(
+  await db.query(
     'INSERT INTO user_talents (guild_id,user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
     [guildId, userId]
   );
   // Zoltraak is the starter spell for every adventurer; existing users receive it too.
-  await pool.query(
+  await db.query(
     "INSERT INTO learned_spells (guild_id, user_id, spell_key) VALUES ($1, $2, 'zoltraak') ON CONFLICT DO NOTHING",
     [guildId, userId]
   );

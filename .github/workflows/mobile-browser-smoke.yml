@@ -1,0 +1,61 @@
+name: Mobile browser smoke
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    paths:
+      - 'public-site.js'
+      - 'site-auth.js'
+      - 'owner-dashboard.js'
+      - 'account-center.js'
+      - 'news-birds.js'
+      - 'card-variants.js'
+      - 'scripts/mobile-browser-smoke.mjs'
+      - 'scripts/start-public-site-smoke-server.mjs'
+      - '.github/workflows/mobile-browser-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-browser-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: npm install --no-save playwright@1.56.1
+      - name: Install Chromium and WebKit
+        run: npx playwright install --with-deps chromium webkit
+      - name: Start isolated public-site handlers
+        env:
+          PORT: '4173'
+          ADMIN_SESSION_SECRET: 'ci-only-public-site-secret-with-at-least-32-characters'
+          CLIENT_ID: '123456789012345678'
+          DISCORD_CLIENT_SECRET: 'ci-only-not-a-real-discord-secret'
+          OWNER_DASHBOARD_BASE_URL: 'http://127.0.0.1:4173'
+          OWNER_DASHBOARD_REDIRECT_URI: 'http://127.0.0.1:4173/owner/callback'
+          SITE_BASE_URL: 'http://127.0.0.1:4173'
+        run: |
+          node scripts/start-public-site-smoke-server.mjs > "$RUNNER_TEMP/public-site-smoke.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/public-site-smoke.pid"
+          for attempt in {1..20}; do
+            if curl --silent --fail http://127.0.0.1:4173/login >/dev/null; then
+              echo "Isolated site handlers are responding."
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/public-site-smoke.log"
+          exit 1
+      - name: Test Android Chrome, iOS Safari, desktop Chromium and OAuth redirects locally
+        env:
+          MOBILE_SMOKE_BASE_URL: 'http://127.0.0.1:4173'
+          MOBILE_SMOKE_ALLOW_LOCAL: '1'
+        run: node scripts/mobile-browser-smoke.mjs

@@ -96,3 +96,50 @@ test('arena matchmaking rolls back the sixth join when one queued player has inv
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])', [guildId, userIds]);
   }
 });
+
+
+test('PostgreSQL arena keeps 1v1 and 3v3 queues isolated and persists player elements', async () => {
+  assertIsolatedAuditDatabase();
+  await initDatabase();
+  await ensureArenaTables(pool);
+  const guildId='99000000000000003';
+  const runId=randomUUID().replaceAll('-','').slice(0,8);
+  const base=BigInt('81000000000000000')+BigInt(parseInt(runId.slice(0,4),16))*100n;
+  const duelIds=[String(base+1n),String(base+2n)];
+  const teamIds=Array.from({length:6},(_,index)=>String(base+BigInt(index+3)));
+  const allIds=[...duelIds,...teamIds];
+  for(const userId of allIds) await ensureUser(guildId,userId);
+  try {
+    const duelJoins=await Promise.all(duelIds.map((userId,index)=>enqueueArenaPlayer(pool,{
+      guildId,userId,rating:1150-index*50,mode:'1v1',element:index===0?'fire':'ice'
+    })));
+    assert.equal(duelJoins.filter(result=>result.status==='matched').length,1);
+    const duel=await pool.query(
+      "SELECT state FROM arena_matches WHERE guild_id=$1 AND status='active' AND state->>'mode'='1v1'",
+      [guildId]
+    );
+    assert.equal(duel.rowCount,1);
+    assert.equal(duel.rows[0].state.players.length,2);
+    assert.deepEqual(duel.rows[0].state.players.map(player=>player.element),['fire','ice']);
+
+    const firstFive=await Promise.all(teamIds.slice(0,5).map((userId,index)=>enqueueArenaPlayer(pool,{
+      guildId,userId,rating:900+index*10,mode:'3v3',element:'neutral'
+    })));
+    assert.ok(firstFive.every(result=>result.status==='queued'));
+    const sixth=await enqueueArenaPlayer(pool,{guildId,userId:teamIds[5],rating:1000,mode:'3v3',element:'lightning'});
+    assert.equal(sixth.status,'matched');
+    const matches=await pool.query(
+      "SELECT state,COUNT(p.user_id)::int AS player_count FROM arena_matches m JOIN arena_match_players p USING(match_id) WHERE m.guild_id=$1 AND m.status='active' GROUP BY m.match_id,state->>'mode',state ORDER BY state->>'mode'",
+      [guildId]
+    );
+    assert.equal(matches.rowCount,2);
+    const modes=matches.rows.map(row=>({mode:row.state.mode,count:row.player_count})).sort((a,b)=>a.mode.localeCompare(b.mode));
+    assert.deepEqual(modes,[{mode:'1v1',count:2},{mode:'3v3',count:6}]);
+    assert.equal((await getArenaQueueStatus(pool,guildId,duelIds[0])).status,'in_match');
+    assert.equal((await getArenaQueueStatus(pool,guildId,teamIds[0])).status,'in_match');
+  } finally {
+    await pool.query('DELETE FROM arena_matches WHERE guild_id=$1',[guildId]);
+    await pool.query('DELETE FROM arena_queue WHERE guild_id=$1 AND user_id=ANY($2::text[])',[guildId,allIds]);
+    await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[guildId,allIds]);
+  }
+});

@@ -5,7 +5,8 @@ import { getBossArtUrl } from './boss-art.js';
 import { getGuildRpgContent } from './owner-rpg-content.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
-import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio } from './rpg-mechanics.js';
+import { validateGuildEventRaidTeam } from './guild-team-leagues.js';
+import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio, applyDefendingReduction, scaleRaidBossHp, canAssignPartyRole, isPartyWiped, getPartyRoleModifiers, applyTalentBonus } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
 
@@ -16,9 +17,9 @@ function hpBar(current, maximum, width = 12) {
   return '█'.repeat(filled) + '░'.repeat(width - filled);
 }
 const ROLES = {
-  tank: { label: '🛡️ Muhafız', description: 'Daha çok hasar üzerine çeker ve daha dayanıklıdır.', hp: 1.25, attack: 0.85, defense: 1.45 },
-  healer: { label: '💚 Şifacı', description: 'Her tur takıma küçük bir iyileştirme sağlar.', hp: 1, attack: 0.85, defense: 1.05 },
-  damage: { label: '⚔️ Hasar Ustası', description: 'Boss’a daha yüksek hasar verir.', hp: 0.95, attack: 1.35, defense: 0.9 }
+  tank: { label: '🛡️ Muhafız', description: 'Daha çok hasar üzerine çeker ve daha dayanıklıdır.', ...getPartyRoleModifiers('tank', 'raid') },
+  healer: { label: '💚 Şifacı', description: 'Her tur takıma küçük bir iyileştirme sağlar.', ...getPartyRoleModifiers('healer', 'raid') },
+  damage: { label: '⚔️ Hasar Ustası', description: 'Boss’a daha yüksek hasar verir.', ...getPartyRoleModifiers('damage', 'raid') }
 };
 
 export default {
@@ -27,7 +28,8 @@ export default {
     .setDescription('En fazla dört oyuncuyla takım rolleri kullanarak ortak boss baskını yap.')
     .addUserOption(o => o.setName('takim_arkadasi').setDescription('Birinci takım arkadaşı').setRequired(true))
     .addUserOption(o => o.setName('takim_arkadasi_2').setDescription('İkinci takım arkadaşı (isteğe bağlı)').setRequired(false))
-    .addUserOption(o => o.setName('takim_arkadasi_3').setDescription('Üçüncü takım arkadaşı (isteğe bağlı)').setRequired(false)),
+    .addUserOption(o => o.setName('takim_arkadasi_3').setDescription('Üçüncü takım arkadaşı (isteğe bağlı)').setRequired(false))
+    .addStringOption(o => o.setName('etkinlik_id').setDescription('Takvimdeki Boss / Raid etkinliğinin kimliği (isteğe bağlı)').setMaxLength(36).setRequired(false)),
 
   async execute(interaction) {
     if (!interaction.guildId || !interaction.channel) return interaction.reply({ content: 'Ortak boss baskını yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
@@ -98,9 +100,10 @@ export default {
       });
       collector.on('collect', async c => {
         const role = c.customId.split(':')[2];
-        const conflict = [...chosenRoles.entries()].some(([userId, selected]) =>
-          userId !== c.user.id && selected === role && (role === 'tank' || role === 'healer')
-        );
+        const assignedByOthers = [...chosenRoles.entries()]
+          .filter(([userId]) => userId !== c.user.id)
+          .map(([, selected]) => selected);
+        const conflict = !canAssignPartyRole(assignedByOthers, role);
         if (conflict) {
           await c.reply({ content: role === 'tank' ? 'Muhafız rolü zaten seçildi; başka bir rol seç.' : 'Şifacı rolü zaten seçildi; başka bir rol seç.', flags: MessageFlags.Ephemeral }).catch(() => {});
           return;
@@ -123,6 +126,19 @@ export default {
     try {
       await db.query('BEGIN');
       const ids = team.map(x => x.id).sort();
+      const calendarEventId = interaction.options.getString('etkinlik_id');
+      if (calendarEventId) {
+        const linkedEvent = await validateGuildEventRaidTeam(db,{
+          guildId:interaction.guildId,eventId:calendarEventId,userIds:ids,leaderId:interaction.user.id
+        });
+        if (linkedEvent.status !== 'valid') {
+          await db.query('ROLLBACK');
+          return interaction.editReply({
+            content: 'Takvim baskını geçersiz, henüz başlama penceresinde değil veya takım üyelerinin tamamı bu Boss / Raid etkinliğine kayıtlı değil.',
+            components: []
+          });
+        }
+      }
       const result = await db.query(
         `SELECT user_id,level,xp,coins,hp,max_hp,mana,max_mana,attack,defense,class_name,active_build,last_boss_at,
          COALESCE((SELECT attack_rank FROM user_talents t WHERE t.guild_id=users.guild_id AND t.user_id=users.user_id),0) AS talent_attack,
@@ -174,16 +190,16 @@ export default {
         if (item) gearMap.get(g.user_id).push(item);
       }
       const fighters = raw.map(x => {
-        const p = x.stats; const equipped = gearMap.get(x.user.id) || []; const gear = applyEquipmentSetBonus(equipped, equipmentBonus(equipped)); const role = ROLES[x.role]; const build = getCharacterBuild(p.active_build); const baseMaxHp = Math.min(2000, Number(p.max_hp) + gear.hp) * build.hp * (1 + Number(p.talent_hp) * 0.05);
+        const p = x.stats; const equipped = gearMap.get(x.user.id) || []; const gear = applyEquipmentSetBonus(equipped, equipmentBonus(equipped)); const role = ROLES[x.role]; const build = getCharacterBuild(p.active_build); const baseMaxHp = applyTalentBonus(Math.min(2000, Number(p.max_hp) + gear.hp) * build.hp, p.talent_hp, 0.05);
         const maxHp = Math.round(baseMaxHp * role.hp);
-        const maxMana = Math.min(500, Math.round((Number(p.max_mana) + gear.mana) * build.mana * (1 + Number(p.talent_mana) * 0.05)));
+        const maxMana = Math.min(500, Math.round(applyTalentBonus((Number(p.max_mana) + gear.mana) * build.mana, p.talent_mana, 0.05)));
         return {
           userId:x.user.id, username:x.user.username, role:x.role, roleData:role, className:p.class_name, classProfile:getCharacterClass(p.class_name), build, baseMaxHp:Number(p.max_hp), baseMaxMana:Number(p.max_mana),
           level:Number(p.level), xp:Number(p.xp), coins:Number(p.coins), mana:Math.min(maxMana, Math.round((Number(p.mana) / Math.max(1, Number(p.max_mana))) * maxMana)), maxMana,
           hp:Math.round((Number(p.hp) / Math.max(1, Number(p.max_hp))) * maxHp),
           maxHp,
-          attack:(Number(p.attack)+gear.attack)*build.attack*role.attack*(1+Number(p.talent_attack)*0.04),
-          defense:applyClassDefense(Number(p.defense)+gear.defense,p.class_name)*build.defense*(1+Number(p.talent_defense)*0.04)*role.defense
+          attack:applyTalentBonus((Number(p.attack)+gear.attack)*build.attack*role.attack,p.talent_attack,0.04),
+          defense:applyTalentBonus(applyClassDefense(Number(p.defense)+gear.defense,p.class_name)*build.defense*role.defense,p.talent_defense,0.04)
         };
       });
       if (fighters.some(x => x.hp <= 0)) {
@@ -191,7 +207,7 @@ export default {
         return interaction.editReply({ content: '❤️ Her oyuncunun HP değeri sıfırdan yüksek olmalı. Önce /dinlen kullanın.', components: [] });
       }
       const averageLevel = Math.floor(fighters.reduce((sum, fighter) => sum + fighter.level, 0) / fighters.length);
-      let bossHp = BOSS.hp + averageLevel * 18 + Math.max(0,fighters.length-2)*90;
+      let bossHp = scaleRaidBossHp(BOSS.hp, averageLevel, fighters.length);
       const maxBossHp = bossHp;
       const masteryRows = await db.query('SELECT user_id,casts,mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND spell_key=$3',[interaction.guildId,ids,'zoltraak']);
       const spellMastery = new Map(masteryRows.rows.map(row => [row.user_id, Number(row.mastery_level)]));
@@ -206,7 +222,7 @@ export default {
       let rounds = 0;
       let rageAnnounced = false;
       let bossPhase = 1;
-      while (bossHp > 0 && hpNow.some(hp=>hp>0) && rounds < 12) {
+      while (bossHp > 0 && !isPartyWiped(hpNow) && rounds < 12) {
         rounds++;
         const currentPhase = getBossPhase(bossHp, maxBossHp);
         if (currentPhase > bossPhase) {
@@ -315,13 +331,13 @@ export default {
             const f=fighters[i];
             const specialMultiplier = shardRain ? 0.5 : 0.68;
             let incoming=calculateBossIncomingDamage(Math.round(rawDamage*specialMultiplier), Math.round(f.defense*0.44), bossPhase);
-            if (defending.has(i)) incoming=Math.max(1,Math.round(incoming*0.45));
+            incoming=applyDefendingReduction(incoming,defending.has(i));
             hpNow[i]=Math.max(0,hpNow[i]-incoming);
             log.push(`☄️ ${f.username} ${shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
           }
         } else {
           let incoming=calculateBossIncomingDamage(rawDamage, Math.round(target.defense*0.56), bossPhase);
-          if (defending.has(targetIndex)) incoming=Math.max(1,Math.round(incoming*0.45));
+          incoming=applyDefendingReduction(incoming,defending.has(targetIndex));
           hpNow[targetIndex]=Math.max(0,hpNow[targetIndex]-incoming);
           if (manaCurse) {
             const drained=Math.min(target.mana,8);

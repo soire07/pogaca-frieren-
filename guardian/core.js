@@ -56,8 +56,10 @@ function sanitizeEvidence(items) {
   return items.slice(0, 8).map(item => {
     const entry = item && typeof item === 'object' ? item : { message: item };
     const file = String(entry.file || entry.path || '');
-    const safeFile = file && !file.startsWith('/') && !file.split(/[\\/]/).includes('..')
-      ? redactGuardianText(file, 180) : '';
+    const normalizedFile = file.replace(/\\/g, '/');
+    const hasUnsafePath = !file || file.startsWith('/') || file.startsWith('\\')
+      || /^[a-z]:/i.test(file) || normalizedFile.split('/').some(segment => segment === '..' || segment === '.');
+    const safeFile = !hasUnsafePath ? redactGuardianText(file, 180) : '';
     if (file && !safeFile) return null;
     const line = Number(entry.line);
     return {
@@ -307,6 +309,82 @@ export function evaluateNeuralQualityGate({
 }
 
 
+
+const NEURAL_EVOLUTION_PLAN_GATES = [
+  'ci_passed',
+  'quality_ready',
+  'quality_thresholds_passed',
+  'benchmark_outputs_complete',
+  'baseline_improved',
+  'review_policy_valid',
+  'provenance_valid',
+];
+
+export function validateNeuralEvolutionPlan(plan, report) {
+  const reasons = [];
+  if (!plan || typeof plan !== 'object' || Array.isArray(plan)) {
+    return { valid: false, reasons: ['EVOLUTION_PLAN_NOT_OBJECT'] };
+  }
+  if (plan.schema_version !== 1) reasons.push('EVOLUTION_PLAN_SCHEMA_UNSUPPORTED');
+  if (plan.mode !== 'guardian_supervised') reasons.push('EVOLUTION_PLAN_MODE_INVALID');
+  if (!['blocked', 'improvement_proposed', 'eligible_for_guard_review'].includes(plan.status)) {
+    reasons.push('EVOLUTION_PLAN_STATUS_INVALID');
+  }
+  if (plan.requires_guard_review !== true) reasons.push('EVOLUTION_PLAN_GUARD_REVIEW_REQUIRED');
+  if (plan.apply_changes !== false) reasons.push('EVOLUTION_PLAN_AUTOMATIC_APPLY_FORBIDDEN');
+
+  const sha40 = value => typeof value === 'string' && /^[a-f0-9]{40}$/i.test(value);
+  const sha64 = value => typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
+  if (!sha40(plan.source_commit_sha) || plan.source_commit_sha !== report.source_commit_sha) {
+    reasons.push('EVOLUTION_PLAN_SOURCE_COMMIT_MISMATCH');
+  }
+  if (!sha64(plan.artifact_sha256) || plan.artifact_sha256 !== report.artifact_sha256) {
+    reasons.push('EVOLUTION_PLAN_ARTIFACT_MISMATCH');
+  }
+
+  const gates = plan.gates && typeof plan.gates === 'object' && !Array.isArray(plan.gates) ? plan.gates : null;
+  if (!gates || NEURAL_EVOLUTION_PLAN_GATES.some(key => typeof gates[key] !== 'boolean')
+      || Object.values(gates || {}).some(value => typeof value !== 'boolean')) {
+    reasons.push('EVOLUTION_PLAN_GATES_INVALID');
+  }
+
+  if (!Array.isArray(plan.tasks) || plan.tasks.length > 8) {
+    reasons.push('EVOLUTION_PLAN_TASK_LIMIT_EXCEEDED');
+  } else {
+    const ids = new Set();
+    for (const task of plan.tasks) {
+      if (!task || typeof task !== 'object' || Array.isArray(task)) {
+        reasons.push('EVOLUTION_PLAN_TASK_INVALID');
+        continue;
+      }
+      if (typeof task.id !== 'string' || !/^evo-[a-f0-9]{12}$/i.test(task.id) || ids.has(task.id)) {
+        reasons.push('EVOLUTION_PLAN_TASK_ID_INVALID');
+      } else ids.add(task.id);
+      for (const field of ['title', 'reason']) {
+        const value = task[field];
+        if (typeof value !== 'string' || !value.trim() || value.length > 240
+            || redactGuardianText(value, 240) !== value) {
+          reasons.push('EVOLUTION_PLAN_TASK_TEXT_INVALID');
+        }
+      }
+      if (task.status !== 'proposed') reasons.push('EVOLUTION_PLAN_TASK_STATUS_INVALID');
+    }
+  }
+
+  if (plan.status === 'eligible_for_guard_review') {
+    if (report.decision !== 'READY FOR STAGED TEST'
+        || report.human_review?.completed !== true
+        || !Array.isArray(report.blocking_reasons)
+        || report.blocking_reasons.length > 0
+        || NEURAL_EVOLUTION_PLAN_GATES.some(key => gates?.[key] !== true)
+        || !Array.isArray(plan.tasks)
+        || plan.tasks.length !== 0) {
+      reasons.push('EVOLUTION_PLAN_ELIGIBILITY_NOT_SUPPORTED');
+    }
+  }
+  return { valid: reasons.length === 0, reasons };
+}
+
 /** Validate report identity and bounded benchmark payload before persistent Guardian storage. */
 export function validateNeuralQualityReport(report) {
   const reasons = [];
@@ -341,6 +419,10 @@ export function validateNeuralQualityReport(report) {
       'NEURAL_RESOURCE_CHECKS_NOT_PASSED',
     ]);
     reasons.push(...readiness.reasons.filter(reason => !operationalOnly.has(reason)));
+  }
+  if (report.evolution_plan !== undefined) {
+    const planValidation = validateNeuralEvolutionPlan(report.evolution_plan, report);
+    reasons.push(...planValidation.reasons);
   }
   return { valid: reasons.length === 0, reasons };
 }

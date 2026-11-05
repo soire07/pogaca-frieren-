@@ -20,14 +20,12 @@ on:
         required: false
         type: string
       base_branch:
-        description: "Branch to test against"
+        description: "Isolated branch to test against"
         required: true
-        default: "main"
+        default: "guardian-isolated-repair-test"
         type: choice
         options:
-          - main
-          - frieren-ai-agent
-          - feat/guardian-autonomous-repair-v2
+          - guardian-isolated-repair-test
 
 permissions:
   contents: write
@@ -47,7 +45,7 @@ jobs:
           BASE_BRANCH: ${{ inputs.base_branch }}
         run: |
           case "$BASE_BRANCH" in
-            main|frieren-ai-agent|feat/guardian-autonomous-repair-v2) ;;
+            guardian-isolated-repair-test) ;;
             *) echo "Unsupported repair target branch"; exit 1 ;;
           esac
           if [ "$GITHUB_REF_NAME" != "$BASE_BRANCH" ]; then

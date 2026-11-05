@@ -6,6 +6,10 @@ test('arena slash command exposes queue join, status and leave subcommands', () 
   const schema = arenaCommand.data.toJSON();
   assert.equal(schema.name, 'arena');
   assert.deepEqual(schema.options.map(option => option.name), ['katil', 'durum', 'ayril', 'siralam']);
+  const join=schema.options.find(option=>option.name==='katil');
+  assert.deepEqual(join.options.map(option=>option.name),['mod','element']);
+  assert.deepEqual(join.options[0].choices.map(choice=>choice.value),['1v1','3v3']);
+  assert.deepEqual(join.options[1].choices.map(choice=>choice.value),['fire','ice','lightning','light','dark','neutral']);
   assert.ok(schema.options.every(option => option.type === 1));
 });
 

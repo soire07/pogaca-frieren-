@@ -107,3 +107,48 @@ img{max-width:100%}
 .home-banner img{display:block;width:100%;height:auto;aspect-ratio:1672/941;object-fit:contain;object-position:center}
 @media(max-width:850px){.home-banner{width:calc(100% - 28px);margin-top:18px;border-radius:19px}}
 @media(max-width:560px){.home-banner{margin-top:14px;border-radius:15px}}
+
+/* Auth controls: explicit, cross-engine touch targets for mobile Safari and Chromium. */
+.auth-wrap .auth-card form{min-width:0}
+.auth-wrap .auth-card input:not([type="hidden"]),
+.auth-wrap .auth-card select,
+.auth-wrap .auth-card textarea{
+ display:block!important;
+ width:100%!important;
+ min-width:0!important;
+ min-height:48px!important;
+ height:48px!important;
+ box-sizing:border-box!important;
+ padding:12px 14px!important;
+ border:1px solid #e8dafa44!important;
+ border-radius:12px!important;
+ background:#100d1dcc!important;
+ color:#fff!important;
+ font:inherit!important;
+ line-height:20px!important;
+ -webkit-appearance:none!important;
+ appearance:none!important;
+}
+.auth-wrap .auth-card button{
+ display:block!important;
+ width:100%!important;
+ min-height:48px!important;
+ height:48px!important;
+ box-sizing:border-box!important;
+ padding:12px 16px!important;
+ margin:10px 0!important;
+ border:0!important;
+ border-radius:12px!important;
+ cursor:pointer;
+ font:inherit!important;
+ line-height:20px!important;
+ -webkit-appearance:none!important;
+ appearance:none!important;
+}
+.auth-wrap .auth-card input:focus-visible,
+.auth-wrap .auth-card select:focus-visible,
+.auth-wrap .auth-card textarea:focus-visible,
+.auth-wrap .auth-card button:focus-visible{
+ outline:2px solid #e4cfff;
+ outline-offset:3px;
+}

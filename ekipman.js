@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentSlots, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
+import { applyEquipmentSetBonus } from './rpg-mechanics.js';
 
 const rarityEmoji = { Yaygın: '⚪', Nadir: '🔹', Destansı: '🟣', Efsanevi: '🟡' };
 
@@ -38,12 +39,13 @@ export default {
         return entry.label + ': ' + (item ? '**' + item.name + '** · ' + formatEquipmentBonus(item) : '*Boş*');
       });
       const total = equipped.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean);
-      const totals = total.reduce((sum, item) => ({
-        attack: sum.attack + item.attack, defense: sum.defense + item.defense, hp: sum.hp + item.hp, mana: sum.mana + item.mana
-      }), { attack: 0, defense: 0, hp: 0, mana: 0 });
+      const totals = applyEquipmentSetBonus(total, equipmentBonus(total));
       const embed = new EmbedBuilder().setColor(0x9b8cff).setTitle('🛡️ Kuşanılan Ekipman')
         .setDescription(lines.join('\n\n'))
-        .addFields({ name: '✨ Toplam ekipman bonusu', value: formatEquipmentBonus(totals), inline: false })
+        .addFields(
+          { name: '✨ Toplam ekipman bonusu', value: formatEquipmentBonus(totals), inline: false },
+          { name: '🧩 Aktif set bonusu', value: totals.setText || 'Henüz set bonusu etkin değil', inline: false }
+        )
         .setFooter({ text: 'Eşyalar envanterinde kalır. /market ile ekipman alabilir, /ekipman ile kuşanabilirsin.' });
       return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
@@ -67,7 +69,8 @@ export default {
           'SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2',
           [interaction.guildId, interaction.user.id]
         );
-        const gear = equipmentBonus(remaining.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean));
+        const remainingItems = remaining.rows.map(row => equipmentItems.find(item => item.name === row.item_key)).filter(Boolean);
+        const gear = applyEquipmentSetBonus(remainingItems, equipmentBonus(remainingItems));
         const effectiveMaxHp = Math.min(2000, Number(baseStats.rows[0].max_hp) + gear.hp);
         const effectiveMaxMana = Math.min(2000, Number(baseStats.rows[0].max_mana) + gear.mana);
         await db.query(
@@ -123,7 +126,8 @@ export default {
         'SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2',
         [interaction.guildId, interaction.user.id]
       );
-      const gear = equipmentBonus(allEquipped.rows.map(row => equipmentItems.find(entry => entry.name === row.item_key)).filter(Boolean));
+      const equippedItems = allEquipped.rows.map(row => equipmentItems.find(entry => entry.name === row.item_key)).filter(Boolean);
+      const gear = applyEquipmentSetBonus(equippedItems, equipmentBonus(equippedItems));
       const effectiveMaxHp = Math.min(2000, Number(baseStats.rows[0].max_hp) + gear.hp);
       const effectiveMaxMana = Math.min(2000, Number(baseStats.rows[0].max_mana) + gear.mana);
       await db.query(

@@ -9,8 +9,9 @@ import {
 import { pool, ensureUser } from './database/db.js';
 import { claimSoloBossReward } from './rpg-reward-transactions.js';
 import { getGuildRpgContent } from './owner-rpg-content.js';
+import { selectSoloBossForLevel } from './rpg-content-catalog.js';
 import { equipmentItems, equipmentBonus, formatEquipmentBonus } from './equipment-data.js';
-import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, applyEquipmentSetBonus, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening, restoreResourceRatio } from './rpg-mechanics.js';
+import { applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, applyEquipmentSetBonus, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, getSpellMasteryAwakening, restoreResourceRatio, applyTalentBonus } from './rpg-mechanics.js';
 
 const PLAYER_MAX_HP = 100;
 const COOLDOWN_MS = 30 * 60 * 1000;
@@ -111,11 +112,11 @@ export default {
       .filter(Boolean);
     const gearBonus = applyEquipmentSetBonus(equippedItems, equipmentBonus(equippedItems));
     const build = getCharacterBuild(stats.active_build);
-    const playerMaxHp = Math.min(2000, Math.round((Number(stats.max_hp) + gearBonus.hp) * build.hp * (1 + Number(stats.talent_hp) * 0.05)));
-    const playerMaxMana = Math.min(2000, Math.round((Number(stats.max_mana) + gearBonus.mana) * build.mana * (1 + Number(stats.talent_mana) * 0.05)));
+    const playerMaxHp = Math.min(2000, Math.round(applyTalentBonus((Number(stats.max_hp) + gearBonus.hp) * build.hp, stats.talent_hp, 0.05)));
+    const playerMaxMana = Math.min(2000, Math.round(applyTalentBonus((Number(stats.max_mana) + gearBonus.mana) * build.mana, stats.talent_mana, 0.05)));
     const classProfile = getCharacterClass(stats.class_name);
-    const attack = Math.min(500, Math.round((Number(stats.attack) + gearBonus.attack) * build.attack * (1 + Number(stats.talent_attack) * 0.04)));
-    const defense = Math.min(250, Math.round(applyClassDefense(Number(stats.defense) + gearBonus.defense, stats.class_name) * build.defense * (1 + Number(stats.talent_defense) * 0.04)));
+    const attack = Math.min(500, Math.round(applyTalentBonus((Number(stats.attack) + gearBonus.attack) * build.attack, stats.talent_attack, 0.04)));
+    const defense = Math.min(250, Math.round(applyTalentBonus(applyClassDefense(Number(stats.defense) + gearBonus.defense, stats.class_name) * build.defense, stats.talent_defense, 0.04)));
     let playerHp = Math.min(playerMaxHp, Math.round((Number(stats.hp) / Math.max(1, Number(stats.max_hp))) * playerMaxHp));
     let playerMana = Math.min(playerMaxMana, Math.round((Number(stats.mana) / Math.max(1, Number(stats.max_mana))) * playerMaxMana));
     // Combat HP and mana are scaled by gear/build; persist each value as a base-stat ratio.
@@ -155,7 +156,7 @@ export default {
     );
     const upgradeBonus = Number(upgrades.rows[0]?.level || 0) * 2;
     // Rotate among unlocked active tiers so earlier bosses remain replayable and journal collections can be completed.
-    const boss = unlockedBossTiers[Math.floor(Math.random() * unlockedBossTiers.length)] || unlockedBossTiers[0];
+    const boss = selectSoloBossForLevel(playerLevel, bossTiers);
     const battleId = randomUUID();
     let bossHp = boss.maxHp;
     let bossPhase = 1;

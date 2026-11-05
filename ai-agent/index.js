@@ -29,9 +29,9 @@ import {
   GatewayIntentBits,
   MessageFlags,
   REST,
-  Routes,
   SlashCommandBuilder,
 } from 'discord.js';
+import { getFrierenAiCommandRoute, registerCommandsIfChanged, FRIEREN_AI_TEST_GUILD_ID } from './command-registration-target.js';
 
 const required = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'FRIEREN_ADMIN_IDS'];
 const missing = required.filter(key => !process.env[key]?.trim());
@@ -1088,13 +1088,14 @@ client.on(Events.Error, error => console.error('Discord client error:', error.me
 try {
   // Register commands on startup so fresh deployments do not depend on a manual step.
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-  const testGuildId = '1564945192803639356';
-  if (process.env.DISCORD_GUILD_ID?.trim() !== testGuildId) {
+  if (process.env.DISCORD_GUILD_ID?.trim() !== FRIEREN_AI_TEST_GUILD_ID) {
     throw new Error('DISCORD_GUILD_ID must be the Frieren AI test server (…9356); global and production registration are disabled.');
   }
-  const commandRoute = Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, testGuildId);
-  await rest.put(commandRoute, { body: commands });
-  console.log('Frieren AI slash commands registered in the test guild only.');
+  const commandRoute = getFrierenAiCommandRoute(process.env.DISCORD_CLIENT_ID);
+  const registration = await registerCommandsIfChanged(rest, commandRoute, commands);
+  console.log(registration.changed
+    ? 'Frieren AI slash commands updated in the test guild.'
+    : 'Frieren AI slash commands already match the test guild; skipped Discord write to preserve daily quota.');
 } catch (error) {
   // Keep the process available for diagnostics; already-registered commands may still work.
   console.error('Slash command registration failed:', error.message);

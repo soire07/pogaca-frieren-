@@ -1,6 +1,6 @@
 # Frieren public site account authentication
 
-Public site membership uses a username and password. Owner Panel authentication remains separate and continues to use Discord OAuth plus its mandatory TOTP second factor.
+Public site membership uses a username and password. Owner Panel authentication remains separate and uses Discord OAuth with a server-side owner-ID allowlist. Authenticator/TOTP is not required.
 
 ## Required Render environment variables
 
@@ -35,4 +35,4 @@ Never commit the App Password to GitHub or send it in chat.
 - Forms use signed, time-limited CSRF tokens; authentication cookies are HttpOnly, Secure and SameSite=Lax.
 - Basic per-IP request throttling is applied to registration, login, verification resend and reset flows.
 
-The legacy `frieren_site_members` Discord membership table is retained for data preservation, but new public registration and login no longer use Discord OAuth. Existing Owner Panel Discord OAuth and TOTP code is intentionally unchanged.
+The legacy `frieren_site_members` Discord membership table is retained for data preservation, but new public registration and login no longer use Discord OAuth. Owner Panel sign-in continues to use Discord OAuth and a signed owner session, without a TOTP enrollment or verification step.

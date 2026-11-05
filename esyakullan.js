@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
+import { applyEquipmentSetBonus } from './rpg-mechanics.js';
 
 const usableItems = {
   frieren_staff: { name: '🪄 Frieren’in Asası', key: '🪄 Frieren’in Asası', description: '120 XP kazandın.', xp: 120, coins: 0 },
@@ -132,7 +133,8 @@ export default {
         'SELECT item_key FROM user_equipment WHERE guild_id=$1 AND user_id=$2',
         [interaction.guildId, interaction.user.id]
       );
-      const gear = equipmentBonus(equippedResult.rows.map(row => equipmentItems.find(entry => entry.name === row.item_key)).filter(Boolean));
+      const equippedItems = equippedResult.rows.map(row => equipmentItems.find(entry => entry.name === row.item_key)).filter(Boolean);
+      const gear = applyEquipmentSetBonus(equippedItems, equipmentBonus(equippedItems));
 
       const updated = await db.query(
         `UPDATE users SET
