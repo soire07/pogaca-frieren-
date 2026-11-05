@@ -304,6 +304,7 @@ test('Guardian retry scan selects only bounded failed or stale dispatches with s
     assert.ok(sql.includes('not_requested'));
     assert.match(sql, /repair_approved_by IS NOT NULL/);
     assert.match(sql, /repair_approval_fingerprint IS NOT NULL/);
+    assert.match(sql, /j\.repair_approved_by,j\.repair_approval_fingerprint/);
     assert.match(sql, /repair_dispatch_status='dispatching'/);
     assert.match(sql, /repair_dispatch_attempts < 3/);
     assert.match(sql, /status='awaiting_approval'/);
