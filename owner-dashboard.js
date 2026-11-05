@@ -1055,19 +1055,13 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
           incident,
           env: process.env,
           fetchImpl: fetch,
+          actorId: OWNER_ID,
         });
         if (!['dispatched','already_dispatched'].includes(dispatch.status)) {
           const prefix = dispatch.status === 'reconciliation_unavailable' || dispatch.status === 'reconciliation_incomplete'
             ? 'GUARDIAN_GITHUB_READ_' : 'GUARDIAN_GITHUB_';
           throw new Error(prefix + String(dispatch.status || 'dispatch_failed').toUpperCase());
         }
-        await auditOwnerAction(db, OWNER_ID, 'guardian.repair.workflow_dispatched_by_owner', String(incident.id), {
-          jobId: job.id,
-          approvalFingerprint: approvedJob.repair_approval_fingerprint,
-          approvalRecorded: Boolean(approval),
-          dispatchStatus: dispatch.status,
-          baseBranch: 'guardian-isolated-repair-test',
-        }).catch(error => console.error('Guardian owner approval audit failed:', error?.message || error));
         redirect(res, '/owner/guardian?notice=guardian_pr_dispatched');
         return true;
       }
