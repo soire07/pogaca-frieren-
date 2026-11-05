@@ -1218,7 +1218,7 @@ test('global site action script confirms destructive actions and prevents duplic
   assert.match(String(response.body), /pendingForms/);
   assert.match(String(response.body), /window\.confirm/);
   assert.match(String(response.body), /Büyü işleniyor/);
-  assert.doesNotMatch(String(response.body), /submitter\\.disabled\\s*=/);
+  assert.doesNotMatch(String(response.body), /submitter\.disabled\s*=/);
 });
 
 test('profile interaction script is served and wires search, sorting, activity filters and privacy preview', async () => {
