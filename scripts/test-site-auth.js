@@ -12,6 +12,9 @@ test('same-origin request guard accepts the configured site host and rejects cro
   assert.equal(isSameOriginRequest({ headers: { origin: 'https://site.example', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), true);
   assert.equal(isSameOriginRequest({ headers: { origin: 'https://evil.example', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), false);
   assert.equal(isSameOriginRequest({ headers: { 'sec-fetch-site': 'cross-site', origin: 'https://site.example', host: 'site.example' } }, 'https://site.example'), false);
+  assert.equal(isSameOriginRequest({ headers: { 'sec-fetch-site': 'same-site', origin: 'https://site.example', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), true);
+  assert.equal(isSameOriginRequest({ headers: { 'sec-fetch-site': 'same-site', origin: 'https://evil.example', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), false);
+  assert.equal(isSameOriginRequest({ headers: { 'sec-fetch-site': 'same-site', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), false);
   assert.equal(isSameOriginRequest({ headers: {} }, 'https://site.example'), true);
 });
 
