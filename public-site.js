@@ -687,6 +687,11 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       else if(action==='brew-potion')status=(await brewHomePotion(db,{guildId,userId:profile.user_id,recipeKey:String(form.get('recipeKey')||'')})).status;
       else if(action==='set-visibility')status=(await setHomeVisibility(db,{guildId,userId:profile.user_id,isPublic:String(form.get('isPublic'))==='true'})).status;
       else if(action==='place-trophy')status=(await placeHomeTrophy(db,{guildId,userId:profile.user_id,achievementKey:String(form.get('achievementKey')||''),displaySlot:Number(form.get('displaySlot'))})).status;
+      else if(action==='set-profile-settings'){
+        const saved=await setPlayerProfileSettings(db,{guildId,userId:profile.user_id,settings:{showStats:String(form.get('showStats'))==='true',showAchievements:String(form.get('showAchievements'))==='true',showCollections:String(form.get('showCollections'))==='true',showActivity:String(form.get('showActivity'))==='true',showCosmetics:String(form.get('showCosmetics'))==='true',activeTitle:String(form.get('activeTitle')||'')}});
+        status=saved.status==='updated'?'profile_saved':saved.status;
+        res.writeHead(303,{Location:'/maceraci/profil?'+new URLSearchParams({guildId,status}).toString(),'Cache-Control':'no-store'});res.end();return true;
+      }
       else if(action==='check-in')status=(await checkInGuildEvent(db,{guildId,userId:profile.user_id,eventId:String(form.get('eventId')||'')})).status;
       else if(action==='claim-event')status=(await claimEventMilestone(db,{guildId,userId:profile.user_id,eventId:String(form.get('eventId')||''),rewardKey:String(form.get('rewardKey')||'')})).status;
       res.writeHead(303,{Location:'/maceraci/yasam?'+new URLSearchParams({guildId,status}).toString(),'Cache-Control':'no-store'});res.end();return true;
@@ -747,7 +752,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/pazar']);
+  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/pazar']);
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname)) return false;
   const sessionUser = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
   const user = sessionUser || (url.pathname === '/maceraci/ev' ? { id: 'public-viewer', username: 'Gezgin' } : null);
@@ -811,13 +816,59 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if (!/^[0-9]{17,20}$/.test(guildId) || !/^[0-9]{17,20}$/.test(userId)) { res.writeHead(400, { 'Cache-Control': 'no-store' }); res.end('Ev bağlantısı geçersiz.'); return true; }
     const showcase = await getPublicPlayerHome(db, { guildId, userId });
     if (!showcase) { res.writeHead(404, { 'Cache-Control': 'no-store' }); res.end('Bu ev paylaşılmıyor veya bulunamadı.'); return true; }
-    const [companion,cardVariants]=await Promise.all([getCompanion(db,guildId,userId),listCardVariants(db,guildId,userId)]);
+    const [companion,cardVariants]=showcase.settings?.show_collections?await Promise.all([getCompanion(db,guildId,userId),listCardVariants(db,guildId,userId)]):[null,[]];
     const html = publicHomeShowcasePage(user, {...showcase,companion,cardVariants});
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; base-uri 'self'; frame-ancestors 'self'" });
     res.end(html);
     return true;
   }
 
+  if(url.pathname==='/maceraci/profil'){
+    if(!requireSiteAccount(res,user?.id))return true;
+    if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil veritabanı kullanılamıyor.');return true;}
+    const guildId=String(url.searchParams.get('guildId')||'');
+    if(!guildId){
+      const dashboard=await getAdventurerDashboard(db,user.id);
+      const html=portalGuildPicker(user,dashboard.profiles,url.pathname,'Maceracı Profili');
+      res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
+      res.end(html);return true;
+    }
+    if(!/^\d{17,20}$/.test(guildId)){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Sunucu seçimi geçersiz.');return true;}
+    const profile=await getLinkedAdventurer(db,user.id,guildId);
+    if(!profile){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter web hesabına bağlı değil.');return true;}
+    const settings=await getPlayerProfileSettings(db,{guildId,userId:profile.user_id});
+    const [stats,titles,earned,activity,collections,arena,rankings,home,loadout,xpHistory]=await Promise.all([
+      db.query('SELECT created_at,boss_defeats,dungeon_wins,exploration_count,items_used_count,daily_streak,best_daily_streak FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,profile.user_id]),
+      db.query('SELECT title,unlocked_at FROM user_titles WHERE guild_id=$1 AND user_id=$2 ORDER BY unlocked_at DESC,title',[guildId,profile.user_id]),
+      db.query('SELECT a.achievement_key,a.claimed_at,h.display_slot FROM achievement_claims a LEFT JOIN player_home_trophies h ON h.guild_id=a.guild_id AND h.user_id=a.user_id AND h.achievement_key=a.achievement_key WHERE a.guild_id=$1 AND a.user_id=$2 ORDER BY a.claimed_at DESC,a.achievement_key',[guildId,profile.user_id]),
+      db.query("SELECT activity_type,activity_label,activity_at,xp_awarded FROM (SELECT 'Macera' AS activity_type,outcome_text AS activity_label,occurred_at AS activity_at,xp_awarded FROM adventure_history WHERE guild_id=$1 AND user_id=$2 UNION ALL SELECT 'Başarım',achievement_key,claimed_at,0 FROM achievement_claims WHERE guild_id=$1 AND user_id=$2 UNION ALL SELECT 'Kozmetik',cosmetic_key,acquired_at,0 FROM player_cosmetic_ownership WHERE guild_id=$1 AND user_id=$2) recent ORDER BY activity_at DESC LIMIT 12",[guildId,profile.user_id]),
+      db.query('SELECT (SELECT COUNT(DISTINCT character_name)::int FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2) AS anime_cards,(SELECT COALESCE(SUM(quantity),0)::int FROM anime_character_collection WHERE guild_id=$1 AND user_id=$2) AS anime_copies,(SELECT COUNT(*)::int FROM adventure_journal_entries WHERE guild_id=$1 AND user_id=$2) AS journal_entries',[guildId,profile.user_id]),
+      db.query("SELECT s.name AS season_name,COALESCE(r.rating,1000)::int AS rating,COALESCE(r.wins,0)::int AS wins,COALESCE(r.losses,0)::int AS losses,COALESCE(r.matches,0)::int AS matches FROM arena_seasons s LEFT JOIN arena_ratings r ON r.season_id=s.season_id AND r.guild_id=s.guild_id AND r.user_id=$2 WHERE s.guild_id=$1 AND s.status='active' ORDER BY s.season_id DESC LIMIT 1",[guildId,profile.user_id]),
+      db.query(`WITH xp_board AS (SELECT user_id,character_name,level,xp FROM users WHERE guild_id=$1 ORDER BY xp DESC,level DESC,user_id LIMIT 10),
+       boss_board AS (SELECT user_id,character_name,boss_defeats FROM users WHERE guild_id=$1 ORDER BY boss_defeats DESC,user_id LIMIT 10),
+       dungeon_board AS (SELECT user_id,character_name,dungeon_wins FROM users WHERE guild_id=$1 ORDER BY dungeon_wins DESC,user_id LIMIT 10),
+       active_season AS (SELECT season_id FROM arena_seasons WHERE guild_id=$1 AND status='active' ORDER BY season_id DESC LIMIT 1),
+       arena_board AS (SELECT r.user_id,u.character_name,r.rating FROM arena_ratings r JOIN users u USING(guild_id,user_id) JOIN active_season s ON s.season_id=r.season_id WHERE r.guild_id=$1 ORDER BY r.rating DESC,r.wins DESC,r.user_id LIMIT 10),
+       daily_board AS (SELECT h.user_id,u.character_name,SUM(h.xp_awarded)::int AS xp FROM adventure_history h JOIN users u USING(guild_id,user_id) WHERE h.guild_id=$1 AND h.occurred_at>=NOW()-INTERVAL '24 hours' GROUP BY h.user_id,u.character_name ORDER BY xp DESC,h.user_id LIMIT 10),
+       collection_board AS (SELECT c.user_id,u.character_name,COUNT(DISTINCT c.character_name)::int AS anime_cards FROM anime_character_collection c JOIN users u USING(guild_id,user_id) WHERE c.guild_id=$1 GROUP BY c.user_id,u.character_name ORDER BY anime_cards DESC,c.user_id LIMIT 10)
+       SELECT 'xp' AS board,COALESCE((SELECT json_agg(to_jsonb(x)) FROM xp_board x),'[]'::json) AS players
+       UNION ALL SELECT 'boss',COALESCE((SELECT json_agg(to_jsonb(x)) FROM boss_board x),'[]'::json)
+       UNION ALL SELECT 'dungeon',COALESCE((SELECT json_agg(to_jsonb(x)) FROM dungeon_board x),'[]'::json)
+       UNION ALL SELECT 'arena',COALESCE((SELECT json_agg(to_jsonb(x)) FROM arena_board x),'[]'::json)
+       UNION ALL SELECT 'daily_adventure_xp',COALESCE((SELECT json_agg(to_jsonb(x)) FROM daily_board x),'[]'::json)
+       UNION ALL SELECT 'collection',COALESCE((SELECT json_agg(to_jsonb(x)) FROM collection_board x),'[]'::json)`,[guildId]),
+      db.query('SELECT is_public FROM player_homes WHERE guild_id=$1 AND user_id=$2',[guildId,profile.user_id]),
+      db.query('SELECT slot,cosmetic_key FROM player_cosmetic_loadout WHERE guild_id=$1 AND user_id=$2 ORDER BY slot',[guildId,profile.user_id]),
+      db.query("SELECT TO_CHAR(date_trunc('day',occurred_at),'YYYY-MM-DD') AS day_label,SUM(xp_awarded)::int AS xp FROM adventure_history WHERE guild_id=$1 AND user_id=$2 AND occurred_at>=NOW()-INTERVAL '7 days' GROUP BY date_trunc('day',occurred_at) ORDER BY date_trunc('day',occurred_at)",[guildId,profile.user_id])
+    ]);
+    const html=playerProfilePage(user,profile,{
+      settings,stats:stats.rows[0]||{},titles:titles.rows,achievements:earned.rows,activity:activity.rows,
+      collections:collections.rows[0]||{},arena:arena.rows[0]||{},rankings:rankings.rows,
+      home:home.rows[0]||{is_public:false},loadout:loadout.rows,xpHistory:xpHistory.rows
+    },url.searchParams.get('status'));
+    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
+    res.end(html);return true;
+  }
   if (url.pathname === '/' || url.pathname === '/maceraci') {
     if (!requireSiteAccount(res, user?.id)) return true;
     if (!db) { res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }); res.end('Oyuncu paneli veritabanına şu anda bağlanamıyor.'); return true; }
