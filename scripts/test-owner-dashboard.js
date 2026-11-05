@@ -66,7 +66,7 @@ test('Guardian repair approval is explicit and disappears after approval is pers
       id: 9, incident_id: 7, incident_title: 'RPG timeout', agent: 'frieren_ai',
       system: 'pogaca_frieren', status: 'completed', created_at: '2026-11-02T10:01:00Z',
       repair_dispatch_status: 'not_requested',
-      result: { status: 'proposal_only', rootCause: 'Timeout guard missing', confidence: 'high', affectedFiles: ['commands/example.js'], proposedPatch: 'diff --git a/file.js b/file.js', tests: ['timeout regression'] },
+      result: { status: 'proposal_only', rootCause: 'Timeout guard missing', confidence: 'high', affectedFiles: ['commands/example.js'], proposedPatch: 'diff --git a/commands/example.js b/commands/example.js', tests: ['timeout regression'] },
     }],
   };
   try {
