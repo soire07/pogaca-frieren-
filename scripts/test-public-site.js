@@ -922,3 +922,95 @@ test('dedicated Frieren profile banner asset is publicly served as SVG', async (
   assert.match(String(response.body), /Frieren yıldızlı gece bannerı/);
   assert.match(String(response.body), /<svg/);
 });
+
+test('guild workshop custom command and spell automation POST actions persist only after owner and channel permission checks', async () => {
+  const profile = { guild_id: '1539562273197260860', user_id: '123456789012345678', character_name: 'Fern' };
+  const writes = [];
+  const db = { async query(sql, params = []) {
+    if (sql.includes('FROM site_discord_links l JOIN users u')) return { rows: [profile], rowCount: 1 };
+    if (sql.includes('INSERT INTO guild_custom_commands')) { writes.push({ kind: 'command', params }); return { rows: [{ command_id: 'command-1' }], rowCount: 1 }; }
+    if (sql.includes('INSERT INTO guild_spell_automations')) { writes.push({ kind: 'automation', params }); return { rows: [{ automation_id: 'automation-1' }], rowCount: 1 }; }
+    throw new Error('Unexpected workshop mutation query: ' + sql);
+  } };
+  const client = {
+    guilds: { cache: { get: () => ({ ownerId: profile.user_id }) } },
+    user: { id: '998877665544332211' },
+    channels: { async fetch() { return {
+      guildId: profile.guild_id, isTextBased: () => true,
+      permissionsFor: () => ({ has: () => true })
+    }; } }
+  };
+  const account = { id: 'site_123e4567-e89b-12d3-a456-426614174000', username: 'Gezgin' };
+  const commandResponse = res();
+  assert.equal(await handlePublicSiteRequest(sitePost('/maceraci/atolye', {
+    csrf: createSiteCsrfToken(secret), guildId: profile.guild_id, action: 'command',
+    triggerName: 'guild_hello', kind: 'command', responseText: 'Lonca yolculuğuna hoş geldin.'
+  }), commandResponse, { db, client }), true);
+  assert.equal(commandResponse.status, 303);
+  assert.match(commandResponse.headers.Location, /saved_command/);
+  assert.equal(writes[0].kind, 'command');
+
+  const automationResponse = res();
+  assert.equal(await handlePublicSiteRequest(sitePost('/maceraci/atolye', {
+    csrf: createSiteCsrfToken(secret), guildId: profile.guild_id, action: 'automation',
+    automationName: 'Raid reminder', triggerKey: 'event_reminder', channelId: '223456789012345678',
+    automationMessage: '{{player}} · {{event}} yaklaşıyor.', cooldownSeconds: '120'
+  }, account.id), automationResponse, { db, client }), true);
+  assert.equal(automationResponse.status, 303);
+  assert.match(automationResponse.headers.Location, /saved_automation/);
+  assert.equal(writes[1].kind, 'automation');
+  assert.equal(writes.length, 2);
+});
+
+test('guild workshop automation refuses cross-guild channels without writing a rule', async () => {
+  const profile = { guild_id: '1539562273197260860', user_id: '123456789012345678', character_name: 'Fern' };
+  let writes = 0;
+  const db = { async query(sql) {
+    if (sql.includes('FROM site_discord_links l JOIN users u')) return { rows: [profile], rowCount: 1 };
+    if (sql.includes('INSERT INTO guild_spell_automations')) { writes++; return { rows: [], rowCount: 1 }; }
+    throw new Error('Unexpected query: ' + sql);
+  } };
+  const client = {
+    guilds: { cache: { get: () => ({ ownerId: profile.user_id }) } },
+    user: { id: '998877665544332211' },
+    channels: { async fetch() { return { guildId: '999999999999999999', isTextBased: () => true, permissionsFor: () => ({ has: () => true }) }; } }
+  };
+  const response = res();
+  assert.equal(await handlePublicSiteRequest(sitePost('/maceraci/atolye', {
+    csrf: createSiteCsrfToken(secret), guildId: profile.guild_id, action: 'automation',
+    automationName: 'Unsafe route', triggerKey: 'event_reminder', channelId: '223456789012345678',
+    automationMessage: 'Do not send', cooldownSeconds: '60'
+  }), response, { db, client }), true);
+  assert.equal(response.status, 403);
+  assert.equal(writes, 0);
+});
+
+test('player home visibility and layout controls persist only for the linked account and owned rooms', async () => {
+  const profile = { guild_id: '1539562273197260860', user_id: '123456789012345678', character_name: 'Fern' };
+  const writes = [];
+  const db = { async query(sql, params = []) {
+    if (sql.includes('FROM site_discord_links l JOIN users u')) return { rows: [profile], rowCount: 1 };
+    if (sql.startsWith('INSERT INTO users') || sql.startsWith('INSERT INTO user_talents') || sql.startsWith('INSERT INTO learned_spells')) return { rows: [], rowCount: 1 };
+    if (sql.includes('INSERT INTO player_home_rooms')) return { rows: [], rowCount: 1 };
+    if (sql.includes('SELECT room_key FROM player_home_rooms')) return { rows: [{ room_key: 'starter' }], rowCount: 1 };
+    if (sql.includes('INSERT INTO player_homes')) { writes.push({ sql, params }); return { rows: [], rowCount: 1 }; }
+    throw new Error('Unexpected player home mutation query: ' + sql);
+  } };
+  const account = { id: 'site_123e4567-e89b-12d3-a456-426614174000', username: 'Gezgin' };
+  const visibility = res();
+  assert.equal(await handlePublicSiteRequest(sitePost('/maceraci/yasam', {
+    csrf: createSiteCsrfToken(secret), guildId: profile.guild_id, action: 'set-visibility', isPublic: 'true'
+  }, account.id), visibility, { db }), true);
+  assert.equal(visibility.status, 303);
+  assert.match(visibility.headers.Location, /status=updated/);
+  assert.equal(writes[0].params[2], true);
+
+  const layout = res();
+  assert.equal(await handlePublicSiteRequest(sitePost('/maceraci/yasam', {
+    csrf: createSiteCsrfToken(secret), guildId: profile.guild_id, action: 'save-layout',
+    activeRoom: 'starter', layout: JSON.stringify([{ roomKey: 'starter', decorationKey: 'book_shelf', position: 0 }])
+  }, account.id), layout, { db }), true);
+  assert.equal(layout.status, 303);
+  assert.match(layout.headers.Location, /status=saved/);
+  assert.deepEqual(JSON.parse(writes[1].params[3]), [{ roomKey: 'starter', decorationKey: 'book_shelf', position: 0 }]);
+});
