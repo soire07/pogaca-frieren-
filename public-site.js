@@ -93,19 +93,80 @@ function getPublicCommandCategory(name, description) {
   return 'Diğer';
 }
 
+const COMMAND_OPTION_TYPES = Object.freeze({
+  1: 'Alt komut', 2: 'Alt komut grubu', 3: 'Metin', 4: 'Tam sayı', 5: 'Evet/Hayır',
+  6: 'Kullanıcı', 7: 'Kanal', 8: 'Rol', 9: 'Kullanıcı / rol / kanal', 10: 'Sayı', 11: 'Dosya'
+});
+const COMMAND_PERMISSION_LABELS = Object.freeze([
+  ['Administrator', 'Yönetici'],
+  ['ManageGuild', 'Sunucuyu Yönet'],
+  ['ManageMessages', 'Mesajları Yönet'],
+  ['ManageRoles', 'Rolleri Yönet'],
+  ['KickMembers', 'Üyeleri At'],
+  ['BanMembers', 'Üyeleri Yasakla']
+]);
+
+function renderPublicCommandOptions(options, depth = 0) {
+  if (!Array.isArray(options) || !options.length) {
+    return '<p class="command-no-options">Ek parametre gerektirmiyor.</p>';
+  }
+  if (depth >= 4) return '<p class="command-no-options">Daha fazla alt seçenek var.</p>';
+  return '<ul class="command-options">' + options.slice(0, 25).map(option => {
+    const name = esc(option?.name || 'parametre');
+    const description = esc(option?.description || 'Açıklama eklenmemiş.');
+    const type = COMMAND_OPTION_TYPES[Number(option?.type)] || 'Seçenek';
+    const required = option?.required === true;
+    const choices = Array.isArray(option?.choices) ? option.choices.slice(0, 25).map(choice =>
+      '<li><code>' + esc(choice?.name || choice?.value || '') + '</code></li>'
+    ).join('') : '';
+    const nested = renderPublicCommandOptions(option?.options, depth + 1);
+    const constraints = [];
+    if (Number.isFinite(Number(option?.min_value))) constraints.push('En az ' + esc(option.min_value));
+    if (Number.isFinite(Number(option?.max_value))) constraints.push('En çok ' + esc(option.max_value));
+    if (Number.isFinite(Number(option?.min_length))) constraints.push('En az ' + esc(option.min_length) + ' karakter');
+    if (Number.isFinite(Number(option?.max_length))) constraints.push('En çok ' + esc(option.max_length) + ' karakter');
+    return '<li class="command-option"><div class="command-option-head"><code>--' + name + '</code><span>' + type + '</span><span class="' + (required ? 'required' : 'optional') + '">' + (required ? 'Zorunlu' : 'İsteğe bağlı') + '</span></div><p>' + description + '</p>' +
+      (choices ? '<div class="command-choice-label">Seçenekler</div><ul class="command-choices">' + choices + '</ul>' : '') +
+      (constraints.length ? '<p class="command-constraints">' + constraints.join(' · ') + '</p>' : '') +
+      (option?.autocomplete ? '<p class="command-constraints">Yazarken öneri sunulur.</p>' : '') +
+      (Array.isArray(option?.options) && option.options.length ? nested : '') + '</li>';
+  }).join('') + '</ul>';
+}
+
+function getPublicCommandPermissionLabel(data) {
+  const raw = data?.default_member_permissions;
+  if (raw === null || raw === undefined) return 'Tüm üyeler · Discord varsayılanı';
+  try {
+    const bits = BigInt(raw);
+    if (bits === 0n) return 'Varsayılan olarak kapalı';
+    const labels = COMMAND_PERMISSION_LABELS
+      .filter(([key]) => (bits & BigInt(PermissionFlagsBits[key] ?? 0n)) !== 0n)
+      .map(([, label]) => label);
+    return labels.length ? 'Gerekli: ' + labels.join(', ') : 'Özel Discord izin gereksinimi';
+  } catch {
+    return 'Discord izin gereksinimi tanımlı';
+  }
+}
+
 function commandCatalog(client, user) {
   const commands = [...(client?.commands?.values?.() || [])]
     .map(command => {
       const data = typeof command?.data?.toJSON === 'function' ? command.data.toJSON() : command?.data;
       if (!data?.name) return null;
       const description = String(data.description || 'Komut açıklaması henüz eklenmemiş.');
-      return { name: String(data.name), description, category: getPublicCommandCategory(data.name, description) };
+      return {
+        name: String(data.name), description, category: getPublicCommandCategory(data.name, description),
+        options: Array.isArray(data.options) ? data.options : [],
+        permissionLabel: getPublicCommandPermissionLabel(data),
+        dmAllowed: data.dm_permission !== false,
+        nsfw: data.nsfw === true
+      };
     })
     .filter(Boolean)
     .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
   const categories = [...new Set(commands.map(command => command.category))].sort((a, b) => a.localeCompare(b, 'tr'));
   const categoryOptions = ['<option value="all">Tüm kategoriler</option>', ...categories.map(category => '<option value="' + esc(category) + '">' + esc(category) + '</option>')].join('');
-  const cards = commands.map(command => '<article class="command-card" data-name="' + esc((command.name + ' ' + command.description).toLocaleLowerCase('tr')) + '" data-category="' + esc(command.category) + '"><div class="command-card-top"><code>/' + esc(command.name) + '</code><span>' + esc(command.category) + '</span></div><p>' + esc(command.description) + '</p></article>').join('');
+  const cards = commands.map(command => '<article class="command-card" data-name="' + esc((command.name + ' ' + command.description + ' ' + command.options.map(option => option.name || '').join(' ')).toLocaleLowerCase('tr')) + '" data-category="' + esc(command.category) + '"><div class="command-card-top"><code>/' + esc(command.name) + '</code><span>' + esc(command.category) + '</span></div><p>' + esc(command.description) + '</p><div class="command-meta"><span>' + esc(command.permissionLabel) + '</span><span>' + (command.dmAllowed ? 'Sunucu ve izin verilen DM bağlamları' : 'DM kullanımına kapalı') + '</span>' + (command.nsfw ? '<span>Yaş kısıtlı kanal</span>' : '') + '</div><details class="command-details"><summary>Parametreler ve kullanım</summary>' + renderPublicCommandOptions(command.options) + '</details></article>').join('');
   const content = '<main><section class="wrap catalog-hero"><div class="eyebrow">✧ KOMUT ARŞİVİ · FRIEREN YOLCULUĞU ✧</div><h1 class="hero-title">Bütün <em>komutlar.</em></h1><p class="lead">Poğaça Frieren sunucunda kullanabileceğin komutları tek yerde keşfet. Arama yap, kategoriye göre filtrele ve yeni macerana hazırlan.</p><div class="catalog-count"><strong>' + commands.length + '</strong><span>yüklenmiş komut</span></div></section><section class="section"><div class="wrap"><div class="catalog-tools"><label class="sr-only" for="command-search">Komutlarda ara</label><input id="command-search" type="search" placeholder="Komut adı veya açıklamada ara…" autocomplete="off"><label class="sr-only" for="command-category">Kategori seç</label><select id="command-category">' + categoryOptions + '</select><span id="command-result-count" aria-live="polite">' + commands.length + '/' + commands.length + ' komut gösteriliyor</span></div><div class="command-catalog" id="command-catalog">' + (cards || '<p class="muted">Komut kataloğu şu anda yüklenemiyor.</p>') + '</div><p class="catalog-empty" id="command-empty" hidden>Bu aramayla eşleşen komut bulunamadı.</p></div></section><section class="section"><div class="wrap cta"><h2>Maceraya hazır mısın?</h2><p>Komutları Discord sunucunda kullanarak kendi hikâyeni oluştur.</p><a class="btn" href="/pogaca">Poğaça Frieren sayfasına dön</a></div></section></main><script>(()=>{const search=document.getElementById("command-search");const category=document.getElementById("command-category");const cards=[...document.querySelectorAll(".command-card")];const count=document.getElementById("command-result-count");const empty=document.getElementById("command-empty");const filter=()=>{const query=search.value.trim().toLocaleLowerCase("tr");let visible=0;for(const card of cards){const matchesText=card.dataset.name.includes(query);const matchesCategory=category.value==="all"||card.dataset.category===category.value;const show=matchesText&&matchesCategory;card.hidden=!show;if(show)visible++;}count.textContent=visible+" / "+cards.length+" komut gösteriliyor";empty.hidden=visible!==0;};search.addEventListener("input",filter);category.addEventListener("change",filter);})();</script>';
   return page('Komut Arşivi', content, user);
 }
