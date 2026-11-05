@@ -886,3 +886,5 @@ test('anonymous search crawlers can read robots.txt and the XML sitemap', async 
   assert.match(sitemap.headers['Content-Type'], /application\/xml/);
   assert.match(sitemap.body, /<loc>https:\/\/frierenbot\.vercel\.app\/tanitim<\/loc>/);
 });
+
+test('market price preview source is registered', async () => { const source = await readFile(new URL('../public-site.js', import.meta.url), 'utf8'); assert.ok(source.includes('market-preview.js')); });
