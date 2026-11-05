@@ -119,6 +119,7 @@ def _generation_capacity():
 def clear_runtime_cache() -> None:
     """Clear the loaded model after checkpoint or environment changes."""
     _load_runtime.cache_clear()
+    _run_generation_smoke.cache_clear()
     try:
         from .gguf_runtime import load_model
         load_model.cache_clear()
@@ -161,6 +162,20 @@ def _generate_reply(prompt: str, *, max_new_tokens: int, temperature: float, top
     return raw_completion.lstrip(), int(metadata["step"]), "frieren-neural-scratch"
 
 
+@lru_cache(maxsize=1)
+def _run_generation_smoke() -> str:
+    """Run one fixed, non-user inference check when explicitly enabled for test services."""
+    completion, _step, _model_name = _generate_reply(
+        "Türkçe kısa bir selamlama yaz.",
+        max_new_tokens=8,
+        temperature=0.2,
+        top_k=20,
+    )
+    if not isinstance(completion, str) or not completion.strip():
+        raise RuntimeError("The model returned an empty health-check completion.")
+    return "pass"
+
+
 def _checkpoint_path() -> Path:
     return Path(os.environ.get("FRIEREN_CHECKPOINT", "checkpoints/frieren-neural.pt"))
 
@@ -180,9 +195,12 @@ def _authenticate(authorization: str | None) -> None:
 def health() -> dict[str, str]:
     if _model_backend() == "scratch" and not _checkpoint_path().is_file():
         return {"status": "model_unavailable"}
+    generation_smoke = "skipped"
     try:
         with _generation_capacity(), _generation_lock:
             _load_active_runtime()
+            if os.environ.get("FRIEREN_HEALTH_GENERATION_SMOKE", "").strip() == "1":
+                generation_smoke = _run_generation_smoke()
     except HTTPException as error:
         if error.status_code == 503:
             return {"status": "busy"}
@@ -190,7 +208,7 @@ def health() -> dict[str, str]:
     except (OSError, RuntimeError, ValueError, KeyError, EOFError, ImportError, pickle.UnpicklingError):
         return {"status": "model_unavailable"}
     model_name = "ufakai/ufakzeka-1" if _model_backend() == "ufakzeka" else "frieren-neural-scratch"
-    return {"status": "ready", "model": model_name}
+    return {"status": "ready", "model": model_name, "generation_smoke": generation_smoke}
 
 
 @app.post("/generate")
