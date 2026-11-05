@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { collectCodeContext } from './code-context.js';
 import { normalizeGuardianReviewIncident, parseGuardianReview, reviewGuardianIncident } from './guardian-review.js';
 
 test('Guardian review input accepts only known systems and redacts secrets', () => {
@@ -111,4 +114,58 @@ test('Guardian Groq self-test is admin-only and cannot dispatch repairs', async 
   assert.match(handler, /reviewGuardianIncident\(/);
   assert.match(handler, /finally\s*\{\s*guardianReviewInProgress\s*=\s*false/);
   assert.doesNotMatch(handler, /processGuardianIncident|processPendingGuardianRepairDispatch|api\.github\.com|workflow_dispatch/);
+});
+
+
+test('Guardian review records the exact source commit, context files and context hash', async () => {
+  const expectedHash = 'b'.repeat(64);
+  const result = await reviewGuardianIncident({
+    groq: { chat: { completions: { create: async () => ({ choices: [{ message: { content: JSON.stringify({
+      rootCause: 'A missing test guard.', confidence: 'high', affectedFiles: ['guardian/automation.test.js'],
+      suggestedFix: 'No change until verified.', proposedPatch: '', tests: [], risks: [],
+    }) } }] }) } } },
+    model: 'test-model',
+    incident: { system: 'guardian', code: 'TEST_GAP', title: 'Guardian review', summary: 'Check existing test coverage.' },
+    collectCodeContext: async () => ({
+      text: 'FILE: guardian/automation.test.js\\nexisting regression test',
+      files: ['guardian/automation.test.js', 'guardian/automation.js'],
+      contextHash: expectedHash,
+      sourceCommitSha: 'c'.repeat(40),
+    }),
+  });
+  assert.deepEqual(result.sourceContextFiles, ['guardian/automation.test.js', 'guardian/automation.js']);
+  assert.equal(result.sourceContextHash, expectedHash);
+  assert.equal(result.sourceCommitSha, 'c'.repeat(40));
+});
+
+test('actual Guardian context collector includes implementation and tests, redacts secrets and hashes exact context', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'frieren-guardian-context-'));
+  try {
+    for (const dir of ['guardian', 'ai-agent']) await mkdir(path.join(rootDir, dir), { recursive: true });
+    const files = [
+      'guardian/automation.js',
+      'guardian/automation.test.js',
+      'ai-agent/guardian-review.js',
+      'ai-agent/guardian-review.test.js',
+      'ai-agent/code-context.js',
+    ];
+    for (const file of files) {
+      await writeFile(path.join(rootDir, file), 'const DATABASE_URL="postgres://secret-value";\\n// ' + file + '\\n');
+    }
+    const context = await collectCodeContext({
+      rootDir,
+      question: 'guardian incident affectedFiles regression test',
+      sourceCommitSha: 'd'.repeat(40),
+      budget: 3600,
+    });
+    for (const file of files) {
+      assert.ok(context.files.includes(file), 'missing mandatory context file: ' + file);
+      assert.ok(context.text.includes('FILE: ' + file));
+    }
+    assert.doesNotMatch(context.text, /secret-value/);
+    assert.match(context.contextHash, /^[a-f0-9]{64}$/);
+    assert.equal(context.sourceCommitSha, 'd'.repeat(40));
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
 });
