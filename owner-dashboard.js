@@ -1155,6 +1155,8 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         });
         if (!prResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + prResponse.status);
         const prs = await prResponse.json();
+        const branchName = trackingUrls.branchName;
+        pr = Array.isArray(prs) ? prs.find(item => item.head?.ref === branchName) || null : null;
         pr = Array.isArray(prs) ? prs.find(item => item.head?.ref === branchName) || null : null;
         let checksStatus = classifyGuardianWorkflowConclusion(runConclusion);
         if (pr) {
