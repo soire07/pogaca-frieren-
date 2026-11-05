@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { handlePublicSiteRequest } from '../public-site.js';
+import { handlePublicSiteRequest, publicHomeShowcasePage } from '../public-site.js';
 import { createPublicSiteSession, buildPublicSiteSessionCookie } from '../owner-dashboard.js';
 import { createSiteCsrfToken } from '../site-auth.js';
 
@@ -1013,4 +1013,27 @@ test('player home visibility and layout controls persist only for the linked acc
   assert.equal(layout.status, 303);
   assert.match(layout.headers.Location, /status=saved/);
   assert.deepEqual(JSON.parse(writes[1].params[3]), [{ roomKey: 'starter', decorationKey: 'book_shelf', position: 0 }]);
+});
+
+
+test('home page uses the Frieren character banner asset in its profile showcase', async () => {
+  const response = res();
+  const client = { guilds: { cache: { size: 1 } }, commands: { size: 1 }, isReady: () => true };
+  await handlePublicSiteRequest(request('/'), response, { client });
+  assert.equal(response.status, 200);
+  assert.match(response.body, /\/assets\/site-banner\.svg/);
+  assert.doesNotMatch(response.body, /\/assets\/site-profile-banner\.svg/);
+});
+
+test('public adventurer profile renders the equipped Frieren or Northern guild banner', () => {
+  const user = { id: visitor.id, username: visitor.username, avatarUrl: '/assets/site-avatar.webp' };
+  const data = {
+    profile: { character_name: 'Fern', class_name: 'Büyücü', level: 22, xp: 3450 },
+    rooms: [], trophies: [], loadout: [{ cosmetic_key: 'frieren_banner', slot: 'guild_banner' }],
+    companion: null, cardVariants: [], home: { layout: [] },
+  };
+  const html = publicHomeShowcasePage(user, data);
+  assert.match(html, /player-banner--frieren/);
+  assert.match(html, /Gezgin Büyücü Sancağı/);
+  assert.match(html, /Maceracı profil sancağı/);
 });
