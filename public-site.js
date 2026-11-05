@@ -259,6 +259,22 @@ function commandCatalog(client, user) {
   return page('Komut Arşivi', content, user);
 }
 
+function adventurerClassEmblem(className) {
+  const value=String(className||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('tr-TR');
+  const classes=[
+    {keys:['buyucu','mage','wizard','sihirbaz'],label:'Büyücü',path:'M12 2 14.8 9.2 22 12l-7.2 2.8L12 22l-2.8-7.2L2 12l7.2-2.8L12 2Z'},
+    {keys:['savasci','warrior','berserker','dovuscu'],label:'Savaşçı',path:'M5 3l6 6-2 2-6-6V3h2Zm14 0v2l-6 6-2-2 6-6h2ZM8 13l3 3-5 5-3-3 5-5Zm8 0 5 5-3 3-5-5 3-3Z'},
+    {keys:['sovalye','knight','paladin','muhafiz'],label:'Şövalye',path:'M12 2 20 5v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3Zm0 4-4 2v3c0 3 1.5 5.5 4 7 2.5-1.5 4-4 4-7V8l-4-2Z'},
+    {keys:['okcu','archer','avci','hunter'],label:'Okçu',path:'M4 20 20 4m-9 0h9v9M5 7l12 12m-7-12 7 7'},
+    {keys:['suikastci','assassin','ninja','hirsiz','rogue'],label:'Suikastçı',path:'M12 2 22 12 12 22 2 12 12 2Zm0 5-5 5 5 5 5-5-5-5Z'},
+    {keys:['rahip','priest','sifaci','healer','cleric'],label:'Rahip',path:'M10 2h4v8h8v4h-8v8h-4v-8H2v-4h8V2Z'},
+    {keys:['simyaci','alchemist'],label:'Simyacı',path:'M9 2h6v2h-1v5l6 10a2 2 0 0 1-2 3H6a2 2 0 0 1-2-3l6-10V4H9V2Zm3 9-5 9h10l-5-9Z'},
+    {keys:['cagirici','summoner','warlock'],label:'Çağırıcı',path:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm0 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z'}
+  ];
+  const selected=classes.find(item=>item.keys.some(key=>value.includes(key)))||{label:String(className||'Maceracı'),path:'M12 2 14 9l7 3-7 3-2 7-3-7-7-3 7-3 3-7Z'};
+  return '<span class="adventurer-class-emblem" role="img" aria-label="'+esc(selected.label)+' sınıfı" title="'+esc(selected.label)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+selected.path+'"/></svg></span>';
+}
+
 function adventurerPanel(user, data, status) {
   const notice = status === 'linked' ? '<p class="notice">Discord karakterin web hesabına bağlandı.</p>' :
     status === 'invalid' ? '<p class="notice">Bağlantı kodu geçersiz, süresi dolmuş veya daha önce kullanılmış.</p>' :
@@ -275,7 +291,7 @@ function adventurerPanel(user, data, status) {
     const mana = Math.max(0, Math.min(100, Number(profile.mana) / Math.max(1, Number(profile.max_mana)) * 100));
     const guild = encodeURIComponent(profile.guild_id);
     const xpProgress = playerXpProgress(profile, isVipSiteAccount(user));
-    return '<article class="card"><div class="eyebrow">SUNUCU · ' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + levelForXp(profile.xp) + '</p>' + xpProgress + '<div class="stats" id="battle-stats"><span><b>' + Number(profile.xp) + '</b> XP</span><span><b>' + Number(profile.coins) + '</b> Altın</span><span><b>' + Number(profile.rating) + '</b> MMR</span></div><p>HP ' + Number(profile.hp) + '/' + Number(profile.max_hp) + '</p><div class="progress"><i style="width:' + hp.toFixed(1) + '%"></i></div><p>Mana ' + Number(profile.mana) + '/' + Number(profile.max_mana) + '</p><div class="progress"><i style="width:' + mana.toFixed(1) + '%"></i></div><p>' + esc(profile.season_name || 'Sezon başlamadı') + ' · ' + Number(profile.wins) + ' galibiyet / ' + Number(profile.losses) + ' mağlubiyet</p><div class="actions"><a class="btn ghost" href="/maceraci/envanter?guildId=' + guild + '">Envanterim</a><a class="btn ghost" href="/maceraci/koleksiyon?guildId=' + guild + '">Koleksiyonum</a><a class="btn ghost" href="/maceraci/sosyal?guildId=' + guild + '">Sosyal alanım</a><a class="btn ghost" href="/maceraci/yasam?guildId=' + guild + '">Yaşam alanım</a><a class="btn ghost" href="/maceraci/bildirimler?guildId=' + guild + '">Haberci kuş ve bildirimler</a><a class="btn ghost" href="/maceraci/atolye?guildId=' + guild + '">Embed / Büyü Atölyesi</a><a class="btn ghost" href="/pazar?guildId=' + guild + '">Kuzey Pazarı</a></div></article>';
+    return '<article class="card adventurer-character-card">' + adventurerClassEmblem(profile.class_name) + '<div class="eyebrow">SUNUCU · ' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + levelForXp(profile.xp) + '</p>' + xpProgress + '<div class="stats" id="battle-stats"><span><b>' + Number(profile.xp) + '</b> XP</span><span><b>' + Number(profile.coins) + '</b> Altın</span><span><b>' + Number(profile.rating) + '</b> MMR</span></div><p>HP ' + Number(profile.hp) + '/' + Number(profile.max_hp) + '</p><div class="progress"><i style="width:' + hp.toFixed(1) + '%"></i></div><p>Mana ' + Number(profile.mana) + '/' + Number(profile.max_mana) + '</p><div class="progress"><i style="width:' + mana.toFixed(1) + '%"></i></div><p>' + esc(profile.season_name || 'Sezon başlamadı') + ' · ' + Number(profile.wins) + ' galibiyet / ' + Number(profile.losses) + ' mağlubiyet</p><div class="actions"><a class="btn ghost" href="/maceraci/envanter?guildId=' + guild + '">Envanterim</a><a class="btn ghost" href="/maceraci/koleksiyon?guildId=' + guild + '">Koleksiyonum</a><a class="btn ghost" href="/maceraci/sosyal?guildId=' + guild + '">Sosyal alanım</a><a class="btn ghost" href="/maceraci/yasam?guildId=' + guild + '">Yaşam alanım</a><a class="btn ghost" href="/maceraci/bildirimler?guildId=' + guild + '">Haberci kuş ve bildirimler</a><a class="btn ghost" href="/maceraci/atolye?guildId=' + guild + '">Embed / Büyü Atölyesi</a><a class="btn ghost" href="/pazar?guildId=' + guild + '">Kuzey Pazarı</a></div></article>';
   }).join('');
   const events = data.events.map(event => {
     const action = event.joined ? 'leave' : 'join';
@@ -301,7 +317,7 @@ function adventurerPanel(user, data, status) {
 function portalGuildPicker(user, profiles, route, title) {
   const [routePath, routeHash=''] = String(route).split('#', 2);
   if (!profiles.length) return page(title, '<main class="wrap" style="padding:54px 0 80px"><h1 class="hero-title">Maceracı <em>bağlantısı gerekli</em></h1><article class="card"><p>Önce Discord sunucunda <b>/maceraci bagla</b> komutuyla karakterini web hesabına bağla.</p><a class="btn" href="/maceraci">Maceracı paneline dön</a></article></main>', user);
-  const cards = profiles.map(profile => '<article class="card"><div class="eyebrow">' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + Number(profile.level) + '</p><a class="btn" href="' + routePath + '?guildId=' + encodeURIComponent(profile.guild_id) + (routeHash ? '#' + esc(routeHash) : '') + '">Bu sunucuyu seç</a></article>').join('');
+  const cards = profiles.map(profile => '<article class="card adventurer-character-card">' + adventurerClassEmblem(profile.class_name) + '<div class="eyebrow">' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + Number(profile.level) + '</p><a class="btn" href="' + routePath + '?guildId=' + encodeURIComponent(profile.guild_id) + (routeHash ? '#' + esc(routeHash) : '') + '">Bu sunucuyu seç</a></article>').join('');
   return page(title, '<main class="wrap" style="padding:54px 0 80px"><div class="eyebrow">✧ MACERACI LONCASI</div><h1 class="hero-title">Sunucunu <em>seç.</em></h1><p class="lead">İşlemler yalnızca Discord hesabına bağladığın karakterin bulunduğu sunucuda yapılır.</p><div class="portal-grid">' + cards + '</div></main>', user);
 }
 
