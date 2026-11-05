@@ -813,3 +813,11 @@ test('adventurer calendar exposes direct raid signup with the real guild team UU
  assert.match(response.body,/Fern Takımı/);
  assert.doesNotMatch(response.body,/name="teamKey"/);
 });
+
+test('Google Search Console verification file is publicly served at the root path', async () => {
+  const response = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/google1941de4c3bd5e8ea.html', headers: {} }, response), true);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers['Content-Type'], 'text/html; charset=utf-8');
+  assert.equal(response.body, 'google-site-verification: google1941de4c3bd5e8ea.html\\n');
+});
