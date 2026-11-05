@@ -9,9 +9,31 @@ import { redactGuardianText } from './core.js';
 
 export { getGuardianProposalFingerprint };
 
-const REPAIR_BRANCH = 'guardian-isolated-repair-test-v2';
+export const GUARDIAN_REPAIR_BRANCH = 'guardian-isolated-repair-test-v2';
 const REPAIR_WORKFLOW = 'frieren-ai-self-repair.yml';
 const REPOSITORY = 'soire07/pogaca-frieren-';
+
+export function buildGuardianRepairTrackingUrls(apiBase, incidentId) {
+  const base = String(apiBase || '').replace(/\\/+$/, '');
+  const id = Number(incidentId);
+  if (!/^https:\\/\\//i.test(base) || !Number.isSafeInteger(id) || id <= 0) {
+    throw new Error('INVALID_GUARDIAN_REPAIR_TRACKING_INPUT');
+  }
+  const branchName = 'ai-repair/guardian-' + id;
+  const runs = new URL('/repos/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml/runs', base);
+  runs.search = new URLSearchParams({
+    branch: GUARDIAN_REPAIR_BRANCH,
+    event: 'workflow_dispatch',
+    per_page: '30',
+  }).toString();
+  const pulls = new URL('/repos/soire07/pogaca-frieren-/pulls', base);
+  pulls.search = new URLSearchParams({
+    state: 'all',
+    head: 'soire07:' + branchName,
+    base: GUARDIAN_REPAIR_BRANCH,
+  }).toString();
+  return { runsUrl: runs.toString(), pullRequestsUrl: pulls.toString(), branchName };
+}
 
 export function classifyGuardianPullRequestChecks(response) {
   if (!response?.ok || !response.payload || !Array.isArray(response.payload.check_runs)) return 'unknown';
@@ -311,11 +333,11 @@ export async function processPendingGuardianRepairDispatch({
         method: 'POST',
         headers,
         body: JSON.stringify({
-          ref: REPAIR_BRANCH,
+          ref: GUARDIAN_REPAIR_BRANCH,
           inputs: {
             task: buildGuardianRepairTask(incident, review),
             mode: 'repair',
-            base_branch: REPAIR_BRANCH,
+            base_branch: GUARDIAN_REPAIR_BRANCH,
             incident_id: String(incident.id),
           },
         }),
