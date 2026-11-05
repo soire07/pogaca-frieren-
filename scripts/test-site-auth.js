@@ -62,7 +62,7 @@ test('same-origin request guard accepts the configured site host and rejects cro
   assert.equal(isSameOriginRequest({ headers: { 'sec-fetch-site': 'same-site', origin: 'https://site.example', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), true);
   assert.equal(isSameOriginRequest({ headers: { 'sec-fetch-site': 'same-site', origin: 'https://evil.example', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), false);
   assert.equal(isSameOriginRequest({ headers: { 'sec-fetch-site': 'same-site', host: 'site.example', 'x-forwarded-proto': 'https' } }, 'https://site.example'), false);
-  assert.equal(isSameOriginRequest({ headers: {} }, 'https://site.example'), true);
+  assert.equal(isSameOriginRequest({ headers: {} }, 'https://site.example'), false);
 });
 
 
@@ -96,7 +96,12 @@ function response() {
 }
 function post(path, fields) {
   const body = new URLSearchParams(fields).toString();
-  return { method: 'POST', url: path, headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-forwarded-for': '203.0.113.10' }, async *[Symbol.asyncIterator]() { yield Buffer.from(body); } };
+  return { method: 'POST', url: path, headers: {
+    'content-type': 'application/x-www-form-urlencoded',
+    'x-forwarded-for': '203.0.113.10',
+    origin: 'https://frierenbot.vercel.app',
+    'sec-fetch-site': 'same-origin'
+  }, async *[Symbol.asyncIterator]() { yield Buffer.from(body); } };
 }
 function fakeDb() {
   const calls = [];
@@ -330,4 +335,40 @@ test('site account required notice is shown when a Discord-only session opens th
   assert.equal(res.status, 200);
   assert.match(res.body, /Maceracı paneli için önce Frieren web hesabınla giriş yap/);
   assert.match(res.body, /href="\/register"/);
+});
+
+
+test('proxy origin fallback accepts malformed fetch metadata only with a trusted Referer and valid CSRF', async () => {
+  const req = {
+    method: 'POST',
+    url: '/login',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      referer: 'https://frierenbot.vercel.app/login',
+      'sec-fetch-site': 'same-oigi'
+    },
+    async *[Symbol.asyncIterator]() {
+      yield Buffer.from(new URLSearchParams({
+        csrf: createSiteCsrfToken(secret),
+        username: 'unknown-user',
+        password: 'not-a-real-password'
+      }).toString());
+    }
+  };
+  const res = response();
+  const db = fakeDb();
+  assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret }), true);
+  assert.equal(res.status, 401);
+  assert.equal(db.calls.some(call => call.sql.includes('FROM frieren_site_accounts')), true);
+});
+
+test('proxy origin fallback rejects an untrusted Referer and a valid untrusted Origin', () => {
+  assert.equal(isSameOriginRequest({ headers: {
+    referer: 'https://attacker.example/login',
+    'sec-fetch-site': 'same-oigi'
+  } }, 'https://site.example'), false);
+  assert.equal(isSameOriginRequest({ headers: {
+    origin: 'https://attacker.example',
+    referer: 'https://site.example/login'
+  } }, 'https://site.example'), false);
 });

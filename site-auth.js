@@ -56,36 +56,51 @@ export function verifySiteCsrfToken(token, secret, now = Date.now()) {
 }
 export function isSameOriginRequest(req, siteBaseUrl = process.env.SITE_BASE_URL) {
   const headers = req?.headers || {};
-  const fetchSite = String(headers['sec-fetch-site'] || '').toLowerCase();
-  if (fetchSite && !['same-origin', 'same-site', 'none'].includes(fetchSite)) return false;
-  const originHeader = headers.origin;
-  // A same-site request can still come from a sibling subdomain. Require an
-  // explicit Origin match before accepting it; CSRF token validation remains
-  // an independent check in the form handler.
-  if (!originHeader) return fetchSite !== 'same-site';
-  let origin;
-  try { origin = new URL(originHeader).origin; } catch { return false; }
+  const fetchSite = String(headers['sec-fetch-site'] || '').trim().toLowerCase();
+  // Enforce an explicit cross-site signal, but ignore malformed/unknown
+  // Fetch Metadata values: some proxy paths have been observed to mangle it.
+  if (fetchSite === 'cross-site') return false;
+
   const allowed = new Set();
-  try { if (siteBaseUrl) allowed.add(new URL(siteBaseUrl).origin); } catch {}
-  // The public Vercel site proxies requests to Render. Its browser Origin is
-  // therefore different from SITE_BASE_URL (the backend/OAuth callback host).
-  // Trust only explicitly configured public origins; never infer trust from
-  // the incoming Host header alone.
-  // The canonical production browser origin is always trusted. Environment
-  // configuration may add origins, but must never be able to remove this one.
-  const configuredOrigins = [
-    'https://frierenbot.vercel.app',
-    ...String(process.env.SITE_AUTH_ALLOWED_ORIGINS || '').split(',')
-  ].map(value => value.trim()).filter(Boolean);
-  for (const value of configuredOrigins) {
-    try { allowed.add(new URL(value).origin); } catch {}
+  const addAllowedOrigin = value => {
+    try {
+      const parsed = new URL(String(value || ''));
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') allowed.add(parsed.origin);
+    } catch {}
+  };
+  addAllowedOrigin(siteBaseUrl);
+  // The public Vercel site proxies requests to Render. Keep its canonical
+  // browser origin explicitly trusted; optional configuration is additive.
+  addAllowedOrigin('https://frierenbot.vercel.app');
+  for (const value of String(process.env.SITE_AUTH_ALLOWED_ORIGINS || '').split(',')) {
+    if (value.trim()) addAllowedOrigin(value.trim());
   }
-  const host = String(headers['x-forwarded-host'] || headers.host || '').split(',')[0].trim();
-  const protocol = String(headers['x-forwarded-proto'] || 'https').split(',')[0].trim().toLowerCase();
-  if (host && ['http', 'https'].includes(protocol)) {
-    try { allowed.add(new URL(protocol + '://' + host).origin); } catch {}
+
+  const originHeader = String(headers.origin || '').trim();
+  if (originHeader) {
+    try {
+      const origin = new URL(originHeader).origin;
+      // A valid Origin is authoritative. Never fall back to Referer when a
+      // well-formed but untrusted Origin is supplied.
+      return allowed.has(origin);
+    } catch {
+      // A malformed Origin may be a proxy-corrupted header. Continue only to
+      // the strict Referer fallback below; CSRF is still mandatory in handler.
+    }
   }
-  return allowed.has(origin);
+
+  // Origin is absent or malformed: accept only an exact allowlisted Referer
+  // origin. The form handler independently verifies the signed CSRF token
+  // before any account query or mutation.
+  const referer = String(headers.referer || '').trim();
+  if (!referer) return false;
+  try {
+    const parsed = new URL(referer);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+    return allowed.has(parsed.origin);
+  } catch {
+    return false;
+  }
 }
 
 function page(title, body) {
