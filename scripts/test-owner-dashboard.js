@@ -320,6 +320,53 @@ async function runOwnerPost(options, db, client = {}) {
   }
 }
 
+
+async function runOwnerGet(url, { cookie = true } = {}) {
+  const token = createOwnerSession(secret, Math.floor(Date.now() / 1000) + 3600);
+  const req = new EventEmitter();
+  req.method = 'GET';
+  req.url = url;
+  req.headers = { cookie: cookie ? 'frieren_owner_session=' + encodeURIComponent(token) : '' };
+  const response = { status: 0, headers: {}, body: '', writeHead(status, headers = {}) {
+    this.status = status; this.headers = headers;
+  }, end(body = '') { this.body = body; } };
+  const previous = {
+    CLIENT_ID: process.env.CLIENT_ID,
+    DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
+    ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET
+  };
+  process.env.CLIENT_ID = 'test-client-id';
+  process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
+  process.env.ADMIN_SESSION_SECRET = secret;
+  try {
+    await handleOwnerDashboardRequest(req, response, {
+      client: {},
+      db: { query: async () => { throw new Error('security workspace must not query unrelated data'); } }
+    });
+    return response;
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+}
+
+test('Frieren Security route requires the existing signed Owner session', async () => {
+  const response = await runOwnerGet('/owner/security', { cookie: false });
+  assert.equal(response.status, 200);
+  assert.match(response.body, /Discord ile devam et/);
+  assert.doesNotMatch(response.body, /PRIVATE SECURITY CENTER/);
+});
+
+test('authenticated Frieren Security route renders independently without querying bot or RPG data', async () => {
+  const response = await runOwnerGet('/owner/security');
+  assert.equal(response.status, 200);
+  assert.match(response.body, /PRIVATE SECURITY CENTER/);
+  assert.match(response.body, /FRIEREN SECURITY/);
+  assert.match(response.body, /Kurulum bekliyor/);
+});
+
 test('owner action endpoint rejects requests without an authenticated owner session', async () => {
   const db = { query: async () => { throw new Error('database must not be touched'); } };
   const { response } = await runOwnerPost({ action: 'maintenance-on', csrf: 'invalid', cookie: false }, db);
