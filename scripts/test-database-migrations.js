@@ -123,7 +123,7 @@ test('migration runner rejects gaps, unsafe filenames and transaction control', 
 
 test('migration runner allows transaction keywords inside dollar-quoted PL/pgSQL bodies', async () => {
   const directory = await migrationDirectory({
-    '0001_guardian_trigger.sql': "CREATE OR REPLACE FUNCTION reject_change()\nRETURNS trigger\nLANGUAGE plpgsql\nAS $\nBEGIN\n  RAISE EXCEPTION 'blocked';\nEND;\n$;"
+    '0001_guardian_trigger.sql': "CREATE OR REPLACE FUNCTION reject_change()\nRETURNS trigger\nLANGUAGE plpgsql\nAS $guard$\nBEGIN\n  RAISE EXCEPTION 'blocked';\nEND;\n$guard$;"
   });
   const db = fakeDatabase();
   try {
