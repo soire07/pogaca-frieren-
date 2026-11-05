@@ -73,13 +73,13 @@ export function validatePatchPaths(patch, { task = '', incidentId = '' } = {}) {
     files.push(header[1]);
   }
   const uniqueFiles = [...new Set(files)];
+  if (allowProtectedIndexJs && (uniqueFiles.length !== 1 || uniqueFiles[0] !== 'index.js')) {
+    throw new Error('REPAIR_APPROVED_INDEX_SCOPE_VIOLATION');
+  }
   const taskFileList = String(task || '').match(/(?:[İIıi]lgili dosyalar|affected files)\s*:\s*([^\n]+)/i)?.[1] || '';
   const taskFiles = taskFileList.split(',').map(value => value.trim()).filter(Boolean);
   if (taskFiles.length && uniqueFiles.some(file => !taskFiles.includes(file))) {
     throw new Error('REPAIR_TASK_SCOPE_VIOLATION');
-  }
-  if (allowProtectedIndexJs && (uniqueFiles.length !== 1 || uniqueFiles[0] !== 'index.js')) {
-    throw new Error('REPAIR_APPROVED_INDEX_SCOPE_VIOLATION');
   }
   return uniqueFiles;
 }
