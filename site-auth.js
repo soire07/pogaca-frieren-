@@ -363,7 +363,10 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
     let explicitlyUntrusted = fetchSite === 'cross-site';
     if (!explicitlyUntrusted && originHeader) {
       try {
-        explicitlyUntrusted = !isSameOriginRequest({ headers: { origin: originHeader } }, baseUrl());
+        const parsedOrigin = new URL(originHeader);
+        if (parsedOrigin.protocol === 'https:' || parsedOrigin.protocol === 'http:') {
+          explicitlyUntrusted = !isSameOriginRequest({ headers: { origin: parsedOrigin.origin } }, baseUrl());
+        }
       } catch { /* malformed proxy metadata is handled by the signed-CSRF fallback */ }
     } else if (!explicitlyUntrusted && refererHeader) {
       try {
