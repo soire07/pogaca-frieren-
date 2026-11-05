@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runDatabaseMigrations } from '../database/migrations.js';
@@ -119,4 +119,18 @@ test('migration runner rejects gaps, unsafe filenames and transaction control', 
   } finally {
     await Promise.all([gapDir, unsafeDir, txDir].map(directory => rm(directory, { recursive: true, force: true })));
   }
+});
+
+test('production migration set contains the append-only Guardian evidence chain', async () => {
+  const db = fakeDatabase();
+  const result = await runDatabaseMigrations(db);
+  assert.deepEqual(result.applied, [1]);
+  assert.equal(result.currentVersion, 1);
+  assert.ok(db.statements.some(row => row.sql.includes('CREATE TABLE IF NOT EXISTS owner_guardian_evidence_chain')));
+  const sql = await readFile(new URL('../database/migrations/0001_guardian_evidence_chain.sql', import.meta.url), 'utf8');
+  assert.match(sql, /BEFORE UPDATE OR DELETE/);
+  assert.match(sql, /BEFORE TRUNCATE ON owner_guardian_evidence_chain/);
+  assert.match(sql, /owner_guardian_evidence_no_truncate/);
+  assert.match(sql, /GUARDIAN_EVIDENCE_CHAIN_APPEND_ONLY/);
+  assert.match(sql, /REVOKE UPDATE, DELETE, TRUNCATE/);
 });
