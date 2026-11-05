@@ -561,7 +561,7 @@ test('public home showcase is visible only after explicit opt-in',async()=>{
  const profile={user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20,xp:2400,active_room:'starter',layout:[],is_public:true};
  const db={async query(sql){
   if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return {rows:[],rowCount:0};
-  if(sql.includes('FROM player_profile_settings'))return {rows:[{show_stats:false,show_achievements:true,show_collections:false,show_activity:false,show_cosmetics:true,active_title:null}],rowCount:1};
+  if(sql.includes('FROM player_profile_settings'))return {rows:[{show_stats:false,show_achievements:true,show_collections:true,show_activity:false,show_cosmetics:true,active_title:null}],rowCount:1};
   if(sql.includes('FROM player_homes h JOIN users u'))return {rows:[profile],rowCount:1};
   if(sql.includes('FROM player_home_rooms'))return {rows:[{room_key:'starter'}],rowCount:1};
   if(sql.includes('FROM achievement_claims'))return {rows:[{achievement_key:'first_boss',display_slot:0}],rowCount:1};
