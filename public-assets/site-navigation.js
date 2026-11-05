@@ -38,7 +38,7 @@
     if (event.target.closest('a[href]')) closeMenu(false);
   });
 
-  document.addEventListener('pointerdown', event => {
+  document.addEventListener('click', event => {
     if (toggle.getAttribute('aria-expanded') !== 'true') return;
     if (!menu.contains(event.target) && !toggle.contains(event.target)) closeMenu(false);
   });
