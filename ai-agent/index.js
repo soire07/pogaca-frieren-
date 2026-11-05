@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import OpenAI from 'openai';
 import { resolveAiModel } from './config.js';
-import { findRelevantExcerpt, scoreCodeCandidate } from './code-context.js';
+import { collectCodeContext as collectGuardianCodeContext } from './code-context.js';
 import { createMemoryStore, shouldUseConversationHistory } from './memory-store.js';
 import { buildConversationContextMessages } from './conversation-context.js';
 import { isExplicitMemoryOverviewQuestion } from './memory-intent.js';
@@ -280,60 +280,11 @@ const commands = [
 ];
 
 
-async function collectCodeContext(question) {
-  const roots = ['index.js', 'rpg-mechanics.js', 'package.json', 'scripts/check-commands.js',
-    'scripts/audit-command-contracts.js', 'scripts/test-request.js', 'scripts/test-boss-combat.js',
-    'scripts/test-discord-scenarios.js', 'scripts/test-uncovered-commands.js', 'scripts/test-utils.js', 'database/db.js'];
-  const terms = question.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').split(/[^a-z0-9]+/).filter(word => word.length >= 3);
-  const candidates = new Set(roots);
-  async function addCommandFiles(dir, depth = 0) {
-    if (depth > 3 || candidates.size > 45) return;
-    const entries = await readdir(path.join(rootDir, dir), { withFileTypes: true }).catch(() => []);
-    for (const entry of entries) {
-      const relative = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (!['node_modules', '.git', 'coverage', '.render'].includes(entry.name)) await addCommandFiles(relative, depth + 1);
-      }
-      else if (entry.isFile() && entry.name.endsWith('.js')) {
-        const normalized = relative.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
-        const nameMatches = terms.some(term => normalized.includes(term));
-        if (nameMatches) {
-          candidates.add(relative);
-        } else {
-          // Search source content as well as filenames so indirectly related implementations
-          // are not silently omitted from AI diagnostics.
-          const source = await readFile(path.join(rootDir, relative), 'utf8').catch(() => '');
-          const lowerSource = source.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
-          const matchingTerms = terms.reduce((count, term) => count + (lowerSource.includes(term) ? 1 : 0), 0);
-          if (terms.length > 0 && matchingTerms >= Math.min(2, terms.length)) candidates.add(relative);
-        }
-      }
-    }
-  }
-  await addCommandFiles('.');
-  const ranked = [];
-  for (const relative of candidates) {
-    const source = await readFile(path.join(rootDir, relative), 'utf8').catch(() => '');
-    if (!source) continue;
-    ranked.push({ relative, source, score: scoreCodeCandidate(relative, source, terms) });
-  }
-  // Relevant files must come first so generic files cannot consume the free model's context.
-  ranked.sort((a, b) => b.score - a.score);
-  const snippets = [];
-  // Groq's free tier has an 8k TPM limit. Keep source small and relevant.
-  let budget = 2_800;
-  for (const { relative, source } of ranked) {
-    if (budget <= 0) break;
-    const remaining = Math.max(0, budget - relative.length - 20);
-    if (!remaining) continue;
-    const safe = source.replace(/(DISCORD_TOKEN|GROQ_API_KEY|OPENAI_API_KEY|DATABASE_URL|PASSWORD|SECRET)\s*[:=]\s*['"`]?[^\s,'"`]+/gi, '$1=[REDACTED]');
-    const excerpt = findRelevantExcerpt(safe, terms, Math.min(safe.length, 1_800, remaining));
-    if (excerpt) snippets.push('FILE: ' + relative + '\n' + excerpt);
-    budget -= excerpt.length + relative.length + 20;
-  }
-  return snippets.join('\n\n');
-}
-
+const collectCodeContext = question => collectGuardianCodeContext({
+  rootDir,
+  question,
+  sourceCommitSha: process.env.RENDER_GIT_COMMIT || process.env.GITHUB_SHA || null,
+});
 function isConversationalQuestion(question) {
   const normalized = question.toLocaleLowerCase('tr-TR')
     .normalize('NFKD')
