@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { collectCodeContext } from './code-context.js';
+import { collectCodeContext, normalizeCodeContextText } from './code-context.js';
 import { normalizeGuardianReviewIncident, parseGuardianReview, reviewGuardianIncident } from './guardian-review.js';
 
 test('Guardian review input accepts only known systems and redacts secrets', () => {
@@ -172,4 +172,12 @@ test('actual Guardian context collector includes implementation and tests, redac
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
+});
+
+
+test('code context normalization accepts legacy strings and evidence-aware objects', () => {
+  assert.equal(normalizeCodeContextText('legacy source'), 'legacy source');
+  assert.equal(normalizeCodeContextText({ text: 'source with evidence' }), 'source with evidence');
+  assert.equal(normalizeCodeContextText({ files: ['index.js'] }), '');
+  assert.equal(normalizeCodeContextText(null), '');
 });
