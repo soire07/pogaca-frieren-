@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
 import { GUARDIAN_REPAIR_BRANCH, buildGuardianRepairTrackingUrls } from '../guardian/automation.js';
 import { createHmac } from 'node:crypto';
 import { EventEmitter } from 'node:events';
@@ -645,7 +646,6 @@ test('bot control center separates the main bot from the suspended AI service', 
   assert.doesNotMatch(html.slice(html.indexOf('<h3>Poğaça Frieren</h3>'), html.indexOf('<h3>Frieren AI</h3>')), /value="suspend"/);
   assert.match(html, /Owner Panel bu servis üzerinde çalışıyor/);
   assert.match(html, /csrf-token/);
-  assert.match(html, /site-actions\.js/);
 });
 
 test('bot control center hides lifecycle controls until a server-side Render API key is configured', () => {
@@ -1158,4 +1158,13 @@ test('Guardian action failures return to the Guardian workspace', () => {
   assert.equal(getOwnerActionErrorDestination('guardian-refresh-pr'), '/owner/guardian');
   assert.equal(getOwnerActionErrorDestination('guardian-review'), '/owner/guardian');
   assert.equal(getOwnerActionErrorDestination('rpg-resource-adjust'), '/owner');
+});
+
+
+test('Owner Panel document loads shared submit feedback without changing named action controls', async () => {
+  const source = await readFile(new URL('../owner-dashboard.js', import.meta.url), 'utf8');
+  const actions = await readFile(new URL('../public-assets/site-actions.js', import.meta.url), 'utf8');
+  assert.match(source, /site-actions\.js/);
+  assert.match(actions, /pendingForms/);
+  assert.doesNotMatch(actions, /submitter\.disabled\s*=/);
 });
