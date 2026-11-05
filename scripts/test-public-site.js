@@ -579,7 +579,7 @@ test('public home showcase is visible only after explicit opt-in',async()=>{
  assert.equal(await handlePublicSiteRequest({method:'GET',url:'/maceraci/ev?guildId=1539562273197260860&userId='+profile.user_id,headers:{}},response,{db}),true);
  assert.equal(response.status,200);
  assert.match(response.body,/Profil Vitrini/);
- assert.match(response.body,/Seviye 20/);
+ assert.match(response.body,/Seviye 5/);
  assert.match(response.body,/2\.400 XP/);
  assert.match(response.body,/Rozet ve Başarım Vitrini/);
  assert.match(response.body,/Fern/);
@@ -800,6 +800,7 @@ test('main startup initializes all player-facing collection schemas before servi
 
 test('private home showcase remains unavailable without explicit opt-in',async()=>{
  const db={async query(sql){
+  if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return {rows:[],rowCount:0};
   assert.ok(sql.includes('h.is_public=TRUE'));
   return {rows:[],rowCount:0};
  }};
@@ -865,6 +866,7 @@ test('public player showcase respects privacy and exposes only the opt-in card a
  const calls=[];
  const db={async query(sql){
   calls.push(sql);
+  if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return {rows:[],rowCount:0};
   if(sql.includes('h.is_public=TRUE'))return{rows:[{user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:42,xp:9000,active_room:'starter',layout:[],is_public:true}],rowCount:1};
   if(sql.includes('FROM player_home_rooms'))return{rows:[{room_key:'starter'}],rowCount:1};
   if(sql.includes('FROM achievement_claims'))return{rows:[{achievement_key:'first_raid',display_slot:0}],rowCount:1};
@@ -1073,7 +1075,7 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.equal(await handlePublicSiteRequest(request('/maceraci/profil?guildId='+guildId,{id:accountId,username:'Gezgin'}),response,{db}),true);
  assert.equal(response.status,200);
  assert.match(response.body,/Maceracı Profili/);
- assert.match(response.body,/Seviye 19/);
+ assert.match(response.body,/Seviye 20/);
  assert.match(response.body,/1\.950/);
  assert.match(response.body,/Kıdemli Maceracı/);
  assert.match(response.body,/dungeon_25/);
