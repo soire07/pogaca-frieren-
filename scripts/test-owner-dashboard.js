@@ -2,7 +2,7 @@ import test from 'node:test';
 import { createHmac } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
 
 
 test('Guardian has a dedicated private Owner Panel section', () => {
@@ -787,4 +787,28 @@ test('owner support reply action requires owner session and CSRF before writing 
  assert.equal(response.status,303);
  assert.match(response.headers.Location,/support_reply_saved/);
  assert.equal(inserted,true);
+});
+
+test('Owner analytics exposes bounded time filters and labels the selected window', () => {
+  const html = renderRenderMetrics({
+    status: 'available',
+    range: '24h',
+    rangeLabel: 'Son 24 saat',
+    resolutionSeconds: 900,
+    cpuPercent: 12.5,
+    cpuUsed: 0.5,
+    cpuCapacity: 4,
+    memoryPercent: 44.2,
+    memoryUsedBytes: 512,
+    memoryLimitBytes: 1024,
+    updatedAt: '2026-11-05T12:00:00.000Z',
+    points: [{ cpuPercent: 12.5, memoryPercent: 44.2 }]
+  }, { rssBytes: 1024, heapUsedBytes: 512 }, '24h');
+  assert.match(html, /name="metricRange"/);
+  assert.match(html, /value="1h"/);
+  assert.match(html, /value="6h"/);
+  assert.match(html, /value="24h" selected/);
+  assert.match(html, /Son 24 saat/);
+  assert.match(html, /15 dakika/);
+  assert.match(html, /36 grafik noktası/);
 });
