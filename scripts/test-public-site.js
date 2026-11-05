@@ -830,6 +830,14 @@ test('anonymous search crawlers can read the dedicated Frieren Bot identity land
   assert.match(response.body, /https:\/\/github\.com\/soire07/);
 });
 
+test('Google Search Console verification file is publicly served at the root path', async () => {
+  const response = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/google1941de4c3bd5e8ea.html', headers: {} }, response), true);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers['Content-Type'], 'text/html; charset=utf-8');
+  assert.equal(response.body, 'google-site-verification: google1941de4c3bd5e8ea.html\\n');
+});
+
 test('anonymous search crawlers can read robots.txt and the XML sitemap', async () => {
   const robots = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/robots.txt', headers: {} }, robots), true);
