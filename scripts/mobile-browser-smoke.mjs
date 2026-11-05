@@ -80,7 +80,8 @@ for (const scenario of scenarios) {
     await page.waitForFunction(() => document.getElementById('site-sidebar')?.hidden === true);
     if (await menuToggle.getAttribute('aria-expanded') !== 'false' || await sidebar.isVisible()) throw new Error(scenario.name + ' Escape did not close navigation');
     await menuToggle.click();
-    await page.locator('#site-menu-backdrop').click({ position: { x: 4, y: 4 } });
+    const viewportWidth = await page.evaluate(() => window.innerWidth);
+    await page.locator('#site-menu-backdrop').click({ position: { x: viewportWidth - 8, y: 12 } });
     await page.waitForFunction(() => document.getElementById('site-sidebar')?.hidden === true);
     if (await menuToggle.getAttribute('aria-expanded') !== 'false' || await sidebar.isVisible()) throw new Error(scenario.name + ' outside click did not close navigation');
     await menuToggle.click();
