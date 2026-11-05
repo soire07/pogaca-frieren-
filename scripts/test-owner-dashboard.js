@@ -14,7 +14,7 @@ test('Guardian has a dedicated private Owner Panel section', () => {
 test('Frieren Security is an independent first navigation tab without changing existing sections', () => {
   const navigation = renderOwnerNavigation();
   assert.ok(navigation.indexOf('FRIEREN SECURITY') < navigation.indexOf('GENEL'));
-  assert.match(navigation, /href="\\/owner\\/security"/);
+  assert.ok(navigation.includes('href="/owner/security"'));
   for (const id of ['overview', 'system', 'guardian', 'memories', 'approvals', 'rpg']) {
     assert.ok(OWNER_PANEL_SECTIONS.some(section => section.id === id));
   }
