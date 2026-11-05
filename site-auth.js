@@ -426,7 +426,6 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
       return true;
     }
     await schema(db);
-    const addr=ip(req);
     if(path==='/register'){
       if(authRateLimited(req,'register',f.email||f.username,100,5)){await reportAuthSecurityEvent(db,req,{code:'AUTH_RATE_LIMIT_TRIGGERED',severity:'high',summary:'Repeated register requests exceeded the account security threshold.'});send(res,429,authPage('register',sessionSecret,'rate_limited'));return true;}
       const username=validateSiteUsername(f.username),email=validateSiteEmail(f.email),password=String(f.password||'');
