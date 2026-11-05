@@ -302,3 +302,22 @@ body.site-menu-open{overflow:hidden}
 .site-menu-toggle:hover .site-menu-dots circle:nth-child(3){transform:translateY(-1px);}
 @media(max-width:560px){.site-menu-toggle{width:42px;height:42px;border-radius:13px}.site-menu-dots{width:19px;height:19px}}
 @media(prefers-reduced-motion:reduce){.site-menu-dots circle{transition:none}}
+
+
+/* Account identity and accurate level progress in the compact player menu. */
+.site-account-card{display:flex;align-items:flex-start;gap:11px;margin:10px 2px 8px;padding:11px;border:1px solid #d8bcff35;border-radius:14px;background:linear-gradient(135deg,#ffffff0d,#a98bdb0b)}
+.site-account-card>img{flex:0 0 42px;width:42px;height:42px;object-fit:cover;border:1px solid #e5d5ff88;border-radius:50%}
+.site-account-copy{display:grid;gap:5px;min-width:0;flex:1}
+.site-account-copy>strong{display:flex;align-items:center;gap:7px;flex-wrap:wrap;color:#f7efff;font-size:12px}
+.site-account-copy>small{color:#bdb4d0;font-size:10px;overflow-wrap:anywhere}
+.site-vip-badge{display:inline-flex;align-items:center;padding:2px 7px;border:1px solid #f2d5ff88;border-radius:20px;background:#a855f733;color:#ffe2ff;font-size:8px;font-weight:900;letter-spacing:.14em}
+.xp-progress{display:grid;gap:5px;width:100%;margin:8px 0 12px}
+.xp-progress-label{display:flex;justify-content:space-between;gap:8px;color:#c9bddf;font-size:10px}
+.xp-progress-track{height:9px;overflow:hidden;border:1px solid #d8bcff28;border-radius:99px;background:#29263d}
+.xp-progress-track>i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#8b5cf6,#b99aff);transition:width .35s ease}
+.xp-progress>small{color:#a99fbc;font-size:9px}
+.xp-progress.is-vip .xp-progress-track{border-color:#f0b9ff99;box-shadow:0 0 13px #d946ef38}
+.xp-progress.is-vip .xp-progress-track>i{background:linear-gradient(105deg,#a855f7,#ec4899,#f59e0b,#22d3ee,#8b5cf6,#a855f7);background-size:300% 100%;animation:frieren-vip-xp-flow 4s linear infinite;box-shadow:0 0 12px #d946ef77}
+@keyframes frieren-vip-xp-flow{from{background-position:0% 50%}to{background-position:300% 50%}}
+.site-account-card.is-vip{border-color:#e879f988;box-shadow:0 0 18px #c026d333}
+@media(prefers-reduced-motion:reduce){.xp-progress-track>i{transition:none!important}.xp-progress.is-vip .xp-progress-track>i{animation:none!important;background-position:50% 50%}}
