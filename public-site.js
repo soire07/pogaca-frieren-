@@ -76,11 +76,10 @@ function page(title, content, user, seo = {}) {
       '<div class="site-sidebar-intro"><span>✧ YOLCULUK REHBERİ</span><p>Keşfet, karakterini geliştir ve macerana kaldığın yerden devam et.</p></div>' +
       '<nav class="site-sidebar-nav" aria-label="Frieren ana menüsü">' +
         navGroup('oyuncu', 'BAŞLANGIÇ', [
-          navLink('/', '⌂', 'Kullanıcı Paneli', 'Kişisel alanın ve genel görünüm'),
+          navLink('/', '⌂', 'Kullanıcı Paneli', 'Maceracı panelin ve etkinliklerin'),
           navLink('/kesfet', '✧', 'Keşfet', 'Frieren dünyasını tanı')
         ]) +
         navGroup('macera', 'MACERACI ALANI', [
-          navLink('/maceraci', '⚔', 'Maceracı Paneli', 'Karakterin ve ilerlemen'),
           navLink('/maceraci/envanter', '▣', 'Envanterim', 'Eşyaların ve ekipmanların'),
           navLink('/maceraci/koleksiyon', '◈', 'Koleksiyonum', 'Yoldaşlar ve keşifler'),
           navLink('/maceraci/sosyal', '♧', 'Sosyal Alan', 'Arkadaşlar ve rakipler'),
