@@ -219,7 +219,7 @@ test('registration form advertises Unicode letter and number support', async () 
     db: fakeDb(), sessionSecret: secret
   }), true);
   assert.equal(res.status, 200);
-  assert.ok(res.body.includes('pattern="[\\p{L}\\p{N}_.-]{3,24}"'));
+  assert.ok(res.body.includes('pattern="[\\p{L}\\p{N}_.\\-]{3,24}"'));
 });
 
 test('password hashing uses salted scrypt and verifies only the matching password', async () => {
