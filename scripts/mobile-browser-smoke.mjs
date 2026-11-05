@@ -74,7 +74,7 @@ for (const scenario of scenarios) {
     await menuToggle.click();
     await page.waitForFunction(() => document.getElementById('site-sidebar')?.classList.contains('is-open'));
     if (await menuToggle.getAttribute('aria-expanded') !== 'true' || !(await sidebar.isVisible())) throw new Error(scenario.name + ' menu did not open');
-    if (!(await sidebar.getByRole('link', { name: /Maceracı Paneli/ }).count())) throw new Error(scenario.name + ' missing player interface shortcut');
+    if (!(await sidebar.getByRole('link', { name: /Kullanıcı Paneli/ }).count())) throw new Error(scenario.name + ' missing player interface shortcut');
     if (await sidebar.locator('[data-nav-path="/kesfet"]').getAttribute('aria-current') !== 'page') throw new Error(scenario.name + ' active navigation item is not marked');
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.getElementById('site-sidebar')?.hidden === true);
