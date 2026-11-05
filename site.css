@@ -476,3 +476,16 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .adventurer-class-emblem{position:absolute;top:16px;right:16px;width:54px;height:54px;display:grid;place-items:center;border:1px solid #c7a9ff66;border-radius:16px;background:linear-gradient(145deg,#a78bfa2b,#241b3c);box-shadow:0 8px 24px #08051155;color:#eadcff}
 .adventurer-class-emblem svg{width:31px;height:31px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 @media(max-width:520px){.adventurer-character-card{padding-right:72px}.adventurer-class-emblem{width:48px;height:48px;top:13px;right:13px}.adventurer-class-emblem svg{width:28px;height:28px}}
+
+/* Profile media editor: responsive, private account-level image controls. */
+.profile-media-editor{display:grid;gap:14px;margin:0 0 22px;padding:18px;border:1px solid #b99ce855;background:linear-gradient(135deg,#211b35,#17152c)}
+.profile-media-editor h2{margin:0 0 5px;font-size:1.15rem}
+.profile-media-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:14px}
+.profile-media-grid label{display:grid;gap:9px;color:#e7dcf7;font-weight:700;font-size:.88rem}
+.profile-media-grid img{width:100%;height:132px;object-fit:cover;border:1px solid #b99ce866;border-radius:14px;background:#0f0d1b}
+.profile-media-grid label:first-child img{width:132px;height:132px;border-radius:50%;justify-self:start}
+.profile-media-grid input{width:100%;min-width:0;color:#d8cbea;font-size:.78rem}
+.profile-media-actions{display:flex;flex-wrap:wrap;gap:9px}
+.profile-media-editor [data-media-status]{min-height:1.3em;margin:0;color:#cfc2e2;font-size:.84rem}
+.profile-media-editor [data-media-status][data-error="true"]{color:#ffb7c1}
+@media(max-width:560px){.profile-media-grid{grid-template-columns:1fr}.profile-media-grid img{height:150px}.profile-media-grid label:first-child img{width:112px;height:112px}.profile-media-actions .btn{flex:1 1 100%}}
