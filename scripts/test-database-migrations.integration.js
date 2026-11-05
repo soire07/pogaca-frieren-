@@ -93,3 +93,40 @@ test('versioned migrations apply, remain idempotent, and roll back a failed migr
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('TRUNCATE is rejected by the append-only evidence trigger in disposable PostgreSQL', async () => {
+  assertDisposableAuditDatabase();
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 2 });
+  const schema = 'guardian_evidence_rehearsal_' + randomUUID().replaceAll('-', '');
+  try {
+    await pool.query('CREATE SCHEMA "' + schema + '"');
+    const scopedDb = {
+      async connect() {
+        const client = await pool.connect();
+        try {
+          await client.query('SET search_path TO "' + schema + '"');
+          return client;
+        } catch (error) {
+          client.release();
+          throw error;
+        }
+      }
+    };
+    const result = await runDatabaseMigrations(scopedDb);
+    assert.equal(result.currentVersion, 1);
+    const client = await scopedDb.connect();
+    try {
+      await client.query("INSERT INTO owner_guardian_evidence_chain(event_id,source,observed_at,severity,ip_source,payload,event_hash,previous_hash) VALUES('event-1','frieren_guard',NOW(),'high','direct_socket','{}'::jsonb,$1,$2)", ['a'.repeat(64), '0'.repeat(64)]);
+      await assert.rejects(client.query('UPDATE owner_guardian_evidence_chain SET source=\'tampered\' WHERE event_id=\'event-1\''), /GUARDIAN_EVIDENCE_CHAIN_APPEND_ONLY/);
+      await assert.rejects(client.query("DELETE FROM owner_guardian_evidence_chain WHERE event_id='event-1'"), /GUARDIAN_EVIDENCE_CHAIN_APPEND_ONLY/);
+      await assert.rejects(client.query('TRUNCATE TABLE owner_guardian_evidence_chain'), /GUARDIAN_EVIDENCE_CHAIN_APPEND_ONLY/);
+      const remaining = await client.query('SELECT COUNT(*)::int AS count FROM owner_guardian_evidence_chain');
+      assert.equal(remaining.rows[0].count, 1);
+    } finally {
+      client.release();
+    }
+  } finally {
+    await pool.query('DROP SCHEMA IF EXISTS "' + schema + '" CASCADE').catch(() => {});
+    await pool.end();
+  }
+});
