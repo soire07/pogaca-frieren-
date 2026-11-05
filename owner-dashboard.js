@@ -497,8 +497,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     </section>
     <div class="columns">
       <section class="panel" id="maintenance"><h2>Bakım modu</h2><p class="muted">Açıldığında normal kullanıcı komutları ve Frieren sohbeti durdurulur. Owner komutları çalışmaya devam eder.</p>
-        <form method="post" action="/owner/action" class="actions"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bakım modu değişikliğini onaylıyorum</label><button class="btn" name="action" value="maintenance-on">Bakımı aç</button><button class="btn secondary" name="action" value="maintenance-off">Bakımı kapat</button></form>
-      </section>
+        <form method="post" action="/owner/action" class="actions"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bakım modu değişikliğini onaylıyorum</label><button class="btn" name="action" value="maintenance-on">Bakımı aç</button><button class="btn secondary" name="action" value="maintenance-off">Bakımı kapat</button></form>      </section>
       <section class="panel" id="announcements"><h2>Duyuru gönder</h2><p class="muted">Yalnızca seçtiğin sunucu ve kanala gönderilir. Botun kanalda mesaj gönderme izni olmalıdır.</p>
         <form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="announcement-send">
           <label>Hedef sunucu ve metin kanalı</label><select name="target" required><option value="">Sunucu / kanal seç</option>${channelOptions}</select>
@@ -578,7 +577,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + '<p>' + escapeHtml(incident.summary) + '</p>'
       + (evidence.length ? '<details><summary>Kanıt kayıtları (' + evidence.length + ')</summary>' + evidence.map(item => '<div class="small">' + escapeHtml(item.file || '') + (item.line ? ':' + Number(item.line) : '') + ' ' + escapeHtml(item.message || '') + '</div>').join('') + '</details>' : '')
       + '<div class="actions">'
-      + (canReview && !emergencyStop ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-review"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Frieren AI incelemesini başlat</label><button class="btn">AI ile analiz et</button></form>' : '')
+      + (canReview && !emergencyStop ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-review"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Frieren AI incelemesini başlat</label><button class="btn">Sorunu Çöz</button></form>' : '')
       + (!['resolved','ignored'].includes(incident.status) ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-resolve"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Sorunu kontrol ettim</label><button class="btn secondary">Çözüldü işaretle</button></form>' : '')
       + '</div></article>';
   }).join('') : '<p class="muted">Henüz Guardian olayı kaydedilmedi. İlk taramayı başlatabilirsin.</p>';
@@ -608,8 +607,8 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + (job.repair_pr_url ? '<p><a href="' + escapeHtml(job.repair_pr_url) + '" target="_blank" rel="noopener noreferrer">Son kaydedilen onarım PR #' + Number(job.repair_pr_number || 0) + ' kanıtını aç</a> · ' + escapeHtml(job.repair_pr_state || '') + '</p>' : '')
       + (job.repair_dispatch_status === 'dispatched' && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-refresh-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> GitHub sonucunu sorgulamayı onaylıyorum</label><button class="btn secondary">Sonucu yenile</button></form>' : '')
 
-      + (result.status === 'proposal_only' && isRepairableProposal(result) && !repairApproved && !emergencyStop && !['dispatched','dispatching'].includes(job.repair_dispatch_status || 'not_requested') && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-create-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu öneri için izole düzeltme ve test sürecini başlatmayı onaylıyorum</label><button class="btn">Onayla ve izole testi başlat</button></form>' : '')
-      + (result.status === 'proposal_only' && !process.env.FRIEREN_GITHUB_TOKEN && job.repair_dispatch_status !== 'dispatched' ? '<p class="notice warn">PR oluşturma düğmesi için FRIEREN_GITHUB_TOKEN yapılandırılmalı.</p>' : '')
+      + (result.status === 'proposal_only' && isRepairableProposal(result) && !repairApproved && !emergencyStop && !['dispatched','dispatching'].includes(job.repair_dispatch_status || 'not_requested') && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-create-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu öneri için izole düzeltme ve test sürecini başlatmayı onaylıyorum</label><button class="btn">Sorunu Çöz</button></form>' : '')
+      + (result.status === 'proposal_only' && !process.env.FRIEREN_GITHUB_TOKEN && job.repair_dispatch_status !== 'dispatched' ? '<p class="notice warn"><button class="btn" type="button" disabled title="FRIEREN_GITHUB_TOKEN yapılandırılmalı">Sorunu Çöz</button> Onarım için GitHub yetkisi eksik; FRIEREN_GITHUB_TOKEN yapılandırılmalı.</p>' : '')
       + '</article>';
   }).join('') : '<p class="muted">Henüz Frieren AI inceleme görevi yok.</p>';
   const monitorInterval = Math.max(60_000, Math.min(Number(process.env.GUARDIAN_SCAN_INTERVAL_MS) || 600_000, 1_800_000));
@@ -997,8 +996,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
           SELECT $2,'guardian.emergency_stop.update',NULL,$3::jsonb FROM changed`,
           [JSON.stringify({ enabled }), OWNER_ID, JSON.stringify({ enabled })]);
         redirect(res, '/owner/guardian?notice=guardian_emergency_stop_updated');
-        return true;
-      }
+        return true;      }
       if (action === 'guardian-scan' && form.get('confirm') === 'yes') {
         let found = 0;
         if (!client?.isReady?.()) {
