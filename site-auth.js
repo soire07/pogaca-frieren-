@@ -361,17 +361,24 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
     const originHeader = String(headers.origin || '').trim();
     const refererHeader = String(headers.referer || '').trim();
     let explicitlyUntrusted = fetchSite === 'cross-site';
+    let originWasValid = false;
     if (!explicitlyUntrusted && originHeader) {
       try {
         const parsedOrigin = new URL(originHeader);
         if (parsedOrigin.protocol === 'https:' || parsedOrigin.protocol === 'http:') {
+          originWasValid = true;
           explicitlyUntrusted = !isSameOriginRequest({ headers: { origin: parsedOrigin.origin } }, baseUrl());
         }
       } catch { /* malformed proxy metadata is handled by the signed-CSRF fallback */ }
-    } else if (!explicitlyUntrusted && refererHeader) {
+    }
+    // A valid Origin is authoritative. If it is absent or malformed, a
+    // syntactically valid Referer must still belong to the trusted site.
+    if (!explicitlyUntrusted && !originWasValid && refererHeader) {
       try {
-        const refererOrigin = new URL(refererHeader).origin;
-        explicitlyUntrusted = !isSameOriginRequest({ headers: { origin: refererOrigin } }, baseUrl());
+        const parsedReferer = new URL(refererHeader);
+        if (parsedReferer.protocol === 'https:' || parsedReferer.protocol === 'http:') {
+          explicitlyUntrusted = !isSameOriginRequest({ headers: { origin: parsedReferer.origin } }, baseUrl());
+        }
       } catch { /* malformed proxy metadata is handled by the signed-CSRF fallback */ }
     }
     if (explicitlyUntrusted) {
