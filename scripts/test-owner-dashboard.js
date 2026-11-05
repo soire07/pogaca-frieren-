@@ -25,7 +25,7 @@ test('Frieren Security workspace clearly distinguishes active platform protectio
   assert.match(html, /Güvenlik merkezi/);
   assert.match(html, /Otomatik DDoS azaltma/);
   assert.match(html, /Anahtar eksik/);
-  assert.match(html, /Henüz delil yok/);
+  assert.match(html, /Kontrol edilemedi/);
   assert.match(html, /SHA-256/);
   assert.doesNotMatch(html, /gerçek zamanlı saldırı algılandı/i);
 });
