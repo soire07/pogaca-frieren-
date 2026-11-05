@@ -835,7 +835,7 @@ test('anonymous search crawlers can read robots.txt and the XML sitemap', async 
   assert.equal(robots.status, 200);
   assert.match(robots.headers['Content-Type'], /text\/plain/);
   assert.match(robots.body, /Allow: \/tanitim/);
-  assert.match(robots.body, /Allow: \/sitemap\\.xml/);
+  assert.match(robots.body, /Allow: \/sitemap\.xml/);
   assert.match(robots.body, /Sitemap: https:\/\/frierenbot\.vercel\.app\/sitemap\.xml/);
 
   const sitemap = res();
