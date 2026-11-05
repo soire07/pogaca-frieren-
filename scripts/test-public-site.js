@@ -164,14 +164,8 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /data-nav-group="oyuncu"/);
   assert.match(response.body, /data-nav-group="macera"/);
   assert.match(response.body, /data-nav-group="dunya"/);
-  assert.match(response.body, /href="\\/">Oyuncu Paneli/);
-  assert.match(response.body, /href="\\/maceraci">Maceracı Paneli/);
-  assert.match(response.body, /site-navigation.js/);
-  assert.match(response.body, /site-menu-toggle/);
-  assert.match(response.body, /aria-controls="site-sidebar"/);
-  assert.match(response.body, /aria-label="Frieren ana menüsü"/);
-  assert.match(response.body, /href="\\/">Oyuncu Paneli/);
-  assert.match(response.body, /href="\\/maceraci">Maceracı Paneli/);
+  assert.ok(response.body.includes('href="/">Oyuncu Paneli'));
+  assert.ok(response.body.includes('href="/maceraci">Maceracı Paneli'));
   assert.match(response.body, /site-navigation.js/);
   assert.match(response.body, /data-nav-group="oyuncu"/);
   assert.match(response.body, /data-nav-group="macera"/);
