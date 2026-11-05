@@ -908,3 +908,169 @@ test('Owner analytics exposes bounded time filters and labels the selected windo
   assert.match(html, /15 dakika/);
   assert.match(html, /36 grafik noktası/);
 });
+
+
+test('synthetic Frieren AI → authenticated Owner Panel review → explicit owner approval → isolated workflow dispatch', async () => {
+  const incident = {
+    id: 990052,
+    system: 'pogaca_frieren',
+    code: 'SYNTHETIC_OWNER_PANEL_E2E',
+    severity: 'critical',
+    status: 'open',
+    title: 'Synthetic Owner Panel repair flow',
+    summary: 'Disposable fixture used only to verify the authenticated HTTP action path.',
+    evidence: [{ type: 'synthetic', source: 'owner-panel-e2e' }],
+    review_attempts: 0,
+    last_review_at: null,
+  };
+  const job = {
+    id: 990053,
+    incident_id: incident.id,
+    agent: 'frieren_ai',
+    status: 'queued',
+    result: null,
+    repair_dispatch_status: 'not_requested',
+    repair_dispatch_attempts: 0,
+    repair_approved_by: null,
+    repair_approval_fingerprint: null,
+  };
+  const proposal = {
+    status: 'proposal_only',
+    confidence: 'high',
+    rootCause: 'A synthetic regression fixture requires an explicit owner approval boundary.',
+    affectedFiles: ['guardian/automation.test.js'],
+    suggestedFix: 'Keep the repair isolated and require a fingerprint-bound owner approval.',
+    proposedPatch: 'diff --git a/guardian/automation.test.js b/guardian/automation.test.js\n',
+    tests: ['Verify the Owner Panel approval route dispatches only to the isolated workflow.'],
+    risks: ['Synthetic test only; no live source, database or player data is changed.'],
+    requiresHumanReview: true,
+    applied: false,
+  };
+  const state = { incident, job, emergencyStop: false, githubRequests: [] };
+  const db = {
+    async query(sql, params = []) {
+      if (sql.includes("SELECT setting_value FROM owner_settings WHERE setting_key='guardian_emergency_stop'")) {
+        return { rows: [{ setting_value: { enabled: state.emergencyStop } }] };
+      }
+      if (sql.includes('WITH stale AS (')) return { rows: [] };
+      if (sql.includes("SELECT * FROM owner_guardian_jobs") && sql.includes("status IN ('queued','running')")) {
+        return { rows: [] };
+      }
+      if (sql.includes('INSERT INTO owner_guardian_jobs')) {
+        state.incident.status = 'in_review';
+        return { rows: [{ ...state.job }] };
+      }
+      if (sql.includes('WITH target AS MATERIALIZED')) {
+        state.job.status = params[1];
+        state.job.result = JSON.parse(params[2]);
+        state.incident.status = params[3];
+        return { rows: [{ incident_id: state.incident.id }] };
+      }
+      if (sql.includes('SELECT * FROM owner_guardian_incidents WHERE id=$1 LIMIT 1')) {
+        return { rows: [{ ...state.incident }] };
+      }
+      if (sql.includes('SELECT * FROM owner_guardian_jobs WHERE incident_id=$1')) {
+        return { rows: [{ ...state.job }] };
+      }
+      if (sql.includes('SELECT j.result,j.status,j.repair_dispatch_status,i.status AS incident_status')) {
+        return { rows: [{
+          result: state.job.result,
+          status: state.job.status,
+          repair_dispatch_status: state.job.repair_dispatch_status,
+          incident_status: state.incident.status,
+        }] };
+      }
+      if (sql.includes('WITH changed AS (') && sql.includes('guardian.repair.owner_approved')) {
+        const [jobId, actorId, fingerprint] = params;
+        if (Number(jobId) !== state.job.id || state.incident.status !== 'awaiting_approval'
+          || state.job.status !== 'completed' || state.emergencyStop) return { rows: [] };
+        state.job.repair_approved_by = String(actorId);
+        state.job.repair_approval_fingerprint = fingerprint;
+        state.job.repair_approved_at = '2026-11-05T00:00:00.000Z';
+        return { rows: [{ ...state.job }] };
+      }
+      if (sql.includes('UPDATE owner_guardian_jobs AS j SET')) {
+        const [jobId, fingerprint] = params;
+        if (Number(jobId) !== state.job.id || state.job.repair_approved_by !== ownerId
+          || state.job.repair_approval_fingerprint !== fingerprint || state.emergencyStop) return { rows: [] };
+        state.job.repair_dispatch_status = 'dispatching';
+        state.job.repair_dispatch_attempts += 1;
+        return { rows: [{ ...state.job }] };
+      }
+      if (sql.includes('UPDATE owner_guardian_jobs SET repair_dispatch_status=$2')) {
+        const [jobId, status, workflowUrl] = params;
+        if (Number(jobId) !== state.job.id || state.job.repair_dispatch_status !== 'dispatching') return { rows: [] };
+        state.job.repair_dispatch_status = status;
+        if (workflowUrl) state.job.repair_workflow_url = workflowUrl;
+        return { rows: [{ id: state.job.id }] };
+      }
+      if (sql.includes('INSERT INTO owner_audit_logs')) return { rows: [{ id: 1 }] };
+      throw new Error('Unexpected Owner Panel E2E query: ' + sql.slice(0, 120));
+    },
+  };
+
+  const previous = {
+    fetch: globalThis.fetch,
+    FRIEREN_AI_PUBLIC_URL: process.env.FRIEREN_AI_PUBLIC_URL,
+    FRIEREN_AI_BRIDGE_SECRET: process.env.FRIEREN_AI_BRIDGE_SECRET,
+    FRIEREN_GITHUB_TOKEN: process.env.FRIEREN_GITHUB_TOKEN,
+  };
+  process.env.FRIEREN_AI_PUBLIC_URL = 'https://frieren-ai.synthetic.invalid';
+  process.env.FRIEREN_AI_BRIDGE_SECRET = 'synthetic-bridge-secret-that-is-long-enough';
+  process.env.FRIEREN_GITHUB_TOKEN = 'synthetic-github-token-that-is-long-enough';
+  globalThis.fetch = async (url, options = {}) => {
+    const target = String(url);
+    state.githubRequests.push({ url: target, method: options.method || 'GET', body: options.body || null });
+    if (target === 'https://frieren-ai.synthetic.invalid/internal/guardian-review') {
+      assert.equal(options.method, 'POST');
+      assert.equal(options.headers.Authorization, 'Bearer ' + process.env.FRIEREN_AI_BRIDGE_SECRET);
+      return { ok: true, status: 200, json: async () => proposal };
+    }
+    if (target.includes('/actions/workflows/frieren-ai-self-repair.yml/runs?')) {
+      assert.equal(options.method, 'GET');
+      return { ok: true, status: 200, json: async () => ({ workflow_runs: [], total_count: 0 }) };
+    }
+    if (target.endsWith('/actions/workflows/frieren-ai-self-repair.yml/dispatches')) {
+      assert.equal(options.method, 'POST');
+      return { ok: true, status: 204, json: async () => ({}) };
+    }
+    throw new Error('Unexpected outbound request in synthetic E2E: ' + target);
+  };
+
+  try {
+    const review = await runOwnerPost({
+      action: 'guardian-review', csrf: 'session', confirm: 'yes', incidentId: incident.id,
+    }, db);
+    assert.equal(review.response.status, 303);
+    assert.equal(review.response.headers.Location, '/owner/guardian?notice=guardian_review_complete');
+    assert.equal(state.job.status, 'completed');
+    assert.equal(state.incident.status, 'awaiting_approval');
+    assert.equal(state.job.result.status, 'proposal_only');
+    assert.equal(state.job.repair_approved_by, null);
+    assert.equal(state.githubRequests.length, 1);
+    assert.match(state.githubRequests[0].url, /frieren-ai\.synthetic\.invalid\/internal\/guardian-review$/);
+
+    const approval = await runOwnerPost({
+      action: 'guardian-create-pr', csrf: 'session', confirm: 'yes', incidentId: incident.id,
+    }, db);
+    assert.equal(approval.response.status, 303);
+    assert.equal(approval.response.headers.Location, '/owner/guardian?notice=guardian_pr_dispatched');
+    assert.equal(state.job.repair_approved_by, ownerId);
+    assert.match(state.job.repair_approval_fingerprint, /^[a-f0-9]{64}$/);
+    assert.equal(state.job.repair_dispatch_status, 'dispatched');
+    assert.equal(state.githubRequests.length, 3);
+    const dispatch = JSON.parse(state.githubRequests[2].body);
+    assert.equal(dispatch.ref, 'guardian-isolated-repair-test-v2');
+    assert.equal(dispatch.inputs.base_branch, 'guardian-isolated-repair-test-v2');
+    assert.equal(dispatch.inputs.incident_id, String(incident.id));
+    assert.equal(dispatch.inputs.mode, 'repair');
+    assert.doesNotMatch(state.githubRequests[2].url, /merge|deploy/i);
+  } finally {
+    globalThis.fetch = previous.fetch;
+    for (const [key, value] of Object.entries(previous)) {
+      if (key === 'fetch') continue;
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
