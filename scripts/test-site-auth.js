@@ -69,6 +69,7 @@ test('same-origin request guard accepts the configured site host and rejects cro
 test('origin rejection diagnostics run before database access', async () => {
   const db = fakeDb();
   const req = { method: 'POST', url: '/login', headers: {
+    'content-type': 'application/x-www-form-urlencoded',
     origin: 'https://unlisted-attacker.example',
     'sec-fetch-site': 'same-site',
     host: 'pogaca-frieren.onrender.com',
