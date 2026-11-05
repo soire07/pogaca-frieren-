@@ -393,7 +393,7 @@ export async function getFrierenAIReadiness({
   } catch { return null; }
 }
 
-function renderDashboard({ session, overview, client, approvals, memories, memoryUser, memoryGuild, memoryKey, notice, activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild }) {
+function renderDashboard({ session, overview, client, approvals, memories, memoryUser, memoryGuild, memoryKey, notice, activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild, metricRange = '1h' }) {
   const featureLabels = { commands: 'Tüm komutlar', rpg: 'RPG sistemi', character: 'Karakter sistemi', magic: 'Büyü ve yetenekler', equipment: 'Ekipman ve eşyalar', economy: 'Ekonomi ve mağaza', quests: 'Görevler', dungeons: 'Zindanlar', bosses: 'Boss sistemi', trading: 'Takas', messageXp: 'Mesaj XP kazanımı', aiChat: 'Frieren sohbet etkileşimi' };
   const guilds = [...client.guilds.cache.values()].sort((a, b) => a.name.localeCompare(b.name));
   const channelOptions = guilds.flatMap(guild => [...guild.channels.cache.values()]
@@ -490,7 +490,7 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
       <section class="panel" id="partners"><h2>Partnerlik yönetimi</h2><p class="muted">Partner sunucularını kaydet, davet bağlantılarını güncelle ve kayıtları denetim altında tut.</p><form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="partner-save"><label>Partner sunucu adı</label><input name="partnerName" maxlength="80" required><label>Discord sunucu ID</label><input name="partnerGuildId" inputmode="numeric" pattern="[0-9]{17,20}" required><label>Discord davet bağlantısı</label><input name="partnerInvite" type="url" placeholder="https://discord.gg/..." required><button class="btn">Partner ekle / güncelle</button></form>${partnerHtml}</section>
       <section class="panel" id="behavior"><h2>Bot davranışları ve komutlar</h2><p class="muted">Ayarlar seçilen sunucuyla sınırlıdır. Komut kapatma gerçek etkileşim yönlendirmesinde uygulanır.</p><div class="columns">${featureManagementHtml}</div></section>
       <section class="panel" id="rpg"><h2>RPG sistem istatistikleri</h2>${rpgHtml}</section>
-      ${renderRenderMetrics(renderMetrics, overview)}
+      ${renderRenderMetrics(renderMetrics, overview, metricRange)}
       <div class="actions"><a class="btn secondary" href="/owner">Durumu yenile</a><span class="small">Canlı süreç ölçümleri · Son sayfa yüklemesi</span></div>
     </section>
     <div class="columns">
@@ -1392,9 +1392,10 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         db, [...(client?.guilds?.cache?.keys?.() || [])]
       ), 10_000)
     ]);
+    const metricRange = normalizeRenderMetricRange(url.searchParams.get('metricRange'));
     const renderMetrics = getStaleOwnerData(
-      'render-metrics:pogaca',
-      () => getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.pogaca.id }),
+      'render-metrics:pogaca:' + metricRange,
+      () => getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.pogaca.id, range: metricRange }),
       { status: 'loading', source: 'render', points: [], message: 'Render metrikleri arka planda yenileniyor.' }
     );
     const renderServices = getStaleOwnerData(
@@ -1413,9 +1414,9 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
     const frierenService = renderServices?.services?.frieren_ai;
     const aiReadiness = frierenService?.healthPayload || null;
     const aiRenderMetrics = getStaleOwnerData(
-      'render-metrics:frieren-ai',
+      'render-metrics:frieren-ai:' + metricRange,
       () => frierenService?.status === 'running' && frierenService?.apiConfigured && !frierenService?.apiError
-        ? getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.frieren_ai.id, apiKey: process.env.RENDER_FRIEREN_AI_API_KEY })
+        ? getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.frieren_ai.id, apiKey: process.env.RENDER_FRIEREN_AI_API_KEY, range: metricRange })
         : Promise.resolve({ status: 'unavailable', source: 'render', points: [], message: frierenService?.suspended ? 'Frieren AI askıda; metrik sorgusu yapılmadı.' : 'Frieren AI servis durumu doğrulandıktan sonra metrikler alınacak.' }),
       { status: 'loading', source: 'render', points: [], message: 'Frieren AI metrikleri arka planda yenileniyor.' }
     );
@@ -1426,7 +1427,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
       ? await searchOwnerMemories(db, { userId: memoryUser, guildId: memoryGuild, key: memoryKey, limit: 30 }) : [];
     send(res, 200, renderDashboard({
       session, overview, client, approvals, memories, memoryUser,
-      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild
+      notice: url.searchParams.get('notice'), activity, renderMetrics, aiReadiness, renderServices, aiRenderMetrics, partners, rpgMetrics, guildConfigurations, featureSettingsByGuild, metricRange
     }));
   } catch (error) {
     console.error('Owner dashboard load failed:', error?.message || error);
