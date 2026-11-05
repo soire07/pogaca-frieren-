@@ -401,7 +401,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   if (await handleGuildDashboardRequest(req, res, { client, db })) return true;
   const url = new URL(req.url, 'http://localhost');
   if (req.method === 'GET' && url.pathname === '/robots.txt') {
-    const body = 'User-agent: *\nAllow: /tanitim\nAllow: /assets/site-banner.webp\nAllow: /assets/site-avatar.webp\nAllow: /assets/site-avatar.svg\nAllow: /assets/site.css\nDisallow: /\nSitemap: https://frierenbot.vercel.app/sitemap.xml\n';
+    const body = 'User-agent: *\nAllow: /tanitim\nAllow: /sitemap.xml\nAllow: /assets/site-banner.webp\nAllow: /assets/site-avatar.webp\nAllow: /assets/site-avatar.svg\nAllow: /assets/site.css\nDisallow: /\nSitemap: https://frierenbot.vercel.app/sitemap.xml\n';
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public,max-age=3600', 'X-Content-Type-Options': 'nosniff' });
     res.end(body);
     return true;
