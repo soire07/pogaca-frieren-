@@ -1276,12 +1276,12 @@ test('user menu adds badges, account settings and logout without relocating exis
 test('linked adventurer cards show a medium class emblem in the upper-right corner for each class', async () => {
   const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
   const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
-  assert.match(source,/function adventurerClassEmblem\\(className\\)/);
-  assert.match(source,/adventurerClassEmblem\\(profile\\.class_name\\)/);
+  assert.match(source,/function adventurerClassEmblem\(className\)/);
+  assert.match(source,/adventurerClassEmblem\(profile\.class_name\)/);
   for(const kind of ['buyucu','savasci','sovalye','okcu','suikastci','rahip','simyaci','cagirici']) assert.ok(source.includes(kind),kind);
   assert.match(source,/class="card adventurer-character-card"/);
-  assert.match(css,/\\.adventurer-class-emblem\\{[^}]*width:54px;[^}]*height:54px/);
-  assert.match(css,/\\.adventurer-class-emblem\\{[^}]*position:absolute;[^}]*top:16px;[^}]*right:16px/);
+  assert.match(css,/\.adventurer-class-emblem\{[^}]*width:54px;[^}]*height:54px/);
+  assert.match(css,/\.adventurer-class-emblem\{[^}]*position:absolute;[^}]*top:16px;[^}]*right:16px/);
 });
 
 
@@ -1311,11 +1311,11 @@ test('profile media is served only to its signed-in account with nosniff and pri
 test('linked Discord avatar is used in the site account menu when no custom avatar exists',async()=>{
  const accountId='site_123e4567-e89b-12d3-a456-426614174000';const db={async query(sql){if(sql.includes('SELECT user_id FROM site_discord_links'))return{rows:[{user_id:'123456789012345678'}],rowCount:1};if(sql.includes('FROM frieren_profile_media'))return{rows:[],rowCount:0};throw new Error('Unexpected avatar query: '+sql);}};
  const client={users:{async fetch(){return{displayAvatarURL:()=> 'https://cdn.discordapp.com/avatars/123456789012345678/hash.webp?size=256'};}}};const response=res();
- assert.equal(await handlePublicSiteRequest(request('/kesfet',{id:accountId,username:'Gezgin'}),response,{db,client}),true);assert.match(response.body,/cdn\\.discordapp\\.com\\/avatars\\/123456789012345678\\/hash\\.webp/);
+ assert.equal(await handlePublicSiteRequest(request('/kesfet',{id:accountId,username:'Gezgin'}),response,{db,client}),true);assert.match(response.body,/cdn\.discordapp\.com\/avatars\/123456789012345678\/hash\.webp/);
 });
 
 test('profile page includes avatar and banner upload controls and authenticated image endpoints',async()=>{
  const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');const script=await readFile(new URL('../public-assets/profile-media.js',import.meta.url),'utf8');
- assert.match(source,/data-profile-media-editor/);assert.match(source,/data-media-input="avatar"/);assert.match(source,/data-media-input="banner"/);assert.match(source,/profile-media\\.js/);
+ assert.match(source,/data-profile-media-editor/);assert.match(source,/data-media-input="avatar"/);assert.match(source,/data-media-input="banner"/);assert.match(source,/profile-media\.js/);
  assert.match(script,/createImageBitmap/);assert.match(script,/X-CSRF-Token/);assert.match(script,/data-media-reset/);
 });
