@@ -6,7 +6,7 @@ function normalizeForSearch(value) {
   return String(value ?? '')
     .toLocaleLowerCase('tr-TR')
     .normalize('NFKD')
-    .replace(/[\\u0300-\\u036f]/g, '');
+    .replace(/[\u0300-\u036f]/g, '');
 }
 
 export function scoreCodeCandidate(filePath, source, terms) {
@@ -24,7 +24,7 @@ export function scoreCodeCandidate(filePath, source, terms) {
 export function findRelevantExcerpt(source, terms, maxLength = 1800) {
   if (typeof source !== 'string' || !source || !Number.isFinite(maxLength) || maxLength <= 0) return '';
   const limit = Math.floor(maxLength);
-  const lines = source.split('\\n');
+  const lines = source.split('\n');
   const normalizedTerms = [...new Set(terms.map(normalizeForSearch).filter(Boolean))];
   if (!normalizedTerms.length) return source.slice(0, limit);
 
@@ -67,7 +67,7 @@ const GENERIC_ROOTS = Object.freeze([
   'scripts/test-utils.js', 'database/db.js',
 ]);
 
-const SECRET_PATTERN = /(DISCORD_TOKEN|GROQ_API_KEY|OPENAI_API_KEY|DATABASE_URL|PASSWORD|SECRET)\\s*[:=]\\s*['"`]?[^\\s,'"`]+/gi;
+const SECRET_PATTERN = /(DISCORD_TOKEN|GROQ_API_KEY|OPENAI_API_KEY|DATABASE_URL|PASSWORD|SECRET)\s*[:=]\s*['"`]?[^\s,'"`]+/gi;
 
 export async function collectCodeContext({ rootDir, question, sourceCommitSha = null, budget = 2800 } = {}) {
   if (!rootDir || typeof question !== 'string') throw new Error('INVALID_CODE_CONTEXT_INPUT');
@@ -117,11 +117,11 @@ export async function collectCodeContext({ rootDir, question, sourceCommitSha = 
     const safe = item.source.replace(SECRET_PATTERN, '$1=[REDACTED]');
     const excerpt = findRelevantExcerpt(safe, terms, Math.min(safe.length, required ? 650 : 1200, remaining));
     if (!excerpt) continue;
-    snippets.push('FILE: ' + item.relative + '\\n' + excerpt);
+    snippets.push('FILE: ' + item.relative + '\n' + excerpt);
     includedFiles.push(item.relative);
     used += excerpt.length + item.relative.length + 24;
   }
-  const text = snippets.join('\\n\\n');
+  const text = snippets.join('\n\n');
   return {
     text,
     files: includedFiles,
