@@ -482,7 +482,6 @@ test('explicit attacker Origin and cross-site metadata stay blocked despite vali
 
 
 test('site account lifecycle completes registration, email verification, login, password reset and logout', async () => {
-  const crypto = await import('node:crypto');
   const keys = ['SITE_GMAIL_SCRIPT_URL','SITE_GMAIL_SCRIPT_SECRET','ADMIN_SESSION_SECRET','SITE_BASE_URL'];
   const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]));
   const originalFetch = globalThis.fetch;
