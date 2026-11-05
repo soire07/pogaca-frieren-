@@ -513,7 +513,7 @@ test('repair patch rejects file headers that contain no unified-diff hunk or cha
     '@@ -1 +1 @@',
     ' unchanged context only',
   ].join('\n');
-  assert.throws(() => validatePatchPaths(headerOnly), { message: 'REPAIR_PATCH_HUNK_REQUIRED' });
+  assert.throws(() => validatePatchPaths(headerOnly), { message: 'REPAIR_PATCH_HUNK_INVALID' });
   assert.throws(() => validatePatchPaths(emptyHunk), { message: 'REPAIR_PATCH_HUNK_REQUIRED' });
 });
 
