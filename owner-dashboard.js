@@ -231,7 +231,7 @@ export function buildOwnerSessionCookie(session, maxAgeSeconds) {
 }
 
 function page(title, content) {
-  return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · Frieren Owner</title><link rel="stylesheet" href="/assets/owner.css"></head><body><main>${content}</main></body></html>`;
+  return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · Frieren Owner</title><link rel="stylesheet" href="/assets/owner.css"></head><body><main>${content}</main><script src="/assets/site-actions.js?v=actions-261-1" defer></script></body></html>`;
 }
 
 function safeStringEqual(leftValue, rightValue) {
