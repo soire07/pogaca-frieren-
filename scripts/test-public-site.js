@@ -560,6 +560,8 @@ test('adventurer account linking rejects invalid CSRF before opening a database 
 test('public home showcase is visible only after explicit opt-in',async()=>{
  const profile={user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20,xp:2400,active_room:'starter',layout:[],is_public:true};
  const db={async query(sql){
+  if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return {rows:[],rowCount:0};
+  if(sql.includes('FROM player_profile_settings'))return {rows:[{show_stats:false,show_achievements:true,show_collections:false,show_activity:false,show_cosmetics:true,active_title:null}],rowCount:1};
   if(sql.includes('FROM player_homes h JOIN users u'))return {rows:[profile],rowCount:1};
   if(sql.includes('FROM player_home_rooms'))return {rows:[{room_key:'starter'}],rowCount:1};
   if(sql.includes('FROM achievement_claims'))return {rows:[{achievement_key:'first_boss',display_slot:0}],rowCount:1};
@@ -594,6 +596,7 @@ test('player experience web mutations reject invalid CSRF before database access
 test('player experience web page is scoped to the linked character and shows home cosmetics and event progress',async()=>{
  const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20};
  const db={async query(sql){
+  if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return {rows:[],rowCount:0};
   if(sql.includes('FROM site_discord_links'))return {rows:[profile],rowCount:1};
   if(sql.startsWith('INSERT INTO users')||sql.startsWith('INSERT INTO user_talents')||sql.startsWith('INSERT INTO learned_spells')||sql.startsWith('INSERT INTO player_home_rooms')||sql.startsWith('INSERT INTO player_homes'))return {rows:[],rowCount:1};
   if(sql.includes('SELECT active_room,layout,is_public FROM player_homes'))return {rows:[{active_room:'starter',layout:[],is_public:false}],rowCount:1};
@@ -1041,6 +1044,7 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  const calls=[];
  const db={async query(sql,params){
   calls.push({sql,params});
+  if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return{rows:[],rowCount:0};
   if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[{guild_id:guildId,user_id:userId,character_name:'Fern',class_name:'Büyücü',level:99,xp:38050,coins:900}],rowCount:1};
   if(sql.includes('FROM users WHERE guild_id=$1 AND user_id=$2'))return{rows:[{created_at:'2026-01-01T00:00:00.000Z',boss_defeats:12,dungeon_wins:8,exploration_count:42,items_used_count:9,daily_streak:4,best_daily_streak:7}],rowCount:1};
   if(sql.includes('FROM user_titles'))return{rows:[{title:'Kıdemli Maceracı',unlocked_at:'2026-01-02T00:00:00.000Z'}],rowCount:1};
@@ -1091,4 +1095,32 @@ test('public profile preferences are CSRF protected and saved only for the linke
  assert.equal(await handlePublicSiteRequest(bad,invalid,{db}),true);
  assert.equal(invalid.status,403);
  assert.equal(calls.length,0);
+ const valid=res();
+ assert.equal(await handlePublicSiteRequest(sitePost('/maceraci/yasam',{
+  csrf:createSiteCsrfToken(secret),guildId,action:'set-profile-settings',showStats:'true',showAchievements:'true',
+  showCollections:'false',showActivity:'false',showCosmetics:'true',activeTitle:'Kıdemli Maceracı'
+ },accountId),valid,{db}),true);
+ assert.equal(valid.status,303);
+ assert.match(valid.headers.Location,/maceraci\\/profil/);
+ assert.ok(calls.some(call=>call.sql.includes('INSERT INTO player_profile_settings')));
+});
+
+
+test('public home privacy settings hide opt-out achievements, collections, cosmetics and activity',async()=>{
+ const profile={user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20,xp:2400,active_room:'starter',layout:[],is_public:true};
+ const db={async query(sql){
+  if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return{rows:[],rowCount:0};
+  if(sql.includes('FROM player_profile_settings'))return{rows:[{show_stats:false,show_achievements:false,show_collections:false,show_activity:false,show_cosmetics:false,active_title:null}],rowCount:1};
+  if(sql.includes('FROM player_homes h JOIN users u'))return{rows:[profile],rowCount:1};
+  if(sql.includes('FROM player_home_rooms'))return{rows:[{room_key:'starter'}],rowCount:1};
+  throw new Error('Unexpected private showcase query: '+sql);
+ }};
+ const response=res();
+ assert.equal(await handlePublicSiteRequest({method:'GET',url:'/maceraci/ev?guildId=1539562273197260860&userId='+profile.user_id,headers:{}},response,{db}),true);
+ assert.equal(response.status,200);
+ assert.match(response.body,/Profil Vitrini/);
+ assert.doesNotMatch(response.body,/Rozet ve Başarım Vitrini/);
+ assert.doesNotMatch(response.body,/Anime Kart Koleksiyonu/);
+ assert.doesNotMatch(response.body,/Kuşanılan Kozmetikler/);
+ assert.doesNotMatch(response.body,/Son Macera Etkinlikleri/);
 });
