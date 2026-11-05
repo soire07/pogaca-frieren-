@@ -134,22 +134,22 @@ function authPage(mode, secret, status = '', token = '') {
     '<label>Kullanıcı adı</label><input name="username" minlength="3" maxlength="24" pattern="[\\p{L}\\p{N}_.\\-]{3,24}" autocomplete="username" required>' +
     '<label>E-posta adresi</label><input name="email" type="email" maxlength="254" autocomplete="email" required>' +
     '<label>Şifre</label><input name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>' +
-    '<label>Şifreyi tekrar gir</label><input name="confirmPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" required><button class="btn">Hesap oluştur</button></form>' +
+    '<label>Şifreyi tekrar gir</label><input name="confirmPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" required><button type="submit" class="btn">Hesap oluştur</button></form>' +
     '<div class="auth-links"><a href="/login">Zaten hesabın var mı? Giriş yap</a><a href="/resend-verification">Doğrulama e-postasını tekrar gönder</a></div><p class="auth-hint">E-posta doğrulaması, hesabının güvenliği ve şifre kurtarma için gereklidir.</p>';
   else if (mode === 'login') body = '<h1>Yolculuğuna dön</h1><p>Kullanıcı adın ve şifrenle giriş yap.</p>' + notice +
     '<form method="post" action="/login" autocomplete="on">' + formToken(secret) +
     '<label>Kullanıcı adı veya e-mail</label><input name="username" maxlength="254" autocomplete="username" required>' +
-    '<label>Şifre</label><input name="password" type="password" maxlength="128" autocomplete="current-password" required><button class="btn">Giriş yap</button></form>' +
+    '<label>Şifre</label><input name="password" type="password" maxlength="128" autocomplete="current-password" required><button type="submit" class="btn">Giriş yap</button></form>' +
     '<div class="auth-links"><a href="/register">Kayıt ol</a><a href="/forgot-password">Şifremi unuttum</a><a href="/resend-verification">Doğrulama e-postasını tekrar gönder</a></div>';
   else if (mode === 'forgot') body = '<h1>Şifreni yenile</h1><p>Hesabına bağlı doğrulanmış e-posta adresini gir.</p>' + notice +
-    '<form method="post" action="/forgot-password">' + formToken(secret) + '<label>E-posta adresi</label><input name="email" type="email" maxlength="254" required><button class="btn">Yenileme bağlantısı gönder</button></form><div class="auth-links"><a href="/login">Giriş sayfasına dön</a></div>';
+    '<form method="post" action="/forgot-password">' + formToken(secret) + '<label>E-posta adresi</label><input name="email" type="email" maxlength="254" required><button type="submit" class="btn">Yenileme bağlantısı gönder</button></form><div class="auth-links"><a href="/login">Giriş sayfasına dön</a></div>';
   else if (mode === 'reset') body = '<h1>Yeni şifre oluştur</h1><p>Hesabın için yeni ve güçlü bir şifre belirle.</p>' + notice +
     '<form method="post" action="/reset-password">' + formToken(secret) + '<input type="hidden" name="token" value="' + esc(token) + '">' +
     '<label>Yeni şifre</label><input name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>' +
-    '<label>Yeni şifreyi tekrar gir</label><input name="confirmPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" required><button class="btn">Şifreyi yenile</button></form><div class="auth-links"><a href="/login">Giriş sayfasına dön</a></div>';
+    '<label>Yeni şifreyi tekrar gir</label><input name="confirmPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" required><button type="submit" class="btn">Şifreyi yenile</button></form><div class="auth-links"><a href="/login">Giriş sayfasına dön</a></div>';
   else if (mode === 'verify') body = '<h1>E-posta doğrulama</h1><p>' + esc(messages[status] || messages.invalid_token) + '</p><div class="auth-links"><a href="/login">Giriş yap</a><a href="/resend-verification">Yeni bağlantı iste</a></div>';
   else body = '<h1>Doğrulama bağlantısı</h1><p>Hesabına bağlı e-posta adresini gir.</p>' + notice +
-    '<form method="post" action="/resend-verification">' + formToken(secret) + '<label>E-posta adresi</label><input name="email" type="email" maxlength="254" required><button class="btn">Yeni bağlantı gönder</button></form><div class="auth-links"><a href="/login">Giriş yap</a></div>';
+    '<form method="post" action="/resend-verification">' + formToken(secret) + '<label>E-posta adresi</label><input name="email" type="email" maxlength="254" required><button type="submit" class="btn">Yeni bağlantı gönder</button></form><div class="auth-links"><a href="/login">Giriş yap</a></div>';
   return page('Hesap güvenliği', body);
 }
 export function smtpFailureDetails(error) {
