@@ -903,7 +903,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil görseli veritabanı kullanılamıyor.');return true;}
     const media=await getProfileMedia(db,user.id,String(url.searchParams.get('kind')||''));
     if(!media){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Profil görseli bulunamadı.');return true;}
-    res.writeHead(200,{'Content-Type':media.mime_type,'Content-Length':media.media_data.length,'Cache-Control':'private,no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; img-src 'self'; sandbox"});res.end(media.media_data);return true;
+    res.writeHead(200,{'Content-Type':media.mime_type,'Content-Length':media.media_data.length,'Cache-Control':'private,no-store','X-Content-Type-Options':'nosniff'});res.end(media.media_data);return true;
   }
   if (assets.has(url.pathname)) {
     try {
