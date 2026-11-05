@@ -54,6 +54,28 @@ function requireSiteAccount(res, accountId) {
 }
 
 
+function isVipSiteAccount(user) {
+  const accountId = String(user?.id || '');
+  if (!SITE_ACCOUNT_ID.test(accountId)) return false;
+  const allowed = new Set(String(process.env.FRIEREN_VIP_ACCOUNT_IDS || '').split(',').map(value => value.trim()).filter(Boolean));
+  return allowed.has(accountId);
+}
+
+function playerXpProgress(profile, isVip = false) {
+  const level = Math.max(1, Math.floor(Number(profile?.level) || 1));
+  const xp = Math.max(0, Math.floor(Number(profile?.xp) || 0));
+  const currentLevelXp = Math.pow(level - 1, 2) * 100;
+  const nextLevelXp = Math.pow(level, 2) * 100;
+  const progress = Math.max(0, Math.min(100, ((xp - currentLevelXp) / Math.max(1, nextLevelXp - currentLevelXp)) * 100));
+  const safeXp = xp.toLocaleString('tr-TR');
+  const safeCurrent = Math.max(0, xp - currentLevelXp).toLocaleString('tr-TR');
+  const safeRequired = Math.max(1, nextLevelXp - currentLevelXp).toLocaleString('tr-TR');
+  return '<div class="xp-progress' + (isVip ? ' is-vip' : '') + '" role="group" aria-label="Seviye ' + level + ' XP ilerlemesi">' +
+    '<div class="xp-progress-label"><span>Seviye ' + level + ' · ' + safeXp + ' toplam XP</span><span>' + Math.round(progress) + '%</span></div>' +
+    '<div class="xp-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(progress) + '"><i style="width:' + progress.toFixed(2) + '%"></i></div>' +
+    '<small>' + safeCurrent + ' / ' + safeRequired + ' XP · sonraki seviye</small></div>';
+}
+
 function page(title, content, user, seo = {}) {
   const description = seo.description || 'Frieren evreninde büyülü bir Discord RPG yolculuğu.';
   const robots = seo.indexable ? 'index,follow' : 'noindex,nofollow';
@@ -64,6 +86,13 @@ function page(title, content, user, seo = {}) {
     ? '<script type="application/ld+json">' + JSON.stringify(seo.structuredData).replace(/</g, '\\u003c') + '</script>'
     : '';
   const avatar = user.avatarUrl || '/assets/site-avatar.webp';
+  const vip = isVipSiteAccount(user);
+  const accountProfile = Array.isArray(user.playerProfiles) ? user.playerProfiles[0] : null;
+  const accountCard = '<section class="site-account-card' + (vip ? ' is-vip' : '') + '" aria-label="Kullanıcı hesabı">' +
+    '<img src="' + esc(avatar) + '" alt="">' +
+    '<div class="site-account-copy"><strong>' + esc(user.username || 'Gezgin') + (vip ? ' <span class="site-vip-badge">VIP</span>' : '') + '</strong>' +
+    '<small>' + (accountProfile ? esc(accountProfile.character_name || 'Maceracı') + ' · Seviye ' + Number(accountProfile.level || 1) : 'Frieren maceracı hesabı') + '</small>' +
+    (accountProfile ? playerXpProgress(accountProfile, vip) : '') + '</div></section>';
   const mainContent = String(content).replace('<main', '<main id="main-content"');
   const ownerLink = user.id === OWNER_ID ? '<a href="/owner">Owner Panel</a>' : '';
   const guildLink = '<a href="/lonca">Maceracı Loncası</a>';
@@ -73,19 +102,24 @@ function page(title, content, user, seo = {}) {
     '<button class="site-menu-backdrop" id="site-menu-backdrop" type="button" aria-label="Menüyü kapat" hidden></button>' +
     '<aside class="site-sidebar" id="site-sidebar" aria-label="Frieren ana menüsü" hidden>' +
       '<div class="site-sidebar-head"><a class="site-sidebar-brand" href="/"><span class="brand-mark">✧</span><span>FRIEREN<small>THE ARCANE JOURNEY</small></span></a><button class="site-menu-close" id="site-menu-close" type="button" aria-label="Menüyü kapat">×</button></div>' +
+      accountCard +
       '<div class="site-sidebar-intro"><span>✧ YOLCULUK REHBERİ</span><p>Keşfet, karakterini geliştir ve macerana kaldığın yerden devam et.</p></div>' +
       '<nav class="site-sidebar-nav" aria-label="Frieren ana menüsü">' +
+        navGroup('kullanici', 'KULLANICI MERKEZİ', [
+          navLink('/', '◉', 'Profilim', 'Maceracı kimliğin ve genel bakışın'),
+          navLink('/maceraci/yasam', '✧', 'Başarım Vitrini', 'Kazandığın kupalar ve sergilenen başarımlar'),
+          navLink('/maceraci/yasam', '↗', 'İlerlemem', 'Etkinlik, kozmetik ve yaşam alanı ilerlemen'),
+          navLink('/', '⚔', 'Savaş İstatistiklerim', 'Seviye, MMR, galibiyet ve mağlubiyet'),
+          navLink('/maceraci/envanter', '▣', 'Envanterim', 'Eşyaların ve ekipmanların'),
+          navLink('/maceraci/koleksiyon', '◈', 'Koleksiyonum', 'Yoldaşlar, balıklar ve keşifler'),
+          navLink('/maceraci/sosyal', '♧', 'Sosyal Alan', 'Arkadaşlar ve rakipler'),
+          navLink('/maceraci/yasam', '⌂', 'Kişisel Yaşam Alanım', 'Evin, kozmetiklerin ve Zafer Salonu'),
+          navLink('/maceraci/bildirimler', '☾', 'Bildirimler', 'Haberci kuş tercihlerin'),
+          navLink('/maceraci/atolye', '✦', 'Büyü Atölyesi', 'Embed ve büyü otomasyonları')
+        ]) +
         navGroup('oyuncu', 'BAŞLANGIÇ', [
           navLink('/', '⌂', 'Kullanıcı Paneli', 'Maceracı panelin ve etkinliklerin'),
           navLink('/kesfet', '✧', 'Keşfet', 'Frieren dünyasını tanı')
-        ]) +
-        navGroup('macera', 'MACERACI ALANI', [
-          navLink('/maceraci/envanter', '▣', 'Envanterim', 'Eşyaların ve ekipmanların'),
-          navLink('/maceraci/koleksiyon', '◈', 'Koleksiyonum', 'Yoldaşlar ve keşifler'),
-          navLink('/maceraci/sosyal', '♧', 'Sosyal Alan', 'Arkadaşlar ve rakipler'),
-          navLink('/maceraci/yasam', '⌂', 'Yaşam Alanı', 'Kişisel evin ve kozmetiklerin'),
-          navLink('/maceraci/bildirimler', '☾', 'Bildirimler', 'Haberci kuş tercihlerin'),
-          navLink('/maceraci/atolye', '✦', 'Büyü Atölyesi', 'Embed ve büyü otomasyonları')
         ]) +
         navGroup('dunya', 'FRIEREN DÜNYASI', [
           navLink('/pogaca', '⚔', 'Poğaça Frieren', 'RPG botunu keşfet'),
@@ -220,7 +254,8 @@ function adventurerPanel(user, data, status) {
     const hp = Math.max(0, Math.min(100, Number(profile.hp) / Math.max(1, Number(profile.max_hp)) * 100));
     const mana = Math.max(0, Math.min(100, Number(profile.mana) / Math.max(1, Number(profile.max_mana)) * 100));
     const guild = encodeURIComponent(profile.guild_id);
-    return '<article class="card"><div class="eyebrow">SUNUCU · ' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + Number(profile.level) + '</p><div class="stats"><span><b>' + Number(profile.xp) + '</b> XP</span><span><b>' + Number(profile.coins) + '</b> Altın</span><span><b>' + Number(profile.rating) + '</b> MMR</span></div><p>HP ' + Number(profile.hp) + '/' + Number(profile.max_hp) + '</p><div class="progress"><i style="width:' + hp.toFixed(1) + '%"></i></div><p>Mana ' + Number(profile.mana) + '/' + Number(profile.max_mana) + '</p><div class="progress"><i style="width:' + mana.toFixed(1) + '%"></i></div><p>' + esc(profile.season_name || 'Sezon başlamadı') + ' · ' + Number(profile.wins) + ' galibiyet / ' + Number(profile.losses) + ' mağlubiyet</p><div class="actions"><a class="btn ghost" href="/maceraci/envanter?guildId=' + guild + '">Envanterim</a><a class="btn ghost" href="/maceraci/koleksiyon?guildId=' + guild + '">Koleksiyonum</a><a class="btn ghost" href="/maceraci/sosyal?guildId=' + guild + '">Sosyal alanım</a><a class="btn ghost" href="/maceraci/yasam?guildId=' + guild + '">Yaşam alanım</a><a class="btn ghost" href="/maceraci/bildirimler?guildId=' + guild + '">Haberci kuş ve bildirimler</a><a class="btn ghost" href="/maceraci/atolye?guildId=' + guild + '">Embed / Büyü Atölyesi</a><a class="btn ghost" href="/pazar?guildId=' + guild + '">Kuzey Pazarı</a></div></article>';
+    const xpProgress = playerXpProgress(profile, isVipSiteAccount(user));
+    return '<article class="card"><div class="eyebrow">SUNUCU · ' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + Number(profile.level) + '</p>' + xpProgress + '<div class="stats" id="battle-stats"><span><b>' + Number(profile.xp) + '</b> XP</span><span><b>' + Number(profile.coins) + '</b> Altın</span><span><b>' + Number(profile.rating) + '</b> MMR</span></div><p>HP ' + Number(profile.hp) + '/' + Number(profile.max_hp) + '</p><div class="progress"><i style="width:' + hp.toFixed(1) + '%"></i></div><p>Mana ' + Number(profile.mana) + '/' + Number(profile.max_mana) + '</p><div class="progress"><i style="width:' + mana.toFixed(1) + '%"></i></div><p>' + esc(profile.season_name || 'Sezon başlamadı') + ' · ' + Number(profile.wins) + ' galibiyet / ' + Number(profile.losses) + ' mağlubiyet</p><div class="actions"><a class="btn ghost" href="/maceraci/envanter?guildId=' + guild + '">Envanterim</a><a class="btn ghost" href="/maceraci/koleksiyon?guildId=' + guild + '">Koleksiyonum</a><a class="btn ghost" href="/maceraci/sosyal?guildId=' + guild + '">Sosyal alanım</a><a class="btn ghost" href="/maceraci/yasam?guildId=' + guild + '">Yaşam alanım</a><a class="btn ghost" href="/maceraci/bildirimler?guildId=' + guild + '">Haberci kuş ve bildirimler</a><a class="btn ghost" href="/maceraci/atolye?guildId=' + guild + '">Embed / Büyü Atölyesi</a><a class="btn ghost" href="/pazar?guildId=' + guild + '">Kuzey Pazarı</a></div></article>';
   }).join('');
   const events = data.events.map(event => {
     const action = event.joined ? 'leave' : 'join';
@@ -240,7 +275,7 @@ function adventurerPanel(user, data, status) {
     '<section class="section"><div class="card"><h2>Discord karakterini bağla</h2><form method="post" action="/maceraci/link"><input type="hidden" name="csrf" value="' + esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET)) + '"><label for="link-token">Tek kullanımlık bağlantı kodu</label><input id="link-token" name="token" minlength="24" maxlength="80" autocomplete="one-time-code" required><button class="btn" type="submit">Karakteri bağla</button></form></div></section>' +
     '<section class="section"><div class="section-head"><h2>Etkinlik Takvimi</h2><p>Bağlı olduğun Discord sunucularındaki yaklaşan maceralar.</p></div><div class="grid">' + (events || '<article class="card"><p>Bağlı sunucularında yaklaşan etkinlik bulunmuyor.</p></article>') + '</div></section></main>' +
     '<style>.notice{padding:14px 18px;border:1px solid #7664a9;border-radius:14px;margin:18px 0}.progress{height:8px;border-radius:20px;background:#29263d;overflow:hidden}.progress i{display:block;height:100%;background:#9b83d7}.card form{display:grid;gap:12px}.card input,.card select{width:100%;padding:13px;border-radius:10px;border:1px solid #62577d;background:#17152c;color:#fff}.card label{font-weight:600}.portal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.market-price{font-size:1.2rem;font-weight:700;color:#d9c8ff}.market-meta{color:#b9b2d1;font-size:.92rem}.portal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}</style>';
-  return page('Maceracı Paneli', content, user);
+  return page('Maceracı Paneli', content, { ...user, playerProfiles: data.profiles });
 }
 
 function portalGuildPicker(user, profiles, route, title) {
@@ -326,7 +361,7 @@ function playerExperiencePage(user,profile,home,ownedRows,loadoutRows,presetRows
  const layout=esc(JSON.stringify(Array.isArray(home.home.layout)?home.home.layout:[],null,2));
  const visibilityForm=form('set-visibility','<select name="isPublic"><option value="false"'+(home.home.is_public?'':' selected')+'>Gizli</option><option value="true"'+(home.home.is_public?' selected':'')+'>Herkese açık</option></select>','Paylaşım ayarını kaydet');
  const publicLink=home.home.is_public?'<p><a class="btn ghost" href="/maceraci/ev?guildId='+guild+'&userId='+esc(profile.user_id)+'" >Paylaşılabilir profil ve rozet vitrini</a></p>':'';
- const content='<main class="wrap" style="padding:54px 0 80px"><div class="eyebrow">✧ KİŞİSEL MACERA ALANI</div><h1 class="hero-title">'+esc(profile.character_name||'Maceracı')+' <em>Yaşam Alanı</em></h1><p class="lead">Ev odalarını aç, yerleşimini kaydet, kozmetiklerini yönet ve tamamladığın etkinliklerin ödüllerini al. Tüm işlemler bağlı Discord karakterine aittir.</p><div class="portal-actions"><a class="btn ghost" href="/maceraci?guildId='+guild+'">Maceracı paneli</a><a class="btn ghost" href="/maceraci/koleksiyon?guildId='+guild+'">Koleksiyon</a></div>'+notice+'<section class="section"><h2>Kişisel Ev</h2>'+visibilityForm+publicLink+'<div class="portal-grid">'+rooms+'</div><article class="card"><h3>Oda Yerleşimi</h3><p class="market-meta">Dekorasyon anahtarları: '+HOME_DECORATIONS.map(esc).join(', ')+'</p>'+form('save-layout','<label>Aktif oda <select name="activeRoom">'+HOME_ROOMS.filter(x=>home.rooms.some(r=>r.room_key===x.key)).map(x=>'<option value="'+esc(x.key)+'"'+(home.home.active_room===x.key?' selected':'')+'>'+esc(x.name)+'</option>').join('')+'</select></label><label>Yerleşim JSON <textarea name="layout" rows="5" maxlength="1500">'+layout+'</textarea></label>','Yerleşimi kaydet')+'</article></section><section class="section"><h2>Ev İstasyonları</h2><div class="portal-grid">'+stationPanel+'</div></section><section class="section"><h2>Zafer Salonu</h2><div class="portal-grid">'+trophyPanel+'</div></section><section class="section"><h2>Genel Kozmetikler</h2><div class="portal-grid">'+cosmetics+'</div><article class="card"><h3>Görünüm presetleri</h3>'+form('save-preset','<input name="presetName" maxlength="32" required placeholder="Preset adı">','Mevcut görünümü kaydet')+'</article><div class="portal-grid">'+(presets||'<article class="card"><p>Henüz preset kaydedilmedi.</p></article>')+'</div></section><section class="section"><h2>Etkinlik İlerlemesi</h2><p class="lead">Kayıt ve yoklama ilerlemesi sunucu etkinlikleriyle ortak veritabanında tutulur.</p><div class="portal-grid">'+(eventHtml||'<article class="card"><p>Görüntülenecek etkinlik ilerlemesi yok.</p></article>')+'</div></section></main>';
+ const content='<main class="wrap" style="padding:54px 0 80px"><div class="eyebrow">✧ KİŞİSEL MACERA ALANI</div><h1 class="hero-title">'+esc(profile.character_name||'Maceracı')+' <em>Yaşam Alanı</em></h1><p class="lead">Ev odalarını aç, yerleşimini kaydet, kozmetiklerini yönet ve tamamladığın etkinliklerin ödüllerini al. Tüm işlemler bağlı Discord karakterine aittir.</p><div class="portal-actions"><a class="btn ghost" href="/maceraci?guildId='+guild+'">Maceracı paneli</a><a class="btn ghost" href="/maceraci/koleksiyon?guildId='+guild+'">Koleksiyon</a></div>'+notice+'<section class="section"><h2>Kişisel Ev</h2>'+visibilityForm+publicLink+'<div class="portal-grid">'+rooms+'</div><article class="card"><h3>Oda Yerleşimi</h3><p class="market-meta">Dekorasyon anahtarları: '+HOME_DECORATIONS.map(esc).join(', ')+'</p>'+form('save-layout','<label>Aktif oda <select name="activeRoom">'+HOME_ROOMS.filter(x=>home.rooms.some(r=>r.room_key===x.key)).map(x=>'<option value="'+esc(x.key)+'"'+(home.home.active_room===x.key?' selected':'')+'>'+esc(x.name)+'</option>').join('')+'</select></label><label>Yerleşim JSON <textarea name="layout" rows="5" maxlength="1500">'+layout+'</textarea></label>','Yerleşimi kaydet')+'</article></section><section class="section"><h2>Ev İstasyonları</h2><div class="portal-grid">'+stationPanel+'</div></section><section class="section" id="achievement-showcase"><h2>Zafer Salonu</h2><div class="portal-grid">'+trophyPanel+'</div></section><section class="section"><h2>Genel Kozmetikler</h2><div class="portal-grid">'+cosmetics+'</div><article class="card"><h3>Görünüm presetleri</h3>'+form('save-preset','<input name="presetName" maxlength="32" required placeholder="Preset adı">','Mevcut görünümü kaydet')+'</article><div class="portal-grid">'+(presets||'<article class="card"><p>Henüz preset kaydedilmedi.</p></article>')+'</div></section><section class="section" id="event-progress"><h2>Etkinlik İlerlemesi</h2><p class="lead">Kayıt ve yoklama ilerlemesi sunucu etkinlikleriyle ortak veritabanında tutulur.</p><div class="portal-grid">'+(eventHtml||'<article class="card"><p>Görüntülenecek etkinlik ilerlemesi yok.</p></article>')+'</div></section></main>';
  return page('Kişisel Yaşam Alanı',content,user);
 }
 
