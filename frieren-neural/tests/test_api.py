@@ -474,3 +474,25 @@ def test_shared_login_rate_limit_fails_closed_when_database_is_unavailable(monke
     with pytest.raises(HTTPException) as error:
         api._login_rate_limit(Request(scope))
     assert error.value.status_code == 503
+
+
+def test_health_runs_one_fixed_generation_smoke_only_when_enabled(api_client, monkeypatch):
+    import frieren_neural.api as api
+
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "ufakzeka")
+    monkeypatch.setenv("FRIEREN_HEALTH_GENERATION_SMOKE", "1")
+    monkeypatch.setattr(api, "_load_active_runtime", lambda: object())
+    calls = []
+    monkeypatch.setattr(
+        api,
+        "_generate_reply",
+        lambda *args, **kwargs: (calls.append((args, kwargs)) or ("Merhaba.", 0, "ufakai/ufakzeka-1")),
+    )
+    api._run_generation_smoke.cache_clear()
+    first = api_client.get("/health")
+    second = api_client.get("/health")
+    assert first.status_code == 200
+    assert first.json()["generation_smoke"] == "pass"
+    assert second.json()["generation_smoke"] == "pass"
+    assert len(calls) == 1
+    api._run_generation_smoke.cache_clear()
