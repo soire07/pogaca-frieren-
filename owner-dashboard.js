@@ -1061,7 +1061,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
             ? 'GUARDIAN_GITHUB_READ_' : 'GUARDIAN_GITHUB_';
           throw new Error(prefix + String(dispatch.status || 'dispatch_failed').toUpperCase());
         }
-        await auditOwnerAction(db, OWNER_ID, 'guardian.repair.owner_approved', String(incident.id), {
+        await auditOwnerAction(db, OWNER_ID, 'guardian.repair.workflow_dispatched_by_owner', String(incident.id), {
           jobId: job.id,
           approvalFingerprint: approvedJob.repair_approval_fingerprint,
           approvalRecorded: Boolean(approval),
