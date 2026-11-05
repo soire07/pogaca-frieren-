@@ -327,9 +327,12 @@ export async function processPendingGuardianRepairDispatch({
     if (!persisted) {
       return { status: 'dispatch_state_unconfirmed', jobId: Number(job.id), workflowUrl };
     }
+    const auditAction = actorId === 'guardian-auto'
+      ? 'guardian.repair.workflow_redispatched'
+      : 'guardian.repair.workflow_dispatched';
     await db.query(
       'INSERT INTO owner_audit_logs(actor_id,action,target,details) VALUES($1,$2,$3,$4::jsonb)',
-      [actorId, 'guardian.repair.workflow_redispatched', String(incident.id), JSON.stringify({ jobId: job.id, workflow: REPAIR_WORKFLOW, baseBranch: REPAIR_BRANCH })]
+      [actorId, auditAction, String(incident.id), JSON.stringify({ jobId: job.id, workflow: REPAIR_WORKFLOW, baseBranch: REPAIR_BRANCH })]
     ).catch(() => {});
     return { status: 'dispatched', jobId: Number(job.id), workflowUrl };
   } catch (error) {
