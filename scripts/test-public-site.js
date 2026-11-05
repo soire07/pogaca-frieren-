@@ -316,6 +316,7 @@ test('homepage uses the brand avatar and a lightweight custom profile header ins
   const stylesheet = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
   assert.ok(String(stylesheet.body).includes('.profile-banner-art{display:grid'));
+  assert.match(String(stylesheet.body), /\.site-menu-toggle\{[^}]*transform:translateY\(-50%\)/);
   assert.ok(String(stylesheet.body).includes('.hero{position:relative;isolation:isolate'));
 });
 test('shared stylesheet is publicly cacheable for authenticated and auth pages', async () => {
