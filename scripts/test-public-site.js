@@ -1283,3 +1283,39 @@ test('linked adventurer cards show a medium class emblem in the upper-right corn
   assert.match(css,/\\.adventurer-class-emblem\\{[^}]*width:54px;[^}]*height:54px/);
   assert.match(css,/\\.adventurer-class-emblem\\{[^}]*position:absolute;[^}]*top:16px;[^}]*right:16px/);
 });
+
+
+test('profile media uploads require a site account, CSRF token and validated image payload',async()=>{
+ const accountId='site_123e4567-e89b-12d3-a456-426614174000';
+ const png=Buffer.alloc(24);Buffer.from([137,80,78,71,13,10,26,10]).copy(png);png.writeUInt32BE(32,16);png.writeUInt32BE(32,20);
+ const token=createSiteCsrfToken(secret);let inserted=false;
+ const db={async query(sql,params){if(sql.includes('CREATE TABLE IF NOT EXISTS frieren_profile_media'))return{rows:[],rowCount:0};if(sql.includes('INSERT INTO frieren_profile_media')){inserted=true;assert.equal(params[0],accountId.slice(5));assert.equal(params[1],'avatar');assert.equal(params[2],'image/png');return{rows:[],rowCount:1};}throw new Error('Unexpected profile media query: '+sql);}};
+ const session=createPublicSiteSession(secret,{id:accountId,username:'Gezgin'},Math.floor(Date.now()/1000)+3600);
+ const cookie=buildPublicSiteSessionCookie(session,3600).split(';')[0];
+ const req={method:'POST',url:'/maceraci/profil/media',headers:{cookie,'content-type':'application/json','x-csrf-token':token},async *[Symbol.asyncIterator](){yield Buffer.from(JSON.stringify({kind:'avatar',data:png.toString('base64')}));}};
+ const response=res();assert.equal(await handlePublicSiteRequest(req,response,{db}),true);assert.equal(response.status,200);assert.equal(JSON.parse(response.body).status,'saved');assert.equal(inserted,true);
+});
+
+test('profile media rejects invalid CSRF before touching storage',async()=>{
+ const accountId='site_123e4567-e89b-12d3-a456-426614174000';const session=createPublicSiteSession(secret,{id:accountId,username:'Gezgin'},Math.floor(Date.now()/1000)+3600);const cookie=buildPublicSiteSessionCookie(session,3600).split(';')[0];let queries=0;
+ const req={method:'POST',url:'/maceraci/profil/media',headers:{cookie,'content-type':'application/json','x-csrf-token':'invalid'},async *[Symbol.asyncIterator](){yield Buffer.from('{}');}};const response=res();
+ assert.equal(await handlePublicSiteRequest(req,response,{db:{async query(){queries++;}}}),true);assert.equal(response.status,403);assert.equal(queries,0);
+});
+
+test('profile media is served only to its signed-in account with nosniff and private caching',async()=>{
+ const accountId='site_123e4567-e89b-12d3-a456-426614174000';const session=createPublicSiteSession(secret,{id:accountId,username:'Gezgin'},Math.floor(Date.now()/1000)+3600);const cookie=buildPublicSiteSessionCookie(session,3600).split(';')[0];const bytes=Buffer.from('image-bytes');
+ const db={async query(sql){if(sql.includes('CREATE TABLE IF NOT EXISTS frieren_profile_media'))return{rows:[],rowCount:0};if(sql.includes('SELECT mime_type,media_data'))return{rows:[{mime_type:'image/jpeg',media_data:bytes,width:1,height:1}],rowCount:1};throw new Error('Unexpected media read: '+sql);}};
+ const response=res();assert.equal(await handlePublicSiteRequest({method:'GET',url:'/maceraci/profil/media?kind=avatar',headers:{cookie}},response,{db}),true);assert.equal(response.status,200);assert.equal(response.headers['Content-Type'],'image/jpeg');assert.equal(response.headers['X-Content-Type-Options'],'nosniff');assert.equal(response.headers['Cache-Control'],'private,no-store');assert.equal(response.body,bytes);
+});
+
+test('linked Discord avatar is used in the site account menu when no custom avatar exists',async()=>{
+ const accountId='site_123e4567-e89b-12d3-a456-426614174000';const db={async query(sql){if(sql.includes('SELECT user_id FROM site_discord_links'))return{rows:[{user_id:'123456789012345678'}],rowCount:1};if(sql.includes('FROM frieren_profile_media'))return{rows:[],rowCount:0};throw new Error('Unexpected avatar query: '+sql);}};
+ const client={users:{async fetch(){return{displayAvatarURL:()=> 'https://cdn.discordapp.com/avatars/123456789012345678/hash.webp?size=256'};}}};const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/kesfet',{id:accountId,username:'Gezgin'}),response,{db,client}),true);assert.match(response.body,/cdn\\.discordapp\\.com\\/avatars\\/123456789012345678\\/hash\\.webp/);
+});
+
+test('profile page includes avatar and banner upload controls and authenticated image endpoints',async()=>{
+ const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');const script=await readFile(new URL('../public-assets/profile-media.js',import.meta.url),'utf8');
+ assert.match(source,/data-profile-media-editor/);assert.match(source,/data-media-input="avatar"/);assert.match(source,/data-media-input="banner"/);assert.match(source,/profile-media\\.js/);
+ assert.match(script,/createImageBitmap/);assert.match(script,/X-CSRF-Token/);assert.match(script,/data-media-reset/);
+});
