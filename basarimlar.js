@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from './database/db.js';
 
-const achievements = [
+export const achievements = [
   { id:'first_draw', title:'İlk Keşif', emoji:'🎴', description:'İlk anime karakterini keşfet', check:s=>s.uniqueCharacters>=1, reward:50 },
   { id:'collector_10', title:'Koleksiyoncu', emoji:'📚', description:'10 farklı karakter topla', check:s=>s.uniqueCharacters>=10, reward:150 },
   { id:'collector_25', title:'Arşiv Ustası', emoji:'🗃️', description:'25 farklı karakter topla', check:s=>s.uniqueCharacters>=25, reward:350 },
