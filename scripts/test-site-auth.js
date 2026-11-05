@@ -172,6 +172,18 @@ test('registration form does not write account data before Gmail SMTP is configu
   }
 });
 
+test('login and registration pages enforce 48px auth controls with a high-specificity cross-engine rule', async () => {
+  const db = fakeDb();
+  for (const path of ['/login', '/register']) {
+    const res = response();
+    assert.equal(await handleSiteAuthRequest({ method: 'GET', url: path, headers: {} }, res, { db, sessionSecret: secret }), true);
+    assert.equal(res.status, 200);
+    assert.match(res.body, /\.auth-wrap \.auth-card input:not\(\[type="hidden"\]\)/);
+    assert.match(res.body, /min-height:48px!important;height:48px!important/);
+    assert.match(res.body, /\.auth-wrap \.auth-card button/);
+  }
+});
+
 test('login and registration pages are served by the password account handler', async () => {
   const db = fakeDb();
   for (const [path, field] of [['/login', 'current-password'], ['/register', 'new-password']]) {
