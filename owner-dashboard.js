@@ -270,7 +270,7 @@ function redirect(res, location = '/owner') {
   res.end();
 }
 
-function renderRenderMetrics(metrics, overview, metricRange = '1h') {
+export function renderRenderMetrics(metrics, overview, metricRange = '1h') {
   const rangeOptions = Object.entries(RENDER_METRIC_RANGES).map(([value, range]) => '<option value="' + value + '"' + (value === metricRange ? ' selected' : '') + '>' + escapeHtml(range.label) + '</option>').join('');
   const rangeForm = '<form method="get" action="/owner" class="metric-range-form"><label for="owner-metric-range">Grafik zaman aralığı</label><select id="owner-metric-range" name="metricRange">' + rangeOptions + '</select><button class="btn secondary" type="submit">Aralığı uygula</button></form>';
   if (metrics?.status === 'available') {
