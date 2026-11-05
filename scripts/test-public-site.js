@@ -157,6 +157,9 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.doesNotMatch(response.body, /site-banner\.webp/);
   assert.doesNotMatch(response.body, /class="wrap home-banner"/);
   assert.match(response.body, /class="skip-link" href="#main-content"/);
+  assert.match(response.body, /href="\/assets\/site\.css\?v=[^"]+"/);
+  assert.match(response.body, /src="\/assets\/site-navigation\.js\?v=[^"]+"/);
+  assert.match(response.body, /<svg class="site-menu-dots"[^>]*><circle[^>]*><\/circle><circle[^>]*><\/circle><circle[^>]*><\/circle><\/svg>/);
   assert.match(response.body, /<main id="main-content"/);
   assert.match(response.body, /aria-label="Frieren ana menüsü"/);
   assert.match(response.body, /site-menu-toggle/);
