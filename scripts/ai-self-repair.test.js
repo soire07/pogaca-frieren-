@@ -63,10 +63,10 @@ test('repair path allowlist accepts approved source, AI review, Guardian and tes
 });
 
 test('repair patch files must remain inside the affected-file list supplied by Guardian', () => {
-  const scopedTask = 'Guardian incident #42\\nİlgili dosyalar: rpg-mechanics.js';
+  const scopedTask = 'Guardian incident #42\nİlgili dosyalar: rpg-mechanics.js';
   assert.deepEqual(validatePatchPaths(validPatch, { task: scopedTask }), ['rpg-mechanics.js']);
   assert.throws(() => validatePatchPaths(validPatch, {
-    task: 'Guardian incident #42\\nİlgili dosyalar: owner-dashboard.js',
+    task: 'Guardian incident #42\nİlgili dosyalar: owner-dashboard.js',
   }), { message: 'REPAIR_TASK_SCOPE_VIOLATION' });
 });
 
