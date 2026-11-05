@@ -372,7 +372,6 @@ async function answerCodeQuestion(question, userId, conversationId) {
   if (isNeuralConfigured(process.env)) {
     try {
       const prompt = buildNeuralPrompt({
-        systemPrompt,
         conversationHistory,
         memoryContext,
         question,
