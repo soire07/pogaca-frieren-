@@ -46,6 +46,11 @@ export function getFrierenAiGuardianEndpoint(env = process.env) {
   return new URL('/internal/guardian-review', parsed).toString();
 }
 
+
+export function getOwnerActionErrorDestination(action) {
+  return String(action || '').startsWith('guardian-') ? '/owner/guardian' : '/owner';
+}
+
 export const OWNER_PANEL_SECTIONS = Object.freeze([
   { id: 'overview', label: 'Genel Bakış', command: '/owner' },
   { id: 'system', label: 'Sistem Durumu', command: '/owner-bilgi' },
@@ -578,6 +583,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + '<p>' + escapeHtml(incident.summary) + '</p>'
       + (evidence.length ? '<details><summary>Kanıt kayıtları (' + evidence.length + ')</summary>' + evidence.map(item => '<div class="small">' + escapeHtml(item.file || '') + (item.line ? ':' + Number(item.line) : '') + ' ' + escapeHtml(item.message || '') + '</div>').join('') + '</details>' : '')
       + '<div class="actions">'
+      + (canReview && !emergencyStop ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-review"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><button class="btn">Sorunu çöz</button><span class="small">Önce Frieren AI kök nedeni ve güvenli yama taslağını hazırlar; kodu otomatik değiştirmez.</span></form>' : '')
       + (canReview && !emergencyStop ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-review"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Frieren AI incelemesini başlat</label><button class="btn">Sorunu Çöz</button></form>' : '')
       + (!['resolved','ignored'].includes(incident.status) ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-resolve"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Sorunu kontrol ettim</label><button class="btn secondary">Çözüldü işaretle</button></form>' : '')
       + '</div></article>';
@@ -972,10 +978,12 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   }
 
   if (url.pathname === '/owner/action' && req.method === 'POST') {
+    let actionName = '';
     try {
       const form = await readForm(req);
       if (!safeStringEqual(form.get('csrf'), session.csrf)) return send(res, 403, page('İstek reddedildi', '<h1>CSRF doğrulaması başarısız</h1>'));
       const action = form.get('action');
+      actionName = String(action || '');
       if (action === 'support-reply') {
         const result = await replySupportTicketFromOwner(db, String(form.get('ticketId') || ''), OWNER_ID, String(form.get('message') || ''));
         redirect(res, '/owner/support?ticket=' + encodeURIComponent(String(form.get('ticketId') || '')) + '&notice=' + (result.status === 'replied' ? 'support_reply_saved' : 'invalid'));
@@ -1392,7 +1400,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         });
         notice = result ? 'announcement_sent' : 'invalid';
       }
-      redirect(res, '/owner?notice=' + notice);
+      redirect(res, getOwnerActionErrorDestination(actionName) + '?notice=' + notice);
     } catch (error) {
       const code = String(error?.message || '');
       console.error('Owner dashboard action failed:', code || 'unknown error');
