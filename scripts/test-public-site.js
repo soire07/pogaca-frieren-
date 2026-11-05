@@ -309,15 +309,19 @@ test('registration and login pages expose username and password forms', async ()
   assert.match(login.body, /action="\/login"/);
 });
 
-test('homepage uses the brand avatar and a lightweight custom profile header instead of the rejected banner', async () => {
+test('homepage renders the signed-in user profile with the completed starry banner', async () => {
   const response = res();
   await handlePublicSiteRequest(request('/kesfet', visitor), response);
   assert.ok(response.body.includes('site-avatar.webp'));
   assert.ok(response.body.includes('profile-banner-art'));
+  assert.ok(response.body.includes('site-profile-banner.svg'));
+  assert.ok(response.body.includes('MACERACI HESABI'));
+  assert.ok(response.body.includes('Gezgin'));
   assert.equal(response.body.includes('site-banner.webp'), false);
   const stylesheet = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
-  assert.ok(String(stylesheet.body).includes('.profile-banner-art{display:grid'));
+  assert.ok(String(stylesheet.body).includes('.profile-banner-art img{display:block'));
+  assert.ok(String(stylesheet.body).includes('.profile-label{display:block'));
   assert.match(String(stylesheet.body), /\.site-menu-toggle\{[^}]*transform:translateY\(-50%\)/);
   assert.ok(String(stylesheet.body).includes('.hero{position:relative;isolation:isolate'));
 });
@@ -909,3 +913,12 @@ test('anonymous search crawlers can read robots.txt and the XML sitemap', async 
 });
 
 test('market page registers live price preview and category controls', async () => { const source = await readFile(new URL('../public-site.js', import.meta.url), 'utf8'); assert.ok(source.includes('market-preview.js')); assert.ok(source.includes('name="category"')); assert.ok(source.includes('market-category')); assert.ok(source.includes('Eşya kategorisi')); assert.ok(source.includes('market-offer-preview')); });
+
+test('dedicated Frieren profile banner asset is publicly served as SVG', async () => {
+  const response = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-profile-banner.svg', headers: {} }, response), true);
+  assert.equal(response.status, 200);
+  assert.match(response.headers['Content-Type'], /image\/svg\+xml/);
+  assert.match(String(response.body), /Frieren yıldızlı gece bannerı/);
+  assert.match(String(response.body), /<svg/);
+});
