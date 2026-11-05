@@ -1033,3 +1033,62 @@ test('player home visibility and layout controls persist only for the linked acc
   assert.match(layout.headers.Location, /status=saved/);
   assert.deepEqual(JSON.parse(writes[1].params[3]), [{ roomKey: 'starter', decorationKey: 'book_shelf', position: 0 }]);
 });
+
+
+test('adventurer profile page is guild-scoped and renders canonical XP, titles, achievements, activity and leaderboards',async()=>{
+ const guildId='1539562273197260860',userId='123456789012345678';
+ const accountId='site_123e4567-e89b-12d3-a456-426614174000';
+ const calls=[];
+ const db={async query(sql,params){
+  calls.push({sql,params});
+  if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[{guild_id:guildId,user_id:userId,character_name:'Fern',class_name:'Büyücü',level:99,xp:38050,coins:900}],rowCount:1};
+  if(sql.includes('FROM users WHERE guild_id=$1 AND user_id=$2'))return{rows:[{created_at:'2026-01-01T00:00:00.000Z',boss_defeats:12,dungeon_wins:8,exploration_count:42,items_used_count:9,daily_streak:4,best_daily_streak:7}],rowCount:1};
+  if(sql.includes('FROM user_titles'))return{rows:[{title:'Kıdemli Maceracı',unlocked_at:'2026-01-02T00:00:00.000Z'}],rowCount:1};
+  if(sql.includes('FROM achievement_claims a LEFT JOIN player_home_trophies'))return{rows:[{achievement_key:'dungeon_25',claimed_at:'2026-01-03T00:00:00.000Z',display_slot:0},{achievement_key:'level_5',claimed_at:'2026-01-02T00:00:00.000Z',display_slot:null}],rowCount:2};
+  if(sql.includes('FROM adventure_history'))return{rows:[{activity_type:'adventure',activity_label:'Buzlu Orman',activity_at:'2026-01-04T00:00:00.000Z',xp_awarded:50}],rowCount:1};
+  if(sql.includes('FROM anime_character_collection'))return{rows:[{anime_cards:14,anime_copies:22,journal_entries:9}],rowCount:1};
+  if(sql.includes('FROM arena_seasons'))return{rows:[{season_name:'Kuzey Sezonu',rating:1420,wins:5,losses:2,matches:7}],rowCount:1};
+  if(sql.includes('WITH xp_board AS'))return{rows:[
+   {board:'xp',players:[{user_id:userId,character_name:'Fern',level:19,xp:38050}]},
+   {board:'boss',players:[{user_id:userId,character_name:'Fern',boss_defeats:12}]},
+   {board:'dungeon',players:[{user_id:userId,character_name:'Fern',dungeon_wins:8}]},
+   {board:'arena',players:[{user_id:userId,character_name:'Fern',rating:1420}]},
+   {board:'daily_adventure_xp',players:[{user_id:userId,character_name:'Fern',xp:50}]}
+  ],rowCount:5};
+  if(sql.includes('FROM player_profile_settings'))return{rows:[{show_stats:false,show_achievements:true,show_collections:false,show_activity:false,show_cosmetics:true,active_title:'Kıdemli Maceracı'}],rowCount:1};
+  if(sql.includes('FROM player_homes'))return{rows:[{is_public:true}],rowCount:1};
+  if(sql.includes('FROM player_cosmetic_loadout'))return{rows:[{slot:'profile_frame',cosmetic_key:'moon_frame'}],rowCount:1};
+  throw new Error('Unexpected profile query: '+sql);
+ }};
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/maceraci/profil?guildId='+guildId,{id:accountId,username:'Gezgin'}),response,{db}),true);
+ assert.equal(response.status,200);
+ assert.match(response.body,/Maceracı Profili/);
+ assert.match(response.body,/Seviye 19/);
+ assert.match(response.body,/1\.950/);
+ assert.match(response.body,/Kıdemli Maceracı/);
+ assert.match(response.body,/dungeon_25/);
+ assert.match(response.body,/En yüksek ödüllü başarımlar/);
+ assert.match(response.body,/Sıralamalar/);
+ assert.match(response.body,/Son 24 saat macera XP/);
+ assert.match(response.body,/Gizlilik ayarları/);
+ assert.ok(calls.every(call=>!call.params||!call.params.includes('999999999999999999')));
+ assert.ok(calls.some(call=>call.sql.includes('WHERE guild_id=$1 AND user_id=$2')));
+});
+
+test('public profile preferences are CSRF protected and saved only for the linked guild character',async()=>{
+ const guildId='1539562273197260860',userId='123456789012345678';
+ const accountId='site_123e4567-e89b-12d3-a456-426614174000';
+ const calls=[];
+ const db={async query(sql,params){
+  calls.push({sql,params});
+  if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[{guild_id:guildId,user_id:userId,character_name:'Fern'}],rowCount:1};
+  if(sql.includes('SELECT 1 FROM user_titles'))return{rows:[{title:params[2]}],rowCount:1};
+  return{rows:[],rowCount:1};
+ }};
+ const invalid=res();
+ const bad={method:'POST',url:'/maceraci/yasam',headers:{cookie:buildPublicSiteSessionCookie(createPublicSiteSession(secret,{id:accountId,username:'Gezgin'},Math.floor(Date.now()/1000)+3600),'3600').split(';')[0], 'content-type':'application/x-www-form-urlencoded'},async *[Symbol.asyncIterator](){yield Buffer.from('csrf=invalid&guildId='+guildId+'&action=set-profile-settings');}};
+ assert.equal(await handlePublicSiteRequest(bad,invalid,{db}),true);
+ assert.equal(invalid.status,403);
+ assert.equal(calls.length,0);
+});
