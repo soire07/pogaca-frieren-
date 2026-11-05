@@ -815,6 +815,7 @@ test('adventurer calendar exposes direct raid signup with the real guild team UU
 });
 
 
+// Crawler routes intentionally remain public while player and owner routes stay gated.
 test('anonymous search crawlers can read the dedicated Frieren Bot identity landing page', async () => {
   const response = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/tanitim', headers: {} }, response), true);
