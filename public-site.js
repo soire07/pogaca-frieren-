@@ -639,7 +639,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
 
     let status='invalid';
   if(url.pathname==='/maceraci/yasam'){
-    if (!requireSiteAccount(res, user?.id)) return true;
+    if (!requireSiteAccount(res, session?.id)) return true;
       const action=String(form.get('action')||'');
       if(action==='unlock-room')status=(await unlockHomeRoom(db,{guildId,userId:profile.user_id,roomKey:String(form.get('roomKey')||'')})).status;
       else if(action==='save-layout'){

@@ -386,7 +386,10 @@ async function runOwnerGet(url, { cookie = true } = {}) {
   try {
     await handleOwnerDashboardRequest(req, response, {
       client: {},
-      db: { query: async () => { throw new Error('security workspace must not query unrelated data'); } }
+      db: { query: async sql => {
+        if (String(sql).includes('FROM owner_guardian_incidents') || String(sql).includes('FROM owner_guardian_evidence_chain')) return { rows: [] };
+        throw new Error('security workspace must not query unrelated data');
+      } }
     });
     return response;
   } finally {

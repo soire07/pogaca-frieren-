@@ -121,6 +121,20 @@ test('migration runner rejects gaps, unsafe filenames and transaction control', 
   }
 });
 
+test('migration runner allows transaction keywords inside dollar-quoted PL/pgSQL bodies', async () => {
+  const directory = await migrationDirectory({
+    '0001_guardian_trigger.sql': "CREATE OR REPLACE FUNCTION reject_change()\nRETURNS trigger\nLANGUAGE plpgsql\nAS $\nBEGIN\n  RAISE EXCEPTION 'blocked';\nEND;\n$;"
+  });
+  const db = fakeDatabase();
+  try {
+    const result = await runDatabaseMigrations(db, { migrationsDir: directory });
+    assert.deepEqual(result.applied, [1]);
+    assert.ok(db.statements.some(row => row.sql.includes('CREATE OR REPLACE FUNCTION reject_change')));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('production migration set contains the append-only Guardian evidence chain', async () => {
   const db = fakeDatabase();
   const result = await runDatabaseMigrations(db);
