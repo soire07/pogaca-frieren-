@@ -291,13 +291,13 @@ test('registration and login pages expose username and password forms', async ()
 test('homepage uses the brand avatar and a lightweight custom profile header instead of the rejected banner', async () => {
   const response = res();
   await handlePublicSiteRequest(request('/kesfet', visitor), response);
-  assert.match(response.body, /site-avatar\\.webp/);
-  assert.match(response.body, /profile-banner-art/);
-  assert.doesNotMatch(response.body, /site-banner\\.webp/);
+  assert.ok(response.body.includes('site-avatar.webp'));
+  assert.ok(response.body.includes('profile-banner-art'));
+  assert.equal(response.body.includes('site-banner.webp'), false);
   const stylesheet = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
-  assert.match(String(stylesheet.body), /\\.profile-banner-art\\{display:grid/);
-  assert.match(String(stylesheet.body), /\\.hero\\{position:relative;isolation:isolate/);
+  assert.ok(String(stylesheet.body).includes('.profile-banner-art{display:grid'));
+  assert.ok(String(stylesheet.body).includes('.hero{position:relative;isolation:isolate'));
 });
 test('shared stylesheet is publicly cacheable for authenticated and auth pages', async () => {
   const response = res();
@@ -345,7 +345,7 @@ test('mobile public pages keep card actions and hero media within the viewport',
   assert.match(String(stylesheet.body), /max-width:560px/);
   assert.match(String(stylesheet.body), /\.actions \.btn\{flex:1 1 100%;width:100%\}/);
   assert.match(String(stylesheet.body), /focus-visible/);
-  assert.match(String(stylesheet.body), /\\.skip-link:focus/);
+  assert.ok(String(stylesheet.body).includes('.skip-link:focus'));
   assert.match(String(stylesheet.body), /overscroll-behavior-x:contain/);
 });
 
