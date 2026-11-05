@@ -38,11 +38,13 @@
     if (event.target.closest('a[href]')) closeMenu(false);
   });
 
-  // Capture the outside click before page-level handlers can stop propagation.
-  document.addEventListener('click', event => {
+  // Close on both touch/pointer starts and click, in capture phase so page handlers cannot swallow dismissal.
+  const dismissFromOutside = event => {
     if (toggle.getAttribute('aria-expanded') !== 'true') return;
     if (!menu.contains(event.target) && !toggle.contains(event.target)) closeMenu(false);
-  }, true);
+  };
+  document.addEventListener('pointerdown', dismissFromOutside, true);
+  document.addEventListener('click', dismissFromOutside, true);
   document.addEventListener('keydown', event => {
     if (toggle.getAttribute('aria-expanded') !== 'true') return;
     if (event.key === 'Escape') {
