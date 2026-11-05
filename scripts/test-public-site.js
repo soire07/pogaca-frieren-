@@ -1238,3 +1238,16 @@ test('authentication and guild management forms load the shared functional butto
   assert.match(guild, /site-actions\.js/);
   assert.match(guild, /\.guild-save:hover/);
 });
+
+
+test('all site and panel button markup declares an explicit action type', async () => {
+  const paths = ['../public-site.js', '../site-auth.js', '../guild-dashboard.js', '../owner-dashboard.js'];
+  for (const path of paths) {
+    const source = await readFile(new URL(path, import.meta.url), 'utf8');
+    const buttons = [...source.matchAll(/<button\b[^>]*>/g)].map(match => match[0]);
+    assert.ok(buttons.length > 0, path + ' should contain its known action controls');
+    for (const button of buttons) {
+      assert.match(button, /\btype="(?:submit|button|reset)"/, path + ' has an untyped button: ' + button);
+    }
+  }
+});
