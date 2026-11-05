@@ -230,3 +230,58 @@ body.site-menu-open{overflow:hidden}
 @media(max-width:850px){.topbar{padding-left:72px}.site-menu-toggle{left:10px;width:44px;height:50px;border-radius:14px}}
 @media(max-width:560px){.topbar{padding:9px 13px 9px 66px;min-height:60px}.site-sidebar{padding:13px 11px 10px;width:min(330px,calc(100vw - 48px))}.site-sidebar-intro{padding:13px 8px 9px}.site-nav-link{min-height:50px}.site-menu-toggle{left:9px;width:42px;height:48px}}
 @media(prefers-reduced-motion:reduce){.site-menu-toggle,.site-sidebar,.site-nav-link{transition:none!important}.site-menu-toggle:hover{transform:translateY(-50%)}.site-nav-link:hover{transform:none}}
+
+
+/* Compact, anchored navigation menu inspired by modern app overflow menus. */
+.site-menu-toggle{
+ position:fixed;z-index:52;top:14px;left:14px;transform:none;
+ display:grid;place-items:center;width:42px;height:42px;padding:0;
+ border:1px solid #ffffff1b;border-radius:13px;
+ background:#211b31;color:#f7f1ff;
+ box-shadow:0 5px 18px #05030d66;cursor:pointer;
+ transition:background .16s,border-color .16s,transform .16s;
+}
+.site-menu-toggle:hover{transform:none;background:#302542;border-color:#c9a8ff77;box-shadow:0 7px 22px #05030d88}
+.site-menu-toggle span{font:700 25px/1 Arial,sans-serif;letter-spacing:1px;transform:translateY(-3px)}
+.site-menu-backdrop{display:none!important}
+.site-sidebar[hidden]{display:none!important}
+.site-sidebar{
+ position:fixed;z-index:51;inset:64px auto auto 14px;
+ display:flex;flex-direction:column;width:min(318px,calc(100vw - 28px));
+ max-height:min( min(690px, calc(100dvh - 82px)), 78vh);
+ padding:10px;border:1px solid #ffffff1c;border-radius:18px;
+ background:rgba(28,23,41,.97);backdrop-filter:blur(22px);
+ box-shadow:0 18px 60px #03020bcc,0 2px 10px #0005;
+ transform:translateY(-6px) scale(.98);transform-origin:top left;opacity:0;
+ visibility:hidden;pointer-events:none;
+ transition:opacity .14s ease,transform .14s ease,visibility .14s;
+}
+.site-sidebar.is-open{transform:translateY(0) scale(1);opacity:1;visibility:visible;pointer-events:auto}
+.site-sidebar-head{padding:5px 5px 10px;border-bottom:1px solid #ffffff12}
+.site-sidebar-brand{gap:9px;font:15px Georgia,serif;letter-spacing:.13em}
+.site-sidebar-brand .brand-mark{width:32px;height:32px;font-size:19px}
+.site-sidebar-brand small{font-size:7px}
+.site-menu-close{flex-basis:32px;width:32px;height:32px;border:0;border-radius:9px;background:#ffffff0a;font-size:20px}
+.site-sidebar-intro{padding:11px 8px 8px}
+.site-sidebar-intro span{font-size:8px;letter-spacing:.16em}
+.site-sidebar-intro p{margin-top:3px;font-size:10px;line-height:1.45}
+.site-sidebar-nav{padding:0 2px 8px;scrollbar-width:thin}
+.site-nav-group{margin:7px 0 10px}
+.site-nav-group h2{margin:0 0 4px;padding:0 9px;color:#a99db9;font-size:8px;letter-spacing:.16em}
+.site-nav-link{gap:10px;min-height:39px;margin:2px 0;padding:5px 8px;border-radius:10px;background:transparent}
+.site-nav-link:hover{transform:none;background:#ffffff0b;border-color:#ffffff12}
+.site-nav-link[aria-current=page]{border-color:#c6a4f033;background:#b18be51b;box-shadow:inset 2px 0 #d6b7ff}
+.site-nav-icon{flex-basis:28px;width:28px;height:28px;border:0;border-radius:8px;background:#ffffff0a;font-size:14px}
+.site-nav-copy{gap:0}
+.site-nav-copy strong{font-size:11px;font-weight:650}
+.site-nav-copy small{font-size:9px;color:#a99fb7}
+.site-nav-arrow{font-size:10px}
+.site-sidebar-foot{padding:8px 5px 2px;border-top:1px solid #ffffff12;font-size:8px}
+.topbar{padding-left:70px}
+@media(max-width:850px){.topbar{padding-left:68px}.site-menu-toggle{top:10px;left:10px}}
+@media(max-width:560px){
+ .site-menu-toggle{top:9px;left:9px;width:40px;height:40px;border-radius:12px}
+ .site-sidebar{inset:57px auto auto 9px;width:min(310px,calc(100vw - 18px));max-height:calc(100dvh - 70px)}
+ .topbar{padding-left:62px}
+}
+@media(prefers-reduced-motion:reduce){.site-sidebar,.site-menu-toggle{transition:none!important}.site-sidebar{transform:none}}
