@@ -284,8 +284,9 @@ function adventurerPanel(user, data, status) {
 }
 
 function portalGuildPicker(user, profiles, route, title) {
+  const [routePath, routeHash=''] = String(route).split('#', 2);
   if (!profiles.length) return page(title, '<main class="wrap" style="padding:54px 0 80px"><h1 class="hero-title">Maceracı <em>bağlantısı gerekli</em></h1><article class="card"><p>Önce Discord sunucunda <b>/maceraci bagla</b> komutuyla karakterini web hesabına bağla.</p><a class="btn" href="/maceraci">Maceracı paneline dön</a></article></main>', user);
-  const cards = profiles.map(profile => '<article class="card"><div class="eyebrow">' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + Number(profile.level) + '</p><a class="btn" href="' + route + '?guildId=' + encodeURIComponent(profile.guild_id) + '">Bu sunucuyu seç</a></article>').join('');
+  const cards = profiles.map(profile => '<article class="card"><div class="eyebrow">' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + Number(profile.level) + '</p><a class="btn" href="' + routePath + '?guildId=' + encodeURIComponent(profile.guild_id) + (routeHash ? '#' + esc(routeHash) : '') + '">Bu sunucuyu seç</a></article>').join('');
   return page(title, '<main class="wrap" style="padding:54px 0 80px"><div class="eyebrow">✧ MACERACI LONCASI</div><h1 class="hero-title">Sunucunu <em>seç.</em></h1><p class="lead">İşlemler yalnızca Discord hesabına bağladığın karakterin bulunduğu sunucuda yapılır.</p><div class="portal-grid">' + cards + '</div></main>', user);
 }
 
@@ -879,7 +880,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const guildId=String(url.searchParams.get('guildId')||'');
     if(!guildId){
       const dashboard=await getAdventurerDashboard(db,user.id);
-      const html=portalGuildPicker(user,dashboard.profiles,url.pathname,'Maceracı Profili');
+      const html=portalGuildPicker(user,dashboard.profiles,url.pathname+url.hash,'Maceracı Profili');
       res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
       res.end(html);return true;
     }
