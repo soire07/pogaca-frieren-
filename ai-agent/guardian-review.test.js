@@ -138,7 +138,7 @@ test('Guardian review records the exact source commit, context files and context
   assert.equal(result.sourceContextHash, expectedHash);
   assert.equal(result.sourceCommitSha, 'c'.repeat(40));
   const userPrompt = JSON.parse(prompt.messages[1].content);
-  assert.match(userPrompt.sourceContext, /guardian\\/automation.test.js/);
+  assert.ok(userPrompt.sourceContext.includes('guardian/automation.test.js'));
   assert.ok(userPrompt.constraints.some(rule => rule.includes('aynı davranışı zaten doğruluyorsa')));
 });
 
