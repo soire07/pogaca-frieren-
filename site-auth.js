@@ -17,7 +17,7 @@ const baseUrl = () => String(process.env.SITE_BASE_URL || 'https://frierenbot.ve
 export function validateSiteUsername(value) {
   const username = String(value || '').normalize('NFC').trim();
   const length = Array.from(username).length;
-  return length >= 3 && length <= 24 && /^[\\p{L}\\p{N}_.-]+$/u.test(username) ? username : null;
+  return length >= 3 && length <= 24 && /^[\p{L}\p{N}_.-]+$/u.test(username) ? username : null;
 }
 export function validateSiteEmail(value) {
   const email = String(value || '').trim().toLowerCase();
