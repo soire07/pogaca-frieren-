@@ -352,7 +352,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   }
   const authHandled = await handleSiteAuthRequest(req, res, { db, sessionSecret: process.env.ADMIN_SESSION_SECRET, createSession: createPublicSiteSession });
   if (authHandled) return true;
-  const url = new URL(req.url, 'http://localhost');
+
   if (req.method === 'GET' && url.pathname === '/hesap/veri') {
     const session = readPublicSiteSession(cookies(req)[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
     if (!requireSiteAccount(res, session?.id)) return true;
