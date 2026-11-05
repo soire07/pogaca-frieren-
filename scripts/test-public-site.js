@@ -381,6 +381,39 @@ test('command catalogue is authenticated, dynamic, searchable and safely escapes
   assert.match(response.body, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
 });
 
+test('command catalogue mirrors Discord subcommands, required options, choices and default permissions', async () => {
+  const response = res();
+  const commands = new Map([['yonetim', { data: {
+    name: 'yonetim',
+    description: 'Sunucu bağlantı araçları.',
+    default_member_permissions: '32',
+    dm_permission: false,
+    options: [{
+      type: 1,
+      name: 'bagla',
+      description: 'Karakter bağlantısını başlat.',
+      options: [{
+        type: 3,
+        name: 'kod',
+        description: 'Tek kullanımlık bağlantı kodu.',
+        required: true,
+        choices: [{ name: 'Örnek kod', value: 'ornek-kod' }]
+      }]
+    }]
+  }}]]);
+  await handlePublicSiteRequest(request('/komutlar'), response, { client: { commands } });
+  assert.equal(response.status, 200);
+  assert.match(response.body, /Parametreler ve kullanım/);
+  assert.match(response.body, /Alt komut/);
+  assert.match(response.body, /--bagla/);
+  assert.match(response.body, /--kod/);
+  assert.match(response.body, /Zorunlu/);
+  assert.match(response.body, /Örnek kod/);
+  assert.match(response.body, /Gerekli: Sunucuyu Yönet/);
+  assert.match(response.body, /DM kullanımına kapalı/);
+  assert.match(response.body, /command-options/);
+});
+
 test('command catalogue handles an unavailable command collection without throwing', async () => {
   const response = res();
   await handlePublicSiteRequest(request('/komutlar'), response, { client: {} });
