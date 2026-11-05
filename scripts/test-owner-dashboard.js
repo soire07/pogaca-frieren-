@@ -2,12 +2,32 @@ import test from 'node:test';
 import { createHmac } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, renderOwnerSecurityWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest } from '../owner-dashboard.js';
 
 
 test('Guardian has a dedicated private Owner Panel section', () => {
   assert.ok(OWNER_PANEL_SECTIONS.some(section => section.id === 'guardian'));
   assert.match(renderOwnerNavigation(), /href="\/owner\/guardian"/);
+});
+
+
+test('Frieren Security is an independent first navigation tab without changing existing sections', () => {
+  const navigation = renderOwnerNavigation();
+  assert.ok(navigation.indexOf('FRIEREN SECURITY') < navigation.indexOf('GENEL'));
+  assert.ok(navigation.includes('href="/owner/security"'));
+  for (const id of ['overview', 'system', 'guardian', 'memories', 'approvals', 'rpg']) {
+    assert.ok(OWNER_PANEL_SECTIONS.some(section => section.id === id));
+  }
+});
+
+test('Frieren Security workspace clearly distinguishes active platform protection from integrations not yet connected', () => {
+  const html = renderOwnerSecurityWorkspace();
+  assert.match(html, /Güvenlik merkezi/);
+  assert.match(html, /Otomatik DDoS azaltma/);
+  assert.match(html, /Henüz bağlanmadı/);
+  assert.match(html, /Kurulum bekliyor/);
+  assert.match(html, /SHA-256/);
+  assert.doesNotMatch(html, /gerçek zamanlı saldırı algılandı/i);
 });
 
 test('Guardian AI bridge endpoint requires HTTPS and targets the private review route', () => {
@@ -328,6 +348,53 @@ async function runOwnerPost(options, db, client = {}) {
     }
   }
 }
+
+
+async function runOwnerGet(url, { cookie = true } = {}) {
+  const token = createOwnerSession(secret, Math.floor(Date.now() / 1000) + 3600);
+  const req = new EventEmitter();
+  req.method = 'GET';
+  req.url = url;
+  req.headers = { cookie: cookie ? 'frieren_owner_session=' + encodeURIComponent(token) : '' };
+  const response = { status: 0, headers: {}, body: '', writeHead(status, headers = {}) {
+    this.status = status; this.headers = headers;
+  }, end(body = '') { this.body = body; } };
+  const previous = {
+    CLIENT_ID: process.env.CLIENT_ID,
+    DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
+    ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET
+  };
+  process.env.CLIENT_ID = 'test-client-id';
+  process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
+  process.env.ADMIN_SESSION_SECRET = secret;
+  try {
+    await handleOwnerDashboardRequest(req, response, {
+      client: {},
+      db: { query: async () => { throw new Error('security workspace must not query unrelated data'); } }
+    });
+    return response;
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+}
+
+test('Frieren Security route requires the existing signed Owner session', async () => {
+  const response = await runOwnerGet('/owner/security', { cookie: false });
+  assert.equal(response.status, 200);
+  assert.match(response.body, /Discord ile devam et/);
+  assert.doesNotMatch(response.body, /PRIVATE SECURITY CENTER/);
+});
+
+test('authenticated Frieren Security route renders independently without querying bot or RPG data', async () => {
+  const response = await runOwnerGet('/owner/security');
+  assert.equal(response.status, 200);
+  assert.match(response.body, /PRIVATE SECURITY CENTER/);
+  assert.match(response.body, /FRIEREN SECURITY/);
+  assert.match(response.body, /Kurulum bekliyor/);
+});
 
 test('owner action endpoint rejects requests without an authenticated owner session', async () => {
   const db = { query: async () => { throw new Error('database must not be touched'); } };

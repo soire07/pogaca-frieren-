@@ -78,6 +78,7 @@ export function renderOwnerNavigation() {
   ];
   const sections = new Map(OWNER_PANEL_SECTIONS.map(section => [section.id, section]));
   return '<nav class="nav" aria-label="Owner panel bölümleri">'
+    + '<div class="security-nav-slot"><a class="security-nav-link" href="/owner/security" aria-label="Frieren Security Center"><span class="security-nav-icon" aria-hidden="true">⬡</span><span><strong>FRIEREN SECURITY</strong><small>GÜVENLİK MERKEZİ · PRIVATE</small></span><span class="security-nav-arrow" aria-hidden="true">↗</span></a></div>'
     + '<div class="nav-brand"><span class="nav-brand-mark">✧</span><strong>FRIEREN</strong><small>THE ARCANE SANCTUARY</small></div>'
     + groups.map(group => '<div class="nav-group"><div class="nav-group-title">' + group.label + '</div>'
       + group.ids.map(id => {
@@ -661,6 +662,30 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
     + '<p class="small">Guardian yeni yerel hata kayıtlarını izler. Harici servis kontrolleri bu ekrandaki tarama düğmesiyle yapılır; ücretsiz Render servislerini sürekli uyandıran keep-alive sorguları çalıştırılmaz.</p></section>');
 }
 
+
+export function renderOwnerSecurityWorkspace() {
+  return '<style>'
+    + '.security-nav-slot{padding:10px 8px 13px;border-bottom:1px solid rgba(190,150,255,.22);margin-bottom:4px}'
+    + '.security-nav-link{display:flex!important;align-items:center;gap:10px;min-height:58px!important;padding:10px!important;border:1px solid rgba(183,139,255,.38)!important;border-radius:12px!important;background:linear-gradient(120deg,rgba(65,35,104,.72),rgba(21,18,45,.96))!important;box-shadow:0 0 24px rgba(150,93,231,.12),inset 0 1px rgba(255,255,255,.06)}'
+    + '.security-nav-link:hover{transform:translateY(-1px)!important;border-color:rgba(207,173,255,.72)!important;box-shadow:0 0 28px rgba(150,93,231,.22)!important}'
+    + '.security-nav-icon{display:grid;place-items:center;flex:0 0 34px;height:34px;border-radius:10px;background:linear-gradient(145deg,#7544a9,#39245f);color:#f1e4ff;font-size:20px}'
+    + '.security-nav-link>span:nth-child(2){display:grid;gap:4px;min-width:0}.security-nav-link strong{font-size:11px;letter-spacing:.12em;color:#f0e4ff}.security-nav-link small{font-size:8px;letter-spacing:.08em;color:#c5a8e9}.security-nav-arrow{margin-left:auto;color:#d7b7ff}'
+    + '.security-hero{position:relative;overflow:hidden;border:1px solid rgba(191,145,255,.38);border-radius:18px;padding:30px;background:radial-gradient(ellipse at 85% 15%,rgba(158,93,221,.26),transparent 42%),linear-gradient(135deg,#1b1232,#0a1028 62%,#080d1d);box-shadow:0 24px 70px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.06)}'
+    + '.security-hero:after{content:"⬡";position:absolute;right:5%;top:8%;font-size:clamp(90px,18vw,190px);color:rgba(213,177,255,.06);pointer-events:none}'
+    + '.security-hero>*{position:relative;z-index:1}.security-hero h1{font:500 clamp(30px,4vw,46px) Georgia,serif;color:#f3eaff;margin:12px 0 8px}.security-kicker{color:#d2b3f6;font-size:10px;letter-spacing:.2em;font-weight:800}.security-hero p{max-width:760px;color:#c1b4d7}'
+    + '.security-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}.security-card{padding:18px;border:1px solid rgba(173,139,224,.23);border-radius:14px;background:linear-gradient(145deg,rgba(35,26,59,.94),rgba(10,15,34,.98))}.security-card small{display:block;color:#b7a4d1}.security-card strong{display:block;margin:8px 0;color:#f0e5ff;font:500 19px Georgia,serif}.security-card p{margin:0;color:#a99abb;font-size:12px;line-height:1.55}.security-note{margin-top:14px;padding:15px;border:1px solid rgba(224,184,121,.28);border-radius:12px;background:rgba(83,58,27,.2);color:#e7d4b5;font-size:12px;line-height:1.6}'
+    + '@media(max-width:760px){.security-nav-slot{padding:0 3px 8px;flex:0 0 auto;border:0;border-right:1px solid rgba(190,150,255,.22);margin:0 2px 0 0}.security-nav-link{min-width:196px;min-height:42px!important;padding:6px 8px!important}.security-nav-icon{flex-basis:28px;height:28px}.security-nav-link strong{font-size:9px}.security-nav-link small{font-size:7px}.security-grid{grid-template-columns:1fr}.security-hero{padding:22px 18px}}'
+    + '</style>'
+    + '<div class="top"><div><div class="brand">FRIEREN SECURITY</div><div class="small">PRIVATE SECURITY CENTER · OWNER ONLY</div></div><a class="btn secondary" href="/owner">Owner Paneli</a></div>'
+    + '<section class="security-hero"><span class="security-kicker">✦ FRIEREN SECURITY CENTER</span><h1>Güvenlik merkezi</h1><p>Poğaça Frieren altyapısı ve Frieren web platformu için güvenlik görünümü. Bu alan yalnızca doğrulanmış Owner oturumuna açıktır; Frieren AI kendi mühendislik görevini sürdürür, Frieren Guard ise güvenlik olaylarını izlemek üzere ayrı rolde kalır.</p></section>'
+    + '<div class="security-grid">'
+    + '<article class="security-card"><small>Vercel platform koruması</small><strong>Otomatik DDoS azaltma</strong><p>Vercel platform katmanındaki DDoS koruması tüm planlarda otomatik uygulanır.</p></article>'
+    + '<article class="security-card"><small>Olay akışı</small><strong>Henüz bağlanmadı</strong><p>Firewall olayları ve saldırı bildirimleri bu panele henüz aktarılmıyor; canlı olay varmış gibi gösterilmez.</p></article>'
+    + '<article class="security-card"><small>Delil ve IP arşivi</small><strong>Kurulum bekliyor</strong><p>Doğrulanmış kaynak IP, UTC zaman damgası, olay kimliği ve bütünlük zinciri entegrasyonu henüz etkin değil.</p></article>'
+    + '</div>'
+    + '<section class="panel"><h2>Güvenlik entegrasyon durumu</h2><p class="muted">Bu sekme şu anda bağımsız görsel alan ve durum özeti olarak hazırlanmıştır. Vercel Firewall olaylarının güvenli aktarımı, güvenilir proxy üzerinden IP doğrulaması, değiştirilemez delil saklama ve rapor dışa aktarma ayrı aşamada bağlanacaktır.</p><div class="security-note"><strong>Delil doğruluğu:</strong> Uygulama başlıklarından gelen her IP adresi güvenilir kabul edilmeyecek. Yalnızca doğrulanmış platform kaynakları kullanılacak. SHA-256 bütünlük kontrolü tek başına olayın kaynağını veya hukuki geçerliliğini kanıtlamaz.</div></section>';
+}
+
 export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   const url = new URL(req.url, BASE_URL);
   if (!url.pathname.startsWith('/owner')) return false;
@@ -760,6 +785,11 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     } else {
       send(res, 200, page('Frieren giriş', '<span class="tag">✧ FANTASTİK YOLCULUĞA GİRİŞ</span><h1>Frieren evrenine hoş geldin</h1><p>Siteye devam etmek için Discord hesabınla giriş yap. Girişten sonra ana sayfa, bot tanıtımı ve GIF galerisi açılır. Owner Panel yalnızca bot sahibine özeldir.</p><a class="btn" href="/owner/login">Discord ile devam et</a><p class="muted">Güvenli giriş · Discord kimlik doğrulaması</p>'));
     }
+    return true;
+  }
+
+  if (url.pathname === '/owner/security' && req.method === 'GET') {
+    send(res, 200, page('Frieren Security', renderOwnerNavigation() + renderOwnerSecurityWorkspace()));
     return true;
   }
 

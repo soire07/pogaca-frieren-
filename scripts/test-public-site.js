@@ -908,4 +908,4 @@ test('anonymous search crawlers can read robots.txt and the XML sitemap', async 
   assert.match(sitemap.body, /<loc>https:\/\/frierenbot\.vercel\.app\/tanitim<\/loc>/);
 });
 
-test('market page registers live price preview and category controls', async () => { const source = await readFile(new URL('../public-site.js', import.meta.url), 'utf8'); assert.ok(source.includes('market-preview.js')); assert.ok(source.includes('name="category"')); assert.ok(source.includes('market-category')); assert.ok(source.includes('Eşya kategorisi')); });
+test('market page registers live price preview and category controls', async () => { const source = await readFile(new URL('../public-site.js', import.meta.url), 'utf8'); assert.ok(source.includes('market-preview.js')); assert.ok(source.includes('name="category"')); assert.ok(source.includes('market-category')); assert.ok(source.includes('Eşya kategorisi')); assert.ok(source.includes('market-offer-preview')); });
