@@ -40,8 +40,8 @@ test('Frieren Security workspace clearly distinguishes active platform protectio
   const html = renderOwnerSecurityWorkspace();
   assert.match(html, /Güvenlik merkezi/);
   assert.match(html, /Otomatik DDoS azaltma/);
-  assert.match(html, /Henüz bağlanmadı/);
-  assert.match(html, /Kurulum bekliyor/);
+  assert.match(html, /Anahtar eksik/);
+  assert.match(html, /Kontrol edilemedi/);
   assert.match(html, /SHA-256/);
   assert.doesNotMatch(html, /gerçek zamanlı saldırı algılandı/i);
 });
@@ -386,7 +386,10 @@ async function runOwnerGet(url, { cookie = true } = {}) {
   try {
     await handleOwnerDashboardRequest(req, response, {
       client: {},
-      db: { query: async () => { throw new Error('security workspace must not query unrelated data'); } }
+      db: { query: async sql => {
+        if (String(sql).includes('FROM owner_guardian_incidents') || String(sql).includes('FROM owner_guardian_evidence_chain')) return { rows: [] };
+        throw new Error('security workspace must not query unrelated data');
+      } }
     });
     return response;
   } finally {
@@ -409,7 +412,7 @@ test('authenticated Frieren Security route renders independently without queryin
   assert.equal(response.status, 200);
   assert.match(response.body, /PRIVATE SECURITY CENTER/);
   assert.match(response.body, /FRIEREN SECURITY/);
-  assert.match(response.body, /Kurulum bekliyor/);
+  assert.match(response.body, /Anahtar eksik/);
 });
 
 test('owner action endpoint rejects requests without an authenticated owner session', async () => {
@@ -1091,21 +1094,6 @@ test('synthetic Frieren AI → authenticated Owner Panel review → explicit own
   }
 });
 
-test('Guardian workspace hides generic workflow history from the single-run evidence slot', () => {
-  const job = {
-    id: 990055, incident_id: 990054, incident_title: 'Synthetic refresh test',
-    agent: 'frieren_ai', system: 'guardian', status: 'completed',
-    created_at: '2026-11-05T00:00:00Z', result: { status: 'proposal_only' },
-    repair_dispatch_status: 'dispatched',
-    repair_run_url: 'https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml',
-  };
-  const listOnly = renderOwnerGuardianWorkspace({ jobs: [job] });
-  assert.doesNotMatch(listOnly, /Tekil workflow çalıştırmasını aç/);
-  job.repair_run_url = 'https://github.com/soire07/pogaca-frieren-/actions/runs/42018567895';
-  const exact = renderOwnerGuardianWorkspace({ jobs: [job] });
-  assert.match(exact, /Tekil workflow çalıştırmasını aç/);
-});
-
 test('Frieren Security renders real Guard incidents, verified network attribution and chain integrity', () => {
   const html = renderOwnerSecurityWorkspace({
     ingestConfigured: true,
@@ -1127,4 +1115,19 @@ test('Frieren Security renders real Guard incidents, verified network attributio
   assert.match(html, /trusted_proxy/);
   assert.match(html, /Bütünlük doğrulandı/);
   assert.match(html, /SHA-256/);
+});
+
+test('Guardian workspace hides generic workflow history from the single-run evidence slot', () => {
+  const job = {
+    id: 990055, incident_id: 990054, incident_title: 'Synthetic refresh test',
+    agent: 'frieren_ai', system: 'guardian', status: 'completed',
+    created_at: '2026-11-05T00:00:00Z', result: { status: 'proposal_only' },
+    repair_dispatch_status: 'dispatched',
+    repair_run_url: 'https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml',
+  };
+  const listOnly = renderOwnerGuardianWorkspace({ jobs: [job] });
+  assert.doesNotMatch(listOnly, /Tekil workflow çalıştırmasını aç/);
+  job.repair_run_url = 'https://github.com/soire07/pogaca-frieren-/actions/runs/42018567895';
+  const exact = renderOwnerGuardianWorkspace({ jobs: [job] });
+  assert.match(exact, /Tekil workflow çalıştırmasını aç/);
 });
