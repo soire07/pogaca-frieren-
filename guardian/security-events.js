@@ -1,4 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { isIP } from 'node:net';
 import { resolveVerifiedClientIp } from '../security/client-ip.js';
 import { createGuardianIncident } from './core.js';
 import { upsertGuardianIncident } from './store.js';
@@ -87,7 +88,7 @@ export async function recordGuardianSecurityEvent(db, event, {
       'SELECT event_hash FROM owner_guardian_evidence_chain ORDER BY sequence_no DESC LIMIT 1 FOR UPDATE'
     );
     const previousHash = String(previousResult.rows?.[0]?.event_hash || GENESIS_HASH);
-    const safeIp = typeof clientIp === 'string' && clientIp.length <= 64 ? clientIp : null;
+    const safeIp = typeof clientIp === 'string' && clientIp.length <= 64 && isIP(clientIp) ? clientIp : null;
     const payload = {
       eventId: event.eventId,
       source: event.source,
