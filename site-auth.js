@@ -67,6 +67,15 @@ export function isSameOriginRequest(req, siteBaseUrl = process.env.SITE_BASE_URL
   try { origin = new URL(originHeader).origin; } catch { return false; }
   const allowed = new Set();
   try { if (siteBaseUrl) allowed.add(new URL(siteBaseUrl).origin); } catch {}
+  // The public Vercel site proxies requests to Render. Its browser Origin is
+  // therefore different from SITE_BASE_URL (the backend/OAuth callback host).
+  // Trust only explicitly configured public origins; never infer trust from
+  // the incoming Host header alone.
+  const configuredOrigins = String(process.env.SITE_AUTH_ALLOWED_ORIGINS || 'https://frierenbot.vercel.app')
+    .split(',').map(value => value.trim()).filter(Boolean);
+  for (const value of configuredOrigins) {
+    try { allowed.add(new URL(value).origin); } catch {}
+  }
   const host = String(headers['x-forwarded-host'] || headers.host || '').split(',')[0].trim();
   const protocol = String(headers['x-forwarded-proto'] || 'https').split(',')[0].trim().toLowerCase();
   if (host && ['http', 'https'].includes(protocol)) {
