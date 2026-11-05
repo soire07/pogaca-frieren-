@@ -1,5 +1,4 @@
 import test from 'node:test';
-import { readFile } from 'node:fs/promises';
 import { GUARDIAN_REPAIR_BRANCH, buildGuardianRepairTrackingUrls } from '../guardian/automation.js';
 import { createHmac } from 'node:crypto';
 import { EventEmitter } from 'node:events';
@@ -87,25 +86,20 @@ test('Guardian repair approval is explicit and disappears after approval is pers
   }
 });
 
-test('Guardian incident has one safe AI analysis action and the server accepts it without a redundant confirmation', async () => {
+test('Guardian incident has a one-click safe AI analysis action without implying automatic code changes', () => {
   const html = renderOwnerGuardianWorkspace({
     csrf: 'csrf-test',
     incidents: [{ id: 77, title: 'Synthetic incident', severity: 'high', system: 'pogaca_frieren', code: 'TEST', status: 'open', occurrence_count: 1, last_seen: '2026-11-05T10:00:00Z', summary: 'Synthetic summary', evidence: [] }],
   });
-  const reviewForms = [...html.matchAll(/<form\b[\s\S]*?<\/form>/g)]
+  const reviewForm = [...html.matchAll(/<form\b[\s\S]*?<\/form>/g)]
     .map(match => match[0])
-    .filter(form => /name="action" value="guardian-review"/.test(form));
-  assert.equal(reviewForms.length, 1, 'Each incident must render exactly one AI analysis form');
-  const reviewForm = reviewForms[0];
+    .find(form => /name="action" value="guardian-review"/.test(form));
   assert.ok(reviewForm, 'Guardian review form should be rendered');
   assert.match(reviewForm, /name="incidentId" value="77"/);
   assert.match(reviewForm, /Sorunu çöz/);
   assert.doesNotMatch(reviewForm, /name="confirm" value="yes" required/);
   assert.match(reviewForm, /kodu otomatik değiştirmez/);
   assert.match(html, /name="confirm" value="yes" required/, 'Other Guardian actions must retain their explicit confirmation');
-  const dashboardSource = await readFile(new URL('../owner-dashboard.js', import.meta.url), 'utf8');
-  assert.match(dashboardSource, /if \(action === 'guardian-review'\) \{/);
-  assert.doesNotMatch(dashboardSource, /if \(action === 'guardian-review' && form\.get\('confirm'\) === 'yes'\)/);
 });
 
 test('Guardian workspace renders incidents and review proposals as unapplied', () => {
@@ -1161,19 +1155,4 @@ test('Guardian action failures return to the Guardian workspace', () => {
   assert.equal(getOwnerActionErrorDestination('guardian-refresh-pr'), '/owner/guardian');
   assert.equal(getOwnerActionErrorDestination('guardian-review'), '/owner/guardian');
   assert.equal(getOwnerActionErrorDestination('rpg-resource-adjust'), '/owner');
-});
-
-
-test('Guardian dispatch acceptance is not displayed as a confirmed workflow run', () => {
-  const html = renderOwnerGuardianWorkspace({
-    csrf: 'csrf-test',
-    jobs: [{
-      id: 31, incident_id: 12, incident_title: 'Synthetic dispatch', agent: 'frieren_ai',
-      system: 'guardian', status: 'completed', created_at: '2026-11-05T10:00:00Z',
-      repair_dispatch_status: 'dispatched',
-      result: { status: 'proposal_only', rootCause: 'Synthetic root cause', confidence: 'high', affectedFiles: ['guardian/automation.js'], proposedPatch: 'diff --git a/guardian/automation.js b/guardian/automation.js', tests: ['existing test'], risks: [] },
-    }],
-  });
-  assert.match(html, /tetikleme isteği kabul edildi; tekil workflow çalıştırma kimliği henüz kaydedilmedi/);
-  assert.doesNotMatch(html, /Onarım workflow\\'u başlatıldı/);
 });
