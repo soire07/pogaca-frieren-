@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGuardianRepairTask, processGuardianIncident, processPendingGuardianRepairDispatch, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, getGuardianProposalFingerprint } from './automation.js';
+import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident, processPendingGuardianRepairDispatch, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, getGuardianProposalFingerprint } from './automation.js';
 
 const incident = {
   id: 42,
@@ -50,13 +50,22 @@ test('repair task is bounded and excludes raw incident summaries and credentials
   assert.match(task, /Guardian incident #42/);
   assert.ok(task.includes('İlgili dosyalar: commands/example.js'));
   assert.match(task, /A bounded timeout is missing/);
-  assert.match(task, /Çıktı yalnızca diff --git ile başlayan unified diff olmalı/);
+  assert.match(task, /Frieren AI tarafından sağlanan unified diff yamayı yeniden model çağrısı yapmadan doğrula/);
+  assert.match(task, /Git apply --check/);
   assert.match(task, /npm run check başarılı olmadan PR açma/);
   assert.ok(task.endsWith('merge/deploy yapma.'));
   assert.equal(task.includes('Frieren AI yama önerisi'), false);
   assert.equal(task.includes('diff --git a/commands/example.js'), false);
   assert.doesNotMatch(task, /private-token|user@example.com/);
   assert.doesNotMatch(task, /request timed out/);
+});
+
+test('Guardian repair handoff accepts only a bounded unified diff from Frieren AI', () => {
+  assert.equal(buildGuardianRepairPatch(review), review.proposedPatch);
+  assert.throws(() => buildGuardianRepairPatch({ proposedPatch: '' }), { message: 'GUARDIAN_REPAIR_PATCH_INVALID' });
+  assert.throws(() => buildGuardianRepairPatch({ affectedFiles: ['commands/example.js'], proposedPatch: 'not a diff' }), { message: 'GUARDIAN_REPAIR_PATCH_INVALID' });
+  assert.throws(() => buildGuardianRepairPatch({ affectedFiles: ['commands/example.js'], proposedPatch: 'diff --git a/other.js b/other.js' }), { message: 'GUARDIAN_REPAIR_PATCH_INVALID' });
+  assert.throws(() => buildGuardianRepairPatch({ affectedFiles: ['commands/example.js'], proposedPatch: 'diff --git a/commands/example.js b/commands/example.js\n' + 'x'.repeat(10_001) }), { message: 'GUARDIAN_REPAIR_PATCH_INVALID' });
 });
 
 test('autonomous incident handling respects the emergency stop before contacting Frieren AI', async () => {
@@ -267,6 +276,7 @@ test('failed repair dispatch retries from the saved AI proposal without repeatin
   assert.equal(payload.inputs.mode, 'repair');
   assert.equal(payload.inputs.base_branch, 'guardian-isolated-repair-test-v2');
   assert.equal(payload.inputs.incident_id, '42');
+  assert.equal(payload.inputs.proposed_patch, review.proposedPatch);
   assert.equal(calls[0][0], 'reserve');
   assert.equal(calls[1][1].status, 'dispatched');
 });

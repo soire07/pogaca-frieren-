@@ -66,7 +66,7 @@ test('Guardian repair approval is explicit and disappears after approval is pers
       id: 9, incident_id: 7, incident_title: 'RPG timeout', agent: 'frieren_ai',
       system: 'pogaca_frieren', status: 'completed', created_at: '2026-11-02T10:01:00Z',
       repair_dispatch_status: 'not_requested',
-      result: { status: 'proposal_only', rootCause: 'Timeout guard missing', confidence: 'high', affectedFiles: ['commands/example.js'], proposedPatch: 'diff --git a/file.js b/file.js', tests: ['timeout regression'] },
+      result: { status: 'proposal_only', rootCause: 'Timeout guard missing', confidence: 'high', affectedFiles: ['commands/example.js'], proposedPatch: 'diff --git a/commands/example.js b/commands/example.js', tests: ['timeout regression'] },
     }],
   };
   try {
@@ -96,9 +96,11 @@ test('Guardian incident has a one-click safe AI analysis action without implying
     .find(form => /name="action" value="guardian-review"/.test(form));
   assert.ok(reviewForm, 'Guardian review form should be rendered');
   assert.match(reviewForm, /name="incidentId" value="77"/);
-  assert.match(reviewForm, /Sorunu çöz/);
-  assert.doesNotMatch(reviewForm, /name="confirm" value="yes" required/);
+  assert.match(reviewForm, /Sorunu Çöz/);
+  assert.match(reviewForm, /name="confirm" value="yes"/);
+  assert.doesNotMatch(reviewForm, /type="checkbox" name="confirm"/);
   assert.match(reviewForm, /kodu otomatik değiştirmez/);
+  assert.equal([...html.matchAll(/name="action" value="guardian-review"/g)].length, 1, 'Guardian incident must render one working review action');
   assert.match(html, /name="confirm" value="yes" required/, 'Other Guardian actions must retain their explicit confirmation');
 });
 

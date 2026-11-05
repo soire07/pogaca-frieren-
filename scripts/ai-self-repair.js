@@ -1,4 +1,3 @@
-import { createAiModelProvider } from '../ai-agent/model-provider.js';
 import { execFileSync } from 'node:child_process';
 import { appendFile, readFile, stat } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -76,6 +75,11 @@ export function validatePatchPaths(patch, { task = '', incidentId = '' } = {}) {
   const uniqueFiles = [...new Set(files)];
   if (allowProtectedIndexJs && (uniqueFiles.length !== 1 || uniqueFiles[0] !== 'index.js')) {
     throw new Error('REPAIR_APPROVED_INDEX_SCOPE_VIOLATION');
+  }
+  const taskFileList = String(task || '').match(/(?:[İIıi]lgili dosyalar|affected files)\s*:\s*([^\n]+)/i)?.[1] || '';
+  const taskFiles = taskFileList.split(',').map(value => value.trim()).filter(Boolean);
+  if (taskFiles.length && uniqueFiles.some(file => !taskFiles.includes(file))) {
+    throw new Error('REPAIR_TASK_SCOPE_VIOLATION');
   }
   return uniqueFiles;
 }
@@ -232,6 +236,18 @@ export function formatRepairFilesOutput(files, { task = '', incidentId = '' } = 
   return 'repair_files<<REPAIR_FILES\n' + normalized.join('\n') + '\nREPAIR_FILES\n';
 }
 
+export function checkRepairPatch(patch, { execFile = runGit, task = '', incidentId = '' } = {}) {
+  const normalizedPatch = extractUnifiedDiff(patch);
+  const files = validatePatchPaths(normalizedPatch, { task, incidentId });
+  const dirty = execFile(['status', '--porcelain', '--untracked-files=all'], { encoding: 'utf8' });
+  if (String(dirty || '').trim()) throw new Error('REPAIR_WORKTREE_NOT_CLEAN');
+  execFile(['apply', '--check', '--'], {
+    input: normalizedPatch,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  return { patch: normalizedPatch, files };
+}
+
 export function applyRepairPatch(patch, { execFile = runGit, task = '', incidentId = '' } = {}) {
   const expectedFiles = validatePatchPaths(patch, { task, incidentId }).sort();
   const before = execFile(['status', '--porcelain', '--untracked-files=all'], { encoding: 'utf8' });
@@ -253,25 +269,19 @@ export function applyRepairPatch(patch, { execFile = runGit, task = '', incident
 export async function main(env = process.env) {
   const mode = String(env.FRIEREN_REPAIR_MODE || 'repair').trim().toLowerCase();
   if (!['validate', 'repair'].includes(mode)) throw new Error('REPAIR_MODE_INVALID');
-  const provider = createAiModelProvider({ env });
-  if (!provider.configured) throw new Error(provider.reason || 'AI_PROVIDER_NOT_CONFIGURED');
-  const model = String(env.FRIEREN_MODEL || 'openai/gpt-oss-20b');
+  const task = String(env.FRIEREN_REPAIR_TASK || '').trim();
+  if (mode === 'repair' && (!task || task.length > 1200)) throw new Error('REPAIR_TASK_REQUIRED');
+  const incidentId = String(env.FRIEREN_REPAIR_INCIDENT_ID || '').trim();
+  const patch = String(env.FRIEREN_REPAIR_PATCH || '');
+  if (!patch.trim() || patch.length > MAX_PATCH_CHARS) throw new Error('REPAIR_PATCH_REQUIRED_OR_TOO_LARGE');
   if (mode === 'validate') {
-    await verifyGroqConnection({ client: provider.client, model });
-    process.stdout.write('Groq API connection verified. No source files changed.\\n');
+    const checked = checkRepairPatch(patch, { task, incidentId });
+    process.stdout.write('Frieren AI patch validated without applying changes. Files: ' + checked.files.join(', ') + '\n');
     return;
   }
-  const task = String(env.FRIEREN_REPAIR_TASK || '').trim();
-  if (!task || task.length > 1200) throw new Error('REPAIR_TASK_REQUIRED');
-  const incidentId = String(env.FRIEREN_REPAIR_INCIDENT_ID || '').trim();
-  const context = await collectRepairContext(task, { incidentId });
-  const proposal = await generateRepairPatchWithRetry({
-    task, incidentId, client: provider.client, model, context,
-  });
-  const changed = applyRepairPatch(proposal.patch, { task, incidentId });
-  if (changed.some(path => !proposal.files.includes(path))) throw new Error('REPAIR_CHANGED_UNEXPECTED_FILE');
+  const changed = applyRepairPatch(patch, { task, incidentId });
   if (env.GITHUB_OUTPUT) await appendFile(env.GITHUB_OUTPUT, formatRepairFilesOutput(changed, { task, incidentId }), 'utf8');
-  process.stdout.write('Repair patch applied in isolated workflow workspace. Files: ' + changed.join(', ') + '\n');
+  process.stdout.write('Frieren AI patch applied in isolated workflow workspace. Files: ' + changed.join(', ') + '\n');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
