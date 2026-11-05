@@ -94,7 +94,13 @@ export function buildGuardianRepairTask(incident = {}, review = {}) {
 
 export function buildGuardianRepairPatch(review = {}) {
   const patch = typeof review.proposedPatch === 'string' ? review.proposedPatch.trim() : '';
-  if (!patch || patch.length > 10_000 || !patch.startsWith('diff --git ')) {
+  const headers = [...patch.matchAll(/^diff --git a\/([^\\s]+) b\/([^\\s]+)$/gm)];
+  const affected = new Set(Array.isArray(review.affectedFiles) ? review.affectedFiles : []);
+  const files = headers.map(match => match[1]);
+  if (!patch || patch.length > 10_000 || !patch.startsWith('diff --git ')
+      || !headers.length || headers.length > 4
+      || headers.some(match => match[1] !== match[2] || !affected.has(match[1]))
+      || new Set(files).size !== files.length) {
     throw new Error('GUARDIAN_REPAIR_PATCH_INVALID');
   }
   return patch;
