@@ -1060,7 +1060,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         redirect(res, '/owner/guardian?notice=guardian_scan_complete');
         return true;
       }
-      if (action === 'guardian-review' && form.get('confirm') === 'yes') {
+      if (action === 'guardian-review') {
         await assertGuardianAutomationEnabled(db);
         let job = null;
         try {
