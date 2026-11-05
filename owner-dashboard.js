@@ -497,7 +497,8 @@ function renderDashboard({ session, overview, client, approvals, memories, memor
     </section>
     <div class="columns">
       <section class="panel" id="maintenance"><h2>Bakım modu</h2><p class="muted">Açıldığında normal kullanıcı komutları ve Frieren sohbeti durdurulur. Owner komutları çalışmaya devam eder.</p>
-        <form method="post" action="/owner/action" class="actions"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bakım modu değişikliğini onaylıyorum</label><button class="btn" name="action" value="maintenance-on">Bakımı aç</button><button class="btn secondary" name="action" value="maintenance-off">Bakımı kapat</button></form>      </section>
+        <form method="post" action="/owner/action" class="actions"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bakım modu değişikliğini onaylıyorum</label><button class="btn" name="action" value="maintenance-on">Bakımı aç</button><button class="btn secondary" name="action" value="maintenance-off">Bakımı kapat</button></form>
+      </section>
       <section class="panel" id="announcements"><h2>Duyuru gönder</h2><p class="muted">Yalnızca seçtiğin sunucu ve kanala gönderilir. Botun kanalda mesaj gönderme izni olmalıdır.</p>
         <form method="post" action="/owner/action"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="action" value="announcement-send">
           <label>Hedef sunucu ve metin kanalı</label><select name="target" required><option value="">Sunucu / kanal seç</option>${channelOptions}</select>
@@ -996,7 +997,8 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
           SELECT $2,'guardian.emergency_stop.update',NULL,$3::jsonb FROM changed`,
           [JSON.stringify({ enabled }), OWNER_ID, JSON.stringify({ enabled })]);
         redirect(res, '/owner/guardian?notice=guardian_emergency_stop_updated');
-        return true;      }
+        return true;
+      }
       if (action === 'guardian-scan' && form.get('confirm') === 'yes') {
         let found = 0;
         if (!client?.isReady?.()) {
