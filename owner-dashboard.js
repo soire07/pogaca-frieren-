@@ -16,7 +16,7 @@ import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceA
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 import { listSupportTicketsForOwner, getSupportTicketForOwner, replySupportTicketFromOwner, updateSupportTicketStatusFromOwner } from './account-center.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
-import { classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, processPendingGuardianRepairDispatch, isRepairableProposal } from './guardian/automation.js';
+import { classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, processPendingGuardianRepairDispatch, isRepairableProposal, buildGuardianRepairTrackingUrls } from './guardian/automation.js';
 import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, approveGuardianRepair, updateGuardianRepairStatus, getGuardianMonitorState, getLatestGuardianQualityReport } from './guardian/store.js';
 
 const OWNER_ID = '1553794496234262641';
@@ -1107,8 +1107,9 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
           Authorization: 'Bearer ' + token,
           'X-GitHub-Api-Version': '2022-11-28',
         };
-        const apiBase = 'https://api.github.com/repos/soire07/pogaca-frieren-';
-        const runsResponse = await fetch(apiBase + '/actions/workflows/frieren-ai-self-repair.yml/runs?branch=guardian-isolated-repair-test&event=workflow_dispatch&per_page=30', {
+        const apiBase = 'https://api.github.com';
+        const trackingUrls = buildGuardianRepairTrackingUrls(apiBase, incident.id);
+        const runsResponse = await fetch(trackingUrls.runsUrl, {
           headers, signal: AbortSignal.timeout(10_000),
         });
         if (!runsResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + runsResponse.status);
@@ -1122,13 +1123,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         let runStatus = run?.status || null;
         let runConclusion = run?.conclusion || null;
         let pr = null;
-        const branchName = 'ai-repair/guardian-' + incident.id;
-        const query = new URLSearchParams({
-          state: 'all',
-          head: 'soire07:' + branchName,
-          base: 'guardian-isolated-repair-test',
-        });
-        const prResponse = await fetch(apiBase + '/pulls?' + query.toString(), {
+        const prResponse = await fetch(trackingUrls.pullRequestsUrl, {
           headers, signal: AbortSignal.timeout(10_000),
         });
         if (!prResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + prResponse.status);
