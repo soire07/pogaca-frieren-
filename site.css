@@ -398,3 +398,46 @@ body.site-menu-open{overflow:hidden}
 .profile-owner-frame::after{content:"";position:absolute;right:3px;bottom:2px;width:10px;height:15px;border-radius:50% 50% 55% 55%;background:linear-gradient(#ff9aaa,#9d102b 70%);box-shadow:0 0 10px #f0445f99;transform:rotate(22deg)}
 @media(max-width:560px){.profile-owner-frame{flex-basis:74px;width:74px;height:74px;padding:4px}}
 @media(prefers-reduced-motion:reduce){.xp-progress.is-owner .xp-progress-track>i{animation:none!important;background-position:50% 50%}.xp-progress.is-owner .xp-progress-track>i::after{animation:none!important;transform:none}}
+
+
+/* Consistent Frieren rune actions: every visible action has a clear state and touch target. */
+.btn{
+ position:relative;isolation:isolate;min-height:44px;gap:8px;padding:11px 17px;
+ border:1px solid #d9c2ff88;border-radius:13px;
+ background:linear-gradient(120deg,#f3dff0 0%,#d4c6ff 52%,#c9b4f5 100%);
+ color:#241a35;font-weight:850;letter-spacing:.01em;
+ box-shadow:0 8px 22px #08051244,inset 0 1px #ffffffb8;
+ transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,filter .18s ease;
+ touch-action:manipulation;cursor:pointer;text-decoration:none;
+}
+.btn::after{content:"";position:absolute;inset:3px;border:1px solid #ffffff55;border-radius:9px;pointer-events:none;opacity:.65}
+.btn:hover{transform:translateY(-2px);filter:brightness(1.06);box-shadow:0 12px 28px #08051266,0 0 18px #c9a8ff35,inset 0 1px #ffffffd9}
+.btn:active{transform:translateY(0) scale(.985)}
+.btn.ghost{border-color:#cbb2f45c;background:linear-gradient(135deg,#332747eF,#211a32f2);color:#f2eaff;box-shadow:0 7px 20px #05030d55,inset 0 1px #ffffff12}
+.btn.ghost:hover{border-color:#dfc6ffb8;background:linear-gradient(135deg,#44315f,#2b203e);color:#fff;box-shadow:0 10px 25px #05030d77,0 0 18px #b58ce533}
+.btn:focus-visible{outline:2px solid #f0ddff;outline-offset:3px}
+.btn:disabled,.btn[aria-disabled="true"]{cursor:not-allowed;opacity:.58;filter:saturate(.45);transform:none;box-shadow:none}
+form[aria-busy="true"] button[type="submit"]{cursor:wait}
+.profile-quick-nav{display:flex;gap:9px;overflow-x:auto;padding:17px 2px 8px;margin:0 0 5px;scrollbar-width:thin;scroll-snap-type:x proximity}
+.profile-nav-action{flex:0 0 auto;min-height:40px;padding:8px 13px;scroll-snap-align:start;font-size:.82rem}
+.profile-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,220px);gap:8px 12px;align-items:center;margin:14px 0;padding:15px;border:1px solid #d8bcff35;border-radius:16px;background:linear-gradient(135deg,#ffffff0c,#a98bdb0b)}
+.profile-toolbar label{color:#d8cbea;font-size:.82rem;font-weight:700}
+.profile-toolbar input,.profile-toolbar select{width:100%;min-width:0;min-height:42px;padding:9px 12px;border:1px solid #8d79ad88;border-radius:11px;background:#17152c;color:#fff;font:inherit}
+.profile-toolbar output{grid-column:1/-1;color:#bfb2d4;font-size:.78rem}
+.profile-achievement[hidden],#profile-activity-list li[hidden]{display:none!important}
+.profile-filter-actions,.profile-preview-actions{display:flex;gap:9px;flex-wrap:wrap;margin:13px 0}
+.profile-filter-actions .btn,.profile-preview-actions .btn{min-height:40px;padding:8px 13px;font-size:.82rem}
+.profile-filter-actions .btn.is-active{border-color:#e0c6ff;background:linear-gradient(120deg,#eadbff,#b99ce8);color:#261a3b;box-shadow:0 0 16px #c8a6ff35}
+.profile-preview-note{padding:11px 14px;border:1px solid #c9a8ff66;border-radius:12px;background:#9b7bd51c;color:#eadcff;font-size:.84rem}
+.profile-page.is-previewing [data-profile-privacy][hidden]{display:none!important}
+.profile-page.is-previewing .profile-preview-note{display:block}
+@media(max-width:560px){
+ .profile-quick-nav{margin-left:-3px;margin-right:-3px;padding-left:3px}
+ .profile-toolbar{grid-template-columns:1fr}
+ .profile-toolbar output{grid-column:auto}
+ .profile-filter-actions .btn,.profile-preview-actions .btn{flex:1 1 calc(50% - 9px)}
+}
+@media(prefers-reduced-motion:reduce){
+ .btn{transition:none!important}
+ .btn:hover,.btn:active{transform:none}
+}
