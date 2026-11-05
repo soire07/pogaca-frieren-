@@ -1,5 +1,12 @@
-const RENDER_API_BASE = 'https://api.render.com/v1/metrics';
-const METRIC_WINDOW_MS = 60 * 60 * 1000;
+export const RENDER_METRIC_RANGES = Object.freeze({
+  '1h': Object.freeze({ durationMs: 60 * 60 * 1000, resolutionSeconds: 60, label: 'Son 1 saat' }),
+  '6h': Object.freeze({ durationMs: 6 * 60 * 60 * 1000, resolutionSeconds: 300, label: 'Son 6 saat' }),
+  '24h': Object.freeze({ durationMs: 24 * 60 * 60 * 1000, resolutionSeconds: 900, label: 'Son 24 saat' })
+});
+
+export function normalizeRenderMetricRange(value) {
+  return Object.hasOwn(RENDER_METRIC_RANGES, String(value || '')) ? String(value) : '1h';
+}
 
 function seriesFrom(payload) {
   if (Array.isArray(payload)) return payload;
@@ -48,12 +55,12 @@ function latestValue(points) {
   return points.length ? points[points.length - 1] : null;
 }
 
-async function requestMetric(name, { apiKey, resourceId, startTime, endTime, fetchImpl }) {
-  const url = new URL(RENDER_API_BASE + '/' + name);
+async function requestMetric(name, { apiKey, resourceId, startTime, endTime, resolutionSeconds, fetchImpl }) {
+  const url = new URL('https://api.render.com/v1/metrics/' + name);
   url.searchParams.set('resource', resourceId);
   url.searchParams.set('startTime', startTime);
   url.searchParams.set('endTime', endTime);
-  url.searchParams.set('resolutionSeconds', '60');
+  url.searchParams.set('resolutionSeconds', String(resolutionSeconds));
   const response = await fetchImpl(url, {
     method: 'GET',
     headers: { Accept: 'application/json', Authorization: 'Bearer ' + apiKey },
@@ -67,34 +74,32 @@ export async function getRenderServiceMetrics({
   apiKey = process.env.RENDER_POGACA_API_KEY || process.env.RENDER_API_KEY,
   resourceId = process.env.RENDER_METRICS_SERVICE_ID || process.env.RENDER_SERVICE_ID || 'srv-dbf4vdvavr4c73cr6s00',
   fetchImpl = globalThis.fetch,
-  now = Date.now()
+  now = Date.now(),
+  range = '1h'
 } = {}) {
-  if (!apiKey) return { status: 'not_configured', source: 'local', points: [], message: 'Render API anahtarı yapılandırılmadı.' };
-  if (!resourceId) return { status: 'not_configured', source: 'local', points: [], message: 'Render servis kimliği bulunamadı.' };
-  if (typeof fetchImpl !== 'function') return { status: 'unavailable', source: 'local', points: [], message: 'Bu Node.js sürümünde fetch kullanılamıyor.' };
+  const selectedRange = normalizeRenderMetricRange(range);
+  const rangeConfig = RENDER_METRIC_RANGES[selectedRange];
+  if (!apiKey) return { status: 'not_configured', source: 'local', points: [], range: selectedRange, rangeLabel: rangeConfig.label, message: 'Render API anahtarı yapılandırılmadı.' };
+  if (!resourceId) return { status: 'not_configured', source: 'local', points: [], range: selectedRange, rangeLabel: rangeConfig.label, message: 'Render servis kimliği bulunamadı.' };
+  if (typeof fetchImpl !== 'function') return { status: 'unavailable', source: 'local', points: [], range: selectedRange, rangeLabel: rangeConfig.label, message: 'Bu Node.js sürümünde fetch kullanılamıyor.' };
 
   const endTime = new Date(now).toISOString();
-  const startTime = new Date(now - METRIC_WINDOW_MS).toISOString();
+  const startTime = new Date(now - rangeConfig.durationMs).toISOString();
+  const requestOptions = { apiKey, resourceId, startTime, endTime, resolutionSeconds: rangeConfig.resolutionSeconds, fetchImpl };
   try {
     const [cpu, cpuLimit, memory, memoryLimit] = await Promise.all([
-      requestMetric('cpu', { apiKey, resourceId, startTime, endTime, fetchImpl }),
-      requestMetric('cpu-limit', { apiKey, resourceId, startTime, endTime, fetchImpl }),
-      requestMetric('memory', { apiKey, resourceId, startTime, endTime, fetchImpl }),
-      requestMetric('memory-limit', { apiKey, resourceId, startTime, endTime, fetchImpl })
+      requestMetric('cpu', requestOptions),
+      requestMetric('cpu-limit', requestOptions),
+      requestMetric('memory', requestOptions),
+      requestMetric('memory-limit', requestOptions)
     ]);
     const cpuPoints = aggregateAgainstLimit(cpu, cpuLimit);
     const memoryPoints = aggregateAgainstLimit(memory, memoryLimit);
     const latestCpu = latestValue(cpuPoints);
     const latestMemory = latestValue(memoryPoints);
     if (!latestCpu || !latestMemory) {
-      return { status: 'unavailable', source: 'render', points: [], message: 'Render metrikleri henüz veri döndürmedi.' };
+      return { status: 'unavailable', source: 'render', points: [], range: selectedRange, rangeLabel: rangeConfig.label, message: 'Render metrikleri henüz veri döndürmedi.' };
     }
-    const cpuUsed = latestCpu.used;
-    const cpuCapacity = latestCpu.limit;
-    const memoryUsedBytes = latestMemory.used;
-    const memoryLimitBytes = latestMemory.limit;
-    const cpuPercent = latestCpu.percent;
-    const memoryPercent = latestMemory.percent;
     const cpuByTime = new Map(cpuPoints.map(point => [point.timestamp, point.percent]));
     const memoryByTime = new Map(memoryPoints.map(point => [point.timestamp, point.percent]));
     const timestamps = [...new Set([...cpuByTime.keys(), ...memoryByTime.keys()])].sort();
@@ -106,26 +111,29 @@ export async function getRenderServiceMetrics({
     return {
       status: 'available',
       source: 'render',
-      cpuUsed,
-      cpuCapacity,
-      cpuPercent,
-      memoryUsedBytes,
-      memoryLimitBytes,
-      memoryPercent,
+      range: selectedRange,
+      rangeLabel: rangeConfig.label,
+      resolutionSeconds: rangeConfig.resolutionSeconds,
+      cpuUsed: latestCpu.used,
+      cpuCapacity: latestCpu.limit,
+      cpuPercent: latestCpu.percent,
+      memoryUsedBytes: latestMemory.used,
+      memoryLimitBytes: latestMemory.limit,
+      memoryPercent: latestMemory.percent,
       points,
       updatedAt: [latestCpu.timestamp, latestMemory.timestamp].sort().at(-1)
     };
   } catch (error) {
     const message = String(error?.message || '');
-    const safeMessage = /^RENDER_METRICS_HTTP_\d{3}$/.test(message)
+    const safeMessage = /^RENDER_METRICS_HTTP_\\d{3}$/.test(message)
       ? 'Render API isteği başarısız oldu (' + message.slice(-3) + ').'
       : 'Render metrikleri şu anda alınamıyor.';
-    return { status: 'unavailable', source: 'render', points: [], message: safeMessage };
+    return { status: 'unavailable', source: 'render', points: [], range: selectedRange, rangeLabel: rangeConfig.label, message: safeMessage };
   }
 }
 
 export function renderMetricBars(points, key, label) {
-  const values = points.map(point => Number(point?.[key])).filter(Number.isFinite).slice(-24);
+  const values = points.map(point => Number(point?.[key])).filter(Number.isFinite).slice(-36);
   if (!values.length) return '<p class="muted">Grafik için henüz veri yok.</p>';
   return '<div class="metric-bars" role="img" aria-label="' + label + '">' + values.map(value => {
     const height = Math.max(2, Math.min(100, value));
