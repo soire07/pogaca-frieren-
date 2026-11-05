@@ -275,3 +275,10 @@
 .nav-group a[target="_blank"] .nav-link-copy small{display:block;color:#b9a9d3;font-size:10px;margin-top:3px}
 .nav-group a[target="_blank"]:after{content:"↗";margin-left:auto;color:#cbb7e8;font-size:12px}
 @media(max-width:760px){.nav-group a[target="_blank"] .nav-link-copy small{display:none}}
+
+
+.metric-range-form{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:12px;background:#07152c88}
+.metric-range-form label{min-width:150px;flex:1;margin:0}
+.metric-range-form select{min-width:150px;flex:1}
+.metric-range-form .btn{white-space:nowrap}
+@media(max-width:560px){.metric-range-form{display:grid;grid-template-columns:minmax(0,1fr)}.metric-range-form .btn{width:100%}}
