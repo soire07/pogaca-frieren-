@@ -347,7 +347,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   const url = new URL(req.url, 'http://localhost');
   if (req.method === 'GET' && url.pathname === '/google1941de4c3bd5e8ea.html') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public,max-age=3600', 'X-Content-Type-Options': 'nosniff' });
-    res.end('google-site-verification: google1941de4c3bd5e8ea.html\\n');
+    res.end('google-site-verification: google1941de4c3bd5e8ea.html\n');
     return true;
   }
   const authHandled = await handleSiteAuthRequest(req, res, { db, sessionSecret: process.env.ADMIN_SESSION_SECRET, createSession: createPublicSiteSession });
