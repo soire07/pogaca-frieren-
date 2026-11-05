@@ -868,6 +868,7 @@ test('public player showcase respects privacy and exposes only the opt-in card a
   calls.push(sql);
   if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return {rows:[],rowCount:0};
   if(sql.includes('FROM player_profile_settings'))return{rows:[{show_stats:false,show_achievements:true,show_collections:true,show_activity:false,show_cosmetics:true,active_title:null}],rowCount:1};
+  if(sql.includes('FROM player_profile_settings'))return{rows:[{show_stats:false,show_achievements:true,show_collections:true,show_activity:false,show_cosmetics:true,active_title:null}],rowCount:1};
   if(sql.includes('h.is_public=TRUE'))return{rows:[{user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:42,xp:9000,active_room:'starter',layout:[],is_public:true}],rowCount:1};
   if(sql.includes('FROM player_home_rooms'))return{rows:[{room_key:'starter'}],rowCount:1};
   if(sql.includes('FROM achievement_claims'))return{rows:[{achievement_key:'first_raid',display_slot:0}],rowCount:1};
@@ -1056,9 +1057,6 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
   if(sql.includes('FROM users WHERE guild_id=$1 AND user_id=$2'))return{rows:[{created_at:'2026-01-01T00:00:00.000Z',boss_defeats:12,dungeon_wins:8,exploration_count:42,items_used_count:9,daily_streak:4,best_daily_streak:7}],rowCount:1};
   if(sql.includes('FROM user_titles'))return{rows:[{title:'Kıdemli Maceracı',unlocked_at:'2026-01-02T00:00:00.000Z'}],rowCount:1};
   if(sql.includes('FROM achievement_claims a LEFT JOIN player_home_trophies'))return{rows:[{achievement_key:'dungeon_25',claimed_at:'2026-01-03T00:00:00.000Z',display_slot:0},{achievement_key:'level_5',claimed_at:'2026-01-02T00:00:00.000Z',display_slot:null}],rowCount:2};
-  if(sql.includes('FROM adventure_history'))return{rows:[{activity_type:'adventure',activity_label:'Buzlu Orman',activity_at:'2026-01-04T00:00:00.000Z',xp_awarded:50}],rowCount:1};
-  if(sql.includes('FROM anime_character_collection'))return{rows:[{anime_cards:14,anime_copies:22,journal_entries:9}],rowCount:1};
-  if(sql.includes('FROM arena_seasons'))return{rows:[{season_name:'Kuzey Sezonu',rating:1420,wins:5,losses:2,matches:7}],rowCount:1};
   if(sql.includes('WITH xp_board AS'))return{rows:[
    {board:'xp',players:[{user_id:userId,character_name:'Fern',level:19,xp:38050}]},
    {board:'boss',players:[{user_id:userId,character_name:'Fern',boss_defeats:12}]},
@@ -1067,6 +1065,9 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
    {board:'daily_adventure_xp',players:[{user_id:userId,character_name:'Fern',xp:50}]},
    {board:'achievements',players:[{user_id:userId,character_name:'Fern',achievements:2}]}
   ],rowCount:6};
+  if(sql.includes('FROM adventure_history'))return{rows:[{activity_type:'adventure',activity_label:'Buzlu Orman',activity_at:'2026-01-04T00:00:00.000Z',xp_awarded:50}],rowCount:1};
+  if(sql.includes('FROM anime_character_collection'))return{rows:[{anime_cards:14,anime_copies:22,journal_entries:9}],rowCount:1};
+  if(sql.includes('FROM arena_seasons'))return{rows:[{season_name:'Kuzey Sezonu',rating:1420,wins:5,losses:2,matches:7}],rowCount:1};
   if(sql.includes('FROM player_profile_settings'))return{rows:[{show_stats:false,show_achievements:true,show_collections:false,show_activity:false,show_cosmetics:true,active_title:'Kıdemli Maceracı'}],rowCount:1};
   if(sql.includes('FROM player_homes'))return{rows:[{is_public:true}],rowCount:1};
   if(sql.includes('FROM player_cosmetic_loadout'))return{rows:[{slot:'profile_frame',cosmetic_key:'moon_frame'}],rowCount:1};
