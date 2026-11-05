@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { appendFile, readFile, stat } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
-const MAX_CONTEXT_CHARS = 22_000;
+const MAX_CONTEXT_CHARS = 32_000;
 const MAX_PATCH_CHARS = 12_000;
 const MAX_PATCH_FILES = 4;
 const MAX_COMPLETION_TOKENS = 8192;
@@ -111,7 +111,8 @@ export async function collectRepairContext(task, {
     try {
       const info = await statImpl(path);
       if (!info.isFile() || info.size > 60_000) continue;
-      const content = String(await readFileImpl(path, 'utf8')).slice(0, 5_000);
+      const contentLimit = explicitRank.has(path) ? MAX_CONTEXT_CHARS - 100 : 5_000;
+      const content = String(await readFileImpl(path, 'utf8')).slice(0, contentLimit);
       candidates.push({
         path,
         content,
