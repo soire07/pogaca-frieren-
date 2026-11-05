@@ -441,3 +441,32 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
  .btn{transition:none!important}
  .btn:hover,.btn:active{transform:none}
 }
+
+
+/* Desktop navigation: larger, more readable menu while preserving compact mobile layout. */
+@media(min-width:851px){
+ .site-sidebar{
+  width:min(420px,calc(100vw - 40px));
+  max-height:min(86dvh,900px);
+  padding:16px 15px 13px;
+  border-radius:20px;
+ }
+ .site-sidebar-head{padding:7px 7px 14px}
+ .site-sidebar-brand{gap:11px;font-size:18px;letter-spacing:.15em}
+ .site-sidebar-brand .brand-mark{width:40px;height:40px;font-size:23px}
+ .site-sidebar-brand small{font-size:9px}
+ .site-menu-close{flex-basis:40px;width:40px;height:40px;font-size:24px}
+ .site-sidebar-intro{padding:15px 10px 12px}
+ .site-sidebar-intro span{font-size:10px;letter-spacing:.19em}
+ .site-sidebar-intro p{font-size:12px;line-height:1.55}
+ .site-sidebar-nav{padding:0 4px 12px}
+ .site-nav-group{margin:10px 0 14px}
+ .site-nav-group h2{margin:0 0 7px;padding:0 11px;font-size:10px;letter-spacing:.18em}
+ .site-nav-link{gap:12px;min-height:54px;margin:4px 0;padding:8px 11px;border-radius:12px}
+ .site-nav-icon{flex-basis:38px;width:38px;height:38px;border-radius:11px;font-size:18px}
+ .site-nav-copy{gap:2px}
+ .site-nav-copy strong{font-size:14px;line-height:1.35}
+ .site-nav-copy small{font-size:10px;line-height:1.4}
+ .site-nav-arrow{font-size:13px}
+ .site-sidebar-foot{padding:11px 7px 3px;font-size:9px}
+}
