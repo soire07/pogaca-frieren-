@@ -19,10 +19,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
-from .model import GPTLanguageModel
-from .chat_format import format_benchmark_prompt
-from .tokenizer import BPETokenizer
-from .training import generate_text, load_checkpoint
 
 
 app = FastAPI(
@@ -73,9 +69,9 @@ class GenerateRequest(BaseModel):
 
 
 @lru_cache(maxsize=1)
-def _load_runtime(
-    checkpoint_path: str, device: str
-) -> tuple[GPTLanguageModel, BPETokenizer, dict[str, float | int | str]]:
+def _load_runtime(checkpoint_path: str, device: str):
+    # Keep PyTorch out of the lightweight GGUF serving process.
+    from .training import load_checkpoint
     return load_checkpoint(checkpoint_path, device=device)
 
 
@@ -147,6 +143,9 @@ def _generate_reply(prompt: str, *, max_new_tokens: int, temperature: float, top
             temperature=temperature, top_k=top_k,
         )
         return completion, 0, MODEL_ID
+
+    from .chat_format import format_benchmark_prompt
+    from .training import generate_text
 
     model, tokenizer, metadata = _load_active_runtime()
     generation_prompt = format_benchmark_prompt(prompt)
