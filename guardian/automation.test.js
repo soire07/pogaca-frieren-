@@ -125,7 +125,7 @@ test('pending repair dispatch refuses proposals without a persisted owner approv
   assert.equal(requests, 0);
   assert.equal(reservations, 0);
 });
-test('emergency stop enabled during AI review blocks the later workflow POST', async () => {
+test('automatic Guardian review never dispatches a repair workflow', async () => {
   let stateReads = 0;
   let posts = 0;
   let reservations = 0;
@@ -187,7 +187,7 @@ test('failed Guardian AI review preserves the sanitized upstream error without d
   assert.equal(finished[0].error, 'GUARDIAN_AI_HTTP_400_GROQ_INVALID_REQUEST');
 });
 
-test('failed GitHub repair dispatch preserves a sanitized API permission error', async () => {
+test('Guardian AI proposal does not contact GitHub before Owner approval', async () => {
   let requestsForGithub = 0;
   const result = await processGuardianIncident({
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
@@ -210,7 +210,6 @@ test('failed GitHub repair dispatch preserves a sanitized API permission error',
   });
   assert.equal(result.status, 'proposal_ready');
   assert.equal(requestsForGithub, 0);
-  assert.equal(finished.length, 0);
 });
 
 test('low-confidence or incomplete AI proposals never dispatch a repair workflow', async () => {
@@ -252,7 +251,7 @@ test('failed repair dispatch retries from the saved AI proposal without repeatin
   };
   const result = await processPendingGuardianRepairDispatch({
     db: { query: async () => ({ rows: [] }) },
-    job: { id: 9, result: review, repair_dispatch_attempts: 1 },
+    job: { id: 9, result: review, repair_dispatch_attempts: 1, repair_approved_by: '1553794496234262641', repair_approval_fingerprint: getGuardianProposalFingerprint(review) },
     incident,
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl,
