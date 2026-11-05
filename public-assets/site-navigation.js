@@ -6,21 +6,18 @@
 
   const focusable = () => [...menu.querySelectorAll('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')]
     .filter(element => !element.hasAttribute('hidden') && element.getAttribute('aria-hidden') !== 'true');
-  let closeTimer = null;
 
   const closeMenu = (restoreFocus = false) => {
     toggle.setAttribute('aria-expanded', 'false');
     toggle.setAttribute('aria-label', 'Menüyü aç');
     menu.classList.remove('is-open');
-    if (closeTimer) window.clearTimeout(closeTimer);
-    closeTimer = window.setTimeout(() => {
-      if (!menu.classList.contains('is-open')) menu.hidden = true;
-    }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 150);
+    // Outside dismissal must update the semantic hidden state immediately.
+    // CSS handles the visual transition while the menu remains open.
+    menu.hidden = true;
     if (restoreFocus) toggle.focus();
   };
 
   const openMenu = () => {
-    if (closeTimer) window.clearTimeout(closeTimer);
     menu.hidden = false;
     toggle.setAttribute('aria-expanded', 'true');
     toggle.setAttribute('aria-label', 'Menüyü kapat');
@@ -38,13 +35,17 @@
     if (event.target.closest('a[href]')) closeMenu(false);
   });
 
-  // Close on both touch/pointer starts and click, in capture phase so page handlers cannot swallow dismissal.
+  // Listen at the window boundary: this runs before document/page handlers and
+  // also covers composed events from nested controls. Use the composed path
+  // rather than only event.target so shadow-DOM retargeting cannot misclassify.
   const dismissFromOutside = event => {
     if (toggle.getAttribute('aria-expanded') !== 'true') return;
-    if (!menu.contains(event.target) && !toggle.contains(event.target)) closeMenu(false);
+    const path = typeof event.composedPath === 'function' ? event.composedPath() : [event.target];
+    if (!path.includes(menu) && !path.includes(toggle)) closeMenu(false);
   };
-  document.addEventListener('pointerdown', dismissFromOutside, true);
-  document.addEventListener('click', dismissFromOutside, true);
+  window.addEventListener('pointerdown', dismissFromOutside, true);
+  window.addEventListener('touchstart', dismissFromOutside, { capture: true, passive: true });
+  window.addEventListener('click', dismissFromOutside, true);
   document.addEventListener('keydown', event => {
     if (toggle.getAttribute('aria-expanded') !== 'true') return;
     if (event.key === 'Escape') {
