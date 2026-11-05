@@ -145,7 +145,7 @@ Guardian: health / CI / incident
 - Frieren AI incelemesi tamamlandığında olay `awaiting_approval` durumuna geçer; bu aşamada GitHub onarım workflow'u tetiklenmez.
 - Owner Panel onayı, tamamlanan AI önerisinin SHA-256 parmak izine ve Owner kimliğine bağlanır. Öneri değişirse eski onay geçersiz olur.
 - Guardian'ın periyodik retry taraması yalnızca önceden Owner tarafından onaylanmış ve aynı parmak izini taşıyan önerileri yeniden deneyebilir; onaysız öneriler otomatik dispatch edilemez.
-- Onaylı onarım workflow'u yalnızca `guardian-isolated-repair-test` dalında çalışır ve PR'ı aynı izole dala açar. Ana dala otomatik taşıma, merge veya deploy yoktur.
+- Onaylı onarım workflow'u yalnızca `guardian-isolated-repair-test-v2` dalında çalışır ve PR'ı aynı izole dala açar. Ana dala otomatik taşıma, merge veya deploy yoktur.
 - Owner Panel kanıtı tamamlanan PR'ı gösterir; PR'ın ana dala alınması ve üretim dağıtımı ayrı, açık Owner kararları olarak kalır.
 - Deploy sonrası rollback, commit ve migration uyumluluğuna göre kararlaştırılır; DB migration otomatik geri çevrilmez.
 
