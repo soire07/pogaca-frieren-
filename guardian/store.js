@@ -278,7 +278,8 @@ export async function listPendingGuardianRepairDispatches(db, limit = 5) {
   const safeLimit = boundedInteger(limit, 5, 25);
   const result = await db.query(
     `SELECT j.id,j.incident_id,j.result,j.repair_dispatch_status,j.repair_dispatch_at,
-            j.repair_dispatch_attempts,j.created_at AS job_created_at,
+            j.repair_dispatch_attempts,j.repair_approved_by,j.repair_approval_fingerprint,
+            j.created_at AS job_created_at,
             i.system,i.code,i.severity,i.title,i.summary,i.evidence
      FROM owner_guardian_jobs j
      JOIN owner_guardian_incidents i ON i.id=j.incident_id
