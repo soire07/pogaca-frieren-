@@ -131,6 +131,14 @@ test('guild workshop embed saves require the linked Discord guild owner',async()
  assert.equal(saved,true);
 });
 
+test('custom navigation script is served as a public static asset', async () => {
+  const response = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-navigation.js', headers: {} }, response), true);
+  assert.equal(response.status, 200);
+  assert.match(String(response.body), /site-menu-toggle/);
+  assert.match(String(response.body), /Escape/);
+});
+
 test('anonymous visitors must authenticate before viewing the homepage', async () => {
   const response = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/', headers: {} }, response), true);
@@ -150,7 +158,18 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.doesNotMatch(response.body, /class="wrap home-banner"/);
   assert.match(response.body, /class="skip-link" href="#main-content"/);
   assert.match(response.body, /<main id="main-content"/);
-  assert.match(response.body, /aria-label="Ana gezinme"/);
+  assert.match(response.body, /aria-label="Frieren ana menüsü"/);
+  assert.match(response.body, /site-menu-toggle/);
+  assert.match(response.body, /aria-controls="site-sidebar"/);
+  assert.match(response.body, /data-nav-group="oyuncu"/);
+  assert.match(response.body, /data-nav-group="macera"/);
+  assert.match(response.body, /data-nav-group="dunya"/);
+  assert.ok(response.body.includes('data-nav-path="/" href="/"'));
+  assert.ok(response.body.includes('<strong>Kullanıcı Paneli</strong>'));
+  assert.ok(!response.body.includes('data-nav-path="/maceraci" href="/maceraci"'));
+  assert.match(response.body, /site-navigation.js/);
+  assert.match(response.body, /data-nav-group="oyuncu"/);
+  assert.match(response.body, /data-nav-group="macera"/);
   assert.match(response.body, /gif-gallery/);
   assert.match(response.body, /href="\/assets\/site\.css"/);
   assert.match(response.body, /profile-avatar/);
@@ -297,6 +316,7 @@ test('homepage uses the brand avatar and a lightweight custom profile header ins
   const stylesheet = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
   assert.ok(String(stylesheet.body).includes('.profile-banner-art{display:grid'));
+  assert.match(String(stylesheet.body), /\.site-menu-toggle\{[^}]*transform:translateY\(-50%\)/);
   assert.ok(String(stylesheet.body).includes('.hero{position:relative;isolation:isolate'));
 });
 test('shared stylesheet is publicly cacheable for authenticated and auth pages', async () => {

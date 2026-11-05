@@ -196,3 +196,37 @@ img{max-width:100%}
 
 .market-price-preview{display:block;margin:10px 0;padding:11px 13px;border:1px solid #b99be544;border-radius:10px;background:#9b78d414;color:#eadfff;font-size:12px;font-weight:700;line-height:1.5}
 .market-price-preview:empty{display:none}
+
+
+/* Frieren left navigation drawer */
+.topbar{justify-content:space-between;min-height:66px;padding-left:76px}
+.site-menu-toggle{position:fixed;z-index:42;left:14px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:46px;height:54px;padding:0;border:1px solid #d9c1ff88;border-radius:16px;background:linear-gradient(155deg,#392951f5,#171326f5);color:#f4e8ff;font:800 29px/1 Georgia,serif;box-shadow:0 12px 34px #05030d99,0 0 24px #bd96ff24;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s}
+.site-menu-toggle:hover{transform:translateY(-50%) translateX(2px);border-color:#f1ddff;box-shadow:0 14px 38px #05030dcc,0 0 30px #bd96ff44}
+.site-menu-backdrop{position:fixed;z-index:39;inset:0;width:100%;height:100%;padding:0;border:0;background:#05030dcc;backdrop-filter:blur(4px);cursor:pointer}
+.site-menu-backdrop[hidden],.site-sidebar[hidden]{display:none}
+.site-sidebar{position:fixed;z-index:40;inset:0 auto 0 0;display:flex;flex-direction:column;width:min(344px,calc(100vw - 54px));padding:18px 15px 14px;border-right:1px solid #d8bcff55;background:radial-gradient(ellipse at 15% 0,#9369d638,transparent 42%),linear-gradient(165deg,#171326 0%,#100d1f 65%,#17152c 100%);box-shadow:24px 0 80px #03020bcc;transform:translateX(-105%);transition:transform .22s ease}
+.site-sidebar.is-open{transform:translateX(0)}
+.site-sidebar-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:3px 2px 16px;border-bottom:1px solid var(--line)}
+.site-sidebar-brand{display:flex;align-items:center;gap:10px;font:18px Georgia,serif;letter-spacing:.16em}
+.site-sidebar-brand small{display:block;margin-top:3px;color:#bdb4d9;font:8px system-ui;letter-spacing:.19em}
+.site-sidebar-brand .brand-mark{width:38px;height:38px;font-size:22px}
+.site-menu-close{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border:1px solid var(--line);border-radius:13px;background:#ffffff0a;color:#f4e8ff;font-size:26px;cursor:pointer}
+.site-sidebar-intro{padding:16px 8px 12px}
+.site-sidebar-intro span{color:#d8baff;font-size:9px;font-weight:900;letter-spacing:.2em}
+.site-sidebar-intro p{margin:5px 0 0;color:#bdb4d0;font-size:11px;line-height:1.55}
+.site-sidebar-nav{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 3px 12px;scrollbar-width:thin;scrollbar-color:#76618f transparent}
+.site-nav-group{margin:8px 0 15px}
+.site-nav-group h2{margin:0 0 7px;padding:0 9px;color:#a99abb;font-size:9px;font-weight:900;letter-spacing:.19em}
+.site-nav-link{position:relative;display:flex;align-items:center;gap:11px;min-height:48px;margin:4px 0;padding:7px 10px;border:1px solid transparent;border-radius:13px;background:#ffffff05;color:#eee5fb;text-decoration:none;transition:background .16s,border-color .16s,transform .16s}
+.site-nav-link:hover{transform:translateX(2px);border-color:#d8bcff40;background:#d7c0ff12}
+.site-nav-link[aria-current=page]{border-color:#c6a4f077;background:linear-gradient(100deg,#9c75d42b,#ffffff08);box-shadow:inset 3px 0 #d6b7ff}
+.site-nav-icon{display:grid;place-items:center;flex:0 0 33px;width:33px;height:33px;border:1px solid #d8bcff33;border-radius:10px;background:#b18be51a;color:#e8d4ff;font-size:17px}
+.site-nav-copy{display:grid;gap:1px;min-width:0}
+.site-nav-copy strong{font-size:12px;line-height:1.35}
+.site-nav-copy small{color:#aaa0be;font-size:9px;line-height:1.35}
+.site-nav-arrow{margin-left:auto;color:#8f81a6;font-size:12px;opacity:.7}
+.site-sidebar-foot{padding:11px 7px 2px;border-top:1px solid var(--line);color:#a99dbb;font-size:9px;text-align:center}
+body.site-menu-open{overflow:hidden}
+@media(max-width:850px){.topbar{padding-left:72px}.site-menu-toggle{left:10px;width:44px;height:50px;border-radius:14px}}
+@media(max-width:560px){.topbar{padding:9px 13px 9px 66px;min-height:60px}.site-sidebar{padding:13px 11px 10px;width:min(330px,calc(100vw - 48px))}.site-sidebar-intro{padding:13px 8px 9px}.site-nav-link{min-height:50px}.site-menu-toggle{left:9px;width:42px;height:48px}}
+@media(prefers-reduced-motion:reduce){.site-menu-toggle,.site-sidebar,.site-nav-link{transition:none!important}.site-menu-toggle:hover{transform:translateY(-50%)}.site-nav-link:hover{transform:none}}

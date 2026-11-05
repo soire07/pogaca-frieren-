@@ -4,6 +4,9 @@ on:
     types: [opened, reopened, synchronize]
     paths:
       - 'public-site.js'
+      - 'site.css'
+      - 'public-assets/site-navigation.js'
+      - 'scripts/test-public-site.js'
       - 'site-auth.js'
       - 'owner-dashboard.js'
       - 'account-center.js'
@@ -58,4 +61,5 @@ jobs:
         env:
           MOBILE_SMOKE_BASE_URL: 'http://127.0.0.1:4173'
           MOBILE_SMOKE_ALLOW_LOCAL: '1'
+          ADMIN_SESSION_SECRET: 'ci-only-public-site-secret-with-at-least-32-characters'
         run: node scripts/mobile-browser-smoke.mjs

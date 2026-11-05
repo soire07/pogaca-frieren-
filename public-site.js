@@ -35,6 +35,7 @@ const assets = new Map([
 ]);
 assets.set('/assets/embed-preview.js', 'public-assets/embed-preview.js');
 assets.set('/assets/market-preview.js', 'public-assets/market-preview.js');
+assets.set('/assets/site-navigation.js', 'public-assets/site-navigation.js');
 assets.set('/site.webmanifest', 'site.webmanifest');
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function cookies(req) {
@@ -66,7 +67,39 @@ function page(title, content, user, seo = {}) {
   const mainContent = String(content).replace('<main', '<main id="main-content"');
   const ownerLink = user.id === OWNER_ID ? '<a href="/owner">Owner Panel</a>' : '';
   const guildLink = '<a href="/lonca">Maceracı Loncası</a>';
-  return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><meta name="description" content="' + esc(description) + '"><meta name="robots" content="' + robots + '">' + seoTags + structuredData + '<link rel="icon" type="image/svg+xml" href="/assets/site-avatar.svg"><link rel="alternate icon" href="/assets/site-avatar.webp" type="image/webp"><link rel="manifest" href="/site.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><title>' + esc(title) + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css"></head><body><a class="skip-link" href="#main-content">Ana içeriğe geç</a><header class="topbar"><a class="brand" href="/"><span class="brand-mark">✧</span><span>FRIEREN<small>THE ARCANE JOURNEY</small></span></a><nav aria-label="Ana gezinme"><a href="/">Oyuncu Paneli</a><a href="/kesfet">Keşfet</a><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/maceraci">Maceracı Paneli</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><div class="user-chip"><img src="' + esc(avatar) + '" alt=""><span>' + esc(user.username || 'Gezgin') + '</span>' + (user.id ? '<a href="/logout" title="Çıkış yap">↗</a>' : '<a href="/login" title="Giriş yap">↗</a>') + '</div></header>' + mainContent + '<footer><div><strong>✧ FRIEREN</strong><span>Bir yolculuk, bin yıllık bir hikâye.</span></div><nav aria-label="Alt gezinme"><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><small>© Frieren Platform · Developed by Soiree</small></footer></body></html>';
+  const navLink = (path, icon, label, hint) => '<a class="site-nav-link" data-nav-path="' + path + '" href="' + path + '"><span class="site-nav-icon" aria-hidden="true">' + icon + '</span><span class="site-nav-copy"><strong>' + esc(label) + '</strong><small>' + esc(hint) + '</small></span><span class="site-nav-arrow" aria-hidden="true">↗</span></a>';
+  const navGroup = (id, title, links) => '<section class="site-nav-group" data-nav-group="' + id + '"><h2>' + title + '</h2>' + links.join('') + '</section>';
+  const sidebar = '<button class="site-menu-toggle" id="site-menu-toggle" type="button" aria-controls="site-sidebar" aria-expanded="false" aria-label="Menüyü aç"><span aria-hidden="true">⋮</span></button>' +
+    '<button class="site-menu-backdrop" id="site-menu-backdrop" type="button" aria-label="Menüyü kapat" hidden></button>' +
+    '<aside class="site-sidebar" id="site-sidebar" aria-label="Frieren ana menüsü" hidden>' +
+      '<div class="site-sidebar-head"><a class="site-sidebar-brand" href="/"><span class="brand-mark">✧</span><span>FRIEREN<small>THE ARCANE JOURNEY</small></span></a><button class="site-menu-close" id="site-menu-close" type="button" aria-label="Menüyü kapat">×</button></div>' +
+      '<div class="site-sidebar-intro"><span>✧ YOLCULUK REHBERİ</span><p>Keşfet, karakterini geliştir ve macerana kaldığın yerden devam et.</p></div>' +
+      '<nav class="site-sidebar-nav" aria-label="Frieren ana menüsü">' +
+        navGroup('oyuncu', 'BAŞLANGIÇ', [
+          navLink('/', '⌂', 'Kullanıcı Paneli', 'Maceracı panelin ve etkinliklerin'),
+          navLink('/kesfet', '✧', 'Keşfet', 'Frieren dünyasını tanı')
+        ]) +
+        navGroup('macera', 'MACERACI ALANI', [
+          navLink('/maceraci/envanter', '▣', 'Envanterim', 'Eşyaların ve ekipmanların'),
+          navLink('/maceraci/koleksiyon', '◈', 'Koleksiyonum', 'Yoldaşlar ve keşifler'),
+          navLink('/maceraci/sosyal', '♧', 'Sosyal Alan', 'Arkadaşlar ve rakipler'),
+          navLink('/maceraci/yasam', '⌂', 'Yaşam Alanı', 'Kişisel evin ve kozmetiklerin'),
+          navLink('/maceraci/bildirimler', '☾', 'Bildirimler', 'Haberci kuş tercihlerin'),
+          navLink('/maceraci/atolye', '✦', 'Büyü Atölyesi', 'Embed ve büyü otomasyonları')
+        ]) +
+        navGroup('dunya', 'FRIEREN DÜNYASI', [
+          navLink('/pogaca', '⚔', 'Poğaça Frieren', 'RPG botunu keşfet'),
+          navLink('/komutlar', '⌘', 'Komut Rehberi', 'Komutlar ve seçenekler'),
+          navLink('/frieren-ai', '✧', 'Frieren AI', 'Yapay zekâ asistanı'),
+          navLink('/pazar', '◈', 'Kuzey Pazarı', 'Oyuncu pazarı ve takas'),
+          navLink('/lonca', '♜', 'Maceracı Loncası', 'Discord sunucu modülleri')
+        ]) +
+        navGroup('hesap', 'HESAP', [
+          navLink('/destek', '✉', 'Destek Merkezi', 'Yardım ve hesap işlemleri')
+        ]) +
+        (ownerLink ? navGroup('yonetim', 'SAHİP ALANI', [navLink('/owner', '♛', 'Owner Panel', 'Platform yönetimi')]) : '') +
+      '</nav><div class="site-sidebar-foot"><span>✧ Bir yolculuk, bin yıllık bir hikâye.</span></div></aside>';
+  return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><meta name="description" content="' + esc(description) + '"><meta name="robots" content="' + robots + '">' + seoTags + structuredData + '<link rel="icon" type="image/svg+xml" href="/assets/site-avatar.svg"><link rel="alternate icon" href="/assets/site-avatar.webp" type="image/webp"><link rel="manifest" href="/site.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><title>' + esc(title) + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css"></head><body><a class="skip-link" href="#main-content">Ana içeriğe geç</a>' + sidebar + '<header class="topbar"><a class="brand" href="/"><span class="brand-mark">✧</span><span>FRIEREN<small>THE ARCANE JOURNEY</small></span></a><div class="user-chip"><img src="' + esc(avatar) + '" alt=""><span>' + esc(user.username || 'Gezgin') + '</span>' + (user.id ? '<a href="/logout" title="Çıkış yap">↗</a>' : '<a href="/login" title="Giriş yap">↗</a>') + '</div></header>' + mainContent + '<footer><div><strong>✧ FRIEREN</strong><span>Bir yolculuk, bin yıllık bir hikâye.</span></div><nav aria-label="Alt gezinme"><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><small>© Frieren Platform · Developed by Soiree</small></footer><script src="/assets/site-navigation.js" defer></script></body></html>';
 }
 function home(client, user) {
   const ready = client?.isReady?.() === true;
@@ -667,7 +700,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   if (req.method !== 'GET') return false;
   const cookie = cookies(req);
   if (url.pathname === '/owner' || url.pathname.startsWith('/owner/')) return false;
-  if (assets.has(url.pathname) && ['site-avatar.svg', 'site-avatar.webp', 'site-shortcut.svg', 'site.webmanifest', 'site-banner.svg', 'site-banner.webp', 'site.css', 'owner.css', 'public-assets/embed-preview.js'].includes(assets.get(url.pathname))) {
+  if (assets.has(url.pathname) && ['site-avatar.svg', 'site-avatar.webp', 'site-shortcut.svg', 'site.webmanifest', 'site-banner.svg', 'site-banner.webp', 'site.css', 'owner.css', 'public-assets/embed-preview.js', 'public-assets/site-navigation.js'].includes(assets.get(url.pathname))) {
     try {
       const file = assets.get(url.pathname);
       const data = await readFile(new URL('./' + file, import.meta.url));
@@ -755,7 +788,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if (!db) { res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }); res.end('Oyuncu paneli veritabanına şu anda bağlanamıyor.'); return true; }
     const data = await getAdventurerDashboard(db, user.id);
     const html = adventurerPanel(user, data, url.searchParams.get('status'));
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });
     res.end(html); return true;
   }
   if(url.pathname==='/maceraci/yasam'){
@@ -812,7 +845,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   const routes = new Map([['/kesfet', () => home(client, user)], ['/pogaca', () => pogaca(client, user)], ['/komutlar', () => commandCatalog(client, user)], ['/frieren-ai', () => aiPage(user)]]);
   const render = routes.get(url.pathname);
   if (!render) return false;
-  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });
   res.end(render());
   return true;
 }
