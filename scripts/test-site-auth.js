@@ -69,12 +69,19 @@ test('same-origin request guard accepts the configured site host and rejects cro
 test('origin rejection diagnostics run before database access', async () => {
   const db = fakeDb();
   const req = { method: 'POST', url: '/login', headers: {
+    'content-type': 'application/x-www-form-urlencoded',
     origin: 'https://unlisted-attacker.example',
     'sec-fetch-site': 'same-site',
     host: 'pogaca-frieren.onrender.com',
     'x-forwarded-host': 'pogaca-frieren.onrender.com',
     'x-forwarded-proto': 'https'
-  }, async *[Symbol.asyncIterator]() {} };
+  }, async *[Symbol.asyncIterator]() {
+    yield Buffer.from(new URLSearchParams({
+      csrf: createSiteCsrfToken(secret),
+      username: 'unknown-user',
+      password: 'not-a-real-password'
+    }).toString());
+  } };
   const res = response();
   const originalWarn = console.warn;
   const entries = [];
@@ -371,4 +378,104 @@ test('proxy origin fallback rejects an untrusted Referer and a valid untrusted O
     origin: 'https://attacker.example',
     referer: 'https://site.example/login'
   } }, 'https://site.example'), false);
+});
+
+test('proxy-corrupted Origin and Fetch Metadata do not block login when signed CSRF is valid', async () => {
+  const db = fakeDb();
+  const req = {
+    method: 'POST',
+    url: '/login',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      origin: '[invalid]',
+      'sec-fetch-site': 'same-oigi',
+      host: 'pogaca-fiee.oede.com',
+      'x-forwarded-host': 'fieebo.vecel.app',
+      'x-forwarded-proto': 'hps'
+    },
+    async *[Symbol.asyncIterator]() {
+      yield Buffer.from(new URLSearchParams({
+        csrf: createSiteCsrfToken(secret),
+        username: 'unknown-user',
+        password: 'not-a-real-password'
+      }).toString());
+    }
+  };
+  const res = response();
+  assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret }), true);
+  assert.equal(res.status, 401, 'valid CSRF must pass the corrupted proxy-header gate and reach login lookup');
+  assert.equal(db.calls.some(call => call.sql.includes('FROM frieren_site_accounts')), true);
+});
+
+test('invalid CSRF is rejected before schema queries even when proxy headers are malformed', async () => {
+  const db = fakeDb();
+  const req = {
+    method: 'POST',
+    url: '/login',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      origin: '[invalid]',
+      'sec-fetch-site': 'same-oigi'
+    },
+    async *[Symbol.asyncIterator]() {
+      yield Buffer.from(new URLSearchParams({
+        csrf: 'forged-token',
+        username: 'unknown-user',
+        password: 'not-a-real-password'
+      }).toString());
+    }
+  };
+  const res = response();
+  assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret }), true);
+  assert.equal(res.status, 403);
+  assert.equal(db.calls.length, 0, 'invalid CSRF must be rejected before any database query');
+});
+
+test('malformed Origin cannot hide an explicit untrusted Referer', async () => {
+  const db = fakeDb();
+  const req = {
+    method: 'POST', url: '/login',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      origin: '[invalid]',
+      referer: 'https://attacker.example/login',
+      'sec-fetch-site': 'same-oigi'
+    },
+    async *[Symbol.asyncIterator]() {
+      yield Buffer.from(new URLSearchParams({
+        csrf: createSiteCsrfToken(secret),
+        username: 'unknown-user',
+        password: 'not-a-real-password'
+      }).toString());
+    }
+  };
+  const res = response();
+  assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret }), true);
+  assert.equal(res.status, 403);
+  assert.equal(db.calls.length, 0);
+});
+
+test('explicit attacker Origin and cross-site metadata stay blocked despite valid CSRF', async () => {
+  for (const headers of [
+    { origin: 'https://attacker.example', 'sec-fetch-site': 'same-site' },
+    { origin: 'https://frierenbot.vercel.app', 'sec-fetch-site': 'cross-site' }
+  ]) {
+    const db = fakeDb();
+    const req = {
+      method: 'POST',
+      url: '/login',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', ...headers },
+      async *[Symbol.asyncIterator]() {
+        yield Buffer.from(new URLSearchParams({
+          csrf: createSiteCsrfToken(secret),
+          username: 'unknown-user',
+          password: 'not-a-real-password'
+        }).toString());
+      }
+    };
+    const res = response();
+    assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret }), true);
+    assert.equal(res.status, 403);
+    assert.equal(db.calls.length, 0);
+  }
 });
