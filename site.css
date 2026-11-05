@@ -192,3 +192,7 @@ img{max-width:100%}
 .command-choices{display:flex;flex-wrap:wrap;gap:6px}
 .command-choices li{padding:3px 7px;border-radius:7px;background:#b89be51a;color:#e8dcf7;font-size:11px}
 @media(max-width:560px){.command-meta span{font-size:9px}.command-option{padding:9px}.command-details summary{min-height:42px}}
+
+
+.market-price-preview{display:block;margin:10px 0;padding:11px 13px;border:1px solid #b99be544;border-radius:10px;background:#9b78d414;color:#eadfff;font-size:12px;font-weight:700;line-height:1.5}
+.market-price-preview:empty{display:none}
