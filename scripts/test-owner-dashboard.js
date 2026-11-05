@@ -1165,6 +1165,7 @@ test('Owner Panel document loads shared submit feedback without changing named a
   const source = await readFile(new URL('../owner-dashboard.js', import.meta.url), 'utf8');
   const actions = await readFile(new URL('../public-assets/site-actions.js', import.meta.url), 'utf8');
   assert.match(source, /site-actions\.js/);
+  assert.match(source, /script-src 'self'/);
   assert.match(actions, /pendingForms/);
   assert.doesNotMatch(actions, /submitter\.disabled\s*=/);
 });
