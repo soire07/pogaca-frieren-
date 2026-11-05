@@ -19,7 +19,7 @@
 - Unvanlar: yalnızca `user_titles` içinde gerçekten açılmış unvanlar listelenir; aktif unvan seçimi yalnızca kazanılmış unvanlardan yapılır.
 - Sıralamalar: seçilen Discord sunucusu kapsamında XP, boss, zindan, arena ve son 24 saat macera XP sıralamaları. Son 24 saat panosu yalnızca `adventure_history` ile kaydedilmiş macera XP'si olarak etiketlenir; tüm oyun XP'si olduğu iddia edilmez.
 - Aktivite akışı: mevcut macera, başarım ve kozmetik kayıtlarından son olaylar.
-- Profil gizliliği: herkese açık ev vitrini mevcut `is_public` onayına bağlı kalır; istatistik, başarım, koleksiyon ve aktivite bölümleri ayrı ayrı kapatılabilir. Varsayılanlar mevcut paylaşım davranışını gereksiz yere genişletmez.
+- Profil gizliliği: herkese açık ev vitrini mevcut `is_public` onayına bağlı kalır; istatistik, başarım, koleksiyon ve aktivite bölümleri ayrı ayrı kapatılabilir. Varsayılanlar mevcut herkese açık ev paylaşım davranışını korur; yeni hassas savaş istatistikleri ve etkinlik akışı kapalı başlar.
 - VIP XP barı: seviye formülü `utils.js` ile ortaklaştırılır; renkli animasyon, hareket azaltma tercihi ve sunucu tarafı VIP doğrulaması korunur.
 
 ## Yaklaşımlar
