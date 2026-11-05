@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { getRenderServiceMetrics, renderMetricBars } from './owner-metrics.js';
+import { getRenderServiceMetrics, renderMetricBars, normalizeRenderMetricRange, RENDER_METRIC_RANGES } from './owner-metrics.js';
 import {
   auditOwnerAction, getOwnerOverview, getMaintenanceState, listPendingApprovals,
   reviewApproval, listUserMemories, deleteUserMemory, setMaintenanceState,
