@@ -262,7 +262,11 @@ test('failed repair dispatch retries from the saved AI proposal without repeatin
   assert.equal(requests[0].options.method, 'GET');
   assert.equal(requests[1].options.method, 'POST');
   assert.equal(requests[1].url.endsWith('/dispatches'), true);
-  assert.equal(JSON.parse(requests[1].options.body).inputs.mode, 'repair');
+  const payload = JSON.parse(requests[1].options.body);
+  assert.equal(payload.ref, 'guardian-isolated-repair-test');
+  assert.equal(payload.inputs.mode, 'repair');
+  assert.equal(payload.inputs.base_branch, 'guardian-isolated-repair-test');
+  assert.equal(payload.inputs.incident_id, '42');
   assert.equal(calls[0][0], 'reserve');
   assert.equal(calls[1][1].status, 'dispatched');
 });
