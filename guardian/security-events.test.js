@@ -25,7 +25,7 @@ function request(body, timestamp, sig) {
   return { method: 'POST', url: '/internal/guardian/security-event', headers: {
     'content-type': 'application/json', 'x-frieren-timestamp': timestamp,
     'x-frieren-signature': 'sha256=' + sig, 'x-forwarded-for': '198.51.100.42',
-  }, socket: { remoteAddress: '10.0.0.8' }, socket: { remoteAddress: '192.0.2.123' }, async *[Symbol.asyncIterator]() { yield Buffer.from(body); } };
+  }, socket: { remoteAddress: '10.0.0.8' }, async *[Symbol.asyncIterator]() { yield Buffer.from(body); } };
 }
 
 test('client IP resolution ignores spoofed forwarding headers from an untrusted peer', () => {
