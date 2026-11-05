@@ -1162,3 +1162,18 @@ test('Guardian action failures return to the Guardian workspace', () => {
   assert.equal(getOwnerActionErrorDestination('guardian-review'), '/owner/guardian');
   assert.equal(getOwnerActionErrorDestination('rpg-resource-adjust'), '/owner');
 });
+
+
+test('Guardian dispatch acceptance is not displayed as a confirmed workflow run', () => {
+  const html = renderOwnerGuardianWorkspace({
+    csrf: 'csrf-test',
+    jobs: [{
+      id: 31, incident_id: 12, incident_title: 'Synthetic dispatch', agent: 'frieren_ai',
+      system: 'guardian', status: 'completed', created_at: '2026-11-05T10:00:00Z',
+      repair_dispatch_status: 'dispatched',
+      result: { status: 'proposal_only', rootCause: 'Synthetic root cause', confidence: 'high', affectedFiles: ['guardian/automation.js'], proposedPatch: 'diff --git a/guardian/automation.js b/guardian/automation.js', tests: ['existing test'], risks: [] },
+    }],
+  });
+  assert.match(html, /tetikleme isteği kabul edildi; tekil workflow çalıştırma kimliği henüz kaydedilmedi/);
+  assert.doesNotMatch(html, /Onarım workflow\\'u başlatıldı/);
+});
