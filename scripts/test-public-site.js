@@ -1251,3 +1251,24 @@ test('all site and panel button markup declares an explicit action type', async 
     }
   }
 });
+
+test('user menu adds badges, account settings and logout without relocating existing links', async () => {
+  const source = await readFile(new URL('../public-site.js', import.meta.url), 'utf8');
+  const userCenter = source.slice(source.indexOf("navGroup('kullanici'"), source.indexOf("navGroup('oyuncu'"));
+  const otherSections = source.slice(source.indexOf("navGroup('diger'"), source.indexOf("navGroup('yonetim'"));
+  assert.match(userCenter, /navLink\('\/maceraci\/profil#badges',[\s\S]*?'Rozetlerim'/);
+  assert.match(otherSections, /'DİĞER BÖLÜMLER'/);
+  assert.match(otherSections, /navLink\('\/destek#account-settings',[\s\S]*?'Hesap Ayarları'/);
+  assert.match(otherSections, /navLink\('\/logout',[\s\S]*?'Çıkış Yap'/);
+  for (const existing of [
+    "navLink('/maceraci/profil#achievements'",
+    "navLink('/maceraci/profil#progress'",
+    "navLink('/maceraci/profil#battle-stats'",
+    "navLink('/maceraci/koleksiyon'",
+    "navLink('/maceraci/yasam'",
+    "navLink('/pazar'",
+    "navLink('/lonca'"
+  ]) assert.ok(source.includes(existing), 'existing menu entry must remain: ' + existing);
+  assert.match(source, /id="badges"/);
+  assert.match(source, /id="account-settings"/);
+});
