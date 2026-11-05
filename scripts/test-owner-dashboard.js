@@ -90,7 +90,7 @@ test('Guardian incident has a one-click safe AI analysis action without implying
     csrf: 'csrf-test',
     incidents: [{ id: 77, title: 'Synthetic incident', severity: 'high', system: 'pogaca_frieren', code: 'TEST', status: 'open', occurrence_count: 1, last_seen: '2026-11-05T10:00:00Z', summary: 'Synthetic summary', evidence: [] }],
   });
-  const reviewForm = [...html.matchAll(/<form\\b[\\s\\S]*?<\\/form>/g)]
+  const reviewForm = [...html.matchAll(/<form\b[\s\S]*?<\/form>/g)]
     .map(match => match[0])
     .find(form => /name="action" value="guardian-review"/.test(form));
   assert.ok(reviewForm, 'Guardian review form should be rendered');
