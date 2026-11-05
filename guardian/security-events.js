@@ -111,7 +111,6 @@ export async function recordGuardianSecurityEvent(db, event, {
     const evidence = [
       ...event.evidence,
       { message: 'Guard event ' + event.eventId + ' · SHA-256 ' + eventHash },
-      ...(safeIp ? [{ message: 'Doğrulanan ağ eş adresi (' + payload.ipSource + '): ' + safeIp }] : []),
     ].slice(0, 8);
     const incident = await upsertGuardianIncident(client, {
       system: event.system,
