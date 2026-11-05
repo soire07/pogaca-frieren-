@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { handlePublicSiteRequest } from '../public-site.js';
+import { handlePublicSiteRequest, publicHomeShowcasePage } from '../public-site.js';
 import { createPublicSiteSession, buildPublicSiteSessionCookie } from '../owner-dashboard.js';
 import { createSiteCsrfToken } from '../site-auth.js';
 
@@ -314,7 +314,8 @@ test('homepage renders the signed-in user profile with the completed starry bann
   await handlePublicSiteRequest(request('/kesfet', visitor), response);
   assert.ok(response.body.includes('site-avatar.webp'));
   assert.ok(response.body.includes('profile-banner-art'));
-  assert.ok(response.body.includes('site-profile-banner.svg'));
+  assert.ok(response.body.includes('site-banner.svg'));
+  assert.ok(!response.body.includes('site-profile-banner.svg'));
   assert.ok(response.body.includes('MACERACI HESABI'));
   assert.ok(response.body.includes('Gezgin'));
   assert.equal(response.body.includes('site-banner.webp'), false);
@@ -1013,4 +1014,18 @@ test('player home visibility and layout controls persist only for the linked acc
   assert.equal(layout.status, 303);
   assert.match(layout.headers.Location, /status=saved/);
   assert.deepEqual(JSON.parse(writes[1].params[3]), [{ roomKey: 'starter', decorationKey: 'book_shelf', position: 0 }]);
+});
+
+
+test('public adventurer profile renders the equipped Frieren or Northern guild banner', () => {
+  const user = { id: visitor.id, username: visitor.username, avatarUrl: '/assets/site-avatar.webp' };
+  const data = {
+    profile: { character_name: 'Fern', class_name: 'Büyücü', level: 22, xp: 3450 },
+    rooms: [], trophies: [], loadout: [{ cosmetic_key: 'frieren_banner', slot: 'guild_banner' }],
+    companion: null, cardVariants: [], home: { layout: [] },
+  };
+  const html = publicHomeShowcasePage(user, data);
+  assert.match(html, /player-banner--frieren/);
+  assert.match(html, /Gezgin Büyücü Sancağı/);
+  assert.match(html, /Maceracı profil sancağı/);
 });
