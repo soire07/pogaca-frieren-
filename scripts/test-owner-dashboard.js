@@ -85,6 +85,18 @@ test('Guardian repair approval is explicit and disappears after approval is pers
   }
 });
 
+test('Guardian incident has a one-click safe AI analysis action without implying automatic code changes', () => {
+  const html = renderOwnerGuardianWorkspace({
+    csrf: 'csrf-test',
+    incidents: [{ id: 77, title: 'Synthetic incident', severity: 'high', system: 'pogaca_frieren', code: 'TEST', status: 'open', occurrence_count: 1, last_seen: '2026-11-05T10:00:00Z', summary: 'Synthetic summary', evidence: [] }],
+  });
+  assert.match(html, /name="action" value="guardian-review"/);
+  assert.match(html, /name="incidentId" value="77"/);
+  assert.match(html, /Sorunu çöz/);
+  assert.match(html, /kodu otomatik değiştirmez/);
+  assert.doesNotMatch(html, /name="confirm" value="yes" required/);
+});
+
 test('Guardian workspace renders incidents and review proposals as unapplied', () => {
   const html = renderOwnerGuardianWorkspace({
     csrf: 'csrf-test',
