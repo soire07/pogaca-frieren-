@@ -119,11 +119,12 @@ test('Guardian Groq self-test is admin-only and cannot dispatch repairs', async 
 
 test('Guardian review records the exact source commit, context files and context hash', async () => {
   const expectedHash = 'b'.repeat(64);
+  let prompt;
   const result = await reviewGuardianIncident({
-    groq: { chat: { completions: { create: async () => ({ choices: [{ message: { content: JSON.stringify({
+    groq: { chat: { completions: { create: async request => { prompt = request; return ({ choices: [{ message: { content: JSON.stringify({
       rootCause: 'A missing test guard.', confidence: 'high', affectedFiles: ['guardian/automation.test.js'],
       suggestedFix: 'No change until verified.', proposedPatch: '', tests: [], risks: [],
-    }) } }] }) } } },
+    }) } }] }); } } } },
     model: 'test-model',
     incident: { system: 'guardian', code: 'TEST_GAP', title: 'Guardian review', summary: 'Check existing test coverage.' },
     collectCodeContext: async () => ({
@@ -136,6 +137,9 @@ test('Guardian review records the exact source commit, context files and context
   assert.deepEqual(result.sourceContextFiles, ['guardian/automation.test.js', 'guardian/automation.js']);
   assert.equal(result.sourceContextHash, expectedHash);
   assert.equal(result.sourceCommitSha, 'c'.repeat(40));
+  const userPrompt = JSON.parse(prompt.messages[1].content);
+  assert.match(userPrompt.sourceContext, /guardian\\/automation.test.js/);
+  assert.ok(userPrompt.constraints.some(rule => rule.includes('aynı davranışı zaten doğruluyorsa')));
 });
 
 test('actual Guardian context collector includes implementation and tests, redacts secrets and hashes exact context', async () => {
