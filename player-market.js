@@ -168,10 +168,10 @@ export async function listPlayerMarketListings(db, guildId, limit = 15, filters 
   const category = normalizePlayerMarketCategory(filters.category);
   if (category === 'other') {
     params.push(MARKET_CATEGORY_KEYS_ALL);
-    clauses.push('NOT (item_key = ANY(
+    clauses.push('NOT (item_key = ANY($' + params.length + '::text[]))');
   } else if (category !== 'all') {
     params.push(MARKET_CATEGORY_KEYS[category]);
-    clauses.push('item_key = ANY(
+    clauses.push('item_key = ANY($' + params.length + '::text[])');
   }
   if (minPrice !== null) { params.push(minPrice); clauses.push(`price_coins >= $${params.length}`); }
   if (maxPrice !== null) { params.push(maxPrice); clauses.push(`price_coins <= $${params.length}`); }
