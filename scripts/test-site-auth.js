@@ -479,3 +479,124 @@ test('explicit attacker Origin and cross-site metadata stay blocked despite vali
     assert.equal(db.calls.length, 0);
   }
 });
+
+
+test('site account lifecycle completes registration, email verification, login, password reset and logout', async () => {
+  const keys = ['SITE_GMAIL_SCRIPT_URL','SITE_GMAIL_SCRIPT_SECRET','ADMIN_SESSION_SECRET','SITE_BASE_URL'];
+  const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+  const originalFetch = globalThis.fetch;
+  const lifecycleSecret = 'full-account-lifecycle-test-secret-over-32-characters';
+  process.env.SITE_GMAIL_SCRIPT_URL = 'https://script.google.com/macros/s/lifecycle-test/exec';
+  process.env.SITE_GMAIL_SCRIPT_SECRET = 'lifecycle-mail-secret';
+  process.env.ADMIN_SESSION_SECRET = lifecycleSecret;
+  process.env.SITE_BASE_URL = 'https://frierenbot.vercel.app';
+  const account = { id: '123e4567-e89b-42d3-a456-426614174000', username: 'LifecycleUser', email: 'lifecycle@example.com', password_hash: '', email_verified_at: null, verification_token_hash: null, reset_token_hash: null };
+  const mail = [];
+  globalThis.fetch = async (_url, options) => {
+    mail.push(JSON.parse(options.body));
+    return { ok: true, async json() { return { ok: true, messageId: 'test-message' }; } };
+  };
+  const db = {
+    async query(sql, params = []) {
+      if (sql.startsWith('CREATE TABLE') || sql.startsWith('CREATE INDEX')) return { rows: [], rowCount: 0 };
+      if (sql.startsWith('INSERT INTO frieren_site_accounts')) {
+        account.username = params[0]; account.email = params[1]; account.password_hash = params[2]; account.verification_token_hash = params[3];
+        return { rows: [], rowCount: 1 };
+      }
+      if (sql.includes('SET email_verified_at=NOW()')) {
+        if (account.verification_token_hash !== params[0]) return { rows: [], rowCount: 0 };
+        account.email_verified_at = new Date(); account.verification_token_hash = null;
+        return { rows: [{ id: account.id }], rowCount: 1 };
+      }
+      if (sql.startsWith('SELECT id,username,password_hash,email_verified_at')) {
+        const identifier = String(params[0]).toLowerCase();
+        return { rows: [account].filter(row => row.username.toLowerCase() === identifier || row.email.toLowerCase() === identifier), rowCount: 1 };
+      }
+      if (sql.startsWith('SELECT id,email FROM frieren_site_accounts') && sql.includes('email_verified_at IS NOT NULL')) {
+        return { rows: account.email.toLowerCase() === String(params[0]).toLowerCase() && account.email_verified_at ? [{ id: account.id, email: account.email }] : [], rowCount: account.email_verified_at ? 1 : 0 };
+      }
+      if (sql.startsWith('UPDATE frieren_site_accounts SET reset_token_hash=$2')) {
+        account.reset_token_hash = params[1]; return { rows: [], rowCount: 1 };
+      }
+      if (sql.startsWith('SELECT id FROM frieren_site_accounts WHERE reset_token_hash=$1')) {
+        return { rows: account.reset_token_hash === params[0] && account.email_verified_at ? [{ id: account.id }] : [], rowCount: account.reset_token_hash === params[0] ? 1 : 0 };
+      }
+      if (sql.startsWith('UPDATE frieren_site_accounts SET password_hash=$2')) {
+        if (account.reset_token_hash !== params[0]) return { rows: [], rowCount: 0 };
+        account.password_hash = params[1]; account.reset_token_hash = null;
+        return { rows: [{ id: account.id }], rowCount: 1 };
+      }
+      throw new Error('Unexpected lifecycle SQL: ' + sql);
+    }
+  };
+  const request = (path, fields) => {
+    const body = new URLSearchParams(fields).toString();
+    return { method: 'POST', url: path, headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      origin: 'https://frierenbot.vercel.app', 'sec-fetch-site': 'same-origin'
+    }, socket: { remoteAddress: '192.0.2.123' }, async *[Symbol.asyncIterator]() { yield Buffer.from(body); } };
+  };
+  const get = path => ({ method: 'GET', url: path, headers: {} });
+  try {
+    let responseObject = response();
+    assert.equal(await handleSiteAuthRequest(request('/register', {
+      csrf: createSiteCsrfToken(lifecycleSecret), username: account.username, email: account.email,
+      password: 'Initial-Pass-123', confirmPassword: 'Initial-Pass-123'
+    }), responseObject, { db, sessionSecret: lifecycleSecret, createSession: createPublicSiteSession }), true);
+    assert.equal(responseObject.status, 201);
+    assert.equal(mail.length, 1);
+    const verificationToken = /verify-email\?token=([a-f0-9]{64})/.exec(mail[0].html)?.[1];
+    assert.ok(verificationToken, 'registration email contains a one-time verification link');
+
+    responseObject = response();
+    await handleSiteAuthRequest(get('/verify-email?token=' + verificationToken), responseObject, { db, sessionSecret: lifecycleSecret, createSession: createPublicSiteSession });
+    assert.equal(responseObject.status, 200);
+    assert.ok(account.email_verified_at);
+
+    responseObject = response();
+    await handleSiteAuthRequest(request('/login', {
+      csrf: createSiteCsrfToken(lifecycleSecret), username: account.username, password: 'Initial-Pass-123'
+    }), responseObject, { db, sessionSecret: lifecycleSecret, createSession: createPublicSiteSession });
+    assert.equal(responseObject.status, 302);
+    assert.equal(responseObject.headers.Location, '/');
+    const cookie = responseObject.headers['Set-Cookie'];
+    const token = decodeURIComponent(cookie.split(';')[0].split('=').slice(1).join('='));
+    const session = readPublicSiteSession(token, lifecycleSecret);
+    assert.equal(session.username, account.username);
+    assert.equal(session.id, 'site_' + account.id);
+
+    responseObject = response();
+    await handleSiteAuthRequest(request('/forgot-password', {
+      csrf: createSiteCsrfToken(lifecycleSecret), email: account.email
+    }), responseObject, { db, sessionSecret: lifecycleSecret, createSession: createPublicSiteSession });
+    assert.equal(responseObject.status, 200);
+    assert.equal(mail.length, 2);
+    const resetToken = /reset-password\?token=([a-f0-9]{64})/.exec(mail[1].html)?.[1];
+    assert.ok(resetToken, 'password reset email contains a one-time reset link');
+
+    responseObject = response();
+    await handleSiteAuthRequest(get('/reset-password?token=' + resetToken), responseObject, { db, sessionSecret: lifecycleSecret, createSession: createPublicSiteSession });
+    assert.equal(responseObject.status, 200);
+
+    responseObject = response();
+    await handleSiteAuthRequest(request('/reset-password', {
+      csrf: createSiteCsrfToken(lifecycleSecret), token: resetToken,
+      password: 'Replacement-Pass-456', confirmPassword: 'Replacement-Pass-456'
+    }), responseObject, { db, sessionSecret: lifecycleSecret, createSession: createPublicSiteSession });
+    assert.equal(responseObject.status, 200);
+    assert.equal(account.reset_token_hash, null);
+    assert.equal(await verifySitePassword('Replacement-Pass-456', account.password_hash), true);
+    assert.equal(await verifySitePassword('Initial-Pass-123', account.password_hash), false);
+
+    responseObject = response();
+    await handleSiteAuthRequest(get('/logout'), responseObject, { db, sessionSecret: lifecycleSecret, createSession: createPublicSiteSession });
+    assert.equal(responseObject.status, 302);
+    assert.match(responseObject.headers['Set-Cookie'], /Max-Age=0/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const key of keys) {
+      if (previous[key] === undefined) delete process.env[key];
+      else process.env[key] = previous[key];
+    }
+  }
+});
