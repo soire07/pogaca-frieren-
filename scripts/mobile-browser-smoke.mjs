@@ -70,10 +70,14 @@ for (const scenario of scenarios) {
     if (!playerPage || playerPage.status() !== 200) throw new Error(scenario.name + ' authenticated site page HTTP ' + (playerPage?.status() || 'no response'));
     const menuToggle = page.locator('#site-menu-toggle');
     const sidebar = page.locator('#site-sidebar');
-    if (await menuToggle.count() !== 1) throw new Error(scenario.name + ' missing left navigation toggle');
+    if (await menuToggle.count() !== 1) throw new Error(scenario.name + ' missing compact navigation toggle');
+    const menuButtonStyle = await menuToggle.evaluate(node => { const r=node.getBoundingClientRect(); const s=getComputedStyle(node); return {left:r.left,top:r.top,width:r.width,height:r.height,position:s.position}; });
+    if (menuButtonStyle.position !== 'fixed' || menuButtonStyle.left > 24 || menuButtonStyle.top > 24 || menuButtonStyle.width > 52 || menuButtonStyle.height > 52) throw new Error(scenario.name + ' menu button is not a compact top-left app control: ' + JSON.stringify(menuButtonStyle));
     await menuToggle.click();
     await page.waitForFunction(() => document.getElementById('site-sidebar')?.classList.contains('is-open'));
     if (await menuToggle.getAttribute('aria-expanded') !== 'true' || !(await sidebar.isVisible())) throw new Error(scenario.name + ' menu did not open');
+    const menuStyle = await sidebar.evaluate(node => { const r=node.getBoundingClientRect(); const s=getComputedStyle(node); return {left:r.left,top:r.top,width:r.width,position:s.position,backdrop:s.backdropFilter}; });
+    if (menuStyle.position !== 'fixed' || menuStyle.left > 24 || menuStyle.top > 80 || menuStyle.width > 340) throw new Error(scenario.name + ' navigation is not a compact anchored popover: ' + JSON.stringify(menuStyle));
     if (!(await sidebar.getByRole('link', { name: /Kullanıcı Paneli/ }).count())) throw new Error(scenario.name + ' missing player interface shortcut');
     if (await sidebar.locator('[data-nav-path="/kesfet"]').getAttribute('aria-current') !== 'page') throw new Error(scenario.name + ' active navigation item is not marked');
     await page.keyboard.press('Escape');
@@ -81,7 +85,7 @@ for (const scenario of scenarios) {
     if (await menuToggle.getAttribute('aria-expanded') !== 'false' || await sidebar.isVisible()) throw new Error(scenario.name + ' Escape did not close navigation');
     await menuToggle.click();
     const viewportWidth = await page.evaluate(() => window.innerWidth);
-    await page.locator('#site-menu-backdrop').click({ position: { x: viewportWidth - 8, y: 12 } });
+    await page.mouse.click(viewportWidth - 8, 12);
     await page.waitForFunction(() => document.getElementById('site-sidebar')?.hidden === true);
     if (await menuToggle.getAttribute('aria-expanded') !== 'false' || await sidebar.isVisible()) throw new Error(scenario.name + ' outside click did not close navigation');
     await menuToggle.click();
