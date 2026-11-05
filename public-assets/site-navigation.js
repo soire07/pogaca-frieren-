@@ -38,10 +38,11 @@
     if (event.target.closest('a[href]')) closeMenu(false);
   });
 
+  // Capture the outside click before page-level handlers can stop propagation.
   document.addEventListener('click', event => {
     if (toggle.getAttribute('aria-expanded') !== 'true') return;
     if (!menu.contains(event.target) && !toggle.contains(event.target)) closeMenu(false);
-  });
+  }, true);
   document.addEventListener('keydown', event => {
     if (toggle.getAttribute('aria-expanded') !== 'true') return;
     if (event.key === 'Escape') {
