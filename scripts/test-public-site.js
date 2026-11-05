@@ -1272,3 +1272,14 @@ test('user menu adds badges, account settings and logout without relocating exis
   assert.match(source, /id="badges"/);
   assert.match(source, /id="account-settings"/);
 });
+
+test('linked adventurer cards show a medium class emblem in the upper-right corner for each class', async () => {
+  const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
+  const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
+  assert.match(source,/function adventurerClassEmblem\\(className\\)/);
+  assert.match(source,/adventurerClassEmblem\\(profile\\.class_name\\)/);
+  for(const kind of ['buyucu','savasci','sovalye','okcu','suikastci','rahip','simyaci','cagirici']) assert.ok(source.includes(kind),kind);
+  assert.match(source,/class="card adventurer-character-card"/);
+  assert.match(css,/\\.adventurer-class-emblem\\{[^}]*width:54px;[^}]*height:54px/);
+  assert.match(css,/\\.adventurer-class-emblem\\{[^}]*position:absolute;[^}]*top:16px;[^}]*right:16px/);
+});
