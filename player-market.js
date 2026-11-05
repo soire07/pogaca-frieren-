@@ -1,10 +1,26 @@
 import { randomUUID } from 'node:crypto';
+import { equipmentItems } from './equipment-data.js';
+import { FISH_CATALOG } from './fishing.js';
+import { CREATURE_CATALOG } from './creatures.js';
 
 const DISCORD_ID = /^\d{17,20}$/;
 const MAX_ACTIVE_LISTINGS = 10;
 const MAX_ACTIVE_OFFERS = 20;
 const MAX_QUANTITY = 1000;
 const MAX_PRICE = 1_000_000;
+
+const MARKET_CATEGORY_KEYS = Object.freeze({
+  equipment: equipmentItems.map(item => item.id),
+  fishing: FISH_CATALOG.map(item => item.key),
+  creatures: CREATURE_CATALOG.map(item => item.key)
+});
+const MARKET_CATEGORY_KEYS_ALL = [...new Set(Object.values(MARKET_CATEGORY_KEYS).flat())];
+
+export function normalizePlayerMarketCategory(value) {
+  return ['equipment', 'fishing', 'creatures', 'other'].includes(String(value || ''))
+    ? String(value) : 'all';
+}
+
 
 function validateIdentity(guildId, userId) {
   if (!DISCORD_ID.test(String(guildId || '')) || !DISCORD_ID.test(String(userId || ''))) {
@@ -149,6 +165,14 @@ export async function listPlayerMarketListings(db, guildId, limit = 15, filters 
     return Number.isSafeInteger(parsed) && parsed >= 0 && parsed <= MAX_PRICE ? parsed : null;
   };
   const minPrice = parsePrice(filters.minPrice), maxPrice = parsePrice(filters.maxPrice);
+  const category = normalizePlayerMarketCategory(filters.category);
+  if (category === 'other') {
+    params.push(MARKET_CATEGORY_KEYS_ALL);
+    clauses.push(`NOT (item_key = ANY(${params.length}::text[]))`);
+  } else if (category !== 'all') {
+    params.push(MARKET_CATEGORY_KEYS[category]);
+    clauses.push(`item_key = ANY(${params.length}::text[])`);
+  }
   if (minPrice !== null) { params.push(minPrice); clauses.push(`price_coins >= $${params.length}`); }
   if (maxPrice !== null) { params.push(maxPrice); clauses.push(`price_coins <= $${params.length}`); }
   const sort = ['price_desc','newest'].includes(filters.sort) ? filters.sort : 'price_asc';
