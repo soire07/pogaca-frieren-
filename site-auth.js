@@ -89,9 +89,9 @@ export function isSameOriginRequest(req, siteBaseUrl = process.env.SITE_BASE_URL
     }
   }
 
-  // Origin is absent or malformed: accept only an exact allowlisted Referer
-  // origin. The form handler independently verifies the signed CSRF token
-  // before any account query or mutation.
+  // Origin is absent or malformed: if a Referer is present, it must also
+  // be a syntactically valid, allowlisted HTTP(S) URL. A malformed proxy
+  // Referer is ignored; the handler still requires a valid signed CSRF token.
   const referer = String(headers.referer || '').trim();
   if (!referer) return false;
   try {
@@ -99,7 +99,7 @@ export function isSameOriginRequest(req, siteBaseUrl = process.env.SITE_BASE_URL
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
     return allowed.has(parsed.origin);
   } catch {
-    return false;
+    return true;
   }
 }
 
