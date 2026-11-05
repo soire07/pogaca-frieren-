@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 const ACCOUNT=/^site_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const KINDS=new Set(['avatar','banner']);
 const LIMITS={avatar:2*1024*1024,banner:4*1024*1024};
