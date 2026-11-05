@@ -75,7 +75,13 @@ test('origin rejection diagnostics run before database access', async () => {
     host: 'pogaca-frieren.onrender.com',
     'x-forwarded-host': 'pogaca-frieren.onrender.com',
     'x-forwarded-proto': 'https'
-  }, async *[Symbol.asyncIterator]() {} };
+  }, async *[Symbol.asyncIterator]() {
+    yield Buffer.from(new URLSearchParams({
+      csrf: createSiteCsrfToken(secret),
+      username: 'unknown-user',
+      password: 'not-a-real-password'
+    }).toString());
+  } };
   const res = response();
   const originalWarn = console.warn;
   const entries = [];
@@ -86,7 +92,7 @@ test('origin rejection diagnostics run before database access', async () => {
     assert.equal(db.calls.length, 0);
     assert.equal(entries.length, 1);
     assert.match(entries[0], /SITE_AUTH_ORIGIN_REJECTED/);
-    assert.match(entries[0], /unlisted-attacker\.example/);
+    assert.match(entries[0], /unlisted-attacker\\.example/);
   } finally {
     console.warn = originalWarn;
   }
