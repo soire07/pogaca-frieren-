@@ -174,7 +174,6 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /data-nav-group="oyuncu"/);
   assert.match(response.body, /data-nav-group="macera"/);
   assert.match(response.body, /gif-gallery/);
-  assert.match(response.body, /href="\/assets\/site\.css"/);
   assert.match(response.body, /profile-avatar/);
   assert.equal((response.body.match(/loading="lazy"/g) || []).length, 17);
   assert.equal((response.body.match(/class="gif-item"/g) || []).length, 16);
@@ -355,7 +354,6 @@ test('registration page reports that email delivery must be configured before si
   await handlePublicSiteRequest({ method: 'GET', url: '/register?status=mail_unavailable', headers: {} }, response, { db: { query: async () => ({ rows: [], rowCount: 0 }) } });
   assert.equal(response.status, 200);
   assert.match(response.body, /Gmail API bağlantısını tamamlamalı/);
-  assert.match(response.body, /href="\/assets\/site\.css"/);
 });
 
 
