@@ -112,7 +112,7 @@ test('pending repair dispatch refuses proposals without a persisted owner approv
   let reservations = 0;
   const result = await processPendingGuardianRepairDispatch({
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
-    job: { id: 9, result: review, repair_approved_by: '1553794496234262641', repair_approval_fingerprint: getGuardianProposalFingerprint(review) },
+    job: { id: 9, result: review },
     incident,
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async () => { requests += 1; throw new Error('must not contact GitHub'); },
