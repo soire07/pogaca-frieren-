@@ -425,6 +425,30 @@ test('invalid CSRF is rejected before schema queries even when proxy headers are
   assert.equal(db.calls.length, 0, 'invalid CSRF must be rejected before any database query');
 });
 
+test('malformed Origin cannot hide an explicit untrusted Referer', async () => {
+  const db = fakeDb();
+  const req = {
+    method: 'POST', url: '/login',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      origin: '[invalid]',
+      referer: 'https://attacker.example/login',
+      'sec-fetch-site': 'same-oigi'
+    },
+    async *[Symbol.asyncIterator]() {
+      yield Buffer.from(new URLSearchParams({
+        csrf: createSiteCsrfToken(secret),
+        username: 'unknown-user',
+        password: 'not-a-real-password'
+      }).toString());
+    }
+  };
+  const res = response();
+  assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret }), true);
+  assert.equal(res.status, 403);
+  assert.equal(db.calls.length, 0);
+});
+
 test('explicit attacker Origin and cross-site metadata stay blocked despite valid CSRF', async () => {
   for (const headers of [
     { origin: 'https://attacker.example', 'sec-fetch-site': 'same-site' },
