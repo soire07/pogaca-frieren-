@@ -598,12 +598,12 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + (result.proposedPatch ? '<details><summary>Önerilen yama taslağı (uygulanmadı)</summary><pre>' + escapeHtml(result.proposedPatch) + '</pre></details>' : '')
       + (result.status === 'insufficient_context' ? '<p class="notice warn">Kaynak bağlamı yetersiz; tahminle düzeltme hazırlanmadı.</p>' : '')
       + (result.status === 'proposal_only' && !isRepairableProposal(result) ? '<p class="notice warn">Güven, dosya veya test planı yeterli değil; bu öneri için onarım workflow\'u başlatılamaz.</p>' : '')
-      + (result.status === 'proposal_only' && job.repair_dispatch_status === 'dispatched' ? '<p class="notice">Onarım workflow\'u başlatıldı. <a href="https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml" target="_blank" rel="noopener noreferrer">GitHub Actions sonuçlarını aç</a></p>' : '')
+      + (result.status === 'proposal_only' && job.repair_dispatch_status === 'dispatched' ? '<p class="notice">Onarım workflow\'u başlatıldı. <a href="https://github.com/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml" target="_blank" rel="noopener noreferrer">GitHub Actions workflow geçmişini aç</a></p>' : '')
       + (result.status === 'proposal_only' && repairApproved && !['dispatched','dispatching'].includes(job.repair_dispatch_status || '') ? '<p class="notice">Owner onayı kayıtlı. Guardian yalnızca bu onaylı öneri için izole test workflow\'unu yeniden deneyecek.</p>' : '')
       + (result.status === 'proposal_only' && job.repair_dispatch_status === 'dispatching' ? '<p class="notice warn">Onarım workflow başlatma isteği gönderiliyor veya sonucu bekleniyor. Tekrar tetiklemek yerine önce GitHub Actions geçmişini kontrol et.</p>' : '')
       + (job.repair_run_status ? '<p class="small">Son kaydedilen workflow (geçmiş kanıt): ' + escapeHtml(job.repair_run_status) + (job.repair_run_conclusion ? ' · Sonuç: ' + escapeHtml(job.repair_run_conclusion) : '') + '</p>' : '')
       + (job.repair_checks_status && job.repair_checks_status !== 'unknown' ? '<p class="small">PR kontrolleri: ' + escapeHtml(job.repair_checks_status) + '</p>' : '')
-      + (job.repair_run_url ? '<p><a href="' + escapeHtml(job.repair_run_url) + '" target="_blank" rel="noopener noreferrer">Son kaydedilen workflow kanıtını aç</a></p>' : '')
+      + (String(job.repair_run_url || '').startsWith('https://github.com/soire07/pogaca-frieren-/actions/runs/') ? '<p><a href="' + escapeHtml(job.repair_run_url) + '" target="_blank" rel="noopener noreferrer">Tekil workflow çalıştırmasını aç</a></p>' : '')
       + (job.repair_pr_url ? '<p><a href="' + escapeHtml(job.repair_pr_url) + '" target="_blank" rel="noopener noreferrer">Son kaydedilen onarım PR #' + Number(job.repair_pr_number || 0) + ' kanıtını aç</a> · ' + escapeHtml(job.repair_pr_state || '') + '</p>' : '')
       + (job.repair_dispatch_status === 'dispatched' && process.env.FRIEREN_GITHUB_TOKEN ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-refresh-pr"><input type="hidden" name="incidentId" value="' + Number(job.incident_id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> GitHub sonucunu sorgulamayı onaylıyorum</label><button class="btn secondary">Sonucu yenile</button></form>' : '')
 
@@ -1119,7 +1119,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
           runMarker.test(String(item.display_title || item.name || ''))
         ) || null;
         let runId = run?.id || null;
-        let runUrl = run?.html_url || job.repair_workflow_url || null;
+        let runUrl = run?.html_url || null;
         let runStatus = run?.status || null;
         let runConclusion = run?.conclusion || null;
         let pr = null;
@@ -1128,6 +1128,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         });
         if (!prResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + prResponse.status);
         const prs = await prResponse.json();
+        const branchName = trackingUrls.branchName;
         pr = Array.isArray(prs) ? prs.find(item => item.head?.ref === branchName) || null : null;
         let checksStatus = classifyGuardianWorkflowConclusion(runConclusion);
         if (pr) {
