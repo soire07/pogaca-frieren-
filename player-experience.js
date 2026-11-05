@@ -57,7 +57,7 @@ export function normalizeProfileSettings(input={}){
  const keys=['showStats','showAchievements','showCollections','showActivity','showCosmetics'];
  if(!input||typeof input!=='object'||keys.some(key=>typeof input[key]!=='boolean'))throw new Error('PROFILE_SETTINGS_INVALID');
  const title=input.activeTitle==null?'':String(input.activeTitle).trim();
- if(title.length>80||/[\\u0000-\\u001f\\u007f]/.test(title))throw new Error('PROFILE_SETTINGS_INVALID');
+ if(title.length>80||/[\u0000-\u001f\u007f]/.test(title))throw new Error('PROFILE_SETTINGS_INVALID');
  return {showStats:input.showStats,showAchievements:input.showAchievements,showCollections:input.showCollections,showActivity:input.showActivity,showCosmetics:input.showCosmetics,activeTitle:title||null};
 }
 export async function getPlayerProfileSettings(db,{guildId,userId}){
