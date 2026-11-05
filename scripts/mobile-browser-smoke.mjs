@@ -1,4 +1,5 @@
 import { chromium, webkit, request } from 'playwright';
+import { createPublicSiteSession } from '../owner-dashboard.js';
 
 const configuredBaseUrl = String(process.env.MOBILE_SMOKE_BASE_URL || '').trim();
 const allowLocal = process.env.MOBILE_SMOKE_ALLOW_LOCAL === '1';
@@ -23,6 +24,12 @@ for (const scenario of scenarios) {
       hasTouch: true
     });
     const page = await context.newPage();
+    const siteSession = createPublicSiteSession(
+      process.env.ADMIN_SESSION_SECRET,
+      { id: 'site_123e4567-e89b-12d3-a456-426614174000', username: 'Smoke Gezgin' },
+      Math.floor(Date.now() / 1000) + 3600
+    );
+    await context.addCookies([{ name: 'frieren_site_session', value: siteSession, domain: '127.0.0.1', path: '/', httpOnly: true, secure: false, sameSite: 'Lax' }]);
     for (const route of ['/login', '/register']) {
       const response = await page.goto(baseUrl + route, { waitUntil: 'domcontentloaded', timeout: 45000 });
       if (!response || response.status() !== 200) throw new Error(scenario.name + ' ' + route + ' HTTP ' + (response?.status() || 'no response'));
@@ -59,8 +66,25 @@ for (const scenario of scenarios) {
         throw new Error(scenario.name + ' ' + route + ' has clipped or undersized controls: ' + JSON.stringify(layout.controls));
       }
     }
+    const playerPage = await page.goto(baseUrl + '/kesfet', { waitUntil: 'domcontentloaded', timeout: 45000 });
+    if (!playerPage || playerPage.status() !== 200) throw new Error(scenario.name + ' authenticated site page HTTP ' + (playerPage?.status() || 'no response'));
+    const menuToggle = page.locator('#site-menu-toggle');
+    const sidebar = page.locator('#site-sidebar');
+    if (await menuToggle.count() !== 1) throw new Error(scenario.name + ' missing left navigation toggle');
+    await menuToggle.click();
+    await page.waitForFunction(() => document.getElementById('site-sidebar')?.classList.contains('is-open'));
+    if (await menuToggle.getAttribute('aria-expanded') !== 'true' || !(await sidebar.isVisible())) throw new Error(scenario.name + ' menu did not open');
+    if (!(await sidebar.getByRole('link', { name: /Maceracı Paneli/ }).count())) throw new Error(scenario.name + ' missing player interface shortcut');
+    if (await sidebar.locator('[data-nav-path="/kesfet"]').getAttribute('aria-current') !== 'page') throw new Error(scenario.name + ' active navigation item is not marked');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.getElementById('site-sidebar')?.hidden === true);
+    if (await menuToggle.getAttribute('aria-expanded') !== 'false' || await sidebar.isVisible()) throw new Error(scenario.name + ' Escape did not close navigation');
+    await menuToggle.click();
+    await page.locator('#site-menu-backdrop').click({ position: { x: 4, y: 4 } });
+    await page.waitForFunction(() => document.getElementById('site-sidebar')?.hidden === true);
+    if (await menuToggle.getAttribute('aria-expanded') !== 'false' || await sidebar.isVisible()) throw new Error(scenario.name + ' outside click did not close navigation');
     await context.close();
-    process.stdout.write('PASS ' + scenario.name + ' /login /register layout\n');
+    process.stdout.write('PASS ' + scenario.name + ' /login /register and authenticated left navigation\n');
   } finally {
     await browser.close();
   }
