@@ -143,7 +143,7 @@ test('boss raid turn prompt uses actual line breaks instead of literal slash-n t
 test('raid boss catalog has distinct bosses, signature moves and deterministic selection', () => {
   assert.equal(RAID_BOSSES.length, 5);
   assert.equal(chooseRaidBoss(() => 0).id, 'north-general');
-  assert.equal(chooseRaidBoss(() => 0.5).id, 'glass-wyrm');
+  assert.equal(chooseRaidBoss(() => 0.5).id, 'fallen-mage');
   assert.equal(chooseRaidBoss(() => 0.99).id, 'domaltazor');
   assert.equal(new Set(RAID_BOSSES.map(b => b.loot).filter(Boolean)).size, 4);
 });
@@ -573,7 +573,7 @@ test('solo, raid and dungeon boss panels can display their own configured artwor
   const envExample = await readFile(new URL('../.env.example', import.meta.url), 'utf8');
   assert.match(solo, /bossImageUrl: boss\.artUrl/);
   assert.match(solo, /if \(bossImageUrl\) embed\.setImage\(bossImageUrl\)/);
-  assert.match(raid, /getBossArtUrl\(BOSS\.id/);
+  assert.match(raid, /getBossArtUrl\(raidArtKey\)/);\n  assert.match(raid, /BOSS\.id === 'fallen-mage' \? 'fallenMage'/);
   assert.match(raid, /if \(raidArtUrl\) embed\.setImage\(raidArtUrl\)/);
   assert.match(dungeon, /getBossArtUrl\('dungeonFinal'\)/);
   assert.match(envExample, /POGACA_BOSS_ART_SCHATTENWOLF_URL/);
