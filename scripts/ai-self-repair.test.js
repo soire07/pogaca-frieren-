@@ -507,6 +507,6 @@ test('repair patch rejects a valid-looking hunk without changed lines', () => {
     '+++ b/rpg-mechanics.js',
     '@@ -1 +1 @@',
     ' unchanged context only',
-  ].join('\\n');
+  ].join('\n');
   assert.throws(() => validatePatchPaths(contextOnly), { message: 'REPAIR_PATCH_HUNK_REQUIRED' });
 });
