@@ -306,8 +306,6 @@ export async function refreshGuardianRepairTracking({
     'X-GitHub-Api-Version': '2022-11-28',
   };
   const apiBase = 'https://api.github.com';
-  const baseBranch = await resolveGuardianRepairTrackingBranch(db, job.id);
-  const urls = buildGuardianRepairTrackingUrls(apiBase, incident.id, baseBranch);
   const fetchJson = async url => {
     const response = await fetchImpl(url, { headers, signal: AbortSignal.timeout(10_000) });
     if (!response.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + response.status);
@@ -315,6 +313,8 @@ export async function refreshGuardianRepairTracking({
   };
 
   try {
+    const baseBranch = await resolveGuardianRepairTrackingBranch(db, job.id);
+    const urls = buildGuardianRepairTrackingUrls(apiBase, incident.id, baseBranch);
     const runsPayload = await fetchJson(urls.runsUrl);
     const runs = Array.isArray(runsPayload?.workflow_runs) ? runsPayload.workflow_runs : [];
     const totalRuns = Number(runsPayload?.total_count);
