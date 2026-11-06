@@ -53,6 +53,14 @@ test('each raid boss has a distinct combat profile, signature action, weakness a
   assert.equal(RAID_BOSSES.find(b => b.id === 'fallen-mage').special, 'mana-curse');
 });
 
+test('Fallen Mage Aura keeps its identity and abilities while using the empowered combat profile', () => {
+  const aura = RAID_BOSSES.find(b => b.id === 'fallen-mage');
+  assert.deepEqual(
+    { hp: aura.hp, damage: aura.damage, xp: aura.xp, coins: aura.coins, loot: aura.loot, weakness: aura.weakness, weaknessLabel: aura.weaknessLabel, special: aura.special },
+    { hp: 2400, damage: 48, xp: 460, coins: 520, loot: 'Auranın Mühürlü Asa Parçası', weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'mana-curse' }
+  );
+});
+
 test('raid weaknesses amplify only the matching attack type', () => {
   const spellWeak = RAID_BOSSES.find(b => b.weakness === 'spell');
   const attackWeak = RAID_BOSSES.find(b => b.weakness === 'attack');
