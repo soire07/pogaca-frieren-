@@ -26,7 +26,7 @@ import { createSupportTicket, listSupportTickets, listSupportTicketMessages, rep
 import { getNotificationPreferences, setNotificationPreference } from './news-birds.js';
 import { levelForXp, xpForNextLevel } from './utils.js';
 import { listPublicChatMessages, sendPublicChatMessage } from './public-chat.js';
-import { ensurePersonalCenterSchema, getPersonalProfile, updatePersonalProfile, listDirectMessages, listMessageThreads, sendDirectMessage, listGuestbookEntries, deleteGuestbookEntry, reportPlayer, createPlannerEntry, listPlannerEntries, updatePlannerEntry, deletePlannerEntry, getPersonalProgressReport, discoverPlayers, recommendPlayers, setCloseFriend, removeCloseFriend, listCloseFriends } from './personal-center.js';
+import { ensurePersonalCenterSchema, getPersonalProfile, updatePersonalProfile, listDirectMessages, listMessageThreads, sendDirectMessage, listGuestbookEntries, addGuestbookEntry, deleteGuestbookEntry, reportPlayer, createPlannerEntry, listPlannerEntries, updatePlannerEntry, deletePlannerEntry, getPersonalProgressReport, discoverPlayers, recommendPlayers, setCloseFriend, removeCloseFriend, listCloseFriends } from './personal-center.js';
 import { achievements as RPG_ACHIEVEMENTS } from './basarimlar.js';
 import { listCardVariants } from './card-variants.js';
 import { listGuildEmbedTemplates, listGuildCustomCommands, listGuildSpellAutomations, saveGuildEmbedTemplate, saveGuildCustomCommand, saveGuildSpellAutomation } from './guild-workshop.js';
@@ -180,6 +180,14 @@ function page(title, content, user, seo = {}) {
       '</nav><div class="site-sidebar-foot"><span>✧ Bir yolculuk, bin yıllık bir hikâye.</span></div></aside>';
   return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><meta name="description" content="' + esc(description) + '"><meta name="robots" content="' + robots + '">' + seoTags + structuredData + '<link rel="icon" type="image/svg+xml" href="/assets/site-avatar.svg"><link rel="alternate icon" href="/assets/site-avatar.webp" type="image/webp"><link rel="manifest" href="/site.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><title>' + esc(title) + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css?v=user-center-264-1"></head><body><a class="skip-link" href="#main-content">Ana içeriğe geç</a>' + sidebar + '<header class="topbar"><a class="brand" href="/"><span class="brand-mark">✧</span><span>FRIEREN<small>THE ARCANE JOURNEY</small></span></a><div class="user-chip"><img src="' + esc(avatar) + '" alt=""><span>' + esc(user.username || 'Gezgin') + '</span>' + (user.id ? '<a href="/logout" title="Çıkış yap">↗</a>' : '<a href="/login" title="Giriş yap">↗</a>') + '</div></header>' + mainContent + '<footer><div><strong>✧ FRIEREN</strong><span>Bir yolculuk, bin yıllık bir hikâye.</span></div><nav aria-label="Alt gezinme"><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><small>© Frieren Platform · Developed by Soiree</small></footer><script src="/assets/site-navigation.js?v=menu-241-2" defer></script><script src="/assets/site-actions.js?v=actions-261-1" defer></script><script src="/assets/profile-interactions.js?v=profile-261-1" defer></script></body></html>';
 }
+function publicPlayerProfilePage(user,showcase,personal,guestbook,csrf,canSign){
+ const profile=showcase.profile;
+ const entries=guestbook.map(x=>'<article class="personal-center-item"><strong>'+esc(x.author_id)+'</strong><p>'+esc(x.message)+'</p><small>'+new Date(x.created_at).toLocaleString('tr-TR')+'</small></article>').join('')||'<p class="empty-state">Henüz ziyaretçi defteri mesajı yok.</p>';
+ const sign=personal.guestbook_enabled?(canSign?'<form method="post" action="/maceraci/oyuncu/ziyaretci-defteri"><input type="hidden" name="csrf" value="'+esc(csrf)+'"><input type="hidden" name="guildId" value="'+esc(showcase.guildId)+'"><input type="hidden" name="ownerId" value="'+esc(profile.user_id)+'"><label>Mesajın<textarea name="message" maxlength="500" required></textarea></label><button class="btn" type="submit">Ziyaretçi defterine yaz</button></form>':'<p><a class="btn" href="/login">Giriş yapıp mesaj bırak</a></p>'):'<p class="muted">Bu oyuncu ziyaretçi defterini kapatmış.</p>';
+ const content='<main class="wrap user-center-page personal-center-page"><section class="user-center-hero"><div class="eyebrow">✧ AÇIK OYUNCU PROFİLİ</div><h1>'+esc(profile.character_name||'Maceracı')+'</h1><p class="lead">'+esc(personal.status_text||'Yolculuk devam ediyor')+'</p><p>'+esc(personal.bio||'Bu oyuncu henüz bir biyografi eklememiş.')+'</p><div class="user-center-metrics"><article><span>Seviye</span><strong>'+esc(profile.level??'—')+'</strong></article><article><span>XP</span><strong>'+esc(profile.xp??0)+'</strong></article><article><span>Boss zaferi</span><strong>'+esc(profile.boss_defeats??0)+'</strong></article><article><span>Zindan</span><strong>'+esc(profile.dungeon_wins??0)+'</strong></article></div></section><section class="section"><div class="section-head"><h2>Ziyaretçi Defteri</h2><p>Bu oyuncuya kısa bir mesaj bırak.</p></div><div class="card">'+sign+entries+'</div></section></main>';
+ return page('Oyuncu Profili',content,user);
+}
+
 function personalCenterPage(user,profile,data,csrf,status){
  const field=(label,name,value,max=500)=>'<label>'+label+'<input name="'+name+'" maxlength="'+max+'" value="'+esc(value||'')+'"></label>';
  const form=(action,body)=>'<form method="post" action="/maceraci/merkez"><input type="hidden" name="csrf" value="'+esc(csrf)+'"><input type="hidden" name="guildId" value="'+esc(profile.guild_id)+'"><input type="hidden" name="action" value="'+action+'">'+body+'</form>';
@@ -801,6 +809,20 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const result = await redeemSiteLinkToken(db, session.id, form.get('token'));
     res.writeHead(303, { Location: '/maceraci?status=' + (result.status === 'linked' ? 'linked' : 'invalid'), 'Cache-Control': 'no-store' }); res.end(); return true;
   }
+  if(req.method==='POST'&&url.pathname==='/maceraci/oyuncu/ziyaretci-defteri'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Ziyaretçi defteri veritabanı kullanılamıyor.');return true;}
+    if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Cache-Control':'no-store'});res.end('Form biçimi geçersiz.');return true;}
+    let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>4096){res.writeHead(413,{'Cache-Control':'no-store'});res.end('Form çok büyük.');return true;}chunks.push(chunk);}
+    const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
+    if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Güvenlik doğrulaması başarısız.');return true;}
+    const guildId=String(form.get('guildId')||''),ownerId=String(form.get('ownerId')||'');
+    if(!/^\d{17,20}$/.test(guildId)||!/^\d{17,20}$/.test(ownerId)){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Profil bağlantısı geçersiz.');return true;}
+    const author=await getLinkedAdventurer(db,session.id,guildId);if(!author){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Önce bu sunucudaki karakterini hesabına bağla.');return true;}
+    try{const result=await addGuestbookEntry(db,{guildId,ownerId,authorId:author.user_id,message:form.get('message')});const status=result.status==='created'?'guestbook_added':result.status;res.writeHead(303,{Location:'/maceraci/oyuncu?'+new URLSearchParams({guildId,userId:ownerId,status}).toString(),'Cache-Control':'no-store'});res.end();return true;}
+    catch(error){if(String(error?.message||'').startsWith('GUESTBOOK_')){res.writeHead(303,{Location:'/maceraci/oyuncu?'+new URLSearchParams({guildId,userId:ownerId,status:'invalid'}).toString(),'Cache-Control':'no-store'});res.end();return true;}throw error;}
+  }
   if(req.method==='POST'&&url.pathname==='/maceraci/merkez'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!requireSiteAccount(res,session?.id))return true;
@@ -980,11 +1002,11 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci/merkez', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/pazar']);
+  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci/oyuncu', '/maceraci/merkez', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/pazar']);
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname)) return false;
   const sessionUser = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
-  const user = await enrichSiteUser(db,client,sessionUser || (url.pathname === '/maceraci/ev' ? { id: 'public-viewer', username: 'Gezgin' } : url.pathname === '/kesfet' ? { id: '', username: 'Gezgin', avatarUrl: '/assets/site-avatar.webp' } : null));
-  if (!user && url.pathname !== '/kesfet') {
+  const user = await enrichSiteUser(db,client,sessionUser || (url.pathname === '/maceraci/ev' ? { id: 'public-viewer', username: 'Gezgin' } : (url.pathname === '/kesfet' || url.pathname === '/maceraci/oyuncu') ? { id: '', username: 'Gezgin', avatarUrl: '/assets/site-avatar.webp' } : null));
+  if (!user && url.pathname !== '/kesfet' && url.pathname !== '/maceraci/oyuncu') {
     res.writeHead(302, { Location: '/login', 'Cache-Control': 'no-store' });
     res.end();
     return true;
@@ -1058,6 +1080,16 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     return true;
   }
 
+  if(url.pathname==='/maceraci/oyuncu'){
+    if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Oyuncu profili veritabanı kullanılamıyor.');return true;}
+    const guildId=String(url.searchParams.get('guildId')||''),userId=String(url.searchParams.get('userId')||'');
+    if(!/^\d{17,20}$/.test(guildId)||!/^\d{17,20}$/.test(userId)){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Profil bağlantısı geçersiz.');return true;}
+    const showcase=await getPublicPlayerHome(db,{guildId,userId});
+    if(!showcase){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Bu oyuncunun profili herkese açık değil.');return true;}
+    const [personal,guestbook,author]=await Promise.all([getPersonalProfile(db,guildId,userId),listGuestbookEntries(db,{guildId,ownerId:userId}),SITE_ACCOUNT_ID.test(String(user?.id||''))?getLinkedAdventurer(db,user.id,guildId):Promise.resolve(null)]);
+    const html=publicPlayerProfilePage(user,{...showcase,guildId},personal,guestbook,createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET),Boolean(author&&author.user_id!==userId));
+    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});res.end(html);return true;
+  }
   if(url.pathname==='/maceraci/merkez'){
     if(!requireSiteAccount(res,user?.id))return true;
     if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Kişisel merkez veritabanı kullanılamıyor.');return true;}
