@@ -10,7 +10,8 @@ export const equipmentItems = [
   { id: 'copper_ring', name: '💍 Bakır Gezgin Yüzüğü', slot: 'ring', slotLabel: 'Yüzük', rarity: 'Yaygın', price: 180, levelReq: 1, attack: 1, defense: 0, hp: 0, mana: 0, description: 'Küçük ama güvenilir bir saldırı tılsımı.' },
   { id: 'mana_ring', name: '🔮 Mana Dairesi Yüzüğü', slot: 'ring', slotLabel: 'Yüzük', rarity: 'Nadir', price: 650, levelReq: 10, attack: 0, defense: 0, hp: 0, mana: 25, description: 'Büyücünün mana rezervini genişleten yüzük.' },
   { id: 'rune_ring', name: '🗿 Kadim Rün Yüzüğü', slot: 'ring', slotLabel: 'Yüzük', rarity: 'Destansı', price: 1600, levelReq: 25, attack: 0, defense: 3, hp: 20, mana: 20, description: 'Harabe rünleriyle örülmüş dengeli bir koruma yüzüğü.' },
-  { id: 'hero_ring', name: '🌠 Kahramanların Efsanevi Yüzüğü', slot: 'ring', slotLabel: 'Yüzük', rarity: 'Efsanevi', price: 3500, levelReq: 45, attack: 5, defense: 5, hp: 30, mana: 0, description: 'Uzun yolculukların ve büyük zaferlerin efsanevi yadigârı.' }
+  { id: 'hero_ring', name: '🌠 Kahramanların Efsanevi Yüzüğü', slot: 'ring', slotLabel: 'Yüzük', rarity: 'Efsanevi', price: 3500, levelReq: 45, attack: 5, defense: 5, hp: 30, mana: 0, description: 'Uzun yolculukların ve büyük zaferlerin efsanevi yadigârı.' },
+  { id: 'katun_ring', name: '💍 Katun Yüzüğü', slot: 'ring', slotLabel: 'Yüzük', rarity: 'Efsanevi', price: 999999, levelReq: 50, attack: 12, defense: 8, hp: 75, mana: 60, description: 'Domaltazor’dan düşen kadim yüzük. Mor aurası saldırını, savunmanı ve yaşam-mana özünü aynı anda güçlendirir: +12 saldırı, +8 savunma, +75 maksimum HP, +60 maksimum Mana.' }
 ];
 
 export const equipmentSlots = [
