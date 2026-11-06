@@ -6,6 +6,32 @@ export const RAID_BOSSES = [
   { id: 'domaltazor', name: '🦴 Domaltazor • Kadim Cellat', hp: 1600, damage: 24, xp: 520, coins: 750, loot: '💍 Katun Yüzüğü', lootChance: 0.001, weakness: 'attack', weaknessLabel: 'Fiziksel saldırı', special: 'katun-judgment', spawnWeight: 1 }
 ];
 
+
+export function getRaidBossForm(boss, phase) {
+  if (boss?.id !== 'fallen-mage') return null;
+  if (phase >= 3) return {
+    name: 'Melek Aura',
+    title: '☀️ MELEK FORMU',
+    description: 'Kutsal ışık kanatları açılır; İlahi Hüküm tüm takımı vurur.',
+    attackMultiplier: 1.3,
+    special: 'angelic-judgment'
+  };
+  if (phase === 2) return {
+    name: 'Düşmüş Melek Aura',
+    title: '🪽 DÜŞMÜŞ MELEK FORMU',
+    description: 'Karanlık kanatları açılır; Kara Kanat Fırtınası tüm takımı hedef alır.',
+    attackMultiplier: 1.15,
+    special: 'fallen-wings'
+  };
+  return {
+    name: 'Düşmüş Büyücü Aura',
+    title: '🕯️ DÜŞMÜŞ BÜYÜCÜ FORMU',
+    description: 'Mana Laneti kullanır.',
+    attackMultiplier: 1,
+    special: 'mana-curse'
+  };
+}
+
 export function chooseRaidBoss(random = Math.random, bosses = RAID_BOSSES) {
   const catalog = Array.isArray(bosses) && bosses.length ? bosses : RAID_BOSSES;
   const weights = catalog.map(boss => {
