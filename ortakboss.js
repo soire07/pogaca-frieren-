@@ -6,7 +6,7 @@ import { getGuildRpgContent } from './owner-rpg-content.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
 import { validateGuildEventRaidTeam } from './guild-team-leagues.js';
-import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio, applyDefendingReduction, scaleRaidBossHp, applyRaidBossDamage, regenerateRaidBossHp, calculateRaidAreaTickDamage, rollRaidBossLoot, rollRaidBossTitleDrops, canAssignPartyRole, isPartyWiped, getPartyRoleModifiers, applyTalentBonus } from './rpg-mechanics.js';
+import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio, applyDefendingReduction, scaleRaidBossHp, applyRaidBossDamage, regenerateRaidBossHp, calculateRaidAreaTickDamage, rollRaidBossLoot, rollRaidBossTitleDrops, getRaidBossForm, canAssignPartyRole, isPartyWiped, getPartyRoleModifiers, applyTalentBonus } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
 
@@ -255,9 +255,12 @@ export default {
         const currentPhase = getBossPhase(bossHp, maxBossHp);
         if (currentPhase > bossPhase) {
           bossPhase = currentPhase;
-          log.push(currentPhase === 2
-            ? `🔥 **${BOSS.name} ikinci evreye geçti!** Saldırıları %10 güçlendi.`
-            : `🌑 **${BOSS.name} son evreye geçti!** Saldırıları %25 güçlendi; özel hamleleri de sertleşti.`);
+          const auraForm = getRaidBossForm(BOSS, currentPhase);
+          log.push(auraForm
+            ? `✨ **${auraForm.title} — ${auraForm.name}!** ${auraForm.description}`
+            : currentPhase === 2
+              ? `🔥 **${BOSS.name} ikinci evreye geçti!** Saldırıları %10 güçlendi.`
+              : `🌑 **${BOSS.name} son evreye geçti!** Saldırıları %25 güçlendi; özel hamleleri de sertleşti.`);
         }
         const alive = fighters.map((x,i)=>hpNow[i]>0?i:-1).filter(i=>i>=0);
         if (!alive.length) break;
@@ -355,20 +358,24 @@ export default {
         const starburst = BOSS.special === 'mana-star' && rounds % 3 === 0;
         const shardRain = BOSS.special === 'shard-rain' && rounds % 2 === 0;
         const manaCurse = BOSS.special === 'mana-curse' && rounds % 3 === 0;
+        const auraForm = getRaidBossForm(BOSS, bossPhase);
+        const fallenWings = auraForm?.special === 'fallen-wings' && rounds % 2 === 0;
+        const angelicJudgment = auraForm?.special === 'angelic-judgment' && rounds % 2 === 0;
+        const formDamage = auraForm?.attackMultiplier || 1;
         const katunJudgment = BOSS.special === 'katun-judgment' && rounds % 3 === 0;
-        const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0)+(katunJudgment?10:0)+((starburst || shardRain || manaCurse || katunJudgment) ? bossPhaseSpecialBonus(bossPhase) : 0);
+        const rawDamage=Math.round((BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0)+(katunJudgment?10:0)+((starburst || shardRain || manaCurse || katunJudgment || fallenWings || angelicJudgment) ? bossPhaseSpecialBonus(bossPhase) : 0))*formDamage);
         if (enraged && !rageAnnounced) { log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.'); rageAnnounced = true; }
-        if (starburst || shardRain) {
-          const specialMessage = BOSS.special === 'shard-rain' ? '🐉 Cam Pullar Ejderhası keskin kristal parçalarını tüm takıma yağdırıyor!' : '☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!';
+        if (starburst || shardRain || fallenWings || angelicJudgment) {
+          const specialMessage = fallenWings ? '🪽 Düşmüş Melek Aura karanlık kanatlarını savurup tüm takıma Kara Kanat Fırtınası gönderiyor!' : angelicJudgment ? '☀️ Melek Aura kutsal ışığı toplayıp tüm takıma İlahi Hüküm indiriyor!' : BOSS.special === 'shard-rain' ? '🐉 Cam Pullar Ejderhası keskin kristal parçalarını tüm takıma yağdırıyor!' : '☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!';
           log.push(specialMessage);
           specialAttackHistory.push(specialMessage);
           for (const i of living) {
             const f=fighters[i];
-            const specialMultiplier = shardRain ? 0.5 : 0.68;
+            const specialMultiplier = fallenWings ? 0.72 : angelicJudgment ? 0.88 : shardRain ? 0.5 : 0.68;
             let incoming=calculateBossIncomingDamage(Math.round(rawDamage*specialMultiplier), Math.round(f.defense*0.44), bossPhase);
             incoming=applyDefendingReduction(incoming,defending.has(i));
             hpNow[i]=Math.max(0,hpNow[i]-incoming);
-            log.push(`☄️ ${f.username} ${shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
+            log.push(`☄️ ${f.username} ${fallenWings ? 'kara kanat fırtınasından' : angelicJudgment ? 'ilahi hükümden' : shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
           }
         } else {
           let incoming=calculateBossIncomingDamage(katunJudgment ? Math.round(rawDamage * 1.5) : rawDamage, Math.round(target.defense*0.56), bossPhase);
