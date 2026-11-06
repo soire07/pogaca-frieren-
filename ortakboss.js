@@ -27,7 +27,7 @@ export default {
     .setName('ortakboss')
     .setDescription('En fazla dört oyuncuyla takım rolleri kullanarak ortak boss baskını yap.')
     .addUserOption(o => o.setName('takim_arkadasi').setDescription('Birinci takım arkadaşı').setRequired(true))
-    .addStringOption(o => o.setName('boss_secimi').setDescription('Rastgele boss yerine belirli bir boss seç (isteğe bağlı)').setRequired(false).addChoices(...['north-general','glass-wyrm','fallen-mage','zeldeila','domaltazor','the-fool'].map(id => ({ name: ({'north-general':'Kuzey Platosu İblis Generali','glass-wyrm':'Cam Pullar Ejderhası','fallen-mage':'Düşmüş Büyücü Aura','zeldeila':'Zeldeila • Mutlak Son Boss','domaltazor':'Domaltazor • Kadim Cellat','the-fool':'The Fool • Kaderin Gezgini'})[id], value:id }))))
+    .addStringOption(o => o.setName('boss_secimi').setDescription('Rastgele boss yerine belirli bir boss seç (isteğe bağlı)').setRequired(false).addChoices(...['north-general','glass-wyrm','fallen-mage','zeldeila','domaltazor','the-fool'].map(id => ({ name: ({'north-general':'Kuzey Platosu İblis Generali','glass-wyrm':'Cam Pullar Ejderhası','fallen-mage':'Light Fallen','zeldeila':'Zeldeila • Mutlak Son Boss','domaltazor':'Domaltazor • Kadim Cellat','the-fool':'The Fool • Kaderin Gezgini'})[id], value:id }))))
     .addUserOption(o => o.setName('takim_arkadasi_2').setDescription('İkinci takım arkadaşı (isteğe bağlı)').setRequired(false))
     .addUserOption(o => o.setName('takim_arkadasi_3').setDescription('Üçüncü takım arkadaşı (isteğe bağlı)').setRequired(false))
     .addStringOption(o => o.setName('etkinlik_id').setDescription('Takvimdeki Boss / Raid etkinliğinin kimliği (isteğe bağlı)').setMaxLength(36).setRequired(false)),
