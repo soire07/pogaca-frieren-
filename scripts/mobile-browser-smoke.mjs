@@ -30,7 +30,7 @@ for (const scenario of scenarios) {
       Math.floor(Date.now() / 1000) + 3600
     );
     await context.addCookies([{ name: 'frieren_site_session', value: siteSession, domain: '127.0.0.1', path: '/', httpOnly: true, secure: false, sameSite: 'Lax' }]);
-    for (const route of ['/login', '/register']) {
+    for (const route of ['/login']) {
       const response = await page.goto(baseUrl + route, { waitUntil: 'domcontentloaded', timeout: 45000 });
       if (!response || response.status() !== 200) throw new Error(scenario.name + ' ' + route + ' HTTP ' + (response?.status() || 'no response'));
       // The auth page loads the shared stylesheet as a separate request. Safari
@@ -49,9 +49,9 @@ for (const scenario of scenarios) {
           return { left: rect.left, right: rect.right, height: rect.height, visible: style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0 && node.type !== 'hidden' };
         }).filter(control => control.visible)
       }));
-      if (!layout.viewport || !layout.form) throw new Error(scenario.name + ' ' + route + ' missing mobile viewport or form');
-      const authFields = await page.locator('input[name="csrf"]').count();
-      if (!authFields) {
+      if (!layout.viewport) throw new Error(scenario.name + ' ' + route + ' missing mobile viewport metadata');
+      const discordLogin = await page.locator('a[href="/site/discord/login"]').count();
+      if (!discordLogin) {
         const diagnostics = await page.evaluate(() => ({
           title: document.title,
           url: location.href,
@@ -59,7 +59,7 @@ for (const scenario of scenarios) {
           inputs: [...document.querySelectorAll('input')].map(input => ({ name: input.name, type: input.type })),
           body: document.body.innerText.slice(0, 240)
         }));
-        throw new Error(scenario.name + ' ' + route + ' missing CSRF-protected form: ' + JSON.stringify(diagnostics));
+        throw new Error(scenario.name + ' ' + route + ' missing Discord sign-in action: ' + JSON.stringify(diagnostics));
       }
       if (layout.documentWidth > layout.width + 1) throw new Error(scenario.name + ' ' + route + ' horizontal overflow: ' + layout.documentWidth + ' > ' + layout.width);
       if (layout.controls.some(control => control.left < -1 || control.right > layout.width + 1 || control.height < 44)) {
@@ -150,8 +150,15 @@ try {
   const loginPage = await api.get(baseUrl + '/login');
   if (loginPage.status() !== 200) throw new Error('Local site login form is unavailable: HTTP ' + loginPage.status());
   const loginHtml = await loginPage.text();
-  const invalidCsrf = await api.post(baseUrl + '/login', { form: { csrf: 'invalid', username: 'smoke-user', password: 'not-a-real-password' } });
-  if (invalidCsrf.status() !== 403) throw new Error('Invalid site-login CSRF was not rejected: HTTP ' + invalidCsrf.status());
+  const disabledPasswordLogin = await api.post(baseUrl + '/login', { form: { username: 'legacy-user', password: 'not-a-real-password' } });
+  if (disabledPasswordLogin.status() !== 405) throw new Error('Password login endpoint is not disabled: HTTP ' + disabledPasswordLogin.status());
+  const disabledRegistration = await api.get(baseUrl + '/register', { maxRedirects: 0 });
+  if (disabledRegistration.status() !== 303 || new URL(disabledRegistration.headers()['location'] || '/', baseUrl).pathname !== '/login') throw new Error('Legacy registration route does not redirect to Discord sign-in');
+  const siteOAuth = await api.get(baseUrl + '/site/discord/login', { maxRedirects: 0 });
+  const siteLocation = siteOAuth.headers()['location'] || '';
+  if (siteOAuth.status() !== 302 || !siteLocation.startsWith('https://discord.com/oauth2/authorize')) throw new Error('Public site Discord OAuth redirect is not healthy: HTTP ' + siteOAuth.status());
+  const siteAuthorize = new URL(siteLocation);
+  if (siteAuthorize.searchParams.get('scope') !== 'identify' || !siteAuthorize.searchParams.get('redirect_uri')) throw new Error('Public site Discord OAuth must request identify only and provide a callback URL');
   const response = await api.get(baseUrl + '/owner/login', { maxRedirects: 0 });
   const location = response.headers()['location'] || '';
   if (response.status() !== 302 || !location.startsWith('https://discord.com/oauth2/authorize')) {
