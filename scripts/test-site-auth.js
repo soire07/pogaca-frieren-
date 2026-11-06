@@ -7,6 +7,14 @@ import {
 import { createPublicSiteSession, readPublicSiteSession } from '../owner-dashboard.js';
 
 const secret = 'site-auth-test-secret-with-at-least-32-characters';
+function response() {
+  return { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body = '') { this.body = body; } };
+}
+function fakeDb() {
+  const calls = [];
+  return { calls, async query(sql, params = []) { calls.push({ sql: String(sql), params }); return { rows: [], rowCount: 0 }; } };
+}
+
 
 test('Vercel public origin is trusted through the Render proxy while unlisted origins remain blocked', () => {
   const previous = process.env.SITE_AUTH_ALLOWED_ORIGINS;
