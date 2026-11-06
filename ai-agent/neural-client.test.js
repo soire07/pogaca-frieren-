@@ -59,6 +59,19 @@ test('Neural client accepts an explicit /generate endpoint without duplicating t
   assert.equal(requestedUrl, 'https://neural.example.test/generate');
 });
 
+test('Neural client aborts a stalled request at the configured timeout', async () => {
+  await assert.rejects(generateNeuralReply({
+    env,
+    prompt: 'Test',
+    timeoutMs: 1000,
+    fetchImpl: async (_url, options) => new Promise((_resolve, reject) => {
+      options.signal.addEventListener('abort', () => {
+        reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+      }, { once: true });
+    }),
+  }), /FRIEREN_NEURAL_TIMEOUT/);
+});
+
 test('Neural client cancels streamed responses before buffering more than 32 KB', async () => {
   let cancelled = false;
   const chunks = [
