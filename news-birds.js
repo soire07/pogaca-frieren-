@@ -112,7 +112,7 @@ export function buildAnimeNewsDigestEmbeds(items, now = new Date()) {
     title:'✦ GÜNÜN DİĞER HABERLERİ',
     fields:remaining.map((item,index)=>({
       name:String(index+2).padStart(2,'0')+' · '+escapeMarkdown(String(item.title||'Başlıksız haber')).slice(0,240),
-      value:(escapeMarkdown(String(item.summary||'Ayrıntılar için haber kaynağını aç.')).slice(0,700)+'\n[Haberi oku ↗]('+item.link+')').slice(0,1024),
+      value:(escapeMarkdown(String(item.summary||'Ayrıntılar için haber kaynağını aç.')).slice(0,600)+'\n*KATEGORİ: '+classifyAnimeNews(item.title)+' · '+String(item.sourceName||'Anime News Network').slice(0,80)+'*\n[Haberi oku ↗]('+item.link+')').slice(0,1024),
       inline:false
     })),
     footer:{text:'Bağlantılar doğrudan haber kaynağına yönlendirir.'}
