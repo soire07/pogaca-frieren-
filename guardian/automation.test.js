@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident, processPendingGuardianRepairDispatch, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, getGuardianProposalFingerprint } from './automation.js';
+import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, getGuardianProposalFingerprint } from './automation.js';
 
 const incident = {
   id: 42,
@@ -21,6 +21,62 @@ const review = {
   tests: ['Add a timeout regression test.'],
   risks: ['The upstream call may still finish after cancellation.'],
 };
+
+
+
+
+test('Guardian automatically reconciles a dispatched workflow, repair PR and check results', async () => {
+  const updates = [];
+  const calls = [];
+  const result = await refreshGuardianRepairTracking({
+    db: {},
+    job: { id: 7, repair_dispatch_status: 'dispatched' },
+    incident,
+    env: { FRIEREN_GITHUB_TOKEN: 'g'.repeat(40) },
+    store: { updateGuardianRepairStatus: async (_db, update) => { updates.push(update); return true; } },
+    fetchImpl: async url => {
+      calls.push(String(url));
+      if (String(url).includes('/actions/workflows/')) return { ok: true, json: async () => ({
+        total_count: 1,
+        workflow_runs: [{ id: 9876, display_title: 'Frieren AI Repair · Guardian #42', status: 'completed', conclusion: 'success', html_url: 'https://github.com/soire07/pogaca-frieren-/actions/runs/9876' }],
+      }) };
+      if (String(url).includes('/pulls?')) return { ok: true, json: async () => [{
+        number: 321, html_url: 'https://github.com/soire07/pogaca-frieren-/pull/321', state: 'open',
+        head: { ref: 'ai-repair/guardian-42', sha: 'a'.repeat(40) },
+      }] };
+      return { ok: true, json: async () => ({ total_count: 1, check_runs: [{ status: 'completed', conclusion: 'success' }] }) };
+    },
+  });
+  assert.equal(result.status, 'refreshed');
+  assert.equal(result.runId, 9876);
+  assert.equal(result.prNumber, 321);
+  assert.equal(result.checksStatus, 'success');
+  assert.equal(calls.length, 3);
+  assert.deepEqual(updates[0], {
+    jobId: 7, runId: 9876,
+    runUrl: 'https://github.com/soire07/pogaca-frieren-/actions/runs/9876',
+    runStatus: 'completed', runConclusion: 'success',
+    prNumber: 321, prUrl: 'https://github.com/soire07/pogaca-frieren-/pull/321',
+    prState: 'open', checksStatus: 'success', retryable: false,
+  });
+});
+
+test('Guardian tracking does not write incomplete workflow results or leak GitHub credentials', async () => {
+  let writes = 0;
+  const result = await refreshGuardianRepairTracking({
+    db: {}, job: { id: 8, repair_dispatch_status: 'dispatched' }, incident,
+    env: { FRIEREN_GITHUB_TOKEN: 'g'.repeat(40) },
+    store: { updateGuardianRepairStatus: async () => { writes += 1; return true; } },
+    fetchImpl: async () => ({ ok: true, json: async () => ({ total_count: 2, workflow_runs: [{ id: 1, name: 'Guardian #42' }] }) }),
+  });
+  assert.equal(result.status, 'tracking_incomplete');
+  assert.equal(writes, 0);
+  const missingToken = await refreshGuardianRepairTracking({
+    db: {}, job: { id: 9, repair_dispatch_status: 'dispatched' }, incident,
+    env: {}, fetchImpl: async () => { throw new Error('must not call network'); },
+  });
+  assert.equal(missingToken.status, 'not_configured');
+});
 
 test('Guardian pull request checks fail closed when the API is unavailable or incomplete', () => {
   assert.equal(classifyGuardianPullRequestChecks({ ok: false, payload: null }), 'unknown');

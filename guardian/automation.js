@@ -4,6 +4,7 @@ import {
   reserveGuardianRepairDispatch,
   finishGuardianRepairDispatch,
   getGuardianProposalFingerprint,
+  updateGuardianRepairStatus,
 } from './store.js';
 import { redactGuardianText } from './core.js';
 
@@ -25,7 +26,7 @@ export function buildGuardianRepairTrackingUrls(apiBase, incidentId) {
   runs.search = new URLSearchParams({
     branch: GUARDIAN_REPAIR_BRANCH,
     event: 'workflow_dispatch',
-    per_page: '30',
+    per_page: '100',
   }).toString();
   const pulls = new URL('/repos/soire07/pogaca-frieren-/pulls', parsed.origin);
   pulls.search = new URLSearchParams({
@@ -233,6 +234,97 @@ export async function processGuardianIncident({
   return { status: 'proposal_ready', jobId: Number(job.id), approvalRequired: true };
 }
 
+
+
+
+
+export async function refreshGuardianRepairTracking({
+  db,
+  job,
+  incident,
+  env = process.env,
+  fetchImpl = globalThis.fetch,
+  store = { updateGuardianRepairStatus },
+} = {}) {
+  if (!db || !job || !Number.isSafeInteger(Number(job.id)) || Number(job.id) <= 0
+      || !incident || !Number.isSafeInteger(Number(incident.id)) || Number(incident.id) <= 0) {
+    throw new Error('INVALID_GUARDIAN_TRACKING_INPUT');
+  }
+  if (job.repair_dispatch_status !== 'dispatched') return { status: 'not_dispatched' };
+  const token = String(env.FRIEREN_GITHUB_TOKEN || '').trim();
+  if (token.length < 32) return { status: 'not_configured', reason: 'GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED' };
+  if (typeof fetchImpl !== 'function') return { status: 'tracking_failed', reason: 'FETCH_UNAVAILABLE' };
+
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    Authorization: 'Bearer ' + token,
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+  const apiBase = 'https://api.github.com';
+  const urls = buildGuardianRepairTrackingUrls(apiBase, incident.id);
+  const fetchJson = async url => {
+    const response = await fetchImpl(url, { headers, signal: AbortSignal.timeout(10_000) });
+    if (!response.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + response.status);
+    return response.json();
+  };
+
+  try {
+    const runsPayload = await fetchJson(urls.runsUrl);
+    const runs = Array.isArray(runsPayload?.workflow_runs) ? runsPayload.workflow_runs : [];
+    const totalRuns = Number(runsPayload?.total_count);
+    if (Number.isSafeInteger(totalRuns) && totalRuns > runs.length) {
+      return { status: 'tracking_incomplete', reason: 'GITHUB_RUN_LIST_TRUNCATED', listed: runs.length, total: totalRuns };
+    }
+    const marker = new RegExp('(?:^|[^A-Za-z0-9])#' + Number(incident.id) + '(?!\\d)', 'i');
+    const run = runs.find(item => marker.test(String(item.display_title || item.name || item.run_name || ''))) || null;
+    const prs = await fetchJson(urls.pullRequestsUrl);
+    if (!Array.isArray(prs)) throw new Error('GUARDIAN_GITHUB_PR_LIST_INVALID');
+    const pr = prs.find(item => item.head?.ref === urls.branchName) || null;
+    const runId = run?.id || null;
+    const runUrl = run?.html_url || null;
+    const runStatus = run?.status || null;
+    const runConclusion = run?.conclusion || null;
+    let checksStatus = run ? classifyGuardianWorkflowConclusion(runConclusion) : 'pending';
+
+    if (pr) {
+      if (!pr.head?.sha) {
+        checksStatus = 'unknown';
+      } else {
+        const checksPayload = await fetchJson(apiBase + '/repos/' + REPOSITORY + '/commits/'
+          + encodeURIComponent(pr.head.sha) + '/check-runs?per_page=100');
+        checksStatus = classifyGuardianPullRequestChecks({ ok: true, payload: checksPayload });
+      }
+    } else if (run?.status !== 'completed') {
+      checksStatus = 'pending';
+    } else if (run.conclusion === 'success') {
+      checksStatus = 'pending';
+    }
+
+    const retryable = Boolean(!pr && run?.status === 'completed'
+      && ['failure','cancelled','timed_out','action_required','startup_failure'].includes(run?.conclusion));
+    const updated = await store.updateGuardianRepairStatus(db, {
+      jobId: job.id,
+      runId,
+      runUrl,
+      runStatus,
+      runConclusion,
+      prNumber: pr?.number || null,
+      prUrl: pr?.html_url || null,
+      prState: pr ? (pr.merged_at ? 'merged' : pr.state || null) : null,
+      checksStatus,
+      retryable,
+    });
+    return {
+      status: updated ? 'refreshed' : 'not_updated',
+      jobId: Number(job.id),
+      runId,
+      prNumber: pr?.number || null,
+      checksStatus,
+    };
+  } catch (error) {
+    return { status: 'tracking_failed', jobId: Number(job.id), reason: safeErrorCode(error) };
+  }
+}
 
 export async function processPendingGuardianRepairDispatch({
   db,

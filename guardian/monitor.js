@@ -1,4 +1,4 @@
-import { listPendingGuardianRepairDispatches } from './store.js';
+import { listPendingGuardianRepairDispatches, listGuardianRepairTrackingJobs } from './store.js';
 import { classifyGuardianSeverity } from './core.js';
 import { normalizeGuardianMonitorSecurityEvent, recordGuardianSecurityEvent } from './security-events.js';
 
@@ -83,6 +83,20 @@ export async function scanPendingGuardianRepairDispatches(db, onDispatch = async
   return { attempted };
 }
 
+export async function scanDispatchedGuardianRepairTracking(db, onRefresh = async () => {}, limit = 3, onRefreshError = async () => {}) {
+  const jobs = await listGuardianRepairTrackingJobs(db, limit);
+  let attempted = 0;
+  for (const job of jobs) {
+    try {
+      await onRefresh(job);
+    } catch (error) {
+      await onRefreshError(error, job);
+    }
+    attempted += 1;
+  }
+  return { attempted };
+}
+
 export function startGuardianMonitor({
   db,
   client,
@@ -91,6 +105,7 @@ export function startGuardianMonitor({
   clearIntervalImpl = clearInterval,
   onIncident = async () => {},
   onRepairDispatch = async () => {},
+  onRepairTracking = async () => {},
   recordSecurityEvent = recordGuardianSecurityEvent,
   onError = error => console.error('Neural Guardian monitor failed:', error?.message || error),
 } = {}) {
@@ -125,6 +140,11 @@ export function startGuardianMonitor({
       }
       try {
         await scanPendingGuardianRepairDispatches(db, onRepairDispatch, 5, onError);
+      } catch (error) {
+        onError(error);
+      }
+      try {
+        await scanDispatchedGuardianRepairTracking(db, onRepairTracking, 3, onError);
       } catch (error) {
         onError(error);
       }

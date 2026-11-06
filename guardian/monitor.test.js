@@ -1,6 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scanNewOwnerErrors, scanPendingGuardianIncidents, scanPendingGuardianRepairDispatches, startGuardianMonitor } from './monitor.js';
+import { scanNewOwnerErrors, scanPendingGuardianIncidents, scanPendingGuardianRepairDispatches, scanDispatchedGuardianRepairTracking, startGuardianMonitor } from './monitor.js';
+
+
+
+
+test('monitor refreshes a bounded batch of already-dispatched Guardian repair jobs', async () => {
+  let requestedLimit;
+  const refreshed = [];
+  const db = { query: async (sql, values) => {
+    if (sql.includes("repair_dispatch_status='dispatched'")) {
+      requestedLimit = values[0];
+      return { rows: [{ id: 7, incident_id: 42, repair_dispatch_status: 'dispatched' }] };
+    }
+    return { rows: [] };
+  } };
+  const result = await scanDispatchedGuardianRepairTracking(db, async job => refreshed.push(job.id), 3);
+  assert.equal(requestedLimit, 3);
+  assert.deepEqual(refreshed, [7]);
+  assert.deepEqual(result, { attempted: 1 });
+});
 
 test('local monitor processes only unseen error rows and advances its cursor', async () => {
   let selectParams;

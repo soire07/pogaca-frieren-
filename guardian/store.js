@@ -343,6 +343,29 @@ export async function updateGuardianRepairStatus(db, { jobId, runId = null, runU
   return Boolean(result.rows?.[0]);
 }
 
+export async function listGuardianRepairTrackingJobs(db, limit = 3) {
+  const safeLimit = boundedInteger(limit, 3, 10);
+  const result = await db.query(
+    `SELECT j.id,j.incident_id,j.repair_dispatch_status,j.repair_dispatch_at,
+            j.repair_run_id,j.repair_run_status,j.repair_run_conclusion,
+            j.repair_pr_number,j.repair_checks_status,
+            i.system,i.code,i.severity,i.title AS incident_title,i.summary,i.evidence
+     FROM owner_guardian_jobs j
+     JOIN owner_guardian_incidents i ON i.id=j.incident_id
+     WHERE j.repair_dispatch_status='dispatched'
+       AND j.repair_dispatch_at > NOW()-INTERVAL '7 days'
+       AND (
+         (j.repair_run_id IS NULL AND j.repair_pr_number IS NULL)
+         OR (j.repair_run_id IS NOT NULL AND j.repair_run_status IS DISTINCT FROM 'completed')
+         OR j.repair_checks_status IN ('unknown','pending')
+       )
+     ORDER BY j.repair_dispatch_at ASC NULLS FIRST,j.id ASC
+     LIMIT $1`,
+    [safeLimit]
+  );
+  return result.rows || [];
+}
+
 export async function getGuardianMonitorState(db) {
   const result = await db.query(
     "SELECT monitor_key,last_seen_error_id,last_tick_at,last_error,updated_at FROM owner_guardian_monitor_state WHERE monitor_key='owner_error_logs' LIMIT 1"
