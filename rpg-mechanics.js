@@ -4,7 +4,7 @@ export const RAID_BOSSES = [
   { id: 'fallen-mage', name: '♾️ [INFINITY] Düşmüş Büyücü Aura', class: 'Infinity', hp: 2400, damage: 48, xp: 460, coins: 520, loot: 'Auranın Mühürlü Asa Parçası', titleDrop: 'Üç Formun Fatihi', titleDropChance: 0.03, weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'mana-curse' },
   { id: 'zeldeila', name: '♾️ [INFINITY] Zeldeila • Mutlak Son Boss', class: 'Infinity', hp: 200_000_000, damage: 3, xp: 0, coins: 0, loot: null, lootChance: 0, titleDrop: 'ZELDİN TAŞŞAĞI', titleDropChance: 0.002, weakness: 'spell', weaknessLabel: 'Yenilmez', special: 'eternal-regeneration', regenerateDamagePerSecond: true, areaDamagePerSecond: 15, noHpScaling: true, spawnWeight: 1 },
   { id: 'domaltazor', name: '🦴 Domaltazor • Kadim Cellat', hp: 1600, damage: 24, xp: 520, coins: 750, loot: '💍 Katun Yüzüğü', lootChance: 0.001, weakness: 'attack', weaknessLabel: 'Fiziksel saldırı', special: 'katun-judgment', spawnWeight: 1 },
-  { id: 'the-fool', name: '🃏 The Fool • Kaderin Gezgin'i', hp: 4800, damage: 34, xp: 1100, coins: 1450, loot: '🃏 Deli’nin Mühürlü Kartı', lootChance: 0.12, titleDrop: 'Kaderin Ötesinde', titleDropChance: 0.025, weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'fools-gamble', spawnWeight: 0.6 }
+  { id: 'the-fool', name: '🃏 The Fool • Kaderin Gezgini', hp: 4800, damage: 34, xp: 1100, coins: 1450, loot: '🃏 Deli’nin Mühürlü Kartı', lootChance: 0.12, titleDrop: 'Kaderin Ötesinde', titleDropChance: 0.025, weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'fools-gamble', spawnWeight: 0.6 }
 ];
 
 
