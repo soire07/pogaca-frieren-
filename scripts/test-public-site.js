@@ -1352,7 +1352,7 @@ test('dedicated user center pages expose the new account, social and life naviga
  assert.match(source,/collection-center-page/);
  assert.match(source,/inventory-center-page/);
  assert.match(source,/notification-center-page/);
- assert.match(source,/public-assets\/user-center\.js'].includes/);
+ assert.match(source,/public-assets\/user-center\.js', 'public-assets\/public-chat\.js'].includes/);
  assert.match(source,/site\.css\?v=user-center-264-2/);
  assert.match(styles,/\.social-center-page/);
  assert.match(styles,/\.user-center-tabs/);
