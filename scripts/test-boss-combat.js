@@ -468,7 +468,7 @@ test('Aura transforms through mage, fallen angel and angel forms without changin
   const first = getRaidBossForm(aura, 1);
   const second = getRaidBossForm(aura, 2);
   const third = getRaidBossForm(aura, 3);
-  assert.equal(first.name, 'Düşmüş Büyücü Aura');
+  assert.equal(first.name, 'Light Fallen');
   assert.equal(first.special, 'mana-curse');
   assert.equal(second.name, 'Düşmüş Melek Aura');
   assert.equal(second.special, 'fallen-wings');
