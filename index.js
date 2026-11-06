@@ -18,7 +18,7 @@ import { ensureAdventurerPlatformTables, claimDueGuildEventReminders, markGuildE
 import { ensurePlayerMarketTables, claimDuePlayerMarketPriceAlerts, markPlayerMarketPriceAlertNotified, releasePlayerMarketPriceAlertClaim, cancelPlayerMarketPriceAlert } from './player-market.js';
 import { ensureSocialPlatformTables } from './social-platform.js';
 import { ensureAccountCenterSchema } from './account-center.js';
-import { ensureNewsBirdSchema, pollAnimeNewsFeed, claimDueAnimeNewsGuildDigests, markAnimeNewsGuildDigestSent, releaseAnimeNewsGuildDigestClaim, getEventReminderRecipients, buildAnimeNewsDigestEmbeds, translateAnimeNewsItems } from './news-birds.js';
+import { ensureNewsBirdSchema, pollAnimeNewsFeed, claimDueAnimeNewsGuildDigests, markAnimeNewsGuildDigestSent, releaseAnimeNewsGuildDigestClaim, disableNewsGuildChannel, getEventReminderRecipients, buildAnimeNewsDigestEmbeds, translateAnimeNewsItems } from './news-birds.js';
 import { ensureCardVariantSchema } from './card-variants.js';
 import { ensureGuildWorkshopSchema, runGuildSpellAutomations } from './guild-workshop.js';
 import { ensureGuildTeamLeagueSchema } from './guild-team-leagues.js';
@@ -171,7 +171,7 @@ async function processNewsBirdDigests(readyClient = client) {
     for (const digest of due) {
       try {
         const channel = await readyClient.channels.fetch(digest.channel_id);
-        if (!channel?.isTextBased?.() || typeof channel.send !== 'function') {
+        if (String(channel?.guildId || '') !== String(digest.guild_id)) {\n          throw new Error('NEWS_BIRD_TARGET_CHANNEL_GUILD_MISMATCH');\n        }\n        if (!channel?.isTextBased?.() || typeof channel.send !== 'function') {
           throw new Error('NEWS_BIRD_TARGET_CHANNEL_NOT_SENDABLE');
         }
         const permissions = channel.permissionsFor(readyClient.user);
@@ -190,7 +190,7 @@ async function processNewsBirdDigests(readyClient = client) {
         }
         await markAnimeNewsGuildDigestSent(pool, digest.guild_id);
       } catch (error) {
-        await releaseAnimeNewsGuildDigestClaim(pool, digest.guild_id).catch(() => false);
+        if ([10003, 10008].includes(Number(error?.code))) {\n          await disableNewsGuildChannel(pool, digest.guild_id).catch(() => {});\n        }\n        await releaseAnimeNewsGuildDigestClaim(pool, digest.guild_id).catch(() => false);
         console.error(
           'Haberci kuş sunucu kanalına teslim edilemedi:',
           'guild=' + digest.guild_id,
