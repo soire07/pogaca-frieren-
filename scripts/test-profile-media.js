@@ -17,3 +17,17 @@ test('profile media rejects invalid kind, unsupported formats and oversized dime
 test('profile media enforces avatar and banner byte limits',()=>{
  assert.throws(()=>validateProfileImage('avatar',Buffer.alloc(2*1024*1024+1)),/PROFILE_MEDIA_SIZE_INVALID/);
 });
+
+test('profile media read bootstraps its table before selecting',async()=>{
+ const statements=[];
+ const db={query:async(sql)=>{
+  statements.push(String(sql).trim());
+  if(String(sql).startsWith('SELECT mime_type')) return {rows:[]};
+  return {rows:[]};
+ }};
+ const {getProfileMedia}=await import('../profile-media.js');
+ const result=await getProfileMedia(db,'site_123e4567-e89b-42d3-a456-426614174000','avatar');
+ assert.equal(result,null);
+ assert.match(statements[0],/CREATE TABLE IF NOT EXISTS frieren_profile_media/);
+ assert.match(statements[1],/SELECT mime_type,media_data,width,height FROM frieren_profile_media/);
+});

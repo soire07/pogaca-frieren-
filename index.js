@@ -18,6 +18,7 @@ import { ensureAdventurerPlatformTables, claimDueGuildEventReminders, markGuildE
 import { ensurePlayerMarketTables, claimDuePlayerMarketPriceAlerts, markPlayerMarketPriceAlertNotified, releasePlayerMarketPriceAlertClaim, cancelPlayerMarketPriceAlert } from './player-market.js';
 import { ensureSocialPlatformTables } from './social-platform.js';
 import { ensureAccountCenterSchema } from './account-center.js';
+import { ensureProfileMediaSchema } from './profile-media.js';
 import { ensureNewsBirdSchema, pollAnimeNewsFeed, claimDueAnimeNewsGuildDigests, markAnimeNewsGuildDigestSent, releaseAnimeNewsGuildDigestClaim, disableNewsGuildChannel, getEventReminderRecipients, buildAnimeNewsDigestEmbeds, translateAnimeNewsItems } from './news-birds.js';
 import { ensureCardVariantSchema } from './card-variants.js';
 import { ensureGuildWorkshopSchema, runGuildSpellAutomations } from './guild-workshop.js';
@@ -521,6 +522,7 @@ await ensureAdventurerPlatformTables(pool);
 await ensurePlayerMarketTables(pool);
 await ensureSocialPlatformTables(pool);
 await ensureAccountCenterSchema(pool);
+await ensureProfileMediaSchema(pool);
 await ensureNewsBirdSchema(pool);
 await ensureCardVariantSchema(pool);
 await ensureGuildWorkshopSchema(pool);
