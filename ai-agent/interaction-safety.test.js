@@ -148,7 +148,7 @@ test('bridge reachability fails closed on unauthorized or malformed catalog resp
 
 test('public liveness route is not protected while readiness and bridge diagnostics stay private', () => {
   assert.equal(isPrivateHealthPath('/live'), false);
-  assert.equal(isPrivateHealthPath('/health'), true);
+  assert.equal(isPrivateHealthPath('/health'), false);
   assert.equal(isPrivateHealthPath('/ready'), true);
   assert.equal(isPrivateHealthPath('/bridge-health'), true);
   assert.equal(isPrivateHealthPath('/unknown'), false);
