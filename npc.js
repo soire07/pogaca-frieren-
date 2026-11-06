@@ -37,6 +37,22 @@ export const NPC_SIDE_QUESTS = {
       return { ok: count >= 3, progress: count + ' / 3 eşya kullanımı' };
     }
   },
+  light_fallen: {
+    name: '♾️ Light Fallen · Mühürlü Gezgin',
+    path: null,
+    requiresStoryPath: false,
+    unlocksBoss: 'fallen-mage',
+    questKey: 'light_fallen_trial',
+    questTitle: 'Dört Mührün Sınavı',
+    dialogue: 'Beni bir canavar sanma, yolcu. Şimdilik yalnızca mühürlerimin ardında duran bir gezginim. Gücümle yüzleşmeden önce kendi gücünü kanıtla. Üç ayrı boss zaferi kazan; sonra gerçek yüzümü göstereceğim.',
+    questDialogue: 'Light Fallen henüz boss formunda saldırmayacak. Önce üç boss karşılaşmasını kazanarak mühürlerin zayıfladığını kanıtla. Görevi teslim ettiğinde NPC mührünü kaldıracak ve Infinity sınıfı raid boss olarak açılacak.',
+    objective: 'Üç boss baskınını kazan.',
+    reward: { coins: 1500, xp: 750 },
+    requirement: async (_client, _guildId, _userId, user) => {
+      const count = Number(user.boss_defeats || 0);
+      return { ok: count >= 3, progress: count + ' / 3 boss zaferi' };
+    }
+  },
   stark: {
     name: '⚔️ Stark',
     path: 'cesaret',
@@ -110,9 +126,11 @@ export default {
         const selectedPath = storyChoices[0];
 
         if (action === 'konus') {
-          const line = selectedPath
-            ? (selectedPath === npc.path ? npc.dialogue : 'Yolculuğunda ' + (selectedPath === 'cesaret' ? 'cesareti' : selectedPath === 'merhamet' ? 'merhameti' : 'merakı') + ' seçtin. ' + npc.dialogue)
-            : 'Henüz ana hikâyede bir yol seçmedin. Önce /hikaye komutuyla ilk kararını ver. ' + npc.dialogue;
+          const line = npc.requiresStoryPath === false
+            ? npc.dialogue
+            : selectedPath
+              ? (selectedPath === npc.path ? npc.dialogue : 'Yolculuğunda ' + (selectedPath === 'cesaret' ? 'cesareti' : selectedPath === 'merhamet' ? 'merhameti' : 'merakı') + ' seçtin. ' + npc.dialogue)
+              : 'Henüz ana hikâyede bir yol seçmedin. Önce /hikaye komutuyla ilk kararını ver. ' + npc.dialogue;
           await client.query('COMMIT');
           const embed = new EmbedBuilder()
             .setColor(0x9b8cff)
@@ -122,12 +140,12 @@ export default {
           return interaction.editReply({ embeds: [embed] });
         }
 
-        if (!selectedPath) {
+        if (npc.requiresStoryPath !== false && !selectedPath) {
           await client.query('COMMIT');
           return interaction.editReply('📜 Önce /hikaye komutuyla ana hikâyeye başla ve ilk kararını ver. Yan görevler seçtiğin yola göre açılır.');
         }
 
-        if (selectedPath !== npc.path) {
+        if (npc.path && selectedPath !== npc.path) {
           await client.query('COMMIT');
           const selectedName = selectedPath === 'cesaret' ? 'Stark' : selectedPath === 'merhamet' ? 'Fern' : 'Frieren';
           return interaction.editReply('🔒 Senin seçtiğin **' + (selectedPath === 'cesaret' ? 'Cesaret' : selectedPath === 'merhamet' ? 'Merhamet' : 'Merak') + '** yolu için görev veren karakter **' + selectedName + '**. Onunla /npc karakter:' + selectedName.toLowerCase() + ' eylem:gorev komutunu kullan.');
@@ -139,7 +157,9 @@ export default {
         );
         if (claimedResult.rowCount) {
           await client.query('COMMIT');
-          return interaction.editReply('✅ **' + npc.questTitle + '** görevini zaten tamamladın ve ödülünü aldın. Yeni yan görevler sonraki güncellemelerde eklenecek.');
+          return interaction.editReply(npc.unlocksBoss
+            ? '✅ **' + npc.questTitle + '** görevini tamamladın. ♾️ **Light Fallen** artık /ortakboss komutunda seçilebilir.'
+            : '✅ **' + npc.questTitle + '** görevini zaten tamamladın ve ödülünü aldın. Yeni yan görevler sonraki güncellemelerde eklenecek.');
         }
 
         const requirement = await npc.requirement(client, guildId, userId, user);
@@ -177,7 +197,7 @@ export default {
         await client.query('COMMIT');
         response = '🎉 **' + npc.questTitle + '** tamamlandı!\n' + npc.name + ' sana teşekkür ediyor.\nÖdül: **' + npc.reward.coins + ' altın** ve **' + npc.reward.xp + ' XP**' +
           (gainedPoints ? '\n✨ Seviye atladın: +' + gainedPoints + ' stat puanı.' : '') +
-          '\nBu görevin ödülü her oyuncu için bir kez alınabilir.';
+          '\nBu görevin ödülü her oyuncu için bir kez alınabilir.' + (npc.unlocksBoss ? '\n♾️ **Light Fallen** artık /ortakboss komutunda seçilebilir. Önce bir özel görev NPC’si olarak karşına çıktı; şimdi gerçek boss formu açıldı.' : '');
       } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
         throw error;
