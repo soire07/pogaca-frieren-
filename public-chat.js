@@ -40,8 +40,9 @@ export async function listPublicChatMessages(db,{limit=60,viewerAccountId=null}=
  const viewer=viewerAccountId&&ACCOUNT_ID.test(String(viewerAccountId))?String(viewerAccountId):null;
  await ensurePublicChatSchema(db);
  await ensureSiteAccountSchema(db);
+ await ensureAccountProfileSchema(db);
  await ensureProfileMediaSchema(db);
- const result=await db.query(`SELECT m.message_id,m.account_id,m.username,m.body,m.created_at,m.edited_at,m.pinned_at,m.reply_to_message_id,m.account_id=$2 AS is_own,
+ const result=await db.query(`SELECT m.message_id,m.account_id,COALESCE(NULLIF(ap.display_name,''),m.username) AS username,ap.profile_slug,m.body,m.created_at,m.edited_at,m.pinned_at,m.reply_to_message_id,m.account_id=$2 AS is_own,
   CASE WHEN EXISTS(SELECT 1 FROM frieren_profile_media pm WHERE pm.account_id=REPLACE(m.account_id,'site_','')::uuid AND pm.media_kind='avatar') THEN '/profil/media/public?accountId='||m.account_id ELSE NULL END AS avatar_url,
   (SELECT COUNT(*)::int FROM frieren_public_chat_reads rd WHERE rd.message_id=m.message_id AND rd.reader_account_id<>m.account_id) AS read_count,
   EXISTS(SELECT 1 FROM frieren_public_chat_presence pr WHERE pr.account_id=m.account_id AND pr.last_seen_at>NOW()-INTERVAL '90 seconds') AS is_online,
@@ -49,7 +50,7 @@ export async function listPublicChatMessages(db,{limit=60,viewerAccountId=null}=
    SELECT emoji,COUNT(*)::int AS count,BOOL_OR(account_id=$2) AS reacted FROM frieren_public_chat_reactions WHERE message_id=m.message_id GROUP BY emoji
   ) r),'[]'::jsonb) AS reactions,
   (SELECT jsonb_build_object('username',p.username,'body',LEFT(p.body,120)) FROM frieren_public_chat_messages p WHERE p.message_id=m.reply_to_message_id) AS reply
-  FROM frieren_public_chat_messages m
+  FROM frieren_public_chat_messages m LEFT JOIN frieren_account_profiles ap ON ap.account_id=m.account_id
   WHERE m.hidden=FALSE AND m.created_at>=NOW()-INTERVAL '7 days'
    AND ($2::text IS NULL OR NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE b.blocker_account_id=$2 AND b.blocked_account_id=m.account_id))
   ORDER BY (m.pinned_at IS NOT NULL) DESC,m.created_at DESC,m.message_id DESC LIMIT $1`,[count,viewer]);
@@ -145,7 +146,7 @@ export async function touchPublicChatPresence(db,{accountId}){
 }
 export async function getPublicChatPresence(db){
  await ensurePublicChatSchema(db);
- const [online,typing]=await Promise.all([db.query("SELECT COUNT(*)::int AS online FROM frieren_public_chat_presence WHERE last_seen_at>NOW()-INTERVAL '90 seconds'"),db.query("SELECT DISTINCT ON(m.account_id) m.username FROM frieren_public_chat_presence p JOIN frieren_public_chat_messages m ON m.account_id=p.account_id WHERE p.typing_until>NOW() ORDER BY m.account_id,m.created_at DESC LIMIT 3")]);
+ const [online,typing]=await Promise.all([db.query("SELECT COUNT(*)::int AS online FROM frieren_public_chat_presence WHERE last_seen_at>NOW()-INTERVAL '90 seconds'"),db.query("SELECT DISTINCT ON(m.account_id) COALESCE(NULLIF(ap.display_name,''),m.username) AS username FROM frieren_public_chat_presence p JOIN frieren_public_chat_messages m ON m.account_id=p.account_id LEFT JOIN frieren_account_profiles ap ON ap.account_id=m.account_id WHERE p.typing_until>NOW() ORDER BY m.account_id,m.created_at DESC LIMIT 3")]);
  return{online:Number(online.rows[0]?.online||0),typing:typing.rows.map(x=>x.username)};
 }
 
