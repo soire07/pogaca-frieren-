@@ -36,7 +36,7 @@ test('RSS poll stores normalized source, article and image metadata with conflic
  assert.equal(calls[0].params[5],'Anime News Network');
 });
 
-test('digest renderer creates a highlighted clickable lead and a compact linked story list',()=>{
+test('digest renderer creates individual clickable image embeds and deduplicates cross-source titles',()=>{
  const embeds=buildAnimeNewsDigestEmbeds([
   {title:'Nintendo Switch 2 sales',link:'https://www.animenewsnetwork.com/news/2026-11-05/game',summary:'Game sales update.',sourceName:'Anime News Network',imageUrl:'https://cdn.animenewsnetwork.com/thumb.jpg'},
   {title:'New Manga License',link:'https://www.animenewsnetwork.com/news/2026-11-05/manga',summary:'A new manga license.',imageUrl:'https://cdn.animenewsnetwork.com/manga.jpg'}
@@ -50,6 +50,11 @@ test('digest renderer creates a highlighted clickable lead and a compact linked 
  assert.equal(embeds[1].url,'https://www.animenewsnetwork.com/news/2026-11-05/manga');
  assert.equal(embeds[1].image.url,'https://cdn.animenewsnetwork.com/manga.jpg');
  assert.equal(embeds[1].fields[0].value,'Manga');
+ const duplicates=buildAnimeNewsDigestEmbeds([
+  {title:'New Anime Season',link:'https://www.animenewsnetwork.com/news/2026-11-05/season'},
+  {title:'New Anime Season',link:'https://www.crunchyroll.com/news/latest/season'}
+ ]);
+ assert.equal(duplicates.length,1);
  assert.equal(classifyAnimeNews('Titan Manga licenses new titles'),'Manga');
  assert.deepEqual(buildAnimeNewsDigestEmbeds([{title:'unsafe',link:'https://example.com/article'}]),[]);
 });
