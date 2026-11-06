@@ -748,6 +748,8 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     for await(const chunk of req){size+=chunk.length;if(size>4096){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'message_too_large'}));return true;}chunks.push(chunk);}
     const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
     if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
+    const owner=await isLinkedOwnerSiteAccount(db,session);
+    if(['/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/control'].includes(url.pathname)&&!owner){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'owner_only'}));return true;}
     try{
       const result=await sendPublicChatMessage(db,{accountId:session.id,username:session.username,body:form.get('message'),replyToMessageId:form.get('replyToMessageId')||null});
       const status=result.status==='sent'?201:result.status==='rate_limited'?429:result.status==='chat_paused'?423:400;
@@ -761,8 +763,6 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   if(['/api/public-chat/reactions','/api/public-chat/blocks','/api/public-chat/blocks/unblock','/api/public-chat/messages/edit','/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/presence','/api/public-chat/typing','/api/public-chat/read','/api/public-chat/reports','/api/public-chat/control'].includes(url.pathname)&&req.method==='POST'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!requireSiteAccount(res,session?.id))return true;
-    const owner=await isLinkedOwnerSiteAccount(db,session);
-    if(['/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/control'].includes(url.pathname)&&!owner){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'owner_only'}));return true;}
     if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'chat_unavailable'}));return true;}
     if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_content_type'}));return true;}
     let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>4096){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'message_too_large'}));return true;}chunks.push(chunk);}
