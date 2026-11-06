@@ -8,7 +8,7 @@ const account=id=>{if(!ACCOUNT.test(String(id||'')))throw new Error('ACCOUNT_PRO
 const ready=new WeakMap();
 async function schema(db){
  await db.query(`CREATE TABLE IF NOT EXISTS frieren_account_profiles(
- account_id TEXT PRIMARY KEY,bio VARCHAR(280) NOT NULL DEFAULT '',status_text VARCHAR(80) NOT NULL DEFAULT '',
+ account_id TEXT PRIMARY KEY,display_name VARCHAR(32) NOT NULL DEFAULT 'Gezgin',banner_position TEXT NOT NULL DEFAULT 'center' CHECK(banner_position IN ('top','center','bottom')),bio VARCHAR(280) NOT NULL DEFAULT '',status_text VARCHAR(80) NOT NULL DEFAULT '',
  interests JSONB NOT NULL DEFAULT '[]'::jsonb,tags JSONB NOT NULL DEFAULT '[]'::jsonb,
  theme TEXT NOT NULL DEFAULT 'midnight' CHECK(theme IN ('midnight','violet','starlight','forest')),
  accent_color VARCHAR(7) NOT NULL DEFAULT '#a78bfa',
@@ -17,6 +17,8 @@ async function schema(db){
  show_activity BOOLEAN NOT NULL DEFAULT TRUE,allow_visitors BOOLEAN NOT NULL DEFAULT TRUE,
  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
  )`);
+ await db.query("ALTER TABLE frieren_account_profiles ADD COLUMN IF NOT EXISTS display_name VARCHAR(32) NOT NULL DEFAULT 'Gezgin'");
+ await db.query("ALTER TABLE frieren_account_profiles ADD COLUMN IF NOT EXISTS banner_position TEXT NOT NULL DEFAULT 'center' CHECK(banner_position IN ('top','center','bottom'))");
  await db.query(`CREATE TABLE IF NOT EXISTS frieren_account_follows(
  follower_account_id TEXT NOT NULL,followed_account_id TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
  PRIMARY KEY(follower_account_id,followed_account_id),CHECK(follower_account_id<>followed_account_id)
@@ -52,18 +54,18 @@ export async function getAccountProfile(db,accountId,{viewerAccountId=null}={}){
   viewer?db.query('SELECT 1 FROM frieren_account_follows WHERE follower_account_id=$1 AND followed_account_id=$2',[viewer,id]):Promise.resolve({rowCount:0}),
   db.query('SELECT (SELECT COUNT(*)::int FROM frieren_account_follows WHERE followed_account_id=$1) AS followers,(SELECT COUNT(*)::int FROM frieren_account_follows WHERE follower_account_id=$1) AS following,(SELECT COUNT(*)::int FROM frieren_account_profile_visits WHERE owner_account_id=$1) AS visitors',[id])
  ]);
- const row=p.rows[0]||{bio:'',status_text:'',interests:[],tags:[],theme:'midnight',accent_color:'#a78bfa',social_links:{},visibility:'public',show_activity:true,allow_visitors:true};
+ const row=p.rows[0]||{display_name:'Gezgin',banner_position:'center',bio:'',status_text:'',interests:[],tags:[],theme:'midnight',accent_color:'#a78bfa',social_links:{},visibility:'public',show_activity:true,allow_visitors:true};
  const following=f.rowCount>0;const canView=id===viewer||row.visibility==='public'||(row.visibility==='followers'&&following);
  return {profile:canView?row:{theme:row.theme,visibility:row.visibility},canView,following,followers:Number(counts.rows[0]?.followers||0),followingCount:Number(counts.rows[0]?.following||0),visitors:Number(counts.rows[0]?.visitors||0),isOwner:id===viewer};
 }
-export async function updateAccountProfile(db,{accountId,bio='',statusText='',interests=[],tags=[],theme='midnight',accentColor='#a78bfa',socialLinks={},visibility='public',showActivity=true,allowVisitors=true}){
- const id=account(accountId),b=clean(bio,280,'ACCOUNT_PROFILE_INVALID',{optional:true}),s=clean(statusText,80,'ACCOUNT_PROFILE_INVALID',{optional:true});
- if(!THEMES.has(theme)||!VISIBILITY.has(visibility)||typeof showActivity!=='boolean'||typeof allowVisitors!=='boolean'||!/^#[0-9a-f]{6}$/i.test(String(accentColor)))throw new Error('ACCOUNT_PROFILE_INVALID');
+export async function updateAccountProfile(db,{accountId,displayName='Gezgin',bannerPosition='center',bio='',statusText='',interests=[],tags=[],theme='midnight',accentColor='#a78bfa',socialLinks={},visibility='public',showActivity=true,allowVisitors=true}){
+ const id=account(accountId),name=clean(displayName,32,'ACCOUNT_PROFILE_INVALID'),b=clean(bio,280,'ACCOUNT_PROFILE_INVALID',{optional:true}),s=clean(statusText,80,'ACCOUNT_PROFILE_INVALID',{optional:true});
+ if(!['top','center','bottom'].includes(bannerPosition)||!THEMES.has(theme)||!VISIBILITY.has(visibility)||typeof showActivity!=='boolean'||typeof allowVisitors!=='boolean'||!/^#[0-9a-f]{6}$/i.test(String(accentColor)))throw new Error('ACCOUNT_PROFILE_INVALID');
  const i=list(interests,12,32,'ACCOUNT_PROFILE_INTERESTS_INVALID'),t=list(tags,10,24,'ACCOUNT_PROFILE_TAGS_INVALID'),l=links(socialLinks);await ensureAccountProfileSchema(db);
- const r=await db.query(`INSERT INTO frieren_account_profiles(account_id,bio,status_text,interests,tags,theme,accent_color,social_links,visibility,show_activity,allow_visitors)
- VALUES($1,$2,$3,$4::jsonb,$5::jsonb,$6,$7,$8::jsonb,$9,$10,$11)
- ON CONFLICT(account_id) DO UPDATE SET bio=EXCLUDED.bio,status_text=EXCLUDED.status_text,interests=EXCLUDED.interests,tags=EXCLUDED.tags,theme=EXCLUDED.theme,accent_color=EXCLUDED.accent_color,social_links=EXCLUDED.social_links,visibility=EXCLUDED.visibility,show_activity=EXCLUDED.show_activity,allow_visitors=EXCLUDED.allow_visitors,updated_at=NOW()
- RETURNING *`,[id,b,s,JSON.stringify(i),JSON.stringify(t),theme,accentColor,JSON.stringify(l),visibility,showActivity,allowVisitors]);
+ const r=await db.query(`INSERT INTO frieren_account_profiles(account_id,display_name,banner_position,bio,status_text,interests,tags,theme,accent_color,social_links,visibility,show_activity,allow_visitors)
+ VALUES($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8,$9,$10::jsonb,$11,$12,$13)
+ ON CONFLICT(account_id) DO UPDATE SET display_name=EXCLUDED.display_name,banner_position=EXCLUDED.banner_position,bio=EXCLUDED.bio,status_text=EXCLUDED.status_text,interests=EXCLUDED.interests,tags=EXCLUDED.tags,theme=EXCLUDED.theme,accent_color=EXCLUDED.accent_color,social_links=EXCLUDED.social_links,visibility=EXCLUDED.visibility,show_activity=EXCLUDED.show_activity,allow_visitors=EXCLUDED.allow_visitors,updated_at=NOW()
+ RETURNING *`,[id,name,bannerPosition,b,s,JSON.stringify(i),JSON.stringify(t),theme,accentColor,JSON.stringify(l),visibility,showActivity,allowVisitors]);
  await db.query('INSERT INTO frieren_account_activity(activity_id,account_id,activity_type,label) VALUES($1,$2,$3,$4)',[randomUUID(),id,'profile_updated','Profil bilgilerini güncelledi']);
  return r.rows[0];
 }
