@@ -2,6 +2,7 @@ import test from 'node:test';
 import { claimSoloBossReward } from '../rpg-reward-transactions.js';
 import assert from 'node:assert/strict';
 import raidCommand from '../ortakboss.js';
+import raidBossInfoCommand from '../commands/rpg/raidbossbilgi.js';
 import { marketItems } from '../market.js';
 import eventCommand from '../etkinlik.js';
 import {
@@ -407,4 +408,26 @@ test('Domaltazor drops the legendary Katun ring at exactly 0.1 percent', async (
   assert.equal(ring.slot, 'ring');
   assert.equal(ring.rarity, 'Efsanevi');
   assert.ok(ring.attack >= 10 && ring.defense >= 6 && ring.hp >= 50 && ring.mana >= 40);
+});
+
+
+test('raid boss info command exposes selectable bosses and optional detail view', () => {
+  const schema = raidBossInfoCommand.data.toJSON();
+  assert.equal(schema.name, 'raidbossbilgi');
+  const bossOption = schema.options.find(option => option.name === 'boss');
+  const viewOption = schema.options.find(option => option.name === 'gorunum');
+  assert.ok(bossOption?.required);
+  assert.deepEqual(
+    bossOption.choices.map(choice => choice.value).sort(),
+    RAID_BOSSES.map(boss => boss.id).sort()
+  );
+  assert.equal(viewOption?.required, false);
+  assert.deepEqual(viewOption.choices.map(choice => choice.value), ['ozet', 'detay']);
+});
+
+test('cooperative raid command allows choosing one of the supported raid bosses', () => {
+  const schema = raidCommand.data.toJSON();
+  const option = schema.options.find(entry => entry.name === 'boss_secimi');
+  assert.equal(option?.required, false);
+  assert.deepEqual(option.choices.map(choice => choice.value).sort(), RAID_BOSSES.map(boss => boss.id).sort());
 });
