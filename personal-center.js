@@ -43,6 +43,8 @@ async function createPersonalCenterSchema(db){
  await db.query('CREATE INDEX IF NOT EXISTS player_planner_due_idx ON player_planner_entries(guild_id,user_id,due_at) WHERE due_at IS NOT NULL');
  await db.query('CREATE TABLE IF NOT EXISTS player_close_friends(guild_id TEXT NOT NULL,owner_id TEXT NOT NULL,friend_id TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,owner_id,friend_id),CHECK(owner_id<>friend_id),FOREIGN KEY(guild_id,owner_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE,FOREIGN KEY(guild_id,friend_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE)');
  await db.query('CREATE INDEX IF NOT EXISTS player_close_friends_owner_idx ON player_close_friends(guild_id,owner_id,created_at DESC)');
+ await db.query('CREATE TABLE IF NOT EXISTS player_profile_visits(guild_id TEXT NOT NULL,owner_id TEXT NOT NULL,visitor_id TEXT NOT NULL,visit_count INTEGER NOT NULL DEFAULT 1 CHECK(visit_count>0),last_visited_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,owner_id,visitor_id),CHECK(owner_id<>visitor_id),FOREIGN KEY(guild_id,owner_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE,FOREIGN KEY(guild_id,visitor_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE)');
+ await db.query('CREATE INDEX IF NOT EXISTS player_profile_visits_owner_idx ON player_profile_visits(guild_id,owner_id,last_visited_at DESC)');
 }
 export async function ensurePersonalCenterSchema(db){
  if(!db||typeof db.query!=='function')throw new Error('PERSONAL_CENTER_DATABASE_INVALID');
@@ -185,5 +187,25 @@ export async function removeCloseFriend(db,{guildId,ownerId,friendId}){
 export async function listCloseFriends(db,{guildId,ownerId,limit=10}){
  player(guildId,ownerId);const n=Math.max(1,Math.min(10,Math.floor(Number(limit)||10)));await ensurePersonalCenterSchema(db);
  const result=await db.query('SELECT f.friend_id AS user_id,u.character_name,u.xp,f.created_at FROM player_close_friends f JOIN users u ON u.guild_id=f.guild_id AND u.user_id=f.friend_id WHERE f.guild_id=$1 AND f.owner_id=$2 AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE b.guild_id=f.guild_id AND ((b.blocker_id=$2 AND b.blocked_id=f.friend_id) OR (b.blocker_id=f.friend_id AND b.blocked_id=$2))) ORDER BY f.created_at DESC LIMIT $3',[guildId,ownerId,n]);
+ return result.rows;
+}
+
+export async function recordProfileVisit(db,{guildId,ownerId,visitorId}){
+ pair(guildId,ownerId,visitorId);await ensurePersonalCenterSchema(db);
+ return tx(db,async c=>{
+  if(await blocked(c,guildId,ownerId,visitorId))return{status:'blocked'};
+  const result=await c.query(`INSERT INTO player_profile_visits(guild_id,owner_id,visitor_id,visit_count,last_visited_at)
+   VALUES($1,$2,$3,1,NOW()) ON CONFLICT(guild_id,owner_id,visitor_id) DO UPDATE
+   SET visit_count=CASE WHEN player_profile_visits.last_visited_at<NOW()-INTERVAL '30 minutes' THEN player_profile_visits.visit_count+1 ELSE player_profile_visits.visit_count END,last_visited_at=NOW()
+   RETURNING visit_count`,[guildId,ownerId,visitorId]);
+  return{status:'recorded',visitCount:Number(result.rows[0]?.visit_count||1)};
+ });
+}
+export async function listProfileVisits(db,{guildId,ownerId,limit=20}){
+ player(guildId,ownerId);const n=Math.max(1,Math.min(50,Math.floor(Number(limit)||20)));await ensurePersonalCenterSchema(db);
+ const result=await db.query(`SELECT v.visitor_id,u.character_name,v.visit_count,v.last_visited_at
+  FROM player_profile_visits v JOIN users u ON u.guild_id=v.guild_id AND u.user_id=v.visitor_id
+  WHERE v.guild_id=$1 AND v.owner_id=$2 AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE b.guild_id=v.guild_id AND ((b.blocker_id=$2 AND b.blocked_id=v.visitor_id) OR (b.blocker_id=v.visitor_id AND b.blocked_id=$2)))
+  ORDER BY v.last_visited_at DESC LIMIT $3`,[guildId,ownerId,n]);
  return result.rows;
 }
