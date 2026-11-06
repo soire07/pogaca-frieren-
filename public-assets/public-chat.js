@@ -33,7 +33,7 @@
   const fragment=document.createDocumentFragment();
   for(const item of visible){
    const li=document.createElement('li');li.className='public-chat-message';
-   const avatar=document.createElement(item.avatar_url&&String(item.avatar_url).startsWith('/profil/media/public?accountId=')?'img':'span');avatar.className='public-chat-avatar';if(avatar.tagName==='IMG'){avatar.src=item.avatar_url;avatar.alt='';avatar.loading='lazy';}else avatar.textContent=Array.from(String(item.username||'G').trim())[0]?.toLocaleUpperCase('tr-TR')||'G';
+   const avatar=document.createElement(item.avatar_url&&String(item.avatar_url).startsWith('/profil/media/public?accountId=')?'img':'span');avatar.className='public-chat-avatar';if(avatar.tagName==='IMG'){avatar.src=item.avatar_url;avatar.alt='';avatar.loading='lazy';}else avatar.textContent=Array.from(String(item.username||'G').trim())[0]?.toLocaleUpperCase('tr-TR')||'G';if(item.is_online){avatar.dataset.online='true';avatar.title='Çevrimiçi';}else{avatar.dataset.online='false';avatar.title='Çevrimdışı';}
    const body=document.createElement('div');body.className='public-chat-message-body';
    const meta=document.createElement('div');meta.className='public-chat-message-meta';
    const name=document.createElement('strong');name.textContent=String(item.username||'Gezgin');if(/^site_[0-9a-f-]{36}$/i.test(String(item.account_id||''))){const profileLink=document.createElement('a');profileLink.href='/u/'+encodeURIComponent(item.account_id);profileLink.textContent=name.textContent;profileLink.className='public-chat-profile-link';name.replaceWith(profileLink);}
