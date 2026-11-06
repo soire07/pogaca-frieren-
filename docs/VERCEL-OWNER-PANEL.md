@@ -5,10 +5,10 @@ This repository remains the single source repository for Poğaça Frieren, Frier
 ## Architecture
 
 - Vercel serves the Frieren site hostname and reverse-proxies requests to the existing Poğaça Frieren HTTP service.
-- The public homepage, bot introduction pages, and site assets require a signed Discord member session. `/register` creates a persistent site membership for a Discord account; `/login` accepts only an account already present in `frieren_site_members`.
+- The public homepage and account features require a signed site session created only through Discord OAuth. `/login` offers Discord sign-in; the first successful Discord sign-in creates a site account automatically. `/register`, password recovery, and email verification routes redirect to `/login`.
 - `/owner` remains a separate owner-only area. A signed owner session is issued after Discord OAuth identity verification and an exact owner-ID allowlist check. Authenticator/TOTP enrollment and recovery-code steps are not required. Owner sessions remain signed, time-limited, and protected by HttpOnly, Secure, SameSite cookies; keep `ADMIN_SESSION_SECRET` private and stable.
 - The main Node.js service continues to run the persistent Poğaça Frieren Discord client and supervises the Frieren AI child process.
-- Neon PostgreSQL remains the database. The site-membership table is created additively on the first registration or login; existing RPG tables and records are not altered.
+- Neon PostgreSQL remains the database. Discord-to-site-account mapping is stored in `frieren_site_discord_accounts`; the mapping and account row are created transactionally on first OAuth sign-in. Existing RPG tables and records are not altered.
 - Vercel does not run either persistent Discord Gateway client.
 
 ## Vercel project
@@ -25,7 +25,7 @@ This repository remains the single source repository for Poğaça Frieren, Frier
 Before using the Vercel hostname, configure these variables on the **main Poğaça Frieren service**:
 
 - `OWNER_DASHBOARD_BASE_URL=https://frierenbot.vercel.app`
-- `OWNER_DASHBOARD_REDIRECT_URI=https://frierenbot.vercel.app/owner/callback`
+- `OWNER_DASHBOARD_REDIRECT_URI=https://frierenbot.vercel.app/owner/callback`\n- `SITE_BASE_URL=https://frierenbot.vercel.app`\n- `SITE_DISCORD_REDIRECT_URI=https://frierenbot.vercel.app/discord/callback`
 
 The existing OAuth callback is shared by the member site and Owner Panel. Add this exact redirect URI to the Discord Developer Portal OAuth2 redirect list:
 
@@ -38,7 +38,7 @@ If the Vercel project has not yet been assigned `frierenbot.vercel.app`, replace
 ## Deployment safety
 
 - Do not merge this change until the focused owner-panel test workflow passes.
-- Do not change `DATABASE_URL`, Discord bot tokens, or AI provider credentials. The site registration flow adds only the dedicated `frieren_site_members` table and does not alter existing RPG tables.
+- Do not change `DATABASE_URL`, Discord bot tokens, or AI provider credentials. The Discord-only site sign-in adds a dedicated Discord-account mapping table and site account rows; it does not alter existing RPG tables.
 - Do not shut down the existing Render service; it is the current upstream runtime for the Vercel proxy.
 - The Owner Panel manages existing owner operations and has independent Render health/status controls for Poğaça and Frieren AI. Render API credentials are server-side only and must remain separate: `RENDER_POGACA_API_KEY` (or legacy `RENDER_API_KEY`) for the Primary account and `RENDER_FRIEREN_AI_API_KEY` for the Frieren Bot account.
 - Optional service IDs are `RENDER_POGACA_SERVICE_ID` and `RENDER_FRIEREN_AI_SERVICE_ID`. Do not share either account's API key with the browser or Discord.
