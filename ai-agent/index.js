@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import OpenAI from 'openai';
 import { resolveAiModel } from './config.js';
-import { isNeuralConfigured, generateNeuralReply, buildNeuralPrompt } from './neural-client.js';
+import { isNeuralConfigured, isNeuralRequested, generateNeuralReply, buildNeuralPrompt } from './neural-client.js';
 import { collectCodeContext as collectGuardianCodeContext, normalizeCodeContextText } from './code-context.js';
 import { createMemoryStore, shouldUseConversationHistory } from './memory-store.js';
 import { buildConversationContextMessages } from './conversation-context.js';
@@ -51,8 +51,9 @@ const groqKey = process.env.GROQ_API_KEY?.trim();
 const groq = groqKey ? new OpenAI({ apiKey: groqKey, baseURL: 'https://api.groq.com/openai/v1', timeout: 45_000, maxRetries: 1 }) : null;
 const memoryStore = process.env.DATABASE_URL?.trim() ? createMemoryStore(process.env.DATABASE_URL.trim()) : null;
 let memoryDatabaseReady = false;
+const neuralRequested = isNeuralRequested(process.env);
 const neuralConfigured = isNeuralConfigured(process.env);
-const modelConfigured = Boolean(neuralConfigured || groq);
+const modelConfigured = neuralRequested ? neuralConfigured : Boolean(groq);
 const bridgeConfig = resolveAiBridgeConfig(process.env);
 const bridgeConfigured = bridgeConfig.configured;
 
@@ -370,7 +371,7 @@ async function answerCodeQuestion(question, userId, conversationId) {
     return typeof content === 'string' ? content.trim() : '';
   };
   let message = '';
-  if (isNeuralConfigured(process.env)) {
+  if (neuralRequested) {
     try {
       const prompt = buildNeuralPrompt({ conversationHistory, memoryContext, question, context, conversational });
       const result = await generateNeuralReply({ env: process.env, prompt });
@@ -747,7 +748,7 @@ client.on(Events.InteractionCreate, async interaction => {
     const hours = Math.floor(uptimeSeconds / 3600);
     const minutes = Math.floor((uptimeSeconds % 3600) / 60);
     const seconds = uptimeSeconds % 60;
-    const provider = isNeuralConfigured(process.env) ? 'Frieren Neural' : (groq ? (process.env.FRIEREN_MODEL_PROVIDER || 'groq') : 'Yapılandırılmamış');
+    const provider = neuralRequested ? 'Frieren Neural' : (groq ? (process.env.FRIEREN_MODEL_PROVIDER || 'groq') : 'Yapılandırılmamış');
     const model = isNeuralConfigured(process.env) ? (process.env.FRIEREN_NEURAL_MODEL || 'ufakai/ufakzeka-1') : (process.env.FRIEREN_MODEL || 'openai/gpt-oss-20b');
     const embed = new EmbedBuilder()
       .setTitle('Frieren AI — Servis Durumu')
@@ -757,7 +758,7 @@ client.on(Events.InteractionCreate, async interaction => {
         { name: 'Gateway gecikmesi', value: client.ws.ping >= 0 ? client.ws.ping + ' ms' : 'Ölçülemiyor', inline: true },
         { name: 'Çalışma süresi', value: hours + ' sa ' + minutes + ' dk ' + seconds + ' sn', inline: true },
         { name: 'Bağlı sunucu sayısı', value: String(client.guilds.cache.size), inline: true },
-        { name: 'Yapay zekâ sağlayıcısı', value: provider + ((isNeuralConfigured(process.env) || groq) ? ' — API yapılandırılmış' : ' — API eksik'), inline: true },
+        { name: 'Yapay zekâ sağlayıcısı', value: provider + ((neuralRequested ? neuralConfigured : Boolean(groq)) ? ' — API yapılandırılmış' : ' — API eksik'), inline: true },
         { name: 'Model', value: model, inline: true },
         { name: 'Kalıcı bellek', value: memoryStore ? 'Yapılandırılmış' : 'Yapılandırılmamış', inline: true }
       )
