@@ -1,7 +1,7 @@
 const MAX_PROMPT_CHARS = 1900;
-// Render Free can cold-start and download/load the pinned GGUF model on first use.
-const REQUEST_TIMEOUT_MS = 180_000;
-const MAX_REQUEST_TIMEOUT_MS = 240_000;
+// Render Free can cold-start and download/load the pinned GGUF model on first use; allow up to five minutes.
+const REQUEST_TIMEOUT_MS = 300_000;
+const MAX_REQUEST_TIMEOUT_MS = 360_000;
 
 export function isNeuralRequested(env = process.env) {
   return Boolean(String(env.FRIEREN_NEURAL_API_URL || '').trim());
