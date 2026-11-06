@@ -560,7 +560,7 @@ test('Light Fallen begins as a special NPC quest and only unlocks as a boss afte
   assert.ok(npc, 'Light Fallen must exist as a special quest NPC');
   assert.equal(npc.requiresStoryPath, false);
   assert.equal(npc.questKey, 'light_fallen_trial');
-  assert.match(npc.objective, /3.*boss/i);
+  assert.match(npc.objective, /üç boss/i);
   assert.equal(npc.reward.coins, 1500);
   assert.equal(npc.reward.xp, 750);
   assert.equal(isRaidBossUnlocked('fallen-mage', []), false);
@@ -574,5 +574,6 @@ test('raid command gates direct and random Light Fallen selection on the quest c
   const source = await (await import('node:fs/promises')).readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
   assert.match(source, /SELECT quest_key FROM side_quest_claims WHERE guild_id=\$1 AND user_id=\$2/);
   assert.match(source, /isRaidBossUnlocked\(boss\.id, unlockedQuestKeys\)/);
-  assert.match(source, /Light Fallen.*özel görevini tamamlamadan/);
+  assert.match(source, /Light Fallen henüz boss değil/);
+  assert.match(source, /const randomCatalog = availableCatalog\.length \? availableCatalog : RAID_BOSSES\.filter/);
 });
