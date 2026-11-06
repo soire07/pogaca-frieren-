@@ -1060,6 +1060,35 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }catch(error){if(String(error?.message||'').endsWith('_INVALID')||String(error?.message||'')==='SOCIAL_SELF_INTERACTION')status='invalid';else throw error;}
     const destination=url.pathname==='/maceraci/sosyal'?'/maceraci/sosyal':'/pazar';res.writeHead(303,{Location:destination+'?'+new URLSearchParams({guildId,status}).toString(),'Cache-Control':'no-store'});res.end();return true;
   }
+  if(['/api/account-profile','/api/account-profile/follow','/api/account-profile/friends','/api/account-profile/friends/respond','/api/account-notifications/read'].includes(url.pathname)&&req.method==='POST'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'profile_unavailable'}));return true;}
+    if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({error:'invalid_content_type'}));return true;}
+    let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>8192){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({error:'payload_too_large'}));return true;}chunks.push(chunk);}
+    const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
+    if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
+    try{
+      if(url.pathname==='/api/account-profile'){
+        const socialLinks=Object.fromEntries(['website','youtube','twitch','instagram','x','github','tiktok'].map(k=>[k,form.get('social_'+k)||'']));
+        await updateAccountProfile(db,{accountId:session.id,displayName:form.get('displayName')||session.username,profileSlug:form.get('profileSlug')||'',bannerPosition:form.get('bannerPosition')||'center',bio:form.get('bio'),statusText:form.get('statusText'),interests:String(form.get('interests')||'').split(',').map(x=>x.trim()).filter(Boolean),tags:String(form.get('tags')||'').split(',').map(x=>x.trim()).filter(Boolean),theme:form.get('theme'),accentColor:form.get('accentColor'),socialLinks,visibility:form.get('visibility'),showActivity:form.get('showActivity')==='true',allowVisitors:form.get('allowVisitors')==='true'});
+        res.writeHead(303,{Location:'/profil?status=saved','Cache-Control':'no-store'});res.end();return true;
+      }
+      if(url.pathname==='/api/account-profile/friends'){
+        const result=await sendAccountFriendRequest(db,{requesterAccountId:session.id,recipientAccountId:form.get('targetAccountId')});
+        res.writeHead(303,{Location:'/u/'+encodeURIComponent(form.get('targetAccountId'))+'?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
+      }
+      if(url.pathname==='/api/account-notifications/read'){
+        await markAccountNotificationsRead(db,session.id);res.writeHead(303,{Location:'/bildirimler','Cache-Control':'no-store'});res.end();return true;
+      }
+      if(url.pathname==='/api/account-profile/friends/respond'){
+        const result=await respondAccountFriendRequest(db,{accountId:session.id,requestId:form.get('requestId'),accept:form.get('action')==='accept'});
+        res.writeHead(303,{Location:'/profil?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
+      }
+      const target=form.get('targetAccountId'),result=form.get('action')==='unfollow'?await unfollowAccount(db,{followerAccountId:session.id,followedAccountId:target}):await followAccount(db,{followerAccountId:session.id,followedAccountId:target});
+      res.writeHead(303,{Location:'/u/'+encodeURIComponent(target)+'?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
+    }catch(error){if(String(error?.message||'').startsWith('ACCOUNT_')||error?.code==='23505'){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_profile'}));return true;}throw error;}
+  }
   if (req.method !== 'GET') return false;
   const cookie = cookies(req);
   if (url.pathname === '/owner' || url.pathname.startsWith('/owner/')) return false;
@@ -1075,7 +1104,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci/oyuncu', '/maceraci/merkez', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/profil', '/profil/media', '/hesap-merkezi', '/bildirimler', '/pazar', '/api/account-profile', '/api/account-profile/follow', '/api/account-profile/friends', '/api/account-profile/friends/respond', '/api/account-notifications/read']);
+  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci/oyuncu', '/maceraci/merkez', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/profil', '/profil/media', '/hesap-merkezi', '/bildirimler', '/pazar']);
   const isPublicProfilePath=url.pathname.startsWith('/u/');
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname) && !isPublicProfilePath) return false;
   const sessionUser = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
@@ -1124,35 +1153,6 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const html=siteAccountProfilePage(user,{bannerUrl:bannerMedia?'/profil/media?kind=banner':'/assets/site-profile-banner.svg',profile:accountProfile.profile,activity,friends,visitors:accountProfile.visitors,badges:accountProfile.badges,notifications:await listAccountNotifications(db,user.id,50)});
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});
     res.end(html);return true;
-  }
-  if(['/api/account-profile','/api/account-profile/follow','/api/account-profile/friends','/api/account-profile/friends/respond','/api/account-notifications/read'].includes(url.pathname)&&req.method==='POST'){
-    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
-    if(!requireSiteAccount(res,session?.id))return true;
-    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'profile_unavailable'}));return true;}
-    if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({error:'invalid_content_type'}));return true;}
-    let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>8192){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({error:'payload_too_large'}));return true;}chunks.push(chunk);}
-    const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
-    if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
-    try{
-      if(url.pathname==='/api/account-profile'){
-        const socialLinks=Object.fromEntries(['website','youtube','twitch','instagram','x','github','tiktok'].map(k=>[k,form.get('social_'+k)||'']));
-        await updateAccountProfile(db,{accountId:session.id,displayName:form.get('displayName')||session.username,profileSlug:form.get('profileSlug')||'',bannerPosition:form.get('bannerPosition')||'center',bio:form.get('bio'),statusText:form.get('statusText'),interests:String(form.get('interests')||'').split(',').map(x=>x.trim()).filter(Boolean),tags:String(form.get('tags')||'').split(',').map(x=>x.trim()).filter(Boolean),theme:form.get('theme'),accentColor:form.get('accentColor'),socialLinks,visibility:form.get('visibility'),showActivity:form.get('showActivity')==='true',allowVisitors:form.get('allowVisitors')==='true'});
-        res.writeHead(303,{Location:'/profil?status=saved','Cache-Control':'no-store'});res.end();return true;
-      }
-      if(url.pathname==='/api/account-profile/friends'){
-        const result=await sendAccountFriendRequest(db,{requesterAccountId:session.id,recipientAccountId:form.get('targetAccountId')});
-        res.writeHead(303,{Location:'/u/'+encodeURIComponent(form.get('targetAccountId'))+'?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
-      }
-      if(url.pathname==='/api/account-notifications/read'){
-        await markAccountNotificationsRead(db,session.id);res.writeHead(303,{Location:'/bildirimler','Cache-Control':'no-store'});res.end();return true;
-      }
-      if(url.pathname==='/api/account-profile/friends/respond'){
-        const result=await respondAccountFriendRequest(db,{accountId:session.id,requestId:form.get('requestId'),accept:form.get('action')==='accept'});
-        res.writeHead(303,{Location:'/profil?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
-      }
-      const target=form.get('targetAccountId'),result=form.get('action')==='unfollow'?await unfollowAccount(db,{followerAccountId:session.id,followedAccountId:target}):await followAccount(db,{followerAccountId:session.id,followedAccountId:target});
-      res.writeHead(303,{Location:'/u/'+encodeURIComponent(target)+'?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
-    }catch(error){if(String(error?.message||'').startsWith('ACCOUNT_')||error?.code==='23505'){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_profile'}));return true;}throw error;}
   }
   if(url.pathname.startsWith('/u/')&&req.method==='GET'){
     if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil veritabanı kullanılamıyor.');return true;}
