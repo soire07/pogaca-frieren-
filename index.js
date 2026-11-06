@@ -157,8 +157,14 @@ async function processNewsBirdDigests(readyClient = client) {
   if (newsBirdSweepRunning || !readyClient?.isReady?.()) return;
   newsBirdSweepRunning = true;
   try {
-    try { await pollAnimeNewsFeed(pool); }
-    catch (error) { console.warn('Haberci kuş RSS güncellemesi başarısız:', error?.message || error); }
+    try {
+      const feedResult = await pollAnimeNewsFeed(pool);
+      for (const failure of feedResult.failures || []) {
+        console.warn('Haberci kuş kaynağı güncellenemedi:', failure.source, failure.error);
+      }
+    } catch (error) {
+      console.warn('Haberci kuş RSS güncellemesi başarısız:', error?.message || error);
+    }
     const due = await claimDueAnimeNewsDigests(pool, 20);
     for (const digest of due) {
       try {
