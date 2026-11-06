@@ -66,6 +66,7 @@ export default {
     }
     const sourceCatalog = catalog || RAID_BOSSES;
     const availableCatalog = sourceCatalog.filter(boss => isRaidBossUnlocked(boss.id, unlockedQuestKeys));
+    const randomCatalog = availableCatalog.length ? availableCatalog : RAID_BOSSES.filter(boss => isRaidBossUnlocked(boss.id, unlockedQuestKeys));
     if (requestedBossId === 'fallen-mage' && !isRaidBossUnlocked('fallen-mage', unlockedQuestKeys)) {
       return interaction.editReply({
         content: '🔒 **Light Fallen henüz boss değil.** Önce /npc komutunda **Light Fallen — Özel görev** karakteriyle konuş, **Dört Mührün Sınavı** görevini tamamla ve teslim et. Üç boss zaferinden sonra Infinity boss formu açılır.',
@@ -75,7 +76,7 @@ export default {
     const BOSS = requestedBossId
       ? (availableCatalog.find(boss => boss.id === requestedBossId) ||
         RAID_BOSSES.find(boss => boss.id === requestedBossId && isRaidBossUnlocked(boss.id, unlockedQuestKeys)))
-      : chooseRaidBoss(Math.random, availableCatalog);
+      : chooseRaidBoss(Math.random, randomCatalog);
     if (!BOSS) return interaction.editReply({ content: 'Seçilen boss bu sunucunun raid kataloğunda bulunamadı veya henüz açılmadı.', components: [] });
     for (const user of team) await ensureUser(interaction.guildId, user.id);
     const invited = team.slice(1);
