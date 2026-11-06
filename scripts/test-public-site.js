@@ -318,21 +318,17 @@ test('unknown routes and non-GET requests are not intercepted', async () => {
 
 
 
-test('registration and login pages expose username and password forms', async () => {
+test('public sign-in exposes only the Discord OAuth action and legacy registration redirects', async () => {
   const registration = res();
-  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/register', headers: {} }, registration, { db: { query: async () => ({ rows: [], rowCount: 0 }) } }), true);
-  assert.equal(registration.status, 200);
-  assert.match(registration.body, /name="username"/);
-  assert.match(registration.body, /name="email"/);
-  assert.match(registration.body, /name="confirmPassword"/);
-  assert.match(registration.body, /action="\/register"/);
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/register', headers: {} }, registration), true);
+  assert.equal(registration.status, 303);
+  assert.equal(registration.headers.Location, '/login');
   const login = res();
-  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/login', headers: {} }, login, { db: { query: async () => ({ rows: [], rowCount: 0 }) } }), true);
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/login', headers: {} }, login), true);
   assert.equal(login.status, 200);
-  assert.match(login.body, /name="username"/);
-  assert.match(login.body, /name="password"/);
-  assert.match(login.body, /href="\/forgot-password"/);
-  assert.match(login.body, /action="\/login"/);
+  assert.ok(login.body.includes('href="/site/discord/login"'));
+  assert.match(login.body, /Discord ile giriş yap/);
+  assert.doesNotMatch(login.body, /name="password"|name="email"|Hesap oluştur|Şifremi unuttum|href="\/register"/);
 });
 
 test('homepage renders the signed-in user profile with the completed starry banner', async () => {
@@ -379,11 +375,11 @@ test('dedicated site avatar asset is public so auth screens can render it', asyn
   assert.ok(Buffer.isBuffer(response.body) && response.body.length > 1000);
 });
 
-test('registration page reports that email delivery must be configured before signup', async () => {
+test('legacy registration status routes back to Discord sign-in without email setup', async () => {
   const response = res();
-  await handlePublicSiteRequest({ method: 'GET', url: '/register?status=mail_unavailable', headers: {} }, response, { db: { query: async () => ({ rows: [], rowCount: 0 }) } });
-  assert.equal(response.status, 200);
-  assert.match(response.body, /Gmail API bağlantısını tamamlamalı/);
+  await handlePublicSiteRequest({ method: 'GET', url: '/register?status=mail_unavailable', headers: {} }, response);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.Location, '/login');
 });
 
 

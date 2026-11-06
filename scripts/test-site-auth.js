@@ -7,6 +7,14 @@ import {
 import { createPublicSiteSession, readPublicSiteSession } from '../owner-dashboard.js';
 
 const secret = 'site-auth-test-secret-with-at-least-32-characters';
+function response() {
+  return { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body = '') { this.body = body; } };
+}
+function fakeDb() {
+  const calls = [];
+  return { calls, async query(sql, params = []) { calls.push({ sql: String(sql), params }); return { rows: [], rowCount: 0 }; } };
+}
+
 
 test('Vercel public origin is trusted through the Render proxy while unlisted origins remain blocked', () => {
   const previous = process.env.SITE_AUTH_ALLOWED_ORIGINS;
@@ -65,55 +73,6 @@ test('same-origin request guard accepts the configured site host and rejects cro
   assert.equal(isSameOriginRequest({ headers: {} }, 'https://site.example'), false);
 });
 
-
-test('origin rejection diagnostics run before database access', async () => {
-  const db = fakeDb();
-  const req = { method: 'POST', url: '/login', headers: {
-    'content-type': 'application/x-www-form-urlencoded',
-    origin: 'https://unlisted-attacker.example',
-    'sec-fetch-site': 'same-site',
-    host: 'pogaca-frieren.onrender.com',
-    'x-forwarded-host': 'pogaca-frieren.onrender.com',
-    'x-forwarded-proto': 'https'
-  }, async *[Symbol.asyncIterator]() {
-    yield Buffer.from(new URLSearchParams({
-      csrf: createSiteCsrfToken(secret),
-      username: 'unknown-user',
-      password: 'not-a-real-password'
-    }).toString());
-  } };
-  const res = response();
-  const originalWarn = console.warn;
-  const entries = [];
-  console.warn = (...args) => entries.push(args.join(' '));
-  try {
-    assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret }), true);
-    assert.equal(res.status, 403);
-    assert.equal(db.calls.length, 0);
-    assert.equal(entries.length, 1);
-    assert.match(entries[0], /SITE_AUTH_ORIGIN_REJECTED/);
-    assert.match(entries[0], /unlisted-attacker\.example/);
-  } finally {
-    console.warn = originalWarn;
-  }
-});
-
-function response() {
-  return { status: 0, headers: {}, body: '', writeHead(status, headers = {}) { this.status = status; this.headers = headers; }, end(body) { this.body = body; } };
-}
-function post(path, fields) {
-  const body = new URLSearchParams(fields).toString();
-  return { method: 'POST', url: path, headers: {
-    'content-type': 'application/x-www-form-urlencoded',
-    'x-forwarded-for': '203.0.113.10',
-    origin: 'https://frierenbot.vercel.app',
-    'sec-fetch-site': 'same-origin'
-  }, async *[Symbol.asyncIterator]() { yield Buffer.from(body); } };
-}
-function fakeDb() {
-  const calls = [];
-  return { calls, async query(sql, params = []) { calls.push({ sql, params }); return { rows: [], rowCount: 0 }; } };
-}
 
 
 test('SMTP failure diagnostics normalize unusual thrown values without exposing email addresses', () => {
@@ -213,14 +172,6 @@ test('Turkish Unicode account names are accepted, normalized and safe for login'
   assert.equal(validateSiteUsername('a'.repeat(25)), null);
 });
 
-test('registration form advertises Unicode letter and number support', async () => {
-  const res = response();
-  assert.equal(await handleSiteAuthRequest({ method: 'GET', url: '/register', headers: {} }, res, {
-    db: fakeDb(), sessionSecret: secret
-  }), true);
-  assert.equal(res.status, 200);
-  assert.ok(res.body.includes('pattern="[\\p{L}\\p{N}_.\\-]{3,24}"'));
-});
 
 test('password hashing uses salted scrypt and verifies only the matching password', async () => {
   const stored = await hashSitePassword('correct horse battery staple');
@@ -249,143 +200,13 @@ test('public account session supports a UUID account without changing Discord ow
   assert.equal(session.avatarUrl, null);
 });
 
-test('registration form does not write account data before Gmail SMTP is configured', async () => {
-  const previousUser = process.env.SITE_SMTP_USER;
-  const previousPassword = process.env.SITE_SMTP_APP_PASSWORD;
-  delete process.env.SITE_SMTP_USER;
-  delete process.env.SITE_SMTP_APP_PASSWORD;
-  const db = fakeDb();
-  const csrf = createSiteCsrfToken(secret);
-  const req = post('/register', {
-    csrf, username: 'Gezgin01', email: 'gezgin@example.com',
-    password: 'a-secure-password', confirmPassword: 'a-secure-password'
-  });
-  const res = response();
-  try {
-    assert.equal(await handleSiteAuthRequest(req, res, {
-      db, sessionSecret: secret,
-      createSession: createPublicSiteSession
-    }), true);
-    assert.equal(res.status, 503);
-    assert.match(res.body, /Gmail API bağlantısını tamamlamalı/);
-    assert.equal(db.calls.filter(call => call.sql.includes('INSERT INTO frieren_site_accounts')).length, 0);
-  } finally {
-    if (previousUser === undefined) delete process.env.SITE_SMTP_USER;
-    else process.env.SITE_SMTP_USER = previousUser;
-    if (previousPassword === undefined) delete process.env.SITE_SMTP_APP_PASSWORD;
-    else process.env.SITE_SMTP_APP_PASSWORD = previousPassword;
-  }
-});
-
-test('login and registration pages enforce 48px auth controls with a high-specificity cross-engine rule', async () => {
-  const db = fakeDb();
-  for (const path of ['/login', '/register']) {
-    const res = response();
-    assert.equal(await handleSiteAuthRequest({ method: 'GET', url: path, headers: {} }, res, { db, sessionSecret: secret }), true);
-    assert.equal(res.status, 200);
-    assert.match(res.body, /\.auth-wrap \.auth-card input:not\(\[type="hidden"\]\)/);
-    assert.match(res.body, /min-height:48px!important;height:48px!important/);
-    assert.match(res.body, /\.auth-wrap \.auth-card button/);
-  }
-});
-
-test('login and registration pages are served by the password account handler', async () => {
-  const db = fakeDb();
-  for (const [path, field] of [['/login', 'current-password'], ['/register', 'new-password']]) {
-    const res = response();
-    assert.equal(await handleSiteAuthRequest({ method: 'GET', url: path, headers: {} }, res, { db, sessionSecret: secret }), true);
-    assert.equal(res.status, 200);
-    assert.match(res.body, /Frieren/);
-    assert.match(res.body, new RegExp(field));
-    if (path === '/login') assert.match(res.body, /Kullanıcı adı veya e-mail/);
-  }
-});
-
-test('invalid CSRF token blocks account registration before database writes', async () => {
-  const db = fakeDb();
-  const req = post('/register', {
-    csrf: 'forged-token', username: 'Gezgin02', email: 'gezgin2@example.com',
-    password: 'a-secure-password', confirmPassword: 'a-secure-password'
-  });
-  const res = response();
-  assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret, createSession: createPublicSiteSession }), true);
-  assert.equal(res.status, 403);
-  assert.match(res.body, /Formun süresi doldu/);
-  assert.equal(db.calls.filter(call => call.sql.includes('INSERT INTO frieren_site_accounts')).length, 0);
-});
-
-test('cross-origin account POST is rejected before schema or account database queries', async () => {
-  const db = fakeDb();
-  const req = post('/register', {
-    csrf: createSiteCsrfToken(secret), username: 'Gezgin03', email: 'gezgin3@example.com',
-    password: 'a-secure-password', confirmPassword: 'a-secure-password'
-  });
-  req.headers.origin = 'https://attacker.example';
-  req.headers.host = 'frierenbot.vercel.app';
-  req.headers['x-forwarded-proto'] = 'https';
-  req.headers['sec-fetch-site'] = 'cross-site';
-  const res = response();
-  assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret, createSession: createPublicSiteSession }), true);
-  assert.equal(res.status, 403);
-  assert.equal(db.calls.length, 0, 'cross-origin requests must be rejected before schema queries or writes');
-});
-
-test('password reset request returns the same generic response without exposing account existence', async () => {
-  const db = fakeDb();
-  const req = post('/forgot-password', { csrf: createSiteCsrfToken(secret), email: 'unknown@example.com' });
-  const res = response();
-  const previousUser = process.env.SITE_SMTP_USER;
-  const previousPassword = process.env.SITE_SMTP_APP_PASSWORD;
-  delete process.env.SITE_SMTP_USER;
-  delete process.env.SITE_SMTP_APP_PASSWORD;
-  try {
-    assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret, createSession: createPublicSiteSession }), true);
-    assert.equal(res.status, 200);
-    assert.match(res.body, /Adres sistemde kayıtlıysa gerekli bağlantı gönderildi/);
-    assert.doesNotMatch(res.body, /unknown@example\.com/);
-  } finally {
-    if (previousUser === undefined) delete process.env.SITE_SMTP_USER;
-    else process.env.SITE_SMTP_USER = previousUser;
-    if (previousPassword === undefined) delete process.env.SITE_SMTP_APP_PASSWORD;
-    else process.env.SITE_SMTP_APP_PASSWORD = previousPassword;
-  }
-});
 
 
-test('site account required notice is shown when a Discord-only session opens the player portal', async () => {
-  const res = response();
-  assert.equal(await handleSiteAuthRequest({ method: 'GET', url: '/login?status=site_account_required', headers: {} }, res, {
-    db: fakeDb(), sessionSecret: secret, createSession: createPublicSiteSession
-  }), true);
-  assert.equal(res.status, 200);
-  assert.match(res.body, /Maceracı paneli için önce Frieren web hesabınla giriş yap/);
-  assert.match(res.body, /href="\/register"/);
-});
 
 
-test('proxy origin fallback accepts malformed fetch metadata only with a trusted Referer and valid CSRF', async () => {
-  const req = {
-    method: 'POST',
-    url: '/login',
-    headers: {
-      'content-type': 'application/x-www-form-urlencoded',
-      referer: 'https://frierenbot.vercel.app/login',
-      'sec-fetch-site': 'same-oigi'
-    },
-    async *[Symbol.asyncIterator]() {
-      yield Buffer.from(new URLSearchParams({
-        csrf: createSiteCsrfToken(secret),
-        username: 'unknown-user',
-        password: 'not-a-real-password'
-      }).toString());
-    }
-  };
-  const res = response();
-  const db = fakeDb();
-  assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret }), true);
-  assert.equal(res.status, 401);
-  assert.equal(db.calls.some(call => call.sql.includes('FROM frieren_site_accounts')), true);
-});
+
+
+
 
 test('proxy origin fallback rejects an untrusted Referer and a valid untrusted Origin', () => {
   assert.equal(isSameOriginRequest({ headers: {
@@ -398,223 +219,115 @@ test('proxy origin fallback rejects an untrusted Referer and a valid untrusted O
   } }, 'https://site.example'), false);
 });
 
-test('proxy-corrupted Origin and Fetch Metadata do not block login when signed CSRF is valid', async () => {
-  const db = fakeDb();
-  const req = {
-    method: 'POST',
-    url: '/login',
-    headers: {
-      'content-type': 'application/x-www-form-urlencoded',
-      origin: '[invalid]',
-      'sec-fetch-site': 'same-oigi',
-      host: 'pogaca-fiee.oede.com',
-      'x-forwarded-host': 'fieebo.vecel.app',
-      'x-forwarded-proto': 'hps'
-    },
-    async *[Symbol.asyncIterator]() {
-      yield Buffer.from(new URLSearchParams({
-        csrf: createSiteCsrfToken(secret),
-        username: 'unknown-user',
-        password: 'not-a-real-password'
-      }).toString());
-    }
-  };
-  const res = response();
-  assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret }), true);
-  assert.equal(res.status, 401, 'valid CSRF must pass the corrupted proxy-header gate and reach login lookup');
-  assert.equal(db.calls.some(call => call.sql.includes('FROM frieren_site_accounts')), true);
-});
 
-test('invalid CSRF is rejected before schema queries even when proxy headers are malformed', async () => {
-  const db = fakeDb();
-  const req = {
-    method: 'POST',
-    url: '/login',
-    headers: {
-      'content-type': 'application/x-www-form-urlencoded',
-      origin: '[invalid]',
-      'sec-fetch-site': 'same-oigi'
-    },
-    async *[Symbol.asyncIterator]() {
-      yield Buffer.from(new URLSearchParams({
-        csrf: 'forged-token',
-        username: 'unknown-user',
-        password: 'not-a-real-password'
-      }).toString());
-    }
-  };
-  const res = response();
-  assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret }), true);
-  assert.equal(res.status, 403);
-  assert.equal(db.calls.length, 0, 'invalid CSRF must be rejected before any database query');
-});
 
-test('malformed Origin cannot hide an explicit untrusted Referer', async () => {
-  const db = fakeDb();
-  const req = {
-    method: 'POST', url: '/login',
-    headers: {
-      'content-type': 'application/x-www-form-urlencoded',
-      origin: '[invalid]',
-      referer: 'https://attacker.example/login',
-      'sec-fetch-site': 'same-oigi'
-    },
-    async *[Symbol.asyncIterator]() {
-      yield Buffer.from(new URLSearchParams({
-        csrf: createSiteCsrfToken(secret),
-        username: 'unknown-user',
-        password: 'not-a-real-password'
-      }).toString());
-    }
-  };
-  const res = response();
-  assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret }), true);
-  assert.equal(res.status, 403);
-  assert.equal(db.calls.length, 0);
-});
 
-test('explicit attacker Origin and cross-site metadata stay blocked despite valid CSRF', async () => {
-  for (const headers of [
-    { origin: 'https://attacker.example', 'sec-fetch-site': 'same-site' },
-    { origin: 'https://frierenbot.vercel.app', 'sec-fetch-site': 'cross-site' }
-  ]) {
-    const db = fakeDb();
-    const req = {
-      method: 'POST',
-      url: '/login',
-      headers: { 'content-type': 'application/x-www-form-urlencoded', ...headers },
-      async *[Symbol.asyncIterator]() {
-        yield Buffer.from(new URLSearchParams({
-          csrf: createSiteCsrfToken(secret),
-          username: 'unknown-user',
-          password: 'not-a-real-password'
-        }).toString());
-      }
-    };
+
+
+test('public registration and password recovery routes redirect to Discord-only sign-in', async () => {
+  for (const path of ['/register','/forgot-password','/reset-password','/verify-email','/resend-verification']) {
     const res = response();
-    assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret }), true);
-    assert.equal(res.status, 403);
-    assert.equal(db.calls.length, 0);
+    assert.equal(await handleSiteAuthRequest({ method: 'GET', url: path, headers: {} }, res, { db: fakeDb(), sessionSecret: secret }), true);
+    assert.equal(res.status, 303, path);
+    assert.equal(res.headers.Location, '/login', path);
+  }
+  const login = response();
+  assert.equal(await handleSiteAuthRequest({ method: 'GET', url: '/login', headers: {} }, login, { db: fakeDb(), sessionSecret: secret }), true);
+  assert.equal(login.status, 200);
+  assert.match(login.body, /Discord ile giriş yap/);
+  assert.doesNotMatch(login.body, /name="password"|name="email"|Hesap oluştur|Şifremi unuttum/);
+});
+
+test('Discord OAuth login creates a short-lived signed state cookie and requests identify only', async () => {
+  const previous = { CLIENT_ID: process.env.CLIENT_ID, DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET, SITE_DISCORD_REDIRECT_URI: process.env.SITE_DISCORD_REDIRECT_URI };
+  process.env.CLIENT_ID = 'test-discord-client';
+  process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
+  process.env.SITE_DISCORD_REDIRECT_URI = 'https://frierenbot.vercel.app/site/discord/callback';
+  try {
+    const res = response();
+    await handleSiteAuthRequest({ method: 'GET', url: '/site/discord/login', headers: {} }, res, { db: fakeDb(), sessionSecret: secret });
+    assert.equal(res.status, 302);
+    const target = new URL(res.headers.Location);
+    assert.equal(target.origin, 'https://discord.com');
+    assert.equal(target.pathname, '/oauth2/authorize');
+    assert.equal(target.searchParams.get('scope'), 'identify');
+    assert.equal(target.searchParams.get('redirect_uri'), process.env.SITE_DISCORD_REDIRECT_URI);
+    assert.match(res.headers['Set-Cookie'], /^frieren_site_oauth_state=/);
+    assert.match(res.headers['Set-Cookie'], /HttpOnly; Secure; SameSite=Lax; Max-Age=600/);
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
   }
 });
 
-
-test('site account lifecycle completes registration, email verification, login, password reset and logout', async () => {
-  const keys = ['SITE_GMAIL_SCRIPT_URL','SITE_GMAIL_SCRIPT_SECRET','ADMIN_SESSION_SECRET','SITE_BASE_URL'];
-  const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]));
-  const originalFetch = globalThis.fetch;
-  const lifecycleSecret = 'full-account-lifecycle-test-secret-over-32-characters';
-  process.env.SITE_GMAIL_SCRIPT_URL = 'https://script.google.com/macros/s/lifecycle-test/exec';
-  process.env.SITE_GMAIL_SCRIPT_SECRET = 'lifecycle-mail-secret';
-  process.env.ADMIN_SESSION_SECRET = lifecycleSecret;
-  process.env.SITE_BASE_URL = 'https://frierenbot.vercel.app';
-  const account = { id: '123e4567-e89b-42d3-a456-426614174000', username: 'LifecycleUser', email: 'lifecycle@example.com', password_hash: '', email_verified_at: null, verification_token_hash: null, reset_token_hash: null };
-  const mail = [];
-  globalThis.fetch = async (_url, options) => {
-    mail.push(JSON.parse(options.body));
-    return { ok: true, async json() { return { ok: true, messageId: 'test-message' }; } };
-  };
-  const db = {
+test('Discord OAuth callback provisions one persistent site account and issues a signed site session', async () => {
+  const previous = { CLIENT_ID: process.env.CLIENT_ID, DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET, SITE_DISCORD_REDIRECT_URI: process.env.SITE_DISCORD_REDIRECT_URI };
+  const previousFetch = globalThis.fetch;
+  process.env.CLIENT_ID = 'test-discord-client';
+  process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
+  process.env.SITE_DISCORD_REDIRECT_URI = 'https://frierenbot.vercel.app/site/discord/callback';
+  globalThis.fetch = async url => String(url).includes('/oauth2/token')
+    ? { ok: true, json: async () => ({ access_token: 'temporary-discord-token' }) }
+    : { ok: true, json: async () => ({ id: '123456789012345678', username: 'Frieren', avatar: 'avatarhash' }) };
+  const accountId = '123e4567-e89b-42d3-a456-426614174000';
+  const queries = [];
+  const client = {
     async query(sql, params = []) {
-      if (sql.startsWith('CREATE TABLE') || sql.startsWith('CREATE INDEX')) return { rows: [], rowCount: 0 };
-      if (sql.startsWith('INSERT INTO frieren_site_accounts')) {
-        account.username = params[0]; account.email = params[1]; account.password_hash = params[2]; account.verification_token_hash = params[3];
-        return { rows: [], rowCount: 1 };
-      }
-      if (sql.includes('SET email_verified_at=NOW()')) {
-        if (account.verification_token_hash !== params[0]) return { rows: [], rowCount: 0 };
-        account.email_verified_at = new Date(); account.verification_token_hash = null;
-        return { rows: [{ id: account.id }], rowCount: 1 };
-      }
-      if (sql.startsWith('SELECT id,username,password_hash,email_verified_at')) {
-        const identifier = String(params[0]).toLowerCase();
-        return { rows: [account].filter(row => row.username.toLowerCase() === identifier || row.email.toLowerCase() === identifier), rowCount: 1 };
-      }
-      if (sql.startsWith('SELECT id,email FROM frieren_site_accounts') && sql.includes('email_verified_at IS NOT NULL')) {
-        return { rows: account.email.toLowerCase() === String(params[0]).toLowerCase() && account.email_verified_at ? [{ id: account.id, email: account.email }] : [], rowCount: account.email_verified_at ? 1 : 0 };
-      }
-      if (sql.startsWith('UPDATE frieren_site_accounts SET reset_token_hash=$2')) {
-        account.reset_token_hash = params[1]; return { rows: [], rowCount: 1 };
-      }
-      if (sql.startsWith('SELECT id FROM frieren_site_accounts WHERE reset_token_hash=$1')) {
-        return { rows: account.reset_token_hash === params[0] && account.email_verified_at ? [{ id: account.id }] : [], rowCount: account.reset_token_hash === params[0] ? 1 : 0 };
-      }
-      if (sql.startsWith('UPDATE frieren_site_accounts SET password_hash=$2')) {
-        if (account.reset_token_hash !== params[0]) return { rows: [], rowCount: 0 };
-        account.password_hash = params[1]; account.reset_token_hash = null;
-        return { rows: [{ id: account.id }], rowCount: 1 };
-      }
-      throw new Error('Unexpected lifecycle SQL: ' + sql);
-    }
+      queries.push({ sql: String(sql), params });
+      if (String(sql).includes('INSERT INTO frieren_site_accounts')) return { rows: [{ id: accountId }], rowCount: 1 };
+      if (String(sql).includes('SELECT account_id FROM frieren_site_discord_accounts')) return { rows: [], rowCount: 0 };
+      return { rows: [], rowCount: 1 };
+    },
+    release() {}
   };
-  const request = (path, fields) => {
-    const body = new URLSearchParams(fields).toString();
-    return { method: 'POST', url: path, headers: {
-      'content-type': 'application/x-www-form-urlencoded',
-      origin: 'https://frierenbot.vercel.app', 'sec-fetch-site': 'same-origin'
-    }, socket: { remoteAddress: '192.0.2.123' }, async *[Symbol.asyncIterator]() { yield Buffer.from(body); } };
-  };
-  const get = path => ({ method: 'GET', url: path, headers: {} });
+  const db = { async query(sql, params) { return client.query(sql, params); }, async connect() { return client; } };
   try {
-    let responseObject = response();
-    assert.equal(await handleSiteAuthRequest(request('/register', {
-      csrf: createSiteCsrfToken(lifecycleSecret), username: account.username, email: account.email,
-      password: 'Initial-Pass-123', confirmPassword: 'Initial-Pass-123'
-    }), responseObject, { db, sessionSecret: lifecycleSecret, createSession: createPublicSiteSession }), true);
-    assert.equal(responseObject.status, 201);
-    assert.equal(mail.length, 1);
-    const verificationToken = /verify-email\?token=([a-f0-9]{64})/.exec(mail[0].html)?.[1];
-    assert.ok(verificationToken, 'registration email contains a one-time verification link');
-
-    responseObject = response();
-    await handleSiteAuthRequest(get('/verify-email?token=' + verificationToken), responseObject, { db, sessionSecret: lifecycleSecret, createSession: createPublicSiteSession });
-    assert.equal(responseObject.status, 200);
-    assert.ok(account.email_verified_at);
-
-    responseObject = response();
-    await handleSiteAuthRequest(request('/login', {
-      csrf: createSiteCsrfToken(lifecycleSecret), username: account.username, password: 'Initial-Pass-123'
-    }), responseObject, { db, sessionSecret: lifecycleSecret, createSession: createPublicSiteSession });
-    assert.equal(responseObject.status, 302);
-    assert.equal(responseObject.headers.Location, '/');
-    const cookie = responseObject.headers['Set-Cookie'];
-    const token = decodeURIComponent(cookie.split(';')[0].split('=').slice(1).join('='));
-    const session = readPublicSiteSession(token, lifecycleSecret);
-    assert.equal(session.username, account.username);
-    assert.equal(session.id, 'site_' + account.id);
-
-    responseObject = response();
-    await handleSiteAuthRequest(request('/forgot-password', {
-      csrf: createSiteCsrfToken(lifecycleSecret), email: account.email
-    }), responseObject, { db, sessionSecret: lifecycleSecret, createSession: createPublicSiteSession });
-    assert.equal(responseObject.status, 200);
-    assert.equal(mail.length, 2);
-    const resetToken = /reset-password\?token=([a-f0-9]{64})/.exec(mail[1].html)?.[1];
-    assert.ok(resetToken, 'password reset email contains a one-time reset link');
-
-    responseObject = response();
-    await handleSiteAuthRequest(get('/reset-password?token=' + resetToken), responseObject, { db, sessionSecret: lifecycleSecret, createSession: createPublicSiteSession });
-    assert.equal(responseObject.status, 200);
-
-    responseObject = response();
-    await handleSiteAuthRequest(request('/reset-password', {
-      csrf: createSiteCsrfToken(lifecycleSecret), token: resetToken,
-      password: 'Replacement-Pass-456', confirmPassword: 'Replacement-Pass-456'
-    }), responseObject, { db, sessionSecret: lifecycleSecret, createSession: createPublicSiteSession });
-    assert.equal(responseObject.status, 200);
-    assert.equal(account.reset_token_hash, null);
-    assert.equal(await verifySitePassword('Replacement-Pass-456', account.password_hash), true);
-    assert.equal(await verifySitePassword('Initial-Pass-123', account.password_hash), false);
-
-    responseObject = response();
-    await handleSiteAuthRequest(get('/logout'), responseObject, { db, sessionSecret: lifecycleSecret, createSession: createPublicSiteSession });
-    assert.equal(responseObject.status, 302);
-    assert.match(responseObject.headers['Set-Cookie'], /Max-Age=0/);
+    const stateRes = response();
+    await handleSiteAuthRequest({ method: 'GET', url: '/site/discord/login', headers: {} }, stateRes, { db, sessionSecret: secret });
+    const stateCookie = decodeURIComponent(stateRes.headers['Set-Cookie'].split(';')[0].split('=').slice(1).join('='));
+    const state = new URL(stateRes.headers.Location).searchParams.get('state');
+    const callback = response();
+    await handleSiteAuthRequest({
+      method: 'GET',
+      url: '/site/discord/callback?code=valid-code&state=' + encodeURIComponent(state),
+      headers: { cookie: 'frieren_site_oauth_state=' + encodeURIComponent(stateCookie) }
+    }, callback, { db, sessionSecret: secret, createSession: createPublicSiteSession });
+    assert.equal(callback.status, 303);
+    assert.equal(callback.headers.Location, '/');
+    const cookies = callback.headers['Set-Cookie'];
+    const sessionCookie = cookies.find(value => value.startsWith('frieren_site_session='));
+    assert.ok(sessionCookie);
+    const token = decodeURIComponent(sessionCookie.split(';')[0].slice('frieren_site_session='.length));
+    const session = readPublicSiteSession(token, secret);
+    assert.equal(session.id, 'site_' + accountId);
+    assert.equal(session.username, 'Frieren');
+    assert.ok(queries.some(item => item.sql.includes('INSERT INTO frieren_site_accounts')));
+    assert.ok(queries.some(item => item.sql.includes('INSERT INTO frieren_site_discord_accounts')));
+    assert.ok(queries.some(item => item.sql === 'COMMIT'));
   } finally {
-    globalThis.fetch = originalFetch;
-    for (const key of keys) {
-      if (previous[key] === undefined) delete process.env[key];
-      else process.env[key] = previous[key];
+    globalThis.fetch = previousFetch;
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
     }
+  }
+});
+
+test('Discord OAuth callback rejects a state value not bound to its browser cookie', async () => {
+  const res = response();
+  await handleSiteAuthRequest({ method: 'GET', url: '/site/discord/callback?code=invalid&state=forged', headers: {} }, res, { db: fakeDb(), sessionSecret: secret, createSession: createPublicSiteSession });
+  assert.equal(res.status, 303);
+  assert.equal(res.headers.Location, '/login?status=discord_error');
+  assert.match(res.headers['Set-Cookie'], /Max-Age=0/);
+});
+
+test('password and registration POST endpoints are disabled without database access', async () => {
+  for (const path of ['/login','/register','/forgot-password','/reset-password','/verify-email','/resend-verification']) {
+    const db = fakeDb();
+    const res = response();
+    const req = { method: 'POST', url: path, headers: { 'content-type': 'application/x-www-form-urlencoded' }, async *[Symbol.asyncIterator]() { yield Buffer.from('username=legacy&password=unused'); } };
+    assert.equal(await handleSiteAuthRequest(req, res, { db, sessionSecret: secret, createSession: createPublicSiteSession }), true, path);
+    assert.ok([303,405].includes(res.status), path);
+    assert.equal(db.calls.length, 0, path);
   }
 });
