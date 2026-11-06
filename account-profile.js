@@ -63,7 +63,9 @@ export async function updateAccountProfile(db,{accountId,bio='',statusText='',in
  const r=await db.query(`INSERT INTO frieren_account_profiles(account_id,bio,status_text,interests,tags,theme,accent_color,social_links,visibility,show_activity,allow_visitors)
  VALUES($1,$2,$3,$4::jsonb,$5::jsonb,$6,$7,$8::jsonb,$9,$10,$11)
  ON CONFLICT(account_id) DO UPDATE SET bio=EXCLUDED.bio,status_text=EXCLUDED.status_text,interests=EXCLUDED.interests,tags=EXCLUDED.tags,theme=EXCLUDED.theme,accent_color=EXCLUDED.accent_color,social_links=EXCLUDED.social_links,visibility=EXCLUDED.visibility,show_activity=EXCLUDED.show_activity,allow_visitors=EXCLUDED.allow_visitors,updated_at=NOW()
- RETURNING *`,[id,b,s,JSON.stringify(i),JSON.stringify(t),theme,accentColor,JSON.stringify(l),visibility,showActivity,allowVisitors]);return r.rows[0];
+ RETURNING *`,[id,b,s,JSON.stringify(i),JSON.stringify(t),theme,accentColor,JSON.stringify(l),visibility,showActivity,allowVisitors]);
+ await db.query('INSERT INTO frieren_account_activity(activity_id,account_id,activity_type,label) VALUES($1,$2,$3,$4)',[randomUUID(),id,'profile_updated','Profil bilgilerini güncelledi']);
+ return r.rows[0];
 }
 export async function followAccount(db,{followerAccountId,followedAccountId}){
  const follower=account(followerAccountId),followed=account(followedAccountId);if(follower===followed)throw new Error('ACCOUNT_PROFILE_SELF_FOLLOW');await ensureAccountProfileSchema(db);
