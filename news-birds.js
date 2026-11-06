@@ -97,8 +97,8 @@ export function buildAnimeNewsDigestEmbeds(items, now = new Date()) {
   const seen=new Set();
   const safeItems=(Array.isArray(items)?items:[]).filter(item=>{
     if (!item || !safeFeedUrl(item.link,articleHosts)) return false;
-    const titleKey=String(item.title||'').normalize('NFKD').toLocaleLowerCase('en-US').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]+/g,'');
-    const linkKey=String(item.link).split('#')[0].split('?')[0].replace(/\\/$/,'').toLowerCase();
+    const titleKey=String(item.title||'').normalize('NFKD').toLocaleLowerCase('en-US').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'');
+    const linkKey=String(item.link).split('#')[0].split('?')[0].replace(/\/$/,'').toLowerCase();
     const key=titleKey||linkKey;
     if (seen.has(key) || seen.has(linkKey)) return false;
     seen.add(key); seen.add(linkKey);
