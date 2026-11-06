@@ -7,6 +7,7 @@
  const blockedRoot=root.querySelector('[data-chat-blocks]');
  const search=root.querySelector('[data-chat-search]');
  const count=root.querySelector('[data-chat-count]');
+ const older=root.querySelector('[data-chat-load-older]');
  const counter=root.querySelector('[data-chat-counter]');
  const replyPreview=root.querySelector('[data-chat-reply-preview]');
  const replyLabel=root.querySelector('[data-chat-reply-label]');
@@ -64,18 +65,19 @@
   if(!response.ok)throw new Error(data.error==='invalid_chat_action'?'Bu işlem şu anda yapılamıyor.':'İşlem tamamlanamadı.');
   return data;
  };
- const refresh=async()=>{
+ const refresh=async({before=null,append=false}={})=>{
   if(refreshing||document.visibilityState==='hidden')return;
   refreshing=true;
   try{
-   const response=await fetch('/api/public-chat/messages',{headers:{accept:'application/json'},cache:'no-store'});
+   const endpoint='/api/public-chat/messages'+(before?'?before='+encodeURIComponent(before):'');const response=await fetch(endpoint,{headers:{accept:'application/json'},cache:'no-store'});
    if(!response.ok)throw new Error('Sohbet şu anda yüklenemiyor.');
-   const data=await response.json();latestMessages=Array.isArray(data.messages)?data.messages:[];render(latestMessages);renderBlocked(Array.isArray(data.blocked)?data.blocked:[]);if(form)postAction('/api/public-chat/read',{}).catch(()=>{});const presenceLabel=root.querySelector('[data-chat-presence]');if(presenceLabel){const names=Array.isArray(data.presence?.typing)?data.presence.typing:[];presenceLabel.textContent=(data.presence?.online||0)+' çevrimiçi'+(names.length?' · '+names.join(', ')+' yazıyor':'');}
+   const data=await response.json();const incoming=Array.isArray(data.messages)?data.messages:[];latestMessages=append?[...incoming,...latestMessages.filter(old=>!incoming.some(item=>item.message_id===old.message_id))]:incoming;render(latestMessages);if(older)older.hidden=incoming.length<100;renderBlocked(Array.isArray(data.blocked)?data.blocked:[]);if(form)postAction('/api/public-chat/read',{}).catch(()=>{});const presenceLabel=root.querySelector('[data-chat-presence]');if(presenceLabel){const names=Array.isArray(data.presence?.typing)?data.presence.typing:[];presenceLabel.textContent=(data.presence?.online||0)+' çevrimiçi'+(names.length?' · '+names.join(', ')+' yazıyor':'');}
   }catch(error){if(!list.children.length)say(error.message||'Sohbet yüklenemedi.');}
   finally{refreshing=false;}
  };
  let latestMessages=[];
- if(search)search.addEventListener('input',()=>render(latestMessages));
+ if(search)search.addEventListener('input',()=>{render(latestMessages);});
+ if(older)older.addEventListener('click',()=>{const dated=latestMessages.filter(x=>x.created_at&&!x.pinned_at).map(x=>new Date(x.created_at).getTime()).filter(Number.isFinite);if(dated.length)refresh({before:new Date(Math.min(...dated)).toISOString(),append:true});});
  if(counter&&form){const updateCounter=()=>{counter.textContent=String(form.elements.message.value.length)+' / 500';};form.elements.message.addEventListener('input',updateCounter);updateCounter();}
  if(form){let lastTyping=0;form.elements.message.addEventListener('input',()=>{if(Date.now()-lastTyping>3500){lastTyping=Date.now();postAction('/api/public-chat/typing',{}).catch(()=>{});}});}
  if(form){
