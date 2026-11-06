@@ -26,6 +26,7 @@ export default {
   data: new SlashCommandBuilder()
     .setName('ortakboss')
     .setDescription('En fazla dört oyuncuyla takım rolleri kullanarak ortak boss baskını yap.')
+    .addStringOption(o => o.setName('boss_secimi').setDescription('Rastgele boss yerine belirli bir boss seç (isteğe bağlı)').setRequired(false).addChoices(...['north-general','glass-wyrm','fallen-mage','zeldeila','domaltazor'].map(id => ({ name: ({'north-general':'Kuzey Platosu İblis Generali','glass-wyrm':'Cam Pullar Ejderhası','fallen-mage':'Düşmüş Büyücü Aura','zeldeila':'Zeldeila • Mutlak Son Boss','domaltazor':'Domaltazor • Kadim Cellat'})[id], value:id }))))
     .addUserOption(o => o.setName('takim_arkadasi').setDescription('Birinci takım arkadaşı').setRequired(true))
     .addUserOption(o => o.setName('takim_arkadasi_2').setDescription('İkinci takım arkadaşı (isteğe bağlı)').setRequired(false))
     .addUserOption(o => o.setName('takim_arkadasi_3').setDescription('Üçüncü takım arkadaşı (isteğe bağlı)').setRequired(false))
@@ -50,7 +51,12 @@ export default {
     } catch (error) {
       console.error('Ortak boss kataloğu yüklenemedi; varsayılan katalog kullanılacak:', error?.message || error);
     }
-    const BOSS = raidBosses?.length ? chooseRaidBoss(Math.random, raidBosses) : chooseRaidBoss();
+    const requestedBossId = interaction.options.getString('boss_secimi');
+    const catalog = raidBosses?.length ? raidBosses : undefined;
+    const BOSS = requestedBossId
+      ? (catalog?.find(boss => boss.id === requestedBossId) || chooseRaidBoss(Math.random, undefined).id === requestedBossId && chooseRaidBoss(Math.random, undefined) || (await import('./rpg-mechanics.js')).RAID_BOSSES.find(boss => boss.id === requestedBossId))
+      : catalog ? chooseRaidBoss(Math.random, catalog) : chooseRaidBoss();
+    if (!BOSS) return interaction.editReply({ content: 'Seçilen boss bu sunucunun raid kataloğunda bulunamadı.', components: [] });
     for (const user of team) await ensureUser(interaction.guildId, user.id);
     const invited = team.slice(1);
     const row = new ActionRowBuilder().addComponents(
