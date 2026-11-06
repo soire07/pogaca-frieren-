@@ -13,13 +13,15 @@ function formatBoss(boss, detail) {
   const isDomaltazor = boss.id === 'domaltazor';
   const lootChance = Number.isFinite(Number(boss.lootChance)) ? Number(boss.lootChance) * 100 : null;
   const titleChance = Number.isFinite(Number(boss.titleDropChance)) ? Number(boss.titleDropChance) * 100 : null;
-  const special = {
+  const special = boss.id === 'fallen-mage'
+    ? 'Üç form: Düşmüş Büyücü (Mana Laneti), Düşmüş Melek (Kara Kanat Fırtınası), Melek (İlahi Hüküm). Mühürler, kanat kırılması, büyü bariyeri ve düşük ihtimalli gizli Alacakaranlık formu bulunur.'
+    : ({
     'eternal-regeneration': 'Sonsuz Yenilenme: aldığı hasarı saniyede geri kazanır; 1 HP altına düşmez. Mutlak Alan: yaşayan tüm oyunculara saniyede alan hasarı verir.',
     'katun-judgment': 'Katun Hükmü: her 3 turda hedefe güçlendirilmiş saldırı yapar.',
     'mana-star': 'Mana Yıldız Patlaması: her 3 turda tüm yaşayan oyunculara alan hasarı verir.',
     'shard-rain': 'Kristal Yağmuru: her 2 turda tüm yaşayan oyunculara alan hasarı verir.',
     'mana-curse': 'Mana Laneti: her 3 turda hedefin manasını tüketir.'
-  }[boss.special] || 'Özel hareket bilgisi tanımlanmamış.';
+  }[boss.special] || 'Özel hareket bilgisi tanımlanmamış.');
   const embed = new EmbedBuilder()
     .setColor(isZeldeila ? 0x8b78db : isDomaltazor ? 0x9a7654 : 0x6e5ab8)
     .setTitle(boss.name)
@@ -44,7 +46,9 @@ function formatBoss(boss, detail) {
         boss.regenerateDamagePerSecond ? 'Verilen hasar bir saniyelik yenilenme döngüsünde geri alınır.' : null,
         Number(boss.areaDamagePerSecond) > 0 ? `Alan hasarı: saniyede ${boss.areaDamagePerSecond} temel hasar.` : null,
         isZeldeila ? 'HP tabanı 1; bu boss öldürülemez.' : null,
-        isDomaltazor ? 'Katun Yüzüğü yalnızca bu bossun nadir ganimetidir; pazara konulamaz ve parçalanamaz.' : null
+        isDomaltazor ? 'Katun Yüzüğü yalnızca bu bossun nadir ganimetidir; pazara konulamaz ve parçalanamaz.' : null,
+        boss.id === 'fallen-mage' ? 'Formlar HP eşiklerinde açılır. Üç mühür Zoltraak ile çözülür; tamamlanırsa %15 ihtimalle gizli form uyanır. Kanat kırılması, ruh ikizleri, büyü bariyeri ve son direniş mekanikleri aktiftir.' : null,
+        boss.id === 'fallen-mage' ? 'Form ganimetleri: Düşmüş Melek Kanatları (%8), Melek Aura’nın Işık Tacı (%5), Alacakaranlık Aura Kalıntısı (%2). Üç Formun Fatihi unvanı: %3.' : null
       ].filter(Boolean).join('\n'), inline: false }
     );
   }
