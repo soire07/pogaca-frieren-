@@ -171,9 +171,9 @@ test('temporary combat resources restore to the base-stat ratio without exceedin
   assert.equal(restoreResourceRatio(50, 100, 0), 0);
 });
 
-test('equipment catalog has unique slots and complete stat calculations for all thirteen items', () => {
-  assert.equal(equipmentItems.length, 13);
-  assert.equal(new Set(equipmentItems.map(x => x.id)).size, 13);
+test('equipment catalog has unique slots and complete stat calculations for all seventeen items', () => {
+  assert.equal(equipmentItems.length, 17);
+  assert.equal(new Set(equipmentItems.map(x => x.id)).size, 17);
   assert.deepEqual(equipmentSlots.map(x => x.id), ['weapon', 'armor', 'ring1', 'ring2']);
   for (const item of equipmentItems) {
     const total = equipmentBonus([item]);
