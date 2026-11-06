@@ -25,9 +25,11 @@ export function chooseRaidBoss(random = Math.random, bosses = RAID_BOSSES) {
 export function applyRaidBossDamage(currentHp, maximumHp, incomingDamage, boss) {
   const maxHp = Math.max(1, Math.floor(Number(maximumHp) || 1));
   const hp = Math.max(0, Math.min(maxHp, Math.floor(Number(currentHp) || 0)));
-  const damage = Math.min(hp, Math.max(0, Math.floor(Number(incomingDamage) || 0)));
+  const requestedDamage = Math.max(0, Math.floor(Number(incomingDamage) || 0));
+  // The regeneration boss cannot cross the defeat boundary, even if a single hit is malformed or extreme.
+  const damage = Math.min(boss?.regenerateDamagePerSecond ? Math.max(0, hp - 1) : hp, requestedDamage);
   return {
-    hp: Math.max(0, hp - damage),
+    hp: Math.max(boss?.regenerateDamagePerSecond ? 1 : 0, hp - damage),
     damage,
     pendingHealing: boss?.regenerateDamagePerSecond ? damage : 0
   };
