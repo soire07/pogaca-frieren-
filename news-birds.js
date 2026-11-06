@@ -87,8 +87,8 @@ export async function translateAnimeNewsItems(db, items, fetcher=globalThis.fetc
   if (!Array.isArray(items) || !items.length) return [];
   if (typeof fetcher !== 'function') return items;
   const translated = [];
-  for (const item of items) {
-    if (!item?.guid || (item.translatedTitle && item.translatedSummary)) {
+  for (const item of items.slice(0, 5)) {
+    if (!item?.guid || (item.translatedTitle && typeof item.translatedSummary === 'string')) {
       translated.push(item);
       continue;
     }
@@ -112,7 +112,7 @@ export async function translateAnimeNewsItems(db, items, fetcher=globalThis.fetc
       const [translatedTitle, translatedSummary] = await Promise.all([
         translateText(title), translateText(summary)
       ]);
-      if (!translatedTitle || !translatedSummary) throw new Error('MYMEMORY_EMPTY_TRANSLATION');
+      if (!translatedTitle) throw new Error('MYMEMORY_EMPTY_TRANSLATION');
       await db.query(
         'UPDATE frieren_news_feed_items SET translated_title=$2,translated_summary=$3 WHERE feed_key=\'anime_news\' AND guid=$1',
         [item.guid, translatedTitle, translatedSummary]
@@ -123,6 +123,7 @@ export async function translateAnimeNewsItems(db, items, fetcher=globalThis.fetc
       translated.push(item);
     }
   }
+  translated.push(...items.slice(5));
   return translated;
 }
 
