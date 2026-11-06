@@ -41,9 +41,9 @@ test('close friends are limited to existing friendships and the per-player cap',
 
 test('profile visits are guild-scoped, block-aware and return aggregated visitor counts',async()=>{
  const db={async query(sql){
-  if(sql.includes('SELECT 1 FROM social_blocks'))return{rows:[],rowCount:0};
-  if(sql.includes('INSERT INTO player_profile_visits'))return{rows:[{visit_count:2}],rowCount:1};
   if(sql.includes('SELECT v.visitor_id'))return{rows:[{visitor_id:b,character_name:'Fern',visit_count:2}],rowCount:1};
+  if(sql.includes('INSERT INTO player_profile_visits'))return{rows:[{visit_count:2}],rowCount:1};
+  if(sql.includes('SELECT 1 FROM social_blocks'))return{rows:[],rowCount:0};
   return{rows:[],rowCount:0};
  }};
  const saved=await recordProfileVisit(db,{guildId:guild,ownerId:a,visitorId:b});assert.equal(saved.status,'recorded');assert.equal(saved.visitCount,2);
