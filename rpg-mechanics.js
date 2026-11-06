@@ -83,6 +83,12 @@ export function rollAuraFormLoot(boss, phase, random = Math.random) {
   return reward && roll < reward.chance ? reward.item : null;
 }
 
+export function isRaidBossUnlocked(bossId, completedQuestKeys = []) {
+  if (bossId !== 'fallen-mage') return true;
+  const keys = Array.isArray(completedQuestKeys) ? completedQuestKeys : [];
+  return keys.includes('light_fallen_trial');
+}
+
 export function chooseRaidBoss(random = Math.random, bosses = RAID_BOSSES) {
   const catalog = Array.isArray(bosses) && bosses.length ? bosses : RAID_BOSSES;
   const weights = catalog.map(boss => {

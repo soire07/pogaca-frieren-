@@ -39,9 +39,9 @@ test('every solo boss tier has valid combat, reward, loot and crafting configura
 
 test('NPC side quests have unique story paths, quest keys and positive rewards', () => {
   const entries = Object.entries(NPC_SIDE_QUESTS);
-  assert.deepEqual(entries.map(([key]) => key).sort(), ['fern','frieren','stark']);
-  assert.equal(new Set(entries.map(([, npc]) => npc.path)).size, 3);
-  assert.equal(new Set(entries.map(([, npc]) => npc.questKey)).size, 3);
+  assert.deepEqual(entries.map(([key]) => key).sort(), ['fern','frieren','light_fallen','stark']);
+  assert.equal(new Set(entries.map(([, npc]) => npc.path).filter(Boolean)).size, 3);
+  assert.equal(new Set(entries.map(([, npc]) => npc.questKey)).size, 4);
   for (const [, npc] of entries) {
     assert.ok(npc.questTitle && npc.objective && npc.questDialogue);
     assert.ok(npc.reward.coins > 0 && npc.reward.xp > 0);

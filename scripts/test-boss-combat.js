@@ -3,6 +3,7 @@ import { claimSoloBossReward } from '../rpg-reward-transactions.js';
 import assert from 'node:assert/strict';
 import raidCommand from '../ortakboss.js';
 import raidBossInfoCommand from '../commands/rpg/raidbossbilgi.js';
+import npcCommand, { NPC_SIDE_QUESTS } from '../npc.js';
 import { marketItems } from '../market.js';
 import eventCommand from '../etkinlik.js';
 import {
@@ -32,7 +33,8 @@ import {
   calculateRaidAreaTickDamage,
   rollRaidBossLoot,
   rollRaidBossTitleDrops,
-  rollTheFoolTwist
+  rollTheFoolTwist,
+  isRaidBossUnlocked
 } from '../rpg-mechanics.js';
 
 test('boss incoming damage never becomes negative and has a minimum of one', () => {
@@ -336,6 +338,9 @@ test('Domaltazor uses its periodic Katun Judgment heavy strike', async () => {
 test('raid title drops are inserted into the existing user title collection inside reward settlement', async () => {
   const rewards = await (await import('node:fs/promises')).readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
   assert.match(rewards, /titleDropUsers = \[\]/);
+  const raid = await (await import('node:fs/promises')).readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(raid, /const titleDropEligible = win \|\| BOSS\.id === 'zeldeila'/);
+  assert.match(raid, /const titleDropUsers=titleDropEligible \? rollRaidBossTitleDrops\(BOSS, ids, Math\.random\) : \[\]/);
   assert.match(rewards, /INSERT INTO user_titles\(guild_id,user_id,title\)/);
   assert.match(rewards, /ON CONFLICT\(guild_id,user_id,title\) DO NOTHING RETURNING title/);
   assert.match(rewards, /return \{ status: 'settled', masteryResults, titleDrops \}/);
@@ -395,6 +400,13 @@ test('Zeldeila restores exactly the damage it received and area damage cannot be
   const extremeHit = applyRaidBossDamage(boss.hp, boss.hp, 999_999_999, boss);
   assert.equal(extremeHit.hp, 1, 'even an extreme hit must not defeat Zeldeila');
   assert.equal(regenerateRaidBossHp(extremeHit.hp, boss.hp, extremeHit.pendingHealing).hp, boss.hp);
+});
+
+
+test('Zeldeila participation title remains attainable despite its intentional undefeatable state', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /const titleDropEligible = win \|\| BOSS\.id === 'zeldeila'/);
+  assert.match(source, /titleDropUsers=titleDropEligible \? rollRaidBossTitleDrops\(BOSS, ids, Math\.random\) : \[\]/);
 });
 
 test('Zeldeila title rolls are per participant, 0.2 percent, and never produce item loot', () => {
@@ -540,4 +552,28 @@ test('The Fool is a distinct raid boss with three deterministic, equally likely 
   assert.equal(rollTheFoolTwist(() => 0.5), 'misfortune');
   assert.equal(rollTheFoolTwist(() => 0.99), 'wildcard');
   assert.equal(rollTheFoolTwist(() => 1), 'misfortune');
+});
+
+
+test('Light Fallen begins as a special NPC quest and only unlocks as a boss after its claim', async () => {
+  const npc = NPC_SIDE_QUESTS.light_fallen;
+  assert.ok(npc, 'Light Fallen must exist as a special quest NPC');
+  assert.equal(npc.requiresStoryPath, false);
+  assert.equal(npc.questKey, 'light_fallen_trial');
+  assert.match(npc.objective, /üç boss/i);
+  assert.equal(npc.reward.coins, 1500);
+  assert.equal(npc.reward.xp, 750);
+  assert.equal(isRaidBossUnlocked('fallen-mage', []), false);
+  assert.equal(isRaidBossUnlocked('fallen-mage', ['light_fallen_trial']), true);
+  assert.equal(isRaidBossUnlocked('the-fool', []), true);
+  const npcSource = await (await import('node:fs/promises')).readFile(new URL('../npc.js', import.meta.url), 'utf8');
+  assert.match(npcSource, /value: 'light_fallen'/);
+});
+
+test('raid command gates direct and random Light Fallen selection on the quest claim', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /SELECT quest_key FROM side_quest_claims WHERE guild_id=\$1 AND user_id=\$2/);
+  assert.match(source, /isRaidBossUnlocked\(boss\.id, unlockedQuestKeys\)/);
+  assert.match(source, /Light Fallen henüz boss değil/);
+  assert.match(source, /const randomCatalog = availableCatalog\.length \? availableCatalog : RAID_BOSSES\.filter/);
 });
