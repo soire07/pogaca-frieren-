@@ -38,7 +38,7 @@ jobs:
       - name: Install CPU-only PyTorch
         run: python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
       - name: Install Frieren Neural with dataset import support
-        run: python -m pip install -e ".[dev,serve,discord,data]"
+        run: python -m pip install -e ".[dev,data]"
       - name: Run complete test suite before downloading or training
         run: pytest
       - name: Import pinned Apache-2.0 Turkish SFT corpus
