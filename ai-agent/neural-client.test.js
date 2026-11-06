@@ -59,6 +59,34 @@ test('Neural client accepts an explicit /generate endpoint without duplicating t
   assert.equal(requestedUrl, 'https://neural.example.test/generate');
 });
 
+test('Neural client cancels streamed responses before buffering more than 32 KB', async () => {
+  let cancelled = false;
+  const chunks = [
+    new TextEncoder().encode('x'.repeat(20_000)),
+    new TextEncoder().encode('y'.repeat(20_000)),
+  ];
+  let index = 0;
+  await assert.rejects(generateNeuralReply({
+    env,
+    prompt: 'Test',
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      body: {
+        getReader: () => ({
+          read: async () => index < chunks.length
+            ? { done: false, value: chunks[index++] }
+            : { done: true },
+          cancel: async () => { cancelled = true; },
+          releaseLock() {},
+        }),
+      },
+      text: async () => { throw new Error('unbounded text() path must not be used'); },
+    }),
+  }), /FRIEREN_NEURAL_RESPONSE_TOO_LARGE/);
+  assert.equal(cancelled, true);
+});
+
 test('Neural client fails closed on HTTP errors and empty responses', async () => {
   await assert.rejects(generateNeuralReply({
     env, prompt: 'Test',

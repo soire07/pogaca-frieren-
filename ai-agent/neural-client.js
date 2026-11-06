@@ -46,6 +46,39 @@ export function buildNeuralPrompt({
   return prompt.slice(0, MAX_PROMPT_CHARS);
 }
 
+const MAX_RESPONSE_BYTES = 32_000;
+
+async function readLimitedResponseText(response) {
+  const reader = response?.body?.getReader?.();
+  if (!reader) {
+    const text = await response.text();
+    if (Buffer.byteLength(text, 'utf8') > MAX_RESPONSE_BYTES) {
+      throw new Error('FRIEREN_NEURAL_RESPONSE_TOO_LARGE');
+    }
+    return text;
+  }
+
+  const decoder = new TextDecoder();
+  let text = '';
+  let bytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
+      bytes += chunk.byteLength;
+      if (bytes > MAX_RESPONSE_BYTES) {
+        await reader.cancel().catch(() => {});
+        throw new Error('FRIEREN_NEURAL_RESPONSE_TOO_LARGE');
+      }
+      text += decoder.decode(chunk, { stream: true });
+    }
+    return text + decoder.decode();
+  } finally {
+    reader.releaseLock?.();
+  }
+}
+
 export async function generateNeuralReply({
   env = process.env,
   prompt,
@@ -71,8 +104,7 @@ export async function generateNeuralReply({
       body: JSON.stringify({ prompt: prompt.trim(), max_new_tokens: 256, temperature: 0.3, top_k: 40 }),
       signal: controller.signal,
     });
-    const raw = await response.text();
-    if (raw.length > 32_000) throw new Error('FRIEREN_NEURAL_RESPONSE_TOO_LARGE');
+    const raw = await readLimitedResponseText(response);
     let payload;
     try { payload = JSON.parse(raw); } catch { throw new Error('FRIEREN_NEURAL_INVALID_RESPONSE'); }
     if (!response.ok) throw new Error('FRIEREN_NEURAL_HTTP_' + response.status);
