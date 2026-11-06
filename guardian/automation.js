@@ -14,17 +14,24 @@ export const GUARDIAN_REPAIR_BRANCH = 'guardian-isolated-repair-test-v2';
 const REPAIR_WORKFLOW = 'frieren-ai-self-repair.yml';
 const REPOSITORY = 'soire07/pogaca-frieren-';
 
-export function buildGuardianRepairTrackingUrls(apiBase, incidentId) {
+const GUARDIAN_REPAIR_TRACKING_BRANCHES = new Set([
+  'main',
+  'guardian-isolated-repair-test',
+  GUARDIAN_REPAIR_BRANCH,
+]);
+
+export function buildGuardianRepairTrackingUrls(apiBase, incidentId, baseBranch = GUARDIAN_REPAIR_BRANCH) {
   const id = Number(incidentId);
   let parsed;
   try { parsed = new URL(String(apiBase || '')); } catch {}
-  if (parsed?.protocol !== 'https:' || !Number.isSafeInteger(id) || id <= 0) {
+  if (parsed?.protocol !== 'https:' || !Number.isSafeInteger(id) || id <= 0
+      || !GUARDIAN_REPAIR_TRACKING_BRANCHES.has(String(baseBranch || ''))) {
     throw new Error('INVALID_GUARDIAN_REPAIR_TRACKING_INPUT');
   }
   const branchName = 'ai-repair/guardian-' + id;
   const runs = new URL('/repos/soire07/pogaca-frieren-/actions/workflows/frieren-ai-self-repair.yml/runs', parsed.origin);
   runs.search = new URLSearchParams({
-    branch: GUARDIAN_REPAIR_BRANCH,
+    branch: baseBranch,
     event: 'workflow_dispatch',
     per_page: '100',
   }).toString();
@@ -32,9 +39,47 @@ export function buildGuardianRepairTrackingUrls(apiBase, incidentId) {
   pulls.search = new URLSearchParams({
     state: 'all',
     head: 'soire07:' + branchName,
-    base: GUARDIAN_REPAIR_BRANCH,
+    base: baseBranch,
   }).toString();
-  return { runsUrl: runs.toString(), pullRequestsUrl: pulls.toString(), branchName };
+  return { runsUrl: runs.toString(), pullRequestsUrl: pulls.toString(), branchName, baseBranch };
+}
+
+async function resolveGuardianRepairTrackingBranch(db, jobId) {
+  if (typeof db?.query !== 'function') return GUARDIAN_REPAIR_BRANCH;
+  const result = await db.query(
+    `SELECT details->>'baseBranch' AS base_branch
+     FROM owner_audit_logs
+     WHERE action IN ('guardian.repair.workflow_dispatched','guardian.repair.workflow_redispatched')
+       AND details->>'jobId'=$1
+       AND details->>'baseBranch' IS NOT NULL
+     ORDER BY id DESC
+     LIMIT 1`,
+    [String(jobId)]
+  );
+  const branch = String(result.rows?.[0]?.base_branch || GUARDIAN_REPAIR_BRANCH);
+  if (!GUARDIAN_REPAIR_TRACKING_BRANCHES.has(branch)) {
+    throw new Error('GUARDIAN_REPAIR_TRACKING_BRANCH_UNSUPPORTED');
+  }
+  return branch;
+}
+
+function findGuardianWorkflowRun(runs, incidentId, dispatchedAt) {
+  const marker = new RegExp('(?:^|[^A-Za-z0-9])#' + Number(incidentId) + '(?!\\d)', 'i');
+  const explicitlyMatched = runs.find(item =>
+    [item?.display_title, item?.name, item?.run_name].some(value => marker.test(String(value || '')))
+  );
+  if (explicitlyMatched) return explicitlyMatched;
+
+  // GitHub's workflow-runs REST response may omit the configured run-name.
+  // The persisted dispatch timestamp plus the audited target branch safely
+  // identifies legacy runs when the API exposes only the generic workflow title.
+  const dispatchTime = new Date(dispatchedAt || '').getTime();
+  if (!Number.isFinite(dispatchTime)) return null;
+  const candidates = runs.filter(item => {
+    const createdAt = new Date(item?.created_at || '').getTime();
+    return Number.isFinite(createdAt) && Math.abs(createdAt - dispatchTime) <= 5 * 60 * 1000;
+  });
+  return candidates.length === 1 ? candidates[0] : null;
 }
 
 export function classifyGuardianPullRequestChecks(response) {
@@ -261,7 +306,8 @@ export async function refreshGuardianRepairTracking({
     'X-GitHub-Api-Version': '2022-11-28',
   };
   const apiBase = 'https://api.github.com';
-  const urls = buildGuardianRepairTrackingUrls(apiBase, incident.id);
+  const baseBranch = await resolveGuardianRepairTrackingBranch(db, job.id);
+  const urls = buildGuardianRepairTrackingUrls(apiBase, incident.id, baseBranch);
   const fetchJson = async url => {
     const response = await fetchImpl(url, { headers, signal: AbortSignal.timeout(10_000) });
     if (!response.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + response.status);
@@ -275,8 +321,7 @@ export async function refreshGuardianRepairTracking({
     if (Number.isSafeInteger(totalRuns) && totalRuns > runs.length) {
       return { status: 'tracking_incomplete', reason: 'GITHUB_RUN_LIST_TRUNCATED', listed: runs.length, total: totalRuns };
     }
-    const marker = new RegExp('(?:^|[^A-Za-z0-9])#' + Number(incident.id) + '(?!\\d)', 'i');
-    const run = runs.find(item => marker.test(String(item.display_title || item.name || item.run_name || ''))) || null;
+    const run = findGuardianWorkflowRun(runs, incident.id, job.repair_dispatch_at);
     const prs = await fetchJson(urls.pullRequestsUrl);
     if (!Array.isArray(prs)) throw new Error('GUARDIAN_GITHUB_PR_LIST_INVALID');
     const pr = prs.find(item => item.head?.ref === urls.branchName) || null;
