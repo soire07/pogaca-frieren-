@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ensurePublicChatSchema,listPublicChatMessages,sendPublicChatMessage,deletePublicChatMessage} from '../public-chat.js';
+import {ensurePublicChatSchema,listPublicChatMessages,sendPublicChatMessage,deletePublicChatMessage,markPublicChatMessagesRead} from '../public-chat.js';
 
 const account='site_123e4567-e89b-12d3-a456-426614174000';
 test('public chat schema is additive and never destroys existing data',async()=>{
@@ -62,4 +62,9 @@ test('typing indicators expire through short-lived account presence',async()=>{
  const {setPublicChatTyping}=await import('../public-chat.js');let sql='';
  const db={async query(q){if(q.startsWith('INSERT INTO frieren_public_chat_presence'))sql=q;return{rows:[],rowCount:1};}};
  assert.equal((await setPublicChatTyping(db,{accountId:account})).status,'typing');assert.match(sql,/INTERVAL '5 seconds'/);
+});
+
+test('chat read receipts are account-scoped and idempotent',async()=>{
+ let sql='',params;const db={async query(q,p){if(q.includes('INSERT INTO frieren_public_chat_reads')){sql=q;params=p;return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};}return{rows:[],rowCount:0};}};
+ const result=await markPublicChatMessagesRead(db,{accountId:account});assert.equal(result.status,'read');assert.match(sql,/ON CONFLICT\(message_id,reader_account_id\) DO NOTHING/);assert.match(sql,/LIMIT 100/);assert.equal(params[0],account);
 });
