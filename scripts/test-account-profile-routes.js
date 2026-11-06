@@ -6,6 +6,7 @@ import {createPublicSiteSession,buildPublicSiteSessionCookie} from '../owner-das
 import {createSiteCsrfToken} from '../site-auth.js';
 
 const secret='test-public-profile-secret-at-least-32-characters';
+process.env.ADMIN_SESSION_SECRET=secret;
 const account={id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'};
 
 function response(){
