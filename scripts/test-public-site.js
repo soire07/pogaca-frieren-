@@ -1315,6 +1315,16 @@ test('public account profile route is reachable without login and honors activit
  }
 });
 
+test('public account profile layout has responsive centered sections and bounded activity cards',async()=>{
+ const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
+ assert.match(css,/\.public-profile-identity\{[^}]*text-align:center/);
+ assert.match(css,/\.public-profile-status\{[^}]*position:absolute/);
+ assert.match(css,/\.public-profile-follow-stats/);
+ assert.match(css,/\.public-profile-section,\.account-public-activity\{[^}]*height:auto!important/);
+ assert.match(css,/@media\(max-width:680px\)[\s\S]*?\.public-profile-content\{grid-template-columns:1fr/);
+ assert.match(css,/\.account-public-activity li strong\{[^}]*overflow-wrap:anywhere/);
+});
+ 
 test('linked adventurer cards show a medium class emblem in the upper-right corner for each class', async () => {
   const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
   const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
