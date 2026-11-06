@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createHmac, createHash } from 'node:crypto';
 import { resolveVerifiedClientIp } from '../security/client-ip.js';
 import {
-  verifyGuardianEventSignature, normalizeGuardianSecurityEvent, normalizeSiteAuthSecurityEvent,
+  verifyGuardianEventSignature, normalizeGuardianSecurityEvent, normalizeSiteAuthSecurityEvent, normalizeGuardianMonitorSecurityEvent,
   recordGuardianSecurityEvent, verifyGuardianEvidenceChain,
   handleGuardianSecurityEventRequest
 } from './security-events.js';
@@ -80,6 +80,19 @@ test('Guardian security event normalization validates source, event ID, severity
   assert.doesNotMatch(normalized.summary, /token-secret-123456/);
   assert.throws(() => normalizeGuardianSecurityEvent({ ...normalized, source: 'unknown' }), /GUARDIAN_EVENT_SOURCE_INVALID/);
   assert.throws(() => normalizeGuardianSecurityEvent({ ...normalized, severity: 'urgent' }), /GUARDIAN_EVENT_SEVERITY_INVALID/);
+});
+
+test('local Guardian monitor events use a distinct source and never masquerade as signed external sender events', () => {
+  const event = normalizeGuardianMonitorSecurityEvent({
+    eventId: 'guardian-monitor-error-42', source: 'frieren_guard_monitor', system: 'guardian',
+    code: 'OWNER_PANEL_TIMEOUT', severity: 'high', title: 'Owner panel timeout',
+    summary: 'A monitored owner panel request timed out.', observedAt: '2026-11-05T12:00:00.000Z',
+    evidence: [{ message: 'owner_error_logs #42' }],
+  });
+  assert.equal(event.source, 'frieren_guard_monitor');
+  assert.equal(event.system, 'guardian');
+  assert.throws(() => normalizeGuardianSecurityEvent(event), /GUARDIAN_EVENT_SOURCE_INVALID/);
+  assert.throws(() => normalizeSiteAuthSecurityEvent(event), /GUARDIAN_EVENT_SOURCE_INVALID/);
 });
 
 test('site account security events remain distinct from verified Frieren Guard sender events', () => {

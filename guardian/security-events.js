@@ -1,7 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { isIP } from 'node:net';
 import { resolveVerifiedClientIp } from '../security/client-ip.js';
-import { createGuardianIncident } from './core.js';
+import { createGuardianIncident, GUARDIAN_SYSTEMS } from './core.js';
 import { upsertGuardianIncident } from './store.js';
 
 const GENESIS_HASH = 'GENESIS';
@@ -74,6 +74,11 @@ export function normalizeGuardianSecurityEvent(input = {}) {
 
 export function normalizeSiteAuthSecurityEvent(input = {}) {
   return normalizeSecurityEvent(input, 'frieren_site_auth', 'site_auth');
+}
+
+export function normalizeGuardianMonitorSecurityEvent(input = {}) {
+  const system = GUARDIAN_SYSTEMS.includes(input.system) ? input.system : 'guardian';
+  return normalizeSecurityEvent(input, 'frieren_guard_monitor', system);
 }
 
 export async function recordGuardianSecurityEvent(db, event, {

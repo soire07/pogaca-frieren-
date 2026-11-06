@@ -675,8 +675,9 @@ export function renderOwnerSecurityWorkspace({ incidents = [], evidenceEvents = 
     : !chainStatus.valid ? 'Bütünlük hatası'
       : chainStatus.checked === 0 ? 'Henüz delil yok'
         : chainStatus.truncated ? 'Kısmi doğrulandı' : 'Bütünlük doğrulandı';
-  const sourceLabel = source => source === 'frieren_guard' ? 'Frieren Guard'
-    : source === 'frieren_site_auth' ? 'Frieren web hesabı' : 'Bilinmeyen kaynak';
+  const sourceLabel = source => source === 'frieren_guard' ? 'Frieren Guard (imzalı gönderici)'
+    : source === 'frieren_guard_monitor' ? 'Frieren Guard izleyicisi'
+      : source === 'frieren_site_auth' ? 'Frieren web hesabı' : 'Bilinmeyen kaynak';
   const incidentHtml = incidents.length ? incidents.map(item =>
     '<article class="security-event"><div><strong>#' + Number(item.id) + ' · ' + escapeHtml(item.title) + '</strong><span class="tag">' + escapeHtml(item.severity) + '</span></div><p>' + escapeHtml(item.summary) + '</p><small>Kaynak: ' + escapeHtml(item.system === 'site_auth' ? 'Frieren web hesabı' : 'Frieren Guard') + ' · ' + escapeHtml(item.code) + ' · ' + escapeHtml(item.status) + ' · ' + Number(item.occurrence_count || 1) + ' tekrar · ' + escapeHtml(new Date(item.last_seen).toLocaleString('tr-TR')) + '</small></article>'
   ).join('') : '<p class="muted">Henüz güvenlik olayı alınmadı. Guard ve web hesabı olayları ayrı kaynaklarla gösterilir.</p>';
@@ -702,8 +703,8 @@ export function renderOwnerSecurityWorkspace({ incidents = [], evidenceEvents = 
     + '<article class="security-card"><small>Frieren Guard olay alımı</small><strong>' + (ingestConfigured ? (senderVerified ? 'Canlı olay alındı' : 'Gönderici doğrulanmadı') : 'Anahtar eksik') + '</strong><p>' + (ingestConfigured ? (senderVerified ? 'Frieren Guard kaynaklı imzalı olay delil zincirinde doğrulandı.' : 'Alıcı HMAC doğrulaması için yapılandırıldı; Guard göndericisi henüz canlı olayla doğrulanmadı.') : 'Guard olaylarını kabul etmek için ortak imza anahtarı yapılandırılmalı.') + '</p></article>'
     + '<article class="security-card"><small>Delil zinciri</small><strong>' + chainLabel + '</strong><p>' + Number(chainStatus?.checked || 0) + ' kayıt denetlendi' + (chainStatus?.firstInvalidSequence ? ' · bozuk sıra #' + Number(chainStatus.firstInvalidSequence) : '') + '.</p></article>'
     + '</div>'
-    + '<section class="panel"><h2>Gerçek güvenlik olayları</h2><p class="muted">Frieren Guard bildirimleri HMAC imzasıyla doğrulanır. Web hesabı güvenlik olayları ayrı kaynak olarak etiketlenir; bunlar Guard gönderici bağlantısının kanıtı sayılmaz.</p>' + incidentHtml + '</section>'
-    + '<section class="panel"><h2>IP ve delil bütünlüğü</h2><p class="muted">Ağ adresi yalnızca doğrudan soket eş adresinden veya açıkça güvenilen proxy listesinden türetilir. X-Forwarded-For tek başına kabul edilmez.</p>' + evidenceHtml + '<div class="security-note"><strong>Delil doğruluğu:</strong> Her olay zaman damgası ve HMAC imzasıyla doğrulanır; kayıtlar önceki SHA-256 özetiyle zincirlenir ve veritabanı tetikleyicileri UPDATE/DELETE/TRUNCATE işlemlerini reddeder. Bu mekanizma sonradan değişikliği tespit etmeye yardımcı olur; tek başına olayın kaynağını veya hukuki geçerliliğini kanıtlamaz.</div></section>';
+    + '<section class="panel"><h2>Gerçek güvenlik olayları</h2><p class="muted">Harici Frieren Guard göndericisi olayları HMAC imzasıyla doğrulanır. Yerel Guard izleyici kayıtları ve web hesabı olayları ayrı kaynaklarla zincire eklenir; bunlar harici gönderici bağlantısının kanıtı sayılmaz.</p>' + incidentHtml + '</section>'
+    + '<section class="panel"><h2>IP ve delil bütünlüğü</h2><p class="muted">Ağ adresi yalnızca doğrudan soket eş adresinden veya açıkça güvenilen proxy listesinden türetilir. X-Forwarded-For tek başına kabul edilmez.</p>' + evidenceHtml + '<div class="security-note"><strong>Delil doğruluğu:</strong> Harici gönderici olayları HMAC ile doğrulanır; tüm kaynakların kayıtları zaman damgası ve önceki SHA-256 özetiyle zincirlenir ve veritabanı tetikleyicileri UPDATE/DELETE/TRUNCATE işlemlerini reddeder. Bu mekanizma sonradan değişikliği tespit etmeye yardımcı olur; tek başına olayın kaynağını veya hukuki geçerliliğini kanıtlamaz.</div></section>';
 }
 
 export async function handleOwnerDashboardRequest(req, res, { client, db }) {
