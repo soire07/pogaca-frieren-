@@ -6,7 +6,7 @@ import { getGuildRpgContent } from './owner-rpg-content.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
 import { validateGuildEventRaidTeam } from './guild-team-leagues.js';
-import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio, applyDefendingReduction, scaleRaidBossHp, applyRaidBossDamage, regenerateRaidBossHp, calculateRaidAreaTickDamage, rollRaidBossLoot, rollRaidBossTitleDrops, getRaidBossForm, getAuraBarrier, applyAuraBarrier, applyAuraIllusion, advanceAuraSealProgress, shouldAwakenAuraSecretForm, calculateAuraFinalStandDamage, rollAuraFormLoot, rollTheFoolTwist, canAssignPartyRole, isPartyWiped, getPartyRoleModifiers, applyTalentBonus } from './rpg-mechanics.js';
+import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio, applyDefendingReduction, scaleRaidBossHp, applyRaidBossDamage, regenerateRaidBossHp, calculateRaidAreaTickDamage, rollRaidBossLoot, rollRaidBossTitleDrops, getRaidBossForm, getAuraBarrier, applyAuraBarrier, applyAuraIllusion, advanceAuraSealProgress, shouldAwakenAuraSecretForm, calculateAuraFinalStandDamage, rollAuraFormLoot, rollTheFoolTwist, isRaidBossUnlocked, canAssignPartyRole, isPartyWiped, getPartyRoleModifiers, applyTalentBonus } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
 
@@ -53,10 +53,30 @@ export default {
     }
     const requestedBossId = interaction.options.getString('boss_secimi');
     const catalog = raidBosses?.length ? raidBosses : undefined;
+    let unlockedQuestKeys = [];
+    try {
+      const unlockResult = await pool.query(
+        'SELECT quest_key FROM side_quest_claims WHERE guild_id=$1 AND user_id=$2 AND quest_key=$3',
+        [interaction.guildId, interaction.user.id, 'light_fallen_trial']
+      );
+      unlockedQuestKeys = unlockResult.rows.map(row => row.quest_key);
+    } catch (error) {
+      console.error('Light Fallen görev kilidi kontrol edilemedi:', error?.message || error);
+      return interaction.editReply({ content: 'Boss kilitleri şu anda doğrulanamıyor. Güvenlik için baskın başlatılmadı; biraz sonra tekrar dene.', components: [] });
+    }
+    const sourceCatalog = catalog || RAID_BOSSES;
+    const availableCatalog = sourceCatalog.filter(boss => isRaidBossUnlocked(boss.id, unlockedQuestKeys));
+    if (requestedBossId === 'fallen-mage' && !isRaidBossUnlocked('fallen-mage', unlockedQuestKeys)) {
+      return interaction.editReply({
+        content: '🔒 **Light Fallen henüz boss değil.** Önce /npc komutunda **Light Fallen — Özel görev** karakteriyle konuş, **Dört Mührün Sınavı** görevini tamamla ve teslim et. Üç boss zaferinden sonra Infinity boss formu açılır.',
+        components: []
+      });
+    }
     const BOSS = requestedBossId
-      ? (catalog?.find(boss => boss.id === requestedBossId) || RAID_BOSSES.find(boss => boss.id === requestedBossId))
-      : catalog ? chooseRaidBoss(Math.random, catalog) : chooseRaidBoss();
-    if (!BOSS) return interaction.editReply({ content: 'Seçilen boss bu sunucunun raid kataloğunda bulunamadı.', components: [] });
+      ? (availableCatalog.find(boss => boss.id === requestedBossId) ||
+        RAID_BOSSES.find(boss => boss.id === requestedBossId && isRaidBossUnlocked(boss.id, unlockedQuestKeys)))
+      : chooseRaidBoss(Math.random, availableCatalog);
+    if (!BOSS) return interaction.editReply({ content: 'Seçilen boss bu sunucunun raid kataloğunda bulunamadı veya henüz açılmadı.', components: [] });
     for (const user of team) await ensureUser(interaction.guildId, user.id);
     const invited = team.slice(1);
     const row = new ActionRowBuilder().addComponents(
