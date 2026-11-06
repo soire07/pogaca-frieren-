@@ -675,7 +675,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           interaction.member = makeMember(userId);
           const previousRandom = Math.random;
           try {
-            Math.random = () => 0.3;
+            Math.random = () => commandName === 'ortakboss' ? 0 : 0.3;
             await command.execute(interaction);
           } finally {
             Math.random = previousRandom;
