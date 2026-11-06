@@ -17,13 +17,18 @@ permissions:
   contents: read
 
 concurrency:
-  group: frieren-neural-chat-max-${{ github.sha }}
+  # One candidate training run at a time across push and pull_request events.
+  group: frieren-neural-chat-max-singleton
   cancel-in-progress: true
 
 jobs:
   train:
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    env:
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "1"
     defaults:
       run:
         working-directory: frieren-neural
