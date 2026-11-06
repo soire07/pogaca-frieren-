@@ -171,10 +171,6 @@ async function processNewsBirdDigests(readyClient = client) {
         }
         await user.send({ embeds, allowedMentions: { parse: [] } });
         await markAnimeNewsDigestSent(pool, digest.guild_id, digest.user_id);
-          continue;
-        }
-        await user.send({ content, allowedMentions: { parse: [] } });
-        await markAnimeNewsDigestSent(pool, digest.guild_id, digest.user_id);
       } catch (error) {
         if ([50007, 10013].includes(Number(error?.code))) {
           await setNotificationPreference(pool, { guildId: digest.guild_id, userId: digest.user_id, category: 'anime_news', enabled: false }).catch(() => {});
