@@ -662,3 +662,11 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .public-chat-avatar[title=Çevrimiçi]{box-shadow:0 0 12px #8fe0b266}
 .account-profile-editor form>label{min-width:0}
 .account-profile-editor form>label input[type=checkbox]{width:auto;justify-self:start}
+
+/* Account profile and community chat completion */
+.account-profile-badges{display:flex;flex-wrap:wrap;gap:7px;margin:7px 0}
+.account-profile-badges .badge{display:inline-flex;align-items:center;padding:5px 10px;border:1px solid #c6a7ff66;border-radius:999px;background:#9b7bd922;color:#eadbff;font-size:11px}
+.public-chat-read-count{display:block;margin-top:5px;color:#bca9dc;font-size:11px;text-align:right}
+.notification-center-page .portal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.notification-center-page .card{min-width:0}
+@media(max-width:620px){.public-chat-tools{grid-template-columns:1fr;gap:7px}.public-chat-tools input{width:100%}.public-chat-head{align-items:flex-start;flex-direction:column}.notification-center-page .portal-grid{grid-template-columns:1fr}.account-profile-badges{gap:5px}}
