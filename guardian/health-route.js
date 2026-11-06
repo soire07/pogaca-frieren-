@@ -1,10 +1,11 @@
-function sendHealthResponse(res, ready, checks) {
-  res.writeHead(ready ? 200 : 503, {
+function sendHealthResponse(res, ready, checks, { liveness = false } = {}) {
+  const healthy = liveness || ready;
+  res.writeHead(healthy ? 200 : 503, {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',
   });
   res.end(JSON.stringify({
-    status: ready ? 'ok' : 'not_ready',
+    status: liveness ? 'alive' : ready ? 'ok' : 'not_ready',
     service: 'pogaca-frieren',
     checks,
   }));
@@ -20,7 +21,7 @@ export async function handleHealthRequest(req, res, { client, db } = {}) {
     sendHealthResponse(res, discordReady, {
       discord: discordReady ? 'ok' : 'not_ready',
       database: 'not_checked',
-    });
+    }, { liveness: true });
     return true;
   }
 

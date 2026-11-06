@@ -42,14 +42,14 @@ test('/health is a lightweight liveness probe and never queries PostgreSQL', asy
   assert.match(res.headers['Content-Type'], /application\/json/);
   assert.equal(res.headers['Cache-Control'], 'no-store');
   assert.deepEqual(JSON.parse(res.body), {
-    status: 'ok',
+    status: 'alive',
     service: 'pogaca-frieren',
     checks: { discord: 'ok', database: 'not_checked' },
   });
   assert.equal(databaseQueries, 0);
 });
 
-test('/health returns 503 when the Discord client is not ready without querying PostgreSQL', async () => {
+test('/health remains 200 during Discord reconnects without querying PostgreSQL', async () => {
   const res = response();
   let databaseQueries = 0;
   const handled = await handleHealthRequest(
@@ -62,9 +62,9 @@ test('/health returns 503 when the Discord client is not ready without querying 
   );
 
   assert.equal(handled, true);
-  assert.equal(res.statusCode, 503);
+  assert.equal(res.statusCode, 200);
   assert.deepEqual(JSON.parse(res.body), {
-    status: 'not_ready',
+    status: 'alive',
     service: 'pogaca-frieren',
     checks: { discord: 'not_ready', database: 'not_checked' },
   });
