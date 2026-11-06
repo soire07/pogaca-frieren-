@@ -1261,10 +1261,10 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           await command.execute(previewInteraction);
           const previewText = payloadTextFromEffects(previewEffects);
           behavioralChecks.push({
-            name: 'On iki ekipman türünün parçalama önizlemesi',
+            name: 'On üç ekipman türünün parçalama önizlemesi',
             expected: 'her ekipman adı, nadirliği ve geri kazanım tarifi seçimden önce gösterilmeli',
             actual: equipmentItems.filter(entry => previewText.includes(entry.name)).length + '/' + equipmentItems.length + ' ekipman',
-            passed: equipmentItems.length === 12 && equipmentItems.every(entry => previewText.includes(entry.name) && previewText.includes(entry.rarity)) && previewText.includes('Geri kazanım')
+            passed: equipmentItems.length === 13 && equipmentItems.every(entry => previewText.includes(entry.name) && previewText.includes(entry.rarity)) && previewText.includes('Geri kazanım')
           });
           const item = equipmentItems.find(entry => entry.id === 'iron_sword');
           const salvageItem = '🥐 Büyülü Poğaça Kutusu';
