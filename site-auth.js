@@ -348,12 +348,165 @@ function tokenOk(token,stored) {
   const a=Buffer.from(hash(token)),b=Buffer.from(String(stored));
   return a.length===b.length&&timingSafeEqual(a,b);
 }
+
+const STATE_COOKIE = 'frieren_site_oauth_state';
+const OAUTH_TTL_SECONDS = 600;
+function createDiscordOAuthState(secret, now = Date.now()) {
+  const payload = Math.floor(now / 1000) + '.' + randomBytes(24).toString('base64url');
+  return payload + '.' + signature(payload, secret);
+}
+function verifyDiscordOAuthState(state, cookieState, secret, now = Date.now()) {
+  const value = String(state || '');
+  const parts = value.split('.');
+  if (parts.length !== 3 || value !== String(cookieState || '')
+    || !/^\\d{10}$/.test(parts[0]) || !/^[A-Za-z0-9_-]{24,40}$/.test(parts[1])) return false;
+  const age = Math.floor(now / 1000) - Number(parts[0]);
+  if (age < -60 || age > OAUTH_TTL_SECONDS) return false;
+  const expected = Buffer.from(signature(parts[0] + '.' + parts[1], secret));
+  const actual = Buffer.from(parts[2]);
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
+}
+function siteCookie(name, value, maxAge) {
+  return name + '=' + encodeURIComponent(value) + '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=' + maxAge;
+}
+function clearSiteCookie(name) {
+  return name + '=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0';
+}
+function requestCookies(req) {
+  return Object.fromEntries(String(req?.headers?.cookie || '').split(';').map(part => {
+    const at = part.indexOf('=');
+    if (at < 0) return ['', ''];
+    const key = part.slice(0, at).trim();
+    try { return [key, decodeURIComponent(part.slice(at + 1).trim())]; } catch { return [key, '']; }
+  }).filter(([key]) => key));
+}
+function discordRedirectUri() {
+  return String(process.env.SITE_DISCORD_REDIRECT_URI || (baseUrl() + '/discord/callback')).trim();
+}
+function discordLoginPage(status = '') {
+  const notice = status === 'discord_error'
+    ? '<p class="auth-notice" role="alert">Discord ile giriş tamamlanamadı. Yeniden deneyebilirsin.</p>'
+    : '';
+  return page('Discord ile giriş', '<h1>Frieren evrenine hoş geldin</h1><p>Siteye devam etmek için Discord hesabınla giriş yap.</p>' + notice
+    + '<a class="btn" style="display:block;text-decoration:none;padding:14px 18px;border-radius:12px" href="/discord/login">Discord ile giriş yap</a>'
+    + '<p class="auth-hint">Kayıt veya şifre gerekmez. İlk girişte hesabın otomatik oluşturulur.</p>');
+}
+async function getOrCreateDiscordSiteAccount(db, discordUser) {
+  if (typeof db?.connect !== 'function') throw new Error('SITE_AUTH_DATABASE_POOL_REQUIRED');
+  await schema(db);
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [String(discordUser.id)]);
+    await client.query('CREATE TABLE IF NOT EXISTS frieren_site_discord_accounts (discord_user_id VARCHAR(32) PRIMARY KEY, account_id UUID NOT NULL UNIQUE REFERENCES frieren_site_accounts(id) ON DELETE CASCADE, discord_username VARCHAR(64) NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
+    const linked = await client.query('SELECT account_id FROM frieren_site_discord_accounts WHERE discord_user_id=$1 LIMIT 1', [String(discordUser.id)]);
+    let accountId = linked.rows?.[0]?.account_id;
+    if (!accountId) {
+      const discordId = String(discordUser.id);
+      const username = 'discord_' + discordId;
+      const email = 'discord_' + discordId + '@accounts.frieren.invalid';
+      const randomPassword = randomBytes(48).toString('base64url');
+      const passwordHash = await hashSitePassword(randomPassword);
+      const inserted = await client.query(
+        'INSERT INTO frieren_site_accounts(username,email,password_hash,email_verified_at) VALUES($1,$2,$3,NOW()) RETURNING id',
+        [username, email, passwordHash]
+      );
+      accountId = inserted.rows?.[0]?.id;
+      if (!accountId) throw new Error('SITE_DISCORD_ACCOUNT_CREATE_FAILED');
+      await client.query(
+        'INSERT INTO frieren_site_discord_accounts(discord_user_id,account_id,discord_username) VALUES($1,$2,$3)',
+        [discordId, accountId, String(discordUser.username || 'Discord user').slice(0, 64)]
+      );
+    } else {
+      await client.query(
+        'UPDATE frieren_site_discord_accounts SET discord_username=$2,updated_at=NOW() WHERE discord_user_id=$1',
+        [String(discordUser.id), String(discordUser.username || 'Discord user').slice(0, 64)]
+      );
+    }
+    await client.query('COMMIT');
+    return accountId;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release?.();
+  }
+}
+
 export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSession}={}) {
   const url=new URL(req.url,'http://localhost'), path=url.pathname;
-  const routes=['/login','/register','/forgot-password','/reset-password','/verify-email','/resend-verification','/logout'];
+  const routes=['/login','/register','/forgot-password','/reset-password','/verify-email','/resend-verification','/logout','/discord/login','/discord/callback'];
+  if (path === '/register' || path === '/forgot-password' || path === '/reset-password' || path === '/verify-email' || path === '/resend-verification') {
+    res.writeHead(303, { Location: '/login', 'Cache-Control': 'no-store' }); res.end(); return true;
+  }
+  if (path === '/login' && req.method === 'GET') {
+    send(res, 200, discordLoginPage(url.searchParams.get('status') || '')); return true;
+  }
+  if (path === '/login' && req.method !== 'GET') {
+    send(res, 405, discordLoginPage(), { Allow: 'GET' }); return true;
+  }
+  if (path === '/discord/login' && req.method === 'GET') {
+    if (!sessionSecret || sessionSecret.length < 32 || !process.env.CLIENT_ID || !process.env.DISCORD_CLIENT_SECRET) {
+      send(res, 503, page('Discord girişi kullanılamıyor', '<h1>Discord girişi yapılandırılamadı</h1><p>Site yöneticisi OAuth ayarlarını kontrol etmeli.</p>')); return true;
+    }
+    const state = createDiscordOAuthState(sessionSecret);
+    const location = new URL('https://discord.com/oauth2/authorize');
+    location.search = new URLSearchParams({ client_id: process.env.CLIENT_ID, response_type: 'code', redirect_uri: discordRedirectUri(), scope: 'identify', state }).toString();
+    res.writeHead(302, { Location: location.toString(), 'Cache-Control': 'no-store', 'Set-Cookie': siteCookie(STATE_COOKIE, state, OAUTH_TTL_SECONDS) });
+    res.end(); return true;
+  }
+  if (path === '/discord/callback' && req.method === 'GET') {
+    const state = url.searchParams.get('state');
+    const code = url.searchParams.get('code');
+    const oauthError = url.searchParams.get('error');
+    const cookieState = requestCookies(req)[STATE_COOKIE];
+    const clearState = clearSiteCookie(STATE_COOKIE);
+    if (oauthError || !code || !verifyDiscordOAuthState(state, cookieState, sessionSecret)) {
+      res.writeHead(303, { Location: '/login?status=discord_error', 'Cache-Control': 'no-store', 'Set-Cookie': clearState });
+      res.end(); return true;
+    }
+    if (!db || !sessionSecret || sessionSecret.length < 32 || !process.env.CLIENT_ID || !process.env.DISCORD_CLIENT_SECRET) {
+      send(res, 503, page('Discord girişi kullanılamıyor', '<h1>Giriş tamamlanamadı</h1><p>Site yapılandırmasını kontrol et.</p>'), { 'Set-Cookie': clearState });
+      return true;
+    }
+    try {
+      const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ client_id: process.env.CLIENT_ID, client_secret: process.env.DISCORD_CLIENT_SECRET, grant_type: 'authorization_code', code, redirect_uri: discordRedirectUri() }),
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!tokenResponse.ok) throw new Error('DISCORD_OAUTH_TOKEN_EXCHANGE_FAILED');
+      const tokenData = await tokenResponse.json();
+      const userResponse = await fetch('https://discord.com/api/users/@me', {
+        headers: { Authorization: 'Bearer ' + tokenData.access_token },
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!userResponse.ok) throw new Error('DISCORD_OAUTH_IDENTITY_FAILED');
+      const discordUser = await userResponse.json();
+      if (!/^\\d{17,20}$/.test(String(discordUser?.id || '')) || !discordUser?.username) throw new Error('DISCORD_OAUTH_IDENTITY_INVALID');
+      const accountId = await getOrCreateDiscordSiteAccount(db, discordUser);
+      const session = createSession(sessionSecret, {
+        id: 'site_' + accountId,
+        username: String(discordUser.username).slice(0, 64),
+        avatar: typeof discordUser.avatar === 'string' ? discordUser.avatar : null,
+        discordUserId: String(discordUser.id)
+      }, Math.floor(Date.now() / 1000) + SESSION_TTL);
+      res.writeHead(303, {
+        Location: '/',
+        'Cache-Control': 'no-store',
+        'Set-Cookie': [clearState, siteCookie(COOKIE, session, SESSION_TTL)]
+      });
+      res.end(); return true;
+    } catch (error) {
+      console.error('Discord site OAuth failed:', error?.message || 'unknown');
+      res.writeHead(303, { Location: '/login?status=discord_error', 'Cache-Control': 'no-store', 'Set-Cookie': clearState });
+      res.end(); return true;
+    }
+  }
   if(!routes.includes(path))return false;
   if(path==='/logout'&&req.method==='GET'){
-    res.writeHead(302,{Location:'/login?status=logged_out','Cache-Control':'no-store','Set-Cookie':COOKIE+'=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'});res.end();return true;
+    res.writeHead(303,{Location:'/login','Cache-Control':'no-store','Set-Cookie':COOKIE+'=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'});res.end();return true;
   }
   if(!db||!sessionSecret||sessionSecret.length<32){send(res,503,page('Kurulum gerekli','<h1>Hesap sistemi geçici olarak kullanılamıyor</h1>'));return true;}
   try {
