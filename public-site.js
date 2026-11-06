@@ -1092,6 +1092,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const showcase=await getPublicPlayerHome(db,{guildId,userId});
     if(!showcase){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Bu oyuncunun profili herkese açık değil.');return true;}
     await ensureSiteSocialSchema(db);
+    await ensureSiteSocialSchema(db);
     const [personal,guestbook,author]=await Promise.all([getPersonalProfile(db,guildId,userId),listGuestbookEntries(db,{guildId,ownerId:userId}),SITE_ACCOUNT_ID.test(String(user?.id||''))?getLinkedAdventurer(db,user.id,guildId):Promise.resolve(null)]);
     if(author&&author.user_id!==userId)await recordProfileVisit(db,{guildId,ownerId:userId,visitorId:author.user_id});
     const html=publicPlayerProfilePage(user,{...showcase,guildId},personal,guestbook,createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET),Boolean(author&&author.user_id!==userId));
