@@ -43,7 +43,7 @@ for (const scenario of scenarios) {
         documentWidth: document.documentElement.scrollWidth,
         viewport: Boolean(document.querySelector('meta[name="viewport"]')),
         form: Boolean(document.querySelector('form')),
-        controls: [...document.querySelectorAll('input,button,select,textarea')].map(node => {
+        controls: [...document.querySelectorAll('input,button,select,textarea,a.btn[href="/site/discord/login"]')].map(node => {
           const rect = node.getBoundingClientRect();
           const style = window.getComputedStyle(node);
           return { left: rect.left, right: rect.right, height: rect.height, visible: style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0 && node.type !== 'hidden' };
@@ -149,7 +149,6 @@ const api = await request.newContext({ timeout: 30000 });
 try {
   const loginPage = await api.get(baseUrl + '/login');
   if (loginPage.status() !== 200) throw new Error('Local site login form is unavailable: HTTP ' + loginPage.status());
-  const loginHtml = await loginPage.text();
   const disabledPasswordLogin = await api.post(baseUrl + '/login', { form: { username: 'legacy-user', password: 'not-a-real-password' } });
   if (disabledPasswordLogin.status() !== 405) throw new Error('Password login endpoint is not disabled: HTTP ' + disabledPasswordLogin.status());
   const disabledRegistration = await api.get(baseUrl + '/register', { maxRedirects: 0 });
