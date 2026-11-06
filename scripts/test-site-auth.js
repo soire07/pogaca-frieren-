@@ -618,3 +618,101 @@ test('site account lifecycle completes registration, email verification, login, 
     }
   }
 });
+
+
+test('public registration and password recovery routes redirect to Discord-only sign-in', async () => {
+  for (const path of ['/register','/forgot-password','/reset-password','/verify-email','/resend-verification']) {
+    const res = response();
+    assert.equal(await handleSiteAuthRequest({ method: 'GET', url: path, headers: {} }, res, { db: fakeDb(), sessionSecret: secret }), true);
+    assert.equal(res.status, 303, path);
+    assert.equal(res.headers.Location, '/login', path);
+  }
+  const login = response();
+  assert.equal(await handleSiteAuthRequest({ method: 'GET', url: '/login', headers: {} }, login, { db: fakeDb(), sessionSecret: secret }), true);
+  assert.equal(login.status, 200);
+  assert.match(login.body, /Discord ile giriş yap/);
+  assert.doesNotMatch(login.body, /name="password"|name="email"|Hesap oluştur|Şifremi unuttum/);
+});
+
+test('Discord OAuth login creates a short-lived signed state cookie and requests identify only', async () => {
+  const previous = { CLIENT_ID: process.env.CLIENT_ID, DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET, SITE_DISCORD_REDIRECT_URI: process.env.SITE_DISCORD_REDIRECT_URI };
+  process.env.CLIENT_ID = 'test-discord-client';
+  process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
+  process.env.SITE_DISCORD_REDIRECT_URI = 'https://frierenbot.vercel.app/discord/callback';
+  try {
+    const res = response();
+    await handleSiteAuthRequest({ method: 'GET', url: '/discord/login', headers: {} }, res, { db: fakeDb(), sessionSecret: secret });
+    assert.equal(res.status, 302);
+    const target = new URL(res.headers.Location);
+    assert.equal(target.origin, 'https://discord.com');
+    assert.equal(target.pathname, '/oauth2/authorize');
+    assert.equal(target.searchParams.get('scope'), 'identify');
+    assert.equal(target.searchParams.get('redirect_uri'), process.env.SITE_DISCORD_REDIRECT_URI);
+    assert.match(res.headers['Set-Cookie'], /^frieren_site_oauth_state=/);
+    assert.match(res.headers['Set-Cookie'], /HttpOnly; Secure; SameSite=Lax; Max-Age=600/);
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
+});
+
+test('Discord OAuth callback provisions one persistent site account and issues a signed site session', async () => {
+  const previous = { CLIENT_ID: process.env.CLIENT_ID, DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET, SITE_DISCORD_REDIRECT_URI: process.env.SITE_DISCORD_REDIRECT_URI };
+  const previousFetch = globalThis.fetch;
+  process.env.CLIENT_ID = 'test-discord-client';
+  process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
+  process.env.SITE_DISCORD_REDIRECT_URI = 'https://frierenbot.vercel.app/discord/callback';
+  globalThis.fetch = async url => String(url).includes('/oauth2/token')
+    ? { ok: true, json: async () => ({ access_token: 'temporary-discord-token' }) }
+    : { ok: true, json: async () => ({ id: '123456789012345678', username: 'Frieren', avatar: 'avatarhash' }) };
+  const accountId = '123e4567-e89b-42d3-a456-426614174000';
+  const queries = [];
+  const client = {
+    async query(sql, params = []) {
+      queries.push({ sql: String(sql), params });
+      if (String(sql).includes('INSERT INTO frieren_site_accounts')) return { rows: [{ id: accountId }], rowCount: 1 };
+      if (String(sql).includes('SELECT account_id FROM frieren_site_discord_accounts')) return { rows: [], rowCount: 0 };
+      return { rows: [], rowCount: 1 };
+    },
+    release() {}
+  };
+  const db = { async query(sql, params) { return client.query(sql, params); }, async connect() { return client; } };
+  try {
+    const stateRes = response();
+    await handleSiteAuthRequest({ method: 'GET', url: '/discord/login', headers: {} }, stateRes, { db, sessionSecret: secret });
+    const stateCookie = decodeURIComponent(stateRes.headers['Set-Cookie'].split(';')[0].split('=').slice(1).join('='));
+    const state = new URL(stateRes.headers.Location).searchParams.get('state');
+    const callback = response();
+    await handleSiteAuthRequest({
+      method: 'GET',
+      url: '/discord/callback?code=valid-code&state=' + encodeURIComponent(state),
+      headers: { cookie: 'frieren_site_oauth_state=' + encodeURIComponent(stateCookie) }
+    }, callback, { db, sessionSecret: secret, createSession: createPublicSiteSession });
+    assert.equal(callback.status, 303);
+    assert.equal(callback.headers.Location, '/');
+    const cookies = callback.headers['Set-Cookie'];
+    const sessionCookie = cookies.find(value => value.startsWith('frieren_site_session='));
+    assert.ok(sessionCookie);
+    const token = decodeURIComponent(sessionCookie.split(';')[0].slice('frieren_site_session='.length));
+    const session = readPublicSiteSession(token, secret);
+    assert.equal(session.id, 'site_' + accountId);
+    assert.equal(session.username, 'Frieren');
+    assert.ok(queries.some(item => item.sql.includes('INSERT INTO frieren_site_accounts')));
+    assert.ok(queries.some(item => item.sql.includes('INSERT INTO frieren_site_discord_accounts')));
+    assert.ok(queries.some(item => item.sql === 'COMMIT'));
+  } finally {
+    globalThis.fetch = previousFetch;
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
+});
+
+test('Discord OAuth callback rejects a state value not bound to its browser cookie', async () => {
+  const res = response();
+  await handleSiteAuthRequest({ method: 'GET', url: '/discord/callback?code=invalid&state=forged', headers: {} }, res, { db: fakeDb(), sessionSecret: secret, createSession: createPublicSiteSession });
+  assert.equal(res.status, 303);
+  assert.equal(res.headers.Location, '/login?status=discord_error');
+  assert.match(res.headers['Set-Cookie'], /Max-Age=0/);
+});
