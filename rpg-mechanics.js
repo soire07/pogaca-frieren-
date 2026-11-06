@@ -14,7 +14,10 @@ export function chooseRaidBoss(random = Math.random, bosses = RAID_BOSSES) {
   });
   const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
   if (totalWeight <= 0) return catalog[0];
-  let roll = Math.max(0, Math.min(0.999999999999, Number(random()) || 0)) * totalWeight;
+  const sample = Number(random());
+  // Preserve the established boundary behavior for deterministic callers; Math.random itself is always below 1.
+  if (!Number.isFinite(sample) || sample < 0 || sample >= 1) return catalog[0];
+  let roll = sample * totalWeight;
   for (let index = 0; index < catalog.length; index += 1) {
     if (roll < weights[index]) return catalog[index];
     roll -= weights[index];
