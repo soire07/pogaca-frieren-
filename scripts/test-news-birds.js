@@ -31,7 +31,7 @@ test('RSS poll stores normalized source, article and image metadata with conflic
  const result=await pollAnimeNewsFeed({async query(sql,params){calls.push({sql,params});return{rowCount:1,rows:[]};}},async url=>({ok:true,status:200,text:async()=>xml}));
  assert.deepEqual(result,{fetched:1,inserted:1,failures:[]});
  assert.match(calls[0].sql,/image_url,source_name,published_at/);
- assert.equal(calls[0].params[0],'anime_news:poll-1');
+ assert.equal(calls[0].params[0],'poll-1');
  assert.equal(calls[0].params[4],'https://cdn.animenewsnetwork.com/poll.jpg');
  assert.equal(calls[0].params[5],'Anime News Network');
 });
