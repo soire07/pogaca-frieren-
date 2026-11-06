@@ -381,14 +381,14 @@ function requestCookies(req) {
   }).filter(([key]) => key));
 }
 function discordRedirectUri() {
-  return String(process.env.SITE_DISCORD_REDIRECT_URI || ((process.env.OWNER_DASHBOARD_BASE_URL || baseUrl()).replace(/\/+$/, '') + '/discord/callback')).trim();
+  return String(process.env.SITE_DISCORD_REDIRECT_URI || ((process.env.OWNER_DASHBOARD_BASE_URL || baseUrl()).replace(/\/+$/, '') + '/site/discord/callback')).trim();
 }
 function discordLoginPage(status = '') {
   const notice = status === 'discord_error'
     ? '<p class="auth-notice" role="alert">Discord ile giriş tamamlanamadı. Yeniden deneyebilirsin.</p>'
     : '';
   return page('Discord ile giriş', '<h1>Frieren evrenine hoş geldin</h1><p>Siteye devam etmek için Discord hesabınla giriş yap.</p>' + notice
-    + '<a class="btn" style="display:block;text-decoration:none;padding:14px 18px;border-radius:12px" href="/discord/login">Discord ile giriş yap</a>'
+    + '<a class="btn" style="display:block;text-decoration:none;padding:14px 18px;border-radius:12px" href="/site/discord/login">Discord ile giriş yap</a>'
     + '<p class="auth-hint">Kayıt veya şifre gerekmez. İlk girişte hesabın otomatik oluşturulur.</p>');
 }
 async function getOrCreateDiscordSiteAccount(db, discordUser) {
@@ -435,7 +435,7 @@ async function getOrCreateDiscordSiteAccount(db, discordUser) {
 
 export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSession}={}) {
   const url=new URL(req.url,'http://localhost'), path=url.pathname;
-  const routes=['/login','/register','/forgot-password','/reset-password','/verify-email','/resend-verification','/logout','/discord/login','/discord/callback'];
+  const routes=['/login','/register','/forgot-password','/reset-password','/verify-email','/resend-verification','/logout','/site/discord/login','/site/discord/callback'];
   if (path === '/register' || path === '/forgot-password' || path === '/reset-password' || path === '/verify-email' || path === '/resend-verification') {
     res.writeHead(303, { Location: '/login', 'Cache-Control': 'no-store' }); res.end(); return true;
   }
@@ -445,7 +445,7 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
   if (path === '/login' && req.method !== 'GET') {
     send(res, 405, discordLoginPage(), { Allow: 'GET' }); return true;
   }
-  if (path === '/discord/login' && req.method === 'GET') {
+  if (path === '/site/discord/login' && req.method === 'GET') {
     if (!sessionSecret || sessionSecret.length < 32 || !process.env.CLIENT_ID || !process.env.DISCORD_CLIENT_SECRET) {
       send(res, 503, page('Discord girişi kullanılamıyor', '<h1>Discord girişi yapılandırılamadı</h1><p>Site yöneticisi OAuth ayarlarını kontrol etmeli.</p>')); return true;
     }
@@ -455,7 +455,7 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
     res.writeHead(302, { Location: location.toString(), 'Cache-Control': 'no-store', 'Set-Cookie': siteCookie(STATE_COOKIE, state, OAUTH_TTL_SECONDS) });
     res.end(); return true;
   }
-  if (path === '/discord/callback' && req.method === 'GET') {
+  if (path === '/site/discord/callback' && req.method === 'GET') {
     const state = url.searchParams.get('state');
     const code = url.searchParams.get('code');
     const oauthError = url.searchParams.get('error');
