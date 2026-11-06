@@ -17,6 +17,8 @@ async function createPublicChatSchema(db){
  await db.query('ALTER TABLE frieren_public_chat_messages ADD COLUMN IF NOT EXISTS reply_to_message_id UUID');
  await db.query('ALTER TABLE frieren_public_chat_messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ');
  await db.query('ALTER TABLE frieren_public_chat_messages ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ');
+ await db.query(`CREATE TABLE IF NOT EXISTS frieren_public_chat_control(control_id SMALLINT PRIMARY KEY DEFAULT 1 CHECK(control_id=1),is_paused BOOLEAN NOT NULL DEFAULT FALSE,updated_by TEXT,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+ await db.query(`INSERT INTO frieren_public_chat_control(control_id,is_paused) VALUES(1,FALSE) ON CONFLICT(control_id) DO NOTHING`);
  await db.query(`CREATE TABLE IF NOT EXISTS frieren_public_chat_reads(message_id UUID NOT NULL REFERENCES frieren_public_chat_messages(message_id) ON DELETE CASCADE,reader_account_id TEXT NOT NULL,read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(message_id,reader_account_id))`);
  await db.query('CREATE INDEX IF NOT EXISTS frieren_public_chat_reads_reader_idx ON frieren_public_chat_reads(reader_account_id,read_at DESC)');
  await db.query(`CREATE TABLE IF NOT EXISTS frieren_public_chat_reports(report_id UUID PRIMARY KEY,message_id UUID NOT NULL REFERENCES frieren_public_chat_messages(message_id) ON DELETE CASCADE,reporter_account_id TEXT NOT NULL,reason VARCHAR(32) NOT NULL CHECK(reason IN ('spam','harassment','inappropriate','other')),details VARCHAR(500) NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','reviewed','dismissed')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(message_id,reporter_account_id))`);
@@ -67,6 +69,7 @@ export async function sendPublicChatMessage(db,{accountId,username,body,replyToM
  await ensurePublicChatSchema(db);
  await ensureAccountProfileSchema(db);
  return transaction(db,async client=>{
+  const control=await client.query('SELECT is_paused FROM frieren_public_chat_control WHERE control_id=1');if(control.rows[0]?.is_paused)return{status:'chat_paused'};
   await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',[accountId]);
   const recent=await client.query("SELECT COUNT(*)::int AS count FROM frieren_public_chat_messages WHERE account_id=$1 AND created_at>NOW()-INTERVAL '60 seconds'",[accountId]);
   if(Number(recent.rows?.[0]?.count||0)>=5)return{status:'rate_limited'};
@@ -122,11 +125,11 @@ export async function listPublicChatBlocks(db,{accountId}){
  return result.rows;
 }
 
-export async function deletePublicChatMessage(db,{accountId,messageId}){
- assertAccount(accountId);
+export async function deletePublicChatMessage(db,{accountId,messageId,isOwner=false}){
+ assertAccount(accountId);if(isOwner!==true)throw new Error('PUBLIC_CHAT_OWNER_REQUIRED');
  if(!/^[0-9a-f-]{36}$/i.test(String(messageId||'')))throw new Error('PUBLIC_CHAT_MESSAGE_INVALID');
  await ensurePublicChatSchema(db);
- const result=await db.query('DELETE FROM frieren_public_chat_messages WHERE message_id=$1 AND account_id=$2 RETURNING message_id',[messageId,accountId]);
+ const result=await db.query('DELETE FROM frieren_public_chat_messages WHERE message_id=$1 RETURNING message_id',[messageId]);
  return{status:result.rowCount?'deleted':'not_found'};
 }
 
@@ -136,9 +139,9 @@ export async function updatePublicChatMessage(db,{accountId,messageId,body}){
  const r=await db.query("UPDATE frieren_public_chat_messages SET body=$3,edited_at=NOW() WHERE message_id=$1 AND account_id=$2 AND hidden=FALSE AND created_at>NOW()-INTERVAL '15 minutes' RETURNING message_id",[messageId,accountId,message]);
  return{status:r.rowCount?'updated':'not_found'};
 }
-export async function togglePublicChatPin(db,{accountId,messageId}){
- assertAccount(accountId);if(!/^[0-9a-f-]{36}$/i.test(String(messageId||'')))throw new Error('PUBLIC_CHAT_MESSAGE_INVALID');await ensurePublicChatSchema(db);
- const r=await db.query("UPDATE frieren_public_chat_messages SET pinned_at=CASE WHEN pinned_at IS NULL THEN NOW() ELSE NULL END WHERE message_id=$1 AND account_id=$2 AND hidden=FALSE RETURNING pinned_at",[messageId,accountId]);
+export async function togglePublicChatPin(db,{accountId,messageId,isOwner=false}){
+ assertAccount(accountId);if(isOwner!==true)throw new Error('PUBLIC_CHAT_OWNER_REQUIRED');if(!/^[0-9a-f-]{36}$/i.test(String(messageId||'')))throw new Error('PUBLIC_CHAT_MESSAGE_INVALID');await ensurePublicChatSchema(db);
+ const r=await db.query("UPDATE frieren_public_chat_messages SET pinned_at=CASE WHEN pinned_at IS NULL THEN NOW() ELSE NULL END WHERE message_id=$1 AND hidden=FALSE RETURNING pinned_at",[messageId]);
  return{status:r.rowCount?(r.rows[0].pinned_at?'pinned':'unpinned'):'not_found'};
 }
 export async function touchPublicChatPresence(db,{accountId}){
@@ -173,4 +176,14 @@ export async function reportPublicChatMessage(db,{accountId,messageId,reason='ot
  if(!target.rowCount)return{status:'not_found'};if(target.rows[0].account_id===accountId)return{status:'self_report'};
  const result=await db.query("INSERT INTO frieren_public_chat_reports(report_id,message_id,reporter_account_id,reason,details) VALUES($1,$2,$3,$4,$5) ON CONFLICT(message_id,reporter_account_id) DO NOTHING RETURNING report_id",[randomUUID(),messageId,accountId,reason,note]);
  return{status:result.rowCount?'reported':'already_reported'};
+}
+
+export async function getPublicChatControl(db){
+ await ensurePublicChatSchema(db);const r=await db.query('SELECT is_paused,updated_at FROM frieren_public_chat_control WHERE control_id=1');
+ return{paused:Boolean(r.rows[0]?.is_paused),updatedAt:r.rows[0]?.updated_at||null};
+}
+export async function setPublicChatPaused(db,{accountId,paused,isOwner=false}){
+ assertAccount(accountId);if(isOwner!==true)throw new Error('PUBLIC_CHAT_OWNER_REQUIRED');if(typeof paused!=='boolean')throw new Error('PUBLIC_CHAT_CONTROL_INVALID');
+ await ensurePublicChatSchema(db);const r=await db.query('UPDATE frieren_public_chat_control SET is_paused=$1,updated_by=$2,updated_at=NOW() WHERE control_id=1 RETURNING is_paused,updated_at',[paused,accountId]);
+ return{status:r.rowCount?'updated':'not_found',paused:Boolean(r.rows[0]?.is_paused),updatedAt:r.rows[0]?.updated_at||null};
 }
