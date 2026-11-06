@@ -408,10 +408,26 @@ def train_model(
     # context window. Reduce the merge budget deterministically until both
     # splits retain enough tokens; byte-level fallback is lossless.
     effective_vocab_size = settings.tokenizer_vocab_size
+    print(json.dumps({
+        "event": "tokenizer_preparation_started",
+        "train_bytes": len(train_text.encode("utf-8")),
+        "validation_bytes": len(validation_text.encode("utf-8")),
+        "target_vocab_size": effective_vocab_size,
+    }, ensure_ascii=False), flush=True)
+
+    def report_tokenizer_progress(completed: int, total: int, sampled_bytes: int) -> None:
+        print(json.dumps({
+            "event": "tokenizer_training_progress",
+            "merges_completed": completed,
+            "merges_target": total,
+            "sampled_bytes": sampled_bytes,
+        }, ensure_ascii=False), flush=True)
+
     while True:
         tokenizer = BPETokenizer.train(
             [train_text], vocab_size=effective_vocab_size,
-            min_frequency=settings.tokenizer_min_frequency
+            min_frequency=settings.tokenizer_min_frequency,
+            progress_callback=report_tokenizer_progress,
         )
         train_ids, train_loss_mask = encode_dialogue_stream_with_loss_mask(train_text, tokenizer)
         validation_ids, validation_loss_mask = encode_dialogue_stream_with_loss_mask(validation_text, tokenizer)
@@ -426,6 +442,12 @@ def train_model(
             BPETokenizer.BASE_VOCAB_SIZE
             + (effective_vocab_size - BPETokenizer.BASE_VOCAB_SIZE) // 2,
         )
+    print(json.dumps({
+        "event": "tokenizer_preparation_complete",
+        "vocab_size": tokenizer.vocab_size,
+        "train_tokens": len(train_ids),
+        "validation_tokens": len(validation_ids),
+    }, ensure_ascii=False), flush=True)
     train_data = torch.tensor(train_ids, dtype=torch.long)
     validation_data = torch.tensor(validation_ids, dtype=torch.long)
     train_target_mask = torch.tensor(train_loss_mask, dtype=torch.bool)
