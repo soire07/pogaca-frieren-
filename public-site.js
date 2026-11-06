@@ -1103,6 +1103,19 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       res.writeHead(303,{Location:'/profil?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
     }catch(error){if(String(error?.message||'').startsWith('ACCOUNT_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_profile'}));return true;}throw error;}
   }
+  if(url.pathname.startsWith('/u/')&&req.method==='GET'){
+    const target=url.pathname.slice(3);
+    if(!/^site_[0-9a-f-]{36}$/i.test(target)){res.writeHead(404);res.end('Profil bulunamadı.');return true;}
+    if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil veritabanı kullanılamıyor.');return true;}
+    const viewer=SITE_ACCOUNT_ID.test(String(user?.id||''))?user.id:null;
+    const data=await getAccountProfile(db,target,{viewerAccountId:viewer});
+    if(data.canView&&viewer&&viewer!==target)await recordAccountProfileVisit(db,{ownerAccountId:target,visitorAccountId:viewer});
+    const p=data.profile||{},links=p.social_links||{};
+    const social=Object.entries(links).filter(([k,v])=>typeof v==='string'&&v.startsWith('https://')).map(([k,v])=>'<a href="'+esc(v)+'" target="_blank" rel="noopener noreferrer">'+esc(k)+'</a>').join(' · ');
+    const follow=viewer&&viewer!==target?(data.following?'<form method="post" action="/api/account-profile/follow"><input type="hidden" name="csrf" value="'+esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET))+'"><input type="hidden" name="targetAccountId" value="'+esc(target)+'"><input type="hidden" name="action" value="unfollow"><button class="btn ghost" type="submit">Takibi bırak</button></form>':'<form method="post" action="/api/account-profile/follow"><input type="hidden" name="csrf" value="'+esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET))+'"><input type="hidden" name="targetAccountId" value="'+esc(target)+'"><input type="hidden" name="action" value="follow"><button class="btn" type="submit">Takip et</button></form>'):'';
+    const body=data.canView?'<main class="wrap user-center-page account-center-page"><section class="card"><div class="eyebrow">FRIEREN TOPLULUĞU</div><h1>Gezgin Profili</h1><p>'+esc(p.status_text||'Bir büyü yolculuğunda')+'</p><p>'+esc(p.bio||'Bu kullanıcı henüz biyografi eklememiş.')+'</p><p>'+esc((p.interests||[]).join(' · '))+'</p><p>'+esc((p.tags||[]).map(x=>'#'+x).join(' '))+'</p><p>Takipçi: '+data.followers+' · Takip: '+data.followingCount+'</p><p>'+social+'</p>'+follow+'</section></main>':'<main class="wrap"><section class="card"><h1>Bu profil görüntülenemiyor</h1><p>Profil sahibi görünürlüğü sınırlandırmış.</p></section></main>';
+    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(page('Gezgin Profili',body,user));return true;
+  }
   if (url.pathname === '/destek' || url.pathname === '/hesap-merkezi') {
     if (!requireSiteAccount(res, user?.id)) return true;
     if (!db) { res.writeHead(503,{'Cache-Control':'no-store'});res.end('Destek veritabanı kullanılamıyor.');return true; }
