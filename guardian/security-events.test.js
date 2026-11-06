@@ -115,9 +115,16 @@ test('Guardian evidence chain appends with a previous hash and deduplicates even
   };
   const db = { async connect() { return client; } };
   const event = normalizeGuardianSecurityEvent(JSON.parse(payload));
-  const first = await recordGuardianSecurityEvent(db, event, { clientIp: '198.51.100.42', ipSource: 'trusted_proxy' });
+  const resolvedIp = resolveVerifiedClientIp({
+    headers: { 'x-forwarded-for': '203.0.113.99' },
+    socket: { remoteAddress: '10.0.0.8' },
+  }, { trustedProxyIps: ['10.0.0.8'] });
+  assert.deepEqual(resolvedIp, { clientIp: '203.0.113.99', source: 'trusted_proxy' });
+  const first = await recordGuardianSecurityEvent(db, event, resolvedIp);
   assert.equal(first.duplicate, false);
   assert.equal(first.incident.id, 22);
+  const insert = statements.find(item => item.sql.includes('INSERT INTO owner_guardian_evidence_chain'));
+  assert.equal(insert.params[5], 'trusted_proxy');
   assert.match(prior, /^[a-f0-9]{64}$/);
   assert.ok(statements.some(x => x.sql.includes('pg_advisory_xact_lock')));
   const second = await recordGuardianSecurityEvent(db, event, { clientIp: '198.51.100.42', ipSource: 'trusted_proxy' });
