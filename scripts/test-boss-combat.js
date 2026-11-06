@@ -253,8 +253,8 @@ test('raid boss special attacks use their distinct turn cadence and mana curse d
   assert.match(source, /BOSS\.special === 'mana-star' && rounds % 3 === 0/);
   assert.match(source, /BOSS\.special === 'shard-rain' && rounds % 2 === 0/);
   assert.match(source, /BOSS\.special === 'mana-curse' && rounds % 3 === 0/);
-  assert.match(source, /if \(starburst \|\| shardRain\)/);
-  assert.match(source, /if \(manaCurse\)\s*\{\s*const drained=Math\.min\(target\.mana,8\);\s*target\.mana-=drained;/);
+  assert.match(source, /if \(starburst \|\| shardRain \|\| fallenWings/);
+  assert.match(source, /if \(manaCurse \|\| manaPrison\)\s*\{\s*const drained=Math\.min\(target\.mana,manaPrison \? 14 : 8\);\s*target\.mana-=drained;/);
   assert.match(source, /bossPhaseSpecialBonus\(bossPhase\)/);
 });
 
