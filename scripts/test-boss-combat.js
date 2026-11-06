@@ -337,7 +337,8 @@ test('raid title drops are inserted into the existing user title collection insi
   const rewards = await (await import('node:fs/promises')).readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
   assert.match(rewards, /titleDropUsers = \[\]/);
   const raid = await (await import('node:fs/promises')).readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
-  assert.match(raid, /const titleDropUsers=win \? rollRaidBossTitleDrops\(BOSS, ids, Math\.random\) : \[\]/);
+  assert.match(raid, /const titleDropEligible = win \|\| BOSS\.id === 'zeldeila'/);
+  assert.match(raid, /const titleDropUsers=titleDropEligible \? rollRaidBossTitleDrops\(BOSS, ids, Math\.random\) : \[\]/);
   assert.match(rewards, /INSERT INTO user_titles\(guild_id,user_id,title\)/);
   assert.match(rewards, /ON CONFLICT\(guild_id,user_id,title\) DO NOTHING RETURNING title/);
   assert.match(rewards, /return \{ status: 'settled', masteryResults, titleDrops \}/);
@@ -397,6 +398,13 @@ test('Zeldeila restores exactly the damage it received and area damage cannot be
   const extremeHit = applyRaidBossDamage(boss.hp, boss.hp, 999_999_999, boss);
   assert.equal(extremeHit.hp, 1, 'even an extreme hit must not defeat Zeldeila');
   assert.equal(regenerateRaidBossHp(extremeHit.hp, boss.hp, extremeHit.pendingHealing).hp, boss.hp);
+});
+
+
+test('Zeldeila participation title remains attainable despite its intentional undefeatable state', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /const titleDropEligible = win \\|\\| BOSS\\.id === 'zeldeila'/);
+  assert.match(source, /titleDropUsers=titleDropEligible \\? rollRaidBossTitleDrops\\(BOSS, ids, Math\\.random\\) : \\[\\]/);
 });
 
 test('Zeldeila title rolls are per participant, 0.2 percent, and never produce item loot', () => {
