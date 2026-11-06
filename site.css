@@ -674,3 +674,12 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .public-chat-load-older{display:block;width:100%;margin:10px 0;text-align:center}
 .public-chat-load-older[hidden]{display:none}
 .public-chat-read-count{font-variant-numeric:tabular-nums}
+
+.public-chat-owner-controls{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 0 14px;padding:12px 14px;border:1px solid #b89ae855;border-radius:14px;background:#171124}
+.public-chat-owner-controls strong{color:#e6d7ff;font-size:13px}
+.public-chat-owner-controls [data-chat-control-status]{color:#c9b8e7;font-size:12px}
+.public-chat-owner-controls [data-chat-toggle-pause]{margin-left:auto;border-color:#d49b9b;color:#ffdada}
+.public-chat-owner-controls [data-chat-toggle-pause]:disabled{opacity:.55}
+.public-chat-load-older{display:block;margin:12px auto}
+.public-chat-load-older[hidden]{display:none}
+@media(max-width:620px){.public-chat-owner-controls{align-items:stretch;flex-direction:column}.public-chat-owner-controls [data-chat-toggle-pause]{margin-left:0;width:100%}}
