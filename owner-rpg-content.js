@@ -86,7 +86,7 @@ function normalizeConfig(type, defaults, input = {}) {
       coins: boundedInteger(input.coins, defaults.coins, 0, 30000),
       loot: input.loot === null || (input.loot === undefined && defaults.loot === null) ? null : boundedText(input.loot, defaults.loot),
       lootChance: boundedNumber(input.lootChance, defaults.lootChance ?? 0.4, 0, 1),
-      titleDrop: input.titleDrop === null || (input.titleDrop === undefined && defaults.titleDrop === null) ? null : boundedText(input.titleDrop, defaults.titleDrop),
+      titleDrop: input.titleDrop == null && defaults.titleDrop == null ? null : boundedText(input.titleDrop, defaults.titleDrop),
       titleDropChance: boundedNumber(input.titleDropChance, defaults.titleDropChance ?? 0, 0, 1),
       spawnWeight: boundedNumber(input.spawnWeight, defaults.spawnWeight ?? 1, 0, 100),
       regenerateDamagePerSecond: input.regenerateDamagePerSecond === undefined ? Boolean(defaults.regenerateDamagePerSecond) : input.regenerateDamagePerSecond === true,
