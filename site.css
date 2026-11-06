@@ -489,3 +489,21 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .profile-media-editor [data-media-status]{min-height:1.3em;margin:0;color:#cfc2e2;font-size:.84rem}
 .profile-media-editor [data-media-status][data-error="true"]{color:#ffb7c1}
 @media(max-width:560px){.profile-media-grid{grid-template-columns:1fr}.profile-media-grid img{height:150px}.profile-media-grid label:first-child img{width:112px;height:112px}.profile-media-actions .btn{flex:1 1 100%}}
+
+/* Integrated account profile: distinct account identity and intentional editor entry */
+.profile-account-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:34px 0 18px;padding:24px 26px;border:1px solid #d9c5ff35;border-radius:24px;background:linear-gradient(115deg,#33264fdd,#1b1930dd);box-shadow:0 18px 48px #07051055}
+.profile-account-heading h1{font:clamp(30px,5vw,48px)/1.1 Georgia,serif;margin:8px 0}
+.profile-account-heading p{margin:0}
+.profile-edit-trigger{white-space:nowrap;min-height:48px}
+.profile-media-editor[hidden]{display:none!important}
+.profile-media-editor{margin:0 0 22px;scroll-margin-top:90px;border-color:#d9c5ff77;background:linear-gradient(145deg,#33264feF,#1b1930f5)}
+.profile-editor-heading{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.profile-editor-heading h2{font:26px Georgia,serif;margin:5px 0}
+.profile-media-choice{display:flex;flex-direction:column;gap:3px;padding:12px 14px;border:1px solid #d9c5ff33;border-radius:14px;background:#ffffff08}
+.profile-media-choice span,.profile-character-link span{color:var(--muted);font-size:12px}
+.profile-character-link{display:flex;flex-direction:column;gap:3px;margin-top:10px;padding:10px 13px;border-left:2px solid #d8baff;border-radius:0 12px 12px 0;background:#ffffff08}
+.profile-quick-nav{position:sticky;top:68px;z-index:5;display:flex;gap:8px;overflow-x:auto;padding:12px 0;background:#17152ce8;backdrop-filter:blur(14px);scrollbar-width:thin}
+.profile-nav-action{flex:0 0 auto}
+.profile-nav-action.is-current{border-color:#e6d1ff;background:#e4d0ff;color:#241a35}
+@media(max-width:680px){.profile-account-heading{align-items:flex-start;flex-direction:column;padding:20px}.profile-edit-trigger{width:100%}.profile-quick-nav{top:58px}.profile-editor-heading{align-items:flex-start}.profile-media-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.profile-account-heading,.profile-media-editor,.profile-nav-action{scroll-behavior:auto;transition:none}}
