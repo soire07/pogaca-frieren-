@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseAnimeNewsRss, setNotificationPreference, getNotificationPreferences, claimDueAnimeNewsDigests, getEventReminderRecipients } from '../news-birds.js';
+import { parseAnimeNewsRss, buildAnimeNewsDigestEmbeds, classifyAnimeNews, setNotificationPreference, getNotificationPreferences, claimDueAnimeNewsDigests, getEventReminderRecipients } from '../news-birds.js';
 
 test('RSS parser extracts bounded safe titles, summaries and HTTPS article links',()=>{
  const xml='<?xml version="1.0"?><rss><channel><item><title><![CDATA[Frieren: New Arc & Cast]]></title><link>https://www.animenewsnetwork.com/news/2026-11-04/test</link><guid>ann-1</guid><pubDate>Wed, 04 Nov 2026 12:00:00 GMT</pubDate><description><![CDATA[<p>New <b>anime</b> update &amp; details.</p>]]></description></item></channel></rss>';
@@ -14,6 +14,29 @@ test('RSS parser extracts bounded safe titles, summaries and HTTPS article links
 test('RSS parser drops malformed dates, unsafe links and oversized titles',()=>{
  const xml='<rss><item><title>Bad date</title><link>https://www.animenewsnetwork.com/a</link><guid>1</guid><pubDate>not a date</pubDate></item><item><title>Unsafe</title><link>javascript:alert(1)</link><guid>2</guid><pubDate>Wed, 04 Nov 2026 12:00:00 GMT</pubDate></item></rss>';
  assert.deepEqual(parseAnimeNewsRss(xml),[]);
+});
+
+
+test('RSS parser extracts a safe source image and source attribution',()=>{
+ const xml='<rss><item><title>New Anime Season</title><link>https://www.animenewsnetwork.com/news/2026-11-05/test</link><guid>ann-image-1</guid><pubDate>Wed, 05 Nov 2026 12:00:00 GMT</pubDate><description>New season announced.</description><media:thumbnail url="https://cdn.animenewsnetwork.com/thumbnails/test.jpg"/></item></rss>';
+ const items=parseAnimeNewsRss(xml);
+ assert.equal(items[0].imageUrl,'https://cdn.animenewsnetwork.com/thumbnails/test.jpg');
+ assert.equal(items[0].sourceName,'Anime News Network');
+});
+
+test('digest renderer creates a highlighted clickable lead and a compact linked story list',()=>{
+ const embeds=buildAnimeNewsDigestEmbeds([
+  {title:'Nintendo Switch 2 sales',link:'https://www.animenewsnetwork.com/news/2026-11-05/game',summary:'Game sales update.',sourceName:'Anime News Network',imageUrl:'https://cdn.animenewsnetwork.com/thumb.jpg'},
+  {title:'New Manga License',link:'https://www.animenewsnetwork.com/news/2026-11-05/manga',summary:'A new manga license.'}
+ ],new Date('2026-11-05T12:00:00.000Z'));
+ assert.equal(embeds.length,2);
+ assert.equal(embeds[0].title,'Nintendo Switch 2 sales');
+ assert.equal(embeds[0].url,'https://www.animenewsnetwork.com/news/2026-11-05/game');
+ assert.equal(embeds[0].image.url,'https://cdn.animenewsnetwork.com/thumb.jpg');
+ assert.equal(embeds[0].fields[0].value,'Oyun');
+ assert.match(embeds[1].fields[0].value,/\\[Haberi oku/);
+ assert.equal(classifyAnimeNews('Titan Manga licenses new titles'),'Manga');
+ assert.deepEqual(buildAnimeNewsDigestEmbeds([{title:'unsafe',link:'https://example.com/article'}]),[]);
 });
 
 test('notification preferences are category-scoped and upserted with explicit booleans',async()=>{
