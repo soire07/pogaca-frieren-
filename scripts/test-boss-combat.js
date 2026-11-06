@@ -336,6 +336,8 @@ test('Domaltazor uses its periodic Katun Judgment heavy strike', async () => {
 test('raid title drops are inserted into the existing user title collection inside reward settlement', async () => {
   const rewards = await (await import('node:fs/promises')).readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
   assert.match(rewards, /titleDropUsers = \[\]/);
+  const raid = await (await import('node:fs/promises')).readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(raid, /const titleDropUsers=win \\? rollRaidBossTitleDrops\\(BOSS, ids, Math\\.random\\) : \\[\\]/);
   assert.match(rewards, /INSERT INTO user_titles\(guild_id,user_id,title\)/);
   assert.match(rewards, /ON CONFLICT\(guild_id,user_id,title\) DO NOTHING RETURNING title/);
   assert.match(rewards, /return \{ status: 'settled', masteryResults, titleDrops \}/);
