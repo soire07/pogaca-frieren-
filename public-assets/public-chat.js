@@ -49,7 +49,7 @@
     const button=document.createElement('button');button.type='button';button.className='public-chat-reaction';button.textContent=emoji+' '+(reaction?.count||0);button.setAttribute('aria-pressed',String(Boolean(reaction?.reacted)));button.dataset.chatReact=item.message_id;button.dataset.emoji=emoji;
     if(form)actions.append(button);
    }
-   if(form&&!item.is_own){const block=document.createElement('button');block.type='button';block.className='public-chat-action';block.textContent='Engelle';block.dataset.chatBlock=item.message_id;actions.append(block);}
+   if(form&&!item.is_own){const report=document.createElement('button');report.type='button';report.className='public-chat-action';report.textContent='Bildir';report.dataset.chatReport=item.message_id;actions.append(report);const block=document.createElement('button');block.type='button';block.className='public-chat-action';block.textContent='Engelle';block.dataset.chatBlock=item.message_id;actions.append(block);}
    if(actions.children.length)body.append(actions);
    li.append(avatar,body);fragment.append(li);
   }
@@ -101,6 +101,7 @@
     if(button.dataset.chatEdit){const current=button.closest('.public-chat-message')?.querySelector('.public-chat-message-text')?.textContent||'';const body=window.prompt('Mesajını düzenle (15 dakika içinde):',current);if(body===null)return;await postAction('/api/public-chat/messages/edit',{messageId:button.dataset.chatEdit,body});say('Mesaj güncellendi.');await refresh();return;}
     if(button.dataset.chatDelete){if(!window.confirm('Bu mesajı silmek istiyor musun?'))return;await postAction('/api/public-chat/messages/delete',{messageId:button.dataset.chatDelete});say('Mesaj silindi.');await refresh();return;}
     if(button.dataset.chatPin){await postAction('/api/public-chat/pins',{messageId:button.dataset.chatPin});say('Sabitleme durumu güncellendi.');await refresh();return;}
+    if(button.dataset.chatReport){const reason=window.prompt('Bildirim nedeni: spam, harassment, inappropriate veya other','other');if(!reason)return;await postAction('/api/public-chat/reports',{messageId:button.dataset.chatReport,reason});say('Mesaj bildirimin alındı.');return;}
     if(button.dataset.chatBlock){if(!window.confirm('Bu kullanıcının mesajlarını gizlemek istiyor musun?'))return;await postAction('/api/public-chat/blocks',{messageId:button.dataset.chatBlock});say('Kullanıcı engellendi.');await refresh();}
    }catch(error){say(error.message||'İşlem tamamlanamadı.');}
   });
