@@ -56,3 +56,17 @@ test('configured site owner can pin and pause chat through CSRF-protected endpoi
  try{for(const [path,expected] of [['/api/public-chat/pins','pinned'],['/api/public-chat/control','updated']]){const form=new URLSearchParams({csrf:createSiteCsrfToken(secret),messageId:'123e4567-e89b-12d3-a456-426614174000',paused:'true'});const req=Readable.from([Buffer.from(form.toString())]);Object.assign(req,{method:'POST',url:path,headers:{cookie:cookieFor(account),'content-type':'application/x-www-form-urlencoded'}});const res=response();await handlePublicSiteRequest(req,res,{db});assert.equal(res.status,200,path);assert.match(res.body,new RegExp(expected));}}
  finally{if(previous===undefined)delete process.env.FRIEREN_OWNER_ACCOUNT_IDS;else process.env.FRIEREN_OWNER_ACCOUNT_IDS=previous;}
 });
+
+test('Discord-linked bot owner can pin and pause chat without an environment account allowlist',async()=>{
+ const previous=process.env.FRIEREN_OWNER_ACCOUNT_IDS;delete process.env.FRIEREN_OWNER_ACCOUNT_IDS;
+ const seen=[];
+ const db={async query(sql,params){seen.push({sql,params});if(sql.includes('FROM site_discord_links'))return{rows:[{ '?column?':1 }],rowCount:1};if(sql.startsWith('UPDATE frieren_public_chat_messages'))return{rows:[{pinned_at:new Date()}],rowCount:1};if(sql.startsWith('UPDATE frieren_public_chat_control'))return{rows:[{is_paused:true,updated_at:new Date()}],rowCount:1};return{rows:[],rowCount:0};}};
+ try{
+  for(const [path,expected] of [['/api/public-chat/pins','pinned'],['/api/public-chat/control','updated']]){
+   const form=new URLSearchParams({csrf:createSiteCsrfToken(secret),messageId:'123e4567-e89b-12d3-a456-426614174000',paused:'true'});
+   const req=Readable.from([Buffer.from(form.toString())]);Object.assign(req,{method:'POST',url:path,headers:{cookie:cookieFor(account),'content-type':'application/x-www-form-urlencoded'}});
+   const res=response();await handlePublicSiteRequest(req,res,{db});assert.equal(res.status,200,path);assert.match(res.body,new RegExp(expected));
+  }
+  assert.equal(seen.filter(x=>x.sql.includes('FROM site_discord_links')&&x.params?.[1]==='1553794496234262641').length,2);
+ }finally{if(previous===undefined)delete process.env.FRIEREN_OWNER_ACCOUNT_IDS;else process.env.FRIEREN_OWNER_ACCOUNT_IDS=previous;}
+});
