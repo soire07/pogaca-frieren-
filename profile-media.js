@@ -55,6 +55,7 @@ export async function saveProfileMedia(db,accountId,kind,input){
 
 export async function getProfileMedia(db,accountId,kind){
   if(!ACCOUNT.test(String(accountId||''))||!KINDS.has(kind))return null;
+  await ensureProfileMediaSchema(db);
   const result=await db.query('SELECT mime_type,media_data,width,height FROM frieren_profile_media WHERE account_id=$1 AND media_kind=$2',[accountId.slice(5),kind]);
   return result.rows[0]||null;
 }
