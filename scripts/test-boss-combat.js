@@ -14,6 +14,7 @@ import {
   advanceAuraSealProgress,
   shouldAwakenAuraSecretForm,
   calculateAuraFinalStandDamage,
+  rollAuraFormLoot,
   progressionMilestone,
   getSpellMasteryAwakening,
   shouldGuaranteeRareDiscovery,
@@ -498,4 +499,17 @@ test('Aura battle mechanics support barriers, illusions, seals, secret awakening
   assert.ok(calculateAuraFinalStandDamage(100, 20, true) < calculateAuraFinalStandDamage(100, 20, false));
   const aura = RAID_BOSSES.find(boss => boss.id === 'fallen-mage');
   assert.equal(getRaidBossForm(aura, 4).special, 'twilight-cataclysm');
+});
+
+test('Aura form-specific drops are rare, phase-bound and never leak to other bosses', () => {
+  const aura = RAID_BOSSES.find(boss => boss.id === 'fallen-mage');
+  assert.equal(rollAuraFormLoot(aura, 2, () => 0.079), '🪽 Düşmüş Melek Kanatları');
+  assert.equal(rollAuraFormLoot(aura, 2, () => 0.08), null);
+  assert.equal(rollAuraFormLoot(aura, 3, () => 0.049), '☀️ Melek Aura’nın Işık Tacı');
+  assert.equal(rollAuraFormLoot(aura, 4, () => 0.019), '🌗 Alacakaranlık Aura Kalıntısı');
+  assert.equal(rollAuraFormLoot(RAID_BOSSES.find(boss => boss.id === 'glass-wyrm'), 4, () => 0), null);
+  const { equipmentItems } = await import('../equipment-data.js');
+  for (const name of ['Auranın Mühürlü Asa Parçası', '🪽 Düşmüş Melek Kanatları', '☀️ Melek Aura’nın Işık Tacı', '🌗 Alacakaranlık Aura Kalıntısı']) {
+    assert.ok(equipmentItems.some(item => item.name === name && item.dropOnly), name);
+  }
 });
