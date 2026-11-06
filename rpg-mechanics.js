@@ -9,6 +9,13 @@ export const RAID_BOSSES = [
 
 export function getRaidBossForm(boss, phase) {
   if (boss?.id !== 'fallen-mage') return null;
+  if (phase >= 4) return {
+    name: 'Kutsal ve Düşmüş Aura',
+    title: '🌗 GİZLİ FORM: KUTSAL VE DÜŞMÜŞ AURA',
+    description: 'Kutsal ışık ve karanlık mana birleşir; Alacakaranlık Felaketi tüm takımı hedef alır.',
+    attackMultiplier: 1.55,
+    special: 'twilight-cataclysm'
+  };
   if (phase >= 3) return {
     name: 'Melek Aura',
     title: '☀️ MELEK FORMU',
@@ -30,6 +37,35 @@ export function getRaidBossForm(boss, phase) {
     attackMultiplier: 1,
     special: 'mana-curse'
   };
+}
+
+
+export function getAuraBarrier(phase, round) {
+  if (phase < 2 || round % 4 !== 0) return null;
+  return round % 8 === 0 ? 'spell' : 'attack';
+}
+export function applyAuraBarrier(damage, action, barrier) {
+  const value = Math.max(0, Math.floor(Number(damage) || 0));
+  return barrier && barrier === action ? Math.max(1, Math.floor(value * 0.55)) : value;
+}
+export function applyAuraIllusion(damage, phase, round, action) {
+  const value = Math.max(0, Math.floor(Number(damage) || 0));
+  if (phase < 2 || round % 4 !== 1 || action === 'spell') return value;
+  return Math.max(1, Math.floor(value * 0.65));
+}
+export function advanceAuraSealProgress(progress, usedSpell) {
+  const current = Math.max(0, Math.min(3, Math.floor(Number(progress) || 0)));
+  return usedSpell ? Math.min(3, current + 1) : current;
+}
+export function shouldAwakenAuraSecretForm(seals, random = Math.random) {
+  const roll = Number(random());
+  return Math.max(0, Math.floor(Number(seals) || 0)) >= 3 && Number.isFinite(roll) && roll < 0.15;
+}
+export function calculateAuraFinalStandDamage(rawDamage, defense, defending = false) {
+  const raw = Math.max(1, Math.floor(Number(rawDamage) || 1));
+  const guard = Math.max(0, Math.floor(Number(defense) || 0));
+  const mitigated = Math.max(1, raw - Math.floor(guard * 0.35));
+  return defending ? Math.max(1, Math.floor(mitigated * 0.45)) : mitigated;
 }
 
 export function chooseRaidBoss(random = Math.random, bosses = RAID_BOSSES) {
