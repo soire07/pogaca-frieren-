@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
-const ID=/^\\d{17,20}$/;
+const ID=/^\d{17,20}$/;
 const THEMES=new Set(['midnight','violet','starlight','forest']);
 const KINDS=new Set(['task','note','event']);
 const REPORT_REASONS=new Set(['harassment','spam','cheating','inappropriate','other']);
 const validId=(v)=>ID.test(String(v||''));
 function player(g,u){if(!validId(g)||!validId(u))throw new Error('PERSONAL_CENTER_ID_INVALID');}
 function pair(g,a,b){player(g,a);player(g,b);if(a===b)throw new Error('PERSONAL_CENTER_SELF_ACTION');}
-function cleanText(value,max,code,{optional=false}={}){const s=String(value??'').trim();if((!optional&&!s)||s.length>max||/[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(s))throw new Error(code);return s;}
+function cleanText(value,max,code,{optional=false}={}){const s=String(value??'').trim();if((!optional&&!s)||s.length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(s))throw new Error(code);return s;}
 async function tx(db,fn){if(typeof db.connect!=='function')return fn(db);const c=await db.connect();try{await c.query('BEGIN');const result=await fn(c);await c.query('COMMIT');return result;}catch(e){await c.query('ROLLBACK').catch(()=>{});throw e;}finally{c.release();}}
 
 export async function ensurePersonalCenterSchema(db){
