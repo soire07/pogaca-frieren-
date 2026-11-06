@@ -39,7 +39,7 @@ test('/health supports HEAD requests for HTTP monitoring without sending a body'
 
   assert.equal(handled, true);
   assert.equal(res.statusCode, 200);
-  assert.match(res.headers['Content-Type'], /application\\/json/);
+  assert.equal(res.headers['Content-Type'], 'application/json; charset=utf-8');
   assert.equal(res.headers['Cache-Control'], 'no-store');
   assert.equal(res.body, '');
   assert.equal(databaseQueries, 0);
@@ -76,7 +76,7 @@ test('/health is a lightweight liveness probe and never queries PostgreSQL', asy
 
   assert.equal(handled, true);
   assert.equal(res.statusCode, 200);
-  assert.match(res.headers['Content-Type'], /application\\/json/);
+  assert.equal(res.headers['Content-Type'], 'application/json; charset=utf-8');
   assert.equal(res.headers['Cache-Control'], 'no-store');
   assert.deepEqual(JSON.parse(res.body), {
     status: 'alive',
