@@ -686,3 +686,62 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 
 /* Owner-only community chat report queue */
 .public-chat-reports{display:grid;gap:12px;margin-top:14px;max-height:420px;overflow:auto;overscroll-behavior:contain}.public-chat-report-item{display:grid;gap:8px;padding:12px;border:1px solid rgba(164,137,255,.24);border-radius:14px;background:rgba(20,15,38,.72);min-width:0}.public-chat-report-item p{margin:0;overflow-wrap:anywhere}.public-chat-report-item small{color:var(--muted,#b7b0c9);overflow-wrap:anywhere}.public-chat-report-item .public-chat-actions{display:flex;flex-wrap:wrap;gap:8px}.public-chat-report-item .public-chat-action{min-height:38px}@media(max-width:600px){.public-chat-reports{max-height:55vh}.public-chat-report-item{padding:10px}.public-chat-report-item .public-chat-actions>*{flex:1 1 110px}}
+
+
+/* Public account profile redesign */
+.public-account-profile{width:min(100% - 32px,1040px);min-height:0;height:auto!important;margin:34px auto 24px;padding:0 0 12px}
+.public-profile-hero{position:relative;isolation:isolate;overflow:hidden;border:1px solid color-mix(in srgb,var(--profile-accent,#a78bfa) 55%,transparent);border-radius:28px;background:linear-gradient(145deg,#201a35,#100e1d 72%);box-shadow:0 22px 65px #05040d66}
+.public-profile-banner{display:block;width:100%;height:clamp(190px,29vw,330px);object-fit:cover;object-position:center;background:radial-gradient(ellipse at 50% 30%,#9374c7,#1b1630 72%)}
+.public-profile-identity{position:relative;display:flex;align-items:center;flex-direction:column;padding:0 24px 26px;text-align:center;background:linear-gradient(180deg,#171326,#100e1df7)}
+.public-profile-avatar-row{position:relative;display:flex;align-items:center;justify-content:center;width:100%;min-height:90px;margin-top:-76px}
+.public-profile-avatar{display:block;width:148px;height:148px;flex:0 0 148px;object-fit:cover;border:7px solid #211a36;border-radius:50%;background:#171326;box-shadow:0 10px 34px #05040dcc}
+.public-profile-status{position:absolute;left:calc(50% + 88px);top:50%;transform:translateY(-50%);max-width:min(340px,calc(50% - 112px));margin:0;padding:11px 16px;border:1px solid color-mix(in srgb,var(--profile-accent,#a78bfa) 55%,transparent);border-radius:18px 18px 18px 5px;background:#29213c;color:#f2eaff;font-size:13px;line-height:1.45;text-align:left;overflow-wrap:anywhere;box-shadow:0 8px 24px #05040d66}
+.public-profile-status-dot{display:inline-block;width:7px;height:7px;margin:0 7px 1px 0;border-radius:50%;background:#a9e6bd;box-shadow:0 0 10px #a9e6bd88}
+.public-profile-identity h1{max-width:100%;margin:12px 0 4px;color:#fff;font:clamp(30px,5vw,44px)/1.15 Georgia,serif;text-align:center;overflow-wrap:anywhere}
+.public-profile-badges{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:8px;margin:10px 0 15px}
+.public-profile-badge{display:inline-flex;align-items:center;min-height:29px;padding:5px 12px;border:1px solid color-mix(in srgb,var(--profile-accent,#a78bfa) 55%,transparent);border-radius:999px;background:color-mix(in srgb,var(--profile-accent,#a78bfa) 14%,#171326);color:#eee2ff;font-size:11px;font-weight:700;line-height:1.25}
+.public-profile-follow-stats{display:flex;justify-content:center;gap:12px;margin:0 auto 16px}
+.public-profile-follow-stats>div{display:flex;align-items:center;gap:7px;min-width:116px;padding:9px 16px;border:1px solid #c9b3e633;border-radius:14px;background:#ffffff08}
+.public-profile-follow-stats strong{color:#fff;font-size:19px;font-variant-numeric:tabular-nums}
+.public-profile-follow-stats span{color:#c9bddb;font-size:12px}
+.public-profile-actions{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:9px;width:100%}
+.public-profile-actions form{margin:0}
+.public-profile-actions .btn{min-width:120px;min-height:40px}
+.public-profile-content{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:16px;margin:20px 0 0}
+.public-profile-section,.account-public-activity{min-width:0;height:auto!important;margin:0;padding:22px;border:1px solid #d6c2f12b;border-radius:20px;background:linear-gradient(145deg,#211a36ee,#100f20f5);box-shadow:0 12px 35px #05040d33}
+.public-profile-bio{grid-column:1/-1}
+.public-profile-section-heading{display:flex;align-items:center;gap:10px;margin:0 0 13px}
+.public-profile-section-heading>span{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:#a78bfa20;color:#d8c2ff;font-size:11px;font-weight:800}
+.public-profile-section-heading h2,.account-public-activity h2{margin:0;color:#f3eaff;font:23px/1.25 Georgia,serif}
+.public-profile-section p{margin:0;color:#d4c9e2;line-height:1.8;overflow-wrap:anywhere;white-space:pre-wrap}
+.public-profile-chip-list{display:flex;align-items:center;flex-wrap:wrap;gap:9px;min-width:0}
+.public-profile-chip{display:inline-flex;align-items:center;max-width:100%;min-height:34px;padding:7px 12px;border:1px solid #ad91dc55;border-radius:11px;background:#a78bfa13;color:#e7d9ff;font-size:12px;line-height:1.35;overflow-wrap:anywhere}
+.public-profile-tags .public-profile-chip{border-color:#d69bc955;background:#d69bc914;color:#f4d9ed}
+.public-profile-empty{color:#9e91b2;font-size:13px}
+.public-profile-social{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.public-profile-social a{display:inline-flex;max-width:100%;padding:8px 12px;border:1px solid #b99be955;border-radius:10px;color:#eadbff;text-decoration:none;overflow-wrap:anywhere}
+.public-profile-social a:hover{background:#b99be922}
+.account-public-activity{grid-column:1/-1;min-width:0}
+.account-public-activity ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:15px 0 0;padding:0;list-style:none}
+.account-public-activity li{display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0;padding:13px 14px;border:1px solid #cbb5e52b;border-radius:13px;background:#ffffff06;line-height:1.5}
+.account-public-activity li strong{max-width:100%;color:#eee5fa;font-size:13px;font-weight:650;line-height:1.55;overflow-wrap:anywhere;word-break:normal}
+.account-public-activity li small{max-width:100%;color:#a99bbd;font-size:11px;line-height:1.45;overflow-wrap:anywhere}
+.public-profile-private{max-width:700px;margin:40px auto;text-align:center}
+@media(max-width:680px){
+ .public-account-profile{width:min(100% - 22px,1040px);margin:18px auto 22px}
+ .public-profile-hero{border-radius:20px}
+ .public-profile-banner{height:190px}
+ .public-profile-identity{padding:0 14px 20px}
+ .public-profile-avatar-row{min-height:82px;margin-top:-58px}
+ .public-profile-avatar{width:116px;height:116px;flex-basis:116px;border-width:5px}
+ .public-profile-status{left:calc(50% + 66px);max-width:calc(50% - 78px);padding:8px 10px;font-size:11px}
+ .public-profile-identity h1{font-size:30px}
+ .public-profile-follow-stats{gap:8px}
+ .public-profile-follow-stats>div{min-width:0;padding:8px 13px}
+ .public-profile-content{grid-template-columns:1fr;gap:12px;margin-top:12px}
+ .public-profile-bio,.account-public-activity{grid-column:auto}
+ .public-profile-section,.account-public-activity{padding:17px;border-radius:16px}
+ .account-public-activity ul{grid-template-columns:1fr;gap:8px}
+}
+@media(min-width:681px) and (max-width:900px){.public-profile-content{gap:12px}.public-profile-section,.account-public-activity{padding:18px}}
+@media(prefers-reduced-motion:no-preference){.public-profile-section,.account-public-activity{transition:border-color .18s ease,transform .18s ease}.public-profile-section:hover,.account-public-activity:hover{border-color:#b99be966;transform:translateY(-2px)}}

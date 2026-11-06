@@ -1308,11 +1308,23 @@ test('public account profile route is reachable without login and honors activit
   }};
   const response=res();assert.equal(await handlePublicSiteRequest({method:'GET',url:'/u/soiree',headers:{}},response,{db}),true);
   assert.equal(response.status,200);
-  if(showActivity){assert.match(response.body,/Son etkinlikler/);assert.match(response.body,/Profilini güncelledi/);assert.ok(queries.some(sql=>sql.includes('SELECT activity_type,label,created_at')));}
+  for(const section of ['public-account-profile','public-profile-hero','public-profile-banner','public-profile-avatar-row','public-profile-status','public-profile-follow-stats','public-profile-bio','public-profile-chip-list','public-profile-tags','public-profile-social']) assert.ok(response.body.includes(section),section);
+  assert.match(response.body,/Takipçi/);assert.match(response.body,/Takip</);
+  if(showActivity){assert.match(response.body,/Son etkinlikler/);assert.match(response.body,/account-public-activity/);assert.match(response.body,/Profilini güncelledi/);assert.ok(queries.some(sql=>sql.includes('SELECT activity_type,label,created_at')));}
   else{assert.doesNotMatch(response.body,/Son etkinlikler/);assert.ok(!queries.some(sql=>sql.includes('SELECT activity_type,label,created_at')));}
  }
 });
 
+test('public account profile layout has responsive centered sections and bounded activity cards',async()=>{
+ const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
+ assert.match(css,/\.public-profile-identity\{[^}]*text-align:center/);
+ assert.match(css,/\.public-profile-status\{[^}]*position:absolute/);
+ assert.match(css,/\.public-profile-follow-stats/);
+ assert.match(css,/\.public-profile-section,\.account-public-activity\{[^}]*height:auto!important/);
+ assert.match(css,/@media\(max-width:680px\)[\s\S]*?\.public-profile-content\{grid-template-columns:1fr/);
+ assert.match(css,/\.account-public-activity li strong\{[^}]*overflow-wrap:anywhere/);
+});
+ 
 test('linked adventurer cards show a medium class emblem in the upper-right corner for each class', async () => {
   const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
   const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
@@ -1385,7 +1397,7 @@ test('dedicated user center pages expose the new account, social and life naviga
  assert.match(source,/inventory-center-page/);
  assert.match(source,/notification-center-page/);
  assert.match(source,/public-assets\/user-center\.js', 'public-assets\/public-chat\.js'].includes/);
- assert.match(source,/site\.css\?v=account-profile-chat-272/);
+ assert.match(source,/site\.css\?v=public-profile-redesign-273/);
  assert.match(styles,/\.social-center-page/);
  assert.match(styles,/\.user-center-tabs/);
 });
