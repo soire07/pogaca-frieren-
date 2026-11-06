@@ -533,3 +533,10 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .user-center-page .empty-state{color:#c8bdd8;border-style:dashed}
 @media(max-width:680px){.user-center-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.social-actions-section .portal-grid{grid-template-columns:1fr}.user-center-tabs{top:56px}}
 @media(prefers-reduced-motion:reduce){.user-center-hero,.user-center-tabs{scroll-behavior:auto;transition:none}}
+
+.profile-media-grid .profile-media-control{display:flex;min-height:220px;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:18px;border:1px solid #d8baff55;border-radius:18px;background:#ffffff08;cursor:pointer;text-align:center;transition:border-color .18s ease,background .18s ease}
+.profile-media-grid .profile-media-control:hover,.profile-media-grid .profile-media-control:focus-within{border-color:#e4d1ff;background:#ffffff12}
+.profile-media-grid .profile-media-control span{font-weight:700;color:#f1e8ff}
+.profile-media-grid .profile-media-control input{max-width:100%;font-size:12px}
+.profile-media-choice{display:none}
+@media(max-width:560px){.profile-media-grid .profile-media-control{min-height:190px;padding:14px}}
