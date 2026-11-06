@@ -111,7 +111,14 @@ const duplicates = names.filter((name, index) => names.indexOf(name) !== index);
 if (duplicates.length) {
   throw new Error('Tekrarlanan slash komut adları: ' + [...new Set(duplicates)].join(', '));
 }
-console.log(`Kaydedilmeye hazır ${commands.length} komut doğrulandı.`);
+console.log(`Kaydedilmeye hazır ${commands.length} komut doğrulandı.`);\n\nconst globalCommandNames = ['haberleri-ayarla', 'haberleri-kapat'];
+const globalCommands = globalCommandNames.map(name => {
+  const command = commands.find(candidate => candidate.name === name);
+  if (!command) throw new Error('Global allowlist command missing: /' + name);
+  return command;
+});
+const guildCommands = commands.filter(command => !globalCommandNames.includes(command.name));
+
 
 // Keep discord.js's route tracking, but reject 429s so this script controls the
 // retry boundary. Re-queueing at the exact reset boundary caused repeated 429s.
@@ -233,7 +240,7 @@ const testCommandNames = [...new Set(
     .filter(Boolean)
 )];
 if (!configuredGuildIds.length && !testGuildId) {
-  throw new Error('Configure either GUILD_IDS or TEST_GUILD_ID; global command registration is disabled.');
+  throw new Error('Configure either GUILD_IDS or TEST_GUILD_ID; guild command targets are required before global allowlist registration.');
 }
 if (testGuildId && !testCommandNames.length) {
   throw new Error('TEST_GUILD_ID requires an explicit TEST_COMMAND_NAMES allowlist.');
@@ -242,10 +249,10 @@ if (testGuildId && configuredGuildIds.includes(testGuildId)) {
   throw new Error('The test guild must not also be listed as a production guild.');
 }
 const testCommands = testGuildId
-  ? commands.filter(command => testCommandNames.includes(command.name))
+  ? guildCommands.filter(command => testCommandNames.includes(command.name))
   : [];
 if (testGuildId) {
-  const missingTestCommands = testCommandNames.filter(name => !commands.some(command => command.name === name));
+  const missingTestCommands = testCommandNames.filter(name => !guildCommands.some(command => command.name === name));
   if (missingTestCommands.length) {
     throw new Error('Configured test commands were not found: ' + missingTestCommands.map(name => '/' + name).join(', '));
   }
@@ -263,7 +270,7 @@ if (testGuildId) {
 try {
   console.log(targetDescription);
   await publishCommitStatus('pending', targetDescription);
-  console.log(`Discord command sync starting: ${commands.length} production commands and ${testCommands.length} test commands.`);
+  console.log(`Discord command sync starting: ${guildCommands.length} guild commands, ${globalCommands.length} global allowlist commands and ${testCommands.length} test commands.`);
 
   // Resolve every target before any command list is changed. Never fall back to global registration.
   const targetGuilds = [];
@@ -272,7 +279,7 @@ try {
     if (String(guild?.id) !== guildId || typeof guild?.name !== 'string') {
       throw new Error('A configured production guild ID did not resolve to the expected Discord guild.');
     }
-    targetGuilds.push({ id: guild.id, name: guild.name, commands, kind: 'production' });
+    targetGuilds.push({ id: guild.id, name: guild.name, commands: guildCommands, kind: 'production' });
   }
   if (testGuildId) {
     const guild = await discordRequest(Routes.guild(testGuildId));
@@ -354,14 +361,20 @@ try {
     console.log(`Updated ${guild.commands.length} commands in ${guild.name} (${guild.kind}, ID ending ${guild.id.slice(-4)}).`);
   }
 
-  // Clear legacy global duplicates only when they actually exist.
+  // Only the two approved news controls are globally available.
+  // Every other slash command remains guild-scoped.
   const globalRoute = Routes.applicationCommands(clientId);
   const existingGlobalCommands = await discordRequest(globalRoute);
-  if (existingGlobalCommands.length) {
-    await putWithDiagnostics(globalRoute, [], 'clear legacy global commands');
-    console.log('Legacy global command registrations cleared after every configured guild was verified.');
+  const existingGlobalByName = new Map(existingGlobalCommands.map(command => [command.name, command]));
+  const sameGlobalNames = existingGlobalCommands.length === globalCommands.length
+    && globalCommands.every(command => existingGlobalByName.has(command.name));
+  const sameGlobalDefinitions = sameGlobalNames
+    && globalCommands.every(command => matchesDesiredCommand(existingGlobalByName.get(command.name), command));
+  if (sameGlobalDefinitions) {
+    console.log('Global news command allowlist unchanged; skipped write to preserve daily quota.');
   } else {
-    console.log('No legacy global commands found; skipped unnecessary global command write.');
+    await putWithDiagnostics(globalRoute, globalCommands, 'global news command allowlist');
+    console.log('Registered only /haberleri-ayarla and /haberleri-kapat globally.');
   }
 
   await publishCommitStatus('success', targetDescription);
