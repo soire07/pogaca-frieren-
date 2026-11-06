@@ -746,7 +746,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
     try{
       const result=await sendPublicChatMessage(db,{accountId:session.id,username:session.username,body:form.get('message'),replyToMessageId:form.get('replyToMessageId')||null});
-      const status=result.status==='sent'?201:result.status==='rate_limited'?429:400;
+      const status=result.status==='sent'?201:result.status==='rate_limited'?429:result.status==='chat_paused'?423:400;
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
     }catch(error){
       const code=String(error?.message||'');
