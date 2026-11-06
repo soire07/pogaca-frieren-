@@ -50,9 +50,9 @@ function safeFeedUrl(value, allowedHosts) {
 
 export function parseAnimeNewsRss(xml, source = ANIME_NEWS_SOURCES[0]) {
   const sourceXml = String(xml || '');
-  if (source.length > 2_000_000) throw new Error('NEWS_BIRD_FEED_TOO_LARGE');
+  if (sourceXml.length > 2_000_000) throw new Error('NEWS_BIRD_FEED_TOO_LARGE');
   const items = [];
-  for (const match of source.matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/gi)) {
+  for (const match of sourceXml.matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/gi)) {
     const block = match[1];
     const title = cleanFeedText(readTag(block,'title'),240);
     const rawLink = cleanFeedText(readTag(block,'link'),500);
