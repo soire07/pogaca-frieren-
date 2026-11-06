@@ -43,7 +43,7 @@ export async function listPublicChatMessages(db,{limit=60,viewerAccountId=null}=
   WHERE m.hidden=FALSE AND m.created_at>=NOW()-INTERVAL '7 days'
    AND ($2::text IS NULL OR NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE b.blocker_account_id=$2 AND b.blocked_account_id=m.account_id))
   ORDER BY (m.pinned_at IS NOT NULL) DESC,m.created_at DESC,m.message_id DESC LIMIT $1`,[count,viewer]);
- return result.rows.reverse();
+ return result.rows.reverse().sort((a,b)=>Number(Boolean(b.pinned_at))-Number(Boolean(a.pinned_at)));
 }
 
 export async function sendPublicChatMessage(db,{accountId,username,body,replyToMessageId=null}){
