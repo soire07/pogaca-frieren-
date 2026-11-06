@@ -18,7 +18,7 @@ import { ensureAdventurerPlatformTables, claimDueGuildEventReminders, markGuildE
 import { ensurePlayerMarketTables, claimDuePlayerMarketPriceAlerts, markPlayerMarketPriceAlertNotified, releasePlayerMarketPriceAlertClaim, cancelPlayerMarketPriceAlert } from './player-market.js';
 import { ensureSocialPlatformTables } from './social-platform.js';
 import { ensureAccountCenterSchema } from './account-center.js';
-import { ensureNewsBirdSchema, pollAnimeNewsFeed, claimDueAnimeNewsDigests, markAnimeNewsDigestSent, releaseAnimeNewsDigestClaim, getEventReminderRecipients, setNotificationPreference, buildAnimeNewsDigestEmbeds } from './news-birds.js';
+import { ensureNewsBirdSchema, pollAnimeNewsFeed, claimDueAnimeNewsDigests, markAnimeNewsDigestSent, releaseAnimeNewsDigestClaim, getEventReminderRecipients, setNotificationPreference, buildAnimeNewsDigestEmbeds, translateAnimeNewsItems } from './news-birds.js';
 import { ensureCardVariantSchema } from './card-variants.js';
 import { ensureGuildWorkshopSchema, runGuildSpellAutomations } from './guild-workshop.js';
 import { ensureGuildTeamLeagueSchema } from './guild-team-leagues.js';
@@ -170,7 +170,8 @@ async function processNewsBirdDigests(readyClient = client) {
       try {
         const user = await readyClient.users.fetch(digest.user_id);
         const items = Array.isArray(digest.items) ? digest.items : [];
-        const embeds = buildAnimeNewsDigestEmbeds(items);
+        const translatedItems = await translateAnimeNewsItems(pool, items);
+        const embeds = buildAnimeNewsDigestEmbeds(translatedItems);
         if (!embeds.length) {
           await markAnimeNewsDigestSent(pool, digest.guild_id, digest.user_id);
           continue;
