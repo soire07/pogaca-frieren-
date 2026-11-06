@@ -105,7 +105,7 @@ export function startGuardianMonitor({
   clearIntervalImpl = clearInterval,
   onIncident = async () => {},
   onRepairDispatch = async () => {},
-  onRepairTracking = async () => {},
+  onRepairTracking = null,
   recordSecurityEvent = recordGuardianSecurityEvent,
   onError = error => console.error('Neural Guardian monitor failed:', error?.message || error),
 } = {}) {
@@ -143,10 +143,12 @@ export function startGuardianMonitor({
       } catch (error) {
         onError(error);
       }
-      try {
-        await scanDispatchedGuardianRepairTracking(db, onRepairTracking, 3, onError);
-      } catch (error) {
-        onError(error);
+      if (typeof onRepairTracking === 'function') {
+        try {
+          await scanDispatchedGuardianRepairTracking(db, onRepairTracking, 3, onError);
+        } catch (error) {
+          onError(error);
+        }
       }
       await scanNewOwnerErrors(db, cursor, 50, async nextId => {
         await db.query(
