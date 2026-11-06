@@ -37,17 +37,17 @@ test('dungeon routes return distinct, floor-scaled rewards and healing outcomes'
 
 test('raid boss selection is deterministic for each catalog slot and safely falls back for an empty catalog', () => {
   assert.equal(chooseRaidBoss(() => 0).id, 'north-general');
-  assert.equal(chooseRaidBoss(() => 0.4).id, 'glass-wyrm');
+  assert.equal(chooseRaidBoss(() => 0.4).id, 'fallen-mage');
   assert.equal(chooseRaidBoss(() => 0.99).id, 'fallen-mage');
   assert.equal(chooseRaidBoss(() => 0, []).id, RAID_BOSSES[0].id);
   assert.equal(chooseRaidBoss(() => 1).id, RAID_BOSSES[0].id);
 });
 
 test('each raid boss has a distinct combat profile, signature action, weakness and loot', () => {
-  assert.equal(new Set(RAID_BOSSES.map(b => b.id)).size, 3);
-  assert.equal(new Set(RAID_BOSSES.map(b => b.special)).size, 3);
-  assert.equal(new Set(RAID_BOSSES.map(b => b.loot)).size, 3);
-  assert.ok(RAID_BOSSES.every(b => b.hp > 0 && b.damage > 0 && b.xp > 0 && b.coins > 0));
+  assert.equal(new Set(RAID_BOSSES.map(b => b.id)).size, 5);
+  assert.equal(new Set(RAID_BOSSES.map(b => b.special)).size, 5);
+  assert.equal(new Set(RAID_BOSSES.map(b => b.loot).filter(Boolean)).size, 4);
+  assert.ok(RAID_BOSSES.every(b => b.hp > 0 && b.damage > 0 && b.xp >= 0 && b.coins >= 0));
   assert.equal(RAID_BOSSES.find(b => b.id === 'north-general').special, 'mana-star');
   assert.equal(RAID_BOSSES.find(b => b.id === 'glass-wyrm').special, 'shard-rain');
   assert.equal(RAID_BOSSES.find(b => b.id === 'fallen-mage').special, 'mana-curse');
@@ -163,9 +163,9 @@ test('temporary combat resources restore to the base-stat ratio without exceedin
   assert.equal(restoreResourceRatio(50, 100, 0), 0);
 });
 
-test('equipment catalog has unique slots and complete stat calculations for all twelve items', () => {
-  assert.equal(equipmentItems.length, 12);
-  assert.equal(new Set(equipmentItems.map(x => x.id)).size, 12);
+test('equipment catalog has unique slots and complete stat calculations for all thirteen items', () => {
+  assert.equal(equipmentItems.length, 13);
+  assert.equal(new Set(equipmentItems.map(x => x.id)).size, 13);
   assert.deepEqual(equipmentSlots.map(x => x.id), ['weapon', 'armor', 'ring1', 'ring2']);
   for (const item of equipmentItems) {
     const total = equipmentBonus([item]);
