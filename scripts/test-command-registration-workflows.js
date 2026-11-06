@@ -51,7 +51,8 @@ test('mobile browser smoke runs once per PR update and cancels superseded runs',
   assert.ok(source.includes('cancel-in-progress: true'));
 });
 
-\ntest('only the two approved news setup commands are globally registered', async () => {
+
+test('only the two approved news setup commands are globally registered', async () => {
   const source = await readFile(new URL('../deploy-commands.js', import.meta.url), 'utf8');
   assert.ok(source.includes("const globalCommandNames = ['haberleri-ayarla', 'haberleri-kapat']"));
   assert.ok(source.includes('const guildCommands = commands.filter(command => !globalCommandNames.includes(command.name))'));
