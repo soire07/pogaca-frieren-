@@ -636,3 +636,23 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .public-chat-feedback{color:#ddc9ff}
 .public-chat-empty{color:#c6bad8;text-align:center;padding:38px 10px}
 @media(max-width:620px){.account-profile-grid{grid-template-columns:1fr}.account-profile-identity{padding:0 16px 18px;gap:12px}.account-profile-avatar{width:84px;height:84px;margin-top:-34px}.account-profile-edit{width:100%}.account-profile-card{min-height:0}.public-chat-panel{padding:12px;border-radius:18px}.public-chat-tools{grid-template-columns:1fr;gap:6px}.public-chat-tools>span{justify-self:end}.public-chat-head{align-items:flex-start;flex-direction:column}.public-chat-messages{max-height:360px}}
+
+/* Global account profile personalization */
+.account-profile-editor{margin:20px 0;padding:22px;border:1px solid #b99be955;background:linear-gradient(145deg,#211a36ee,#100f20f5)}
+.account-profile-editor form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.account-profile-editor form>label:first-of-type,.account-profile-editor form>h3,.account-profile-editor form>button{grid-column:1/-1}
+.account-profile-editor label{display:grid;gap:6px;color:#e7dafa;font-size:13px}
+.account-profile-editor input:not([type=checkbox]),.account-profile-editor textarea,.account-profile-editor select{width:100%;min-width:0;padding:10px 12px;border:1px solid #d8c2fa55;border-radius:11px;background:#100e1e;color:#fff;font:inherit}
+.account-profile-editor textarea{min-height:90px;resize:vertical}
+.account-profile-editor .check-row{display:flex;align-items:center;gap:9px}
+.account-profile-editor .check-row input{width:auto}
+.account-profile-showcase{border-color:var(--account-accent,#b99be9)}
+.account-profile-showcase[data-theme=starlight]{background:radial-gradient(ellipse at top,#a78bfa33,transparent 65%),#0b1020}
+.account-profile-showcase[data-theme=forest]{background:radial-gradient(ellipse at top,#65a58a33,transparent 65%),#0c1716}
+.account-profile-showcase[data-theme=violet]{background:radial-gradient(ellipse at top,#9b72d955,transparent 65%),#171026}
+.account-profile-showcase[data-theme=midnight]{background:radial-gradient(ellipse at top,#55517d44,transparent 65%),#10101d}
+.account-profile-identity .btn{border-color:var(--account-accent,#b99be9)}
+.public-chat-profile-link{color:#eadbff;text-decoration:none;font-weight:700}
+.public-chat-profile-link:hover{text-decoration:underline}
+.public-chat-pinned{display:inline-flex;width:max-content;padding:3px 8px;border:1px solid #d5b8ff55;border-radius:99px;color:#e5d2ff;font-size:10px}
+@media(max-width:620px){.account-profile-editor form{grid-template-columns:1fr}.account-profile-editor form>*{grid-column:1/-1}}
