@@ -7,6 +7,7 @@ import { getFarmPlot } from './farming.js';
 import { getCreatureCollection, getCreatureWishlist } from './creatures.js';
 import { getCharacterWishlist } from './character-wishlist.js';
 import { readPublicSiteSession, createPublicSiteSession } from './owner-dashboard.js';
+import { OWNER_ID } from './owner-admin.js';
 import { saveProfileMedia, getProfileMedia, deleteProfileMedia, ensureProfileMediaSchema } from './profile-media.js';
 import { handleSiteAuthRequest, createSiteCsrfToken, verifySiteCsrfToken, ensureSiteAccountSchema } from './site-auth.js';
 import {
@@ -65,6 +66,7 @@ async function enrichSiteUser(db,client,user) {
   try {
     const linked=await db.query('SELECT user_id FROM site_discord_links WHERE account_id=$1 LIMIT 1',[user.id.slice(5)]);
     const discordId=String(linked.rows?.[0]?.user_id||'');
+    enriched.isOwner=discordId===OWNER_ID||isOwnerSiteAccount(user);
     if(/^\d{17,20}$/.test(discordId)&&client?.users?.fetch){
       try { const discordUser=client.users.cache?.get(discordId)||await client.users.fetch(discordId); const avatar=discordUser?.displayAvatarURL?.({extension:'webp',size:256}); if(avatar){enriched.discordAvatarUrl=avatar;enriched.avatarUrl=avatar;} } catch {}
     }
@@ -93,12 +95,15 @@ function isVipSiteAccount(user) {
 }
 
 function isOwnerSiteAccount(user) {
+  if(user?.isOwner===true)return true;
   const accountId = String(user?.id || '');
   if (!SITE_ACCOUNT_ID.test(accountId)) return false;
   const normalized = accountId.replace(/^site_/i, '').toLowerCase();
   const allowed = new Set(String(process.env.FRIEREN_OWNER_ACCOUNT_IDS || '').split(',').map(value => value.trim().replace(/^site_/i, '').toLowerCase()).filter(value => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)));
   return allowed.has(normalized);
 }
+
+async function isLinkedOwnerSiteAccount(db,user){if(isOwnerSiteAccount(user))return true;const id=String(user?.id||'');if(!SITE_ACCOUNT_ID.test(id)||!db)return false;const r=await db.query('SELECT 1 FROM site_discord_links WHERE account_id=$1 AND user_id=$2 LIMIT 1',[id.slice(5),OWNER_ID]);return Boolean(r.rowCount);}
 
 function playerXpProgress(profile, isVip = false, isOwner = false) {
   const xp = Math.max(0, Number.isFinite(Number(profile?.xp)) ? Math.floor(Number(profile.xp)) : 0);
@@ -757,7 +762,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   if(['/api/public-chat/reactions','/api/public-chat/blocks','/api/public-chat/blocks/unblock','/api/public-chat/messages/edit','/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/presence','/api/public-chat/typing','/api/public-chat/read','/api/public-chat/reports','/api/public-chat/control'].includes(url.pathname)&&req.method==='POST'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!requireSiteAccount(res,session?.id))return true;
-    const owner=isOwnerSiteAccount(session);
+    const owner=await isLinkedOwnerSiteAccount(db,session);
     if(['/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/control'].includes(url.pathname)&&!owner){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'owner_only'}));return true;}
     if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'chat_unavailable'}));return true;}
     if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_content_type'}));return true;}
