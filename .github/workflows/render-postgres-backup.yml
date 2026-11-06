@@ -113,7 +113,15 @@ jobs:
         run: |
           set -euo pipefail
           issue_number="$(gh issue list --repo "$REPOSITORY" --state open --search 'in:title Render PostgreSQL backup failed' --json number --jq '.[0].number // empty')"
-          body="Automated PostgreSQL backup or isolated-restore verification failed.\n\nRun: ${RUN_URL}\nCommit: ${GITHUB_SHA}\n\nInspect the failed job logs before taking action. The workflow reads the Render database and restores only into a disposable container. Do not modify production data as part of this alert."
+          body="$(cat <<EOF
+          Automated PostgreSQL backup or isolated-restore verification failed.
+
+          Run: ${RUN_URL}
+          Commit: ${GITHUB_SHA}
+
+          Inspect the failed job logs before taking action. The workflow reads the Render database and restores only into a disposable container. Do not modify production data as part of this alert.
+          EOF
+          )"
           if [ -n "$issue_number" ]; then
             gh issue comment "$issue_number" --repo "$REPOSITORY" --body "$body"
           else
