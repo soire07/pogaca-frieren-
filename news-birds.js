@@ -63,7 +63,7 @@ export function parseAnimeNewsRss(xml, source = ANIME_NEWS_SOURCES[0]) {
     const rawImage = readImageUrl(block);
     const imageUrl = rawImage ? safeFeedUrl(rawImage, source.imageHosts) : null;
     items.push({
-      guid: source.key + ':' + guid, title, link: safeLink,
+      guid: source.key === 'anime_news' ? guid : source.key + ':' + guid, title, link: safeLink,
       summary: cleanFeedText(readTag(block,'description'),500),
       imageUrl, sourceName: source.name,
       publishedAt: date.toISOString()
