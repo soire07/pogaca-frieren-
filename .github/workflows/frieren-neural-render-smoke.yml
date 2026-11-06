@@ -22,7 +22,7 @@ jobs:
     steps:
       - name: Wait for the isolated Render service and load the real GGUF model
         env:
-          NEURAL_TEST_URL: https://frieren-neural-test.onrender.com
+          NEURAL_TEST_URL: https://frieren-neural-test-1unz.onrender.com
         run: |
           set -euo pipefail
           response=""
@@ -42,7 +42,7 @@ jobs:
 
       - name: Verify the public inference endpoint rejects unauthenticated requests
         env:
-          NEURAL_TEST_URL: https://frieren-neural-test.onrender.com
+          NEURAL_TEST_URL: https://frieren-neural-test-1unz.onrender.com
         run: |
           set -euo pipefail
           status="$(curl --silent --output /tmp/neural-auth-response --write-out '%{http_code}' \
