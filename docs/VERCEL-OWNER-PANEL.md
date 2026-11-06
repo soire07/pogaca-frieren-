@@ -22,19 +22,21 @@ This repository remains the single source repository for Poğaça Frieren, Frier
 
 ## Required OAuth hostname configuration
 
-Before using the Vercel hostname, configure these variables on the **main Poğaça Frieren service**:
+Configure these variables on the **main Poğaça Frieren Render service**:
 
 - `OWNER_DASHBOARD_BASE_URL=https://frierenbot.vercel.app`
-- `OWNER_DASHBOARD_REDIRECT_URI=https://frierenbot.vercel.app/owner/callback`\n- `SITE_BASE_URL=https://frierenbot.vercel.app`\n- `SITE_DISCORD_REDIRECT_URI=https://frierenbot.vercel.app/discord/callback`
+- `OWNER_DASHBOARD_REDIRECT_URI=https://frierenbot.vercel.app/owner/callback`
+- `SITE_BASE_URL=https://frierenbot.vercel.app`
+- `SITE_DISCORD_REDIRECT_URI=https://frierenbot.vercel.app/discord/callback`
 
-The existing OAuth callback is shared by the member site and Owner Panel. Add this exact redirect URI to the Discord Developer Portal OAuth2 redirect list:
+Discord OAuth uses two independent callbacks. Add both exact redirect URIs to the Discord Developer Portal OAuth2 redirect list:
 
-`https://frierenbot.vercel.app/owner/callback`
+- `https://frierenbot.vercel.app/discord/callback` (public site sign-in)
+- `https://frierenbot.vercel.app/owner/callback` (Owner Panel)
 
-Keep `CLIENT_ID`, `DISCORD_CLIENT_SECRET`, and `ADMIN_SESSION_SECRET` only in the main service's private environment. `ADMIN_SESSION_SECRET` signs owner sessions and must remain stable. Access still depends on successful Discord OAuth and the server-side owner-ID allowlist; removing the authenticator step does not make the panel public. Do not add secrets to Vercel client-side variables or commit them to Git.
+Keep `CLIENT_ID`, `DISCORD_CLIENT_SECRET`, and `ADMIN_SESSION_SECRET` only in the main service's private environment. Public site sign-in requests only the Discord `identify` scope. `ADMIN_SESSION_SECRET` signs site and owner sessions and must remain stable. Owner Panel access still requires the exact server-side owner-ID allowlist; public Discord sign-in does not grant owner access. Do not add secrets to Vercel client-side variables or commit them to Git.
 
-If the Vercel project has not yet been assigned `frierenbot.vercel.app`, replace the hostname in both environment variables and the Discord redirect list with the actual assigned hostname.
-
+If the Vercel project hostname changes, update both callback URLs and the matching Discord Developer Portal redirect entries.
 ## Deployment safety
 
 - Do not merge this change until the focused owner-panel test workflow passes.
