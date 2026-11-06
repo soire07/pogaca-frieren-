@@ -1,6 +1,6 @@
 import { MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { pool } from './database/db.js';
-import { setNewsGuildChannel } from './news-birds.js';
+import { ensureNewsBirdSchema, setNewsGuildChannel } from './news-birds.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -23,6 +23,7 @@ export default {
     if (!permissions?.has([PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.EmbedLinks])) {
       return interaction.reply({content:'Bu kanalda Görüntüle, Mesaj Gönder ve Bağlantı Yerleştir izinlerimin üçü de açık olmalı.',flags:MessageFlags.Ephemeral});
     }
+    await ensureNewsBirdSchema(pool);
     await setNewsGuildChannel(pool,{guildId:interaction.guildId,channelId:channel.id});
     return interaction.reply({content:'🐦 Günlük Frieren haberleri artık '+channel+' kanalına gönderilecek. Başka bir kanala taşımak için komutu orada yeniden çalıştırabilirsin.',flags:MessageFlags.Ephemeral});
   }
