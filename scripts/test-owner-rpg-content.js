@@ -69,7 +69,7 @@ test('owner RPG configuration preserves Zeldeila fixed HP, title-only loot and t
     config: {
       name: 'Zeldeila', hp: 200000000, damage: 3, xp: 0, coins: 0, loot: null,
       lootChance: 0, titleDrop: 'ZELDİN TAŞŞAĞI', titleDropChance: 0.002,
-      spawnWeight: 1, regenerateDamagePerSecond: true, areaDamagePerSecond: 2,
+      spawnWeight: 1, regenerateDamagePerSecond: true, areaDamagePerSecond: 15,
       noHpScaling: true, weakness: 'spell', weaknessLabel: 'Yenilmez'
     },
     reason: 'Son boss tasarımı', actorId
@@ -79,7 +79,7 @@ test('owner RPG configuration preserves Zeldeila fixed HP, title-only loot and t
   assert.equal(boss.config.titleDrop, 'ZELDİN TAŞŞAĞI');
   assert.equal(boss.config.titleDropChance, 0.002);
   assert.equal(boss.config.regenerateDamagePerSecond, true);
-  assert.equal(boss.config.areaDamagePerSecond, 2);
+  assert.equal(boss.config.areaDamagePerSecond, 15);
   assert.equal(boss.config.noHpScaling, true);
 });
 
