@@ -7,6 +7,7 @@ import { getFarmPlot } from './farming.js';
 import { getCreatureCollection, getCreatureWishlist } from './creatures.js';
 import { getCharacterWishlist } from './character-wishlist.js';
 import { readPublicSiteSession, createPublicSiteSession } from './owner-dashboard.js';
+import { saveProfileMedia, getProfileMedia, deleteProfileMedia } from './profile-media.js';
 import { handleSiteAuthRequest, createSiteCsrfToken, verifySiteCsrfToken } from './site-auth.js';
 import {
   redeemSiteLinkToken, getAdventurerDashboard, getLinkedAdventurer, getAdventurerInventory,
@@ -40,6 +41,7 @@ assets.set('/assets/market-preview.js', 'public-assets/market-preview.js');
 assets.set('/assets/site-navigation.js', 'public-assets/site-navigation.js');
 assets.set('/assets/site-actions.js', 'public-assets/site-actions.js');
 assets.set('/assets/profile-interactions.js', 'public-assets/profile-interactions.js');
+assets.set('/assets/profile-media.js', 'public-assets/profile-media.js');
 assets.set('/site.webmanifest', 'site.webmanifest');
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function cookies(req) {
@@ -48,6 +50,23 @@ function cookies(req) {
     if (i < 0) return ['', ''];
     try { return [part.slice(0, i).trim(), decodeURIComponent(part.slice(i + 1).trim())]; } catch { return ['', '']; }
   }).filter(([key]) => key));
+}
+
+async function enrichSiteUser(db,client,user) {
+  if(!user||!SITE_ACCOUNT_ID.test(String(user.id||''))||!db)return user;
+  const enriched={...user};
+  try {
+    const linked=await db.query('SELECT user_id FROM site_discord_links WHERE account_id=$1 LIMIT 1',[user.id.slice(5)]);
+    const discordId=String(linked.rows?.[0]?.user_id||'');
+    if(/^\d{17,20}$/.test(discordId)&&client?.users?.fetch){
+      try { const discordUser=client.users.cache?.get(discordId)||await client.users.fetch(discordId); const avatar=discordUser?.displayAvatarURL?.({extension:'webp',size:256}); if(avatar){enriched.discordAvatarUrl=avatar;enriched.avatarUrl=avatar;} } catch {}
+    }
+  } catch {}
+  try {
+    const custom=await db.query("SELECT 1 FROM frieren_profile_media WHERE account_id=$1 AND media_kind='avatar' LIMIT 1",[user.id.slice(5)]);
+    if(custom.rowCount)enriched.avatarUrl='/maceraci/profil/media?kind=avatar';
+  } catch {}
+  return enriched;
 }
 
 function requireSiteAccount(res, accountId) {
@@ -259,6 +278,22 @@ function commandCatalog(client, user) {
   return page('Komut Arşivi', content, user);
 }
 
+function adventurerClassEmblem(className) {
+  const value=String(className||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('tr-TR');
+  const classes=[
+    {keys:['buyucu','mage','wizard','sihirbaz'],label:'Büyücü',path:'M12 2 14.8 9.2 22 12l-7.2 2.8L12 22l-2.8-7.2L2 12l7.2-2.8L12 2Z'},
+    {keys:['savasci','warrior','berserker','dovuscu'],label:'Savaşçı',path:'M5 3l6 6-2 2-6-6V3h2Zm14 0v2l-6 6-2-2 6-6h2ZM8 13l3 3-5 5-3-3 5-5Zm8 0 5 5-3 3-5-5 3-3Z'},
+    {keys:['sovalye','knight','paladin','muhafiz'],label:'Şövalye',path:'M12 2 20 5v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3Zm0 4-4 2v3c0 3 1.5 5.5 4 7 2.5-1.5 4-4 4-7V8l-4-2Z'},
+    {keys:['okcu','archer','avci','hunter'],label:'Okçu',path:'M4 20 20 4m-9 0h9v9M5 7l12 12m-7-12 7 7'},
+    {keys:['suikastci','assassin','ninja','hirsiz','rogue'],label:'Suikastçı',path:'M12 2 22 12 12 22 2 12 12 2Zm0 5-5 5 5 5 5-5-5-5Z'},
+    {keys:['rahip','priest','sifaci','healer','cleric'],label:'Rahip',path:'M10 2h4v8h8v4h-8v8h-4v-8H2v-4h8V2Z'},
+    {keys:['simyaci','alchemist'],label:'Simyacı',path:'M9 2h6v2h-1v5l6 10a2 2 0 0 1-2 3H6a2 2 0 0 1-2-3l6-10V4H9V2Zm3 9-5 9h10l-5-9Z'},
+    {keys:['cagirici','summoner','warlock'],label:'Çağırıcı',path:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm0 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z'}
+  ];
+  const selected=classes.find(item=>item.keys.some(key=>value.includes(key)))||{label:String(className||'Maceracı'),path:'M12 2 14 9l7 3-7 3-2 7-3-7-7-3 7-3 3-7Z'};
+  return '<span class="adventurer-class-emblem" role="img" aria-label="'+esc(selected.label)+' sınıfı" title="'+esc(selected.label)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+selected.path+'"/></svg></span>';
+}
+
 function adventurerPanel(user, data, status) {
   const notice = status === 'linked' ? '<p class="notice">Discord karakterin web hesabına bağlandı.</p>' :
     status === 'invalid' ? '<p class="notice">Bağlantı kodu geçersiz, süresi dolmuş veya daha önce kullanılmış.</p>' :
@@ -275,7 +310,7 @@ function adventurerPanel(user, data, status) {
     const mana = Math.max(0, Math.min(100, Number(profile.mana) / Math.max(1, Number(profile.max_mana)) * 100));
     const guild = encodeURIComponent(profile.guild_id);
     const xpProgress = playerXpProgress(profile, isVipSiteAccount(user));
-    return '<article class="card"><div class="eyebrow">SUNUCU · ' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + levelForXp(profile.xp) + '</p>' + xpProgress + '<div class="stats" id="battle-stats"><span><b>' + Number(profile.xp) + '</b> XP</span><span><b>' + Number(profile.coins) + '</b> Altın</span><span><b>' + Number(profile.rating) + '</b> MMR</span></div><p>HP ' + Number(profile.hp) + '/' + Number(profile.max_hp) + '</p><div class="progress"><i style="width:' + hp.toFixed(1) + '%"></i></div><p>Mana ' + Number(profile.mana) + '/' + Number(profile.max_mana) + '</p><div class="progress"><i style="width:' + mana.toFixed(1) + '%"></i></div><p>' + esc(profile.season_name || 'Sezon başlamadı') + ' · ' + Number(profile.wins) + ' galibiyet / ' + Number(profile.losses) + ' mağlubiyet</p><div class="actions"><a class="btn ghost" href="/maceraci/envanter?guildId=' + guild + '">Envanterim</a><a class="btn ghost" href="/maceraci/koleksiyon?guildId=' + guild + '">Koleksiyonum</a><a class="btn ghost" href="/maceraci/sosyal?guildId=' + guild + '">Sosyal alanım</a><a class="btn ghost" href="/maceraci/yasam?guildId=' + guild + '">Yaşam alanım</a><a class="btn ghost" href="/maceraci/bildirimler?guildId=' + guild + '">Haberci kuş ve bildirimler</a><a class="btn ghost" href="/maceraci/atolye?guildId=' + guild + '">Embed / Büyü Atölyesi</a><a class="btn ghost" href="/pazar?guildId=' + guild + '">Kuzey Pazarı</a></div></article>';
+    return '<article class="card adventurer-character-card">' + adventurerClassEmblem(profile.class_name) + '<div class="eyebrow">SUNUCU · ' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + levelForXp(profile.xp) + '</p>' + xpProgress + '<div class="stats" id="battle-stats"><span><b>' + Number(profile.xp) + '</b> XP</span><span><b>' + Number(profile.coins) + '</b> Altın</span><span><b>' + Number(profile.rating) + '</b> MMR</span></div><p>HP ' + Number(profile.hp) + '/' + Number(profile.max_hp) + '</p><div class="progress"><i style="width:' + hp.toFixed(1) + '%"></i></div><p>Mana ' + Number(profile.mana) + '/' + Number(profile.max_mana) + '</p><div class="progress"><i style="width:' + mana.toFixed(1) + '%"></i></div><p>' + esc(profile.season_name || 'Sezon başlamadı') + ' · ' + Number(profile.wins) + ' galibiyet / ' + Number(profile.losses) + ' mağlubiyet</p><div class="actions"><a class="btn ghost" href="/maceraci/envanter?guildId=' + guild + '">Envanterim</a><a class="btn ghost" href="/maceraci/koleksiyon?guildId=' + guild + '">Koleksiyonum</a><a class="btn ghost" href="/maceraci/sosyal?guildId=' + guild + '">Sosyal alanım</a><a class="btn ghost" href="/maceraci/yasam?guildId=' + guild + '">Yaşam alanım</a><a class="btn ghost" href="/maceraci/bildirimler?guildId=' + guild + '">Haberci kuş ve bildirimler</a><a class="btn ghost" href="/maceraci/atolye?guildId=' + guild + '">Embed / Büyü Atölyesi</a><a class="btn ghost" href="/pazar?guildId=' + guild + '">Kuzey Pazarı</a></div></article>';
   }).join('');
   const events = data.events.map(event => {
     const action = event.joined ? 'leave' : 'join';
@@ -301,7 +336,7 @@ function adventurerPanel(user, data, status) {
 function portalGuildPicker(user, profiles, route, title) {
   const [routePath, routeHash=''] = String(route).split('#', 2);
   if (!profiles.length) return page(title, '<main class="wrap" style="padding:54px 0 80px"><h1 class="hero-title">Maceracı <em>bağlantısı gerekli</em></h1><article class="card"><p>Önce Discord sunucunda <b>/maceraci bagla</b> komutuyla karakterini web hesabına bağla.</p><a class="btn" href="/maceraci">Maceracı paneline dön</a></article></main>', user);
-  const cards = profiles.map(profile => '<article class="card"><div class="eyebrow">' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + Number(profile.level) + '</p><a class="btn" href="' + routePath + '?guildId=' + encodeURIComponent(profile.guild_id) + (routeHash ? '#' + esc(routeHash) : '') + '">Bu sunucuyu seç</a></article>').join('');
+  const cards = profiles.map(profile => '<article class="card adventurer-character-card">' + adventurerClassEmblem(profile.class_name) + '<div class="eyebrow">' + esc(profile.guild_id) + '</div><h2>' + esc(profile.character_name || 'Maceracı') + '</h2><p>' + esc(profile.class_name) + ' · Seviye ' + Number(profile.level) + '</p><a class="btn" href="' + routePath + '?guildId=' + encodeURIComponent(profile.guild_id) + (routeHash ? '#' + esc(routeHash) : '') + '">Bu sunucuyu seç</a></article>').join('');
   return page(title, '<main class="wrap" style="padding:54px 0 80px"><div class="eyebrow">✧ MACERACI LONCASI</div><h1 class="hero-title">Sunucunu <em>seç.</em></h1><p class="lead">İşlemler yalnızca Discord hesabına bağladığın karakterin bulunduğu sunucuda yapılır.</p><div class="portal-grid">' + cards + '</div></main>', user);
 }
 
@@ -391,10 +426,13 @@ function playerProfilePage(user,profile,data,status){
  const share=data.home?.is_public?'<a class="btn ghost" href="/maceraci/ev?guildId='+guild+'&userId='+esc(profile.user_id)+'">Herkese açık vitrini görüntüle</a>':'<p class="market-meta">Herkese açık vitrin şu anda kapalı. Yaşam Alanı sayfasından paylaşımı açabilirsin.</p>';
  const joined=stats.created_at?new Date(stats.created_at).toLocaleDateString('tr-TR',{timeZone:'Europe/Istanbul'}):'Bilinmiyor';
  const identityAvatar=owner?'<span class="profile-owner-frame" aria-label="Owner özel profil çerçevesi"><img src="'+esc(user.avatarUrl||'/assets/site-avatar.webp')+'" alt=""></span>':'<img src="'+esc(user.avatarUrl||'/assets/site-avatar.webp')+'" alt="">';
+ const mediaCsrf=esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET));
+ const mediaEditor='<section class="card profile-media-editor" data-profile-media-editor data-csrf="'+mediaCsrf+'" data-discord-avatar="'+esc(user.discordAvatarUrl||user.avatarUrl||'/assets/site-avatar.webp')+'"><div><h2>Profil görünümünü düzenle</h2><p class="market-meta">JPG, PNG veya WebP seç. Görseller tarayıcıda küçültülüp JPEG olarak güvenli biçimde kaydedilir.</p></div><div class="profile-media-grid"><label><img data-media-preview="avatar" src="'+esc(user.avatarUrl||'/assets/site-avatar.webp')+'" alt="Profil fotoğrafı önizlemesi"><span>Profil fotoğrafı</span><input type="file" accept="image/png,image/jpeg,image/webp" data-media-input="avatar"></label><label><img data-media-preview="banner" src="/maceraci/profil/media?kind=banner" alt="Profil bannerı önizlemesi" ><span>Profil bannerı</span><input type="file" accept="image/png,image/jpeg,image/webp" data-media-input="banner"></label></div><div class="profile-media-actions"><button class="btn ghost" type="button" data-media-reset="avatar">Discord avatarına dön</button><button class="btn ghost" type="button" data-media-reset="banner">Varsayılan banner</button></div><p data-media-status role="status" aria-live="polite"></p></section>';
  const identityTitle=owner?'<p class="profile-active-title owner-special-title">Kurucu · Owner</p>':settings.active_title?'<p class="profile-active-title">'+esc(settings.active_title)+'</p>':'';
  const quickNav='<nav class="profile-quick-nav" aria-label="Profil bölümleri">'+[['#progress','✧','İlerleme'],['#battle-stats','⚔','Savaş'],['#achievements','♛','Başarımlar'],['#leaderboards','⌁','Sıralamalar'],['#recent-activity','☾','Günlük'],['#privacy','◈','Gizlilik']].map(([href,icon,label])=>'<a class="btn ghost profile-nav-action" href="'+href+'"><span aria-hidden="true">'+icon+'</span>'+label+'</a>').join('')+'</nav>';
- const content='<main class="wrap profile-page"><div class="profile-hero"><div class="profile-banner profile-banner-art"><img src="/assets/site-profile-banner.svg" alt="Yıldızlı Frieren gece bannerı"></div><div class="profile-identity'+(owner?' is-owner':vip?' is-vip':'')+'">'+identityAvatar+'<div><span class="eyebrow">MACERACI PROFİLİ</span><h1>'+esc(profile.character_name||'Maceracı')+(owner?' <span class="site-owner-badge">OWNER</span>':vip?' <span class="site-vip-badge">VIP</span>':'')+'</h1><p>'+esc(profile.class_name||'Gezgin')+' · '+esc(user.username||'Gezgin')+'</p><small class="profile-joined">Maceraya katılım: '+esc(joined)+'</small>'+identityTitle+'</div></div><div class="profile-xp-card">'+xp+'</div><div class="profile-share-actions">'+share+'</div></div>'+quickNav+notice+'<section class="section" id="progress"><div class="section-head"><h2>İlerleme Merkezi</h2><p>Karakter gelişimin ve son yedi gündeki macera XP hareketi.</p></div><div class="profile-stat-grid"><article class="card"><strong>'+Number(profile.xp||0).toLocaleString('tr-TR')+'</strong><span>Toplam XP</span></article><article class="card" data-profile-privacy="showCollections"><strong>'+Number(collections.anime_cards||0)+'</strong><span>Anime kartı</span></article><article class="card" data-profile-privacy="showCollections"><strong>'+Number(collections.journal_entries||0)+'</strong><span>Keşif kaydı</span></article><article class="card"><strong>'+earned.length+'</strong><span>Kazanılmış başarım</span></article></div><article class="card"><h3>Son 7 gün · Macera XP</h3>'+(xpBars||'<p class="market-meta">Son yedi günde kaydedilmiş macera XP verisi yok.</p>')+'</article><article class="card"><h3>Profil tamamlama · '+completionCount+'/'+completion.length+'</h3><ul class="profile-completion">'+completionRows+'</ul></article></section><section class="section" id="battle-stats" data-profile-privacy="showStats"><h2>Savaş İstatistiklerim</h2><p class="market-meta">'+esc(arena.season_name||'Aktif arena sezonu bulunmuyor')+'</p>'+profileStats+'</section><section class="section" id="achievements" data-profile-privacy="showAchievements"><h2>Başarım Vitrini</h2><div class="profile-toolbar"><label for="profile-achievement-search">Başarım ara</label><input id="profile-achievement-search" type="search" placeholder="Başarım adını yaz…" autocomplete="off" data-profile-achievement-search><label for="profile-achievement-sort">Sıralama</label><select id="profile-achievement-sort" data-profile-achievement-sort><option value="date-desc">En yeni</option><option value="date-asc">En eski</option><option value="reward-desc">En yüksek ödül</option><option value="name-asc">Ada göre</option></select><output id="profile-achievement-count" aria-live="polite"></output></div><div class="profile-pinned-grid">'+(pinnedRows||'<article class="card">Henüz sabitlenmiş başarım yok. Yaşam Alanı → Zafer Salonu bölümünden en fazla altı kupa sergileyebilirsin.</article>')+'</div><div class="profile-columns"><article class="card"><h3>En yüksek ödüllü başarımlar</h3><ul>'+(highRewardRows||'<li>Henüz kazanılmış başarım yok.</li>')+'</ul></article><article class="card"><h3>Kazanılmış unvanlar</h3><ul>'+(titleRows||'<li>Henüz unvan açılmadı.</li>')+'</ul></article></div><span id="badges" aria-hidden="true"></span><div class="profile-achievement-list" id="profile-achievement-list">'+(achievementRows||'<article class="card">Henüz başarım kazanılmadı.</article>')+'</div></section><section class="section" id="leaderboards"><h2>Sıralamalar</h2><p class="market-meta">Tablolar seçili Discord sunucusuna aittir. Günlük tablo yalnızca kaydedilmiş macera XP kazanımlarını kapsar.</p><div class="profile-board-grid">'+(boards||'<article class="card">Henüz sıralama verisi yok.</article>')+'</div></section><section class="section" id="recent-activity" data-profile-privacy="showActivity"><h2>Macera Güncesi</h2><div class="profile-filter-actions" role="group" aria-label="Günlük filtresi"><button class="btn ghost is-active" type="button" data-profile-activity-filter="all" aria-pressed="true">Tümü</button><button class="btn ghost" type="button" data-profile-activity-filter="macera" aria-pressed="false">Macera</button><button class="btn ghost" type="button" data-profile-activity-filter="başarım" aria-pressed="false">Başarımlar</button><button class="btn ghost" type="button" data-profile-activity-filter="kozmetik" aria-pressed="false">Kozmetikler</button></div><article class="card"><ul id="profile-activity-list">'+(activityRows||'<li>Henüz etkinlik kaydı yok.</li>')+'</ul></article></section><section class="section" id="privacy"><h2>Gizlilik ayarları</h2><div class="profile-preview-actions"><button class="btn" type="button" id="profile-preview-toggle" aria-pressed="false">Ziyaretçi önizlemesini aç</button><button class="btn ghost" type="button" id="profile-settings-reset">Varsayılanları yükle</button></div><p class="profile-preview-note" id="profile-preview-note" role="status" hidden>Bu yalnızca geçici önizlemedir. Kalıcı değişiklik için aşağıdaki ayarları kaydet.</p><p class="lead">Bu seçenekler yalnızca paylaşımı açtığın herkese açık profil vitrininin hangi bölümleri göstereceğini belirler. Vitrin kapalıysa bu ayarlar başka ziyaretçilere veri açmaz.</p><article class="card">'+settingsForm+'</article></section><section class="section" data-profile-privacy="showCosmetics"><h2>Kişisel görünüm</h2><article class="card"><p>Profil çerçevesi, isimlik, unvan efekti ve tema gibi görünümler mevcut kozmetik yüklemesinden gelir.</p><ul>'+((data.loadout||[]).map(x=>{const item=PLAYER_COSMETICS.find(c=>c.key===x.cosmetic_key);return item?'<li>'+esc(item.name)+' · '+esc(item.slot)+'</li>':''}).join('')||'<li>Henüz kozmetik kuşanılmadı.</li>')+'</ul><a class="btn ghost" href="/maceraci/yasam?guildId='+guild+'#cosmetics">Kozmetiklerini düzenle</a></article></section></main>';
- return page('Maceracı Profili',content,{...user,playerProfiles:[profile]});
+ const bannerUrl=data.bannerUrl||'/assets/site-profile-banner.svg';
+ const content='<main class="wrap profile-page">'+mediaEditor+'<div class="profile-hero"><div class="profile-banner profile-banner-art"><img src="'+esc(bannerUrl)+'" alt="Profil bannerı"></div><div class="profile-identity'+(owner?' is-owner':vip?' is-vip':'')+'">'+identityAvatar+'<div><span class="eyebrow">MACERACI PROFİLİ</span><h1>'+esc(profile.character_name||'Maceracı')+(owner?' <span class="site-owner-badge">OWNER</span>':vip?' <span class="site-vip-badge">VIP</span>':'')+'</h1><p>'+esc(profile.class_name||'Gezgin')+' · '+esc(user.username||'Gezgin')+'</p><small class="profile-joined">Maceraya katılım: '+esc(joined)+'</small>'+identityTitle+'</div></div><div class="profile-xp-card">'+xp+'</div><div class="profile-share-actions">'+share+'</div></div>'+quickNav+notice+'<section class="section" id="progress"><div class="section-head"><h2>İlerleme Merkezi</h2><p>Karakter gelişimin ve son yedi gündeki macera XP hareketi.</p></div><div class="profile-stat-grid"><article class="card"><strong>'+Number(profile.xp||0).toLocaleString('tr-TR')+'</strong><span>Toplam XP</span></article><article class="card" data-profile-privacy="showCollections"><strong>'+Number(collections.anime_cards||0)+'</strong><span>Anime kartı</span></article><article class="card" data-profile-privacy="showCollections"><strong>'+Number(collections.journal_entries||0)+'</strong><span>Keşif kaydı</span></article><article class="card"><strong>'+earned.length+'</strong><span>Kazanılmış başarım</span></article></div><article class="card"><h3>Son 7 gün · Macera XP</h3>'+(xpBars||'<p class="market-meta">Son yedi günde kaydedilmiş macera XP verisi yok.</p>')+'</article><article class="card"><h3>Profil tamamlama · '+completionCount+'/'+completion.length+'</h3><ul class="profile-completion">'+completionRows+'</ul></article></section><section class="section" id="battle-stats" data-profile-privacy="showStats"><h2>Savaş İstatistiklerim</h2><p class="market-meta">'+esc(arena.season_name||'Aktif arena sezonu bulunmuyor')+'</p>'+profileStats+'</section><section class="section" id="achievements" data-profile-privacy="showAchievements"><h2>Başarım Vitrini</h2><div class="profile-toolbar"><label for="profile-achievement-search">Başarım ara</label><input id="profile-achievement-search" type="search" placeholder="Başarım adını yaz…" autocomplete="off" data-profile-achievement-search><label for="profile-achievement-sort">Sıralama</label><select id="profile-achievement-sort" data-profile-achievement-sort><option value="date-desc">En yeni</option><option value="date-asc">En eski</option><option value="reward-desc">En yüksek ödül</option><option value="name-asc">Ada göre</option></select><output id="profile-achievement-count" aria-live="polite"></output></div><div class="profile-pinned-grid">'+(pinnedRows||'<article class="card">Henüz sabitlenmiş başarım yok. Yaşam Alanı → Zafer Salonu bölümünden en fazla altı kupa sergileyebilirsin.</article>')+'</div><div class="profile-columns"><article class="card"><h3>En yüksek ödüllü başarımlar</h3><ul>'+(highRewardRows||'<li>Henüz kazanılmış başarım yok.</li>')+'</ul></article><article class="card"><h3>Kazanılmış unvanlar</h3><ul>'+(titleRows||'<li>Henüz unvan açılmadı.</li>')+'</ul></article></div><span id="badges" aria-hidden="true"></span><div class="profile-achievement-list" id="profile-achievement-list">'+(achievementRows||'<article class="card">Henüz başarım kazanılmadı.</article>')+'</div></section><section class="section" id="leaderboards"><h2>Sıralamalar</h2><p class="market-meta">Tablolar seçili Discord sunucusuna aittir. Günlük tablo yalnızca kaydedilmiş macera XP kazanımlarını kapsar.</p><div class="profile-board-grid">'+(boards||'<article class="card">Henüz sıralama verisi yok.</article>')+'</div></section><section class="section" id="recent-activity" data-profile-privacy="showActivity"><h2>Macera Güncesi</h2><div class="profile-filter-actions" role="group" aria-label="Günlük filtresi"><button class="btn ghost is-active" type="button" data-profile-activity-filter="all" aria-pressed="true">Tümü</button><button class="btn ghost" type="button" data-profile-activity-filter="macera" aria-pressed="false">Macera</button><button class="btn ghost" type="button" data-profile-activity-filter="başarım" aria-pressed="false">Başarımlar</button><button class="btn ghost" type="button" data-profile-activity-filter="kozmetik" aria-pressed="false">Kozmetikler</button></div><article class="card"><ul id="profile-activity-list">'+(activityRows||'<li>Henüz etkinlik kaydı yok.</li>')+'</ul></article></section><section class="section" id="privacy"><h2>Gizlilik ayarları</h2><div class="profile-preview-actions"><button class="btn" type="button" id="profile-preview-toggle" aria-pressed="false">Ziyaretçi önizlemesini aç</button><button class="btn ghost" type="button" id="profile-settings-reset">Varsayılanları yükle</button></div><p class="profile-preview-note" id="profile-preview-note" role="status" hidden>Bu yalnızca geçici önizlemedir. Kalıcı değişiklik için aşağıdaki ayarları kaydet.</p><p class="lead">Bu seçenekler yalnızca paylaşımı açtığın herkese açık profil vitrininin hangi bölümleri göstereceğini belirler. Vitrin kapalıysa bu ayarlar başka ziyaretçilere veri açmaz.</p><article class="card">'+settingsForm+'</article></section><section class="section" data-profile-privacy="showCosmetics"><h2>Kişisel görünüm</h2><article class="card"><p>Profil çerçevesi, isimlik, unvan efekti ve tema gibi görünümler mevcut kozmetik yüklemesinden gelir.</p><ul>'+((data.loadout||[]).map(x=>{const item=PLAYER_COSMETICS.find(c=>c.key===x.cosmetic_key);return item?'<li>'+esc(item.name)+' · '+esc(item.slot)+'</li>':''}).join('')||'<li>Henüz kozmetik kuşanılmadı.</li>')+'</ul><a class="btn ghost" href="/maceraci/yasam?guildId='+guild+'#cosmetics">Kozmetiklerini düzenle</a></article></section></main>';
+ return page('Maceracı Profili',content+'<script src="/assets/profile-media.js" defer></script>',{...user,playerProfiles:[profile]});
 }
 
 function playerExperiencePage(user,profile,home,ownedRows,loadoutRows,presetRows,trophyRows,status){
@@ -659,6 +697,36 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     res.writeHead(303,{Location:'/destek?status=delete_confirmation_required','Cache-Control':'no-store'});res.end();return true;
   }
+  if (req.method === 'POST' && url.pathname === '/maceraci/profil/media') {
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil veritabanı kullanılamıyor.');return true;}
+    if(!String(req.headers['content-type']||'').toLowerCase().includes('application/json')){res.writeHead(415,{'Cache-Control':'no-store'});res.end('Görsel aktarım biçimi geçersiz.');return true;}
+    const csrf=String(req.headers['x-csrf-token']||'');
+    if(!verifySiteCsrfToken(csrf,process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Güvenlik doğrulaması başarısız. Sayfayı yenile.');return true;}
+    let size=0;const chunks=[];
+    for await(const chunk of req){size+=chunk.length;if(size>6*1024*1024){res.writeHead(413,{'Cache-Control':'no-store'});res.end('Görsel isteği çok büyük.');return true;}chunks.push(chunk);}
+    try{
+      const payload=JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      const kind=String(payload?.kind||''),data=String(payload?.data||'');
+      if(data.length>5_600_000||!(/^[A-Za-z0-9+/]+={0,2}$/.test(data))){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Görsel verisi geçersiz.');return true;}
+      const saved=await saveProfileMedia(db,session.id,kind,Buffer.from(data,'base64'));
+      res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(saved));return true;
+    }catch(error){
+      const code=String(error?.message||'');
+      if(code.startsWith('PROFILE_MEDIA_')){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Görsel biçimi, boyutu veya ölçüleri desteklenmiyor.');return true;}
+      throw error;
+    }
+  }
+  if (req.method === 'DELETE' && url.pathname === '/maceraci/profil/media') {
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil veritabanı kullanılamıyor.');return true;}
+    if(!verifySiteCsrfToken(String(req.headers['x-csrf-token']||''),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Güvenlik doğrulaması başarısız.');return true;}
+    try{const kind=String(url.searchParams.get('kind')||'');await deleteProfileMedia(db,session.id,kind);res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({status:'deleted',kind}));}
+    catch(error){if(String(error?.message||'').startsWith('PROFILE_MEDIA_')){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Görsel türü geçersiz.');return true;}throw error;}
+    return true;
+  }
   if (req.method === 'POST' && url.pathname === '/maceraci/link') {
     const session = readPublicSiteSession(cookies(req)[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
     if (!requireSiteAccount(res, session?.id)) return true;
@@ -809,7 +877,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   if (req.method !== 'GET') return false;
   const cookie = cookies(req);
   if (url.pathname === '/owner' || url.pathname.startsWith('/owner/')) return false;
-  if (assets.has(url.pathname) && ['site-avatar.svg', 'site-avatar.webp', 'site-shortcut.svg', 'site.webmanifest', 'site-banner.svg', 'site-banner.webp', 'site-profile-banner.svg', 'site.css', 'owner.css', 'public-assets/embed-preview.js', 'public-assets/site-navigation.js', 'public-assets/site-actions.js', 'public-assets/profile-interactions.js'].includes(assets.get(url.pathname))) {
+  if (assets.has(url.pathname) && ['site-avatar.svg', 'site-avatar.webp', 'site-shortcut.svg', 'site.webmanifest', 'site-banner.svg', 'site-banner.webp', 'site-profile-banner.svg', 'site.css', 'owner.css', 'public-assets/embed-preview.js', 'public-assets/site-navigation.js', 'public-assets/site-actions.js', 'public-assets/profile-interactions.js', 'public-assets/profile-media.js'].includes(assets.get(url.pathname))) {
     try {
       const file = assets.get(url.pathname);
       const data = await readFile(new URL('./' + file, import.meta.url));
@@ -821,14 +889,21 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/pazar']);
+  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/pazar']);
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname)) return false;
   const sessionUser = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
-  const user = sessionUser || (url.pathname === '/maceraci/ev' ? { id: 'public-viewer', username: 'Gezgin' } : null);
+  const user = await enrichSiteUser(db,client,sessionUser || (url.pathname === '/maceraci/ev' ? { id: 'public-viewer', username: 'Gezgin' } : null));
   if (!user) {
     res.writeHead(302, { Location: '/login', 'Cache-Control': 'no-store' });
     res.end();
     return true;
+  }
+  if(url.pathname==='/maceraci/profil/media'){
+    if(!requireSiteAccount(res,user?.id))return true;
+    if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil görseli veritabanı kullanılamıyor.');return true;}
+    const media=await getProfileMedia(db,user.id,String(url.searchParams.get('kind')||''));
+    if(!media){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Profil görseli bulunamadı.');return true;}
+    res.writeHead(200,{'Content-Type':media.mime_type,'Content-Length':media.media_data.length,'Cache-Control':'private,no-store','X-Content-Type-Options':'nosniff'});res.end(media.media_data);return true;
   }
   if (assets.has(url.pathname)) {
     try {
@@ -932,10 +1007,12 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       db.query('SELECT slot,cosmetic_key FROM player_cosmetic_loadout WHERE guild_id=$1 AND user_id=$2 ORDER BY slot',[guildId,profile.user_id]),
       db.query("SELECT TO_CHAR(date_trunc('day',occurred_at),'YYYY-MM-DD') AS day_label,SUM(xp_awarded)::int AS xp FROM adventure_history WHERE guild_id=$1 AND user_id=$2 AND occurred_at>=NOW()-INTERVAL '7 days' GROUP BY date_trunc('day',occurred_at) ORDER BY date_trunc('day',occurred_at)",[guildId,profile.user_id])
     ]);
+    let bannerUrl='/assets/site-profile-banner.svg';
+    try{const banner=await getProfileMedia(db,user.id,'banner');if(banner)bannerUrl='/maceraci/profil/media?kind=banner';}catch{}
     const html=playerProfilePage(user,profile,{
       settings,stats:stats.rows[0]||{},titles:titles.rows,achievements:earned.rows,activity:activity.rows,
       collections:collections.rows[0]||{},arena:arena.rows[0]||{},rankings:rankings.rows,
-      home:home.rows[0]||{is_public:false},loadout:loadout.rows,xpHistory:xpHistory.rows
+      home:home.rows[0]||{is_public:false},loadout:loadout.rows,xpHistory:xpHistory.rows,bannerUrl
     },url.searchParams.get('status'));
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
     res.end(html);return true;
