@@ -31,7 +31,8 @@ import {
   regenerateRaidBossHp,
   calculateRaidAreaTickDamage,
   rollRaidBossLoot,
-  rollRaidBossTitleDrops
+  rollRaidBossTitleDrops,
+  rollTheFoolTwist
 } from '../rpg-mechanics.js';
 
 test('boss incoming damage never becomes negative and has a minimum of one', () => {
@@ -526,4 +527,17 @@ test('Aura and Zeldeila are Infinity class while preserving their distinct boss 
   assert.equal(zeldeila.special, 'eternal-regeneration');
   assert.equal(zeldeila.regenerateDamagePerSecond, true);
   assert.equal(zeldeila.noHpScaling, true);
+});
+
+
+test('The Fool is a distinct raid boss with three deterministic, equally likely fate outcomes', () => {
+  const fool = RAID_BOSSES.find(boss => boss.id === 'the-fool');
+  assert.ok(fool);
+  assert.equal(fool.special, 'fools-gamble');
+  assert.equal(fool.weakness, 'spell');
+  assert.equal(fool.hp, 4800);
+  assert.equal(rollTheFoolTwist(() => 0), 'fortune');
+  assert.equal(rollTheFoolTwist(() => 0.5), 'misfortune');
+  assert.equal(rollTheFoolTwist(() => 0.99), 'wildcard');
+  assert.equal(rollTheFoolTwist(() => 1), 'misfortune');
 });
