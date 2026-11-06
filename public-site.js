@@ -139,7 +139,7 @@ function page(title, content, user, seo = {}) {
       '<div class="site-sidebar-intro"><span>✧ YOLCULUK REHBERİ</span><p>Keşfet, karakterini geliştir ve macerana kaldığın yerden devam et.</p></div>' +
       '<nav class="site-sidebar-nav" aria-label="Frieren ana menüsü">' +
         navGroup('kullanici', 'KULLANICI MERKEZİ', [
-          navLink('/maceraci/profil', '◉', 'Profilim', 'Karakter kimliğin ve kişisel vitrinin'),
+          navLink('/maceraci/profil', '◉', 'Hesap Profilim', 'Hesap kimliğin ve kişisel vitrinin'),
           navLink('/maceraci/profil#achievements', '✧', 'Başarım Vitrini', 'Kazandığın ve sergilediğin başarımlar'),
           navLink('/maceraci/profil#progress', '↗', 'İlerlemem', 'XP geçmişi, etkinlik ve koleksiyon ilerlemen'),
           navLink('/maceraci/profil#badges', '✿', 'Rozetlerim', 'Kazandığın rozetler ve başarı ödüllerin'),
@@ -147,8 +147,8 @@ function page(title, content, user, seo = {}) {
           navLink('/maceraci/profil#leaderboards', '♛', 'Sıralamalar', 'Sunucu içi ve son 24 saat tabloları'),
           navLink('/maceraci/envanter', '▣', 'Envanterim', 'Eşyaların ve ekipmanların'),
           navLink('/maceraci/koleksiyon', '◈', 'Koleksiyonum', 'Yoldaşlar, balıklar ve keşifler'),
-          navLink('/maceraci/sosyal', '♧', 'Sosyal Alan', 'Arkadaşlar ve rakipler'),
-          navLink('/maceraci/yasam', '⌂', 'Kişisel Yaşam Alanım', 'Evin, kozmetiklerin ve Zafer Salonu'),
+          navLink('/maceraci/sosyal', '♧', 'Yol Arkadaşlarım', 'Arkadaşlıklar, rakipler ve topluluk bağların'),
+          navLink('/maceraci/yasam', '⌂', 'Kişisel Yaşam Alanım', 'Odan, koleksiyonların, kozmetiklerin ve etkinliklerin'),
           navLink('/maceraci/profil#privacy', '◈', 'Gizlilik Ayarları', 'Herkese açık profilinde görünenler'),
           navLink('/maceraci/bildirimler', '☾', 'Bildirimler', 'Haberci kuş tercihlerin'),
           navLink('/maceraci/atolye', '✦', 'Büyü Atölyesi', 'Embed ve büyü otomasyonları')
@@ -521,12 +521,12 @@ function adventurerSocialPage(user, profile, social, status) {
     '<article class="card"><h2>Rakip belirle</h2><form method="post" action="/maceraci/sosyal"><input type="hidden" name="csrf" value="'+csrf+'"><input type="hidden" name="guildId" value="'+guild+'"><input type="hidden" name="action" value="rival">'+targetInput('social-rival-id')+'<button class="btn ghost" type="submit">Rakip yap</button></form></article>'+
     '<article class="card"><h2>Altın hediye et</h2><form method="post" action="/maceraci/sosyal"><input type="hidden" name="csrf" value="'+csrf+'"><input type="hidden" name="guildId" value="'+guild+'"><input type="hidden" name="action" value="gift">'+targetInput('social-gift-id')+'<label for="social-gift-amount">Altın (1–50.000)</label><input id="social-gift-amount" name="amount" type="number" min="1" max="50000" step="1" required><label for="social-gift-note">Not</label><input id="social-gift-note" name="note" maxlength="100"><button class="btn" type="submit">Hediye gönder</button></form></article>'+
     '<article class="card"><h2>Haftalık itibar</h2><p>Her hafta bir oyuncuya bir puan verebilirsin.</p><form method="post" action="/maceraci/sosyal"><input type="hidden" name="csrf" value="'+csrf+'"><input type="hidden" name="guildId" value="'+guild+'"><input type="hidden" name="action" value="commend">'+targetInput('social-commend-id')+'<button class="btn ghost" type="submit">İtibar ver</button></form></article></div></section>';
-  const content='<main class="wrap" style="padding:54px 0 80px"><div class="eyebrow">✧ LONCA BAĞLARI</div><h1 class="hero-title">Sosyal <em>alanın.</em></h1><p class="lead">'+esc(profile.character_name||'Maceracı')+' · Yalnızca seçili sunucudaki bağlı karakterin kullanılır.</p>'+(notices[status]?'<p class="notice" role="status">'+notices[status]+'</p>':'')+
+  const content='<main class="wrap user-center-page social-center-page" data-user-center="social" style="padding:54px 0 80px"><header class="user-center-hero"><div class="eyebrow">✧ FRIEREN TOPLULUK MERKEZİ</div><h1 class="hero-title">Yol <em>Arkadaşların.</em></h1><p class="lead">Arkadaşlıklarını, RPG rekabetini ve oyuncular arası desteği tek merkezden yönet.</p><div class="user-center-metrics"><article><span>Arkadaş</span><strong>'+social.friends.length+'</strong></article><article><span>Rakip</span><strong>'+social.rivals.length+'</strong></article><article><span>Bekleyen istek</span><strong>'+social.requests.length+'</strong></article><article><span>İtibar</span><strong>'+Number(social.reputation)+'</strong></article></div></header><nav class="user-center-tabs" aria-label="Kullanıcı merkezi"><a href="/maceraci/profil">Hesap Profilim</a><a href="/maceraci/sosyal" aria-current="page">Sosyal Alan</a><a href="/maceraci/yasam">Yaşam Alanım</a><a href="/destek">Hesap ve Destek</a></nav><p class="lead">'+esc(profile.character_name||'Maceracı')+' · Yalnızca seçili sunucudaki bağlı karakterin kullanılır.</p>'+(notices[status]?'<p class="notice" role="status">'+notices[status]+'</p>':'')+
     '<div class="portal-actions"><a class="btn ghost" href="/maceraci">Maceracı paneli</a><a class="btn ghost" href="/maceraci/envanter?guildId='+guild+'">Envanterim</a><a class="btn ghost" href="/pazar?guildId='+guild+'">Kuzey Pazarı</a></div>'+
-    '<section class="section"><div class="portal-grid"><article class="card"><div class="eyebrow">İTİBAR</div><h2>'+Number(social.reputation)+'</h2></article><article class="card"><div class="eyebrow">ARKADAŞLAR</div><h2>'+social.friends.length+'</h2></article><article class="card"><div class="eyebrow">RAKİPLER</div><h2>'+social.rivals.length+'</h2></article><article class="card"><div class="eyebrow">BEKLEYEN İSTEKLER</div><h2>'+social.requests.length+'</h2></article></div></section>'+forms+
-    '<section class="section"><h2>Arkadaşların</h2><div class="portal-grid">'+(friendCards||'<article class="card">Henüz arkadaşın yok.</article>')+'</div></section>'+
-    '<section class="section"><h2>RPG rakiplerin</h2><div class="portal-grid">'+(rivalCards||'<article class="card">Henüz rakibin yok.</article>')+'</div></section>'+
-    '<section class="section"><h2>Gelen istekler</h2><div class="portal-grid">'+(requests||'<article class="card">Bekleyen isteğin yok.</article>')+'</div></section></main>'+
+    '<section class="section social-actions-section" id="social-actions"><div class="section-head"><div class="eyebrow">BAĞLARINI YÖNET</div><h2>Yeni bir bağ kur</h2><p>Oyuncu ID’siyle arkadaşlık isteği gönder, rakip belirle veya güvenli oyun içi hediye paylaş.</p></div>'+forms+
+    '<section class="section social-list-section" id="friends"><div class="section-head"><div class="eyebrow">YOL ARKADAŞLARI</div><h2>Arkadaşların</h2><p>Bu sunucuda karşılıklı kabul edilmiş arkadaşlık bağların.</p></div><div class="portal-grid">'+(friendCards||'<article class="card empty-state">Henüz arkadaşın yok. İlk isteğini göndererek başlayabilirsin.</article>')+'</div></section>'+
+    '<section class="section social-list-section" id="rivals"><div class="section-head"><div class="eyebrow">DOSTÇA REKABET</div><h2>RPG rakiplerin</h2><p>Rekabet bağların yalnızca bu sunucunun RPG ilişkilerini etkiler.</p></div><div class="portal-grid">'+(rivalCards||'<article class="card empty-state">Henüz rakip belirlemedin.</article>')+'</div></section>'+
+    '<section class="section social-list-section" id="requests"><div class="section-head"><div class="eyebrow">GELEN DAVETLER</div><h2>Arkadaşlık istekleri</h2><p>İstekleri kabul etmeden arkadaşlık bağı kurulmaz.</p></div><div class="portal-grid">'+(requests||'<article class="card empty-state">Bekleyen isteğin yok.</article>')+'</div></section></main>'+
     '<style>.card form{display:grid;gap:12px}.card input{width:100%;padding:13px;border-radius:10px;border:1px solid #62577d;background:#17152c;color:#fff}.card label{font-weight:600}</style>';
   return page('Sosyal Alan',content,user);
 }
@@ -878,7 +878,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   if (req.method !== 'GET') return false;
   const cookie = cookies(req);
   if (url.pathname === '/owner' || url.pathname.startsWith('/owner/')) return false;
-  if (assets.has(url.pathname) && ['site-avatar.svg', 'site-avatar.webp', 'site-shortcut.svg', 'site.webmanifest', 'site-banner.svg', 'site-banner.webp', 'site-profile-banner.svg', 'site.css', 'owner.css', 'public-assets/embed-preview.js', 'public-assets/site-navigation.js', 'public-assets/site-actions.js', 'public-assets/profile-interactions.js', 'public-assets/profile-media.js'].includes(assets.get(url.pathname))) {
+  if (assets.has(url.pathname) && ['site-avatar.svg', 'site-avatar.webp', 'site-shortcut.svg', 'site.webmanifest', 'site-banner.svg', 'site-banner.webp', 'site-profile-banner.svg', 'site.css', 'owner.css', 'public-assets/embed-preview.js', 'public-assets/site-navigation.js', 'public-assets/site-actions.js', 'public-assets/profile-interactions.js', 'public-assets/profile-media.js', 'public-assets/user-center.js'].includes(assets.get(url.pathname))) {
     try {
       const file = assets.get(url.pathname);
       const data = await readFile(new URL('./' + file, import.meta.url));
