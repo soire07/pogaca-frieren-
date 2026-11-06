@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "frieren-neural"
+version = "0.1.0"
+description = "From-scratch experimental decoder-only language model for Frieren AI"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "torch>=2.2",
+]
+
+[project.scripts]
+frieren-neural-train = "frieren_neural.training:main"
+frieren-neural-evaluate = "frieren_neural.training:evaluation_main"
+frieren-neural-evaluate-quality = "frieren_neural.quality_evaluation:main"
+frieren-neural-prepare-turkish-dialogues = "frieren_neural.datasets:main"
+frieren-neural-import-chat-max = "frieren_neural.hf_corpus:main"
+frieren-neural-train-small = "frieren_neural.quickstart:main"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "httpx>=0.27",
+]
+serve = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "psycopg[binary]>=3.2",
+  "llama-cpp-python==0.3.36",
+]
+discord = [
+  "discord.py>=2.4",
+  "aiohttp>=3.9",
+]
+data = [
+  "datasets>=3.6,<5",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["frieren_neural*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

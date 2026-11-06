@@ -1,0 +1,52 @@
+name: Frieren Neural CI
+
+on:
+  push:
+    branches:
+      - frieren-neural-foundation
+      - validation/ufakzeka-real-gguf
+    paths:
+      - ".github/workflows/frieren-neural-ci.yml"
+      - ".github/workflows/frieren-neural-active-gguf-eval.yml"
+      - "frieren-neural/trigger-active-gguf-eval.txt"
+      - "frieren-neural/frieren_neural/**"
+      - "frieren-neural/benchmarks/**"
+      - "frieren-neural/tests/**"
+      - "frieren-neural/pyproject.toml"
+      - "frieren-neural/QUALITY_GATE.md"
+      - "frieren-neural/corpus_manifest.example.json"
+  pull_request:
+    paths:
+      - "frieren-neural/frieren_neural/**"
+      - "frieren-neural/benchmarks/**"
+      - "frieren-neural/tests/**"
+      - "frieren-neural/pyproject.toml"
+      - "frieren-neural/QUALITY_GATE.md"
+      - "frieren-neural/corpus_manifest.example.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frieren-neural
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: frieren-neural/pyproject.toml
+      - name: Install CPU-only PyTorch
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+      - name: Install package and test dependencies
+        run: python -m pip install -e ".[dev,serve,discord]"
+      - name: Run tests
+        run: pytest
+      - name: Compile isolated benchmark tools
+        run: python -m compileall -q benchmarks
