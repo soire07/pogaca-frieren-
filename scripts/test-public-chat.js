@@ -55,5 +55,11 @@ test('chat pinning and presence are account-scoped and expose only aggregate onl
  const db={async query(q){if(q.startsWith('UPDATE frieren_public_chat_messages')){pinSql=q;return{rows:[{pinned_at:new Date()}],rowCount:1};}if(q.startsWith('INSERT INTO frieren_public_chat_presence')){presenceSql=q;return{rows:[],rowCount:1};}if(q.startsWith('SELECT COUNT(*)::int AS online'))return{rows:[{online:3}],rowCount:1};return{rows:[],rowCount:0};}};
  assert.equal((await togglePublicChatPin(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000'})).status,'pinned');assert.match(pinSql,/account_id=\$2/);
  assert.equal((await touchPublicChatPresence(db,{accountId:account})).status,'online');assert.ok(presenceSql.includes('frieren_public_chat_presence'));
- assert.deepEqual(await getPublicChatPresence(db),{online:3});
+ assert.deepEqual(await getPublicChatPresence(db),{online:3,typing:[]});
+});
+
+test('typing indicators expire through short-lived account presence',async()=>{
+ const {setPublicChatTyping}=await import('../public-chat.js');let sql='';
+ const db={async query(q){if(q.startsWith('INSERT INTO frieren_public_chat_presence'))sql=q;return{rows:[],rowCount:1};}};
+ assert.equal((await setPublicChatTyping(db,{accountId:account})).status,'typing');assert.match(sql,/INTERVAL '5 seconds'/);
 });
