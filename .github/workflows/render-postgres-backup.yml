@@ -72,6 +72,7 @@ jobs:
 
           docker exec "$container" sh -euc ' \
             pg_restore --exit-on-error --no-owner --no-acl \
+              --username=postgres \
               --dbname=restore_test \
               /backup/*.dump \
           '
