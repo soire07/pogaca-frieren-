@@ -276,6 +276,13 @@ export default {
         }
         const alive = fighters.map((x,i)=>hpNow[i]>0?i:-1).filter(i=>i>=0);
         if (!alive.length) break;
+        if (BOSS.id === 'fallen-mage' && !auraFinalStandUsed && bossHp <= maxBossHp * 0.1) {
+          auraFinalStandUsed = true;
+          auraFinalStandPending = true;
+          const warning = '⚠️ Aura son direnişine hazırlanıyor! Bu turun sonunda tüm takıma yıkıcı saldırı yapacak.';
+          log.push(warning);
+          specialAttackHistory.push(warning);
+        }
                 const auraBarrier = BOSS.id === 'fallen-mage' ? getAuraBarrier(bossPhase, rounds) : null;
         if (auraBarrier) log.push(`🛡️ Aura Büyü Bariyeri açtı: ${auraBarrier === 'spell' ? 'büyü' : 'fiziksel'} saldırılar bu tur zayıflatılacak.`);
         const auraIllusion = BOSS.id === 'fallen-mage' && bossPhase >= 2 && rounds % 4 === 1;
@@ -295,8 +302,12 @@ export default {
           new ButtonBuilder().setCustomId(`raid:act:shield:${interaction.id}:${rounds}`).setLabel('🔮 Kalkan (10)').setStyle(ButtonStyle.Secondary),
           new ButtonBuilder().setCustomId(`raid:act:defend:${interaction.id}:${rounds}`).setLabel('🛡️ Savun').setStyle(ButtonStyle.Secondary)
         );
+        const auraFormLabel = BOSS.id === 'fallen-mage' ? getRaidBossForm(BOSS, bossPhase)?.name : null;
+        const auraRoundWarning = BOSS.id === 'fallen-mage'
+          ? [auraBarrier ? `🛡️ ${auraBarrier === 'spell' ? 'Büyü' : 'Fiziksel'} Bariyer` : null, auraIllusion ? '🪞 Ruh İkizleri: Zoltraak yanılsamayı deler' : null, auraFinalStandPending ? '⚠️ SON DİRENİŞ: Savunma al!' : null].filter(Boolean).join(' · ')
+          : '';
         const actionMessage = await interaction.editReply({
-          content: `**${BOSS.name} · Tur ${rounds} · Evre ${bossPhase}/${BOSS.id === 'fallen-mage' && auraSecretForm ? 4 : 3}**\n❤️ Boss: ${bossHp}/${maxBossHp} HP\n${alive.map(i => `<@${fighters[i].userId}> (${fighters[i].mana}/${fighters[i].maxMana} mana)`).join(' · ')}\nHer oyuncu Saldır, Zoltraak, Heilen, Mana Kalkanı veya Savun seçsin. Zayıflık: **${BOSS.weaknessLabel}**. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
+          content: `**${BOSS.name} · Tur ${rounds} · Evre ${bossPhase}/${BOSS.id === 'fallen-mage' && auraSecretForm ? 4 : 3} · ${auraFormLabel || 'Boss'}**\n${auraRoundWarning ? `⚠️ ${auraRoundWarning}\\n` : ''}❤️ Boss: ${bossHp}/${maxBossHp} HP\n${alive.map(i => `<@${fighters[i].userId}> (${fighters[i].mana}/${fighters[i].maxMana} mana)`).join(' · ')}\nHer oyuncu Saldır, Zoltraak, Heilen, Mana Kalkanı veya Savun seçsin. Zayıflık: **${BOSS.weaknessLabel}**. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
           embeds: [],
           components: [actionRow]
         });
@@ -387,13 +398,6 @@ export default {
           log.push(`⚔️ ${f.username} (${f.roleData.label}) ${bossHit.damage} hasar verdi.`);
         }
         if (bossHp <= 0) break;
-        if (BOSS.id === 'fallen-mage' && !auraFinalStandUsed && bossHp <= maxBossHp * 0.1) {
-          auraFinalStandUsed = true;
-          auraFinalStandPending = true;
-          const warning = '⚠️ Aura son direnişine geçti! Bir sonraki saldırısı tüm takımı vuracak; savunma alın!';
-          log.push(warning);
-          specialAttackHistory.push(warning);
-        }
         const living=fighters.map((x,i)=>hpNow[i]>0?i:-1).filter(i=>i>=0);
         if (!living.length) break;
         const tank=living.find(i=>fighters[i].role==='tank');
