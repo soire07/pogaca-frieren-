@@ -1109,7 +1109,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname) && !isPublicProfilePath) return false;
   const sessionUser = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
   const user = await enrichSiteUser(db,client,sessionUser || (url.pathname === '/maceraci/ev' ? { id: 'public-viewer', username: 'Gezgin' } : (url.pathname === '/kesfet' || url.pathname === '/maceraci/oyuncu' || isPublicProfilePath) ? { id: '', username: 'Gezgin', avatarUrl: '/assets/site-avatar.webp' } : null));
-  if (!user && url.pathname !== '/kesfet' && url.pathname !== '/maceraci/oyuncu' && !isPublicProfilePath) {
+  if (!user && url.pathname !== '/kesfet' && url.pathname !== '/maceraci/oyuncu' && !isPublicProfilePath && url.pathname !== '/profil/media/public') {
     res.writeHead(302, { Location: '/login', 'Cache-Control': 'no-store' });
     res.end();
     return true;
