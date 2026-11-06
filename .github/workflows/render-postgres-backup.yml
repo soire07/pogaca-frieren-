@@ -70,9 +70,11 @@ jobs:
           done
           docker exec "$container" pg_isready -U postgres -d restore_test
 
-          docker exec "$container" pg_restore --exit-on-error --no-owner --no-acl \
-            --dbname=restore_test \
-            /backup/*.dump
+          docker exec "$container" sh -euc ' \
+            pg_restore --exit-on-error --no-owner --no-acl \
+              --dbname=restore_test \
+              /backup/*.dump \
+          '
 
           table_count="$(docker exec "$container" psql -U postgres -d restore_test -Atqc \
             "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'")"
