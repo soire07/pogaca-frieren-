@@ -41,7 +41,7 @@ test('homepage chat is inserted immediately after the hero and includes Frieren 
  const pageRes=response();assert.equal(await handlePublicSiteRequest(get('/kesfet',{id:accountId,username:'Gezgin'}),pageRes,{db}),true);
  assert.ok(pageRes.body.indexOf('public-chat-section')>pageRes.body.toLocaleLowerCase('tr-TR').indexOf('fantastik bir'));
  assert.ok(pageRes.body.indexOf('public-chat-section')<pageRes.body.indexOf('YOL ARKADAŞLARIN'));
- assert.match(pageRes.body,/data-chat-search/);assert.match(pageRes.body,/data-chat-counter/);assert.match(pageRes.body,/chat-266-1/);
+ assert.match(pageRes.body,/data-chat-search/);assert.match(pageRes.body,/data-chat-counter/);assert.match(pageRes.body,/chat-271-1/);
 });
 
 test('chat delete, pin and pause endpoints reject non-owner even with a valid session and CSRF',async()=>{
