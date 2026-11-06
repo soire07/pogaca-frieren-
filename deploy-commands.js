@@ -111,7 +111,9 @@ const duplicates = names.filter((name, index) => names.indexOf(name) !== index);
 if (duplicates.length) {
   throw new Error('Tekrarlanan slash komut adları: ' + [...new Set(duplicates)].join(', '));
 }
-console.log(`Kaydedilmeye hazır ${commands.length} komut doğrulandı.`);\n\nconst globalCommandNames = ['haberleri-ayarla', 'haberleri-kapat'];
+console.log(`Kaydedilmeye hazır ${commands.length} komut doğrulandı.`);
+
+const globalCommandNames = ['haberleri-ayarla', 'haberleri-kapat'];
 const globalCommands = globalCommandNames.map(name => {
   const command = commands.find(candidate => candidate.name === name);
   if (!command) throw new Error('Global allowlist command missing: /' + name);
