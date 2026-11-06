@@ -28,7 +28,7 @@ export async function listPublicChatMessages(db,{limit=60,viewerAccountId=null}=
  const count=Math.max(1,Math.min(100,Math.floor(Number(limit)||60)));
  const viewer=viewerAccountId&&ACCOUNT_ID.test(String(viewerAccountId))?String(viewerAccountId):null;
  await ensurePublicChatSchema(db);
- const result=await db.query(`SELECT m.message_id,m.username,m.body,m.created_at,m.reply_to_message_id,
+ const result=await db.query(`SELECT m.message_id,m.username,m.body,m.created_at,m.reply_to_message_id,m.account_id=$2 AS is_own,
   COALESCE((SELECT jsonb_agg(jsonb_build_object('emoji',r.emoji,'count',r.count,'reacted',r.reacted)) FROM (
    SELECT emoji,COUNT(*)::int AS count,BOOL_OR(account_id=$2) AS reacted FROM frieren_public_chat_reactions WHERE message_id=m.message_id GROUP BY emoji
   ) r),'[]'::jsonb) AS reactions,
