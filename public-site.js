@@ -70,7 +70,7 @@ async function enrichSiteUser(db,client,user) {
   } catch {}
   try {
     const custom=await db.query("SELECT 1 FROM frieren_profile_media WHERE account_id=$1 AND media_kind='avatar' LIMIT 1",[user.id.slice(5)]);
-    if(custom.rowCount)enriched.avatarUrl='/maceraci/profil/media?kind=avatar';
+    if(custom.rowCount)enriched.avatarUrl='/profil/media?kind=avatar';
   } catch {}
   return enriched;
 }
@@ -130,7 +130,7 @@ function page(title, content, user, seo = {}) {
   const accountCard = '<section class="site-account-card' + (owner ? ' is-owner' : vip ? ' is-vip' : '') + '" aria-label="Kullanıcı hesabı">' +
     '<img src="' + esc(avatar) + '" alt="">' +
     '<div class="site-account-copy"><strong>' + esc(user.username || 'Gezgin') + (owner ? ' <span class="site-owner-badge">OWNER</span>' : vip ? ' <span class="site-vip-badge">VIP</span>' : '') + '</strong>' +
-    '<small>' + (owner ? 'Owner hesabı' : accountProfile ? esc(accountProfile.character_name || 'Maceracı') + ' · Seviye ' + levelForXp(accountProfile.xp) : 'Frieren maceracı hesabı') + '</small>' +
+    '<small>' + (owner ? 'Owner hesabı' : accountProfile ? esc(accountProfile.character_name || 'Maceracı') + ' · Seviye ' + levelForXp(accountProfile.xp) : 'Frieren hesabı') + '</small>' +
     (accountProfile ? playerXpProgress(accountProfile, vip, owner) : '') + '</div></section>';
   const mainContent = String(content).replace('<main', '<main id="main-content"');
   const ownerLink = user.id === OWNER_ID ? '<a href="/owner">Owner Panel</a>' : '';
@@ -144,21 +144,27 @@ function page(title, content, user, seo = {}) {
       '<div class="site-sidebar-intro"><span>✧ YOLCULUK REHBERİ</span><p>Keşfet, karakterini geliştir ve macerana kaldığın yerden devam et.</p></div>' +
       '<nav class="site-sidebar-nav" aria-label="Frieren ana menüsü">' +
         navGroup('kullanici', 'KULLANICI MERKEZİ', [
-          navLink('/maceraci/profil', '◉', 'Hesap Profilim', 'Hesap kimliğin ve kişisel vitrinin'),
-          navLink('/maceraci/profil#achievements', '✧', 'Başarım Vitrini', 'Kazandığın ve sergilediğin başarımlar'),
-          navLink('/maceraci/profil#progress', '↗', 'İlerlemem', 'XP geçmişi, etkinlik ve koleksiyon ilerlemen'),
-          navLink('/maceraci/profil#badges', '✿', 'Rozetlerim', 'Kazandığın rozetler ve başarı ödüllerin'),
-          navLink('/maceraci/profil#battle-stats', '⚔', 'Savaş İstatistiklerim', 'Boss, zindan ve arena sonuçların'),
-          navLink('/maceraci/profil#leaderboards', '♛', 'Sıralamalar', 'Sunucu içi ve son 24 saat tabloları'),
-          navLink('/maceraci/envanter', '▣', 'Envanterim', 'Eşyaların ve ekipmanların'),
-          navLink('/maceraci/koleksiyon', '◈', 'Koleksiyonum', 'Yoldaşlar, balıklar ve keşifler'),
-          navLink('/maceraci/sosyal', '♧', 'Yol Arkadaşlarım', 'Arkadaşlıklar, rakipler ve topluluk bağların'),
-          navLink('/maceraci/merkez', '✧', 'Kişisel Merkez', 'Mesajların, ajandan ve kişisel profilin'),
-          navLink('/maceraci/yasam', '⌂', 'Kişisel Yaşam Alanım', 'Odan, koleksiyonların, kozmetiklerin ve etkinliklerin'),
-          navLink('/maceraci/profil#privacy', '◈', 'Gizlilik Ayarları', 'Herkese açık profilinde görünenler'),
-          navLink('/maceraci/bildirimler', '☾', 'Bildirimler', 'Haberci kuş tercihlerin'),
-          navLink('/maceraci/atolye', '✦', 'Büyü Atölyesi', 'Embed ve büyü otomasyonları'),
+          navLink('/profil', '◉', 'Hesap Profilim', 'Sunucudan bağımsız hesap kimliğin ve profil görsellerin'),
+          navLink('/hesap-merkezi', '✧', 'Hesap ve Destek Merkezi', 'Hesap işlemlerin ve destek taleplerin'),
+          navLink('/destek#account-settings', '⚙', 'Hesap Ayarları', 'Hesap verilerin ve hesap işlemlerin'),
           navLink('/kesfet#topluluk-sohbeti', '☾', 'Topluluk Sohbeti', 'Herkese açık Frieren sohbeti')
+        ]) +
+        navGroup('maceraci', 'MACERACI PANELİ', [
+          navLink('/maceraci', '⌂', 'Maceracı Panelim', 'Sunucu ve karakter seçimi burada yapılır'),
+          navLink('/maceraci/profil', '✧', 'Karakter Profilim', 'Seçili sunucudaki RPG karakterin'),
+          navLink('/maceraci/profil#achievements', '♛', 'Başarım Vitrini', 'Karakter başarımların'),
+          navLink('/maceraci/profil#progress', '↗', 'Karakter İlerlemem', 'XP, etkinlik ve koleksiyon ilerlemen'),
+          navLink('/maceraci/profil#badges', '✿', 'Karakter Rozetlerim', 'RPG rozetlerin ve başarı ödüllerin'),
+          navLink('/maceraci/profil#battle-stats', '⚔', 'Savaş İstatistiklerim', 'Boss, zindan ve arena sonuçların'),
+          navLink('/maceraci/profil#leaderboards', '♜', 'Sunucu Sıralamaları', 'Sunucu içi ve son 24 saat tabloları'),
+          navLink('/maceraci/envanter', '▣', 'Envanterim', 'Seçili karakterin eşyaları ve ekipmanları'),
+          navLink('/maceraci/koleksiyon', '◈', 'Koleksiyonum', 'Karaktere bağlı yoldaşlar, balıklar ve keşifler'),
+          navLink('/maceraci/sosyal', '♧', 'RPG Sosyal Alanı', 'Sunucuya özel arkadaşlıklar ve rakipler'),
+          navLink('/maceraci/merkez', '✧', 'Maceracı Kişisel Merkezi', 'Karaktere bağlı mesajlar, ajanda ve oyuncu profili'),
+          navLink('/maceraci/yasam', '⌂', 'Kişisel Yaşam Alanım', 'Karakterin odası, kozmetikleri ve etkinlikleri'),
+          navLink('/maceraci/profil#privacy', '◈', 'RPG Profil Gizliliği', 'Sunucuya özel karakter vitrini'),
+          navLink('/maceraci/bildirimler', '☾', 'Lonca Bildirimleri', 'Sunucuya özel haberci kuş tercihlerin'),
+          navLink('/maceraci/atolye', '✦', 'Lonca Büyü Atölyesi', 'Sunucu yönetimine özel araçlar')
         ]) +
         navGroup('oyuncu', 'BAŞLANGIÇ', [
           navLink('/', '⌂', 'Kullanıcı Paneli', 'Maceracı panelin ve etkinliklerin'),
@@ -189,6 +195,15 @@ function publicPlayerProfilePage(user,showcase,personal,guestbook,csrf,canSign){
  const stats=showcase.settings?.show_stats?'<div class="user-center-metrics"><article><span>Seviye</span><strong>'+esc(profile.level??'—')+'</strong></article><article><span>XP</span><strong>'+esc(profile.xp??0)+'</strong></article><article><span>Boss zaferi</span><strong>'+esc(profile.boss_defeats??0)+'</strong></article><article><span>Zindan</span><strong>'+esc(profile.dungeon_wins??0)+'</strong></article></div>':'<p class="muted">Bu oyuncu savaş ve ilerleme istatistiklerini gizli tutuyor.</p>';
  const content='<main class="wrap user-center-page personal-center-page"><section class="user-center-hero"><div class="eyebrow">✧ AÇIK OYUNCU PROFİLİ</div><h1>'+esc(profile.character_name||'Maceracı')+'</h1><p class="lead">'+esc(personal.status_text||'Yolculuk devam ediyor')+'</p><p>'+esc(personal.bio||'Bu oyuncu henüz bir biyografi eklememiş.')+'</p>'+stats+'</section><section class="section"><div class="section-head"><h2>Ziyaretçi Defteri</h2><p>Bu oyuncuya kısa bir mesaj bırak.</p></div><div class="card">'+sign+entries+'</div></section></main>';
  return page('Oyuncu Profili',content,user);
+}
+
+function siteAccountProfilePage(user,data={}) {
+  const csrf=esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET));
+  const avatar=esc(user.avatarUrl||'/assets/site-avatar.webp');
+  const banner=esc(data.bannerUrl||'/assets/site-profile-banner.svg');
+  const editor='<section class="card profile-media-editor" id="profile-editor" hidden data-profile-media-editor data-csrf="'+csrf+'" data-discord-avatar="'+esc(user.discordAvatarUrl||user.avatarUrl||'/assets/site-avatar.webp')+'"><div><div class="profile-editor-heading"><div><span class="eyebrow">HESAP KİMLİĞİ</span><h2>Profil görsellerini düzenle</h2></div><button class="btn ghost" type="button" data-profile-editor-close>Kapat</button></div><p class="market-meta">Bu görseller Frieren hesabına aittir; Discord sunucusu veya RPG karakteri seçmen gerekmez.</p></div><div class="profile-media-grid"><label class="profile-media-control"><strong>Profil Fotoğrafı</strong><span>Hesap avatarın.</span><img data-media-preview="avatar" src="'+avatar+'" alt="Profil fotoğrafı önizlemesi"><input type="file" accept="image/png,image/jpeg,image/webp" data-media-input="avatar"></label><label class="profile-media-control"><strong>Profil Bannerı</strong><span>Hesap profilinin üst görseli.</span><img data-media-preview="banner" src="'+banner+'" alt="Profil bannerı önizlemesi"><input type="file" accept="image/png,image/jpeg,image/webp" data-media-input="banner"></label></div><div class="profile-media-actions"><button class="btn ghost" type="button" data-media-reset="avatar">Discord avatarına dön</button><button class="btn ghost" type="button" data-media-reset="banner">Varsayılan banner</button></div><p data-media-status role="status" aria-live="polite"></p></section>';
+  const content='<main class="wrap profile-page user-center-page account-center-page"><header class="user-center-hero"><div class="eyebrow">FRIEREN HESAP MERKEZİ</div><h1>Hesap Profilin</h1><p class="lead">Bu profil tüm Frieren platformunda geçerlidir. Maceracı sunucularından ve karakterlerinden bağımsızdır.</p></header><section class="card profile-account-heading"><img src="'+avatar+'" alt="" class="site-account-avatar"><div><span class="eyebrow">HESAP KİMLİĞİ</span><h2>'+esc(user.username||'Gezgin')+'</h2><p class="market-meta">Frieren hesabın · Sunucudan bağımsız kimlik</p><button class="btn" type="button" data-profile-editor-open>Profil fotoğrafı ve bannerı düzenle</button></div></section><section class="card profile-account-banner"><img src="'+banner+'" alt="Profil bannerı" style="width:100%;max-height:220px;object-fit:cover;border-radius:14px"></section>'+editor+'<section class="section"><div class="section-head"><h2>Hesap ve Maceracı ayrımı</h2><p>Genel hesap bilgilerin burada kalır. RPG karakterin, sunucu ilerlemen, envanterin ve savaş istatistiklerin Maceracı Paneli içinde yönetilir.</p></div><div class="portal-actions"><a class="btn ghost" href="/hesap-merkezi">Hesap ve destek merkezi</a><a class="btn ghost" href="/maceraci">Maceracı Paneline git</a></div></section></main>';
+  return page('Hesap Profilim',content,user)+'<script src="/assets/profile-media.js" defer></script><script src="/assets/user-center.js" defer></script>';
 }
 
 function personalCenterPage(user,profile,data,csrf,status){
@@ -792,7 +807,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     res.writeHead(303,{Location:'/destek?status=delete_confirmation_required','Cache-Control':'no-store'});res.end();return true;
   }
-  if (req.method === 'POST' && url.pathname === '/maceraci/profil/media') {
+  if (req.method === 'POST' && (url.pathname === '/maceraci/profil/media' || url.pathname === '/profil/media')) {
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!requireSiteAccount(res,session?.id))return true;
     if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil veritabanı kullanılamıyor.');return true;}
@@ -813,7 +828,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       throw error;
     }
   }
-  if (req.method === 'DELETE' && url.pathname === '/maceraci/profil/media') {
+  if (req.method === 'DELETE' && (url.pathname === '/maceraci/profil/media' || url.pathname === '/profil/media')) {
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!requireSiteAccount(res,session?.id))return true;
     if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil veritabanı kullanılamıyor.');return true;}
@@ -1030,7 +1045,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci/oyuncu', '/maceraci/merkez', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/pazar']);
+  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci/oyuncu', '/maceraci/merkez', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/profil', '/profil/media', '/hesap-merkezi', '/pazar']);
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname)) return false;
   const sessionUser = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
   const user = await enrichSiteUser(db,client,sessionUser || (url.pathname === '/maceraci/ev' ? { id: 'public-viewer', username: 'Gezgin' } : (url.pathname === '/kesfet' || url.pathname === '/maceraci/oyuncu') ? { id: '', username: 'Gezgin', avatarUrl: '/assets/site-avatar.webp' } : null));
@@ -1039,7 +1054,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     res.end();
     return true;
   }
-  if(url.pathname==='/maceraci/profil/media'){
+  if(url.pathname==='/maceraci/profil/media'||url.pathname==='/profil/media'){
     if(!requireSiteAccount(res,user?.id))return true;
     if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil görseli veritabanı kullanılamıyor.');return true;}
     const media=await getProfileMedia(db,user.id,String(url.searchParams.get('kind')||''));
@@ -1059,7 +1074,15 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  if (url.pathname === '/destek') {
+  if (url.pathname === '/profil') {
+    if (!requireSiteAccount(res,user?.id)) return true;
+    if (!db) { res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil veritabanı kullanılamıyor.');return true; }
+    let bannerMedia=null;try{bannerMedia=await getProfileMedia(db,user.id,'banner');}catch{}
+    const html=siteAccountProfilePage(user,{bannerUrl:bannerMedia?'/profil/media?kind=banner':'/assets/site-profile-banner.svg'});
+    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});
+    res.end(html);return true;
+  }
+  if (url.pathname === '/destek' || url.pathname === '/hesap-merkezi') {
     if (!requireSiteAccount(res, user?.id)) return true;
     if (!db) { res.writeHead(503,{'Cache-Control':'no-store'});res.end('Destek veritabanı kullanılamıyor.');return true; }
     const tickets=await listSupportTickets(db,user.id,20);

@@ -18,7 +18,7 @@ function request(path = '/', user = visitor) {
 }
 
 test('account-only player routes reject legacy Discord sessions before querying account data', async () => {
-  const routes=['/maceraci','/maceraci/profil','/maceraci/yasam','/maceraci/atolye','/maceraci/bildirimler','/maceraci/envanter','/maceraci/koleksiyon','/maceraci/sosyal','/pazar','/destek'];
+  const routes=['/maceraci','/maceraci/profil','/maceraci/yasam','/maceraci/atolye','/maceraci/bildirimler','/maceraci/envanter','/maceraci/koleksiyon','/maceraci/sosyal','/pazar','/destek','/profil','/hesap-merkezi'];
   for(const route of routes){
     let queries=0;
     const response=res();
@@ -174,7 +174,7 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /data-nav-group="dunya"/);
   assert.ok(response.body.includes('data-nav-path="/" href="/"'));
   assert.ok(response.body.includes('<strong>Kullanıcı Paneli</strong>'));
-  assert.ok(!response.body.includes('data-nav-path="/maceraci" href="/maceraci"'));
+  assert.ok(response.body.includes('data-nav-path="/maceraci" href="/maceraci"'));
   assert.match(response.body, /site-navigation.js/);
   assert.match(response.body, /data-nav-group="oyuncu"/);
   assert.match(response.body, /data-nav-group="kullanici"/);
@@ -1260,25 +1260,37 @@ test('all site and panel button markup declares an explicit action type', async 
   }
 });
 
-test('user menu adds badges, account settings and logout without relocating existing links', async () => {
-  const source = await readFile(new URL('../public-site.js', import.meta.url), 'utf8');
-  const userCenter = source.slice(source.indexOf("navGroup('kullanici'"), source.indexOf("navGroup('oyuncu'"));
-  const otherSections = source.slice(source.indexOf("navGroup('diger'"), source.indexOf("navGroup('yonetim'"));
-  assert.match(userCenter, /navLink\('\/maceraci\/profil#badges',[\s\S]*?'Rozetlerim'/);
-  assert.match(otherSections, /'DİĞER BÖLÜMLER'/);
-  assert.match(otherSections, /navLink\('\/destek#account-settings',[\s\S]*?'Hesap Ayarları'/);
-  assert.match(otherSections, /navLink\('\/logout',[\s\S]*?'Çıkış Yap'/);
-  for (const existing of [
-    "navLink('/maceraci/profil#achievements'",
-    "navLink('/maceraci/profil#progress'",
-    "navLink('/maceraci/profil#battle-stats'",
-    "navLink('/maceraci/koleksiyon'",
-    "navLink('/maceraci/yasam'",
-    "navLink('/pazar'",
-    "navLink('/lonca'"
-  ]) assert.ok(source.includes(existing), 'existing menu entry must remain: ' + existing);
-  assert.match(source, /id="badges"/);
-  assert.match(source, /id="account-settings"/);
+test('account navigation is global while RPG character features stay inside the adventurer panel', async () => {
+  const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
+  const userCenter=source.slice(source.indexOf("navGroup('kullanici'"),source.indexOf("navGroup('maceraci'"));
+  const adventurer=source.slice(source.indexOf("navGroup('maceraci'"),source.indexOf("navGroup('oyuncu'"));
+  assert.match(userCenter,/navLink\('\/profil',[\s\S]*?'Hesap Profilim'/);
+  assert.match(userCenter,/navLink\('\/hesap-merkezi',[\s\S]*?'Hesap ve Destek Merkezi'/);
+  assert.doesNotMatch(userCenter,/\/maceraci\//);
+  for(const path of ['/maceraci/profil','/maceraci/merkez','/maceraci/envanter','/maceraci/koleksiyon','/maceraci/yasam']) assert.ok(adventurer.includes(path),path);
+  assert.match(adventurer,/MACERACI PANELİ/);
+  assert.match(source,/navLink\('\/destek#account-settings',[\s\S]*?'Hesap Ayarları'/);
+  assert.match(source,/navLink\('\/logout',[\s\S]*?'Çıkış Yap'/);
+  assert.match(source,/id="badges"/);
+  assert.match(source,/id="account-settings"/);
+});
+
+test('global account profile renders without a guild picker and keeps profile media account-scoped', async () => {
+  const accountId='site_123e4567-e89b-12d3-a456-426614174000';
+  const db={async query(sql){
+    if(sql.includes('SELECT user_id FROM site_discord_links'))return{rows:[],rowCount:0};
+    if(sql.includes('SELECT 1 FROM frieren_profile_media'))return{rows:[],rowCount:0};
+    if(sql.includes('SELECT mime_type,media_data'))return{rows:[],rowCount:0};
+    return{rows:[],rowCount:0};
+  }};
+  const response=res();
+  assert.equal(await handlePublicSiteRequest(request('/profil',{id:accountId,username:'Gezgin'}),response,{db}),true);
+  assert.equal(response.status,200);
+  assert.match(response.body,/Hesap Profilin/);
+  assert.match(response.body,/sunucu.*karakteri seçmen gerekmez/i);
+  assert.match(response.body,/data-profile-media-editor/);
+  assert.doesNotMatch(response.body,/Sunucu seç|Karakter seç/);
+  assert.match(response.body,/\/assets\/user-center\.js/);
 });
 
 test('linked adventurer cards show a medium class emblem in the upper-right corner for each class', async () => {
@@ -1313,7 +1325,7 @@ test('profile media rejects invalid CSRF before touching storage',async()=>{
 test('profile media is served only to its signed-in account with nosniff and private caching',async()=>{
  const accountId='site_123e4567-e89b-12d3-a456-426614174000';const session=createPublicSiteSession(secret,{id:accountId,username:'Gezgin'},Math.floor(Date.now()/1000)+3600);const cookie=buildPublicSiteSessionCookie(session,3600).split(';')[0];const bytes=Buffer.from('image-bytes');
  const db={async query(sql){if(sql.includes('CREATE TABLE IF NOT EXISTS frieren_profile_media'))return{rows:[],rowCount:0};if(sql.includes('SELECT mime_type,media_data'))return{rows:[{mime_type:'image/jpeg',media_data:bytes,width:1,height:1}],rowCount:1};throw new Error('Unexpected media read: '+sql);}};
- const response=res();assert.equal(await handlePublicSiteRequest({method:'GET',url:'/maceraci/profil/media?kind=avatar',headers:{cookie}},response,{db}),true);assert.equal(response.status,200);assert.equal(response.headers['Content-Type'],'image/jpeg');assert.equal(response.headers['X-Content-Type-Options'],'nosniff');assert.equal(response.headers['Cache-Control'],'private,no-store');assert.equal(response.body,bytes);
+ const response=res();assert.equal(await handlePublicSiteRequest({method:'GET',url:'/profil/media?kind=avatar',headers:{cookie}},response,{db}),true);assert.equal(response.status,200);assert.equal(response.headers['Content-Type'],'image/jpeg');assert.equal(response.headers['X-Content-Type-Options'],'nosniff');assert.equal(response.headers['Cache-Control'],'private,no-store');assert.equal(response.body,bytes);
 });
 
 test('linked Discord avatar is used in the site account menu when no custom avatar exists',async()=>{
@@ -1325,7 +1337,7 @@ test('linked Discord avatar is used in the site account menu when no custom avat
 test('profile page includes avatar and banner upload controls and authenticated image endpoints',async()=>{
  const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');const script=await readFile(new URL('../public-assets/profile-media.js',import.meta.url),'utf8');
  assert.match(source,/data-profile-media-editor/);assert.match(source,/data-media-input="avatar"/);assert.match(source,/data-media-input="banner"/);assert.match(source,/profile-media\.js/);
- assert.match(script,/createImageBitmap/);assert.match(script,/X-CSRF-Token/);assert.match(script,/data-media-reset/);
+ assert.ok(script.includes("const endpoint='/profil/media'"));assert.match(script,/createImageBitmap/);assert.match(script,/X-CSRF-Token/);assert.match(script,/data-media-reset/);
 });
 
 

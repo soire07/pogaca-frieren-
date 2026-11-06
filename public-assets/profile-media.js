@@ -4,7 +4,7 @@
   const csrf=editor.dataset.csrf||'';
   const status=editor.querySelector('[data-media-status]');
   const setStatus=(message,error=false)=>{status.textContent=message;status.dataset.error=error?'true':'false';};
-  const endpoint='/maceraci/profil/media';
+  const endpoint='/profil/media';
   editor.querySelector('[data-media-preview="banner"]')?.addEventListener('error',event=>{event.currentTarget.src='/assets/site-profile-banner.svg';});
   const preview=(kind,url)=>{const image=editor.querySelector('[data-media-preview="'+kind+'"]');if(image)image.src=url;};
   const upload=async(kind,file)=>{
