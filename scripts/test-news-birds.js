@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseAnimeNewsRss, pollAnimeNewsFeed, buildAnimeNewsDigestEmbeds, classifyAnimeNews, setNotificationPreference, getNotificationPreferences, claimDueAnimeNewsDigests, getEventReminderRecipients } from '../news-birds.js';
+import { parseAnimeNewsRss, pollAnimeNewsFeed, buildAnimeNewsDigestEmbeds, classifyAnimeNews, setNotificationPreference, getNotificationPreferences, claimDueAnimeNewsDigests, getEventReminderRecipients, translateAnimeNewsItems } from '../news-birds.js';
 
 test('RSS parser extracts bounded safe titles, summaries and HTTPS article links',()=>{
  const xml='<?xml version="1.0"?><rss><channel><item><title><![CDATA[Frieren: New Arc & Cast]]></title><link>https://www.animenewsnetwork.com/news/2026-11-04/test</link><guid>ann-1</guid><pubDate>Wed, 04 Nov 2026 12:00:00 GMT</pubDate><description><![CDATA[<p>New <b>anime</b> update &amp; details.</p>]]></description></item></channel></rss>';
@@ -57,6 +57,30 @@ test('digest renderer creates individual clickable image embeds and deduplicates
  assert.equal(duplicates.length,1);
  assert.equal(classifyAnimeNews('Titan Manga licenses new titles'),'Manga');
  assert.deepEqual(buildAnimeNewsDigestEmbeds([{title:'unsafe',link:'https://example.com/article'}]),[]);
+});
+
+
+test('English news is translated to Turkish once and cached; failures preserve source text',async()=>{
+ const updates=[];
+ const db={async query(sql,params){updates.push({sql,params});return{rowCount:1,rows:[]};}};
+ const calls=[];
+ const fetcher=async url=>{
+  calls.push(String(url));
+  const q=new URL(url).searchParams.get('q');
+  return {ok:true,status:200,json:async()=>({responseStatus:200,responseData:{translatedText:q==='Frieren returns'?'Frieren geri dönüyor':'Yeni bölüm duyuruldu.'}})};
+ };
+ const items=[{guid:'ann-translate-1',title:'Frieren returns',summary:'New episode announced.'}];
+ const translated=await translateAnimeNewsItems(db,items,fetcher);
+ assert.equal(translated[0].translatedTitle,'Frieren geri dönüyor');
+ assert.equal(translated[0].translatedSummary,'Yeni bölüm duyuruldu.');
+ assert.equal(calls.length,2);
+ assert.match(updates[0].sql,/translated_title=\$2,translated_summary=\$3/);
+ const cached=await translateAnimeNewsItems(db,[{...items[0],translatedTitle:'Frieren geri dönüyor',translatedSummary:'Yeni bölüm duyuruldu.'}],fetcher);
+ assert.equal(cached[0].translatedTitle,'Frieren geri dönüyor');
+ assert.equal(calls.length,2);
+ const fallback=await translateAnimeNewsItems(db,items,async()=>({ok:false,status:429}));
+ assert.equal(fallback[0].title,'Frieren returns');
+ assert.equal(fallback[0].translatedTitle,undefined);
 });
 
 test('notification preferences are category-scoped and upserted with explicit booleans',async()=>{
