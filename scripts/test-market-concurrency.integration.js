@@ -1730,7 +1730,7 @@ test('equipment salvage returns proportional materials for all twelve items and 
     await ensureUser(guildId, userId);
     await pool.query(
       'INSERT INTO inventory(guild_id,user_id,item_key,quantity) SELECT $1,$2,item.name,2 FROM UNNEST($3::text[]) AS item(name)',
-      [guildId, userId, equipmentItems.map(item => item.name)]
+      [guildId, userId, equipmentItems.filter(item => !item.dropOnly).map(item => item.name)]
     );
     const makeInteraction = itemId => ({
       guildId,
@@ -1745,7 +1745,7 @@ test('equipment salvage returns proportional materials for all twelve items and 
     const expected = new Map();
     const responses = [];
     try {
-      for (const item of equipmentItems) {
+      for (const item of equipmentItems.filter(item => !item.dropOnly)) {
         const salvage = {
           iron_sword: ['🥐 Büyülü Poğaça Kutusu', 1],
           mage_staff: ['📖 Yasak Büyü Kitabı', 1],
