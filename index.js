@@ -193,7 +193,10 @@ async function processNewsBirdDigests(readyClient = client) {
         }
         await markAnimeNewsGuildDigestSent(pool, digest.guild_id);
       } catch (error) {
-        if ([10003, 10008].includes(Number(error?.code))) {\n          await disableNewsGuildChannel(pool, digest.guild_id).catch(() => {});\n        }\n        await releaseAnimeNewsGuildDigestClaim(pool, digest.guild_id).catch(() => false);
+        if ([10003, 10008].includes(Number(error?.code))) {
+          await disableNewsGuildChannel(pool, digest.guild_id).catch(() => {});
+        }
+        await releaseAnimeNewsGuildDigestClaim(pool, digest.guild_id).catch(() => false);
         console.error(
           'Haberci kuş sunucu kanalına teslim edilemedi:',
           'guild=' + digest.guild_id,
