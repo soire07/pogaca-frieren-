@@ -42,3 +42,16 @@ test('personal center rejects a guild without a linked character before mutation
  const csrf=createSiteCsrfToken(secret);const response=res();await handlePublicSiteRequest(post('/maceraci/merkez',{guildId:profile.guild_id,action:'profile-save',bio:'X',theme:'midnight',guestbookEnabled:'true',csrf}),response,{db});
  assert.equal(response.status,403);assert.equal(writes,0);
 });
+
+test('public player profiles require public home visibility and respect hidden statistics',async()=>{
+ const target={user_id:profile.user_id,character_name:'Fern',level:20,xp:2400,boss_defeats:4,dungeon_wins:3,active_room:'starter',layout:[]};
+ const db={async query(sql){
+  if(sql.includes('SELECT u.user_id,u.character_name,u.class_name'))return{rows:[target],rowCount:1};
+  if(sql.includes('SELECT show_stats,show_achievements'))return{rows:[{show_stats:false,show_achievements:false,show_collections:false,show_activity:false,show_cosmetics:false}],rowCount:1};
+  if(sql.includes('SELECT bio,status_text,theme'))return{rows:[{bio:'Araştırmacı',status_text:'Yolculukta',guestbook_enabled:true}],rowCount:1};
+  if(sql.includes('FROM player_guestbook_entries e WHERE'))return{rows:[],rowCount:0};
+  return{rows:[],rowCount:0};
+ }};
+ const response=res();assert.equal(await handlePublicSiteRequest({method:'GET',url:'/maceraci/oyuncu?guildId='+profile.guild_id+'&userId='+profile.user_id,headers:{}},response,{db}),true);
+ assert.equal(response.status,200);assert.match(response.body,/AÇIK OYUNCU PROFİLİ/);assert.match(response.body,/istatistiklerini gizli tutuyor/);assert.doesNotMatch(response.body,/action="\/maceraci\/oyuncu\/ziyaretci-defteri"/);
+});
