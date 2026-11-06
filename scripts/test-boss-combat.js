@@ -513,3 +513,17 @@ test('Aura form-specific drops are rare, phase-bound and never leak to other bos
     assert.ok(equipmentItems.some(item => item.name === name && item.dropOnly), name);
   }
 });
+
+
+test('Aura and Zeldeila are Infinity class while preserving their distinct boss mechanics', () => {
+  const aura = RAID_BOSSES.find(boss => boss.id === 'fallen-mage');
+  const zeldeila = RAID_BOSSES.find(boss => boss.id === 'zeldeila');
+  assert.equal(aura.class, 'Infinity');
+  assert.equal(zeldeila.class, 'Infinity');
+  assert.equal(aura.weakness, 'spell');
+  assert.equal(aura.special, 'mana-curse');
+  assert.equal(aura.loot, 'Auranın Mühürlü Asa Parçası');
+  assert.equal(zeldeila.special, 'eternal-regeneration');
+  assert.equal(zeldeila.regenerateDamagePerSecond, true);
+  assert.equal(zeldeila.noHpScaling, true);
+});
