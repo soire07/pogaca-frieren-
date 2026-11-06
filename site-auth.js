@@ -381,7 +381,7 @@ function requestCookies(req) {
   }).filter(([key]) => key));
 }
 function discordRedirectUri() {
-  return String(process.env.SITE_DISCORD_REDIRECT_URI || (baseUrl() + '/discord/callback')).trim();
+  return String(process.env.SITE_DISCORD_REDIRECT_URI || ((process.env.OWNER_DASHBOARD_BASE_URL || baseUrl()).replace(/\\/+$/, '') + '/discord/callback')).trim();
 }
 function discordLoginPage(status = '') {
   const notice = status === 'discord_error'
