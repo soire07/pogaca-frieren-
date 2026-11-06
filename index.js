@@ -713,6 +713,11 @@ createServer(withHttpErrorBoundary(async (req, res) => {
     }
     return sendJson(404, { error: 'not_found' });
   }
+  // The plain-text health response is reserved for the root GET endpoint.
+  // Unknown API paths or non-GET requests must never look like a successful health check.
+  if (req.method !== 'GET' || req.url !== '/') {
+    return sendJson(404, { error: 'not_found' });
+  }
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   if (!client.isReady()) {
     res.writeHead(503);
