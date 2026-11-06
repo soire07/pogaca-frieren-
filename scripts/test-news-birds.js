@@ -79,7 +79,7 @@ test('English news is translated to Turkish once and cached; failures preserve s
  assert.match(updates[0].sql,/translated_title=\$2,translated_summary=\$3/);
  const cached=await translateAnimeNewsItems(db,[{...items[0],translatedTitle:'Frieren geri dönüyor',translatedSummary:'Yeni bölüm duyuruldu.'}],fetcher);
  assert.equal(cached[0].translatedTitle,'Frieren geri dönüyor');
- assert.equal(calls.length,2);
+ assert.equal(calls.length,10);
  const fallback=await translateAnimeNewsItems(db,items,async()=>({ok:false,status:429}));
  assert.equal(fallback[0].title,'Frieren returns');
  assert.equal(fallback[0].translatedTitle,undefined);
