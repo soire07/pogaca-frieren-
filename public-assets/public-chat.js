@@ -6,6 +6,7 @@
  const feedback=root.querySelector('[data-chat-feedback]');
  const blockedRoot=root.querySelector('[data-chat-blocks]');
  const replyPreview=root.querySelector('[data-chat-reply-preview]');
+ const replyLabel=root.querySelector('[data-chat-reply-label]');
  let replyTarget=null;
  const say=message=>{if(feedback)feedback.textContent=message;};
  const renderBlocked=items=>{
@@ -71,15 +72,16 @@
     const data=await response.json().catch(()=>({}));
     if(response.status===429){say('Çok hızlı mesaj gönderiyorsun. Biraz bekle.');return;}
     if(!response.ok)throw new Error(data.error==='invalid_message'?'Mesaj veya yanıt geçersiz.':'Mesaj gönderilemedi. Oturumunu yenileyip tekrar dene.');
-    input.value='';form.elements.replyToMessageId.value='';replyTarget=null;if(replyPreview){replyPreview.hidden=true;replyPreview.textContent='';}
+    input.value='';form.elements.replyToMessageId.value='';replyTarget=null;if(replyPreview)replyPreview.hidden=true;if(replyLabel)replyLabel.textContent='';
     say('Mesajın gönderildi.');await refresh();
    }catch(error){say(error.message||'Mesaj gönderilemedi.');}
    finally{button.disabled=false;input.focus();}
   });
+  form.addEventListener('click',event=>{if(!event.target.closest('[data-chat-reply-clear]'))return;replyTarget=null;form.elements.replyToMessageId.value='';if(replyPreview)replyPreview.hidden=true;if(replyLabel)replyLabel.textContent='';form.elements.message.focus();});
   list.addEventListener('click',async event=>{
    const button=event.target.closest('button');if(!button)return;
    try{
-    if(button.dataset.chatReply){replyTarget=button.dataset.chatReply;form.elements.replyToMessageId.value=replyTarget;const item=button.closest('.public-chat-message');const name=item?.querySelector('.public-chat-message-meta strong')?.textContent||'mesaj';if(replyPreview){replyPreview.textContent=name+' mesajına yanıt veriyorsun';replyPreview.hidden=false;}form.elements.message.focus();return;}
+    if(button.dataset.chatReply){replyTarget=button.dataset.chatReply;form.elements.replyToMessageId.value=replyTarget;const item=button.closest('.public-chat-message');const name=item?.querySelector('.public-chat-message-meta strong')?.textContent||'mesaj';if(replyLabel)replyLabel.textContent=name+' mesajına yanıt veriyorsun';if(replyPreview)replyPreview.hidden=false;form.elements.message.focus();return;}
     if(button.dataset.chatReact){await postAction('/api/public-chat/reactions',{messageId:button.dataset.chatReact,emoji:button.dataset.emoji});await refresh();return;}
     if(button.dataset.chatBlock){if(!window.confirm('Bu kullanıcının mesajlarını gizlemek istiyor musun?'))return;await postAction('/api/public-chat/blocks',{messageId:button.dataset.chatBlock});say('Kullanıcı engellendi.');await refresh();}
    }catch(error){say(error.message||'İşlem tamamlanamadı.');}
