@@ -338,7 +338,7 @@ async function answerCodeQuestion(question, userId, conversationId) {
   }
   if (!groq && !isNeuralConfigured(process.env)) return {
     ok: false,
-    message: 'Frieren Neural API yapılandırılmamış. FRIEREN_NEURAL_API_URL ve en az 32 karakterlik FRIEREN_NEURAL_API_TOKEN ayarlanmalı; Groq anahtarı zorunlu değildir.'
+    message: 'Frieren Neural API yapılandırılmamış. FRIEREN_NEURAL_API_URL, en az 32 karakterlik FRIEREN_NEURAL_API_TOKEN ve kalite kapısı tamamlandıktan sonra FRIEREN_NEURAL_QUALITY_APPROVED=1 ayarlanmalı; Groq anahtarı zorunlu değildir.'
   };
   const conversational = isConversationalQuestion(question);
   const contextResult = conversational ? '' : await collectCodeContext(question);

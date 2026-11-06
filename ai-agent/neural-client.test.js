@@ -5,7 +5,17 @@ import { buildNeuralPrompt, generateNeuralReply, isNeuralConfigured, isNeuralReq
 const env = {
   FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
   FRIEREN_NEURAL_API_TOKEN: 't'.repeat(40),
+  FRIEREN_NEURAL_QUALITY_APPROVED: '1',
 };
+
+test('Neural provider stays disabled until its quality gate is explicitly approved', () => {
+  const unapproved = { ...env };
+  delete unapproved.FRIEREN_NEURAL_QUALITY_APPROVED;
+  assert.equal(isNeuralRequested(unapproved), false);
+  assert.equal(isNeuralConfigured(unapproved), false);
+  assert.equal(isNeuralRequested(env), true);
+  assert.equal(isNeuralConfigured(env), true);
+});
 
 test('Neural provider requires HTTPS and a sufficiently long token', () => {
   assert.equal(isNeuralRequested(env), true);

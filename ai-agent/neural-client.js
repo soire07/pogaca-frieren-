@@ -4,13 +4,14 @@ const REQUEST_TIMEOUT_MS = 300_000;
 const MAX_REQUEST_TIMEOUT_MS = 360_000;
 
 export function isNeuralRequested(env = process.env) {
-  return Boolean(String(env.FRIEREN_NEURAL_API_URL || '').trim());
+  return Boolean(String(env.FRIEREN_NEURAL_API_URL || '').trim())
+    && env.FRIEREN_NEURAL_QUALITY_APPROVED === '1';
 }
 
 export function isNeuralConfigured(env = process.env) {
   const url = String(env.FRIEREN_NEURAL_API_URL || '').trim();
   const token = String(env.FRIEREN_NEURAL_API_TOKEN || '').trim();
-  if (!url || token.length < 32) return false;
+  if (!url || token.length < 32 || env.FRIEREN_NEURAL_QUALITY_APPROVED !== '1') return false;
   try {
     const parsed = new URL(url);
     return parsed.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(parsed.hostname);
