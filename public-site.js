@@ -25,7 +25,7 @@ import { getGuildFeatureEnabled } from './guild-feature-settings.js';
 import { createSupportTicket, listSupportTickets, listSupportTicketMessages, replySupportTicket, exportSiteAccountData, deleteSiteAccount } from './account-center.js';
 import { getNotificationPreferences, setNotificationPreference } from './news-birds.js';
 import { levelForXp, xpForNextLevel } from './utils.js';
-import { listPublicChatMessages, sendPublicChatMessage, togglePublicChatReaction, blockPublicChatUser, unblockPublicChatUser, listPublicChatBlocks, deletePublicChatMessage, updatePublicChatMessage, togglePublicChatPin, touchPublicChatPresence, getPublicChatPresence, setPublicChatTyping, markPublicChatMessagesRead, reportPublicChatMessage, getPublicChatControl, setPublicChatPaused } from './public-chat.js';
+import { listPublicChatMessages, sendPublicChatMessage, togglePublicChatReaction, blockPublicChatUser, unblockPublicChatUser, listPublicChatBlocks, deletePublicChatMessage, updatePublicChatMessage, togglePublicChatPin, touchPublicChatPresence, getPublicChatPresence, setPublicChatTyping, markPublicChatMessagesRead, reportPublicChatMessage, listPublicChatReports, resolvePublicChatReport, getPublicChatControl, setPublicChatPaused } from './public-chat.js';
 import { getAccountProfile, updateAccountProfile, followAccount, unfollowAccount, recordAccountProfileVisit, listAccountProfileActivity, sendAccountFriendRequest, respondAccountFriendRequest, listAccountFriends, getAccountIdByProfileSlug, listAccountNotifications, markAccountNotificationsRead } from './account-profile.js';
 import { ensurePersonalCenterSchema, getPersonalProfile, updatePersonalProfile, listDirectMessages, listMessageThreads, markDirectMessagesRead, sendDirectMessage, listGuestbookEntries, addGuestbookEntry, deleteGuestbookEntry, reportPlayer, createPlannerEntry, listPlannerEntries, updatePlannerEntry, deletePlannerEntry, getPersonalProgressReport, discoverPlayers, recommendPlayers, setCloseFriend, removeCloseFriend, listCloseFriends, recordProfileVisit, listProfileVisits } from './personal-center.js';
 import { achievements as RPG_ACHIEVEMENTS } from './basarimlar.js';
@@ -240,7 +240,7 @@ function personalCenterPage(user,profile,data,csrf,status){
 
 function injectPublicChat(html,user,csrfToken){
  const canSend=SITE_ACCOUNT_ID.test(String(user?.id||'')),isOwner=isOwnerSiteAccount(user);
- const ownerControls=isOwner?'<div class="public-chat-owner-controls"><strong>Owner sohbet yönetimi</strong><span data-chat-control-status>Durum yükleniyor…</span><button class="public-chat-action" type="button" data-chat-toggle-pause disabled>Sohbeti durdur</button></div>':'';
+ const ownerControls=isOwner?'<div class="public-chat-owner-controls"><strong>Owner sohbet yönetimi</strong><span data-chat-control-status>Durum yükleniyor…</span><button class="public-chat-action" type="button" data-chat-toggle-pause disabled>Sohbeti durdur</button><button class="public-chat-action" type="button" data-chat-reports-refresh>Bekleyen bildirimleri yükle</button><div class="public-chat-reports" data-chat-reports hidden></div></div>':'';
  const section='<section class="section public-chat-section" id="topluluk-sohbeti"><div class="wrap"><div class="section-head public-chat-intro"><div class="eyebrow">✧ FRIEREN TOPLULUĞU · YOL ARKADAŞLARI</div><h2>Yol arkadaşlarınla sohbet et</h2><p>Genel sohbet. Mesajları herkes okuyabilir; mesaj göndermek ve etkileşim kurmak için hesabınla giriş yap.</p></div><div class="public-chat-panel" data-public-chat data-can-send="'+(canSend?'true':'false')+'" data-chat-owner="'+(isOwner?'true':'false')+'"><div class="public-chat-head"><span><i></i> Büyülü Genel Sohbet</span><small data-chat-presence>Çevrimiçi durumu yükleniyor</small></div>'+ownerControls+'<div class="public-chat-tools"><label class="public-chat-search-label" for="public-chat-search">Sohbette ara</label><input id="public-chat-search" type="search" data-chat-search maxlength="80" placeholder="Mesaj veya kullanıcı ara…"><span data-chat-count aria-live="polite">Mesajlar yükleniyor…</span></div><ol class="public-chat-messages" data-chat-messages aria-live="polite"><li class="public-chat-empty">Sohbet yükleniyor…</li></ol>'+(canSend?'<form class="public-chat-form" data-chat-form><input type="hidden" name="csrf" value="'+esc(csrfToken)+'"><input type="hidden" name="replyToMessageId" value=""><div class="public-chat-reply-preview" data-chat-reply-preview hidden><span data-chat-reply-label></span><button class="public-chat-action" type="button" data-chat-reply-clear>Yanıtı iptal et</button></div><label class="sr-only" for="public-chat-message">Mesajın</label><input id="public-chat-message" name="message" maxlength="500" autocomplete="off" placeholder="Bir büyücü selamı bırak… (en fazla 500 karakter)" required><div class="public-chat-compose-meta"><small data-chat-counter>0 / 500</small><button class="btn" type="submit">Mesajı gönder ✧</button></div></form>':'<div class="public-chat-login"><a class="btn" href="/login">Giriş yap ve sohbete katıl</a></div>')+'<button class="public-chat-action public-chat-load-older" type="button" data-chat-load-older hidden>Eski mesajları yükle</button><div class="public-chat-blocks" data-chat-blocks></div><p class="public-chat-feedback" data-chat-feedback role="status"></p></div></div></section>';
  const source=String(html);const mainStart=source.indexOf('<main id="main-content"');const firstSectionEnd=mainStart>=0?source.indexOf('</section>',mainStart):-1;
  const positioned=firstSectionEnd>=0?source.slice(0,firstSectionEnd+10)+section+source.slice(firstSectionEnd+10):source.replace('</main>',section+'</main>');
@@ -732,6 +732,15 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     res.end(publicSeoLandingPage());
     return true;
   }
+  if(url.pathname==='/api/public-chat/reports'&&req.method==='GET'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'chat_unavailable'}));return true;}
+    if(!await isLinkedOwnerSiteAccount(db,session)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'owner_only'}));return true;}
+    const status=String(url.searchParams.get('status')||'pending');
+    const reports=await listPublicChatReports(db,{status,limit:50});
+    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify({reports}));return true;
+  }
   if(url.pathname==='/api/public-chat/messages'&&req.method==='GET'){
     if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'chat_unavailable'}));return true;}
     const chatSession=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
@@ -758,7 +767,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       throw error;
     }
   }
-  if(['/api/public-chat/reactions','/api/public-chat/blocks','/api/public-chat/blocks/unblock','/api/public-chat/messages/edit','/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/presence','/api/public-chat/typing','/api/public-chat/read','/api/public-chat/reports','/api/public-chat/control'].includes(url.pathname)&&req.method==='POST'){
+  if(['/api/public-chat/reactions','/api/public-chat/blocks','/api/public-chat/blocks/unblock','/api/public-chat/messages/edit','/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/presence','/api/public-chat/typing','/api/public-chat/read','/api/public-chat/reports','/api/public-chat/reports/review','/api/public-chat/control'].includes(url.pathname)&&req.method==='POST'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!requireSiteAccount(res,session?.id))return true;
     if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'chat_unavailable'}));return true;}
@@ -767,7 +776,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
     if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
     const owner=await isLinkedOwnerSiteAccount(db,session);
-    if(['/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/control'].includes(url.pathname)&&!owner){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'owner_only'}));return true;}
+    if(['/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/control','/api/public-chat/reports/review'].includes(url.pathname)&&!owner){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'owner_only'}));return true;}
     try{
       let result;
       if(url.pathname==='/api/public-chat/reactions')result=await togglePublicChatReaction(db,{accountId:session.id,messageId:form.get('messageId'),emoji:form.get('emoji')});
@@ -778,8 +787,9 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       else if(url.pathname==='/api/public-chat/pins')result=await togglePublicChatPin(db,{accountId:session.id,messageId:form.get('messageId'),isOwner:owner});
       else if(url.pathname==='/api/public-chat/control')result=await setPublicChatPaused(db,{accountId:session.id,paused:form.get('paused')==='true',isOwner:owner});
       else if(url.pathname==='/api/public-chat/typing')result=await setPublicChatTyping(db,{accountId:session.id});
-      else if(url.pathname==='/api/public-chat/read')result=await markPublicChatMessagesRead(db,{accountId:session.id});
+      else if(url.pathname==='/api/public-chat/read'){let messageIds=[];try{messageIds=JSON.parse(form.get('messageIds')||'[]');}catch{messageIds=[];}result=await markPublicChatMessagesRead(db,{accountId:session.id,messageIds});}
       else if(url.pathname==='/api/public-chat/reports')result=await reportPublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId'),reason:form.get('reason')||'other',details:form.get('details')||''});
+      else if(url.pathname==='/api/public-chat/reports/review')result=await resolvePublicChatReport(db,{accountId:session.id,reportId:form.get('reportId'),status:form.get('status'),isOwner:owner});
       else result=await touchPublicChatPresence(db,{accountId:session.id});
       const status=result.status==='not_found'?404:['self_block','self_report'].includes(result.status)?400:['added','removed','blocked','already_blocked','unblocked','updated','deleted','pinned','unpinned','online','typing','read','reported','already_reported'].includes(result.status)?200:400;
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
