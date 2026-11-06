@@ -403,8 +403,8 @@ test('Zeldeila restores exactly the damage it received and area damage cannot be
 
 test('Zeldeila participation title remains attainable despite its intentional undefeatable state', async () => {
   const source = await (await import('node:fs/promises')).readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
-  assert.match(source, /const titleDropEligible = win \\|\\| BOSS\\.id === 'zeldeila'/);
-  assert.match(source, /titleDropUsers=titleDropEligible \\? rollRaidBossTitleDrops\\(BOSS, ids, Math\\.random\\) : \\[\\]/);
+  assert.match(source, /const titleDropEligible = win \|\| BOSS\.id === 'zeldeila'/);
+  assert.match(source, /titleDropUsers=titleDropEligible \? rollRaidBossTitleDrops\(BOSS, ids, Math\.random\) : \[\]/);
 });
 
 test('Zeldeila title rolls are per participant, 0.2 percent, and never produce item loot', () => {
