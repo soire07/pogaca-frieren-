@@ -9,6 +9,7 @@
  const replyLabel=root.querySelector('[data-chat-reply-label]');
  let replyTarget=null;
  const say=message=>{if(feedback)feedback.textContent=message;};
+ let refreshing=false;
  const renderBlocked=items=>{
   if(!blockedRoot||!form)return;
   blockedRoot.replaceChildren();
@@ -57,11 +58,14 @@
   return data;
  };
  const refresh=async()=>{
+  if(refreshing||document.visibilityState==='hidden')return;
+  refreshing=true;
   try{
    const response=await fetch('/api/public-chat/messages',{headers:{accept:'application/json'},cache:'no-store'});
    if(!response.ok)throw new Error('Sohbet şu anda yüklenemiyor.');
    const data=await response.json();render(Array.isArray(data.messages)?data.messages:[]);renderBlocked(Array.isArray(data.blocked)?data.blocked:[]);
   }catch(error){if(!list.children.length)say(error.message||'Sohbet yüklenemedi.');}
+  finally{refreshing=false;}
  };
  if(form){
   form.addEventListener('submit',async event=>{
@@ -93,5 +97,6 @@
   });
  }
  refresh();
- window.setInterval(refresh,8000);
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh();});
+ window.setInterval(refresh,30000);
 })();
