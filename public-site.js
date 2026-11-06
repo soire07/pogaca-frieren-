@@ -1131,13 +1131,13 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       }
       const target=form.get('targetAccountId'),result=form.get('action')==='unfollow'?await unfollowAccount(db,{followerAccountId:session.id,followedAccountId:target}):await followAccount(db,{followerAccountId:session.id,followedAccountId:target});
       res.writeHead(303,{Location:'/u/'+encodeURIComponent(target)+'?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
-    }catch(error){if(String(error?.message||'').startsWith('ACCOUNT_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_profile'}));return true;}throw error;}
+    }catch(error){if(String(error?.message||'').startsWith('ACCOUNT_')||error?.code==='23505'){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_profile'}));return true;}throw error;}
   }
   if(url.pathname.startsWith('/u/')&&req.method==='GET'){
+    if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil veritabanı kullanılamıyor.');return true;}
     const slugOrId=url.pathname.slice(3);
     const target=/^site_[0-9a-f-]{36}$/i.test(slugOrId)?slugOrId:await getAccountIdByProfileSlug(db,slugOrId);
     if(!target){res.writeHead(404);res.end('Profil bulunamadı.');return true;}
-    if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil veritabanı kullanılamıyor.');return true;}
     const viewer=SITE_ACCOUNT_ID.test(String(user?.id||''))?user.id:null;
     const data=await getAccountProfile(db,target,{viewerAccountId:viewer});
     if(data.canView&&viewer&&viewer!==target)await recordAccountProfileVisit(db,{ownerAccountId:target,visitorAccountId:viewer});
