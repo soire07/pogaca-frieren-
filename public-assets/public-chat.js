@@ -9,7 +9,7 @@
  const count=root.querySelector('[data-chat-count]');
  const older=root.querySelector('[data-chat-load-older]');
  const counter=root.querySelector('[data-chat-counter]');
- const isOwner=root.dataset.chatOwner==='true';const pauseButton=root.querySelector('[data-chat-toggle-pause]');const controlStatus=root.querySelector('[data-chat-control-status]');let chatPaused=false;
+ const isOwner=root.dataset.chatOwner==='true';const pauseButton=root.querySelector('[data-chat-toggle-pause]');const controlStatus=root.querySelector('[data-chat-control-status]');const reportsRoot=root.querySelector('[data-chat-reports]');const reportsRefresh=root.querySelector('[data-chat-reports-refresh]');let chatPaused=false;
  const replyPreview=root.querySelector('[data-chat-reply-preview]');
  const replyLabel=root.querySelector('[data-chat-reply-label]');
  let replyTarget=null;
@@ -66,13 +66,34 @@
   if(!response.ok)throw new Error(data.error==='owner_only'?'Bu işlem yalnızca Owner tarafından yapılabilir.':data.error==='chat_paused'?'Sohbet şu anda Owner tarafından durduruldu.':data.error==='invalid_chat_action'?'Bu işlem şu anda yapılamıyor.':'İşlem tamamlanamadı.');
   return data;
  };
+ const renderReports=items=>{
+  if(!reportsRoot)return;reportsRoot.replaceChildren();reportsRoot.hidden=false;
+  const heading=document.createElement('strong');heading.textContent='Sohbet bildirimleri · '+items.length;reportsRoot.append(heading);
+  if(!items.length){const empty=document.createElement('p');empty.textContent='Bekleyen bildirim yok.';reportsRoot.append(empty);return;}
+  for(const item of items){
+   const card=document.createElement('article');card.className='public-chat-report-item';
+   const title=document.createElement('strong');title.textContent=(item.reason||'other')+' · '+(item.reporter_name||'Kullanıcı');card.append(title);
+   const message=document.createElement('p');message.textContent=(item.author_name||'Kullanıcı')+': '+(item.message_body||'');card.append(message);
+   if(item.details){const detail=document.createElement('small');detail.textContent='Açıklama: '+item.details;card.append(detail);}
+   const actions=document.createElement('div');actions.className='public-chat-actions';
+   for(const [status,label] of [['reviewed','İncelendi'],['dismissed','Reddet']]){const button=document.createElement('button');button.type='button';button.className='public-chat-action';button.textContent=label;button.dataset.chatReportResolve=item.report_id;button.dataset.status=status;actions.append(button);}
+   card.append(actions);reportsRoot.append(card);
+  }
+ };
+ const loadReports=async()=>{
+  if(!isOwner||!reportsRoot)return;
+  if(reportsRefresh)reportsRefresh.disabled=true;
+  try{const response=await fetch('/api/public-chat/reports?status=pending',{headers:{accept:'application/json'},cache:'no-store'});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error==='owner_only'?'Owner yetkisi doğrulanamadı.':'Bildirimler yüklenemedi.');renderReports(Array.isArray(data.reports)?data.reports:[]);}
+  catch(error){say(error.message||'Bildirimler yüklenemedi.');}
+  finally{if(reportsRefresh)reportsRefresh.disabled=false;}
+ };
  const refresh=async({before=null,append=false,searchTerm=null}={})=>{
   if(refreshing||document.visibilityState==='hidden')return;
   refreshing=true;
   try{
    const params=new URLSearchParams();if(before)params.set('before',before);const query=searchTerm===null?String(search?.value||'').trim():String(searchTerm||'').trim();if(query)params.set('q',query);const endpoint='/api/public-chat/messages'+(params.size?'?'+params.toString():'');const response=await fetch(endpoint,{headers:{accept:'application/json'},cache:'no-store'});
    if(!response.ok)throw new Error('Sohbet şu anda yüklenemiyor.');
-   const data=await response.json();chatPaused=Boolean(data.control?.paused);if(controlStatus)controlStatus.textContent=chatPaused?'Sohbet durduruldu':'Sohbet açık';if(pauseButton){pauseButton.disabled=false;pauseButton.textContent=chatPaused?'Sohbeti yeniden aç':'Sohbeti durdur';}if(form){form.elements.message.disabled=chatPaused;const submit=form.querySelector('button[type=submit]');if(submit)submit.disabled=chatPaused;form.elements.message.placeholder=chatPaused?'Sohbet Owner tarafından durduruldu.':'Bir büyücü selamı bırak… (en fazla 500 karakter)';}const incoming=Array.isArray(data.messages)?data.messages:[];latestMessages=append?[...incoming,...latestMessages.filter(old=>!incoming.some(item=>item.message_id===old.message_id))]:incoming;render(latestMessages);if(older)older.hidden=incoming.length<100;renderBlocked(Array.isArray(data.blocked)?data.blocked:[]);if(form)postAction('/api/public-chat/read',{}).catch(()=>{});const presenceLabel=root.querySelector('[data-chat-presence]');if(presenceLabel){const names=Array.isArray(data.presence?.typing)?data.presence.typing:[];presenceLabel.textContent=(data.presence?.online||0)+' çevrimiçi'+(names.length?' · '+names.join(', ')+' yazıyor':'');}
+   const data=await response.json();chatPaused=Boolean(data.control?.paused);if(controlStatus)controlStatus.textContent=chatPaused?'Sohbet durduruldu':'Sohbet açık';if(pauseButton){pauseButton.disabled=false;pauseButton.textContent=chatPaused?'Sohbeti yeniden aç':'Sohbeti durdur';}if(form){form.elements.message.disabled=chatPaused;const submit=form.querySelector('button[type=submit]');if(submit)submit.disabled=chatPaused;form.elements.message.placeholder=chatPaused?'Sohbet Owner tarafından durduruldu.':'Bir büyücü selamı bırak… (en fazla 500 karakter)';}const incoming=Array.isArray(data.messages)?data.messages:[];latestMessages=append?[...incoming,...latestMessages.filter(old=>!incoming.some(item=>item.message_id===old.message_id))]:incoming;render(latestMessages);if(older)older.hidden=incoming.length<100;renderBlocked(Array.isArray(data.blocked)?data.blocked:[]);if(form&&latestMessages.length)postAction('/api/public-chat/read',{messageIds:JSON.stringify(latestMessages.map(item=>item.message_id).filter(Boolean).slice(-100))}).catch(()=>{});const presenceLabel=root.querySelector('[data-chat-presence]');if(presenceLabel){const names=Array.isArray(data.presence?.typing)?data.presence.typing:[];presenceLabel.textContent=(data.presence?.online||0)+' çevrimiçi'+(names.length?' · '+names.join(', ')+' yazıyor':'');}
   }catch(error){if(!list.children.length)say(error.message||'Sohbet yüklenemedi.');}
   finally{refreshing=false;}
  };
@@ -82,6 +103,9 @@
  if(counter&&form){const updateCounter=()=>{counter.textContent=String(form.elements.message.value.length)+' / 500';};form.elements.message.addEventListener('input',updateCounter);updateCounter();}
  if(form){let lastTyping=0;form.elements.message.addEventListener('input',()=>{if(Date.now()-lastTyping>3500){lastTyping=Date.now();postAction('/api/public-chat/typing',{}).catch(()=>{});}});}
  if(pauseButton)pauseButton.addEventListener('click',async()=>{try{const result=await postAction('/api/public-chat/control',{paused:String(!chatPaused)});chatPaused=Boolean(result.paused);say(chatPaused?'Sohbet durduruldu.':'Sohbet yeniden açıldı.');await refresh();}catch(error){say(error.message||'Sohbet durumu değiştirilemedi.');}});
+ if(reportsRefresh)reportsRefresh.addEventListener('click',loadReports);
+ if(reportsRoot)reportsRoot.addEventListener('click',async event=>{const button=event.target.closest('button[data-chat-report-resolve]');if(!button)return;button.disabled=true;try{await postAction('/api/public-chat/reports/review',{reportId:button.dataset.chatReportResolve,status:button.dataset.status});say(button.dataset.status==='reviewed'?'Bildirim incelendi.':'Bildirim reddedildi.');await loadReports();}catch(error){say(error.message||'Bildirim güncellenemedi.');button.disabled=false;}});
+
  if(form){
   form.addEventListener('submit',async event=>{
    event.preventDefault();const input=form.elements.message;const message=String(input.value||'').trim();if(!message)return;
@@ -105,7 +129,7 @@
     if(button.dataset.chatEdit){const current=button.closest('.public-chat-message')?.querySelector('.public-chat-message-text')?.textContent||'';const body=window.prompt('Mesajını düzenle (15 dakika içinde):',current);if(body===null)return;await postAction('/api/public-chat/messages/edit',{messageId:button.dataset.chatEdit,body});say('Mesaj güncellendi.');await refresh();return;}
     if(button.dataset.chatDelete){if(!window.confirm('Bu mesajı silmek istiyor musun?'))return;await postAction('/api/public-chat/messages/delete',{messageId:button.dataset.chatDelete});say('Mesaj silindi.');await refresh();return;}
     if(button.dataset.chatPin){await postAction('/api/public-chat/pins',{messageId:button.dataset.chatPin});say('Sabitleme durumu güncellendi.');await refresh();return;}
-    if(button.dataset.chatReport){const reason=window.prompt('Bildirim nedeni (spam / harassment / inappropriate / other):','other');if(!reason)return;await postAction('/api/public-chat/reports',{messageId:button.dataset.chatReport,reason});say('Mesaj bildirimin alındı.');return;}
+    if(button.dataset.chatReport){const reason=window.prompt('Bildirim nedeni: spam / harassment / inappropriate / other','other');if(!reason)return;const details=window.prompt('Ek açıklama (isteğe bağlı):','')||'';await postAction('/api/public-chat/reports',{messageId:button.dataset.chatReport,reason:reason.trim().toLowerCase(),details});say('Mesaj bildirimin alındı.');return;}
     if(button.dataset.chatBlock){if(!window.confirm('Bu kullanıcının mesajlarını gizlemek istiyor musun?'))return;await postAction('/api/public-chat/blocks',{messageId:button.dataset.chatBlock});say('Kullanıcı engellendi.');await refresh();}
    }catch(error){say(error.message||'İşlem tamamlanamadı.');}
   });
@@ -115,7 +139,7 @@
    catch(error){say(error.message||'Engel kaldırılamadı.');}
   });
  }
- refresh();
+ refresh();if(isOwner)loadReports();
  const heartbeat=()=>{if(form&&document.visibilityState==='visible')postAction('/api/public-chat/presence',{}).catch(()=>{});};heartbeat();window.setInterval(heartbeat,30000);
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){refresh();heartbeat();}});
  window.setInterval(refresh,30000);
