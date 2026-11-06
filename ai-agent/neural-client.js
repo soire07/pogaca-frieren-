@@ -1,5 +1,7 @@
 const MAX_PROMPT_CHARS = 1900;
-const REQUEST_TIMEOUT_MS = 45_000;
+// Render Free can cold-start and download/load the pinned GGUF model on first use.
+const REQUEST_TIMEOUT_MS = 180_000;
+const MAX_REQUEST_TIMEOUT_MS = 240_000;
 
 export function isNeuralRequested(env = process.env) {
   return Boolean(String(env.FRIEREN_NEURAL_API_URL || '').trim());
@@ -93,7 +95,7 @@ export async function generateNeuralReply({
   const baseUrl = String(env.FRIEREN_NEURAL_API_URL).trim().replace(/\/+$/, '');
   const endpoint = baseUrl.endsWith('/generate') ? baseUrl : baseUrl + '/generate';
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), Math.max(1000, Math.min(Number(timeoutMs) || REQUEST_TIMEOUT_MS, 60_000)));
+  const timer = setTimeout(() => controller.abort(), Math.max(1000, Math.min(Number(timeoutMs) || REQUEST_TIMEOUT_MS, MAX_REQUEST_TIMEOUT_MS)));
   try {
     const response = await fetchImpl(endpoint, {
       method: 'POST',
