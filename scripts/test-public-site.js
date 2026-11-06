@@ -200,6 +200,8 @@ test('authenticated homepage is the account-scoped player dashboard', async () =
   process.env.FRIEREN_VIP_ACCOUNT_IDS = accountId;
   const db = { async query(sql, params) {
     queries.push({ sql, params });
+    if (sql.includes('FROM site_discord_links WHERE account_id=$1')) return { rows:[{user_id:profile.user_id}], rowCount:1 };
+    if (sql.includes('FROM frieren_profile_media')) return { rows:[], rowCount:0 };
     if (sql.includes('FROM site_discord_links l JOIN users u')) return { rows:[profile], rowCount:1 };
     if (sql.includes('FROM guild_events e LEFT JOIN guild_event_participants')) return { rows:[event], rowCount:1 };
     throw new Error('Unexpected query: ' + sql);
@@ -223,8 +225,9 @@ test('authenticated homepage is the account-scoped player dashboard', async () =
   assert.match(response.body, /role="progressbar"/);
   assert.ok(response.body.includes('action="/maceraci/link"'));
 
-  assert.equal(queries.length, 2);
+  assert.equal(queries.length, 4);
   assert.equal(queries[0].params[0], accountId.replace(/^site_/, ''));
+  assert.equal(queries[2].params[0], accountId.replace(/^site_/, ''));
 });
 
 test('player collection page is scoped to the linked guild and shows existing game collections', async () => {
@@ -519,8 +522,13 @@ test('adventurer dashboard requires a verified member session and renders linked
   assert.equal(anonymous.headers.Location,'/login');
   const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:12,xp:1440,coins:900,hp:80,max_hp:100,mana:65,max_mana:100,season_name:'Sezon 2026',rating:1180,wins:4,losses:2,matches:6};
   const event={event_id:'event-test',guild_id:profile.guild_id,title:'Zindan Gecesi',description:'Topluluk etkinliği',event_type:'community',starts_at:new Date(Date.now()+3600000).toISOString(),ends_at:new Date(Date.now()+7200000).toISOString(),max_participants:12,participants:5};
-  let queryCount=0;
-  const db={query:async()=>({rows:queryCount++===0?[profile]:[event],rowCount:1})};
+  const db={async query(sql){
+    if(sql.includes('FROM site_discord_links WHERE account_id=$1'))return{rows:[{user_id:profile.user_id}],rowCount:1};
+    if(sql.includes('FROM frieren_profile_media'))return{rows:[],rowCount:0};
+    if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};
+    if(sql.includes('FROM guild_events e LEFT JOIN guild_event_participants'))return{rows:[event],rowCount:1};
+    throw new Error('Unexpected query: '+sql);
+  }};
   const response=res();
   const id='site_123e4567-e89b-12d3-a456-426614174000';
   assert.equal(await handlePublicSiteRequest(request('/maceraci',{id,username:'Gezgin'}),response,{db}),true);
