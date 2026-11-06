@@ -55,5 +55,5 @@ test('Guardian tracking rejects an unaudited branch', async () => {
     store: { updateGuardianRepairStatus: async () => true },
   });
   assert.equal(result.status, 'tracking_failed');
-  assert.equal(result.reason, 'GUARDIAN_REPAIR_BRANCH_UNSUPPORTED');
+  assert.equal(result.reason, 'GUARDIAN_REPAIR_TRACKING_BRANCH_UNSUPPORTED');
 });
