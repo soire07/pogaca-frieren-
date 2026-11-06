@@ -105,7 +105,7 @@ export async function translateAnimeNewsItems(db, items, fetcher=globalThis.fetc
         if (!response?.ok) throw new Error('MYMEMORY_HTTP_' + String(response?.status || 'UNKNOWN'));
         const payload = await response.json();
         const result = payload?.responseData?.translatedText;
-        if (payload?.responseStatus !== 200 || typeof result !== 'string' || !result.trim()
+        if (Number(payload?.responseStatus) !== 200 || typeof result !== 'string' || !result.trim()
           || /MYMEMORY WARNING/i.test(result)) throw new Error('MYMEMORY_TRANSLATION_UNAVAILABLE');
         return cleanFeedText(result, 500);
       };
