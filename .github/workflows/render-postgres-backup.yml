@@ -98,7 +98,8 @@ jobs:
 
   notify-failure:
     name: Notify when backup verification fails
-    if: failure()
+    needs: backup
+    if: always() && needs.backup.result == 'failure'
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -121,7 +122,8 @@ jobs:
 
   resolve-failure-alert:
     name: Resolve backup failure alert after successful verification
-    if: success()
+    needs: backup
+    if: needs.backup.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       issues: write
