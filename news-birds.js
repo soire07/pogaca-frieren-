@@ -5,7 +5,13 @@ export const ANIME_NEWS_FEED_URL = 'https://www.animenewsnetwork.com/news/rss.xm
 export const ANIME_NEWS_SOURCES = Object.freeze([
   Object.freeze({ key: 'anime_news', name: 'Anime News Network', url: ANIME_NEWS_FEED_URL,
     articleHosts: ['animenewsnetwork.com', 'www.animenewsnetwork.com'],
-    imageHosts: ['animenewsnetwork.com', 'www.animenewsnetwork.com', 'cdn.animenewsnetwork.com'] })
+    imageHosts: ['animenewsnetwork.com', 'www.animenewsnetwork.com', 'cdn.animenewsnetwork.com'] }),
+  Object.freeze({ key: 'crunchyroll', name: 'Crunchyroll News', url: 'https://cr-news-api-service.prd.crunchyrollsvc.com/v1/en-US/rss',
+    articleHosts: ['crunchyroll.com', 'www.crunchyroll.com'],
+    imageHosts: ['crunchyroll.com', 'www.crunchyroll.com'] }),
+  Object.freeze({ key: 'myanimelist', name: 'MyAnimeList News', url: 'https://myanimelist.net/rss/news.xml',
+    articleHosts: ['myanimelist.net', 'www.myanimelist.net'],
+    imageHosts: ['myanimelist.net', 'www.myanimelist.net', 'cdn.myanimelist.net'] })
 ]);
 export const NOTIFICATION_CATEGORIES = Object.freeze(['anime_news','event_reminders','boss_raid_reminders']);
 const DISCORD_ID = /^\d{17,20}$/;
@@ -88,9 +94,16 @@ export function classifyAnimeNews(title='') {
 export function buildAnimeNewsDigestEmbeds(items, now = new Date()) {
   const articleHosts=ANIME_NEWS_SOURCES.flatMap(source=>source.articleHosts);
   const imageHosts=ANIME_NEWS_SOURCES.flatMap(source=>source.imageHosts);
-  const safeItems=(Array.isArray(items)?items:[]).filter(item =>
-    item && safeFeedUrl(item.link,articleHosts)
-  ).slice(0,5);
+  const seen=new Set();
+  const safeItems=(Array.isArray(items)?items:[]).filter(item=>{
+    if (!item || !safeFeedUrl(item.link,articleHosts)) return false;
+    const titleKey=String(item.title||'').normalize('NFKD').toLocaleLowerCase('en-US').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]+/g,'');
+    const linkKey=String(item.link).split('#')[0].split('?')[0].replace(/\\/$/,'').toLowerCase();
+    const key=titleKey||linkKey;
+    if (seen.has(key) || seen.has(linkKey)) return false;
+    seen.add(key); seen.add(linkKey);
+    return true;
+  }).slice(0,5);
   if (!safeItems.length) return [];
   const date=new Intl.DateTimeFormat('tr-TR',{dateStyle:'long',timeZone:'Europe/Istanbul'}).format(new Date(now));
   return safeItems.map((item,index)=>{
@@ -235,7 +248,7 @@ export async function claimDueAnimeNewsDigests(db,limit=20) {
          FROM frieren_news_feed_items
          WHERE feed_key='anime_news'
            AND published_at>COALESCE(c.last_sent_at,NOW()-INTERVAL '24 hours')
-         ORDER BY published_at DESC LIMIT 5
+         ORDER BY published_at DESC LIMIT 15
        ) recent
      ) n
      WHERE json_array_length(COALESCE(n.items,'[]'::json))>0`,
