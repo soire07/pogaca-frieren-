@@ -773,14 +773,14 @@ test('web social friend request uses the linked character and redirects after cr
   const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern'};
   const queries=[];
   const db={
-    async query(sql){queries.push(sql);if(sql.includes('FROM site_discord_links'))return{rows:[profile],rowCount:1};if(sql.includes('FROM guild_feature_settings'))return{rows:[{enabled:true}],rowCount:1};throw new Error('Unexpected pool query: '+sql);},
-    async connect(){return{async query(sql,params){queries.push(sql);if(sql==='BEGIN'||sql==='COMMIT'||sql==='ROLLBACK')return{rows:[],rowCount:1};if(sql.includes('SELECT user_id FROM users'))return{rows:[{user_id:profile.user_id},{user_id:'223456789012345678'}],rowCount:2};if(sql.includes('SELECT relationship_type FROM social_relationships'))return{rows:[],rowCount:0};if(sql.startsWith('UPDATE social_friend_requests'))return{rows:[],rowCount:0};if(sql.includes('SELECT request_id,requester_id FROM social_friend_requests'))return{rows:[],rowCount:0};if(sql.startsWith('INSERT INTO social_friend_requests'))return{rows:[{request_id:'123e4567-e89b-42d3-a456-426614174000'}],rowCount:1};throw new Error('Unexpected client query: '+sql+' '+JSON.stringify(params));},release(){}};}
+    async query(sql){queries.push(sql);if(sql.includes('FROM site_discord_links'))return{rows:[profile],rowCount:1};if(sql.includes('FROM guild_feature_settings'))return{rows:[{enabled:true}],rowCount:1};if(sql.includes('FROM social_blocks'))return{rows:[],rowCount:0};throw new Error('Unexpected pool query: '+sql);},
+    async connect(){return{async query(sql,params){queries.push(sql);if(sql==='BEGIN'||sql==='COMMIT'||sql==='ROLLBACK')return{rows:[],rowCount:1};if(sql.includes('SELECT user_id FROM users'))return{rows:[{user_id:profile.user_id},{user_id:'223456789012345678'}],rowCount:2};if(sql.includes('FROM social_blocks'))return{rows:[],rowCount:0};if(sql.includes('SELECT relationship_type FROM social_relationships'))return{rows:[],rowCount:0};if(sql.startsWith('UPDATE social_friend_requests'))return{rows:[],rowCount:0};if(sql.includes('SELECT request_id,requester_id FROM social_friend_requests'))return{rows:[],rowCount:0};if(sql.startsWith('INSERT INTO social_friend_requests'))return{rows:[{request_id:'123e4567-e89b-42d3-a456-426614174000'}],rowCount:1};throw new Error('Unexpected client query: '+sql+' '+JSON.stringify(params));},release(){}};}
   };
   const response=res();
   const post=sitePost('/maceraci/sosyal',{csrf:createSiteCsrfToken(secret),guildId:profile.guild_id,action:'request',targetId:'223456789012345678'});
   assert.equal(await handlePublicSiteRequest(post,response,{db}),true);
   assert.equal(response.status,303);
-  assert.match(response.headers.Location,/status=request_sent/);
+  assert.match(response.headers.Location,/^\/maceraci\/sosyal\?/);assert.match(response.headers.Location,/status=request_sent/);
   assert.ok(queries.some(sql=>sql.includes('social_friend_requests')));
 });
 test('web social page and mutations respect the guild social feature toggle',async()=>{
@@ -1326,4 +1326,40 @@ test('profile page includes avatar and banner upload controls and authenticated 
  const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');const script=await readFile(new URL('../public-assets/profile-media.js',import.meta.url),'utf8');
  assert.match(source,/data-profile-media-editor/);assert.match(source,/data-media-input="avatar"/);assert.match(source,/data-media-input="banner"/);assert.match(source,/profile-media\.js/);
  assert.match(script,/createImageBitmap/);assert.match(script,/X-CSRF-Token/);assert.match(script,/data-media-reset/);
+});
+
+
+test('account profile identity is separate from RPG character and media editor is intentionally opened', async () => {
+ const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
+ const controller=await readFile(new URL('../public-assets/user-center.js',import.meta.url),'utf8');
+ assert.match(source,/data-profile-editor-open/);
+ assert.match(source,/data-profile-editor-close/);
+ assert.match(source,/HESAP KİMLİĞİ/);
+ assert.match(source,/Aktif RPG karakteri/);
+ assert.match(source,/playerProfiles:\[\]/);
+ assert.match(source,/public-assets\/user-center\.js/);
+ assert.match(controller,/prefers-reduced-motion/);
+ assert.match(controller,/IntersectionObserver/);
+});
+
+
+test('dedicated user center pages expose the new account, social and life navigation', async () => {
+ const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
+ const styles=await readFile(new URL('../site.css',import.meta.url),'utf8');
+ assert.match(source,/user-center-page social-center-page/);
+ assert.match(source,/life-center-page/);
+ assert.match(source,/account-center-page/);
+ assert.match(source,/collection-center-page/);
+ assert.match(source,/inventory-center-page/);
+ assert.match(source,/notification-center-page/);
+ assert.match(source,/public-assets\/user-center\.js', 'public-assets\/public-chat\.js'].includes/);
+ assert.match(source,/site\.css\?v=user-center-264-2/);
+ assert.match(styles,/\.social-center-page/);
+ assert.match(styles,/\.user-center-tabs/);
+});
+
+
+test('social mutation responses return to the social center instead of the market', async () => {
+ const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
+ assert.match(source,/const destination=url\.pathname==='\/maceraci\/sosyal'\?'\/maceraci\/sosyal':'\/pazar'/);
 });
