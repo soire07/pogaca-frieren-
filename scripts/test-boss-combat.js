@@ -7,6 +7,7 @@ import { marketItems } from '../market.js';
 import eventCommand from '../etkinlik.js';
 import {
   RAID_BOSSES,
+  getRaidBossForm,
   progressionMilestone,
   getSpellMasteryAwakening,
   shouldGuaranteeRareDiscovery,
@@ -452,4 +453,22 @@ test('inventory supports bounded search, sort and pagination controls', () => {
   assert.deepEqual(sort.choices.map(choice => choice.value), ['miktar', 'isim']);
   assert.equal(page.min_value, 1);
   assert.equal(page.max_value, 20);
+});
+
+test('Aura transforms through mage, fallen angel and angel forms without changing boss identity', () => {
+  const aura = RAID_BOSSES.find(boss => boss.id === 'fallen-mage');
+  const first = getRaidBossForm(aura, 1);
+  const second = getRaidBossForm(aura, 2);
+  const third = getRaidBossForm(aura, 3);
+  assert.equal(first.name, 'Düşmüş Büyücü Aura');
+  assert.equal(first.special, 'mana-curse');
+  assert.equal(second.name, 'Düşmüş Melek Aura');
+  assert.equal(second.special, 'fallen-wings');
+  assert.equal(second.attackMultiplier, 1.15);
+  assert.equal(third.name, 'Melek Aura');
+  assert.equal(third.special, 'angelic-judgment');
+  assert.equal(third.attackMultiplier, 1.3);
+  assert.equal(getRaidBossForm(RAID_BOSSES.find(boss => boss.id === 'glass-wyrm'), 3), null);
+  assert.equal(aura.id, 'fallen-mage');
+  assert.equal(aura.special, 'mana-curse');
 });
