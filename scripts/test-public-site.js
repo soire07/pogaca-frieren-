@@ -1327,3 +1327,17 @@ test('profile page includes avatar and banner upload controls and authenticated 
  assert.match(source,/data-profile-media-editor/);assert.match(source,/data-media-input="avatar"/);assert.match(source,/data-media-input="banner"/);assert.match(source,/profile-media\.js/);
  assert.match(script,/createImageBitmap/);assert.match(script,/X-CSRF-Token/);assert.match(script,/data-media-reset/);
 });
+
+
+test('account profile identity is separate from RPG character and media editor is intentionally opened', async () => {
+ const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
+ const controller=await readFile(new URL('../public-assets/user-center.js',import.meta.url),'utf8');
+ assert.match(source,/data-profile-editor-open/);
+ assert.match(source,/data-profile-editor-close/);
+ assert.match(source,/HESAP KİMLİĞİ/);
+ assert.match(source,/Aktif RPG karakteri/);
+ assert.match(source,/playerProfiles:\[\]/);
+ assert.match(source,/public-assets\/user-center\.js/);
+ assert.match(controller,/prefers-reduced-motion/);
+ assert.match(controller,/IntersectionObserver/);
+});
