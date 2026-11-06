@@ -74,6 +74,8 @@ test('English news is translated to Turkish once and cached; failures preserve s
  assert.equal(translated[0].translatedTitle,'Frieren geri dönüyor');
  assert.equal(translated[0].translatedSummary,'Yeni bölüm duyuruldu.');
  assert.equal(calls.length,2);
+ assert.equal(translated.length,6);
+ assert.equal(translated[5].translatedTitle,undefined);
  assert.match(updates[0].sql,/translated_title=\$2,translated_summary=\$3/);
  const cached=await translateAnimeNewsItems(db,[{...items[0],translatedTitle:'Frieren geri dönüyor',translatedSummary:'Yeni bölüm duyuruldu.'}],fetcher);
  assert.equal(cached[0].translatedTitle,'Frieren geri dönüyor');
