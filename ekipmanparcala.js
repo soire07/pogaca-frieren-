@@ -15,7 +15,6 @@ const SALVAGE_YIELD = {
   hero_ring: { item: '🌙 Efsunlu Elf Yadigârı', quantity: 1 },
   demon_armor: { item: '🐉 Ejderha Pulu', quantity: 2 },
   copper_ring: { item: '💎 Mana Kristali', quantity: 1 },
-  katun_ring: { item: '💎 Mana Kristali', quantity: 2 }
 };
 
 export default {
