@@ -219,6 +219,7 @@ export default {
       db = null;
       const hpNow = fighters.map(x => Math.round(x.hp));
       const log = [];
+      const specialAttackHistory = [];
       const spellCasts = new Map();
       let rounds = 0;
       let rageAnnounced = false;
@@ -352,7 +353,9 @@ export default {
         const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0)+(katunJudgment?10:0)+((starburst || shardRain || manaCurse || katunJudgment) ? bossPhaseSpecialBonus(bossPhase) : 0);
         if (enraged && !rageAnnounced) { log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.'); rageAnnounced = true; }
         if (starburst || shardRain) {
-          log.push(BOSS.special === 'shard-rain' ? '🐉 Cam Pullar Ejderhası keskin kristal parçalarını tüm takıma yağdırıyor!' : '☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!');
+          const specialMessage = BOSS.special === 'shard-rain' ? '🐉 Cam Pullar Ejderhası keskin kristal parçalarını tüm takıma yağdırıyor!' : '☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!';
+          log.push(specialMessage);
+          specialAttackHistory.push(specialMessage);
           for (const i of living) {
             const f=fighters[i];
             const specialMultiplier = shardRain ? 0.5 : 0.68;
@@ -364,7 +367,11 @@ export default {
         } else {
           let incoming=calculateBossIncomingDamage(katunJudgment ? Math.round(rawDamage * 1.5) : rawDamage, Math.round(target.defense*0.56), bossPhase);
           incoming=applyDefendingReduction(incoming,defending.has(targetIndex));
-          if (katunJudgment) log.push(`💍 Domaltazor Katun Hükmü ile ${target.username} oyuncusuna ağır darbe indiriyor!`);
+          if (katunJudgment) {
+            const specialMessage = `💍 Domaltazor Katun Hükmü ile ${target.username} oyuncusuna ağır darbe indiriyor!`;
+            log.push(specialMessage);
+            specialAttackHistory.push(specialMessage);
+          }
           hpNow[targetIndex]=Math.max(0,hpNow[targetIndex]-incoming);
           if (manaCurse) {
             const drained=Math.min(target.mana,8);
@@ -426,6 +433,7 @@ export default {
           {name:'👹 Boss canı ve aşaması',value:`\`${hpBar(bossHp,maxBossHp)}\`\n**${Math.max(0,bossHp)}/${maxBossHp} HP** · ${getBossPhase(bossHp,maxBossHp)===3?'🌑 Son aşama':getBossPhase(bossHp,maxBossHp)===2?'🔥 İkinci aşama':'🌒 İlk aşama'}`,inline:false},
           {name:'🎁 Kişi başı ödül',value:`✨ ${xpReward} XP\n🥐 ${coinReward} altın`,inline:true},
           {name:'🏅 Kalıcı unvanlar',value:milestoneText.slice(0,1024),inline:false},
+          ...(specialAttackHistory.length ? [{name:'💥 Özel saldırı geçmişi',value:specialAttackHistory.slice(-5).join('\\n').slice(0,1024),inline:false}] : []),
           {name:'🧭 Boss bilgisi',value:BOSS.id==='zeldeila'?'**Sonsuz Yenilenme:** aldığı hasarı her saniye tamamen geri kazanır.\n**Mutlak Alan:** her saniye tüm takıma hasar verir.\n**200.000.000 HP:** yenilmesi mümkün değildir.':`Zayıflık: **${BOSS.weaknessLabel}**\nÖzel hareket: **${BOSS.special === 'shard-rain' ? 'Kristal Yağmuru (iki turda bir, alan hasarı)' : BOSS.special === 'mana-curse' ? 'Mana Laneti (üç turda bir, mana tüketir)' : BOSS.id === 'domaltazor' ? 'Katun Hükmü (efsanevi yüzük avı)' : 'Mana Yıldız Patlaması (üç turda bir, alan hasarı)'}**`,inline:true},
           {name:'💎 Ortak ganimet',value:loot?`Herkes **${loot}** kazandı!`:win?'Bu kez nadir ganimet çıkmadı.':BOSS.id==='zeldeila'?'Zeldeila eşya düşürmez.':'Boss yenilemediği için nadir ganimet yok.',inline:true},
           ...(BOSS.titleDrop ? [{name:'🏅 Unvan ganimeti',value:(settlement.titleDrops || []).length ? settlement.titleDrops.map(drop=>`<@${drop.userId}>: **${drop.title}**`).join('\n') : 'Bu baskında unvan düşmedi. Şans: %0,2.',inline:false}] : []),
