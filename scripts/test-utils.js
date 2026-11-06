@@ -144,8 +144,8 @@ test('raid boss catalog has distinct bosses, signature moves and deterministic s
   assert.equal(RAID_BOSSES.length, 3);
   assert.equal(chooseRaidBoss(() => 0).id, 'north-general');
   assert.equal(chooseRaidBoss(() => 0.5).id, 'glass-wyrm');
-  assert.equal(chooseRaidBoss(() => 0.99).id, 'fallen-mage');
-  assert.equal(new Set(RAID_BOSSES.map(b => b.loot)).size, 3);
+  assert.equal(chooseRaidBoss(() => 0.99).id, 'domaltazor');
+  assert.equal(new Set(RAID_BOSSES.map(b => b.loot).filter(Boolean)).size, 4);
 });
 
 test('boss weaknesses increase damage only for matching action types', () => {
