@@ -3,7 +3,8 @@ export const RAID_BOSSES = [
   { id: 'glass-wyrm', name: '🐉 Cam Pullar Ejderhası', hp: 255, damage: 12, xp: 205, coins: 245, loot: 'Ejderha Camı', weakness: 'attack', weaknessLabel: 'Fiziksel saldırı', special: 'shard-rain' },
   { id: 'fallen-mage', name: '♾️ [INFINITY] Düşmüş Büyücü Aura', class: 'Infinity', hp: 2400, damage: 48, xp: 460, coins: 520, loot: 'Auranın Mühürlü Asa Parçası', titleDrop: 'Üç Formun Fatihi', titleDropChance: 0.03, weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'mana-curse' },
   { id: 'zeldeila', name: '♾️ [INFINITY] Zeldeila • Mutlak Son Boss', class: 'Infinity', hp: 200_000_000, damage: 3, xp: 0, coins: 0, loot: null, lootChance: 0, titleDrop: 'ZELDİN TAŞŞAĞI', titleDropChance: 0.002, weakness: 'spell', weaknessLabel: 'Yenilmez', special: 'eternal-regeneration', regenerateDamagePerSecond: true, areaDamagePerSecond: 15, noHpScaling: true, spawnWeight: 1 },
-  { id: 'domaltazor', name: '🦴 Domaltazor • Kadim Cellat', hp: 1600, damage: 24, xp: 520, coins: 750, loot: '💍 Katun Yüzüğü', lootChance: 0.001, weakness: 'attack', weaknessLabel: 'Fiziksel saldırı', special: 'katun-judgment', spawnWeight: 1 }
+  { id: 'domaltazor', name: '🦴 Domaltazor • Kadim Cellat', hp: 1600, damage: 24, xp: 520, coins: 750, loot: '💍 Katun Yüzüğü', lootChance: 0.001, weakness: 'attack', weaknessLabel: 'Fiziksel saldırı', special: 'katun-judgment', spawnWeight: 1 },
+  { id: 'the-fool', name: '🃏 The Fool • Kaderin Gezgin'i', hp: 4800, damage: 34, xp: 1100, coins: 1450, loot: '🃏 Deli’nin Mühürlü Kartı', lootChance: 0.12, titleDrop: 'Kaderin Ötesinde', titleDropChance: 0.025, weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'fools-gamble', spawnWeight: 0.6 }
 ];
 
 
@@ -447,4 +448,13 @@ export function calculateDungeonFloorReward(floor, averageLevel) {
     xp: 25 + safeFloor * 12 + safeLevel * 2,
     coins: 20 + safeFloor * 10
   };
+}
+
+/** The Fool's three equally likely, bounded fate twists; accepts an injectable RNG for tests. */
+export function rollTheFoolTwist(random = Math.random) {
+  const sample = Number(random());
+  if (!Number.isFinite(sample) || sample < 0 || sample >= 1) return 'misfortune';
+  if (sample < 1 / 3) return 'fortune';
+  if (sample < 2 / 3) return 'misfortune';
+  return 'wildcard';
 }
