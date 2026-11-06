@@ -4,9 +4,23 @@
  const list=root.querySelector('[data-chat-messages]');
  const form=root.querySelector('[data-chat-form]');
  const feedback=root.querySelector('[data-chat-feedback]');
- let newest='';
- const say=(message)=>{if(feedback)feedback.textContent=message;};
- const render=(messages)=>{
+ const blockedRoot=root.querySelector('[data-chat-blocks]');
+ const replyPreview=root.querySelector('[data-chat-reply-preview]');
+ let replyTarget=null;
+ const say=message=>{if(feedback)feedback.textContent=message;};
+ const renderBlocked=items=>{
+  if(!blockedRoot||!form)return;
+  blockedRoot.replaceChildren();
+  if(!items.length)return;
+  const title=document.createElement('strong');title.textContent='Engellediklerin';blockedRoot.append(title);
+  for(const item of items){
+   const row=document.createElement('div');row.className='public-chat-blocked-item';
+   const name=document.createElement('span');name.textContent=item.blocked_username||'Kullanıcı';
+   const button=document.createElement('button');button.type='button';button.className='public-chat-action';button.textContent='Engeli kaldır';button.dataset.chatUnblock=item.blocked_account_id;
+   row.append(name,button);blockedRoot.append(row);
+  }
+ };
+ const render=messages=>{
   const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<72;
   const fragment=document.createDocumentFragment();
   for(const item of messages){
@@ -16,30 +30,64 @@
    const meta=document.createElement('div');meta.className='public-chat-message-meta';
    const name=document.createElement('strong');name.textContent=String(item.username||'Gezgin');
    const time=document.createElement('time');const date=new Date(item.created_at);time.dateTime=Number.isNaN(date.getTime())?'':date.toISOString();time.textContent=Number.isNaN(date.getTime())?'':date.toLocaleString('tr-TR',{dateStyle:'short',timeStyle:'short'});
-   const text=document.createElement('p');text.className='public-chat-message-text';text.textContent=String(item.body||'');
-   meta.append(name,time);body.append(meta,text);li.append(avatar,body);fragment.append(li);
+   meta.append(name,time);body.append(meta);
+   if(item.reply){const quote=document.createElement('blockquote');quote.className='public-chat-reply-quote';const qName=document.createElement('strong');qName.textContent=String(item.reply.username||'Yanıtlanan mesaj');const qText=document.createElement('span');qText.textContent=String(item.reply.body||'');quote.append(qName,qText);body.append(quote);}
+   const text=document.createElement('p');text.className='public-chat-message-text';text.textContent=String(item.body||'');body.append(text);
+   const actions=document.createElement('div');actions.className='public-chat-actions';
+   if(form&&!item.is_own){const reply=document.createElement('button');reply.type='button';reply.className='public-chat-action';reply.textContent='Yanıtla';reply.dataset.chatReply=item.message_id;actions.append(reply);}
+   for(const emoji of ['❤️','✨','😂']){
+    const reaction=(Array.isArray(item.reactions)?item.reactions:[]).find(x=>x.emoji===emoji);
+    const button=document.createElement('button');button.type='button';button.className='public-chat-reaction';button.textContent=emoji+' '+(reaction?.count||0);button.setAttribute('aria-pressed',String(Boolean(reaction?.reacted)));button.dataset.chatReact=item.message_id;button.dataset.emoji=emoji;
+    if(form)actions.append(button);
+   }
+   if(form&&!item.is_own){const block=document.createElement('button');block.type='button';block.className='public-chat-action';block.textContent='Engelle';block.dataset.chatBlock=item.message_id;actions.append(block);}
+   if(actions.children.length)body.append(actions);
+   li.append(avatar,body);fragment.append(li);
   }
   list.replaceChildren(fragment);
   if(!messages.length){const empty=document.createElement('li');empty.className='public-chat-empty';empty.textContent='Henüz mesaj yok. İlk selamı sen verebilirsin.';list.append(empty);}
   else if(nearBottom)list.scrollTop=list.scrollHeight;
-  newest=messages.at(-1)?.message_id||'';
+ };
+ const postAction=async(path,values)=>{
+  if(!form)return false;
+  const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:form.elements.csrf.value,...values})});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error==='invalid_chat_action'?'Bu işlem şu anda yapılamıyor.':'İşlem tamamlanamadı.');
+  return data;
  };
  const refresh=async()=>{
-  try{const response=await fetch('/api/public-chat/messages',{headers:{accept:'application/json'},cache:'no-store'});if(!response.ok)throw new Error('Sohbet şu anda yüklenemiyor.');const data=await response.json();render(Array.isArray(data.messages)?data.messages:[]);}
-  catch(error){if(!list.children.length)say(error.message||'Sohbet yüklenemedi.');}
+  try{
+   const response=await fetch('/api/public-chat/messages',{headers:{accept:'application/json'},cache:'no-store'});
+   if(!response.ok)throw new Error('Sohbet şu anda yüklenemiyor.');
+   const data=await response.json();render(Array.isArray(data.messages)?data.messages:[]);renderBlocked(Array.isArray(data.blocked)?data.blocked:[]);
+  }catch(error){if(!list.children.length)say(error.message||'Sohbet yüklenemedi.');}
  };
  if(form){
   form.addEventListener('submit',async event=>{
    event.preventDefault();const input=form.elements.message;const message=String(input.value||'').trim();if(!message)return;
    const button=form.querySelector('button[type=submit]');button.disabled=true;
    try{
-    const response=await fetch('/api/public-chat/messages',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:form.elements.csrf.value,message})});
+    const response=await fetch('/api/public-chat/messages',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:form.elements.csrf.value,message,replyToMessageId:form.elements.replyToMessageId.value})});
     const data=await response.json().catch(()=>({}));
     if(response.status===429){say('Çok hızlı mesaj gönderiyorsun. Biraz bekle.');return;}
-    if(!response.ok)throw new Error('Mesaj gönderilemedi. Oturumunu yenileyip tekrar dene.');
-    input.value='';say('Mesajın gönderildi.');await refresh();
+    if(!response.ok)throw new Error(data.error==='invalid_message'?'Mesaj veya yanıt geçersiz.':'Mesaj gönderilemedi. Oturumunu yenileyip tekrar dene.');
+    input.value='';form.elements.replyToMessageId.value='';replyTarget=null;if(replyPreview){replyPreview.hidden=true;replyPreview.textContent='';}
+    say('Mesajın gönderildi.');await refresh();
    }catch(error){say(error.message||'Mesaj gönderilemedi.');}
    finally{button.disabled=false;input.focus();}
+  });
+  list.addEventListener('click',async event=>{
+   const button=event.target.closest('button');if(!button)return;
+   try{
+    if(button.dataset.chatReply){replyTarget=button.dataset.chatReply;form.elements.replyToMessageId.value=replyTarget;const item=button.closest('.public-chat-message');const name=item?.querySelector('.public-chat-message-meta strong')?.textContent||'mesaj';if(replyPreview){replyPreview.textContent=name+' mesajına yanıt veriyorsun';replyPreview.hidden=false;}form.elements.message.focus();return;}
+    if(button.dataset.chatReact){await postAction('/api/public-chat/reactions',{messageId:button.dataset.chatReact,emoji:button.dataset.emoji});await refresh();return;}
+    if(button.dataset.chatBlock){if(!window.confirm('Bu kullanıcının mesajlarını gizlemek istiyor musun?'))return;await postAction('/api/public-chat/blocks',{messageId:button.dataset.chatBlock});say('Kullanıcı engellendi.');await refresh();}
+   }catch(error){say(error.message||'İşlem tamamlanamadı.');}
+  });
+  if(blockedRoot)blockedRoot.addEventListener('click',async event=>{
+   const button=event.target.closest('button[data-chat-unblock]');if(!button)return;
+   try{await postAction('/api/public-chat/blocks/unblock',{targetAccountId:button.dataset.chatUnblock});say('Engel kaldırıldı.');await refresh();}
+   catch(error){say(error.message||'Engel kaldırılamadı.');}
   });
  }
  refresh();
