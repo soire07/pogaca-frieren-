@@ -77,9 +77,10 @@ export function normalizeSiteAuthSecurityEvent(input = {}) {
 }
 
 export async function recordGuardianSecurityEvent(db, event, {
-  clientIp = null, ipSource = 'unverified_peer',
+  clientIp = null, ipSource = 'unverified_peer', source = null,
 } = {}) {
   if (!db || typeof db.connect !== 'function') throw new Error('GUARDIAN_EVENT_DATABASE_REQUIRED');
+  const resolvedIpSource = source || ipSource;
   const client = await db.connect();
   try {
     await client.query('BEGIN');
@@ -108,7 +109,7 @@ export async function recordGuardianSecurityEvent(db, event, {
       evidence: event.evidence,
       observedAt: event.observedAt,
       clientIp: safeIp,
-      ipSource: safeText(ipSource, 32),
+      ipSource: safeText(resolvedIpSource, 32),
     };
     const eventHash = createHash('sha256').update(previousHash + '\n' + canonicalJson(payload)).digest('hex');
     await client.query(
