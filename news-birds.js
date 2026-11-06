@@ -202,6 +202,17 @@ export async function ensureNewsBirdSchema(db) {
     ALTER TABLE frieren_news_feed_items ADD COLUMN IF NOT EXISTS translated_summary VARCHAR(500);
     CREATE INDEX IF NOT EXISTS frieren_news_feed_recent_idx
       ON frieren_news_feed_items(feed_key,published_at DESC);
+    CREATE TABLE IF NOT EXISTS frieren_news_guild_settings (
+      guild_id TEXT PRIMARY KEY,
+      channel_id TEXT NOT NULL,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS frieren_news_guild_digest_state (
+      guild_id TEXT PRIMARY KEY,
+      last_sent_at TIMESTAMPTZ,
+      claimed_until TIMESTAMPTZ
+    );
     CREATE TABLE IF NOT EXISTS frieren_news_digest_state (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
@@ -332,4 +343,82 @@ export async function getEventReminderRecipients(db,eventId,category) {
     [eventId,category]
   );
   return result.rows.map(row=>row.user_id);
+}
+
+
+export async function setNewsGuildChannel(db,{guildId,channelId}) {
+  if (!DISCORD_ID.test(String(guildId||'')) || !DISCORD_ID.test(String(channelId||''))) throw new Error('NEWS_BIRD_CHANNEL_INVALID');
+  await db.query(
+    `INSERT INTO frieren_news_guild_settings(guild_id,channel_id,enabled)
+     VALUES($1,$2,TRUE)
+     ON CONFLICT(guild_id) DO UPDATE SET channel_id=EXCLUDED.channel_id,enabled=TRUE,updated_at=NOW()`,
+    [guildId,channelId]
+  );
+  return {status:'saved',guildId,channelId,enabled:true};
+}
+
+export async function disableNewsGuildChannel(db,guildId) {
+  if (!DISCORD_ID.test(String(guildId||''))) throw new Error('NEWS_BIRD_GUILD_INVALID');
+  const result=await db.query(
+    'UPDATE frieren_news_guild_settings SET enabled=FALSE,updated_at=NOW() WHERE guild_id=$1 RETURNING guild_id',
+    [guildId]
+  );
+  return {status:result.rowCount?'disabled':'not_configured',guildId};
+}
+
+export async function claimDueAnimeNewsGuildDigests(db,limit=50) {
+  const batch=Math.max(1,Math.min(500,Number(limit)||50));
+  const result=await db.query(
+    `WITH candidates AS (
+       SELECT s.guild_id,s.channel_id
+       FROM frieren_news_guild_settings s
+       LEFT JOIN frieren_news_guild_digest_state d ON d.guild_id=s.guild_id
+       WHERE s.enabled=TRUE
+         AND (d.claimed_until IS NULL OR d.claimed_until<=NOW())
+         AND (d.last_sent_at IS NULL OR d.last_sent_at<=NOW()-INTERVAL '24 hours')
+       ORDER BY s.updated_at,s.guild_id
+       LIMIT $1 FOR UPDATE OF s SKIP LOCKED
+     ), claimed AS (
+       INSERT INTO frieren_news_guild_digest_state(guild_id,claimed_until)
+       SELECT guild_id,NOW()+INTERVAL '10 minutes' FROM candidates
+       ON CONFLICT(guild_id) DO UPDATE SET claimed_until=EXCLUDED.claimed_until
+       WHERE frieren_news_guild_digest_state.claimed_until IS NULL
+          OR frieren_news_guild_digest_state.claimed_until<=NOW()
+       RETURNING guild_id,last_sent_at
+     )
+     SELECT c.guild_id,x.channel_id,COALESCE(n.items,'[]'::json) AS items
+     FROM claimed c
+     JOIN candidates x ON x.guild_id=c.guild_id
+     CROSS JOIN LATERAL (
+       SELECT json_agg(item ORDER BY item->>'publishedAt' DESC) AS items
+       FROM (
+         SELECT json_build_object('guid',guid,'title',title,'link',link,'summary',summary,
+           'translatedTitle',translated_title,'translatedSummary',translated_summary,
+           'imageUrl',image_url,'sourceName',source_name,'publishedAt',published_at) AS item
+         FROM frieren_news_feed_items
+         WHERE feed_key='anime_news'
+           AND published_at>COALESCE(c.last_sent_at,NOW()-INTERVAL '24 hours')
+         ORDER BY published_at DESC LIMIT 15
+       ) recent
+     ) n
+     WHERE json_array_length(COALESCE(n.items,'[]'::json))>0`,
+    [batch]
+  );
+  return result.rows;
+}
+
+export async function markAnimeNewsGuildDigestSent(db,guildId) {
+  const result=await db.query(
+    'UPDATE frieren_news_guild_digest_state SET last_sent_at=NOW(),claimed_until=NULL WHERE guild_id=$1 AND claimed_until>NOW() RETURNING guild_id',
+    [guildId]
+  );
+  return result.rowCount===1;
+}
+
+export async function releaseAnimeNewsGuildDigestClaim(db,guildId) {
+  const result=await db.query(
+    'UPDATE frieren_news_guild_digest_state SET claimed_until=NULL WHERE guild_id=$1 AND claimed_until>NOW() RETURNING guild_id',
+    [guildId]
+  );
+  return result.rowCount===1;
 }
