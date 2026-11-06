@@ -1,29 +1,29 @@
-"""Frieren Neural: a small from-scratch language-model research package."""
+"""Frieren Neural research package with lazy imports for the lightweight GGUF server."""
 
-from .model import GPTConfig, GPTLanguageModel
-from .tokenizer import BPETokenizer, CharacterTokenizer
-from .training import (
-    TrainingConfig,
-    evaluate_checkpoint,
-    generate_text,
-    load_checkpoint,
-    load_licensed_corpus,
-    load_text_corpus,
-    split_corpus_text,
-    train_model,
-)
+from importlib import import_module
 
-__all__ = [
-    "BPETokenizer",
-    "CharacterTokenizer",
-    "GPTConfig",
-    "GPTLanguageModel",
-    "TrainingConfig",
-    "evaluate_checkpoint",
-    "generate_text",
-    "load_checkpoint",
-    "load_licensed_corpus",
-    "load_text_corpus",
-    "split_corpus_text",
-    "train_model",
-]
+_EXPORTS = {
+    "BPETokenizer": ".tokenizer",
+    "CharacterTokenizer": ".tokenizer",
+    "GPTConfig": ".model",
+    "GPTLanguageModel": ".model",
+    "TrainingConfig": ".training",
+    "evaluate_checkpoint": ".training",
+    "generate_text": ".training",
+    "load_checkpoint": ".training",
+    "load_licensed_corpus": ".training",
+    "load_text_corpus": ".training",
+    "split_corpus_text": ".training",
+    "train_model": ".training",
+}
+
+__all__ = list(_EXPORTS)
+
+
+def __getattr__(name: str):
+    module_name = _EXPORTS.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(module_name, __name__), name)
+    globals()[name] = value
+    return value
