@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ensurePublicChatSchema,listPublicChatMessages,sendPublicChatMessage,deletePublicChatMessage,markPublicChatMessagesRead,reportPublicChatMessage} from '../public-chat.js';
+import {ensurePublicChatSchema,listPublicChatMessages,sendPublicChatMessage,deletePublicChatMessage,markPublicChatMessagesRead,reportPublicChatMessage,togglePublicChatPin,setPublicChatPaused} from '../public-chat.js';
 
 const account='site_123e4567-e89b-12d3-a456-426614174000';
 test('public chat schema is additive and never destroys existing data',async()=>{
@@ -25,13 +25,24 @@ test('public chat read is bounded and uses hidden-message filtering',async()=>{
  assert.equal(result.length,2);assert.equal(params[0],100);
  assert.match(sql,/hidden=FALSE/);assert.match(sql,/ORDER BY \(m\.pinned_at IS NOT NULL\) DESC,m\.created_at DESC,m\.message_id DESC/);
 });
-test('chat message deletion is scoped to its author account',async()=>{
- let sql='',params;
- const db={query:async(q,p)=>{if(q.startsWith('DELETE FROM frieren_public_chat_messages')){sql=q;params=p;return{rows:[{message_id:p[0]}],rowCount:1};}return{rows:[],rowCount:0};}};
- const result=await deletePublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000'});
- assert.equal(result.status,'deleted');assert.match(sql,/message_id=\$1 AND account_id=\$2/);assert.equal(params[1],account);
+test('chat deletion and pinning reject members and allow only owner moderation',async()=>{
+ let deleteSql='',pinSql='';const db={async query(q){if(q.startsWith('DELETE FROM frieren_public_chat_messages')){deleteSql=q;return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};}if(q.startsWith('UPDATE frieren_public_chat_messages')){pinSql=q;return{rows:[{pinned_at:new Date()}],rowCount:1};}return{rows:[],rowCount:0};}};
+ await assert.rejects(()=>deletePublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000'}),/PUBLIC_CHAT_OWNER_REQUIRED/);
+ await assert.rejects(()=>togglePublicChatPin(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000'}),/PUBLIC_CHAT_OWNER_REQUIRED/);
+ assert.equal((await deletePublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',isOwner:true})).status,'deleted');
+ assert.match(deleteSql,/WHERE message_id=\$1 RETURNING message_id/);
+ assert.equal((await togglePublicChatPin(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',isOwner:true})).status,'pinned');
+ assert.match(pinSql,/WHERE message_id=\$1 AND hidden=FALSE/);
 });
-
+test('only owner can pause or resume chat and paused chat rejects new posts',async()=>{
+ let updateSql='';const ownerDb={async query(q){if(q.startsWith('UPDATE frieren_public_chat_control')){updateSql=q;return{rows:[{is_paused:true,updated_at:new Date()}],rowCount:1};}return{rows:[],rowCount:0};}};
+ await assert.rejects(()=>setPublicChatPaused(ownerDb,{accountId:account,paused:true}),/PUBLIC_CHAT_OWNER_REQUIRED/);
+ assert.equal((await setPublicChatPaused(ownerDb,{accountId:account,paused:true,isOwner:true})).paused,true);
+ assert.match(updateSql,/updated_by=\$2/);
+ let inserted=false;const pausedDb={async query(q){if(q.includes('SELECT is_paused FROM frieren_public_chat_control'))return{rows:[{is_paused:true}],rowCount:1};if(q.includes('INSERT INTO frieren_public_chat_messages'))inserted=true;return{rows:[],rowCount:0};}};
+ assert.equal((await sendPublicChatMessage(pausedDb,{accountId:account,username:'Gezgin',body:'Yeni mesaj'})).status,'chat_paused');
+ assert.equal(inserted,false);
+});
 test('chat reactions can be toggled only for an existing message and an allowed emoji',async()=>{
  const {togglePublicChatReaction}=await import('../public-chat.js');let inserted=0;
  const db={async query(sql){if(sql.includes('SELECT message_id FROM frieren_public_chat_messages'))return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};if(sql.includes('SELECT 1 FROM frieren_public_chat_reactions'))return{rows:[],rowCount:0};if(sql.includes('INSERT INTO frieren_public_chat_reactions')){inserted++;return{rows:[],rowCount:1};}return{rows:[],rowCount:0};}};
