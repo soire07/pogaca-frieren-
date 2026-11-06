@@ -25,7 +25,7 @@ import { getGuildFeatureEnabled } from './guild-feature-settings.js';
 import { createSupportTicket, listSupportTickets, listSupportTicketMessages, replySupportTicket, exportSiteAccountData, deleteSiteAccount } from './account-center.js';
 import { getNotificationPreferences, setNotificationPreference } from './news-birds.js';
 import { levelForXp, xpForNextLevel } from './utils.js';
-import { listPublicChatMessages, sendPublicChatMessage, togglePublicChatReaction, blockPublicChatUser, unblockPublicChatUser, listPublicChatBlocks } from './public-chat.js';
+import { listPublicChatMessages, sendPublicChatMessage, togglePublicChatReaction, blockPublicChatUser, unblockPublicChatUser, listPublicChatBlocks, deletePublicChatMessage, updatePublicChatMessage, togglePublicChatPin, touchPublicChatPresence, getPublicChatPresence } from './public-chat.js';
 import { getAccountProfile, updateAccountProfile, followAccount, unfollowAccount, recordAccountProfileVisit, listAccountProfileActivity } from './account-profile.js';
 import { ensurePersonalCenterSchema, getPersonalProfile, updatePersonalProfile, listDirectMessages, listMessageThreads, markDirectMessagesRead, sendDirectMessage, listGuestbookEntries, addGuestbookEntry, deleteGuestbookEntry, reportPlayer, createPlannerEntry, listPlannerEntries, updatePlannerEntry, deletePlannerEntry, getPersonalProgressReport, discoverPlayers, recommendPlayers, setCloseFriend, removeCloseFriend, listCloseFriends, recordProfileVisit, listProfileVisits } from './personal-center.js';
 import { achievements as RPG_ACHIEVEMENTS } from './basarimlar.js';
@@ -727,8 +727,8 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'chat_unavailable'}));return true;}
     const chatSession=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     const viewerId=SITE_ACCOUNT_ID.test(String(chatSession?.id||''))?chatSession.id:null;
-    const [messages,blocked]=await Promise.all([listPublicChatMessages(db,{limit:60,viewerAccountId:viewerId}),viewerId?listPublicChatBlocks(db,{accountId:viewerId}):Promise.resolve([])]);
-    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(JSON.stringify({messages,blocked}));return true;
+    const [messages,blocked,presence]=await Promise.all([listPublicChatMessages(db,{limit:60,viewerAccountId:viewerId}),viewerId?listPublicChatBlocks(db,{accountId:viewerId}):Promise.resolve([]),getPublicChatPresence(db)]);
+    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(JSON.stringify({messages,blocked,presence}));return true;
   }
   if(url.pathname==='/api/public-chat/messages'&&req.method==='POST'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
@@ -749,7 +749,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       throw error;
     }
   }
-  if(['/api/public-chat/reactions','/api/public-chat/blocks','/api/public-chat/blocks/unblock'].includes(url.pathname)&&req.method==='POST'){
+  if(['/api/public-chat/reactions','/api/public-chat/blocks','/api/public-chat/blocks/unblock','/api/public-chat/messages/edit','/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/presence'].includes(url.pathname)&&req.method==='POST'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!requireSiteAccount(res,session?.id))return true;
     if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'chat_unavailable'}));return true;}
@@ -761,8 +761,12 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       let result;
       if(url.pathname==='/api/public-chat/reactions')result=await togglePublicChatReaction(db,{accountId:session.id,messageId:form.get('messageId'),emoji:form.get('emoji')});
       else if(url.pathname==='/api/public-chat/blocks')result=await blockPublicChatUser(db,{accountId:session.id,messageId:form.get('messageId')});
-      else result=await unblockPublicChatUser(db,{accountId:session.id,targetAccountId:form.get('targetAccountId')});
-      const status=result.status==='not_found'?404:result.status==='self_block'?400:result.status==='added'||result.status==='removed'||result.status==='blocked'||result.status==='already_blocked'||result.status==='unblocked'?200:400;
+      else if(url.pathname==='/api/public-chat/blocks/unblock')result=await unblockPublicChatUser(db,{accountId:session.id,targetAccountId:form.get('targetAccountId')});
+      else if(url.pathname==='/api/public-chat/messages/edit')result=await updatePublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId'),body:form.get('body')});
+      else if(url.pathname==='/api/public-chat/messages/delete')result=await deletePublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId')});
+      else if(url.pathname==='/api/public-chat/pins')result=await togglePublicChatPin(db,{accountId:session.id,messageId:form.get('messageId')});
+      else result=await touchPublicChatPresence(db,{accountId:session.id});
+      const status=result.status==='not_found'?404:result.status==='self_block'?400:['added','removed','blocked','already_blocked','unblocked','updated','deleted','pinned','unpinned','online'].includes(result.status)?200:400;
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
     }catch(error){
       if(String(error?.message||'').startsWith('PUBLIC_CHAT_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_chat_action'}));return true;}
