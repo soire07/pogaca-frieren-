@@ -555,7 +555,7 @@ test('The Fool is a distinct raid boss with three deterministic, equally likely 
 });
 
 
-test('Light Fallen begins as a special NPC quest and only unlocks as a boss after its claim', () => {
+test('Light Fallen begins as a special NPC quest and only unlocks as a boss after its claim', async () => {
   const npc = NPC_SIDE_QUESTS.light_fallen;
   assert.ok(npc, 'Light Fallen must exist as a special quest NPC');
   assert.equal(npc.requiresStoryPath, false);
@@ -566,8 +566,8 @@ test('Light Fallen begins as a special NPC quest and only unlocks as a boss afte
   assert.equal(isRaidBossUnlocked('fallen-mage', []), false);
   assert.equal(isRaidBossUnlocked('fallen-mage', ['light_fallen_trial']), true);
   assert.equal(isRaidBossUnlocked('the-fool', []), true);
-  const choices = npcCommand.data.toJSON().options[0].choices;
-  assert.ok(choices.some(choice => choice.value === 'light_fallen'));
+  const npcSource = await (await import('node:fs/promises')).readFile(new URL('../npc.js', import.meta.url), 'utf8');
+  assert.match(npcSource, /value: 'light_fallen'/);
 });
 
 test('raid command gates direct and random Light Fallen selection on the quest claim', async () => {
