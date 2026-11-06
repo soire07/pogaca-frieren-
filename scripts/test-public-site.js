@@ -326,7 +326,7 @@ test('public sign-in exposes only the Discord OAuth action and legacy registrati
   const login = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/login', headers: {} }, login), true);
   assert.equal(login.status, 200);
-  assert.match(login.body, /href="\\/site\\/discord\\/login"/);
+  assert.ok(login.body.includes('href="/site/discord/login"'));
   assert.match(login.body, /Discord ile giriş yap/);
   assert.doesNotMatch(login.body, /name="password"|name="email"|Hesap oluştur|Şifremi unuttum|href="\/register"/);
 });
