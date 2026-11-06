@@ -75,7 +75,7 @@ export async function claimSoloBossReward(dbPool, {
 
 export async function settleRaidRewards(dbPool, {
   guildId, encounterId, ids, fighters, persistedHpNow, persistedManaNow,
-  win, xpReward, coinReward, loot, spellCasts
+  win, xpReward, coinReward, loot, spellCasts, titleDrop = null, titleDropUsers = []
 }) {
   const db = await dbPool.connect();
   try {
@@ -100,6 +100,7 @@ export async function settleRaidRewards(dbPool, {
     }
 
     const masteryResults = [];
+    const titleDrops = [];
     for (const [userId, casts] of spellCasts) {
       const result = await db.query(
         `INSERT INTO spell_mastery (guild_id,user_id,spell_key,casts,mastery_level,updated_at)
@@ -133,10 +134,18 @@ export async function settleRaidRewards(dbPool, {
          ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
         [guildId, fighter.userId, loot]
       );
+      if (titleDrop && titleDropUsers.includes(fighter.userId)) {
+        const titleResult = await db.query(
+          `INSERT INTO user_titles(guild_id,user_id,title) VALUES($1,$2,$3)
+           ON CONFLICT(guild_id,user_id,title) DO NOTHING RETURNING title`,
+          [guildId, fighter.userId, titleDrop]
+        );
+        if (titleResult.rowCount) titleDrops.push({ userId: fighter.userId, title: titleDrop });
+      }
     }
     await db.query('DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2', [guildId, encounterId]);
     await db.query('COMMIT');
-    return { status: 'settled', masteryResults };
+    return { status: 'settled', masteryResults, titleDrops };
   } catch (error) {
     await rollback(db);
     throw error;
