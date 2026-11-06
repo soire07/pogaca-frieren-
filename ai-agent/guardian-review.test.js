@@ -238,3 +238,15 @@ test('Guardian review uses configured Frieren Neural when Groq is absent', async
   assert.equal(result.applied, false);
   assert.equal(result.sourceCommitSha, 'b'.repeat(40));
 });
+
+
+test('Guardian does not fall back to Groq when a Neural URL is selected but its token is invalid', async () => {
+  let groqCalls = 0;
+  await assert.rejects(reviewGuardianIncident({
+    groq: { chat: { completions: { create: async () => { groqCalls += 1; return { choices: [] }; } } } },
+    neuralEnv: { FRIEREN_NEURAL_API_URL: 'https://neural.example.test' },
+    incident: { system: 'guardian', code: 'FAIL_CLOSED', title: 'Provider selection', summary: 'Neural URL exists but token is missing.' },
+    collectCodeContext: async () => 'FILE: ai-agent/guardian-review.js\\nsource',
+  }), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' });
+  assert.equal(groqCalls, 0);
+});
