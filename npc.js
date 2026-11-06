@@ -73,7 +73,7 @@ export const NPC_SIDE_QUESTS = {
 export default {
   data: new SlashCommandBuilder()
     .setName('npc')
-    .setDescription('Frieren, Fern ve Stark ile konuş veya seçimlerine bağlı yan görev yap.')
+    .setDescription('Frieren, Fern, Stark ve Light Fallen ile konuş veya özel görevlerini tamamla.')
     .addStringOption(option =>
       option.setName('karakter')
         .setDescription('Konuşmak istediğin karakter')
@@ -81,7 +81,8 @@ export default {
         .addChoices(
           { name: 'Frieren — Büyü ve keşif', value: 'frieren' },
           { name: 'Fern — Hazırlık ve yardım', value: 'fern' },
-          { name: 'Stark — Cesaret ve savaş', value: 'stark' }
+          { name: 'Stark — Cesaret ve savaş', value: 'stark' },
+          { name: 'Light Fallen — Özel görev', value: 'light_fallen' }
         )
     )
     .addStringOption(option =>
