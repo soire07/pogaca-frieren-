@@ -40,6 +40,8 @@ export async function ensurePersonalCenterSchema(db){
  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
  FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE)`);
  await db.query('CREATE INDEX IF NOT EXISTS player_planner_due_idx ON player_planner_entries(guild_id,user_id,due_at) WHERE due_at IS NOT NULL');
+ await db.query('CREATE TABLE IF NOT EXISTS player_close_friends(guild_id TEXT NOT NULL,owner_id TEXT NOT NULL,friend_id TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,owner_id,friend_id),CHECK(owner_id<>friend_id),FOREIGN KEY(guild_id,owner_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE,FOREIGN KEY(guild_id,friend_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE)');
+ await db.query('CREATE INDEX IF NOT EXISTS player_close_friends_owner_idx ON player_close_friends(guild_id,owner_id,created_at DESC)');
 }
 
 export async function updatePersonalProfile(db,{guildId,userId,bio='',statusText='',theme='midnight',guestbookEnabled=true}){
