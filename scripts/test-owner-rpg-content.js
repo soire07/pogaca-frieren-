@@ -174,7 +174,7 @@ test('live dungeon and boss commands consume the guild-scoped content catalog', 
   assert.ok(soloBoss.includes("getGuildRpgContent(pool, interaction.guildId, 'solo_boss')"));
   assert.ok(soloBoss.includes('unlockedBossTiers'));
   assert.ok(raidBoss.includes("getGuildRpgContent(pool, interaction.guildId, 'raid_boss')"));
-  assert.ok(raidBoss.includes('chooseRaidBoss(Math.random, catalog)'));
+  assert.ok(raidBoss.includes('chooseRaidBoss(Math.random, randomCatalog)'));
   assert.ok(raidBoss.includes("const requestedBossId = interaction.options.getString('boss_secimi')"));
   assert.ok(raidBoss.includes('catalog?.find(boss => boss.id === requestedBossId)'));
   assert.ok(schema.includes('CREATE TABLE IF NOT EXISTS guild_rpg_content_overrides'));
