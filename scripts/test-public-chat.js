@@ -23,7 +23,7 @@ test('public chat read is bounded and uses hidden-message filtering',async()=>{
  const db={query:async(q,p)=>{if(q.includes('SELECT m.message_id')){sql=q;params=p;return{rows,rowCount:2};}return{rows:[],rowCount:0};}};
  const result=await listPublicChatMessages(db,{limit:1000});
  assert.equal(result.length,2);assert.equal(params[0],100);
- assert.match(sql,/hidden=FALSE/);assert.match(sql,/ORDER BY created_at DESC/);
+ assert.match(sql,/hidden=FALSE/);assert.match(sql,/ORDER BY m\.created_at DESC,m\.message_id DESC/);
 });
 test('chat message deletion is scoped to its author account',async()=>{
  let sql='',params;
