@@ -5,7 +5,7 @@ import { createAccountNotification, ensureAccountProfileSchema } from './account
 
 const publicChatSchemaReady=new WeakMap();
 const ACCOUNT_ID=/^site_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const clean=(value,max,code)=>{const text=String(value??'').normalize('NFC').trim();if(!text||Array.from(text).length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text))throw new Error(code);return text;};
+const clean=(value,max,code,{optional=false}={})=>{const text=String(value??'').normalize('NFC').trim();if(!text&&optional)return '';if(!text||Array.from(text).length>max||/[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(text))throw new Error(code);return text;};
 function assertAccount(accountId){if(!ACCOUNT_ID.test(String(accountId||'')))throw new Error('PUBLIC_CHAT_ACCOUNT_INVALID');}
 async function transaction(db,fn){if(typeof db.connect!=='function')return fn(db);const client=await db.connect();try{await client.query('BEGIN');const result=await fn(client);await client.query('COMMIT');return result;}catch(error){await client.query('ROLLBACK').catch(()=>{});throw error;}finally{client.release();}}
 
