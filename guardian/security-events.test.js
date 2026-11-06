@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createHmac, createHash } from 'node:crypto';
 import { resolveVerifiedClientIp } from '../security/client-ip.js';
 import {
-  verifyGuardianEventSignature, normalizeGuardianSecurityEvent,
+  verifyGuardianEventSignature, normalizeGuardianSecurityEvent, normalizeSiteAuthSecurityEvent,
   recordGuardianSecurityEvent, verifyGuardianEvidenceChain,
   handleGuardianSecurityEventRequest
 } from './security-events.js';
@@ -80,6 +80,21 @@ test('Guardian security event normalization validates source, event ID, severity
   assert.doesNotMatch(normalized.summary, /token-secret-123456/);
   assert.throws(() => normalizeGuardianSecurityEvent({ ...normalized, source: 'unknown' }), /GUARDIAN_EVENT_SOURCE_INVALID/);
   assert.throws(() => normalizeGuardianSecurityEvent({ ...normalized, severity: 'urgent' }), /GUARDIAN_EVENT_SEVERITY_INVALID/);
+});
+
+test('site account security events remain distinct from verified Frieren Guard sender events', () => {
+  const authEvent = normalizeSiteAuthSecurityEvent({
+    eventId: 'auth-event-0001', source: 'frieren_site_auth',
+    code: 'AUTH_ORIGIN_REJECTED', severity: 'high',
+    title: 'Cross-origin account request blocked',
+    summary: 'A site account request was rejected before database access.',
+    observedAt: '2026-11-05T12:00:00.000Z',
+    evidence: [{ message: 'POST /login' }],
+  });
+  assert.equal(authEvent.source, 'frieren_site_auth');
+  assert.equal(authEvent.system, 'site_auth');
+  assert.throws(() => normalizeGuardianSecurityEvent(authEvent), /GUARDIAN_EVENT_SOURCE_INVALID/);
+  assert.throws(() => normalizeSiteAuthSecurityEvent({ ...authEvent, source: 'frieren_guard' }), /GUARDIAN_EVENT_SOURCE_INVALID/);
 });
 
 test('Guardian evidence chain appends with a previous hash and deduplicates event IDs atomically', async () => {
