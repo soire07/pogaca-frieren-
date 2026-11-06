@@ -1,4 +1,4 @@
-import { buildNeuralPrompt, generateNeuralReply, isNeuralConfigured } from './neural-client.js';
+import { buildNeuralPrompt, generateNeuralReply, isNeuralRequested } from './neural-client.js';
 import { redactGuardianText } from '../guardian/core.js';
 
 const ALLOWED_SYSTEMS = new Set(['frieren_neural', 'frieren_ai', 'pogaca_frieren', 'owner_panel', 'guardian']);
@@ -58,7 +58,7 @@ export function parseGuardianReview(content) {
 }
 
 export async function reviewGuardianIncident({ groq, model, incident, collectCodeContext, neuralEnv = process.env, neuralFetchImpl }) {
-  const useNeural = isNeuralConfigured(neuralEnv);
+  const useNeural = isNeuralRequested(neuralEnv);
   if (!groq && !useNeural) throw new Error('FRIEREN_AI_MODEL_NOT_CONFIGURED');
   const normalized = normalizeGuardianReviewIncident(incident);
   const contextResult = await collectCodeContext([
