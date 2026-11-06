@@ -70,13 +70,14 @@
   try{
    const response=await fetch('/api/public-chat/messages',{headers:{accept:'application/json'},cache:'no-store'});
    if(!response.ok)throw new Error('Sohbet şu anda yüklenemiyor.');
-   const data=await response.json();latestMessages=Array.isArray(data.messages)?data.messages:[];render(latestMessages);renderBlocked(Array.isArray(data.blocked)?data.blocked:[]);const presenceLabel=root.querySelector('[data-chat-presence]');if(presenceLabel)presenceLabel.textContent=(data.presence?.online||0)+' çevrimiçi';
+   const data=await response.json();latestMessages=Array.isArray(data.messages)?data.messages:[];render(latestMessages);renderBlocked(Array.isArray(data.blocked)?data.blocked:[]);const presenceLabel=root.querySelector('[data-chat-presence]');if(presenceLabel){const names=Array.isArray(data.presence?.typing)?data.presence.typing:[];presenceLabel.textContent=(data.presence?.online||0)+' çevrimiçi'+(names.length?' · '+names.join(', ')+' yazıyor':'');}
   }catch(error){if(!list.children.length)say(error.message||'Sohbet yüklenemedi.');}
   finally{refreshing=false;}
  };
  let latestMessages=[];
  if(search)search.addEventListener('input',()=>render(latestMessages));
  if(counter&&form){const updateCounter=()=>{counter.textContent=String(form.elements.message.value.length)+' / 500';};form.elements.message.addEventListener('input',updateCounter);updateCounter();}
+ if(form){let lastTyping=0;form.elements.message.addEventListener('input',()=>{if(Date.now()-lastTyping>3500){lastTyping=Date.now();postAction('/api/public-chat/typing',{}).catch(()=>{});}});}
  if(form){
   form.addEventListener('submit',async event=>{
    event.preventDefault();const input=form.elements.message;const message=String(input.value||'').trim();if(!message)return;
