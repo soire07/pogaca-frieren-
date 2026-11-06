@@ -23,7 +23,9 @@ function sessionCookie(){
 }
 
 test('POST /api/account-profile persists submitted profile and redirects back to /profil',async()=>{
+  const statements=[];
   const db={async query(sql){
+    statements.push(sql);
     if(sql.includes('INSERT INTO frieren_account_profiles'))return{rows:[{account_id:account.id}],rowCount:1};
     return{rows:[],rowCount:0};
   }};
@@ -55,5 +57,6 @@ test('POST /api/account-profile persists submitted profile and redirects back to
   assert.equal(await handlePublicSiteRequest(req,res,{db}),true);
   assert.equal(res.status,303);
   assert.equal(res.headers.Location,'/profil?status=saved');
-  assert.ok(db.query);
+  assert.ok(statements.some(sql=>sql.includes('INSERT INTO frieren_account_profiles')),'profile update must reach the persistence query');
+  assert.ok(statements.some(sql=>sql.includes('INSERT INTO frieren_account_activity')),'profile update activity must be recorded');
 });
