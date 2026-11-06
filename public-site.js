@@ -874,7 +874,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       }
 
     }catch(error){if(String(error?.message||'').endsWith('_INVALID')||String(error?.message||'')==='SOCIAL_SELF_INTERACTION')status='invalid';else throw error;}
-    res.writeHead(303,{Location:'/pazar?'+new URLSearchParams({guildId,status}).toString(),'Cache-Control':'no-store'});res.end();return true;
+    const destination=url.pathname==='/maceraci/sosyal'?'/maceraci/sosyal':'/pazar';res.writeHead(303,{Location:destination+'?'+new URLSearchParams({guildId,status}).toString(),'Cache-Control':'no-store'});res.end();return true;
   }
   if (req.method !== 'GET') return false;
   const cookie = cookies(req);
