@@ -26,7 +26,7 @@ import { createSupportTicket, listSupportTickets, listSupportTicketMessages, rep
 import { getNotificationPreferences, setNotificationPreference } from './news-birds.js';
 import { levelForXp, xpForNextLevel } from './utils.js';
 import { listPublicChatMessages, sendPublicChatMessage } from './public-chat.js';
-import { ensurePersonalCenterSchema, getPersonalProfile, updatePersonalProfile, listDirectMessages, listMessageThreads, sendDirectMessage, listGuestbookEntries, addGuestbookEntry, deleteGuestbookEntry, reportPlayer, createPlannerEntry, listPlannerEntries, updatePlannerEntry, deletePlannerEntry, getPersonalProgressReport, discoverPlayers, recommendPlayers, setCloseFriend, removeCloseFriend, listCloseFriends } from './personal-center.js';
+import { ensurePersonalCenterSchema, getPersonalProfile, updatePersonalProfile, listDirectMessages, listMessageThreads, markDirectMessagesRead, sendDirectMessage, listGuestbookEntries, addGuestbookEntry, deleteGuestbookEntry, reportPlayer, createPlannerEntry, listPlannerEntries, updatePlannerEntry, deletePlannerEntry, getPersonalProgressReport, discoverPlayers, recommendPlayers, setCloseFriend, removeCloseFriend, listCloseFriends } from './personal-center.js';
 import { achievements as RPG_ACHIEVEMENTS } from './basarimlar.js';
 import { listCardVariants } from './card-variants.js';
 import { listGuildEmbedTemplates, listGuildCustomCommands, listGuildSpellAutomations, saveGuildEmbedTemplate, saveGuildCustomCommand, saveGuildSpellAutomation } from './guild-workshop.js';
@@ -193,7 +193,8 @@ function personalCenterPage(user,profile,data,csrf,status){
  const form=(action,body)=>'<form method="post" action="/maceraci/merkez"><input type="hidden" name="csrf" value="'+esc(csrf)+'"><input type="hidden" name="guildId" value="'+esc(profile.guild_id)+'"><input type="hidden" name="action" value="'+action+'">'+body+'</form>';
  const options=[...new Map([...data.discover,...data.recommended,...data.friends].map(x=>[x.user_id,x])).values()];
  const optionHtml=options.map(x=>'<option value="'+esc(x.user_id)+'">'+esc(x.character_name||'Maceracı')+' · '+esc(x.user_id)+'</option>').join('');
- const threads=data.threads.map(x=>'<article class="personal-center-item"><strong>'+esc(x.other_id)+'</strong><p>'+esc(x.body)+'</p><small>'+new Date(x.created_at).toLocaleString('tr-TR')+(x.unread?' · Okunmadı':'')+'</small></article>').join('')||'<p class="empty-state">Henüz özel mesajın yok.</p>';
+ const threads=data.threads.map(x=>'<article class="personal-center-item"><strong>'+esc(x.other_id)+'</strong><p>'+esc(x.body)+'</p><small>'+new Date(x.created_at).toLocaleString('tr-TR')+(x.unread?' · Okunmadı':'')+'</small><a href="/maceraci/merkez?guildId='+encodeURIComponent(profile.guild_id)+'&thread='+encodeURIComponent(x.other_id)+'#personal-messages">Konuşmayı aç</a></article>').join('')||'<p class="empty-state">Henüz özel mesajın yok.</p>';
+ const conversation=data.messages?.map(x=>'<article class="personal-center-item"><strong>'+(x.sender_id===profile.user_id?'Sen':esc(data.activeThread))+'</strong><p>'+esc(x.body)+'</p><small>'+new Date(x.created_at).toLocaleString('tr-TR')+'</small></article>').join('')||'<p class="empty-state">Bu konuşmada henüz mesaj yok.</p>';
  const guestbook=data.guestbook.map(x=>'<article class="personal-center-item"><strong>'+esc(x.author_id)+'</strong><p>'+esc(x.message)+'</p><small>'+new Date(x.created_at).toLocaleString('tr-TR')+'</small>'+form('guestbook-delete','<input type="hidden" name="entryId" value="'+esc(x.entry_id)+'"><button class="btn ghost" type="submit">Sil</button>')+'</article>').join('')||'<p class="empty-state">Ziyaretçi defterinde henüz mesaj yok.</p>';
  const planner=data.planner.map(x=>'<article class="personal-center-item"><strong>'+esc(x.title)+'</strong><p>'+esc(x.body)+'</p><small>'+esc(x.kind)+' · '+(x.due_at?new Date(x.due_at).toLocaleString('tr-TR'):'Tarih yok')+(x.completed_at?' · Tamamlandı':' · Devam ediyor')+'</small>'+form('planner-update','<input type="hidden" name="entryId" value="'+esc(x.entry_id)+'">'+field('Başlık','title',x.title,100)+field('Açıklama','body',x.body,2000)+'<input type="hidden" name="dueAt" value="'+esc(x.due_at||'')+'"><input type="hidden" name="completed" value="'+(x.completed_at?'false':'true')+'"><button class="btn ghost" type="submit">'+(x.completed_at?'Yeniden aç':'Tamamlandı işaretle')+'</button>')+form('planner-delete','<input type="hidden" name="entryId" value="'+esc(x.entry_id)+'"><button class="btn ghost" type="submit">Sil</button>')+'</article>').join('')||'<p class="empty-state">Ajandan henüz boş.</p>';
  const friendIds=new Set(data.friends.map(x=>x.user_id));
@@ -1101,7 +1102,14 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const [personal,threads,planner,guestbook,week,month,discover,recommended,closeFriends,friends]=await Promise.all([
       getPersonalProfile(db,guildId,profile.user_id),listMessageThreads(db,{guildId,userId:profile.user_id}),listPlannerEntries(db,{guildId,userId:profile.user_id}),listGuestbookEntries(db,{guildId,ownerId:profile.user_id}),getPersonalProgressReport(db,{guildId,userId:profile.user_id,period:'week'}),getPersonalProgressReport(db,{guildId,userId:profile.user_id,period:'month'}),discoverPlayers(db,{guildId,userId:profile.user_id}),recommendPlayers(db,{guildId,userId:profile.user_id}),listCloseFriends(db,{guildId,ownerId:profile.user_id}),listSocialRelationships(db,guildId,profile.user_id,'friend',50)
     ]);
-    const html=personalCenterPage(user,profile,{personal,threads,planner,guestbook,week,month,discover,recommended,closeFriends,friends},createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET),url.searchParams.get('status'));
+    const threadId=String(url.searchParams.get('thread')||'');
+    let messages=[],activeThread=null;
+    if(/^\d{17,20}$/.test(threadId)&&threadId!==profile.user_id){
+      activeThread=threadId;
+      messages=await listDirectMessages(db,{guildId,userId:profile.user_id,otherUserId:threadId});
+      await markDirectMessagesRead(db,{guildId,userId:profile.user_id,otherUserId:threadId});
+    }
+    const html=personalCenterPage(user,profile,{personal,threads,planner,guestbook,week,month,discover,recommended,closeFriends,friends,messages,activeThread},createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET),url.searchParams.get('status'));
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});res.end(html);return true;
   }
   if(url.pathname==='/maceraci/profil'){
