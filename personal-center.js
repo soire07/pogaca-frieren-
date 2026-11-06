@@ -188,7 +188,7 @@ export async function removeCloseFriend(db,{guildId,ownerId,friendId}){
 }
 export async function listCloseFriends(db,{guildId,ownerId,limit=10}){
  player(guildId,ownerId);const n=Math.max(1,Math.min(10,Math.floor(Number(limit)||10)));await ensurePersonalCenterSchema(db);
- const result=await db.query('SELECT f.friend_id AS user_id,u.character_name,u.xp,f.created_at FROM player_close_friends f JOIN users u ON u.guild_id=f.guild_id AND u.user_id=f.friend_id JOIN social_relationships r ON r.guild_id=f.guild_id AND r.user_low_id=LEAST(f.owner_id,f.friend_id) AND r.user_high_id=GREATEST(f.owner_id,f.friend_id) AND r.relationship_type='friend' WHERE f.guild_id=$1 AND f.owner_id=$2 AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE b.guild_id=f.guild_id AND ((b.blocker_id=$2 AND b.blocked_id=f.friend_id) OR (b.blocker_id=f.friend_id AND b.blocked_id=$2))) ORDER BY f.created_at DESC LIMIT $3',[guildId,ownerId,n]);
+ const result=await db.query("SELECT f.friend_id AS user_id,u.character_name,u.xp,f.created_at FROM player_close_friends f JOIN users u ON u.guild_id=f.guild_id AND u.user_id=f.friend_id JOIN social_relationships r ON r.guild_id=f.guild_id AND r.user_low_id=LEAST(f.owner_id,f.friend_id) AND r.user_high_id=GREATEST(f.owner_id,f.friend_id) AND r.relationship_type='friend' WHERE f.guild_id=$1 AND f.owner_id=$2 AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE b.guild_id=f.guild_id AND ((b.blocker_id=$2 AND b.blocked_id=f.friend_id) OR (b.blocker_id=f.friend_id AND b.blocked_id=$2))) ORDER BY f.created_at DESC LIMIT $3",[guildId,ownerId,n]);
  return result.rows;
 }
 
