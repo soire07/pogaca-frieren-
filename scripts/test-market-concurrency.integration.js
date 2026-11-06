@@ -2714,7 +2714,7 @@ test('equipment salvage preview lists every salvageable item and protects boss-e
       editReply: async payload => { responses.push(payload); return payload; }
     });
     const after = await pool.query('SELECT COUNT(*)::int AS total FROM inventory WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
-    const description = String(responses[0]?.embeds?.[0]?.toJSON?.().description || '');
+    const description = JSON.stringify(responses[0]?.embeds?.[0]?.toJSON?.() || {});
     assert.ok(equipmentItems.filter(item => !item.dropOnly).every(item => description.includes(item.name)));
     assert.ok(!description.includes('💍 Katun Yüzüğü'));
     assert.ok(description.includes('Efsanevi Katun Yüzüğü boss ganimetidir'));
