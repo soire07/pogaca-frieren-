@@ -773,7 +773,7 @@ test('web social friend request uses the linked character and redirects after cr
   const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern'};
   const queries=[];
   const db={
-    async query(sql){queries.push(sql);if(sql.includes('FROM site_discord_links'))return{rows:[profile],rowCount:1};if(sql.includes('FROM guild_feature_settings'))return{rows:[{enabled:true}],rowCount:1};throw new Error('Unexpected pool query: '+sql);},
+    async query(sql){queries.push(sql);if(sql.includes('FROM site_discord_links'))return{rows:[profile],rowCount:1};if(sql.includes('FROM guild_feature_settings'))return{rows:[{enabled:true}],rowCount:1};if(sql.includes('FROM social_blocks'))return{rows:[],rowCount:0};throw new Error('Unexpected pool query: '+sql);},
     async connect(){return{async query(sql,params){queries.push(sql);if(sql==='BEGIN'||sql==='COMMIT'||sql==='ROLLBACK')return{rows:[],rowCount:1};if(sql.includes('SELECT user_id FROM users'))return{rows:[{user_id:profile.user_id},{user_id:'223456789012345678'}],rowCount:2};if(sql.includes('SELECT relationship_type FROM social_relationships'))return{rows:[],rowCount:0};if(sql.startsWith('UPDATE social_friend_requests'))return{rows:[],rowCount:0};if(sql.includes('SELECT request_id,requester_id FROM social_friend_requests'))return{rows:[],rowCount:0};if(sql.startsWith('INSERT INTO social_friend_requests'))return{rows:[{request_id:'123e4567-e89b-42d3-a456-426614174000'}],rowCount:1};throw new Error('Unexpected client query: '+sql+' '+JSON.stringify(params));},release(){}};}
   };
   const response=res();
