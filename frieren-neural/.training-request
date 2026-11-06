@@ -8,3 +8,5 @@ Previous version-1 8,000-step candidate (NOT READY): train loss 0.599732, valida
 
 
 Retry note (2026-11-06): The previous candidate run imported the pinned Apache-2.0 corpus successfully (16,241 accepted rows; 14,622 train / 1,619 held-out) but failed before optimizer steps with a role-alternation error. The training workflow now validates the exact train/validation split using the same tokenizer/encoder as train_model and reports the first offending dialogue before any expensive training. If that preflight passes, run the same isolated 8,000-step v2 candidate; never resume the legacy checkpoint. Keep all output artifacts and do not deploy.
+
+Retry trigger: run 2026-11-06 after the train/validation split preflight was added.
