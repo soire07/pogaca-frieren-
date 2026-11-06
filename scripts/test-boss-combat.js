@@ -8,6 +8,12 @@ import eventCommand from '../etkinlik.js';
 import {
   RAID_BOSSES,
   getRaidBossForm,
+  getAuraBarrier,
+  applyAuraBarrier,
+  applyAuraIllusion,
+  advanceAuraSealProgress,
+  shouldAwakenAuraSecretForm,
+  calculateAuraFinalStandDamage,
   progressionMilestone,
   getSpellMasteryAwakening,
   shouldGuaranteeRareDiscovery,
