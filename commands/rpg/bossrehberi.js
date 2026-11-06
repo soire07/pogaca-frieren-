@@ -12,7 +12,12 @@ const bosses = [
 export default {
   data: new SlashCommandBuilder()
     .setName('bossrehberi')
-    .setDescription('Boss kademelerini, ganimetleri ve savaş hazırlığını incele.'),
+    .setDescription('Boss kademelerini, ganimetleri ve savaş hazırlığını incele.')
+    .addStringOption(option => option.setName('gorunum').setDescription('Hangi boss kademelerini görmek istiyorsun?').setRequired(false).addChoices(
+      { name: 'Tüm kademeler', value: 'tum' },
+      { name: 'Seviyeme açık olanlar', value: 'acik' },
+      { name: 'Sıradaki boss', value: 'siradaki' }
+    )),
 
   async execute(interaction) {
     if (!interaction.guildId) {
@@ -29,6 +34,9 @@ export default {
     const defeats = Number(player.boss_defeats || 0);
     const currentBoss = [...bosses].reverse().find(boss => level >= boss.level) || bosses[0];
     const nextBoss = bosses.find(boss => boss.level > level);
+    const view = interaction.options.getString('gorunum') || 'tum';
+    const visibleBosses = view === 'acik' ? bosses.filter(boss => level >= boss.level)
+      : view === 'siradaki' ? (nextBoss ? [nextBoss] : [currentBoss]) : bosses;
 
     const embed = new EmbedBuilder()
       .setColor(0x6e5ab8)
@@ -40,7 +48,7 @@ export default {
         '**Seviyene göre kademe:** ' + currentBoss.name + '\n' +
         (nextBoss ? '**Sonraki eşik:** ' + nextBoss.name + ' — seviye ' + nextBoss.level : '**Sonraki eşik:** Son boss kademesine ulaştın.')
       )
-      .addFields(bosses.map((boss, index) => ({
+      .addFields(visibleBosses.map((boss, index) => ({
         name: (level >= boss.level ? '🟣' : '🔒') + ' ' + (index + 1) + '. ' + boss.name + ' · Sv. ' + boss.level + '+',
         value:
           '**Bölge** · ' + boss.region + '\n' +
@@ -54,7 +62,7 @@ export default {
         { name: '🧪 Savaştan önce hazırlık', value: '1. **/dinlen** ile HP ve Mana değerlerini toparla.\n2. **/market** üzerinden bütçene uygun ekipman edin.\n3. **/ekipman** ile ekipmanını kuşan ve bonuslarını kontrol et.\n4. **/buyular** ile öğrendiğin büyülere, **/buyuustaligi** ile ustalık durumuna bak.\n5. **/profil** üzerinden seviyeni ve savaş değerlerini son kez kontrol et.', inline: false },
         { name: '⚔️ Meydan oku', value: 'Tek başına denemek için **/iblisavasi** komutunu kullan. Takımınla baskın yapmak istiyorsan **/ortakboss**; kat kat ilerlemek istiyorsan **/zindan** veya **/katlizindan** seçeneklerini değerlendir. Boss canı azaldıkça savaş aşaması değişebilir ve saldırıları sertleşebilir.', inline: false }
       )
-      .setFooter({ text: 'Frieren’in kuzey seferi • Ödüller ve ganimet ihtimalleri boss kademesine göre değişir.' });
+      .setFooter({ text: `Frieren’in kuzey seferi • ${visibleBosses.length} kademe gösteriliyor • Ödüller ve ganimet ihtimalleri değişebilir.` });
 
     return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
