@@ -32,6 +32,7 @@ export async function listPublicChatMessages(db,{limit=60,viewerAccountId=null}=
  const viewer=viewerAccountId&&ACCOUNT_ID.test(String(viewerAccountId))?String(viewerAccountId):null;
  await ensurePublicChatSchema(db);
  const result=await db.query(`SELECT m.message_id,m.account_id,m.username,m.body,m.created_at,m.edited_at,m.pinned_at,m.reply_to_message_id,m.account_id=$2 AS is_own,
+  CASE WHEN EXISTS(SELECT 1 FROM frieren_profile_media pm WHERE pm.account_id=m.account_id AND pm.media_kind='avatar') THEN '/profil/media/public?accountId='||m.account_id ELSE NULL END AS avatar_url,
   COALESCE((SELECT jsonb_agg(jsonb_build_object('emoji',r.emoji,'count',r.count,'reacted',r.reacted)) FROM (
    SELECT emoji,COUNT(*)::int AS count,BOOL_OR(account_id=$2) AS reacted FROM frieren_public_chat_reactions WHERE message_id=m.message_id GROUP BY emoji
   ) r),'[]'::jsonb) AS reactions,
