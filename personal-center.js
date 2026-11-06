@@ -72,7 +72,7 @@ export async function listDirectMessages(db,{guildId,userId,otherUserId,limit=50
  const r=await db.query('SELECT message_id,sender_id,recipient_id,body,created_at,read_at FROM player_direct_messages WHERE guild_id=$1 AND ((sender_id=$2 AND recipient_id=$3) OR (sender_id=$3 AND recipient_id=$2)) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE b.guild_id=$1 AND ((b.blocker_id=$2 AND b.blocked_id=$3) OR (b.blocker_id=$3 AND b.blocked_id=$2))) ORDER BY created_at DESC,message_id DESC LIMIT $4',[guildId,userId,otherUserId,n]);return r.rows.reverse();
 }
 export async function markDirectMessagesRead(db,{guildId,userId,otherUserId}){
- pair(guildId,userId,otherUserId);const r=await db.query('UPDATE player_direct_messages SET read_at=NOW() WHERE guild_id=$1 AND sender_id=$3 AND recipient_id=$2 AND read_at IS NULL AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE b.guild_id=$1 AND ((b.blocker_id=$2 AND b.blocked_id=$3) OR (b.blocker_id=$3 AND b.blocked_id=$2)))',[guildId,userId,otherUserId]);return{updated:r.rowCount};
+ pair(guildId,userId,otherUserId);await ensurePersonalCenterSchema(db);const r=await db.query('UPDATE player_direct_messages SET read_at=NOW() WHERE guild_id=$1 AND sender_id=$3 AND recipient_id=$2 AND read_at IS NULL AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE b.guild_id=$1 AND ((b.blocker_id=$2 AND b.blocked_id=$3) OR (b.blocker_id=$3 AND b.blocked_id=$2)))',[guildId,userId,otherUserId]);return{updated:r.rowCount};
 }
 export async function listMessageThreads(db,{guildId,userId,limit=30}){
  player(guildId,userId);const n=Math.max(1,Math.min(50,Math.floor(Number(limit)||30)));await ensurePersonalCenterSchema(db);
@@ -93,18 +93,21 @@ export async function addGuestbookEntry(db,{guildId,ownerId,authorId,message}){
 }
 export async function listGuestbookEntries(db,{guildId,ownerId,limit=30}){
  player(guildId,ownerId);const n=Math.max(1,Math.min(100,Math.floor(Number(limit)||30)));await ensurePersonalCenterSchema(db);
- const r=await db.query('SELECT e.entry_id,e.author_id,e.message,e.created_at FROM player_guestbook_entries e LEFT JOIN social_blocks b ON b.guild_id=e.guild_id AND b.blocker_id=$2 AND b.blocked_id=e.author_id WHERE e.guild_id=$1 AND e.owner_id=$2 AND b.blocker_id IS NULL ORDER BY e.created_at DESC LIMIT $3',[guildId,ownerId,n]);return r.rows;
+ const r=await db.query('SELECT e.entry_id,e.author_id,e.message,e.created_at FROM player_guestbook_entries e WHERE e.guild_id=$1 AND e.owner_id=$2 AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE b.guild_id=e.guild_id AND ((b.blocker_id=$2 AND b.blocked_id=e.author_id) OR (b.blocker_id=e.author_id AND b.blocked_id=$2))) ORDER BY e.created_at DESC LIMIT $3',[guildId,ownerId,n]);return r.rows;
 }
 export async function deleteGuestbookEntry(db,{guildId,ownerId,entryId}){
- player(guildId,ownerId);if(!/^[0-9a-f-]{36}$/i.test(String(entryId||'')))throw new Error('GUESTBOOK_ENTRY_INVALID');
+ player(guildId,ownerId);await ensurePersonalCenterSchema(db);if(!/^[0-9a-f-]{36}$/i.test(String(entryId||'')))throw new Error('GUESTBOOK_ENTRY_INVALID');
  const r=await db.query('DELETE FROM player_guestbook_entries WHERE guild_id=$1 AND owner_id=$2 AND entry_id=$3 RETURNING entry_id',[guildId,ownerId,entryId]);return{status:r.rowCount?'deleted':'not_found'};
 }
 export async function reportPlayer(db,{guildId,reporterId,targetId,reason,details=''}){
  pair(guildId,reporterId,targetId);if(!REPORT_REASONS.has(reason))throw new Error('PLAYER_REPORT_INVALID');const note=cleanText(details,1000,'PLAYER_REPORT_INVALID',{optional:true});await ensurePersonalCenterSchema(db);
- const players=await db.query('SELECT user_id FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[guildId,[reporterId,targetId]]);
- if(players.rowCount!==2)return{status:'player_missing'};
- const recent=await db.query("SELECT COUNT(*)::int AS count FROM player_reports WHERE guild_id=$1 AND reporter_id=$2 AND created_at>NOW()-INTERVAL '24 hours'",[guildId,reporterId]);if(Number(recent.rows[0]?.count||0)>=5)return{status:'rate_limited'};
- const id=randomUUID();await db.query('INSERT INTO player_reports(report_id,guild_id,reporter_id,target_id,reason,details) VALUES($1,$2,$3,$4,$5,$6)',[id,guildId,reporterId,targetId,reason,note]);return{status:'submitted',reportId:id};
+ return tx(db,async c=>{
+  await c.query('SELECT pg_advisory_xact_lock(hashtext($1))',[guildId+':report:'+reporterId]);
+  const players=await c.query('SELECT user_id FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[guildId,[reporterId,targetId]]);
+  if(players.rowCount!==2)return{status:'player_missing'};
+  const recent=await c.query("SELECT COUNT(*)::int AS count FROM player_reports WHERE guild_id=$1 AND reporter_id=$2 AND created_at>NOW()-INTERVAL '24 hours'",[guildId,reporterId]);if(Number(recent.rows[0]?.count||0)>=5)return{status:'rate_limited'};
+  const id=randomUUID();await c.query('INSERT INTO player_reports(report_id,guild_id,reporter_id,target_id,reason,details) VALUES($1,$2,$3,$4,$5,$6)',[id,guildId,reporterId,targetId,reason,note]);return{status:'submitted',reportId:id};
+ });
 }
 export async function createPlannerEntry(db,{guildId,userId,kind,title,body='',dueAt=null}){
  player(guildId,userId);if(!KINDS.has(kind))throw new Error('PLANNER_ENTRY_INVALID');const t=cleanText(title,100,'PLANNER_ENTRY_INVALID');const b=cleanText(body,2000,'PLANNER_ENTRY_INVALID',{optional:true});
@@ -116,16 +119,16 @@ export async function listPlannerEntries(db,{guildId,userId,kind=null,limit=100}
  const r=await db.query('SELECT entry_id,kind,title,body,due_at,completed_at,created_at,updated_at FROM player_planner_entries WHERE guild_id=$1 AND user_id=$2 AND ($3::text IS NULL OR kind=$3) ORDER BY completed_at NULLS FIRST,due_at NULLS LAST,created_at DESC LIMIT $4',[guildId,userId,kind,n]);return r.rows;
 }
 export async function updatePlannerEntry(db,{guildId,userId,entryId,title,body,dueAt,completed}){
- player(guildId,userId);if(!/^[0-9a-f-]{36}$/i.test(String(entryId||''))||typeof completed!=='boolean')throw new Error('PLANNER_ENTRY_INVALID');
+ player(guildId,userId);await ensurePersonalCenterSchema(db);if(!/^[0-9a-f-]{36}$/i.test(String(entryId||''))||typeof completed!=='boolean')throw new Error('PLANNER_ENTRY_INVALID');
  const t=cleanText(title,100,'PLANNER_ENTRY_INVALID');const b=cleanText(body,2000,'PLANNER_ENTRY_INVALID',{optional:true});let due=null;if(dueAt){const d=new Date(dueAt);if(!Number.isFinite(d.getTime()))throw new Error('PLANNER_ENTRY_INVALID');due=d.toISOString();}
  const r=await db.query('UPDATE player_planner_entries SET title=$4,body=$5,due_at=$6,completed_at=CASE WHEN $7 THEN COALESCE(completed_at,NOW()) ELSE NULL END,updated_at=NOW() WHERE guild_id=$1 AND user_id=$2 AND entry_id=$3 RETURNING entry_id,completed_at',[guildId,userId,entryId,t,b,due,completed]);return{status:r.rowCount?'updated':'not_found',entry:r.rows[0]||null};
 }
 export async function deletePlannerEntry(db,{guildId,userId,entryId}){
- player(guildId,userId);if(!/^[0-9a-f-]{36}$/i.test(String(entryId||'')))throw new Error('PLANNER_ENTRY_INVALID');
+ player(guildId,userId);await ensurePersonalCenterSchema(db);if(!/^[0-9a-f-]{36}$/i.test(String(entryId||'')))throw new Error('PLANNER_ENTRY_INVALID');
  const r=await db.query('DELETE FROM player_planner_entries WHERE guild_id=$1 AND user_id=$2 AND entry_id=$3 RETURNING entry_id',[guildId,userId,entryId]);return{status:r.rowCount?'deleted':'not_found'};
 }
 export async function getPersonalProgressReport(db,{guildId,userId,period='week'}){
- player(guildId,userId);if(!['week','month'].includes(period))throw new Error('PERSONAL_REPORT_PERIOD_INVALID');
+ player(guildId,userId);await ensurePersonalCenterSchema(db);if(!['week','month'].includes(period))throw new Error('PERSONAL_REPORT_PERIOD_INVALID');
  const interval=period==='week'?'7 days':'30 days';const r=await db.query(`SELECT COUNT(*)::int AS adventures,COALESCE(SUM(xp_awarded),0)::int AS xp,
  COUNT(*) FILTER(WHERE outcome_text ILIKE '%boss%')::int AS boss_events,
  (SELECT COUNT(*)::int FROM achievement_claims a WHERE a.guild_id=$1 AND a.user_id=$2 AND a.claimed_at>=NOW()-INTERVAL '${interval}') AS achievements,
@@ -152,4 +155,28 @@ export async function recommendPlayers(db,{guildId,userId,limit=10}){
  AND NOT EXISTS(SELECT 1 FROM social_relationships x WHERE x.guild_id=$1 AND x.user_low_id=LEAST($2,candidate.user_id) AND x.user_high_id=GREATEST($2,candidate.user_id))
  AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE b.guild_id=$1 AND ((b.blocker_id=$2 AND b.blocked_id=candidate.user_id) OR (b.blocker_id=candidate.user_id AND b.blocked_id=$2)))
  GROUP BY candidate.user_id,candidate.character_name ORDER BY mutual_friends DESC,candidate.user_id LIMIT $3`,[guildId,userId,n]);return r.rows;
+}
+
+export async function setCloseFriend(db,{guildId,ownerId,friendId}){
+ pair(guildId,ownerId,friendId);await ensurePersonalCenterSchema(db);
+ return tx(db,async c=>{
+  const friendship=await c.query('SELECT 1 FROM social_relationships WHERE guild_id=$1 AND user_low_id=LEAST($2,$3) AND user_high_id=GREATEST($2,$3) AND relationship_type=\'friend\'',[guildId,ownerId,friendId]);
+  if(!friendship.rowCount)return{status:'not_friends'};
+  if(await blocked(c,guildId,ownerId,friendId))return{status:'blocked'};
+  await c.query('SELECT pg_advisory_xact_lock(hashtext($1))',[guildId+':close-friends:'+ownerId]);
+  const count=await c.query('SELECT COUNT(*)::int AS count FROM player_close_friends WHERE guild_id=$1 AND owner_id=$2',[guildId,ownerId]);
+  if(Number(count.rows?.[0]?.count||0)>=10)return{status:'limit_reached'};
+  const result=await c.query('INSERT INTO player_close_friends(guild_id,owner_id,friend_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING friend_id',[guildId,ownerId,friendId]);
+  return{status:result.rowCount?'added':'already_added'};
+ });
+}
+export async function removeCloseFriend(db,{guildId,ownerId,friendId}){
+ pair(guildId,ownerId,friendId);await ensurePersonalCenterSchema(db);
+ const result=await db.query('DELETE FROM player_close_friends WHERE guild_id=$1 AND owner_id=$2 AND friend_id=$3 RETURNING friend_id',[guildId,ownerId,friendId]);
+ return{status:result.rowCount?'removed':'not_found'};
+}
+export async function listCloseFriends(db,{guildId,ownerId,limit=10}){
+ player(guildId,ownerId);const n=Math.max(1,Math.min(10,Math.floor(Number(limit)||10)));await ensurePersonalCenterSchema(db);
+ const result=await db.query('SELECT f.friend_id AS user_id,u.character_name,u.xp,f.created_at FROM player_close_friends f JOIN users u ON u.guild_id=f.guild_id AND u.user_id=f.friend_id WHERE f.guild_id=$1 AND f.owner_id=$2 AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE b.guild_id=f.guild_id AND ((b.blocker_id=$2 AND b.blocked_id=f.friend_id) OR (b.blocker_id=f.friend_id AND b.blocked_id=$2))) ORDER BY f.created_at DESC LIMIT $3',[guildId,ownerId,n]);
+ return result.rows;
 }
