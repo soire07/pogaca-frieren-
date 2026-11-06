@@ -78,7 +78,7 @@ export async function recordAccountActivity(db,{accountId,type,label}){const id=
 export async function sendAccountFriendRequest(db,{requesterAccountId,recipientAccountId}){
  const requester=account(requesterAccountId),recipient=account(recipientAccountId);if(requester===recipient)throw new Error('ACCOUNT_PROFILE_SELF_FRIEND');await ensureAccountProfileSchema(db);
  const target=await db.query('SELECT allow_visitors FROM frieren_account_profiles WHERE account_id=$1',[recipient]);if(target.rows[0]?.allow_visitors===false)return{status:'not_allowed'};
- const existing=await db.query("SELECT request_id,status FROM frieren_account_friend_requests WHERE (requester_account_id=$1 AND recipient_account_id=$2) OR (requester_account_id=$2 AND recipient_account_id=$1) ORDER BY created_at DESC LIMIT 1",[requester,recipient]);
+ const existing=await db.query("SELECT request_id,status,requester_account_id FROM frieren_account_friend_requests WHERE (requester_account_id=$1 AND recipient_account_id=$2) OR (requester_account_id=$2 AND recipient_account_id=$1) ORDER BY created_at DESC LIMIT 1",[requester,recipient]);
  if(existing.rows[0]?.status==='accepted')return{status:'already_friends'};
  if(existing.rows[0]?.status==='pending')return{status:existing.rows[0].requester_account_id===requester?'already_sent':'incoming_request'};
  const r=await db.query("INSERT INTO frieren_account_friend_requests(request_id,requester_account_id,recipient_account_id,status) VALUES($1,$2,$3,'pending') ON CONFLICT(requester_account_id,recipient_account_id) DO UPDATE SET status='pending',created_at=NOW(),responded_at=NULL RETURNING request_id",[randomUUID(),requester,recipient]);
