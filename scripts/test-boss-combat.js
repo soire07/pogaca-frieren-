@@ -361,6 +361,9 @@ test('Zeldeila restores exactly the damage it received and area damage cannot be
   assert.equal(healed.hp, boss.hp);
   assert.equal(healed.healed, 125_000);
   assert.ok(calculateRaidAreaTickDamage(boss.areaDamagePerSecond, 999, 1) >= 1);
+  const extremeHit = applyRaidBossDamage(boss.hp, boss.hp, 999_999_999, boss);
+  assert.equal(extremeHit.hp, 1, 'even an extreme hit must not defeat Zeldeila');
+  assert.equal(regenerateRaidBossHp(extremeHit.hp, boss.hp, extremeHit.pendingHealing).hp, boss.hp);
 });
 
 test('Zeldeila title rolls are per participant, 0.2 percent, and never produce item loot', () => {
