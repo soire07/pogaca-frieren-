@@ -12,6 +12,9 @@ async function createPublicChatSchema(db){
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),hidden BOOLEAN NOT NULL DEFAULT FALSE,reply_to_message_id UUID
  )`);
  await db.query('ALTER TABLE frieren_public_chat_messages ADD COLUMN IF NOT EXISTS reply_to_message_id UUID');
+ await db.query('ALTER TABLE frieren_public_chat_messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ');
+ await db.query('ALTER TABLE frieren_public_chat_messages ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ');
+ await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_presence(account_id TEXT PRIMARY KEY,last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_reactions(message_id UUID NOT NULL REFERENCES frieren_public_chat_messages(message_id) ON DELETE CASCADE,account_id TEXT NOT NULL,emoji VARCHAR(16) NOT NULL CHECK(emoji IN (\'❤️\',\'✨\',\'😂\')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(message_id,account_id,emoji))');
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_blocks(blocker_account_id TEXT NOT NULL,blocked_account_id TEXT NOT NULL,blocked_username VARCHAR(24) NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(blocker_account_id,blocked_account_id),CHECK(blocker_account_id<>blocked_account_id))');
  await db.query('CREATE INDEX IF NOT EXISTS frieren_public_chat_recent_idx ON frieren_public_chat_messages(created_at DESC) WHERE hidden=FALSE');
@@ -28,7 +31,7 @@ export async function listPublicChatMessages(db,{limit=60,viewerAccountId=null}=
  const count=Math.max(1,Math.min(100,Math.floor(Number(limit)||60)));
  const viewer=viewerAccountId&&ACCOUNT_ID.test(String(viewerAccountId))?String(viewerAccountId):null;
  await ensurePublicChatSchema(db);
- const result=await db.query(`SELECT m.message_id,m.username,m.body,m.created_at,m.reply_to_message_id,m.account_id=$2 AS is_own,
+ const result=await db.query(`SELECT m.message_id,m.account_id,m.username,m.body,m.created_at,m.edited_at,m.pinned_at,m.reply_to_message_id,m.account_id=$2 AS is_own,
   COALESCE((SELECT jsonb_agg(jsonb_build_object('emoji',r.emoji,'count',r.count,'reacted',r.reacted)) FROM (
    SELECT emoji,COUNT(*)::int AS count,BOOL_OR(account_id=$2) AS reacted FROM frieren_public_chat_reactions WHERE message_id=m.message_id GROUP BY emoji
   ) r),'[]'::jsonb) AS reactions,
@@ -36,7 +39,7 @@ export async function listPublicChatMessages(db,{limit=60,viewerAccountId=null}=
   FROM frieren_public_chat_messages m
   WHERE m.hidden=FALSE AND m.created_at>=NOW()-INTERVAL '7 days'
    AND ($2::text IS NULL OR NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE b.blocker_account_id=$2 AND b.blocked_account_id=m.account_id))
-  ORDER BY m.created_at DESC,m.message_id DESC LIMIT $1`,[count,viewer]);
+  ORDER BY (m.pinned_at IS NOT NULL) DESC,m.created_at DESC,m.message_id DESC LIMIT $1`,[count,viewer]);
  return result.rows.reverse();
 }
 
@@ -105,4 +108,26 @@ export async function deletePublicChatMessage(db,{accountId,messageId}){
  await ensurePublicChatSchema(db);
  const result=await db.query('DELETE FROM frieren_public_chat_messages WHERE message_id=$1 AND account_id=$2 RETURNING message_id',[messageId,accountId]);
  return{status:result.rowCount?'deleted':'not_found'};
+}
+
+export async function updatePublicChatMessage(db,{accountId,messageId,body}){
+ assertAccount(accountId);if(!/^[0-9a-f-]{36}$/i.test(String(messageId||'')))throw new Error('PUBLIC_CHAT_MESSAGE_INVALID');
+ const message=clean(body,500,'PUBLIC_CHAT_MESSAGE_INVALID');await ensurePublicChatSchema(db);
+ const r=await db.query("UPDATE frieren_public_chat_messages SET body=$3,edited_at=NOW() WHERE message_id=$1 AND account_id=$2 AND hidden=FALSE AND created_at>NOW()-INTERVAL '15 minutes' RETURNING message_id",[messageId,accountId,message]);
+ return{status:r.rowCount?'updated':'not_found'};
+}
+export async function togglePublicChatPin(db,{accountId,messageId}){
+ assertAccount(accountId);if(!/^[0-9a-f-]{36}$/i.test(String(messageId||'')))throw new Error('PUBLIC_CHAT_MESSAGE_INVALID');await ensurePublicChatSchema(db);
+ const r=await db.query("UPDATE frieren_public_chat_messages SET pinned_at=CASE WHEN pinned_at IS NULL THEN NOW() ELSE NULL END WHERE message_id=$1 AND account_id=$2 AND hidden=FALSE RETURNING pinned_at",[messageId,accountId]);
+ return{status:r.rowCount?(r.rows[0].pinned_at?'pinned':'unpinned'):'not_found'};
+}
+export async function touchPublicChatPresence(db,{accountId}){
+ assertAccount(accountId);await ensurePublicChatSchema(db);
+ await db.query('INSERT INTO frieren_public_chat_presence(account_id,last_seen_at) VALUES($1,NOW()) ON CONFLICT(account_id) DO UPDATE SET last_seen_at=NOW()',[accountId]);
+ return{status:'online'};
+}
+export async function getPublicChatPresence(db){
+ await ensurePublicChatSchema(db);
+ const r=await db.query("SELECT COUNT(*)::int AS online FROM frieren_public_chat_presence WHERE last_seen_at>NOW()-INTERVAL '90 seconds'");
+ return{online:Number(r.rows[0]?.online||0)};
 }
