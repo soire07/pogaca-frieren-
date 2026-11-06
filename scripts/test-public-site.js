@@ -225,7 +225,7 @@ test('authenticated homepage is the account-scoped player dashboard', async () =
   assert.match(response.body, /role="progressbar"/);
   assert.ok(response.body.includes('action="/maceraci/link"'));
 
-  assert.equal(queries.length, 4);
+  assert.equal(queries.length, 5);
   assert.equal(queries[0].params[0], accountId.replace(/^site_/, ''));
   assert.equal(queries[2].params[0], accountId.replace(/^site_/, ''));
 });
@@ -899,7 +899,7 @@ test('public player showcase respects privacy and exposes only the opt-in card a
 test('adventurer calendar exposes direct raid signup with the real guild team UUID',async()=>{
  const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20,xp:2400,coins:100,hp:80,max_hp:100,mana:40,max_mana:60,rating:1200,wins:2,losses:1};
  const event={event_id:'123e4567-e89b-42d3-a456-426614174000',guild_id:profile.guild_id,title:'Kuzey Zindanı',description:'Birlikte ilerle.',event_type:'boss_raid',starts_at:new Date(Date.now()+3600000).toISOString(),ends_at:new Date(Date.now()+7200000).toISOString(),max_participants:10,participants:2,joined:false,joined_team_key:null,joined_team_id:null,joined_team_name:null,available_teams:[{team_id:'123e4567-e89b-42d3-a456-426614174001',team_name:'Fern Takımı'}]};
- const db={async query(sql){if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};if(sql.includes('FROM guild_events e'))return{rows:[event],rowCount:1};throw new Error('Unexpected dashboard query: '+sql);}};
+ const db={async query(sql){if(sql.includes('SELECT 1 FROM site_discord_links WHERE account_id=$1 AND user_id=$2'))return{rows:[],rowCount:0};if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};if(sql.includes('FROM guild_events e'))return{rows:[event],rowCount:1};throw new Error('Unexpected dashboard query: '+sql);}};
  const response=res();
  const account={id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'};
  assert.equal(await handlePublicSiteRequest(request('/maceraci',account),response,{db}),true);
@@ -1306,7 +1306,7 @@ test('global public profile renders account activity only when the owner enables
    if(sql.includes('SELECT mime_type,media_data'))return{rows:[],rowCount:0};
    return{rows:[],rowCount:0};
   }};
-  const response=res();assert.equal(await handlePublicSiteRequest({method:'GET',url:'/u/soiree',headers:{}},response,{db}),true);
+  const response=res();assert.equal(await handlePublicSiteRequest(request('/u/soiree',{id:target,username:'Gezgin'}),response,{db}),true);
   assert.equal(response.status,200);
   if(showActivity){assert.match(response.body,/Son etkinlikler/);assert.match(response.body,/Profilini güncelledi/);assert.ok(queries.some(sql=>sql.includes('SELECT activity_type,label,created_at')));}
   else{assert.doesNotMatch(response.body,/Son etkinlikler/);assert.ok(!queries.some(sql=>sql.includes('SELECT activity_type,label,created_at')));}
@@ -1349,7 +1349,7 @@ test('profile media is served only to its signed-in account with nosniff and pri
 });
 
 test('linked Discord avatar is used in the site account menu when no custom avatar exists',async()=>{
- const accountId='site_123e4567-e89b-12d3-a456-426614174000';const db={async query(sql){if(sql.includes('SELECT user_id FROM site_discord_links'))return{rows:[{user_id:'123456789012345678'}],rowCount:1};if(sql.includes('FROM frieren_profile_media'))return{rows:[],rowCount:0};throw new Error('Unexpected avatar query: '+sql);}};
+ const accountId='site_123e4567-e89b-12d3-a456-426614174000';const db={async query(sql){if(sql.includes('SELECT user_id FROM site_discord_links'))return{rows:[{user_id:'123456789012345678'}],rowCount:1};if(sql.includes('SELECT 1 FROM site_discord_links WHERE account_id=$1 AND user_id=$2'))return{rows:[],rowCount:0};if(sql.includes('FROM frieren_profile_media'))return{rows:[],rowCount:0};throw new Error('Unexpected avatar query: '+sql);}};
  const client={users:{async fetch(){return{displayAvatarURL:()=> 'https://cdn.discordapp.com/avatars/123456789012345678/hash.webp?size=256'};}}};const response=res();
  assert.equal(await handlePublicSiteRequest(request('/kesfet',{id:accountId,username:'Gezgin'}),response,{db,client}),true);assert.match(response.body,/cdn\.discordapp\.com\/avatars\/123456789012345678\/hash\.webp/);
 });
