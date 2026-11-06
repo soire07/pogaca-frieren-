@@ -14,3 +14,5 @@ Retry trigger: run 2026-11-06 after the train/validation split preflight was add
 Dependency fix (2026-11-06): Training CI installs test/runtime dependencies needed for FastAPI and Discord adapter tests, but deliberately excludes llama-cpp-python because candidate training does not require the GGUF serving runtime.
 
 Retry trigger 3: install FastAPI, Discord.py and psycopg explicitly before full pre-training pytest collection.
+
+Restart trigger (2026-11-06): Serialize all candidate training runs, cap CPU thread oversubscription, and emit a flushed JSON progress heartbeat every 50 optimizer steps. Start one clean candidate from step 0; do not resume prior checkpoints.
