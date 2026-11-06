@@ -1,8 +1,8 @@
 export const RAID_BOSSES = [
   { id: 'north-general', name: '🌑 Kuzey Platosu İblis Generali', hp: 220, damage: 14, xp: 180, coins: 220, loot: 'İblis Mührü', weakness: 'spell', weaknessLabel: 'Büyü', special: 'mana-star' },
   { id: 'glass-wyrm', name: '🐉 Cam Pullar Ejderhası', hp: 255, damage: 12, xp: 205, coins: 245, loot: 'Ejderha Camı', weakness: 'attack', weaknessLabel: 'Fiziksel saldırı', special: 'shard-rain' },
-  { id: 'fallen-mage', name: '🕯️ Düşmüş Büyücü Aura', hp: 2400, damage: 48, xp: 460, coins: 520, loot: 'Auranın Mühürlü Asa Parçası', titleDrop: 'Üç Formun Fatihi', titleDropChance: 0.03, weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'mana-curse' },
-  { id: 'zeldeila', name: '🌌 Zeldeila • Mutlak Son Boss', hp: 200_000_000, damage: 3, xp: 0, coins: 0, loot: null, lootChance: 0, titleDrop: 'ZELDİN TAŞŞAĞI', titleDropChance: 0.002, weakness: 'spell', weaknessLabel: 'Yenilmez', special: 'eternal-regeneration', regenerateDamagePerSecond: true, areaDamagePerSecond: 15, noHpScaling: true, spawnWeight: 1 },
+  { id: 'fallen-mage', name: '♾️ [INFINITY] Düşmüş Büyücü Aura', class: 'Infinity', hp: 2400, damage: 48, xp: 460, coins: 520, loot: 'Auranın Mühürlü Asa Parçası', titleDrop: 'Üç Formun Fatihi', titleDropChance: 0.03, weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'mana-curse' },
+  { id: 'zeldeila', name: '♾️ [INFINITY] Zeldeila • Mutlak Son Boss', class: 'Infinity', hp: 200_000_000, damage: 3, xp: 0, coins: 0, loot: null, lootChance: 0, titleDrop: 'ZELDİN TAŞŞAĞI', titleDropChance: 0.002, weakness: 'spell', weaknessLabel: 'Yenilmez', special: 'eternal-regeneration', regenerateDamagePerSecond: true, areaDamagePerSecond: 15, noHpScaling: true, spawnWeight: 1 },
   { id: 'domaltazor', name: '🦴 Domaltazor • Kadim Cellat', hp: 1600, damage: 24, xp: 520, coins: 750, loot: '💍 Katun Yüzüğü', lootChance: 0.001, weakness: 'attack', weaknessLabel: 'Fiziksel saldırı', special: 'katun-judgment', spawnWeight: 1 }
 ];
 
