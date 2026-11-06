@@ -670,3 +670,7 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .notification-center-page .portal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .notification-center-page .card{min-width:0}
 @media(max-width:620px){.public-chat-tools{grid-template-columns:1fr;gap:7px}.public-chat-tools input{width:100%}.public-chat-head{align-items:flex-start;flex-direction:column}.notification-center-page .portal-grid{grid-template-columns:1fr}.account-profile-badges{gap:5px}}
+
+.public-chat-load-older{display:block;width:100%;margin:10px 0;text-align:center}
+.public-chat-load-older[hidden]{display:none}
+.public-chat-read-count{font-variant-numeric:tabular-nums}
