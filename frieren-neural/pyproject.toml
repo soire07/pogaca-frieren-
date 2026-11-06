@@ -19,6 +19,8 @@ frieren-neural-evaluate-quality = "frieren_neural.quality_evaluation:main"
 frieren-neural-prepare-turkish-dialogues = "frieren_neural.datasets:main"
 frieren-neural-import-chat-max = "frieren_neural.hf_corpus:main"
 frieren-neural-train-small = "frieren_neural.quickstart:main"
+frieren-neural-train-native = "frieren_neural.scratch_training:main"
+frieren-neural-prepare-reasoning = "frieren_neural.reasoning_curriculum:main"
 
 [project.optional-dependencies]
 dev = [

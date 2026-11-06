@@ -1,0 +1,64 @@
+name: Frieren Neural Native Scratch Training
+on:
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: read
+concurrency:
+  group: frieren-neural-native-scratch-training
+  cancel-in-progress: true
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "1"
+    defaults:
+      run:
+        working-directory: frieren-neural
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: frieren-neural/pyproject.toml
+      - name: Install CPU PyTorch
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+      - name: Install Neural package
+        run: python -m pip install -e ".[dev,data]"
+      - name: Run all existing and native architecture tests
+        run: pytest
+      - name: Import pinned Turkish dialogue corpus
+        run: frieren-neural-import-chat-max --output ./corpus/turkish-chat-max-25k
+      - name: Generate original CC0 Turkish reasoning curriculum
+        run: frieren-neural-prepare-reasoning --output ./corpus/turkish-reasoning-v1 --examples 3000 --seed 20261106
+      - name: Train from random initialization
+        run: |
+          frieren-neural-train-native --data ./corpus/turkish-chat-max-25k/train --data ./corpus/turkish-reasoning-v1/train --checkpoint ./checkpoints/frieren-neural-v2.pt --steps 6000 --device cpu | tee ./native-training-metrics.json
+      - name: Verify random-init provenance and artifact
+        run: |
+          python - <<'PY'
+          import torch
+          p=torch.load("./checkpoints/frieren-neural-v2.pt",map_location="cpu",weights_only=True)
+          assert p["pretrained_weights"] is False
+          assert p["architecture_id"] == "frieren-neural-transformer-v2"
+          assert p["step"] == 6000
+          assert set(p["licenses"]) == {"Apache-2.0","CC0-1.0"}
+          print("NATIVE_MODEL_PROVENANCE=VERIFIED")
+          print("PARAMETERS=" + str(sum(t.numel() for t in p["model_state"].values())))
+          PY
+      - name: Upload checkpoint and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frieren-neural-native-v2-${{ github.sha }}
+          path: |
+            frieren-neural/checkpoints/frieren-neural-v2.pt
+            frieren-neural/native-training-metrics.json
+            frieren-neural/corpus/turkish-chat-max-25k/train/corpus_manifest.json
+            frieren-neural/corpus/turkish-reasoning-v1/train/corpus_manifest.json
+          if-no-files-found: warn
+          retention-days: 30
