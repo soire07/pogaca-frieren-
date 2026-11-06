@@ -1,10 +1,87 @@
 export const RAID_BOSSES = [
   { id: 'north-general', name: '🌑 Kuzey Platosu İblis Generali', hp: 220, damage: 14, xp: 180, coins: 220, loot: 'İblis Mührü', weakness: 'spell', weaknessLabel: 'Büyü', special: 'mana-star' },
   { id: 'glass-wyrm', name: '🐉 Cam Pullar Ejderhası', hp: 255, damage: 12, xp: 205, coins: 245, loot: 'Ejderha Camı', weakness: 'attack', weaknessLabel: 'Fiziksel saldırı', special: 'shard-rain' },
-  { id: 'fallen-mage', name: '🕯️ Düşmüş Büyücü Aura', hp: 195, damage: 17, xp: 230, coins: 260, loot: 'Auranın Mühürlü Asa Parçası', weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'mana-curse' },
-  { id: 'zeldeila', name: '🌌 Zeldeila • Mutlak Son Boss', hp: 200_000_000, damage: 3, xp: 0, coins: 0, loot: null, lootChance: 0, titleDrop: 'ZELDİN TAŞŞAĞI', titleDropChance: 0.002, weakness: 'spell', weaknessLabel: 'Yenilmez', special: 'eternal-regeneration', regenerateDamagePerSecond: true, areaDamagePerSecond: 15, noHpScaling: true, spawnWeight: 1 },
-  { id: 'domaltazor', name: '🦴 Domaltazor • Kadim Cellat', hp: 1600, damage: 24, xp: 520, coins: 750, loot: '💍 Katun Yüzüğü', lootChance: 0.001, weakness: 'attack', weaknessLabel: 'Fiziksel saldırı', special: 'katun-judgment', spawnWeight: 1 }
+  { id: 'fallen-mage', name: '♾️ [INFINITY] Light Fallen', class: 'Infinity', hp: 2400, damage: 48, xp: 460, coins: 520, loot: 'Auranın Mühürlü Asa Parçası', titleDrop: 'Üç Formun Fatihi', titleDropChance: 0.03, weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'mana-curse' },
+  { id: 'zeldeila', name: '♾️ [INFINITY] Zeldeila • Mutlak Son Boss', class: 'Infinity', hp: 200_000_000, damage: 3, xp: 0, coins: 0, loot: null, lootChance: 0, titleDrop: 'ZELDİN TAŞŞAĞI', titleDropChance: 0.002, weakness: 'spell', weaknessLabel: 'Yenilmez', special: 'eternal-regeneration', regenerateDamagePerSecond: true, areaDamagePerSecond: 15, noHpScaling: true, spawnWeight: 1 },
+  { id: 'domaltazor', name: '🦴 Domaltazor • Kadim Cellat', hp: 1600, damage: 24, xp: 520, coins: 750, loot: '💍 Katun Yüzüğü', lootChance: 0.001, weakness: 'attack', weaknessLabel: 'Fiziksel saldırı', special: 'katun-judgment', spawnWeight: 1 },
+  { id: 'the-fool', name: '🃏 The Fool • Kaderin Gezgini', hp: 4800, damage: 34, xp: 1100, coins: 1450, loot: '🃏 Deli’nin Mühürlü Kartı', lootChance: 0.12, titleDrop: 'Kaderin Ötesinde', titleDropChance: 0.025, weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'fools-gamble', spawnWeight: 0.6 }
 ];
+
+
+export function getRaidBossForm(boss, phase) {
+  if (boss?.id !== 'fallen-mage') return null;
+  if (phase >= 4) return {
+    name: 'Kutsal ve Düşmüş Aura',
+    title: '🌗 GİZLİ FORM: KUTSAL VE DÜŞMÜŞ AURA',
+    description: 'Kutsal ışık ve karanlık mana birleşir; Alacakaranlık Felaketi tüm takımı hedef alır.',
+    attackMultiplier: 1.55,
+    special: 'twilight-cataclysm'
+  };
+  if (phase >= 3) return {
+    name: 'Melek Aura',
+    title: '☀️ MELEK FORMU',
+    description: 'Kutsal ışık kanatları açılır; İlahi Hüküm tüm takımı vurur.',
+    attackMultiplier: 1.3,
+    special: 'angelic-judgment'
+  };
+  if (phase === 2) return {
+    name: 'Düşmüş Melek Aura',
+    title: '🪽 DÜŞMÜŞ MELEK FORMU',
+    description: 'Karanlık kanatları açılır; Kara Kanat Fırtınası tüm takımı hedef alır.',
+    attackMultiplier: 1.15,
+    special: 'fallen-wings'
+  };
+  return {
+    name: 'Light Fallen',
+    title: '🕯️ DÜŞMÜŞ BÜYÜCÜ FORMU',
+    description: 'Mana Laneti kullanır.',
+    attackMultiplier: 1,
+    special: 'mana-curse'
+  };
+}
+
+
+export function getAuraBarrier(phase, round) {
+  if (phase < 2 || round % 4 !== 0) return null;
+  return round % 8 === 0 ? 'spell' : 'attack';
+}
+export function applyAuraBarrier(damage, action, barrier) {
+  const value = Math.max(0, Math.floor(Number(damage) || 0));
+  return barrier && barrier === action ? Math.max(1, Math.floor(value * 0.55)) : value;
+}
+export function applyAuraIllusion(damage, phase, round, action) {
+  const value = Math.max(0, Math.floor(Number(damage) || 0));
+  if (phase < 2 || round % 4 !== 1 || action === 'spell') return value;
+  return Math.max(1, Math.floor(value * 0.65));
+}
+export function advanceAuraSealProgress(progress, usedSpell) {
+  const current = Math.max(0, Math.min(3, Math.floor(Number(progress) || 0)));
+  return usedSpell ? Math.min(3, current + 1) : current;
+}
+export function shouldAwakenAuraSecretForm(seals, random = Math.random) {
+  const roll = Number(random());
+  return Math.max(0, Math.floor(Number(seals) || 0)) >= 3 && Number.isFinite(roll) && roll < 0.15;
+}
+export function calculateAuraFinalStandDamage(rawDamage, defense, defending = false) {
+  const raw = Math.max(1, Math.floor(Number(rawDamage) || 1));
+  const guard = Math.max(0, Math.floor(Number(defense) || 0));
+  const mitigated = Math.max(1, raw - Math.floor(guard * 0.35));
+  return defending ? Math.max(1, Math.floor(mitigated * 0.45)) : mitigated;
+}
+
+
+export function rollAuraFormLoot(boss, phase, random = Math.random) {
+  if (boss?.id !== 'fallen-mage') return null;
+  const roll = Number(random());
+  if (!Number.isFinite(roll)) return null;
+  const tables = {
+    2: { chance: 0.08, item: '🪽 Düşmüş Melek Kanatları' },
+    3: { chance: 0.05, item: '☀️ Melek Aura’nın Işık Tacı' },
+    4: { chance: 0.02, item: '🌗 Alacakaranlık Aura Kalıntısı' }
+  };
+  const reward = tables[phase];
+  return reward && roll < reward.chance ? reward.item : null;
+}
 
 export function chooseRaidBoss(random = Math.random, bosses = RAID_BOSSES) {
   const catalog = Array.isArray(bosses) && bosses.length ? bosses : RAID_BOSSES;
@@ -371,4 +448,13 @@ export function calculateDungeonFloorReward(floor, averageLevel) {
     xp: 25 + safeFloor * 12 + safeLevel * 2,
     coins: 20 + safeFloor * 10
   };
+}
+
+/** The Fool's three equally likely, bounded fate twists; accepts an injectable RNG for tests. */
+export function rollTheFoolTwist(random = Math.random) {
+  const sample = Number(random());
+  if (!Number.isFinite(sample) || sample < 0 || sample >= 1) return 'misfortune';
+  if (sample < 1 / 3) return 'fortune';
+  if (sample < 2 / 3) return 'misfortune';
+  return 'wildcard';
 }

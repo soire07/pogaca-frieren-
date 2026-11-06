@@ -75,7 +75,7 @@ export async function claimSoloBossReward(dbPool, {
 
 export async function settleRaidRewards(dbPool, {
   guildId, encounterId, ids, fighters, persistedHpNow, persistedManaNow,
-  win, xpReward, coinReward, loot, spellCasts, titleDrop = null, titleDropUsers = []
+  win, xpReward, coinReward, loot, bonusLoot = null, spellCasts, titleDrop = null, titleDropUsers = []
 }) {
   const db = await dbPool.connect();
   try {
@@ -129,10 +129,10 @@ export async function settleRaidRewards(dbPool, {
         [guildId, fighter.userId, persistedHpNow[i], newXp, newLevel,
           coinReward, Math.max(0, newLevel - Number(current.level)), win ? 1 : 0, persistedManaNow[i]]
       );
-      if (loot) await db.query(
+      for (const itemKey of [loot, bonusLoot].filter(Boolean)) await db.query(
         `INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1)
          ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+1`,
-        [guildId, fighter.userId, loot]
+        [guildId, fighter.userId, itemKey]
       );
       if (titleDrop && titleDropUsers.includes(fighter.userId)) {
         const titleResult = await db.query(

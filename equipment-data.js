@@ -11,7 +11,12 @@ export const equipmentItems = [
   { id: 'mana_ring', name: '🔮 Mana Dairesi Yüzüğü', slot: 'ring', slotLabel: 'Yüzük', rarity: 'Nadir', price: 650, levelReq: 10, attack: 0, defense: 0, hp: 0, mana: 25, description: 'Büyücünün mana rezervini genişleten yüzük.' },
   { id: 'rune_ring', name: '🗿 Kadim Rün Yüzüğü', slot: 'ring', slotLabel: 'Yüzük', rarity: 'Destansı', price: 1600, levelReq: 25, attack: 0, defense: 3, hp: 20, mana: 20, description: 'Harabe rünleriyle örülmüş dengeli bir koruma yüzüğü.' },
   { id: 'hero_ring', name: '🌠 Kahramanların Efsanevi Yüzüğü', slot: 'ring', slotLabel: 'Yüzük', rarity: 'Efsanevi', price: 3500, levelReq: 45, attack: 5, defense: 5, hp: 30, mana: 0, description: 'Uzun yolculukların ve büyük zaferlerin efsanevi yadigârı.' },
-  { id: 'katun_ring', name: '💍 Katun Yüzüğü', slot: 'ring', slotLabel: 'Yüzük', rarity: 'Efsanevi', dropOnly: true, price: 999999, levelReq: 50, attack: 12, defense: 8, hp: 75, mana: 60, description: 'Domaltazor’dan düşen kadim yüzük. Mor aurası saldırını, savunmanı ve yaşam-mana özünü aynı anda güçlendirir: +12 saldırı, +8 savunma, +75 maksimum HP, +60 maksimum Mana.' }
+  { id: 'katun_ring', name: '💍 Katun Yüzüğü', slot: 'ring', slotLabel: 'Yüzük', rarity: 'Efsanevi', dropOnly: true, price: 999999, levelReq: 50, attack: 12, defense: 8, hp: 75, mana: 60, description: 'Domaltazor’dan düşen kadim yüzük. Mor aurası saldırını, savunmanı ve yaşam-mana özünü aynı anda güçlendirir: +12 saldırı, +8 savunma, +75 maksimum HP, +60 maksimum Mana.' },
+  { id: 'aura_sealed_staff', name: 'Auranın Mühürlü Asa Parçası', slot: 'weapon', slotLabel: 'Silah', rarity: 'Destansı', dropOnly: true, price: 999999, levelReq: 30, attack: 10, defense: 0, hp: 0, mana: 45, description: 'Aura baskınından düşen, üç formun büyü izlerini taşıyan asa parçası.' },
+  { id: 'fallen_angel_wings', name: '🪽 Düşmüş Melek Kanatları', slot: 'armor', slotLabel: 'Zırh', rarity: 'Efsanevi', dropOnly: true, price: 999999, levelReq: 40, attack: 4, defense: 10, hp: 65, mana: 20, description: 'Düşmüş Melek Aura formunun karanlık kanatlarından kalan zırh.' },
+  { id: 'divine_aura_circlet', name: '☀️ Melek Aura’nın Işık Tacı', slot: 'ring', slotLabel: 'Yüzük', rarity: 'Efsanevi', dropOnly: true, price: 999999, levelReq: 45, attack: 8, defense: 8, hp: 55, mana: 55, description: 'Melek Aura’nın kutsal ışığını taşıyan nadir bir yadigâr.' },
+  { id: 'twilight_aura_relic', name: '🌗 Alacakaranlık Aura Kalıntısı', slot: 'ring', slotLabel: 'Yüzük', rarity: 'Efsanevi', dropOnly: true, price: 999999, levelReq: 50, attack: 12, defense: 12, hp: 80, mana: 80, description: 'Aura’nın gizli formundan düşen, ışık ve karanlığı birleştiren efsanevi kalıntı.' },
+
 ];
 
 export const equipmentSlots = [

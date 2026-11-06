@@ -38,19 +38,27 @@ test('dungeon routes return distinct, floor-scaled rewards and healing outcomes'
 test('raid boss selection is deterministic for each catalog slot and safely falls back for an empty catalog', () => {
   assert.equal(chooseRaidBoss(() => 0).id, 'north-general');
   assert.equal(chooseRaidBoss(() => 0.4).id, 'fallen-mage');
-  assert.equal(chooseRaidBoss(() => 0.99).id, 'domaltazor');
+  assert.equal(chooseRaidBoss(() => 0.8).id, 'domaltazor');
   assert.equal(chooseRaidBoss(() => 0, []).id, RAID_BOSSES[0].id);
   assert.equal(chooseRaidBoss(() => 1).id, RAID_BOSSES[0].id);
 });
 
 test('each raid boss has a distinct combat profile, signature action, weakness and loot', () => {
-  assert.equal(new Set(RAID_BOSSES.map(b => b.id)).size, 5);
-  assert.equal(new Set(RAID_BOSSES.map(b => b.special)).size, 5);
-  assert.equal(new Set(RAID_BOSSES.map(b => b.loot).filter(Boolean)).size, 4);
+  assert.equal(new Set(RAID_BOSSES.map(b => b.id)).size, 6);
+  assert.equal(new Set(RAID_BOSSES.map(b => b.special)).size, 6);
+  assert.equal(new Set(RAID_BOSSES.map(b => b.loot).filter(Boolean)).size, 5);
   assert.ok(RAID_BOSSES.every(b => b.hp > 0 && b.damage > 0 && b.xp >= 0 && b.coins >= 0));
   assert.equal(RAID_BOSSES.find(b => b.id === 'north-general').special, 'mana-star');
   assert.equal(RAID_BOSSES.find(b => b.id === 'glass-wyrm').special, 'shard-rain');
   assert.equal(RAID_BOSSES.find(b => b.id === 'fallen-mage').special, 'mana-curse');
+});
+
+test('Fallen Mage Aura keeps its identity and abilities while using the empowered combat profile', () => {
+  const aura = RAID_BOSSES.find(b => b.id === 'fallen-mage');
+  assert.deepEqual(
+    { hp: aura.hp, damage: aura.damage, xp: aura.xp, coins: aura.coins, loot: aura.loot, weakness: aura.weakness, weaknessLabel: aura.weaknessLabel, special: aura.special },
+    { hp: 2400, damage: 48, xp: 460, coins: 520, loot: 'Auranın Mühürlü Asa Parçası', weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'mana-curse' }
+  );
 });
 
 test('raid weaknesses amplify only the matching attack type', () => {
@@ -163,9 +171,9 @@ test('temporary combat resources restore to the base-stat ratio without exceedin
   assert.equal(restoreResourceRatio(50, 100, 0), 0);
 });
 
-test('equipment catalog has unique slots and complete stat calculations for all thirteen items', () => {
-  assert.equal(equipmentItems.length, 13);
-  assert.equal(new Set(equipmentItems.map(x => x.id)).size, 13);
+test('equipment catalog has unique slots and complete stat calculations for all seventeen items', () => {
+  assert.equal(equipmentItems.length, 17);
+  assert.equal(new Set(equipmentItems.map(x => x.id)).size, 17);
   assert.deepEqual(equipmentSlots.map(x => x.id), ['weapon', 'armor', 'ring1', 'ring2']);
   for (const item of equipmentItems) {
     const total = equipmentBonus([item]);

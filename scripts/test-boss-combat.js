@@ -7,6 +7,14 @@ import { marketItems } from '../market.js';
 import eventCommand from '../etkinlik.js';
 import {
   RAID_BOSSES,
+  getRaidBossForm,
+  getAuraBarrier,
+  applyAuraBarrier,
+  applyAuraIllusion,
+  advanceAuraSealProgress,
+  shouldAwakenAuraSecretForm,
+  calculateAuraFinalStandDamage,
+  rollAuraFormLoot,
   progressionMilestone,
   getSpellMasteryAwakening,
   shouldGuaranteeRareDiscovery,
@@ -23,7 +31,8 @@ import {
   regenerateRaidBossHp,
   calculateRaidAreaTickDamage,
   rollRaidBossLoot,
-  rollRaidBossTitleDrops
+  rollRaidBossTitleDrops,
+  rollTheFoolTwist
 } from '../rpg-mechanics.js';
 
 test('boss incoming damage never becomes negative and has a minimum of one', () => {
@@ -245,8 +254,8 @@ test('raid boss special attacks use their distinct turn cadence and mana curse d
   assert.match(source, /BOSS\.special === 'mana-star' && rounds % 3 === 0/);
   assert.match(source, /BOSS\.special === 'shard-rain' && rounds % 2 === 0/);
   assert.match(source, /BOSS\.special === 'mana-curse' && rounds % 3 === 0/);
-  assert.match(source, /if \(starburst \|\| shardRain\)/);
-  assert.match(source, /if \(manaCurse\)\s*\{\s*const drained=Math\.min\(target\.mana,8\);\s*target\.mana-=drained;/);
+  assert.match(source, /if \(starburst \|\| shardRain \|\| fallenWings/);
+  assert.match(source, /if \(manaCurse \|\| manaPrison\)\s*\{\s*const drained=Math\.min\(target\.mana,manaPrison \? 14 : 8\);\s*target\.mana-=drained;/);
   assert.match(source, /bossPhaseSpecialBonus\(bossPhase\)/);
 });
 
@@ -452,4 +461,83 @@ test('inventory supports bounded search, sort and pagination controls', () => {
   assert.deepEqual(sort.choices.map(choice => choice.value), ['miktar', 'isim']);
   assert.equal(page.min_value, 1);
   assert.equal(page.max_value, 20);
+});
+
+test('Aura transforms through mage, fallen angel and angel forms without changing boss identity', () => {
+  const aura = RAID_BOSSES.find(boss => boss.id === 'fallen-mage');
+  const first = getRaidBossForm(aura, 1);
+  const second = getRaidBossForm(aura, 2);
+  const third = getRaidBossForm(aura, 3);
+  assert.equal(first.name, 'Light Fallen');
+  assert.equal(first.special, 'mana-curse');
+  assert.equal(second.name, 'Düşmüş Melek Aura');
+  assert.equal(second.special, 'fallen-wings');
+  assert.equal(second.attackMultiplier, 1.15);
+  assert.equal(third.name, 'Melek Aura');
+  assert.equal(third.special, 'angelic-judgment');
+  assert.equal(third.attackMultiplier, 1.3);
+  assert.equal(getRaidBossForm(RAID_BOSSES.find(boss => boss.id === 'glass-wyrm'), 3), null);
+  assert.equal(aura.id, 'fallen-mage');
+  assert.equal(aura.special, 'mana-curse');
+});
+
+
+test('Aura battle mechanics support barriers, illusions, seals, secret awakening and final stand', () => {
+  assert.equal(getAuraBarrier(2, 4), 'attack');
+  assert.equal(getAuraBarrier(3, 8), 'spell');
+  assert.equal(getAuraBarrier(1, 4), null);
+  assert.equal(applyAuraBarrier(100, 'attack', 'attack'), 55);
+  assert.equal(applyAuraBarrier(100, 'spell', 'attack'), 100);
+  assert.equal(applyAuraIllusion(100, 2, 5, 'attack'), 65);
+  assert.equal(applyAuraIllusion(100, 2, 5, 'spell'), 100);
+  assert.equal(advanceAuraSealProgress(0, true), 1);
+  assert.equal(advanceAuraSealProgress(2, true), 3);
+  assert.equal(advanceAuraSealProgress(2, false), 2);
+  assert.equal(shouldAwakenAuraSecretForm(3, () => 0.149), true);
+  assert.equal(shouldAwakenAuraSecretForm(3, () => 0.15), false);
+  assert.equal(shouldAwakenAuraSecretForm(2, () => 0), false);
+  assert.ok(calculateAuraFinalStandDamage(100, 20, false) < 100);
+  assert.ok(calculateAuraFinalStandDamage(100, 20, true) < calculateAuraFinalStandDamage(100, 20, false));
+  const aura = RAID_BOSSES.find(boss => boss.id === 'fallen-mage');
+  assert.equal(getRaidBossForm(aura, 4).special, 'twilight-cataclysm');
+});
+
+test('Aura form-specific drops are rare, phase-bound and never leak to other bosses', async () => {
+  const aura = RAID_BOSSES.find(boss => boss.id === 'fallen-mage');
+  assert.equal(rollAuraFormLoot(aura, 2, () => 0.079), '🪽 Düşmüş Melek Kanatları');
+  assert.equal(rollAuraFormLoot(aura, 2, () => 0.08), null);
+  assert.equal(rollAuraFormLoot(aura, 3, () => 0.049), '☀️ Melek Aura’nın Işık Tacı');
+  assert.equal(rollAuraFormLoot(aura, 4, () => 0.019), '🌗 Alacakaranlık Aura Kalıntısı');
+  assert.equal(rollAuraFormLoot(RAID_BOSSES.find(boss => boss.id === 'glass-wyrm'), 4, () => 0), null);
+  const { equipmentItems } = await import('../equipment-data.js');
+  for (const name of ['Auranın Mühürlü Asa Parçası', '🪽 Düşmüş Melek Kanatları', '☀️ Melek Aura’nın Işık Tacı', '🌗 Alacakaranlık Aura Kalıntısı']) {
+    assert.ok(equipmentItems.some(item => item.name === name && item.dropOnly), name);
+  }
+});
+
+
+test('Aura and Zeldeila are Infinity class while preserving their distinct boss mechanics', () => {
+  const aura = RAID_BOSSES.find(boss => boss.id === 'fallen-mage');
+  const zeldeila = RAID_BOSSES.find(boss => boss.id === 'zeldeila');
+  assert.equal(aura.class, 'Infinity');
+  assert.equal(zeldeila.class, 'Infinity');
+  assert.equal(aura.weakness, 'spell');
+  assert.equal(aura.special, 'mana-curse');
+  assert.equal(aura.loot, 'Auranın Mühürlü Asa Parçası');
+  assert.equal(zeldeila.special, 'eternal-regeneration');
+  assert.equal(zeldeila.regenerateDamagePerSecond, true);
+  assert.equal(zeldeila.noHpScaling, true);
+});
+
+
+test('The Fool is a distinct raid boss with three deterministic, equally likely fate outcomes', () => {
+  const fool = RAID_BOSSES.find(boss => boss.id === 'the-fool');
+  assert.ok(fool);
+  assert.equal(fool.special, 'fools-gamble');
+  assert.equal(fool.weakness, 'spell');
+  assert.equal(fool.hp, 4800);
+  assert.equal(rollTheFoolTwist(() => 0), 'fortune');
+  assert.equal(rollTheFoolTwist(() => 0.5), 'misfortune');
+  assert.equal(rollTheFoolTwist(() => 0.99), 'wildcard');
+  assert.equal(rollTheFoolTwist(() => 1), 'misfortune');
 });

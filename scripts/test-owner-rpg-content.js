@@ -21,7 +21,7 @@ const actorId = '1553794496234262641';
 test('RPG content catalog preserves all existing dungeon and boss encounters', () => {
   assert.equal(DEFAULT_DUNGEON_TIERS.length, 4);
   assert.equal(DEFAULT_SOLO_BOSSES.length, 5);
-  assert.equal(DEFAULT_RAID_BOSSES.length, 5);
+  assert.equal(DEFAULT_RAID_BOSSES.length, 6);
   assert.equal(selectDungeonForLevel(1, DEFAULT_DUNGEON_TIERS).minLevel, 1);
   assert.equal(selectDungeonForLevel(8, DEFAULT_DUNGEON_TIERS).minLevel, 5);
   assert.equal(selectDungeonForLevel(20, DEFAULT_DUNGEON_TIERS).minLevel, 15);

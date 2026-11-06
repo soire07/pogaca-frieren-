@@ -6,7 +6,7 @@ import { getGuildRpgContent } from './owner-rpg-content.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
 import { validateGuildEventRaidTeam } from './guild-team-leagues.js';
-import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio, applyDefendingReduction, scaleRaidBossHp, applyRaidBossDamage, regenerateRaidBossHp, calculateRaidAreaTickDamage, rollRaidBossLoot, rollRaidBossTitleDrops, canAssignPartyRole, isPartyWiped, getPartyRoleModifiers, applyTalentBonus } from './rpg-mechanics.js';
+import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio, applyDefendingReduction, scaleRaidBossHp, applyRaidBossDamage, regenerateRaidBossHp, calculateRaidAreaTickDamage, rollRaidBossLoot, rollRaidBossTitleDrops, getRaidBossForm, getAuraBarrier, applyAuraBarrier, applyAuraIllusion, advanceAuraSealProgress, shouldAwakenAuraSecretForm, calculateAuraFinalStandDamage, rollAuraFormLoot, rollTheFoolTwist, canAssignPartyRole, isPartyWiped, getPartyRoleModifiers, applyTalentBonus } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
 
@@ -27,7 +27,7 @@ export default {
     .setName('ortakboss')
     .setDescription('En fazla dört oyuncuyla takım rolleri kullanarak ortak boss baskını yap.')
     .addUserOption(o => o.setName('takim_arkadasi').setDescription('Birinci takım arkadaşı').setRequired(true))
-    .addStringOption(o => o.setName('boss_secimi').setDescription('Rastgele boss yerine belirli bir boss seç (isteğe bağlı)').setRequired(false).addChoices(...['north-general','glass-wyrm','fallen-mage','zeldeila','domaltazor'].map(id => ({ name: ({'north-general':'Kuzey Platosu İblis Generali','glass-wyrm':'Cam Pullar Ejderhası','fallen-mage':'Düşmüş Büyücü Aura','zeldeila':'Zeldeila • Mutlak Son Boss','domaltazor':'Domaltazor • Kadim Cellat'})[id], value:id }))))
+    .addStringOption(o => o.setName('boss_secimi').setDescription('Rastgele boss yerine belirli bir boss seç (isteğe bağlı)').setRequired(false).addChoices(...['north-general','glass-wyrm','fallen-mage','zeldeila','domaltazor','the-fool'].map(id => ({ name: ({'north-general':'Kuzey Platosu İblis Generali','glass-wyrm':'Cam Pullar Ejderhası','fallen-mage':'Light Fallen','zeldeila':'Zeldeila • Mutlak Son Boss','domaltazor':'Domaltazor • Kadim Cellat','the-fool':'The Fool • Kaderin Gezgini'})[id], value:id }))))
     .addUserOption(o => o.setName('takim_arkadasi_2').setDescription('İkinci takım arkadaşı (isteğe bağlı)').setRequired(false))
     .addUserOption(o => o.setName('takim_arkadasi_3').setDescription('Üçüncü takım arkadaşı (isteğe bağlı)').setRequired(false))
     .addStringOption(o => o.setName('etkinlik_id').setDescription('Takvimdeki Boss / Raid etkinliğinin kimliği (isteğe bağlı)').setMaxLength(36).setRequired(false)),
@@ -64,7 +64,7 @@ export default {
       new ButtonBuilder().setCustomId(`raid:no:${interaction.id}`).setLabel('Reddet').setStyle(ButtonStyle.Secondary)
     );
     const msg = await interaction.editReply({
-      content: `🌌 <@${interaction.user.id}> **${BOSS.name}** baskını için takım kuruyor! ${invited.map(x => `<@${x.id}>`).join(' ')}\nHer davetli 60 saniye içinde katılmalı. Kabulden sonra herkes kendi rolünü seçecek.`,
+      content: `🌌 <@${interaction.user.id}> **${BOSS.name}**${BOSS.class === 'Infinity' ? ' · ♾️ INFINITY CLASS' : ''} baskını için takım kuruyor! ${invited.map(x => `<@${x.id}>`).join(' ')}\nHer davetli 60 saniye içinde katılmalı. Kabulden sonra herkes kendi rolünü seçecek.`,
       components: [row], allowedMentions: { users: team.map(x => x.id) }, fetchReply: true
     });
     const inviteIds = new Set(invited.map(x => x.id));
@@ -230,6 +230,13 @@ export default {
       let rounds = 0;
       let rageAnnounced = false;
       let bossPhase = 1;
+      let auraSealProgress = 0;
+      let auraWingSpellHits = 0;
+      let auraWingsBrokenUntilRound = 0;
+      let auraFinalStandUsed = false;
+      let auraFinalStandPending = false;
+      let auraSecretForm = false;
+      let auraManaTrapped = new Set();
       let pendingBossDamage = 0;
       let activeActionCollector = null;
       if (BOSS.regenerateDamagePerSecond || Number(BOSS.areaDamagePerSecond) > 0) {
@@ -253,15 +260,41 @@ export default {
       while (bossHp > 0 && !isPartyWiped(hpNow) && rounds < 12) {
         rounds++;
         const currentPhase = getBossPhase(bossHp, maxBossHp);
-        if (currentPhase > bossPhase) {
-          bossPhase = currentPhase;
-          log.push(currentPhase === 2
-            ? `🔥 **${BOSS.name} ikinci evreye geçti!** Saldırıları %10 güçlendi.`
-            : `🌑 **${BOSS.name} son evreye geçti!** Saldırıları %25 güçlendi; özel hamleleri de sertleşti.`);
+        let desiredPhase = currentPhase;
+        if (BOSS.id === 'fallen-mage' && currentPhase === 3 && auraSealProgress >= 3 && !auraSecretForm && shouldAwakenAuraSecretForm(auraSealProgress)) {
+          auraSecretForm = true;
+          desiredPhase = 4;
+        }
+        if (desiredPhase > bossPhase) {
+          bossPhase = desiredPhase;
+          const auraForm = getRaidBossForm(BOSS, bossPhase);
+          log.push(auraForm
+            ? `✨ **${auraForm.title} — ${auraForm.name}!** ${auraForm.description}`
+            : currentPhase === 2
+              ? `🔥 **${BOSS.name} ikinci evreye geçti!** Saldırıları %10 güçlendi.`
+              : `🌑 **${BOSS.name} son evreye geçti!** Saldırıları %25 güçlendi; özel hamleleri de sertleşti.`);
         }
         const alive = fighters.map((x,i)=>hpNow[i]>0?i:-1).filter(i=>i>=0);
         if (!alive.length) break;
+        if (BOSS.id === 'fallen-mage' && !auraFinalStandUsed && bossHp <= maxBossHp * 0.1) {
+          auraFinalStandUsed = true;
+          auraFinalStandPending = true;
+          const warning = '⚠️ Aura son direnişine hazırlanıyor! Bu turun sonunda tüm takıma yıkıcı saldırı yapacak.';
+          log.push(warning);
+          specialAttackHistory.push(warning);
+        }
+                const auraBarrier = BOSS.id === 'fallen-mage' ? getAuraBarrier(bossPhase, rounds) : null;
+        if (auraBarrier) log.push(`🛡️ Aura Büyü Bariyeri açtı: ${auraBarrier === 'spell' ? 'büyü' : 'fiziksel'} saldırılar bu tur zayıflatılacak.`);
+        const auraIllusion = BOSS.id === 'fallen-mage' && bossPhase >= 2 && rounds % 4 === 1;
+        if (auraIllusion) log.push('🪞 Aura Ruh İkizleri oluşturdu! Bu tur fiziksel saldırılar yanılsama tarafından saptırılıyor; Zoltraak gerçek Aura’yı bulur.');
         const healer = alive.find(i=>fighters[i].role==='healer');
+        if (healer !== undefined && BOSS.id === 'fallen-mage') {
+          const trappedIndex = alive.find(i => auraManaTrapped.has(fighters[i].userId));
+          if (trappedIndex !== undefined) {
+            auraManaTrapped.delete(fighters[trappedIndex].userId);
+            log.push(`💚 ${fighters[healer].username} Mana Hapsi mührünü çözüp ${fighters[trappedIndex].username} oyuncusunu serbest bıraktı.`);
+          }
+        }
         if (healer !== undefined) {
           for (const i of alive) {
             const classHeal = applyClassHealing(12, fighters[healer].className);
@@ -276,8 +309,12 @@ export default {
           new ButtonBuilder().setCustomId(`raid:act:shield:${interaction.id}:${rounds}`).setLabel('🔮 Kalkan (10)').setStyle(ButtonStyle.Secondary),
           new ButtonBuilder().setCustomId(`raid:act:defend:${interaction.id}:${rounds}`).setLabel('🛡️ Savun').setStyle(ButtonStyle.Secondary)
         );
+        const auraFormLabel = BOSS.id === 'fallen-mage' ? getRaidBossForm(BOSS, bossPhase)?.name : null;
+        const auraRoundWarning = BOSS.id === 'fallen-mage'
+          ? [auraBarrier ? `🛡️ ${auraBarrier === 'spell' ? 'Büyü' : 'Fiziksel'} Bariyer` : null, auraIllusion ? '🪞 Ruh İkizleri: Zoltraak yanılsamayı deler' : null, auraFinalStandPending ? '⚠️ SON DİRENİŞ: Savunma al!' : null].filter(Boolean).join(' · ')
+          : '';
         const actionMessage = await interaction.editReply({
-          content: `**${BOSS.name} · Tur ${rounds} · Evre ${bossPhase}/3**\n❤️ Boss: ${bossHp}/${maxBossHp} HP\n${alive.map(i => `<@${fighters[i].userId}> (${fighters[i].mana}/${fighters[i].maxMana} mana)`).join(' · ')}\nHer oyuncu Saldır, Zoltraak, Heilen, Mana Kalkanı veya Savun seçsin. Zayıflık: **${BOSS.weaknessLabel}**. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
+          content: `**${BOSS.name}${BOSS.class === 'Infinity' ? ' · ♾️ INFINITY CLASS' : ''} · Tur ${rounds} · Evre ${bossPhase}/${BOSS.id === 'fallen-mage' && auraSecretForm ? 4 : 3} · ${auraFormLabel || 'Boss'}**\n${auraRoundWarning ? `⚠️ ${auraRoundWarning}\\n` : ''}❤️ Boss: ${bossHp}/${maxBossHp} HP\n${alive.map(i => `<@${fighters[i].userId}> (${fighters[i].mana}/${fighters[i].maxMana} mana)`).join(' · ')}\nHer oyuncu Saldır, Zoltraak, Heilen, Mana Kalkanı veya Savun seçsin. Zayıflık: **${BOSS.weaknessLabel}**. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
           embeds: [],
           components: [actionRow]
         });
@@ -325,6 +362,11 @@ export default {
             continue;
           }
           let damage = Math.max(1, Math.round(f.attack * (0.9 + Math.random() * 0.25)));
+          if (BOSS.id === 'fallen-mage' && auraManaTrapped.has(f.userId) && action === 'spell') {
+            log.push(`🔒 ${f.username} Mana Hapsi yüzünden bu tur büyü kullanamadı; mühür etkisi tüketildi.`);
+            auraManaTrapped.delete(f.userId);
+            continue;
+          }
           let usedSpell = false;
           const spellCost = applyClassManaCost(12, f.className);
           if (action === 'spell' && f.mana >= spellCost) {
@@ -340,6 +382,23 @@ export default {
             log.push(`🔹 ${f.username} için mana yetersiz; normal saldırı yaptı.`);
           }
           damage = applyRaidWeakness(damage, BOSS, usedSpell ? 'spell' : 'attack');
+          if (BOSS.id === 'fallen-mage') {
+            damage = applyAuraBarrier(damage, usedSpell ? 'spell' : 'attack', auraBarrier);
+            damage = applyAuraIllusion(damage, bossPhase, rounds, usedSpell ? 'spell' : 'attack');
+            if (bossPhase === 2 && usedSpell) {
+              auraWingSpellHits += 1;
+              if (auraWingSpellHits >= 3 && rounds > auraWingsBrokenUntilRound) {
+                auraWingsBrokenUntilRound = rounds + 2;
+                auraWingSpellHits = 0;
+                log.push('💥 Aura’nın kanat mührü kırıldı! İki tur boyunca saldırı gücü azaldı.');
+              }
+            }
+            if (usedSpell && auraSealProgress < 3) {
+              auraSealProgress = advanceAuraSealProgress(auraSealProgress, true);
+              log.push(`🔱 Aura mührü ${auraSealProgress}/3 çözüldü.`);
+              if (auraSealProgress === 3) log.push('✨ Üç mühür de açıldı! Son aşamada gizli form uyanabilir.');
+            }
+          }
           const bossHit = applyRaidBossDamage(bossHp, maxBossHp, damage, BOSS);
           bossHp = bossHit.hp;
           pendingBossDamage += bossHit.pendingHealing;
@@ -355,21 +414,44 @@ export default {
         const starburst = BOSS.special === 'mana-star' && rounds % 3 === 0;
         const shardRain = BOSS.special === 'shard-rain' && rounds % 2 === 0;
         const manaCurse = BOSS.special === 'mana-curse' && rounds % 3 === 0;
+        const manaPrison = BOSS.id === 'fallen-mage' && rounds % 4 === 0;
+        const auraForm = getRaidBossForm(BOSS, bossPhase);
+        const fallenWings = auraForm?.special === 'fallen-wings' && rounds % 2 === 0;
+        const angelicJudgment = auraForm?.special === 'angelic-judgment' && rounds % 2 === 0;
+        const twilightCataclysm = auraForm?.special === 'twilight-cataclysm' && rounds % 2 === 0;
+        const auraWingBroken = rounds <= auraWingsBrokenUntilRound;
+        const formDamage = (auraForm?.attackMultiplier || 1) * (BOSS.id === 'fallen-mage' && bossPhase === 4 && auraSealProgress >= 3 ? 0.87 : 1);
+        const finalStandAttack = auraFinalStandPending;
         const katunJudgment = BOSS.special === 'katun-judgment' && rounds % 3 === 0;
-        const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0)+(katunJudgment?10:0)+((starburst || shardRain || manaCurse || katunJudgment) ? bossPhaseSpecialBonus(bossPhase) : 0);
+        const foolsGamble = BOSS.special === 'fools-gamble' && rounds % 3 === 0;
+        const foolTwist = foolsGamble ? rollTheFoolTwist(Math.random) : null;
+        const rawDamage=Math.round((BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0)+(katunJudgment?10:0)+(foolsGamble?8:0)+((starburst || shardRain || manaCurse || katunJudgment || fallenWings || angelicJudgment || twilightCataclysm || finalStandAttack || foolsGamble) ? bossPhaseSpecialBonus(bossPhase) : 0))*formDamage*(auraWingBroken ? 0.72 : 1));
         if (enraged && !rageAnnounced) { log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.'); rageAnnounced = true; }
-        if (starburst || shardRain) {
-          const specialMessage = BOSS.special === 'shard-rain' ? '🐉 Cam Pullar Ejderhası keskin kristal parçalarını tüm takıma yağdırıyor!' : '☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!';
+        if (starburst || shardRain || fallenWings || angelicJudgment || twilightCataclysm || finalStandAttack || foolsGamble) {
+          const specialMessage = foolsGamble ? (foolTwist === 'fortune' ? '🃏 The Fool Kader Çarkı’nı çeviriyor: TALİH! Altın ışık tüm takımı sarıyor.' : foolTwist === 'misfortune' ? '🃏 The Fool Kader Çarkı’nı çeviriyor: TALİHSİZLİK! Kartlar tüm takıma saldırıyor.' : '🃏 The Fool Kader Çarkı’nı çeviriyor: JOKER! Mana ve can aynı anda hedefte!') : finalStandAttack ? '💥 Aura SON DİRENİŞ saldırısını başlattı! Tüm oyunculara yıkıcı bir darbe geliyor!' : twilightCataclysm ? '🌗 Kutsal ve Düşmüş Aura Alacakaranlık Felaketi ile tüm takıma ışık ve karanlık dalgası gönderiyor!' : fallenWings ? '🪽 Düşmüş Melek Aura karanlık kanatlarını savurup tüm takıma Kara Kanat Fırtınası gönderiyor!' : angelicJudgment ? '☀️ Melek Aura kutsal ışığı toplayıp tüm takıma İlahi Hüküm indiriyor!' : BOSS.special === 'shard-rain' ? '🐉 Cam Pullar Ejderhası keskin kristal parçalarını tüm takıma yağdırıyor!' : '☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!';
           log.push(specialMessage);
           specialAttackHistory.push(specialMessage);
           for (const i of living) {
             const f=fighters[i];
-            const specialMultiplier = shardRain ? 0.5 : 0.68;
+            if (foolsGamble && foolTwist === 'fortune') {
+              const healing = Math.min(f.maxHp - hpNow[i], Math.max(1, Math.round(f.maxHp * 0.12)));
+              hpNow[i] += healing;
+              log.push(`🍀 ${f.username} The Fool’un Talih kartıyla ${healing} HP iyileşti.`);
+              continue;
+            }
+            const specialMultiplier = foolsGamble ? (foolTwist === 'misfortune' ? 0.62 : 0.42) : finalStandAttack ? 1.35 : twilightCataclysm ? 1.05 : fallenWings ? 0.72 : angelicJudgment ? 0.88 : shardRain ? 0.5 : 0.68;
             let incoming=calculateBossIncomingDamage(Math.round(rawDamage*specialMultiplier), Math.round(f.defense*0.44), bossPhase);
-            incoming=applyDefendingReduction(incoming,defending.has(i));
+            incoming=finalStandAttack ? calculateAuraFinalStandDamage(incoming, 0, defending.has(i)) : applyDefendingReduction(incoming,defending.has(i));
             hpNow[i]=Math.max(0,hpNow[i]-incoming);
-            log.push(`☄️ ${f.username} ${shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
+            if (foolsGamble && foolTwist === 'wildcard') {
+              const drained = Math.min(f.mana, 12);
+              f.mana -= drained;
+              log.push(`🃏 ${f.username} Joker kartıyla ${incoming} hasar aldı ve ${drained} mana kaybetti.`);
+            } else {
+              log.push(`☄️ ${f.username} ${foolsGamble ? 'Talihsizlik kartından' : finalStandAttack ? 'son direniş saldırısından' : twilightCataclysm ? 'alacakaranlık felaketinden' : fallenWings ? 'kara kanat fırtınasından' : angelicJudgment ? 'ilahi hükümden' : shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
+            }
           }
+          if (finalStandAttack) auraFinalStandPending = false;
         } else {
           let incoming=calculateBossIncomingDamage(katunJudgment ? Math.round(rawDamage * 1.5) : rawDamage, Math.round(target.defense*0.56), bossPhase);
           incoming=applyDefendingReduction(incoming,defending.has(targetIndex));
@@ -379,10 +461,11 @@ export default {
             specialAttackHistory.push(specialMessage);
           }
           hpNow[targetIndex]=Math.max(0,hpNow[targetIndex]-incoming);
-          if (manaCurse) {
-            const drained=Math.min(target.mana,8);
+          if (manaCurse || manaPrison) {
+            const drained=Math.min(target.mana,manaPrison ? 14 : 8);
             target.mana-=drained;
-            log.push(`🕯️ Boss ${target.username} oyuncusuna mana laneti uyguladı (-${drained} mana).`);
+            if (manaPrison) auraManaTrapped.add(target.userId);
+            log.push(`🕯️ Aura ${target.username} oyuncusuna ${manaPrison ? 'Mana Hapsi' : 'Mana Laneti'} uyguladı (-${drained} mana).`);
           }
           log.push(`💥 ${BOSS.name} ${target.username} oyuncusuna ${incoming} hasar verdi${defending.has(targetIndex)?' (savunma azaltımı uygulandı)':''}.`);
         }
@@ -399,6 +482,7 @@ export default {
       const xpReward=win?BOSS.xp:Math.floor(BOSS.xp*0.25);
       const coinReward=win?BOSS.coins:Math.floor(BOSS.coins*0.2);
       const loot=win ? rollRaidBossLoot(BOSS, Math.random) : null;
+      const bonusLoot=win && BOSS.id === 'fallen-mage' ? rollAuraFormLoot(BOSS, bossPhase, Math.random) : null;
       const titleDropUsers=rollRaidBossTitleDrops(BOSS, ids, Math.random);
       const settlement = await settleRaidRewards(pool, {
         guildId: interaction.guildId,
@@ -411,6 +495,7 @@ export default {
         xpReward,
         coinReward,
         loot,
+        bonusLoot,
         spellCasts,
         titleDrop: BOSS.titleDrop || null,
         titleDropUsers
@@ -421,6 +506,7 @@ export default {
       if (settlement.status === 'cooldown') {
         return interaction.editReply({ content: `⏳ <@${settlement.userId}> başka bir baskın nedeniyle bekleme süresine girdi; yaklaşık ${settlement.minutes} dakika sonra yeniden deneyin. Bu baskının ödülleri kaydedilmedi.`, components: [] });
       }
+      if (bonusLoot) log.push(`🌟 Özel Aura ganimeti: **${bonusLoot}**!`);
       for (const drop of settlement.titleDrops || []) log.push(`🏅 <@${drop.userId}> **${drop.title}** unvanını kazandı!`);
       for (const mastery of settlement.masteryResults) {
         log.push(`📈 <@${mastery.userId}> Zoltraak ustalığı: ${mastery.casts} kullanım · Seviye ${mastery.mastery_level}/10.`);
@@ -436,11 +522,11 @@ export default {
           fighters.map((f,i)=>`**<@${f.userId}>** — ${f.roleData.label} · ${f.classProfile.label} · ${f.build.label}\n❤️ ${persistedHpNow[i]}/${f.baseMaxHp} HP · ✨ ${f.mana}/${f.maxMana} mana · ⚔️ ${Math.round(f.attack)} saldırı · 🛡️ ${Math.round(f.defense)} savunma`).join('\n\n')+
           '\n\n**Savaş günlüğü**\n'+log.slice(-15).join('\n'))
         .addFields(
-          {name:'👹 Boss canı ve aşaması',value:`\`${hpBar(bossHp,maxBossHp)}\`\n**${Math.max(0,bossHp)}/${maxBossHp} HP** · ${getBossPhase(bossHp,maxBossHp)===3?'🌑 Son aşama':getBossPhase(bossHp,maxBossHp)===2?'🔥 İkinci aşama':'🌒 İlk aşama'}`,inline:false},
+          {name:'👹 Boss canı ve aşaması',value:`\`${hpBar(bossHp,maxBossHp)}\`\n**${Math.max(0,bossHp)}/${maxBossHp} HP** · ${bossPhase===4?'🌗 Gizli form':bossPhase===3?'☀️ Melek formu':bossPhase===2?'🪽 Düşmüş melek formu':'🕯️ Düşmüş büyücü formu'}`,inline:false},
           {name:'🎁 Kişi başı ödül',value:`✨ ${xpReward} XP\n🥐 ${coinReward} altın`,inline:true},
           {name:'🏅 Kalıcı unvanlar',value:milestoneText.slice(0,1024),inline:false},
           ...(specialAttackHistory.length ? [{name:'💥 Özel saldırı geçmişi',value:specialAttackHistory.slice(-5).join('\n').slice(0,1024),inline:false}] : []),
-          {name:'🧭 Boss bilgisi',value:BOSS.id==='zeldeila'?'**Sonsuz Yenilenme:** aldığı hasarı her saniye tamamen geri kazanır.\n**Mutlak Alan:** her saniye tüm takıma hasar verir.\n**200.000.000 HP:** yenilmesi mümkün değildir.':`Zayıflık: **${BOSS.weaknessLabel}**\nÖzel hareket: **${BOSS.special === 'shard-rain' ? 'Kristal Yağmuru (iki turda bir, alan hasarı)' : BOSS.special === 'mana-curse' ? 'Mana Laneti (üç turda bir, mana tüketir)' : BOSS.id === 'domaltazor' ? 'Katun Hükmü (efsanevi yüzük avı)' : 'Mana Yıldız Patlaması (üç turda bir, alan hasarı)'}**`,inline:true},
+          {name:'🧭 Boss bilgisi',value:BOSS.id==='the-fool'?'**Kader Oyunu:** her 3 turda Talih (takımı %12 iyileştirir), Talihsizlik (alan hasarı) veya Joker (alan hasarı + mana kaybı) eşit olasılıkla gerçekleşir.':BOSS.id==='zeldeila'?'**Sonsuz Yenilenme:** aldığı hasarı her saniye tamamen geri kazanır.\n**Mutlak Alan:** her saniye tüm takıma hasar verir.\n**200.000.000 HP:** yenilmesi mümkün değildir.':`Zayıflık: **${BOSS.weaknessLabel}**\nÖzel hareket: **${BOSS.special === 'shard-rain' ? 'Kristal Yağmuru (iki turda bir, alan hasarı)' : BOSS.special === 'mana-curse' ? 'Mana Laneti + Mana Hapsi' : BOSS.id === 'domaltazor' ? 'Katun Hükmü (efsanevi yüzük avı)' : 'Mana Yıldız Patlaması (üç turda bir, alan hasarı)'}**`,inline:true},
           {name:'💎 Ortak ganimet',value:loot?`Herkes **${loot}** kazandı!`:win?'Bu kez nadir ganimet çıkmadı.':BOSS.id==='zeldeila'?'Zeldeila eşya düşürmez.':'Boss yenilemediği için nadir ganimet yok.',inline:true},
           ...(BOSS.titleDrop ? [{name:'🏅 Unvan ganimeti',value:(settlement.titleDrops || []).length ? settlement.titleDrops.map(drop=>`<@${drop.userId}>: **${drop.title}**`).join('\n') : 'Bu baskında unvan düşmedi. Şans: %0,2.',inline:false}] : []),
           {name:'⏳ Bekleme süresi',value:'45 dakika',inline:true}

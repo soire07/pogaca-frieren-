@@ -127,7 +127,7 @@ test('cooperative boss raid includes an area mana-star burst and a mana-draining
   assert.match(source, /for \(const i of living\)/);
   assert.match(source, /const shardRain = BOSS\.special === 'shard-rain' && rounds % 2 === 0/);
   assert.match(source, /const manaCurse = BOSS\.special === 'mana-curse' && rounds % 3 === 0/);
-  assert.match(source, /Math\.min\(target\.mana,8\)/);
+  assert.match(source, /Math\.min\(target\.mana,manaPrison \? 14 : 8\)/);
   assert.match(source, /target\.mana-=drained/);
   assert.match(source, /\$\{rounds\}\/12/);
   assert.doesNotMatch(source, /rounds\/10/);
@@ -141,11 +141,11 @@ test('boss raid turn prompt uses actual line breaks instead of literal slash-n t
 
 
 test('raid boss catalog has distinct bosses, signature moves and deterministic selection', () => {
-  assert.equal(RAID_BOSSES.length, 5);
+  assert.equal(RAID_BOSSES.length, 6);
   assert.equal(chooseRaidBoss(() => 0).id, 'north-general');
   assert.equal(chooseRaidBoss(() => 0.5).id, 'fallen-mage');
-  assert.equal(chooseRaidBoss(() => 0.99).id, 'domaltazor');
-  assert.equal(new Set(RAID_BOSSES.map(b => b.loot).filter(Boolean)).size, 4);
+  assert.equal(chooseRaidBoss(() => 0.99).id, 'the-fool');
+  assert.equal(new Set(RAID_BOSSES.map(b => b.loot).filter(Boolean)).size, 5);
 });
 
 test('boss weaknesses increase damage only for matching action types', () => {
