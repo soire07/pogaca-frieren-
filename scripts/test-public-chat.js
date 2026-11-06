@@ -28,7 +28,7 @@ test('public chat read is bounded and uses hidden-message filtering',async()=>{
 test('chat deletion and pinning reject members and allow only owner moderation',async()=>{
  let deleteSql='',pinSql='';const db={async query(q){if(q.startsWith('DELETE FROM frieren_public_chat_messages')){deleteSql=q;return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};}if(q.startsWith('UPDATE frieren_public_chat_messages')){pinSql=q;return{rows:[{pinned_at:new Date()}],rowCount:1};}return{rows:[],rowCount:0};}};
  await assert.rejects(()=>deletePublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000'}),/PUBLIC_CHAT_OWNER_REQUIRED/);
- await assert.rejects(()=>togglePublicChatPin(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000'}),/PUBLIC_CHAT_OWNER_REQUIRED/);
+ await assert.rejects(()=>togglePublicChatPin(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',isOwner:true}),/PUBLIC_CHAT_OWNER_REQUIRED/);
  assert.equal((await deletePublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',isOwner:true})).status,'deleted');
  assert.match(deleteSql,/WHERE message_id=\$1 RETURNING message_id/);
  assert.equal((await togglePublicChatPin(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',isOwner:true})).status,'pinned');
@@ -45,7 +45,7 @@ test('only owner can pause or resume chat and paused chat rejects new posts',asy
 });
 test('chat reactions can be toggled only for an existing message and an allowed emoji',async()=>{
  const {togglePublicChatReaction}=await import('../public-chat.js');let inserted=0;
- const db={async query(sql){if(sql.includes('SELECT message_id FROM frieren_public_chat_messages'))return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};if(sql.includes('SELECT 1 FROM frieren_public_chat_reactions'))return{rows:[],rowCount:0};if(sql.includes('INSERT INTO frieren_public_chat_reactions')){inserted++;return{rows:[],rowCount:1};}return{rows:[],rowCount:0};}};
+ const db={async query(sql){if(sql.includes('SELECT message_id,account_id,username FROM frieren_public_chat_messages'))return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};if(sql.includes('SELECT 1 FROM frieren_public_chat_reactions'))return{rows:[],rowCount:0};if(sql.includes('INSERT INTO frieren_public_chat_reactions')){inserted++;return{rows:[],rowCount:1};}return{rows:[],rowCount:0};}};
  const result=await togglePublicChatReaction(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',emoji:'✨'});assert.equal(result.status,'added');assert.equal(inserted,1);
  await assert.rejects(togglePublicChatReaction(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',emoji:'🔥'}),/PUBLIC_CHAT_REACTION_INVALID/);
 });
