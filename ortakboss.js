@@ -483,7 +483,9 @@ export default {
       const coinReward=win?BOSS.coins:Math.floor(BOSS.coins*0.2);
       const loot=win ? rollRaidBossLoot(BOSS, Math.random) : null;
       const bonusLoot=win && BOSS.id === 'fallen-mage' ? rollAuraFormLoot(BOSS, bossPhase, Math.random) : null;
-      const titleDropUsers=win ? rollRaidBossTitleDrops(BOSS, ids, Math.random) : [];
+      // Zeldeila is intentionally undefeatable; its rare title is a completed-encounter participation drop.
+      const titleDropEligible = win || BOSS.id === 'zeldeila';
+      const titleDropUsers=titleDropEligible ? rollRaidBossTitleDrops(BOSS, ids, Math.random) : [];
       const settlement = await settleRaidRewards(pool, {
         guildId: interaction.guildId,
         encounterId: interaction.id,
