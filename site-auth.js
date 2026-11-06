@@ -358,7 +358,7 @@ function createDiscordOAuthState(secret, now = Date.now()) {
 function verifyDiscordOAuthState(state, cookieState, secret, now = Date.now()) {
   const value = String(state || '');
   const parts = value.split('.');
-  if (parts.length !== 3 || value !== String(cookieState || '')
+  if (!secret || String(secret).length < 32 || parts.length !== 3 || value !== String(cookieState || '')
     || !/^\\d{10}$/.test(parts[0]) || !/^[A-Za-z0-9_-]{24,40}$/.test(parts[1])) return false;
   const age = Math.floor(now / 1000) - Number(parts[0]);
   if (age < -60 || age > OAUTH_TTL_SECONDS) return false;
@@ -403,7 +403,7 @@ async function getOrCreateDiscordSiteAccount(db, discordUser) {
     let accountId = linked.rows?.[0]?.account_id;
     if (!accountId) {
       const discordId = String(discordUser.id);
-      const username = 'discord_' + discordId;
+      const username = 'd' + discordId;
       const email = 'discord_' + discordId + '@accounts.frieren.invalid';
       const randomPassword = randomBytes(48).toString('base64url');
       const passwordHash = await hashSitePassword(randomPassword);
