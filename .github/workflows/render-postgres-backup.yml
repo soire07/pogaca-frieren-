@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   actions: write
+  issues: write
 
 concurrency:
   group: render-postgres-safety-backup
@@ -94,3 +95,45 @@ jobs:
           path: backup/
           if-no-files-found: error
           retention-days: 90
+
+  notify-failure:
+    name: Notify when backup verification fails
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      actions: read
+    steps:
+      - name: Open or update backup failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          issue_number="$(gh issue list --repo "$REPOSITORY" --state open --search 'in:title Render PostgreSQL backup failed' --json number --jq '.[0].number // empty')"
+          body="Automated PostgreSQL backup or isolated-restore verification failed.\n\nRun: ${RUN_URL}\nCommit: ${GITHUB_SHA}\n\nInspect the failed job logs before taking action. The workflow reads the Render database and restores only into a disposable container. Do not modify production data as part of this alert."
+          if [ -n "$issue_number" ]; then
+            gh issue comment "$issue_number" --repo "$REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$REPOSITORY" --title "Render PostgreSQL backup failed" --body "$body"
+          fi
+
+  resolve-failure-alert:
+    name: Resolve backup failure alert after successful verification
+    if: success()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Close open backup failure alert
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          issue_number="$(gh issue list --repo "$REPOSITORY" --state open --search 'in:title Render PostgreSQL backup failed' --json number --jq '.[0].number // empty')"
+          if [ -n "$issue_number" ]; then
+            gh issue comment "$issue_number" --repo "$REPOSITORY" --body "A later backup and isolated restore verification completed successfully. Run: ${GITHUB_SERVER_URL}/${REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            gh issue close "$issue_number" --repo "$REPOSITORY"
+          fi
