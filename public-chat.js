@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { ensureProfileMediaSchema } from './profile-media.js';
 import { ensureSiteAccountSchema } from './site-auth.js';
-import { createAccountNotification } from './account-profile.js';
+import { createAccountNotification, ensureAccountProfileSchema } from './account-profile.js';
 
 const publicChatSchemaReady=new WeakMap();
 const ACCOUNT_ID=/^site_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -62,6 +62,7 @@ export async function sendPublicChatMessage(db,{accountId,username,body,replyToM
  const message=clean(body,500,'PUBLIC_CHAT_MESSAGE_INVALID');
  if(replyToMessageId&&!/^[0-9a-f-]{36}$/i.test(String(replyToMessageId)))throw new Error('PUBLIC_CHAT_REPLY_INVALID');
  await ensurePublicChatSchema(db);
+ await ensureAccountProfileSchema(db);
  return transaction(db,async client=>{
   await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',[accountId]);
   const recent=await client.query("SELECT COUNT(*)::int AS count FROM frieren_public_chat_messages WHERE account_id=$1 AND created_at>NOW()-INTERVAL '60 seconds'",[accountId]);
@@ -69,7 +70,7 @@ export async function sendPublicChatMessage(db,{accountId,username,body,replyToM
   let parentAuthor=null;if(replyToMessageId){const parent=await client.query('SELECT message_id,account_id FROM frieren_public_chat_messages WHERE message_id=$1 AND hidden=FALSE',[replyToMessageId]);if(!parent.rowCount)return{status:'reply_not_found'};parentAuthor=parent.rows[0].account_id;}
   const id=randomUUID();
   const result=await client.query('INSERT INTO frieren_public_chat_messages(message_id,account_id,username,body,reply_to_message_id) VALUES($1,$2,$3,$4,$5) RETURNING message_id,username,body,created_at,reply_to_message_id',[id,accountId,author,message,replyToMessageId]);
-  if(parentAuthor&&parentAuthor!==accountId)await createAccountNotification(client,{accountId:parentAuthor,type:'chat_reply',title:'Sohbet mesajına yanıt',body:author+' mesajına yanıt verdi.',href:'/kesfet#topluluk-sohbeti'});
+  if(parentAuthor&&parentAuthor!==accountId)await createAccountNotification(client,{accountId:parentAuthor,type:'chat_reply',title:'Sohbet mesajına yanıt',body:author+' mesajına yanıt verdi.',href:'/kesfet#topluluk-sohbeti',schemaReady:true});
   return{status:'sent',message:result.rows[0]};
  });
 }
@@ -78,6 +79,7 @@ export async function togglePublicChatReaction(db,{accountId,messageId,emoji}){
  assertAccount(accountId);
  if(!/^[0-9a-f-]{36}$/i.test(String(messageId||''))||!['❤️','✨','😂'].includes(String(emoji||'')))throw new Error('PUBLIC_CHAT_REACTION_INVALID');
  await ensurePublicChatSchema(db);
+ await ensureAccountProfileSchema(db);
  return transaction(db,async client=>{
   await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',[accountId+':'+messageId]);
   const message=await client.query('SELECT message_id,account_id,username FROM frieren_public_chat_messages WHERE message_id=$1 AND hidden=FALSE',[messageId]);
@@ -85,7 +87,7 @@ export async function togglePublicChatReaction(db,{accountId,messageId,emoji}){
   const existing=await client.query('SELECT 1 FROM frieren_public_chat_reactions WHERE message_id=$1 AND account_id=$2 AND emoji=$3',[messageId,accountId,emoji]);
   if(existing.rowCount){await client.query('DELETE FROM frieren_public_chat_reactions WHERE message_id=$1 AND account_id=$2 AND emoji=$3',[messageId,accountId,emoji]);return{status:'removed'};}
   await client.query('INSERT INTO frieren_public_chat_reactions(message_id,account_id,emoji) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[messageId,accountId,emoji]);
-  if(message.rows[0].account_id!==accountId)await createAccountNotification(client,{accountId:message.rows[0].account_id,type:'chat_reaction',title:'Mesajına tepki geldi',body:emoji+' tepkisi bırakıldı.',href:'/kesfet#topluluk-sohbeti'});
+  if(message.rows[0].account_id!==accountId)await createAccountNotification(client,{accountId:message.rows[0].account_id,type:'chat_reaction',title:'Mesajına tepki geldi',body:emoji+' tepkisi bırakıldı.',href:'/kesfet#topluluk-sohbeti',schemaReady:true});
   return{status:'added'};
  });
 }
