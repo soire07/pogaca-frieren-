@@ -137,7 +137,7 @@ export async function deletePlannerEntry(db,{guildId,userId,entryId}){
  const r=await db.query('DELETE FROM player_planner_entries WHERE guild_id=$1 AND user_id=$2 AND entry_id=$3 RETURNING entry_id',[guildId,userId,entryId]);return{status:r.rowCount?'deleted':'not_found'};
 }
 export async function getPersonalProgressReport(db,{guildId,userId,period='week'}){
- player(guildId,userId);await ensurePersonalCenterSchema(db);if(!['week','month'].includes(period))throw new Error('PERSONAL_REPORT_PERIOD_INVALID');
+ player(guildId,userId);if(!['week','month'].includes(period))throw new Error('PERSONAL_REPORT_PERIOD_INVALID');await ensurePersonalCenterSchema(db);
  const interval=period==='week'?'7 days':'30 days';const r=await db.query(`SELECT COUNT(*)::int AS adventures,COALESCE(SUM(xp_awarded),0)::int AS xp,
  COUNT(*) FILTER(WHERE outcome_text ILIKE '%boss%')::int AS boss_events,
  (SELECT COUNT(*)::int FROM achievement_claims a WHERE a.guild_id=$1 AND a.user_id=$2 AND a.claimed_at>=NOW()-INTERVAL '${interval}') AS achievements,
