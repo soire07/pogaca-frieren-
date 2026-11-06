@@ -26,7 +26,7 @@ import { createSupportTicket, listSupportTickets, listSupportTicketMessages, rep
 import { getNotificationPreferences, setNotificationPreference } from './news-birds.js';
 import { levelForXp, xpForNextLevel } from './utils.js';
 import { listPublicChatMessages, sendPublicChatMessage, togglePublicChatReaction, blockPublicChatUser, unblockPublicChatUser, listPublicChatBlocks, deletePublicChatMessage, updatePublicChatMessage, togglePublicChatPin, touchPublicChatPresence, getPublicChatPresence } from './public-chat.js';
-import { getAccountProfile, updateAccountProfile, followAccount, unfollowAccount, recordAccountProfileVisit, listAccountProfileActivity } from './account-profile.js';
+import { getAccountProfile, updateAccountProfile, followAccount, unfollowAccount, recordAccountProfileVisit, listAccountProfileActivity, sendAccountFriendRequest, respondAccountFriendRequest, listAccountFriends } from './account-profile.js';
 import { ensurePersonalCenterSchema, getPersonalProfile, updatePersonalProfile, listDirectMessages, listMessageThreads, markDirectMessagesRead, sendDirectMessage, listGuestbookEntries, addGuestbookEntry, deleteGuestbookEntry, reportPlayer, createPlannerEntry, listPlannerEntries, updatePlannerEntry, deletePlannerEntry, getPersonalProgressReport, discoverPlayers, recommendPlayers, setCloseFriend, removeCloseFriend, listCloseFriends, recordProfileVisit, listProfileVisits } from './personal-center.js';
 import { achievements as RPG_ACHIEVEMENTS } from './basarimlar.js';
 import { listCardVariants } from './card-variants.js';
@@ -1094,12 +1094,12 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if (!db) { res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil veritabanı kullanılamıyor.');return true; }
     let bannerMedia=null;try{bannerMedia=await getProfileMedia(db,user.id,'banner');}catch{}
     const accountProfile=await getAccountProfile(db,user.id,{viewerAccountId:user.id});
-    const activity=accountProfile.profile.show_activity===false?[]:await listAccountProfileActivity(db,user.id,12);
-    const html=siteAccountProfilePage(user,{bannerUrl:bannerMedia?'/profil/media?kind=banner':'/assets/site-profile-banner.svg',profile:accountProfile.profile,activity});
+    const [activity,friends]=await Promise.all([accountProfile.profile.show_activity===false?Promise.resolve([]):listAccountProfileActivity(db,user.id,12),listAccountFriends(db,user.id)]);
+    const html=siteAccountProfilePage(user,{bannerUrl:bannerMedia?'/profil/media?kind=banner':'/assets/site-profile-banner.svg',profile:accountProfile.profile,activity,friends});
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});
     res.end(html);return true;
   }
-  if(['/api/account-profile','/api/account-profile/follow'].includes(url.pathname)&&req.method==='POST'){
+  if(['/api/account-profile','/api/account-profile/follow','/api/account-profile/friends','/api/account-profile/friends/respond'].includes(url.pathname)&&req.method==='POST'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!requireSiteAccount(res,session?.id))return true;
     if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'profile_unavailable'}));return true;}
@@ -1112,6 +1112,14 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
         const socialLinks=Object.fromEntries(['website','youtube','twitch','instagram','x','github','tiktok'].map(k=>[k,form.get('social_'+k)||'']));
         await updateAccountProfile(db,{accountId:session.id,bio:form.get('bio'),statusText:form.get('statusText'),interests:String(form.get('interests')||'').split(',').map(x=>x.trim()).filter(Boolean),tags:String(form.get('tags')||'').split(',').map(x=>x.trim()).filter(Boolean),theme:form.get('theme'),accentColor:form.get('accentColor'),socialLinks,visibility:form.get('visibility'),showActivity:form.get('showActivity')==='true',allowVisitors:form.get('allowVisitors')==='true'});
         res.writeHead(303,{Location:'/profil?status=saved','Cache-Control':'no-store'});res.end();return true;
+      }
+      if(url.pathname==='/api/account-profile/friends'){
+        const result=await sendAccountFriendRequest(db,{requesterAccountId:session.id,recipientAccountId:form.get('targetAccountId')});
+        res.writeHead(303,{Location:'/profil?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
+      }
+      if(url.pathname==='/api/account-profile/friends/respond'){
+        const result=await respondAccountFriendRequest(db,{accountId:session.id,requestId:form.get('requestId'),accept:form.get('action')==='accept'});
+        res.writeHead(303,{Location:'/profil?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
       }
       const target=form.get('targetAccountId'),result=form.get('action')==='unfollow'?await unfollowAccount(db,{followerAccountId:session.id,followedAccountId:target}):await followAccount(db,{followerAccountId:session.id,followedAccountId:target});
       res.writeHead(303,{Location:'/profil?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
