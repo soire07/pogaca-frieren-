@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import heapq
-import math
 from typing import Callable, Iterable
 
 PAD_TOKEN = "<pad>"
@@ -140,7 +139,7 @@ class BPETokenizer:
         if not encoded:
             raise ValueError("BPE training requires at least one non-empty text.")
 
-        corpus = b"\\n".join(encoded)
+        corpus = b"\n".join(encoded)
         total_bytes = len(corpus)
         if total_bytes > MAX_TRAINING_BYTES:
             window_count = max(1, MAX_TRAINING_BYTES // TRAINING_SAMPLE_WINDOW_BYTES)
