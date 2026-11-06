@@ -8,7 +8,7 @@ import { getCreatureCollection, getCreatureWishlist } from './creatures.js';
 import { getCharacterWishlist } from './character-wishlist.js';
 import { readPublicSiteSession, createPublicSiteSession } from './owner-dashboard.js';
 import { saveProfileMedia, getProfileMedia, deleteProfileMedia, ensureProfileMediaSchema } from './profile-media.js';
-import { handleSiteAuthRequest, createSiteCsrfToken, verifySiteCsrfToken } from './site-auth.js';
+import { handleSiteAuthRequest, createSiteCsrfToken, verifySiteCsrfToken, ensureSiteAccountSchema } from './site-auth.js';
 import {
   redeemSiteLinkToken, getAdventurerDashboard, getLinkedAdventurer, getAdventurerInventory,
   joinGuildEvent, leaveGuildEvent
@@ -1070,7 +1070,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const viewer=SITE_ACCOUNT_ID.test(String(user?.id||''))?user.id:null;
     const profile=await getAccountProfile(db,target,{viewerAccountId:viewer});
     if(!profile.canView){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Görsel bulunamadı.');return true;}
-    await ensureProfileMediaSchema(db);const kind=String(url.searchParams.get('kind')||'avatar');if(!['avatar','banner'].includes(kind)){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Görsel bulunamadı.');return true;}const media=await getProfileMedia(db,target,kind);
+    await ensureSiteAccountSchema(db);await ensureProfileMediaSchema(db);const kind=String(url.searchParams.get('kind')||'avatar');if(!['avatar','banner'].includes(kind)){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Görsel bulunamadı.');return true;}const media=await getProfileMedia(db,target,kind);
     if(!media){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Görsel bulunamadı.');return true;}
     res.writeHead(200,{'Content-Type':media.mime_type,'Content-Length':media.media_data.length,'Cache-Control':'public,max-age=300','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(media.media_data);return true;
   }
@@ -1137,7 +1137,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const viewer=SITE_ACCOUNT_ID.test(String(user?.id||''))?user.id:null;
     const data=await getAccountProfile(db,target,{viewerAccountId:viewer});
     if(data.canView&&viewer&&viewer!==target)await recordAccountProfileVisit(db,{ownerAccountId:target,visitorAccountId:viewer});
-    const p=data.profile||{},links=p.social_links||{};await ensureProfileMediaSchema(db);const [publicAvatar,publicBanner]=data.canView?await Promise.all([getProfileMedia(db,target,'avatar'),getProfileMedia(db,target,'banner')]):[null,null];const publicAvatarUrl=publicAvatar?'/profil/media/public?accountId='+encodeURIComponent(target)+'&kind=avatar':'/assets/site-avatar.webp';const publicBannerUrl=publicBanner?'/profil/media/public?accountId='+encodeURIComponent(target)+'&kind=banner':'/assets/site-profile-banner.svg';
+    const p=data.profile||{},links=p.social_links||{};await ensureSiteAccountSchema(db);await ensureProfileMediaSchema(db);const [publicAvatar,publicBanner]=data.canView?await Promise.all([getProfileMedia(db,target,'avatar'),getProfileMedia(db,target,'banner')]):[null,null];const publicAvatarUrl=publicAvatar?'/profil/media/public?accountId='+encodeURIComponent(target)+'&kind=avatar':'/assets/site-avatar.webp';const publicBannerUrl=publicBanner?'/profil/media/public?accountId='+encodeURIComponent(target)+'&kind=banner':'/assets/site-profile-banner.svg';
     const social=Object.entries(links).filter(([k,v])=>typeof v==='string'&&v.startsWith('https://')).map(([k,v])=>'<a href="'+esc(v)+'" target="_blank" rel="noopener noreferrer">'+esc(k)+'</a>').join(' · ');
     const friendAction=viewer&&viewer!==target?'<form method="post" action="/api/account-profile/friends"><input type="hidden" name="csrf" value="'+esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET))+'"><input type="hidden" name="targetAccountId" value="'+esc(target)+'"><button class="btn ghost" type="submit">Arkadaşlık isteği gönder</button></form>':'';
     const follow=viewer&&viewer!==target?(data.following?'<form method="post" action="/api/account-profile/follow"><input type="hidden" name="csrf" value="'+esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET))+'"><input type="hidden" name="targetAccountId" value="'+esc(target)+'"><input type="hidden" name="action" value="unfollow"><button class="btn ghost" type="submit">Takibi bırak</button></form>':'<form method="post" action="/api/account-profile/follow"><input type="hidden" name="csrf" value="'+esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET))+'"><input type="hidden" name="targetAccountId" value="'+esc(target)+'"><input type="hidden" name="action" value="follow"><button class="btn" type="submit">Takip et</button></form>'):'';
