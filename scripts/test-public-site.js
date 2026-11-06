@@ -1337,6 +1337,26 @@ test('linked adventurer cards show a medium class emblem in the upper-right corn
 });
 
 
+test('public profile avatar and banner media endpoints are reachable without login and respect public profile visibility',async()=>{
+ const target='site_123e4567-e89b-12d3-a456-426614174000';
+ const bytes=Buffer.from('public-profile-image');
+ const db={async query(sql,params){
+  if(sql.includes('SELECT * FROM frieren_account_profiles WHERE account_id=$1'))return{rows:[{account_id:target,visibility:'public',show_activity:true}],rowCount:1};
+  if(sql.includes('AS followers'))return{rows:[{followers:0,following:0,visitors:0}],rowCount:1};
+  if(sql.includes('SELECT mime_type,media_data,width,height FROM frieren_profile_media'))return{rows:[{mime_type:'image/jpeg',media_data:bytes,width:1,height:1}],rowCount:1};
+  return{rows:[],rowCount:0};
+ }};
+ for(const kind of ['avatar','banner']){
+  const response=res();
+  assert.equal(await handlePublicSiteRequest({method:'GET',url:'/profil/media/public?accountId='+encodeURIComponent(target)+'&kind='+kind,headers:{}},response,{db}),true);
+  assert.equal(response.status,200,kind);
+  assert.equal(response.headers['Content-Type'],'image/jpeg',kind);
+  assert.equal(response.headers['Cache-Control'],'private,no-store',kind);
+  assert.equal(response.headers['X-Content-Type-Options'],'nosniff',kind);
+  assert.equal(response.body,bytes,kind);
+ }
+});
+
 test('profile media uploads require a site account, CSRF token and validated image payload',async()=>{
  const accountId='site_123e4567-e89b-12d3-a456-426614174000';
  const png=Buffer.alloc(24);Buffer.from([137,80,78,71,13,10,26,10]).copy(png);png.writeUInt32BE(32,16);png.writeUInt32BE(32,20);
