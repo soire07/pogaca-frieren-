@@ -33,6 +33,8 @@ import { listGuildEmbedTemplates, listGuildCustomCommands, listGuildSpellAutomat
 import { HOME_ROOMS, HOME_DECORATIONS, HOME_STATIONS, ALCHEMY_RECIPES, PLAYER_COSMETICS, getPlayerHome, unlockHomeRoom, saveHomeLayout, purchaseCosmetic, equipCosmetic, saveCosmeticPreset, applyCosmeticPreset, checkInGuildEvent, getCosmeticAcquisitionHistory, getHomeTrophies, placeHomeTrophy, setHomeVisibility, getPublicPlayerHome, brewHomePotion, claimEventMilestone, getPlayerProfileSettings, setPlayerProfileSettings } from './player-experience.js';
 
 const SITE_COOKIE = 'frieren_site_session';
+const siteSocialSchemaReady=new WeakMap();
+async function ensureSiteSocialSchema(db){let pending=siteSocialSchemaReady.get(db);if(!pending){pending=ensureSocialPlatformTables(db);siteSocialSchemaReady.set(db,pending);}try{await pending;}catch(error){siteSocialSchemaReady.delete(db);throw error;}}
 const SITE_ACCOUNT_ID = /^site_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const OWNER_ID = '1553794496234262641';
 const assets = new Map([
@@ -836,7 +838,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Güvenlik doğrulaması başarısız.');return true;}
     const guildId=String(form.get('guildId')||'');if(!/^\d{17,20}$/.test(guildId)){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Sunucu seçimi geçersiz.');return true;}
     const profile=await getLinkedAdventurer(db,session.id,guildId);if(!profile){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter hesabına bağlı değil.');return true;}
-    await ensurePersonalCenterSchema(db);await ensureSocialPlatformTables(db);
+    await ensurePersonalCenterSchema(db);await ensureSiteSocialSchema(db);
     try{
       const action=String(form.get('action')||'');let outcome=null;
       if(action==='profile-save')outcome=await updatePersonalProfile(db,{guildId,userId:profile.user_id,bio:form.get('bio'),statusText:form.get('statusText'),theme:form.get('theme'),guestbookEnabled:form.get('guestbookEnabled')==='true'});
@@ -1089,6 +1091,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(!/^\d{17,20}$/.test(guildId)||!/^\d{17,20}$/.test(userId)){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Profil bağlantısı geçersiz.');return true;}
     const showcase=await getPublicPlayerHome(db,{guildId,userId});
     if(!showcase){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Bu oyuncunun profili herkese açık değil.');return true;}
+    await ensureSiteSocialSchema(db);
     const [personal,guestbook,author]=await Promise.all([getPersonalProfile(db,guildId,userId),listGuestbookEntries(db,{guildId,ownerId:userId}),SITE_ACCOUNT_ID.test(String(user?.id||''))?getLinkedAdventurer(db,user.id,guildId):Promise.resolve(null)]);
     if(author&&author.user_id!==userId)await recordProfileVisit(db,{guildId,ownerId:userId,visitorId:author.user_id});
     const html=publicPlayerProfilePage(user,{...showcase,guildId},personal,guestbook,createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET),Boolean(author&&author.user_id!==userId));
