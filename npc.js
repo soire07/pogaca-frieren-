@@ -38,19 +38,19 @@ export const NPC_SIDE_QUESTS = {
     }
   },
   light_fallen: {
-    name: '♾️ Light Fallen · Mühürlü Gezgin',
+    name: '♾️ Mühürlü Gezgin',
     path: null,
     requiresStoryPath: false,
     unlocksBoss: 'fallen-mage',
     questKey: 'light_fallen_trial',
     questTitle: 'Dört Mührün Sınavı',
-    dialogue: 'Beni bir canavar sanma, yolcu. Şimdilik yalnızca mühürlerimin ardında duran bir gezginim. Gücümle yüzleşmeden önce kendi gücünü kanıtla. Üç ayrı boss zaferi kazan; sonra gerçek yüzümü göstereceğim.',
-    questDialogue: 'Light Fallen henüz boss formunda saldırmayacak. Önce üç boss karşılaşmasını kazanarak mühürlerin zayıfladığını kanıtla. Görevi teslim ettiğinde NPC mührünü kaldıracak ve Infinity sınıfı raid boss olarak açılacak.',
-    objective: 'Üç boss baskınını kazan.',
+    dialogue: 'Bu yolun taşları dört kez susmuş… ama biri hâlâ adını hatırlıyor. Üç uzak yankı duyulmadan kapı açılmaz. Yolculuğuna devam et; bazı cevaplar, doğru soruyu sormadan gelmez.',
+    questDialogue: 'Eski bir kayıtta üç yankıdan söz ediliyor. Her biri, kudretli bir karşılaşmanın ardından geride kalır. Üçünü de duyduğunda bu sayfayı yeniden aç.',
+    objective: 'Üç kudretli karşılaşmanın yankısını topla.',
     reward: { coins: 1500, xp: 750 },
     requirement: async (_client, _guildId, _userId, user) => {
       const count = Number(user.boss_defeats || 0);
-      return { ok: count >= 3, progress: count + ' / 3 boss zaferi' };
+      return { ok: count >= 3, progress: count + ' / 3 yankı' };
     }
   },
   stark: {
@@ -73,7 +73,7 @@ export const NPC_SIDE_QUESTS = {
 export default {
   data: new SlashCommandBuilder()
     .setName('npc')
-    .setDescription('Frieren, Fern, Stark ve Light Fallen ile konuş veya özel görevlerini tamamla.')
+    .setDescription('Frieren, Fern, Stark ve Mühürlü Gezgin ile konuş veya özel görevlerini tamamla.')
     .addStringOption(option =>
       option.setName('karakter')
         .setDescription('Konuşmak istediğin karakter')
@@ -82,7 +82,7 @@ export default {
           { name: 'Frieren — Büyü ve keşif', value: 'frieren' },
           { name: 'Fern — Hazırlık ve yardım', value: 'fern' },
           { name: 'Stark — Cesaret ve savaş', value: 'stark' },
-          { name: 'Light Fallen — Özel görev', value: 'light_fallen' }
+          { name: 'Mühürlü Gezgin — Kayıp Yankı', value: 'light_fallen' }
         )
     )
     .addStringOption(option =>
@@ -159,7 +159,7 @@ export default {
         if (claimedResult.rowCount) {
           await client.query('COMMIT');
           return interaction.editReply(npc.unlocksBoss
-            ? '✅ **' + npc.questTitle + '** görevini tamamladın. ♾️ **Light Fallen** artık /ortakboss komutunda seçilebilir.'
+            ? '✅ **' + npc.questTitle + '** tamamlandı. Uzakta bir kapı aralandı; /ortakboss listesinde yeni bir iz belirdi.'
             : '✅ **' + npc.questTitle + '** görevini zaten tamamladın ve ödülünü aldın. Yeni yan görevler sonraki güncellemelerde eklenecek.');
         }
 
@@ -198,7 +198,7 @@ export default {
         await client.query('COMMIT');
         response = '🎉 **' + npc.questTitle + '** tamamlandı!\n' + npc.name + ' sana teşekkür ediyor.\nÖdül: **' + npc.reward.coins + ' altın** ve **' + npc.reward.xp + ' XP**' +
           (gainedPoints ? '\n✨ Seviye atladın: +' + gainedPoints + ' stat puanı.' : '') +
-          '\nBu görevin ödülü her oyuncu için bir kez alınabilir.' + (npc.unlocksBoss ? '\n♾️ **Light Fallen** artık /ortakboss komutunda seçilebilir. Önce bir özel görev NPC’si olarak karşına çıktı; şimdi gerçek boss formu açıldı.' : '');
+          '\nBu görevin ödülü her oyuncu için bir kez alınabilir.' + (npc.unlocksBoss ? '\n♾️ Uzakta bir mühür çözüldü. /ortakboss listesinde daha önce görünmeyen bir iz belirdi.' : '');
       } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
         throw error;
