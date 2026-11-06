@@ -1082,7 +1082,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(!profile.canView){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Görsel bulunamadı.');return true;}
     await ensureSiteAccountSchema(db);await ensureProfileMediaSchema(db);const kind=String(url.searchParams.get('kind')||'avatar');if(!['avatar','banner'].includes(kind)){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Görsel bulunamadı.');return true;}const media=await getProfileMedia(db,target,kind);
     if(!media){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Görsel bulunamadı.');return true;}
-    res.writeHead(200,{'Content-Type':media.mime_type,'Content-Length':media.media_data.length,'Cache-Control':'public,max-age=300','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(media.media_data);return true;
+    res.writeHead(200,{'Content-Type':media.mime_type,'Content-Length':media.media_data.length,'Cache-Control':'private,no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(media.media_data);return true;
   }
   if(url.pathname==='/maceraci/profil/media'||url.pathname==='/profil/media'){
     if(!requireSiteAccount(res,user?.id))return true;
