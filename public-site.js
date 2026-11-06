@@ -833,20 +833,20 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Güvenlik doğrulaması başarısız.');return true;}
     const guildId=String(form.get('guildId')||'');if(!/^\d{17,20}$/.test(guildId)){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Sunucu seçimi geçersiz.');return true;}
     const profile=await getLinkedAdventurer(db,session.id,guildId);if(!profile){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter hesabına bağlı değil.');return true;}
-    await ensurePersonalCenterSchema(db);
+    await ensurePersonalCenterSchema(db);await ensureSocialPlatformTables(db);
     try{
-      const action=String(form.get('action')||'');
-      if(action==='profile-save')await updatePersonalProfile(db,{guildId,userId:profile.user_id,bio:form.get('bio'),statusText:form.get('statusText'),theme:form.get('theme'),guestbookEnabled:form.get('guestbookEnabled')==='true'});
-      else if(action==='dm-send')await sendDirectMessage(db,{guildId,senderId:profile.user_id,recipientId:String(form.get('targetId')||''),body:form.get('body')});
-      else if(action==='close-friend-add')await setCloseFriend(db,{guildId,ownerId:profile.user_id,friendId:String(form.get('targetId')||'')});
-      else if(action==='close-friend-remove')await removeCloseFriend(db,{guildId,ownerId:profile.user_id,friendId:String(form.get('targetId')||'')});
-      else if(action==='player-report')await reportPlayer(db,{guildId,reporterId:profile.user_id,targetId:String(form.get('targetId')||''),reason:String(form.get('reason')||''),details:form.get('details')});
-      else if(action==='planner-create')await createPlannerEntry(db,{guildId,userId:profile.user_id,kind:String(form.get('kind')||''),title:form.get('title'),body:form.get('body'),dueAt:form.get('dueAt')||null});
-      else if(action==='planner-update')await updatePlannerEntry(db,{guildId,userId:profile.user_id,entryId:String(form.get('entryId')||''),title:form.get('title'),body:form.get('body'),dueAt:form.get('dueAt')||null,completed:form.get('completed')==='true'});
-      else if(action==='planner-delete')await deletePlannerEntry(db,{guildId,userId:profile.user_id,entryId:String(form.get('entryId')||'')});
-      else if(action==='guestbook-delete')await deleteGuestbookEntry(db,{guildId,ownerId:profile.user_id,entryId:String(form.get('entryId')||'')});
+      const action=String(form.get('action')||'');let outcome=null;
+      if(action==='profile-save')outcome=await updatePersonalProfile(db,{guildId,userId:profile.user_id,bio:form.get('bio'),statusText:form.get('statusText'),theme:form.get('theme'),guestbookEnabled:form.get('guestbookEnabled')==='true'});
+      else if(action==='dm-send')outcome=await sendDirectMessage(db,{guildId,senderId:profile.user_id,recipientId:String(form.get('targetId')||''),body:form.get('body')});
+      else if(action==='close-friend-add')outcome=await setCloseFriend(db,{guildId,ownerId:profile.user_id,friendId:String(form.get('targetId')||'')});
+      else if(action==='close-friend-remove')outcome=await removeCloseFriend(db,{guildId,ownerId:profile.user_id,friendId:String(form.get('targetId')||'')});
+      else if(action==='player-report')outcome=await reportPlayer(db,{guildId,reporterId:profile.user_id,targetId:String(form.get('targetId')||''),reason:String(form.get('reason')||''),details:form.get('details')});
+      else if(action==='planner-create')outcome=await createPlannerEntry(db,{guildId,userId:profile.user_id,kind:String(form.get('kind')||''),title:form.get('title'),body:form.get('body'),dueAt:form.get('dueAt')||null});
+      else if(action==='planner-update')outcome=await updatePlannerEntry(db,{guildId,userId:profile.user_id,entryId:String(form.get('entryId')||''),title:form.get('title'),body:form.get('body'),dueAt:form.get('dueAt')||null,completed:form.get('completed')==='true'});
+      else if(action==='planner-delete')outcome=await deletePlannerEntry(db,{guildId,userId:profile.user_id,entryId:String(form.get('entryId')||'')});
+      else if(action==='guestbook-delete')outcome=await deleteGuestbookEntry(db,{guildId,ownerId:profile.user_id,entryId:String(form.get('entryId')||'')});
       else {res.writeHead(400,{'Cache-Control':'no-store'});res.end('İşlem tanınmadı.');return true;}
-      res.writeHead(303,{Location:'/maceraci/merkez?'+new URLSearchParams({guildId,status:action+'_ok'}).toString(),'Cache-Control':'no-store'});res.end();return true;
+      res.writeHead(303,{Location:'/maceraci/merkez?'+new URLSearchParams({guildId,status:outcome?.status||action+'_ok'}).toString(),'Cache-Control':'no-store'});res.end();return true;
     }catch(error){
       const code=String(error?.message||'');const status=code.startsWith('PERSONAL_')||code.startsWith('PLANNER_')||code.startsWith('PLAYER_')||code.startsWith('GUESTBOOK_')?'invalid':'failed';
       res.writeHead(303,{Location:'/maceraci/merkez?'+new URLSearchParams({guildId,status}).toString(),'Cache-Control':'no-store'});res.end();return true;
