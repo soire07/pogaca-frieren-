@@ -1341,3 +1341,16 @@ test('account profile identity is separate from RPG character and media editor i
  assert.match(controller,/prefers-reduced-motion/);
  assert.match(controller,/IntersectionObserver/);
 });
+
+
+test('dedicated user center pages expose the new account, social and life navigation', async () => {
+ const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
+ const styles=await readFile(new URL('../site.css',import.meta.url),'utf8');
+ assert.match(source,/user-center-page social-center-page/);
+ assert.match(source,/life-center-page/);
+ assert.match(source,/account-center-page/);
+ assert.match(source,/public-assets\/user-center\.js'].includes/);
+ assert.match(source,/site\.css\?v=user-center-264-1/);
+ assert.match(styles,/\.social-center-page/);
+ assert.match(styles,/\.user-center-tabs/);
+});
