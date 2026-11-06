@@ -292,6 +292,7 @@ async function mailReset(email,token) {
   await sendGmail(email,'Frieren Portal · Şifre yenileme','<h1>Frieren Portal</h1><p>Şifreni yenile:</p><p><a href="'+link+'">Yeni şifre oluştur</a></p><p>Bağlantı 30 dakika geçerlidir.</p>','Şifre yenileme: '+link);
 }
 let schemaPromise = null;
+export async function ensureSiteAccountSchema(db){if(!db||typeof db.query!=='function')throw new Error('SITE_AUTH_DATABASE_INVALID');await schema(db);}
 async function schema(db) {
   if (!schemaPromise) schemaPromise = (async () => {
     await db.query("CREATE TABLE IF NOT EXISTS frieren_site_accounts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), username VARCHAR(24) NOT NULL, email VARCHAR(254) NOT NULL, password_hash TEXT NOT NULL, email_verified_at TIMESTAMPTZ, verification_token_hash TEXT, verification_expires_at TIMESTAMPTZ, reset_token_hash TEXT, reset_expires_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");

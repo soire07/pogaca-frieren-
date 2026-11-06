@@ -225,7 +225,7 @@ test('authenticated homepage is the account-scoped player dashboard', async () =
   assert.match(response.body, /role="progressbar"/);
   assert.ok(response.body.includes('action="/maceraci/link"'));
 
-  assert.equal(queries.length, 4);
+  assert.equal(queries.length, 5);
   assert.equal(queries[0].params[0], accountId.replace(/^site_/, ''));
   assert.equal(queries[2].params[0], accountId.replace(/^site_/, ''));
 });
@@ -899,7 +899,7 @@ test('public player showcase respects privacy and exposes only the opt-in card a
 test('adventurer calendar exposes direct raid signup with the real guild team UUID',async()=>{
  const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20,xp:2400,coins:100,hp:80,max_hp:100,mana:40,max_mana:60,rating:1200,wins:2,losses:1};
  const event={event_id:'123e4567-e89b-42d3-a456-426614174000',guild_id:profile.guild_id,title:'Kuzey Zindanı',description:'Birlikte ilerle.',event_type:'boss_raid',starts_at:new Date(Date.now()+3600000).toISOString(),ends_at:new Date(Date.now()+7200000).toISOString(),max_participants:10,participants:2,joined:false,joined_team_key:null,joined_team_id:null,joined_team_name:null,available_teams:[{team_id:'123e4567-e89b-42d3-a456-426614174001',team_name:'Fern Takımı'}]};
- const db={async query(sql){if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};if(sql.includes('FROM guild_events e'))return{rows:[event],rowCount:1};throw new Error('Unexpected dashboard query: '+sql);}};
+ const db={async query(sql){if(sql.includes('SELECT 1 FROM site_discord_links WHERE account_id=$1 AND user_id=$2'))return{rows:[],rowCount:0};if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};if(sql.includes('FROM guild_events e'))return{rows:[event],rowCount:1};throw new Error('Unexpected dashboard query: '+sql);}};
  const response=res();
  const account={id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'};
  assert.equal(await handlePublicSiteRequest(request('/maceraci',account),response,{db}),true);
@@ -1293,6 +1293,26 @@ test('global account profile renders without a guild picker and keeps profile me
   assert.match(response.body,/\/assets\/user-center\.js/);
 });
 
+test('public account profile route is reachable without login and honors activity privacy',async()=>{
+ const target='site_123e4567-e89b-12d3-a456-426614174000';
+ for(const showActivity of [true,false]){
+  const queries=[];
+  const db={async query(sql){
+   queries.push(sql);
+   if(sql.includes('SELECT account_id FROM frieren_account_profiles WHERE LOWER(profile_slug)'))return{rows:[{account_id:target}],rowCount:1};
+   if(sql.includes('SELECT * FROM frieren_account_profiles WHERE account_id'))return{rows:[{account_id:target,display_name:'Gezgin',profile_slug:'soiree',visibility:'public',show_activity:showActivity,banner_position:'center',bio:'Büyü araştırmacısı',status_text:'Yolculukta',interests:[],tags:[],theme:'violet',social_links:{}}],rowCount:1};
+   if(sql.includes('AS followers'))return{rows:[{followers:4,following:2,visitors:3}],rowCount:1};
+   if(sql.includes('SELECT activity_type,label,created_at FROM frieren_account_activity'))return{rows:[{activity_type:'profile_updated',label:'Profilini güncelledi',created_at:'2026-11-06T10:00:00.000Z'}],rowCount:1};
+   if(sql.includes('SELECT mime_type,media_data'))return{rows:[],rowCount:0};
+   return{rows:[],rowCount:0};
+  }};
+  const response=res();assert.equal(await handlePublicSiteRequest({method:'GET',url:'/u/soiree',headers:{}},response,{db}),true);
+  assert.equal(response.status,200);
+  if(showActivity){assert.match(response.body,/Son etkinlikler/);assert.match(response.body,/Profilini güncelledi/);assert.ok(queries.some(sql=>sql.includes('SELECT activity_type,label,created_at')));}
+  else{assert.doesNotMatch(response.body,/Son etkinlikler/);assert.ok(!queries.some(sql=>sql.includes('SELECT activity_type,label,created_at')));}
+ }
+});
+
 test('linked adventurer cards show a medium class emblem in the upper-right corner for each class', async () => {
   const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
   const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
@@ -1329,7 +1349,7 @@ test('profile media is served only to its signed-in account with nosniff and pri
 });
 
 test('linked Discord avatar is used in the site account menu when no custom avatar exists',async()=>{
- const accountId='site_123e4567-e89b-12d3-a456-426614174000';const db={async query(sql){if(sql.includes('SELECT user_id FROM site_discord_links'))return{rows:[{user_id:'123456789012345678'}],rowCount:1};if(sql.includes('FROM frieren_profile_media'))return{rows:[],rowCount:0};throw new Error('Unexpected avatar query: '+sql);}};
+ const accountId='site_123e4567-e89b-12d3-a456-426614174000';const db={async query(sql){if(sql.includes('SELECT user_id FROM site_discord_links'))return{rows:[{user_id:'123456789012345678'}],rowCount:1};if(sql.includes('SELECT 1 FROM site_discord_links WHERE account_id=$1 AND user_id=$2'))return{rows:[],rowCount:0};if(sql.includes('FROM frieren_profile_media'))return{rows:[],rowCount:0};throw new Error('Unexpected avatar query: '+sql);}};
  const client={users:{async fetch(){return{displayAvatarURL:()=> 'https://cdn.discordapp.com/avatars/123456789012345678/hash.webp?size=256'};}}};const response=res();
  assert.equal(await handlePublicSiteRequest(request('/kesfet',{id:accountId,username:'Gezgin'}),response,{db,client}),true);assert.match(response.body,/cdn\.discordapp\.com\/avatars\/123456789012345678\/hash\.webp/);
 });
@@ -1365,7 +1385,7 @@ test('dedicated user center pages expose the new account, social and life naviga
  assert.match(source,/inventory-center-page/);
  assert.match(source,/notification-center-page/);
  assert.match(source,/public-assets\/user-center\.js', 'public-assets\/public-chat\.js'].includes/);
- assert.match(source,/site\.css\?v=user-center-264-2/);
+ assert.match(source,/site\.css\?v=account-profile-chat-272/);
  assert.match(styles,/\.social-center-page/);
  assert.match(styles,/\.user-center-tabs/);
 });
@@ -1374,4 +1394,12 @@ test('dedicated user center pages expose the new account, social and life naviga
 test('social mutation responses return to the social center instead of the market', async () => {
  const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
  assert.match(source,/const destination=url\.pathname==='\/maceraci\/sosyal'\?'\/maceraci\/sosyal':'\/pazar'/);
+});
+
+test('global account profile has a complete Frieren identity layout and keeps RPG navigation separate', async () => {
+  const accountId='site_123e4567-e89b-12d3-a456-426614174000';
+  const db={async query(sql){if(sql.includes('SELECT user_id FROM site_discord_links'))return{rows:[],rowCount:0};if(sql.includes('SELECT 1 FROM frieren_profile_media'))return{rows:[],rowCount:0};return{rows:[],rowCount:0};}};
+  const response=res();assert.equal(await handlePublicSiteRequest(request('/profil',{id:accountId,username:'Gezgin'}),response,{db}),true);
+  for(const expected of ['account-profile-showcase','account-profile-grid','GİZLİLİK VE GÜVENLİK','/kesfet#topluluk-sohbeti','/hesap-merkezi','/maceraci'])assert.ok(response.body.includes(expected),expected);
+  assert.doesNotMatch(response.body,/Sunucu seç|Karakter seç/);
 });

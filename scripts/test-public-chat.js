@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ensurePublicChatSchema,listPublicChatMessages,sendPublicChatMessage,deletePublicChatMessage} from '../public-chat.js';
+import {ensurePublicChatSchema,listPublicChatMessages,sendPublicChatMessage,deletePublicChatMessage,markPublicChatMessagesRead,reportPublicChatMessage,togglePublicChatPin,setPublicChatPaused} from '../public-chat.js';
 
 const account='site_123e4567-e89b-12d3-a456-426614174000';
 test('public chat schema is additive and never destroys existing data',async()=>{
@@ -23,18 +23,29 @@ test('public chat read is bounded and uses hidden-message filtering',async()=>{
  const db={query:async(q,p)=>{if(q.includes('SELECT m.message_id')){sql=q;params=p;return{rows,rowCount:2};}return{rows:[],rowCount:0};}};
  const result=await listPublicChatMessages(db,{limit:1000});
  assert.equal(result.length,2);assert.equal(params[0],100);
- assert.match(sql,/hidden=FALSE/);assert.match(sql,/ORDER BY m\.created_at DESC,m\.message_id DESC/);
+ assert.match(sql,/hidden=FALSE/);assert.match(sql,/ORDER BY \(m\.pinned_at IS NOT NULL\) DESC,m\.created_at DESC,m\.message_id DESC/);
 });
-test('chat message deletion is scoped to its author account',async()=>{
- let sql='',params;
- const db={query:async(q,p)=>{if(q.startsWith('DELETE FROM frieren_public_chat_messages')){sql=q;params=p;return{rows:[{message_id:p[0]}],rowCount:1};}return{rows:[],rowCount:0};}};
- const result=await deletePublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000'});
- assert.equal(result.status,'deleted');assert.match(sql,/message_id=\$1 AND account_id=\$2/);assert.equal(params[1],account);
+test('chat deletion and pinning reject members and allow only owner moderation',async()=>{
+ let deleteSql='',pinSql='';const db={async query(q){if(q.startsWith('DELETE FROM frieren_public_chat_messages')){deleteSql=q;return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};}if(q.startsWith('UPDATE frieren_public_chat_messages')){pinSql=q;return{rows:[{pinned_at:new Date()}],rowCount:1};}return{rows:[],rowCount:0};}};
+ await assert.rejects(()=>deletePublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000'}),/PUBLIC_CHAT_OWNER_REQUIRED/);
+ await assert.rejects(()=>togglePublicChatPin(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000'}),/PUBLIC_CHAT_OWNER_REQUIRED/);
+ assert.equal((await deletePublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',isOwner:true})).status,'deleted');
+ assert.match(deleteSql,/WHERE message_id=\$1 RETURNING message_id/);
+ assert.equal((await togglePublicChatPin(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',isOwner:true})).status,'pinned');
+ assert.match(pinSql,/WHERE message_id=\$1 AND hidden=FALSE/);
 });
-
+test('only owner can pause or resume chat and paused chat rejects new posts',async()=>{
+ let updateSql='';const ownerDb={async query(q){if(q.startsWith('UPDATE frieren_public_chat_control')){updateSql=q;return{rows:[{is_paused:true,updated_at:new Date()}],rowCount:1};}return{rows:[],rowCount:0};}};
+ await assert.rejects(()=>setPublicChatPaused(ownerDb,{accountId:account,paused:true}),/PUBLIC_CHAT_OWNER_REQUIRED/);
+ assert.equal((await setPublicChatPaused(ownerDb,{accountId:account,paused:true,isOwner:true})).paused,true);
+ assert.match(updateSql,/updated_by=\$2/);
+ let inserted=false;const pausedDb={async query(q){if(q.includes('SELECT is_paused FROM frieren_public_chat_control'))return{rows:[{is_paused:true}],rowCount:1};if(q.includes('INSERT INTO frieren_public_chat_messages'))inserted=true;return{rows:[],rowCount:0};}};
+ assert.equal((await sendPublicChatMessage(pausedDb,{accountId:account,username:'Gezgin',body:'Yeni mesaj'})).status,'chat_paused');
+ assert.equal(inserted,false);
+});
 test('chat reactions can be toggled only for an existing message and an allowed emoji',async()=>{
  const {togglePublicChatReaction}=await import('../public-chat.js');let inserted=0;
- const db={async query(sql){if(sql.includes('SELECT message_id FROM frieren_public_chat_messages'))return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};if(sql.includes('SELECT 1 FROM frieren_public_chat_reactions'))return{rows:[],rowCount:0};if(sql.includes('INSERT INTO frieren_public_chat_reactions')){inserted++;return{rows:[],rowCount:1};}return{rows:[],rowCount:0};}};
+ const db={async query(sql){if(sql.includes('SELECT message_id,account_id,username FROM frieren_public_chat_messages'))return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174000',account_id:'site_123e4567-e89b-12d3-a456-426614174001',username:'Fern'}],rowCount:1};if(sql.includes('SELECT 1 FROM frieren_public_chat_reactions'))return{rows:[],rowCount:0};if(sql.includes('INSERT INTO frieren_public_chat_reactions')){inserted++;return{rows:[],rowCount:1};}return{rows:[],rowCount:0};}};
  const result=await togglePublicChatReaction(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',emoji:'✨'});assert.equal(result.status,'added');assert.equal(inserted,1);
  await assert.rejects(togglePublicChatReaction(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',emoji:'🔥'}),/PUBLIC_CHAT_REACTION_INVALID/);
 });
@@ -43,4 +54,37 @@ test('chat blocking resolves a message author without exposing account identifie
  const db={async query(sql){if(sql.includes('SELECT account_id,username FROM frieren_public_chat_messages'))return{rows:[{account_id:'site_123e4567-e89b-12d3-a456-426614174999',username:'Fern'}],rowCount:1};if(sql.includes('INSERT INTO frieren_public_chat_blocks')){blockSql=sql;return{rows:[{}],rowCount:1};}if(sql.includes('DELETE FROM frieren_public_chat_blocks'))return{rows:[{}],rowCount:1};return{rows:[],rowCount:0};}};
  const blocked=await blockPublicChatUser(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000'});assert.equal(blocked.status,'blocked');assert.ok(blockSql.includes('blocked_account_id'));
  const unblocked=await unblockPublicChatUser(db,{accountId:account,targetAccountId:'site_123e4567-e89b-12d3-a456-426614174999'});assert.equal(unblocked.status,'unblocked');
+});
+
+test('chat edits are limited to the author and recent messages',async()=>{
+ const {updatePublicChatMessage}=await import('../public-chat.js');let sql='',params;
+ const db={async query(q,p){if(q.startsWith('UPDATE frieren_public_chat_messages')){sql=q;params=p;return{rows:[{message_id:p[0]}],rowCount:1};}return{rows:[],rowCount:0};}};
+ const result=await updatePublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',body:'Düzenlendi'});assert.equal(result.status,'updated');assert.match(sql,/account_id=\$2/);assert.match(sql,/15 minutes/);assert.equal(params[1],account);
+});
+test('chat pinning and presence are account-scoped and expose only aggregate online count',async()=>{
+ const {togglePublicChatPin,touchPublicChatPresence,getPublicChatPresence}=await import('../public-chat.js');let pinSql='',presenceSql='';
+ const db={async query(q){if(q.startsWith('UPDATE frieren_public_chat_messages')){pinSql=q;return{rows:[{pinned_at:new Date()}],rowCount:1};}if(q.startsWith('INSERT INTO frieren_public_chat_presence')){presenceSql=q;return{rows:[],rowCount:1};}if(q.startsWith('SELECT COUNT(*)::int AS online'))return{rows:[{online:3}],rowCount:1};return{rows:[],rowCount:0};}};
+ assert.equal((await togglePublicChatPin(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',isOwner:true})).status,'pinned');assert.match(pinSql,/WHERE message_id=\$1 AND hidden=FALSE/);
+ assert.equal((await touchPublicChatPresence(db,{accountId:account})).status,'online');assert.ok(presenceSql.includes('frieren_public_chat_presence'));
+ assert.deepEqual(await getPublicChatPresence(db),{online:3,typing:[]});
+});
+
+test('typing indicators expire through short-lived account presence',async()=>{
+ const {setPublicChatTyping}=await import('../public-chat.js');let sql='';
+ const db={async query(q){if(q.startsWith('INSERT INTO frieren_public_chat_presence'))sql=q;return{rows:[],rowCount:1};}};
+ assert.equal((await setPublicChatTyping(db,{accountId:account})).status,'typing');assert.match(sql,/INTERVAL '5 seconds'/);
+});
+
+test('chat read receipts only mark visible message IDs supplied by the active reader',async()=>{
+ let sql='',params;const messageId='123e4567-e89b-12d3-a456-426614174000';const db={async query(q,p){if(q.includes('INSERT INTO frieren_public_chat_reads')){sql=q;params=p;return{rows:[{message_id:messageId}],rowCount:1};}return{rows:[],rowCount:0};}};
+ const result=await markPublicChatMessagesRead(db,{accountId:account,messageIds:[messageId]});assert.equal(result.status,'read');assert.equal(result.count,1);assert.match(sql,/message_id=ANY\(\$2::uuid\[\]\)/);assert.match(sql,/m\.account_id<>\$1/);assert.match(sql,/ON CONFLICT\(message_id,reader_account_id\) DO NOTHING/);assert.deepEqual(params,[account,[messageId]]);
+ assert.equal((await markPublicChatMessagesRead(db,{accountId:account,messageIds:[]})).count,0);
+ await assert.rejects(()=>markPublicChatMessagesRead(db,{accountId:account,messageIds:['bad-id']}),/PUBLIC_CHAT_READ_INVALID/);
+});
+
+test('chat reports validate ownership, reason and prevent duplicate reports',async()=>{
+ let inserted=0;const db={async query(q){if(q.startsWith('SELECT account_id FROM frieren_public_chat_messages'))return{rows:[{account_id:'site_123e4567-e89b-12d3-a456-426614174001'}],rowCount:1};if(q.startsWith('INSERT INTO frieren_public_chat_reports')){inserted++;return{rows:[{report_id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};}return{rows:[],rowCount:0};}};
+ assert.equal((await reportPublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',reason:'spam'})).status,'reported');
+ assert.equal(inserted,1);
+ await assert.rejects(()=>reportPublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',reason:'unknown'}),/PUBLIC_CHAT_REPORT_INVALID/);
 });

@@ -7,8 +7,8 @@ import { getFarmPlot } from './farming.js';
 import { getCreatureCollection, getCreatureWishlist } from './creatures.js';
 import { getCharacterWishlist } from './character-wishlist.js';
 import { readPublicSiteSession, createPublicSiteSession } from './owner-dashboard.js';
-import { saveProfileMedia, getProfileMedia, deleteProfileMedia } from './profile-media.js';
-import { handleSiteAuthRequest, createSiteCsrfToken, verifySiteCsrfToken } from './site-auth.js';
+import { saveProfileMedia, getProfileMedia, deleteProfileMedia, ensureProfileMediaSchema } from './profile-media.js';
+import { handleSiteAuthRequest, createSiteCsrfToken, verifySiteCsrfToken, ensureSiteAccountSchema } from './site-auth.js';
 import {
   redeemSiteLinkToken, getAdventurerDashboard, getLinkedAdventurer, getAdventurerInventory,
   joinGuildEvent, leaveGuildEvent
@@ -25,7 +25,8 @@ import { getGuildFeatureEnabled } from './guild-feature-settings.js';
 import { createSupportTicket, listSupportTickets, listSupportTicketMessages, replySupportTicket, exportSiteAccountData, deleteSiteAccount } from './account-center.js';
 import { getNotificationPreferences, setNotificationPreference } from './news-birds.js';
 import { levelForXp, xpForNextLevel } from './utils.js';
-import { listPublicChatMessages, sendPublicChatMessage, togglePublicChatReaction, blockPublicChatUser, unblockPublicChatUser, listPublicChatBlocks } from './public-chat.js';
+import { listPublicChatMessages, sendPublicChatMessage, togglePublicChatReaction, blockPublicChatUser, unblockPublicChatUser, listPublicChatBlocks, deletePublicChatMessage, updatePublicChatMessage, togglePublicChatPin, touchPublicChatPresence, getPublicChatPresence, setPublicChatTyping, markPublicChatMessagesRead, reportPublicChatMessage, listPublicChatReports, resolvePublicChatReport, getPublicChatControl, setPublicChatPaused } from './public-chat.js';
+import { getAccountProfile, updateAccountProfile, followAccount, unfollowAccount, recordAccountProfileVisit, listAccountProfileActivity, sendAccountFriendRequest, respondAccountFriendRequest, listAccountFriends, getAccountIdByProfileSlug, listAccountNotifications, markAccountNotificationsRead } from './account-profile.js';
 import { ensurePersonalCenterSchema, getPersonalProfile, updatePersonalProfile, listDirectMessages, listMessageThreads, markDirectMessagesRead, sendDirectMessage, listGuestbookEntries, addGuestbookEntry, deleteGuestbookEntry, reportPlayer, createPlannerEntry, listPlannerEntries, updatePlannerEntry, deletePlannerEntry, getPersonalProgressReport, discoverPlayers, recommendPlayers, setCloseFriend, removeCloseFriend, listCloseFriends, recordProfileVisit, listProfileVisits } from './personal-center.js';
 import { achievements as RPG_ACHIEVEMENTS } from './basarimlar.js';
 import { listCardVariants } from './card-variants.js';
@@ -64,6 +65,7 @@ async function enrichSiteUser(db,client,user) {
   try {
     const linked=await db.query('SELECT user_id FROM site_discord_links WHERE account_id=$1 LIMIT 1',[user.id.slice(5)]);
     const discordId=String(linked.rows?.[0]?.user_id||'');
+    enriched.isOwner=discordId===OWNER_ID||isOwnerSiteAccount(user);
     if(/^\d{17,20}$/.test(discordId)&&client?.users?.fetch){
       try { const discordUser=client.users.cache?.get(discordId)||await client.users.fetch(discordId); const avatar=discordUser?.displayAvatarURL?.({extension:'webp',size:256}); if(avatar){enriched.discordAvatarUrl=avatar;enriched.avatarUrl=avatar;} } catch {}
     }
@@ -92,12 +94,15 @@ function isVipSiteAccount(user) {
 }
 
 function isOwnerSiteAccount(user) {
+  if(user?.isOwner===true)return true;
   const accountId = String(user?.id || '');
   if (!SITE_ACCOUNT_ID.test(accountId)) return false;
   const normalized = accountId.replace(/^site_/i, '').toLowerCase();
   const allowed = new Set(String(process.env.FRIEREN_OWNER_ACCOUNT_IDS || '').split(',').map(value => value.trim().replace(/^site_/i, '').toLowerCase()).filter(value => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)));
   return allowed.has(normalized);
 }
+
+async function isLinkedOwnerSiteAccount(db,user){if(isOwnerSiteAccount(user))return true;const id=String(user?.id||'');if(!SITE_ACCOUNT_ID.test(id)||!db)return false;const r=await db.query('SELECT 1 FROM site_discord_links WHERE account_id=$1 AND user_id=$2 LIMIT 1',[id.slice(5),OWNER_ID]);return Boolean(r.rowCount);}
 
 function playerXpProgress(profile, isVip = false, isOwner = false) {
   const xp = Math.max(0, Number.isFinite(Number(profile?.xp)) ? Math.floor(Number(profile.xp)) : 0);
@@ -186,7 +191,7 @@ function page(title, content, user, seo = {}) {
         ]) +
         (ownerLink ? navGroup('yonetim', 'SAHİP ALANI', [navLink('/owner', '♛', 'Owner Panel', 'Platform yönetimi')]) : '') +
       '</nav><div class="site-sidebar-foot"><span>✧ Bir yolculuk, bin yıllık bir hikâye.</span></div></aside>';
-  return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><meta name="description" content="' + esc(description) + '"><meta name="robots" content="' + robots + '">' + seoTags + structuredData + '<link rel="icon" type="image/svg+xml" href="/assets/site-avatar.svg"><link rel="alternate icon" href="/assets/site-avatar.webp" type="image/webp"><link rel="manifest" href="/site.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><title>' + esc(title) + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css?v=user-center-264-2"></head><body><a class="skip-link" href="#main-content">Ana içeriğe geç</a>' + sidebar + '<header class="topbar"><a class="brand" href="/"><span class="brand-mark">✧</span><span>FRIEREN<small>THE ARCANE JOURNEY</small></span></a><div class="user-chip"><img src="' + esc(avatar) + '" alt=""><span>' + esc(user.username || 'Gezgin') + '</span>' + (user.id ? '<a href="/logout" title="Çıkış yap">↗</a>' : '<a href="/login" title="Giriş yap">↗</a>') + '</div></header>' + mainContent + '<footer><div><strong>✧ FRIEREN</strong><span>Bir yolculuk, bin yıllık bir hikâye.</span></div><nav aria-label="Alt gezinme"><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><small>© Frieren Platform · Developed by Soiree</small></footer><script src="/assets/site-navigation.js?v=menu-241-2" defer></script><script src="/assets/site-actions.js?v=actions-261-1" defer></script><script src="/assets/profile-interactions.js?v=profile-261-1" defer></script></body></html>';
+  return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><meta name="description" content="' + esc(description) + '"><meta name="robots" content="' + robots + '">' + seoTags + structuredData + '<link rel="icon" type="image/svg+xml" href="/assets/site-avatar.svg"><link rel="alternate icon" href="/assets/site-avatar.webp" type="image/webp"><link rel="manifest" href="/site.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><title>' + esc(title) + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css?v=account-profile-chat-272"></head><body><a class="skip-link" href="#main-content">Ana içeriğe geç</a>' + sidebar + '<header class="topbar"><a class="brand" href="/"><span class="brand-mark">✧</span><span>FRIEREN<small>THE ARCANE JOURNEY</small></span></a><div class="user-chip"><img src="' + esc(avatar) + '" alt=""><span>' + esc(user.username || 'Gezgin') + '</span>' + (user.id ? '<a href="/logout" title="Çıkış yap">↗</a>' : '<a href="/login" title="Giriş yap">↗</a>') + '</div></header>' + mainContent + '<footer><div><strong>✧ FRIEREN</strong><span>Bir yolculuk, bin yıllık bir hikâye.</span></div><nav aria-label="Alt gezinme"><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><small>© Frieren Platform · Developed by Soiree</small></footer><script src="/assets/site-navigation.js?v=menu-241-2" defer></script><script src="/assets/site-actions.js?v=actions-261-1" defer></script><script src="/assets/profile-interactions.js?v=profile-261-1" defer></script></body></html>';
 }
 function publicPlayerProfilePage(user,showcase,personal,guestbook,csrf,canSign){
  const profile=showcase.profile;
@@ -198,14 +203,17 @@ function publicPlayerProfilePage(user,showcase,personal,guestbook,csrf,canSign){
 }
 
 function siteAccountProfilePage(user,data={}) {
-  const csrf=esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET));
-  const avatar=esc(user.avatarUrl||'/assets/site-avatar.webp');
-  const banner=esc(data.bannerUrl||'/assets/site-profile-banner.svg');
-  const editor='<section class="card profile-media-editor" id="profile-editor" hidden data-profile-media-editor data-csrf="'+csrf+'" data-discord-avatar="'+esc(user.discordAvatarUrl||user.avatarUrl||'/assets/site-avatar.webp')+'"><div><div class="profile-editor-heading"><div><span class="eyebrow">HESAP KİMLİĞİ</span><h2>Profil görsellerini düzenle</h2></div><button class="btn ghost" type="button" data-profile-editor-close>Kapat</button></div><p class="market-meta">Bu görseller Frieren hesabına aittir; Discord sunucusu veya RPG karakteri seçmen gerekmez.</p></div><div class="profile-media-grid"><label class="profile-media-control"><strong>Profil Fotoğrafı</strong><span>Hesap avatarın.</span><img data-media-preview="avatar" src="'+avatar+'" alt="Profil fotoğrafı önizlemesi"><input type="file" accept="image/png,image/jpeg,image/webp" data-media-input="avatar"></label><label class="profile-media-control"><strong>Profil Bannerı</strong><span>Hesap profilinin üst görseli.</span><img data-media-preview="banner" src="'+banner+'" alt="Profil bannerı önizlemesi"><input type="file" accept="image/png,image/jpeg,image/webp" data-media-input="banner"></label></div><div class="profile-media-actions"><button class="btn ghost" type="button" data-media-reset="avatar">Discord avatarına dön</button><button class="btn ghost" type="button" data-media-reset="banner">Varsayılan banner</button></div><p data-media-status role="status" aria-live="polite"></p></section>';
-  const content='<main class="wrap profile-page user-center-page account-center-page"><header class="user-center-hero"><div class="eyebrow">FRIEREN HESAP MERKEZİ</div><h1>Hesap Profilin</h1><p class="lead">Bu profil tüm Frieren platformunda geçerlidir. Maceracı sunucularından ve karakterlerinden bağımsızdır.</p></header><section class="card profile-account-heading"><img src="'+avatar+'" alt="" class="site-account-avatar"><div><span class="eyebrow">HESAP KİMLİĞİ</span><h2>'+esc(user.username||'Gezgin')+'</h2><p class="market-meta">Frieren hesabın · Sunucudan bağımsız kimlik</p><button class="btn" type="button" data-profile-editor-open>Profil fotoğrafı ve bannerı düzenle</button></div></section><section class="card profile-account-banner"><img src="'+banner+'" alt="Profil bannerı" style="width:100%;max-height:220px;object-fit:cover;border-radius:14px"></section>'+editor+'<section class="section"><div class="section-head"><h2>Hesap ve Maceracı ayrımı</h2><p>Genel hesap bilgilerin burada kalır. RPG karakterin, sunucu ilerlemen, envanterin ve savaş istatistiklerin Maceracı Paneli içinde yönetilir.</p></div><div class="portal-actions"><a class="btn ghost" href="/hesap-merkezi">Hesap ve destek merkezi</a><a class="btn ghost" href="/maceraci">Maceracı Paneline git</a></div></section></main>';
-  return page('Hesap Profilim',content,user)+'<script src="/assets/profile-media.js" defer></script><script src="/assets/user-center.js" defer></script>';
+ const p=data.profile||{},csrf=esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET)),avatar=esc(user.avatarUrl||'/assets/site-avatar.webp'),banner=esc(data.bannerUrl||'/assets/site-profile-banner.svg');
+ const field=(label,name,value,max)=>'<label>'+label+'<input name="'+name+'" maxlength="'+max+'" value="'+esc(value||'')+'"></label>';
+ const links=p.social_links||{},social=Object.entries(links).filter(([k,v])=>typeof v==='string'&&v.startsWith('https://')).map(([k,v])=>'<a href="'+esc(v)+'" target="_blank" rel="noopener noreferrer">'+esc(k)+'</a>').join(' · ');
+ const activity=(data.activity||[]).map(x=>'<li>'+esc(x.label)+' <small>'+new Date(x.created_at).toLocaleString('tr-TR')+'</small></li>').join('')||'<li>Henüz etkinlik yok.</li>';
+ const content='<main class="wrap profile-page user-center-page account-center-page"><header class="user-center-hero account-profile-intro"><div class="eyebrow">✧ FRIEREN HESAP MERKEZİ</div><h1>Hesap Profilin</h1><p class="lead">Genel hesap kimliğin. Sunucu veya RPG karakteri seçmen gerekmez.</p></header><section class="account-profile-showcase" data-theme="'+esc(p.theme||'midnight')+'" style="--account-accent:'+esc(p.accent_color||'#a78bfa')+'"><img class="account-profile-cover" src="'+banner+'" alt="Hesap bannerı" style="object-position:center '+esc(p.banner_position||'center')+'"><div class="account-profile-identity"><img class="account-profile-avatar" src="'+avatar+'" alt="Profil fotoğrafı"><div class="account-profile-name"><h2>'+esc(p.display_name||user.username||'Gezgin')+'</h2><div class="account-profile-badges">'+(data.badges||[]).map(x=>'<span class="badge">'+esc(x)+'</span>').join('')+'</div><p>'+esc(p.status_text||'Bir büyü yolculuğunda')+'</p></div><button class="btn" type="button" data-profile-editor-open>Görselleri düzenle</button></div></section><section class="card profile-media-editor" hidden data-profile-media-editor data-csrf="'+csrf+'" data-discord-avatar="'+esc(user.discordAvatarUrl||user.avatarUrl||'/assets/site-avatar.webp')+'"><h2>Profil görselleri</h2><div class="profile-media-grid"><label>Avatar<img data-media-preview="avatar" src="'+avatar+'" alt=""><input type="file" accept="image/png,image/jpeg,image/webp" data-media-input="avatar"></label><label>Banner<img data-media-preview="banner" src="'+banner+'" alt=""><input type="file" accept="image/png,image/jpeg,image/webp" data-media-input="banner"></label></div><button class="btn ghost" type="button" data-media-reset="avatar">Discord avatarına dön</button><button class="btn ghost" type="button" data-media-reset="banner">Varsayılan banner</button><button class="btn ghost" type="button" data-profile-editor-close>Kapat</button><p data-media-status role="status"></p></section><section class="card account-profile-editor"><h2>Kişisel bilgiler</h2><h3>GİZLİLİK VE GÜVENLİK</h3><form method="post" action="/api/account-profile"><input type="hidden" name="csrf" value="'+csrf+'">'+field('Görünen ad','displayName',p.display_name||user.username,32)+field('Özel profil adresi','profileSlug',p.profile_slug,32)+'<label>Banner konumu<select name="bannerPosition">'+['top','center','bottom'].map(x=>'<option value="'+x+'"'+((p.banner_position||'center')===x?' selected':'')+'>'+x+'</option>').join('')+'</select></label><label>Biyografi<textarea name="bio" maxlength="280">'+esc(p.bio||'')+'</textarea></label>'+field('Durum mesajı','statusText',p.status_text,80)+field('İlgi alanları (virgülle ayır)','interests',(p.interests||[]).join(', '),400)+field('Etiketler (virgülle ayır)','tags',(p.tags||[]).join(', '),240)+'<label>Tema<select name="theme">'+['midnight','violet','starlight','forest'].map(x=>'<option value="'+x+'"'+(p.theme===x?' selected':'')+'>'+x+'</option>').join('')+'</select></label>'+field('Vurgu rengi','accentColor',p.accent_color||'#a78bfa',7)+'<h3>Sosyal bağlantılar</h3>'+['website','youtube','twitch','instagram','x','github','tiktok'].map(k=>field(k,'social_'+k,links[k],300)).join('')+'<label>Görünürlük<select name="visibility"><option value="public"'+(p.visibility==='public'?' selected':'')+'>Herkese açık</option><option value="followers"'+(p.visibility==='followers'?' selected':'')+'>Takipçiler</option><option value="private"'+(p.visibility==='private'?' selected':'')+'>Gizli</option></select></label><label><input type="checkbox" name="showActivity" value="true"'+(p.show_activity!==false?' checked':'')+'> Etkinliğimi göster</label><label><input type="checkbox" name="allowVisitors" value="true"'+(p.allow_visitors!==false?' checked':'')+'> Ziyaret ve takip izni</label><button class="btn" type="submit">Profili kaydet</button></form></section><section class="account-profile-grid"><article class="card account-profile-card"><h2>Hızlı erişim</h2><p>Genel topluluk sohbetine katıl veya hesap ayarlarını yönet.</p><a class="btn ghost" href="/kesfet#topluluk-sohbeti">Topluluk sohbeti</a> <a class="btn ghost" href="/hesap-merkezi">Hesap merkezi</a> <a class="btn ghost" href="/bildirimler">Bildirimler ('+Number(data.notifications?.filter(n=>!n.read_at).length||0)+')</a></article><article class="card account-profile-card"><h2>Hakkımda</h2><p>'+esc(p.bio||'Henüz biyografi eklenmemiş.')+'</p><p>'+esc((p.interests||[]).join(' · '))+'</p><p>'+esc((p.tags||[]).map(x=>'#'+x).join(' '))+'</p></article><article class="card account-profile-card"><h2>Sosyal bağlantılar</h2><p>'+(social||'Henüz bağlantı eklenmemiş.')+'</p></article><article class="card account-profile-card"><h2>Son etkinlik</h2><ul>'+(p.show_activity===false?'<li>Etkinlik geçmişi gizli.</li>':activity)+'</ul></article><article class="card account-profile-card"><h2>Maceracı Paneli</h2><p>RPG karakterin, sunucu ilerlemen, envanterin ve savaş istatistiklerin burada gösterilmez.</p><a class="btn ghost" href="/maceraci">Maceracı Panelini aç</a></article></section></main>';
+ const friendData=data.friends||{friends:[],incoming:[]};
+ const friendCards=friendData.friends.map(x=>'<li><a href="/u/'+encodeURIComponent(x.account_id)+'">'+esc(x.username||'Gezgin')+'</a></li>').join('')||'<li>Henüz arkadaşın yok.</li>';
+ const incoming=friendData.incoming.map(x=>'<li><a href="/u/'+encodeURIComponent(x.requester_account_id)+'">'+esc(x.requester_username||'Gezgin')+'</a> <form method="post" action="/api/account-profile/friends/respond"><input type="hidden" name="csrf" value="'+csrf+'"><input type="hidden" name="requestId" value="'+esc(x.request_id)+'"><button class="btn" type="submit" name="action" value="accept">Kabul et</button><button class="btn ghost" type="submit" name="action" value="decline">Reddet</button></form></li>').join('')||'<li>Bekleyen arkadaşlık isteği yok.</li>';
+ const withFriends=content.replace('</main>','<section class="card account-profile-editor"><h2>Profil önizlemesi</h2><p>Herkese açık profilini ziyaretçi görünümünde kontrol et.</p><a class="btn ghost" href="/u/'+encodeURIComponent(p.profile_slug||user.id)+'" target="_blank" rel="noopener noreferrer">Profilimi önizle</a><p>Profil ziyaretleri: '+Number(data.visitors||0)+'</p><h2>Arkadaşların</h2><ul>'+friendCards+'</ul><h3>Gelen arkadaşlık istekleri</h3><ul>'+incoming+'</ul></section></main>');
+ return page('Hesap Profilim',withFriends,user)+'<script src="/assets/profile-media.js?v=account-profile-268" defer></script><script src="/assets/user-center.js?v=account-profile-267" defer></script>';
 }
-
 function personalCenterPage(user,profile,data,csrf,status){
  const field=(label,name,value,max=500)=>'<label>'+label+'<input name="'+name+'" maxlength="'+max+'" value="'+esc(value||'')+'"></label>';
  const form=(action,body)=>'<form method="post" action="/maceraci/merkez"><input type="hidden" name="csrf" value="'+esc(csrf)+'"><input type="hidden" name="guildId" value="'+esc(profile.guild_id)+'"><input type="hidden" name="action" value="'+action+'">'+body+'</form>';
@@ -230,12 +238,14 @@ function personalCenterPage(user,profile,data,csrf,status){
  return page('Kişisel Merkez',html,user);
 }
 
-function injectPublicChat(html,user,csrfToken){
- const canSend=SITE_ACCOUNT_ID.test(String(user?.id||''));
- const section='<section class="section public-chat-section" id="topluluk-sohbeti"><div class="wrap"><div class="section-head"><div class="eyebrow">FRIEREN TOPLULUĞU</div><h2>Yol arkadaşlarınla sohbet et</h2><p>Mesajları herkes okuyabilir. Mesaj göndermek için hesabınla giriş yap.</p></div><div class="public-chat-panel" data-public-chat data-can-send="'+(canSend?'true':'false')+'"><div class="public-chat-head"><span><i></i> Genel Sohbet</span><small>Son mesajlar · 7 gün</small></div><ol class="public-chat-messages" data-chat-messages aria-live="polite"><li class="public-chat-empty">Sohbet yükleniyor…</li></ol>'+(canSend?'<form class="public-chat-form" data-chat-form><input type="hidden" name="csrf" value="'+esc(csrfToken)+'"><input type="hidden" name="replyToMessageId" value=""><div class="public-chat-reply-preview" data-chat-reply-preview hidden><span data-chat-reply-label></span><button class="public-chat-action" type="button" data-chat-reply-clear>Yanıtı iptal et</button></div><label class="sr-only" for="public-chat-message">Mesajın</label><input id="public-chat-message" name="message" maxlength="500" autocomplete="off" placeholder="Topluluğa bir mesaj yaz…" required><button class="btn" type="submit">Gönder</button></form>':'<div class="public-chat-login"><a class="btn" href="/login">Giriş yap ve sohbete katıl</a></div>')+'<div class="public-chat-blocks" data-chat-blocks></div><p class="public-chat-feedback" data-chat-feedback role="status"></p></div></div></section>';
- return String(html).replace('</main>',section+'</main>').replace('</body>','<script src="/assets/public-chat.js?v=chat-264-2" defer></script></body>');
+function injectPublicChat(html,user,csrfToken,isOwnerOverride=null){
+ const canSend=SITE_ACCOUNT_ID.test(String(user?.id||'')),isOwner=isOwnerOverride===null?isOwnerSiteAccount(user):isOwnerOverride===true;
+ const ownerControls=isOwner?'<div class="public-chat-owner-controls"><strong>Owner sohbet yönetimi</strong><span data-chat-control-status>Durum yükleniyor…</span><button class="public-chat-action" type="button" data-chat-toggle-pause disabled>Sohbeti durdur</button><button class="public-chat-action" type="button" data-chat-reports-refresh>Bekleyen bildirimleri yükle</button><div class="public-chat-reports" data-chat-reports hidden></div></div>':'';
+ const section='<section class="section public-chat-section" id="topluluk-sohbeti"><div class="wrap"><div class="section-head public-chat-intro"><div class="eyebrow">✧ FRIEREN TOPLULUĞU · YOL ARKADAŞLARI</div><h2>Yol arkadaşlarınla sohbet et</h2><p>Genel sohbet. Mesajları herkes okuyabilir; mesaj göndermek ve etkileşim kurmak için hesabınla giriş yap.</p></div><div class="public-chat-panel" data-public-chat data-can-send="'+(canSend?'true':'false')+'" data-chat-owner="'+(isOwner?'true':'false')+'"><div class="public-chat-head"><span><i></i> Büyülü Genel Sohbet</span><small data-chat-presence>Çevrimiçi durumu yükleniyor</small></div>'+ownerControls+'<div class="public-chat-tools"><label class="public-chat-search-label" for="public-chat-search">Sohbette ara</label><input id="public-chat-search" type="search" data-chat-search maxlength="80" placeholder="Mesaj veya kullanıcı ara…"><span data-chat-count aria-live="polite">Mesajlar yükleniyor…</span></div><ol class="public-chat-messages" data-chat-messages aria-live="polite"><li class="public-chat-empty">Sohbet yükleniyor…</li></ol>'+(canSend?'<form class="public-chat-form" data-chat-form><input type="hidden" name="csrf" value="'+esc(csrfToken)+'"><input type="hidden" name="replyToMessageId" value=""><div class="public-chat-reply-preview" data-chat-reply-preview hidden><span data-chat-reply-label></span><button class="public-chat-action" type="button" data-chat-reply-clear>Yanıtı iptal et</button></div><label class="sr-only" for="public-chat-message">Mesajın</label><input id="public-chat-message" name="message" maxlength="500" autocomplete="off" placeholder="Bir büyücü selamı bırak… (en fazla 500 karakter)" required><div class="public-chat-compose-meta"><small data-chat-counter>0 / 500</small><button class="btn" type="submit">Mesajı gönder ✧</button></div></form>':'<div class="public-chat-login"><a class="btn" href="/login">Giriş yap ve sohbete katıl</a></div>')+'<button class="public-chat-action public-chat-load-older" type="button" data-chat-load-older hidden>Eski mesajları yükle</button><div class="public-chat-blocks" data-chat-blocks></div><p class="public-chat-feedback" data-chat-feedback role="status"></p></div></div></section>';
+ const source=String(html);const mainStart=source.indexOf('<main id="main-content"');const firstSectionEnd=mainStart>=0?source.indexOf('</section>',mainStart):-1;
+ const positioned=firstSectionEnd>=0?source.slice(0,firstSectionEnd+10)+section+source.slice(firstSectionEnd+10):source.replace('</main>',section+'</main>');
+ return positioned.replace('</body>','<script src="/assets/public-chat.js?v=chat-272-1" defer></script></body>');
 }
-
 function home(client, user, csrfToken) {
   const ready = client?.isReady?.() === true;
   return page('Büyülü Ana Sayfa', '<main><section class="wrap hero"><div><div class="eyebrow">✧ FANTASTİK BİR YOLCULUK BAŞLIYOR ✧</div><h1>Bin yıllık bir<br><em>büyü yolculuğu.</em></h1><p class="lead">Frieren evreninden ilham alan, keşiflerle dolu bir Discord RPG dünyası. Büyüler öğren, dostlar edin, zindanlara in ve kendi hikâyeni yaz.</p><div class="actions"><a class="btn" href="/pogaca">Poğaça Frieren’i keşfet ✧</a><a class="btn ghost" href="/frieren-ai">Frieren AI’ı tanı</a></div><p class="muted">Poğaça Frieren · ' + (ready ? 'Discord bağlantısı aktif' : 'Discord bağlantısı bekleniyor') + '</p></div><div class="hero-art"><img src="/assets/frieren.gif" alt="Frieren büyü yolculuğunda" fetchpriority="high" decoding="async" width="390" height="390"></div></section>' +
@@ -722,12 +732,21 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     res.end(publicSeoLandingPage());
     return true;
   }
+  if(url.pathname==='/api/public-chat/reports'&&req.method==='GET'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'chat_unavailable'}));return true;}
+    if(!await isLinkedOwnerSiteAccount(db,session)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'owner_only'}));return true;}
+    const status=String(url.searchParams.get('status')||'pending');
+    const reports=await listPublicChatReports(db,{status,limit:50});
+    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify({reports}));return true;
+  }
   if(url.pathname==='/api/public-chat/messages'&&req.method==='GET'){
     if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'chat_unavailable'}));return true;}
     const chatSession=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     const viewerId=SITE_ACCOUNT_ID.test(String(chatSession?.id||''))?chatSession.id:null;
-    const [messages,blocked]=await Promise.all([listPublicChatMessages(db,{limit:60,viewerAccountId:viewerId}),viewerId?listPublicChatBlocks(db,{accountId:viewerId}):Promise.resolve([])]);
-    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(JSON.stringify({messages,blocked}));return true;
+    const before=String(url.searchParams.get('before')||''),search=String(url.searchParams.get('q')||'').slice(0,80);const [messages,blocked,presence,control]=await Promise.all([listPublicChatMessages(db,{limit:100,viewerAccountId:viewerId,before,search}),viewerId?listPublicChatBlocks(db,{accountId:viewerId}):Promise.resolve([]),getPublicChatPresence(db),getPublicChatControl(db)]);
+    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(JSON.stringify({messages,blocked,presence,control}));return true;
   }
   if(url.pathname==='/api/public-chat/messages'&&req.method==='POST'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
@@ -740,7 +759,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
     try{
       const result=await sendPublicChatMessage(db,{accountId:session.id,username:session.username,body:form.get('message'),replyToMessageId:form.get('replyToMessageId')||null});
-      const status=result.status==='sent'?201:result.status==='rate_limited'?429:400;
+      const status=result.status==='sent'?201:result.status==='rate_limited'?429:result.status==='chat_paused'?423:400;
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
     }catch(error){
       const code=String(error?.message||'');
@@ -748,7 +767,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       throw error;
     }
   }
-  if(['/api/public-chat/reactions','/api/public-chat/blocks','/api/public-chat/blocks/unblock'].includes(url.pathname)&&req.method==='POST'){
+  if(['/api/public-chat/reactions','/api/public-chat/blocks','/api/public-chat/blocks/unblock','/api/public-chat/messages/edit','/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/presence','/api/public-chat/typing','/api/public-chat/read','/api/public-chat/reports','/api/public-chat/reports/review','/api/public-chat/control'].includes(url.pathname)&&req.method==='POST'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!requireSiteAccount(res,session?.id))return true;
     if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'chat_unavailable'}));return true;}
@@ -756,12 +775,23 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>4096){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'message_too_large'}));return true;}chunks.push(chunk);}
     const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
     if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
+    const owner=await isLinkedOwnerSiteAccount(db,session);
+    if(['/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/control','/api/public-chat/reports/review'].includes(url.pathname)&&!owner){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'owner_only'}));return true;}
     try{
       let result;
       if(url.pathname==='/api/public-chat/reactions')result=await togglePublicChatReaction(db,{accountId:session.id,messageId:form.get('messageId'),emoji:form.get('emoji')});
       else if(url.pathname==='/api/public-chat/blocks')result=await blockPublicChatUser(db,{accountId:session.id,messageId:form.get('messageId')});
-      else result=await unblockPublicChatUser(db,{accountId:session.id,targetAccountId:form.get('targetAccountId')});
-      const status=result.status==='not_found'?404:result.status==='self_block'?400:result.status==='added'||result.status==='removed'||result.status==='blocked'||result.status==='already_blocked'||result.status==='unblocked'?200:400;
+      else if(url.pathname==='/api/public-chat/blocks/unblock')result=await unblockPublicChatUser(db,{accountId:session.id,targetAccountId:form.get('targetAccountId')});
+      else if(url.pathname==='/api/public-chat/messages/edit')result=await updatePublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId'),body:form.get('body')});
+      else if(url.pathname==='/api/public-chat/messages/delete')result=await deletePublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId'),isOwner:owner});
+      else if(url.pathname==='/api/public-chat/pins')result=await togglePublicChatPin(db,{accountId:session.id,messageId:form.get('messageId'),isOwner:owner});
+      else if(url.pathname==='/api/public-chat/control')result=await setPublicChatPaused(db,{accountId:session.id,paused:form.get('paused')==='true',isOwner:owner});
+      else if(url.pathname==='/api/public-chat/typing')result=await setPublicChatTyping(db,{accountId:session.id});
+      else if(url.pathname==='/api/public-chat/read'){let messageIds=[];try{messageIds=JSON.parse(form.get('messageIds')||'[]');}catch{messageIds=[];}result=await markPublicChatMessagesRead(db,{accountId:session.id,messageIds});}
+      else if(url.pathname==='/api/public-chat/reports')result=await reportPublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId'),reason:form.get('reason')||'other',details:form.get('details')||''});
+      else if(url.pathname==='/api/public-chat/reports/review')result=await resolvePublicChatReport(db,{accountId:session.id,reportId:form.get('reportId'),status:form.get('status'),isOwner:owner});
+      else result=await touchPublicChatPresence(db,{accountId:session.id});
+      const status=result.status==='not_found'?404:['self_block','self_report'].includes(result.status)?400:['added','removed','blocked','already_blocked','unblocked','updated','deleted','pinned','unpinned','online','typing','read','reported','already_reported','reviewed','dismissed'].includes(result.status)?200:400;
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
     }catch(error){
       if(String(error?.message||'').startsWith('PUBLIC_CHAT_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_chat_action'}));return true;}
@@ -1045,14 +1075,25 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci/oyuncu', '/maceraci/merkez', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/profil', '/profil/media', '/hesap-merkezi', '/pazar']);
-  if (!publicPaths.has(url.pathname) && !assets.has(url.pathname)) return false;
+  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci/oyuncu', '/maceraci/merkez', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/profil', '/profil/media', '/hesap-merkezi', '/bildirimler', '/pazar']);
+  const isPublicProfilePath=url.pathname.startsWith('/u/');
+  if (!publicPaths.has(url.pathname) && !assets.has(url.pathname) && !isPublicProfilePath) return false;
   const sessionUser = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
-  const user = await enrichSiteUser(db,client,sessionUser || (url.pathname === '/maceraci/ev' ? { id: 'public-viewer', username: 'Gezgin' } : (url.pathname === '/kesfet' || url.pathname === '/maceraci/oyuncu') ? { id: '', username: 'Gezgin', avatarUrl: '/assets/site-avatar.webp' } : null));
-  if (!user && url.pathname !== '/kesfet' && url.pathname !== '/maceraci/oyuncu') {
+  const user = await enrichSiteUser(db,client,sessionUser || (url.pathname === '/maceraci/ev' ? { id: 'public-viewer', username: 'Gezgin' } : (url.pathname === '/kesfet' || url.pathname === '/maceraci/oyuncu' || isPublicProfilePath) ? { id: '', username: 'Gezgin', avatarUrl: '/assets/site-avatar.webp' } : null));
+  if (!user && url.pathname !== '/kesfet' && url.pathname !== '/maceraci/oyuncu' && !isPublicProfilePath) {
     res.writeHead(302, { Location: '/login', 'Cache-Control': 'no-store' });
     res.end();
     return true;
+  }
+  if(req.method==='GET'&&url.pathname==='/profil/media/public'){
+    const target=String(url.searchParams.get('accountId')||'');
+    if(!SITE_ACCOUNT_ID.test(target)||!db){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Görsel bulunamadı.');return true;}
+    const viewer=SITE_ACCOUNT_ID.test(String(user?.id||''))?user.id:null;
+    const profile=await getAccountProfile(db,target,{viewerAccountId:viewer});
+    if(!profile.canView){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Görsel bulunamadı.');return true;}
+    await ensureSiteAccountSchema(db);await ensureProfileMediaSchema(db);const kind=String(url.searchParams.get('kind')||'avatar');if(!['avatar','banner'].includes(kind)){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Görsel bulunamadı.');return true;}const media=await getProfileMedia(db,target,kind);
+    if(!media){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Görsel bulunamadı.');return true;}
+    res.writeHead(200,{'Content-Type':media.mime_type,'Content-Length':media.media_data.length,'Cache-Control':'private,no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(media.media_data);return true;
   }
   if(url.pathname==='/maceraci/profil/media'||url.pathname==='/profil/media'){
     if(!requireSiteAccount(res,user?.id))return true;
@@ -1078,9 +1119,63 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if (!requireSiteAccount(res,user?.id)) return true;
     if (!db) { res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil veritabanı kullanılamıyor.');return true; }
     let bannerMedia=null;try{bannerMedia=await getProfileMedia(db,user.id,'banner');}catch{}
-    const html=siteAccountProfilePage(user,{bannerUrl:bannerMedia?'/profil/media?kind=banner':'/assets/site-profile-banner.svg'});
+    const accountProfile=await getAccountProfile(db,user.id,{viewerAccountId:user.id});
+    const [activity,friends]=await Promise.all([accountProfile.profile.show_activity===false?Promise.resolve([]):listAccountProfileActivity(db,user.id,12),listAccountFriends(db,user.id)]);
+    const html=siteAccountProfilePage(user,{bannerUrl:bannerMedia?'/profil/media?kind=banner':'/assets/site-profile-banner.svg',profile:accountProfile.profile,activity,friends,visitors:accountProfile.visitors,badges:accountProfile.badges,notifications:await listAccountNotifications(db,user.id,50)});
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});
     res.end(html);return true;
+  }
+  if(['/api/account-profile','/api/account-profile/follow','/api/account-profile/friends','/api/account-profile/friends/respond','/api/account-notifications/read'].includes(url.pathname)&&req.method==='POST'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'profile_unavailable'}));return true;}
+    if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({error:'invalid_content_type'}));return true;}
+    let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>8192){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({error:'payload_too_large'}));return true;}chunks.push(chunk);}
+    const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
+    if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
+    try{
+      if(url.pathname==='/api/account-profile'){
+        const socialLinks=Object.fromEntries(['website','youtube','twitch','instagram','x','github','tiktok'].map(k=>[k,form.get('social_'+k)||'']));
+        await updateAccountProfile(db,{accountId:session.id,displayName:form.get('displayName')||session.username,profileSlug:form.get('profileSlug')||'',bannerPosition:form.get('bannerPosition')||'center',bio:form.get('bio'),statusText:form.get('statusText'),interests:String(form.get('interests')||'').split(',').map(x=>x.trim()).filter(Boolean),tags:String(form.get('tags')||'').split(',').map(x=>x.trim()).filter(Boolean),theme:form.get('theme'),accentColor:form.get('accentColor'),socialLinks,visibility:form.get('visibility'),showActivity:form.get('showActivity')==='true',allowVisitors:form.get('allowVisitors')==='true'});
+        res.writeHead(303,{Location:'/profil?status=saved','Cache-Control':'no-store'});res.end();return true;
+      }
+      if(url.pathname==='/api/account-profile/friends'){
+        const result=await sendAccountFriendRequest(db,{requesterAccountId:session.id,recipientAccountId:form.get('targetAccountId')});
+        res.writeHead(303,{Location:'/u/'+encodeURIComponent(form.get('targetAccountId'))+'?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
+      }
+      if(url.pathname==='/api/account-notifications/read'){
+        await markAccountNotificationsRead(db,session.id);res.writeHead(303,{Location:'/bildirimler','Cache-Control':'no-store'});res.end();return true;
+      }
+      if(url.pathname==='/api/account-profile/friends/respond'){
+        const result=await respondAccountFriendRequest(db,{accountId:session.id,requestId:form.get('requestId'),accept:form.get('action')==='accept'});
+        res.writeHead(303,{Location:'/profil?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
+      }
+      const target=form.get('targetAccountId'),result=form.get('action')==='unfollow'?await unfollowAccount(db,{followerAccountId:session.id,followedAccountId:target}):await followAccount(db,{followerAccountId:session.id,followedAccountId:target});
+      res.writeHead(303,{Location:'/u/'+encodeURIComponent(target)+'?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
+    }catch(error){if(String(error?.message||'').startsWith('ACCOUNT_')||error?.code==='23505'){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_profile'}));return true;}throw error;}
+  }
+  if(url.pathname.startsWith('/u/')&&req.method==='GET'){
+    if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil veritabanı kullanılamıyor.');return true;}
+    const slugOrId=url.pathname.slice(3);
+    const target=/^site_[0-9a-f-]{36}$/i.test(slugOrId)?slugOrId:await getAccountIdByProfileSlug(db,slugOrId);
+    if(!target){res.writeHead(404);res.end('Profil bulunamadı.');return true;}
+    const viewer=SITE_ACCOUNT_ID.test(String(user?.id||''))?user.id:null;
+    const data=await getAccountProfile(db,target,{viewerAccountId:viewer});
+    if(data.canView&&viewer&&viewer!==target)await recordAccountProfileVisit(db,{ownerAccountId:target,visitorAccountId:viewer});
+    const p=data.profile||{},links=p.social_links||{};const activity=data.canView&&p.show_activity!==false?await listAccountProfileActivity(db,target,12):[];await ensureSiteAccountSchema(db);await ensureProfileMediaSchema(db);const [publicAvatar,publicBanner]=data.canView?await Promise.all([getProfileMedia(db,target,'avatar'),getProfileMedia(db,target,'banner')]):[null,null];const publicAvatarUrl=publicAvatar?'/profil/media/public?accountId='+encodeURIComponent(target)+'&kind=avatar':'/assets/site-avatar.webp';const publicBannerUrl=publicBanner?'/profil/media/public?accountId='+encodeURIComponent(target)+'&kind=banner':'/assets/site-profile-banner.svg';
+    const social=Object.entries(links).filter(([k,v])=>typeof v==='string'&&v.startsWith('https://')).map(([k,v])=>'<a href="'+esc(v)+'" target="_blank" rel="noopener noreferrer">'+esc(k)+'</a>').join(' · ');
+    const friendAction=viewer&&viewer!==target?'<form method="post" action="/api/account-profile/friends"><input type="hidden" name="csrf" value="'+esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET))+'"><input type="hidden" name="targetAccountId" value="'+esc(target)+'"><button class="btn ghost" type="submit">Arkadaşlık isteği gönder</button></form>':'';
+    const follow=viewer&&viewer!==target?(data.following?'<form method="post" action="/api/account-profile/follow"><input type="hidden" name="csrf" value="'+esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET))+'"><input type="hidden" name="targetAccountId" value="'+esc(target)+'"><input type="hidden" name="action" value="unfollow"><button class="btn ghost" type="submit">Takibi bırak</button></form>':'<form method="post" action="/api/account-profile/follow"><input type="hidden" name="csrf" value="'+esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET))+'"><input type="hidden" name="targetAccountId" value="'+esc(target)+'"><input type="hidden" name="action" value="follow"><button class="btn" type="submit">Takip et</button></form>'):'';
+    const activityHtml=p.show_activity!==false&&activity.length?'<section class="card account-public-activity"><h2>Son etkinlikler</h2><ul>'+activity.map(item=>'<li><strong>'+esc(item.label)+'</strong><small>'+esc(item.activity_type)+' · '+esc(new Date(item.created_at).toLocaleString('tr-TR',{dateStyle:'medium',timeStyle:'short'}))+'</small></li>').join('')+'</ul></section>':'';
+    const body=data.canView?'<main class="wrap user-center-page account-center-page"><section class="card"><img class="account-profile-cover" src="'+publicBannerUrl+'" alt="Profil bannerı" style="object-position:center '+esc(p.banner_position||'center')+'"><img class="account-profile-avatar" src="'+publicAvatarUrl+'" alt="Profil fotoğrafı"><div class="eyebrow">FRIEREN TOPLULUĞU</div><h1>'+esc(p.display_name||'Gezgin')+'</h1><div class="account-profile-badges">'+(data.badges||[]).map(x=>'<span class="badge">'+esc(x)+'</span>').join('')+'</div><p>'+esc(p.status_text||'Bir büyü yolculuğunda')+'</p><p>'+esc(p.bio||'Bu kullanıcı henüz biyografi eklememiş.')+'</p><p>'+esc((p.interests||[]).join(' · '))+'</p><p>'+esc((p.tags||[]).map(x=>'#'+x).join(' '))+'</p><p>Takipçi: '+data.followers+' · Takip: '+data.followingCount+'</p><p>'+social+'</p>'+follow+friendAction+'</section>'+activityHtml+'</main>':'<main class="wrap"><section class="card"><h1>Bu profil görüntülenemiyor</h1><p>Profil sahibi görünürlüğü sınırlandırmış.</p></section></main>';
+    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(page('Gezgin Profili',body,user));return true;
+  }
+  if(url.pathname==='/bildirimler'&&req.method==='GET'){
+    if(!requireSiteAccount(res,user?.id))return true;if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Bildirimler şu anda kullanılamıyor.');return true;}
+    const items=await listAccountNotifications(db,user.id,50),unread=items.filter(x=>!x.read_at).length;
+    const rows=items.map(x=>'<article class="card"><div class="eyebrow">'+esc(x.notification_type)+'</div><h2>'+esc(x.title)+'</h2><p>'+esc(x.body)+'</p><a class="btn ghost" href="'+esc(x.href)+'">Aç</a><small>'+new Date(x.created_at).toLocaleString('tr-TR')+'</small></article>').join('')||'<article class="card">Henüz hesabına ait bildirim yok.</article>';
+    const csrf=esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET));const html='<main class="wrap user-center-page notification-center-page"><header class="user-center-hero"><div class="eyebrow">✧ FRIEREN HESAP MERKEZİ</div><h1>Bildirimlerim</h1><p class="lead">Takip ve arkadaşlık hareketlerin burada. Okunmamış: '+unread+'</p><form method="post" action="/api/account-notifications/read"><input type="hidden" name="csrf" value="'+csrf+'"><button class="btn" type="submit">Tümünü okundu işaretle</button></form></header><nav class="user-center-tabs"><a href="/profil">Hesap Profilim</a><a href="/bildirimler" aria-current="page">Bildirimler</a><a href="/kesfet#topluluk-sohbeti">Topluluk sohbeti</a></nav><section class="portal-grid">'+rows+'</section></main>';
+    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end(page('Bildirimlerim',html,user));return true;
   }
   if (url.pathname === '/destek' || url.pathname === '/hesap-merkezi') {
     if (!requireSiteAccount(res, user?.id)) return true;
@@ -1218,7 +1313,8 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if (!requireSiteAccount(res, user?.id)) return true;
     if (!db) { res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }); res.end('Oyuncu paneli veritabanına şu anda bağlanamıyor.'); return true; }
     const data = await getAdventurerDashboard(db, user.id);
-    const html = injectPublicChat(adventurerPanel(user, data, url.searchParams.get('status')),user,createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET));
+    const chatOwner=await isLinkedOwnerSiteAccount(db,user);
+    const html = injectPublicChat(adventurerPanel(user, data, url.searchParams.get('status')),user,createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET),chatOwner);
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });
     res.end(html); return true;
   }
@@ -1277,6 +1373,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   const render = routes.get(url.pathname);
   if (!render) return false;
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });
-  res.end(url.pathname==='/kesfet'?injectPublicChat(render(),user,createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET)):render());
+  const content=url.pathname==='/kesfet'?injectPublicChat(render(),user,createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET),await isLinkedOwnerSiteAccount(db,user)):render();
+  res.end(content);
   return true;
 }
