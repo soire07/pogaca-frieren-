@@ -80,11 +80,18 @@ function normalizeConfig(type, defaults, input = {}) {
     if (!['spell', 'attack'].includes(weakness)) throw new Error('INVALID_RPG_CONTENT');
     return {
       name: boundedText(input.name, defaults.name),
-      hp: boundedInteger(input.hp, defaults.hp, 50, 20000),
+      hp: boundedInteger(input.hp, defaults.hp, 50, 250000000),
       damage: boundedInteger(input.damage, defaults.damage, 1, 1500),
       xp: boundedInteger(input.xp, defaults.xp, 0, 20000),
       coins: boundedInteger(input.coins, defaults.coins, 0, 30000),
-      loot: boundedText(input.loot, defaults.loot),
+      loot: input.loot === null || (input.loot === undefined && defaults.loot === null) ? null : boundedText(input.loot, defaults.loot),
+      lootChance: boundedNumber(input.lootChance, defaults.lootChance ?? 0.4, 0, 1),
+      titleDrop: input.titleDrop === null || (input.titleDrop === undefined && defaults.titleDrop === null) ? null : boundedText(input.titleDrop, defaults.titleDrop),
+      titleDropChance: boundedNumber(input.titleDropChance, defaults.titleDropChance ?? 0, 0, 1),
+      spawnWeight: boundedNumber(input.spawnWeight, defaults.spawnWeight ?? 1, 0, 100),
+      regenerateDamagePerSecond: input.regenerateDamagePerSecond === undefined ? Boolean(defaults.regenerateDamagePerSecond) : input.regenerateDamagePerSecond === true,
+      areaDamagePerSecond: boundedInteger(input.areaDamagePerSecond, defaults.areaDamagePerSecond ?? 0, 0, 500),
+      noHpScaling: input.noHpScaling === undefined ? Boolean(defaults.noHpScaling) : input.noHpScaling === true,
       weakness,
       weaknessLabel: boundedText(input.weaknessLabel, defaults.weaknessLabel, 2, 40)
     };
