@@ -35,3 +35,11 @@ test('public chat reactions and blocking mutations require a signed-in account a
  }
  assert.equal(queries,0);
 });
+
+test('homepage chat is inserted immediately after the hero and includes Frieren search and composer affordances',async()=>{
+ const accountId='site_123e4567-e89b-12d3-a456-426614174000';const db={async query(sql){if(sql.includes('SELECT user_id FROM site_discord_links'))return{rows:[],rowCount:0};if(sql.includes('SELECT 1 FROM frieren_profile_media'))return{rows:[],rowCount:0};if(sql.includes('SELECT m.message_id'))return{rows:[],rowCount:0};return{rows:[],rowCount:0};}};
+ const pageRes=response();assert.equal(await handlePublicSiteRequest(get('/kesfet',{id:accountId,username:'Gezgin'}),pageRes,{db}),true);
+ assert.ok(pageRes.body.indexOf('public-chat-section')>pageRes.body.indexOf('fantastik bir'));
+ assert.ok(pageRes.body.indexOf('public-chat-section')<pageRes.body.indexOf('YOL ARKADAŞLARIN'));
+ assert.match(pageRes.body,/data-chat-search/);assert.match(pageRes.body,/data-chat-counter/);assert.match(pageRes.body,/chat-266-1/);
+});
