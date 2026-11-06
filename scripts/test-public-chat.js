@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ensurePublicChatSchema,listPublicChatMessages,sendPublicChatMessage,deletePublicChatMessage,markPublicChatMessagesRead} from '../public-chat.js';
+import {ensurePublicChatSchema,listPublicChatMessages,sendPublicChatMessage,deletePublicChatMessage,markPublicChatMessagesRead,reportPublicChatMessage} from '../public-chat.js';
 
 const account='site_123e4567-e89b-12d3-a456-426614174000';
 test('public chat schema is additive and never destroys existing data',async()=>{
@@ -67,4 +67,11 @@ test('typing indicators expire through short-lived account presence',async()=>{
 test('chat read receipts are account-scoped and idempotent',async()=>{
  let sql='',params;const db={async query(q,p){if(q.includes('INSERT INTO frieren_public_chat_reads')){sql=q;params=p;return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};}return{rows:[],rowCount:0};}};
  const result=await markPublicChatMessagesRead(db,{accountId:account});assert.equal(result.status,'read');assert.match(sql,/ON CONFLICT\(message_id,reader_account_id\) DO NOTHING/);assert.match(sql,/LIMIT 100/);assert.equal(params[0],account);
+});
+
+test('chat reports validate ownership, reason and prevent duplicate reports',async()=>{
+ let inserted=0;const db={async query(q){if(q.startsWith('SELECT account_id FROM frieren_public_chat_messages'))return{rows:[{account_id:'site_123e4567-e89b-12d3-a456-426614174001'}],rowCount:1};if(q.startsWith('INSERT INTO frieren_public_chat_reports')){inserted++;return{rows:[{report_id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};}return{rows:[],rowCount:0};}};
+ assert.equal((await reportPublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',reason:'spam'})).status,'reported');
+ assert.equal(inserted,1);
+ await assert.rejects(()=>reportPublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',reason:'unknown'}),/PUBLIC_CHAT_REPORT_INVALID/);
 });
