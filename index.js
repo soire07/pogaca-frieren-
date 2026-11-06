@@ -18,7 +18,7 @@ import { ensureAdventurerPlatformTables, claimDueGuildEventReminders, markGuildE
 import { ensurePlayerMarketTables, claimDuePlayerMarketPriceAlerts, markPlayerMarketPriceAlertNotified, releasePlayerMarketPriceAlertClaim, cancelPlayerMarketPriceAlert } from './player-market.js';
 import { ensureSocialPlatformTables } from './social-platform.js';
 import { ensureAccountCenterSchema } from './account-center.js';
-import { ensureNewsBirdSchema, pollAnimeNewsFeed, claimDueAnimeNewsDigests, markAnimeNewsDigestSent, releaseAnimeNewsDigestClaim, getEventReminderRecipients, setNotificationPreference } from './news-birds.js';
+import { ensureNewsBirdSchema, pollAnimeNewsFeed, claimDueAnimeNewsDigests, markAnimeNewsDigestSent, releaseAnimeNewsDigestClaim, getEventReminderRecipients, setNotificationPreference, buildAnimeNewsDigestEmbeds } from './news-birds.js';
 import { ensureCardVariantSchema } from './card-variants.js';
 import { ensureGuildWorkshopSchema, runGuildSpellAutomations } from './guild-workshop.js';
 import { ensureGuildTeamLeagueSchema } from './guild-team-leagues.js';
@@ -164,13 +164,13 @@ async function processNewsBirdDigests(readyClient = client) {
       try {
         const user = await readyClient.users.fetch(digest.user_id);
         const items = Array.isArray(digest.items) ? digest.items : [];
-        const lines = items.slice(0, 5).map(item =>
-          '• **' + String(item.title || '').slice(0, 180) + '**\\n' +
-          String(item.summary || '').slice(0, 180) + '\\n' + String(item.link || '')
-        );
-        const content = ('🐦 **Frieren Haberci Kuşu · Günlük anime özeti**\\n' + lines.join('\\n\\n')).slice(0, 1900);
-        if (!lines.length) {
+        const embeds = buildAnimeNewsDigestEmbeds(items);
+        if (!embeds.length) {
           await markAnimeNewsDigestSent(pool, digest.guild_id, digest.user_id);
+          continue;
+        }
+        await user.send({ embeds, allowedMentions: { parse: [] } });
+        await markAnimeNewsDigestSent(pool, digest.guild_id, digest.user_id);
           continue;
         }
         await user.send({ content, allowedMentions: { parse: [] } });
