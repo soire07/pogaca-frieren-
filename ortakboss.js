@@ -429,7 +429,8 @@ export default {
           ...(BOSS.titleDrop ? [{name:'🏅 Unvan ganimeti',value:(settlement.titleDrops || []).length ? settlement.titleDrops.map(drop=>`<@${drop.userId}>: **${drop.title}**`).join('\\n') : 'Bu baskında unvan düşmedi. Şans: %0,2.',inline:false}] : []),
           {name:'⏳ Bekleme süresi',value:'45 dakika',inline:true}
         ).setFooter({text:'Poğaça Frieren • Rollerini seç, takımını koru, birlikte kazan.'});
-      const raidArtUrl = getBossArtUrl(BOSS.id === 'north-general' ? 'northGeneral' : BOSS.id === 'glass-wyrm' ? 'glassWyrm' : 'fallenMage');
+      const raidArtKey = BOSS.id === 'north-general' ? 'northGeneral' : BOSS.id === 'glass-wyrm' ? 'glassWyrm' : BOSS.id === 'fallen-mage' ? 'fallenMage' : BOSS.id;
+      const raidArtUrl = getBossArtUrl(raidArtKey);
       if (raidArtUrl) embed.setImage(raidArtUrl);
       return interaction.editReply({embeds:[embed],components:[]});
     } catch(error) {
