@@ -3,6 +3,7 @@ import { claimSoloBossReward } from '../rpg-reward-transactions.js';
 import assert from 'node:assert/strict';
 import raidCommand from '../ortakboss.js';
 import raidBossInfoCommand from '../commands/rpg/raidbossbilgi.js';
+import npcCommand, { NPC_SIDE_QUESTS } from '../npc.js';
 import { marketItems } from '../market.js';
 import eventCommand from '../etkinlik.js';
 import {
@@ -32,7 +33,8 @@ import {
   calculateRaidAreaTickDamage,
   rollRaidBossLoot,
   rollRaidBossTitleDrops,
-  rollTheFoolTwist
+  rollTheFoolTwist,
+  isRaidBossUnlocked
 } from '../rpg-mechanics.js';
 
 test('boss incoming damage never becomes negative and has a minimum of one', () => {
@@ -550,4 +552,27 @@ test('The Fool is a distinct raid boss with three deterministic, equally likely 
   assert.equal(rollTheFoolTwist(() => 0.5), 'misfortune');
   assert.equal(rollTheFoolTwist(() => 0.99), 'wildcard');
   assert.equal(rollTheFoolTwist(() => 1), 'misfortune');
+});
+
+
+test('Light Fallen begins as a special NPC quest and only unlocks as a boss after its claim', () => {
+  const npc = NPC_SIDE_QUESTS.light_fallen;
+  assert.ok(npc, 'Light Fallen must exist as a special quest NPC');
+  assert.equal(npc.requiresStoryPath, false);
+  assert.equal(npc.questKey, 'light_fallen_trial');
+  assert.match(npc.objective, /3.*boss/i);
+  assert.equal(npc.reward.coins, 1500);
+  assert.equal(npc.reward.xp, 750);
+  assert.equal(isRaidBossUnlocked('fallen-mage', []), false);
+  assert.equal(isRaidBossUnlocked('fallen-mage', ['light_fallen_trial']), true);
+  assert.equal(isRaidBossUnlocked('the-fool', []), true);
+  const choices = npcCommand.data.toJSON().options[0].choices;
+  assert.ok(choices.some(choice => choice.value === 'light_fallen'));
+});
+
+test('raid command gates direct and random Light Fallen selection on the quest claim', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /SELECT quest_key FROM side_quest_claims WHERE guild_id=\$1 AND user_id=\$2/);
+  assert.match(source, /isRaidBossUnlocked\(boss\.id, unlockedQuestKeys\)/);
+  assert.match(source, /Light Fallen.*özel görevini tamamlamadan/);
 });
