@@ -491,6 +491,15 @@ def train_model(
         torch.nn.utils.clip_grad_norm_(model.parameters(), settings.grad_clip)
         optimizer.step()
 
+        # Emit a lightweight heartbeat so CI can distinguish slow training from a stalled job.
+        if step % 50 == 0 or step == settings.max_steps:
+            print(json.dumps({
+                "event": "training_progress",
+                "step": step,
+                "max_steps": settings.max_steps,
+                "batch_loss": float(loss.detach().item()),
+            }, ensure_ascii=False), flush=True)
+
         if step % settings.eval_interval == 0 or step == settings.max_steps:
             train_loss, validation_loss = _evaluate_pair(
                 model, train_data, validation_data, settings, selected_device, settings.seed + step,
