@@ -11,6 +11,7 @@ const bossChoices = RAID_BOSSES.map(boss => ({
 function formatBoss(boss, detail) {
   const isZeldeila = boss.id === 'zeldeila';
   const isDomaltazor = boss.id === 'domaltazor';
+  const isTheFool = boss.id === 'the-fool';
   const lootChance = Number.isFinite(Number(boss.lootChance)) ? Number(boss.lootChance) * 100 : null;
   const titleChance = Number.isFinite(Number(boss.titleDropChance)) ? Number(boss.titleDropChance) * 100 : null;
   const bossClass = boss.class || 'Standart';
@@ -19,17 +20,20 @@ function formatBoss(boss, detail) {
     : ({
     'eternal-regeneration': 'Sonsuz Yenilenme: aldığı hasarı saniyede geri kazanır; 1 HP altına düşmez. Mutlak Alan: yaşayan tüm oyunculara saniyede alan hasarı verir.',
     'katun-judgment': 'Katun Hükmü: her 3 turda hedefe güçlendirilmiş saldırı yapar.',
+    'fools-gamble': 'Kader Oyunu: her 3 turda bir üç sonuçtan biri belirir. Talih tüm takımı iyileştirir, Talihsizlik tüm takıma hasar verir, Joker ise mana tüketip ek hasar uygular. Sonuçlar eşit olasılıklıdır.',
     'mana-star': 'Mana Yıldız Patlaması: her 3 turda tüm yaşayan oyunculara alan hasarı verir.',
     'shard-rain': 'Kristal Yağmuru: her 2 turda tüm yaşayan oyunculara alan hasarı verir.',
     'mana-curse': 'Mana Laneti: her 3 turda hedefin manasını tüketir.'
   }[boss.special] || 'Özel hareket bilgisi tanımlanmamış.');
   const embed = new EmbedBuilder()
-    .setColor(isZeldeila ? 0x8b78db : isDomaltazor ? 0x9a7654 : 0x6e5ab8)
+    .setColor(isZeldeila ? 0x8b78db : isDomaltazor ? 0x9a7654 : isTheFool ? 0xd6ad45 : 0x6e5ab8)
     .setTitle(boss.name)
     .setDescription(isZeldeila
       ? 'Bu karşılaşma kasıtlı olarak yenilmez tasarlanmıştır. Amaç hayatta kalma mücadelesidir.'
       : isDomaltazor
         ? 'Kadim Cellat. Çok düşük ihtimalli efsanevi Katun Yüzüğü ganimetine sahiptir.'
+        : isTheFool
+          ? 'Tarot’un Deli kartından doğan gezgin. Kaderi üç farklı biçimde büker; her üç turda bir takımın talihini sınar.'
         : 'Ortak baskın kataloğundaki raid boss.')
     .addFields(
       { name: '♾️ Boss sınıfı', value: `**${bossClass}**`, inline: true },
@@ -50,6 +54,7 @@ function formatBoss(boss, detail) {
         isZeldeila ? 'HP tabanı 1; bu boss öldürülemez.' : null,
         bossClass === 'Infinity' ? 'Infinity sınıfı: benzersiz üst seviye raid kategorisi; standart boss sınıflarından ayrıdır.' : null,
         isDomaltazor ? 'Katun Yüzüğü yalnızca bu bossun nadir ganimetidir; pazara konulamaz ve parçalanamaz.' : null,
+        isTheFool ? 'Kader Oyunu her 3 turda tetiklenir: Talih (takım iyileştirmesi), Talihsizlik (takım alan hasarı) veya Joker (mana tüketimi ve ek alan hasarı). Üç sonuç eşit olasılıklıdır.' : null,
         boss.id === 'fallen-mage' ? 'Formlar HP eşiklerinde açılır. Üç mühür Zoltraak ile çözülür; tamamlanırsa %15 ihtimalle gizli form uyanır. Kanat kırılması, ruh ikizleri, büyü bariyeri ve son direniş mekanikleri aktiftir.' : null,
         boss.id === 'fallen-mage' ? 'Form ganimetleri: Düşmüş Melek Kanatları (%8), Melek Aura’nın Işık Tacı (%5), Alacakaranlık Aura Kalıntısı (%2). Üç Formun Fatihi unvanı: %3.' : null
       ].filter(Boolean).join('\n'), inline: false }
