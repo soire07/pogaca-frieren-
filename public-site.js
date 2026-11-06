@@ -731,7 +731,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'chat_unavailable'}));return true;}
     const chatSession=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     const viewerId=SITE_ACCOUNT_ID.test(String(chatSession?.id||''))?chatSession.id:null;
-    const [messages,blocked,presence]=await Promise.all([listPublicChatMessages(db,{limit:60,viewerAccountId:viewerId}),viewerId?listPublicChatBlocks(db,{accountId:viewerId}):Promise.resolve([]),getPublicChatPresence(db)]);
+    const before=String(url.searchParams.get('before')||''),search=String(url.searchParams.get('q')||'').slice(0,80);const [messages,blocked,presence]=await Promise.all([listPublicChatMessages(db,{limit:100,viewerAccountId:viewerId,before,search}),viewerId?listPublicChatBlocks(db,{accountId:viewerId}):Promise.resolve([]),getPublicChatPresence(db)]);
     res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(JSON.stringify({messages,blocked,presence}));return true;
   }
   if(url.pathname==='/api/public-chat/messages'&&req.method==='POST'){
