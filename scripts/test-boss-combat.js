@@ -472,3 +472,24 @@ test('Aura transforms through mage, fallen angel and angel forms without changin
   assert.equal(aura.id, 'fallen-mage');
   assert.equal(aura.special, 'mana-curse');
 });
+
+
+test('Aura battle mechanics support barriers, illusions, seals, secret awakening and final stand', () => {
+  assert.equal(getAuraBarrier(2, 4), 'attack');
+  assert.equal(getAuraBarrier(3, 8), 'spell');
+  assert.equal(getAuraBarrier(1, 4), null);
+  assert.equal(applyAuraBarrier(100, 'attack', 'attack'), 55);
+  assert.equal(applyAuraBarrier(100, 'spell', 'attack'), 100);
+  assert.equal(applyAuraIllusion(100, 2, 5, 'attack'), 65);
+  assert.equal(applyAuraIllusion(100, 2, 5, 'spell'), 100);
+  assert.equal(advanceAuraSealProgress(0, true), 1);
+  assert.equal(advanceAuraSealProgress(2, true), 3);
+  assert.equal(advanceAuraSealProgress(2, false), 2);
+  assert.equal(shouldAwakenAuraSecretForm(3, () => 0.149), true);
+  assert.equal(shouldAwakenAuraSecretForm(3, () => 0.15), false);
+  assert.equal(shouldAwakenAuraSecretForm(2, () => 0), false);
+  assert.ok(calculateAuraFinalStandDamage(100, 20, false) < 100);
+  assert.ok(calculateAuraFinalStandDamage(100, 20, true) < calculateAuraFinalStandDamage(100, 20, false));
+  const aura = RAID_BOSSES.find(boss => boss.id === 'fallen-mage');
+  assert.equal(getRaidBossForm(aura, 4).special, 'twilight-cataclysm');
+});
