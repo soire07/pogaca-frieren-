@@ -14,7 +14,7 @@ function get(path,user){return{method:'GET',url:path,headers:user?{cookie:cookie
 
 test('public discovery page and chat history are readable without login',async()=>{
  const db={async query(sql){if(sql.startsWith('SELECT m.message_id'))return{rows:[{message_id:'m1',account_id:account.id,username:'Gezgin',body:'Merhaba',created_at:new Date().toISOString()}],rowCount:1};return{rows:[],rowCount:0};}};
- const page=response();assert.equal(await handlePublicSiteRequest(get('/kesfet'),page,{db}),true);assert.equal(page.status,200);assert.match(page.body,/Yol arkadaşlarınla sohbet et/);assert.match(page.body,/Giriş yap ve sohbete katıl/);
+ const page=response();assert.equal(await handlePublicSiteRequest(get('/kesfet'),page,{db}),true);assert.equal(page.status,200);assert.match(page.body,/Yol arkadaşlarınla sohbet et/);assert.match(page.body,/Giriş yap ve sohbete katıl/);assert.match(page.body,/name="replyToMessageId"/);assert.match(page.body,/data-chat-reply-preview/);assert.match(page.body,/data-chat-reply-clear/);
  const api=response();assert.equal(await handlePublicSiteRequest(get('/api/public-chat/messages'),api,{db}),true);assert.equal(api.status,200);assert.match(api.body,/Merhaba/);
 });
 test('public chat posting requires an authenticated site account and CSRF token',async()=>{
