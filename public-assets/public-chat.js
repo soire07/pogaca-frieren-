@@ -33,11 +33,11 @@
   const fragment=document.createDocumentFragment();
   for(const item of visible){
    const li=document.createElement('li');li.className='public-chat-message';
-   const avatar=document.createElement('span');avatar.className='public-chat-avatar';avatar.textContent=Array.from(String(item.username||'G').trim())[0]?.toLocaleUpperCase('tr-TR')||'G';
+   const avatar=document.createElement(item.avatar_url&&String(item.avatar_url).startsWith('/profil/media/public?accountId=')?'img':'span');avatar.className='public-chat-avatar';if(avatar.tagName==='IMG'){avatar.src=item.avatar_url;avatar.alt='';avatar.loading='lazy';}else avatar.textContent=Array.from(String(item.username||'G').trim())[0]?.toLocaleUpperCase('tr-TR')||'G';
    const body=document.createElement('div');body.className='public-chat-message-body';
    const meta=document.createElement('div');meta.className='public-chat-message-meta';
    const name=document.createElement('strong');name.textContent=String(item.username||'Gezgin');if(/^site_[0-9a-f-]{36}$/i.test(String(item.account_id||''))){const profileLink=document.createElement('a');profileLink.href='/u/'+encodeURIComponent(item.account_id);profileLink.textContent=name.textContent;profileLink.className='public-chat-profile-link';name.replaceWith(profileLink);}
-   const time=document.createElement('time');const date=new Date(item.created_at);time.dateTime=Number.isNaN(date.getTime())?'':date.toISOString();time.textContent=Number.isNaN(date.getTime())?'':date.toLocaleString('tr-TR',{dateStyle:'short',timeStyle:'short'});
+   const time=document.createElement('time');const date=new Date(item.created_at);time.dateTime=Number.isNaN(date.getTime())?'':date.toISOString();time.textContent=Number.isNaN(date.getTime())?'':date.toLocaleString('tr-TR',{dateStyle:'short',timeStyle:'short'})+(item.edited_at?' · düzenlendi':'');
    meta.append(name,time);body.append(meta);if(item.pinned_at){const pinned=document.createElement('span');pinned.className='public-chat-pinned';pinned.textContent='✦ Sabitlendi';body.append(pinned);}
    if(item.reply){const quote=document.createElement('blockquote');quote.className='public-chat-reply-quote';const qName=document.createElement('strong');qName.textContent=String(item.reply.username||'Yanıtlanan mesaj');const qText=document.createElement('span');qText.textContent=String(item.reply.body||'');quote.append(qName,qText);body.append(quote);}
    const text=document.createElement('p');text.className='public-chat-message-text';text.textContent=String(item.body||'');body.append(text);
