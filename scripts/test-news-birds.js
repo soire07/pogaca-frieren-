@@ -69,7 +69,7 @@ test('English news is translated to Turkish once and cached; failures preserve s
   const q=new URL(url).searchParams.get('q');
   return {ok:true,status:200,json:async()=>({responseStatus:200,responseData:{translatedText:q==='Frieren returns'?'Frieren geri dönüyor':'Yeni bölüm duyuruldu.'}})};
  };
- const items=[{guid:'ann-translate-1',title:'Frieren returns',summary:'New episode announced.'}];
+ const items=[{guid:'ann-translate-1',title:'Frieren returns',summary:'New episode announced.'}, ...Array.from({length:5},(_,i)=>({guid:'ann-extra-'+i,title:'Extra news '+i,summary:'Extra summary '+i}))];
  const translated=await translateAnimeNewsItems(db,items,fetcher);
  assert.equal(translated[0].translatedTitle,'Frieren geri dönüyor');
  assert.equal(translated[0].translatedSummary,'Yeni bölüm duyuruldu.');
