@@ -38,7 +38,7 @@ test('dungeon routes return distinct, floor-scaled rewards and healing outcomes'
 test('raid boss selection is deterministic for each catalog slot and safely falls back for an empty catalog', () => {
   assert.equal(chooseRaidBoss(() => 0).id, 'north-general');
   assert.equal(chooseRaidBoss(() => 0.4).id, 'fallen-mage');
-  assert.equal(chooseRaidBoss(() => 0.99).id, 'fallen-mage');
+  assert.equal(chooseRaidBoss(() => 0.99).id, 'domaltazor');
   assert.equal(chooseRaidBoss(() => 0, []).id, RAID_BOSSES[0].id);
   assert.equal(chooseRaidBoss(() => 1).id, RAID_BOSSES[0].id);
 });
