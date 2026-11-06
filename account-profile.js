@@ -50,11 +50,11 @@ export async function getAccountProfile(db,accountId,{viewerAccountId=null}={}){
  const [p,f,counts]=await Promise.all([
   db.query('SELECT * FROM frieren_account_profiles WHERE account_id=$1',[id]),
   viewer?db.query('SELECT 1 FROM frieren_account_follows WHERE follower_account_id=$1 AND followed_account_id=$2',[viewer,id]):Promise.resolve({rowCount:0}),
-  db.query('SELECT (SELECT COUNT(*)::int FROM frieren_account_follows WHERE followed_account_id=$1) AS followers,(SELECT COUNT(*)::int FROM frieren_account_follows WHERE follower_account_id=$1) AS following',[id])
+  db.query('SELECT (SELECT COUNT(*)::int FROM frieren_account_follows WHERE followed_account_id=$1) AS followers,(SELECT COUNT(*)::int FROM frieren_account_follows WHERE follower_account_id=$1) AS following,(SELECT COUNT(*)::int FROM frieren_account_profile_visits WHERE owner_account_id=$1) AS visitors',[id])
  ]);
  const row=p.rows[0]||{bio:'',status_text:'',interests:[],tags:[],theme:'midnight',accent_color:'#a78bfa',social_links:{},visibility:'public',show_activity:true,allow_visitors:true};
  const following=f.rowCount>0;const canView=id===viewer||row.visibility==='public'||(row.visibility==='followers'&&following);
- return {profile:canView?row:{theme:row.theme,visibility:row.visibility},canView,following,followers:Number(counts.rows[0]?.followers||0),followingCount:Number(counts.rows[0]?.following||0),isOwner:id===viewer};
+ return {profile:canView?row:{theme:row.theme,visibility:row.visibility},canView,following,followers:Number(counts.rows[0]?.followers||0),followingCount:Number(counts.rows[0]?.following||0),visitors:Number(counts.rows[0]?.visitors||0),isOwner:id===viewer};
 }
 export async function updateAccountProfile(db,{accountId,bio='',statusText='',interests=[],tags=[],theme='midnight',accentColor='#a78bfa',socialLinks={},visibility='public',showActivity=true,allowVisitors=true}){
  const id=account(accountId),b=clean(bio,280,'ACCOUNT_PROFILE_INVALID',{optional:true}),s=clean(statusText,80,'ACCOUNT_PROFILE_INVALID',{optional:true});
