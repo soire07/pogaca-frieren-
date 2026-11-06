@@ -401,10 +401,6 @@ export default {
         const manaCurse = BOSS.special === 'mana-curse' && rounds % 3 === 0;
         const manaPrison = BOSS.id === 'fallen-mage' && rounds % 4 === 0;
         const auraForm = getRaidBossForm(BOSS, bossPhase);
-        const auraBarrier = BOSS.id === 'fallen-mage' ? getAuraBarrier(bossPhase, rounds) : null;
-        if (auraBarrier) log.push(`🛡️ Aura Büyü Bariyeri açtı: ${auraBarrier === 'spell' ? 'büyü' : 'fiziksel'} saldırılar bu tur zayıflatılacak.`);
-        const auraIllusion = BOSS.id === 'fallen-mage' && bossPhase >= 2 && rounds % 4 === 1;
-        if (auraIllusion) log.push('🪞 Aura Ruh İkizleri oluşturdu! Bu tur fiziksel saldırılar yanılsama tarafından saptırılıyor; Zoltraak gerçek Aura’yı bulur.');
         const fallenWings = auraForm?.special === 'fallen-wings' && rounds % 2 === 0;
         const angelicJudgment = auraForm?.special === 'angelic-judgment' && rounds % 2 === 0;
         const twilightCataclysm = auraForm?.special === 'twilight-cataclysm' && rounds % 2 === 0;
@@ -422,7 +418,7 @@ export default {
             const f=fighters[i];
             const specialMultiplier = finalStandAttack ? 1.35 : twilightCataclysm ? 1.05 : fallenWings ? 0.72 : angelicJudgment ? 0.88 : shardRain ? 0.5 : 0.68;
             let incoming=calculateBossIncomingDamage(Math.round(rawDamage*specialMultiplier), Math.round(f.defense*0.44), bossPhase);
-            incoming=applyDefendingReduction(incoming,defending.has(i));
+            incoming=finalStandAttack ? calculateAuraFinalStandDamage(incoming, f.defense, defending.has(i)) : applyDefendingReduction(incoming,defending.has(i));
             hpNow[i]=Math.max(0,hpNow[i]-incoming);
             log.push(`☄️ ${f.username} ${finalStandAttack ? 'son direniş saldırısından' : twilightCataclysm ? 'alacakaranlık felaketinden' : fallenWings ? 'kara kanat fırtınasından' : angelicJudgment ? 'ilahi hükümden' : shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
           }
