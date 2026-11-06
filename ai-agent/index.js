@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import OpenAI from 'openai';
 import { resolveAiModel } from './config.js';
-import { findRelevantExcerpt, scoreCodeCandidate } from './code-context.js';
+import { isNeuralConfigured, isNeuralRequested, generateNeuralReply, buildNeuralPrompt } from './neural-client.js';
+import { collectCodeContext as collectGuardianCodeContext, normalizeCodeContextText } from './code-context.js';
 import { createMemoryStore, shouldUseConversationHistory } from './memory-store.js';
 import { buildConversationContextMessages } from './conversation-context.js';
 import { isExplicitMemoryOverviewQuestion } from './memory-intent.js';
@@ -50,7 +51,9 @@ const groqKey = process.env.GROQ_API_KEY?.trim();
 const groq = groqKey ? new OpenAI({ apiKey: groqKey, baseURL: 'https://api.groq.com/openai/v1', timeout: 45_000, maxRetries: 1 }) : null;
 const memoryStore = process.env.DATABASE_URL?.trim() ? createMemoryStore(process.env.DATABASE_URL.trim()) : null;
 let memoryDatabaseReady = false;
-const modelConfigured = Boolean(groq);
+const neuralRequested = isNeuralRequested(process.env);
+const neuralConfigured = isNeuralConfigured(process.env);
+const modelConfigured = neuralRequested ? neuralConfigured : Boolean(groq);
 const bridgeConfig = resolveAiBridgeConfig(process.env);
 const bridgeConfigured = bridgeConfig.configured;
 
@@ -139,7 +142,7 @@ const healthServer = createServer(async (req, res) => {
       res.end(JSON.stringify({ error: 'not_found' }));
       return;
     }
-    if (!groq) {
+    if (!modelConfigured) {
       res.writeHead(503, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ error: 'model_not_configured' }));
       return;
@@ -165,6 +168,7 @@ const healthServer = createServer(async (req, res) => {
       const review = await reviewGuardianIncident({
         groq,
         model: resolveAiModel(process.env),
+        neuralEnv: process.env,
         incident,
         collectCodeContext,
       });
@@ -238,7 +242,8 @@ if (memoryStore) {
 } else {
   console.error('Frieren AI hafıza veritabanı yapılandırılmamış; FRIEREN_AI_DATABASE_URL kontrol edilmeli.');
 }
-if (!modelConfigured) console.error('Groq API anahtarı yapılandırılmamış; /frieren-ai yanıt veremez.');
+if (!modelConfigured) console.error('Frieren Neural API veya Groq sağlayıcısı yapılandırılmamış; /frieren-ai yanıt veremez.');
+if (neuralConfigured) console.log('Frieren AI yanıt sağlayıcısı: Frieren Neural API (Groq sohbet yedeği kullanılmayacak).');
 if (!bridgeConfigured) console.warn('Poğaça Frieren komut test köprüsü yapılandırılmamış; /frieren-komut-denetle kullanılamaz.');
 
 const commands = [
@@ -280,59 +285,11 @@ const commands = [
 ];
 
 
-async function collectCodeContext(question) {
-  const roots = ['index.js', 'rpg-mechanics.js', 'package.json', 'scripts/check-commands.js',
-    'scripts/audit-command-contracts.js', 'scripts/test-request.js', 'scripts/test-boss-combat.js',
-    'scripts/test-discord-scenarios.js', 'scripts/test-uncovered-commands.js', 'scripts/test-utils.js', 'database/db.js'];
-  const terms = question.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').split(/[^a-z0-9]+/).filter(word => word.length >= 3);
-  const candidates = new Set(roots);
-  async function addCommandFiles(dir, depth = 0) {
-    if (depth > 3 || candidates.size > 45) return;
-    const entries = await readdir(path.join(rootDir, dir), { withFileTypes: true }).catch(() => []);
-    for (const entry of entries) {
-      const relative = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (!['node_modules', '.git', 'coverage', '.render'].includes(entry.name)) await addCommandFiles(relative, depth + 1);
-      }
-      else if (entry.isFile() && entry.name.endsWith('.js')) {
-        const normalized = relative.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
-        const nameMatches = terms.some(term => normalized.includes(term));
-        if (nameMatches) {
-          candidates.add(relative);
-        } else {
-          // Search source content as well as filenames so indirectly related implementations
-          // are not silently omitted from AI diagnostics.
-          const source = await readFile(path.join(rootDir, relative), 'utf8').catch(() => '');
-          const lowerSource = source.toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
-          const matchingTerms = terms.reduce((count, term) => count + (lowerSource.includes(term) ? 1 : 0), 0);
-          if (terms.length > 0 && matchingTerms >= Math.min(2, terms.length)) candidates.add(relative);
-        }
-      }
-    }
-  }
-  await addCommandFiles('.');
-  const ranked = [];
-  for (const relative of candidates) {
-    const source = await readFile(path.join(rootDir, relative), 'utf8').catch(() => '');
-    if (!source) continue;
-    ranked.push({ relative, source, score: scoreCodeCandidate(relative, source, terms) });
-  }
-  // Relevant files must come first so generic files cannot consume the free model's context.
-  ranked.sort((a, b) => b.score - a.score);
-  const snippets = [];
-  // Groq's free tier has an 8k TPM limit. Keep source small and relevant.
-  let budget = 2_800;
-  for (const { relative, source } of ranked) {
-    if (budget <= 0) break;
-    const remaining = Math.max(0, budget - relative.length - 20);
-    if (!remaining) continue;
-    const safe = source.replace(/(DISCORD_TOKEN|GROQ_API_KEY|OPENAI_API_KEY|DATABASE_URL|PASSWORD|SECRET)\s*[:=]\s*['"`]?[^\s,'"`]+/gi, '$1=[REDACTED]');
-    const excerpt = findRelevantExcerpt(safe, terms, Math.min(safe.length, 1_800, remaining));
-    if (excerpt) snippets.push('FILE: ' + relative + '\n' + excerpt);
-    budget -= excerpt.length + relative.length + 20;
-  }
-  return snippets.join('\n\n');
-}
+const collectCodeContext = question => collectGuardianCodeContext({
+  rootDir,
+  question,
+  sourceCommitSha: process.env.RENDER_GIT_COMMIT || process.env.GITHUB_SHA || null,
+});
 
 function isConversationalQuestion(question) {
   const normalized = question.toLocaleLowerCase('tr-TR')
@@ -379,12 +336,13 @@ async function answerCodeQuestion(question, userId, conversationId) {
       return { ok: false, message: 'Kalıcı belleğe kayıt yapılamadı. Veritabanı bağlantısını kontrol etmek gerekiyor.' };
     }
   }
-  if (!groq) return {
+  if (!groq && !isNeuralConfigured(process.env)) return {
     ok: false,
-    message: 'Groq API anahtarı ayarlanmamış. Render ortam değişkenlerine GROQ_API_KEY eklenmeli. Ücretli API sağlayıcısına otomatik geçiş yapılmaz. /frieren-test otomatik testleri çalıştırmaya devam eder.'
+    message: 'Frieren Neural API yapılandırılmamış. FRIEREN_NEURAL_API_URL, en az 32 karakterlik FRIEREN_NEURAL_API_TOKEN ve kalite kapısı tamamlandıktan sonra FRIEREN_NEURAL_QUALITY_APPROVED=1 ayarlanmalı; Groq anahtarı zorunlu değildir.'
   };
   const conversational = isConversationalQuestion(question);
-  const context = conversational ? '' : await collectCodeContext(question);
+  const contextResult = conversational ? '' : await collectCodeContext(question);
+  const context = normalizeCodeContextText(contextResult);
   if (!context && !conversational) return { ok: false, message: 'Bu soruyla ilişkili kaynak dosyası bulunamadı. Daha belirgin bir komut veya mekanik adıyla yeniden dene.' };
   let memories = [];
   if (memoryStore && userId) {
@@ -412,8 +370,18 @@ async function answerCodeQuestion(question, userId, conversationId) {
     const content = result?.choices?.[0]?.message?.content;
     return typeof content === 'string' ? content.trim() : '';
   };
-  let response;
   let message = '';
+  if (neuralRequested) {
+    try {
+      const prompt = buildNeuralPrompt({ conversationHistory, memoryContext, question, context, conversational });
+      const result = await generateNeuralReply({ env: process.env, prompt });
+      message = result.text;
+    } catch (error) {
+      console.error('Frieren Neural isteği başarısız:', redactSecrets(error?.message || String(error)));
+      return { ok: false, message: 'Frieren Neural şu anda yanıt üretemedi. Güvenli biçimde Groq sağlayıcısına geçiş yapılmadı; model/API sağlık durumunu kontrol etmek gerekiyor.' };
+    }
+    if (!message) return { ok: false, message: 'Frieren Neural boş yanıt döndürdü. Bu istek tamamlanmadı.' };
+  } else {
   try {
     response = await groq.chat.completions.create({
       reasoning_effort: 'low',
@@ -471,6 +439,7 @@ async function answerCodeQuestion(question, userId, conversationId) {
       console.error('Groq kod inceleme isteği başarısız:', redactSecrets(errorText));
       return { ok: false, message: 'AI sağlayıcısına istek başarısız oldu. Kod incelemesi tamamlanmadı; Render kayıtlarında hata ayrıntısı tutuldu. Biraz sonra tekrar deneyebilirsin.' };
     }
+  }
   }
   if (!message) {
     console.error('Groq kullanılabilir yanıt döndürmedi.', JSON.stringify({
@@ -779,8 +748,8 @@ client.on(Events.InteractionCreate, async interaction => {
     const hours = Math.floor(uptimeSeconds / 3600);
     const minutes = Math.floor((uptimeSeconds % 3600) / 60);
     const seconds = uptimeSeconds % 60;
-    const provider = process.env.FRIEREN_MODEL_PROVIDER || 'groq';
-    const model = process.env.FRIEREN_MODEL || 'openai/gpt-oss-20b';
+    const provider = neuralRequested ? 'Frieren Neural' : (groq ? (process.env.FRIEREN_MODEL_PROVIDER || 'groq') : 'Yapılandırılmamış');
+    const model = neuralRequested ? (process.env.FRIEREN_NEURAL_MODEL || 'ufakai/ufakzeka-1') : (process.env.FRIEREN_MODEL || 'openai/gpt-oss-20b');
     const embed = new EmbedBuilder()
       .setTitle('Frieren AI — Servis Durumu')
       .setColor(client.isReady() ? 0x57F287 : 0xED4245)
@@ -789,7 +758,7 @@ client.on(Events.InteractionCreate, async interaction => {
         { name: 'Gateway gecikmesi', value: client.ws.ping >= 0 ? client.ws.ping + ' ms' : 'Ölçülemiyor', inline: true },
         { name: 'Çalışma süresi', value: hours + ' sa ' + minutes + ' dk ' + seconds + ' sn', inline: true },
         { name: 'Bağlı sunucu sayısı', value: String(client.guilds.cache.size), inline: true },
-        { name: 'Yapay zekâ sağlayıcısı', value: provider + (groq ? ' — API hazır' : ' — GROQ_API_KEY eksik'), inline: true },
+        { name: 'Yapay zekâ sağlayıcısı', value: provider + ((neuralRequested ? neuralConfigured : Boolean(groq)) ? ' — API yapılandırılmış' : ' — API eksik'), inline: true },
         { name: 'Model', value: model, inline: true },
         { name: 'Kalıcı bellek', value: memoryStore ? 'Yapılandırılmış' : 'Yapılandırılmamış', inline: true }
       )
@@ -880,8 +849,8 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 
   if (interaction.commandName === 'frieren-guardian-test') {
-    if (!groq) {
-      await interaction.reply({ content: 'Groq yapılandırılmamış: GROQ_API_KEY bulunamadı.', flags: MessageFlags.Ephemeral });
+    if (!modelConfigured) {
+      await interaction.reply({ content: 'Frieren Neural veya Groq sağlayıcısı yapılandırılmamış.', flags: MessageFlags.Ephemeral });
       return;
     }
     if (guardianReviewInProgress || runningGuilds.size > 0 || ownerScenarioLocks.size > 0) {
@@ -894,10 +863,11 @@ client.on(Events.InteractionCreate, async interaction => {
       const review = await reviewGuardianIncident({
         groq,
         model: process.env.FRIEREN_MODEL || 'openai/gpt-oss-20b',
+        neuralEnv: process.env,
         incident: {
           system: 'guardian',
-          code: 'GUARDIAN_GROQ_SELF_TEST',
-          title: 'Guardian Groq bağlantı testi',
+          code: 'GUARDIAN_PROVIDER_SELF_TEST',
+          title: 'Guardian model bağlantı testi',
           summary: 'Bu sentetik bir bağlantı testidir. Gerçek üretim olayı değildir. Yalnızca Guardian inceleme modelinin geçerli JSON yanıtı üretip üretmediğini doğrula; herhangi bir dosyayı değiştirme veya onarım başlatma.',
           evidence: [{ file: 'ai-agent/guardian-review.js', message: 'Sentetik güvenli test girdisi.' }],
         },

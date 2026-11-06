@@ -34,7 +34,7 @@ import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
 import { startGuardianMonitor } from './guardian/monitor.js';
-import { processGuardianIncident, processPendingGuardianRepairDispatch } from './guardian/automation.js';
+import { processGuardianIncident, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking } from './guardian/automation.js';
 import { handleNeuralQualityReportRequest } from './guardian/neural-quality-report-route.js';
 import { saveGuardianQualityReport } from './guardian/quality-report-store.js';
 import { areGuildCommandFeaturesEnabled, getComponentCommandName, getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
@@ -544,6 +544,16 @@ const stopGuardianMonitor = startGuardianMonitor({
   onRepairDispatch: async job => {
     const result = await processPendingGuardianRepairDispatch({ db: pool, job, incident: { id: job.incident_id, system: job.system, code: job.code, severity: job.severity, title: job.title, summary: job.summary, evidence: job.evidence } });
     if (['dispatch_failed', 'reconciliation_unavailable'].includes(result.status)) console.warn('Guardian repair dispatch retry:', result.status, result.reason || 'no additional details');
+  },
+  onRepairTracking: async job => {
+    const result = await refreshGuardianRepairTracking({
+      db: pool,
+      job,
+      incident: { id: job.incident_id, system: job.system, code: job.code, severity: job.severity, title: job.incident_title, summary: job.summary, evidence: job.evidence },
+    });
+    if (['tracking_failed', 'tracking_incomplete', 'not_configured'].includes(result.status)) {
+      console.warn('Guardian repair tracking:', result.status, result.reason || 'no additional details');
+    }
   },
 });
 await client.login(process.env.DISCORD_TOKEN);

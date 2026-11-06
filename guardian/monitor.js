@@ -1,4 +1,6 @@
-import { upsertGuardianIncident, listPendingGuardianRepairDispatches } from './store.js';
+import { listPendingGuardianRepairDispatches, listGuardianRepairTrackingJobs } from './store.js';
+import { classifyGuardianSeverity } from './core.js';
+import { normalizeGuardianMonitorSecurityEvent, recordGuardianSecurityEvent } from './security-events.js';
 
 function boundedInteger(value, fallback, maximum) {
   const parsed = Number(value);
@@ -6,16 +8,8 @@ function boundedInteger(value, fallback, maximum) {
   return Math.max(1, Math.min(Math.floor(parsed), maximum));
 }
 
-function systemForScope(scope) {
-  const value = String(scope || '').toLocaleLowerCase('tr-TR');
-  if (value.includes('neural')) return 'frieren_neural';
-  if (value.includes('frieren-ai') || value.includes('ai-agent')) return 'frieren_ai';
-  if (value.includes('guardian')) return 'guardian';
-  if (value.includes('owner')) return 'owner_panel';
-  return 'pogaca_frieren';
-}
 
-export async function scanNewOwnerErrors(db, lastSeenErrorId = 0, limit = 50, onProgress = async () => {}, onIncident = async () => {}, onIncidentError = async () => {}) {
+export async function scanNewOwnerErrors(db, lastSeenErrorId = 0, limit = 50, onProgress = async () => {}, onIncident = async () => {}, onIncidentError = async () => {}, recordSecurityEvent = recordGuardianSecurityEvent) {
   const result = await db.query(
     'SELECT id,scope,error_type,error_message,created_at FROM owner_error_logs WHERE id>$1 ORDER BY id ASC LIMIT $2',
     [Math.max(0, Number(lastSeenErrorId) || 0), boundedInteger(limit, 50, 100)]
@@ -24,13 +18,20 @@ export async function scanNewOwnerErrors(db, lastSeenErrorId = 0, limit = 50, on
   let recorded = 0;
   for (const row of result.rows || []) {
     nextId = Math.max(nextId, Number(row.id) || 0);
-    const incident = await upsertGuardianIncident(db, {
-      system: systemForScope(row.scope),
+    const title = String(row.scope || 'Sistem') + ': ' + String(row.error_type || 'Error');
+    const event = normalizeGuardianMonitorSecurityEvent({
+      eventId: 'guardian-monitor-error-' + Number(row.id),
+      source: 'frieren_guard_monitor',
+      system: 'guardian',
       code: row.error_type,
-      title: String(row.scope || 'Sistem') + ': ' + String(row.error_type || 'Error'),
+      severity: classifyGuardianSeverity(title + ' ' + String(row.error_message || '')),
+      title,
       summary: row.error_message || row.error_type || 'Kayıtlı hata olayı',
-      evidence: [{ message: 'Log ID ' + row.id + ' · ' + new Date(row.created_at).toISOString() }],
+      observedAt: row.created_at,
+      evidence: [{ message: 'owner_error_logs #' + row.id + ' · ' + new Date(row.created_at).toISOString() }],
     });
+    const persisted = await recordSecurityEvent(db, event, { ipSource: 'guardian_monitor' });
+    const incident = persisted?.incident || null;
     if (incident) {
       try {
         await onIncident(incident);
@@ -82,6 +83,20 @@ export async function scanPendingGuardianRepairDispatches(db, onDispatch = async
   return { attempted };
 }
 
+export async function scanDispatchedGuardianRepairTracking(db, onRefresh = async () => {}, limit = 3, onRefreshError = async () => {}) {
+  const jobs = await listGuardianRepairTrackingJobs(db, limit);
+  let attempted = 0;
+  for (const job of jobs) {
+    try {
+      await onRefresh(job);
+    } catch (error) {
+      await onRefreshError(error, job);
+    }
+    attempted += 1;
+  }
+  return { attempted };
+}
+
 export function startGuardianMonitor({
   db,
   client,
@@ -90,6 +105,8 @@ export function startGuardianMonitor({
   clearIntervalImpl = clearInterval,
   onIncident = async () => {},
   onRepairDispatch = async () => {},
+  onRepairTracking = null,
+  recordSecurityEvent = recordGuardianSecurityEvent,
   onError = error => console.error('Neural Guardian monitor failed:', error?.message || error),
 } = {}) {
   if (!db?.query) throw new Error('GUARDIAN_DATABASE_REQUIRED');
@@ -126,13 +143,20 @@ export function startGuardianMonitor({
       } catch (error) {
         onError(error);
       }
+      if (typeof onRepairTracking === 'function') {
+        try {
+          await scanDispatchedGuardianRepairTracking(db, onRepairTracking, 3, onError);
+        } catch (error) {
+          onError(error);
+        }
+      }
       await scanNewOwnerErrors(db, cursor, 50, async nextId => {
         await db.query(
           `UPDATE owner_guardian_monitor_state SET last_seen_error_id=$1,updated_at=NOW()
            WHERE monitor_key='owner_error_logs' AND last_seen_error_id < $1`,
           [nextId]
         );
-      }, onIncident, onError);
+      }, onIncident, onError, recordSecurityEvent);
       await db.query(
         `UPDATE owner_guardian_monitor_state SET last_tick_at=NOW(),last_error=NULL,updated_at=NOW()
          WHERE monitor_key='owner_error_logs'`
@@ -140,13 +164,19 @@ export function startGuardianMonitor({
       const ready = typeof client?.isReady === 'function' ? client.isReady() : null;
       if (ready === true) discordReadyObserved = true;
       if (ready === false && discordReadyObserved && !discordFailureReported) {
-        await upsertGuardianIncident(db, {
-          system: 'pogaca_frieren',
+        const observedAt = new Date().toISOString();
+        const event = normalizeGuardianMonitorSecurityEvent({
+          eventId: 'guardian-monitor-discord-' + Date.now(),
+          source: 'frieren_guard_monitor',
+          system: 'guardian',
           code: 'DISCORD_CLIENT_NOT_READY',
+          severity: 'high',
           title: 'Poğaça Discord bağlantısı hazır değil',
           summary: 'Discord istemcisi hazır durumdan çıktı veya bağlantı kuramadı.',
-          severity: 'high',
+          observedAt,
+          evidence: [{ message: 'Discord client readiness monitor detected a disconnect.' }],
         });
+        await recordSecurityEvent(db, event, { ipSource: 'guardian_monitor' });
         discordFailureReported = true;
       } else if (ready === true) {
         discordFailureReported = false;

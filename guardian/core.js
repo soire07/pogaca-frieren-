@@ -6,6 +6,7 @@ export const GUARDIAN_SYSTEMS = Object.freeze([
   'pogaca_frieren',
   'owner_panel',
   'guardian',
+  'site_auth',
 ]);
 
 export const GUARDIAN_INCIDENT_STATUSES = Object.freeze([

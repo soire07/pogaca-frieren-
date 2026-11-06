@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { collectCodeContext, normalizeCodeContextText } from './code-context.js';
 import { normalizeGuardianReviewIncident, parseGuardianReview, reviewGuardianIncident } from './guardian-review.js';
 
 test('Guardian review input accepts only known systems and redacts secrets', () => {
@@ -98,7 +101,7 @@ test('Guardian review requests valid JSON and preserves the required test plan f
   assert.deepEqual(result.affectedFiles, ['guardian/automation.test.js']);
 });
 
-test('Guardian Groq self-test is admin-only and cannot dispatch repairs', async () => {
+test('Guardian provider self-test is admin-only and cannot dispatch repairs', async () => {
   const source = await readFile(new URL('./index.js', import.meta.url), 'utf8');
   const registration = await readFile(new URL('./register-commands.js', import.meta.url), 'utf8');
   assert.match(source, /setName\('frieren-guardian-test'\)/);
@@ -110,5 +113,141 @@ test('Guardian Groq self-test is admin-only and cannot dispatch repairs', async 
   const handler = source.slice(start, end);
   assert.match(handler, /reviewGuardianIncident\(/);
   assert.match(handler, /finally\s*\{\s*guardianReviewInProgress\s*=\s*false/);
+  assert.match(handler, /if \(!modelConfigured\)/);
+  assert.doesNotMatch(handler, /if \(!groq\)/);
+  assert.match(handler, /neuralEnv: process\.env/);
   assert.doesNotMatch(handler, /processGuardianIncident|processPendingGuardianRepairDispatch|api\.github\.com|workflow_dispatch/);
+});
+
+
+test('Guardian review records the exact source commit, context files and context hash', async () => {
+  const expectedHash = 'b'.repeat(64);
+  let prompt;
+  const result = await reviewGuardianIncident({
+    groq: { chat: { completions: { create: async request => { prompt = request; return ({ choices: [{ message: { content: JSON.stringify({
+      rootCause: 'A missing test guard.', confidence: 'high', affectedFiles: ['guardian/automation.test.js'],
+      suggestedFix: 'No change until verified.', proposedPatch: '', tests: [], risks: [],
+    }) } }] }); } } } },
+    model: 'test-model',
+    incident: { system: 'guardian', code: 'TEST_GAP', title: 'Guardian review', summary: 'Check existing test coverage.' },
+    collectCodeContext: async () => ({
+      text: 'FILE: guardian/automation.test.js\\nexisting regression test',
+      files: ['guardian/automation.test.js', 'guardian/automation.js'],
+      contextHash: expectedHash,
+      sourceCommitSha: 'c'.repeat(40),
+    }),
+  });
+  assert.deepEqual(result.sourceContextFiles, ['guardian/automation.test.js', 'guardian/automation.js']);
+  assert.equal(result.sourceContextHash, expectedHash);
+  assert.equal(result.sourceCommitSha, 'c'.repeat(40));
+  const userPrompt = JSON.parse(prompt.messages[1].content);
+  assert.ok(userPrompt.sourceContext.includes('guardian/automation.test.js'));
+  assert.ok(userPrompt.constraints.some(rule => rule.includes('aynı davranışı zaten doğruluyorsa')));
+});
+
+test('actual Guardian context collector includes implementation and tests, redacts secrets and hashes exact context', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'frieren-guardian-context-'));
+  try {
+    for (const dir of ['guardian', 'ai-agent']) await mkdir(path.join(rootDir, dir), { recursive: true });
+    const files = [
+      'guardian/automation.js',
+      'guardian/automation.test.js',
+      'ai-agent/guardian-review.js',
+      'ai-agent/guardian-review.test.js',
+      'ai-agent/code-context.js',
+    ];
+    for (const file of files) {
+      await writeFile(path.join(rootDir, file), 'const DATABASE_URL="postgres://secret-value";\\nconst FRIEREN_API_TOKEN="frieren-token-secret";\\nconst GITHUB_TOKEN="github-token-secret";\\nconst SIGNING_PRIVATE_KEY="private-key-secret";\\nconst requestHeaders = { authorization: "Bearer authorization-secret" };\\n// ' + file + '\\n');
+    }
+    const context = await collectCodeContext({
+      rootDir,
+      question: 'guardian incident affectedFiles regression test',
+      sourceCommitSha: 'd'.repeat(40),
+      budget: 3600,
+    });
+    for (const file of files) {
+      assert.ok(context.files.includes(file), 'missing mandatory context file: ' + file);
+      assert.ok(context.text.includes('FILE: ' + file));
+    }
+    assert.doesNotMatch(context.text, /secret-value|frieren-token-secret|github-token-secret|private-key-secret|authorization-secret/);
+    assert.match(context.contextHash, /^[a-f0-9]{64}$/);
+    assert.equal(context.sourceCommitSha, 'd'.repeat(40));
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+
+test('code context normalization accepts legacy strings and evidence-aware objects', () => {
+  assert.equal(normalizeCodeContextText('legacy source'), 'legacy source');
+  assert.equal(normalizeCodeContextText({ text: 'source with evidence' }), 'source with evidence');
+  assert.equal(normalizeCodeContextText({ files: ['index.js'] }), '');
+  assert.equal(normalizeCodeContextText(null), '');
+});
+
+
+test('Guardian review uses configured Frieren Neural when Groq is absent', async () => {
+  let requestUrl;
+  const neuralEnv = {
+    FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
+    FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(40),
+    FRIEREN_NEURAL_QUALITY_APPROVED: '1',
+  };
+  const result = await reviewGuardianIncident({
+    groq: null,
+    neuralEnv,
+    neuralFetchImpl: async (url, options) => {
+      requestUrl = url;
+      assert.equal(options.headers.authorization, 'Bearer ' + neuralEnv.FRIEREN_NEURAL_API_TOKEN);
+      const prompt = JSON.parse(options.body).prompt;
+      assert.match(prompt, /Guardian Neural provider regression/);
+      assert.match(prompt, /\"rootCause\"/);
+      assert.match(prompt, /\"proposedPatch\"/);
+      assert.match(prompt, /JSON only/);
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          completion: JSON.stringify({
+            rootCause: 'Neural provider is configured and returned a review.',
+            confidence: 'high',
+            affectedFiles: ['ai-agent/guardian-review.js'],
+            suggestedFix: 'No change required.',
+            proposedPatch: '',
+            tests: [],
+            risks: [],
+          }),
+          model: 'ufakai/ufakzeka-1',
+        }),
+      };
+    },
+    incident: {
+      system: 'guardian',
+      code: 'NEURAL_REVIEW_TEST',
+      title: 'Guardian Neural provider regression',
+      summary: 'Verify Guardian can use Neural without a Groq key.',
+    },
+    collectCodeContext: async () => ({
+      text: 'FILE: ai-agent/guardian-review.js\\nexport async function reviewGuardianIncident() {}',
+      files: ['ai-agent/guardian-review.js'],
+      contextHash: 'a'.repeat(64),
+      sourceCommitSha: 'b'.repeat(40),
+    }),
+  });
+  assert.equal(requestUrl, 'https://neural.example.test/generate');
+  assert.equal(result.status, 'proposal_only');
+  assert.equal(result.applied, false);
+  assert.equal(result.sourceCommitSha, 'b'.repeat(40));
+});
+
+
+test('Guardian does not fall back to Groq when a Neural URL is selected but its token is invalid', async () => {
+  let groqCalls = 0;
+  await assert.rejects(reviewGuardianIncident({
+    groq: { chat: { completions: { create: async () => { groqCalls += 1; return { choices: [] }; } } } },
+    neuralEnv: { FRIEREN_NEURAL_API_URL: 'https://neural.example.test', FRIEREN_NEURAL_QUALITY_APPROVED: '1' },
+    incident: { system: 'guardian', code: 'FAIL_CLOSED', title: 'Provider selection', summary: 'Neural URL exists but token is missing.' },
+    collectCodeContext: async () => 'FILE: ai-agent/guardian-review.js\\nsource',
+  }), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' });
+  assert.equal(groqCalls, 0);
 });

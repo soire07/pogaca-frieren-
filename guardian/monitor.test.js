@@ -1,6 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scanNewOwnerErrors, scanPendingGuardianIncidents, scanPendingGuardianRepairDispatches, startGuardianMonitor } from './monitor.js';
+import { scanNewOwnerErrors, scanPendingGuardianIncidents, scanPendingGuardianRepairDispatches, scanDispatchedGuardianRepairTracking, startGuardianMonitor } from './monitor.js';
+
+
+
+
+test('monitor refreshes a bounded batch of already-dispatched Guardian repair jobs', async () => {
+  let requestedLimit;
+  const refreshed = [];
+  const db = { query: async (sql, values) => {
+    if (sql.includes("repair_dispatch_status='dispatched'")) {
+      requestedLimit = values[0];
+      return { rows: [{ id: 7, incident_id: 42, repair_dispatch_status: 'dispatched' }] };
+    }
+    return { rows: [] };
+  } };
+  const result = await scanDispatchedGuardianRepairTracking(db, async job => refreshed.push(job.id), 3);
+  assert.equal(requestedLimit, 3);
+  assert.deepEqual(refreshed, [7]);
+  assert.deepEqual(result, { attempted: 1 });
+});
 
 test('local monitor processes only unseen error rows and advances its cursor', async () => {
   let selectParams;
@@ -16,7 +35,7 @@ test('local monitor processes only unseen error rows and advances its cursor', a
       return { rows: [] };
     },
   };
-  const result = await scanNewOwnerErrors(db, 3);
+  const result = await scanNewOwnerErrors(db, 3, 50, async () => {}, async () => {}, async () => {}, async (_db, event) => ({ incident: null, event }));
   assert.deepEqual(selectParams, [3, 50]);
   assert.deepEqual(result, { lastSeenErrorId: 5, recorded: 2 });
 });
@@ -76,7 +95,13 @@ test('monitor starts before Discord Ready without reporting a false startup outa
   let stop;
   let tick;
   try {
-    stop = startGuardianMonitor({ db, client: { isReady: () => ready }, setIntervalImpl: callback => { tick = callback; return { unref() {} }; }, clearIntervalImpl: () => {} });
+    const monitored = [];
+    stop = startGuardianMonitor({
+      db, client: { isReady: () => ready },
+      recordSecurityEvent: async (_db, event) => { monitored.push(event); return { incident: { id: 1 } }; },
+      setIntervalImpl: callback => { tick = callback; return { unref() {} }; },
+      clearIntervalImpl: () => {},
+    });
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(calls.some(call => call.sql.includes('INSERT INTO owner_guardian_incidents')), false,
       'initial Discord login must not be reported as a failure');
@@ -84,8 +109,9 @@ test('monitor starts before Discord Ready without reporting a false startup outa
     await tick();
     ready = false;
     await tick();
-    assert.equal(calls.some(call => call.sql.includes('INSERT INTO owner_guardian_incidents')), true,
-      'a disconnect after a successful Ready state must be reported');
+    assert.equal(monitored.length, 1);
+    assert.equal(monitored[0].source, 'frieren_guard_monitor');
+    assert.equal(monitored[0].code, 'DISCORD_CLIENT_NOT_READY');
   } finally { stop?.(); }
 });
 
@@ -103,18 +129,34 @@ test('monitor forwards each persisted incident to the autonomous handler before 
       return { rows: [] };
     },
   };
+  const recordedEvents = [];
   const result = await scanNewOwnerErrors(
-    db,
-    0,
-    50,
+    db, 0, 50,
     async id => progress.push(id),
     async incident => handled.push(incident),
+    async () => {},
+    async (_db, event) => {
+      recordedEvents.push(event);
+      return { duplicate: false, eventHash: 'a'.repeat(64), incident: saved };
+    },
   );
+  assert.equal(recordedEvents.length, 1);
+  assert.equal(recordedEvents[0].source, 'frieren_guard_monitor');
+  assert.equal(recordedEvents[0].eventId, 'guardian-monitor-error-1');
   assert.deepEqual(handled, [saved]);
   assert.deepEqual(progress, [1]);
   assert.equal(result.lastSeenErrorId, 1);
 });
 
+
+test('monitor does not advance the owner-error cursor when evidence persistence fails', async () => {
+  const progress = [];
+  const db = { query: async sql => sql.includes('SELECT id,scope,error_type')
+    ? { rows: [{ id: 9, scope: '/owner', error_type: 'PanelError', error_message: 'Panel failed', created_at: '2026-11-05T10:00:00Z' }] }
+    : { rows: [] } };
+  await assert.rejects(scanNewOwnerErrors(db,8,50,async id=>progress.push(id),async()=>{},async()=>{},async()=>{throw new Error('evidence store unavailable');}),/evidence store unavailable/);
+  assert.deepEqual(progress,[]);
+});
 
 test('error and incident scan limits are normalized to whole bounded rows', async () => {
   const limits = [];

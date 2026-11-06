@@ -498,3 +498,15 @@ test('repair context keeps the full bounded contents of an explicitly affected f
   assert.ok(context.length > 5_000);
   assert.ok(context.length <= 32_000);
 });
+
+
+test('repair patch rejects a valid-looking hunk without changed lines', () => {
+  const contextOnly = [
+    'diff --git a/rpg-mechanics.js b/rpg-mechanics.js',
+    '--- a/rpg-mechanics.js',
+    '+++ b/rpg-mechanics.js',
+    '@@ -1 +1 @@',
+    ' unchanged context only',
+  ].join('\n');
+  assert.throws(() => validatePatchPaths(contextOnly), { message: 'REPAIR_PATCH_HUNK_REQUIRED' });
+});

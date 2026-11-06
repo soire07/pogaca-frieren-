@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { handlePublicSiteRequest } from '../public-site.js';
+import { handlePublicSiteRequest, publicHomeShowcasePage } from '../public-site.js';
 import { createPublicSiteSession, buildPublicSiteSessionCookie } from '../owner-dashboard.js';
 import { createSiteCsrfToken } from '../site-auth.js';
 
@@ -340,7 +340,7 @@ test('homepage renders the signed-in user profile with the completed starry bann
   await handlePublicSiteRequest(request('/kesfet', visitor), response);
   assert.ok(response.body.includes('site-avatar.webp'));
   assert.ok(response.body.includes('profile-banner-art'));
-  assert.ok(response.body.includes('site-profile-banner.svg'));
+  assert.ok(response.body.includes('site-banner.svg'));
   assert.ok(response.body.includes('MACERACI HESABI'));
   assert.ok(response.body.includes('Gezgin'));
   assert.equal(response.body.includes('site-banner.webp'), false);
@@ -954,10 +954,10 @@ test('market page registers live price preview and category controls', async () 
 
 test('dedicated Frieren profile banner asset is publicly served as SVG', async () => {
   const response = res();
-  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-profile-banner.svg', headers: {} }, response), true);
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-banner.svg', headers: {} }, response), true);
   assert.equal(response.status, 200);
   assert.match(response.headers['Content-Type'], /image\/svg\+xml/);
-  assert.match(String(response.body), /Frieren yıldızlı gece bannerı/);
+  assert.match(String(response.body), /Frieren — The Arcane Journey/);
   assert.match(String(response.body), /<svg/);
 });
 
@@ -1434,4 +1434,18 @@ test('global account profile has a complete Frieren identity layout and keeps RP
   const response=res();assert.equal(await handlePublicSiteRequest(request('/profil',{id:accountId,username:'Gezgin'}),response,{db}),true);
   for(const expected of ['account-profile-showcase','account-profile-grid','GİZLİLİK VE GÜVENLİK','/kesfet#topluluk-sohbeti','/hesap-merkezi','/maceraci'])assert.ok(response.body.includes(expected),expected);
   assert.doesNotMatch(response.body,/Sunucu seç|Karakter seç/);
+});
+
+
+test('public adventurer profile renders the equipped Frieren guild banner', () => {
+  const user = { id: visitor.id, username: visitor.username, avatarUrl: '/assets/site-avatar.webp' };
+  const data = {
+    profile: { character_name: 'Fern', class_name: 'Büyücü', level: 22, xp: 3450 },
+    settings: { show_cosmetics: true, show_achievements: true, show_collections: true, show_stats: false, show_activity: false },
+    rooms: [], trophies: [], loadout: [{ cosmetic_key: 'frieren_banner', slot: 'guild_banner' }],
+    companion: null, cardVariants: [], home: { layout: [] }, activity: [],
+  };
+  const html = publicHomeShowcasePage(user, data);
+  assert.match(html, /player-banner--frieren/);
+  assert.match(html, /Maceracı profil sancağı/);
 });
