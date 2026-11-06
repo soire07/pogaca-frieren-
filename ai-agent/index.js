@@ -749,7 +749,7 @@ client.on(Events.InteractionCreate, async interaction => {
     const minutes = Math.floor((uptimeSeconds % 3600) / 60);
     const seconds = uptimeSeconds % 60;
     const provider = neuralRequested ? 'Frieren Neural' : (groq ? (process.env.FRIEREN_MODEL_PROVIDER || 'groq') : 'Yapılandırılmamış');
-    const model = isNeuralConfigured(process.env) ? (process.env.FRIEREN_NEURAL_MODEL || 'ufakai/ufakzeka-1') : (process.env.FRIEREN_MODEL || 'openai/gpt-oss-20b');
+    const model = neuralRequested ? (process.env.FRIEREN_NEURAL_MODEL || 'ufakai/ufakzeka-1') : (process.env.FRIEREN_MODEL || 'openai/gpt-oss-20b');
     const embed = new EmbedBuilder()
       .setTitle('Frieren AI — Servis Durumu')
       .setColor(client.isReady() ? 0x57F287 : 0xED4245)
