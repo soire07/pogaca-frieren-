@@ -1102,7 +1102,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     let bannerMedia=null;try{bannerMedia=await getProfileMedia(db,user.id,'banner');}catch{}
     const accountProfile=await getAccountProfile(db,user.id,{viewerAccountId:user.id});
     const [activity,friends]=await Promise.all([accountProfile.profile.show_activity===false?Promise.resolve([]):listAccountProfileActivity(db,user.id,12),listAccountFriends(db,user.id)]);
-    const html=siteAccountProfilePage(user,{bannerUrl:bannerMedia?'/profil/media?kind=banner':'/assets/site-profile-banner.svg',profile:accountProfile.profile,activity,friends,visitors:accountProfile.visitors,notifications:await listAccountNotifications(db,user.id,50)});
+    const html=siteAccountProfilePage(user,{bannerUrl:bannerMedia?'/profil/media?kind=banner':'/assets/site-profile-banner.svg',profile:accountProfile.profile,activity,friends,visitors:accountProfile.visitors,badges:accountProfile.badges,notifications:await listAccountNotifications(db,user.id,50)});
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});
     res.end(html);return true;
   }
