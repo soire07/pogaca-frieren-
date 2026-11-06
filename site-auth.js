@@ -506,7 +506,7 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
   }
   if(!routes.includes(path))return false;
   if(path==='/logout'&&req.method==='GET'){
-    res.writeHead(303,{Location:'/login','Cache-Control':'no-store','Set-Cookie':COOKIE+'=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'});res.end();return true;
+    res.writeHead(302,{Location:'/login','Cache-Control':'no-store','Set-Cookie':COOKIE+'=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'});res.end();return true;
   }
   if(!db||!sessionSecret||sessionSecret.length<32){send(res,503,page('Kurulum gerekli','<h1>Hesap sistemi geçici olarak kullanılamıyor</h1>'));return true;}
   try {
