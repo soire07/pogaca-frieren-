@@ -1,6 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
 export const ANIME_NEWS_FEED_URL = 'https://www.animenewsnetwork.com/news/rss.xml?ann-edition=us';
+// New sources are added only after their RSS endpoint and article/image hosts are verified.
+export const ANIME_NEWS_SOURCES = Object.freeze([
+  Object.freeze({ key: 'anime_news', name: 'Anime News Network', url: ANIME_NEWS_FEED_URL,
+    articleHosts: ['animenewsnetwork.com', 'www.animenewsnetwork.com'],
+    imageHosts: ['animenewsnetwork.com', 'www.animenewsnetwork.com', 'cdn.animenewsnetwork.com'] })
+]);
 export const NOTIFICATION_CATEGORIES = Object.freeze(['anime_news','event_reminders','boss_raid_reminders']);
 const DISCORD_ID = /^\d{17,20}$/;
 
@@ -20,7 +26,29 @@ function readTag(block, tag) {
   return match?.[1] || '';
 }
 
-export function parseAnimeNewsRss(xml) {
+function readImageUrl(block) {
+  const candidates = [
+    /<media:content\\b[^>]*\\burl=["']([^"']+)["'][^>]*>/i,
+    /<media:thumbnail\\b[^>]*\\burl=["']([^"']+)["'][^>]*>/i,
+    /<enclosure\\b[^>]*\\burl=["']([^"']+)["'][^>]*>/i,
+    /<img\\b[^>]*\\bsrc=["']([^"']+)["'][^>]*>/i
+  ];
+  for (const pattern of candidates) {
+    const match = pattern.exec(block);
+    if (match?.[1]) return decodeXml(match[1]).trim();
+  }
+  return '';
+}
+
+function safeFeedUrl(value, allowedHosts) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password || !allowedHosts.includes(url.hostname.toLowerCase())) return null;
+    return url.toString();
+  } catch { return null; }
+}
+
+export function parseAnimeNewsRss(xml, source = ANIME_NEWS_SOURCES[0]) {
   const source = String(xml || '');
   if (source.length > 2_000_000) throw new Error('NEWS_BIRD_FEED_TOO_LARGE');
   const items = [];
@@ -30,17 +58,66 @@ export function parseAnimeNewsRss(xml) {
     const rawLink = cleanFeedText(readTag(block,'link'),500);
     const guid = cleanFeedText(readTag(block,'guid') || rawLink,500);
     const date = new Date(cleanFeedText(readTag(block,'pubDate') || readTag(block,'dc:date'),100));
-    let link;
-    try { link = new URL(rawLink); } catch { continue; }
-    if (!title || !guid || !Number.isFinite(date.getTime()) || link.protocol !== 'https:' ||
-        !['animenewsnetwork.com','www.animenewsnetwork.com'].includes(link.hostname.toLowerCase())) continue;
+    const safeLink = safeFeedUrl(rawLink, source.articleHosts);
+    if (!title || !guid || !Number.isFinite(date.getTime()) || !safeLink) continue;
+    const rawImage = readImageUrl(block);
+    const imageUrl = rawImage ? safeFeedUrl(rawImage, source.imageHosts) : null;
     items.push({
-      guid, title, link: link.toString(),
+      guid: source.key + ':' + guid, title, link: safeLink,
       summary: cleanFeedText(readTag(block,'description'),500),
+      imageUrl, sourceName: source.name,
       publishedAt: date.toISOString()
     });
   }
   return items.slice(0,50);
+}
+
+
+function escapeMarkdown(value='') {
+  return String(value).replace(/([\\\\_*~|])/g, '\\\\$1').replace(/@/g, '@\\u200b');
+}
+
+export function classifyAnimeNews(title='') {
+  const value=String(title).toLocaleLowerCase('tr-TR');
+  if (/manga|manhwa|manhua|light novel|graphic novel/.test(value)) return 'Manga';
+  if (/game|gaming|switch|playstation|xbox|steam|pc game|video game|oyun/.test(value)) return 'Oyun';
+  if (/anime|season|episode|film|movie|voice actor|cast|series|dublaj/.test(value)) return 'Anime';
+  return 'Anime & Manga';
+}
+
+export function buildAnimeNewsDigestEmbeds(items, now = new Date()) {
+  const safeItems=(Array.isArray(items)?items:[]).filter(item =>
+    item && safeFeedUrl(item.link, ANIME_NEWS_SOURCES.flatMap(source=>source.articleHosts))
+  ).slice(0,5);
+  if (!safeItems.length) return [];
+  const date=new Intl.DateTimeFormat('tr-TR',{dateStyle:'long',timeZone:'Europe/Istanbul'}).format(new Date(now));
+  const lead=safeItems[0];
+  const embeds=[{
+    color:0x7654D6,
+    author:{name:'🐦 FRIEREN HABERCİ KUŞU'},
+    title:String(lead.title||'Günün öne çıkan haberi').slice(0,256),
+    url:lead.link,
+    description:String(lead.summary||'Bu haber için kaynakta kısa bir açıklama bulunmuyor.').slice(0,900),
+    fields:[
+      {name:'KATEGORİ',value:classifyAnimeNews(lead.title),inline:true},
+      {name:'KAYNAK',value:String(lead.sourceName||'Anime News Network').slice(0,100),inline:true}
+    ],
+    ...(lead.imageUrl && safeFeedUrl(lead.imageUrl,ANIME_NEWS_SOURCES.flatMap(source=>source.imageHosts)) ? {image:{url:lead.imageUrl}} : {}),
+    footer:{text:'Günlük Anime & Manga Bülteni · '+date},
+    timestamp:new Date(now).toISOString()
+  }];
+  const remaining=safeItems.slice(1);
+  if (remaining.length) embeds.push({
+    color:0x46366F,
+    title:'✦ GÜNÜN DİĞER HABERLERİ',
+    fields:remaining.map((item,index)=>({
+      name:String(index+2).padStart(2,'0')+' · '+String(item.title||'Başlıksız haber').slice(0,240),
+      value:(String(item.summary||'Ayrıntılar için haber kaynağını aç.').slice(0,700)+'\\n[Haberi oku ↗]('+item.link+')').slice(0,1024),
+      inline:false
+    })),
+    footer:{text:'Bağlantılar doğrudan haber kaynağına yönlendirir.'}
+  });
+  return embeds;
 }
 
 export async function ensureNewsBirdSchema(db) {
@@ -60,10 +137,14 @@ export async function ensureNewsBirdSchema(db) {
       title VARCHAR(240) NOT NULL,
       link TEXT NOT NULL,
       summary VARCHAR(500) NOT NULL DEFAULT '',
+      image_url TEXT,
+      source_name TEXT NOT NULL DEFAULT 'Anime News Network',
       published_at TIMESTAMPTZ NOT NULL,
       fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY(feed_key,guid)
     );
+    ALTER TABLE frieren_news_feed_items ADD COLUMN IF NOT EXISTS image_url TEXT;
+    ALTER TABLE frieren_news_feed_items ADD COLUMN IF NOT EXISTS source_name TEXT NOT NULL DEFAULT 'Anime News Network';
     CREATE INDEX IF NOT EXISTS frieren_news_feed_recent_idx
       ON frieren_news_feed_items(feed_key,published_at DESC);
     CREATE TABLE IF NOT EXISTS frieren_news_digest_state (
@@ -104,23 +185,31 @@ export async function getNotificationPreferences(db,guildId,userId) {
 
 export async function pollAnimeNewsFeed(db,fetcher=globalThis.fetch) {
   if(typeof fetcher!=='function') throw new Error('NEWS_BIRD_FETCH_UNAVAILABLE');
-  const response=await fetcher(ANIME_NEWS_FEED_URL,{
-    headers:{'User-Agent':'FrierenNewsBird/1.0 (+https://frierenbot.vercel.app)','Accept':'application/rss+xml, application/xml, text/xml'},
-    signal:AbortSignal.timeout(10_000)
-  });
-  if(!response?.ok) throw new Error('NEWS_BIRD_FEED_HTTP_'+String(response?.status||'UNKNOWN'));
-  const xml=await response.text();
-  const items=parseAnimeNewsRss(xml);
-  let inserted=0;
-  for(const item of items){
-    const result=await db.query(
-      `INSERT INTO frieren_news_feed_items(feed_key,guid,title,link,summary,published_at)
-       VALUES('anime_news',$1,$2,$3,$4,$5) ON CONFLICT(feed_key,guid) DO NOTHING RETURNING guid`,
-      [item.guid,item.title,item.link,item.summary,item.publishedAt]
-    );
-    inserted+=result.rowCount||0;
+  let fetched=0, inserted=0;
+  const failures=[];
+  for (const source of ANIME_NEWS_SOURCES) {
+    try {
+      const response=await fetcher(source.url,{
+        headers:{'User-Agent':'FrierenNewsBird/2.0 (+https://frierenbot.vercel.app)','Accept':'application/rss+xml, application/xml, text/xml'},
+        signal:AbortSignal.timeout(10_000)
+      });
+      if(!response?.ok) throw new Error('HTTP_'+String(response?.status||'UNKNOWN'));
+      const items=parseAnimeNewsRss(await response.text(),source);
+      fetched+=items.length;
+      for(const item of items){
+        const result=await db.query(
+          `INSERT INTO frieren_news_feed_items(feed_key,guid,title,link,summary,image_url,source_name,published_at)
+           VALUES('anime_news',$1,$2,$3,$4,$5,$6,$7) ON CONFLICT(feed_key,guid) DO NOTHING RETURNING guid`,
+          [item.guid,item.title,item.link,item.summary,item.imageUrl,item.sourceName,item.publishedAt]
+        );
+        inserted+=result.rowCount||0;
+      }
+    } catch (error) {
+      failures.push({source:source.name,error:error?.message||String(error)});
+    }
   }
-  return {fetched:items.length,inserted};
+  if (failures.length===ANIME_NEWS_SOURCES.length) throw new Error('NEWS_BIRD_ALL_FEEDS_FAILED');
+  return {fetched,inserted,failures};
 }
 
 export async function claimDueAnimeNewsDigests(db,limit=20) {
@@ -148,7 +237,7 @@ export async function claimDueAnimeNewsDigests(db,limit=20) {
      CROSS JOIN LATERAL (
        SELECT json_agg(item ORDER BY item->>'publishedAt' DESC) AS items
        FROM (
-         SELECT json_build_object('title',title,'link',link,'summary',summary,'publishedAt',published_at) AS item
+         SELECT json_build_object('title',title,'link',link,'summary',summary,'imageUrl',image_url,'sourceName',source_name,'publishedAt',published_at) AS item
          FROM frieren_news_feed_items
          WHERE feed_key='anime_news'
            AND published_at>COALESCE(c.last_sent_at,NOW()-INTERVAL '24 hours')
