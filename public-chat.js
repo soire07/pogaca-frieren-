@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { ensureProfileMediaSchema } from './profile-media.js';
 import { ensureSiteAccountSchema } from './site-auth.js';
+import { createAccountNotification } from './account-profile.js';
 
 const publicChatSchemaReady=new WeakMap();
 const ACCOUNT_ID=/^site_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -16,6 +17,8 @@ async function createPublicChatSchema(db){
  await db.query('ALTER TABLE frieren_public_chat_messages ADD COLUMN IF NOT EXISTS reply_to_message_id UUID');
  await db.query('ALTER TABLE frieren_public_chat_messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ');
  await db.query('ALTER TABLE frieren_public_chat_messages ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ');
+ await db.query(`CREATE TABLE IF NOT EXISTS frieren_public_chat_reads(message_id UUID NOT NULL REFERENCES frieren_public_chat_messages(message_id) ON DELETE CASCADE,reader_account_id TEXT NOT NULL,read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(message_id,reader_account_id))`);
+ await db.query('CREATE INDEX IF NOT EXISTS frieren_public_chat_reads_reader_idx ON frieren_public_chat_reads(reader_account_id,read_at DESC)');
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_presence(account_id TEXT PRIMARY KEY,last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),typing_until TIMESTAMPTZ)');
  await db.query('ALTER TABLE frieren_public_chat_presence ADD COLUMN IF NOT EXISTS typing_until TIMESTAMPTZ');
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_reactions(message_id UUID NOT NULL REFERENCES frieren_public_chat_messages(message_id) ON DELETE CASCADE,account_id TEXT NOT NULL,emoji VARCHAR(16) NOT NULL CHECK(emoji IN (\'❤️\',\'✨\',\'😂\')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(message_id,account_id,emoji))');
@@ -38,6 +41,7 @@ export async function listPublicChatMessages(db,{limit=60,viewerAccountId=null}=
  await ensureProfileMediaSchema(db);
  const result=await db.query(`SELECT m.message_id,m.account_id,m.username,m.body,m.created_at,m.edited_at,m.pinned_at,m.reply_to_message_id,m.account_id=$2 AS is_own,
   CASE WHEN EXISTS(SELECT 1 FROM frieren_profile_media pm WHERE pm.account_id=REPLACE(m.account_id,'site_','')::uuid AND pm.media_kind='avatar') THEN '/profil/media/public?accountId='||m.account_id ELSE NULL END AS avatar_url,
+  (SELECT COUNT(*)::int FROM frieren_public_chat_reads rd WHERE rd.message_id=m.message_id AND rd.reader_account_id<>m.account_id) AS read_count,
   EXISTS(SELECT 1 FROM frieren_public_chat_presence pr WHERE pr.account_id=m.account_id AND pr.last_seen_at>NOW()-INTERVAL '90 seconds') AS is_online,
   COALESCE((SELECT jsonb_agg(jsonb_build_object('emoji',r.emoji,'count',r.count,'reacted',r.reacted)) FROM (
    SELECT emoji,COUNT(*)::int AS count,BOOL_OR(account_id=$2) AS reacted FROM frieren_public_chat_reactions WHERE message_id=m.message_id GROUP BY emoji
@@ -60,9 +64,10 @@ export async function sendPublicChatMessage(db,{accountId,username,body,replyToM
   await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',[accountId]);
   const recent=await client.query("SELECT COUNT(*)::int AS count FROM frieren_public_chat_messages WHERE account_id=$1 AND created_at>NOW()-INTERVAL '60 seconds'",[accountId]);
   if(Number(recent.rows?.[0]?.count||0)>=5)return{status:'rate_limited'};
-  if(replyToMessageId){const parent=await client.query('SELECT message_id FROM frieren_public_chat_messages WHERE message_id=$1 AND hidden=FALSE',[replyToMessageId]);if(!parent.rowCount)return{status:'reply_not_found'};}
+  let parentAuthor=null;if(replyToMessageId){const parent=await client.query('SELECT message_id,account_id FROM frieren_public_chat_messages WHERE message_id=$1 AND hidden=FALSE',[replyToMessageId]);if(!parent.rowCount)return{status:'reply_not_found'};parentAuthor=parent.rows[0].account_id;}
   const id=randomUUID();
   const result=await client.query('INSERT INTO frieren_public_chat_messages(message_id,account_id,username,body,reply_to_message_id) VALUES($1,$2,$3,$4,$5) RETURNING message_id,username,body,created_at,reply_to_message_id',[id,accountId,author,message,replyToMessageId]);
+  if(parentAuthor&&parentAuthor!==accountId)await createAccountNotification(client,{accountId:parentAuthor,type:'chat_reply',title:'Sohbet mesajına yanıt',body:author+' mesajına yanıt verdi.',href:'/kesfet#topluluk-sohbeti'});
   return{status:'sent',message:result.rows[0]};
  });
 }
@@ -73,11 +78,12 @@ export async function togglePublicChatReaction(db,{accountId,messageId,emoji}){
  await ensurePublicChatSchema(db);
  return transaction(db,async client=>{
   await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',[accountId+':'+messageId]);
-  const message=await client.query('SELECT message_id FROM frieren_public_chat_messages WHERE message_id=$1 AND hidden=FALSE',[messageId]);
+  const message=await client.query('SELECT message_id,account_id,username FROM frieren_public_chat_messages WHERE message_id=$1 AND hidden=FALSE',[messageId]);
   if(!message.rowCount)return{status:'not_found'};
   const existing=await client.query('SELECT 1 FROM frieren_public_chat_reactions WHERE message_id=$1 AND account_id=$2 AND emoji=$3',[messageId,accountId,emoji]);
   if(existing.rowCount){await client.query('DELETE FROM frieren_public_chat_reactions WHERE message_id=$1 AND account_id=$2 AND emoji=$3',[messageId,accountId,emoji]);return{status:'removed'};}
   await client.query('INSERT INTO frieren_public_chat_reactions(message_id,account_id,emoji) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[messageId,accountId,emoji]);
+  if(message.rows[0].account_id!==accountId)await createAccountNotification(client,{accountId:message.rows[0].account_id,type:'chat_reaction',title:'Mesajına tepki geldi',body:emoji+' tepkisi bırakıldı.',href:'/kesfet#topluluk-sohbeti'});
   return{status:'added'};
  });
 }
@@ -143,4 +149,12 @@ export async function setPublicChatTyping(db,{accountId}){
  assertAccount(accountId);await ensurePublicChatSchema(db);
  await db.query("INSERT INTO frieren_public_chat_presence(account_id,last_seen_at,typing_until) VALUES($1,NOW(),NOW()+INTERVAL '5 seconds') ON CONFLICT(account_id) DO UPDATE SET last_seen_at=NOW(),typing_until=NOW()+INTERVAL '5 seconds'",[accountId]);
  return{status:'typing'};
+}
+
+export async function markPublicChatMessagesRead(db,{accountId}){
+ assertAccount(accountId);await ensurePublicChatSchema(db);
+ const r=await db.query(`INSERT INTO frieren_public_chat_reads(message_id,reader_account_id)
+  SELECT message_id,$1 FROM (SELECT message_id FROM frieren_public_chat_messages WHERE hidden=FALSE AND account_id<>$1 AND created_at>NOW()-INTERVAL '7 days' ORDER BY created_at DESC LIMIT 100) recent
+  ON CONFLICT(message_id,reader_account_id) DO NOTHING RETURNING message_id`,[accountId]);
+ return{status:'read',count:r.rowCount||0};
 }
