@@ -433,11 +433,23 @@ export default {
           specialAttackHistory.push(specialMessage);
           for (const i of living) {
             const f=fighters[i];
-            const specialMultiplier = finalStandAttack ? 1.35 : twilightCataclysm ? 1.05 : fallenWings ? 0.72 : angelicJudgment ? 0.88 : shardRain ? 0.5 : 0.68;
+            if (foolsGamble && foolTwist === 'fortune') {
+              const healing = Math.min(f.maxHp - hpNow[i], Math.max(1, Math.round(f.maxHp * 0.12)));
+              hpNow[i] += healing;
+              log.push(`🍀 ${f.username} The Fool’un Talih kartıyla ${healing} HP iyileşti.`);
+              continue;
+            }
+            const specialMultiplier = foolsGamble ? (foolTwist === 'misfortune' ? 0.62 : 0.42) : finalStandAttack ? 1.35 : twilightCataclysm ? 1.05 : fallenWings ? 0.72 : angelicJudgment ? 0.88 : shardRain ? 0.5 : 0.68;
             let incoming=calculateBossIncomingDamage(Math.round(rawDamage*specialMultiplier), Math.round(f.defense*0.44), bossPhase);
             incoming=finalStandAttack ? calculateAuraFinalStandDamage(incoming, 0, defending.has(i)) : applyDefendingReduction(incoming,defending.has(i));
             hpNow[i]=Math.max(0,hpNow[i]-incoming);
-            log.push(`☄️ ${f.username} ${finalStandAttack ? 'son direniş saldırısından' : twilightCataclysm ? 'alacakaranlık felaketinden' : fallenWings ? 'kara kanat fırtınasından' : angelicJudgment ? 'ilahi hükümden' : shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
+            if (foolsGamble && foolTwist === 'wildcard') {
+              const drained = Math.min(f.mana, 12);
+              f.mana -= drained;
+              log.push(`🃏 ${f.username} Joker kartıyla ${incoming} hasar aldı ve ${drained} mana kaybetti.`);
+            } else {
+              log.push(`☄️ ${f.username} ${foolsGamble ? 'Talihsizlik kartından' : finalStandAttack ? 'son direniş saldırısından' : twilightCataclysm ? 'alacakaranlık felaketinden' : fallenWings ? 'kara kanat fırtınasından' : angelicJudgment ? 'ilahi hükümden' : shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
+            }
           }
           if (finalStandAttack) auraFinalStandPending = false;
         } else {
