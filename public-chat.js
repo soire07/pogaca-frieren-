@@ -35,8 +35,8 @@ export async function ensurePublicChatSchema(db){
  try{await pending;}catch(error){publicChatSchemaReady.delete(db);throw error;}
 }
 
-export async function listPublicChatMessages(db,{limit=60,viewerAccountId=null}={}){
- const count=Math.max(1,Math.min(100,Math.floor(Number(limit)||60)));
+export async function listPublicChatMessages(db,{limit=100,viewerAccountId=null,before=null,search=''}={}){
+ const count=Math.max(1,Math.min(100,Math.floor(Number(limit)||100))),cursor=before&&Number.isFinite(Date.parse(before))?new Date(before).toISOString():null,term=clean(search,80,'PUBLIC_CHAT_SEARCH_INVALID',{optional:true});
  const viewer=viewerAccountId&&ACCOUNT_ID.test(String(viewerAccountId))?String(viewerAccountId):null;
  await ensurePublicChatSchema(db);
  await ensureSiteAccountSchema(db);
@@ -51,9 +51,11 @@ export async function listPublicChatMessages(db,{limit=60,viewerAccountId=null}=
   ) r),'[]'::jsonb) AS reactions,
   (SELECT jsonb_build_object('username',p.username,'body',LEFT(p.body,120)) FROM frieren_public_chat_messages p WHERE p.message_id=m.reply_to_message_id) AS reply
   FROM frieren_public_chat_messages m LEFT JOIN frieren_account_profiles ap ON ap.account_id=m.account_id
-  WHERE m.hidden=FALSE AND m.created_at>=NOW()-INTERVAL '7 days'
+  WHERE m.hidden=FALSE AND m.created_at>=NOW()-INTERVAL '30 days'
    AND ($2::text IS NULL OR NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE b.blocker_account_id=$2 AND b.blocked_account_id=m.account_id))
-  ORDER BY (m.pinned_at IS NOT NULL) DESC,m.created_at DESC,m.message_id DESC LIMIT $1`,[count,viewer]);
+   AND ($3::timestamptz IS NULL OR (m.created_at<$3 AND m.pinned_at IS NULL))
+   AND ($4::text='' OR m.username ILIKE '%'||$4||'%' OR ap.display_name ILIKE '%'||$4||'%' OR m.body ILIKE '%'||$4||'%')
+  ORDER BY (m.pinned_at IS NOT NULL) DESC,m.created_at DESC,m.message_id DESC LIMIT $1`,[count,viewer,cursor,term]);
  return result.rows.reverse().sort((a,b)=>Number(Boolean(b.pinned_at))-Number(Boolean(a.pinned_at)));
 }
 
