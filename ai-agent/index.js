@@ -848,8 +848,8 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 
   if (interaction.commandName === 'frieren-guardian-test') {
-    if (!groq) {
-      await interaction.reply({ content: 'Groq yapılandırılmamış: GROQ_API_KEY bulunamadı.', flags: MessageFlags.Ephemeral });
+    if (!modelConfigured) {
+      await interaction.reply({ content: 'Frieren Neural veya Groq sağlayıcısı yapılandırılmamış.', flags: MessageFlags.Ephemeral });
       return;
     }
     if (guardianReviewInProgress || runningGuilds.size > 0 || ownerScenarioLocks.size > 0) {
@@ -862,10 +862,11 @@ client.on(Events.InteractionCreate, async interaction => {
       const review = await reviewGuardianIncident({
         groq,
         model: process.env.FRIEREN_MODEL || 'openai/gpt-oss-20b',
+        neuralEnv: process.env,
         incident: {
           system: 'guardian',
-          code: 'GUARDIAN_GROQ_SELF_TEST',
-          title: 'Guardian Groq bağlantı testi',
+          code: 'GUARDIAN_PROVIDER_SELF_TEST',
+          title: 'Guardian model bağlantı testi',
           summary: 'Bu sentetik bir bağlantı testidir. Gerçek üretim olayı değildir. Yalnızca Guardian inceleme modelinin geçerli JSON yanıtı üretip üretmediğini doğrula; herhangi bir dosyayı değiştirme veya onarım başlatma.',
           evidence: [{ file: 'ai-agent/guardian-review.js', message: 'Sentetik güvenli test girdisi.' }],
         },
