@@ -71,7 +71,7 @@ export function validatePatchPaths(patch, { task = '', incidentId = '' } = {}) {
     if (oldPath[1] !== header[1]) throw new Error('REPAIR_PATH_MISMATCH');
     if (newPath[1] !== header[2]) throw new Error('REPAIR_PATH_MISMATCH');
     // A hunk containing context only is not an actual repair.
-    const hasChangedLine = /^(?:\\+(?!\\+\\+)|-(?!--))/m.test(section);
+    const hasChangedLine = /^(?:\+(?!\+\+)|-(?!--))/m.test(section);
     if (!hasChangedLine) throw new Error('REPAIR_PATCH_HUNK_REQUIRED');
     files.push(header[1]);
   }
