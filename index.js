@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, Collection, EmbedBuilder, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, Collection, EmbedBuilder, Events, GatewayIntentBits, MessageFlags, PermissionFlagsBits } from 'discord.js';
 import { readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -18,7 +18,7 @@ import { ensureAdventurerPlatformTables, claimDueGuildEventReminders, markGuildE
 import { ensurePlayerMarketTables, claimDuePlayerMarketPriceAlerts, markPlayerMarketPriceAlertNotified, releasePlayerMarketPriceAlertClaim, cancelPlayerMarketPriceAlert } from './player-market.js';
 import { ensureSocialPlatformTables } from './social-platform.js';
 import { ensureAccountCenterSchema } from './account-center.js';
-import { ensureNewsBirdSchema, pollAnimeNewsFeed, claimDueAnimeNewsDigests, markAnimeNewsDigestSent, releaseAnimeNewsDigestClaim, getEventReminderRecipients, setNotificationPreference } from './news-birds.js';
+import { ensureNewsBirdSchema, pollAnimeNewsFeed, claimDueAnimeNewsGuildDigests, markAnimeNewsGuildDigestSent, releaseAnimeNewsGuildDigestClaim, disableNewsGuildChannel, getEventReminderRecipients, buildAnimeNewsDigestEmbeds, translateAnimeNewsItems } from './news-birds.js';
 import { ensureCardVariantSchema } from './card-variants.js';
 import { ensureGuildWorkshopSchema, runGuildSpellAutomations } from './guild-workshop.js';
 import { ensureGuildTeamLeagueSchema } from './guild-team-leagues.js';
@@ -157,32 +157,52 @@ async function processNewsBirdDigests(readyClient = client) {
   if (newsBirdSweepRunning || !readyClient?.isReady?.()) return;
   newsBirdSweepRunning = true;
   try {
-    try { await pollAnimeNewsFeed(pool); }
-    catch (error) { console.warn('Haberci kuş RSS güncellemesi başarısız:', error?.message || error); }
-    const due = await claimDueAnimeNewsDigests(pool, 20);
+    try {
+      const feedResult = await pollAnimeNewsFeed(pool);
+      for (const failure of feedResult.failures || []) {
+        console.warn('Haberci kuş kaynağı güncellenemedi:', failure.source, failure.error);
+      }
+    } catch (error) {
+      console.warn('Haberci kuş RSS güncellemesi başarısız:', error?.message || error);
+    }
+
+    // RSS is polled once globally; each configured guild receives one independent digest.
+    const due = await claimDueAnimeNewsGuildDigests(pool, 100);
     for (const digest of due) {
       try {
-        const user = await readyClient.users.fetch(digest.user_id);
+        const channel = await readyClient.channels.fetch(digest.channel_id);
+        if (String(channel?.guildId || '') !== String(digest.guild_id)) {
+          throw new Error('NEWS_BIRD_TARGET_CHANNEL_GUILD_MISMATCH');
+        }
+        if (!channel?.isTextBased?.() || typeof channel.send !== 'function') {
+          throw new Error('NEWS_BIRD_TARGET_CHANNEL_NOT_SENDABLE');
+        }
+        const permissions = channel.permissionsFor(readyClient.user);
+        if (!permissions?.has([
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.EmbedLinks
+        ])) {
+          throw new Error('NEWS_BIRD_TARGET_CHANNEL_PERMISSIONS_MISSING');
+        }
         const items = Array.isArray(digest.items) ? digest.items : [];
-        const lines = items.slice(0, 5).map(item =>
-          '• **' + String(item.title || '').slice(0, 180) + '**\\n' +
-          String(item.summary || '').slice(0, 180) + '\\n' + String(item.link || '')
-        );
-        const content = ('🐦 **Frieren Haberci Kuşu · Günlük anime özeti**\\n' + lines.join('\\n\\n')).slice(0, 1900);
-        if (!lines.length) {
-          await markAnimeNewsDigestSent(pool, digest.guild_id, digest.user_id);
-          continue;
+        const translatedItems = await translateAnimeNewsItems(pool, items);
+        const embeds = buildAnimeNewsDigestEmbeds(translatedItems);
+        if (embeds.length) {
+          await channel.send({ embeds, allowedMentions: { parse: [] } });
         }
-        await user.send({ content, allowedMentions: { parse: [] } });
-        await markAnimeNewsDigestSent(pool, digest.guild_id, digest.user_id);
+        await markAnimeNewsGuildDigestSent(pool, digest.guild_id);
       } catch (error) {
-        if ([50007, 10013].includes(Number(error?.code))) {
-          await setNotificationPreference(pool, { guildId: digest.guild_id, userId: digest.user_id, category: 'anime_news', enabled: false }).catch(() => {});
-          await markAnimeNewsDigestSent(pool, digest.guild_id, digest.user_id).catch(() => false);
-        } else {
-          await releaseAnimeNewsDigestClaim(pool, digest.guild_id, digest.user_id).catch(() => false);
-          console.error('Haberci kuş bildirimi teslim edilemedi:', error?.message || error);
+        if ([10003, 10008].includes(Number(error?.code))) {
+          await disableNewsGuildChannel(pool, digest.guild_id).catch(() => {});
         }
+        await releaseAnimeNewsGuildDigestClaim(pool, digest.guild_id).catch(() => false);
+        console.error(
+          'Haberci kuş sunucu kanalına teslim edilemedi:',
+          'guild=' + digest.guild_id,
+          'channel=' + digest.channel_id,
+          error?.message || error
+        );
       }
     }
   } catch (error) {

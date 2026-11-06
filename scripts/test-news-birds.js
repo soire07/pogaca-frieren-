@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseAnimeNewsRss, setNotificationPreference, getNotificationPreferences, claimDueAnimeNewsDigests, getEventReminderRecipients } from '../news-birds.js';
+import { parseAnimeNewsRss, pollAnimeNewsFeed, buildAnimeNewsDigestEmbeds, classifyAnimeNews, setNotificationPreference, getNotificationPreferences, claimDueAnimeNewsDigests, getEventReminderRecipients, translateAnimeNewsItems } from '../news-birds.js';
 
 test('RSS parser extracts bounded safe titles, summaries and HTTPS article links',()=>{
  const xml='<?xml version="1.0"?><rss><channel><item><title><![CDATA[Frieren: New Arc & Cast]]></title><link>https://www.animenewsnetwork.com/news/2026-11-04/test</link><guid>ann-1</guid><pubDate>Wed, 04 Nov 2026 12:00:00 GMT</pubDate><description><![CDATA[<p>New <b>anime</b> update &amp; details.</p>]]></description></item></channel></rss>';
@@ -14,6 +14,75 @@ test('RSS parser extracts bounded safe titles, summaries and HTTPS article links
 test('RSS parser drops malformed dates, unsafe links and oversized titles',()=>{
  const xml='<rss><item><title>Bad date</title><link>https://www.animenewsnetwork.com/a</link><guid>1</guid><pubDate>not a date</pubDate></item><item><title>Unsafe</title><link>javascript:alert(1)</link><guid>2</guid><pubDate>Wed, 04 Nov 2026 12:00:00 GMT</pubDate></item></rss>';
  assert.deepEqual(parseAnimeNewsRss(xml),[]);
+});
+
+
+test('RSS parser extracts a safe source image and source attribution',()=>{
+ const xml='<rss><item><title>New Anime Season</title><link>https://www.animenewsnetwork.com/news/2026-11-05/test</link><guid>ann-image-1</guid><pubDate>Wed, 05 Nov 2026 12:00:00 GMT</pubDate><description>New season announced.</description><media:thumbnail url="https://cdn.animenewsnetwork.com/thumbnails/test.jpg"/></item></rss>';
+ const items=parseAnimeNewsRss(xml);
+ assert.equal(items[0].imageUrl,'https://cdn.animenewsnetwork.com/thumbnails/test.jpg');
+ assert.equal(items[0].sourceName,'Anime News Network');
+});
+
+
+test('RSS poll stores normalized source, article and image metadata with conflict-safe keys',async()=>{
+ const calls=[];
+ const xml='<rss><item><title>Anime Update</title><link>https://www.animenewsnetwork.com/news/2026-11-05/poll</link><guid>poll-1</guid><pubDate>Wed, 05 Nov 2026 12:00:00 GMT</pubDate><description>Update summary.</description><media:thumbnail url="https://cdn.animenewsnetwork.com/poll.jpg"/></item></rss>';
+ const result=await pollAnimeNewsFeed({async query(sql,params){calls.push({sql,params});return{rowCount:1,rows:[]};}},async url=>({ok:true,status:200,text:async()=>xml}));
+ assert.deepEqual(result,{fetched:1,inserted:1,failures:[]});
+ assert.match(calls[0].sql,/image_url,source_name,published_at/);
+ assert.equal(calls[0].params[0],'poll-1');
+ assert.equal(calls[0].params[4],'https://cdn.animenewsnetwork.com/poll.jpg');
+ assert.equal(calls[0].params[5],'Anime News Network');
+});
+
+test('digest renderer creates individual clickable image embeds and deduplicates cross-source titles',()=>{
+ const embeds=buildAnimeNewsDigestEmbeds([
+  {title:'Nintendo Switch 2 sales',link:'https://www.animenewsnetwork.com/news/2026-11-05/game',summary:'Game sales update.',sourceName:'Anime News Network',imageUrl:'https://cdn.animenewsnetwork.com/thumb.jpg'},
+  {title:'New Manga License',link:'https://www.animenewsnetwork.com/news/2026-11-05/manga',summary:'A new manga license.',imageUrl:'https://cdn.animenewsnetwork.com/manga.jpg'}
+ ],new Date('2026-11-05T12:00:00.000Z'));
+ assert.equal(embeds.length,2);
+ assert.equal(embeds[0].title,'Nintendo Switch 2 sales');
+ assert.equal(embeds[0].url,'https://www.animenewsnetwork.com/news/2026-11-05/game');
+ assert.equal(embeds[0].image.url,'https://cdn.animenewsnetwork.com/thumb.jpg');
+ assert.equal(embeds[0].fields[0].value,'Oyun');
+ assert.equal(embeds[1].title,'New Manga License');
+ assert.equal(embeds[1].url,'https://www.animenewsnetwork.com/news/2026-11-05/manga');
+ assert.equal(embeds[1].image.url,'https://cdn.animenewsnetwork.com/manga.jpg');
+ assert.equal(embeds[1].fields[0].value,'Manga');
+ const duplicates=buildAnimeNewsDigestEmbeds([
+  {title:'New Anime Season',link:'https://www.animenewsnetwork.com/news/2026-11-05/season'},
+  {title:'New Anime Season',link:'https://www.crunchyroll.com/news/latest/season'}
+ ]);
+ assert.equal(duplicates.length,1);
+ assert.equal(classifyAnimeNews('Titan Manga licenses new titles'),'Manga');
+ assert.deepEqual(buildAnimeNewsDigestEmbeds([{title:'unsafe',link:'https://example.com/article'}]),[]);
+});
+
+
+test('English news is translated to Turkish once and cached; failures preserve source text',async()=>{
+ const updates=[];
+ const db={async query(sql,params){updates.push({sql,params});return{rowCount:1,rows:[]};}};
+ const calls=[];
+ const fetcher=async url=>{
+  calls.push(String(url));
+  const q=new URL(url).searchParams.get('q');
+  return {ok:true,status:200,json:async()=>({responseStatus:200,responseData:{translatedText:q==='Frieren returns'?'Frieren geri dönüyor':'Yeni bölüm duyuruldu.'}})};
+ };
+ const items=[{guid:'ann-translate-1',title:'Frieren returns',summary:'New episode announced.'}, ...Array.from({length:5},(_,i)=>({guid:'ann-extra-'+i,title:'Extra news '+i,summary:'Extra summary '+i}))];
+ const translated=await translateAnimeNewsItems(db,items,fetcher);
+ assert.equal(translated[0].translatedTitle,'Frieren geri dönüyor');
+ assert.equal(translated[0].translatedSummary,'Yeni bölüm duyuruldu.');
+ assert.equal(calls.length,10);
+ assert.equal(translated.length,6);
+ assert.equal(translated[5].translatedTitle,undefined);
+ assert.match(updates[0].sql,/translated_title=\$2,translated_summary=\$3/);
+ const cached=await translateAnimeNewsItems(db,[{...items[0],translatedTitle:'Frieren geri dönüyor',translatedSummary:'Yeni bölüm duyuruldu.'}],fetcher);
+ assert.equal(cached[0].translatedTitle,'Frieren geri dönüyor');
+ assert.equal(calls.length,10);
+ const fallback=await translateAnimeNewsItems(db,items,async()=>({ok:false,status:429}));
+ assert.equal(fallback[0].title,'Frieren returns');
+ assert.equal(fallback[0].translatedTitle,undefined);
 });
 
 test('notification preferences are category-scoped and upserted with explicit booleans',async()=>{
