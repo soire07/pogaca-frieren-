@@ -2,6 +2,12 @@ name: Frieren Neural Turkish Chat Max Candidate Training
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - validation/ufakzeka-real-gguf
+    paths:
+      - frieren-neural/.training-request
+      - .github/workflows/frieren-neural-chat-max-training.yml
   push:
     branches:
       - test/frieren-neural-render-free
