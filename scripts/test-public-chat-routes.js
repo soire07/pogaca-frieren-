@@ -43,3 +43,16 @@ test('homepage chat is inserted immediately after the hero and includes Frieren 
  assert.ok(pageRes.body.indexOf('public-chat-section')<pageRes.body.indexOf('YOL ARKADAŞLARIN'));
  assert.match(pageRes.body,/data-chat-search/);assert.match(pageRes.body,/data-chat-counter/);assert.match(pageRes.body,/chat-266-1/);
 });
+
+test('chat delete, pin and pause endpoints reject non-owner even with a valid session and CSRF',async()=>{
+ const paths=['/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/control'];const db={async query(){throw new Error('database must not be reached for non-owner moderation');}};
+ const previous=process.env.FRIEREN_OWNER_ACCOUNT_IDS;delete process.env.FRIEREN_OWNER_ACCOUNT_IDS;
+ try{for(const path of paths){const form=new URLSearchParams({csrf:createSiteCsrfToken(secret),messageId:'123e4567-e89b-12d3-a456-426614174000',paused:'true'});const req=Readable.from([Buffer.from(form.toString())]);Object.assign(req,{method:'POST',url:path,headers:{cookie:cookieFor(account),'content-type':'application/x-www-form-urlencoded'}});const res=response();assert.equal(await handlePublicSiteRequest(req,res,{db}),true);assert.equal(res.status,403,path);assert.match(res.body,/owner_only/);}}
+ finally{if(previous===undefined)delete process.env.FRIEREN_OWNER_ACCOUNT_IDS;else process.env.FRIEREN_OWNER_ACCOUNT_IDS=previous;}
+});
+test('configured site owner can pin and pause chat through CSRF-protected endpoints',async()=>{
+ const previous=process.env.FRIEREN_OWNER_ACCOUNT_IDS;process.env.FRIEREN_OWNER_ACCOUNT_IDS='123e4567-e89b-12d3-a456-426614174000';const seen=[];
+ const db={async query(sql){seen.push(sql);if(sql.startsWith('UPDATE frieren_public_chat_messages'))return{rows:[{pinned_at:new Date()}],rowCount:1};if(sql.startsWith('UPDATE frieren_public_chat_control'))return{rows:[{is_paused:true,updated_at:new Date()}],rowCount:1};return{rows:[],rowCount:0};}};
+ try{for(const [path,expected] of [['/api/public-chat/pins','pinned'],['/api/public-chat/control','updated']]){const form=new URLSearchParams({csrf:createSiteCsrfToken(secret),messageId:'123e4567-e89b-12d3-a456-426614174000',paused:'true'});const req=Readable.from([Buffer.from(form.toString())]);Object.assign(req,{method:'POST',url:path,headers:{cookie:cookieFor(account),'content-type':'application/x-www-form-urlencoded'}});const res=response();await handlePublicSiteRequest(req,res,{db});assert.equal(res.status,200,path);assert.match(res.body,new RegExp(expected));}}
+ finally{if(previous===undefined)delete process.env.FRIEREN_OWNER_ACCOUNT_IDS;else process.env.FRIEREN_OWNER_ACCOUNT_IDS=previous;}
+});
