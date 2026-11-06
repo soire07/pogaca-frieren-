@@ -304,7 +304,7 @@ test('co-op dungeon and raid count only successful mana-funded Zoltraak casts fo
 
 
 
-test('Katun ring is exclusive to Domaltazor drops, remains equipable and has a salvage recipe', async () => {
+test('Katun ring is exclusive to Domaltazor drops, remains equipable and cannot be salvaged', async () => {
   const ring = (await import('../equipment-data.js')).equipmentItems.find(item => item.id === 'katun_ring');
   assert.ok(ring);
   assert.equal(ring.dropOnly, true);
@@ -312,7 +312,7 @@ test('Katun ring is exclusive to Domaltazor drops, remains equipable and has a s
   assert.equal(ring.slot, 'ring');
   assert.equal(marketItems.some(item => item.id === 'katun_ring'), false);
   const salvage = await (await import('node:fs/promises')).readFile(new URL('../ekipmanparcala.js', import.meta.url), 'utf8');
-  assert.match(salvage, /katun_ring: \{ item: '💎 Mana Kristali', quantity: 2 \}/);
+  assert.doesNotMatch(salvage, /katun_ring/);
 });
 
 test('Domaltazor uses its periodic Katun Judgment heavy strike', async () => {
