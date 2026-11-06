@@ -35,10 +35,10 @@ export function verifyGuardianEventSignature({
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-export function normalizeGuardianSecurityEvent(input = {}) {
+function normalizeSecurityEvent(input = {}, expectedSource, system) {
   const eventId = safeText(input.eventId || input.event_id, 128);
   if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(eventId)) throw new Error('GUARDIAN_EVENT_ID_INVALID');
-  if (input.source !== 'frieren_guard') throw new Error('GUARDIAN_EVENT_SOURCE_INVALID');
+  if (input.source !== expectedSource) throw new Error('GUARDIAN_EVENT_SOURCE_INVALID');
   const code = safeText(input.code, 80).toUpperCase();
   if (!/^[A-Z0-9_.:-]{1,80}$/.test(code)) throw new Error('GUARDIAN_EVENT_CODE_INVALID');
   const severity = String(input.severity || '').toLowerCase();
@@ -47,7 +47,7 @@ export function normalizeGuardianSecurityEvent(input = {}) {
   if (!Number.isFinite(observedAt.getTime()) || observedAt.getTime() > Date.now() + MAX_CLOCK_SKEW_MS
       || observedAt.getTime() < Date.now() - 30 * 24 * 60 * 60 * 1000) throw new Error('GUARDIAN_EVENT_TIME_INVALID');
   const base = createGuardianIncident({
-    system: 'guardian',
+    system,
     code,
     severity,
     title: safeText(input.title || code, 160),
@@ -56,8 +56,8 @@ export function normalizeGuardianSecurityEvent(input = {}) {
   });
   return {
     eventId,
-    source: 'frieren_guard',
-    system: 'guardian',
+    source: expectedSource,
+    system,
     code: base.code,
     severity: base.severity,
     title: base.title,
@@ -68,10 +68,19 @@ export function normalizeGuardianSecurityEvent(input = {}) {
   };
 }
 
+export function normalizeGuardianSecurityEvent(input = {}) {
+  return normalizeSecurityEvent(input, 'frieren_guard', 'guardian');
+}
+
+export function normalizeSiteAuthSecurityEvent(input = {}) {
+  return normalizeSecurityEvent(input, 'frieren_site_auth', 'site_auth');
+}
+
 export async function recordGuardianSecurityEvent(db, event, {
-  clientIp = null, ipSource = 'unverified_peer',
+  clientIp = null, ipSource = 'unverified_peer', source = null,
 } = {}) {
   if (!db || typeof db.connect !== 'function') throw new Error('GUARDIAN_EVENT_DATABASE_REQUIRED');
+  const resolvedIpSource = source || ipSource;
   const client = await db.connect();
   try {
     await client.query('BEGIN');
@@ -100,7 +109,7 @@ export async function recordGuardianSecurityEvent(db, event, {
       evidence: event.evidence,
       observedAt: event.observedAt,
       clientIp: safeIp,
-      ipSource: safeText(ipSource, 32),
+      ipSource: safeText(resolvedIpSource, 32),
     };
     const eventHash = createHash('sha256').update(previousHash + '\n' + canonicalJson(payload)).digest('hex');
     await client.query(

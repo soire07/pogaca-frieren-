@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createHmac, createHash } from 'node:crypto';
 import { resolveVerifiedClientIp } from '../security/client-ip.js';
 import {
-  verifyGuardianEventSignature, normalizeGuardianSecurityEvent,
+  verifyGuardianEventSignature, normalizeGuardianSecurityEvent, normalizeSiteAuthSecurityEvent,
   recordGuardianSecurityEvent, verifyGuardianEvidenceChain,
   handleGuardianSecurityEventRequest
 } from './security-events.js';
@@ -82,6 +82,21 @@ test('Guardian security event normalization validates source, event ID, severity
   assert.throws(() => normalizeGuardianSecurityEvent({ ...normalized, severity: 'urgent' }), /GUARDIAN_EVENT_SEVERITY_INVALID/);
 });
 
+test('site account security events remain distinct from verified Frieren Guard sender events', () => {
+  const authEvent = normalizeSiteAuthSecurityEvent({
+    eventId: 'auth-event-0001', source: 'frieren_site_auth',
+    code: 'AUTH_ORIGIN_REJECTED', severity: 'high',
+    title: 'Cross-origin account request blocked',
+    summary: 'A site account request was rejected before database access.',
+    observedAt: '2026-11-05T12:00:00.000Z',
+    evidence: [{ message: 'POST /login' }],
+  });
+  assert.equal(authEvent.source, 'frieren_site_auth');
+  assert.equal(authEvent.system, 'site_auth');
+  assert.throws(() => normalizeGuardianSecurityEvent(authEvent), /GUARDIAN_EVENT_SOURCE_INVALID/);
+  assert.throws(() => normalizeSiteAuthSecurityEvent({ ...authEvent, source: 'frieren_guard' }), /GUARDIAN_EVENT_SOURCE_INVALID/);
+});
+
 test('Guardian evidence chain appends with a previous hash and deduplicates event IDs atomically', async () => {
   const statements = [];
   let prior = null;
@@ -100,9 +115,16 @@ test('Guardian evidence chain appends with a previous hash and deduplicates even
   };
   const db = { async connect() { return client; } };
   const event = normalizeGuardianSecurityEvent(JSON.parse(payload));
-  const first = await recordGuardianSecurityEvent(db, event, { clientIp: '198.51.100.42', ipSource: 'trusted_proxy' });
+  const resolvedIp = resolveVerifiedClientIp({
+    headers: { 'x-forwarded-for': '203.0.113.99' },
+    socket: { remoteAddress: '10.0.0.8' },
+  }, { trustedProxyIps: ['10.0.0.8'] });
+  assert.deepEqual(resolvedIp, { clientIp: '203.0.113.99', source: 'trusted_proxy' });
+  const first = await recordGuardianSecurityEvent(db, event, resolvedIp);
   assert.equal(first.duplicate, false);
   assert.equal(first.incident.id, 22);
+  const insert = statements.find(item => item.sql.includes('INSERT INTO owner_guardian_evidence_chain'));
+  assert.equal(insert.params[5], 'trusted_proxy');
   assert.match(prior, /^[a-f0-9]{64}$/);
   assert.ok(statements.some(x => x.sql.includes('pg_advisory_xact_lock')));
   const second = await recordGuardianSecurityEvent(db, event, { clientIp: '198.51.100.42', ipSource: 'trusted_proxy' });

@@ -675,11 +675,13 @@ export function renderOwnerSecurityWorkspace({ incidents = [], evidenceEvents = 
     : !chainStatus.valid ? 'Bütünlük hatası'
       : chainStatus.checked === 0 ? 'Henüz delil yok'
         : chainStatus.truncated ? 'Kısmi doğrulandı' : 'Bütünlük doğrulandı';
+  const sourceLabel = source => source === 'frieren_guard' ? 'Frieren Guard'
+    : source === 'frieren_site_auth' ? 'Frieren web hesabı' : 'Bilinmeyen kaynak';
   const incidentHtml = incidents.length ? incidents.map(item =>
-    '<article class="security-event"><div><strong>#' + Number(item.id) + ' · ' + escapeHtml(item.title) + '</strong><span class="tag">' + escapeHtml(item.severity) + '</span></div><p>' + escapeHtml(item.summary) + '</p><small>' + escapeHtml(item.code) + ' · ' + escapeHtml(item.status) + ' · ' + Number(item.occurrence_count || 1) + ' tekrar · ' + escapeHtml(new Date(item.last_seen).toLocaleString('tr-TR')) + '</small></article>'
-  ).join('') : '<p class="muted">Henüz Frieren Guard güvenlik olayı alınmadı. Bu alan gerçek olay geldiğinde dolar.</p>';
+    '<article class="security-event"><div><strong>#' + Number(item.id) + ' · ' + escapeHtml(item.title) + '</strong><span class="tag">' + escapeHtml(item.severity) + '</span></div><p>' + escapeHtml(item.summary) + '</p><small>Kaynak: ' + escapeHtml(item.system === 'site_auth' ? 'Frieren web hesabı' : 'Frieren Guard') + ' · ' + escapeHtml(item.code) + ' · ' + escapeHtml(item.status) + ' · ' + Number(item.occurrence_count || 1) + ' tekrar · ' + escapeHtml(new Date(item.last_seen).toLocaleString('tr-TR')) + '</small></article>'
+  ).join('') : '<p class="muted">Henüz güvenlik olayı alınmadı. Guard ve web hesabı olayları ayrı kaynaklarla gösterilir.</p>';
   const evidenceHtml = evidenceEvents.length ? evidenceEvents.map(item =>
-    '<article class="security-event"><div><strong>Delil #' + Number(item.sequence_no) + ' · ' + escapeHtml(item.event_id) + '</strong><span class="tag">' + escapeHtml(item.severity) + '</span></div><p>' + (item.client_ip ? '<strong>Ağ eş adresi:</strong> ' + escapeHtml(item.client_ip) + ' · ' + escapeHtml(item.ip_source) : 'Kaynak IP doğrulanamadı; yönlendirme başlığına güvenilmedi.') + '</p><small>' + escapeHtml(new Date(item.received_at).toLocaleString('tr-TR')) + ' · SHA-256 ' + escapeHtml(String(item.event_hash || '').slice(0, 24)) + '…</small></article>'
+    '<article class="security-event"><div><strong>Delil #' + Number(item.sequence_no) + ' · ' + escapeHtml(item.event_id) + '</strong><span class="tag">' + escapeHtml(item.severity) + '</span></div><p>' + (item.client_ip ? '<strong>Ağ eş adresi:</strong> ' + escapeHtml(item.client_ip) + ' · ' + escapeHtml(item.ip_source) : 'Kaynak IP doğrulanamadı; yönlendirme başlığına güvenilmedi.') + '</p><small>Kaynak: ' + escapeHtml(sourceLabel(item.source)) + ' · ' + escapeHtml(new Date(item.received_at).toLocaleString('tr-TR')) + ' · SHA-256 ' + escapeHtml(String(item.event_hash || '').slice(0, 24)) + '…</small></article>'
   ).join('') : '<p class="muted">Delil zincirinde henüz kayıt yok.</p>';
   return '<style>'
     + '.security-nav-slot{padding:10px 8px 13px;border-bottom:1px solid rgba(190,150,255,.22);margin-bottom:4px}'
@@ -700,7 +702,7 @@ export function renderOwnerSecurityWorkspace({ incidents = [], evidenceEvents = 
     + '<article class="security-card"><small>Frieren Guard olay alımı</small><strong>' + (ingestConfigured ? (senderVerified ? 'Canlı olay alındı' : 'Gönderici doğrulanmadı') : 'Anahtar eksik') + '</strong><p>' + (ingestConfigured ? (senderVerified ? 'Frieren Guard kaynaklı imzalı olay delil zincirinde doğrulandı.' : 'Alıcı HMAC doğrulaması için yapılandırıldı; Guard göndericisi henüz canlı olayla doğrulanmadı.') : 'Guard olaylarını kabul etmek için ortak imza anahtarı yapılandırılmalı.') + '</p></article>'
     + '<article class="security-card"><small>Delil zinciri</small><strong>' + chainLabel + '</strong><p>' + Number(chainStatus?.checked || 0) + ' kayıt denetlendi' + (chainStatus?.firstInvalidSequence ? ' · bozuk sıra #' + Number(chainStatus.firstInvalidSequence) : '') + '.</p></article>'
     + '</div>'
-    + '<section class="panel"><h2>Gerçek güvenlik olayları</h2><p class="muted">Frieren Guard tarafından kaydedilen olaylar listelenir; harici Guard bildirimleri HMAC imzasıyla doğrulanır.</p>' + incidentHtml + '</section>'
+    + '<section class="panel"><h2>Gerçek güvenlik olayları</h2><p class="muted">Frieren Guard bildirimleri HMAC imzasıyla doğrulanır. Web hesabı güvenlik olayları ayrı kaynak olarak etiketlenir; bunlar Guard gönderici bağlantısının kanıtı sayılmaz.</p>' + incidentHtml + '</section>'
     + '<section class="panel"><h2>IP ve delil bütünlüğü</h2><p class="muted">Ağ adresi yalnızca doğrudan soket eş adresinden veya açıkça güvenilen proxy listesinden türetilir. X-Forwarded-For tek başına kabul edilmez.</p>' + evidenceHtml + '<div class="security-note"><strong>Delil doğruluğu:</strong> Her olay zaman damgası ve HMAC imzasıyla doğrulanır; kayıtlar önceki SHA-256 özetiyle zincirlenir ve veritabanı tetikleyicileri UPDATE/DELETE/TRUNCATE işlemlerini reddeder. Bu mekanizma sonradan değişikliği tespit etmeye yardımcı olur; tek başına olayın kaynağını veya hukuki geçerliliğini kanıtlamaz.</div></section>';
 }
 
@@ -813,7 +815,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         listGuardianEvidenceEvents(db, 30),
         verifyGuardianEvidenceChain(db),
       ]);
-      const incidents = allIncidents.filter(item => item.system === 'guardian').slice(0, 25);
+      const incidents = allIncidents.filter(item => item.system === 'guardian' || item.system === 'site_auth').slice(0, 25);
       const ingestSecret = String(process.env.FRIEREN_GUARD_EVENT_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
       send(res, 200, page('Frieren Security', renderOwnerNavigation() + renderOwnerSecurityWorkspace({
         incidents, evidenceEvents, chainStatus, ingestConfigured: ingestSecret.length >= 32,

@@ -2,7 +2,7 @@ import { createHash, createHmac, randomBytes, scrypt as scryptCallback, timingSa
 import { promisify } from 'node:util';
 import tls from 'node:tls';
 import { resolveVerifiedClientIp } from './security/client-ip.js';
-import { normalizeGuardianSecurityEvent, recordGuardianSecurityEvent } from './guardian/security-events.js';
+import { normalizeSiteAuthSecurityEvent, recordGuardianSecurityEvent } from './guardian/security-events.js';
 
 const scrypt = promisify(scryptCallback);
 const COOKIE = 'frieren_site_session';
@@ -312,9 +312,9 @@ function limited(key,max,now=Date.now()) {
 async function reportAuthSecurityEvent(db, req, { code, severity, summary }) {
   if (typeof db?.connect !== 'function') return;
   try {
-    const event = normalizeGuardianSecurityEvent({
+    const event = normalizeSiteAuthSecurityEvent({
       eventId: 'auth-' + randomBytes(16).toString('hex'),
-      source: 'frieren_guard',
+      source: 'frieren_site_auth',
       code,
       severity,
       title: code === 'AUTH_ORIGIN_REJECTED' ? 'Cross-origin account request blocked' : 'Account rate limit triggered',
