@@ -44,3 +44,16 @@ test('chat blocking resolves a message author without exposing account identifie
  const blocked=await blockPublicChatUser(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000'});assert.equal(blocked.status,'blocked');assert.ok(blockSql.includes('blocked_account_id'));
  const unblocked=await unblockPublicChatUser(db,{accountId:account,targetAccountId:'site_123e4567-e89b-12d3-a456-426614174999'});assert.equal(unblocked.status,'unblocked');
 });
+
+test('chat edits are limited to the author and recent messages',async()=>{
+ const {updatePublicChatMessage}=await import('../public-chat.js');let sql='',params;
+ const db={async query(q,p){if(q.startsWith('UPDATE frieren_public_chat_messages')){sql=q;params=p;return{rows:[{message_id:p[0]}],rowCount:1};}return{rows:[],rowCount:0};}};
+ const result=await updatePublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',body:'Düzenlendi'});assert.equal(result.status,'updated');assert.match(sql,/account_id=\$2/);assert.match(sql,/15 minutes/);assert.equal(params[1],account);
+});
+test('chat pinning and presence are account-scoped and expose only aggregate online count',async()=>{
+ const {togglePublicChatPin,touchPublicChatPresence,getPublicChatPresence}=await import('../public-chat.js');let pinSql='',presenceSql='';
+ const db={async query(q){if(q.startsWith('UPDATE frieren_public_chat_messages')){pinSql=q;return{rows:[{pinned_at:new Date()}],rowCount:1};}if(q.startsWith('INSERT INTO frieren_public_chat_presence')){presenceSql=q;return{rows:[],rowCount:1};}if(q.startsWith('SELECT COUNT(*)::int AS online'))return{rows:[{online:3}],rowCount:1};return{rows:[],rowCount:0};}};
+ assert.equal((await togglePublicChatPin(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000'})).status,'pinned');assert.match(pinSql,/account_id=\$2/);
+ assert.equal((await touchPublicChatPresence(db,{accountId:account})).status,'online');assert.ok(presenceSql.includes('frieren_public_chat_presence'));
+ assert.deepEqual(await getPublicChatPresence(db),{online:3});
+});
