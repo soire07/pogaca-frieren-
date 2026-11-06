@@ -101,7 +101,7 @@ test('Guardian review requests valid JSON and preserves the required test plan f
   assert.deepEqual(result.affectedFiles, ['guardian/automation.test.js']);
 });
 
-test('Guardian Groq self-test is admin-only and cannot dispatch repairs', async () => {
+test('Guardian provider self-test is admin-only and cannot dispatch repairs', async () => {
   const source = await readFile(new URL('./index.js', import.meta.url), 'utf8');
   const registration = await readFile(new URL('./register-commands.js', import.meta.url), 'utf8');
   assert.match(source, /setName\('frieren-guardian-test'\)/);
@@ -113,6 +113,9 @@ test('Guardian Groq self-test is admin-only and cannot dispatch repairs', async 
   const handler = source.slice(start, end);
   assert.match(handler, /reviewGuardianIncident\(/);
   assert.match(handler, /finally\s*\{\s*guardianReviewInProgress\s*=\s*false/);
+  assert.match(handler, /if \(!modelConfigured\)/);
+  assert.doesNotMatch(handler, /if \(!groq\)/);
+  assert.match(handler, /neuralEnv: process\.env/);
   assert.doesNotMatch(handler, /processGuardianIncident|processPendingGuardianRepairDispatch|api\.github\.com|workflow_dispatch/);
 });
 
