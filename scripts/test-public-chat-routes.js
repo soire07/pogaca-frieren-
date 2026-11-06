@@ -11,7 +11,6 @@ const account={id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'}
 function response(){return{status:0,headers:{},body:'',writeHead(status,headers={}){this.status=status;this.headers=headers;},end(body){this.body=body;}};}
 function cookieFor(user){const token=createPublicSiteSession(secret,user,Math.floor(Date.now()/1000)+3600);return buildPublicSiteSessionCookie(token,3600).split(';')[0];}
 function get(path,user){return{method:'GET',url:path,headers:user?{cookie:cookieFor(user)}:{}};}
-function post(path,user,body){return Readable.from([Buffer.from(body)]).map?Object.assign(Readable.from([Buffer.from(body)]),{method:'POST',url:path,headers:{cookie:cookieFor(user),'content-type':'application/x-www-form-urlencoded'}}):null;}
 
 test('public discovery page and chat history are readable without login',async()=>{
  const db={async query(sql){if(sql.startsWith('SELECT message_id'))return{rows:[{message_id:'m1',account_id:account.id,username:'Gezgin',body:'Merhaba',created_at:new Date().toISOString()}],rowCount:1};return{rows:[],rowCount:0};}};
@@ -23,5 +22,5 @@ test('public chat posting requires an authenticated site account and CSRF token'
  const anonymous=response();const anonymousReq=Readable.from([Buffer.from('csrf=x&message=Merhaba')]);Object.assign(anonymousReq,{method:'POST',url:'/api/public-chat/messages',headers:{'content-type':'application/x-www-form-urlencoded'}});
  assert.equal(await handlePublicSiteRequest(anonymousReq,anonymous,{db}),true);assert.equal(anonymous.status,302);assert.equal(queries,0);
  const csrf=createSiteCsrfToken(secret);const form=new URLSearchParams({csrf,message:'Merhaba'}).toString();const req=Readable.from([Buffer.from(form)]);Object.assign(req,{method:'POST',url:'/api/public-chat/messages',headers:{cookie:cookieFor(account),'content-type':'application/x-www-form-urlencoded'}});
- const res=response();assert.equal(await handlePublicSiteRequest(req,res,{db}),true);assert.equal(res.status,201);assert.equal(queries,5);
+ const res=response();assert.equal(await handlePublicSiteRequest(req,res,{db}),true);assert.equal(res.status,201);assert.equal(queries,6);
 });
