@@ -825,6 +825,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const guildId=String(form.get('guildId')||''),ownerId=String(form.get('ownerId')||'');
     if(!/^\d{17,20}$/.test(guildId)||!/^\d{17,20}$/.test(ownerId)){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Profil bağlantısı geçersiz.');return true;}
     const author=await getLinkedAdventurer(db,session.id,guildId);if(!author){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Önce bu sunucudaki karakterini hesabına bağla.');return true;}
+    await ensureSiteSocialSchema(db);
     try{const result=await addGuestbookEntry(db,{guildId,ownerId,authorId:author.user_id,message:form.get('message')});const status=result.status==='created'?'guestbook_added':result.status;res.writeHead(303,{Location:'/maceraci/oyuncu?'+new URLSearchParams({guildId,userId:ownerId,status}).toString(),'Cache-Control':'no-store'});res.end();return true;}
     catch(error){if(String(error?.message||'').startsWith('GUESTBOOK_')){res.writeHead(303,{Location:'/maceraci/oyuncu?'+new URLSearchParams({guildId,userId:ownerId,status:'invalid'}).toString(),'Cache-Control':'no-store'});res.end();return true;}throw error;}
   }
@@ -1091,7 +1092,6 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(!/^\d{17,20}$/.test(guildId)||!/^\d{17,20}$/.test(userId)){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Profil bağlantısı geçersiz.');return true;}
     const showcase=await getPublicPlayerHome(db,{guildId,userId});
     if(!showcase){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Bu oyuncunun profili herkese açık değil.');return true;}
-    await ensureSiteSocialSchema(db);
     await ensureSiteSocialSchema(db);
     const [personal,guestbook,author]=await Promise.all([getPersonalProfile(db,guildId,userId),listGuestbookEntries(db,{guildId,ownerId:userId}),SITE_ACCOUNT_ID.test(String(user?.id||''))?getLinkedAdventurer(db,user.id,guildId):Promise.resolve(null)]);
     if(author&&author.user_id!==userId)await recordProfileVisit(db,{guildId,ownerId:userId,visitorId:author.user_id});
