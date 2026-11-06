@@ -288,6 +288,13 @@ export default {
         const auraIllusion = BOSS.id === 'fallen-mage' && bossPhase >= 2 && rounds % 4 === 1;
         if (auraIllusion) log.push('🪞 Aura Ruh İkizleri oluşturdu! Bu tur fiziksel saldırılar yanılsama tarafından saptırılıyor; Zoltraak gerçek Aura’yı bulur.');
         const healer = alive.find(i=>fighters[i].role==='healer');
+        if (healer !== undefined && BOSS.id === 'fallen-mage') {
+          const trappedIndex = alive.find(i => auraManaTrapped.has(fighters[i].userId));
+          if (trappedIndex !== undefined) {
+            auraManaTrapped.delete(fighters[trappedIndex].userId);
+            log.push(`💚 ${fighters[healer].username} Mana Hapsi mührünü çözüp ${fighters[trappedIndex].username} oyuncusunu serbest bıraktı.`);
+          }
+        }
         if (healer !== undefined) {
           for (const i of alive) {
             const classHeal = applyClassHealing(12, fighters[healer].className);
@@ -444,7 +451,7 @@ export default {
             const drained=Math.min(target.mana,manaPrison ? 14 : 8);
             target.mana-=drained;
             if (manaPrison) auraManaTrapped.add(target.userId);
-            log.push(`🕯️ Boss ${target.username} oyuncusuna mana laneti uyguladı (-${drained} mana).`);
+            log.push(`🕯️ Aura ${target.username} oyuncusuna ${manaPrison ? 'Mana Hapsi' : 'Mana Laneti'} uyguladı (-${drained} mana).`);
           }
           log.push(`💥 ${BOSS.name} ${target.username} oyuncusuna ${incoming} hasar verdi${defending.has(targetIndex)?' (savunma azaltımı uygulandı)':''}.`);
         }
