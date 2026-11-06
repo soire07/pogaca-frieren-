@@ -6,7 +6,7 @@ import { getGuildRpgContent } from './owner-rpg-content.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
 import { validateGuildEventRaidTeam } from './guild-team-leagues.js';
-import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio, applyDefendingReduction, scaleRaidBossHp, applyRaidBossDamage, regenerateRaidBossHp, calculateRaidAreaTickDamage, rollRaidBossLoot, rollRaidBossTitleDrops, canAssignPartyRole, isPartyWiped, getPartyRoleModifiers, applyTalentBonus } from './rpg-mechanics.js';
+import { RAID_BOSSES, chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio, applyDefendingReduction, scaleRaidBossHp, applyRaidBossDamage, regenerateRaidBossHp, calculateRaidAreaTickDamage, rollRaidBossLoot, rollRaidBossTitleDrops, canAssignPartyRole, isPartyWiped, getPartyRoleModifiers, applyTalentBonus } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
 
@@ -54,7 +54,7 @@ export default {
     const requestedBossId = interaction.options.getString('boss_secimi');
     const catalog = raidBosses?.length ? raidBosses : undefined;
     const BOSS = requestedBossId
-      ? (catalog?.find(boss => boss.id === requestedBossId) || chooseRaidBoss(Math.random, undefined).id === requestedBossId && chooseRaidBoss(Math.random, undefined) || (await import('./rpg-mechanics.js')).RAID_BOSSES.find(boss => boss.id === requestedBossId))
+      ? (catalog?.find(boss => boss.id === requestedBossId) || RAID_BOSSES.find(boss => boss.id === requestedBossId))
       : catalog ? chooseRaidBoss(Math.random, catalog) : chooseRaidBoss();
     if (!BOSS) return interaction.editReply({ content: 'Seçilen boss bu sunucunun raid kataloğunda bulunamadı.', components: [] });
     for (const user of team) await ensureUser(interaction.guildId, user.id);
