@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Readable} from 'node:stream';
 import {handlePublicSiteRequest} from '../public-site.js';
 import {createPublicSiteSession,buildPublicSiteSessionCookie} from '../owner-dashboard.js';
 import {createSiteCsrfToken} from '../site-auth.js';
@@ -44,15 +43,12 @@ test('POST /api/account-profile persists submitted profile and redirects back to
     showActivity:'true',
     allowVisitors:'true'
   });
-  const req=Readable.from([Buffer.from(form.toString())]);
-  Object.assign(req,{
+  const req={
     method:'POST',
     url:'/api/account-profile',
-    headers:{
-      cookie:sessionCookie(),
-      'content-type':'application/x-www-form-urlencoded'
-    }
-  });
+    headers:{cookie:sessionCookie(),'content-type':'application/x-www-form-urlencoded'},
+    async *[Symbol.asyncIterator](){yield Buffer.from(form.toString());}
+  };
   const res=response();
   assert.equal(await handlePublicSiteRequest(req,res,{db}),true);
   assert.equal(res.status,303);
