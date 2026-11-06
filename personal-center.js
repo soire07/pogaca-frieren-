@@ -10,7 +10,8 @@ function pair(g,a,b){player(g,a);player(g,b);if(a===b)throw new Error('PERSONAL_
 function cleanText(value,max,code,{optional=false}={}){const s=String(value??'').trim();if((!optional&&!s)||s.length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(s))throw new Error(code);return s;}
 async function tx(db,fn){if(typeof db.connect!=='function')return fn(db);const c=await db.connect();try{await c.query('BEGIN');const result=await fn(c);await c.query('COMMIT');return result;}catch(e){await c.query('ROLLBACK').catch(()=>{});throw e;}finally{c.release();}}
 
-export async function ensurePersonalCenterSchema(db){
+const personalCenterSchemaReady=new WeakMap();
+async function createPersonalCenterSchema(db){
  await db.query(`CREATE TABLE IF NOT EXISTS player_personal_profiles(
  guild_id TEXT NOT NULL,user_id TEXT NOT NULL,bio VARCHAR(280) NOT NULL DEFAULT '',status_text VARCHAR(80) NOT NULL DEFAULT '',theme TEXT NOT NULL DEFAULT 'midnight' CHECK(theme IN ('midnight','violet','starlight','forest')),
  guestbook_enabled BOOLEAN NOT NULL DEFAULT TRUE,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id),
@@ -42,6 +43,12 @@ export async function ensurePersonalCenterSchema(db){
  await db.query('CREATE INDEX IF NOT EXISTS player_planner_due_idx ON player_planner_entries(guild_id,user_id,due_at) WHERE due_at IS NOT NULL');
  await db.query('CREATE TABLE IF NOT EXISTS player_close_friends(guild_id TEXT NOT NULL,owner_id TEXT NOT NULL,friend_id TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,owner_id,friend_id),CHECK(owner_id<>friend_id),FOREIGN KEY(guild_id,owner_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE,FOREIGN KEY(guild_id,friend_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE)');
  await db.query('CREATE INDEX IF NOT EXISTS player_close_friends_owner_idx ON player_close_friends(guild_id,owner_id,created_at DESC)');
+}
+export async function ensurePersonalCenterSchema(db){
+ if(!db||typeof db.query!=='function')throw new Error('PERSONAL_CENTER_DATABASE_INVALID');
+ let pending=personalCenterSchemaReady.get(db);
+ if(!pending){pending=createPersonalCenterSchema(db);personalCenterSchemaReady.set(db,pending);}
+ try{await pending;}catch(error){personalCenterSchemaReady.delete(db);throw error;}
 }
 
 export async function updatePersonalProfile(db,{guildId,userId,bio='',statusText='',theme='midnight',guestbookEnabled=true}){
