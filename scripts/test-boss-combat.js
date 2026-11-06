@@ -2,6 +2,7 @@ import test from 'node:test';
 import { claimSoloBossReward } from '../rpg-reward-transactions.js';
 import assert from 'node:assert/strict';
 import raidCommand from '../ortakboss.js';
+import { marketItems } from '../market.js';
 import eventCommand from '../etkinlik.js';
 import {
   RAID_BOSSES,
@@ -300,6 +301,26 @@ test('co-op dungeon and raid count only successful mana-funded Zoltraak casts fo
   assert.match(settlement, /RETURNING casts,mastery_level/);
 });
 
+
+
+
+test('Katun ring is exclusive to Domaltazor drops, remains equipable and has a salvage recipe', async () => {
+  const ring = (await import('../equipment-data.js')).equipmentItems.find(item => item.id === 'katun_ring');
+  assert.ok(ring);
+  assert.equal(ring.dropOnly, true);
+  assert.equal(ring.rarity, 'Efsanevi');
+  assert.equal(ring.slot, 'ring');
+  assert.equal(marketItems.some(item => item.id === 'katun_ring'), false);
+  const salvage = await (await import('node:fs/promises')).readFile(new URL('../ekipmanparcala.js', import.meta.url), 'utf8');
+  assert.match(salvage, /katun_ring: \{ item: '💎 Mana Kristali', quantity: 2 \}/);
+});
+
+test('Domaltazor uses its periodic Katun Judgment heavy strike', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /BOSS\.special === 'katun-judgment' && rounds % 3 === 0/);
+  assert.match(source, /katunJudgment \? Math\.round\(rawDamage \* 1\.5\)/);
+  assert.match(source, /Domaltazor Katun Hükmü/);
+});
 
 
 test('raid title drops are inserted into the existing user title collection inside reward settlement', async () => {
