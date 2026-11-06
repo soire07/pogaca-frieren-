@@ -24,3 +24,14 @@ test('public chat posting requires an authenticated site account and CSRF token'
  const csrf=createSiteCsrfToken(secret);const form=new URLSearchParams({csrf,message:'Merhaba'}).toString();const req=Readable.from([Buffer.from(form)]);Object.assign(req,{method:'POST',url:'/api/public-chat/messages',headers:{cookie:cookieFor(account),'content-type':'application/x-www-form-urlencoded'}});
  const res=response();assert.equal(await handlePublicSiteRequest(req,res,{db}),true);assert.equal(res.status,201);assert.equal(queries,9);
 });
+
+test('public chat reactions and blocking mutations require a signed-in account and CSRF',async()=>{
+ let queries=0;const db={async query(){queries++;return{rows:[],rowCount:0};}};
+ for(const path of ['/api/public-chat/reactions','/api/public-chat/blocks','/api/public-chat/blocks/unblock']){
+  const anonymous=Readable.from([Buffer.from('csrf=bad')]);Object.assign(anonymous,{method:'POST',url:path,headers:{'content-type':'application/x-www-form-urlencoded'}});
+  const denied=response();await handlePublicSiteRequest(anonymous,denied,{db});assert.equal(denied.status,302,path);
+  const authenticated=Readable.from([Buffer.from('csrf=bad&messageId=123e4567-e89b-12d3-a456-426614174000')]);Object.assign(authenticated,{method:'POST',url:path,headers:{cookie:cookieFor(account),'content-type':'application/x-www-form-urlencoded'}});
+  const csrfDenied=response();await handlePublicSiteRequest(authenticated,csrfDenied,{db});assert.equal(csrfDenied.status,403,path);
+ }
+ assert.equal(queries,0);
+});
