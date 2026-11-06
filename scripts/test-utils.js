@@ -573,7 +573,8 @@ test('solo, raid and dungeon boss panels can display their own configured artwor
   const envExample = await readFile(new URL('../.env.example', import.meta.url), 'utf8');
   assert.match(solo, /bossImageUrl: boss\.artUrl/);
   assert.match(solo, /if \(bossImageUrl\) embed\.setImage\(bossImageUrl\)/);
-  assert.match(raid, /getBossArtUrl\(raidArtKey\)/);\n  assert.match(raid, /BOSS\.id === 'fallen-mage' \? 'fallenMage'/);
+  assert.match(raid, /getBossArtUrl\(raidArtKey\)/);
+  assert.match(raid, /BOSS\.id === 'fallen-mage' \? 'fallenMage'/);
   assert.match(raid, /if \(raidArtUrl\) embed\.setImage\(raidArtUrl\)/);
   assert.match(dungeon, /getBossArtUrl\('dungeonFinal'\)/);
   assert.match(envExample, /POGACA_BOSS_ART_SCHATTENWOLF_URL/);
