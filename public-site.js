@@ -26,6 +26,7 @@ import { createSupportTicket, listSupportTickets, listSupportTicketMessages, rep
 import { getNotificationPreferences, setNotificationPreference } from './news-birds.js';
 import { levelForXp, xpForNextLevel } from './utils.js';
 import { listPublicChatMessages, sendPublicChatMessage } from './public-chat.js';
+import { ensurePersonalCenterSchema, getPersonalProfile, updatePersonalProfile, listDirectMessages, listMessageThreads, sendDirectMessage, listGuestbookEntries, deleteGuestbookEntry, reportPlayer, createPlannerEntry, listPlannerEntries, updatePlannerEntry, deletePlannerEntry, getPersonalProgressReport, discoverPlayers, recommendPlayers } from './personal-center.js';
 import { achievements as RPG_ACHIEVEMENTS } from './basarimlar.js';
 import { listCardVariants } from './card-variants.js';
 import { listGuildEmbedTemplates, listGuildCustomCommands, listGuildSpellAutomations, saveGuildEmbedTemplate, saveGuildCustomCommand, saveGuildSpellAutomation } from './guild-workshop.js';
@@ -150,6 +151,7 @@ function page(title, content, user, seo = {}) {
           navLink('/maceraci/envanter', '▣', 'Envanterim', 'Eşyaların ve ekipmanların'),
           navLink('/maceraci/koleksiyon', '◈', 'Koleksiyonum', 'Yoldaşlar, balıklar ve keşifler'),
           navLink('/maceraci/sosyal', '♧', 'Yol Arkadaşlarım', 'Arkadaşlıklar, rakipler ve topluluk bağların'),
+          navLink('/maceraci/merkez', '✧', 'Kişisel Merkez', 'Mesajların, ajandan ve kişisel profilin'),
           navLink('/maceraci/yasam', '⌂', 'Kişisel Yaşam Alanım', 'Odan, koleksiyonların, kozmetiklerin ve etkinliklerin'),
           navLink('/maceraci/profil#privacy', '◈', 'Gizlilik Ayarları', 'Herkese açık profilinde görünenler'),
           navLink('/maceraci/bildirimler', '☾', 'Bildirimler', 'Haberci kuş tercihlerin'),
@@ -178,6 +180,26 @@ function page(title, content, user, seo = {}) {
       '</nav><div class="site-sidebar-foot"><span>✧ Bir yolculuk, bin yıllık bir hikâye.</span></div></aside>';
   return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><meta name="description" content="' + esc(description) + '"><meta name="robots" content="' + robots + '">' + seoTags + structuredData + '<link rel="icon" type="image/svg+xml" href="/assets/site-avatar.svg"><link rel="alternate icon" href="/assets/site-avatar.webp" type="image/webp"><link rel="manifest" href="/site.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><title>' + esc(title) + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css?v=user-center-264-1"></head><body><a class="skip-link" href="#main-content">Ana içeriğe geç</a>' + sidebar + '<header class="topbar"><a class="brand" href="/"><span class="brand-mark">✧</span><span>FRIEREN<small>THE ARCANE JOURNEY</small></span></a><div class="user-chip"><img src="' + esc(avatar) + '" alt=""><span>' + esc(user.username || 'Gezgin') + '</span>' + (user.id ? '<a href="/logout" title="Çıkış yap">↗</a>' : '<a href="/login" title="Giriş yap">↗</a>') + '</div></header>' + mainContent + '<footer><div><strong>✧ FRIEREN</strong><span>Bir yolculuk, bin yıllık bir hikâye.</span></div><nav aria-label="Alt gezinme"><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><small>© Frieren Platform · Developed by Soiree</small></footer><script src="/assets/site-navigation.js?v=menu-241-2" defer></script><script src="/assets/site-actions.js?v=actions-261-1" defer></script><script src="/assets/profile-interactions.js?v=profile-261-1" defer></script></body></html>';
 }
+function personalCenterPage(user,profile,data,csrf,status){
+ const field=(label,name,value,max=500)=>'<label>'+label+'<input name="'+name+'" maxlength="'+max+'" value="'+esc(value||'')+'"></label>';
+ const form=(action,body)=>'<form method="post" action="/maceraci/merkez"><input type="hidden" name="csrf" value="'+esc(csrf)+'"><input type="hidden" name="guildId" value="'+esc(profile.guild_id)+'"><input type="hidden" name="action" value="'+action+'">'+body+'</form>';
+ const options=[...new Map([...data.discover,...data.recommended].map(x=>[x.user_id,x])).values()];
+ const optionHtml=options.map(x=>'<option value="'+esc(x.user_id)+'">'+esc(x.character_name||'Maceracı')+' · '+esc(x.user_id)+'</option>').join('');
+ const threads=data.threads.map(x=>'<article class="personal-center-item"><strong>'+esc(x.other_id)+'</strong><p>'+esc(x.body)+'</p><small>'+new Date(x.created_at).toLocaleString('tr-TR')+(x.unread?' · Okunmadı':'')+'</small></article>').join('')||'<p class="empty-state">Henüz özel mesajın yok.</p>';
+ const guestbook=data.guestbook.map(x=>'<article class="personal-center-item"><strong>'+esc(x.author_id)+'</strong><p>'+esc(x.message)+'</p><small>'+new Date(x.created_at).toLocaleString('tr-TR')+'</small>'+form('guestbook-delete','<input type="hidden" name="entryId" value="'+esc(x.entry_id)+'"><button class="btn ghost" type="submit">Sil</button>')+'</article>').join('')||'<p class="empty-state">Ziyaretçi defterinde henüz mesaj yok.</p>';
+ const planner=data.planner.map(x=>'<article class="personal-center-item"><strong>'+esc(x.title)+'</strong><p>'+esc(x.body)+'</p><small>'+esc(x.kind)+' · '+(x.due_at?new Date(x.due_at).toLocaleString('tr-TR'):'Tarih yok')+(x.completed_at?' · Tamamlandı':' · Devam ediyor')+'</small>'+form('planner-update','<input type="hidden" name="entryId" value="'+esc(x.entry_id)+'">'+field('Başlık','title',x.title,100)+field('Açıklama','body',x.body,2000)+'<input type="hidden" name="completed" value="'+(x.completed_at?'false':'true')+'"><button class="btn ghost" type="submit">'+(x.completed_at?'Yeniden aç':'Tamamlandı işaretle')+'</button>')+form('planner-delete','<input type="hidden" name="entryId" value="'+esc(x.entry_id)+'"><button class="btn ghost" type="submit">Sil</button>')+'</article>').join('')||'<p class="empty-state">Ajandan henüz boş.</p>';
+ const players=options.map(x=>'<article class="personal-center-item"><strong>'+esc(x.character_name||'Maceracı')+'</strong><p>Seviye XP: '+esc(x.xp??'—')+' · İtibar: '+esc(x.reputation??x.mutual_friends??0)+'</p><small>Oyuncu kimliği: '+esc(x.user_id)+'</small></article>').join('')||'<p class="empty-state">Şu anda önerilecek oyuncu bulunamadı.</p>';
+ const report=(r,label)=>'<article class="personal-center-stat"><strong>'+esc(r.xp??0)+' XP</strong><span>'+label+' · '+esc(r.adventures??0)+' macera · '+esc(r.achievements??0)+' başarım · '+esc(r.completed_tasks??0)+' tamamlanan görev</span></article>';
+ const html='<main class="wrap user-center-page personal-center-page"><section class="user-center-hero"><div class="eyebrow">✧ MACERACI MERKEZİ</div><h1>Kişisel yaşamın ve sosyal alanın</h1><p class="lead">'+esc(profile.character_name||user.username)+' · Sunucu '+esc(profile.guild_id)+'</p><div class="user-center-metrics"><article><span>Haftalık XP</span><strong>'+esc(data.week.xp??0)+'</strong></article><article><span>Aylık XP</span><strong>'+esc(data.month.xp??0)+'</strong></article><article><span>Mesajlaşma</span><strong>'+data.threads.length+'</strong></article><article><span>Ajanda</span><strong>'+data.planner.length+'</strong></article></div></section><nav class="user-center-tabs"><a href="#personal-profile">Profil</a><a href="#personal-messages">Mesajlar</a><a href="#personal-planner">Ajanda</a><a href="#personal-discovery">Keşfet</a><a href="#personal-guestbook">Ziyaretçi Defteri</a><a href="#personal-reports">Raporlar</a></nav>'+(status?'<p class="notice">İşlem durumu: '+esc(status)+'</p>':'')+
+ '<section class="section" id="personal-profile"><div class="section-head"><h2>Kişisel profil ayarları</h2><p>Biyografin, durumun ve profil görünümün.</p></div><div class="card">'+form('profile-save',field('Biyografi','bio',data.personal.bio,280)+field('Durum','statusText',data.personal.status_text,80)+'<label>Tema<select name="theme">'+['midnight','violet','starlight','forest'].map(t=>'<option value="'+t+'"'+(data.personal.theme===t?' selected':'')+'>'+t+'</option>').join('')+'</select></label><label class="check-row"><input type="checkbox" name="guestbookEnabled" value="true"'+(data.personal.guestbook_enabled?' checked':'')+'> Ziyaretçi defterini açık tut</label><button class="btn" type="submit">Profili kaydet</button>')+'</div></section>'+
+ '<section class="section" id="personal-messages"><div class="section-head"><h2>Özel mesajlar</h2><p>Engellenen kullanıcılarla mesajlaşma kapalıdır.</p></div><div class="portal-grid"><div class="card"><h3>Yeni mesaj</h3>'+form('dm-send','<label>Oyuncu<select name="targetId" required>'+optionHtml+'</select></label><label>Mesaj<textarea name="body" maxlength="2000" required></textarea></label><button class="btn" type="submit">Mesaj gönder</button>')+'</div><div class="card"><h3>Son konuşmalar</h3>'+threads+'</div></div></section>'+
+ '<section class="section" id="personal-planner"><div class="section-head"><h2>Kişisel ajanda</h2><p>Görevlerini, notlarını ve etkinliklerini tek yerde tut.</p></div><div class="portal-grid"><div class="card"><h3>Yeni kayıt</h3>'+form('planner-create','<label>Tür<select name="kind"><option value="task">Görev</option><option value="note">Not</option><option value="event">Etkinlik</option></select></label>'+field('Başlık','title','',100)+'<label>Açıklama<textarea name="body" maxlength="2000"></textarea></label><label>Tarih<input type="datetime-local" name="dueAt"></label><button class="btn" type="submit">Ajandaya ekle</button>')+'</div><div class="card"><h3>Kayıtlarım</h3>'+planner+'</div></div></section>'+
+ '<section class="section" id="personal-discovery"><div class="section-head"><h2>Oyuncu keşfi ve öneriler</h2><p>Aynı sunucudaki yeni yol arkadaşlarını keşfet.</p></div><div class="portal-grid">'+players+'</div><div class="card">'+form('player-report','<h3>Oyuncu bildir</h3><label>Oyuncu<select name="targetId" required>'+optionHtml+'</select></label><label>Neden<select name="reason"><option value="harassment">Taciz</option><option value="spam">Spam</option><option value="cheating">Hile</option><option value="inappropriate">Uygunsuz davranış</option><option value="other">Diğer</option></select></label><label>Detay<textarea name="details" maxlength="1000"></textarea></label><button class="btn ghost" type="submit">Şikâyet gönder</button>')+'</div></section>'+
+ '<section class="section" id="personal-guestbook"><div class="section-head"><h2>Ziyaretçi defterim</h2><p>Profiline bırakılan son mesajlar.</p></div><div class="card">'+guestbook+'</div></section>'+
+ '<section class="section" id="personal-reports"><div class="section-head"><h2>İlerleme raporların</h2><p>Son 7 ve 30 günlük macera özeti.</p></div><div class="portal-grid">'+report(data.week,'Haftalık')+report(data.month,'Aylık')+'</div></section></main>';
+ return page('Kişisel Merkez',html,user);
+}
+
 function injectPublicChat(html,user,csrfToken){
  const canSend=SITE_ACCOUNT_ID.test(String(user?.id||''));
  const section='<section class="section public-chat-section" id="topluluk-sohbeti"><div class="wrap"><div class="section-head"><div class="eyebrow">FRIEREN TOPLULUĞU</div><h2>Yol arkadaşlarınla sohbet et</h2><p>Mesajları herkes okuyabilir. Mesaj göndermek için hesabınla giriş yap.</p></div><div class="public-chat-panel" data-public-chat data-can-send="'+(canSend?'true':'false')+'"><div class="public-chat-head"><span><i></i> Genel Sohbet</span><small>Son mesajlar · 7 gün</small></div><ol class="public-chat-messages" data-chat-messages aria-live="polite"><li class="public-chat-empty">Sohbet yükleniyor…</li></ol>'+(canSend?'<form class="public-chat-form" data-chat-form><input type="hidden" name="csrf" value="'+esc(csrfToken)+'"><label class="sr-only" for="public-chat-message">Mesajın</label><input id="public-chat-message" name="message" maxlength="500" autocomplete="off" placeholder="Topluluğa bir mesaj yaz…" required><button class="btn" type="submit">Gönder</button></form>':'<div class="public-chat-login"><a class="btn" href="/login">Giriş yap ve sohbete katıl</a></div>')+'<p class="public-chat-feedback" data-chat-feedback role="status"></p></div></div></section>';
@@ -777,6 +799,33 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const result = await redeemSiteLinkToken(db, session.id, form.get('token'));
     res.writeHead(303, { Location: '/maceraci?status=' + (result.status === 'linked' ? 'linked' : 'invalid'), 'Cache-Control': 'no-store' }); res.end(); return true;
   }
+  if(req.method==='POST'&&url.pathname==='/maceraci/merkez'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Kişisel merkez veritabanı kullanılamıyor.');return true;}
+    if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Cache-Control':'no-store'});res.end('Form biçimi geçersiz.');return true;}
+    let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>8192){res.writeHead(413,{'Cache-Control':'no-store'});res.end('Form çok büyük.');return true;}chunks.push(chunk);}
+    const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
+    if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Güvenlik doğrulaması başarısız.');return true;}
+    const guildId=String(form.get('guildId')||'');if(!/^\d{17,20}$/.test(guildId)){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Sunucu seçimi geçersiz.');return true;}
+    const profile=await getLinkedAdventurer(db,session.id,guildId);if(!profile){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter hesabına bağlı değil.');return true;}
+    await ensurePersonalCenterSchema(db);
+    try{
+      const action=String(form.get('action')||'');
+      if(action==='profile-save')await updatePersonalProfile(db,{guildId,userId:profile.user_id,bio:form.get('bio'),statusText:form.get('statusText'),theme:form.get('theme'),guestbookEnabled:form.get('guestbookEnabled')==='true'});
+      else if(action==='dm-send')await sendDirectMessage(db,{guildId,senderId:profile.user_id,recipientId:String(form.get('targetId')||''),body:form.get('body')});
+      else if(action==='player-report')await reportPlayer(db,{guildId,reporterId:profile.user_id,targetId:String(form.get('targetId')||''),reason:String(form.get('reason')||''),details:form.get('details')});
+      else if(action==='planner-create')await createPlannerEntry(db,{guildId,userId:profile.user_id,kind:String(form.get('kind')||''),title:form.get('title'),body:form.get('body'),dueAt:form.get('dueAt')||null});
+      else if(action==='planner-update')await updatePlannerEntry(db,{guildId,userId:profile.user_id,entryId:String(form.get('entryId')||''),title:form.get('title'),body:form.get('body'),dueAt:form.get('dueAt')||null,completed:form.get('completed')==='true'});
+      else if(action==='planner-delete')await deletePlannerEntry(db,{guildId,userId:profile.user_id,entryId:String(form.get('entryId')||'')});
+      else if(action==='guestbook-delete')await deleteGuestbookEntry(db,{guildId,ownerId:profile.user_id,entryId:String(form.get('entryId')||'')});
+      else {res.writeHead(400,{'Cache-Control':'no-store'});res.end('İşlem tanınmadı.');return true;}
+      res.writeHead(303,{Location:'/maceraci/merkez?'+new URLSearchParams({guildId,status:action+'_ok'}).toString(),'Cache-Control':'no-store'});res.end();return true;
+    }catch(error){
+      const code=String(error?.message||'');const status=code.startsWith('PERSONAL_')||code.startsWith('PLANNER_')||code.startsWith('PLAYER_')||code.startsWith('GUESTBOOK_')?'invalid':'failed';
+      res.writeHead(303,{Location:'/maceraci/merkez?'+new URLSearchParams({guildId,status}).toString(),'Cache-Control':'no-store'});res.end();return true;
+    }
+  }
   const mutationPaths = new Set(['/maceraci/event','/maceraci/yasam','/pazar/sat','/pazar/al','/pazar/iptal','/pazar/teklif-ver','/pazar/teklif-kabul','/pazar/teklif-reddet','/pazar/teklif-iptal','/pazar/alarm-kur','/pazar/alarm-sil','/maceraci/sosyal','/maceraci/bildirimler','/maceraci/atolye']);
   if (req.method === 'POST' && mutationPaths.has(url.pathname)) {
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
@@ -927,7 +976,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/pazar']);
+  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci/merkez', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/pazar']);
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname)) return false;
   const sessionUser = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
   const user = await enrichSiteUser(db,client,sessionUser || (url.pathname === '/maceraci/ev' ? { id: 'public-viewer', username: 'Gezgin' } : url.pathname === '/kesfet' ? { id: '', username: 'Gezgin', avatarUrl: '/assets/site-avatar.webp' } : null));
@@ -1005,6 +1054,20 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     return true;
   }
 
+  if(url.pathname==='/maceraci/merkez'){
+    if(!requireSiteAccount(res,user?.id))return true;
+    if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Kişisel merkez veritabanı kullanılamıyor.');return true;}
+    const guildId=String(url.searchParams.get('guildId')||'');
+    if(!guildId){const dashboard=await getAdventurerDashboard(db,user.id);const html=portalGuildPicker(user,dashboard.profiles,url.pathname,'Kişisel Merkez');res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end(html);return true;}
+    if(!/^\d{17,20}$/.test(guildId)){res.writeHead(400,{'Cache-Control':'no-store'});res.end('Sunucu seçimi geçersiz.');return true;}
+    const profile=await getLinkedAdventurer(db,user.id,guildId);if(!profile){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter hesabına bağlı değil.');return true;}
+    await ensurePersonalCenterSchema(db);
+    const [personal,threads,planner,guestbook,week,month,discover,recommended]=await Promise.all([
+      getPersonalProfile(db,guildId,profile.user_id),listMessageThreads(db,{guildId,userId:profile.user_id}),listPlannerEntries(db,{guildId,userId:profile.user_id}),listGuestbookEntries(db,{guildId,ownerId:profile.user_id}),getPersonalProgressReport(db,{guildId,userId:profile.user_id,period:'week'}),getPersonalProgressReport(db,{guildId,userId:profile.user_id,period:'month'}),discoverPlayers(db,{guildId,userId:profile.user_id}),recommendPlayers(db,{guildId,userId:profile.user_id})
+    ]);
+    const html=personalCenterPage(user,profile,{personal,threads,planner,guestbook,week,month,discover,recommended},createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET),url.searchParams.get('status'));
+    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});res.end(html);return true;
+  }
   if(url.pathname==='/maceraci/profil'){
     if(!requireSiteAccount(res,user?.id))return true;
     if(!db){res.writeHead(503,{'Cache-Control':'no-store'});res.end('Profil veritabanı kullanılamıyor.');return true;}
