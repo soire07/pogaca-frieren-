@@ -39,14 +39,17 @@ test('RSS poll stores normalized source, article and image metadata with conflic
 test('digest renderer creates a highlighted clickable lead and a compact linked story list',()=>{
  const embeds=buildAnimeNewsDigestEmbeds([
   {title:'Nintendo Switch 2 sales',link:'https://www.animenewsnetwork.com/news/2026-11-05/game',summary:'Game sales update.',sourceName:'Anime News Network',imageUrl:'https://cdn.animenewsnetwork.com/thumb.jpg'},
-  {title:'New Manga License',link:'https://www.animenewsnetwork.com/news/2026-11-05/manga',summary:'A new manga license.'}
+  {title:'New Manga License',link:'https://www.animenewsnetwork.com/news/2026-11-05/manga',summary:'A new manga license.',imageUrl:'https://cdn.animenewsnetwork.com/manga.jpg'}
  ],new Date('2026-11-05T12:00:00.000Z'));
  assert.equal(embeds.length,2);
  assert.equal(embeds[0].title,'Nintendo Switch 2 sales');
  assert.equal(embeds[0].url,'https://www.animenewsnetwork.com/news/2026-11-05/game');
  assert.equal(embeds[0].image.url,'https://cdn.animenewsnetwork.com/thumb.jpg');
  assert.equal(embeds[0].fields[0].value,'Oyun');
- assert.match(embeds[1].fields[0].value,/\[Haberi oku/);
+ assert.equal(embeds[1].title,'New Manga License');
+ assert.equal(embeds[1].url,'https://www.animenewsnetwork.com/news/2026-11-05/manga');
+ assert.equal(embeds[1].image.url,'https://cdn.animenewsnetwork.com/manga.jpg');
+ assert.equal(embeds[1].fields[0].value,'Manga');
  assert.equal(classifyAnimeNews('Titan Manga licenses new titles'),'Manga');
  assert.deepEqual(buildAnimeNewsDigestEmbeds([{title:'unsafe',link:'https://example.com/article'}]),[]);
 });
