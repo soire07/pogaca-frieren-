@@ -731,14 +731,12 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'chat_unavailable'}));return true;}
     const chatSession=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     const viewerId=SITE_ACCOUNT_ID.test(String(chatSession?.id||''))?chatSession.id:null;
-    const before=String(url.searchParams.get('before')||''),search=String(url.searchParams.get('q')||'').slice(0,80);const [messages,blocked,presence]=await Promise.all([listPublicChatMessages(db,{limit:100,viewerAccountId:viewerId,before,search}),viewerId?listPublicChatBlocks(db,{accountId:viewerId}):Promise.resolve([]),getPublicChatPresence(db)]);
-    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(JSON.stringify({messages,blocked,presence}));return true;
+    const before=String(url.searchParams.get('before')||''),search=String(url.searchParams.get('q')||'').slice(0,80);const [messages,blocked,presence,control]=await Promise.all([listPublicChatMessages(db,{limit:100,viewerAccountId:viewerId,before,search}),viewerId?listPublicChatBlocks(db,{accountId:viewerId}):Promise.resolve([]),getPublicChatPresence(db),getPublicChatControl(db)]);
+    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(JSON.stringify({messages,blocked,presence,control}));return true;
   }
   if(url.pathname==='/api/public-chat/messages'&&req.method==='POST'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!requireSiteAccount(res,session?.id))return true;
-    const owner=isOwnerSiteAccount(session);
-    if(['/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/control'].includes(url.pathname)&&!owner){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'owner_only'}));return true;}
     if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'chat_unavailable'}));return true;}
     if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_content_type'}));return true;}
     let size=0;const chunks=[];
@@ -758,6 +756,8 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   if(['/api/public-chat/reactions','/api/public-chat/blocks','/api/public-chat/blocks/unblock','/api/public-chat/messages/edit','/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/presence','/api/public-chat/typing','/api/public-chat/read','/api/public-chat/reports','/api/public-chat/control'].includes(url.pathname)&&req.method==='POST'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!requireSiteAccount(res,session?.id))return true;
+    const owner=isOwnerSiteAccount(session);
+    if(['/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/control'].includes(url.pathname)&&!owner){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'owner_only'}));return true;}
     if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'chat_unavailable'}));return true;}
     if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_content_type'}));return true;}
     let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>4096){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'message_too_large'}));return true;}chunks.push(chunk);}
