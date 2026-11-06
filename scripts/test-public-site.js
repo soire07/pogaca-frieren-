@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { handlePublicSiteRequest } from '../public-site.js';
+import { handlePublicSiteRequest, publicHomeShowcasePage } from '../public-site.js';
 import { createPublicSiteSession, buildPublicSiteSessionCookie } from '../owner-dashboard.js';
 import { createSiteCsrfToken } from '../site-auth.js';
 
@@ -18,7 +18,7 @@ function request(path = '/', user = visitor) {
 }
 
 test('account-only player routes reject legacy Discord sessions before querying account data', async () => {
-  const routes=['/maceraci','/maceraci/profil','/maceraci/yasam','/maceraci/atolye','/maceraci/bildirimler','/maceraci/envanter','/maceraci/koleksiyon','/maceraci/sosyal','/pazar','/destek','/profil','/hesap-merkezi'];
+  const routes=['/maceraci','/maceraci/yasam','/maceraci/atolye','/maceraci/bildirimler','/maceraci/envanter','/maceraci/koleksiyon','/maceraci/sosyal','/pazar','/destek'];
   for(const route of routes){
     let queries=0;
     const response=res();
@@ -165,24 +165,14 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /site-menu-toggle/);
   assert.match(response.body, /aria-controls="site-sidebar"/);
   assert.match(response.body, /data-nav-group="oyuncu"/);
-  assert.match(response.body, /data-nav-group="kullanici"/);
-  assert.match(response.body, /KULLANICI MERKEZİ/);
-  assert.match(response.body, /Başarım Vitrini/);
-  assert.match(response.body, /Kişisel Yaşam Alanım/);
-  assert.ok(response.body.includes('href="/maceraci/profil#leaderboards"'));
-  assert.ok(response.body.includes('href="/maceraci/profil#privacy"'));
+  assert.match(response.body, /data-nav-group="macera"/);
   assert.match(response.body, /data-nav-group="dunya"/);
   assert.ok(response.body.includes('data-nav-path="/" href="/"'));
   assert.ok(response.body.includes('<strong>Kullanıcı Paneli</strong>'));
-  assert.ok(response.body.includes('data-nav-path="/maceraci" href="/maceraci"'));
+  assert.ok(!response.body.includes('data-nav-path="/maceraci" href="/maceraci"'));
   assert.match(response.body, /site-navigation.js/);
   assert.match(response.body, /data-nav-group="oyuncu"/);
-  assert.match(response.body, /data-nav-group="kullanici"/);
-  assert.match(response.body, /KULLANICI MERKEZİ/);
-  assert.match(response.body, /Başarım Vitrini/);
-  assert.match(response.body, /Kişisel Yaşam Alanım/);
-  assert.ok(response.body.includes('href="/maceraci/profil#leaderboards"'));
-  assert.ok(response.body.includes('href="/maceraci/profil#privacy"'));
+  assert.match(response.body, /data-nav-group="macera"/);
   assert.match(response.body, /gif-gallery/);
   assert.match(response.body, /profile-avatar/);
   assert.equal((response.body.match(/loading="lazy"/g) || []).length, 18);
@@ -196,38 +186,22 @@ test('authenticated homepage is the account-scoped player dashboard', async () =
   const event = { event_id:'event-home', guild_id:profile.guild_id, title:'Zindan Gecesi', description:'Topluluk etkinliği', event_type:'community', starts_at:new Date(Date.now()+3600000).toISOString(), ends_at:new Date(Date.now()+7200000).toISOString(), max_participants:12, participants:5 };
   const accountId = 'site_123e4567-e89b-12d3-a456-426614174000';
   const queries = [];
-  const previousVipAccounts = process.env.FRIEREN_VIP_ACCOUNT_IDS;
-  process.env.FRIEREN_VIP_ACCOUNT_IDS = accountId;
   const db = { async query(sql, params) {
     queries.push({ sql, params });
-    if (sql.includes('FROM site_discord_links WHERE account_id=$1')) return { rows:[{user_id:profile.user_id}], rowCount:1 };
-    if (sql.includes('FROM frieren_profile_media')) return { rows:[], rowCount:0 };
     if (sql.includes('FROM site_discord_links l JOIN users u')) return { rows:[profile], rowCount:1 };
     if (sql.includes('FROM guild_events e LEFT JOIN guild_event_participants')) return { rows:[event], rowCount:1 };
     throw new Error('Unexpected query: ' + sql);
   }};
   const response = res();
-  let handled;
-  try {
-    handled = await handlePublicSiteRequest(request('/', { id:accountId, username:'Gezgin' }), response, { db });
-  } finally {
-    if (previousVipAccounts === undefined) delete process.env.FRIEREN_VIP_ACCOUNT_IDS;
-    else process.env.FRIEREN_VIP_ACCOUNT_IDS = previousVipAccounts;
-  }
-  assert.equal(handled, true);
+  assert.equal(await handlePublicSiteRequest(request('/', { id:accountId, username:'Gezgin' }), response, { db }), true);
   assert.equal(response.status, 200);
   assert.match(response.body, /Maceracı Paneli/);
   assert.match(response.body, /Fern/);
   assert.match(response.body, /1180/);
   assert.match(response.body, /Zindan Gecesi/);
-  assert.match(response.body, /site-account-card is-vip/);
-  assert.match(response.body, /xp-progress is-vip/);
-  assert.match(response.body, /role="progressbar"/);
   assert.ok(response.body.includes('action="/maceraci/link"'));
-
-  assert.equal(queries.length, 5);
+  assert.equal(queries.length, 2);
   assert.equal(queries[0].params[0], accountId.replace(/^site_/, ''));
-  assert.equal(queries[2].params[0], accountId.replace(/^site_/, ''));
 });
 
 test('player collection page is scoped to the linked guild and shows existing game collections', async () => {
@@ -340,7 +314,8 @@ test('homepage renders the signed-in user profile with the completed starry bann
   await handlePublicSiteRequest(request('/kesfet', visitor), response);
   assert.ok(response.body.includes('site-avatar.webp'));
   assert.ok(response.body.includes('profile-banner-art'));
-  assert.ok(response.body.includes('site-profile-banner.svg'));
+  assert.ok(response.body.includes('site-banner.svg'));
+  assert.ok(!response.body.includes('site-profile-banner.svg'));
   assert.ok(response.body.includes('MACERACI HESABI'));
   assert.ok(response.body.includes('Gezgin'));
   assert.equal(response.body.includes('site-banner.webp'), false);
@@ -522,13 +497,8 @@ test('adventurer dashboard requires a verified member session and renders linked
   assert.equal(anonymous.headers.Location,'/login');
   const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:12,xp:1440,coins:900,hp:80,max_hp:100,mana:65,max_mana:100,season_name:'Sezon 2026',rating:1180,wins:4,losses:2,matches:6};
   const event={event_id:'event-test',guild_id:profile.guild_id,title:'Zindan Gecesi',description:'Topluluk etkinliği',event_type:'community',starts_at:new Date(Date.now()+3600000).toISOString(),ends_at:new Date(Date.now()+7200000).toISOString(),max_participants:12,participants:5};
-  const db={async query(sql){
-    if(sql.includes('FROM site_discord_links WHERE account_id=$1'))return{rows:[{user_id:profile.user_id}],rowCount:1};
-    if(sql.includes('FROM frieren_profile_media'))return{rows:[],rowCount:0};
-    if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};
-    if(sql.includes('FROM guild_events e LEFT JOIN guild_event_participants'))return{rows:[event],rowCount:1};
-    throw new Error('Unexpected query: '+sql);
-  }};
+  let queryCount=0;
+  const db={query:async()=>({rows:queryCount++===0?[profile]:[event],rowCount:1})};
   const response=res();
   const id='site_123e4567-e89b-12d3-a456-426614174000';
   assert.equal(await handlePublicSiteRequest(request('/maceraci',{id,username:'Gezgin'}),response,{db}),true);
@@ -572,8 +542,6 @@ test('adventurer account linking rejects invalid CSRF before opening a database 
 test('public home showcase is visible only after explicit opt-in',async()=>{
  const profile={user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20,xp:2400,active_room:'starter',layout:[],is_public:true};
  const db={async query(sql){
-  if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return {rows:[],rowCount:0};
-  if(sql.includes('FROM player_profile_settings'))return {rows:[{show_stats:false,show_achievements:true,show_collections:true,show_activity:false,show_cosmetics:true,active_title:null}],rowCount:1};
   if(sql.includes('FROM player_homes h JOIN users u'))return {rows:[profile],rowCount:1};
   if(sql.includes('FROM player_home_rooms'))return {rows:[{room_key:'starter'}],rowCount:1};
   if(sql.includes('FROM achievement_claims'))return {rows:[{achievement_key:'first_boss',display_slot:0}],rowCount:1};
@@ -587,7 +555,7 @@ test('public home showcase is visible only after explicit opt-in',async()=>{
  assert.equal(await handlePublicSiteRequest({method:'GET',url:'/maceraci/ev?guildId=1539562273197260860&userId='+profile.user_id,headers:{}},response,{db}),true);
  assert.equal(response.status,200);
  assert.match(response.body,/Profil Vitrini/);
- assert.match(response.body,/Seviye 5/);
+ assert.match(response.body,/Seviye 20/);
  assert.match(response.body,/2\.400 XP/);
  assert.match(response.body,/Rozet ve Başarım Vitrini/);
  assert.match(response.body,/Fern/);
@@ -608,7 +576,6 @@ test('player experience web mutations reject invalid CSRF before database access
 test('player experience web page is scoped to the linked character and shows home cosmetics and event progress',async()=>{
  const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20};
  const db={async query(sql){
-  if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return {rows:[],rowCount:0};
   if(sql.includes('FROM site_discord_links'))return {rows:[profile],rowCount:1};
   if(sql.startsWith('INSERT INTO users')||sql.startsWith('INSERT INTO user_talents')||sql.startsWith('INSERT INTO learned_spells')||sql.startsWith('INSERT INTO player_home_rooms')||sql.startsWith('INSERT INTO player_homes'))return {rows:[],rowCount:1};
   if(sql.includes('SELECT active_room,layout,is_public FROM player_homes'))return {rows:[{active_room:'starter',layout:[],is_public:false}],rowCount:1};
@@ -773,14 +740,14 @@ test('web social friend request uses the linked character and redirects after cr
   const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern'};
   const queries=[];
   const db={
-    async query(sql){queries.push(sql);if(sql.includes('FROM site_discord_links'))return{rows:[profile],rowCount:1};if(sql.includes('FROM guild_feature_settings'))return{rows:[{enabled:true}],rowCount:1};if(sql.includes('FROM social_blocks'))return{rows:[],rowCount:0};throw new Error('Unexpected pool query: '+sql);},
-    async connect(){return{async query(sql,params){queries.push(sql);if(sql==='BEGIN'||sql==='COMMIT'||sql==='ROLLBACK')return{rows:[],rowCount:1};if(sql.includes('SELECT user_id FROM users'))return{rows:[{user_id:profile.user_id},{user_id:'223456789012345678'}],rowCount:2};if(sql.includes('FROM social_blocks'))return{rows:[],rowCount:0};if(sql.includes('SELECT relationship_type FROM social_relationships'))return{rows:[],rowCount:0};if(sql.startsWith('UPDATE social_friend_requests'))return{rows:[],rowCount:0};if(sql.includes('SELECT request_id,requester_id FROM social_friend_requests'))return{rows:[],rowCount:0};if(sql.startsWith('INSERT INTO social_friend_requests'))return{rows:[{request_id:'123e4567-e89b-42d3-a456-426614174000'}],rowCount:1};throw new Error('Unexpected client query: '+sql+' '+JSON.stringify(params));},release(){}};}
+    async query(sql){queries.push(sql);if(sql.includes('FROM site_discord_links'))return{rows:[profile],rowCount:1};if(sql.includes('FROM guild_feature_settings'))return{rows:[{enabled:true}],rowCount:1};throw new Error('Unexpected pool query: '+sql);},
+    async connect(){return{async query(sql,params){queries.push(sql);if(sql==='BEGIN'||sql==='COMMIT'||sql==='ROLLBACK')return{rows:[],rowCount:1};if(sql.includes('SELECT user_id FROM users'))return{rows:[{user_id:profile.user_id},{user_id:'223456789012345678'}],rowCount:2};if(sql.includes('SELECT relationship_type FROM social_relationships'))return{rows:[],rowCount:0};if(sql.startsWith('UPDATE social_friend_requests'))return{rows:[],rowCount:0};if(sql.includes('SELECT request_id,requester_id FROM social_friend_requests'))return{rows:[],rowCount:0};if(sql.startsWith('INSERT INTO social_friend_requests'))return{rows:[{request_id:'123e4567-e89b-42d3-a456-426614174000'}],rowCount:1};throw new Error('Unexpected client query: '+sql+' '+JSON.stringify(params));},release(){}};}
   };
   const response=res();
   const post=sitePost('/maceraci/sosyal',{csrf:createSiteCsrfToken(secret),guildId:profile.guild_id,action:'request',targetId:'223456789012345678'});
   assert.equal(await handlePublicSiteRequest(post,response,{db}),true);
   assert.equal(response.status,303);
-  assert.match(response.headers.Location,/^\/maceraci\/sosyal\?/);assert.match(response.headers.Location,/status=request_sent/);
+  assert.match(response.headers.Location,/status=request_sent/);
   assert.ok(queries.some(sql=>sql.includes('social_friend_requests')));
 });
 test('web social page and mutations respect the guild social feature toggle',async()=>{
@@ -808,7 +775,6 @@ test('main startup initializes all player-facing collection schemas before servi
 
 test('private home showcase remains unavailable without explicit opt-in',async()=>{
  const db={async query(sql){
-  if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return {rows:[],rowCount:0};
   assert.ok(sql.includes('h.is_public=TRUE'));
   return {rows:[],rowCount:0};
  }};
@@ -874,9 +840,6 @@ test('public player showcase respects privacy and exposes only the opt-in card a
  const calls=[];
  const db={async query(sql){
   calls.push(sql);
-  if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return {rows:[],rowCount:0};
-  if(sql.includes('FROM player_profile_settings'))return{rows:[{show_stats:false,show_achievements:true,show_collections:true,show_activity:false,show_cosmetics:true,active_title:null}],rowCount:1};
-  if(sql.includes('FROM player_profile_settings'))return{rows:[{show_stats:false,show_achievements:true,show_collections:true,show_activity:false,show_cosmetics:true,active_title:null}],rowCount:1};
   if(sql.includes('h.is_public=TRUE'))return{rows:[{user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:42,xp:9000,active_room:'starter',layout:[],is_public:true}],rowCount:1};
   if(sql.includes('FROM player_home_rooms'))return{rows:[{room_key:'starter'}],rowCount:1};
   if(sql.includes('FROM achievement_claims'))return{rows:[{achievement_key:'first_raid',display_slot:0}],rowCount:1};
@@ -899,7 +862,7 @@ test('public player showcase respects privacy and exposes only the opt-in card a
 test('adventurer calendar exposes direct raid signup with the real guild team UUID',async()=>{
  const profile={guild_id:'1539562273197260860',user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20,xp:2400,coins:100,hp:80,max_hp:100,mana:40,max_mana:60,rating:1200,wins:2,losses:1};
  const event={event_id:'123e4567-e89b-42d3-a456-426614174000',guild_id:profile.guild_id,title:'Kuzey Zindanı',description:'Birlikte ilerle.',event_type:'boss_raid',starts_at:new Date(Date.now()+3600000).toISOString(),ends_at:new Date(Date.now()+7200000).toISOString(),max_participants:10,participants:2,joined:false,joined_team_key:null,joined_team_id:null,joined_team_name:null,available_teams:[{team_id:'123e4567-e89b-42d3-a456-426614174001',team_name:'Fern Takımı'}]};
- const db={async query(sql){if(sql.includes('SELECT 1 FROM site_discord_links WHERE account_id=$1 AND user_id=$2'))return{rows:[],rowCount:0};if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};if(sql.includes('FROM guild_events e'))return{rows:[event],rowCount:1};throw new Error('Unexpected dashboard query: '+sql);}};
+ const db={async query(sql){if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};if(sql.includes('FROM guild_events e'))return{rows:[event],rowCount:1};throw new Error('Unexpected dashboard query: '+sql);}};
  const response=res();
  const account={id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'};
  assert.equal(await handlePublicSiteRequest(request('/maceraci',account),response,{db}),true);
@@ -1054,384 +1017,15 @@ test('player home visibility and layout controls persist only for the linked acc
 });
 
 
-test('adventurer profile page is guild-scoped and renders canonical XP, titles, achievements, activity and leaderboards',async()=>{
- const guildId='1539562273197260860',userId='123456789012345678';
- const accountId='site_123e4567-e89b-12d3-a456-426614174000';
- const calls=[];
- const db={async query(sql,params){
-  calls.push({sql,params});
-  if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return{rows:[],rowCount:0};
-  if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[{guild_id:guildId,user_id:userId,character_name:'Fern',class_name:'Büyücü',level:99,xp:38050,coins:900}],rowCount:1};
-  if(sql.includes('FROM users WHERE guild_id=$1 AND user_id=$2'))return{rows:[{created_at:'2026-01-01T00:00:00.000Z',boss_defeats:12,dungeon_wins:8,exploration_count:42,items_used_count:9,daily_streak:4,best_daily_streak:7}],rowCount:1};
-  if(sql.includes('FROM user_titles'))return{rows:[{title:'Kıdemli Maceracı',unlocked_at:'2026-01-02T00:00:00.000Z'}],rowCount:1};
-  if(sql.includes('FROM achievement_claims a LEFT JOIN player_home_trophies'))return{rows:[{achievement_key:'dungeon_25',claimed_at:'2026-01-03T00:00:00.000Z',display_slot:0},{achievement_key:'level_5',claimed_at:'2026-01-02T00:00:00.000Z',display_slot:null}],rowCount:2};
-  if(sql.includes('WITH xp_board AS'))return{rows:[
-   {board:'xp',players:[{user_id:userId,character_name:'Fern',level:19,xp:38050}]},
-   {board:'boss',players:[{user_id:userId,character_name:'Fern',boss_defeats:12}]},
-   {board:'dungeon',players:[{user_id:userId,character_name:'Fern',dungeon_wins:8}]},
-   {board:'arena',players:[{user_id:userId,character_name:'Fern',rating:1420}]},
-   {board:'daily_adventure_xp',players:[{user_id:userId,character_name:'Fern',xp:50}]},
-   {board:'achievements',players:[{user_id:userId,character_name:'Fern',achievements:2}]}
-  ],rowCount:6};
-  if(sql.includes('FROM adventure_history'))return{rows:[{activity_type:'adventure',activity_label:'Buzlu Orman',activity_at:'2026-01-04T00:00:00.000Z',xp_awarded:50}],rowCount:1};
-  if(sql.includes('FROM anime_character_collection'))return{rows:[{anime_cards:14,anime_copies:22,journal_entries:9}],rowCount:1};
-  if(sql.includes('FROM arena_seasons'))return{rows:[{season_name:'Kuzey Sezonu',rating:1420,wins:5,losses:2,matches:7}],rowCount:1};
-  if(sql.includes('FROM player_profile_settings'))return{rows:[{show_stats:false,show_achievements:true,show_collections:false,show_activity:false,show_cosmetics:true,active_title:'Kıdemli Maceracı'}],rowCount:1};
-  if(sql.includes('FROM player_homes'))return{rows:[{is_public:true}],rowCount:1};
-  if(sql.includes('FROM player_cosmetic_loadout'))return{rows:[{slot:'profile_frame',cosmetic_key:'moon_frame'}],rowCount:1};
-  throw new Error('Unexpected profile query: '+sql);
- }};
- const response=res();
- assert.equal(await handlePublicSiteRequest(request('/maceraci/profil?guildId='+guildId,{id:accountId,username:'Gezgin'}),response,{db}),true);
- assert.equal(response.status,200);
- assert.match(response.body,/Maceracı Profili/);
- assert.match(response.body,/Seviye 20/);
- assert.match(response.body,/1\.950/);
- assert.match(response.body,/Kıdemli Maceracı/);
- assert.match(response.body,/Kuzeyin Efsaneleri/);
- assert.match(response.body,/En yüksek ödüllü başarımlar/);
- assert.match(response.body,/Sıralamalar/);
- assert.match(response.body,/Başarım sayısı/);
- assert.match(response.body,/Son 24 saat macera XP/);
- assert.match(response.body,/Gizlilik ayarları/);
- assert.ok(calls.every(call=>!call.params||!call.params.includes('999999999999999999')));
- assert.ok(calls.some(call=>call.sql.includes('WHERE guild_id=$1 AND user_id=$2')));
-});
-
-test('public profile preferences are CSRF protected and saved only for the linked guild character',async()=>{
- const guildId='1539562273197260860',userId='123456789012345678';
- const accountId='site_123e4567-e89b-12d3-a456-426614174000';
- const calls=[];
- const db={async query(sql,params){
-  calls.push({sql,params});
-  if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[{guild_id:guildId,user_id:userId,character_name:'Fern'}],rowCount:1};
-  if(sql.includes('SELECT 1 FROM user_titles'))return{rows:[{title:params[2]}],rowCount:1};
-  return{rows:[],rowCount:1};
- }};
- const invalid=res();
- const bad={method:'POST',url:'/maceraci/yasam',headers:{cookie:buildPublicSiteSessionCookie(createPublicSiteSession(secret,{id:accountId,username:'Gezgin'},Math.floor(Date.now()/1000)+3600),'3600').split(';')[0], 'content-type':'application/x-www-form-urlencoded'},async *[Symbol.asyncIterator](){yield Buffer.from('csrf=invalid&guildId='+guildId+'&action=set-profile-settings');}};
- assert.equal(await handlePublicSiteRequest(bad,invalid,{db}),true);
- assert.equal(invalid.status,403);
- assert.equal(calls.length,0);
- const valid=res();
- assert.equal(await handlePublicSiteRequest(sitePost('/maceraci/yasam',{
-  csrf:createSiteCsrfToken(secret),guildId,action:'set-profile-settings',showStats:'true',showAchievements:'true',
-  showCollections:'false',showActivity:'false',showCosmetics:'true',activeTitle:'Kıdemli Maceracı'
- },accountId),valid,{db}),true);
- assert.equal(valid.status,303);
- assert.ok(valid.headers.Location.includes('/maceraci/profil'));
- assert.ok(calls.some(call=>call.sql.includes('INSERT INTO player_profile_settings')));
-});
-
-
-test('public home privacy settings hide opt-out achievements, collections, cosmetics and activity',async()=>{
- const profile={user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20,xp:2400,active_room:'starter',layout:[],is_public:true};
- const db={async query(sql){
-  if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return{rows:[],rowCount:0};
-  if(sql.includes('FROM player_profile_settings'))return{rows:[{show_stats:false,show_achievements:false,show_collections:false,show_activity:false,show_cosmetics:false,active_title:null}],rowCount:1};
-  if(sql.includes('FROM player_homes h JOIN users u'))return{rows:[profile],rowCount:1};
-  if(sql.includes('FROM player_home_rooms'))return{rows:[{room_key:'starter'}],rowCount:1};
-  throw new Error('Unexpected private showcase query: '+sql);
- }};
- const response=res();
- assert.equal(await handlePublicSiteRequest({method:'GET',url:'/maceraci/ev?guildId=1539562273197260860&userId='+profile.user_id,headers:{}},response,{db}),true);
- assert.equal(response.status,200);
- assert.match(response.body,/Profil Vitrini/);
- assert.doesNotMatch(response.body,/Rozet ve Başarım Vitrini/);
- assert.doesNotMatch(response.body,/Anime Kart Koleksiyonu/);
- assert.doesNotMatch(response.body,/Kuşanılan Kozmetikler/);
- assert.doesNotMatch(response.body,/Son Macera Etkinlikleri/);
-});
-
-
-test('owner profile overrides VIP and renders the exclusive role, title, blood XP and profile frame', async () => {
-  const accountId='site_123e4567-e89b-12d3-a456-426614174000';
-  const guildId='1539562273197260860';
-  const profile={guild_id:guildId,user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:12,xp:1440,coins:900,hp:80,max_hp:100,mana:65,max_mana:100};
-  const previousVipAccounts=process.env.FRIEREN_VIP_ACCOUNT_IDS;
-  const previousOwnerAccounts=process.env.FRIEREN_OWNER_ACCOUNT_IDS;
-  process.env.FRIEREN_VIP_ACCOUNT_IDS=accountId;
-  process.env.FRIEREN_OWNER_ACCOUNT_IDS=accountId;
-  const db={async query(sql){
-    if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return{rows:[],rowCount:0};
-    if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};
-    if(sql.includes('SELECT show_stats,show_achievements'))return{rows:[{show_stats:true,show_achievements:true,show_collections:true,show_activity:true,show_cosmetics:true,active_title:'Yıldız Büyücüsü'}],rowCount:1};
-    if(sql.includes('SELECT created_at,boss_defeats'))return{rows:[{created_at:'2025-01-01T00:00:00Z',boss_defeats:8,dungeon_wins:5,exploration_count:12,daily_streak:4,best_daily_streak:9}],rowCount:1};
-    if(sql.includes('SELECT title,unlocked_at'))return{rows:[{title:'Yıldız Büyücüsü',unlocked_at:'2025-02-01T00:00:00Z'}],rowCount:1};
-    if(sql.includes('FROM achievement_claims a LEFT JOIN player_home_trophies'))return{rows:[{achievement_key:'first_boss',claimed_at:'2025-02-02T00:00:00Z',display_slot:5}],rowCount:1};
-    if(sql.includes('SELECT activity_type,activity_label'))return{rows:[{activity_type:'Macera',activity_label:'Zindan tamamlandı',activity_at:'2025-02-03T00:00:00Z',xp_awarded:80}],rowCount:1};
-    if(sql.includes('SELECT (SELECT COUNT(DISTINCT character_name)'))return{rows:[{anime_cards:12,anime_copies:18,journal_entries:7}],rowCount:1};
-    if(sql.includes('SELECT s.name AS season_name'))return{rows:[{season_name:'Sezon 2026',rating:1180,wins:4,losses:2,matches:6}],rowCount:1};
-    if(sql.includes('WITH xp_board'))return{rows:['xp','boss','dungeon','arena','daily_adventure_xp','collection','achievements'].map(board=>({board,players:[{character_name:'Fern',xp:1440,boss_defeats:8,dungeon_wins:5,rating:1180,wins:4,losses:2,anime_cards:12,achievements:1}]})),rowCount:7};
-    if(sql.includes('SELECT is_public FROM player_homes'))return{rows:[{is_public:true}],rowCount:1};
-    if(sql.includes('SELECT slot,cosmetic_key FROM player_cosmetic_loadout'))return{rows:[{slot:'profile_frame',cosmetic_key:'moon_frame'}],rowCount:1};
-    if(sql.includes('SELECT TO_CHAR(date_trunc'))return{rows:[{day_label:'2026-11-04',xp:80}],rowCount:1};
-    throw new Error('Unexpected profile query: '+sql);
-  }};
-  try {
-    const response=res();
-    assert.equal(await handlePublicSiteRequest(request('/maceraci/profil?guildId='+guildId,{id:accountId,username:'Gezgin'}),response,{db}),true);
-    assert.equal(response.status,200);
-    for(const expected of ['Maceracı Profili','Fern','OWNER','Kurucu · Owner','xp-progress is-owner','profile-owner-frame','profile-quick-nav','profile-achievement-search','profile-achievement-sort','profile-activity-filter','profile-preview-toggle','profile-settings-reset','İlerleme Merkezi','Savaş İstatistiklerim','Başarım Vitrini','Sıralamalar','Gizlilik ayarları','Yıldız Büyücüsü','Kozmetiklerini düzenle','Vitrin 6'])assert.ok(response.body.includes(expected),expected);
-    assert.match(response.body,/action="\/maceraci\/yasam"/);
-    assert.match(response.body,/href="\/maceraci\/ev\?guildId=/);
-    assert.equal(response.body.includes('href="/owner"'),false);
-    assert.equal(response.headers['Cache-Control'],'no-store');
-  } finally {
-    if(previousVipAccounts===undefined)delete process.env.FRIEREN_VIP_ACCOUNT_IDS;
-    else process.env.FRIEREN_VIP_ACCOUNT_IDS=previousVipAccounts;
-    if(previousOwnerAccounts===undefined)delete process.env.FRIEREN_OWNER_ACCOUNT_IDS;
-    else process.env.FRIEREN_OWNER_ACCOUNT_IDS=previousOwnerAccounts;
-  }
-});
-
-// Owner identity is account-allowlisted; it must never inherit VIP styling or bypass Discord OAuth.
-test('Owner blood XP and profile frame styles honor reduced-motion preferences', async () => {
-  const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
-  assert.match(css,/\.xp-progress\.is-owner \.xp-progress-track>i\{[^}]*animation:frieren-owner-blood-flow/);
-  assert.match(css,/\.profile-owner-frame::after/);
-  assert.match(css,/\.xp-progress\.is-owner \.xp-progress-track>i::after/);
-  assert.match(css,/@media\s*\(prefers-reduced-motion:reduce\)/);
-  assert.match(css,/\.xp-progress\.is-owner \.xp-progress-track>i\{animation:none!important/);
-});
-
-test('VIP XP animation is accessible and disabled for reduced-motion preferences', async () => {
-  const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
-  assert.match(css,/\.xp-progress\.is-vip \.xp-progress-track>i\{[^}]*animation:frieren-vip-xp-flow/);
-  assert.match(css,/@media\s*\(prefers-reduced-motion:reduce\)/);
-  assert.match(css,/\.xp-progress\.is-vip \.xp-progress-track>i\{animation:none!important/);
-});
-
-
-test('profile section shortcuts survive the linked-guild selection step', async () => {
-  const accountId='site_123e4567-e89b-12d3-a456-426614174000';
-  const guildId='1539562273197260860';
-  const profile={guild_id:guildId,user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:12,xp:1440,coins:900,hp:80,max_hp:100,mana:65,max_mana:100};
-  const db={async query(sql){
-    if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};
-    if(sql.includes('SELECT e.event_id,e.guild_id'))return{rows:[],rowCount:0};
-    throw new Error('Unexpected guild-picker query: '+sql);
-  }};
-  const response=res();
-  assert.equal(await handlePublicSiteRequest(request('/maceraci/profil#achievements',{id:accountId,username:'Gezgin'}),response,{db}),true);
-  assert.equal(response.status,200);
-  assert.ok(response.body.includes('/maceraci/profil?guildId='+guildId+'#achievements'));
-});
-
-
-test('global site action script confirms destructive actions and prevents duplicate form submissions', async () => {
-  const response = res();
-  assert.equal(await handlePublicSiteRequest(request('/assets/site-actions.js'), response, {}), true);
-  assert.equal(response.status, 200);
-  assert.match(String(response.body), /pendingForms/);
-  assert.match(String(response.body), /window\.confirm/);
-  assert.match(String(response.body), /Büyü işleniyor/);
-  assert.doesNotMatch(String(response.body), /submitter\.disabled\s*=/);
-});
-
-test('profile interaction script is served and wires search, sorting, activity filters and privacy preview', async () => {
-  const response = res();
-  assert.equal(await handlePublicSiteRequest(request('/assets/profile-interactions.js'), response, {}), true);
-  assert.equal(response.status, 200);
-  for (const feature of ['data-profile-achievement-search','data-profile-achievement-sort','data-profile-activity-filter','profile-preview-toggle','profile-settings-reset']) {
-    assert.ok(String(response.body).includes(feature), feature);
-  }
-});
-
-
-test('authentication and guild management forms load the shared functional button handler', async () => {
-  const auth = await readFile(new URL('../site-auth.js', import.meta.url), 'utf8');
-  const guild = await readFile(new URL('../guild-dashboard.js', import.meta.url), 'utf8');
-  assert.match(auth, /site-actions\.js/);
-  assert.match(guild, /site-actions\.js/);
-  assert.match(guild, /\.guild-save:hover/);
-});
-
-
-test('all site and panel button markup declares an explicit action type', async () => {
-  const paths = ['../public-site.js', '../site-auth.js', '../guild-dashboard.js', '../owner-dashboard.js'];
-  for (const path of paths) {
-    const source = await readFile(new URL(path, import.meta.url), 'utf8');
-    const buttons = [...source.matchAll(/<button\b[^>]*>/g)].map(match => match[0]);
-    assert.ok(buttons.length > 0, path + ' should contain its known action controls');
-    for (const button of buttons) {
-      assert.match(button, /\btype="(?:submit|button|reset)"/, path + ' has an untyped button: ' + button);
-    }
-  }
-});
-
-test('account navigation is global while RPG character features stay inside the adventurer panel', async () => {
-  const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
-  const userCenter=source.slice(source.indexOf("navGroup('kullanici'"),source.indexOf("navGroup('maceraci'"));
-  const adventurer=source.slice(source.indexOf("navGroup('maceraci'"),source.indexOf("navGroup('oyuncu'"));
-  assert.match(userCenter,/navLink\('\/profil',[\s\S]*?'Hesap Profilim'/);
-  assert.match(userCenter,/navLink\('\/hesap-merkezi',[\s\S]*?'Hesap ve Destek Merkezi'/);
-  assert.doesNotMatch(userCenter,/\/maceraci\//);
-  for(const path of ['/maceraci/profil','/maceraci/merkez','/maceraci/envanter','/maceraci/koleksiyon','/maceraci/yasam']) assert.ok(adventurer.includes(path),path);
-  assert.match(adventurer,/MACERACI PANELİ/);
-  assert.match(source,/navLink\('\/destek#account-settings',[\s\S]*?'Hesap Ayarları'/);
-  assert.match(source,/navLink\('\/logout',[\s\S]*?'Çıkış Yap'/);
-  assert.match(source,/id="badges"/);
-  assert.match(source,/id="account-settings"/);
-});
-
-test('global account profile renders without a guild picker and keeps profile media account-scoped', async () => {
-  const accountId='site_123e4567-e89b-12d3-a456-426614174000';
-  const db={async query(sql){
-    if(sql.includes('SELECT user_id FROM site_discord_links'))return{rows:[],rowCount:0};
-    if(sql.includes('SELECT 1 FROM frieren_profile_media'))return{rows:[],rowCount:0};
-    if(sql.includes('SELECT mime_type,media_data'))return{rows:[],rowCount:0};
-    return{rows:[],rowCount:0};
-  }};
-  const response=res();
-  assert.equal(await handlePublicSiteRequest(request('/profil',{id:accountId,username:'Gezgin'}),response,{db}),true);
-  assert.equal(response.status,200);
-  assert.match(response.body,/Hesap Profilin/);
-  assert.match(response.body,/sunucu.*karakteri seçmen gerekmez/i);
-  assert.match(response.body,/data-profile-media-editor/);
-  assert.doesNotMatch(response.body,/Sunucu seç|Karakter seç/);
-  assert.match(response.body,/\/assets\/user-center\.js/);
-});
-
-test('public account profile route is reachable without login and honors activity privacy',async()=>{
- const target='site_123e4567-e89b-12d3-a456-426614174000';
- for(const showActivity of [true,false]){
-  const queries=[];
-  const db={async query(sql){
-   queries.push(sql);
-   if(sql.includes('SELECT account_id FROM frieren_account_profiles WHERE LOWER(profile_slug)'))return{rows:[{account_id:target}],rowCount:1};
-   if(sql.includes('SELECT * FROM frieren_account_profiles WHERE account_id'))return{rows:[{account_id:target,display_name:'Gezgin',profile_slug:'soiree',visibility:'public',show_activity:showActivity,banner_position:'center',bio:'Büyü araştırmacısı',status_text:'Yolculukta',interests:[],tags:[],theme:'violet',social_links:{}}],rowCount:1};
-   if(sql.includes('AS followers'))return{rows:[{followers:4,following:2,visitors:3}],rowCount:1};
-   if(sql.includes('SELECT activity_type,label,created_at FROM frieren_account_activity'))return{rows:[{activity_type:'profile_updated',label:'Profilini güncelledi',created_at:'2026-11-06T10:00:00.000Z'}],rowCount:1};
-   if(sql.includes('SELECT mime_type,media_data'))return{rows:[],rowCount:0};
-   return{rows:[],rowCount:0};
-  }};
-  const response=res();assert.equal(await handlePublicSiteRequest({method:'GET',url:'/u/soiree',headers:{}},response,{db}),true);
-  assert.equal(response.status,200);
-  for(const section of ['public-account-profile','public-profile-hero','public-profile-banner','public-profile-avatar-row','public-profile-status','public-profile-follow-stats','public-profile-bio','public-profile-chip-list','public-profile-tags','public-profile-social']) assert.ok(response.body.includes(section),section);
-  assert.match(response.body,/Takipçi/);assert.match(response.body,/Takip</);
-  if(showActivity){assert.match(response.body,/Son etkinlikler/);assert.match(response.body,/account-public-activity/);assert.match(response.body,/Profilini güncelledi/);assert.ok(queries.some(sql=>sql.includes('SELECT activity_type,label,created_at')));}
-  else{assert.doesNotMatch(response.body,/Son etkinlikler/);assert.ok(!queries.some(sql=>sql.includes('SELECT activity_type,label,created_at')));}
- }
-});
-
-test('public account profile layout has responsive centered sections and bounded activity cards',async()=>{
- const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
- assert.match(css,/\.public-profile-identity\{[^}]*text-align:center/);
- assert.match(css,/\.public-profile-status\{[^}]*position:absolute/);
- assert.match(css,/\.public-profile-follow-stats/);
- assert.match(css,/\.public-profile-section,\.account-public-activity\{[^}]*height:auto!important/);
- assert.match(css,/@media\(max-width:680px\)[\s\S]*?\.public-profile-content\{grid-template-columns:1fr/);
- assert.match(css,/\.account-public-activity li strong\{[^}]*overflow-wrap:anywhere/);
-});
- 
-test('linked adventurer cards show a medium class emblem in the upper-right corner for each class', async () => {
-  const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
-  const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
-  assert.match(source,/function adventurerClassEmblem\(className\)/);
-  assert.match(source,/adventurerClassEmblem\(profile\.class_name\)/);
-  for(const kind of ['buyucu','savasci','sovalye','okcu','suikastci','rahip','simyaci','cagirici']) assert.ok(source.includes(kind),kind);
-  assert.match(source,/class="card adventurer-character-card"/);
-  assert.match(css,/\.adventurer-class-emblem\{[^}]*width:54px;[^}]*height:54px/);
-  assert.match(css,/\.adventurer-class-emblem\{[^}]*position:absolute;[^}]*top:16px;[^}]*right:16px/);
-});
-
-
-test('public profile avatar and banner media endpoints are reachable without login and respect public profile visibility',async()=>{
- const target='site_123e4567-e89b-12d3-a456-426614174000';
- const bytes=Buffer.from('public-profile-image');
- const db={async query(sql,params){
-  if(sql.includes('SELECT * FROM frieren_account_profiles WHERE account_id=$1'))return{rows:[{account_id:target,visibility:'public',show_activity:true}],rowCount:1};
-  if(sql.includes('AS followers'))return{rows:[{followers:0,following:0,visitors:0}],rowCount:1};
-  if(sql.includes('SELECT mime_type,media_data,width,height FROM frieren_profile_media'))return{rows:[{mime_type:'image/jpeg',media_data:bytes,width:1,height:1}],rowCount:1};
-  return{rows:[],rowCount:0};
- }};
- for(const kind of ['avatar','banner']){
-  const response=res();
-  assert.equal(await handlePublicSiteRequest({method:'GET',url:'/profil/media/public?accountId='+encodeURIComponent(target)+'&kind='+kind,headers:{}},response,{db}),true);
-  assert.equal(response.status,200,kind);
-  assert.equal(response.headers['Content-Type'],'image/jpeg',kind);
-  assert.equal(response.headers['Cache-Control'],'private,no-store',kind);
-  assert.equal(response.headers['X-Content-Type-Options'],'nosniff',kind);
-  assert.equal(response.body,bytes,kind);
- }
-});
-
-test('profile media uploads require a site account, CSRF token and validated image payload',async()=>{
- const accountId='site_123e4567-e89b-12d3-a456-426614174000';
- const png=Buffer.alloc(24);Buffer.from([137,80,78,71,13,10,26,10]).copy(png);png.writeUInt32BE(32,16);png.writeUInt32BE(32,20);
- const token=createSiteCsrfToken(secret);let inserted=false;
- const db={async query(sql,params){if(sql.includes('CREATE TABLE IF NOT EXISTS frieren_profile_media'))return{rows:[],rowCount:0};if(sql.includes('INSERT INTO frieren_profile_media')){inserted=true;assert.equal(params[0],accountId.slice(5));assert.equal(params[1],'avatar');assert.equal(params[2],'image/png');return{rows:[],rowCount:1};}throw new Error('Unexpected profile media query: '+sql);}};
- const session=createPublicSiteSession(secret,{id:accountId,username:'Gezgin'},Math.floor(Date.now()/1000)+3600);
- const cookie=buildPublicSiteSessionCookie(session,3600).split(';')[0];
- const req={method:'POST',url:'/maceraci/profil/media',headers:{cookie,'content-type':'application/json','x-csrf-token':token},async *[Symbol.asyncIterator](){yield Buffer.from(JSON.stringify({kind:'avatar',data:png.toString('base64')}));}};
- const response=res();assert.equal(await handlePublicSiteRequest(req,response,{db}),true);assert.equal(response.status,200);assert.equal(JSON.parse(response.body).status,'saved');assert.equal(inserted,true);
-});
-
-test('profile media rejects invalid CSRF before touching storage',async()=>{
- const accountId='site_123e4567-e89b-12d3-a456-426614174000';const session=createPublicSiteSession(secret,{id:accountId,username:'Gezgin'},Math.floor(Date.now()/1000)+3600);const cookie=buildPublicSiteSessionCookie(session,3600).split(';')[0];let queries=0;
- const req={method:'POST',url:'/maceraci/profil/media',headers:{cookie,'content-type':'application/json','x-csrf-token':'invalid'},async *[Symbol.asyncIterator](){yield Buffer.from('{}');}};const response=res();
- assert.equal(await handlePublicSiteRequest(req,response,{db:{async query(){queries++;}}}),true);assert.equal(response.status,403);assert.equal(queries,0);
-});
-
-test('profile media is served only to its signed-in account with nosniff and private caching',async()=>{
- const accountId='site_123e4567-e89b-12d3-a456-426614174000';const session=createPublicSiteSession(secret,{id:accountId,username:'Gezgin'},Math.floor(Date.now()/1000)+3600);const cookie=buildPublicSiteSessionCookie(session,3600).split(';')[0];const bytes=Buffer.from('image-bytes');
- const db={async query(sql){if(sql.includes('CREATE TABLE IF NOT EXISTS frieren_profile_media'))return{rows:[],rowCount:0};if(sql.includes('SELECT mime_type,media_data'))return{rows:[{mime_type:'image/jpeg',media_data:bytes,width:1,height:1}],rowCount:1};throw new Error('Unexpected media read: '+sql);}};
- const response=res();assert.equal(await handlePublicSiteRequest({method:'GET',url:'/profil/media?kind=avatar',headers:{cookie}},response,{db}),true);assert.equal(response.status,200);assert.equal(response.headers['Content-Type'],'image/jpeg');assert.equal(response.headers['X-Content-Type-Options'],'nosniff');assert.equal(response.headers['Cache-Control'],'private,no-store');assert.equal(response.body,bytes);
-});
-
-test('linked Discord avatar is used in the site account menu when no custom avatar exists',async()=>{
- const accountId='site_123e4567-e89b-12d3-a456-426614174000';const db={async query(sql){if(sql.includes('SELECT user_id FROM site_discord_links'))return{rows:[{user_id:'123456789012345678'}],rowCount:1};if(sql.includes('SELECT 1 FROM site_discord_links WHERE account_id=$1 AND user_id=$2'))return{rows:[],rowCount:0};if(sql.includes('FROM frieren_profile_media'))return{rows:[],rowCount:0};throw new Error('Unexpected avatar query: '+sql);}};
- const client={users:{async fetch(){return{displayAvatarURL:()=> 'https://cdn.discordapp.com/avatars/123456789012345678/hash.webp?size=256'};}}};const response=res();
- assert.equal(await handlePublicSiteRequest(request('/kesfet',{id:accountId,username:'Gezgin'}),response,{db,client}),true);assert.match(response.body,/cdn\.discordapp\.com\/avatars\/123456789012345678\/hash\.webp/);
-});
-
-test('profile page includes avatar and banner upload controls and authenticated image endpoints',async()=>{
- const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');const script=await readFile(new URL('../public-assets/profile-media.js',import.meta.url),'utf8');
- assert.match(source,/data-profile-media-editor/);assert.match(source,/data-media-input="avatar"/);assert.match(source,/data-media-input="banner"/);assert.match(source,/profile-media\.js/);
- assert.ok(script.includes("const endpoint='/profil/media'"));assert.match(script,/createImageBitmap/);assert.match(script,/X-CSRF-Token/);assert.match(script,/data-media-reset/);
-});
-
-
-test('account profile identity is separate from RPG character and media editor is intentionally opened', async () => {
- const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
- const controller=await readFile(new URL('../public-assets/user-center.js',import.meta.url),'utf8');
- assert.match(source,/data-profile-editor-open/);
- assert.match(source,/data-profile-editor-close/);
- assert.match(source,/HESAP KİMLİĞİ/);
- assert.match(source,/Aktif RPG karakteri/);
- assert.match(source,/playerProfiles:\[\]/);
- assert.match(source,/public-assets\/user-center\.js/);
- assert.match(controller,/prefers-reduced-motion/);
- assert.match(controller,/IntersectionObserver/);
-});
-
-
-test('dedicated user center pages expose the new account, social and life navigation', async () => {
- const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
- const styles=await readFile(new URL('../site.css',import.meta.url),'utf8');
- assert.match(source,/user-center-page social-center-page/);
- assert.match(source,/life-center-page/);
- assert.match(source,/account-center-page/);
- assert.match(source,/collection-center-page/);
- assert.match(source,/inventory-center-page/);
- assert.match(source,/notification-center-page/);
- assert.match(source,/public-assets\/user-center\.js', 'public-assets\/public-chat\.js'].includes/);
- assert.match(source,/site\.css\?v=public-profile-redesign-273/);
- assert.match(styles,/\.social-center-page/);
- assert.match(styles,/\.user-center-tabs/);
-});
-
-
-test('social mutation responses return to the social center instead of the market', async () => {
- const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
- assert.match(source,/const destination=url\.pathname==='\/maceraci\/sosyal'\?'\/maceraci\/sosyal':'\/pazar'/);
-});
-
-test('global account profile has a complete Frieren identity layout and keeps RPG navigation separate', async () => {
-  const accountId='site_123e4567-e89b-12d3-a456-426614174000';
-  const db={async query(sql){if(sql.includes('SELECT user_id FROM site_discord_links'))return{rows:[],rowCount:0};if(sql.includes('SELECT 1 FROM frieren_profile_media'))return{rows:[],rowCount:0};return{rows:[],rowCount:0};}};
-  const response=res();assert.equal(await handlePublicSiteRequest(request('/profil',{id:accountId,username:'Gezgin'}),response,{db}),true);
-  for(const expected of ['account-profile-showcase','account-profile-grid','GİZLİLİK VE GÜVENLİK','/kesfet#topluluk-sohbeti','/hesap-merkezi','/maceraci'])assert.ok(response.body.includes(expected),expected);
-  assert.doesNotMatch(response.body,/Sunucu seç|Karakter seç/);
+test('public adventurer profile renders the equipped Frieren or Northern guild banner', () => {
+  const user = { id: visitor.id, username: visitor.username, avatarUrl: '/assets/site-avatar.webp' };
+  const data = {
+    profile: { character_name: 'Fern', class_name: 'Büyücü', level: 22, xp: 3450 },
+    rooms: [], trophies: [], loadout: [{ cosmetic_key: 'frieren_banner', slot: 'guild_banner' }],
+    companion: null, cardVariants: [], home: { layout: [] },
+  };
+  const html = publicHomeShowcasePage(user, data);
+  assert.match(html, /player-banner--frieren/);
+  assert.match(html, /Gezgin Büyücü Sancağı/);
+  assert.match(html, /Maceracı profil sancağı/);
 });
