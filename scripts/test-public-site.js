@@ -957,7 +957,7 @@ test('dedicated Frieren profile banner asset is publicly served as SVG', async (
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-banner.svg', headers: {} }, response), true);
   assert.equal(response.status, 200);
   assert.match(response.headers['Content-Type'], /image\/svg\+xml/);
-  assert.match(String(response.body), /Frieren yıldızlı gece bannerı/);
+  assert.match(String(response.body), /Frieren — The Arcane Journey/);
   assert.match(String(response.body), /<svg/);
 });
 
