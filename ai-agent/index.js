@@ -192,7 +192,7 @@ const healthServer = createServer(async (req, res) => {
     }));
     return;
   }
-  if (req.url === '/live') {
+  if (req.url === '/live' || req.url === '/health') {
     const readiness = {
       discordReady: client.isReady(),
       memoryDatabaseReady,
@@ -203,7 +203,7 @@ const healthServer = createServer(async (req, res) => {
     res.end(JSON.stringify(getPublicLivenessPayload(readiness)));
     return;
   }
-  if (req.url === '/health' || req.url === '/ready') {
+  if (req.url === '/ready') {
     if (memoryStore && !memoryDatabaseReady) {
       try {
         await memoryStore.checkHealth();
