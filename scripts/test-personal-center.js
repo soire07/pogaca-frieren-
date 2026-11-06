@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ensurePersonalCenterSchema,updatePersonalProfile,createPlannerEntry,sendDirectMessage,reportPlayer,addGuestbookEntry,getPersonalProgressReport} from '../personal-center.js';
+import {ensurePersonalCenterSchema,updatePersonalProfile,createPlannerEntry,sendDirectMessage,reportPlayer,addGuestbookEntry,getPersonalProgressReport,recordProfileVisit,listProfileVisits} from '../personal-center.js';
 
 const guild='1539562273197260860',a='155000000000000001',b='155000000000000002';
 test('personal center schema creates isolated guild-scoped tables and indexes',async()=>{
  const sql=[];await ensurePersonalCenterSchema({query:async q=>{sql.push(q);return{rows:[],rowCount:0};}});
- for(const table of ['player_personal_profiles','player_direct_messages','player_guestbook_entries','player_reports','player_planner_entries'])assert.ok(sql.some(q=>q.includes('CREATE TABLE IF NOT EXISTS '+table)),table);
+ for(const table of ['player_personal_profiles','player_direct_messages','player_guestbook_entries','player_reports','player_planner_entries','player_close_friends','player_profile_visits'])assert.ok(sql.some(q=>q.includes('CREATE TABLE IF NOT EXISTS '+table)),table);
  assert.ok(sql.every(q=>!q.includes('DROP TABLE')&&!q.includes('TRUNCATE')));
 });
 test('profile rejects unsafe theme, invalid identity and oversized biography',async()=>{
@@ -37,4 +37,16 @@ test('close friends are limited to existing friendships and the per-player cap',
  const {setCloseFriend}=await import('../personal-center.js');
  const result=await setCloseFriend(db,{guildId:guild,ownerId:a,friendId:b});
  assert.equal(result.status,'added');assert.ok(queries.some(sql=>sql.includes('player_close_friends')));
+});
+
+test('profile visits are guild-scoped, block-aware and return aggregated visitor counts',async()=>{
+ const db={async query(sql){
+  if(sql.includes('SELECT 1 FROM social_blocks'))return{rows:[],rowCount:0};
+  if(sql.includes('INSERT INTO player_profile_visits'))return{rows:[{visit_count:2}],rowCount:1};
+  if(sql.includes('SELECT v.visitor_id'))return{rows:[{visitor_id:b,character_name:'Fern',visit_count:2}],rowCount:1};
+  return{rows:[],rowCount:0};
+ }};
+ const saved=await recordProfileVisit(db,{guildId:guild,ownerId:a,visitorId:b});assert.equal(saved.status,'recorded');assert.equal(saved.visitCount,2);
+ const visits=await listProfileVisits(db,{guildId:guild,ownerId:a});assert.equal(visits[0].visitor_id,b);
+ await assert.rejects(recordProfileVisit(db,{guildId:guild,ownerId:a,visitorId:a}),/PERSONAL_CENTER_SELF_ACTION/);
 });
