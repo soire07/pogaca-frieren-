@@ -2,6 +2,11 @@ name: Frieren Neural Turkish Chat Max Candidate Training
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - test/frieren-neural-render-free
+    paths:
+      - frieren-neural/.training-request
 
 permissions:
   contents: read
@@ -32,20 +37,34 @@ jobs:
         run: pytest
       - name: Import pinned Apache-2.0 Turkish SFT corpus
         run: frieren-neural-import-chat-max --output ./corpus/turkish-chat-max-25k
-      - name: Validate every imported dialogue before expensive training
+      - name: Validate the exact train/validation encoding before expensive training
         run: |
           python - <<'PY'
           from frieren_neural.tokenizer import BPETokenizer
-          from frieren_neural.training import encode_dialogue_stream_with_loss_mask, load_licensed_corpus
+          from frieren_neural.training import (
+              encode_dialogue_stream_with_loss_mask,
+              load_licensed_corpus,
+              split_corpus_text,
+          )
 
-          for split in ("train", "heldout"):
-              documents = load_licensed_corpus(f"./corpus/turkish-chat-max-25k/{split}")
-              tokenizer = BPETokenizer.train(documents, vocab_size=260)
-              for index, document in enumerate(documents):
-                  token_ids, loss_mask = encode_dialogue_stream_with_loss_mask(document, tokenizer)
+          documents = load_licensed_corpus("./corpus/turkish-chat-max-25k/train")
+          train_text, validation_text = split_corpus_text(documents)
+          tokenizer = BPETokenizer.train([train_text], vocab_size=260)
+          for split, text in (("train", train_text), ("validation", validation_text)):
+              try:
+                  token_ids, loss_mask = encode_dialogue_stream_with_loss_mask(text, tokenizer)
                   if not token_ids or len(token_ids) != len(loss_mask) or not any(loss_mask):
-                      raise SystemExit(f"Invalid {split} dialogue at index {index}")
-              print(f"{split}: validated {len(documents)} dialogues")
+                      raise ValueError("empty token stream or assistant loss mask")
+              except Exception as error:
+                  separator = "\\n\\n---\\n\\n"
+                  for index, dialogue in enumerate(text.split(separator)):
+                      try:
+                          encode_dialogue_stream_with_loss_mask(dialogue, tokenizer)
+                      except Exception as dialogue_error:
+                          print(f"First invalid {split} dialogue index={index}: {dialogue[:1200]!r}")
+                          raise SystemExit(f"{split} dialogue {index} is invalid: {dialogue_error}") from error
+                  raise SystemExit(f"{split} combined stream is invalid: {error}") from error
+              print(f"{split}: parsed {len(text.split(chr(10) + chr(10) + '---' + chr(10) + chr(10)))} dialogues")
           PY
       - name: Train fresh assistant-only Turkish candidate
         run: |
