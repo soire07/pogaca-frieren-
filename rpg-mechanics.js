@@ -68,6 +68,20 @@ export function calculateAuraFinalStandDamage(rawDamage, defense, defending = fa
   return defending ? Math.max(1, Math.floor(mitigated * 0.45)) : mitigated;
 }
 
+
+export function rollAuraFormLoot(boss, phase, random = Math.random) {
+  if (boss?.id !== 'fallen-mage') return null;
+  const roll = Number(random());
+  if (!Number.isFinite(roll)) return null;
+  const tables = {
+    2: { chance: 0.08, item: '🪽 Düşmüş Melek Kanatları' },
+    3: { chance: 0.05, item: '☀️ Melek Aura’nın Işık Tacı' },
+    4: { chance: 0.02, item: '🌗 Alacakaranlık Aura Kalıntısı' }
+  };
+  const reward = tables[phase];
+  return reward && roll < reward.chance ? reward.item : null;
+}
+
 export function chooseRaidBoss(random = Math.random, bosses = RAID_BOSSES) {
   const catalog = Array.isArray(bosses) && bosses.length ? bosses : RAID_BOSSES;
   const weights = catalog.map(boss => {
