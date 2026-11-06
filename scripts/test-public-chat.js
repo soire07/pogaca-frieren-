@@ -75,9 +75,11 @@ test('typing indicators expire through short-lived account presence',async()=>{
  assert.equal((await setPublicChatTyping(db,{accountId:account})).status,'typing');assert.match(sql,/INTERVAL '5 seconds'/);
 });
 
-test('chat read receipts are account-scoped and idempotent',async()=>{
- let sql='',params;const db={async query(q,p){if(q.includes('INSERT INTO frieren_public_chat_reads')){sql=q;params=p;return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};}return{rows:[],rowCount:0};}};
- const result=await markPublicChatMessagesRead(db,{accountId:account});assert.equal(result.status,'read');assert.match(sql,/ON CONFLICT\(message_id,reader_account_id\) DO NOTHING/);assert.match(sql,/LIMIT 100/);assert.equal(params[0],account);
+test('chat read receipts only mark visible message IDs supplied by the active reader',async()=>{
+ let sql='',params;const messageId='123e4567-e89b-12d3-a456-426614174000';const db={async query(q,p){if(q.includes('INSERT INTO frieren_public_chat_reads')){sql=q;params=p;return{rows:[{message_id:messageId}],rowCount:1};}return{rows:[],rowCount:0};}};
+ const result=await markPublicChatMessagesRead(db,{accountId:account,messageIds:[messageId]});assert.equal(result.status,'read');assert.equal(result.count,1);assert.match(sql,/message_id=ANY\(\$2::uuid\[\]\)/);assert.match(sql,/m\.account_id<>\$1/);assert.match(sql,/ON CONFLICT\(message_id,reader_account_id\) DO NOTHING/);assert.deepEqual(params,[account,[messageId]]);
+ assert.equal((await markPublicChatMessagesRead(db,{accountId:account,messageIds:[]})).count,0);
+ await assert.rejects(()=>markPublicChatMessagesRead(db,{accountId:account,messageIds:['bad-id']}),/PUBLIC_CHAT_READ_INVALID/);
 });
 
 test('chat reports validate ownership, reason and prevent duplicate reports',async()=>{
