@@ -348,7 +348,8 @@ export default {
         const starburst = BOSS.special === 'mana-star' && rounds % 3 === 0;
         const shardRain = BOSS.special === 'shard-rain' && rounds % 2 === 0;
         const manaCurse = BOSS.special === 'mana-curse' && rounds % 3 === 0;
-        const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0)+((starburst || shardRain || manaCurse) ? bossPhaseSpecialBonus(bossPhase) : 0);
+        const katunJudgment = BOSS.special === 'katun-judgment' && rounds % 3 === 0;
+        const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0)+(katunJudgment?10:0)+((starburst || shardRain || manaCurse || katunJudgment) ? bossPhaseSpecialBonus(bossPhase) : 0);
         if (enraged && !rageAnnounced) { log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.'); rageAnnounced = true; }
         if (starburst || shardRain) {
           log.push(BOSS.special === 'shard-rain' ? '🐉 Cam Pullar Ejderhası keskin kristal parçalarını tüm takıma yağdırıyor!' : '☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!');
@@ -361,8 +362,9 @@ export default {
             log.push(`☄️ ${f.username} ${shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
           }
         } else {
-          let incoming=calculateBossIncomingDamage(rawDamage, Math.round(target.defense*0.56), bossPhase);
+          let incoming=calculateBossIncomingDamage(katunJudgment ? Math.round(rawDamage * 1.5) : rawDamage, Math.round(target.defense*0.56), bossPhase);
           incoming=applyDefendingReduction(incoming,defending.has(targetIndex));
+          if (katunJudgment) log.push(`💍 Domaltazor Katun Hükmü ile ${target.username} oyuncusuna ağır darbe indiriyor!`);
           hpNow[targetIndex]=Math.max(0,hpNow[targetIndex]-incoming);
           if (manaCurse) {
             const drained=Math.min(target.mana,8);
