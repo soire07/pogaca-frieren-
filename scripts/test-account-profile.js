@@ -15,7 +15,7 @@ test('account friend requests are global and can be accepted by the recipient',a
  assert.equal((await sendAccountFriendRequest(db,{requesterAccountId:a,recipientAccountId:b})).status,'sent');
  assert.equal((await respondAccountFriendRequest(db,{accountId:b,requestId:'123e4567-e89b-12d3-a456-426614174000',accept:true})).status,'accepted');
  assert.equal(db.calls.filter(x=>x.sql.includes('INSERT INTO frieren_account_notifications')).length,2,'request and acceptance notifications are both persisted');
- assert.ok(db.calls.some(x=>x.sql.includes('friend_accepted')));
+ assert.ok(db.calls.some(x=>x.sql.includes('INSERT INTO frieren_account_notifications')&&x.params[2]==='friend_accepted'));
 });
 
 test('custom profile slugs are validated, persisted and resolved without guild context',async()=>{
