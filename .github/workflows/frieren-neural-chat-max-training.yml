@@ -7,7 +7,6 @@ on:
       - validation/ufakzeka-real-gguf
     paths:
       - frieren-neural/.training-request
-      - .github/workflows/frieren-neural-chat-max-training.yml
   push:
     branches:
       - test/frieren-neural-render-free
@@ -18,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: frieren-neural-chat-max-${{ github.event.pull_request.number || github.ref }}
+  group: frieren-neural-chat-max-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
