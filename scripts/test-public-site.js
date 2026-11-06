@@ -1308,7 +1308,9 @@ test('public account profile route is reachable without login and honors activit
   }};
   const response=res();assert.equal(await handlePublicSiteRequest({method:'GET',url:'/u/soiree',headers:{}},response,{db}),true);
   assert.equal(response.status,200);
-  if(showActivity){assert.match(response.body,/Son etkinlikler/);assert.match(response.body,/Profilini güncelledi/);assert.ok(queries.some(sql=>sql.includes('SELECT activity_type,label,created_at')));}
+  for(const section of ['public-account-profile','public-profile-hero','public-profile-banner','public-profile-avatar-row','public-profile-status','public-profile-follow-stats','public-profile-bio','public-profile-chip-list','public-profile-tags','public-profile-social']) assert.ok(response.body.includes(section),section);
+  assert.match(response.body,/Takipçi/);assert.match(response.body,/Takip</);
+  if(showActivity){assert.match(response.body,/Son etkinlikler/);assert.match(response.body,/account-public-activity/);assert.match(response.body,/Profilini güncelledi/);assert.ok(queries.some(sql=>sql.includes('SELECT activity_type,label,created_at')));}
   else{assert.doesNotMatch(response.body,/Son etkinlikler/);assert.ok(!queries.some(sql=>sql.includes('SELECT activity_type,label,created_at')));}
  }
 });
