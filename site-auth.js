@@ -359,7 +359,7 @@ function verifyDiscordOAuthState(state, cookieState, secret, now = Date.now()) {
   const value = String(state || '');
   const parts = value.split('.');
   if (!secret || String(secret).length < 32 || parts.length !== 3 || value !== String(cookieState || '')
-    || !/^\\d{10}$/.test(parts[0]) || !/^[A-Za-z0-9_-]{24,40}$/.test(parts[1])) return false;
+    || !/^\d{10}$/.test(parts[0]) || !/^[A-Za-z0-9_-]{24,40}$/.test(parts[1])) return false;
   const age = Math.floor(now / 1000) - Number(parts[0]);
   if (age < -60 || age > OAUTH_TTL_SECONDS) return false;
   const expected = Buffer.from(signature(parts[0] + '.' + parts[1], secret));
@@ -484,7 +484,7 @@ export async function handleSiteAuthRequest(req,res,{db,sessionSecret,createSess
       });
       if (!userResponse.ok) throw new Error('DISCORD_OAUTH_IDENTITY_FAILED');
       const discordUser = await userResponse.json();
-      if (!/^\\d{17,20}$/.test(String(discordUser?.id || '')) || !discordUser?.username) throw new Error('DISCORD_OAUTH_IDENTITY_INVALID');
+      if (!/^\d{17,20}$/.test(String(discordUser?.id || '')) || !discordUser?.username) throw new Error('DISCORD_OAUTH_IDENTITY_INVALID');
       const accountId = await getOrCreateDiscordSiteAccount(db, discordUser);
       const session = createSession(sessionSecret, {
         id: 'site_' + accountId,
