@@ -238,8 +238,8 @@ function personalCenterPage(user,profile,data,csrf,status){
  return page('Kişisel Merkez',html,user);
 }
 
-function injectPublicChat(html,user,csrfToken){
- const canSend=SITE_ACCOUNT_ID.test(String(user?.id||'')),isOwner=isOwnerSiteAccount(user);
+function injectPublicChat(html,user,csrfToken,isOwnerOverride=null){
+ const canSend=SITE_ACCOUNT_ID.test(String(user?.id||'')),isOwner=isOwnerOverride===null?isOwnerSiteAccount(user):isOwnerOverride===true;
  const ownerControls=isOwner?'<div class="public-chat-owner-controls"><strong>Owner sohbet yönetimi</strong><span data-chat-control-status>Durum yükleniyor…</span><button class="public-chat-action" type="button" data-chat-toggle-pause disabled>Sohbeti durdur</button><button class="public-chat-action" type="button" data-chat-reports-refresh>Bekleyen bildirimleri yükle</button><div class="public-chat-reports" data-chat-reports hidden></div></div>':'';
  const section='<section class="section public-chat-section" id="topluluk-sohbeti"><div class="wrap"><div class="section-head public-chat-intro"><div class="eyebrow">✧ FRIEREN TOPLULUĞU · YOL ARKADAŞLARI</div><h2>Yol arkadaşlarınla sohbet et</h2><p>Genel sohbet. Mesajları herkes okuyabilir; mesaj göndermek ve etkileşim kurmak için hesabınla giriş yap.</p></div><div class="public-chat-panel" data-public-chat data-can-send="'+(canSend?'true':'false')+'" data-chat-owner="'+(isOwner?'true':'false')+'"><div class="public-chat-head"><span><i></i> Büyülü Genel Sohbet</span><small data-chat-presence>Çevrimiçi durumu yükleniyor</small></div>'+ownerControls+'<div class="public-chat-tools"><label class="public-chat-search-label" for="public-chat-search">Sohbette ara</label><input id="public-chat-search" type="search" data-chat-search maxlength="80" placeholder="Mesaj veya kullanıcı ara…"><span data-chat-count aria-live="polite">Mesajlar yükleniyor…</span></div><ol class="public-chat-messages" data-chat-messages aria-live="polite"><li class="public-chat-empty">Sohbet yükleniyor…</li></ol>'+(canSend?'<form class="public-chat-form" data-chat-form><input type="hidden" name="csrf" value="'+esc(csrfToken)+'"><input type="hidden" name="replyToMessageId" value=""><div class="public-chat-reply-preview" data-chat-reply-preview hidden><span data-chat-reply-label></span><button class="public-chat-action" type="button" data-chat-reply-clear>Yanıtı iptal et</button></div><label class="sr-only" for="public-chat-message">Mesajın</label><input id="public-chat-message" name="message" maxlength="500" autocomplete="off" placeholder="Bir büyücü selamı bırak… (en fazla 500 karakter)" required><div class="public-chat-compose-meta"><small data-chat-counter>0 / 500</small><button class="btn" type="submit">Mesajı gönder ✧</button></div></form>':'<div class="public-chat-login"><a class="btn" href="/login">Giriş yap ve sohbete katıl</a></div>')+'<button class="public-chat-action public-chat-load-older" type="button" data-chat-load-older hidden>Eski mesajları yükle</button><div class="public-chat-blocks" data-chat-blocks></div><p class="public-chat-feedback" data-chat-feedback role="status"></p></div></div></section>';
  const source=String(html);const mainStart=source.indexOf('<main id="main-content"');const firstSectionEnd=mainStart>=0?source.indexOf('</section>',mainStart):-1;
@@ -1312,7 +1312,8 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if (!requireSiteAccount(res, user?.id)) return true;
     if (!db) { res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }); res.end('Oyuncu paneli veritabanına şu anda bağlanamıyor.'); return true; }
     const data = await getAdventurerDashboard(db, user.id);
-    const html = injectPublicChat(adventurerPanel(user, data, url.searchParams.get('status')),user,createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET));
+    const chatOwner=await isLinkedOwnerSiteAccount(db,user);
+    const html = injectPublicChat(adventurerPanel(user, data, url.searchParams.get('status')),user,createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET),chatOwner);
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });
     res.end(html); return true;
   }
@@ -1371,6 +1372,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   const render = routes.get(url.pathname);
   if (!render) return false;
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });
-  res.end(url.pathname==='/kesfet'?injectPublicChat(render(),user,createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET)):render());
+  const content=url.pathname==='/kesfet'?injectPublicChat(render(),user,createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET),await isLinkedOwnerSiteAccount(db,user)):render();
+  res.end(content);
   return true;
 }
