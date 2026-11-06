@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ensureAccountProfileSchema,getAccountProfile,updateAccountProfile,followAccount,unfollowAccount,recordAccountProfileVisit} from '../account-profile.js';
+import {ensureAccountProfileSchema,getAccountProfile,updateAccountProfile,followAccount,unfollowAccount,recordAccountProfileVisit,getAccountIdByProfileSlug,createAccountNotification,listAccountNotifications,markAccountNotificationsRead} from '../account-profile.js';
 const a='site_123e4567-e89b-12d3-a456-426614174000',b='site_123e4567-e89b-12d3-a456-426614174001';
 function dbMock(handler=()=>({rows:[],rowCount:0})){const calls=[];return{calls,async query(sql,params=[]){calls.push({sql,params});return handler(sql,params);}};}
 test('account profile schema creates global profile, follow, activity and visit stores',async()=>{const db=dbMock();await ensureAccountProfileSchema(db);assert.ok(db.calls.some(x=>x.sql.includes('frieren_account_profiles')));assert.ok(db.calls.some(x=>x.sql.includes('frieren_account_follows')));assert.ok(db.calls.some(x=>x.sql.includes('frieren_account_activity')));});
@@ -14,4 +14,20 @@ test('account friend requests are global and can be accepted by the recipient',a
  const {sendAccountFriendRequest,respondAccountFriendRequest}=await import('../account-profile.js');
  assert.equal((await sendAccountFriendRequest(db,{requesterAccountId:a,recipientAccountId:b})).status,'sent');
  assert.equal((await respondAccountFriendRequest(db,{accountId:b,requestId:'123e4567-e89b-12d3-a456-426614174000',accept:true})).status,'accepted');
+});
+
+test('custom profile slugs are validated, persisted and resolved without guild context',async()=>{
+ const db=dbMock(sql=>sql.includes('SELECT account_id FROM frieren_account_profiles')?{rows:[{account_id:a}],rowCount:1}:sql.includes('INSERT INTO frieren_account_profiles')?{rows:[{account_id:a,profile_slug:'soiree'}],rowCount:1}:{rows:[],rowCount:0});
+ const result=await updateAccountProfile(db,{accountId:a,profileSlug:'Soiree',displayName:'Soiree'});
+ assert.equal(result.profile_slug,'soiree');
+ assert.equal(await getAccountIdByProfileSlug(db,'soiree'),a);
+ assert.equal(await getAccountIdByProfileSlug(db,'../soiree'),null);
+ await assert.rejects(()=>updateAccountProfile(db,{accountId:a,profileSlug:'bad slug'}),/ACCOUNT_PROFILE_INVALID/);
+});
+test('account notifications are private, bounded and only accept local destinations',async()=>{
+ const db=dbMock(sql=>sql.includes('INSERT INTO frieren_account_notifications')?{rows:[{notification_id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1}:sql.includes('SELECT notification_id')?{rows:[{notification_id:'123e4567-e89b-12d3-a456-426614174000',title:'Yeni arkadaşlık isteği'}],rowCount:1}:{rows:[],rowCount:1});
+ assert.equal((await createAccountNotification(db,{accountId:a,type:'friend_request',title:'Yeni arkadaşlık isteği',href:'/profil'})).status,'created');
+ assert.equal((await listAccountNotifications(db,a,500)).length,1);
+ assert.equal((await markAccountNotificationsRead(db,a)).status,'read');
+ await assert.rejects(()=>createAccountNotification(db,{accountId:a,type:'x',title:'x',href:'https://evil.example'}),/ACCOUNT_NOTIFICATION_INVALID/);
 });
