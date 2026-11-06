@@ -12,17 +12,54 @@ function response() {
       this.headers = headers;
     },
     end(body = '') {
-      this.body = body;
+      this.body = body ?? '';
     },
   };
 }
 
-test('returns false for requests outside GET /health and GET /ready', async () => {
+test('returns false for requests outside supported health methods and paths', async () => {
   const res = response();
   assert.equal(await handleHealthRequest({ method: 'GET', url: '/' }, res, {}), false);
   assert.equal(await handleHealthRequest({ method: 'POST', url: '/health' }, res, {}), false);
   assert.equal(await handleHealthRequest({ method: 'POST', url: '/ready' }, res, {}), false);
   assert.equal(res.statusCode, null);
+});
+
+test('/health supports HEAD requests for HTTP monitoring without sending a body', async () => {
+  const res = response();
+  let databaseQueries = 0;
+  const handled = await handleHealthRequest(
+    { method: 'HEAD', url: '/health' },
+    res,
+    {
+      client: { isReady: () => false },
+      db: { query: async () => { databaseQueries += 1; } },
+    },
+  );
+
+  assert.equal(handled, true);
+  assert.equal(res.statusCode, 200);
+  assert.match(res.headers['Content-Type'], /application\\/json/);
+  assert.equal(res.headers['Cache-Control'], 'no-store');
+  assert.equal(res.body, '');
+  assert.equal(databaseQueries, 0);
+});
+
+test('/health accepts a trailing slash and query string', async () => {
+  const res = response();
+  const handled = await handleHealthRequest(
+    { method: 'GET', url: '/health/?probe=uptimerobot' },
+    res,
+    { client: { isReady: () => true } },
+  );
+
+  assert.equal(handled, true);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(JSON.parse(res.body), {
+    status: 'alive',
+    service: 'pogaca-frieren',
+    checks: { discord: 'ok', database: 'not_checked' },
+  });
 });
 
 test('/health is a lightweight liveness probe and never queries PostgreSQL', async () => {
@@ -39,7 +76,7 @@ test('/health is a lightweight liveness probe and never queries PostgreSQL', asy
 
   assert.equal(handled, true);
   assert.equal(res.statusCode, 200);
-  assert.match(res.headers['Content-Type'], /application\/json/);
+  assert.match(res.headers['Content-Type'], /application\\/json/);
   assert.equal(res.headers['Cache-Control'], 'no-store');
   assert.deepEqual(JSON.parse(res.body), {
     status: 'alive',
