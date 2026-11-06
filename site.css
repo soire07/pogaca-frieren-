@@ -745,3 +745,5 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 }
 @media(min-width:681px) and (max-width:900px){.public-profile-content{gap:12px}.public-profile-section,.account-public-activity{padding:18px}}
 @media(prefers-reduced-motion:no-preference){.public-profile-section,.account-public-activity{transition:border-color .18s ease,transform .18s ease}.public-profile-section:hover,.account-public-activity:hover{border-color:#b99be966;transform:translateY(-2px)}}
+
+.public-chat-owner-badge{display:inline-flex;align-items:center;margin-left:7px;padding:2px 7px;border:1px solid #c7a8ff88;border-radius:999px;background:#9b7bd933;color:#eadbff;font-size:9px;font-weight:800;letter-spacing:.08em;line-height:1.5;vertical-align:middle}
