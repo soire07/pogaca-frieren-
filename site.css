@@ -656,3 +656,9 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .public-chat-profile-link:hover{text-decoration:underline}
 .public-chat-pinned{display:inline-flex;width:max-content;padding:3px 8px;border:1px solid #d5b8ff55;border-radius:99px;color:#e5d2ff;font-size:10px}
 @media(max-width:620px){.account-profile-editor form{grid-template-columns:1fr}.account-profile-editor form>*{grid-column:1/-1}}
+
+.public-chat-avatar[data-online=true]{outline:2px solid #8fe0b2;outline-offset:2px}
+.public-chat-avatar[data-online=false]{outline:1px solid #81778f;outline-offset:1px}
+.public-chat-avatar[title=Çevrimiçi]{box-shadow:0 0 12px #8fe0b266}
+.account-profile-editor form>label{min-width:0}
+.account-profile-editor form>label input[type=checkbox]{width:auto;justify-self:start}
