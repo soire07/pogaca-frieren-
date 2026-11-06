@@ -507,3 +507,29 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .profile-nav-action.is-current{border-color:#e6d1ff;background:#e4d0ff;color:#241a35}
 @media(max-width:680px){.profile-account-heading{align-items:flex-start;flex-direction:column;padding:20px}.profile-edit-trigger{width:100%}.profile-quick-nav{top:58px}.profile-editor-heading{align-items:flex-start}.profile-media-grid{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.profile-account-heading,.profile-media-editor,.profile-nav-action{scroll-behavior:auto;transition:none}}
+
+/* Dedicated Frieren user-center surfaces */
+.user-center-page{max-width:1120px}
+.user-center-hero{position:relative;overflow:hidden;padding:clamp(24px,5vw,46px);border:1px solid #d8baff35;border-radius:28px;background:radial-gradient(circle at 90% 0%,#a58bff25,transparent 35%),linear-gradient(130deg,#302449,#19172c 70%);box-shadow:0 22px 70px #07051055}
+.user-center-hero:after{content:"✧";position:absolute;right:7%;top:5%;font-size:clamp(80px,18vw,180px);color:#d9c5ff12;pointer-events:none}
+.user-center-hero h1{margin:8px 0 12px}
+.user-center-hero>.lead{max-width:720px}
+.user-center-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:28px}
+.user-center-metrics article{display:flex;flex-direction:column;gap:7px;padding:16px;border:1px solid #ffffff18;border-radius:17px;background:#ffffff09}
+.user-center-metrics span{font-size:12px;color:#c6bad9}
+.user-center-metrics strong{font:30px Georgia,serif;color:#f0e6ff}
+.user-center-tabs{position:sticky;top:66px;z-index:5;display:flex;gap:8px;overflow-x:auto;margin:16px 0 28px;padding:12px 0;background:#17152ceb;backdrop-filter:blur(14px)}
+.user-center-tabs a{flex:0 0 auto;padding:11px 16px;border:1px solid #d8baff38;border-radius:999px;color:#e8def8;text-decoration:none;font-size:13px}
+.user-center-tabs a[aria-current=page]{background:#e5d4ff;color:#241a35;border-color:#e5d4ff}
+.social-actions-section>.section-head{margin-bottom:18px}
+.social-actions-section .portal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.social-center-page .card{border-color:#d8baff25;background:linear-gradient(145deg,#29233b,#1d1a2d)}
+.social-center-page .card form{display:grid;gap:12px}
+.social-center-page .card input{width:100%;min-height:46px;padding:12px 14px;border:1px solid #8c7ba744;border-radius:12px;background:#151326;color:#fff}
+.social-center-page .card button{min-height:44px}
+.social-list-section .card{display:flex;flex-direction:column;gap:12px}
+.social-list-section .card code{overflow-wrap:anywhere;color:#e2d0ff}
+.social-list-section .card form button{width:100%}
+.user-center-page .empty-state{color:#c8bdd8;border-style:dashed}
+@media(max-width:680px){.user-center-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.social-actions-section .portal-grid{grid-template-columns:1fr}.user-center-tabs{top:56px}}
+@media(prefers-reduced-motion:reduce){.user-center-hero,.user-center-tabs{scroll-behavior:auto;transition:none}}
