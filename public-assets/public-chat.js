@@ -90,7 +90,7 @@
     const response=await fetch('/api/public-chat/messages',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:form.elements.csrf.value,message,replyToMessageId:form.elements.replyToMessageId.value})});
     const data=await response.json().catch(()=>({}));
     if(response.status===429){say('Çok hızlı mesaj gönderiyorsun. Biraz bekle.');return;}
-    if(!response.ok)throw new Error(data.error==='invalid_message'?'Mesaj veya yanıt geçersiz.':'Mesaj gönderilemedi. Oturumunu yenileyip tekrar dene.');
+    if(!response.ok)throw new Error(data.status==='chat_paused'||response.status===423?'Sohbet Owner tarafından durduruldu.':data.error==='invalid_message'?'Mesaj veya yanıt geçersiz.':'Mesaj gönderilemedi. Oturumunu yenileyip tekrar dene.');
     input.value='';form.elements.replyToMessageId.value='';replyTarget=null;if(replyPreview)replyPreview.hidden=true;if(replyLabel)replyLabel.textContent='';
     say('Mesajın gönderildi.');await refresh();
    }catch(error){say(error.message||'Mesaj gönderilemedi.');}
