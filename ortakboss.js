@@ -6,7 +6,7 @@ import { getGuildRpgContent } from './owner-rpg-content.js';
 import { equipmentItems, equipmentBonus } from './equipment-data.js';
 import { levelForXp } from './utils.js';
 import { validateGuildEventRaidTeam } from './guild-team-leagues.js';
-import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio, applyDefendingReduction, scaleRaidBossHp, canAssignPartyRole, isPartyWiped, getPartyRoleModifiers, applyTalentBonus } from './rpg-mechanics.js';
+import { chooseRaidBoss, applyRaidWeakness, applyEquipmentSetBonus, progressionMilestone, applyClassDamage, applyClassDefense, applyClassHealing, applyClassManaCost, getCharacterClass, getCharacterBuild, getBossPhase, calculateBossIncomingDamage, bossPhaseSpecialBonus, restoreResourceRatio, applyDefendingReduction, scaleRaidBossHp, applyRaidBossDamage, regenerateRaidBossHp, calculateRaidAreaTickDamage, rollRaidBossLoot, rollRaidBossTitleDrops, canAssignPartyRole, isPartyWiped, getPartyRoleModifiers, applyTalentBonus } from './rpg-mechanics.js';
 
 const COOLDOWN_MS = 45 * 60_000;
 
@@ -123,6 +123,7 @@ export default {
 
     let reservationCreated = false;
     let db = await pool.connect();
+    let bossTickTimer = null;
     try {
       await db.query('BEGIN');
       const ids = team.map(x => x.id).sort();
@@ -207,7 +208,7 @@ export default {
         return interaction.editReply({ content: '❤️ Her oyuncunun HP değeri sıfırdan yüksek olmalı. Önce /dinlen kullanın.', components: [] });
       }
       const averageLevel = Math.floor(fighters.reduce((sum, fighter) => sum + fighter.level, 0) / fighters.length);
-      let bossHp = scaleRaidBossHp(BOSS.hp, averageLevel, fighters.length);
+      let bossHp = BOSS.noHpScaling ? Number(BOSS.hp) : scaleRaidBossHp(BOSS.hp, averageLevel, fighters.length);
       const maxBossHp = bossHp;
       const masteryRows = await db.query('SELECT user_id,casts,mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND spell_key=$3',[interaction.guildId,ids,'zoltraak']);
       const spellMastery = new Map(masteryRows.rows.map(row => [row.user_id, Number(row.mastery_level)]));
@@ -218,10 +219,31 @@ export default {
       db = null;
       const hpNow = fighters.map(x => Math.round(x.hp));
       const log = [];
+      const specialAttackHistory = [];
       const spellCasts = new Map();
       let rounds = 0;
       let rageAnnounced = false;
       let bossPhase = 1;
+      let pendingBossDamage = 0;
+      let activeActionCollector = null;
+      if (BOSS.regenerateDamagePerSecond || Number(BOSS.areaDamagePerSecond) > 0) {
+        bossTickTimer = setInterval(() => {
+          if (BOSS.regenerateDamagePerSecond && pendingBossDamage > 0) {
+            const regeneration = regenerateRaidBossHp(bossHp, maxBossHp, pendingBossDamage);
+            bossHp = regeneration.hp;
+            pendingBossDamage = 0;
+            if (regeneration.healed > 0) log.push(`♻️ ${BOSS.name} aldığı ${regeneration.healed.toLocaleString('tr-TR')} hasarı bir saniyede tamamen yeniledi.`);
+          }
+          if (Number(BOSS.areaDamagePerSecond) > 0) {
+            for (const i of fighters.map((fighter, index) => hpNow[index] > 0 ? index : -1).filter(index => index >= 0)) {
+              const incoming = calculateRaidAreaTickDamage(BOSS.areaDamagePerSecond, Math.round(fighters[i].defense * 0.5), bossPhase);
+              hpNow[i] = Math.max(0, hpNow[i] - incoming);
+              log.push(`🌌 Zeldeila'nın alan dalgası ${fighters[i].username} oyuncusuna ${incoming} hasar verdi.`);
+            }
+            if (isPartyWiped(hpNow)) activeActionCollector?.stop('party-wiped');
+          }
+        }, 1000);
+      }
       while (bossHp > 0 && !isPartyWiped(hpNow) && rounds < 12) {
         rounds++;
         const currentPhase = getBossPhase(bossHp, maxBossHp);
@@ -261,6 +283,7 @@ export default {
             filter: c => alive.some(i => fighters[i].userId === c.user.id) &&
               c.customId.startsWith('raid:act:') && c.customId.endsWith(`${interaction.id}:${rounds}`)
           });
+          activeActionCollector = collector;
           collector.on('collect', async c => {
             if (choices.has(c.user.id)) {
               await c.reply({ content: 'Bu tur için seçimini zaten yaptın.', flags: MessageFlags.Ephemeral }).catch(() => {});
@@ -270,7 +293,7 @@ export default {
             await c.deferUpdate().catch(() => {});
             if (choices.size >= alive.length) collector.stop('all-selected');
           });
-          collector.once('end', resolve);
+          collector.once('end', () => { activeActionCollector = null; resolve(); });
         });
         const defending = new Set();
         for (const i of alive) {
@@ -311,11 +334,14 @@ export default {
             log.push(`🔹 ${f.username} için mana yetersiz; normal saldırı yaptı.`);
           }
           damage = applyRaidWeakness(damage, BOSS, usedSpell ? 'spell' : 'attack');
-          bossHp = Math.max(0, bossHp - damage);
-          log.push(`⚔️ ${f.username} (${f.roleData.label}) ${damage} hasar verdi.`);
+          const bossHit = applyRaidBossDamage(bossHp, maxBossHp, damage, BOSS);
+          bossHp = bossHit.hp;
+          pendingBossDamage += bossHit.pendingHealing;
+          log.push(`⚔️ ${f.username} (${f.roleData.label}) ${bossHit.damage} hasar verdi.`);
         }
         if (bossHp <= 0) break;
         const living=fighters.map((x,i)=>hpNow[i]>0?i:-1).filter(i=>i>=0);
+        if (!living.length) break;
         const tank=living.find(i=>fighters[i].role==='tank');
         const targetIndex=tank !== undefined && Math.random()<0.7 ? tank : living[Math.floor(Math.random()*living.length)];
         const target=fighters[targetIndex];
@@ -323,10 +349,13 @@ export default {
         const starburst = BOSS.special === 'mana-star' && rounds % 3 === 0;
         const shardRain = BOSS.special === 'shard-rain' && rounds % 2 === 0;
         const manaCurse = BOSS.special === 'mana-curse' && rounds % 3 === 0;
-        const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0)+((starburst || shardRain || manaCurse) ? bossPhaseSpecialBonus(bossPhase) : 0);
+        const katunJudgment = BOSS.special === 'katun-judgment' && rounds % 3 === 0;
+        const rawDamage=BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0)+(katunJudgment?10:0)+((starburst || shardRain || manaCurse || katunJudgment) ? bossPhaseSpecialBonus(bossPhase) : 0);
         if (enraged && !rageAnnounced) { log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.'); rageAnnounced = true; }
         if (starburst || shardRain) {
-          log.push(BOSS.special === 'shard-rain' ? '🐉 Cam Pullar Ejderhası keskin kristal parçalarını tüm takıma yağdırıyor!' : '☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!');
+          const specialMessage = BOSS.special === 'shard-rain' ? '🐉 Cam Pullar Ejderhası keskin kristal parçalarını tüm takıma yağdırıyor!' : '☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!';
+          log.push(specialMessage);
+          specialAttackHistory.push(specialMessage);
           for (const i of living) {
             const f=fighters[i];
             const specialMultiplier = shardRain ? 0.5 : 0.68;
@@ -336,8 +365,13 @@ export default {
             log.push(`☄️ ${f.username} ${shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
           }
         } else {
-          let incoming=calculateBossIncomingDamage(rawDamage, Math.round(target.defense*0.56), bossPhase);
+          let incoming=calculateBossIncomingDamage(katunJudgment ? Math.round(rawDamage * 1.5) : rawDamage, Math.round(target.defense*0.56), bossPhase);
           incoming=applyDefendingReduction(incoming,defending.has(targetIndex));
+          if (katunJudgment) {
+            const specialMessage = `💍 Domaltazor Katun Hükmü ile ${target.username} oyuncusuna ağır darbe indiriyor!`;
+            log.push(specialMessage);
+            specialAttackHistory.push(specialMessage);
+          }
           hpNow[targetIndex]=Math.max(0,hpNow[targetIndex]-incoming);
           if (manaCurse) {
             const drained=Math.min(target.mana,8);
@@ -347,12 +381,19 @@ export default {
           log.push(`💥 ${BOSS.name} ${target.username} oyuncusuna ${incoming} hasar verdi${defending.has(targetIndex)?' (savunma azaltımı uygulandı)':''}.`);
         }
       }
+      if (bossTickTimer) { clearInterval(bossTickTimer); bossTickTimer = null; }
+      if (pendingBossDamage > 0) {
+        const finalRegeneration = regenerateRaidBossHp(bossHp, maxBossHp, pendingBossDamage);
+        bossHp = finalRegeneration.hp;
+        pendingBossDamage = 0;
+      }
       const win=bossHp<=0;
       const persistedHpNow=hpNow.map((hp,i)=>restoreResourceRatio(hp, fighters[i].maxHp, fighters[i].baseMaxHp));
       const persistedManaNow=fighters.map(f=>restoreResourceRatio(f.mana, f.maxMana, f.baseMaxMana));
       const xpReward=win?BOSS.xp:Math.floor(BOSS.xp*0.25);
       const coinReward=win?BOSS.coins:Math.floor(BOSS.coins*0.2);
-      const loot=win && Math.random()<0.4 ? BOSS.loot : null;
+      const loot=win ? rollRaidBossLoot(BOSS, Math.random) : null;
+      const titleDropUsers=rollRaidBossTitleDrops(BOSS, ids, Math.random);
       const settlement = await settleRaidRewards(pool, {
         guildId: interaction.guildId,
         encounterId: interaction.id,
@@ -364,7 +405,9 @@ export default {
         xpReward,
         coinReward,
         loot,
-        spellCasts
+        spellCasts,
+        titleDrop: BOSS.titleDrop || null,
+        titleDropUsers
       });
       if (settlement.status === 'reservation_missing') {
         return interaction.editReply({ content: '⌛ Baskın oturumunun süresi doldu veya takım kilidi kayboldu; ödüller kaydedilmedi. Yeniden deneyebilirsin.', components: [] });
@@ -372,6 +415,7 @@ export default {
       if (settlement.status === 'cooldown') {
         return interaction.editReply({ content: `⏳ <@${settlement.userId}> başka bir baskın nedeniyle bekleme süresine girdi; yaklaşık ${settlement.minutes} dakika sonra yeniden deneyin. Bu baskının ödülleri kaydedilmedi.`, components: [] });
       }
+      for (const drop of settlement.titleDrops || []) log.push(`🏅 <@${drop.userId}> **${drop.title}** unvanını kazandı!`);
       for (const mastery of settlement.masteryResults) {
         log.push(`📈 <@${mastery.userId}> Zoltraak ustalığı: ${mastery.casts} kullanım · Seviye ${mastery.mastery_level}/10.`);
       }
@@ -389,11 +433,14 @@ export default {
           {name:'👹 Boss canı ve aşaması',value:`\`${hpBar(bossHp,maxBossHp)}\`\n**${Math.max(0,bossHp)}/${maxBossHp} HP** · ${getBossPhase(bossHp,maxBossHp)===3?'🌑 Son aşama':getBossPhase(bossHp,maxBossHp)===2?'🔥 İkinci aşama':'🌒 İlk aşama'}`,inline:false},
           {name:'🎁 Kişi başı ödül',value:`✨ ${xpReward} XP\n🥐 ${coinReward} altın`,inline:true},
           {name:'🏅 Kalıcı unvanlar',value:milestoneText.slice(0,1024),inline:false},
-          {name:'🧭 Boss bilgisi',value:`Zayıflık: **${BOSS.weaknessLabel}**\nÖzel hareket: **${BOSS.special === 'shard-rain' ? 'Kristal Yağmuru (iki turda bir, alan hasarı)' : BOSS.special === 'mana-curse' ? 'Mana Laneti (üç turda bir, mana tüketir)' : 'Mana Yıldız Patlaması (üç turda bir, alan hasarı)'}**`,inline:true},
-          {name:'💎 Ortak ganimet',value:loot?`Herkes **${loot}** kazandı!`:win?'Bu kez nadir ganimet çıkmadı.':'Boss yenilemediği için nadir ganimet yok.',inline:true},
+          ...(specialAttackHistory.length ? [{name:'💥 Özel saldırı geçmişi',value:specialAttackHistory.slice(-5).join('\n').slice(0,1024),inline:false}] : []),
+          {name:'🧭 Boss bilgisi',value:BOSS.id==='zeldeila'?'**Sonsuz Yenilenme:** aldığı hasarı her saniye tamamen geri kazanır.\n**Mutlak Alan:** her saniye tüm takıma hasar verir.\n**200.000.000 HP:** yenilmesi mümkün değildir.':`Zayıflık: **${BOSS.weaknessLabel}**\nÖzel hareket: **${BOSS.special === 'shard-rain' ? 'Kristal Yağmuru (iki turda bir, alan hasarı)' : BOSS.special === 'mana-curse' ? 'Mana Laneti (üç turda bir, mana tüketir)' : BOSS.id === 'domaltazor' ? 'Katun Hükmü (efsanevi yüzük avı)' : 'Mana Yıldız Patlaması (üç turda bir, alan hasarı)'}**`,inline:true},
+          {name:'💎 Ortak ganimet',value:loot?`Herkes **${loot}** kazandı!`:win?'Bu kez nadir ganimet çıkmadı.':BOSS.id==='zeldeila'?'Zeldeila eşya düşürmez.':'Boss yenilemediği için nadir ganimet yok.',inline:true},
+          ...(BOSS.titleDrop ? [{name:'🏅 Unvan ganimeti',value:(settlement.titleDrops || []).length ? settlement.titleDrops.map(drop=>`<@${drop.userId}>: **${drop.title}**`).join('\n') : 'Bu baskında unvan düşmedi. Şans: %0,2.',inline:false}] : []),
           {name:'⏳ Bekleme süresi',value:'45 dakika',inline:true}
         ).setFooter({text:'Poğaça Frieren • Rollerini seç, takımını koru, birlikte kazan.'});
-      const raidArtUrl = getBossArtUrl(BOSS.id === 'north-general' ? 'northGeneral' : BOSS.id === 'glass-wyrm' ? 'glassWyrm' : 'fallenMage');
+      const raidArtKey = BOSS.id === 'north-general' ? 'northGeneral' : BOSS.id === 'glass-wyrm' ? 'glassWyrm' : BOSS.id === 'fallen-mage' ? 'fallenMage' : BOSS.id;
+      const raidArtUrl = getBossArtUrl(raidArtKey);
       if (raidArtUrl) embed.setImage(raidArtUrl);
       return interaction.editReply({embeds:[embed],components:[]});
     } catch(error) {
@@ -401,6 +448,7 @@ export default {
       console.error('/ortakboss hatası:',error);
       return interaction.editReply({content:'Ortak boss baskınında hata oluştu. Daha sonra yeniden dene.',components:[]}).catch(()=>{});
     } finally {
+      if (bossTickTimer) clearInterval(bossTickTimer);
       if (db) db.release();
       if (reservationCreated) {
         await pool.query('DELETE FROM active_rpg_encounters WHERE guild_id=$1 AND encounter_id=$2', [interaction.guildId, interaction.id]).catch(() => {});

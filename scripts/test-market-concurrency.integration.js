@@ -1730,7 +1730,7 @@ test('equipment salvage returns proportional materials for all twelve items and 
     await ensureUser(guildId, userId);
     await pool.query(
       'INSERT INTO inventory(guild_id,user_id,item_key,quantity) SELECT $1,$2,item.name,2 FROM UNNEST($3::text[]) AS item(name)',
-      [guildId, userId, equipmentItems.map(item => item.name)]
+      [guildId, userId, equipmentItems.filter(item => !item.dropOnly).map(item => item.name)]
     );
     const makeInteraction = itemId => ({
       guildId,
@@ -1745,7 +1745,7 @@ test('equipment salvage returns proportional materials for all twelve items and 
     const expected = new Map();
     const responses = [];
     try {
-      for (const item of equipmentItems) {
+      for (const item of equipmentItems.filter(item => !item.dropOnly)) {
         const salvage = {
           iron_sword: ['🥐 Büyülü Poğaça Kutusu', 1],
           mage_staff: ['📖 Yasak Büyü Kitabı', 1],
@@ -1776,8 +1776,8 @@ test('equipment salvage returns proportional materials for all twelve items and 
         Object.fromEntries(returned.rows.map(row => [row.item_key, Number(row.quantity)])),
         Object.fromEntries(expected)
       );
-      assert.equal(Number(progress.rows[0].salvaged_items), equipmentItems.length * 2);
-      assert.equal(responses.length, equipmentItems.length);
+      assert.equal(Number(progress.rows[0].salvaged_items), equipmentItems.filter(item => !item.dropOnly).length * 2);
+      assert.equal(responses.length, equipmentItems.filter(item => !item.dropOnly).length);
       assert.ok(responses.every(payload => JSON.stringify(payload).includes('Toplam parçalanan ekipman')),
         'each salvage response must display the updated lifetime dismantling total');
     } finally {
@@ -2697,7 +2697,7 @@ test('talent tree persists all four rank paths, enforces the three-rank cap and 
   });
 });
 
-test('equipment salvage preview lists every equipment type, rarity and exact recovery recipe without mutating inventory', {
+test('equipment salvage preview lists every salvageable item and protects boss-exclusive loot without mutating inventory', {
   skip: !dedicatedAuditDatabase && 'Requires the disposable GitHub Actions frieren_audit PostgreSQL service'
 }, async () => {
   await withIsolatedTestSchema(async () => {
@@ -2714,9 +2714,11 @@ test('equipment salvage preview lists every equipment type, rarity and exact rec
       editReply: async payload => { responses.push(payload); return payload; }
     });
     const after = await pool.query('SELECT COUNT(*)::int AS total FROM inventory WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
-    const description = String(responses[0]?.embeds?.[0]?.toJSON?.().description || '');
-    assert.ok(equipmentItems.every(item => description.includes(item.name)));
-    assert.equal((description.match(/Geri kazanım:/g) || []).length, equipmentItems.length);
+    const description = JSON.stringify(responses[0]?.embeds?.[0]?.toJSON?.() || {});
+    assert.ok(equipmentItems.filter(item => !item.dropOnly).every(item => description.includes(item.name)));
+    assert.ok(!description.includes('💍 Katun Yüzüğü'));
+    assert.ok(description.includes('Efsanevi Katun Yüzüğü boss ganimetidir'));
+    assert.equal((description.match(/Geri kazanım:/g) || []).length, equipmentItems.filter(item => !item.dropOnly).length);
     assert.ok(description.includes('Kuzey İblisi Zırhı'));
     assert.ok(description.includes('Bakır Gezgin Yüzüğü'));
     assert.ok(description.includes('Efsanevi'));

@@ -2,6 +2,7 @@ import test from 'node:test';
 import { claimSoloBossReward } from '../rpg-reward-transactions.js';
 import assert from 'node:assert/strict';
 import raidCommand from '../ortakboss.js';
+import { marketItems } from '../market.js';
 import eventCommand from '../etkinlik.js';
 import {
   RAID_BOSSES,
@@ -16,7 +17,12 @@ import {
   calculateBossIncomingDamage,
   getBossPhase,
   bossPhaseSpecialBonus,
-  CHARACTER_CLASSES
+  CHARACTER_CLASSES,
+  applyRaidBossDamage,
+  regenerateRaidBossHp,
+  calculateRaidAreaTickDamage,
+  rollRaidBossLoot,
+  rollRaidBossTitleDrops
 } from '../rpg-mechanics.js';
 
 test('boss incoming damage never becomes negative and has a minimum of one', () => {
@@ -296,6 +302,47 @@ test('co-op dungeon and raid count only successful mana-funded Zoltraak casts fo
 });
 
 
+
+
+test('Katun ring is exclusive to Domaltazor drops, remains equipable and cannot be salvaged', async () => {
+  const ring = (await import('../equipment-data.js')).equipmentItems.find(item => item.id === 'katun_ring');
+  assert.ok(ring);
+  assert.equal(ring.dropOnly, true);
+  assert.equal(ring.rarity, 'Efsanevi');
+  assert.equal(ring.slot, 'ring');
+  assert.equal(marketItems.some(item => item.id === 'katun_ring'), false);
+  const salvage = await (await import('node:fs/promises')).readFile(new URL('../ekipmanparcala.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(salvage, /katun_ring/);
+});
+
+test('Domaltazor uses its periodic Katun Judgment heavy strike', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /BOSS\.special === 'katun-judgment' && rounds % 3 === 0/);
+  assert.match(source, /katunJudgment \? Math\.round\(rawDamage \* 1\.5\)/);
+  assert.match(source, /Domaltazor Katun Hükmü/);
+});
+
+
+test('raid title drops are inserted into the existing user title collection inside reward settlement', async () => {
+  const rewards = await (await import('node:fs/promises')).readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
+  assert.match(rewards, /titleDropUsers = \[\]/);
+  assert.match(rewards, /INSERT INTO user_titles\(guild_id,user_id,title\)/);
+  assert.match(rewards, /ON CONFLICT\(guild_id,user_id,title\) DO NOTHING RETURNING title/);
+  assert.match(rewards, /return \{ status: 'settled', masteryResults, titleDrops \}/);
+  assert.match(rewards, /await db\.query\('COMMIT'\)/);
+  assert.match(rewards, /await rollback\(db\)/);
+});
+
+test('Zeldeila uses one-second area ticks and fixed boss HP in the raid runtime', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /BOSS\.noHpScaling \? Number\(BOSS\.hp\)/);
+  assert.match(source, /setInterval\(\(\) => \{/);
+  assert.match(source, /calculateRaidAreaTickDamage\(BOSS\.areaDamagePerSecond/);
+  assert.match(source, /regenerateRaidBossHp\(bossHp, maxBossHp, pendingBossDamage\)/);
+  assert.match(source, /clearInterval\(bossTickTimer\)/);
+});
+
+
 test('co-op boss command accepts a calendar event id for a registered raid team', () => {
   const command = raidCommand.data.toJSON();
   assert.equal(command.name, 'ortakboss');
@@ -311,4 +358,53 @@ test('guild event creation exposes a typed boss raid calendar option', () => {
   const type = create.options.find(option => option.name === 'tur');
   assert.ok(type);
   assert.deepEqual(type.choices.map(choice => choice.value), ['community','boss_raid','tournament','anime_night']);
+});
+
+
+test('Zeldeila is a fixed-HP unbeatable raid final boss with second-by-second regeneration and area damage', () => {
+  const boss = RAID_BOSSES.find(entry => entry.id === 'zeldeila');
+  assert.ok(boss);
+  assert.equal(boss.hp, 200_000_000);
+  assert.equal(boss.noHpScaling, true);
+  assert.equal(boss.regenerateDamagePerSecond, true);
+  assert.ok(boss.areaDamagePerSecond >= 1);
+  assert.equal(boss.loot, null);
+  assert.equal(boss.titleDrop, 'ZELDİN TAŞŞAĞI');
+  assert.equal(boss.titleDropChance, 0.002);
+});
+
+test('Zeldeila restores exactly the damage it received and area damage cannot be reduced to zero', () => {
+  const boss = RAID_BOSSES.find(entry => entry.id === 'zeldeila');
+  const hit = applyRaidBossDamage(boss.hp, boss.hp, 125_000, boss);
+  assert.equal(hit.hp, boss.hp - 125_000);
+  assert.equal(hit.pendingHealing, 125_000);
+  const healed = regenerateRaidBossHp(hit.hp, boss.hp, hit.pendingHealing);
+  assert.equal(healed.hp, boss.hp);
+  assert.equal(healed.healed, 125_000);
+  assert.ok(calculateRaidAreaTickDamage(boss.areaDamagePerSecond, 999, 1) >= 1);
+  const extremeHit = applyRaidBossDamage(boss.hp, boss.hp, 999_999_999, boss);
+  assert.equal(extremeHit.hp, 1, 'even an extreme hit must not defeat Zeldeila');
+  assert.equal(regenerateRaidBossHp(extremeHit.hp, boss.hp, extremeHit.pendingHealing).hp, boss.hp);
+});
+
+test('Zeldeila title rolls are per participant, 0.2 percent, and never produce item loot', () => {
+  const boss = RAID_BOSSES.find(entry => entry.id === 'zeldeila');
+  assert.deepEqual(rollRaidBossTitleDrops(boss, ['a', 'b'], () => 0.001), ['a', 'b']);
+  assert.deepEqual(rollRaidBossTitleDrops(boss, ['a', 'b'], () => 0.002), []);
+  assert.equal(rollRaidBossLoot(boss, () => 0), null);
+});
+
+test('Domaltazor drops the legendary Katun ring at exactly 0.1 percent', async () => {
+  const boss = RAID_BOSSES.find(entry => entry.id === 'domaltazor');
+  assert.ok(boss);
+  assert.equal(boss.loot, '💍 Katun Yüzüğü');
+  assert.equal(boss.lootChance, 0.001);
+  assert.equal(rollRaidBossLoot(boss, () => 0.0009), '💍 Katun Yüzüğü');
+  assert.equal(rollRaidBossLoot(boss, () => 0.001), null);
+  const { equipmentItems } = await import('../equipment-data.js');
+  const ring = equipmentItems.find(item => item.name === boss.loot);
+  assert.ok(ring);
+  assert.equal(ring.slot, 'ring');
+  assert.equal(ring.rarity, 'Efsanevi');
+  assert.ok(ring.attack >= 10 && ring.defense >= 6 && ring.hp >= 50 && ring.mana >= 40);
 });

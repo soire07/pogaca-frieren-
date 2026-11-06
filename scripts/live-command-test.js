@@ -675,7 +675,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           interaction.member = makeMember(userId);
           const previousRandom = Math.random;
           try {
-            Math.random = () => 0.3;
+            Math.random = () => commandName === 'ortakboss' ? 0 : 0.3;
             await command.execute(interaction);
           } finally {
             Math.random = previousRandom;
@@ -1261,10 +1261,14 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           await command.execute(previewInteraction);
           const previewText = payloadTextFromEffects(previewEffects);
           behavioralChecks.push({
-            name: 'On iki ekipman türünün parçalama önizlemesi',
-            expected: 'her ekipman adı, nadirliği ve geri kazanım tarifi seçimden önce gösterilmeli',
-            actual: equipmentItems.filter(entry => previewText.includes(entry.name)).length + '/' + equipmentItems.length + ' ekipman',
-            passed: equipmentItems.length === 12 && equipmentItems.every(entry => previewText.includes(entry.name) && previewText.includes(entry.rarity)) && previewText.includes('Geri kazanım')
+            name: 'Parçalanabilir ekipman önizlemesi ve boss ganimeti koruması',
+            expected: '12 parçalanabilir ekipman listelenmeli; boss ganimeti Katun Yüzüğü korunmalı',
+            actual: equipmentItems.filter(entry => previewText.includes(entry.name)).length + '/' + equipmentItems.length + ' katalog ekipmanı; Katun koruması ' + previewText.includes('Efsanevi Katun Yüzüğü boss ganimetidir'),
+            passed: equipmentItems.filter(entry => !entry.dropOnly).length === 12 &&
+              equipmentItems.filter(entry => !entry.dropOnly).every(entry => previewText.includes(entry.name) && previewText.includes(entry.rarity)) &&
+              !previewText.includes('💍 Katun Yüzüğü') &&
+              previewText.includes('Efsanevi Katun Yüzüğü boss ganimetidir') &&
+              previewText.includes('Geri kazanım')
           });
           const item = equipmentItems.find(entry => entry.id === 'iron_sword');
           const salvageItem = '🥐 Büyülü Poğaça Kutusu';

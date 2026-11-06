@@ -14,7 +14,7 @@ const SALVAGE_YIELD = {
   rune_ring: { item: '💎 Mana Kristali', quantity: 1 },
   hero_ring: { item: '🌙 Efsunlu Elf Yadigârı', quantity: 1 },
   demon_armor: { item: '🐉 Ejderha Pulu', quantity: 2 },
-  copper_ring: { item: '💎 Mana Kristali', quantity: 1 }
+  copper_ring: { item: '💎 Mana Kristali', quantity: 1 },
 };
 
 export default {
@@ -22,7 +22,7 @@ export default {
     .setName('ekipmanparcala')
     .setDescription('Kullanmadığın ekipmanı malzemeye dönüştür; kuşanılan ekipman korunur.')
     .addStringOption(option => option.setName('esya').setDescription('Parçalanacak ekipman.')
-      .setRequired(false).addChoices(...equipmentItems.map(item => ({ name: item.name.slice(0, 100), value: item.id }))))
+      .setRequired(false).addChoices(...equipmentItems.filter(item => !item.dropOnly && SALVAGE_YIELD[item.id]).map(item => ({ name: item.name.slice(0, 100), value: item.id }))))
     .addIntegerOption(option => option.setName('adet').setDescription('Parçalanacak adet (1–5).')
       .setRequired(false).setMinValue(1).setMaxValue(5)),
   async execute(interaction) {
@@ -32,9 +32,10 @@ export default {
     const itemId = interaction.options.getString('esya');
     const amount = interaction.options.getInteger('adet') || 1;
     if (!itemId) {
-      const lines = equipmentItems.map(item => `**${item.name}** · ${item.rarity}\nGeri kazanım: ${SALVAGE_YIELD[item.id].item} × ${SALVAGE_YIELD[item.id].quantity}`);
+      const lines = equipmentItems.filter(item => SALVAGE_YIELD[item.id]).map(item => `**${item.name}** · ${item.rarity}\nGeri kazanım: ${SALVAGE_YIELD[item.id].item} × ${SALVAGE_YIELD[item.id].quantity}`);
       const embed = new EmbedBuilder().setColor(0x9b8cff).setTitle('♻️ Ekipman Parçalama Rehberi')
         .setDescription(lines.join('\n\n').slice(0, 4000))
+        .addFields({ name: '🔒 Boss ganimeti koruması', value: 'Efsanevi Katun Yüzüğü boss ganimetidir; parçalanamaz ve parçalama seçeneklerinde gösterilmez.' })
         .setFooter({ text: 'Kuşanılmış eşyalar parçalanmaz. Geri kazanım, üretim maliyetinden düşüktür.' });
       return interaction.editReply({ embeds: [embed] });
     }

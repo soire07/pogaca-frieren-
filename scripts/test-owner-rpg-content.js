@@ -21,7 +21,7 @@ const actorId = '1553794496234262641';
 test('RPG content catalog preserves all existing dungeon and boss encounters', () => {
   assert.equal(DEFAULT_DUNGEON_TIERS.length, 4);
   assert.equal(DEFAULT_SOLO_BOSSES.length, 5);
-  assert.equal(DEFAULT_RAID_BOSSES.length, 3);
+  assert.equal(DEFAULT_RAID_BOSSES.length, 5);
   assert.equal(selectDungeonForLevel(1, DEFAULT_DUNGEON_TIERS).minLevel, 1);
   assert.equal(selectDungeonForLevel(8, DEFAULT_DUNGEON_TIERS).minLevel, 5);
   assert.equal(selectDungeonForLevel(20, DEFAULT_DUNGEON_TIERS).minLevel, 15);
@@ -61,6 +61,28 @@ test('RPG content validation accepts bounded dungeon and boss tuning', () => {
     reason: 'Boss dengesi', actorId
   }), /INVALID_RPG_CONTENT/);
 });
+
+
+test('owner RPG configuration preserves Zeldeila fixed HP, title-only loot and timed mechanics', () => {
+  const boss = validateOwnerRpgContentInput({
+    guildId, contentType: 'raid_boss', contentKey: 'zeldeila',
+    config: {
+      name: 'Zeldeila', hp: 200000000, damage: 3, xp: 0, coins: 0, loot: null,
+      lootChance: 0, titleDrop: 'ZELDİN TAŞŞAĞI', titleDropChance: 0.002,
+      spawnWeight: 1, regenerateDamagePerSecond: true, areaDamagePerSecond: 15,
+      noHpScaling: true, weakness: 'spell', weaknessLabel: 'Yenilmez'
+    },
+    reason: 'Son boss tasarımı', actorId
+  });
+  assert.equal(boss.config.hp, 200000000);
+  assert.equal(boss.config.loot, null);
+  assert.equal(boss.config.titleDrop, 'ZELDİN TAŞŞAĞI');
+  assert.equal(boss.config.titleDropChance, 0.002);
+  assert.equal(boss.config.regenerateDamagePerSecond, true);
+  assert.equal(boss.config.areaDamagePerSecond, 15);
+  assert.equal(boss.config.noHpScaling, true);
+});
+
 
 test('RPG content validation rejects unknown keys, unsafe values and invalid weaknesses', () => {
   const base = { guildId, contentType: 'dungeon', contentKey: 'level_1', config: { name: 'Mahzen', hp: 180, damage: 9, xp: 50, coins: 60, lootChance: 0.12, loot: 'Anahtar' }, reason: 'Denge ayarı', actorId };

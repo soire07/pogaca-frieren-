@@ -1,12 +1,70 @@
 export const RAID_BOSSES = [
   { id: 'north-general', name: '🌑 Kuzey Platosu İblis Generali', hp: 220, damage: 14, xp: 180, coins: 220, loot: 'İblis Mührü', weakness: 'spell', weaknessLabel: 'Büyü', special: 'mana-star' },
   { id: 'glass-wyrm', name: '🐉 Cam Pullar Ejderhası', hp: 255, damage: 12, xp: 205, coins: 245, loot: 'Ejderha Camı', weakness: 'attack', weaknessLabel: 'Fiziksel saldırı', special: 'shard-rain' },
-  { id: 'fallen-mage', name: '🕯️ Düşmüş Büyücü Aura', hp: 195, damage: 17, xp: 230, coins: 260, loot: 'Auranın Mühürlü Asa Parçası', weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'mana-curse' }
+  { id: 'fallen-mage', name: '🕯️ Düşmüş Büyücü Aura', hp: 195, damage: 17, xp: 230, coins: 260, loot: 'Auranın Mühürlü Asa Parçası', weakness: 'spell', weaknessLabel: 'Zoltraak', special: 'mana-curse' },
+  { id: 'zeldeila', name: '🌌 Zeldeila • Mutlak Son Boss', hp: 200_000_000, damage: 3, xp: 0, coins: 0, loot: null, lootChance: 0, titleDrop: 'ZELDİN TAŞŞAĞI', titleDropChance: 0.002, weakness: 'spell', weaknessLabel: 'Yenilmez', special: 'eternal-regeneration', regenerateDamagePerSecond: true, areaDamagePerSecond: 15, noHpScaling: true, spawnWeight: 1 },
+  { id: 'domaltazor', name: '🦴 Domaltazor • Kadim Cellat', hp: 1600, damage: 24, xp: 520, coins: 750, loot: '💍 Katun Yüzüğü', lootChance: 0.001, weakness: 'attack', weaknessLabel: 'Fiziksel saldırı', special: 'katun-judgment', spawnWeight: 1 }
 ];
 
 export function chooseRaidBoss(random = Math.random, bosses = RAID_BOSSES) {
   const catalog = Array.isArray(bosses) && bosses.length ? bosses : RAID_BOSSES;
-  return catalog[Math.floor(random() * catalog.length)] || catalog[0];
+  const weights = catalog.map(boss => {
+    const value = Number(boss.spawnWeight);
+    return Number.isFinite(value) ? Math.max(0, value) : 1;
+  });
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  if (totalWeight <= 0) return catalog[0];
+  const sample = Number(random());
+  // Preserve the established boundary behavior for deterministic callers; Math.random itself is always below 1.
+  if (!Number.isFinite(sample) || sample < 0 || sample >= 1) return catalog[0];
+  let roll = sample * totalWeight;
+  for (let index = 0; index < catalog.length; index += 1) {
+    if (roll < weights[index]) return catalog[index];
+    roll -= weights[index];
+  }
+  return catalog.at(-1);
+}
+
+export function applyRaidBossDamage(currentHp, maximumHp, incomingDamage, boss) {
+  const maxHp = Math.max(1, Math.floor(Number(maximumHp) || 1));
+  const hp = Math.max(0, Math.min(maxHp, Math.floor(Number(currentHp) || 0)));
+  const requestedDamage = Math.max(0, Math.floor(Number(incomingDamage) || 0));
+  // The regeneration boss cannot cross the defeat boundary, even if a single hit is malformed or extreme.
+  const damage = Math.min(boss?.regenerateDamagePerSecond ? Math.max(0, hp - 1) : hp, requestedDamage);
+  return {
+    hp: Math.max(boss?.regenerateDamagePerSecond ? 1 : 0, hp - damage),
+    damage,
+    pendingHealing: boss?.regenerateDamagePerSecond ? damage : 0
+  };
+}
+
+export function regenerateRaidBossHp(currentHp, maximumHp, pendingHealing) {
+  const maxHp = Math.max(1, Math.floor(Number(maximumHp) || 1));
+  const hp = Math.max(0, Math.min(maxHp, Math.floor(Number(currentHp) || 0)));
+  const requested = Math.max(0, Math.floor(Number(pendingHealing) || 0));
+  const healed = Math.min(maxHp - hp, requested);
+  return { hp: hp + healed, healed };
+}
+
+export function calculateRaidAreaTickDamage(areaDamagePerSecond, defense, phase = 1) {
+  const raw = Math.max(0, Math.floor(Number(areaDamagePerSecond) || 0));
+  if (raw <= 0) return 0;
+  return calculateBossIncomingDamage(raw, defense, phase);
+}
+
+export function rollRaidBossLoot(boss, random = Math.random) {
+  if (!boss?.loot) return null;
+  const configuredChance = Number(boss.lootChance);
+  const chance = Number.isFinite(configuredChance) ? Math.max(0, Math.min(1, configuredChance)) : 0.4;
+  return Number(random()) < chance ? boss.loot : null;
+}
+
+export function rollRaidBossTitleDrops(boss, userIds, random = Math.random) {
+  const title = typeof boss?.titleDrop === 'string' ? boss.titleDrop.trim() : '';
+  const chance = Number(boss?.titleDropChance);
+  if (!title || !Number.isFinite(chance) || chance <= 0) return [];
+  const probability = Math.min(1, chance);
+  return (Array.isArray(userIds) ? userIds : []).filter(() => Number(random()) < probability);
 }
 
 export const COMBAT_SPELLS = {
