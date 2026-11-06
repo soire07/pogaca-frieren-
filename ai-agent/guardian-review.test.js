@@ -197,6 +197,9 @@ test('Guardian review uses configured Frieren Neural when Groq is absent', async
       assert.equal(options.headers.authorization, 'Bearer ' + neuralEnv.FRIEREN_NEURAL_API_TOKEN);
       const prompt = JSON.parse(options.body).prompt;
       assert.match(prompt, /Guardian Neural provider regression/);
+      assert.match(prompt, /\"rootCause\"/);
+      assert.match(prompt, /\"proposedPatch\"/);
+      assert.match(prompt, /JSON only/);
       return {
         ok: true,
         status: 200,
