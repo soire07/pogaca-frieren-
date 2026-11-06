@@ -1,0 +1,56 @@
+name: Render PostgreSQL safety backup
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15 3 * * *"
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: render-postgres-safety-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Dump and verify Render PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check required secret
+        env:
+          DATABASE_URL: ${{ secrets.RENDER_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Add RENDER_DATABASE_URL in repository Actions secrets before running this workflow."
+            exit 1
+          fi
+
+      - name: Create PostgreSQL custom-format dump
+        env:
+          DATABASE_URL: ${{ secrets.RENDER_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          docker run --rm --network host \
+            -e DATABASE_URL \
+            -v "$GITHUB_WORKSPACE/backup:/backup" \
+            postgres:18-alpine sh -euc '
+              pg_dump --format=custom --no-owner --no-acl "$DATABASE_URL" \
+                --file="/backup/pogaca-frieren-$(date -u +%Y%m%dT%H%M%SZ).dump"
+              pg_restore --list /backup/*.dump >/dev/null
+            '
+          cd backup
+          sha256sum *.dump > SHA256SUMS
+          test -s SHA256SUMS
+          ls -lh
+
+      - name: Store verified backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pogaca-frieren-postgres-${{ github.run_id }}
+          path: backup/
+          if-no-files-found: error
+          retention-days: 90
