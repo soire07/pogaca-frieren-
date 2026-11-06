@@ -37,7 +37,7 @@ test('Frieren AI health checks use a six-hour cadence and bounded retries', asyn
 test('Discord command sync skips unchanged definitions and unnecessary global writes', async () => {
   const source = await readFile(new URL('../deploy-commands.js', import.meta.url), 'utf8');
   assert.ok(source.includes('skipped command write to preserve daily quota'));
-  assert.ok(source.includes('No legacy global commands found; skipped unnecessary global command write.'));
+  assert.ok(source.includes('Global news command allowlist unchanged; skipped write to preserve daily quota.'));
 });
 
 
@@ -49,4 +49,13 @@ test('mobile browser smoke runs once per PR update and cancels superseded runs',
   assert.ok(!triggerBlock.includes('push:'), 'the same PR branch push must not duplicate the pull_request run');
   assert.ok(source.includes('group: mobile-browser-smoke-'));
   assert.ok(source.includes('cancel-in-progress: true'));
+});
+
+
+test('only the two approved news setup commands are globally registered', async () => {
+  const source = await readFile(new URL('../deploy-commands.js', import.meta.url), 'utf8');
+  assert.ok(source.includes("const globalCommandNames = ['haberleri-ayarla', 'haberleri-kapat']"));
+  assert.ok(source.includes('const guildCommands = commands.filter(command => !globalCommandNames.includes(command.name))'));
+  assert.ok(source.includes('putWithDiagnostics(globalRoute, globalCommands'));
+  assert.ok(!source.includes("putWithDiagnostics(globalRoute, [], 'clear legacy global commands')"));
 });
