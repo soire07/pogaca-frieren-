@@ -141,7 +141,7 @@ test('boss raid turn prompt uses actual line breaks instead of literal slash-n t
 
 
 test('raid boss catalog has distinct bosses, signature moves and deterministic selection', () => {
-  assert.equal(RAID_BOSSES.length, 3);
+  assert.equal(RAID_BOSSES.length, 5);
   assert.equal(chooseRaidBoss(() => 0).id, 'north-general');
   assert.equal(chooseRaidBoss(() => 0.5).id, 'glass-wyrm');
   assert.equal(chooseRaidBoss(() => 0.99).id, 'domaltazor');
