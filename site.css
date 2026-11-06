@@ -563,3 +563,17 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .public-chat-login{padding-top:12px;border-top:1px solid #ffffff18}
 .public-chat-feedback{min-height:18px;margin:8px 2px 0;color:#d7c6f0;font-size:12px}
 @media(max-width:560px){.public-chat-panel{padding:12px;border-radius:16px}.public-chat-form{grid-template-columns:1fr}.public-chat-form button{width:100%}.public-chat-messages{max-height:330px}}
+
+.personal-center-page .personal-center-item{padding:13px;margin:10px 0;border:1px solid #d8baff2b;border-radius:14px;background:#ffffff08;overflow-wrap:anywhere}
+.personal-center-page .personal-center-item p{margin:7px 0;color:#e7dff2}
+.personal-center-page .personal-center-item small{color:#b9accb;font-size:12px}
+.personal-center-page .personal-center-item form{margin-top:8px}
+.personal-center-page .personal-center-stat{padding:18px;border:1px solid #d8baff35;border-radius:16px;background:#ffffff08;display:grid;gap:8px}
+.personal-center-page .personal-center-stat strong{font:28px Georgia,serif;color:#f0e6ff}
+.personal-center-page .personal-center-stat span{color:#c9bdd9;font-size:13px}
+.personal-center-page textarea,.personal-center-page select{width:100%;min-height:46px;padding:12px;border:1px solid #8c7ba755;border-radius:12px;background:#151326;color:#fff;font:inherit}
+.personal-center-page textarea{min-height:100px;resize:vertical}
+.personal-center-page .card form{display:grid;gap:10px}
+.personal-center-page .card label{display:grid;gap:6px;color:#e8def8;font-size:13px}
+.personal-center-page .check-row{display:flex!important;align-items:center;gap:10px}
+@media(max-width:680px){.personal-center-page .portal-grid{grid-template-columns:1fr}}
