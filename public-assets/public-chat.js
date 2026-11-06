@@ -5,6 +5,9 @@
  const form=root.querySelector('[data-chat-form]');
  const feedback=root.querySelector('[data-chat-feedback]');
  const blockedRoot=root.querySelector('[data-chat-blocks]');
+ const search=root.querySelector('[data-chat-search]');
+ const count=root.querySelector('[data-chat-count]');
+ const counter=root.querySelector('[data-chat-counter]');
  const replyPreview=root.querySelector('[data-chat-reply-preview]');
  const replyLabel=root.querySelector('[data-chat-reply-label]');
  let replyTarget=null;
@@ -24,8 +27,11 @@
  };
  const render=messages=>{
   const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<72;
+  const query=String(search?.value||'').trim().toLocaleLowerCase('tr-TR');
+  const visible=query?messages.filter(item=>(String(item.username||'')+' '+String(item.body||'')).toLocaleLowerCase('tr-TR').includes(query)):messages;
+  if(count)count.textContent=query?visible.length+' / '+messages.length+' eşleşme':messages.length+' mesaj gösteriliyor';
   const fragment=document.createDocumentFragment();
-  for(const item of messages){
+  for(const item of visible){
    const li=document.createElement('li');li.className='public-chat-message';
    const avatar=document.createElement('span');avatar.className='public-chat-avatar';avatar.textContent=Array.from(String(item.username||'G').trim())[0]?.toLocaleUpperCase('tr-TR')||'G';
    const body=document.createElement('div');body.className='public-chat-message-body';
@@ -47,7 +53,7 @@
    li.append(avatar,body);fragment.append(li);
   }
   list.replaceChildren(fragment);
-  if(!messages.length){const empty=document.createElement('li');empty.className='public-chat-empty';empty.textContent='Henüz mesaj yok. İlk selamı sen verebilirsin.';list.append(empty);}
+  if(!visible.length){const empty=document.createElement('li');empty.className='public-chat-empty';empty.textContent=query?'Bu aramayla eşleşen mesaj bulunamadı.':'Henüz mesaj yok. İlk selamı sen verebilirsin.';list.append(empty);}
   else if(nearBottom)list.scrollTop=list.scrollHeight;
  };
  const postAction=async(path,values)=>{
@@ -63,10 +69,13 @@
   try{
    const response=await fetch('/api/public-chat/messages',{headers:{accept:'application/json'},cache:'no-store'});
    if(!response.ok)throw new Error('Sohbet şu anda yüklenemiyor.');
-   const data=await response.json();render(Array.isArray(data.messages)?data.messages:[]);renderBlocked(Array.isArray(data.blocked)?data.blocked:[]);
+   const data=await response.json();latestMessages=Array.isArray(data.messages)?data.messages:[];render(latestMessages);renderBlocked(Array.isArray(data.blocked)?data.blocked:[]);
   }catch(error){if(!list.children.length)say(error.message||'Sohbet yüklenemedi.');}
   finally{refreshing=false;}
  };
+ let latestMessages=[];
+ if(search)search.addEventListener('input',()=>render(latestMessages));
+ if(counter&&form){const updateCounter=()=>{counter.textContent=String(form.elements.message.value.length)+' / 500';};form.elements.message.addEventListener('input',updateCounter);updateCounter();}
  if(form){
   form.addEventListener('submit',async event=>{
    event.preventDefault();const input=form.elements.message;const message=String(input.value||'').trim();if(!message)return;
