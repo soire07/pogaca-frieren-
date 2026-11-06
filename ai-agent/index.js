@@ -141,7 +141,7 @@ const healthServer = createServer(async (req, res) => {
       res.end(JSON.stringify({ error: 'not_found' }));
       return;
     }
-    if (!groq) {
+    if (!modelConfigured) {
       res.writeHead(503, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ error: 'model_not_configured' }));
       return;
@@ -167,6 +167,7 @@ const healthServer = createServer(async (req, res) => {
       const review = await reviewGuardianIncident({
         groq,
         model: resolveAiModel(process.env),
+        neuralEnv: process.env,
         incident,
         collectCodeContext,
       });
