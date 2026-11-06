@@ -27,11 +27,11 @@ Configure these variables on the **main Poğaça Frieren Render service**:
 - `OWNER_DASHBOARD_BASE_URL=https://frierenbot.vercel.app`
 - `OWNER_DASHBOARD_REDIRECT_URI=https://frierenbot.vercel.app/owner/callback`
 - `SITE_BASE_URL=https://frierenbot.vercel.app`
-- `SITE_DISCORD_REDIRECT_URI=https://frierenbot.vercel.app/discord/callback`
+- `SITE_DISCORD_REDIRECT_URI=https://frierenbot.vercel.app/site/discord/callback`
 
 Discord OAuth uses two independent callbacks. Add both exact redirect URIs to the Discord Developer Portal OAuth2 redirect list:
 
-- `https://frierenbot.vercel.app/discord/callback` (public site sign-in)
+- `https://frierenbot.vercel.app/site/discord/callback` (public site sign-in)
 - `https://frierenbot.vercel.app/owner/callback` (Owner Panel)
 
 Keep `CLIENT_ID`, `DISCORD_CLIENT_SECRET`, and `ADMIN_SESSION_SECRET` only in the main service's private environment. Public site sign-in requests only the Discord `identify` scope. `ADMIN_SESSION_SECRET` signs site and owner sessions and must remain stable. Owner Panel access still requires the exact server-side owner-ID allowlist; public Discord sign-in does not grant owner access. Do not add secrets to Vercel client-side variables or commit them to Git.
