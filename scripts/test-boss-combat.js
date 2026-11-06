@@ -431,3 +431,25 @@ test('cooperative raid command allows choosing one of the supported raid bosses'
   assert.equal(option?.required, false);
   assert.deepEqual(option.choices.map(choice => choice.value).sort(), RAID_BOSSES.map(boss => boss.id).sort());
 });
+
+import bossGuideCommand from '../commands/rpg/bossrehberi.js';
+import inventoryCommand from '../commands/rpg/envanter.js';
+
+test('boss guide supports all, unlocked and next-boss views', () => {
+  const schema = bossGuideCommand.data.toJSON();
+  const view = schema.options.find(option => option.name === 'gorunum');
+  assert.equal(view.required, false);
+  assert.deepEqual(view.choices.map(choice => choice.value), ['tum', 'acik', 'siradaki']);
+});
+
+test('inventory supports bounded search, sort and pagination controls', () => {
+  const schema = inventoryCommand.data.toJSON();
+  const search = schema.options.find(option => option.name === 'arama');
+  const sort = schema.options.find(option => option.name === 'siralama');
+  const page = schema.options.find(option => option.name === 'sayfa');
+  assert.equal(search.required, false);
+  assert.equal(search.max_length, 80);
+  assert.deepEqual(sort.choices.map(choice => choice.value), ['miktar', 'isim']);
+  assert.equal(page.min_value, 1);
+  assert.equal(page.max_value, 20);
+});
