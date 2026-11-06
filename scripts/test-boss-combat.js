@@ -16,7 +16,12 @@ import {
   calculateBossIncomingDamage,
   getBossPhase,
   bossPhaseSpecialBonus,
-  CHARACTER_CLASSES
+  CHARACTER_CLASSES,
+  applyRaidBossDamage,
+  regenerateRaidBossHp,
+  calculateRaidAreaTickDamage,
+  rollRaidBossLoot,
+  rollRaidBossTitleDrops
 } from '../rpg-mechanics.js';
 
 test('boss incoming damage never becomes negative and has a minimum of one', () => {
@@ -311,4 +316,50 @@ test('guild event creation exposes a typed boss raid calendar option', () => {
   const type = create.options.find(option => option.name === 'tur');
   assert.ok(type);
   assert.deepEqual(type.choices.map(choice => choice.value), ['community','boss_raid','tournament','anime_night']);
+});
+
+
+test('Zeldeila is a fixed-HP unbeatable raid final boss with second-by-second regeneration and area damage', () => {
+  const boss = RAID_BOSSES.find(entry => entry.id === 'zeldeila');
+  assert.ok(boss);
+  assert.equal(boss.hp, 200_000_000);
+  assert.equal(boss.noHpScaling, true);
+  assert.equal(boss.regenerateDamagePerSecond, true);
+  assert.ok(boss.areaDamagePerSecond >= 1);
+  assert.equal(boss.loot, null);
+  assert.equal(boss.titleDrop, 'ZELDİN TAŞŞAĞI');
+  assert.equal(boss.titleDropChance, 0.002);
+});
+
+test('Zeldeila restores exactly the damage it received and area damage cannot be reduced to zero', () => {
+  const boss = RAID_BOSSES.find(entry => entry.id === 'zeldeila');
+  const hit = applyRaidBossDamage(boss.hp, boss.hp, 125_000, boss);
+  assert.equal(hit.hp, boss.hp - 125_000);
+  assert.equal(hit.pendingHealing, 125_000);
+  const healed = regenerateRaidBossHp(hit.hp, boss.hp, hit.pendingHealing);
+  assert.equal(healed.hp, boss.hp);
+  assert.equal(healed.healed, 125_000);
+  assert.ok(calculateRaidAreaTickDamage(boss.areaDamagePerSecond, 999, 1) >= 1);
+});
+
+test('Zeldeila title rolls are per participant, 0.2 percent, and never produce item loot', () => {
+  const boss = RAID_BOSSES.find(entry => entry.id === 'zeldeila');
+  assert.deepEqual(rollRaidBossTitleDrops(boss, ['a', 'b'], () => 0.001), ['a', 'b']);
+  assert.deepEqual(rollRaidBossTitleDrops(boss, ['a', 'b'], () => 0.002), []);
+  assert.equal(rollRaidBossLoot(boss, () => 0), null);
+});
+
+test('Domaltazor drops the legendary Katun ring at exactly 0.1 percent', async () => {
+  const boss = RAID_BOSSES.find(entry => entry.id === 'domaltazor');
+  assert.ok(boss);
+  assert.equal(boss.loot, '💍 Katun Yüzüğü');
+  assert.equal(boss.lootChance, 0.001);
+  assert.equal(rollRaidBossLoot(boss, () => 0.0009), '💍 Katun Yüzüğü');
+  assert.equal(rollRaidBossLoot(boss, () => 0.001), null);
+  const { equipmentItems } = await import('../equipment-data.js');
+  const ring = equipmentItems.find(item => item.name === boss.loot);
+  assert.ok(ring);
+  assert.equal(ring.slot, 'ring');
+  assert.equal(ring.rarity, 'Efsanevi');
+  assert.ok(ring.attack >= 10 && ring.defense >= 6 && ring.hp >= 50 && ring.mana >= 40);
 });
