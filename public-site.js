@@ -1119,14 +1119,14 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       }
       if(url.pathname==='/api/account-profile/friends'){
         const result=await sendAccountFriendRequest(db,{requesterAccountId:session.id,recipientAccountId:form.get('targetAccountId')});
-        res.writeHead(303,{Location:'/profil?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
+        res.writeHead(303,{Location:'/u/'+encodeURIComponent(form.get('targetAccountId'))+'?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
       }
       if(url.pathname==='/api/account-profile/friends/respond'){
         const result=await respondAccountFriendRequest(db,{accountId:session.id,requestId:form.get('requestId'),accept:form.get('action')==='accept'});
         res.writeHead(303,{Location:'/profil?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
       }
       const target=form.get('targetAccountId'),result=form.get('action')==='unfollow'?await unfollowAccount(db,{followerAccountId:session.id,followedAccountId:target}):await followAccount(db,{followerAccountId:session.id,followedAccountId:target});
-      res.writeHead(303,{Location:'/profil?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
+      res.writeHead(303,{Location:'/u/'+encodeURIComponent(target)+'?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
     }catch(error){if(String(error?.message||'').startsWith('ACCOUNT_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_profile'}));return true;}throw error;}
   }
   if(url.pathname.startsWith('/u/')&&req.method==='GET'){
