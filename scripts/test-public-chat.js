@@ -25,6 +25,17 @@ test('public chat read is bounded and uses hidden-message filtering',async()=>{
  assert.equal(result.length,2);assert.equal(params[0],100);
  assert.match(sql,/hidden=FALSE/);assert.match(sql,/ORDER BY \(m\.pinned_at IS NOT NULL\) DESC,m\.created_at DESC,m\.message_id DESC/);
 });
+test('public chat marks only trusted owner authors for the visible OWNER badge',async()=>{
+ let sql='',params;
+ const db={query:async(q,p)=>{if(q.includes('SELECT m.message_id')){sql=q;params=p;return{rows:[{message_id:'owner-message',is_owner:true}],rowCount:1};}return{rows:[],rowCount:0};}};
+ const owners=['site_123e4567-e89b-12d3-a456-426614174000'];
+ const rows=await listPublicChatMessages(db,{ownerAccountIds:owners});
+ assert.equal(rows[0].is_owner,true);
+ assert.match(sql,/AS is_owner/);
+ assert.match(sql,/site_discord_links/);
+ assert.match(sql,/user_id='1553794496234262641'/);
+ assert.deepEqual(params[4],owners);
+});
 test('chat deletion and pinning reject members and allow only owner moderation',async()=>{
  let deleteSql='',pinSql='';const db={async query(q){if(q.startsWith('DELETE FROM frieren_public_chat_messages')){deleteSql=q;return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};}if(q.startsWith('UPDATE frieren_public_chat_messages')){pinSql=q;return{rows:[{pinned_at:new Date()}],rowCount:1};}return{rows:[],rowCount:0};}};
  await assert.rejects(()=>deletePublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000'}),/PUBLIC_CHAT_OWNER_REQUIRED/);
