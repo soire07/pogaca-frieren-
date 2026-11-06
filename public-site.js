@@ -207,7 +207,7 @@ function siteAccountProfilePage(user,data={}) {
  const friendData=data.friends||{friends:[],incoming:[]};
  const friendCards=friendData.friends.map(x=>'<li>'+esc(x.account_id)+'</li>').join('')||'<li>Henüz arkadaşın yok.</li>';
  const incoming=friendData.incoming.map(x=>'<li>'+esc(x.requester_account_id)+' <form method="post" action="/api/account-profile/friends/respond"><input type="hidden" name="csrf" value="'+csrf+'"><input type="hidden" name="requestId" value="'+esc(x.request_id)+'"><button class="btn" name="action" value="accept">Kabul et</button><button class="btn ghost" name="action" value="decline">Reddet</button></form></li>').join('')||'<li>Bekleyen arkadaşlık isteği yok.</li>';
- const withFriends=content.replace('</main>','<section class="card account-profile-editor"><h2>Arkadaşların</h2><ul>'+friendCards+'</ul><h3>Gelen arkadaşlık istekleri</h3><ul>'+incoming+'</ul></section></main>');
+ const withFriends=content.replace('</main>','<section class="card account-profile-editor"><h2>Profil önizlemesi</h2><p>Herkese açık profilini ziyaretçi görünümünde kontrol et.</p><a class="btn ghost" href="/u/'+encodeURIComponent(user.id)+'" target="_blank" rel="noopener noreferrer">Profilimi önizle</a><p>Profil ziyaretleri: '+Number(data.visitors||0)+'</p><h2>Arkadaşların</h2><ul>'+friendCards+'</ul><h3>Gelen arkadaşlık istekleri</h3><ul>'+incoming+'</ul></section></main>');
  return page('Hesap Profilim',withFriends,user)+'<script src="/assets/profile-media.js?v=account-profile-267" defer></script><script src="/assets/user-center.js?v=account-profile-267" defer></script>';
 }
 function personalCenterPage(user,profile,data,csrf,status){
@@ -1099,7 +1099,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     let bannerMedia=null;try{bannerMedia=await getProfileMedia(db,user.id,'banner');}catch{}
     const accountProfile=await getAccountProfile(db,user.id,{viewerAccountId:user.id});
     const [activity,friends]=await Promise.all([accountProfile.profile.show_activity===false?Promise.resolve([]):listAccountProfileActivity(db,user.id,12),listAccountFriends(db,user.id)]);
-    const html=siteAccountProfilePage(user,{bannerUrl:bannerMedia?'/profil/media?kind=banner':'/assets/site-profile-banner.svg',profile:accountProfile.profile,activity,friends});
+    const html=siteAccountProfilePage(user,{bannerUrl:bannerMedia?'/profil/media?kind=banner':'/assets/site-profile-banner.svg',profile:accountProfile.profile,activity,friends,visitors:accountProfile.visitors});
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});
     res.end(html);return true;
   }
