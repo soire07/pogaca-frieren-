@@ -9,6 +9,7 @@
  const count=root.querySelector('[data-chat-count]');
  const older=root.querySelector('[data-chat-load-older]');
  const counter=root.querySelector('[data-chat-counter]');
+ const isOwner=root.dataset.chatOwner==='true';const pauseButton=root.querySelector('[data-chat-toggle-pause]');const controlStatus=root.querySelector('[data-chat-control-status]');let chatPaused=false;
  const replyPreview=root.querySelector('[data-chat-reply-preview]');
  const replyLabel=root.querySelector('[data-chat-reply-label]');
  let replyTarget=null;
@@ -44,7 +45,7 @@
    const text=document.createElement('p');text.className='public-chat-message-text';text.textContent=String(item.body||'');body.append(text);
    const actions=document.createElement('div');actions.className='public-chat-actions';
    if(form&&!item.is_own){const reply=document.createElement('button');reply.type='button';reply.className='public-chat-action';reply.textContent='Yanıtla';reply.dataset.chatReply=item.message_id;actions.append(reply);}
-   if(form&&item.is_own){const edit=document.createElement('button');edit.type='button';edit.className='public-chat-action';edit.textContent='Düzenle';edit.dataset.chatEdit=item.message_id;actions.append(edit);const remove=document.createElement('button');remove.type='button';remove.className='public-chat-action';remove.textContent='Sil';remove.dataset.chatDelete=item.message_id;actions.append(remove);const pin=document.createElement('button');pin.type='button';pin.className='public-chat-action';pin.textContent=item.pinned_at?'Sabitlemeyi kaldır':'Sabitle';pin.dataset.chatPin=item.message_id;actions.append(pin);}
+   if(form&&item.is_own){const edit=document.createElement('button');edit.type='button';edit.className='public-chat-action';edit.textContent='Düzenle';edit.dataset.chatEdit=item.message_id;actions.append(edit);}if(isOwner){const remove=document.createElement('button');remove.type='button';remove.className='public-chat-action';remove.textContent='Sil';remove.dataset.chatDelete=item.message_id;actions.append(remove);const pin=document.createElement('button');pin.type='button';pin.className='public-chat-action';pin.textContent=item.pinned_at?'Sabitlemeyi kaldır':'Sabitle';pin.dataset.chatPin=item.message_id;actions.append(pin);}
    for(const emoji of ['❤️','✨','😂']){
     const reaction=(Array.isArray(item.reactions)?item.reactions:[]).find(x=>x.emoji===emoji);
     const button=document.createElement('button');button.type='button';button.className='public-chat-reaction';button.textContent=emoji+' '+(reaction?.count||0);button.setAttribute('aria-pressed',String(Boolean(reaction?.reacted)));button.dataset.chatReact=item.message_id;button.dataset.emoji=emoji;
@@ -62,7 +63,7 @@
   if(!form)return false;
   const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:form.elements.csrf.value,...values})});
   const data=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(data.error==='invalid_chat_action'?'Bu işlem şu anda yapılamıyor.':'İşlem tamamlanamadı.');
+  if(!response.ok)throw new Error(data.error==='owner_only'?'Bu işlem yalnızca Owner tarafından yapılabilir.':data.error==='chat_paused'?'Sohbet şu anda Owner tarafından durduruldu.':data.error==='invalid_chat_action'?'Bu işlem şu anda yapılamıyor.':'İşlem tamamlanamadı.');
   return data;
  };
  const refresh=async({before=null,append=false,searchTerm=null}={})=>{
@@ -71,7 +72,7 @@
   try{
    const params=new URLSearchParams();if(before)params.set('before',before);const query=searchTerm===null?String(search?.value||'').trim():String(searchTerm||'').trim();if(query)params.set('q',query);const endpoint='/api/public-chat/messages'+(params.size?'?'+params.toString():'');const response=await fetch(endpoint,{headers:{accept:'application/json'},cache:'no-store'});
    if(!response.ok)throw new Error('Sohbet şu anda yüklenemiyor.');
-   const data=await response.json();const incoming=Array.isArray(data.messages)?data.messages:[];latestMessages=append?[...incoming,...latestMessages.filter(old=>!incoming.some(item=>item.message_id===old.message_id))]:incoming;render(latestMessages);if(older)older.hidden=incoming.length<100;renderBlocked(Array.isArray(data.blocked)?data.blocked:[]);if(form)postAction('/api/public-chat/read',{}).catch(()=>{});const presenceLabel=root.querySelector('[data-chat-presence]');if(presenceLabel){const names=Array.isArray(data.presence?.typing)?data.presence.typing:[];presenceLabel.textContent=(data.presence?.online||0)+' çevrimiçi'+(names.length?' · '+names.join(', ')+' yazıyor':'');}
+   const data=await response.json();chatPaused=Boolean(data.control?.paused);if(controlStatus)controlStatus.textContent=chatPaused?'Sohbet durduruldu':'Sohbet açık';if(pauseButton){pauseButton.disabled=false;pauseButton.textContent=chatPaused?'Sohbeti yeniden aç':'Sohbeti durdur';}if(form){form.elements.message.disabled=chatPaused;const submit=form.querySelector('button[type=submit]');if(submit)submit.disabled=chatPaused;form.elements.message.placeholder=chatPaused?'Sohbet Owner tarafından durduruldu.':'Bir büyücü selamı bırak… (en fazla 500 karakter)';}const incoming=Array.isArray(data.messages)?data.messages:[];latestMessages=append?[...incoming,...latestMessages.filter(old=>!incoming.some(item=>item.message_id===old.message_id))]:incoming;render(latestMessages);if(older)older.hidden=incoming.length<100;renderBlocked(Array.isArray(data.blocked)?data.blocked:[]);if(form)postAction('/api/public-chat/read',{}).catch(()=>{});const presenceLabel=root.querySelector('[data-chat-presence]');if(presenceLabel){const names=Array.isArray(data.presence?.typing)?data.presence.typing:[];presenceLabel.textContent=(data.presence?.online||0)+' çevrimiçi'+(names.length?' · '+names.join(', ')+' yazıyor':'');}
   }catch(error){if(!list.children.length)say(error.message||'Sohbet yüklenemedi.');}
   finally{refreshing=false;}
  };
@@ -80,6 +81,7 @@
  if(older)older.addEventListener('click',()=>{const dated=latestMessages.filter(x=>x.created_at&&!x.pinned_at).map(x=>new Date(x.created_at).getTime()).filter(Number.isFinite);if(dated.length)refresh({before:new Date(Math.min(...dated)).toISOString(),append:true});});
  if(counter&&form){const updateCounter=()=>{counter.textContent=String(form.elements.message.value.length)+' / 500';};form.elements.message.addEventListener('input',updateCounter);updateCounter();}
  if(form){let lastTyping=0;form.elements.message.addEventListener('input',()=>{if(Date.now()-lastTyping>3500){lastTyping=Date.now();postAction('/api/public-chat/typing',{}).catch(()=>{});}});}
+ if(pauseButton)pauseButton.addEventListener('click',async()=>{try{const result=await postAction('/api/public-chat/control',{paused:String(!chatPaused)});chatPaused=Boolean(result.paused);say(chatPaused?'Sohbet durduruldu.':'Sohbet yeniden açıldı.');await refresh();}catch(error){say(error.message||'Sohbet durumu değiştirilemedi.');}});
  if(form){
   form.addEventListener('submit',async event=>{
    event.preventDefault();const input=form.elements.message;const message=String(input.value||'').trim();if(!message)return;
