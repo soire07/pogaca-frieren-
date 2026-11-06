@@ -780,7 +780,7 @@ test('web social friend request uses the linked character and redirects after cr
   const post=sitePost('/maceraci/sosyal',{csrf:createSiteCsrfToken(secret),guildId:profile.guild_id,action:'request',targetId:'223456789012345678'});
   assert.equal(await handlePublicSiteRequest(post,response,{db}),true);
   assert.equal(response.status,303);
-  assert.match(response.headers.Location,/status=request_sent/);
+  assert.match(response.headers.Location,/^\/maceraci\/sosyal\?/);assert.match(response.headers.Location,/status=request_sent/);
   assert.ok(queries.some(sql=>sql.includes('social_friend_requests')));
 });
 test('web social page and mutations respect the guild social feature toggle',async()=>{
@@ -1356,4 +1356,10 @@ test('dedicated user center pages expose the new account, social and life naviga
  assert.match(source,/site\.css\?v=user-center-264-1/);
  assert.match(styles,/\.social-center-page/);
  assert.match(styles,/\.user-center-tabs/);
+});
+
+
+test('social mutation responses return to the social center instead of the market', async () => {
+ const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
+ assert.match(source,/const destination=url\.pathname==='\/maceraci\/sosyal'\?'\/maceraci\/sosyal':'\/pazar'/);
 });
