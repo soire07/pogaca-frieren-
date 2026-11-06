@@ -19,6 +19,8 @@ async function createPublicChatSchema(db){
  await db.query('ALTER TABLE frieren_public_chat_messages ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ');
  await db.query(`CREATE TABLE IF NOT EXISTS frieren_public_chat_reads(message_id UUID NOT NULL REFERENCES frieren_public_chat_messages(message_id) ON DELETE CASCADE,reader_account_id TEXT NOT NULL,read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(message_id,reader_account_id))`);
  await db.query('CREATE INDEX IF NOT EXISTS frieren_public_chat_reads_reader_idx ON frieren_public_chat_reads(reader_account_id,read_at DESC)');
+ await db.query(`CREATE TABLE IF NOT EXISTS frieren_public_chat_reports(report_id UUID PRIMARY KEY,message_id UUID NOT NULL REFERENCES frieren_public_chat_messages(message_id) ON DELETE CASCADE,reporter_account_id TEXT NOT NULL,reason VARCHAR(32) NOT NULL CHECK(reason IN ('spam','harassment','inappropriate','other')),details VARCHAR(500) NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','reviewed','dismissed')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(message_id,reporter_account_id))`);
+ await db.query('CREATE INDEX IF NOT EXISTS frieren_public_chat_reports_status_idx ON frieren_public_chat_reports(status,created_at DESC)');
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_presence(account_id TEXT PRIMARY KEY,last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),typing_until TIMESTAMPTZ)');
  await db.query('ALTER TABLE frieren_public_chat_presence ADD COLUMN IF NOT EXISTS typing_until TIMESTAMPTZ');
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_reactions(message_id UUID NOT NULL REFERENCES frieren_public_chat_messages(message_id) ON DELETE CASCADE,account_id TEXT NOT NULL,emoji VARCHAR(16) NOT NULL CHECK(emoji IN (\'❤️\',\'✨\',\'😂\')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(message_id,account_id,emoji))');
@@ -157,4 +159,13 @@ export async function markPublicChatMessagesRead(db,{accountId}){
   SELECT message_id,$1 FROM (SELECT message_id FROM frieren_public_chat_messages WHERE hidden=FALSE AND account_id<>$1 AND created_at>NOW()-INTERVAL '7 days' ORDER BY created_at DESC LIMIT 100) recent
   ON CONFLICT(message_id,reader_account_id) DO NOTHING RETURNING message_id`,[accountId]);
  return{status:'read',count:r.rowCount||0};
+}
+
+export async function reportPublicChatMessage(db,{accountId,messageId,reason='other',details=''}){
+ assertAccount(accountId);if(!/^[0-9a-f-]{36}$/i.test(String(messageId||''))||!['spam','harassment','inappropriate','other'].includes(reason))throw new Error('PUBLIC_CHAT_REPORT_INVALID');
+ const note=clean(details,500,'PUBLIC_CHAT_REPORT_INVALID',{optional:true});await ensurePublicChatSchema(db);
+ const target=await db.query('SELECT account_id FROM frieren_public_chat_messages WHERE message_id=$1 AND hidden=FALSE',[messageId]);
+ if(!target.rowCount)return{status:'not_found'};if(target.rows[0].account_id===accountId)return{status:'self_report'};
+ const result=await db.query("INSERT INTO frieren_public_chat_reports(report_id,message_id,reporter_account_id,reason,details) VALUES($1,$2,$3,$4,$5) ON CONFLICT(message_id,reporter_account_id) DO NOTHING RETURNING report_id",[randomUUID(),messageId,accountId,reason,note]);
+ return{status:result.rowCount?'reported':'already_reported'};
 }
