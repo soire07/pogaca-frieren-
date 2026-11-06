@@ -46,7 +46,7 @@ test('digest renderer creates a highlighted clickable lead and a compact linked 
  assert.equal(embeds[0].url,'https://www.animenewsnetwork.com/news/2026-11-05/game');
  assert.equal(embeds[0].image.url,'https://cdn.animenewsnetwork.com/thumb.jpg');
  assert.equal(embeds[0].fields[0].value,'Oyun');
- assert.match(embeds[1].fields[0].value,/\\[Haberi oku/);
+ assert.match(embeds[1].fields[0].value,/\[Haberi oku/);
  assert.equal(classifyAnimeNews('Titan Manga licenses new titles'),'Manga');
  assert.deepEqual(buildAnimeNewsDigestEmbeds([{title:'unsafe',link:'https://example.com/article'}]),[]);
 });
