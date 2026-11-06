@@ -15,7 +15,8 @@ async function createPublicChatSchema(db){
  await db.query('ALTER TABLE frieren_public_chat_messages ADD COLUMN IF NOT EXISTS reply_to_message_id UUID');
  await db.query('ALTER TABLE frieren_public_chat_messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ');
  await db.query('ALTER TABLE frieren_public_chat_messages ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ');
- await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_presence(account_id TEXT PRIMARY KEY,last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
+ await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_presence(account_id TEXT PRIMARY KEY,last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),typing_until TIMESTAMPTZ)');
+ await db.query('ALTER TABLE frieren_public_chat_presence ADD COLUMN IF NOT EXISTS typing_until TIMESTAMPTZ');
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_reactions(message_id UUID NOT NULL REFERENCES frieren_public_chat_messages(message_id) ON DELETE CASCADE,account_id TEXT NOT NULL,emoji VARCHAR(16) NOT NULL CHECK(emoji IN (\'❤️\',\'✨\',\'😂\')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(message_id,account_id,emoji))');
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_blocks(blocker_account_id TEXT NOT NULL,blocked_account_id TEXT NOT NULL,blocked_username VARCHAR(24) NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(blocker_account_id,blocked_account_id),CHECK(blocker_account_id<>blocked_account_id))');
  await db.query('CREATE INDEX IF NOT EXISTS frieren_public_chat_recent_idx ON frieren_public_chat_messages(created_at DESC) WHERE hidden=FALSE');
@@ -132,6 +133,12 @@ export async function touchPublicChatPresence(db,{accountId}){
 }
 export async function getPublicChatPresence(db){
  await ensurePublicChatSchema(db);
- const r=await db.query("SELECT COUNT(*)::int AS online FROM frieren_public_chat_presence WHERE last_seen_at>NOW()-INTERVAL '90 seconds'");
- return{online:Number(r.rows[0]?.online||0)};
+ const [online,typing]=await Promise.all([db.query("SELECT COUNT(*)::int AS online FROM frieren_public_chat_presence WHERE last_seen_at>NOW()-INTERVAL '90 seconds'"),db.query("SELECT DISTINCT ON(m.account_id) m.username FROM frieren_public_chat_presence p JOIN frieren_public_chat_messages m ON m.account_id=p.account_id WHERE p.typing_until>NOW() ORDER BY m.account_id,m.created_at DESC LIMIT 3")]);
+ return{online:Number(online.rows[0]?.online||0),typing:typing.rows.map(x=>x.username)};
+}
+
+export async function setPublicChatTyping(db,{accountId}){
+ assertAccount(accountId);await ensurePublicChatSchema(db);
+ await db.query("INSERT INTO frieren_public_chat_presence(account_id,last_seen_at,typing_until) VALUES($1,NOW(),NOW()+INTERVAL '5 seconds') ON CONFLICT(account_id) DO UPDATE SET last_seen_at=NOW(),typing_until=NOW()+INTERVAL '5 seconds'",[accountId]);
+ return{status:'typing'};
 }
