@@ -8,7 +8,7 @@ Public site access uses Discord OAuth only. There is no public username/password
 - `DISCORD_CLIENT_SECRET`: existing Discord OAuth client secret.
 - `ADMIN_SESSION_SECRET`: existing stable signing secret (at least 32 characters).
 - `SITE_BASE_URL`: canonical public site origin; defaults to `https://frierenbot.vercel.app`.
-- `SITE_DISCORD_REDIRECT_URI`: optional explicit callback URL; defaults to `SITE_BASE_URL/discord/callback`.
+- `SITE_DISCORD_REDIRECT_URI`: optional explicit callback URL; defaults to `OWNER_DASHBOARD_BASE_URL/discord/callback` when that value exists, otherwise `SITE_BASE_URL/discord/callback`.
 
 Register the exact callback URL in the Discord Developer Portal under OAuth2 Redirects. For the production site, the expected URL is `https://frierenbot.vercel.app/discord/callback` unless `SITE_DISCORD_REDIRECT_URI` is explicitly configured.
 
