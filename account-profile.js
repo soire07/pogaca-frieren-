@@ -22,6 +22,13 @@ async function schema(db){
  PRIMARY KEY(follower_account_id,followed_account_id),CHECK(follower_account_id<>followed_account_id)
  )`);
  await db.query('CREATE INDEX IF NOT EXISTS frieren_account_followed_idx ON frieren_account_follows(followed_account_id,created_at DESC)');
+ await db.query(`CREATE TABLE IF NOT EXISTS frieren_account_friend_requests(
+ request_id UUID PRIMARY KEY,requester_account_id TEXT NOT NULL,recipient_account_id TEXT NOT NULL,
+ status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','accepted','declined')),
+ created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),responded_at TIMESTAMPTZ,
+ CHECK(requester_account_id<>recipient_account_id),UNIQUE(requester_account_id,recipient_account_id)
+ )`);
+ await db.query('CREATE INDEX IF NOT EXISTS frieren_account_friend_inbox_idx ON frieren_account_friend_requests(recipient_account_id,status,created_at DESC)');
  await db.query(`CREATE TABLE IF NOT EXISTS frieren_account_activity(
  activity_id UUID PRIMARY KEY,account_id TEXT NOT NULL,activity_type VARCHAR(40) NOT NULL,label VARCHAR(120) NOT NULL,
  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -60,10 +67,33 @@ export async function updateAccountProfile(db,{accountId,bio='',statusText='',in
 }
 export async function followAccount(db,{followerAccountId,followedAccountId}){
  const follower=account(followerAccountId),followed=account(followedAccountId);if(follower===followed)throw new Error('ACCOUNT_PROFILE_SELF_FOLLOW');await ensureAccountProfileSchema(db);
- const target=await getAccountProfile(db,followed);if(target.profile?.allow_visitors===false)return{status:'not_allowed'};
+ const target=await db.query('SELECT allow_visitors FROM frieren_account_profiles WHERE account_id=$1',[followed]);if(target.rows[0]?.allow_visitors===false)return{status:'not_allowed'};
  const r=await db.query('INSERT INTO frieren_account_follows(follower_account_id,followed_account_id) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING followed_account_id',[follower,followed]);return{status:r.rowCount?'followed':'already_following'};
 }
 export async function unfollowAccount(db,{followerAccountId,followedAccountId}){const follower=account(followerAccountId),followed=account(followedAccountId);await ensureAccountProfileSchema(db);const r=await db.query('DELETE FROM frieren_account_follows WHERE follower_account_id=$1 AND followed_account_id=$2',[follower,followed]);return{status:r.rowCount?'unfollowed':'not_following'};}
 export async function recordAccountProfileVisit(db,{ownerAccountId,visitorAccountId}){const owner=account(ownerAccountId),visitor=account(visitorAccountId);if(owner===visitor)return{status:'self'};await ensureAccountProfileSchema(db);const p=await getAccountProfile(db,owner,{viewerAccountId:visitor});if(!p.canView)return{status:'private'};if(p.profile.allow_visitors===false)return{status:'disabled'};await db.query(`INSERT INTO frieren_account_profile_visits(owner_account_id,visitor_account_id,visit_count,last_visited_at) VALUES($1,$2,1,NOW()) ON CONFLICT(owner_account_id,visitor_account_id) DO UPDATE SET visit_count=frieren_account_profile_visits.visit_count+1,last_visited_at=NOW()`,[owner,visitor]);return{status:'recorded'};}
 export async function listAccountProfileActivity(db,accountId,limit=12){const id=account(accountId);await ensureAccountProfileSchema(db);const n=Math.max(1,Math.min(30,Math.floor(Number(limit)||12)));const r=await db.query('SELECT activity_type,label,created_at FROM frieren_account_activity WHERE account_id=$1 ORDER BY created_at DESC LIMIT $2',[id,n]);return r.rows;}
 export async function recordAccountActivity(db,{accountId,type,label}){const id=account(accountId),t=clean(type,40,'ACCOUNT_ACTIVITY_INVALID'),l=clean(label,120,'ACCOUNT_ACTIVITY_INVALID');await ensureAccountProfileSchema(db);await db.query('INSERT INTO frieren_account_activity(activity_id,account_id,activity_type,label) VALUES($1,$2,$3,$4)',[randomUUID(),id,t,l]);return{status:'recorded'};}
+
+export async function sendAccountFriendRequest(db,{requesterAccountId,recipientAccountId}){
+ const requester=account(requesterAccountId),recipient=account(recipientAccountId);if(requester===recipient)throw new Error('ACCOUNT_PROFILE_SELF_FRIEND');await ensureAccountProfileSchema(db);
+ const target=await db.query('SELECT allow_visitors FROM frieren_account_profiles WHERE account_id=$1',[recipient]);if(target.rows[0]?.allow_visitors===false)return{status:'not_allowed'};
+ const existing=await db.query("SELECT request_id,status FROM frieren_account_friend_requests WHERE (requester_account_id=$1 AND recipient_account_id=$2) OR (requester_account_id=$2 AND recipient_account_id=$1) ORDER BY created_at DESC LIMIT 1",[requester,recipient]);
+ if(existing.rows[0]?.status==='accepted')return{status:'already_friends'};
+ if(existing.rows[0]?.status==='pending')return{status:existing.rows[0].requester_account_id===requester?'already_sent':'incoming_request'};
+ const r=await db.query("INSERT INTO frieren_account_friend_requests(request_id,requester_account_id,recipient_account_id,status) VALUES($1,$2,$3,'pending') ON CONFLICT(requester_account_id,recipient_account_id) DO UPDATE SET status='pending',created_at=NOW(),responded_at=NULL RETURNING request_id",[randomUUID(),requester,recipient]);
+ return{status:r.rowCount?'sent':'already_sent'};
+}
+export async function respondAccountFriendRequest(db,{accountId,requestId,accept}){
+ const owner=account(accountId);if(!/^[0-9a-f-]{36}$/i.test(String(requestId||''))||typeof accept!=='boolean')throw new Error('ACCOUNT_PROFILE_FRIEND_REQUEST_INVALID');await ensureAccountProfileSchema(db);
+ const r=await db.query("UPDATE frieren_account_friend_requests SET status=$3,responded_at=NOW() WHERE request_id=$1 AND recipient_account_id=$2 AND status='pending' RETURNING request_id",[requestId,owner,accept?'accepted':'declined']);
+ return{status:r.rowCount?(accept?'accepted':'declined'):'not_found'};
+}
+export async function listAccountFriends(db,accountId){
+ const owner=account(accountId);await ensureAccountProfileSchema(db);
+ const [friends,incoming]=await Promise.all([
+  db.query("SELECT CASE WHEN requester_account_id=$1 THEN recipient_account_id ELSE requester_account_id END AS account_id,created_at FROM frieren_account_friend_requests WHERE status='accepted' AND (requester_account_id=$1 OR recipient_account_id=$1) ORDER BY responded_at DESC LIMIT 100",[owner]),
+  db.query("SELECT request_id,requester_account_id,created_at FROM frieren_account_friend_requests WHERE recipient_account_id=$1 AND status='pending' ORDER BY created_at DESC LIMIT 50",[owner])
+ ]);
+ return{friends:friends.rows,incoming:incoming.rows};
+}
