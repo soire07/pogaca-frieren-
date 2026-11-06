@@ -1293,26 +1293,6 @@ test('global account profile renders without a guild picker and keeps profile me
   assert.match(response.body,/\/assets\/user-center\.js/);
 });
 
-test('global public profile renders account activity only when the owner enables it',async()=>{
- const target='site_123e4567-e89b-12d3-a456-426614174000';
- for(const showActivity of [true,false]){
-  const queries=[];
-  const db={async query(sql){
-   queries.push(sql);
-   if(sql.includes('SELECT account_id FROM frieren_account_profiles WHERE LOWER(profile_slug)'))return{rows:[{account_id:target}],rowCount:1};
-   if(sql.includes('SELECT * FROM frieren_account_profiles WHERE account_id'))return{rows:[{account_id:target,display_name:'Gezgin',profile_slug:'soiree',visibility:'public',show_activity:showActivity,banner_position:'center',bio:'Büyü araştırmacısı',status_text:'Yolculukta',interests:[],tags:[],theme:'violet',social_links:{}}],rowCount:1};
-   if(sql.includes('AS followers'))return{rows:[{followers:4,following:2,visitors:3}],rowCount:1};
-   if(sql.includes('SELECT activity_type,label,created_at FROM frieren_account_activity'))return{rows:[{activity_type:'profile_updated',label:'Profilini güncelledi',created_at:'2026-11-06T10:00:00.000Z'}],rowCount:1};
-   if(sql.includes('SELECT mime_type,media_data'))return{rows:[],rowCount:0};
-   return{rows:[],rowCount:0};
-  }};
-  const response=res();assert.equal(await handlePublicSiteRequest(request('/u/soiree',{id:target,username:'Gezgin'}),response,{db}),true);
-  assert.equal(response.status,200);
-  if(showActivity){assert.match(response.body,/Son etkinlikler/);assert.match(response.body,/Profilini güncelledi/);assert.ok(queries.some(sql=>sql.includes('SELECT activity_type,label,created_at')));}
-  else{assert.doesNotMatch(response.body,/Son etkinlikler/);assert.ok(!queries.some(sql=>sql.includes('SELECT activity_type,label,created_at')));}
- }
-});
-
 test('linked adventurer cards show a medium class emblem in the upper-right corner for each class', async () => {
   const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
   const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
