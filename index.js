@@ -171,7 +171,10 @@ async function processNewsBirdDigests(readyClient = client) {
     for (const digest of due) {
       try {
         const channel = await readyClient.channels.fetch(digest.channel_id);
-        if (String(channel?.guildId || '') !== String(digest.guild_id)) {\n          throw new Error('NEWS_BIRD_TARGET_CHANNEL_GUILD_MISMATCH');\n        }\n        if (!channel?.isTextBased?.() || typeof channel.send !== 'function') {
+        if (String(channel?.guildId || '') !== String(digest.guild_id)) {
+          throw new Error('NEWS_BIRD_TARGET_CHANNEL_GUILD_MISMATCH');
+        }
+        if (!channel?.isTextBased?.() || typeof channel.send !== 'function') {
           throw new Error('NEWS_BIRD_TARGET_CHANNEL_NOT_SENDABLE');
         }
         const permissions = channel.permissionsFor(readyClient.user);
