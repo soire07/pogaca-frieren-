@@ -28,10 +28,10 @@ function readTag(block, tag) {
 
 function readImageUrl(block) {
   const candidates = [
-    /<media:content\\b[^>]*\\burl=["']([^"']+)["'][^>]*>/i,
-    /<media:thumbnail\\b[^>]*\\burl=["']([^"']+)["'][^>]*>/i,
-    /<enclosure\\b[^>]*\\burl=["']([^"']+)["'][^>]*>/i,
-    /<img\\b[^>]*\\bsrc=["']([^"']+)["'][^>]*>/i
+    /<media:content\b[^>]*\burl=["']([^"']+)["'][^>]*>/i,
+    /<media:thumbnail\b[^>]*\burl=["']([^"']+)["'][^>]*>/i,
+    /<enclosure\b[^>]*\burl=["']([^"']+)["'][^>]*>/i,
+    /<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/i
   ];
   for (const pattern of candidates) {
     const match = pattern.exec(block);
@@ -49,7 +49,7 @@ function safeFeedUrl(value, allowedHosts) {
 }
 
 export function parseAnimeNewsRss(xml, source = ANIME_NEWS_SOURCES[0]) {
-  const source = String(xml || '');
+  const sourceXml = String(xml || '');
   if (source.length > 2_000_000) throw new Error('NEWS_BIRD_FEED_TOO_LARGE');
   const items = [];
   for (const match of source.matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/gi)) {
@@ -74,7 +74,7 @@ export function parseAnimeNewsRss(xml, source = ANIME_NEWS_SOURCES[0]) {
 
 
 function escapeMarkdown(value='') {
-  return String(value).replace(/([\\\\_*~|])/g, '\\\\$1').replace(/@/g, '@\\u200b');
+  return String(value).replace(/([_*~|])/g, '\\$1').replace(/@/g, '@\u200b');
 }
 
 export function classifyAnimeNews(title='') {
@@ -95,9 +95,9 @@ export function buildAnimeNewsDigestEmbeds(items, now = new Date()) {
   const embeds=[{
     color:0x7654D6,
     author:{name:'🐦 FRIEREN HABERCİ KUŞU'},
-    title:String(lead.title||'Günün öne çıkan haberi').slice(0,256),
+    title:escapeMarkdown(String(lead.title||'Günün öne çıkan haberi')).slice(0,256),
     url:lead.link,
-    description:String(lead.summary||'Bu haber için kaynakta kısa bir açıklama bulunmuyor.').slice(0,900),
+    description:escapeMarkdown(String(lead.summary||'Bu haber için kaynakta kısa bir açıklama bulunmuyor.')).slice(0,900),
     fields:[
       {name:'KATEGORİ',value:classifyAnimeNews(lead.title),inline:true},
       {name:'KAYNAK',value:String(lead.sourceName||'Anime News Network').slice(0,100),inline:true}
@@ -111,8 +111,8 @@ export function buildAnimeNewsDigestEmbeds(items, now = new Date()) {
     color:0x46366F,
     title:'✦ GÜNÜN DİĞER HABERLERİ',
     fields:remaining.map((item,index)=>({
-      name:String(index+2).padStart(2,'0')+' · '+String(item.title||'Başlıksız haber').slice(0,240),
-      value:(String(item.summary||'Ayrıntılar için haber kaynağını aç.').slice(0,700)+'\\n[Haberi oku ↗]('+item.link+')').slice(0,1024),
+      name:String(index+2).padStart(2,'0')+' · '+escapeMarkdown(String(item.title||'Başlıksız haber')).slice(0,240),
+      value:(escapeMarkdown(String(item.summary||'Ayrıntılar için haber kaynağını aç.')).slice(0,700)+'\n[Haberi oku ↗]('+item.link+')').slice(0,1024),
       inline:false
     })),
     footer:{text:'Bağlantılar doğrudan haber kaynağına yönlendirir.'}
