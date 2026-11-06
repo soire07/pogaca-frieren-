@@ -501,7 +501,7 @@ test('Aura battle mechanics support barriers, illusions, seals, secret awakening
   assert.equal(getRaidBossForm(aura, 4).special, 'twilight-cataclysm');
 });
 
-test('Aura form-specific drops are rare, phase-bound and never leak to other bosses', () => {
+test('Aura form-specific drops are rare, phase-bound and never leak to other bosses', async () => {
   const aura = RAID_BOSSES.find(boss => boss.id === 'fallen-mage');
   assert.equal(rollAuraFormLoot(aura, 2, () => 0.079), '🪽 Düşmüş Melek Kanatları');
   assert.equal(rollAuraFormLoot(aura, 2, () => 0.08), null);
