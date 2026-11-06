@@ -242,10 +242,10 @@ test('Discord OAuth login creates a short-lived signed state cookie and requests
   const previous = { CLIENT_ID: process.env.CLIENT_ID, DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET, SITE_DISCORD_REDIRECT_URI: process.env.SITE_DISCORD_REDIRECT_URI };
   process.env.CLIENT_ID = 'test-discord-client';
   process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
-  process.env.SITE_DISCORD_REDIRECT_URI = 'https://frierenbot.vercel.app/discord/callback';
+  process.env.SITE_DISCORD_REDIRECT_URI = 'https://frierenbot.vercel.app/site/discord/callback';
   try {
     const res = response();
-    await handleSiteAuthRequest({ method: 'GET', url: '/discord/login', headers: {} }, res, { db: fakeDb(), sessionSecret: secret });
+    await handleSiteAuthRequest({ method: 'GET', url: '/site/discord/login', headers: {} }, res, { db: fakeDb(), sessionSecret: secret });
     assert.equal(res.status, 302);
     const target = new URL(res.headers.Location);
     assert.equal(target.origin, 'https://discord.com');
@@ -266,7 +266,7 @@ test('Discord OAuth callback provisions one persistent site account and issues a
   const previousFetch = globalThis.fetch;
   process.env.CLIENT_ID = 'test-discord-client';
   process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
-  process.env.SITE_DISCORD_REDIRECT_URI = 'https://frierenbot.vercel.app/discord/callback';
+  process.env.SITE_DISCORD_REDIRECT_URI = 'https://frierenbot.vercel.app/site/discord/callback';
   globalThis.fetch = async url => String(url).includes('/oauth2/token')
     ? { ok: true, json: async () => ({ access_token: 'temporary-discord-token' }) }
     : { ok: true, json: async () => ({ id: '123456789012345678', username: 'Frieren', avatar: 'avatarhash' }) };
@@ -284,13 +284,13 @@ test('Discord OAuth callback provisions one persistent site account and issues a
   const db = { async query(sql, params) { return client.query(sql, params); }, async connect() { return client; } };
   try {
     const stateRes = response();
-    await handleSiteAuthRequest({ method: 'GET', url: '/discord/login', headers: {} }, stateRes, { db, sessionSecret: secret });
+    await handleSiteAuthRequest({ method: 'GET', url: '/site/discord/login', headers: {} }, stateRes, { db, sessionSecret: secret });
     const stateCookie = decodeURIComponent(stateRes.headers['Set-Cookie'].split(';')[0].split('=').slice(1).join('='));
     const state = new URL(stateRes.headers.Location).searchParams.get('state');
     const callback = response();
     await handleSiteAuthRequest({
       method: 'GET',
-      url: '/discord/callback?code=valid-code&state=' + encodeURIComponent(state),
+      url: '/site/discord/callback?code=valid-code&state=' + encodeURIComponent(state),
       headers: { cookie: 'frieren_site_oauth_state=' + encodeURIComponent(stateCookie) }
     }, callback, { db, sessionSecret: secret, createSession: createPublicSiteSession });
     assert.equal(callback.status, 303);
@@ -315,7 +315,7 @@ test('Discord OAuth callback provisions one persistent site account and issues a
 
 test('Discord OAuth callback rejects a state value not bound to its browser cookie', async () => {
   const res = response();
-  await handleSiteAuthRequest({ method: 'GET', url: '/discord/callback?code=invalid&state=forged', headers: {} }, res, { db: fakeDb(), sessionSecret: secret, createSession: createPublicSiteSession });
+  await handleSiteAuthRequest({ method: 'GET', url: '/site/discord/callback?code=invalid&state=forged', headers: {} }, res, { db: fakeDb(), sessionSecret: secret, createSession: createPublicSiteSession });
   assert.equal(res.status, 303);
   assert.equal(res.headers.Location, '/login?status=discord_error');
   assert.match(res.headers['Set-Cookie'], /Max-Age=0/);
