@@ -99,7 +99,8 @@ export async function sendAccountFriendRequest(db,{requesterAccountId,recipientA
 }
 export async function respondAccountFriendRequest(db,{accountId,requestId,accept}){
  const owner=account(accountId);if(!/^[0-9a-f-]{36}$/i.test(String(requestId||''))||typeof accept!=='boolean')throw new Error('ACCOUNT_PROFILE_FRIEND_REQUEST_INVALID');await ensureAccountProfileSchema(db);
- const r=await db.query("UPDATE frieren_account_friend_requests SET status=$3,responded_at=NOW() WHERE request_id=$1 AND recipient_account_id=$2 AND status='pending' RETURNING request_id",[requestId,owner,accept?'accepted':'declined']);
+ const r=await db.query("UPDATE frieren_account_friend_requests SET status=$3,responded_at=NOW() WHERE request_id=$1 AND recipient_account_id=$2 AND status='pending' RETURNING request_id,requester_account_id",[requestId,owner,accept?'accepted':'declined']);
+ if(r.rowCount&&accept)await createAccountNotification(db,{accountId:r.rows[0].requester_account_id,type:'friend_accepted',title:'Arkadaşlık isteğin kabul edildi',body:'Bir gezgin arkadaşlık isteğini kabul etti.',href:'/profil'});
  return{status:r.rowCount?(accept?'accepted':'declined'):'not_found'};
 }
 export async function listAccountFriends(db,accountId){
