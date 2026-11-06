@@ -153,7 +153,8 @@ function page(title, content, user, seo = {}) {
           navLink('/maceraci/yasam', '⌂', 'Kişisel Yaşam Alanım', 'Odan, koleksiyonların, kozmetiklerin ve etkinliklerin'),
           navLink('/maceraci/profil#privacy', '◈', 'Gizlilik Ayarları', 'Herkese açık profilinde görünenler'),
           navLink('/maceraci/bildirimler', '☾', 'Bildirimler', 'Haberci kuş tercihlerin'),
-          navLink('/maceraci/atolye', '✦', 'Büyü Atölyesi', 'Embed ve büyü otomasyonları')
+          navLink('/maceraci/atolye', '✦', 'Büyü Atölyesi', 'Embed ve büyü otomasyonları'),
+          navLink('/kesfet#topluluk-sohbeti', '☾', 'Topluluk Sohbeti', 'Herkese açık Frieren sohbeti')
         ]) +
         navGroup('oyuncu', 'BAŞLANGIÇ', [
           navLink('/', '⌂', 'Kullanıcı Paneli', 'Maceracı panelin ve etkinliklerin'),
