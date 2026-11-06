@@ -181,3 +181,54 @@ test('code context normalization accepts legacy strings and evidence-aware objec
   assert.equal(normalizeCodeContextText({ files: ['index.js'] }), '');
   assert.equal(normalizeCodeContextText(null), '');
 });
+
+
+test('Guardian review uses configured Frieren Neural when Groq is absent', async () => {
+  let requestUrl;
+  const neuralEnv = {
+    FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
+    FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(40),
+  };
+  const result = await reviewGuardianIncident({
+    groq: null,
+    neuralEnv,
+    neuralFetchImpl: async (url, options) => {
+      requestUrl = url;
+      assert.equal(options.headers.authorization, 'Bearer ' + neuralEnv.FRIEREN_NEURAL_API_TOKEN);
+      const prompt = JSON.parse(options.body).prompt;
+      assert.match(prompt, /Guardian Neural provider regression/);
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          completion: JSON.stringify({
+            rootCause: 'Neural provider is configured and returned a review.',
+            confidence: 'high',
+            affectedFiles: ['ai-agent/guardian-review.js'],
+            suggestedFix: 'No change required.',
+            proposedPatch: '',
+            tests: [],
+            risks: [],
+          }),
+          model: 'ufakai/ufakzeka-1',
+        }),
+      };
+    },
+    incident: {
+      system: 'guardian',
+      code: 'NEURAL_REVIEW_TEST',
+      title: 'Guardian Neural provider regression',
+      summary: 'Verify Guardian can use Neural without a Groq key.',
+    },
+    collectCodeContext: async () => ({
+      text: 'FILE: ai-agent/guardian-review.js\\nexport async function reviewGuardianIncident() {}',
+      files: ['ai-agent/guardian-review.js'],
+      contextHash: 'a'.repeat(64),
+      sourceCommitSha: 'b'.repeat(40),
+    }),
+  });
+  assert.equal(requestUrl, 'https://neural.example.test/generate');
+  assert.equal(result.status, 'proposal_only');
+  assert.equal(result.applied, false);
+  assert.equal(result.sourceCommitSha, 'b'.repeat(40));
+});
