@@ -161,11 +161,16 @@ export async function setPublicChatTyping(db,{accountId}){
  return{status:'typing'};
 }
 
-export async function markPublicChatMessagesRead(db,{accountId}){
- assertAccount(accountId);await ensurePublicChatSchema(db);
+export async function markPublicChatMessagesRead(db,{accountId,messageIds=[]}){
+ assertAccount(accountId);
+ if(!Array.isArray(messageIds)||messageIds.length>100||messageIds.some(id=>!/^[0-9a-f-]{36}$/i.test(String(id))))throw new Error('PUBLIC_CHAT_READ_INVALID');
+ if(!messageIds.length)return{status:'read',count:0};
+ await ensurePublicChatSchema(db);
  const r=await db.query(`INSERT INTO frieren_public_chat_reads(message_id,reader_account_id)
-  SELECT message_id,$1 FROM (SELECT message_id FROM frieren_public_chat_messages WHERE hidden=FALSE AND account_id<>$1 AND created_at>NOW()-INTERVAL '7 days' ORDER BY created_at DESC LIMIT 100) recent
-  ON CONFLICT(message_id,reader_account_id) DO NOTHING RETURNING message_id`,[accountId]);
+  SELECT m.message_id,$1 FROM frieren_public_chat_messages m
+  WHERE m.message_id=ANY($2::uuid[]) AND m.hidden=FALSE AND m.account_id<>$1
+    AND m.created_at>=NOW()-INTERVAL '30 days'
+  ON CONFLICT(message_id,reader_account_id) DO NOTHING RETURNING message_id`,[accountId,messageIds]);
  return{status:'read',count:r.rowCount||0};
 }
 
@@ -178,6 +183,30 @@ export async function reportPublicChatMessage(db,{accountId,messageId,reason='ot
  return{status:result.rowCount?'reported':'already_reported'};
 }
 
+export async function listPublicChatReports(db,{status='pending',limit=30}={}){
+ if(!['pending','reviewed','dismissed','all'].includes(status))throw new Error('PUBLIC_CHAT_REPORT_FILTER_INVALID');
+ const count=Math.max(1,Math.min(100,Math.floor(Number(limit)||30)));
+ await ensurePublicChatSchema(db);await ensureAccountProfileSchema(db);
+ const result=await db.query(`SELECT r.report_id,r.message_id,r.reporter_account_id,
+  COALESCE(NULLIF(ap.display_name,''),r.reporter_account_id) AS reporter_name,
+  r.reason,r.details,r.status,r.created_at,m.account_id AS author_account_id,
+  COALESCE(NULLIF(mp.display_name,''),m.username) AS author_name,m.body AS message_body
+  FROM frieren_public_chat_reports r
+  JOIN frieren_public_chat_messages m ON m.message_id=r.message_id
+  LEFT JOIN frieren_account_profiles ap ON ap.account_id=r.reporter_account_id
+  LEFT JOIN frieren_account_profiles mp ON mp.account_id=m.account_id
+  WHERE ($1='all' OR r.status=$1)
+  ORDER BY CASE WHEN r.status='pending' THEN 0 ELSE 1 END,r.created_at DESC
+  LIMIT $2`,[status,count]);
+ return result.rows;
+}
+export async function resolvePublicChatReport(db,{accountId,reportId,status,isOwner=false}){
+ assertAccount(accountId);if(isOwner!==true)throw new Error('PUBLIC_CHAT_OWNER_REQUIRED');
+ if(!/^[0-9a-f-]{36}$/i.test(String(reportId||''))||!['reviewed','dismissed'].includes(status))throw new Error('PUBLIC_CHAT_REPORT_INVALID');
+ await ensurePublicChatSchema(db);
+ const result=await db.query('UPDATE frieren_public_chat_reports SET status=$2 WHERE report_id=$1 AND status=\'pending\' RETURNING report_id,status',[reportId,status]);
+ return{status:result.rowCount?status:'not_found'};
+}
 export async function getPublicChatControl(db){
  await ensurePublicChatSchema(db);const r=await db.query('SELECT is_paused,updated_at FROM frieren_public_chat_control WHERE control_id=1');
  return{paused:Boolean(r.rows[0]?.is_paused),updatedAt:r.rows[0]?.updated_at||null};
