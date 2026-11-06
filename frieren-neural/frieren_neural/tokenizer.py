@@ -7,7 +7,9 @@ experiments. A subword tokenizer should replace it before serious training.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
+import heapq
+import math
+from typing import Callable, Iterable
 
 PAD_TOKEN = "<pad>"
 BOS_TOKEN = "<bos>"
@@ -15,6 +17,11 @@ EOS_TOKEN = "<eos>"
 UNK_TOKEN = "<unk>"
 
 SPECIAL_TOKENS = (PAD_TOKEN, BOS_TOKEN, EOS_TOKEN, UNK_TOKEN)
+
+# Keep pure-Python BPE fitting bounded on large corpora. Evenly spaced contiguous
+# windows retain examples from the beginning, middle, and end of the corpus.
+MAX_TRAINING_BYTES = 65_536
+TRAINING_SAMPLE_WINDOW_BYTES = 256
 
 
 @dataclass(frozen=True)
@@ -123,16 +130,40 @@ class BPETokenizer:
         *,
         vocab_size: int = 1_024,
         min_frequency: int = 2,
+        progress_callback: Callable[[int, int, int], None] | None = None,
     ) -> "BPETokenizer":
         if vocab_size < cls.BASE_VOCAB_SIZE:
             raise ValueError(f"vocab_size must be at least {cls.BASE_VOCAB_SIZE}.")
         if min_frequency < 1:
             raise ValueError("min_frequency must be positive.")
-        sequences = [list(text.encode("utf-8")) for text in texts if text]
-        if not sequences:
+        encoded = [text.encode("utf-8") for text in texts if text]
+        if not encoded:
             raise ValueError("BPE training requires at least one non-empty text.")
+
+        corpus = b"\\n".join(encoded)
+        total_bytes = len(corpus)
+        if total_bytes > MAX_TRAINING_BYTES:
+            window_count = max(1, MAX_TRAINING_BYTES // TRAINING_SAMPLE_WINDOW_BYTES)
+            window_size = min(TRAINING_SAMPLE_WINDOW_BYTES, total_bytes)
+            last_offset = total_bytes - window_size
+            offsets = (
+                [0] if window_count == 1 else
+                [round(index * last_offset / (window_count - 1)) for index in range(window_count)]
+            )
+            sequences = [
+                list(corpus[offset:offset + window_size])
+                for offset in offsets
+            ]
+        else:
+            sequences = [list(item) for item in encoded]
+
+        sampled_bytes = sum(len(sequence) for sequence in sequences)
+        target_merges = vocab_size - cls.BASE_VOCAB_SIZE
+        if progress_callback is not None:
+            progress_callback(0, target_merges, sampled_bytes)
+
         merges: list[tuple[int, int]] = []
-        for _ in range(vocab_size - cls.BASE_VOCAB_SIZE):
+        for _ in range(target_merges):
             counts: dict[tuple[int, int], int] = {}
             for sequence in sequences:
                 for pair in zip(sequence, sequence[1:]):
@@ -157,6 +188,14 @@ class BPETokenizer:
                 updated_sequences.append(updated)
             sequences = updated_sequences
             merges.append(best_pair)
+            completed = len(merges)
+            if progress_callback is not None and (
+                completed % 25 == 0 or completed == target_merges
+            ):
+                progress_callback(completed, target_merges, sampled_bytes)
+
+        if progress_callback is not None and len(merges) < target_merges:
+            progress_callback(len(merges), target_merges, sampled_bytes)
         return cls(merges=tuple(merges))
 
     @property
@@ -180,19 +219,62 @@ class BPETokenizer:
         return self.UNK_ID
 
     def encode(self, text: str, *, add_bos: bool = False, add_eos: bool = False) -> list[int]:
-        ids = list(text.encode("utf-8"))
-        for merge_index, pair in enumerate(self.merges):
-            new_id = self.BASE_VOCAB_SIZE + merge_index
-            merged: list[int] = []
-            index = 0
-            while index < len(ids):
-                if index + 1 < len(ids) and (ids[index], ids[index + 1]) == pair:
-                    merged.append(new_id)
-                    index += 2
-                else:
-                    merged.append(ids[index])
-                    index += 1
-            ids = merged
+        raw_ids = list(text.encode("utf-8"))
+        if not raw_ids:
+            ids: list[int] = []
+        elif not self.merges:
+            ids = raw_ids
+        else:
+            # Apply BPE merge ranks with a min-heap and linked token positions.
+            # This is equivalent to sequential left-to-right BPE, but avoids
+            # rescanning the entire input once for every learned merge.
+            ranks = {pair: rank for rank, pair in enumerate(self.merges)}
+            previous = [index - 1 for index in range(len(raw_ids))]
+            following = [index + 1 for index in range(len(raw_ids))]
+            following[-1] = -1
+            values = raw_ids[:]
+            alive = [True] * len(raw_ids)
+            candidates: list[tuple[int, int, int]] = []
+
+            def push_pair(left: int) -> None:
+                if left < 0 or not alive[left]:
+                    return
+                right = following[left]
+                if right < 0 or not alive[right]:
+                    return
+                rank = ranks.get((values[left], values[right]))
+                if rank is not None:
+                    heapq.heappush(candidates, (rank, left, right))
+
+            for index in range(len(raw_ids) - 1):
+                push_pair(index)
+
+            while candidates:
+                rank, left, right = heapq.heappop(candidates)
+                if (
+                    not alive[left]
+                    or not alive[right]
+                    or following[left] != right
+                    or ranks.get((values[left], values[right])) != rank
+                ):
+                    continue
+
+                values[left] = self.BASE_VOCAB_SIZE + rank
+                alive[right] = False
+                after = following[right]
+                following[left] = after
+                if after >= 0:
+                    previous[after] = left
+
+                push_pair(previous[left])
+                push_pair(left)
+
+            ids = []
+            cursor = next((index for index, is_alive in enumerate(alive) if is_alive and previous[index] < 0), -1)
+            while cursor >= 0:
+                ids.append(values[cursor])
+                cursor = following[cursor]
+
         if add_bos:
             ids.insert(0, self.bos_id)
         if add_eos:
