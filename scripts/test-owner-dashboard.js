@@ -1138,6 +1138,21 @@ test('Frieren Security renders real Guard incidents, verified network attributio
   assert.match(html, /SHA-256/);
 });
 
+test('site-auth evidence never verifies the external Frieren Guard sender', () => {
+  const html = renderOwnerSecurityWorkspace({
+    ingestConfigured: true,
+    evidenceEvents: [{
+      sequence_no: 4, event_id: 'auth-event-0001', severity: 'high',
+      received_at: '2026-11-05T12:00:00Z', source: 'frieren_site_auth',
+      client_ip: '198.51.100.42', ip_source: 'socket_peer', event_hash: 'b'.repeat(64)
+    }],
+    chainStatus: { valid: true, checked: 1, truncated: false, firstInvalidSequence: null }
+  });
+  assert.match(html, /Gönderici doğrulanmadı/);
+  assert.doesNotMatch(html, /Canlı olay alındı/);
+  assert.match(html, /Frieren web hesabı/);
+});
+
 test('Guardian workspace hides generic workflow history from the single-run evidence slot', () => {
   const job = {
     id: 990055, incident_id: 990054, incident_title: 'Synthetic refresh test',
