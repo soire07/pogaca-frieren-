@@ -38,15 +38,15 @@ test('dungeon routes return distinct, floor-scaled rewards and healing outcomes'
 test('raid boss selection is deterministic for each catalog slot and safely falls back for an empty catalog', () => {
   assert.equal(chooseRaidBoss(() => 0).id, 'north-general');
   assert.equal(chooseRaidBoss(() => 0.4).id, 'fallen-mage');
-  assert.equal(chooseRaidBoss(() => 0.99).id, 'domaltazor');
+  assert.equal(chooseRaidBoss(() => 0.8).id, 'domaltazor');
   assert.equal(chooseRaidBoss(() => 0, []).id, RAID_BOSSES[0].id);
   assert.equal(chooseRaidBoss(() => 1).id, RAID_BOSSES[0].id);
 });
 
 test('each raid boss has a distinct combat profile, signature action, weakness and loot', () => {
-  assert.equal(new Set(RAID_BOSSES.map(b => b.id)).size, 5);
-  assert.equal(new Set(RAID_BOSSES.map(b => b.special)).size, 5);
-  assert.equal(new Set(RAID_BOSSES.map(b => b.loot).filter(Boolean)).size, 4);
+  assert.equal(new Set(RAID_BOSSES.map(b => b.id)).size, 6);
+  assert.equal(new Set(RAID_BOSSES.map(b => b.special)).size, 6);
+  assert.equal(new Set(RAID_BOSSES.map(b => b.loot).filter(Boolean)).size, 5);
   assert.ok(RAID_BOSSES.every(b => b.hp > 0 && b.damage > 0 && b.xp >= 0 && b.coins >= 0));
   assert.equal(RAID_BOSSES.find(b => b.id === 'north-general').special, 'mana-star');
   assert.equal(RAID_BOSSES.find(b => b.id === 'glass-wyrm').special, 'shard-rain');
