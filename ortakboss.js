@@ -426,7 +426,7 @@ export default {
           {name:'🏅 Kalıcı unvanlar',value:milestoneText.slice(0,1024),inline:false},
           {name:'🧭 Boss bilgisi',value:BOSS.id==='zeldeila'?'**Sonsuz Yenilenme:** aldığı hasarı her saniye tamamen geri kazanır.\n**Mutlak Alan:** her saniye tüm takıma hasar verir.\n**200.000.000 HP:** yenilmesi mümkün değildir.':`Zayıflık: **${BOSS.weaknessLabel}**\nÖzel hareket: **${BOSS.special === 'shard-rain' ? 'Kristal Yağmuru (iki turda bir, alan hasarı)' : BOSS.special === 'mana-curse' ? 'Mana Laneti (üç turda bir, mana tüketir)' : BOSS.id === 'domaltazor' ? 'Katun Hükmü (efsanevi yüzük avı)' : 'Mana Yıldız Patlaması (üç turda bir, alan hasarı)'}**`,inline:true},
           {name:'💎 Ortak ganimet',value:loot?`Herkes **${loot}** kazandı!`:win?'Bu kez nadir ganimet çıkmadı.':BOSS.id==='zeldeila'?'Zeldeila eşya düşürmez.':'Boss yenilemediği için nadir ganimet yok.',inline:true},
-          ...(BOSS.titleDrop ? [{name:'🏅 Unvan ganimeti',value:(settlement.titleDrops || []).length ? settlement.titleDrops.map(drop=>`<@${drop.userId}>: **${drop.title}**`).join('\\n') : 'Bu baskında unvan düşmedi. Şans: %0,2.',inline:false}] : []),
+          ...(BOSS.titleDrop ? [{name:'🏅 Unvan ganimeti',value:(settlement.titleDrops || []).length ? settlement.titleDrops.map(drop=>`<@${drop.userId}>: **${drop.title}**`).join('\n') : 'Bu baskında unvan düşmedi. Şans: %0,2.',inline:false}] : []),
           {name:'⏳ Bekleme süresi',value:'45 dakika',inline:true}
         ).setFooter({text:'Poğaça Frieren • Rollerini seç, takımını koru, birlikte kazan.'});
       const raidArtKey = BOSS.id === 'north-general' ? 'northGeneral' : BOSS.id === 'glass-wyrm' ? 'glassWyrm' : BOSS.id === 'fallen-mage' ? 'fallenMage' : BOSS.id;
