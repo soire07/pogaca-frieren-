@@ -25,7 +25,7 @@ import { getGuildFeatureEnabled } from './guild-feature-settings.js';
 import { createSupportTicket, listSupportTickets, listSupportTicketMessages, replySupportTicket, exportSiteAccountData, deleteSiteAccount } from './account-center.js';
 import { getNotificationPreferences, setNotificationPreference } from './news-birds.js';
 import { levelForXp, xpForNextLevel } from './utils.js';
-import { listPublicChatMessages, sendPublicChatMessage, togglePublicChatReaction, blockPublicChatUser, unblockPublicChatUser, listPublicChatBlocks, deletePublicChatMessage, updatePublicChatMessage, togglePublicChatPin, touchPublicChatPresence, getPublicChatPresence, setPublicChatTyping, markPublicChatMessagesRead, reportPublicChatMessage } from './public-chat.js';
+import { listPublicChatMessages, sendPublicChatMessage, togglePublicChatReaction, blockPublicChatUser, unblockPublicChatUser, listPublicChatBlocks, deletePublicChatMessage, updatePublicChatMessage, togglePublicChatPin, touchPublicChatPresence, getPublicChatPresence, setPublicChatTyping, markPublicChatMessagesRead, reportPublicChatMessage, getPublicChatControl, setPublicChatPaused } from './public-chat.js';
 import { getAccountProfile, updateAccountProfile, followAccount, unfollowAccount, recordAccountProfileVisit, listAccountProfileActivity, sendAccountFriendRequest, respondAccountFriendRequest, listAccountFriends, getAccountIdByProfileSlug, listAccountNotifications, markAccountNotificationsRead } from './account-profile.js';
 import { ensurePersonalCenterSchema, getPersonalProfile, updatePersonalProfile, listDirectMessages, listMessageThreads, markDirectMessagesRead, sendDirectMessage, listGuestbookEntries, addGuestbookEntry, deleteGuestbookEntry, reportPlayer, createPlannerEntry, listPlannerEntries, updatePlannerEntry, deletePlannerEntry, getPersonalProgressReport, discoverPlayers, recommendPlayers, setCloseFriend, removeCloseFriend, listCloseFriends, recordProfileVisit, listProfileVisits } from './personal-center.js';
 import { achievements as RPG_ACHIEVEMENTS } from './basarimlar.js';
@@ -737,6 +737,8 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   if(url.pathname==='/api/public-chat/messages'&&req.method==='POST'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!requireSiteAccount(res,session?.id))return true;
+    const owner=isOwnerSiteAccount(session);
+    if(['/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/control'].includes(url.pathname)&&!owner){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'owner_only'}));return true;}
     if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'chat_unavailable'}));return true;}
     if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_content_type'}));return true;}
     let size=0;const chunks=[];
@@ -753,7 +755,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       throw error;
     }
   }
-  if(['/api/public-chat/reactions','/api/public-chat/blocks','/api/public-chat/blocks/unblock','/api/public-chat/messages/edit','/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/presence','/api/public-chat/typing','/api/public-chat/read','/api/public-chat/reports'].includes(url.pathname)&&req.method==='POST'){
+  if(['/api/public-chat/reactions','/api/public-chat/blocks','/api/public-chat/blocks/unblock','/api/public-chat/messages/edit','/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/presence','/api/public-chat/typing','/api/public-chat/read','/api/public-chat/reports','/api/public-chat/control'].includes(url.pathname)&&req.method==='POST'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!requireSiteAccount(res,session?.id))return true;
     if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'chat_unavailable'}));return true;}
@@ -767,8 +769,9 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       else if(url.pathname==='/api/public-chat/blocks')result=await blockPublicChatUser(db,{accountId:session.id,messageId:form.get('messageId')});
       else if(url.pathname==='/api/public-chat/blocks/unblock')result=await unblockPublicChatUser(db,{accountId:session.id,targetAccountId:form.get('targetAccountId')});
       else if(url.pathname==='/api/public-chat/messages/edit')result=await updatePublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId'),body:form.get('body')});
-      else if(url.pathname==='/api/public-chat/messages/delete')result=await deletePublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId')});
-      else if(url.pathname==='/api/public-chat/pins')result=await togglePublicChatPin(db,{accountId:session.id,messageId:form.get('messageId')});
+      else if(url.pathname==='/api/public-chat/messages/delete')result=await deletePublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId'),isOwner:owner});
+      else if(url.pathname==='/api/public-chat/pins')result=await togglePublicChatPin(db,{accountId:session.id,messageId:form.get('messageId'),isOwner:owner});
+      else if(url.pathname==='/api/public-chat/control')result=await setPublicChatPaused(db,{accountId:session.id,paused:form.get('paused')==='true',isOwner:owner});
       else if(url.pathname==='/api/public-chat/typing')result=await setPublicChatTyping(db,{accountId:session.id});
       else if(url.pathname==='/api/public-chat/read')result=await markPublicChatMessagesRead(db,{accountId:session.id});
       else if(url.pathname==='/api/public-chat/reports')result=await reportPublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId'),reason:form.get('reason')||'other',details:form.get('details')||''});
