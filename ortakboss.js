@@ -276,7 +276,11 @@ export default {
         }
         const alive = fighters.map((x,i)=>hpNow[i]>0?i:-1).filter(i=>i>=0);
         if (!alive.length) break;
-                const healer = alive.find(i=>fighters[i].role==='healer');
+                const auraBarrier = BOSS.id === 'fallen-mage' ? getAuraBarrier(bossPhase, rounds) : null;
+        if (auraBarrier) log.push(`🛡️ Aura Büyü Bariyeri açtı: ${auraBarrier === 'spell' ? 'büyü' : 'fiziksel'} saldırılar bu tur zayıflatılacak.`);
+        const auraIllusion = BOSS.id === 'fallen-mage' && bossPhase >= 2 && rounds % 4 === 1;
+        if (auraIllusion) log.push('🪞 Aura Ruh İkizleri oluşturdu! Bu tur fiziksel saldırılar yanılsama tarafından saptırılıyor; Zoltraak gerçek Aura’yı bulur.');
+        const healer = alive.find(i=>fighters[i].role==='healer');
         if (healer !== undefined) {
           for (const i of alive) {
             const classHeal = applyClassHealing(12, fighters[healer].className);
@@ -408,7 +412,7 @@ export default {
         const formDamage = (auraForm?.attackMultiplier || 1) * (BOSS.id === 'fallen-mage' && bossPhase === 4 && auraSealProgress >= 3 ? 0.87 : 1);
         const finalStandAttack = auraFinalStandPending;
         const katunJudgment = BOSS.special === 'katun-judgment' && rounds % 3 === 0;
-        const rawDamage=Math.round((BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0)+(katunJudgment?10:0)+((starburst || shardRain || manaCurse || katunJudgment || fallenWings || angelicJudgment || twilightCataclysm) ? bossPhaseSpecialBonus(bossPhase) : 0))*formDamage*(auraWingBroken ? 0.72 : 1));
+        const rawDamage=Math.round((BOSS.damage+Math.floor(Math.random()*8)+rounds+(enraged?8:0)+(starburst?6:0)+(shardRain?3:0)+(manaCurse?3:0)+(katunJudgment?10:0)+((starburst || shardRain || manaCurse || katunJudgment || fallenWings || angelicJudgment || twilightCataclysm || finalStandAttack) ? bossPhaseSpecialBonus(bossPhase) : 0))*formDamage*(auraWingBroken ? 0.72 : 1));
         if (enraged && !rageAnnounced) { log.push('🔥 Boss öfke evresine girdi! Saldırıları güçlendi.'); rageAnnounced = true; }
         if (starburst || shardRain || fallenWings || angelicJudgment || twilightCataclysm || finalStandAttack) {
           const specialMessage = finalStandAttack ? '💥 Aura SON DİRENİŞ saldırısını başlattı! Tüm oyunculara yıkıcı bir darbe geliyor!' : twilightCataclysm ? '🌗 Kutsal ve Düşmüş Aura Alacakaranlık Felaketi ile tüm takıma ışık ve karanlık dalgası gönderiyor!' : fallenWings ? '🪽 Düşmüş Melek Aura karanlık kanatlarını savurup tüm takıma Kara Kanat Fırtınası gönderiyor!' : angelicJudgment ? '☀️ Melek Aura kutsal ışığı toplayıp tüm takıma İlahi Hüküm indiriyor!' : BOSS.special === 'shard-rain' ? '🐉 Cam Pullar Ejderhası keskin kristal parçalarını tüm takıma yağdırıyor!' : '☄️ Boss yıldız biçimli mana patlamasıyla tüm yaşayan oyuncuları hedef alıyor!';
@@ -418,7 +422,7 @@ export default {
             const f=fighters[i];
             const specialMultiplier = finalStandAttack ? 1.35 : twilightCataclysm ? 1.05 : fallenWings ? 0.72 : angelicJudgment ? 0.88 : shardRain ? 0.5 : 0.68;
             let incoming=calculateBossIncomingDamage(Math.round(rawDamage*specialMultiplier), Math.round(f.defense*0.44), bossPhase);
-            incoming=finalStandAttack ? calculateAuraFinalStandDamage(incoming, f.defense, defending.has(i)) : applyDefendingReduction(incoming,defending.has(i));
+            incoming=finalStandAttack ? calculateAuraFinalStandDamage(incoming, 0, defending.has(i)) : applyDefendingReduction(incoming,defending.has(i));
             hpNow[i]=Math.max(0,hpNow[i]-incoming);
             log.push(`☄️ ${f.username} ${finalStandAttack ? 'son direniş saldırısından' : twilightCataclysm ? 'alacakaranlık felaketinden' : fallenWings ? 'kara kanat fırtınasından' : angelicJudgment ? 'ilahi hükümden' : shardRain ? 'kristal yağmurundan' : 'mana patlamasından'} ${incoming} hasar aldı${defending.has(i)?' (savunma azaltımı uygulandı)':''}.`);
           }
