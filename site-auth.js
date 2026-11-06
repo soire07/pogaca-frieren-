@@ -402,7 +402,18 @@ async function getOrCreateDiscordSiteAccount(db, discordUser) {
     const linked = await client.query('SELECT account_id FROM frieren_site_discord_accounts WHERE discord_user_id=$1 LIMIT 1', [String(discordUser.id)]);
     let accountId = linked.rows?.[0]?.account_id;
     if (!accountId) {
+      // Preserve an existing site account when this Discord user has exactly
+      // one unambiguous legacy guild link. Never guess across multiple accounts.
+      const legacyTable = await client.query("SELECT to_regclass('public.site_discord_links') AS table_name");
+      if (legacyTable.rows?.[0]?.table_name) {
+        const legacy = await client.query(
+          'SELECT DISTINCT account_id FROM site_discord_links WHERE user_id=$1 ORDER BY account_id LIMIT 2',
+          [String(discordUser.id)]
+        );
+        if (legacy.rows?.length === 1) accountId = legacy.rows[0].account_id;
+      }
       const discordId = String(discordUser.id);
+      if (!accountId) {
       const username = 'd' + discordId;
       const email = 'discord_' + discordId + '@accounts.frieren.invalid';
       const randomPassword = randomBytes(48).toString('base64url');
@@ -413,6 +424,7 @@ async function getOrCreateDiscordSiteAccount(db, discordUser) {
       );
       accountId = inserted.rows?.[0]?.id;
       if (!accountId) throw new Error('SITE_DISCORD_ACCOUNT_CREATE_FAILED');
+      }
       await client.query(
         'INSERT INTO frieren_site_discord_accounts(discord_user_id,account_id,discord_username) VALUES($1,$2,$3)',
         [discordId, accountId, String(discordUser.username || 'Discord user').slice(0, 64)]
