@@ -4,10 +4,14 @@
   "git": {
     "deploymentEnabled": false
   },
-  "routes": [
+  "rewrites": [
     {
-      "src": "^/(.*)$",
-      "dest": "https://pogaca-frieren.onrender.com/$1"
+      "source": "/api/:path*",
+      "destination": "https://pogaca-frieren.onrender.com/api/:path*"
+    },
+    {
+      "source": "/:path*",
+      "destination": "https://pogaca-frieren.onrender.com/:path*"
     }
   ]
 }
