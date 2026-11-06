@@ -577,3 +577,12 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .personal-center-page .card label{display:grid;gap:6px;color:#e8def8;font-size:13px}
 .personal-center-page .check-row{display:flex!important;align-items:center;gap:10px}
 @media(max-width:680px){.personal-center-page .portal-grid{grid-template-columns:1fr}}
+
+.public-chat-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.public-chat-action,.public-chat-reaction{border:1px solid #bda8dc40;border-radius:999px;padding:5px 9px;background:#ffffff08;color:#dcd0ee;font-size:11px;cursor:pointer}
+.public-chat-reaction[aria-pressed=true]{border-color:#b99aff;background:#7c5bb333;color:#fff}
+.public-chat-reply-quote{display:grid;gap:3px;margin:0 0 8px;padding:7px 10px;border-left:2px solid #b89adf;border-radius:0 8px 8px 0;background:#ffffff08;color:#cfc2df;font-size:12px}
+.public-chat-reply-quote strong{color:#e6d7ff}
+.public-chat-reply-preview{grid-column:1/-1;padding:8px 12px;border-left:2px solid #b89adf;border-radius:8px;background:#ffffff08;color:#d9c9f0;font-size:12px}
+.public-chat-blocks{display:grid;gap:6px;margin-top:10px}
+.public-chat-blocked-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;border-radius:10px;background:#ffffff08;color:#d8cce8;font-size:12px}
