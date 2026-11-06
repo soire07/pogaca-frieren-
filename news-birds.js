@@ -86,38 +86,32 @@ export function classifyAnimeNews(title='') {
 }
 
 export function buildAnimeNewsDigestEmbeds(items, now = new Date()) {
+  const articleHosts=ANIME_NEWS_SOURCES.flatMap(source=>source.articleHosts);
+  const imageHosts=ANIME_NEWS_SOURCES.flatMap(source=>source.imageHosts);
   const safeItems=(Array.isArray(items)?items:[]).filter(item =>
-    item && safeFeedUrl(item.link, ANIME_NEWS_SOURCES.flatMap(source=>source.articleHosts))
+    item && safeFeedUrl(item.link,articleHosts)
   ).slice(0,5);
   if (!safeItems.length) return [];
   const date=new Intl.DateTimeFormat('tr-TR',{dateStyle:'long',timeZone:'Europe/Istanbul'}).format(new Date(now));
-  const lead=safeItems[0];
-  const embeds=[{
-    color:0x7654D6,
-    author:{name:'🐦 FRIEREN HABERCİ KUŞU'},
-    title:escapeMarkdown(String(lead.title||'Günün öne çıkan haberi')).slice(0,256),
-    url:lead.link,
-    description:escapeMarkdown(String(lead.summary||'Bu haber için kaynakta kısa bir açıklama bulunmuyor.')).slice(0,900),
-    fields:[
-      {name:'KATEGORİ',value:classifyAnimeNews(lead.title),inline:true},
-      {name:'KAYNAK',value:String(lead.sourceName||'Anime News Network').slice(0,100),inline:true}
-    ],
-    ...(lead.imageUrl && safeFeedUrl(lead.imageUrl,ANIME_NEWS_SOURCES.flatMap(source=>source.imageHosts)) ? {image:{url:lead.imageUrl}} : {}),
-    footer:{text:'Günlük Anime & Manga Bülteni · '+date},
-    timestamp:new Date(now).toISOString()
-  }];
-  const remaining=safeItems.slice(1);
-  if (remaining.length) embeds.push({
-    color:0x46366F,
-    title:'✦ GÜNÜN DİĞER HABERLERİ',
-    fields:remaining.map((item,index)=>({
-      name:String(index+2).padStart(2,'0')+' · '+escapeMarkdown(String(item.title||'Başlıksız haber')).slice(0,240),
-      value:(escapeMarkdown(String(item.summary||'Ayrıntılar için haber kaynağını aç.')).slice(0,300)+'\n*KATEGORİ: '+classifyAnimeNews(item.title)+' · '+String(item.sourceName||'Anime News Network').slice(0,80)+'*\n[Haberi oku ↗]('+item.link+')').slice(0,1024),
-      inline:false
-    })),
-    footer:{text:'Bağlantılar doğrudan haber kaynağına yönlendirir.'}
+  return safeItems.map((item,index)=>{
+    const publishedAt=new Date(item.publishedAt || now);
+    const timestamp=Number.isFinite(publishedAt.getTime())?publishedAt.toISOString():new Date(now).toISOString();
+    const imageUrl=item.imageUrl && safeFeedUrl(item.imageUrl,imageHosts);
+    return {
+      color:index===0?0x7654D6:0x46366F,
+      ...(index===0?{author:{name:'🐦 FRIEREN HABERCİ KUŞU · GÜNLÜK BÜLTEN'}}:{}),
+      title:escapeMarkdown(String(item.title||'Başlıksız haber')).slice(0,256),
+      url:item.link,
+      description:escapeMarkdown(String(item.summary||'Bu haber için kaynakta kısa bir açıklama bulunmuyor.')).slice(0,900),
+      fields:[
+        {name:'KATEGORİ',value:classifyAnimeNews(item.title),inline:true},
+        {name:'KAYNAK',value:String(item.sourceName||'Anime News Network').slice(0,100),inline:true}
+      ],
+      ...(imageUrl?{image:{url:imageUrl}}:{}),
+      footer:{text:index===0?'Günlük Anime & Manga Bülteni · '+date:'Haber '+String(index+1)+' / '+String(safeItems.length)},
+      timestamp
+    };
   });
-  return embeds;
 }
 
 export async function ensureNewsBirdSchema(db) {
