@@ -301,6 +301,27 @@ test('co-op dungeon and raid count only successful mana-funded Zoltraak casts fo
 });
 
 
+
+test('raid title drops are inserted into the existing user title collection inside reward settlement', async () => {
+  const rewards = await (await import('node:fs/promises')).readFile(new URL('../rpg-reward-transactions.js', import.meta.url), 'utf8');
+  assert.match(rewards, /titleDropUsers = \[\]/);
+  assert.match(rewards, /INSERT INTO user_titles\(guild_id,user_id,title\)/);
+  assert.match(rewards, /ON CONFLICT\(guild_id,user_id,title\) DO NOTHING RETURNING title/);
+  assert.match(rewards, /return \{ status: 'settled', masteryResults, titleDrops \}/);
+  assert.match(rewards, /await db\.query\('COMMIT'\)/);
+  assert.match(rewards, /await rollback\(db\)/);
+});
+
+test('Zeldeila uses one-second area ticks and fixed boss HP in the raid runtime', async () => {
+  const source = await (await import('node:fs/promises')).readFile(new URL('../ortakboss.js', import.meta.url), 'utf8');
+  assert.match(source, /BOSS\.noHpScaling \? Number\(BOSS\.hp\)/);
+  assert.match(source, /setInterval\(\(\) => \{/);
+  assert.match(source, /calculateRaidAreaTickDamage\(BOSS\.areaDamagePerSecond/);
+  assert.match(source, /regenerateRaidBossHp\(bossHp, maxBossHp, pendingBossDamage\)/);
+  assert.match(source, /clearInterval\(bossTickTimer\)/);
+});
+
+
 test('co-op boss command accepts a calendar event id for a registered raid team', () => {
   const command = raidCommand.data.toJSON();
   assert.equal(command.name, 'ortakboss');
