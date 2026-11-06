@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseAnimeNewsRss, buildAnimeNewsDigestEmbeds, classifyAnimeNews, setNotificationPreference, getNotificationPreferences, claimDueAnimeNewsDigests, getEventReminderRecipients } from '../news-birds.js';
+import { parseAnimeNewsRss, pollAnimeNewsFeed, buildAnimeNewsDigestEmbeds, classifyAnimeNews, setNotificationPreference, getNotificationPreferences, claimDueAnimeNewsDigests, getEventReminderRecipients } from '../news-birds.js';
 
 test('RSS parser extracts bounded safe titles, summaries and HTTPS article links',()=>{
  const xml='<?xml version="1.0"?><rss><channel><item><title><![CDATA[Frieren: New Arc & Cast]]></title><link>https://www.animenewsnetwork.com/news/2026-11-04/test</link><guid>ann-1</guid><pubDate>Wed, 04 Nov 2026 12:00:00 GMT</pubDate><description><![CDATA[<p>New <b>anime</b> update &amp; details.</p>]]></description></item></channel></rss>';
@@ -22,6 +22,18 @@ test('RSS parser extracts a safe source image and source attribution',()=>{
  const items=parseAnimeNewsRss(xml);
  assert.equal(items[0].imageUrl,'https://cdn.animenewsnetwork.com/thumbnails/test.jpg');
  assert.equal(items[0].sourceName,'Anime News Network');
+});
+
+
+test('RSS poll stores normalized source, article and image metadata with conflict-safe keys',async()=>{
+ const calls=[];
+ const xml='<rss><item><title>Anime Update</title><link>https://www.animenewsnetwork.com/news/2026-11-05/poll</link><guid>poll-1</guid><pubDate>Wed, 05 Nov 2026 12:00:00 GMT</pubDate><description>Update summary.</description><media:thumbnail url="https://cdn.animenewsnetwork.com/poll.jpg"/></item></rss>';
+ const result=await pollAnimeNewsFeed({async query(sql,params){calls.push({sql,params});return{rowCount:1,rows:[]};}},async url=>({ok:true,status:200,text:async()=>xml}));
+ assert.deepEqual(result,{fetched:1,inserted:1,failures:[]});
+ assert.match(calls[0].sql,/image_url,source_name,published_at/);
+ assert.equal(calls[0].params[0],'anime_news:poll-1');
+ assert.equal(calls[0].params[4],'https://cdn.animenewsnetwork.com/poll.jpg');
+ assert.equal(calls[0].params[5],'Anime News Network');
 });
 
 test('digest renderer creates a highlighted clickable lead and a compact linked story list',()=>{
