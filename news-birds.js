@@ -83,6 +83,49 @@ function escapeMarkdown(value='') {
   return String(value).replace(/([_*~|])/g, '\\$1').replace(/@/g, '@\u200b');
 }
 
+export async function translateAnimeNewsItems(db, items, fetcher=globalThis.fetch) {
+  if (!Array.isArray(items) || !items.length) return [];
+  if (typeof fetcher !== 'function') return items;
+  const translated = [];
+  for (const item of items) {
+    if (!item?.guid || (item.translatedTitle && item.translatedSummary)) {
+      translated.push(item);
+      continue;
+    }
+    const title = String(item.title || '').slice(0, 240);
+    const summary = String(item.summary || '').slice(0, 450);
+    try {
+      const translateText = async value => {
+        if (!value) return '';
+        const params = new URLSearchParams({ q: value, langpair: 'en|tr', mt: '1' });
+        const response = await fetcher('https://api.mymemory.translated.net/get?' + params.toString(), {
+          headers: { Accept: 'application/json' },
+          signal: AbortSignal.timeout(5_000)
+        });
+        if (!response?.ok) throw new Error('MYMEMORY_HTTP_' + String(response?.status || 'UNKNOWN'));
+        const payload = await response.json();
+        const result = payload?.responseData?.translatedText;
+        if (payload?.responseStatus !== 200 || typeof result !== 'string' || !result.trim()
+          || /MYMEMORY WARNING/i.test(result)) throw new Error('MYMEMORY_TRANSLATION_UNAVAILABLE');
+        return cleanFeedText(result, 500);
+      };
+      const [translatedTitle, translatedSummary] = await Promise.all([
+        translateText(title), translateText(summary)
+      ]);
+      if (!translatedTitle || !translatedSummary) throw new Error('MYMEMORY_EMPTY_TRANSLATION');
+      await db.query(
+        'UPDATE frieren_news_feed_items SET translated_title=$2,translated_summary=$3 WHERE feed_key=\'anime_news\' AND guid=$1',
+        [item.guid, translatedTitle, translatedSummary]
+      );
+      translated.push({ ...item, translatedTitle, translatedSummary });
+    } catch (error) {
+      console.warn('Haberci kuş çevirisi kullanılamadı; kaynak metni korunuyor:', error?.message || error);
+      translated.push(item);
+    }
+  }
+  return translated;
+}
+
 export function classifyAnimeNews(title='') {
   const value=String(title).toLocaleLowerCase('tr-TR');
   if (/manga|manhwa|manhua|light novel|graphic novel/.test(value)) return 'Manga';
@@ -113,9 +156,9 @@ export function buildAnimeNewsDigestEmbeds(items, now = new Date()) {
     return {
       color:index===0?0x7654D6:0x46366F,
       ...(index===0?{author:{name:'🐦 FRIEREN HABERCİ KUŞU · GÜNLÜK BÜLTEN'}}:{}),
-      title:escapeMarkdown(String(item.title||'Başlıksız haber')).slice(0,256),
+      title:escapeMarkdown(String(item.translatedTitle || item.title || 'Başlıksız haber')).slice(0,256),
       url:item.link,
-      description:escapeMarkdown(String(item.summary||'Bu haber için kaynakta kısa bir açıklama bulunmuyor.')).slice(0,900),
+      description:escapeMarkdown(String(item.translatedSummary || item.summary || 'Bu haber için kaynakta kısa bir açıklama bulunmuyor.')).slice(0,900),
       fields:[
         {name:'KATEGORİ',value:classifyAnimeNews(item.title),inline:true},
         {name:'KAYNAK',value:String(item.sourceName||'Anime News Network').slice(0,100),inline:true}
@@ -146,12 +189,16 @@ export async function ensureNewsBirdSchema(db) {
       summary VARCHAR(500) NOT NULL DEFAULT '',
       image_url TEXT,
       source_name TEXT NOT NULL DEFAULT 'Anime News Network',
+      translated_title VARCHAR(240),
+      translated_summary VARCHAR(500),
       published_at TIMESTAMPTZ NOT NULL,
       fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY(feed_key,guid)
     );
     ALTER TABLE frieren_news_feed_items ADD COLUMN IF NOT EXISTS image_url TEXT;
     ALTER TABLE frieren_news_feed_items ADD COLUMN IF NOT EXISTS source_name TEXT NOT NULL DEFAULT 'Anime News Network';
+    ALTER TABLE frieren_news_feed_items ADD COLUMN IF NOT EXISTS translated_title VARCHAR(240);
+    ALTER TABLE frieren_news_feed_items ADD COLUMN IF NOT EXISTS translated_summary VARCHAR(500);
     CREATE INDEX IF NOT EXISTS frieren_news_feed_recent_idx
       ON frieren_news_feed_items(feed_key,published_at DESC);
     CREATE TABLE IF NOT EXISTS frieren_news_digest_state (
@@ -244,7 +291,7 @@ export async function claimDueAnimeNewsDigests(db,limit=20) {
      CROSS JOIN LATERAL (
        SELECT json_agg(item ORDER BY item->>'publishedAt' DESC) AS items
        FROM (
-         SELECT json_build_object('title',title,'link',link,'summary',summary,'imageUrl',image_url,'sourceName',source_name,'publishedAt',published_at) AS item
+         SELECT json_build_object('guid',guid,'title',title,'link',link,'summary',summary,'translatedTitle',translated_title,'translatedSummary',translated_summary,'imageUrl',image_url,'sourceName',source_name,'publishedAt',published_at) AS item
          FROM frieren_news_feed_items
          WHERE feed_key='anime_news'
            AND published_at>COALESCE(c.last_sent_at,NOW()-INTERVAL '24 hours')
