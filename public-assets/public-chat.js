@@ -65,18 +65,18 @@
   if(!response.ok)throw new Error(data.error==='invalid_chat_action'?'Bu işlem şu anda yapılamıyor.':'İşlem tamamlanamadı.');
   return data;
  };
- const refresh=async({before=null,append=false}={})=>{
+ const refresh=async({before=null,append=false,searchTerm=null}={})=>{
   if(refreshing||document.visibilityState==='hidden')return;
   refreshing=true;
   try{
-   const endpoint='/api/public-chat/messages'+(before?'?before='+encodeURIComponent(before):'');const response=await fetch(endpoint,{headers:{accept:'application/json'},cache:'no-store'});
+   const params=new URLSearchParams();if(before)params.set('before',before);const query=searchTerm===null?String(search?.value||'').trim():String(searchTerm||'').trim();if(query)params.set('q',query);const endpoint='/api/public-chat/messages'+(params.size?'?'+params.toString():'');const response=await fetch(endpoint,{headers:{accept:'application/json'},cache:'no-store'});
    if(!response.ok)throw new Error('Sohbet şu anda yüklenemiyor.');
    const data=await response.json();const incoming=Array.isArray(data.messages)?data.messages:[];latestMessages=append?[...incoming,...latestMessages.filter(old=>!incoming.some(item=>item.message_id===old.message_id))]:incoming;render(latestMessages);if(older)older.hidden=incoming.length<100;renderBlocked(Array.isArray(data.blocked)?data.blocked:[]);if(form)postAction('/api/public-chat/read',{}).catch(()=>{});const presenceLabel=root.querySelector('[data-chat-presence]');if(presenceLabel){const names=Array.isArray(data.presence?.typing)?data.presence.typing:[];presenceLabel.textContent=(data.presence?.online||0)+' çevrimiçi'+(names.length?' · '+names.join(', ')+' yazıyor':'');}
   }catch(error){if(!list.children.length)say(error.message||'Sohbet yüklenemedi.');}
   finally{refreshing=false;}
  };
  let latestMessages=[];
- if(search)search.addEventListener('input',()=>{render(latestMessages);});
+ let searchTimer=null;if(search)search.addEventListener('input',()=>{render(latestMessages);if(searchTimer)window.clearTimeout(searchTimer);searchTimer=window.setTimeout(()=>refresh({searchTerm:search.value}),300);});
  if(older)older.addEventListener('click',()=>{const dated=latestMessages.filter(x=>x.created_at&&!x.pinned_at).map(x=>new Date(x.created_at).getTime()).filter(Number.isFinite);if(dated.length)refresh({before:new Date(Math.min(...dated)).toISOString(),append:true});});
  if(counter&&form){const updateCounter=()=>{counter.textContent=String(form.elements.message.value.length)+' / 500';};form.elements.message.addEventListener('input',updateCounter);updateCounter();}
  if(form){let lastTyping=0;form.elements.message.addEventListener('input',()=>{if(Date.now()-lastTyping>3500){lastTyping=Date.now();postAction('/api/public-chat/typing',{}).catch(()=>{});}});}
@@ -103,7 +103,7 @@
     if(button.dataset.chatEdit){const current=button.closest('.public-chat-message')?.querySelector('.public-chat-message-text')?.textContent||'';const body=window.prompt('Mesajını düzenle (15 dakika içinde):',current);if(body===null)return;await postAction('/api/public-chat/messages/edit',{messageId:button.dataset.chatEdit,body});say('Mesaj güncellendi.');await refresh();return;}
     if(button.dataset.chatDelete){if(!window.confirm('Bu mesajı silmek istiyor musun?'))return;await postAction('/api/public-chat/messages/delete',{messageId:button.dataset.chatDelete});say('Mesaj silindi.');await refresh();return;}
     if(button.dataset.chatPin){await postAction('/api/public-chat/pins',{messageId:button.dataset.chatPin});say('Sabitleme durumu güncellendi.');await refresh();return;}
-    if(button.dataset.chatReport){const reason=window.prompt('Bildirim nedeni: spam, harassment, inappropriate veya other','other');if(!reason)return;await postAction('/api/public-chat/reports',{messageId:button.dataset.chatReport,reason});say('Mesaj bildirimin alındı.');return;}
+    if(button.dataset.chatReport){const reason=window.prompt('Bildirim nedeni (spam / harassment / inappropriate / other):','other');if(!reason)return;await postAction('/api/public-chat/reports',{messageId:button.dataset.chatReport,reason});say('Mesaj bildirimin alındı.');return;}
     if(button.dataset.chatBlock){if(!window.confirm('Bu kullanıcının mesajlarını gizlemek istiyor musun?'))return;await postAction('/api/public-chat/blocks',{messageId:button.dataset.chatBlock});say('Kullanıcı engellendi.');await refresh();}
    }catch(error){say(error.message||'İşlem tamamlanamadı.');}
   });
