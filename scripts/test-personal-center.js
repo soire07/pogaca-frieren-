@@ -31,3 +31,10 @@ test('message and report input validation runs before any database access',async
 test('weekly and monthly reports reject arbitrary period values before querying',async()=>{
  let writes=0;await assert.rejects(getPersonalProgressReport({query:async()=>{writes++;}}, {guildId:guild,userId:a,period:'all-time'}),/PERSONAL_REPORT_PERIOD_INVALID/);assert.equal(writes,0);
 });
+
+test('close friends are limited to existing friendships and the per-player cap',async()=>{
+ const queries=[];const db={async query(sql){queries.push(sql);if(sql.includes('FROM social_relationships WHERE'))return{rows:[{}],rowCount:1};if(sql.includes('SELECT COUNT(*)::int AS count FROM player_close_friends'))return{rows:[{count:0}],rowCount:1};if(sql.includes('INSERT INTO player_close_friends'))return{rows:[{friend_id:b}],rowCount:1};if(sql.includes('SELECT 1 FROM social_blocks'))return{rows:[],rowCount:0};return{rows:[],rowCount:0};}};
+ const {setCloseFriend}=await import('../personal-center.js');
+ const result=await setCloseFriend(db,{guildId:guild,ownerId:a,friendId:b});
+ assert.equal(result.status,'added');assert.ok(queries.some(sql=>sql.includes('player_close_friends')));
+});
