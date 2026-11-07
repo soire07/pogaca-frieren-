@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildRoundRobinFixtures, createGuildTeam, joinGuildTeam, createGuildTeamLeague, reportGuildTeamFixtureScore, ensureGuildTeamLeagueSchema, validateGuildEventRaidTeam } from '../guild-team-leagues.js';
-import eventCommand from '../etkinlik.js';
+import eventCommand, { withSafeEventMentions } from '../etkinlik.js';
 
 const guildId='1539562273197260860';
 const captain='123456789012345678';
@@ -189,4 +189,13 @@ test('player-facing command and reminder text uses real line breaks, not literal
   }
   const indexSource = await readFile(new URL('../index.js', import.meta.url), 'utf8');
   assert.equal(indexSource.includes(String.fromCharCode(92, 92, 96)), false, 'event reminder should not render escaped backticks');
+});
+
+
+test('event command output never parses user-controlled mention tokens', () => {
+  const payload = withSafeEventMentions({
+    content: 'Takım: @everyone <@123456789012345678>',
+    allowedMentions: { parse: ['users', 'roles'], users: ['123456789012345678'] }
+  });
+  assert.deepEqual(payload.allowedMentions, { parse: [], users: ['123456789012345678'] });
 });
