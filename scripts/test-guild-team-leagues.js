@@ -170,3 +170,11 @@ test('event command defers database-backed league actions and gives invalid inpu
   assert.match(replies.at(-1).content, /ISO 8601|başlangıç|tarih/i);
   assert.doesNotMatch(replies.at(-1).content, /LEAGUE_INPUT_INVALID|not-a-date/i);
 });
+
+
+test('team and league list output uses actual line breaks instead of literal slash-n text', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../etkinlik.js', import.meta.url), 'utf8');
+  assert.equal(source.includes(".join('\\\\n')"), false);
+  assert.ok(source.includes(".join('\\n')"));
+});
