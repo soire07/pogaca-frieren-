@@ -555,8 +555,6 @@ def train_model(
             raise ValueError("Source checkpoint dialogue encoding is incompatible with this training run.")
         if source_payload.get("loss_objective_version") != LOSS_OBJECTIVE_VERSION:
             raise ValueError("Source checkpoint loss objective is incompatible with this training run.")
-        if source_payload.get("training_dataset") != normalized_training_dataset:
-            raise ValueError("Source checkpoint training dataset manifest does not match this run.")
         if source_payload.get("corpus_sha256") != corpus_fingerprint:
             if initialize_from is not None:
                 raise ValueError("Warm-start checkpoint corpus/model/training settings do not match this candidate.")
