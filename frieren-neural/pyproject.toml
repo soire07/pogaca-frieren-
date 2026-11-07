@@ -21,6 +21,7 @@ frieren-neural-evolve = "frieren_neural.evolution:main"
 frieren-neural-evolve-search = "frieren_neural.evolution:search_main"
 frieren-neural-prepare-turkish-dialogues = "frieren_neural.datasets:main"
 frieren-neural-import-chat-max = "frieren_neural.hf_corpus:main"
+frieren-neural-export-knowledge = "frieren_neural.knowledge:main"
 frieren-neural-train-small = "frieren_neural.quickstart:main"
 
 [project.optional-dependencies]

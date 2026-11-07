@@ -345,3 +345,15 @@ These signals are learning priorities, not training examples. They do not mutate
 Migration `003_verified_knowledge.sql` creates the candidate, reviewer, and verified-entry tables. The API exposes authenticated `/learning/knowledge/candidates`, candidate review, and `/learning/knowledge/search` endpoints. A candidate must contain a public HTTPS source, a supported permissive license (Apache-2.0, MIT, CC0-1.0, CC-BY-4.0, or CC-BY-SA-4.0), a source excerpt, a short knowledge summary, and source/content SHA-256 fingerprints. Private messages, emails, Discord IDs, tokens, and password-like material are rejected. Sources are not fetched by the API, so these endpoints do not create an SSRF path.
 
 A candidate stays pending until two distinct reviewer tokens approve it; a rejection blocks promotion. Only promoted entries are searchable. Raw reviewer tokens are never stored; only domain-separated SHA-256 hashes are stored. Distinct tokens are pseudonymous evidence, not cryptographic proof of two real-world people, so the two reviewers must be operationally independent. Verified knowledge is not injected into generation or used for training automatically: it remains a curated store until model quality and a separate training-data review approve that next step.
+
+
+After at least one candidate has been promoted, export a license-scoped training snapshot:
+
+```bash
+frieren-neural-export-knowledge --license "CC BY 4.0" --output ./corpus/verified-knowledge
+frieren-neural-train-small --data ./corpus/verified-knowledge --checkpoint ./checkpoints/knowledge-candidate.pt --steps 8000
+frieren-neural-evaluate --data ./corpus/turkish-daily-dialogues-test --checkpoint ./checkpoints/knowledge-candidate.pt
+frieren-neural-evaluate-quality --checkpoint ./checkpoints/knowledge-candidate.pt --training-manifest ./corpus/verified-knowledge/corpus_manifest.json --heldout-report ./heldout-metrics.json --output-dir ./quality-reports/knowledge-candidate
+```
+
+The export is a new, license-scoped snapshot containing only promoted entries. The trainer embeds its exact manifest and file fingerprints in the checkpoint. Exporting does not start training, alter the active model, or approve deployment.

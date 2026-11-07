@@ -591,7 +591,7 @@ def test_learning_scope_hash_is_pseudonymous_and_separates_users_and_guilds(monk
 
 
 
-def test_learning_signal_postgres_migration_deduplication_retention_and_aggregation(api_client, monkeypatch):
+def test_learning_signal_postgres_migration_deduplication_retention_and_aggregation(api_client, monkeypatch, tmp_path):
     import os
     from pathlib import Path
     import psycopg
@@ -765,6 +765,21 @@ def test_learning_signal_postgres_migration_deduplication_retention_and_aggregat
     assert entry["title"] == "Python tuple semantics"
     assert entry["license"] == "CC-BY-4.0"
     assert entry["source_url"] == candidate_payload["source_url"]
+
+    from frieren_neural.knowledge import export_verified_knowledge
+    from frieren_neural.training import load_corpus_manifest_metadata, load_licensed_corpus
+    export_dir = tmp_path / "verified-knowledge-train"
+    exported = export_verified_knowledge(export_dir, license_name="CC-BY-4.0")
+    assert exported["dialogues"] == 1
+    assert exported["dataset_id"] == "frieren-neural/verified-knowledge"
+    assert len(exported["dataset_revision"]) == 40
+    training_metadata = load_corpus_manifest_metadata(export_dir, required_split="train")
+    assert training_metadata["dataset_id"] == exported["dataset_id"]
+    assert training_metadata["processed_sha256"] == exported["processed_sha256"]
+    training_documents = load_licensed_corpus(export_dir)
+    assert len(training_documents) == 1
+    assert "Python tuple semantics" in training_documents[0]
+    assert "A tuple is an immutable sequence" in training_documents[0]
 
     with psycopg.connect(database_url) as connection:
         reviewers = connection.execute(
