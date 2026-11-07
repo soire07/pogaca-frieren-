@@ -221,6 +221,32 @@ def load_corpus_manifest_metadata(path: str | Path, *, required_split: str | Non
     }
 
 
+def _normalize_training_dataset_metadata(value: dict[str, Any] | None) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    required_hashes = ("dataset_sha256", "source_fingerprint_sha256", "processed_sha256")
+    if any(not isinstance(value.get(key), str) or not re.fullmatch(r"[a-f0-9]{64}", value[key]) for key in required_hashes):
+        raise ValueError("Training dataset metadata must contain pinned manifest, source, and processed SHA-256 fingerprints.")
+    if not isinstance(value.get("dataset_id"), str) or not value["dataset_id"].strip():
+        raise ValueError("Training dataset ID is required.")
+    if not isinstance(value.get("dataset_revision"), str) or not re.fullmatch(r"[a-f0-9]{40}", value["dataset_revision"]):
+        raise ValueError("Training dataset revision must be pinned to a 40-character commit.")
+    if value.get("split") != "train":
+        raise ValueError("Training checkpoint metadata must identify the train split.")
+    sample_count = value.get("sample_count")
+    if isinstance(sample_count, bool) or not isinstance(sample_count, int) or sample_count < 1:
+        raise ValueError("Training dataset sample count must be positive.")
+    return {
+        "dataset_sha256": value["dataset_sha256"],
+        "dataset_id": value["dataset_id"],
+        "dataset_revision": value["dataset_revision"],
+        "source_fingerprint_sha256": value["source_fingerprint_sha256"],
+        "processed_sha256": value["processed_sha256"],
+        "split": "train",
+        "sample_count": sample_count,
+    }
+
+
 def encode_dialogue_stream_with_loss_mask(
     text: str, tokenizer: BPETokenizer
 ) -> tuple[list[int], list[bool]]:
@@ -491,10 +517,12 @@ def train_model(
     resume: bool = False,
     initialize_from: str | Path | None = None,
     device: str | torch.device | None = None,
+    training_dataset_metadata: dict[str, Any] | None = None,
 ) -> dict[str, float | int | str]:
     """Train a small GPT model, optionally warm-starting a separate candidate from a checkpoint."""
 
     settings = config or TrainingConfig()
+    normalized_training_dataset = _normalize_training_dataset_metadata(training_dataset_metadata)
     if not documents or any(not isinstance(item, str) or not item.strip() for item in documents):
         raise ValueError("documents must contain non-empty strings.")
     random.seed(settings.seed)
@@ -527,6 +555,8 @@ def train_model(
             raise ValueError("Source checkpoint dialogue encoding is incompatible with this training run.")
         if source_payload.get("loss_objective_version") != LOSS_OBJECTIVE_VERSION:
             raise ValueError("Source checkpoint loss objective is incompatible with this training run.")
+        if source_payload.get("training_dataset") != normalized_training_dataset:
+            raise ValueError("Source checkpoint training dataset manifest does not match this run.")
         if source_payload.get("corpus_sha256") != corpus_fingerprint:
             if initialize_from is not None:
                 raise ValueError("Warm-start checkpoint corpus/model/training settings do not match this candidate.")
@@ -615,6 +645,7 @@ def train_model(
         if (saved.get("model_config") != asdict(model_config)
                 or saved.get("tokenizer") != tokenizer.to_dict()
                 or saved.get("corpus_sha256") != corpus_fingerprint
+                or saved.get("training_dataset") != normalized_training_dataset
                 or saved_training_config != current_training_config):
             raise ValueError("Checkpoint corpus/model/training settings do not match this run (max_steps may increase).")
         model.load_state_dict(saved["model_state"])
@@ -663,6 +694,7 @@ def train_model(
                 "tokenizer": tokenizer.to_dict(),
                 "corpus_sha256": corpus_fingerprint,
                 "corpus_content_sha256": corpus_content_fingerprint,
+                "training_dataset": normalized_training_dataset,
                 "model_state": model.state_dict(),
                 "optimizer_state": optimizer.state_dict(),
                 "batch_generator_state": batch_generator.get_state(),
@@ -682,6 +714,7 @@ def train_model(
         "training_objective": "assistant_response_tokens_plus_eos",
         "parent_checkpoint_sha256": parent_checkpoint_sha256 or "",
         "parent_checkpoint_step": parent_checkpoint_step or 0,
+        "training_dataset_sha256": normalized_training_dataset["dataset_sha256"] if normalized_training_dataset else "",
     }
 
 
@@ -696,8 +729,12 @@ def main() -> None:
     parser.add_argument("--device", default=None, help="cpu, cuda, or omit for automatic selection")
     args = parser.parse_args()
     documents = load_licensed_corpus(args.data)
+    training_dataset_metadata = load_corpus_manifest_metadata(args.data, required_split="train")
     config = TrainingConfig(max_steps=args.steps, batch_size=args.batch_size, block_size=args.block_size)
-    metrics = train_model(documents, args.checkpoint, config, resume=args.resume, device=args.device)
+    metrics = train_model(
+        documents, args.checkpoint, config, resume=args.resume, device=args.device,
+        training_dataset_metadata=training_dataset_metadata,
+    )
     print(json.dumps(metrics, ensure_ascii=False, indent=2))
 
 
@@ -742,6 +779,7 @@ def load_checkpoint(
         "training_config": dict(payload.get("training_config", {})),
         "tokenizer_type": str(payload["tokenizer"].get("type", "unknown")),
         "tokenizer_vocab_size": int(tokenizer.vocab_size),
+        "training_dataset": _normalize_training_dataset_metadata(payload.get("training_dataset")),
     }
     return model, tokenizer, metadata
 
