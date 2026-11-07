@@ -1,6 +1,13 @@
 name: Frieren Neural Qwen3 candidate evaluation
 
 on:
+  workflow_dispatch:
+  push:
+    branches:
+      - test/frieren-neural-render-free
+    paths:
+      - "frieren-neural/scripts/evaluate_qwen3_candidate.py"
+      - ".github/workflows/frieren-neural-qwen3-candidate.yml"
   pull_request:
     branches:
       - validation/ufakzeka-real-gguf
