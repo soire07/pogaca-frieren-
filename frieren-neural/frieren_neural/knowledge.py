@@ -76,6 +76,8 @@ def validate_knowledge_candidate(payload: dict[str, Any]) -> dict[str, Any]:
     content = _validate_knowledge_text(payload.get("content"), minimum=30, maximum=2500, field="content")
     source_title = _validate_knowledge_text(payload.get("source_title"), minimum=3, maximum=180, field="source_title")
     source_excerpt = _validate_knowledge_text(payload.get("source_excerpt"), minimum=40, maximum=6000, field="source_excerpt")
+    if re.search(r"(?im)^\s*(?:Kullanıcı|Asistan)\s*:", title + "\n" + content):
+        raise ValueError("Knowledge summaries must not contain dialogue role markers.")
     source_url = _validate_public_https_url(payload.get("source_url"))
     license_name = normalize_knowledge_license(payload.get("license"))
     revision = payload.get("source_revision")
