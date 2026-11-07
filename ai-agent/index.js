@@ -118,7 +118,7 @@ const healthServer = createServer(async (req, res) => {
       }
       ownerScenarioLocks.add('owner');
       try {
-        const result = await runTargetedTests(target);
+        const result = await runTargetedTests(target, { rootDir });
         const report = buildOwnerScenarioReport(target, result);
         res.writeHead(200, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify(report));

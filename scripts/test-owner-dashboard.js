@@ -533,7 +533,7 @@ test('Owner can save validated Frieren chat preferences with CSRF protection and
     enabled: 'yes', style: 'warm', responseLength: 'balanced', loreFocus: 'no'
   }, db);
   assert.equal(response.status, 303);
-  assert.equal(response.headers.Location, '/owner/frieren-ai?notice=chat_settings_saved');
+  assert.equal(response.headers.Location, '/owner/neural?notice=chat_settings_saved');
   assert.match(query, /owner_settings/);
   assert.match(query, /owner_audit_logs/);
 });
@@ -624,12 +624,12 @@ test('owner dungeon and boss content disable is reversible and keeps at least on
 });
 
 
-test('bot control center separates the main bot from the suspended AI service', () => {
+test('bot control center exposes only the main bot and central Neural service', () => {
   const html = renderOwnerControlCenter({
     apiConfigured: true,
     services: {
       pogaca: { key: 'pogaca', apiConfigured: true, name: 'Poğaça Frieren', id: 'srv-main', url: 'https://pogaca-frieren.onrender.com', dashboardUrl: 'https://dashboard.render.com/web/srv-main', plan: 'free', status: 'running', health: 'healthy', suspended: false, suspenders: [], allowedActions: ['restart'] },
-      neural: { key: 'neural', apiConfigured: true, name: 'Frieren Neural', id: 'srv-ai', url: 'https://frieren-ai-agent.onrender.com', dashboardUrl: 'https://dashboard.render.com/web/srv-ai', plan: 'free', status: 'suspended', health: 'suspended', suspended: true, suspenders: ['user'], allowedActions: ['restart','suspend','resume'] }
+      neural: { key: 'neural', apiConfigured: true, name: 'Frieren Neural', id: 'srv-neural', url: 'https://frieren-neural.onrender.com', dashboardUrl: 'https://dashboard.render.com/web/srv-neural', plan: 'free', status: 'running', health: 'healthy', suspended: false, suspenders: [], allowedActions: ['restart'] }
     }
   }, { maintenance: false }, 'csrf-token',
   { status: 'available', cpuPercent: 12.3, memoryPercent: 45.6 },
@@ -641,8 +641,7 @@ test('bot control center separates the main bot from the suspended AI service', 
   assert.match(html, /Frieren Neural/);
   assert.doesNotMatch(html, /value="suspend"|value="resume"/);
   
-  assert.match(html, /value="restart"/);
-  assert.match(html, /value="restart"/);
+  assert.equal((html.match(/value="restart"/g) || []).length, 2);
   assert.doesNotMatch(html, /value="suspend"|value="resume"/);
   assert.match(html, /Owner Panel bu servis üzerinde çalışıyor/);
   assert.match(html, /csrf-token/);
@@ -664,7 +663,7 @@ test('bot control center hides lifecycle controls until a server-side Render API
   assert.doesNotMatch(html, /test-token|server-only-token/);
 });
 
-test('owner Render action route resumes Frieren Neural through the server-side API and audits it', async () => {
+test('owner Render action route restarts central Neural through the server-side API and audits it', async () => {
   const previousKey = process.env.RENDER_FRIEREN_NEURAL_API_KEY;
   const previousServiceId = process.env.RENDER_FRIEREN_NEURAL_SERVICE_ID;
   const previousServiceUrl = process.env.RENDER_FRIEREN_NEURAL_URL;
@@ -686,12 +685,12 @@ test('owner Render action route resumes Frieren Neural through the server-side A
   const db = { connect: async () => client };
   globalThis.fetch = async (url, options) => {
     request = { url: String(url), options };
-    return { ok: true, status: 202, json: async () => ({ message: 'Service resumed' }) };
+    return { ok: true, status: 202, json: async () => ({ message: 'Service restarted' }) };
   };
   try {
     const { response } = await runOwnerPost({
       action: 'render-service-action', serviceKey: 'neural', serviceAction: 'restart',
-      csrf: 'session', confirm: 'yes', reason: 'AI testlerini çalıştıracağım'
+      csrf: 'session', confirm: 'yes', reason: 'Neural servisi yeniden başlatılacak'
     }, db);
     assert.equal(response.status, 303);
     assert.equal(response.headers.Location, '/owner?notice=service_action_accepted&serviceAction=restart');

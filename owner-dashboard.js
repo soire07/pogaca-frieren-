@@ -558,7 +558,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
     guardian_scan_complete: 'Tarama tamamlandı. Yeni bulgular ve servis durumları aşağıda listeleniyor.',
     guardian_review_complete: 'Neural incelemesini tamamladı. Öneri yalnızca taslaktır; kod değiştirilmedi.',
     guardian_resolved: 'Olay çözüldü olarak işaretlendi.',
-    guardian_not_configured: 'Frieren Neural API yapılandırılmamış. Gerekli gizli anahtar Owner Panel sunucu ortamında bulunamadı.',
+    guardian_not_configured: 'Frieren Neural API yapılandırılmamış. Merkezi servis URL ve token ayarları eksik.',
     guardian_review_failed: 'Neural incelemesi tamamlanamadı. Olay ve hata kaydı korundu.',
     guardian_pr_dispatched: 'Güvenli onarım workflow\'u başlatıldı. Testler geçerse ayrı bir PR açılacak; birleştirme ve dağıtım yapılmayacak.',
     guardian_pr_dispatching: 'Onaylı onarım workflow isteği zaten işleniyor. Yeni bir istek gönderilmedi; sonucu yenileyebilirsin.',
@@ -854,7 +854,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
 
   const workspaceKinds = {
     '/owner/neural': 'ai',
-    '/owner/neural': 'ai',
+    '/owner/frieren-ai': 'ai',
     '/owner/pogaca': 'pogaca',
     '/owner/database': 'database',
     '/owner/settings': 'settings'
@@ -925,7 +925,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         incidents, jobs, monitorState, emergencyStop, qualityReport, csrf: session.csrf, notice: url.searchParams.get('notice') || '',
         serviceState: {
           pogacaReady: Boolean(client?.isReady?.()),
-          neuralApiConfigured: String(process.env.FRIEREN_NEURAL_API_TOKEN || '').trim().length >= 32,
+          neuralApiConfigured: Boolean(String(process.env.FRIEREN_NEURAL_API_URL || '').trim()) && String(process.env.FRIEREN_NEURAL_API_TOKEN || '').trim().length >= 32,
           neuralLiveConfigured: Boolean(String(process.env.FRIEREN_NEURAL_API_URL || '').trim()),
           githubTokenConfigured: String(process.env.FRIEREN_GITHUB_TOKEN || '').trim().length >= 32,
         },

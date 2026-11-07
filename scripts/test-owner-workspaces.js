@@ -21,11 +21,11 @@ test('database diagnostics use one statistics query instead of scanning every ta
   assert.deepEqual(result.tables, [{ name: 'users', rows: 12 }, { name: 'inventory', rows: 8 }]);
   assert.equal(calls, 1);
 });
-test('AI workspace does not claim readiness when a dependency is missing', () => {
-  const html = renderOwnerWorkspace('ai', { aiReadiness: { status: 'ok', discordReady: true, memoryDatabaseReady: false, modelConfigured: true } });
+test('Neural workspace does not claim readiness when a dependency is missing', () => {
+  const html = renderOwnerWorkspace('ai', { neuralReadiness: { status: 'unavailable', reason: 'not_ready' } });
   assert.match(html, /Kontrol gerekli/);
-  assert.match(html, /Hafıza veritabanı/);
-  assert.match(html, /1564945192803639356/);
+  assert.match(html, /Model kimliği/);
+  assert.match(html, /Model kimliği/);
 });
 
 test('Poğaça workspace exposes scoped player controls while keeping unsupported edits disabled', () => {
@@ -46,9 +46,9 @@ test('database workspace escapes database names and table names', () => {
   assert.match(html, /&lt;script&gt;/);
 });
 
-test('AI workspace exposes an authenticated test form and safely renders its report', () => {
+test('Neural workspace exposes an authenticated test form and safely renders its report', () => {
   const html = renderOwnerWorkspace('ai', {
-    aiReadiness: { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true },
+    neuralReadiness: { status: 'ready', model: 'ufakai/ufakzeka-1', generation_smoke: 'pass' },
     chatSettings: { enabled: true, style: 'warm', responseLength: 'balanced', loreFocus: true },
     csrf: 'csrf-token',
     notice: 'test_saved',
@@ -188,10 +188,10 @@ test('database workspace explains free-tier restore limits and refuses to imply 
   assert.match(html, /Neon yedekleme ve dalları aç/);
 });
 
-test('AI workspace accepts free-text test goals and renders persisted run history without claiming code generation', () => {
+test('Neural workspace accepts free-text test goals and renders persisted run history without claiming code generation', () => {
   const html = renderOwnerWorkspace('ai', {
     csrf: 'scenario-csrf',
-    aiReadiness: { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true },
+    neuralReadiness: { status: 'ready', model: 'ufakai/ufakzeka-1', generation_smoke: 'pass' },
     testRuns: { rows: [{ id: 5, target: 'Ekipman HP geri dönüşü', status: 'NOT_TESTED', summary: { total: 0, pass: 0, fail: 0 }, details: { testFiles: [], failedStages: ['Eşleşme yok'] }, created_at: '2026-11-01T00:00:00Z' }] }
   });
   assert.match(html, /name="target"/);
@@ -202,10 +202,10 @@ test('AI workspace accepts free-text test goals and renders persisted run histor
   assert.match(html, /Tüm denetim ve test geçmişi/);
 });
 
-test('AI workspace explains when a sensitive scenario is rejected before execution', () => {
+test('Neural workspace explains when a sensitive scenario is rejected before execution', () => {
   const html = renderOwnerWorkspace('ai', {
     notice: 'test_target_sensitive',
-    aiReadiness: { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true }
+    neuralReadiness: { status: 'ready', model: 'ufakai/ufakzeka-1', generation_smoke: 'pass' }
   });
   assert.match(html, /hassas bilgi içerdiği için çalıştırılmadı veya kaydedilmedi/);
 });
