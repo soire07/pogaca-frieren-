@@ -109,7 +109,10 @@ test('mention handler ignores messages without the bot mention and gives a safe 
   await (await import('../frieren-chat.js')).handleFrierenMentionMessage({
     message: { ...base, reply: async payload => replies.push(payload) },
     botUserId: 'bot-1',
-    db: { query: async () => { throw new Error('must not query'); } },
+    db: { query: async sql => {
+      if (sql.includes('SELECT setting_value')) return { rows: [{ setting_value: { enabled: true, style: 'calm', responseLength: 'concise', loreFocus: true } }] };
+      throw new Error('memory and history must not be queried without a model');
+    } },
     env: {}
   });
   assert.match(replies[0].content, /henüz yapılandırılmadı/i);
