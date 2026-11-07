@@ -15,6 +15,7 @@ import { formatCommandTestResult } from './command-test-report.js';
 import { parseCommandNames } from './command-test-input.js';
 import { splitDiscordMessage } from './discord-message-chunks.js';
 import { buildOwnerScenarioReport } from './owner-scenario-report.js';
+import { runTargetedTests } from '../scripts/targeted-test-runner.js';
 import { normalizeGuardianReviewIncident, reviewGuardianIncident } from './guardian-review.js';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -593,99 +594,7 @@ function runCommandAudit() {
   });
 }
 
-function runTargetedTests(target) {
-  return new Promise(resolve => {
-    const normalizedTarget = target.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('tr-TR');
-    const isMemorySecurityCoverage = isMemoryPrivacyTarget(target);
-    const isCommandInteractionCoverage = normalizedTarget.includes('command interaction coverage')
-      || normalizedTarget.includes('interaction command coverage')
-      || normalizedTarget.includes('komut etkilesim kapsam');
-    // Privacy targets must use test-request.js so live PostgreSQL isolation proof runs
-    // when configured and fails closed when DATABASE_URL is unavailable. The previous
-    // broad-suite shortcut silently bypassed this required proof.
-    // Broad multi-domain RPG requests must not depend on fuzzy keyword matching.
-    // Select existing suites directly so the report cannot falsely say no tests matched.
-    const broadGroups = [
-      /sava[sş]|combat|boss|hasar|damage|savunma|defense|rpg|karakter|character|ekipman|equipment|kesif|explor/,
-      /gorev|quest|odul|reward|ilerleme|progress|seviye|level|tecrube|experience|xp/,
-      /discord|komut|command|etkilesim|interaction|slash|buton|button|izin|permission/
-    ];
-    const isBroadRegression = broadGroups.filter(pattern => pattern.test(normalizedTarget)).length >= 2;
-    const broadTestFiles = [
-      'scripts/test-boss-combat.js',
-      'scripts/check-gameplay-integrity.js',
-      'scripts/test-discord-scenarios.js',
-      'scripts/test-command-interaction-coverage.js'
-    ];
-    const testArgs = isMemorySecurityCoverage
-      ? ['scripts/test-request.js', target]
-      : isBroadRegression
-        ? ['--test', ...broadTestFiles]
-        : isCommandInteractionCoverage
-          ? ['--test', 'scripts/test-command-interaction-coverage.js']
-          : ['scripts/test-request.js', target];
-    const directSuiteNotice = isMemorySecurityCoverage
-      ? ''
-      : isBroadRegression
-        ? 'SEÇİLEN TEST DOSYALARI: ' + broadTestFiles.join('; ') + ' (mevcut testler; doğrudan çok alanlı paket)'
-        : isCommandInteractionCoverage
-          ? 'SEÇİLEN TEST DOSYALARI: scripts/test-command-interaction-coverage.js (doğrudan çalıştırıldı)'
-          : '';
-    console.log('HEDEFLİ TEST ÇALIŞTIRMA: ' + (isBroadRegression
-      ? 'Doğrudan çok alanlı RPG regresyon paketi'
-      : isCommandInteractionCoverage
-        ? 'Doğrudan scripts/test-command-interaction-coverage.js'
-        : 'İstek eşleştirici üzerinden'));
-    const child = spawn(process.execPath, testArgs, {
-      cwd: rootDir, shell: false, windowsHide: true,
-      env: { ...process.env, CI: 'true' }, stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    let stdout = '';
-    let stderr = '';
-    let selectionNotice = '';
-    let selectionScanBuffer = '';
-    let settled = false;
-    const finish = (code, error = '') => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      const directNotice = directSuiteNotice
-        ? directSuiteNotice + '\n'
-        : isCommandInteractionCoverage
-          ? 'SEÇİLEN TEST DOSYALARI: scripts/test-command-interaction-coverage.js (doğrudan çalıştırıldı)\n'
-          : '';
-      const safeStdout = redactSecrets(stdout);
-      const safeStderr = redactSecrets(stderr + error);
-      // Keep the selection header even when verbose test output pushes it out of the retained output tail.
-      const matcherNotice = selectionNotice && !safeStdout.includes('SEÇİLEN TEST DOSYALARI:')
-        ? selectionNotice + '\n'
-        : '';
-      const diagnosticOutput = isCommandInteractionCoverage && safeStderr.trim()
-        ? '\n=== HEDEFLİ TEST TANILAMALARI ===\n' + safeStderr.trim()
-        : '';
-      resolve({
-        applicable: true,
-        code,
-        stdout: directNotice + matcherNotice + safeStdout + diagnosticOutput,
-        stderr: isCommandInteractionCoverage ? '' : safeStderr,
-        note: '',
-      });
-    };
-    child.stdout.on('data', chunk => {
-      const text = chunk.toString();
-      selectionScanBuffer = (selectionScanBuffer + text).slice(-2000);
-      if (!selectionNotice) {
-        const match = selectionScanBuffer.match(/SEÇİLEN TEST DOSYALARI:[^\r\n]*/);
-        if (match) selectionNotice = match[0];
-      }
-      stdout = (stdout + text).slice(-10000);
-    });
-    child.stderr.on('data', chunk => { stderr = (stderr + chunk.toString()).slice(-4000); });
-    child.on('error', error => finish(null, error.message));
-    child.on('close', code => finish(code));
-    const timer = setTimeout(() => { child.kill('SIGTERM'); finish(null, 'İstek bazlı test zaman aşımına uğradı.'); }, timeoutMs);
-  });
-}
+// Shared targeted-test runner also serves the authenticated Owner Panel endpoint.
 
 function classifyTestTarget(target) {
   const groups = [

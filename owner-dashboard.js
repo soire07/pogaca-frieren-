@@ -19,6 +19,7 @@ import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
 import { classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubReadError, processPendingGuardianRepairDispatch, isRepairableProposal, buildGuardianRepairTrackingUrls, requestNeuralGuardianReview } from './guardian/automation.js';
 import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, approveGuardianRepair, updateGuardianRepairStatus, getGuardianMonitorState, getLatestGuardianQualityReport } from './guardian/store.js';
 import { verifyGuardianEvidenceChain, listGuardianEvidenceEvents } from './guardian/security-events.js';
+import { getFrierenNeuralHealthResponse } from './frieren-neural-health.js';
 
 const OWNER_ID = '1553794496234262641';
 const BASE_URL = process.env.OWNER_DASHBOARD_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com';
@@ -26,11 +27,11 @@ const SESSION_COOKIE = 'frieren_owner_session';
 const STATE_COOKIE = 'frieren_owner_oauth_state';
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
 const MAX_BODY_BYTES = 24_576;
-export function getFrierenAiScenarioEndpoint(env = process.env) {
-  const base = String(env.FRIEREN_AI_PUBLIC_URL || '').trim();
-  if (!base) throw new Error('FRIEREN_AI_SERVICE_NOT_CONFIGURED');
+export function getPoğacaScenarioEndpoint(env = process.env) {
+  const base = String(env.OWNER_DASHBOARD_BASE_URL || env.RENDER_EXTERNAL_URL || 'https://pogaca-frieren.onrender.com').trim();
+  if (!base) throw new Error('POGACA_TEST_SERVICE_NOT_CONFIGURED');
   const parsed = new URL(base);
-  if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_AI_PUBLIC_URL');
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_POGACA_TEST_SERVICE_URL');
   return new URL('/internal/test-scenario', parsed).toString();
 }
 
@@ -596,7 +597,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
       + '<p>' + escapeHtml(incident.summary) + '</p>'
       + (evidence.length ? '<details><summary>Kanıt kayıtları (' + evidence.length + ')</summary>' + evidence.map(item => '<div class="small">' + escapeHtml(item.file || '') + (item.line ? ':' + Number(item.line) : '') + ' ' + escapeHtml(item.message || '') + '</div>').join('') + '</details>' : '')
       + '<div class="actions">'
-      + (canReview && !emergencyStop ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-review"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><input type="hidden" name="confirm" value="yes"><button type="submit" class="btn">Sorunu Çöz</button><span class="small">Frieren AI kök nedeni ve güvenli yama taslağını hazırlar; kodu otomatik değiştirmez.</span></form>' : '')
+      + (canReview && !emergencyStop ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-review"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><input type="hidden" name="confirm" value="yes"><button type="submit" class="btn">Sorunu Çöz</button><span class="small">Frieren Neural kök nedeni ve güvenli yama taslağını hazırlar; kodu otomatik değiştirmez.</span></form>' : '')
       + (!['resolved','ignored'].includes(incident.status) ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(csrf) + '"><input type="hidden" name="action" value="guardian-resolve"><input type="hidden" name="incidentId" value="' + Number(incident.id) + '"><label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Sorunu kontrol ettim</label><button type="submit" class="btn secondary">Çözüldü işaretle</button></form>' : '')
       + '</div></article>';
   }).join('') : '<p class="muted">Henüz Guardian olayı kaydedilmedi. İlk taramayı başlatabilirsin.</p>';
@@ -1034,54 +1035,38 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
           found += 1;
         }
         await db.query('SELECT 1');
-        const healthSecret = String(process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
-        const aiBase = String(process.env.FRIEREN_AI_PUBLIC_URL || '').trim().replace(/\/$/, '');
-        if (!aiBase) {
-          await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_SERVICE_NOT_CONFIGURED', title: 'Frieren AI üretim servisi yapılandırılmamış', summary: 'Render hesabında doğrulanmış üretim AI servisi URL’si bulunamadı; test Neural servisi üretime bağlanmadı.', severity: 'high' });
+        const neuralConfigured = Boolean(String(process.env.FRIEREN_NEURAL_API_URL || '').trim());
+        if (!neuralConfigured) {
+          await upsertGuardianIncident(db, {
+            system: 'frieren_neural', code: 'NEURAL_SERVICE_NOT_CONFIGURED',
+            title: 'Frieren Neural servisi yapılandırılmamış',
+            summary: 'Merkezi Neural API adresi bulunamadığı için canlılık ve hazır olma kontrolleri çalıştırılamadı.',
+            severity: 'high'
+          });
           found += 1;
         } else {
-        try {
-          const liveResponse = await fetch(aiBase + '/live', { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(7000) });
-          const livePayload = await liveResponse.json().catch(() => ({}));
-          if (!liveResponse.ok || livePayload.status !== 'alive' || livePayload.readiness?.bridgeConfigured !== true) {
-            await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_LIVENESS_FAILED', title: 'Frieren AI canlılık kontrolü başarısız', summary: 'Frieren AI /live kontrolü başarısız veya test köprüsü yapılandırılmamış.', severity: 'high' });
+          const live = await getFrierenNeuralHealthResponse({ env: process.env, fetchImpl: fetch, timeoutMs: 5_000, healthPath: 'live' });
+          if (live.status !== 200 || live.payload.status !== 'alive') {
+            await upsertGuardianIncident(db, {
+              system: 'frieren_neural', code: 'NEURAL_LIVENESS_FAILED',
+              title: 'Frieren Neural canlılık kontrolü başarısız',
+              summary: 'Merkezi Neural /live kontrolü HTTP ' + live.status + ' döndürdü; neden: ' + String(live.payload.reason || live.payload.status || 'bilinmiyor'),
+              severity: 'high'
+            });
             found += 1;
           }
-        } catch (error) {
-          await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_LIVENESS_UNREACHABLE', title: 'Frieren AI canlılık endpointine ulaşılamadı', summary: String(error?.name || 'NetworkError') + ': Frieren AI /live kontrolü başarısız.', severity: 'high' });
-          found += 1;
-        }
-        if (healthSecret.length >= 32) {
-          try {
-            const response = await fetch(aiBase + '/health', { headers: { Accept: 'application/json', 'x-frieren-health-secret': healthSecret }, signal: AbortSignal.timeout(7000) });
-            const payload = await response.json().catch(() => ({}));
-            if (!response.ok || !['ok','ready'].includes(String(payload.status || '').toLowerCase())) {
-              await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_HEALTH_CHECK_FAILED', title: 'Frieren AI sağlık kontrolü başarısız', summary: 'Frieren AI sağlık endpoint HTTP ' + response.status + ' döndürdü; payload durumu: ' + String(payload.status || 'bilinmiyor'), severity: 'high' });
-              found += 1;
-            }
-          } catch (error) {
-            await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_HEALTH_UNREACHABLE', title: 'Frieren AI sağlık endpointine ulaşılamadı', summary: String(error?.name || 'NetworkError') + ': Frieren AI sağlık kontrolü zaman aşımına uğradı veya bağlantı kurulamadı.', severity: 'high' });
+          const health = await getFrierenNeuralHealthResponse({ env: process.env, fetchImpl: fetch, timeoutMs: 5_000, healthPath: 'health' });
+          if (health.status !== 200 || health.payload.status !== 'ready') {
+            await upsertGuardianIncident(db, {
+              system: 'frieren_neural', code: 'NEURAL_HEALTH_FAILED',
+              title: 'Frieren Neural hazır olma kontrolü başarısız',
+              summary: 'Merkezi Neural /health kontrolü HTTP ' + health.status + ' döndürdü; neden: ' + String(health.payload.reason || health.payload.status || 'bilinmiyor'),
+              severity: 'high'
+            });
             found += 1;
           }
         }
-        }
-        const neuralLiveUrl = String(process.env.FRIEREN_NEURAL_LIVE_URL || '').trim();
-        if (neuralLiveUrl) {
-          let parsed;
-          try { parsed = new URL(neuralLiveUrl); } catch { throw new Error('INVALID_FRIEREN_NEURAL_LIVE_URL'); }
-          if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_NEURAL_LIVE_URL');
-          try {
-            const response = await fetch(parsed.toString(), { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(5000) });
-            if (!response.ok) {
-              await upsertGuardianIncident(db, { system: 'frieren_neural', code: 'NEURAL_LIVENESS_FAILED', title: 'Frieren Neural canlılık kontrolü başarısız', summary: 'Yapılandırılmış hafif canlılık endpointi HTTP ' + response.status + ' döndürdü.', severity: 'high' });
-              found += 1;
-            }
-          } catch (error) {
-            await upsertGuardianIncident(db, { system: 'frieren_neural', code: 'NEURAL_LIVENESS_UNREACHABLE', title: 'Frieren Neural canlılık endpointine ulaşılamadı', summary: String(error?.name || 'NetworkError') + ': Canlılık kontrolü başarısız.', severity: 'high' });
-            found += 1;
-          }
-        }
-        await auditOwnerAction(db, OWNER_ID, 'guardian.scan', null, { findings: found, neuralConfigured: Boolean(neuralLiveUrl), frierenAiHealthConfigured: healthSecret.length >= 32 });
+        await auditOwnerAction(db, OWNER_ID, 'guardian.scan', null, { findings: found, neuralConfigured });
         redirect(res, '/owner/guardian?notice=guardian_scan_complete');
         return true;
       }
@@ -1357,18 +1342,18 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         if (target && containsSensitiveInformation(target)) throw new Error('SENSITIVE_TEST_TARGET_REJECTED');
         const rawCommands = String(form.get('commands') || '');
         const commands = rawCommands.split(/[\x09-\x0d ,;]+/).map(value => value.trim()).filter(Boolean).slice(0, 80);
-        const secret = String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+        const secret = String(process.env.FRIEREN_BRIDGE_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || '').trim();
         let response;
         if (target) {
-          if (secret.length < 32) throw new Error('AI_TEST_BRIDGE_NOT_CONFIGURED');
-          response = await fetch(getFrierenAiScenarioEndpoint(), {
+          if (secret.length < 32) throw new Error('POGACA_TEST_BRIDGE_NOT_CONFIGURED');
+          response = await fetch(getPoğacaScenarioEndpoint(), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + secret },
             body: JSON.stringify({ target }),
             signal: AbortSignal.timeout(240000)
           });
         } else {
-          if (secret.length < 32) throw new Error('AI_TEST_BRIDGE_NOT_CONFIGURED');
+          if (secret.length < 32) throw new Error('POGACA_TEST_BRIDGE_NOT_CONFIGURED');
           response = await fetch(BASE_URL + '/internal/test-suite', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + secret },

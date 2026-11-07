@@ -31,6 +31,9 @@ import { ensurePlayerExperienceSchema } from './player-experience.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { runCommandTestSuite } from './scripts/live-command-test.js';
+import { runTargetedTests } from './scripts/targeted-test-runner.js';
+import { buildOwnerScenarioReport } from './ai-agent/owner-scenario-report.js';
+import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
 import { getFrierenNeuralHealthResponse } from './frieren-neural-health.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
@@ -573,6 +576,7 @@ process.once('SIGTERM', async () => {
 });
 const PORT = process.env.PORT || 3000;
 let uptimeRobotCache = null;
+let ownerScenarioRunning = false;
 
 createServer(withHttpErrorBoundary(async (req, res) => {
   const guardianEventSecret = String(process.env.FRIEREN_GUARD_EVENT_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
@@ -674,6 +678,33 @@ createServer(withHttpErrorBoundary(async (req, res) => {
     const b = Buffer.from(suppliedSecret);
     const authorized = configuredSecret.length >= 32 && a.length === b.length && timingSafeEqual(a, b);
     if (!authorized) return sendJson(401, { error: 'unauthorized' });
+    if (req.method === 'POST' && req.url === '/internal/test-scenario') {
+      if (ownerScenarioRunning) return sendJson(409, { error: 'scenario_already_running' });
+      let raw = '';
+      try {
+        for await (const chunk of req) {
+          raw += chunk.toString('utf8');
+          if (Buffer.byteLength(raw, 'utf8') > 20_000) return sendJson(413, { error: 'payload_too_large' });
+        }
+      } catch {
+        return sendJson(400, { error: 'request_body_invalid' });
+      }
+      let body;
+      try { body = raw ? JSON.parse(raw) : {}; } catch { return sendJson(400, { error: 'request_json_invalid' }); }
+      const target = typeof body.target === 'string' ? body.target.trim() : '';
+      if (!target || target.length > 4_000) return sendJson(400, { error: 'invalid_test_target' });
+      if (containsSensitiveInformation(target)) return sendJson(422, { error: 'sensitive_test_target_rejected' });
+      ownerScenarioRunning = true;
+      try {
+        const result = await runTargetedTests(target);
+        return sendJson(200, buildOwnerScenarioReport(target, result));
+      } catch (error) {
+        console.error('Poğaça Owner Panel targeted test failed:', error?.name || 'Error');
+        return sendJson(500, { error: 'scenario_runner_failed' });
+      } finally {
+        ownerScenarioRunning = false;
+      }
+    }
     if (!client.isReady()) return sendJson(503, { error: 'discord_not_ready' });
     if (req.method === 'GET' && req.url === '/internal/test-catalog') {
       const commands = [...client.commands.values()].map(command => {

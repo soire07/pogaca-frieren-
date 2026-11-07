@@ -4,7 +4,7 @@ import { GUARDIAN_REPAIR_BRANCH, buildGuardianRepairTrackingUrls } from '../guar
 import { createHmac } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getFrierenAiScenarioEndpoint, getFrierenNeuralGuardianEndpoint, renderOwnerGuardianWorkspace, renderOwnerSecurityWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest, getOwnerActionErrorDestination } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getPoğacaScenarioEndpoint, getFrierenNeuralGuardianEndpoint, renderOwnerGuardianWorkspace, renderOwnerSecurityWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest, getOwnerActionErrorDestination } from '../owner-dashboard.js';
 
 
 
@@ -801,18 +801,17 @@ test('owner activity workspace renders paginated audit and test history safely',
   assert.match(html, /&lt;script&gt;/);
 });
 
-test('Owner scenario remains explicit while Guardian review uses the Neural API', () => {
-  assert.throws(() => getFrierenAiScenarioEndpoint({}), { message: 'FRIEREN_AI_SERVICE_NOT_CONFIGURED' });
-  assert.throws(() => getFrierenNeuralGuardianEndpoint({}), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' });
+test('Owner targeted scenarios run on the Poğaça service while Guardian review uses the Neural API', () => {
   assert.equal(
-    getFrierenAiScenarioEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://ai.example.test/base/' }),
-    'https://ai.example.test/internal/test-scenario'
+    getPoğacaScenarioEndpoint({ OWNER_DASHBOARD_BASE_URL: 'https://pogaca.example.test/base/' }),
+    'https://pogaca.example.test/internal/test-scenario'
   );
+  assert.throws(() => getPoğacaScenarioEndpoint({ OWNER_DASHBOARD_BASE_URL: 'http://pogaca.example.test' }), /INVALID_POGACA_TEST_SERVICE_URL/);
+  assert.throws(() => getFrierenNeuralGuardianEndpoint({}), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' });
   assert.equal(
     getFrierenNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'https://neural.example.test/base/' }),
     'https://neural.example.test/internal/guardian-review'
   );
-  assert.throws(() => getFrierenAiScenarioEndpoint({ FRIEREN_AI_PUBLIC_URL: 'http://127.0.0.1:10001' }), /INVALID_FRIEREN_AI_PUBLIC_URL/);
   assert.throws(() => getFrierenNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'http://127.0.0.1:10001' }), /INVALID_FRIEREN_NEURAL_API_URL/);
 });
 
