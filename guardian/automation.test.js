@@ -578,3 +578,14 @@ test('retry reports an existing workflow without claiming persistence when state
   assert.equal(result.workflowUrl, 'https://github.com/example/actions/runs/420');
   assert.equal(posts, 0, 'an existing workflow must never be duplicated');
 });
+
+
+test('GitHub workflow dispatch 403 explains the missing Actions write permission without leaking response data', () => {
+  assert.equal(
+    classifyGuardianGithubDispatchError(403, 'Resource not accessible by personal access token'),
+    'GUARDIAN_GITHUB_ACTIONS_WRITE_REQUIRED'
+  );
+  assert.equal(classifyGuardianGithubDispatchError(401, 'Bad credentials'), 'GUARDIAN_GITHUB_TOKEN_INVALID');
+  assert.equal(classifyGuardianGithubDispatchError(404, 'Not Found'), 'GUARDIAN_GITHUB_WORKFLOW_NOT_FOUND');
+  assert.equal(classifyGuardianGithubDispatchError(422, 'Workflow does not exist'), 'GUARDIAN_GITHUB_DISPATCH_INPUT_OR_REF_INVALID');
+});
