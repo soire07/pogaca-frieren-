@@ -1058,19 +1058,23 @@ test('synthetic Frieren AI → authenticated Owner Panel review → explicit own
 
   const previous = {
     fetch: globalThis.fetch,
-    FRIEREN_AI_PUBLIC_URL: process.env.FRIEREN_AI_PUBLIC_URL,
-    FRIEREN_AI_BRIDGE_SECRET: process.env.FRIEREN_AI_BRIDGE_SECRET,
+    FRIEREN_NEURAL_API_URL: process.env.FRIEREN_NEURAL_API_URL,
+    FRIEREN_NEURAL_API_TOKEN: process.env.FRIEREN_NEURAL_API_TOKEN,
+    FRIEREN_NEURAL_QUALITY_APPROVED: process.env.FRIEREN_NEURAL_QUALITY_APPROVED,
+    FRIEREN_NEURAL_GUARDIAN_ENABLED: process.env.FRIEREN_NEURAL_GUARDIAN_ENABLED,
     FRIEREN_GITHUB_TOKEN: process.env.FRIEREN_GITHUB_TOKEN,
   };
-  process.env.FRIEREN_AI_PUBLIC_URL = 'https://frieren-ai.synthetic.invalid';
-  process.env.FRIEREN_AI_BRIDGE_SECRET = 'synthetic-bridge-secret-that-is-long-enough';
+  process.env.FRIEREN_NEURAL_API_URL = 'https://frieren-neural.synthetic.invalid';
+  process.env.FRIEREN_NEURAL_API_TOKEN = 'synthetic-neural-api-token-that-is-long-enough';
+  process.env.FRIEREN_NEURAL_QUALITY_APPROVED = '1';
+  process.env.FRIEREN_NEURAL_GUARDIAN_ENABLED = '1';
   process.env.FRIEREN_GITHUB_TOKEN = 'synthetic-github-token-that-is-long-enough';
   globalThis.fetch = async (url, options = {}) => {
     const target = String(url);
     state.githubRequests.push({ url: target, method: options.method || 'GET', body: options.body || null });
-    if (target === 'https://frieren-ai.synthetic.invalid/internal/guardian-review') {
+    if (target === 'https://frieren-neural.synthetic.invalid/internal/guardian-review') {
       assert.equal(options.method, 'POST');
-      assert.equal(options.headers.Authorization, 'Bearer ' + process.env.FRIEREN_AI_BRIDGE_SECRET);
+      assert.equal(options.headers.Authorization, 'Bearer ' + process.env.FRIEREN_NEURAL_API_TOKEN);
       return { ok: true, status: 200, json: async () => proposal };
     }
     if (target.includes('/actions/workflows/frieren-ai-self-repair.yml/runs?')) {
