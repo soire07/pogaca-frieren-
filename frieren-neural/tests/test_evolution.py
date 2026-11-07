@@ -9,6 +9,7 @@ def _reviewed_report():
     return {
         "decision": "READY FOR STAGED TEST",
         "checkpoint_sha256": "a" * 64,
+        "checkpoint_metadata": {"format_version": 2, "loss_objective_version": 2},
         "source_commit_sha": "e" * 40,
         "prompt_set_version": "tr-conversation-v1",
         "blocking_reasons": [],
@@ -26,6 +27,8 @@ def _reviewed_report():
             "sample_count": 120,
             "split": "heldout",
             "evaluation_version": "tr-conversation-v1",
+            "loss_objective_version": 2,
+            "checkpoint_training_loss_objective_version": 2,
         },
         "baseline_comparison": {
             "available": True,
