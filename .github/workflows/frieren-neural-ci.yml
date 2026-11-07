@@ -50,3 +50,5 @@ jobs:
         run: pytest
       - name: Compile isolated benchmark tools
         run: python -m compileall -q benchmarks
+      - name: Measure batch-sampler optimization against the previous implementation
+        run: python benchmarks/benchmark_batch_sampling.py --iterations 100
