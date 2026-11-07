@@ -16,7 +16,7 @@ import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceA
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 import { listSupportTicketsForOwner, getSupportTicketForOwner, replySupportTicketFromOwner, updateSupportTicketStatusFromOwner } from './account-center.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
-import { classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, processPendingGuardianRepairDispatch, isRepairableProposal, buildGuardianRepairTrackingUrls } from './guardian/automation.js';
+import { classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubReadError, processPendingGuardianRepairDispatch, isRepairableProposal, buildGuardianRepairTrackingUrls } from './guardian/automation.js';
 import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, approveGuardianRepair, updateGuardianRepairStatus, getGuardianMonitorState, getLatestGuardianQualityReport } from './guardian/store.js';
 import { verifyGuardianEvidenceChain, listGuardianEvidenceEvents } from './guardian/security-events.js';
 
@@ -579,6 +579,9 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
     guardian_github_not_configured: 'GitHub Actions tetikleme anahtarı eksik. Poğaça Render ortamına FRIEREN_GITHUB_TOKEN eklenmeli.',
     guardian_ai_service_not_configured: 'Frieren AI üretim servisi Render hesabında doğrulanamadı. FRIEREN_AI_PUBLIC_URL ve servis kaydı yapılandırılmadan Guard inceleme başlatmaz.',
     guardian_github_actions_permission_required: 'GitHub token workflow_dispatch yetkisine sahip değil. Fine-grained token için bu depoda Actions: Read and write, Pull requests: Read ve Checks: Read izinlerini ver; ardından Poğaça Render içindeki FRIEREN_GITHUB_TOKEN değerini güncelle.',
+    guardian_github_actions_read_required: 'GitHub token workflow çalıştırma geçmişini okuyamıyor. Fine-grained token için Actions: Read and write iznini etkinleştir.',
+    guardian_github_pull_requests_read_required: 'GitHub token onarım PR listesini okuyamıyor. Fine-grained token için Pull requests: Read iznini etkinleştir.',
+    guardian_github_checks_read_required: 'GitHub token PR kontrol sonuçlarını okuyamıyor. Fine-grained token için Checks: Read iznini etkinleştir.',
     guardian_github_sso_required: 'GitHub token için kuruluş SSO yetkilendirmesi gerekiyor. Tokenı GitHub kuruluş erişimi için yetkilendir.',
     guardian_github_token_invalid: 'GitHub token geçersiz veya süresi dolmuş. FRIEREN_GITHUB_TOKEN değerini yenile.',
     guardian_pr_dispatch_failed: 'Onarım workflow\'u başlatılamadı. Job kaydı korundu; hata ayrıntıları sırları açığa çıkarmadan kaydedildi.',
@@ -1174,7 +1177,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         const runsResponse = await fetch(trackingUrls.runsUrl, {
           headers, signal: AbortSignal.timeout(10_000),
         });
-        if (!runsResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + runsResponse.status);
+        if (!runsResponse.ok) throw new Error(classifyGuardianGithubReadError('actions', runsResponse.status));
         const runsPayload = await runsResponse.json();
         const runMarker = new RegExp('(?:^|[^A-Za-z0-9])#' + Number(incident.id) + '(?!\\d)', 'i');
         const run = (runsPayload.workflow_runs || []).find(item =>
@@ -1188,7 +1191,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         const prResponse = await fetch(trackingUrls.pullRequestsUrl, {
           headers, signal: AbortSignal.timeout(10_000),
         });
-        if (!prResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + prResponse.status);
+        if (!prResponse.ok) throw new Error(classifyGuardianGithubReadError('pull_requests', prResponse.status));
         const prs = await prResponse.json();
         const branchName = trackingUrls.branchName;
         pr = Array.isArray(prs) ? prs.find(item => item.head?.ref === branchName) || null : null;
@@ -1201,6 +1204,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
             const checksResponse = await fetch(apiBase + '/commits/' + encodeURIComponent(pr.head.sha) + '/check-runs?per_page=100', {
               headers, signal: AbortSignal.timeout(10_000),
             });
+            if (!checksResponse.ok && checksResponse.status === 403) throw new Error(classifyGuardianGithubReadError('checks', checksResponse.status));
             const checksPayload = checksResponse.ok ? await checksResponse.json().catch(() => null) : null;
             checksStatus = classifyGuardianPullRequestChecks({ ok: checksResponse.ok, payload: checksPayload });
           }
@@ -1437,6 +1441,9 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         : code === 'GUARDIAN_BRIDGE_NOT_CONFIGURED' ? 'guardian_not_configured'
         : code === 'GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED' ? 'guardian_github_not_configured'
         : code === 'GUARDIAN_GITHUB_ACTIONS_WRITE_REQUIRED' ? 'guardian_github_actions_permission_required'
+        : code === 'GUARDIAN_GITHUB_ACTIONS_READ_REQUIRED' ? 'guardian_github_actions_read_required'
+        : code === 'GUARDIAN_GITHUB_PULL_REQUESTS_READ_REQUIRED' ? 'guardian_github_pull_requests_read_required'
+        : code === 'GUARDIAN_GITHUB_CHECKS_READ_REQUIRED' ? 'guardian_github_checks_read_required'
         : code === 'GUARDIAN_GITHUB_SSO_AUTH_REQUIRED' ? 'guardian_github_sso_required'
         : code === 'GUARDIAN_GITHUB_TOKEN_INVALID' ? 'guardian_github_token_invalid'
         : code === 'FRIEREN_AI_SERVICE_NOT_CONFIGURED' ? 'guardian_ai_service_not_configured'
