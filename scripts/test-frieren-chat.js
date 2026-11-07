@@ -22,6 +22,14 @@ test('Frieren responds only to a direct mention in a guild by a human user', () 
   assert.equal(isFrierenMentionMessage({ ...base, guild: null }, 'bot-1'), false);
   assert.equal(isFrierenMentionMessage({ ...base, author: { bot: true } }, 'bot-1'), false);
   assert.equal(isFrierenMentionMessage({ ...base, mentions: { users: { has: () => false } } }, 'bot-1'), false);
+  assert.equal(isFrierenMentionMessage({
+    ...base,
+    mentions: { users: { has: () => false }, repliedUser: { id: 'bot-1' } }
+  }, 'bot-1'), true);
+  assert.equal(isFrierenMentionMessage({
+    ...base,
+    mentions: { users: { has: () => false }, repliedUser: { id: 'another-bot' } }
+  }, 'bot-1'), false);
 });
 
 test('mention parser removes both Discord mention formats and rejects empty prompts', () => {
