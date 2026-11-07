@@ -589,7 +589,7 @@ def test_learning_scope_hash_is_pseudonymous_and_separates_users_and_guilds(monk
 
 
 
-def test_learning_signal_postgres_migration_deduplication_retention_and_aggregation(monkeypatch):
+def test_learning_signal_postgres_migration_deduplication_retention_and_aggregation(api_client, monkeypatch):
     import os
     from pathlib import Path
     import psycopg
@@ -607,13 +607,20 @@ def test_learning_signal_postgres_migration_deduplication_retention_and_aggregat
     monkeypatch.setenv("FRIEREN_DATABASE_URL", database_url)
     monkeypatch.setenv("FRIEREN_API_TOKEN", "ci-neural-test-token-with-more-than-32-characters")
 
-    migration = Path(__file__).parents[1] / "migrations" / "002_learning_signals.sql"
-    sql = migration.read_text(encoding="utf-8")
+    shared_migration = Path(__file__).parents[1] / "migrations" / "001_shared_admission.sql"
+    learning_migration = Path(__file__).parents[1] / "migrations" / "002_learning_signals.sql"
+    shared_sql = shared_migration.read_text(encoding="utf-8")
+    learning_sql = learning_migration.read_text(encoding="utf-8")
     with psycopg.connect(database_url) as connection:
         connection.execute("DROP TABLE IF EXISTS neural_learning_signals")
-        connection.execute(sql)
-        connection.execute(sql)  # The migration must be safe to reapply.
-        connection.execute("TRUNCATE neural_learning_signals")
+        connection.execute("DROP TABLE IF EXISTS neural_login_attempts")
+        connection.execute(shared_sql)
+        connection.execute(shared_sql)  # Both migrations must be safe to reapply.
+        connection.execute(learning_sql)
+        connection.execute(learning_sql)
+        assert connection.execute("SELECT to_regclass('public.neural_login_attempts')").fetchone()[0] == "neural_login_attempts"
+        assert connection.execute("SELECT to_regclass('public.neural_learning_signals')").fetchone()[0] == "neural_learning_signals"
+        connection.execute("TRUNCATE neural_learning_signals, neural_login_attempts")
 
     monkeypatch.setenv("FRIEREN_API_TOKEN", "ci-neural-test-token-with-more-than-32-characters")
     first_user = api.LearningSignalsRequest(
@@ -630,11 +637,39 @@ def test_learning_signal_postgres_migration_deduplication_retention_and_aggregat
         signals=[api.LearningSignal(signal_type="correction", dimension="correctness")],
     )
 
-    assert api._store_learning_signals(first_user) == 2
-    assert api._store_learning_signals(first_user) == 0  # One-hour per-user/type cooldown.
-    assert api._store_learning_signals(second_user) == 1  # User scopes must not collide.
+    headers = {"Authorization": "Bearer " + os.environ["FRIEREN_API_TOKEN"]}
+    first_response = api_client.post("/learning/signals", headers=headers, json=first_user.model_dump())
+    duplicate_response = api_client.post("/learning/signals", headers=headers, json=first_user.model_dump())
+    second_response = api_client.post("/learning/signals", headers=headers, json=second_user.model_dump())
+    assert first_response.status_code == 200 and first_response.json() == {"accepted": True, "stored": 2}
+    assert duplicate_response.status_code == 200 and duplicate_response.json() == {"accepted": True, "stored": 0}
+    assert second_response.status_code == 200 and second_response.json() == {"accepted": True, "stored": 1}
 
-    insights = api._learning_insights()
+    # Exercise the actual shared-admission and persistent login-rate-limit paths
+    # against the same isolated PostgreSQL database used by the learning API.
+    with api._generation_capacity():
+        pass
+    scope = {
+        "type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
+        "method": "POST", "scheme": "https", "path": "/", "raw_path": b"/",
+        "query_string": b"", "headers": [], "client": ("198.51.100.42", 12345),
+        "server": ("testserver", 443),
+    }
+    login_request = Request(scope)
+    login_key = None
+    for _ in range(api._MAX_LOGIN_ATTEMPTS):
+        login_key = api._login_rate_limit(login_request)
+        assert login_key.startswith("db:")
+    with pytest.raises(HTTPException) as rate_limit_error:
+        api._login_rate_limit(login_request)
+    assert rate_limit_error.value.status_code == 429
+    api._clear_login_attempts(login_key)
+    assert api._login_rate_limit(login_request).startswith("db:")
+    api._clear_login_attempts(login_key)
+
+    insights_response = api_client.get("/learning/insights", headers=headers)
+    assert insights_response.status_code == 200
+    insights = insights_response.json()["signals"]
     assert insights == [
         {"dimension": "correctness", "signal_type": "correction", "occurrences": 2},
         {"dimension": "grounding", "signal_type": "uncertainty", "occurrences": 1},
