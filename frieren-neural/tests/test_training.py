@@ -561,3 +561,64 @@ def test_candidate_search_reports_failure_when_no_trial_trains(tmp_path: Path, m
     assert report["status"] == "CANDIDATE_SEARCH_FAILED"
     assert report["successful_trial_count"] == 0
     assert report["failed_trial_count"] == 1
+
+
+
+def test_heldout_manifest_metadata_is_pinned_and_split_scoped(tmp_path: Path):
+    import json
+    from frieren_neural.training import load_corpus_manifest_metadata
+
+    manifest = {
+        "schema_version": 1,
+        "dataset": {
+            "id": "example/turkish-heldout",
+            "revision": "a" * 40,
+            "license": "CC0-1.0",
+            "split": "heldout",
+            "dialogues": 12,
+            "row_ids_sha256": "b" * 64,
+        },
+        "documents": [],
+    }
+    (tmp_path / "corpus_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    metadata = load_corpus_manifest_metadata(tmp_path)
+    assert metadata["split"] == "heldout"
+    assert metadata["sample_count"] == 12
+    assert metadata["dataset_revision"] == "a" * 40
+    assert len(metadata["dataset_sha256"]) == 64
+    assert metadata["evaluation_version"] == "frieren-neural-heldout-v1"
+
+    with pytest.raises(ValueError, match="Expected a heldout"):
+        load_corpus_manifest_metadata(tmp_path, required_split="train")
+
+
+def test_evaluate_checkpoint_emits_heldout_manifest_provenance(monkeypatch):
+    from types import SimpleNamespace
+    from frieren_neural import training
+
+    fake_model = SimpleNamespace(config=SimpleNamespace(max_seq_len=8))
+    fake_metadata = {
+        "step": 5,
+        "corpus_sha256": "a" * 64,
+        "corpus_content_sha256": "b" * 64,
+        "loss_objective_version": training.LOSS_OBJECTIVE_VERSION,
+    }
+    heldout_metadata = {
+        "dataset_sha256": "c" * 64,
+        "sample_count": 20,
+        "split": "heldout",
+        "evaluation_version": training.HELDOUT_EVALUATION_VERSION,
+        "dataset_id": "example/heldout",
+        "dataset_revision": "d" * 40,
+        "row_ids_sha256": "e" * 64,
+    }
+    monkeypatch.setattr(training, "load_checkpoint", lambda *args, **kwargs: (fake_model, object(), fake_metadata))
+    monkeypatch.setattr(training, "encode_dialogue_stream", lambda *args, **kwargs: [1, 2, 3])
+    monkeypatch.setattr(training, "encode_dialogue_stream_with_loss_mask", lambda *args, **kwargs: ([1, 2, 3], [True, True, True]))
+    monkeypatch.setattr(training, "evaluate_loss", lambda *args, **kwargs: 2.0)
+
+    result = training.evaluate_checkpoint("candidate.pt", ["heldout dialogue"], dataset_metadata=heldout_metadata)
+    assert result["dataset_sha256"] == "c" * 64
+    assert result["sample_count"] == 20
+    assert result["split"] == "heldout"
+    assert result["evaluation_version"] == training.HELDOUT_EVALUATION_VERSION
