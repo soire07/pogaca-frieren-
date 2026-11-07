@@ -22,3 +22,6 @@ Training extension request 5 (2026-11-07): Train the existing from-scratch Frier
 
 
 Training retry 6 (2026-11-07): Retry the existing 24,000-step continuous candidate pipeline after correcting the quickstart test double to accept the resumable trainer's resume argument. Preserve the exact existing model, objective, corpus, tokenizer, held-out set, seed, architecture, and checkpoint chain. Do not switch models, restart from scratch, or touch production. Require all preflight tests and the full Neural CI to pass before optimizer training begins; archive all stage checkpoints and evaluation evidence.
+
+
+Training retry 7 (2026-11-07): Re-run the same isolated continuous 24,000-step v2 training pipeline after merging the deterministic vectorized BPE implementation. This is a performance-only tokenizer training change; preserve exact merge ordering, tokenizer IDs, corpus boundaries, architecture, optimizer-resume chain, seed, held-out split, and assistant-only objective. Require full preflight tests, exact train/validation encoding validation, and all three checkpoint stages. Archive checkpoints and 24-prompt/held-out evidence. No alternate pretrained model, no Frieren AI/Guard dependency, no production deployment.
