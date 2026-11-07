@@ -25,3 +25,6 @@ Training retry 6 (2026-11-07): Retry the existing 24,000-step continuous candida
 
 
 Training retry 7 (2026-11-07): Re-run the same isolated continuous 24,000-step v2 training pipeline after merging the deterministic vectorized BPE implementation. This is a performance-only tokenizer training change; preserve exact merge ordering, tokenizer IDs, corpus boundaries, architecture, optimizer-resume chain, seed, held-out split, and assistant-only objective. Require full preflight tests, exact train/validation encoding validation, and all three checkpoint stages. Archive checkpoints and 24-prompt/held-out evidence. No alternate pretrained model, no Frieren AI/Guard dependency, no production deployment.
+
+
+Training retry 8 (2026-11-07): Ensure the newly declared NumPy runtime dependency is explicitly installed in CPU-only training jobs before installing Frieren Neural with --no-deps. Repeat the exact same isolated 24k continuous v2 candidate after this environment fix; all existing model/data/objective constraints remain unchanged.
