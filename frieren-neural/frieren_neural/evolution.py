@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, Sequence
