@@ -253,6 +253,10 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
         baseline_metrics = baseline_report.get("metrics")
         baseline_dimensions = baseline_metrics.get("dimension_averages") if isinstance(baseline_metrics, dict) else None
         baseline_overall = baseline_metrics.get("overall_average") if isinstance(baseline_metrics, dict) else None
+        baseline_provenance = baseline_report.get("training_provenance")
+        baseline_heldout = baseline_report.get("heldout_metrics")
+        baseline_outputs = baseline_report.get("outputs")
+        baseline_source_commit = baseline_report.get("source_commit_sha")
         baseline_checkpoint_sha = baseline_report.get("checkpoint_sha256")
         baseline_review_valid = (
             isinstance(baseline_review, dict)
@@ -277,13 +281,48 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
             and not isinstance(baseline_overall, bool)
             and math.isfinite(baseline_overall)
         )
+        baseline_provenance_valid = (
+            isinstance(baseline_provenance, dict)
+            and isinstance(baseline_provenance.get("manifest_sha256"), str)
+            and re.fullmatch(r"[a-f0-9]{64}", baseline_provenance.get("manifest_sha256", "")) is not None
+            and _has_allowed_training_licenses(baseline_provenance.get("licenses"))
+        )
+        baseline_heldout_valid = (
+            isinstance(baseline_heldout, dict)
+            and isinstance(baseline_heldout.get("loss"), (int, float))
+            and not isinstance(baseline_heldout.get("loss"), bool)
+            and math.isfinite(baseline_heldout["loss"]) and baseline_heldout["loss"] >= 0
+            and isinstance(baseline_heldout.get("perplexity"), (int, float))
+            and not isinstance(baseline_heldout.get("perplexity"), bool)
+            and math.isfinite(baseline_heldout["perplexity"]) and baseline_heldout["perplexity"] >= 1
+            and isinstance(baseline_heldout.get("dataset_sha256"), str)
+            and re.fullmatch(r"[a-f0-9]{64}", baseline_heldout.get("dataset_sha256", "")) is not None
+            and isinstance(baseline_heldout.get("sample_count"), int)
+            and not isinstance(baseline_heldout.get("sample_count"), bool)
+            and baseline_heldout["sample_count"] > 0
+            and baseline_heldout.get("split") == "heldout"
+            and isinstance(baseline_heldout.get("evaluation_version"), str)
+            and bool(baseline_heldout["evaluation_version"].strip())
+        )
+        expected_baseline_ids = [item["id"] for item in load_prompt_set()]
+        baseline_outputs_valid = (
+            isinstance(baseline_outputs, list)
+            and [item.get("id") for item in baseline_outputs if isinstance(item, dict)] == expected_baseline_ids
+            and all(isinstance(item, dict) and isinstance(item.get("output"), str) and item["output"].strip()
+                    for item in baseline_outputs)
+        )
         baseline_valid = (
             baseline_report.get("decision") == "READY FOR STAGED TEST"
             and baseline_report.get("blocking_reasons") == []
             and baseline_report.get("prompt_set_version") == PROMPT_SET_VERSION
             and baseline_report.get("decoding_settings") == DECODING_SETTINGS
+            and isinstance(baseline_source_commit, str)
+            and re.fullmatch(r"[a-f0-9]{40}", baseline_source_commit) is not None
             and baseline_review_valid
             and baseline_metrics_valid
+            and baseline_provenance_valid
+            and baseline_heldout_valid
+            and baseline_outputs_valid
             and isinstance(baseline_checkpoint_sha, str)
             and re.fullmatch(r"[a-f0-9]{64}", baseline_checkpoint_sha) is not None
             and baseline_checkpoint_sha != checkpoint_sha256
