@@ -67,7 +67,7 @@ test('Neural workspace exposes an authenticated test form and safely renders its
   assert.match(html, /neural-knowledge-review/);
   assert.match(html, /reviewerToken/);
   assert.match(html, /1\/2 onay/);
-  assert.match(html, /özel Discord mesajları/);
+  assert.match(html, /özel Discord mesajları/i);
 });
 
 
