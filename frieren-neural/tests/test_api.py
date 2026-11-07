@@ -792,3 +792,21 @@ def test_guardian_review_rejects_tampered_source_context(api_client, monkeypatch
         headers={"Authorization": "Bearer " + "n" * 40},
     )
     assert response.status_code == 400
+
+
+
+def test_guardian_review_bounds_incident_fields_and_rejects_unsafe_context_paths(api_client, monkeypatch):
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "n" * 40)
+    monkeypatch.setenv("FRIEREN_NEURAL_GUARDIAN_ENABLED", "1")
+    monkeypatch.setenv("FRIEREN_NEURAL_QUALITY_APPROVED", "1")
+    headers = {"Authorization": "Bearer " + "n" * 40}
+
+    oversized = _guardian_review_payload()
+    oversized["incident"]["title"] = "x" * 161
+    response = api_client.post("/internal/guardian-review", json=oversized, headers=headers)
+    assert response.status_code == 422
+
+    unsafe_path = _guardian_review_payload()
+    unsafe_path["source_context_files"] = ["../secrets.env"]
+    response = api_client.post("/internal/guardian-review", json=unsafe_path, headers=headers)
+    assert response.status_code == 422
