@@ -1,8 +1,8 @@
 # Frieren Neural
 
-Frieren Neural is the Turkish-first inference and model-research track for Frieren AI. The from-scratch GPT remains an isolated research baseline; the serving API can use a pretrained Turkish chat model.
+Frieren Neural is the single central AI service for Poğaça Frieren. It owns inference, conversation intelligence, knowledge acquisition, internal security/monitoring, code analysis, debugging, testing, and controlled self-improvement. Poğaça Frieren remains the Discord-facing persona and client; it does not host a second model.
 
-This directory is isolated from the existing Discord bot and its runtime. It does not replace the current Frieren AI agent, call a hosted LLM, or require a paid API.
+There is no separate Frieren AI or Frieren Guard bot/service in the target architecture. Their former capabilities belong inside Neural as internal modules. Neural uses no paid hosted LLM API. Personal memories, server context, and general knowledge must remain isolated.
 
 ## Current scope
 
@@ -222,21 +222,9 @@ Configure these additional host secrets:
 
 Login and generation POST requests must be same-origin. The service rejects cross-origin browser requests, limits login attempts, and requires HTTPS outside localhost. The web interface displays generated text with `textContent`, not HTML.
 
-## Discord adapter
+## Poğaça Frieren Discord integration
 
-The optional Discord client exposes one `/ask` slash command and forwards requests to the same authenticated inference API. It does not load a second model or request privileged Discord intents.
-
-```bash
-pip install -e ".[discord]"
-export FRIEREN_DISCORD_TOKEN="your-discord-bot-token"
-export FRIEREN_API_TOKEN="the-same-strong-server-to-server-token"
-export FRIEREN_API_URL="https://your-inference-host.example"
-# Optional: sync the slash command to one test server immediately
-export FRIEREN_DISCORD_GUILD_ID="your-test-server-id"
-python -m frieren_neural.discord_adapter
-```
-
-The bot token and API token must be stored as host secrets, never in Git or client-side code. The adapter sends only the prompt to the model API, limits output to Discord-safe chunks, and disables mention parsing on generated replies. Conversation memory is not implemented yet.
+Poğaça Frieren is the only Discord-facing bot. Its existing JavaScript chat adapter calls this authenticated Neural API through the shared Neural client, retaining the bot's existing persona, guild/user/channel scoping, conversation history, and memory boundaries. Do not run a second Discord adapter or register a second Neural bot command set. The Discord bot token stays only in the Poğaça Render environment; the Neural API bearer token stays server-side and is never exposed to Discord clients or browser code.
 
 
 ## Engineering constraints
