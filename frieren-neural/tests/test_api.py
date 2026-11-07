@@ -19,7 +19,7 @@ def test_health_does_not_expose_secrets_and_reports_missing_checkpoint(api_clien
     monkeypatch.delenv("FRIEREN_API_TOKEN", raising=False)
     monkeypatch.setenv("FRIEREN_CHECKPOINT", str(tmp_path / "missing.pt"))
     response = api_client.get("/health")
-    assert response.status_code == 200
+    assert response.status_code == 503
     assert response.json() == {"status": "model_unavailable"}
     assert "token" not in response.text.lower()
 
@@ -345,7 +345,7 @@ def test_health_check_does_not_bypass_generation_capacity(api_client, monkeypatc
     assert api._generation_slots.acquire(blocking=False)
     try:
         response = api_client.get("/health")
-        assert response.status_code == 200
+        assert response.status_code == 503
         assert response.json() == {"status": "busy"}
         assert not load_called
     finally:
