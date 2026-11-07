@@ -80,6 +80,21 @@ class LearningSignalsRequest(BaseModel):
     signals: list[LearningSignal] = Field(min_length=1, max_length=3)
 
 
+class KnowledgeCandidateRequest(BaseModel):
+    title: str = Field(min_length=5, max_length=160)
+    content: str = Field(min_length=30, max_length=2500)
+    source_title: str = Field(min_length=3, max_length=180)
+    source_excerpt: str = Field(min_length=40, max_length=6000)
+    source_url: str = Field(min_length=9, max_length=2048)
+    source_revision: str | None = Field(default=None, max_length=120)
+    license: str = Field(min_length=3, max_length=40)
+
+
+class KnowledgeReviewRequest(BaseModel):
+    decision: Literal["approve", "reject"]
+    reviewer_token: str = Field(min_length=32, max_length=256)
+
+
 class GuardianEvidence(BaseModel):
     file: str = Field(default="", max_length=180)
     line: int | None = Field(default=None, ge=1)
@@ -464,6 +479,88 @@ def submit_learning_signals(payload: LearningSignalsRequest, authorization: Anno
 def learning_insights(authorization: Annotated[str | None, Header()] = None) -> dict[str, list[dict[str, str | int]]]:
     _authenticate(authorization)
     return {"signals": _learning_insights()}
+
+
+@app.post("/learning/knowledge/candidates")
+def submit_knowledge_candidate(
+    payload: KnowledgeCandidateRequest,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, str]:
+    _authenticate(authorization)
+    from .knowledge import create_knowledge_candidate
+
+    try:
+        return create_knowledge_candidate(payload.model_dump())
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except RuntimeError as error:
+        raise HTTPException(status_code=503, detail="Knowledge storage is not configured.") from error
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Knowledge storage is temporarily unavailable.") from error
+
+
+@app.get("/learning/knowledge/candidates")
+def get_knowledge_candidates(
+    status: str | None = None,
+    limit: int = 50,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, list[dict[str, str | int]]]:
+    _authenticate(authorization)
+    from .knowledge import list_knowledge_candidates
+
+    try:
+        return {"candidates": list_knowledge_candidates(status=status, limit=limit)}
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except RuntimeError as error:
+        raise HTTPException(status_code=503, detail="Knowledge storage is not configured.") from error
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Knowledge storage is temporarily unavailable.") from error
+
+
+@app.post("/learning/knowledge/candidates/{candidate_id}/reviews")
+def review_knowledge_candidate(
+    candidate_id: str,
+    payload: KnowledgeReviewRequest,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, str | int]:
+    _authenticate(authorization)
+    from .knowledge import review_knowledge_candidate as apply_knowledge_review
+
+    try:
+        result = apply_knowledge_review(
+            candidate_id, decision=payload.decision, reviewer_token=payload.reviewer_token
+        )
+    except ValueError as error:
+        message = str(error)
+        status_code = 422 if "ID is invalid" in message or "Reviewer token" in message else 409
+        raise HTTPException(status_code=status_code, detail=message) from error
+    except RuntimeError as error:
+        raise HTTPException(status_code=503, detail="Knowledge storage is not configured.") from error
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Knowledge storage is temporarily unavailable.") from error
+    if result is None:
+        raise HTTPException(status_code=404, detail="Knowledge candidate not found.")
+    return result
+
+
+@app.get("/learning/knowledge/search")
+def search_knowledge(
+    q: str,
+    limit: int = 5,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, list[dict[str, str]]]:
+    _authenticate(authorization)
+    from .knowledge import search_verified_knowledge
+
+    try:
+        return {"entries": search_verified_knowledge(q, limit=limit)}
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except RuntimeError as error:
+        raise HTTPException(status_code=503, detail="Knowledge storage is not configured.") from error
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Knowledge storage is temporarily unavailable.") from error
 
 
 @app.get("/live")
