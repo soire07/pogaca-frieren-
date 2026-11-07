@@ -12,7 +12,7 @@ import threading
 from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -66,6 +66,17 @@ class GenerateRequest(BaseModel):
     max_new_tokens: int = Field(default=256, ge=1, le=520)
     temperature: float = Field(default=0.3, gt=0.0, le=2.0)
     top_k: int = Field(default=40, ge=1, le=128)
+
+class LearningSignal(BaseModel):
+    signal_type: Literal["correction", "uncertainty", "repeated_question"]
+    dimension: Literal["correctness", "grounding", "conversation_consistency"]
+
+
+class LearningSignalsRequest(BaseModel):
+    guild_id: str = Field(pattern=r"^\d{5,24}$")
+    user_id: str = Field(pattern=r"^\d{5,24}$")
+    signals: list[LearningSignal] = Field(min_length=1, max_length=3)
+
 
 
 def generate_text(*args, **kwargs):
@@ -189,6 +200,76 @@ def _authenticate(authorization: str | None) -> None:
     supplied = authorization.removeprefix("Bearer ").strip()
     if not secrets.compare_digest(supplied, expected):
         raise HTTPException(status_code=401, detail="Invalid bearer token.")
+
+
+def _learning_scope_hash(guild_id: str, user_id: str) -> tuple[str, str]:
+    secret = os.environ.get("FRIEREN_API_TOKEN", "")
+    if len(secret) < 32:
+        raise HTTPException(status_code=503, detail="Learning signal storage is not configured.")
+    key = secret.encode("utf-8")
+    guild_hash = hmac.new(key, ("guild:" + guild_id).encode("ascii"), hashlib.sha256).hexdigest()
+    user_hash = hmac.new(key, ("user:" + guild_id + ":" + user_id).encode("ascii"), hashlib.sha256).hexdigest()
+    return guild_hash, user_hash
+
+
+def _store_learning_signals(payload: LearningSignalsRequest) -> int:
+    database_url = os.environ.get("FRIEREN_DATABASE_URL", "").strip()
+    if not database_url:
+        raise HTTPException(status_code=503, detail="Learning signal storage is not configured.")
+    guild_hash, user_hash = _learning_scope_hash(payload.guild_id, payload.user_id)
+    try:
+        import psycopg
+        inserted = 0
+        with psycopg.connect(database_url, connect_timeout=3) as connection:
+            with connection.transaction():
+                connection.execute("DELETE FROM neural_learning_signals WHERE created_at < now() - interval '30 days'")
+                for signal in payload.signals:
+                    row = connection.execute(
+                        """INSERT INTO neural_learning_signals
+                           (guild_scope_hash, user_scope_hash, signal_type, dimension)
+                           SELECT %s, %s, %s, %s
+                           WHERE NOT EXISTS (
+                             SELECT 1 FROM neural_learning_signals
+                             WHERE guild_scope_hash = %s AND user_scope_hash = %s
+                               AND signal_type = %s AND created_at > now() - interval '1 hour'
+                           ) RETURNING event_id""",
+                        (guild_hash, user_hash, signal.signal_type, signal.dimension, guild_hash, user_hash, signal.signal_type),
+                    ).fetchone()
+                    inserted += int(row is not None)
+        return inserted
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Learning signal storage is temporarily unavailable.") from error
+
+
+def _learning_insights() -> list[dict[str, str | int]]:
+    database_url = os.environ.get("FRIEREN_DATABASE_URL", "").strip()
+    if not database_url:
+        raise HTTPException(status_code=503, detail="Learning signal storage is not configured.")
+    try:
+        import psycopg
+        with psycopg.connect(database_url, connect_timeout=3) as connection:
+            rows = connection.execute(
+                """SELECT dimension, signal_type, count(*) AS occurrences
+                   FROM neural_learning_signals WHERE created_at > now() - interval '30 days'
+                   GROUP BY dimension, signal_type ORDER BY dimension, signal_type"""
+            ).fetchall()
+        return [{"dimension": row[0], "signal_type": row[1], "occurrences": int(row[2])} for row in rows]
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Learning insights are temporarily unavailable.") from error
+
+
+@app.post("/learning/signals")
+def submit_learning_signals(payload: LearningSignalsRequest, authorization: Annotated[str | None, Header()] = None) -> dict[str, int | bool]:
+    _authenticate(authorization)
+    return {"accepted": True, "stored": _store_learning_signals(payload)}
+
+
+@app.get("/learning/insights")
+def learning_insights(authorization: Annotated[str | None, Header()] = None) -> dict[str, list[dict[str, str | int]]]:
+    _authenticate(authorization)
+    return {"signals": _learning_insights()}
 
 
 @app.get("/health")

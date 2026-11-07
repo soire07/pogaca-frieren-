@@ -123,3 +123,35 @@ export async function generateNeuralReply({
     clearTimeout(timer);
   }
 }
+
+
+export async function submitNeuralLearningSignals({
+  env = process.env, guildId, userId, signals = [], fetchImpl = globalThis.fetch, timeoutMs = 3000,
+} = {}) {
+  if (!isNeuralConfigured(env) || typeof fetchImpl !== 'function') return { stored: 0 };
+  if (!/^\d{5,24}$/.test(String(guildId || '')) || !/^\d{5,24}$/.test(String(userId || ''))) {
+    throw new Error('FRIEREN_NEURAL_LEARNING_SCOPE_INVALID');
+  }
+  const allowed = new Set(['correction:correctness', 'uncertainty:grounding', 'repeated_question:conversation_consistency']);
+  const safeSignals = signals.filter(item => allowed.has(item?.signal_type + ':' + item?.dimension))
+    .slice(0, 3).map(item => ({ signal_type: item.signal_type, dimension: item.dimension }));
+  if (!safeSignals.length) return { stored: 0 };
+  const baseUrl = String(env.FRIEREN_NEURAL_API_URL).trim().replace(/\/+$/, '');
+  const endpoint = baseUrl.endsWith('/generate') ? baseUrl.slice(0, -'/generate'.length) + '/learning/signals' : baseUrl + '/learning/signals';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(500, Math.min(Number(timeoutMs) || 3000, 5000)));
+  try {
+    const response = await fetchImpl(endpoint, {
+      method: 'POST',
+      headers: { authorization: 'Bearer ' + String(env.FRIEREN_NEURAL_API_TOKEN).trim(), 'content-type': 'application/json' },
+      body: JSON.stringify({ guild_id: String(guildId), user_id: String(userId), signals: safeSignals }),
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error('FRIEREN_NEURAL_LEARNING_HTTP_' + response.status);
+    const payload = await response.json();
+    return { stored: Number(payload.stored) || 0 };
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error('FRIEREN_NEURAL_LEARNING_TIMEOUT');
+    throw error;
+  } finally { clearTimeout(timer); }
+}

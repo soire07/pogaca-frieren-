@@ -510,3 +510,62 @@ def test_health_runs_one_fixed_generation_smoke_only_when_enabled(api_client, mo
     assert second.json()["generation_smoke"] == "pass"
     assert len(calls) == 1
     api._run_generation_smoke.cache_clear()
+
+
+
+def test_learning_signals_require_api_authentication(api_client, monkeypatch):
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "a" * 40)
+    response = api_client.post("/learning/signals", json={
+        "guild_id": "12345678901234567", "user_id": "22345678901234567",
+        "signals": [{"signal_type": "correction", "dimension": "correctness"}]
+    })
+    assert response.status_code == 401
+
+
+def test_learning_signals_validate_scope_and_signal_contract(api_client, monkeypatch):
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "a" * 40)
+    headers = {"Authorization": "Bearer " + "a" * 40}
+    invalid_scope = api_client.post("/learning/signals", headers=headers, json={
+        "guild_id": "not-a-discord-id", "user_id": "22345678901234567",
+        "signals": [{"signal_type": "correction", "dimension": "correctness"}]
+    })
+    invalid_signal = api_client.post("/learning/signals", headers=headers, json={
+        "guild_id": "12345678901234567", "user_id": "22345678901234567",
+        "signals": [{"signal_type": "unknown", "dimension": "correctness"}]
+    })
+    assert invalid_scope.status_code == 422
+    assert invalid_signal.status_code == 422
+
+
+def test_learning_signal_endpoint_stores_only_validated_metadata(api_client, monkeypatch):
+    import frieren_neural.api as api
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "a" * 40)
+    captured = []
+    monkeypatch.setattr(api, "_store_learning_signals", lambda payload: captured.append(payload) or len(payload.signals))
+    response = api_client.post("/learning/signals", headers={"Authorization": "Bearer " + "a" * 40}, json={
+        "guild_id": "12345678901234567", "user_id": "22345678901234567",
+        "signals": [
+            {"signal_type": "correction", "dimension": "correctness"},
+            {"signal_type": "uncertainty", "dimension": "grounding"}
+        ]
+    })
+    assert response.status_code == 200
+    assert response.json() == {"accepted": True, "stored": 2}
+    assert not hasattr(captured[0], "prompt")
+    assert not hasattr(captured[0], "message")
+    assert not hasattr(captured[0], "answer")
+
+
+def test_learning_insights_are_aggregate_only_and_require_api_authentication(api_client, monkeypatch):
+    import frieren_neural.api as api
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "a" * 40)
+    monkeypatch.setattr(api, "_learning_insights", lambda: [
+        {"dimension": "grounding", "signal_type": "uncertainty", "occurrences": 4}
+    ])
+    assert api_client.get("/learning/insights").status_code == 401
+    allowed = api_client.get("/learning/insights", headers={"Authorization": "Bearer " + "a" * 40})
+    assert allowed.status_code == 200
+    assert allowed.json() == {"signals": [
+        {"dimension": "grounding", "signal_type": "uncertainty", "occurrences": 4}
+    ]}
+    assert "user_id" not in allowed.text

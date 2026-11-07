@@ -1,6 +1,7 @@
 import { DEFAULT_FRIEREN_CHAT_SETTINGS, getFrierenChatSettings, normalizeFrierenChatSettings } from './frieren-chat-settings.js';
 import { buildMemoryContext, getRelevantMemories, saveExplicitMemories } from './frieren-memory.js';
-import { generateNeuralReply, isNeuralConfigured, isNeuralRequested } from './frieren-neural-client.js';
+import { generateNeuralReply, isNeuralConfigured, isNeuralRequested, submitNeuralLearningSignals } from './frieren-neural-client.js';
+import { detectNeuralLearningSignals } from './frieren-neural-learning.js';
 const MAX_HISTORY_MESSAGES = 16;
 const MAX_HISTORY_CONTENT_LENGTH = 1000;
 const MAX_USER_MESSAGE_LENGTH = 1500;
@@ -212,6 +213,14 @@ export async function handleFrierenMentionMessage({ message, botUserId, db, env 
       allowedMentions: { parse: [] },
       failIfNotExists: false
     });
+    if (neuralRequested) {
+      const signals = detectNeuralLearningSignals({ history, userMessage, assistantReply: answer });
+      if (signals.length) {
+        void submitNeuralLearningSignals({
+          env, guildId: message.guild.id, userId: message.author.id, signals, fetchImpl
+        }).catch(error => console.warn('Frieren Neural öğrenme sinyali kaydedilemedi:', error?.message || 'unknown error'));
+      }
+    }
   } catch (error) {
     console.error('Frieren sohbet hatası:', error?.message || error);
     await message.reply({

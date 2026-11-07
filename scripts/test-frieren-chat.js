@@ -1,6 +1,7 @@
 import { buildMemoryContext, extractExplicitMemories, getRelevantMemories } from '../frieren-memory.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { detectNeuralLearningSignals } from '../frieren-neural-learning.js';
 import {
   buildFrierenMessages,
   buildFrierenNeuralPrompt,
@@ -331,4 +332,24 @@ test('Neural quality approval fails closed when the endpoint URL is missing inst
     fetchImpl: async () => { fallbackCalled = true; throw new Error('must not call upstream'); }
   }), /FRIEREN_NEURAL_NOT_CONFIGURED/);
   assert.equal(fallbackCalled, false);
+});
+
+
+test('Neural detects corrections, uncertainty and repeated questions without retaining message content', () => {
+  assert.deepEqual(detectNeuralLearningSignals({
+    history: [{ role: 'user', content: 'Frieren hangi büyüyü seviyor?' }],
+    userMessage: 'Aslında bu bilgi yanlış.',
+    assistantReply: 'Emin değilim; doğrulayamıyorum.'
+  }), [
+    { signal_type: 'correction', dimension: 'correctness' },
+    { signal_type: 'uncertainty', dimension: 'grounding' }
+  ]);
+  assert.deepEqual(detectNeuralLearningSignals({
+    history: [{ role: 'user', content: 'Frieren hangi büyüyü seviyor?' }],
+    userMessage: 'Frieren hangi büyüyü seviyor?',
+    assistantReply: 'Bilmiyorum.'
+  }), [
+    { signal_type: 'uncertainty', dimension: 'grounding' },
+    { signal_type: 'repeated_question', dimension: 'conversation_consistency' }
+  ]);
 });
