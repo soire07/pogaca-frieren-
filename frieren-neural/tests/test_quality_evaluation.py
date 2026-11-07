@@ -1,0 +1,329 @@
+import json
+
+import pytest
+
+from frieren_neural import quality_evaluation as quality
+
+
+
+def test_benchmark_prompt_uses_the_training_chat_template():
+    assert quality.format_benchmark_prompt("Merhaba. Bugün nasılsın?") == (
+        "Kullanıcı: Merhaba. Bugün nasılsın?\nAsistan:"
+    )
+    transcript = "Kullanıcı: TCP nedir?\nAsistan:"
+    assert quality.format_benchmark_prompt(transcript) == transcript
+
+
+def test_fixed_prompt_set_contains_24_unique_cases():
+    prompts = quality.load_prompt_set()
+    assert len(prompts) == 24
+    assert len({item["id"] for item in prompts}) == 24
+    assert {item["id"] for item in prompts} == {f"TR-{number:03d}" for number in range(1, 25)}
+
+
+def test_report_without_human_scores_is_not_ready_and_never_self_grades():
+    report = quality.build_report(
+        checkpoint_sha256="a" * 64,
+        checkpoint_step=100,
+        outputs=[{"id": f"TR-{number:03d}", "output": "örnek yanıt"} for number in range(1, 25)],
+        scores=None,
+    )
+    assert report["decision"] == "NOT READY"
+    assert report["human_review"]["completed"] is False
+    assert report["metrics"] is None
+    assert report["review_template"]["reviewers"] == ["reviewer_1", "reviewer_2"]
+
+
+def test_report_applies_quality_gate_to_human_scores():
+    scores = quality.empty_score_template()
+    for case in scores["cases"]:
+        for reviewer in ("reviewer_1", "reviewer_2"):
+            case[reviewer] = {
+                dimension: 4 for dimension in quality.DIMENSIONS
+            }
+            case[reviewer]["critical_safety_failure"] = False
+            case[reviewer]["fabricated_claim"] = False
+    report = quality.build_report(
+        checkpoint_sha256="b" * 64,
+        checkpoint_step=100,
+        outputs=[{"id": f"TR-{number:03d}", "output": "örnek yanıt"} for number in range(1, 25)],
+        scores=scores,
+        training_provenance={"manifest_sha256":"d"*64,"licenses":["CC BY 4.0"]},
+        checkpoint_metadata={
+            "format_version": 2,
+            "dialogue_encoding_version": 2,
+            "loss_objective_version": 2,
+            "training_objective": "assistant_response_tokens_plus_eos",
+            "model_config": {"d_model": 16, "n_layers": 1},
+            "training_config": {"max_steps": 10},
+            "tokenizer_type": "byte_bpe",
+            "tokenizer_vocab_size": 280,
+        },
+        heldout_metrics={
+            "loss":2.0, "perplexity":7.39,
+            "loss_objective_version": 2,
+            "checkpoint_training_loss_objective_version": 2,
+        },
+        baseline_report={
+            "prompt_set_version": quality.PROMPT_SET_VERSION,
+            "decoding_settings": quality.DECODING_SETTINGS,
+            "checkpoint_sha256": "0" * 64,
+            "human_review": {"completed": True},
+            "metrics": {
+                "dimension_averages": {dimension: 3.5 for dimension in quality.DIMENSIONS},
+                "overall_average": 3.5,
+            },
+        },
+    )
+    assert report["decision"] == "READY FOR STAGED TEST"
+    assert report["metrics"]["overall_average"] == 4.0
+    assert report["metrics"]["instruction_adherence_3_or_4_rate"] == 1.0
+
+
+def test_report_blocks_critical_failure_even_when_average_is_high():
+    scores = quality.empty_score_template()
+    for case in scores["cases"]:
+        for reviewer in ("reviewer_1", "reviewer_2"):
+            reviewer_scores = {dimension: 4 for dimension in quality.DIMENSIONS}
+            reviewer_scores["critical_safety_failure"] = False
+            reviewer_scores["fabricated_claim"] = False
+            case[reviewer] = reviewer_scores
+    scores["cases"][0]["reviewer_1"]["critical_safety_failure"] = True
+    report = quality.build_report(
+        checkpoint_sha256="c" * 64,
+        checkpoint_step=100,
+        outputs=[{"id": f"TR-{number:03d}", "output": "örnek yanıt"} for number in range(1, 25)],
+        scores=scores,
+    )
+    assert report["decision"] == "NOT READY"
+    assert "critical_safety_failure" in report["blocking_reasons"]
+
+
+def test_score_template_rejects_missing_cases_and_invalid_scores():
+    template = quality.empty_score_template()
+    template["cases"].pop()
+    with pytest.raises(ValueError, match="24"):
+        quality.validate_scores(template)
+
+    template = quality.empty_score_template()
+    template["cases"][0]["reviewer_1"] = {
+        dimension: 5 for dimension in quality.DIMENSIONS
+    }
+    with pytest.raises(ValueError, match="0 and 4"):
+        quality.validate_scores(template)
+
+
+def test_cli_writes_machine_and_human_readable_report(tmp_path, monkeypatch):
+    checkpoint = tmp_path / "checkpoint.pt"
+    checkpoint.write_bytes(b"checkpoint")
+    monkeypatch.setattr(
+        quality,
+        "load_checkpoint",
+        lambda *_args, **_kwargs: (
+            object(), object(), {
+                "step": 123, "format_version": 2, "dialogue_encoding_version": 2,
+                "loss_objective_version": 2, "training_objective": "assistant_response_tokens_plus_eos",
+                "model_config": {"d_model": 16}, "training_config": {"max_steps": 123},
+                "tokenizer_type": "byte_bpe", "tokenizer_vocab_size": 280,
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        quality,
+        "generate_text",
+        lambda _model, _tokenizer, prompt, **_kwargs: prompt + " devam",
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        ["frieren-neural-evaluate-quality", "--checkpoint", str(checkpoint),
+         "--output-dir", str(tmp_path / "report")],
+    )
+    quality.main()
+    report_path = tmp_path / "report" / "quality-report.json"
+    markdown_path = tmp_path / "report" / "quality-report.md"
+    scores_path = tmp_path / "report" / "human-scores.template.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["decision"] == "NOT READY"
+    assert report["checkpoint_metadata"]["tokenizer_type"] == "byte_bpe"
+    assert len(report["outputs"]) == 24
+    markdown = markdown_path.read_text(encoding="utf-8")
+    assert "TR-024" in markdown
+    assert "Checkpoint configuration" in markdown
+    assert "Training objective" in markdown
+    template = json.loads(scores_path.read_text(encoding="utf-8"))
+    assert template["schema_version"] == 1
+    assert set(template["cases"][0]["reviewer_1"]) >= set(quality.DIMENSIONS)
+    assert template["cases"][0]["reviewer_1"]["critical_safety_failure"] is None
+
+
+
+def test_report_blocks_mismatched_heldout_objective():
+    scores = quality.empty_score_template()
+    for case in scores["cases"]:
+        for reviewer in ("reviewer_1", "reviewer_2"):
+            case[reviewer] = {
+                **{dimension: 4 for dimension in quality.DIMENSIONS},
+                "critical_safety_failure": False,
+                "fabricated_claim": False,
+            }
+    report = quality.build_report(
+        checkpoint_sha256="e" * 64,
+        checkpoint_step=100,
+        outputs=[{"id": f"TR-{number:03d}", "output": "örnek"} for number in range(1, 25)],
+        scores=scores,
+        checkpoint_metadata={
+            "format_version": 2, "dialogue_encoding_version": 2,
+            "loss_objective_version": 2, "model_config": {"d_model": 16},
+            "training_config": {"max_steps": 100}, "tokenizer_type": "byte_bpe",
+            "tokenizer_vocab_size": 280,
+        },
+        training_provenance={"manifest_sha256": "f" * 64, "licenses": ["CC BY 4.0"]},
+        heldout_metrics={
+            "loss": 2.0, "perplexity": 7.39,
+            "loss_objective_version": 1,
+            "checkpoint_training_loss_objective_version": 2,
+        },
+        baseline_report={
+            "prompt_set_version": quality.PROMPT_SET_VERSION,
+            "decoding_settings": quality.DECODING_SETTINGS,
+            "checkpoint_sha256": "0" * 64,
+            "human_review": {"completed": True},
+            "metrics": {
+                "dimension_averages": {dimension: 3.5 for dimension in quality.DIMENSIONS},
+                "overall_average": 3.5,
+            },
+        },
+    )
+    assert report["decision"] == "NOT READY"
+    assert "held_out_objective_mismatch" in report["blocking_reasons"]
+
+
+
+def test_report_blocks_missing_checkpoint_metadata():
+    report = quality.build_report(
+        checkpoint_sha256="a" * 64,
+        checkpoint_step=1,
+        outputs=[{"id": f"TR-{number:03d}", "output": "örnek"} for number in range(1, 25)],
+        scores=None,
+        heldout_metrics={
+            "loss": 2.0, "perplexity": 7.39,
+            "loss_objective_version": 2,
+            "checkpoint_training_loss_objective_version": 0,
+        },
+    )
+    assert "checkpoint_metadata_missing" in report["blocking_reasons"]
+    assert "held_out_objective_mismatch" in report["blocking_reasons"]
+
+
+def test_active_gguf_evaluation_uses_pinned_artifact_and_never_claims_readiness(monkeypatch, tmp_path):
+    from frieren_neural import gguf_runtime
+    artifact = tmp_path / "candidate.gguf"
+    artifact.write_bytes(b"pinned-gguf-test-artifact")
+    digest = __import__("hashlib").sha256(artifact.read_bytes()).hexdigest()
+    monkeypatch.setattr(gguf_runtime, "MODEL_SHA256", digest)
+    monkeypatch.setattr(gguf_runtime, "ensure_model_file", lambda _path=None: artifact)
+    monkeypatch.setattr(gguf_runtime, "load_model", lambda _path=None: object())
+    monkeypatch.setattr(gguf_runtime, "generate_completion", lambda *_args, **_kwargs: "Merhaba.")
+    outputs, artifact_sha = quality.evaluate_gguf_quality(artifact)
+    report = quality.build_report(checkpoint_sha256=artifact_sha, checkpoint_step=0, outputs=outputs, scores=None,
+        model_backend="ufakzeka", artifact_sha256=artifact_sha)
+    assert artifact_sha == digest
+    assert len(outputs) == 24
+    assert [item["id"] for item in outputs] == [f"TR-{index:03d}" for index in range(1, 25)]
+    assert outputs[0]["output"] == "Merhaba."
+    assert report["model_backend"] == "ufakzeka"
+    assert report["artifact_sha256"] == digest
+    assert report["decision"] == "NOT READY"
+    assert "human_review_missing" in report["blocking_reasons"]
+    assert "checkpoint_metadata_missing" not in report["blocking_reasons"]
+    assert "training_provenance_missing" in report["blocking_reasons"]
+    assert "held_out_metrics_missing_or_invalid" in report["blocking_reasons"]
+
+def test_guardian_report_upload_uses_https_and_bearer_auth(monkeypatch):
+    class Response:
+        status = 202
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+        def read(self): return b'{"status":"stored","reportSha256":"abc"}'
+    captured = {}
+    def fake_urlopen(request, timeout):
+        captured["url"] = request.full_url
+        captured["authorization"] = request.get_header("Authorization")
+        captured["timeout"] = timeout
+        return Response()
+    monkeypatch.setattr(quality.urllib.request, "urlopen", fake_urlopen)
+    result = quality.submit_report_to_guardian({"decision": "NOT READY"}, "https://guardian.example.test/internal/neural-quality-report", "s" * 32)
+    assert result["status"] == "stored"
+    assert captured["authorization"] == "Bearer " + "s" * 32
+    assert captured["timeout"] == 10
+
+
+def test_guardian_report_upload_rejects_http_and_short_secret():
+    with pytest.raises(ValueError, match="HTTPS"):
+        quality.submit_report_to_guardian({}, "http://guardian.example.test/report", "s" * 32)
+    with pytest.raises(ValueError, match="32 characters"):
+        quality.submit_report_to_guardian({}, "https://guardian.example.test/report", "short")
+
+
+
+def test_ufakzeka_report_requires_review_provenance_and_heldout_evidence(monkeypatch):
+    from frieren_neural import gguf_runtime
+
+    artifact_sha = "a" * 64
+    monkeypatch.setattr(gguf_runtime, "MODEL_SHA256", artifact_sha)
+
+    scores = quality.empty_score_template()
+    for case in scores["cases"]:
+        for reviewer in ("reviewer_1", "reviewer_2"):
+            case[reviewer] = {
+                **{dimension: 4 for dimension in quality.DIMENSIONS},
+                "critical_safety_failure": False,
+                "fabricated_claim": False,
+            }
+
+    outputs = [
+        {"id": item["id"], "category": item["category"], "prompt": item["prompt"], "output": "Doğrulanmış test yanıtı."}
+        for item in quality.load_prompt_set()
+    ]
+    baseline = {
+        "prompt_set_version": quality.PROMPT_SET_VERSION,
+        "decoding_settings": quality.DECODING_SETTINGS,
+        "checkpoint_sha256": "b" * 64,
+        "human_review": {"completed": True},
+        "metrics": {
+            "dimension_averages": {dimension: 3.5 for dimension in quality.DIMENSIONS},
+            "overall_average": 3.5,
+        },
+    }
+
+    report = quality.build_report(
+        checkpoint_sha256=artifact_sha,
+        checkpoint_step=0,
+        outputs=outputs,
+        scores=scores,
+        baseline_report=baseline,
+        model_backend="ufakzeka",
+        artifact_sha256=artifact_sha,
+        source_commit_sha="d" * 40,
+        training_provenance={"manifest_sha256": "f" * 64, "licenses": ["Apache-2.0"]},
+        heldout_metrics={
+            "loss": 1.2,
+            "perplexity": 3.32,
+            "dataset_sha256": "e" * 64,
+            "sample_count": 120,
+            "split": "heldout",
+            "evaluation_version": "ufakzeka-heldout-v1",
+        },
+    )
+
+    assert report["decision"] == "READY FOR STAGED TEST"
+    assert report["pretrained_provenance"]["model_sha256"] == artifact_sha
+    assert report["checkpoint_metadata"] is None
+    assert report["training_provenance"]["manifest_sha256"] == "f" * 64
+    assert report["heldout_metrics"]["dataset_sha256"] == "e" * 64
+    assert report["heldout_metrics"]["split"] == "heldout"
+    assert report["source_commit_sha"] == "d" * 40
+    markdown = quality.render_markdown(report)
+    assert "Independent held-out evidence" in markdown
+    assert "Dataset SHA-256: " + "e" * 64 in markdown
+    assert "Source commit: " + "d" * 40 in markdown
