@@ -163,12 +163,12 @@ def load_corpus_manifest_metadata(path: str | Path, *, required_split: str = "he
     dataset = manifest.get("dataset") if isinstance(manifest, dict) else None
     if not isinstance(dataset, dict):
         raise ValueError("Corpus manifest dataset metadata is required.")
-    split = dataset.get("split")
+    source_split = dataset.get("split")
     sample_count = dataset.get("dialogues")
     revision = dataset.get("revision")
     row_ids_sha256 = dataset.get("row_ids_sha256")
-    if split != required_split:
-        raise ValueError(f"Expected a {required_split} corpus split, got {split!r}.")
+    if source_split != required_split:
+        raise ValueError(f"Expected a {required_split} corpus split, got {source_split!r}.")
     if isinstance(sample_count, bool) or not isinstance(sample_count, int) or sample_count < 1:
         raise ValueError("Corpus manifest must include a positive dialogue count.")
     if not isinstance(revision, str) or not re.fullmatch(r"[a-f0-9]{40}", revision):
@@ -181,7 +181,8 @@ def load_corpus_manifest_metadata(path: str | Path, *, required_split: str = "he
     return {
         "dataset_sha256": hashlib.sha256(raw_manifest).hexdigest(),
         "sample_count": sample_count,
-        "split": split,
+        "split": "heldout",
+        "source_split": source_split,
         "evaluation_version": HELDOUT_EVALUATION_VERSION,
         "dataset_id": dataset_id,
         "dataset_revision": revision,
@@ -847,7 +848,7 @@ def evaluation_main() -> None:
     parser.add_argument("--device", default=None)
     args = parser.parse_args()
     documents = load_licensed_corpus(args.data)
-    dataset_metadata = load_corpus_manifest_metadata(args.data, required_split="heldout")
+    dataset_metadata = load_corpus_manifest_metadata(args.data, required_split="test")
     metrics = evaluate_checkpoint(
         args.checkpoint, documents, batch_size=args.batch_size, batches=args.batches,
         seed=args.seed, device=args.device, dataset_metadata=dataset_metadata
