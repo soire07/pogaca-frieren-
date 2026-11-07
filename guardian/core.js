@@ -269,7 +269,11 @@ export function evaluateNeuralQualityGate({
       reasons.push('NEURAL_TRAINING_PROVENANCE_MISSING');
     }
     if (!finiteNumber(heldout.loss) || heldout.loss < 0
-        || !finiteNumber(heldout.perplexity) || heldout.perplexity < 1) {
+        || !finiteNumber(heldout.perplexity) || heldout.perplexity < 1
+        || !/^[a-f0-9]{64}$/i.test(String(heldout.dataset_sha256 || ''))
+        || !Number.isInteger(heldout.sample_count) || heldout.sample_count <= 0
+        || heldout.split !== 'heldout'
+        || typeof heldout.evaluation_version !== 'string' || !heldout.evaluation_version.trim()) {
       reasons.push('NEURAL_HELDOUT_METRICS_INVALID');
     }
     const checkpointMetadata = report.checkpoint_metadata || {};
