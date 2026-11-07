@@ -113,7 +113,7 @@ jobs:
           set -o pipefail
           frieren-neural-train-small --data ./corpus/turkish-chat-max-25k/train \
             --checkpoint ./checkpoints/frieren-neural-chat-max-25k.pt \
-            --steps 8000 --batch-size 4 --block-size 128 --eval-interval 500 --eval-batches 10 \
+            --steps 8000 --batch-size 1 --block-size 512 --eval-interval 500 --eval-batches 10 \
             --d-model 128 --n-heads 4 --n-layers 4 --tokenizer-vocab-size 1024 --seed 1337 \
             | tee ./training-metrics-step-8000.json
       - name: Archive resumable 8,000-step checkpoint
@@ -156,7 +156,7 @@ jobs:
           set -o pipefail
           frieren-neural-train-small --data ./corpus/turkish-chat-max-25k/train \
             --checkpoint ./checkpoints/frieren-neural-chat-max-25k.pt --resume \
-            --steps 16000 --batch-size 4 --block-size 128 --eval-interval 500 --eval-batches 10 \
+            --steps 16000 --batch-size 1 --block-size 512 --eval-interval 500 --eval-batches 10 \
             --d-model 128 --n-heads 4 --n-layers 4 --tokenizer-vocab-size 1024 --seed 1337 \
             | tee ./training-metrics-step-16000.json
       - name: Archive resumable 16,000-step checkpoint
@@ -199,7 +199,7 @@ jobs:
           set -o pipefail
           frieren-neural-train-small --data ./corpus/turkish-chat-max-25k/train \
             --checkpoint ./checkpoints/frieren-neural-chat-max-25k.pt --resume \
-            --steps 24000 --batch-size 4 --block-size 128 --eval-interval 500 --eval-batches 10 \
+            --steps 24000 --batch-size 1 --block-size 512 --eval-interval 500 --eval-batches 10 \
             --d-model 128 --n-heads 4 --n-layers 4 --tokenizer-vocab-size 1024 --seed 1337 \
             | tee ./training-metrics-step-24000.json
       - name: Verify final checkpoint and generate a Turkish smoke sample
@@ -219,7 +219,7 @@ jobs:
           set -o pipefail
           frieren-neural-evaluate --data ./corpus/turkish-chat-max-25k/heldout \
             --checkpoint ./checkpoints/frieren-neural-chat-max-25k.pt \
-            --batch-size 4 --batches 25 --device cpu | tee ./heldout-metrics.json
+            --batch-size 1 --batches 25 --device cpu | tee ./heldout-metrics.json
       - name: Generate the fixed 24-prompt Turkish quality report
         run: |
           frieren-neural-evaluate-quality \

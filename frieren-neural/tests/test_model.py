@@ -249,3 +249,18 @@ def test_vectorized_bpe_encode_matches_reference_for_overlapping_and_unicode_tex
     assert tokenizer.encode(text, add_bos=True, add_eos=True) == _reference_bpe_encode(
         text, tokenizer.merges, add_bos=True, add_eos=True
     )
+
+
+def test_model_supports_512_token_context_for_longer_dialogues():
+    model = GPTLanguageModel(GPTConfig(
+        vocab_size=12, d_model=16, n_heads=2, n_layers=1,
+        max_seq_len=512, dropout=0.0,
+    )).eval()
+    tokens = torch.randint(0, 12, (1, 512), dtype=torch.long)
+
+    with torch.no_grad():
+        logits = model(tokens)
+        generated = model.generate(torch.cat((tokens, tokens[:, :88]), dim=1), max_new_tokens=1, top_k=1)
+
+    assert logits.shape == (1, 512, 12)
+    assert generated.shape == (1, 601)

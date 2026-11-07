@@ -97,3 +97,21 @@ Release thresholds remain those in [QUALITY_GATE.md](QUALITY_GATE.md): no critic
 - Q4_K_M has now been measured; its smaller file does not materially reduce process RSS or solve output-quality failures. File size alone will not be accepted as a host-fit proof; runtime RSS and quality must both be measured.
 
 No Render/Neon/Vercel/Discord production change was made. No paid API was used. No Vercel function was added. PR #171 remains a draft and is not merged.
+
+
+## 24K checkpoint context-window root-cause audit (2026-11-07)
+
+The archived 24,000-step scratch checkpoint was inspected directly, including its pinned training corpus and all 24 generated quality responses. The checkpoint used a 128-token context window, batch size 4, a 128-dimensional 4-layer/4-head model, and a 1,024-token BPE vocabulary. The 24 generated answers are not coherent enough for use; the candidate remains NOT READY.
+
+A deterministic diagnostic sample of 500 training conversations (644 user/assistant turn pairs after expanding multi-turn conversations) was encoded with the exact tokenizer saved in the checkpoint:
+
+| Context capacity | Complete user-prompt + assistant-response pairs fitting in one window |
+| ---: | ---: |
+| 128 tokens | 10.4% |
+| 256 tokens | 36.2% |
+| 384 tokens | 64.4% |
+| 512 tokens | 82.0% |
+| 768 tokens | 94.3% |
+| 1,024 tokens | 99.4% |
+
+The 128-token context is therefore a measured training/inference limitation, not a speculative explanation. A new isolated candidate keeps the same scratch model family, 128-dimensional width, 4 heads, 4 layers, BPE vocabulary, assistant-only objective, pinned corpus, seed, held-out split and 24,000-step continuous checkpoint chain, but increases context to 512 tokens and reduces batch size from 4 to 1 to bound activation memory. Held-out evaluation also uses batch size 1. This is a controlled context-window experiment; it does not guarantee improved answer quality. Its 24-prompt outputs, held-out metrics, runtime and peak memory must be inspected before any release decision.
