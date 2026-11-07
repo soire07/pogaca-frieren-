@@ -87,7 +87,7 @@ class GuardianEvidence(BaseModel):
 
 
 class GuardianIncident(BaseModel):
-    system: Literal["frieren_neural", "frieren_ai", "pogaca_frieren", "owner_panel", "guardian"]
+    system: Literal["frieren_neural", "frieren_ai", "pogaca_frieren", "owner_panel", "guardian", "site_auth"]
     code: str = Field(pattern=r"^[A-Za-z0-9_.:-]{1,80}$")
     title: str = Field(min_length=1, max_length=160)
     summary: str = Field(min_length=1, max_length=1600)
@@ -369,7 +369,7 @@ def guardian_review(
         raise HTTPException(status_code=503, detail="Guardian review is disabled until Neural passes its quality gate.")
 
     incident = payload.incident.model_dump()
-    allowed_systems = {"frieren_neural", "frieren_ai", "pogaca_frieren", "owner_panel", "guardian"}
+    allowed_systems = {"frieren_neural", "frieren_ai", "pogaca_frieren", "owner_panel", "guardian", "site_auth"}
     system = _guardian_text(incident.get("system"), 40)
     title = _guardian_text(incident.get("title"), 160)
     summary = _guardian_text(incident.get("summary"), 1600)
