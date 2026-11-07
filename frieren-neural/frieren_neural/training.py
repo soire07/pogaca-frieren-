@@ -122,18 +122,20 @@ def load_licensed_corpus(path: str | Path) -> list[str]:
         if canonical_path in declared:
             raise ValueError(f"Duplicate corpus manifest path: {canonical_path}")
         declared.add(canonical_path)
-        raw_content = file_path.read_text(encoding="utf-8")
+        raw_bytes = file_path.read_bytes()
+        try:
+            raw_content = raw_bytes.decode("utf-8")
+        except UnicodeDecodeError as error:
+            raise ValueError(f"Corpus file must be valid UTF-8: {canonical_path}") from error
         content = raw_content.strip()
         if not content:
             raise ValueError(f"Corpus file is empty: {canonical_path}")
         expected_sha256 = entry.get("sha256")
-        if expected_sha256 is not None:
-            if (not isinstance(expected_sha256, str) or len(expected_sha256) != 64
-                    or any(character not in "0123456789abcdef" for character in expected_sha256)):
-                raise ValueError(f"Corpus SHA-256 must be 64 lowercase hexadecimal characters: {canonical_path}")
-            actual_sha256 = hashlib.sha256(raw_content.encode("utf-8")).hexdigest()
-            if actual_sha256 != expected_sha256:
-                raise ValueError(f"Corpus SHA-256 mismatch: {canonical_path}")
+        if (not isinstance(expected_sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", expected_sha256)):
+            raise ValueError(f"Corpus SHA-256 is required and must be 64 lowercase hexadecimal characters: {canonical_path}")
+        actual_sha256 = hashlib.sha256(raw_bytes).hexdigest()
+        if not hmac.compare_digest(actual_sha256, expected_sha256):
+            raise ValueError(f"Corpus SHA-256 mismatch: {canonical_path}")
         documents.append(content)
 
     actual_files: set[str] = set()

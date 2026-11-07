@@ -155,10 +155,44 @@ def test_licensed_corpus_requires_manifest_and_validates_declared_files(tmp_path
             "source": "User-authored test text",
             "license": "CC0-1.0",
             "usage": "Permitted for model training",
+            "sha256": __import__("hashlib").sha256(b"Frieren studies magic.").hexdigest(),
         }],
     }
     (corpus_dir / "corpus_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     assert load_licensed_corpus(corpus_dir) == ["Frieren studies magic."]
+
+    manifest["documents"][0].pop("sha256")
+    (corpus_dir / "corpus_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ValueError, match="SHA-256 is required"):
+        load_licensed_corpus(corpus_dir)
+
+
+def test_licensed_corpus_hashes_exact_file_bytes_and_rejects_tampering(tmp_path: Path):
+    import hashlib
+    import json
+    from frieren_neural.training import load_licensed_corpus
+
+    corpus_dir = tmp_path / "byte-exact"
+    corpus_dir.mkdir()
+    raw = "Frieren studies magic.\\r\\n".encode("utf-8")
+    (corpus_dir / "source.txt").write_bytes(raw)
+    manifest = {
+        "schema_version": 1,
+        "documents": [{
+            "path": "source.txt",
+            "source": "Pinned source",
+            "license": "CC0-1.0",
+            "usage": "Permitted for training",
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        }],
+    }
+    manifest_path = corpus_dir / "corpus_manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    assert load_licensed_corpus(corpus_dir) == ["Frieren studies magic."]
+
+    (corpus_dir / "source.txt").write_bytes(b"Tampered corpus content.")
+    with pytest.raises(ValueError, match="SHA-256 mismatch"):
+        load_licensed_corpus(corpus_dir)
 
 
 def test_licensed_corpus_rejects_path_traversal_and_unlisted_files(tmp_path: Path):
