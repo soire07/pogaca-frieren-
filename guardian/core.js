@@ -227,10 +227,16 @@ export function evaluateNeuralQualityGate({
   if (!/^[a-f0-9]{64}$/i.test(String(report.artifact_sha256 || ''))
       || report.artifact_sha256 !== report.checkpoint_sha256) reasons.push('NEURAL_ACTIVE_ARTIFACT_FINGERPRINT_MISSING');
   const reviewerIds = report.review_template?.reviewers;
-  if (human.completed !== true || human.reviewers_required !== 2
-      || !Array.isArray(reviewerIds) || reviewerIds.length !== 2
-      || new Set(reviewerIds).size !== 2
-      || reviewerIds.some(id => !['reviewer_1', 'reviewer_2'].includes(id))) {
+  const humanReviewerHashes = human.reviewer_identity_hashes;
+  const reviewerHashesValid = Array.isArray(reviewerIds) && reviewerIds.length === 2
+    && Array.isArray(humanReviewerHashes) && humanReviewerHashes.length === 2
+    && reviewerIds.every(id => /^[a-f0-9]{64}$/i.test(String(id)))
+    && humanReviewerHashes.every(id => /^[a-f0-9]{64}$/i.test(String(id)))
+    && reviewerIds[0] !== reviewerIds[1]
+    && humanReviewerHashes[0] !== humanReviewerHashes[1]
+    && reviewerIds[0] === humanReviewerHashes[0]
+    && reviewerIds[1] === humanReviewerHashes[1];
+  if (human.completed !== true || human.reviewers_required !== 2 || !reviewerHashesValid) {
     reasons.push('NEURAL_INDEPENDENT_HUMAN_REVIEW_REQUIRED');
   }
   const expectedOutputIds = Array.from({ length: 24 }, (_, index) => 'TR-' + String(index + 1).padStart(3, '0'));
