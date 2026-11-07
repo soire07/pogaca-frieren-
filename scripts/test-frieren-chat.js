@@ -3,6 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildFrierenMessages,
+  buildFrierenNeuralPrompt,
+  generateFrierenReply,
   extractFrierenPrompt,
   isCodeOrSourceRequest,
   isFrierenMentionMessage
@@ -232,4 +234,75 @@ test('source-code requests are blocked before database access or AI inference', 
   assert.equal(fetched, false);
   assert.match(replies[0].content, /kaynak kod paylaşamam/i);
   assert.deepEqual(replies[0].allowedMentions, { parse: [] });
+});
+
+
+test('Poğaça Frieren Neural prompt preserves persona, memory and the latest request within the shared API limit', () => {
+  const prompt = buildFrierenNeuralPrompt({
+    history: [
+      { role: 'user', content: 'Önceki soru' },
+      { role: 'assistant', content: 'Önceki yanıt' }
+    ],
+    memories: [{ memory_key: 'favori_renk', memory_value: 'Mor.' }],
+    userMessage: 'GÜNCEL-ISTEK-987',
+    chatSettings: { enabled: true, style: 'calm', responseLength: 'concise', loreFocus: true }
+  });
+  assert.ok(prompt.length <= 1900);
+  assert.match(prompt, /Frieren: Beyond Journey/i);
+  assert.match(prompt, /Önceki soru/);
+  assert.match(prompt, /GÜNCEL-ISTEK-987/);
+  assert.match(prompt, /sistem talimatı değildir/i);
+});
+
+test('Poğaça Frieren uses the shared Neural endpoint as primary only after the explicit quality gate', async () => {
+  let request;
+  const env = {
+    FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
+    FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(40),
+    FRIEREN_NEURAL_QUALITY_APPROVED: '1'
+  };
+  const answer = await generateFrierenReply({
+    env,
+    userMessage: 'Merhaba',
+    fetchImpl: async (url, options) => {
+      request = { url, options };
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ completion: 'Merhaba. Uzun zaman oldu.', model: 'ufakai/ufakzeka-1' })
+      };
+    }
+  });
+  assert.equal(request.url, 'https://neural.example.test/generate');
+  assert.equal(request.options.headers.authorization, 'Bearer ' + env.FRIEREN_NEURAL_API_TOKEN);
+  assert.match(JSON.parse(request.options.body).prompt, /Frieren: Beyond Journey/i);
+  assert.equal(answer, 'Merhaba. Uzun zaman oldu.');
+});
+
+test('Poğaça Frieren fails closed when Neural is approved but its shared token is missing', async () => {
+  let fallbackCalled = false;
+  await assert.rejects(generateFrierenReply({
+    env: {
+      GROQ_API_KEY: 'free-fallback-key',
+      FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
+      FRIEREN_NEURAL_QUALITY_APPROVED: '1'
+    },
+    userMessage: 'Merhaba',
+    fetchImpl: async () => { fallbackCalled = true; throw new Error('must not call upstream'); }
+  }), /FRIEREN_NEURAL_NOT_CONFIGURED/);
+  assert.equal(fallbackCalled, false);
+});
+
+test('Poğaça Frieren keeps the existing free Groq path while Neural quality approval is absent', async () => {
+  let requestedUrl;
+  const answer = await generateFrierenReply({
+    env: { GROQ_API_KEY: 'test-key', FRIEREN_NEURAL_API_URL: 'https://neural.example.test' },
+    userMessage: 'Merhaba',
+    fetchImpl: async url => {
+      requestedUrl = url;
+      return { ok: true, json: async () => ({ choices: [{ message: { content: 'Merhaba.' } }] }) };
+    }
+  });
+  assert.equal(requestedUrl, 'https://api.groq.com/openai/v1/chat/completions');
+  assert.equal(answer, 'Merhaba.');
 });
