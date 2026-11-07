@@ -7,6 +7,7 @@ import {
   updateGuardianRepairStatus,
 } from './store.js';
 import { redactGuardianText } from './core.js';
+import { collectCodeContext } from '../ai-agent/code-context.js';
 
 export { getGuardianProposalFingerprint };
 
@@ -193,12 +194,12 @@ async function persistDispatchedState(store, db, jobId, workflowUrl) {
   return saved === true;
 }
 
-function getReviewEndpoint(env) {
-  const base = String(env.FRIEREN_AI_PUBLIC_URL || '').trim();
-  if (!base) throw new Error('FRIEREN_AI_SERVICE_NOT_CONFIGURED');
+export function getNeuralGuardianEndpoint(env = process.env) {
+  const base = String(env.FRIEREN_NEURAL_API_URL || '').trim();
+  if (!base) throw new Error('FRIEREN_NEURAL_NOT_CONFIGURED');
   const parsed = new URL(base);
   if (parsed.protocol !== 'https:' || parsed.username || parsed.password) {
-    throw new Error('INVALID_FRIEREN_AI_PUBLIC_URL');
+    throw new Error('INVALID_FRIEREN_NEURAL_API_URL');
   }
   return new URL('/internal/guardian-review', parsed).toString();
 }
@@ -214,6 +215,7 @@ export async function processGuardianIncident({
     reserveGuardianRepairDispatch,
     finishGuardianRepairDispatch,
   },
+  collectContext = collectCodeContext,
   actorId = 'guardian-auto',
 } = {}) {
   if (!db || !incident || !Number.isSafeInteger(Number(incident.id)) || Number(incident.id) <= 0) {
@@ -235,8 +237,14 @@ export async function processGuardianIncident({
     return { status: 'emergency_stop' };
   }
 
-  const bridgeSecret = String(env.FRIEREN_AI_BRIDGE_SECRET || env.FRIEREN_BRIDGE_SECRET || '').trim();
-  if (bridgeSecret.length < 32) return { status: 'not_configured', reason: 'GUARDIAN_BRIDGE_NOT_CONFIGURED' };
+  const apiToken = String(env.FRIEREN_NEURAL_API_TOKEN || '').trim();
+  if (env.FRIEREN_NEURAL_QUALITY_APPROVED !== '1' || env.FRIEREN_NEURAL_GUARDIAN_ENABLED !== '1') {
+    return { status: 'not_configured', reason: 'FRIEREN_NEURAL_QUALITY_GATE_CLOSED' };
+  }
+  if (apiToken.length < 32) return { status: 'not_configured', reason: 'FRIEREN_NEURAL_API_TOKEN_NOT_CONFIGURED' };
+  let reviewEndpoint;
+  try { reviewEndpoint = getNeuralGuardianEndpoint(env); }
+  catch (error) { return { status: 'not_configured', reason: safeErrorCode(error) }; }
 
   let job;
   try {
@@ -258,11 +266,23 @@ export async function processGuardianIncident({
 
   let review;
   try {
-    const response = await fetchImpl(getReviewEndpoint(env), {
+    const sourceContext = await collectContext({
+      rootDir: process.cwd(),
+      question: [incident.system, incident.code, incident.title, incident.summary,
+        ...(Array.isArray(incident.evidence) ? incident.evidence.map(item => [item?.file, item?.message].filter(Boolean).join(' ')) : [])].join(' '),
+      sourceCommitSha: env.GITHUB_SHA || null,
+      budget: 5_000,
+    });
+    if (!sourceContext || typeof sourceContext.text !== 'string' || !sourceContext.text.trim()
+        || !Array.isArray(sourceContext.files) || !sourceContext.files.length
+        || !/^[a-f0-9]{64}$/i.test(String(sourceContext.contextHash || ''))) {
+      throw new Error('GUARDIAN_SOURCE_CONTEXT_UNAVAILABLE');
+    }
+    const response = await fetchImpl(reviewEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + bridgeSecret,
+        Authorization: 'Bearer ' + apiToken,
       },
       body: JSON.stringify({
         incident: {
@@ -272,8 +292,12 @@ export async function processGuardianIncident({
           summary: incident.summary,
           evidence: incident.evidence,
         },
+        source_context: sourceContext.text,
+        source_context_files: sourceContext.files.slice(0, 12),
+        source_context_hash: sourceContext.contextHash,
+        source_commit_sha: sourceContext.sourceCommitSha || undefined,
       }),
-      signal: AbortSignal.timeout(60_000),
+      signal: AbortSignal.timeout(90_000),
     });
     review = await response.json().catch(() => ({}));
     if (!response.ok) {
