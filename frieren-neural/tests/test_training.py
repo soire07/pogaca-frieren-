@@ -431,3 +431,52 @@ def test_valid_batch_starts_rejects_windows_without_assistant_targets():
 
     with pytest.raises(ValueError, match="no assistant targets"):
         _valid_batch_starts(torch.zeros(12, dtype=torch.bool), 4)
+
+
+def test_warm_start_candidate_uses_parent_weights_without_overwriting_parent(tmp_path: Path):
+    import hashlib
+
+    from frieren_neural.training import load_checkpoint
+
+    corpus = ["Kullanıcı: Frieren kimdir?\nAsistan: Bir büyücüdür. " * 12]
+    heldout = ["Kullanıcı: Fern kimdir?\nAsistan: Bir büyücüdür. " * 12]
+    baseline = tmp_path / "baseline.pt"
+    config = TrainingConfig(
+        max_steps=2, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        learning_rate=1e-3, validation_fraction=0.2, seed=41,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0, tokenizer_vocab_size=280,
+    )
+    train_model(corpus, baseline, config, device="cpu")
+    baseline_sha = hashlib.sha256(baseline.read_bytes()).hexdigest()
+
+    from frieren_neural.evolution import run_candidate_search
+    report = run_candidate_search(
+        corpus, heldout, baseline, tmp_path / "candidates",
+        candidate_steps=1, heldout_batches=1, learning_rate_factors=(1.0,), device="cpu",
+    )
+
+    assert hashlib.sha256(baseline.read_bytes()).hexdigest() == baseline_sha
+    assert report["baseline"]["checkpoint_sha256"] == baseline_sha
+    assert report["promotion"]["automatic_promotion"] is False
+    assert report["promotion"]["human_review_required"] is True
+    candidate = tmp_path / "candidates" / "candidate-01-lr-1.pt"
+    assert candidate.is_file()
+    _, _, metadata = load_checkpoint(candidate, device="cpu")
+    assert metadata["parent_checkpoint_sha256"] == baseline_sha
+    assert metadata["parent_checkpoint_step"] == 2
+    assert metadata["step"] == 1
+
+
+def test_warm_start_rejects_different_training_corpus(tmp_path: Path):
+    corpus = ["Frieren studies magic. " * 30]
+    checkpoint = tmp_path / "parent.pt"
+    config = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0,
+    )
+    train_model(corpus, checkpoint, config, device="cpu")
+    with pytest.raises(ValueError, match="Warm-start checkpoint corpus/model/training settings"):
+        train_model(
+            ["Fern studies spells. " * 30], tmp_path / "candidate.pt", config,
+            initialize_from=checkpoint, device="cpu",
+        )
