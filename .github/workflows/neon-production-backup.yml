@@ -64,6 +64,7 @@ jobs:
       - name: Restore into an isolated temporary PostgreSQL instance
         run: |
           set -euo pipefail
+          (cd backup && sha256sum -c SHA256SUMS)
           container="frieren-neon-restore-${GITHUB_RUN_ID}"
           cleanup() {
             docker rm -f "$container" >/dev/null 2>&1 || true
