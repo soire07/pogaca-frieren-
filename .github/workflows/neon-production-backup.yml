@@ -124,9 +124,9 @@ jobs:
           dump_file="$(find backup -maxdepth 1 -type f -name '*.dump' -print -quit)"
           test -n "$dump_file"
           encrypted_file="${dump_file}.enc"
-          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 \\
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 \
             -pass env:DATABASE_URL -in "$dump_file" -out "$encrypted_file"
-          openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 \\
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 \
             -pass env:DATABASE_URL -in "$encrypted_file" -out "${dump_file}.verify"
           cmp "$dump_file" "${dump_file}.verify"
           rm -f "$dump_file" "${dump_file}.verify"
