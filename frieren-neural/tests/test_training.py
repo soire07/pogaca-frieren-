@@ -174,7 +174,7 @@ def test_licensed_corpus_hashes_exact_file_bytes_and_rejects_tampering(tmp_path:
 
     corpus_dir = tmp_path / "byte-exact"
     corpus_dir.mkdir()
-    raw = "Frieren studies magic.\\r\\n".encode("utf-8")
+    raw = "Frieren studies magic.\r\n".encode("utf-8")
     (corpus_dir / "source.txt").write_bytes(raw)
     manifest = {
         "schema_version": 1,
