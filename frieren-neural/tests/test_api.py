@@ -718,7 +718,7 @@ def test_live_endpoint_does_not_load_model_or_acquire_generation_capacity(api_cl
 
 
 def _guardian_review_payload():
-    context = "FILE: guardian/automation.js\\nexport async function reviewIncident() { return true; }"
+    context = "FILE: guardian/automation.js\nexport async function reviewIncident() { return true; }"
     return {
         "incident": {
             "system": "pogaca_frieren",
@@ -761,7 +761,7 @@ def test_guardian_review_returns_only_a_human_reviewed_proposal_when_enabled(api
         "confidence": "medium",
         "affectedFiles": ["guardian/automation.js"],
         "suggestedFix": "Add a bounded timeout.",
-        "proposedPatch": "diff --git a/guardian/automation.js b/guardian/automation.js\\n--- a/guardian/automation.js\\n+++ b/guardian/automation.js\\n@@ -1 +1 @@\\n-old\\n+new",
+        "proposedPatch": "diff --git a/guardian/automation.js b/guardian/automation.js\n--- a/guardian/automation.js\n+++ b/guardian/automation.js\n@@ -1 +1 @@\n-old\n+new",
         "tests": ["Guardian timeout regression test"],
         "risks": ["Cancellation may not stop the upstream operation."],
     }
