@@ -7,6 +7,8 @@ on:
     paths:
       - ".github/workflows/frieren-neural-test-api-smoke.yml"
       - "frieren-neural/frieren_neural/api.py"
+      - "frieren-neural/frieren_neural/knowledge.py"
+      - "frieren-neural/migrations/003_verified_knowledge.sql"
       - "frieren-neural/Dockerfile"
       - "frieren-neural/tests/test_serving_container_dependencies.py"
   pull_request:
@@ -15,6 +17,8 @@ on:
     paths:
       - ".github/workflows/frieren-neural-test-api-smoke.yml"
       - "frieren-neural/frieren_neural/api.py"
+      - "frieren-neural/frieren_neural/knowledge.py"
+      - "frieren-neural/migrations/003_verified_knowledge.sql"
       - "frieren-neural/Dockerfile"
       - "frieren-neural/tests/test_serving_container_dependencies.py"
 
@@ -60,3 +64,23 @@ jobs:
           test "$insights_status" = "401"
           echo "LEARNING_SIGNAL_ROUTE_AUTH=PASS"
           echo "LEARNING_INSIGHTS_ROUTE_AUTH=PASS"
+
+
+      - name: Check curated knowledge endpoints are protected
+        env:
+          NEURAL_TEST_URL: https://frieren-neural-test-1unz.onrender.com
+        run: |
+          set -euo pipefail
+          candidate='{"title":"Python tuple semantics","content":"A tuple is an immutable sequence in Python and preserves insertion order.","source_title":"Python language reference","source_excerpt":"The tuple type is an immutable sequence type that stores an ordered collection of objects.","source_url":"https://docs.python.org/3/library/stdtypes.html#tuples","source_revision":"v3.14","license":"CC BY 4.0"}'
+          review='{"decision":"approve","reviewer_token":"smoke-test-reviewer-token-with-more-than-32-characters"}'
+          create_status="$(curl --silent --output /tmp/knowledge-create-response --write-out '%{http_code}' --connect-timeout 10 --max-time 20 -X POST "$NEURAL_TEST_URL/learning/knowledge/candidates" -H 'Content-Type: application/json' --data "$candidate")"
+          list_status="$(curl --silent --output /tmp/knowledge-list-response --write-out '%{http_code}' --connect-timeout 10 --max-time 20 "$NEURAL_TEST_URL/learning/knowledge/candidates")"
+          search_status="$(curl --silent --output /tmp/knowledge-search-response --write-out '%{http_code}' --connect-timeout 10 --max-time 20 "$NEURAL_TEST_URL/learning/knowledge/search?q=tuple")"
+          review_status="$(curl --silent --output /tmp/knowledge-review-response --write-out '%{http_code}' --connect-timeout 10 --max-time 20 -X POST "$NEURAL_TEST_URL/learning/knowledge/candidates/123e4567-e89b-12d3-a456-426614174000/reviews" -H 'Content-Type: application/json' --data "$review")"
+          test "$create_status" = "401"
+          test "$list_status" = "401"
+          test "$search_status" = "401"
+          test "$review_status" = "401"
+          echo "KNOWLEDGE_CANDIDATE_AUTH=PASS"
+          echo "KNOWLEDGE_REVIEW_AUTH=PASS"
+          echo "KNOWLEDGE_SEARCH_AUTH=PASS"
