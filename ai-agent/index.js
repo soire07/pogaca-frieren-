@@ -905,14 +905,14 @@ client.on(Events.InteractionCreate, async interaction => {
         'Test önerileri: ' + (review.tests || []).slice(0, 3).join('; ').slice(0, 500),
         'Onarım: BAŞLATILMADI',
         'Dosya değişikliği / GitHub dispatch: YOK',
-      ].join('\\n');
+      ].join('\n');
       await interaction.editReply(report.slice(0, 1900));
       console.log('Guardian ' + providerLabel + ' self-test succeeded; proposal only, no repair dispatched.');
     } catch (error) {
       const providerLabel = neuralRequested ? 'Frieren Neural' : 'Groq';
       const safeMessage = redactSecrets(error?.message || 'GUARDIAN_PROVIDER_SELF_TEST_FAILED').slice(0, 300);
       console.error('Guardian ' + providerLabel + ' self-test failed:', safeMessage);
-      await interaction.editReply('**Guardian–' + providerLabel + ' bağlantı testi başarısız**\\n' + safeMessage + '\\nOnarım veya GitHub işlemi başlatılmadı.').catch(() => {});
+      await interaction.editReply('**Guardian–' + providerLabel + ' bağlantı testi başarısız**\n' + safeMessage + '\nOnarım veya GitHub işlemi başlatılmadı.').catch(() => {});
     } finally {
       guardianReviewInProgress = false;
     }
