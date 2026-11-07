@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 
-from .training import TrainingConfig, load_licensed_corpus, train_model
+from .training import TrainingConfig, load_corpus_manifest_metadata, load_licensed_corpus, train_model
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -43,7 +43,11 @@ def main() -> None:
         seed=args.seed,
     )
     documents = load_licensed_corpus(args.data)
-    metrics = train_model(documents, args.checkpoint, config, resume=args.resume, device="cpu")
+    training_dataset_metadata = load_corpus_manifest_metadata(args.data, required_split="train")
+    metrics = train_model(
+        documents, args.checkpoint, config, resume=args.resume, device="cpu",
+        training_dataset_metadata=training_dataset_metadata,
+    )
     print(json.dumps(metrics, ensure_ascii=False, indent=2))
 
 
