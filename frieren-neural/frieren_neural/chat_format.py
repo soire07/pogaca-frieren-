@@ -11,3 +11,19 @@ def format_benchmark_prompt(prompt: str) -> str:
     if normalized.endswith("Asistan:"):
         return normalized
     return f"Kullanıcı: {normalized}\nAsistan:"
+
+
+def extract_answer(payload: dict, prompt: str) -> str | None:
+    """Extract only generated text from the shared Neural API response contract."""
+    if not isinstance(payload, dict) or not isinstance(prompt, str):
+        return None
+    completion = payload.get("completion")
+    if isinstance(completion, str) and completion.strip():
+        return completion.strip()
+    text = payload.get("text")
+    if not isinstance(text, str):
+        return None
+    answer = text.strip()
+    if prompt and answer.startswith(prompt):
+        answer = answer[len(prompt):].strip()
+    return answer or None
