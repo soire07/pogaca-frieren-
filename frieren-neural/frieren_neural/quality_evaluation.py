@@ -195,9 +195,18 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
             reasons.append("training_provenance_missing")
         if (not isinstance(heldout_metrics,dict) or not isinstance(heldout_metrics.get("loss"),(int,float))
                 or isinstance(heldout_metrics.get("loss"),bool) or not math.isfinite(heldout_metrics["loss"])
+                or heldout_metrics["loss"] < 0
                 or not isinstance(heldout_metrics.get("perplexity"),(int,float))
                 or isinstance(heldout_metrics.get("perplexity"),bool) or not math.isfinite(heldout_metrics["perplexity"])
-                or heldout_metrics["perplexity"] < 1):
+                or heldout_metrics["perplexity"] < 1
+                or not isinstance(heldout_metrics.get("dataset_sha256"), str)
+                or not re.fullmatch(r"[a-f0-9]{64}", heldout_metrics.get("dataset_sha256", ""))
+                or isinstance(heldout_metrics.get("sample_count"), bool)
+                or not isinstance(heldout_metrics.get("sample_count"), int)
+                or heldout_metrics["sample_count"] < 1
+                or heldout_metrics.get("split") != "heldout"
+                or not isinstance(heldout_metrics.get("evaluation_version"), str)
+                or not heldout_metrics["evaluation_version"].strip()):
             reasons.append("held_out_metrics_missing_or_invalid")
         elif (heldout_metrics.get("loss_objective_version") != LOSS_OBJECTIVE_VERSION
               or not isinstance(checkpoint_metadata, dict)
