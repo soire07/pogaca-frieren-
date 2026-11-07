@@ -293,7 +293,9 @@ export function evaluateNeuralQualityGate({
       || !/^[a-f0-9]{64}$/i.test(String(baseline.baseline_checkpoint_sha256 || ''))
       || !Array.isArray(baselineReviewerHashes) || baselineReviewerHashes.length !== 2
       || baselineReviewerHashes.some(value => !/^[a-f0-9]{64}$/i.test(String(value)))
-      || baselineReviewerHashes[0] === baselineReviewerHashes[1]) {
+      || baselineReviewerHashes[0] === baselineReviewerHashes[1]
+      || baseline.baseline_loss_objective_version !== heldout.loss_objective_version
+      || baseline.baseline_loss_objective_version !== heldout.checkpoint_training_loss_objective_version) {
     reasons.push('NEURAL_COMPARABLE_IMPROVED_BASELINE_REQUIRED');
   }
   if (!NEURAL_DIMENSIONS.every(key => finiteNumber(averages[key]) && averages[key] >= 3.2)) {
