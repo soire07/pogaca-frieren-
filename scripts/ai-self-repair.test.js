@@ -357,7 +357,7 @@ test('repair patch accepts only the exact validated file set', () => {
 test('repair patch does not erase concurrent changes while rolling back its own patch', () => {
   const calls = [];
   let patchApplied = false;
-  const unrelatedChange = true;
+  let unrelatedChange = false;
   const execFile = (args) => {
     calls.push(args);
     if (args[0] === 'status' && args[1] === '--porcelain') {
@@ -366,7 +366,7 @@ test('repair patch does not erase concurrent changes while rolling back its own 
     }
     if (args[0] === 'apply' && args[1] === '--check') return '';
     if (args[0] === 'apply' && args[1] === '--') { patchApplied = true; return ''; }
-    if (args[0] === 'status' && args[1] === '--short') return ' M rpg-mechanics.js\\n M unrelated.js\\n';
+    if (args[0] === 'status' && args[1] === '--short') { unrelatedChange = true; return ' M rpg-mechanics.js\\n M unrelated.js\\n'; }
     if (args[0] === 'apply' && args[1] === '--reverse') { patchApplied = false; return ''; }
     return '';
   };
@@ -415,10 +415,9 @@ test('real git apply rolls back a patch when post-apply whitespace validation fa
     git(['config', 'user.name', 'Frieren Neural Tests']);
     git(['add', 'rpg-mechanics.js']);
     git(['commit', '-qm', 'baseline']);
-    const badWhitespacePatch = validPatch.replace(
-      '+const ready = true;',
-      '+const ready = true; ',
-    );
+    const badWhitespacePatch = validPatch
+      .replace('@@ -1 +1 @@', '@@ -1 +1,2 @@')
+      .replace('+const ready = true;', '+const ready = true; \n+const extra = 1;');
     assert.throws(() => applyRepairPatch(badWhitespacePatch, { execFile: git }));
     assert.equal(
       await readFile(path.join(root, 'rpg-mechanics.js'), 'utf8'),
