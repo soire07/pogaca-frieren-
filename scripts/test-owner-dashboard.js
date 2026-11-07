@@ -1099,7 +1099,11 @@ test('synthetic Frieren AI → authenticated Owner Panel review → explicit own
     assert.equal(state.job.result.status, 'proposal_only');
     assert.equal(state.job.repair_approved_by, null);
     assert.equal(state.githubRequests.length, 1);
-    assert.match(state.githubRequests[0].url, /frieren-ai\.synthetic\.invalid\/internal\/guardian-review$/);
+    assert.match(state.githubRequests[0].url, /frieren-neural\.synthetic\.invalid\/internal\/guardian-review$/);
+    const neuralReviewRequest = JSON.parse(state.githubRequests[0].body);
+    assert.ok(neuralReviewRequest.source_context.length > 0);
+    assert.match(neuralReviewRequest.source_context_hash, /^[a-f0-9]{64}$/);
+    assert.ok(neuralReviewRequest.source_context_files.includes('frieren-neural/frieren_neural/api.py'));
 
     const approval = await runOwnerPost({
       action: 'guardian-create-pr', csrf: 'session', confirm: 'yes', incidentId: incident.id,
