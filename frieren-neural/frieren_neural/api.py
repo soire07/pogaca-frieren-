@@ -476,7 +476,7 @@ def submit_learning_signals(payload: LearningSignalsRequest, authorization: Anno
 
 
 @app.get("/learning/insights")
-def learning_insights(authorization: Annotated[str | None, Header()] = None) -> dict[str, list[dict[str, str | int]]]:
+def learning_insights(authorization: Annotated[str | None, Header()] = None) -> dict[str, list[dict[str, object]]]:
     _authenticate(authorization)
     return {"signals": _learning_insights()}
 
@@ -504,7 +504,7 @@ def get_knowledge_candidates(
     status: str | None = None,
     limit: int = 50,
     authorization: Annotated[str | None, Header()] = None,
-) -> dict[str, list[dict[str, str | int]]]:
+) -> dict[str, list[dict[str, object]]]:
     _authenticate(authorization)
     from .knowledge import list_knowledge_candidates
 
@@ -549,7 +549,7 @@ def search_knowledge(
     q: str,
     limit: int = 5,
     authorization: Annotated[str | None, Header()] = None,
-) -> dict[str, list[dict[str, str]]]:
+) -> dict[str, list[dict[str, object]]]:
     _authenticate(authorization)
     from .knowledge import search_verified_knowledge
 

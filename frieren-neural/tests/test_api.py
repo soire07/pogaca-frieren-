@@ -609,18 +609,29 @@ def test_learning_signal_postgres_migration_deduplication_retention_and_aggregat
 
     shared_migration = Path(__file__).parents[1] / "migrations" / "001_shared_admission.sql"
     learning_migration = Path(__file__).parents[1] / "migrations" / "002_learning_signals.sql"
+    knowledge_migration = Path(__file__).parents[1] / "migrations" / "003_verified_knowledge.sql"
     shared_sql = shared_migration.read_text(encoding="utf-8")
     learning_sql = learning_migration.read_text(encoding="utf-8")
+    knowledge_sql = knowledge_migration.read_text(encoding="utf-8")
     with psycopg.connect(database_url) as connection:
+        connection.execute("DROP TABLE IF EXISTS neural_knowledge_entries CASCADE")
+        connection.execute("DROP TABLE IF EXISTS neural_knowledge_reviews CASCADE")
+        connection.execute("DROP TABLE IF EXISTS neural_knowledge_candidates CASCADE")
         connection.execute("DROP TABLE IF EXISTS neural_learning_signals")
         connection.execute("DROP TABLE IF EXISTS neural_login_attempts")
         connection.execute(shared_sql)
-        connection.execute(shared_sql)  # Both migrations must be safe to reapply.
+        connection.execute(shared_sql)  # Migrations must be safe to reapply.
         connection.execute(learning_sql)
         connection.execute(learning_sql)
+        connection.execute(knowledge_sql)
+        connection.execute(knowledge_sql)
         assert connection.execute("SELECT to_regclass('public.neural_login_attempts')").fetchone()[0] == "neural_login_attempts"
         assert connection.execute("SELECT to_regclass('public.neural_learning_signals')").fetchone()[0] == "neural_learning_signals"
+        assert connection.execute("SELECT to_regclass('public.neural_knowledge_candidates')").fetchone()[0] == "neural_knowledge_candidates"
+        assert connection.execute("SELECT to_regclass('public.neural_knowledge_reviews')").fetchone()[0] == "neural_knowledge_reviews"
+        assert connection.execute("SELECT to_regclass('public.neural_knowledge_entries')").fetchone()[0] == "neural_knowledge_entries"
         connection.execute("TRUNCATE neural_learning_signals, neural_login_attempts")
+        connection.execute("TRUNCATE neural_knowledge_entries, neural_knowledge_reviews, neural_knowledge_candidates CASCADE")
 
     monkeypatch.setenv("FRIEREN_API_TOKEN", "ci-neural-test-token-with-more-than-32-characters")
     first_user = api.LearningSignalsRequest(
@@ -700,6 +711,107 @@ def test_learning_signal_postgres_migration_deduplication_retention_and_aggregat
     assert api._learning_insights() == [
         {"dimension": "conversation_consistency", "signal_type": "repeated_question", "occurrences": 1}
     ]
+
+    # Curated knowledge is separate from private chat signals and cannot be
+    # searched until two distinct reviewer tokens approve the same candidate.
+    candidate_payload = {
+        "title": "Python tuple semantics",
+        "content": "A tuple is an immutable sequence in Python and preserves insertion order.",
+        "source_title": "Python language reference",
+        "source_excerpt": "The tuple type is an immutable sequence type that stores an ordered collection of objects.",
+        "source_url": "https://docs.python.org/3/library/stdtypes.html#tuples",
+        "source_revision": "v3.14",
+        "license": "CC BY 4.0",
+    }
+    assert api_client.post("/learning/knowledge/candidates", json=candidate_payload).status_code == 401
+    created = api_client.post("/learning/knowledge/candidates", headers=headers, json=candidate_payload)
+    assert created.status_code == 200
+    candidate_id = created.json()["candidate_id"]
+    assert created.json()["status"] == "pending_review"
+
+    pending = api_client.get("/learning/knowledge/candidates", headers=headers)
+    assert pending.status_code == 200
+    assert pending.json()["candidates"][0]["candidate_id"] == candidate_id
+    assert pending.json()["candidates"][0]["approval_count"] == 0
+    assert api_client.get("/learning/knowledge/search", params={"q": "tuple immutable"}, headers=headers).json()["entries"] == []
+
+    reviewer_one = "reviewer-one-private-token-12345678901234567890"
+    reviewer_two = "reviewer-two-private-token-12345678901234567890"
+    first_review = api_client.post(
+        f"/learning/knowledge/candidates/{candidate_id}/reviews",
+        headers=headers, json={"decision": "approve", "reviewer_token": reviewer_one},
+    )
+    assert first_review.status_code == 200
+    assert first_review.json() == {"candidate_id": candidate_id, "status": "pending_review", "approval_count": 1}
+    duplicate_review = api_client.post(
+        f"/learning/knowledge/candidates/{candidate_id}/reviews",
+        headers=headers, json={"decision": "approve", "reviewer_token": reviewer_one},
+    )
+    assert duplicate_review.status_code == 409
+    second_review = api_client.post(
+        f"/learning/knowledge/candidates/{candidate_id}/reviews",
+        headers=headers, json={"decision": "approve", "reviewer_token": reviewer_two},
+    )
+    assert second_review.status_code == 200
+    assert second_review.json()["status"] == "promoted"
+    assert second_review.json()["approval_count"] == 2
+
+    verified = api_client.get(
+        "/learning/knowledge/search", params={"q": "tuple immutable sequence"}, headers=headers
+    )
+    assert verified.status_code == 200
+    assert len(verified.json()["entries"]) == 1
+    entry = verified.json()["entries"][0]
+    assert entry["title"] == "Python tuple semantics"
+    assert entry["license"] == "CC-BY-4.0"
+    assert entry["source_url"] == candidate_payload["source_url"]
+
+    with psycopg.connect(database_url) as connection:
+        reviewers = connection.execute(
+            "SELECT reviewer_identity_hash FROM neural_knowledge_reviews WHERE candidate_id=%s ORDER BY reviewer_identity_hash",
+            (candidate_id,),
+        ).fetchall()
+        approved_by = connection.execute(
+            "SELECT approved_by_hashes FROM neural_knowledge_entries WHERE candidate_id=%s",
+            (candidate_id,),
+        ).fetchone()[0]
+        assert len(reviewers) == 2
+        assert len({row[0] for row in reviewers}) == 2
+        assert len(approved_by) == 2 and approved_by[0] != approved_by[1]
+        serialized_reviewers = repr(reviewers)
+        assert reviewer_one not in serialized_reviewers
+        assert reviewer_two not in serialized_reviewers
+
+    invalid_license = api_client.post(
+        "/learning/knowledge/candidates", headers=headers,
+        json={**candidate_payload, "license": "CC-BY-NC-4.0"},
+    )
+    assert invalid_license.status_code == 422
+    private_source = api_client.post(
+        "/learning/knowledge/candidates", headers=headers,
+        json={**candidate_payload, "source_excerpt": "Contact alice@example.com for the private source."},
+    )
+    assert private_source.status_code == 422
+    non_https = api_client.post(
+        "/learning/knowledge/candidates", headers=headers,
+        json={**candidate_payload, "source_url": "http://example.com/source"},
+    )
+    assert non_https.status_code == 422
+
+    rejected = api_client.post(
+        "/learning/knowledge/candidates", headers=headers,
+        json={**candidate_payload, "title": "Python mutable list semantics"},
+    )
+    assert rejected.status_code == 200
+    rejected_id = rejected.json()["candidate_id"]
+    rejection = api_client.post(
+        f"/learning/knowledge/candidates/{rejected_id}/reviews",
+        headers=headers, json={"decision": "reject", "reviewer_token": "reviewer-reject-private-token-1234567890"},
+    )
+    assert rejection.status_code == 200 and rejection.json()["status"] == "rejected"
+    assert api_client.get(
+        "/learning/knowledge/search", params={"q": "mutable list semantics"}, headers=headers
+    ).json()["entries"] == []
 
 
 
