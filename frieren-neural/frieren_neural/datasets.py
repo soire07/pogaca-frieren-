@@ -122,8 +122,19 @@ def prepare_turkish_daily_dialogues(
         raise ValueError(f"Expected {expected_records} {split} dialogues; received {len(documents)}.")
 
     text_content = "\n\n---\n\n".join(documents) + "\n"
+    processed_sha256 = hashlib.sha256(text_content.encode("utf-8")).hexdigest()
     manifest = {
         "schema_version": 1,
+        "dataset": {
+            "id": "3nesdeniz/turkish-daily-dialogues-5k",
+            "revision": DATASET_COMMIT,
+            "version": DATASET_VERSION,
+            "license": "CC BY 4.0",
+            "split": split,
+            "dialogues": len(documents),
+            "source_sha256": digest,
+            "processed_sha256": processed_sha256,
+        },
         "documents": [{
             "path": f"turkish-daily-dialogues-{split}.txt",
             "source": (
@@ -135,6 +146,7 @@ def prepare_turkish_daily_dialogues(
                 "Training use permitted by the dataset card; attribution required to Enes Deniz, "
                 "Turkish Daily Dialogues 5K v1.0.0. Source SHA-256: " + digest
             ),
+            "sha256": processed_sha256,
         }],
     }
     manifest_content = json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
