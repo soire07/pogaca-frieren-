@@ -70,7 +70,7 @@ function getServiceApiToken(serviceKey, override) {
 export async function getRenderBotServiceStatuses({
   fetchImpl = globalThis.fetch,
   apiKey,
-  services = RENDER_BOT_SERVICES
+  services = resolveRenderBotServices()
 } = {}) {
   const results = await Promise.all(Object.entries(services).map(async ([key, service]) => {
     const token = getServiceApiToken(key, apiKey);
