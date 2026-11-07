@@ -232,15 +232,16 @@ export function checkRepairPatch(patch, { execFile = runGit, task = '', incident
 }
 
 export function applyRepairPatch(patch, { execFile = runGit, task = '', incidentId = '' } = {}) {
-  const expectedFiles = validatePatchPaths(patch, { task, incidentId }).sort();
+  const normalizedPatch = extractUnifiedDiff(patch);
+  const expectedFiles = validatePatchPaths(normalizedPatch, { task, incidentId }).sort();
   const before = execFile(['status', '--porcelain', '--untracked-files=all'], { encoding: 'utf8' });
   if (String(before || '').trim()) throw new Error('REPAIR_WORKTREE_NOT_CLEAN');
-  execFile(['apply', '--check', '--'], { input: patch, stdio: ['pipe', 'pipe', 'pipe'] });
-  execFile(['apply', '--'], { input: patch, stdio: ['pipe', 'pipe', 'pipe'] });
+  execFile(['apply', '--check', '--'], { input: normalizedPatch, stdio: ['pipe', 'pipe', 'pipe'] });
+  execFile(['apply', '--'], { input: normalizedPatch, stdio: ['pipe', 'pipe', 'pipe'] });
   try {
     execFile(['diff', '--check'], { stdio: ['ignore', 'pipe', 'pipe'] });
     const changed = execFile(['status', '--short', '--untracked-files=all'], { encoding: 'utf8' })
-      .split('\n').filter(Boolean).map(line => line.slice(3).trim()).sort();
+      .split('\\n').filter(Boolean).map(line => line.slice(3).trim()).sort();
     if (!changed.length || changed.length > MAX_PATCH_FILES || changed.some(path => !isAllowedRepairPath(path, { allowProtectedIndexJs: isApprovedIndexRepairTask(task, incidentId) }))) {
       throw new Error('REPAIR_WORKTREE_VALIDATION_FAILED');
     }
@@ -250,7 +251,7 @@ export function applyRepairPatch(patch, { execFile = runGit, task = '', incident
     return changed;
   } catch (validationError) {
     try {
-      execFile(['apply', '--reverse', '--'], { input: patch, stdio: ['pipe', 'pipe', 'pipe'] });
+      execFile(['apply', '--reverse', '--'], { input: normalizedPatch, stdio: ['pipe', 'pipe', 'pipe'] });
       const remaining = execFile(['status', '--porcelain', '--untracked-files=all'], { encoding: 'utf8' });
       if (String(remaining || '').trim()) throw new Error('REPAIR_ROLLBACK_NOT_CLEAN');
     } catch {
