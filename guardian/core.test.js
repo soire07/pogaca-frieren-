@@ -152,8 +152,8 @@ function readyNeuralReport() {
     source_commit_sha: 'd'.repeat(40),
     outputs: Array.from({ length: 24 }, (_, index) => ({ id: 'TR-' + String(index + 1).padStart(3, '0'), output: 'Yanıt ' + index })),
     blocking_reasons: [],
-    human_review: { completed: true, reviewers_required: 2 },
-    review_template: { reviewers: ['reviewer_1', 'reviewer_2'] },
+    human_review: { completed: true, reviewers_required: 2, reviewer_identity_hashes: ['a'.repeat(64), 'b'.repeat(64)] },
+    review_template: { reviewers: ['a'.repeat(64), 'b'.repeat(64)] },
     checkpoint_metadata: { loss_objective_version: 2 },
     training_provenance: { manifest_sha256: 'b'.repeat(64), licenses: ['Apache-2.0'] },
     heldout_metrics: {
@@ -275,7 +275,8 @@ test('Neural Guardian requires the exact ordered benchmark IDs and objective pro
 
 test('Neural Guardian rejects incomplete reviewer identities and invalid training provenance', () => {
   const report = readyNeuralReport();
-  report.review_template.reviewers = ['reviewer_1', 'reviewer_1'];
+  report.review_template.reviewers = ['a'.repeat(64), 'a'.repeat(64)];
+  report.human_review.reviewer_identity_hashes = ['a'.repeat(64), 'a'.repeat(64)];
   report.training_provenance.manifest_sha256 = 'not-a-sha256';
   const result = evaluateNeuralQualityGate({ qualityReport: report });
   assert.equal(result.canStage, false);
