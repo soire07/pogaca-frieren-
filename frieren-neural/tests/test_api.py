@@ -1,4 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
+import hashlib
+import json
 
 import pytest
 from fastapi.testclient import TestClient
@@ -712,3 +714,81 @@ def test_live_endpoint_does_not_load_model_or_acquire_generation_capacity(api_cl
     response = api_client.get("/live")
     assert response.status_code == 200
     assert response.json() == {"status": "alive", "service": "frieren-neural"}
+
+
+
+def _guardian_review_payload():
+    context = "FILE: guardian/automation.js\\nexport async function reviewIncident() { return true; }"
+    return {
+        "incident": {
+            "system": "pogaca_frieren",
+            "code": "COMMAND_TIMEOUT",
+            "title": "Synthetic timeout",
+            "summary": "A bounded request timed out.",
+            "evidence": [{"file": "guardian/automation.js", "line": 12, "message": "timeout"}],
+        },
+        "source_context": context,
+        "source_context_files": ["guardian/automation.js"],
+        "source_context_hash": hashlib.sha256(context.encode("utf-8")).hexdigest(),
+        "source_commit_sha": "a" * 40,
+    }
+
+
+def test_guardian_review_requires_authentication_and_both_quality_gates(api_client, monkeypatch):
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "n" * 40)
+    payload = _guardian_review_payload()
+    response = api_client.post("/internal/guardian-review", json=payload)
+    assert response.status_code == 401
+
+    response = api_client.post(
+        "/internal/guardian-review", json=payload,
+        headers={"Authorization": "Bearer " + "n" * 40},
+    )
+    assert response.status_code == 503
+    assert "quality gate" in response.json()["detail"].lower()
+
+
+def test_guardian_review_returns_only_a_human_reviewed_proposal_when_enabled(api_client, monkeypatch):
+    import frieren_neural.api as api
+
+    monkeypatch.delenv("FRIEREN_DATABASE_URL", raising=False)
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "n" * 40)
+    monkeypatch.setenv("FRIEREN_NEURAL_GUARDIAN_ENABLED", "1")
+    monkeypatch.setenv("FRIEREN_NEURAL_QUALITY_APPROVED", "1")
+    payload = _guardian_review_payload()
+    completion = {
+        "rootCause": "The request path has no bounded timeout.",
+        "confidence": "medium",
+        "affectedFiles": ["guardian/automation.js"],
+        "suggestedFix": "Add a bounded timeout.",
+        "proposedPatch": "diff --git a/guardian/automation.js b/guardian/automation.js\\n--- a/guardian/automation.js\\n+++ b/guardian/automation.js\\n@@ -1 +1 @@\\n-old\\n+new",
+        "tests": ["Guardian timeout regression test"],
+        "risks": ["Cancellation may not stop the upstream operation."],
+    }
+    monkeypatch.setattr(api, "_generate_reply", lambda *args, **kwargs: (json.dumps(completion), 0, "test-model"))
+    response = api_client.post(
+        "/internal/guardian-review", json=payload,
+        headers={"Authorization": "Bearer " + "n" * 40},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["status"] == "proposal_only"
+    assert result["applied"] is False
+    assert result["requiresHumanReview"] is True
+    assert result["confidence"] == "medium"
+    assert result["affectedFiles"] == ["guardian/automation.js"]
+    assert result["sourceContextHash"] == payload["source_context_hash"]
+    assert result["sourceCommitSha"] == "a" * 40
+
+
+def test_guardian_review_rejects_tampered_source_context(api_client, monkeypatch):
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "n" * 40)
+    monkeypatch.setenv("FRIEREN_NEURAL_GUARDIAN_ENABLED", "1")
+    monkeypatch.setenv("FRIEREN_NEURAL_QUALITY_APPROVED", "1")
+    payload = _guardian_review_payload()
+    payload["source_context_hash"] = "0" * 64
+    response = api_client.post(
+        "/internal/guardian-review", json=payload,
+        headers={"Authorization": "Bearer " + "n" * 40},
+    )
+    assert response.status_code == 400
