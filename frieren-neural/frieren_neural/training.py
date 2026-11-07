@@ -416,9 +416,11 @@ def train_model(
     config: TrainingConfig | None = None,
     *,
     resume: bool = False,
+    initialize_from: str | Path | None = None,
     device: str | torch.device | None = None,
 ) -> dict[str, float | int | str]:
-    """Train a small GPT model and atomically save a resumable checkpoint."""
+    """Train a small GPT model, optionally warm-starting a separate candidate from a checkpoint."""
+
     settings = config or TrainingConfig()
     if not documents or any(not isinstance(item, str) or not item.strip() for item in documents):
         raise ValueError("documents must contain non-empty strings.")
@@ -469,6 +471,36 @@ def train_model(
     optimizer = torch.optim.AdamW(model.parameters(), lr=settings.learning_rate, weight_decay=settings.weight_decay)
     checkpoint = Path(checkpoint_path)
     start_step = 0
+    parent_checkpoint_sha256: str | None = None
+    parent_checkpoint_step: int | None = None
+
+    if resume and initialize_from is not None:
+        raise ValueError("resume and initialize_from cannot be used together.")
+
+    if initialize_from is not None:
+        parent_path = Path(initialize_from)
+        if not parent_path.is_file():
+            raise FileNotFoundError(f"Warm-start checkpoint not found: {parent_path}")
+        if parent_path.resolve() == checkpoint.resolve():
+            raise ValueError("Candidate checkpoint must not overwrite its parent checkpoint.")
+        parent = torch.load(parent_path, map_location=selected_device, weights_only=True)
+        if (not isinstance(parent, dict) or parent.get("format_version") != 2
+                or parent.get("dialogue_encoding_version") != DIALOGUE_ENCODING_VERSION
+                or parent.get("loss_objective_version") != LOSS_OBJECTIVE_VERSION):
+            raise ValueError("Warm-start checkpoint has an incompatible format or training objective.")
+        parent_config = dict(parent.get("training_config", {}))
+        candidate_config = asdict(settings)
+        for mutable in ("max_steps", "learning_rate"):
+            parent_config.pop(mutable, None)
+            candidate_config.pop(mutable, None)
+        if (parent.get("model_config") != asdict(model_config)
+                or parent.get("tokenizer") != tokenizer.to_dict()
+                or parent.get("corpus_sha256") != corpus_fingerprint
+                or parent_config != candidate_config):
+            raise ValueError("Warm-start checkpoint corpus/model/training settings do not match this candidate.")
+        model.load_state_dict(parent["model_state"])
+        parent_checkpoint_sha256 = hashlib.sha256(parent_path.read_bytes()).hexdigest()
+        parent_checkpoint_step = int(parent["step"])
 
     if resume:
         if not checkpoint.is_file():
@@ -532,6 +564,8 @@ def train_model(
                 "dialogue_encoding_version": DIALOGUE_ENCODING_VERSION,
                 "loss_objective_version": LOSS_OBJECTIVE_VERSION,
                 "step": step,
+                "parent_checkpoint_sha256": parent_checkpoint_sha256,
+                "parent_checkpoint_step": parent_checkpoint_step,
                 "model_config": asdict(model_config),
                 "training_config": asdict(settings),
                 "tokenizer": tokenizer.to_dict(),
@@ -554,6 +588,8 @@ def train_model(
         "device": str(selected_device),
         "loss_objective_version": LOSS_OBJECTIVE_VERSION,
         "training_objective": "assistant_response_tokens_plus_eos",
+        "parent_checkpoint_sha256": parent_checkpoint_sha256 or "",
+        "parent_checkpoint_step": parent_checkpoint_step or 0,
     }
 
 
@@ -597,6 +633,8 @@ def load_checkpoint(
     metadata: dict[str, Any] = {
         "format_version": int(payload["format_version"]),
         "step": int(payload["step"]),
+        "parent_checkpoint_sha256": str(payload.get("parent_checkpoint_sha256") or ""),
+        "parent_checkpoint_step": int(payload.get("parent_checkpoint_step") or 0),
         "corpus_sha256": str(payload["corpus_sha256"]),
         "corpus_content_sha256": str(payload["corpus_content_sha256"]),
         "train_loss": float(payload["train_loss"]),
