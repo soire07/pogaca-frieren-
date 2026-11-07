@@ -433,28 +433,65 @@ def train_model(
     corpus_fingerprint = _corpus_fingerprint(documents)
     corpus_content_fingerprint = _corpus_content_fingerprint(documents)
     train_text, validation_text = split_corpus_text(documents, settings.validation_fraction)
-    # BPE can compress very small/repetitive validation splits below the
-    # context window. Reduce the merge budget deterministically until both
-    # splits retain enough tokens; byte-level fallback is lossless.
-    effective_vocab_size = settings.tokenizer_vocab_size
-    while True:
-        tokenizer = BPETokenizer.train(
-            [train_text], vocab_size=effective_vocab_size,
-            min_frequency=settings.tokenizer_min_frequency
-        )
+    checkpoint = Path(checkpoint_path)
+    if resume and initialize_from is not None:
+        raise ValueError("resume and initialize_from cannot be used together.")
+    source_path = checkpoint if resume else (Path(initialize_from) if initialize_from is not None else None)
+    if resume and not checkpoint.is_file():
+        raise FileNotFoundError(f"Cannot resume; checkpoint not found: {checkpoint}")
+    if initialize_from is not None:
+        if not source_path.is_file():
+            raise FileNotFoundError(f"Warm-start checkpoint not found: {source_path}")
+        if source_path.resolve() == checkpoint.resolve():
+            raise ValueError("Candidate checkpoint must not overwrite its parent checkpoint.")
+
+    source_payload = None
+    if source_path is not None:
+        source_payload = torch.load(source_path, map_location=selected_device, weights_only=True)
+        if (not isinstance(source_payload, dict) or source_payload.get("format_version") != 2
+                or source_payload.get("dialogue_encoding_version") != DIALOGUE_ENCODING_VERSION
+                or source_payload.get("loss_objective_version") != LOSS_OBJECTIVE_VERSION):
+            raise ValueError("Source checkpoint has an incompatible format or training objective.")
+        if source_payload.get("corpus_sha256") != corpus_fingerprint:
+            raise ValueError("Source checkpoint corpus does not match this training run.")
+        saved_training_config = dict(source_payload.get("training_config", {}))
+        current_training_config = asdict(settings)
+        mutable_fields = ("max_steps",) if resume else ("max_steps", "learning_rate")
+        for mutable in mutable_fields:
+            saved_training_config.pop(mutable, None)
+            current_training_config.pop(mutable, None)
+        if saved_training_config != current_training_config:
+            raise ValueError("Source checkpoint training settings do not match this run.")
+        if not isinstance(source_payload.get("tokenizer"), dict):
+            raise ValueError("Source checkpoint is missing its tokenizer.")
+        tokenizer = BPETokenizer.from_dict(source_payload["tokenizer"])
         train_ids, train_loss_mask = encode_dialogue_stream_with_loss_mask(train_text, tokenizer)
         validation_ids, validation_loss_mask = encode_dialogue_stream_with_loss_mask(validation_text, tokenizer)
-        if min(len(train_ids), len(validation_ids)) > settings.block_size:
-            break
-        if effective_vocab_size == BPETokenizer.BASE_VOCAB_SIZE:
-            raise ValueError(
-                "Corpus is too short for the configured block_size, even with byte-level tokenization."
+        if min(len(train_ids), len(validation_ids)) <= settings.block_size:
+            raise ValueError("Source checkpoint tokenizer does not provide enough tokens for this context window.")
+    else:
+        # BPE can compress very small/repetitive validation splits below the
+        # context window. Reduce the merge budget deterministically until both
+        # splits retain enough tokens; byte-level fallback is lossless.
+        effective_vocab_size = settings.tokenizer_vocab_size
+        while True:
+            tokenizer = BPETokenizer.train(
+                [train_text], vocab_size=effective_vocab_size,
+                min_frequency=settings.tokenizer_min_frequency
             )
-        effective_vocab_size = max(
-            BPETokenizer.BASE_VOCAB_SIZE,
-            BPETokenizer.BASE_VOCAB_SIZE
-            + (effective_vocab_size - BPETokenizer.BASE_VOCAB_SIZE) // 2,
-        )
+            train_ids, train_loss_mask = encode_dialogue_stream_with_loss_mask(train_text, tokenizer)
+            validation_ids, validation_loss_mask = encode_dialogue_stream_with_loss_mask(validation_text, tokenizer)
+            if min(len(train_ids), len(validation_ids)) > settings.block_size:
+                break
+            if effective_vocab_size == BPETokenizer.BASE_VOCAB_SIZE:
+                raise ValueError(
+                    "Corpus is too short for the configured block_size, even with byte-level tokenization."
+                )
+            effective_vocab_size = max(
+                BPETokenizer.BASE_VOCAB_SIZE,
+                BPETokenizer.BASE_VOCAB_SIZE
+                + (effective_vocab_size - BPETokenizer.BASE_VOCAB_SIZE) // 2,
+            )
     train_data = torch.tensor(train_ids, dtype=torch.long)
     validation_data = torch.tensor(validation_ids, dtype=torch.long)
     train_target_mask = torch.tensor(train_loss_mask, dtype=torch.bool)
@@ -469,43 +506,21 @@ def train_model(
     )
     model = GPTLanguageModel(model_config).to(selected_device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=settings.learning_rate, weight_decay=settings.weight_decay)
-    checkpoint = Path(checkpoint_path)
     start_step = 0
     parent_checkpoint_sha256: str | None = None
     parent_checkpoint_step: int | None = None
 
-    if resume and initialize_from is not None:
-        raise ValueError("resume and initialize_from cannot be used together.")
-
     if initialize_from is not None:
-        parent_path = Path(initialize_from)
-        if not parent_path.is_file():
-            raise FileNotFoundError(f"Warm-start checkpoint not found: {parent_path}")
-        if parent_path.resolve() == checkpoint.resolve():
-            raise ValueError("Candidate checkpoint must not overwrite its parent checkpoint.")
-        parent = torch.load(parent_path, map_location=selected_device, weights_only=True)
-        if (not isinstance(parent, dict) or parent.get("format_version") != 2
-                or parent.get("dialogue_encoding_version") != DIALOGUE_ENCODING_VERSION
-                or parent.get("loss_objective_version") != LOSS_OBJECTIVE_VERSION):
-            raise ValueError("Warm-start checkpoint has an incompatible format or training objective.")
-        parent_config = dict(parent.get("training_config", {}))
-        candidate_config = asdict(settings)
-        for mutable in ("max_steps", "learning_rate"):
-            parent_config.pop(mutable, None)
-            candidate_config.pop(mutable, None)
+        parent = source_payload
         if (parent.get("model_config") != asdict(model_config)
-                or parent.get("tokenizer") != tokenizer.to_dict()
-                or parent.get("corpus_sha256") != corpus_fingerprint
-                or parent_config != candidate_config):
+                or parent.get("tokenizer") != tokenizer.to_dict()):
             raise ValueError("Warm-start checkpoint corpus/model/training settings do not match this candidate.")
         model.load_state_dict(parent["model_state"])
-        parent_checkpoint_sha256 = hashlib.sha256(parent_path.read_bytes()).hexdigest()
+        parent_checkpoint_sha256 = hashlib.sha256(source_path.read_bytes()).hexdigest()
         parent_checkpoint_step = int(parent["step"])
 
     if resume:
-        if not checkpoint.is_file():
-            raise FileNotFoundError(f"Cannot resume; checkpoint not found: {checkpoint}")
-        saved = torch.load(checkpoint, map_location=selected_device, weights_only=True)
+        saved = source_payload
         if saved.get("format_version") != 2:
             raise ValueError("Unsupported checkpoint format; start a fresh run with the current trainer.")
         if saved.get("dialogue_encoding_version", 1) != DIALOGUE_ENCODING_VERSION:
