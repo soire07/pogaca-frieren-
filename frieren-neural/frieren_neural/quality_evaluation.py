@@ -191,8 +191,17 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
                     or checkpoint_metadata.get("dialogue_encoding_version") != 2
                     or checkpoint_metadata.get("loss_objective_version") not in (0, LOSS_OBJECTIVE_VERSION)):
                 reasons.append("checkpoint_metadata_incomplete")
-        if not isinstance(training_provenance,dict) or not training_provenance.get("manifest_sha256") or not training_provenance.get("licenses"):
+        if (not isinstance(training_provenance, dict)
+                or not isinstance(training_provenance.get("manifest_sha256"), str)
+                or not re.fullmatch(r"[a-f0-9]{64}", training_provenance.get("manifest_sha256", ""))
+                or not isinstance(training_provenance.get("licenses"), list)
+                or not training_provenance["licenses"]
+                or any(not isinstance(license_name, str) or not license_name.strip()
+                       for license_name in training_provenance["licenses"])):
             reasons.append("training_provenance_missing")
+        if (not isinstance(source_commit_sha, str) or len(source_commit_sha) != 40
+                or any(character not in "0123456789abcdefABCDEF" for character in source_commit_sha)):
+            reasons.append("source_commit_missing_or_invalid")
         if (not isinstance(heldout_metrics,dict) or not isinstance(heldout_metrics.get("loss"),(int,float))
                 or isinstance(heldout_metrics.get("loss"),bool) or not math.isfinite(heldout_metrics["loss"])
                 or heldout_metrics["loss"] < 0
