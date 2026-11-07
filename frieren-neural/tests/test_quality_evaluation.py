@@ -5,6 +5,14 @@ import pytest
 from frieren_neural import quality_evaluation as quality
 
 
+def _set_reviewer_hashes(scores):
+    scores["reviewer_identity_hashes"] = {
+        "reviewer_1": "a" * 64,
+        "reviewer_2": "b" * 64,
+    }
+    return scores
+
+
 
 def test_benchmark_prompt_uses_the_training_chat_template():
     assert quality.format_benchmark_prompt("Merhaba. Bugün nasılsın?") == (
@@ -35,7 +43,7 @@ def test_report_without_human_scores_is_not_ready_and_never_self_grades():
 
 
 def test_report_applies_quality_gate_to_human_scores():
-    scores = quality.empty_score_template()
+    scores = _set_reviewer_hashes(quality.empty_score_template())
     for case in scores["cases"]:
         for reviewer in ("reviewer_1", "reviewer_2"):
             case[reviewer] = {
@@ -68,7 +76,7 @@ def test_report_applies_quality_gate_to_human_scores():
             "prompt_set_version": quality.PROMPT_SET_VERSION,
             "decoding_settings": quality.DECODING_SETTINGS,
             "checkpoint_sha256": "0" * 64,
-            "human_review": {"completed": True},
+            "human_review": {"completed": True, "reviewer_identity_hashes": ["c" * 64, "d" * 64]},
             "metrics": {
                 "dimension_averages": {dimension: 3.5 for dimension in quality.DIMENSIONS},
                 "overall_average": 3.5,
@@ -81,7 +89,7 @@ def test_report_applies_quality_gate_to_human_scores():
 
 
 def test_report_blocks_critical_failure_even_when_average_is_high():
-    scores = quality.empty_score_template()
+    scores = _set_reviewer_hashes(quality.empty_score_template())
     for case in scores["cases"]:
         for reviewer in ("reviewer_1", "reviewer_2"):
             reviewer_scores = {dimension: 4 for dimension in quality.DIMENSIONS}
@@ -105,7 +113,7 @@ def test_score_template_rejects_missing_cases_and_invalid_scores():
     with pytest.raises(ValueError, match="24"):
         quality.validate_scores(template)
 
-    template = quality.empty_score_template()
+    template = _set_reviewer_hashes(quality.empty_score_template())
     template["cases"][0]["reviewer_1"] = {
         dimension: 5 for dimension in quality.DIMENSIONS
     }
@@ -158,7 +166,7 @@ def test_cli_writes_machine_and_human_readable_report(tmp_path, monkeypatch):
 
 
 def test_report_blocks_mismatched_heldout_objective():
-    scores = quality.empty_score_template()
+    scores = _set_reviewer_hashes(quality.empty_score_template())
     for case in scores["cases"]:
         for reviewer in ("reviewer_1", "reviewer_2"):
             case[reviewer] = {
@@ -187,7 +195,7 @@ def test_report_blocks_mismatched_heldout_objective():
             "prompt_set_version": quality.PROMPT_SET_VERSION,
             "decoding_settings": quality.DECODING_SETTINGS,
             "checkpoint_sha256": "0" * 64,
-            "human_review": {"completed": True},
+            "human_review": {"completed": True, "reviewer_identity_hashes": ["c" * 64, "d" * 64]},
             "metrics": {
                 "dimension_averages": {dimension: 3.5 for dimension in quality.DIMENSIONS},
                 "overall_average": 3.5,
@@ -272,7 +280,7 @@ def test_ufakzeka_report_requires_review_provenance_and_heldout_evidence(monkeyp
     artifact_sha = "a" * 64
     monkeypatch.setattr(gguf_runtime, "MODEL_SHA256", artifact_sha)
 
-    scores = quality.empty_score_template()
+    scores = _set_reviewer_hashes(quality.empty_score_template())
     for case in scores["cases"]:
         for reviewer in ("reviewer_1", "reviewer_2"):
             case[reviewer] = {
@@ -289,7 +297,7 @@ def test_ufakzeka_report_requires_review_provenance_and_heldout_evidence(monkeyp
         "prompt_set_version": quality.PROMPT_SET_VERSION,
         "decoding_settings": quality.DECODING_SETTINGS,
         "checkpoint_sha256": "b" * 64,
-        "human_review": {"completed": True},
+        "human_review": {"completed": True, "reviewer_identity_hashes": ["c" * 64, "d" * 64]},
         "metrics": {
             "dimension_averages": {dimension: 3.5 for dimension in quality.DIMENSIONS},
             "overall_average": 3.5,
@@ -327,3 +335,27 @@ def test_ufakzeka_report_requires_review_provenance_and_heldout_evidence(monkeyp
     assert "Independent held-out evidence" in markdown
     assert "Dataset SHA-256: " + "e" * 64 in markdown
     assert "Source commit: " + "d" * 40 in markdown
+
+
+
+def test_score_template_requires_two_distinct_reviewer_identity_hashes():
+    scores = _set_reviewer_hashes(quality.empty_score_template())
+    for case in scores["cases"]:
+        for reviewer in ("reviewer_1", "reviewer_2"):
+            case[reviewer] = {
+                **{dimension: 4 for dimension in quality.DIMENSIONS},
+                "critical_safety_failure": False,
+                "fabricated_claim": False,
+            }
+    scores["reviewer_identity_hashes"]["reviewer_2"] = "a" * 64
+    with pytest.raises(ValueError, match="distinct"):
+        quality.validate_scores(scores)
+
+
+def test_hash_reviewer_identity_requires_private_high_entropy_token():
+    with pytest.raises(ValueError, match="32 characters"):
+        quality.hash_reviewer_identity("short")
+    first = quality.hash_reviewer_identity("private-reviewer-token-" + "a" * 40)
+    second = quality.hash_reviewer_identity("private-reviewer-token-" + "b" * 40)
+    assert len(first) == 64
+    assert first != second
