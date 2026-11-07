@@ -282,8 +282,12 @@ export function evaluateNeuralQualityGate({
       reasons.push('NEURAL_EVALUATION_OBJECTIVE_MISMATCH');
     }
   }
+  const baselineReviewerHashes = baseline.baseline_reviewer_identity_hashes;
   if (!baseline.available || baseline.improved !== true
-      || !/^[a-f0-9]{64}$/i.test(String(baseline.baseline_checkpoint_sha256 || ''))) {
+      || !/^[a-f0-9]{64}$/i.test(String(baseline.baseline_checkpoint_sha256 || ''))
+      || !Array.isArray(baselineReviewerHashes) || baselineReviewerHashes.length !== 2
+      || baselineReviewerHashes.some(value => !/^[a-f0-9]{64}$/i.test(String(value)))
+      || baselineReviewerHashes[0] === baselineReviewerHashes[1]) {
     reasons.push('NEURAL_COMPARABLE_IMPROVED_BASELINE_REQUIRED');
   }
   if (!NEURAL_DIMENSIONS.every(key => finiteNumber(averages[key]) && averages[key] >= 3.2)) {
