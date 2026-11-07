@@ -792,11 +792,9 @@ test('owner activity workspace renders paginated audit and test history safely',
   assert.match(html, /&lt;script&gt;/);
 });
 
-test('owner scenario tests target the separately hosted Frieren AI service over HTTPS', () => {
-  assert.equal(
-    getFrierenAiScenarioEndpoint({}),
-    'https://pogaca-frieren-kltd.onrender.com/internal/test-scenario'
-  );
+test('owner scenario and Guardian review endpoints require an explicitly configured Frieren AI service URL', () => {
+  assert.throws(() => getFrierenAiScenarioEndpoint({}), { message: 'FRIEREN_AI_SERVICE_NOT_CONFIGURED' });
+  assert.throws(() => getFrierenAiGuardianEndpoint({}), { message: 'FRIEREN_AI_SERVICE_NOT_CONFIGURED' });
   assert.equal(
     getFrierenAiScenarioEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://ai.example.test/base/' }),
     'https://ai.example.test/internal/test-scenario'
@@ -1206,4 +1204,11 @@ test('Guardian proposal without GitHub permission shows a clear blocker instead 
     if (previousToken === undefined) delete process.env.FRIEREN_GITHUB_TOKEN;
     else process.env.FRIEREN_GITHUB_TOKEN = previousToken;
   }
+});
+
+
+test('Guardian 403 notice explains the exact fine-grained GitHub token permission', () => {
+  const html = renderOwnerGuardianWorkspace({ notice: 'guardian_github_actions_permission_required' });
+  assert.match(html, /Actions: Read and write/);
+  assert.match(html, /FRIEREN_GITHUB_TOKEN/);
 });
