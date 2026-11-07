@@ -41,6 +41,14 @@ def test_prepare_dataset_verifies_source_and_writes_manifest(tmp_path, monkeypat
     assert "Kullanıcı: Merhaba." in text
     assert "Asistan: Merhaba, nasıl yardımcı olabilirim?" in text
     manifest = json.loads((output / "corpus_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["dataset"]["id"] == "3nesdeniz/turkish-daily-dialogues-5k"
+    assert manifest["dataset"]["revision"] == datasets.DATASET_COMMIT
+    assert manifest["dataset"]["split"] == "train"
+    assert manifest["dataset"]["dialogues"] == 1
+    assert manifest["dataset"]["source_sha256"] == result["sha256"]
+    processed_sha = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    assert manifest["dataset"]["processed_sha256"] == processed_sha
+    assert manifest["documents"][0]["sha256"] == processed_sha
     assert manifest["documents"][0]["license"] == "CC BY 4.0"
     assert "Enes Deniz" in manifest["documents"][0]["source"]
     assert "SHA-256" in manifest["documents"][0]["usage"]
@@ -111,6 +119,8 @@ def test_prepare_dataset_supports_a_separate_held_out_test_split(tmp_path, monke
     assert result["records"] == 1
     assert (output / "turkish-daily-dialogues-test.txt").is_file()
     manifest = json.loads((output / "corpus_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["dataset"]["split"] == "test"
+    assert manifest["dataset"]["revision"] == datasets.DATASET_COMMIT
     assert manifest["documents"][0]["path"] == "turkish-daily-dialogues-test.txt"
 
 
