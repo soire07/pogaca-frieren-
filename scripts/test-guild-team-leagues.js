@@ -178,3 +178,15 @@ test('team and league list output uses actual line breaks instead of literal sla
   assert.equal(source.includes(".join('\\\\n')"), false);
   assert.ok(source.includes(".join('\\n')"));
 });
+
+
+test('player-facing command and reminder text uses real line breaks, not literal slash-n', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const files = ['etkinlik.js', 'balik.js', 'pazar.js', 'katlizindan.js', 'hikaye.js', 'index.js', 'iblisavasi.js', 'ortakboss.js'];
+  for (const file of files) {
+    const source = await readFile(new URL('../' + file, import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /\\\\n/, file + ' contains a double-escaped newline in player-facing output');
+  }
+  const indexSource = await readFile(new URL('../index.js', import.meta.url), 'utf8');
+  assert.equal(indexSource.includes(String.fromCharCode(92, 92, 96)), false, 'event reminder should not render escaped backticks');
+});
