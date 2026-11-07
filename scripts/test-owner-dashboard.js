@@ -1170,6 +1170,7 @@ test('Guardian workspace hides generic workflow history from the single-run evid
 test('Guardian action failures return to the Guardian workspace', () => {
   assert.equal(getOwnerActionErrorDestination('guardian-refresh-pr'), '/owner/guardian');
   assert.equal(getOwnerActionErrorDestination('guardian-review'), '/owner/guardian');
+  assert.equal(getOwnerActionErrorDestination('guardian-create-pr'), '/owner/guardian');
   assert.equal(getOwnerActionErrorDestination('rpg-resource-adjust'), '/owner');
 });
 
@@ -1211,4 +1212,15 @@ test('Guardian 403 notice explains the exact fine-grained GitHub token permissio
   const html = renderOwnerGuardianWorkspace({ notice: 'guardian_github_actions_permission_required' });
   assert.match(html, /Actions: Read and write/);
   assert.match(html, /FRIEREN_GITHUB_TOKEN/);
+});
+
+
+test('Frieren AI readiness does not probe an unconfigured production service URL', async () => {
+  let fetched = false;
+  const result = await getFrierenAIReadiness({
+    serviceUrl: '',
+    fetchImpl: async () => { fetched = true; throw new Error('must not fetch'); }
+  });
+  assert.deepEqual(result, { status: 'not_configured', reason: 'service_url_missing' });
+  assert.equal(fetched, false);
 });
