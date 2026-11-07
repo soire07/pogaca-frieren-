@@ -157,7 +157,7 @@ export function buildGuardianRepairTask(incident = {}, review = {}) {
     'İlgili dosyalar: ' + safeList(review.affectedFiles, 5, 100).join(', '),
     'Test planı: ' + safeList(review.tests, 3, 100).join('; '),
     'Görev: Frieren Neural tarafından sağlanan unified diff yamayı model çağrısı yapmadan doğrula; en fazla dört izinli mevcut JavaScript/Python dosyasıyla sınırlı kal.',
-    'Python değişikliği varsa compileall ve tam pytest paketini; her durumda git apply --check, güvenlik/path kontrolleri ve npm run check çalıştır. Başarısızsa PR açma; merge/deploy yapma.',
+    'Python değişikliği varsa compileall ve tam pytest paketini; her durumda Git apply --check, güvenlik/path kontrolleri ve npm run check çalıştır. Başarısızsa PR açma; merge/deploy yapma.',
   ];
   return lines.join('\n').slice(0, 1000);
 }
