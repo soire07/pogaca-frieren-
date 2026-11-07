@@ -475,9 +475,11 @@ def test_warm_start_candidate_uses_parent_weights_without_overwriting_parent(tmp
     assert baseline_review.is_file()
     candidate_review = Path(report["trials"][0]["quality_report"])
     assert candidate_review.is_file()
-    assert "human_review_missing" in __import__("json").loads(
-        candidate_review.read_text(encoding="utf-8")
-    )["blocking_reasons"]
+    candidate_quality = __import__("json").loads(candidate_review.read_text(encoding="utf-8"))
+    assert "human_review_missing" in candidate_quality["blocking_reasons"]
+    score_template = candidate_review.parent / "human-scores.template.json"
+    template_data = __import__("json").loads(score_template.read_text(encoding="utf-8"))
+    assert template_data
     candidate = tmp_path / "candidates" / "candidate-01-lr-1.pt"
     assert candidate.is_file()
     _, _, metadata = load_checkpoint(candidate, device="cpu")
