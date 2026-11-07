@@ -666,8 +666,12 @@ test('bot control center hides lifecycle controls until a server-side Render API
 
 test('owner Render action route resumes Frieren AI through the server-side API and audits it', async () => {
   const previousKey = process.env.RENDER_FRIEREN_AI_API_KEY;
+  const previousServiceId = process.env.RENDER_FRIEREN_AI_SERVICE_ID;
+  const previousServiceUrl = process.env.RENDER_FRIEREN_AI_URL;
   const previousFetch = globalThis.fetch;
   process.env.RENDER_FRIEREN_AI_API_KEY = 'server-only-test-token';
+  process.env.RENDER_FRIEREN_AI_SERVICE_ID = 'srv-ai-route-test';
+  process.env.RENDER_FRIEREN_AI_URL = 'https://frieren-ai-route.test';
   let request = null;
   const calls = [];
   const client = {
@@ -699,6 +703,10 @@ test('owner Render action route resumes Frieren AI through the server-side API a
   } finally {
     if (previousKey === undefined) delete process.env.RENDER_FRIEREN_AI_API_KEY;
     else process.env.RENDER_FRIEREN_AI_API_KEY = previousKey;
+    if (previousServiceId === undefined) delete process.env.RENDER_FRIEREN_AI_SERVICE_ID;
+    else process.env.RENDER_FRIEREN_AI_SERVICE_ID = previousServiceId;
+    if (previousServiceUrl === undefined) delete process.env.RENDER_FRIEREN_AI_URL;
+    else process.env.RENDER_FRIEREN_AI_URL = previousServiceUrl;
     globalThis.fetch = previousFetch;
   }
 });
@@ -792,11 +800,9 @@ test('owner activity workspace renders paginated audit and test history safely',
   assert.match(html, /&lt;script&gt;/);
 });
 
-test('owner scenario tests target the separately hosted Frieren AI service over HTTPS', () => {
-  assert.equal(
-    getFrierenAiScenarioEndpoint({}),
-    'https://pogaca-frieren-kltd.onrender.com/internal/test-scenario'
-  );
+test('owner scenario and Guardian review endpoints require an explicitly configured Frieren AI service URL', () => {
+  assert.throws(() => getFrierenAiScenarioEndpoint({}), { message: 'FRIEREN_AI_SERVICE_NOT_CONFIGURED' });
+  assert.throws(() => getFrierenAiGuardianEndpoint({}), { message: 'FRIEREN_AI_SERVICE_NOT_CONFIGURED' });
   assert.equal(
     getFrierenAiScenarioEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://ai.example.test/base/' }),
     'https://ai.example.test/internal/test-scenario'
@@ -1172,6 +1178,7 @@ test('Guardian workspace hides generic workflow history from the single-run evid
 test('Guardian action failures return to the Guardian workspace', () => {
   assert.equal(getOwnerActionErrorDestination('guardian-refresh-pr'), '/owner/guardian');
   assert.equal(getOwnerActionErrorDestination('guardian-review'), '/owner/guardian');
+  assert.equal(getOwnerActionErrorDestination('guardian-create-pr'), '/owner/guardian');
   assert.equal(getOwnerActionErrorDestination('rpg-resource-adjust'), '/owner');
 });
 
@@ -1206,4 +1213,39 @@ test('Guardian proposal without GitHub permission shows a clear blocker instead 
     if (previousToken === undefined) delete process.env.FRIEREN_GITHUB_TOKEN;
     else process.env.FRIEREN_GITHUB_TOKEN = previousToken;
   }
+});
+
+
+test('Guardian 403 notice explains the exact fine-grained GitHub token permission', () => {
+  const html = renderOwnerGuardianWorkspace({ notice: 'guardian_github_actions_permission_required' });
+  assert.match(html, /Actions: Read and write/);
+  assert.match(html, /FRIEREN_GITHUB_TOKEN/);
+  assert.match(renderOwnerGuardianWorkspace({ notice: 'guardian_github_actions_read_required' }), /Actions: Read and write/);
+  assert.match(renderOwnerGuardianWorkspace({ notice: 'guardian_github_pull_requests_read_required' }), /Pull requests: Read/);
+  assert.match(renderOwnerGuardianWorkspace({ notice: 'guardian_github_checks_read_required' }), /Checks: Read/);
+});
+
+
+test('Frieren AI readiness does not probe an unconfigured production service URL', async () => {
+  let fetched = false;
+  const result = await getFrierenAIReadiness({
+    serviceUrl: '',
+    fetchImpl: async () => { fetched = true; throw new Error('must not fetch'); }
+  });
+  assert.deepEqual(result, { status: 'not_configured', reason: 'service_url_missing' });
+  assert.equal(fetched, false);
+});
+
+
+test('Owner control center clearly blocks actions when production Frieren AI service is not configured', () => {
+  const html = renderOwnerControlCenter({
+    apiConfigured: false,
+    services: {
+      frieren_ai: { status: 'not_configured', health: 'not_configured', id: null, url: '', apiConfigured: false, allowedActions: [] },
+      pogaca: { status: 'running', health: 'healthy', apiConfigured: false, allowedActions: [] }
+    }
+  }, { ready: true }, 'csrf-test');
+  assert.match(html, /Üretim servisi yapılandırılmamış/);
+  assert.match(html, /Frieren AI üretim servisi Render hesabında bulunamadı/);
+  assert.doesNotMatch(html, /AI servisini başlat/);
 });

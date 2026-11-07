@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, getGuardianProposalFingerprint } from './automation.js';
+import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubDispatchError, classifyGuardianGithubReadError, getGuardianProposalFingerprint } from './automation.js';
 
 const incident = {
   id: 42,
@@ -130,7 +130,8 @@ test('autonomous incident handling respects the emergency stop before contacting
   const result = await processGuardianIncident({
     db: { query: async () => ({ rows: [{ setting_value: { enabled: true } }] }) },
     incident,
-    env: { FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48), FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
+    env: { FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.test',
+      FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48), FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async () => { requests += 1; throw new Error('must not request'); },
     store: {
       createGuardianReviewJob: async () => { jobs += 1; },
@@ -154,7 +155,7 @@ test('high-severity incidents are reviewed but repair dispatch waits for explici
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
     incident,
     env: {
-      FRIEREN_AI_PUBLIC_URL: 'https://pogaca-frieren-kltd.onrender.com',
+      FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.test',
       FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
       FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
     },
@@ -167,7 +168,7 @@ test('high-severity incidents are reviewed but repair dispatch waits for explici
   assert.equal(result.status, 'proposal_ready');
   assert.equal(result.approvalRequired, true);
   assert.equal(requests.length, 1);
-  assert.equal(requests[0].url, 'https://pogaca-frieren-kltd.onrender.com/internal/guardian-review');
+  assert.equal(requests[0].url, 'https://frieren-ai.test/internal/guardian-review');
   assert.ok(calls.some(([name]) => name === 'finishReview'));
   assert.equal(calls.some(([name]) => name === 'reserve'), false);
 });
@@ -201,6 +202,7 @@ test('automatic Guardian review never dispatches a repair workflow', async () =>
     }) },
     incident,
     env: {
+      FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.test',
       FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
       FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
     },
@@ -231,6 +233,7 @@ test('failed Guardian AI review preserves the sanitized upstream error without d
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
     incident,
     env: {
+      FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.test',
       FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
       FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
     },
@@ -258,6 +261,7 @@ test('Guardian AI proposal does not contact GitHub before Owner approval', async
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
     incident,
     env: {
+      FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.test',
       FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
       FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
     },
@@ -288,6 +292,7 @@ test('low-confidence or incomplete AI proposals never dispatch a repair workflow
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
     incident,
     env: {
+      FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.test',
       FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
       FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
     },
@@ -577,4 +582,69 @@ test('retry reports an existing workflow without claiming persistence when state
   assert.equal(result.status, 'dispatch_state_unconfirmed');
   assert.equal(result.workflowUrl, 'https://github.com/example/actions/runs/420');
   assert.equal(posts, 0, 'an existing workflow must never be duplicated');
+});
+
+
+test('GitHub workflow dispatch 403 explains the missing Actions write permission without leaking response data', () => {
+  assert.equal(
+    classifyGuardianGithubDispatchError(403, 'Resource not accessible by personal access token'),
+    'GUARDIAN_GITHUB_ACTIONS_WRITE_REQUIRED'
+  );
+  assert.equal(classifyGuardianGithubDispatchError(401, 'Bad credentials'), 'GUARDIAN_GITHUB_TOKEN_INVALID');
+  assert.equal(classifyGuardianGithubDispatchError(404, 'Not Found'), 'GUARDIAN_GITHUB_WORKFLOW_NOT_FOUND');
+  assert.equal(classifyGuardianGithubDispatchError(422, 'Workflow does not exist'), 'GUARDIAN_GITHUB_DISPATCH_INPUT_OR_REF_INVALID');
+});
+
+
+test('approved Guardian dispatch reports the fine-grained PAT Actions permission requirement on GitHub 403', async () => {
+  const finished = [];
+  const result = await processPendingGuardianRepairDispatch({
+    db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
+    job: {
+      id: 92,
+      result: review,
+      repair_approved_by: '1553794496234262641',
+      repair_approval_fingerprint: getGuardianProposalFingerprint(review),
+    },
+    incident,
+    env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
+    fetchImpl: async (_url, options) => options.method === 'GET'
+      ? { ok: true, status: 200, json: async () => ({ workflow_runs: [], total_count: 0 }) }
+      : { ok: false, status: 403, json: async () => ({ message: 'Resource not accessible by personal access token' }) },
+    store: {
+      reserveGuardianRepairDispatch: async () => ({ id: 92 }),
+      finishGuardianRepairDispatch: async (_db, value) => { finished.push(value); return true; },
+    },
+  });
+  assert.equal(result.status, 'dispatch_failed');
+  assert.equal(result.reason, 'GUARDIAN_GITHUB_ACTIONS_WRITE_REQUIRED');
+  assert.equal(finished.at(-1).status, 'failed');
+});
+
+
+test('GitHub read 403 responses identify the missing fine-grained permission by endpoint', () => {
+  assert.equal(classifyGuardianGithubReadError('actions', 403), 'GUARDIAN_GITHUB_ACTIONS_READ_REQUIRED');
+  assert.equal(classifyGuardianGithubReadError('pull_requests', 403), 'GUARDIAN_GITHUB_PULL_REQUESTS_READ_REQUIRED');
+  assert.equal(classifyGuardianGithubReadError('checks', 403), 'GUARDIAN_GITHUB_CHECKS_READ_REQUIRED');
+  assert.equal(classifyGuardianGithubReadError('actions', 401), 'GUARDIAN_GITHUB_READ_HTTP_401');
+});
+
+
+test('Guardian AI review fails closed without an explicitly configured production service URL', async () => {
+  let requests = 0;
+  const finished = [];
+  const result = await processGuardianIncident({
+    db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
+    incident,
+    env: { FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48) },
+    fetchImpl: async () => { requests += 1; throw new Error('must not contact an implicit host'); },
+    store: {
+      createGuardianReviewJob: async () => ({ id: 91, status: 'queued' }),
+      finishGuardianReviewJob: async (_db, args) => { finished.push(args); return true; },
+    },
+  });
+  assert.equal(result.status, 'review_failed');
+  assert.equal(result.reason, 'FRIEREN_AI_SERVICE_NOT_CONFIGURED');
+  assert.equal(requests, 0);
+  assert.equal(finished.at(-1).status, 'failed');
 });

@@ -31,7 +31,9 @@ test('Frieren AI health checks use a six-hour cadence and bounded retries', asyn
   assert.ok(source.includes('cron: "0 */6 * * *"'));
   assert.ok(source.includes('timeout-minutes: 2'));
   assert.ok(source.includes('for attempt in {1..3}'));
-  assert.ok(source.includes('https://pogaca-frieren-kltd.onrender.com/live'));
+  assert.ok(source.includes('vars.FRIEREN_AI_HEALTH_URL'));
+  assert.ok(source.includes('FRIEREN_AI_HEALTH_URL is not configured'));
+  assert.ok(!source.includes('https://pogaca-frieren-kltd.onrender.com/live'));
 });
 
 test('Discord command sync skips unchanged definitions and unnecessary global writes', async () => {

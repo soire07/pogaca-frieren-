@@ -16,7 +16,7 @@ import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceA
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 import { listSupportTicketsForOwner, getSupportTicketForOwner, replySupportTicketFromOwner, updateSupportTicketStatusFromOwner } from './account-center.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
-import { classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, processPendingGuardianRepairDispatch, isRepairableProposal, buildGuardianRepairTrackingUrls } from './guardian/automation.js';
+import { classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubReadError, processPendingGuardianRepairDispatch, isRepairableProposal, buildGuardianRepairTrackingUrls } from './guardian/automation.js';
 import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, approveGuardianRepair, updateGuardianRepairStatus, getGuardianMonitorState, getLatestGuardianQualityReport } from './guardian/store.js';
 import { verifyGuardianEvidenceChain, listGuardianEvidenceEvents } from './guardian/security-events.js';
 
@@ -27,7 +27,8 @@ const STATE_COOKIE = 'frieren_owner_oauth_state';
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
 const MAX_BODY_BYTES = 24_576;
 export function getFrierenAiScenarioEndpoint(env = process.env) {
-  const base = String(env.FRIEREN_AI_PUBLIC_URL || 'https://pogaca-frieren-kltd.onrender.com').trim();
+  const base = String(env.FRIEREN_AI_PUBLIC_URL || '').trim();
+  if (!base) throw new Error('FRIEREN_AI_SERVICE_NOT_CONFIGURED');
   const parsed = new URL(base);
   if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_AI_PUBLIC_URL');
   return new URL('/internal/test-scenario', parsed).toString();
@@ -40,7 +41,8 @@ export async function assertGuardianAutomationEnabled(db) {
 }
 
 export function getFrierenAiGuardianEndpoint(env = process.env) {
-  const base = String(env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).trim();
+  const base = String(env.FRIEREN_AI_PUBLIC_URL || '').trim();
+  if (!base) throw new Error('FRIEREN_AI_SERVICE_NOT_CONFIGURED');
   const parsed = new URL(base);
   if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_AI_PUBLIC_URL');
   return new URL('/internal/guardian-review', parsed).toString();
@@ -323,6 +325,7 @@ export function renderOwnerControlCenter(renderServices, overview, csrf, renderM
   const apiConfigured = renderServices?.apiConfigured === true;
   const renderApiError = renderServices?.apiError || null;
   const serviceStatus = service => {
+    if (service?.status === 'not_configured') return { label: 'Üretim servisi yapılandırılmamış', css: 'warn' };
     if (service?.suspended === true || service?.status === 'suspended') return { label: 'Askıya alınmış', css: 'warn' };
     if (service?.suspended === null && service?.health === 'healthy') return { label: 'Health 200 · Render askı durumu bilinmiyor', css: 'good' };
     if (service?.suspended === null && service?.health === 'unhealthy') return { label: 'Health başarısız · Render askı durumu bilinmiyor', css: 'bad' };
@@ -346,7 +349,9 @@ export function renderOwnerControlCenter(renderServices, overview, csrf, renderM
       metricText ? escapeHtml(metricText) : ''
     ].filter(Boolean).join(' · ');
     let actions = '';
-    if (key === 'pogaca') {
+    if (key === 'frieren_ai' && service.status === 'not_configured') {
+      actions = '<p class="small">Frieren AI üretim servisi Render hesabında bulunamadı. Servis kimliği ve URL yapılandırılmadan yeniden başlatma veya AI bağlantısı denenmez.</p>';
+    } else if (key === 'pogaca') {
       actions = canControl
         ? renderRenderActionForm(key, 'restart', 'Yeniden başlat', csrf, 'Poğaça ve Owner Panel servisini yeniden başlatmayı onaylıyorum')
         : '<p class="small">Yeniden başlatma için Render API bağlantısı gerekli.</p>';
@@ -386,6 +391,7 @@ export async function getFrierenAIReadiness({
   serviceUrl = RENDER_BOT_SERVICES.frieren_ai.url,
   healthPath = RENDER_BOT_SERVICES.frieren_ai.healthPath
 } = {}) {
+  if (!String(serviceUrl || '').trim()) return { status: 'not_configured', reason: 'service_url_missing' };
   try {
     const response = await fetchImpl(String(serviceUrl).replace(/\/$/, '') + healthPath, {
       headers: { Accept: 'application/json' },
@@ -571,6 +577,13 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
     guardian_pr_dispatched: 'Güvenli onarım workflow\'u başlatıldı. Testler geçerse ayrı bir PR açılacak; birleştirme ve dağıtım yapılmayacak.',
     guardian_pr_dispatching: 'Onaylı onarım workflow isteği zaten işleniyor. Yeni bir istek gönderilmedi; sonucu yenileyebilirsin.',
     guardian_github_not_configured: 'GitHub Actions tetikleme anahtarı eksik. Poğaça Render ortamına FRIEREN_GITHUB_TOKEN eklenmeli.',
+    guardian_ai_service_not_configured: 'Frieren AI üretim servisi Render hesabında doğrulanamadı. FRIEREN_AI_PUBLIC_URL ve servis kaydı yapılandırılmadan Guard inceleme başlatmaz.',
+    guardian_github_actions_permission_required: 'GitHub token workflow_dispatch yetkisine sahip değil. Fine-grained token için bu depoda Actions: Read and write, Pull requests: Read ve Checks: Read izinlerini ver; ardından Poğaça Render içindeki FRIEREN_GITHUB_TOKEN değerini güncelle.',
+    guardian_github_actions_read_required: 'GitHub token workflow çalıştırma geçmişini okuyamıyor. Fine-grained token için Actions: Read and write iznini etkinleştir.',
+    guardian_github_pull_requests_read_required: 'GitHub token onarım PR listesini okuyamıyor. Fine-grained token için Pull requests: Read iznini etkinleştir.',
+    guardian_github_checks_read_required: 'GitHub token PR kontrol sonuçlarını okuyamıyor. Fine-grained token için Checks: Read iznini etkinleştir.',
+    guardian_github_sso_required: 'GitHub token için kuruluş SSO yetkilendirmesi gerekiyor. Tokenı GitHub kuruluş erişimi için yetkilendir.',
+    guardian_github_token_invalid: 'GitHub token geçersiz veya süresi dolmuş. FRIEREN_GITHUB_TOKEN değerini yenile.',
     guardian_pr_dispatch_failed: 'Onarım workflow\'u başlatılamadı. Job kaydı korundu; hata ayrıntıları sırları açığa çıkarmadan kaydedildi.',
     guardian_pr_status_failed: 'GitHub workflow veya PR durumu alınamadı. Token izinlerini ve Actions durumunu kontrol et.',
     guardian_pr_status_updated: 'GitHub Actions ve PR durumu yenilendi.',
@@ -845,7 +858,12 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   }
 
   if (url.pathname === '/owner/frieren-ai/health' && req.method === 'GET') {
-    const aiBase = (process.env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).replace(/\/$/, '');
+    const aiBase = String(process.env.FRIEREN_AI_PUBLIC_URL || '').trim().replace(/\/$/, '');
+    if (!aiBase) {
+      res.writeHead(503, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ status: 'not_configured', error: 'Frieren AI üretim servis URL’si yapılandırılmamış.' }));
+      return true;
+    }
     const healthSecret = process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
     if (healthSecret.length < 32) {
       res.writeHead(503, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
@@ -1017,7 +1035,11 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         }
         await db.query('SELECT 1');
         const healthSecret = String(process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
-        const aiBase = String(process.env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).replace(/\/$/, '');
+        const aiBase = String(process.env.FRIEREN_AI_PUBLIC_URL || '').trim().replace(/\/$/, '');
+        if (!aiBase) {
+          await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_SERVICE_NOT_CONFIGURED', title: 'Frieren AI üretim servisi yapılandırılmamış', summary: 'Render hesabında doğrulanmış üretim AI servisi URL’si bulunamadı; test Neural servisi üretime bağlanmadı.', severity: 'high' });
+          found += 1;
+        } else {
         try {
           const liveResponse = await fetch(aiBase + '/live', { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(7000) });
           const livePayload = await liveResponse.json().catch(() => ({}));
@@ -1041,6 +1063,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
             await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_HEALTH_UNREACHABLE', title: 'Frieren AI sağlık endpointine ulaşılamadı', summary: String(error?.name || 'NetworkError') + ': Frieren AI sağlık kontrolü zaman aşımına uğradı veya bağlantı kurulamadı.', severity: 'high' });
             found += 1;
           }
+        }
         }
         const neuralLiveUrl = String(process.env.FRIEREN_NEURAL_LIVE_URL || '').trim();
         if (neuralLiveUrl) {
@@ -1125,9 +1148,14 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
           actorId: OWNER_ID,
         });
         if (!['dispatched','already_dispatched'].includes(dispatch.status)) {
-          const prefix = dispatch.status === 'reconciliation_unavailable' || dispatch.status === 'reconciliation_incomplete'
-            ? 'GUARDIAN_GITHUB_READ_' : 'GUARDIAN_GITHUB_';
-          throw new Error(prefix + String(dispatch.status || 'dispatch_failed').toUpperCase());
+          if (String(dispatch.reason || '').startsWith('GUARDIAN_GITHUB_')) {
+            throw new Error(String(dispatch.reason));
+          }
+          if (dispatch.status === 'reconciliation_unavailable' || dispatch.status === 'reconciliation_incomplete') {
+            const statusCode = String(dispatch.reason || '').match(/HTTP_(\\d{3})/)?.[1] || 'UNKNOWN';
+            throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + statusCode);
+          }
+          throw new Error('GUARDIAN_GITHUB_' + String(dispatch.reason || dispatch.status || 'DISPATCH_FAILED').toUpperCase());
         }
         redirect(res, '/owner/guardian?notice=guardian_pr_dispatched');
         return true;
@@ -1149,7 +1177,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         const runsResponse = await fetch(trackingUrls.runsUrl, {
           headers, signal: AbortSignal.timeout(10_000),
         });
-        if (!runsResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + runsResponse.status);
+        if (!runsResponse.ok) throw new Error(classifyGuardianGithubReadError('actions', runsResponse.status));
         const runsPayload = await runsResponse.json();
         const runMarker = new RegExp('(?:^|[^A-Za-z0-9])#' + Number(incident.id) + '(?!\\d)', 'i');
         const run = (runsPayload.workflow_runs || []).find(item =>
@@ -1163,7 +1191,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         const prResponse = await fetch(trackingUrls.pullRequestsUrl, {
           headers, signal: AbortSignal.timeout(10_000),
         });
-        if (!prResponse.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + prResponse.status);
+        if (!prResponse.ok) throw new Error(classifyGuardianGithubReadError('pull_requests', prResponse.status));
         const prs = await prResponse.json();
         const branchName = trackingUrls.branchName;
         pr = Array.isArray(prs) ? prs.find(item => item.head?.ref === branchName) || null : null;
@@ -1176,6 +1204,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
             const checksResponse = await fetch(apiBase + '/commits/' + encodeURIComponent(pr.head.sha) + '/check-runs?per_page=100', {
               headers, signal: AbortSignal.timeout(10_000),
             });
+            if (!checksResponse.ok && checksResponse.status === 403) throw new Error(classifyGuardianGithubReadError('checks', checksResponse.status));
             const checksPayload = checksResponse.ok ? await checksResponse.json().catch(() => null) : null;
             checksStatus = classifyGuardianPullRequestChecks({ ok: checksResponse.ok, payload: checksPayload });
           }
@@ -1407,10 +1436,17 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
       const code = String(error?.message || '');
       console.error('Owner dashboard action failed:', code || 'unknown error');
       const guardianError = code.startsWith('GUARDIAN_') || code.startsWith('REVIEW_')
-        || code === 'INVALID_FRIEREN_AI_PUBLIC_URL' || code === 'INVALID_FRIEREN_NEURAL_LIVE_URL';
+        || code === 'INVALID_FRIEREN_AI_PUBLIC_URL' || code === 'FRIEREN_AI_SERVICE_NOT_CONFIGURED' || code === 'INVALID_FRIEREN_NEURAL_LIVE_URL';
       const notice = code === 'GUARDIAN_EMERGENCY_STOP_ENABLED' ? 'guardian_emergency_stop_active'
         : code === 'GUARDIAN_BRIDGE_NOT_CONFIGURED' ? 'guardian_not_configured'
         : code === 'GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED' ? 'guardian_github_not_configured'
+        : code === 'GUARDIAN_GITHUB_ACTIONS_WRITE_REQUIRED' ? 'guardian_github_actions_permission_required'
+        : code === 'GUARDIAN_GITHUB_ACTIONS_READ_REQUIRED' ? 'guardian_github_actions_read_required'
+        : code === 'GUARDIAN_GITHUB_PULL_REQUESTS_READ_REQUIRED' ? 'guardian_github_pull_requests_read_required'
+        : code === 'GUARDIAN_GITHUB_CHECKS_READ_REQUIRED' ? 'guardian_github_checks_read_required'
+        : code === 'GUARDIAN_GITHUB_SSO_AUTH_REQUIRED' ? 'guardian_github_sso_required'
+        : code === 'GUARDIAN_GITHUB_TOKEN_INVALID' ? 'guardian_github_token_invalid'
+        : code === 'FRIEREN_AI_SERVICE_NOT_CONFIGURED' ? 'guardian_ai_service_not_configured'
         : guardianError ? (code.startsWith('GUARDIAN_GITHUB_READ_') ? 'guardian_pr_status_failed' : code.startsWith('GUARDIAN_GITHUB_') ? 'guardian_pr_dispatch_failed' : 'guardian_review_failed')
         : code === 'SENSITIVE_TEST_TARGET_REJECTED' ? 'test_target_sensitive'
         : code === 'SENSITIVE_MEMORY_REJECTED' ? 'memory_sensitive_rejected'
@@ -1419,7 +1455,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         : /^RENDER_API_HTTP_(401|403)$/.test(code) ? 'render_api_auth_error'
         : /^RENDER_API_HTTP_(404|429|5\d\d)$/.test(code) ? 'render_api_service_error'
         : 'invalid';
-      redirect(res, '/owner?notice=' + notice);
+      redirect(res, getOwnerActionErrorDestination(actionName) + '?notice=' + notice);
     }
     return true;
   }

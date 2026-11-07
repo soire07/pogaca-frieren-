@@ -596,7 +596,10 @@ createServer(withHttpErrorBoundary(async (req, res) => {
   };
   if (req.method === 'GET' && ['/ai-health', '/ai-ready', '/ai-bridge-health'].includes(req.url)) {
     try {
-      const aiBase = String(process.env.FRIEREN_AI_PUBLIC_URL || 'https://pogaca-frieren-kltd.onrender.com').trim();
+      const aiBase = String(process.env.FRIEREN_AI_PUBLIC_URL || '').trim();
+      if (!aiBase) {
+        return sendJson(503, { status: 'not_ready', service: 'frieren-ai-agent', reason: 'ai_service_not_configured' });
+      }
       const parsedAiBase = new URL(aiBase);
       if (parsedAiBase.protocol !== 'https:' || parsedAiBase.username || parsedAiBase.password) {
         return sendJson(503, { status: 'not_ready', service: 'frieren-ai-agent', reason: 'invalid_ai_service_url' });
