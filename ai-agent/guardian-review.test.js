@@ -119,7 +119,7 @@ test('Guardian provider self-test is admin-only and cannot dispatch repairs', as
   assert.ok(handler.includes("const providerLabel = neuralRequested ? 'Frieren Neural' : 'Groq';"));
   assert.ok(handler.includes("'**Guardian–' + providerLabel + ' bağlantı testi tamamlandı**'"));
   assert.ok(handler.includes("'Sonuç: PASS — ' + providerLabel"));
-  assert.ok(handler.includes("'**Guardian–' + providerLabel + ' bağlantı testi başarısız\\n'"));
+  assert.ok(handler.includes("'**Guardian–' + providerLabel + ' bağlantı testi başarısız**\\n'"));
   assert.doesNotMatch(handler, /Guardian–Groq bağlantı testi tamamlandı/);
   assert.doesNotMatch(handler, /processGuardianIncident|processPendingGuardianRepairDispatch|api\.github\.com|workflow_dispatch/);
 });
