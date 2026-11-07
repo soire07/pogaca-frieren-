@@ -43,3 +43,24 @@ test('AI child can reuse the main Groq key only when a dedicated AI key is absen
   const result = createAiAgentChildEnv({ ...validEnv, FRIEREN_AI_GROQ_API_KEY: '', GROQ_API_KEY: 'shared-groq-key' });
   assert.equal(result.env.GROQ_API_KEY, 'shared-groq-key');
 });
+
+
+test('AI child receives the shared Frieren Neural endpoint, token and quality gate without mixing bot or database identity', () => {
+  const neuralEnv = {
+    ...validEnv,
+    FRIEREN_NEURAL_API_URL: 'https://frieren-neural-test-1unz.onrender.com',
+    FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(40),
+    FRIEREN_NEURAL_QUALITY_APPROVED: '1',
+    FRIEREN_NEURAL_REQUEST_TIMEOUT_MS: '300000',
+    DISCORD_TOKEN: 'main-token',
+    DATABASE_URL: 'postgres://pogaca-production',
+  };
+  const result = createAiAgentChildEnv(neuralEnv);
+  assert.equal(result.ok, true);
+  assert.equal(result.env.FRIEREN_NEURAL_API_URL, neuralEnv.FRIEREN_NEURAL_API_URL);
+  assert.equal(result.env.FRIEREN_NEURAL_API_TOKEN, neuralEnv.FRIEREN_NEURAL_API_TOKEN);
+  assert.equal(result.env.FRIEREN_NEURAL_QUALITY_APPROVED, '1');
+  assert.equal(result.env.FRIEREN_NEURAL_REQUEST_TIMEOUT_MS, '300000');
+  assert.equal(result.env.DISCORD_TOKEN, 'ai-token');
+  assert.equal(result.env.DATABASE_URL, 'postgres://ai-memory');
+});
