@@ -147,3 +147,60 @@ def test_attention_preserves_configured_dropout_during_training(monkeypatch):
     assert len(calls) == 1
     assert calls[0].get("is_causal") is True
     assert calls[0].get("dropout_p") == 0.25
+
+
+def _reference_bpe_merges(texts, vocab_size, min_frequency):
+    sequences = [list(text.encode("utf-8")) for text in texts if text]
+    merges = []
+    for _ in range(vocab_size - 260):
+        counts = {}
+        for sequence in sequences:
+            for pair in zip(sequence, sequence[1:]):
+                counts[pair] = counts.get(pair, 0) + 1
+        if not counts:
+            break
+        best_pair, frequency = min(counts.items(), key=lambda item: (-item[1], item[0]))
+        if frequency < min_frequency:
+            break
+        new_id = 260 + len(merges)
+        updated_sequences = []
+        for sequence in sequences:
+            updated = []
+            index = 0
+            while index < len(sequence):
+                if index + 1 < len(sequence) and (sequence[index], sequence[index + 1]) == best_pair:
+                    updated.append(new_id)
+                    index += 2
+                else:
+                    updated.append(sequence[index])
+                    index += 1
+            updated_sequences.append(updated)
+        sequences = updated_sequences
+        merges.append(best_pair)
+    return tuple(merges)
+
+
+@pytest.mark.parametrize(
+    "texts,vocab_size,min_frequency",
+    [
+        (["aaaaaa", "aaaaa"], 275, 2),
+        (["abababab", "babababa", "abab"], 280, 2),
+        (["aabbaaab", "bbaaaabb", "aabb"], 290, 1),
+        (["Merhaba dünya!", "Merhaba, dünya!"], 300, 2),
+        (["abcabcabc", "abcabcabc", "xyzxyz"], 280, 3),
+    ],
+)
+def test_optimized_bpe_training_preserves_reference_merge_order(texts, vocab_size, min_frequency):
+    from frieren_neural.tokenizer import BPETokenizer
+
+    tokenizer = BPETokenizer.train(texts, vocab_size=vocab_size, min_frequency=min_frequency)
+    assert tokenizer.merges == _reference_bpe_merges(texts, vocab_size, min_frequency)
+
+
+def test_optimized_bpe_training_never_merges_across_document_boundaries():
+    from frieren_neural.tokenizer import BPETokenizer
+
+    separate = BPETokenizer.train(["ab", "cd"], vocab_size=261, min_frequency=1)
+    joined = BPETokenizer.train(["abcd"], vocab_size=261, min_frequency=1)
+    assert separate.merges == ((97, 98),)
+    assert joined.merges == ((97, 98),)
