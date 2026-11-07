@@ -14,3 +14,5 @@ Retry trigger: run 2026-11-06 after the train/validation split preflight was add
 Dependency fix (2026-11-06): Training CI installs test/runtime dependencies needed for FastAPI and Discord adapter tests, but deliberately excludes llama-cpp-python because candidate training does not require the GGUF serving runtime.
 
 Retry trigger 3: install FastAPI, Discord.py and psycopg explicitly before full pre-training pytest collection.
+
+Retry trigger 4 (2026-11-07): The prior pull-request synchronization cancelled the active CPU training job because the workflow shared a PR-level cancel-in-progress concurrency group. Training is now triggered only by an explicit marker push or workflow_dispatch, and same-branch runs queue instead of cancelling the active candidate. Restart the exact isolated 8,000-step v2 candidate with the same pinned Apache-2.0 corpus, held-out split, fixed quality report, and artifact requirements above. The Neural API health endpoint now returns HTTP 503 when the model is unavailable or generation capacity is busy; this change must pass the full API test suite before the candidate artifact is accepted. Do not deploy or connect production services.
