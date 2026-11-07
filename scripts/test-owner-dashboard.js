@@ -1212,6 +1212,9 @@ test('Guardian 403 notice explains the exact fine-grained GitHub token permissio
   const html = renderOwnerGuardianWorkspace({ notice: 'guardian_github_actions_permission_required' });
   assert.match(html, /Actions: Read and write/);
   assert.match(html, /FRIEREN_GITHUB_TOKEN/);
+  assert.match(renderOwnerGuardianWorkspace({ notice: 'guardian_github_actions_read_required' }), /Actions: Read and write/);
+  assert.match(renderOwnerGuardianWorkspace({ notice: 'guardian_github_pull_requests_read_required' }), /Pull requests: Read/);
+  assert.match(renderOwnerGuardianWorkspace({ notice: 'guardian_github_checks_read_required' }), /Checks: Read/);
 });
 
 
