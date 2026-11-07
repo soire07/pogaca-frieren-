@@ -547,6 +547,9 @@ def train_model(
             raise ValueError("Candidate checkpoint must not overwrite its parent checkpoint.")
 
     source_payload = None
+    if initialize_from is not None and normalized_training_dataset is None:
+        raise ValueError("Warm-start candidates require pinned training dataset provenance.")
+
     if source_path is not None:
         source_payload = torch.load(source_path, map_location=selected_device, weights_only=True)
         if not isinstance(source_payload, dict) or source_payload.get("format_version") != 2:
@@ -555,16 +558,25 @@ def train_model(
             raise ValueError("Source checkpoint dialogue encoding is incompatible with this training run.")
         if source_payload.get("loss_objective_version") != LOSS_OBJECTIVE_VERSION:
             raise ValueError("Source checkpoint loss objective is incompatible with this training run.")
-        if source_payload.get("corpus_sha256") != corpus_fingerprint:
-            if initialize_from is not None:
-                raise ValueError("Warm-start checkpoint corpus/model/training settings do not match this candidate.")
-            raise ValueError("Checkpoint corpus/model/training settings do not match this run.")
+        if resume and source_payload.get("corpus_sha256") != corpus_fingerprint:
+            raise ValueError("Training corpus does not match this checkpoint.")
         saved_training_config = dict(source_payload.get("training_config", {}))
         current_training_config = asdict(settings)
         mutable_fields = ("max_steps",) if resume else ("max_steps", "learning_rate")
         for mutable in mutable_fields:
             saved_training_config.pop(mutable, None)
             current_training_config.pop(mutable, None)
+        model_setting_fields = (
+            "block_size", "d_model", "n_heads", "n_layers", "dropout",
+            "tokenizer_vocab_size", "tokenizer_min_frequency",
+        )
+        if any(
+            source_payload.get("training_config", {}).get(key) != asdict(settings).get(key)
+            for key in model_setting_fields
+        ):
+            if initialize_from is not None:
+                raise ValueError("Warm-start checkpoint model/tokenizer settings do not match this candidate.")
+            raise ValueError("Checkpoint model/tokenizer settings do not match this run.")
         if saved_training_config != current_training_config:
             raise ValueError("Source checkpoint training settings do not match this run.")
         if not isinstance(source_payload.get("tokenizer"), dict):
@@ -644,12 +656,15 @@ def train_model(
         current_training_config = asdict(settings)
         saved_training_config.pop("max_steps", None)
         current_training_config.pop("max_steps", None)
+        if saved.get("training_dataset") != normalized_training_dataset:
+            raise ValueError("Training dataset manifest does not match this checkpoint.")
+        if saved.get("corpus_sha256") != corpus_fingerprint:
+            raise ValueError("Training corpus does not match this checkpoint.")
         if (saved.get("model_config") != asdict(model_config)
-                or saved.get("tokenizer") != tokenizer.to_dict()
-                or saved.get("corpus_sha256") != corpus_fingerprint
-                or saved.get("training_dataset") != normalized_training_dataset
-                or saved_training_config != current_training_config):
-            raise ValueError("Checkpoint corpus/model/training settings do not match this run (max_steps may increase).")
+                or saved.get("tokenizer") != tokenizer.to_dict()):
+            raise ValueError("Checkpoint model/tokenizer settings do not match this run.")
+        if saved_training_config != current_training_config:
+            raise ValueError("Checkpoint training settings do not match this run (max_steps may increase).")
         model.load_state_dict(saved["model_state"])
         optimizer.load_state_dict(saved["optimizer_state"])
         parent_checkpoint_sha256 = str(saved.get("parent_checkpoint_sha256") or "") or None
