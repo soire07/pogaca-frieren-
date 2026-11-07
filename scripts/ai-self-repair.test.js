@@ -226,7 +226,7 @@ test('Groq repair retries once when a structurally valid diff fails git apply --
       if (applyChecks === 1) throw new Error('patch does not apply: source context mismatch');
       return '';
     }
-    if (args[0] === 'status') return ' M rpg-mechanics.js\\n';
+    if (args[0] === 'status') return ' M rpg-mechanics.js\n';
     return '';
   };
   const proposal = await generateRepairPatchWithRetry({
@@ -356,10 +356,10 @@ test('repair patch rejects additional allowed files changed outside the proposal
   let applied = false;
   const execFile = (args) => {
     calls.push(args);
-    if (args[0] === 'status' && args[1] === '--porcelain') return applied ? ' M rpg-mechanics.js\\n M unrelated.js\\n' : '';
+    if (args[0] === 'status' && args[1] === '--porcelain') return applied ? ' M rpg-mechanics.js\n M unrelated.js\n' : '';
     if (args[0] === 'apply' && args[1] === '--check') return '';
     if (args[0] === 'apply' && args[1] === '--') { applied = true; return ''; }
-    if (args[0] === 'status' && args[1] === '--short') return ' M rpg-mechanics.js\\n M unrelated.js\\n';
+    if (args[0] === 'status' && args[1] === '--short') return ' M rpg-mechanics.js\n M unrelated.js\n';
     if (args[0] === 'apply' && args[1] === '--reverse') { applied = false; return ''; }
     return '';
   };
@@ -375,12 +375,12 @@ test('repair patch rolls back applied changes when post-apply validation fails',
   let applied = false;
   const execFile = (args) => {
     calls.push(args);
-    if (args[0] === 'status' && args[1] === '--porcelain') return applied ? ' M rpg-mechanics.js\\n' : '';
+    if (args[0] === 'status' && args[1] === '--porcelain') return applied ? ' M rpg-mechanics.js\n' : '';
     if (args[0] === 'apply' && args[1] === '--check') return '';
     if (args[0] === 'apply' && args[1] === '--') { applied = true; return ''; }
     if (args[0] === 'diff' && args[1] === '--check') throw new Error('WHITESPACE_VALIDATION_FAILED');
     if (args[0] === 'apply' && args[1] === '--reverse') { applied = false; return ''; }
-    if (args[0] === 'status' && args[1] === '--short') return applied ? ' M rpg-mechanics.js\\n' : '';
+    if (args[0] === 'status' && args[1] === '--short') return applied ? ' M rpg-mechanics.js\n' : '';
     throw new Error('UNEXPECTED_COMMAND: ' + args.join(' '));
   };
   assert.throws(() => applyRepairPatch(validPatch, { execFile }), {
