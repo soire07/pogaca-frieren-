@@ -409,7 +409,7 @@ test('real git apply rolls back a patch when post-apply whitespace validation fa
       stdio: options.stdio || 'pipe',
       env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1' },
     });
-    await writeFile(path.join(root, 'rpg-mechanics.js'), 'const ready = false;\\n');
+    await writeFile(path.join(root, 'rpg-mechanics.js'), 'const ready = false;\n');
     git(['init', '-q']);
     git(['config', 'user.email', 'neural-tests@example.invalid']);
     git(['config', 'user.name', 'Frieren Neural Tests']);
@@ -421,7 +421,7 @@ test('real git apply rolls back a patch when post-apply whitespace validation fa
     assert.throws(() => applyRepairPatch(badWhitespacePatch, { execFile: git }));
     assert.equal(
       await readFile(path.join(root, 'rpg-mechanics.js'), 'utf8'),
-      'const ready = false;\\n',
+      'const ready = false;\n',
     );
     assert.equal(git(['status', '--porcelain', '--untracked-files=all']).trim(), '');
   } finally {
@@ -439,7 +439,7 @@ test('real git status parsing returns the exact changed file after an accepted p
       stdio: options.stdio || 'pipe',
       env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1' },
     });
-    await writeFile(path.join(root, 'rpg-mechanics.js'), 'const ready = false;\\n');
+    await writeFile(path.join(root, 'rpg-mechanics.js'), 'const ready = false;\n');
     git(['init', '-q']);
     git(['config', 'user.email', 'neural-tests@example.invalid']);
     git(['config', 'user.name', 'Frieren Neural Tests']);
