@@ -1,0 +1,162 @@
+name: Neon production PostgreSQL safety backup
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 06:15 Europe/Istanbul (UTC+3)
+    - cron: "15 3 * * *"
+
+permissions:
+  contents: read
+  actions: write
+  issues: write
+
+concurrency:
+  group: neon-production-live-safety-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Dump and restore-verify Neon production-live
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check secret and enforce production-live endpoint
+        env:
+          DATABASE_URL: ${{ secrets.NEON_PRODUCTION_DATABASE_URL }}
+          EXPECTED_HOST: ep-small-waterfall-ar1dcbum-pooler.c-4.us-west-2.aws.neon.tech
+        run: |
+          set -euo pipefail
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Add NEON_PRODUCTION_DATABASE_URL in repository Actions secrets."
+            exit 1
+          fi
+          actual_host="$(python3 -c 'import os, urllib.parse; print(urllib.parse.urlparse(os.environ["DATABASE_URL"]).hostname or "")')"
+          if [ "$actual_host" != "$EXPECTED_HOST" ]; then
+            echo "::error::Database endpoint mismatch. This workflow accepts only the configured production-live Neon endpoint."
+            exit 1
+          fi
+
+      - name: Create custom-format Neon dump and source inventory
+        env:
+          DATABASE_URL: ${{ secrets.NEON_PRODUCTION_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          docker run --rm --network host \
+            -e DATABASE_URL \
+            -v "$GITHUB_WORKSPACE/backup:/backup" \
+            postgres:18-alpine sh -euc '
+              filename="/backup/pogaca-frieren-neon-production-$(date -u +%Y%m%dT%H%M%SZ).dump"
+              pg_dump --format=custom --no-owner --no-acl "$DATABASE_URL" --file="$filename"
+              pg_restore --list "$filename" >/dev/null
+              psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atqc \
+                "SELECT count(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_type = chr(66)||chr(65)||chr(83)||chr(69)||chr(32)||chr(84)||chr(65)||chr(66)||chr(76)||chr(69)" \
+                > /backup/source-public-table-count.txt
+              test "$(cat /backup/source-public-table-count.txt)" -gt 0
+            '
+          cd backup
+          sha256sum *.dump > SHA256SUMS
+          test -s SHA256SUMS
+          test -s source-public-table-count.txt
+          ls -lh
+
+      - name: Restore into an isolated temporary PostgreSQL instance
+        run: |
+          set -euo pipefail
+          (cd backup && sha256sum -c SHA256SUMS)
+          container="frieren-neon-restore-${GITHUB_RUN_ID}"
+          cleanup() {
+            docker rm -f "$container" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker run --detach --name "$container" \
+            --env POSTGRES_PASSWORD="restore-test-${GITHUB_RUN_ID}" \
+            --env POSTGRES_DB=restore_test \
+            --volume "$GITHUB_WORKSPACE/backup:/backup:ro" \
+            postgres:18-alpine >/dev/null
+
+          for attempt in $(seq 1 40); do
+            if docker exec "$container" pg_isready -U postgres -d restore_test >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          docker exec "$container" pg_isready -U postgres -d restore_test
+
+          docker exec "$container" sh -euc '
+            pg_restore --exit-on-error --no-owner --no-acl \
+              --username=postgres --dbname=restore_test /backup/*.dump
+          '
+
+          source_count="$(cat backup/source-public-table-count.txt)"
+          restored_count="$(docker exec "$container" psql -U postgres -d restore_test -Atqc \
+            "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'")"
+          if [ "$restored_count" -ne "$source_count" ]; then
+            echo "::error::Restored public table count ($restored_count) differs from source ($source_count)."
+            exit 1
+          fi
+          echo "Isolated Neon restore succeeded; source and restored public tables: $source_count"
+          docker exec "$container" psql -U postgres -d restore_test -c \
+            "SELECT current_database() AS restored_database, count(*) AS restored_public_tables FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
+
+      - name: Store verified Neon backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pogaca-frieren-neon-production-${{ github.run_id }}
+          path: backup/
+          if-no-files-found: error
+          retention-days: 90
+
+  notify-failure:
+    name: Alert when Neon backup verification fails
+    needs: backup
+    if: always() && needs.backup.result == 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      actions: read
+    steps:
+      - name: Open or update Neon backup failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          issue_number="$(gh issue list --repo "$REPOSITORY" --state open --search 'in:title Neon production PostgreSQL backup failed' --json number --jq '.[0].number // empty')"
+          body="$(cat <<EOF
+          Neon production-live backup or isolated-restore verification failed.
+
+          Run: ${RUN_URL}
+          Commit: ${GITHUB_SHA}
+
+          Inspect the failed Actions job. The source database is read-only; restore verification uses a disposable PostgreSQL container. Do not modify production data as part of this alert.
+          EOF
+          )"
+          if [ -n "$issue_number" ]; then
+            gh issue comment "$issue_number" --repo "$REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$REPOSITORY" --title "Neon production PostgreSQL backup failed" --body "$body"
+          fi
+
+  resolve-failure-alert:
+    name: Resolve Neon backup alert after successful verification
+    needs: backup
+    if: needs.backup.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Close open Neon backup failure alert
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          issue_number="$(gh issue list --repo "$REPOSITORY" --state open --search 'in:title Neon production PostgreSQL backup failed' --json number --jq '.[0].number // empty')"
+          if [ -n "$issue_number" ]; then
+            gh issue comment "$issue_number" --repo "$REPOSITORY" --body "A later Neon backup and isolated restore verification succeeded. Run: ${GITHUB_SERVER_URL}/${REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            gh issue close "$issue_number" --repo "$REPOSITORY"
+          fi
