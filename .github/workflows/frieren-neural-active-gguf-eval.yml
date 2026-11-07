@@ -68,7 +68,7 @@ jobs:
           print("BLOCKING_REASONS=" + ",".join(report["blocking_reasons"]))
           PY
       - name: Send quality report to Guardian using GitHub OIDC
-        if: success()
+        if: success() && vars.FRIEREN_NEURAL_REPORT_UPLOAD_ENABLED == 'true'
         env:
           GUARDIAN_URL: https://pogaca-frieren.onrender.com/internal/neural-quality-report
           GITHUB_TOKEN: ${{ github.token }}
@@ -113,6 +113,9 @@ jobs:
               print("GUARDIAN_UPLOAD_HTTP_STATUS=" + str(error.code))
               raise
           PY
+      - name: Explain why production report upload was skipped
+        if: success() && vars.FRIEREN_NEURAL_REPORT_UPLOAD_ENABLED != 'true'
+        run: echo "Guardian report upload skipped; set FRIEREN_NEURAL_REPORT_UPLOAD_ENABLED=true only after production write approval."
       - name: Upload real-model evaluation report
         if: always()
         uses: actions/upload-artifact@v4
