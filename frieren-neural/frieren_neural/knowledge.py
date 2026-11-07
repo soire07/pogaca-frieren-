@@ -295,7 +295,7 @@ def export_verified_knowledge(output_dir: str | Path, *, license_name: str) -> d
             raise ValueError("Verified knowledge does not contain two distinct reviewer hashes.")
         if any(not re.fullmatch(r"[a-f0-9]{64}", str(value)) for value in reviewers):
             raise ValueError("Verified knowledge reviewer evidence is invalid.")
-        if re.search(r"(?im)^\s*(?:Kullanıcı|Asistan)\s*:", title + "\\n" + content):
+        if re.search(r"(?im)^\s*(?:Kullanıcı|Asistan)\s*:", title + "\n" + content):
             raise ValueError("Verified knowledge contains a dialogue role marker.")
         dialogues.append("Kullanıcı: " + title + "\nAsistan: " + content + "\n")
         source_records.append(
