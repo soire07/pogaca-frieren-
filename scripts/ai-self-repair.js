@@ -237,18 +237,28 @@ export function applyRepairPatch(patch, { execFile = runGit, task = '', incident
   if (String(before || '').trim()) throw new Error('REPAIR_WORKTREE_NOT_CLEAN');
   execFile(['apply', '--check', '--'], { input: patch, stdio: ['pipe', 'pipe', 'pipe'] });
   execFile(['apply', '--'], { input: patch, stdio: ['pipe', 'pipe', 'pipe'] });
-  execFile(['diff', '--check'], { stdio: ['ignore', 'pipe', 'pipe'] });
-  const changed = execFile(['status', '--short', '--untracked-files=all'], { encoding: 'utf8' })
-    .split('\n').filter(Boolean).map(line => line.slice(3).trim()).sort();
-  if (!changed.length || changed.length > MAX_PATCH_FILES || changed.some(path => !isAllowedRepairPath(path, { allowProtectedIndexJs: isApprovedIndexRepairTask(task, incidentId) }))) {
-    throw new Error('REPAIR_WORKTREE_VALIDATION_FAILED');
+  try {
+    execFile(['diff', '--check'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const changed = execFile(['status', '--short', '--untracked-files=all'], { encoding: 'utf8' })
+      .split('\\n').filter(Boolean).map(line => line.slice(3).trim()).sort();
+    if (!changed.length || changed.length > MAX_PATCH_FILES || changed.some(path => !isAllowedRepairPath(path, { allowProtectedIndexJs: isApprovedIndexRepairTask(task, incidentId) }))) {
+      throw new Error('REPAIR_WORKTREE_VALIDATION_FAILED');
+    }
+    if (JSON.stringify(changed) !== JSON.stringify(expectedFiles)) {
+      throw new Error('REPAIR_CHANGED_FILE_SET_MISMATCH');
+    }
+    return changed;
+  } catch (validationError) {
+    try {
+      execFile(['apply', '--reverse', '--'], { input: patch, stdio: ['pipe', 'pipe', 'pipe'] });
+      const remaining = execFile(['status', '--porcelain', '--untracked-files=all'], { encoding: 'utf8' });
+      if (String(remaining || '').trim()) throw new Error('REPAIR_ROLLBACK_NOT_CLEAN');
+    } catch {
+      throw new Error('REPAIR_ROLLBACK_FAILED');
+    }
+    throw validationError;
   }
-  if (JSON.stringify(changed) !== JSON.stringify(expectedFiles)) {
-    throw new Error('REPAIR_CHANGED_FILE_SET_MISMATCH');
-  }
-  return changed;
 }
-
 export async function main(env = process.env) {
   const mode = String(env.FRIEREN_REPAIR_MODE || 'repair').trim().toLowerCase();
   if (!['validate', 'repair'].includes(mode)) throw new Error('REPAIR_MODE_INVALID');
