@@ -138,7 +138,17 @@ export default {
     }
     return interaction.editReply({ content: 'Bilinmeyen etkinlik işlemi.' });
     } catch (error) {
-      console.error('/etkinlik hatası:', error?.message || error);
+      const code = error?.message || error?.code;
+      const expectedInputError = Object.hasOwn({
+        TEAM_NAME_INVALID: true, TEAM_JOIN_INPUT_INVALID: true, LEAGUE_INPUT_INVALID: true,
+        LEAGUE_ENTRY_INPUT_INVALID: true, LEAGUE_SCHEDULE_INPUT_INVALID: true,
+        LEAGUE_TEAM_COUNT_INVALID: true, LEAGUE_SCHEDULE_INVALID: true,
+        LEAGUE_DASHBOARD_INPUT_INVALID: true, FIXTURE_REPORT_INPUT_INVALID: true,
+        FIXTURE_SCORE_INVALID: true, TEAM_PLAYER_INVALID: true,
+        EVENT_INPUT_INVALID: true, EVENT_TYPE_INVALID: true
+      }, code) || error?.code === '23505';
+      if (expectedInputError) console.warn('/etkinlik geçersiz giriş:', code);
+      else console.error('/etkinlik hatası:', error?.message || error);
       return interaction.editReply({ content: formatEventCommandError(error), allowedMentions: { parse: [] } });
     }
   }
