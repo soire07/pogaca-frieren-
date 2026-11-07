@@ -227,10 +227,9 @@ class BPETokenizer:
                 run_starts = np.concatenate((
                     np.array([0]), np.flatnonzero(np.diff(positions) > 1) + 1
                 ))
-                group_starts = np.maximum.accumulate(
-                    np.where(np.isin(np.arange(positions.size), run_starts),
-                             np.arange(positions.size), 0)
-                )
+                group_starts = np.zeros(positions.size, dtype=np.int64)
+                group_starts[run_starts] = run_starts
+                group_starts = np.maximum.accumulate(group_starts)
                 positions = positions[(np.arange(positions.size) - group_starts) % 2 == 0]
             ids[positions] = self.BASE_VOCAB_SIZE + merge_index
             keep = np.ones(ids.size, dtype=bool)
