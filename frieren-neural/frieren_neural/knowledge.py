@@ -110,6 +110,38 @@ def _submitter_hash() -> str:
     return hmac.new(token.encode("utf-8"), b"frieren-neural-knowledge-submitter-v1", hashlib.sha256).hexdigest()
 
 
+def _reviewer_identity_hash(reviewer_token: str) -> str:
+    """Resolve a submitted credential to one preconfigured reviewer identity."""
+    raw = os.environ.get("FRIEREN_KNOWLEDGE_REVIEWERS", "").strip()
+    if not raw:
+        raise RuntimeError("Knowledge reviewer credentials are not configured.")
+    try:
+        configured = json.loads(raw)
+    except json.JSONDecodeError as error:
+        raise RuntimeError("Knowledge reviewer credentials are not configured.") from error
+    if not isinstance(configured, dict) or len(configured) < 2 or len(configured) > 8:
+        raise RuntimeError("At least two configured knowledge reviewer credentials are required.")
+    seen_tokens: set[str] = set()
+    matches: list[str] = []
+    for reviewer_id, secret in configured.items():
+        if (not isinstance(reviewer_id, str)
+                or not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,31}", reviewer_id)
+                or not isinstance(secret, str)
+                or not 32 <= len(secret.strip()) <= 256):
+            raise RuntimeError("Knowledge reviewer credential configuration is invalid.")
+        normalized_secret = secret.strip()
+        if normalized_secret in seen_tokens:
+            raise RuntimeError("Knowledge reviewer credentials must be unique.")
+        seen_tokens.add(normalized_secret)
+        if hmac.compare_digest(normalized_secret, reviewer_token.strip()):
+            matches.append(reviewer_id)
+    if len(matches) != 1:
+        raise ValueError("Reviewer credential is not authorized.")
+    return hashlib.sha256(
+        ("frieren-neural-knowledge-reviewer-v1:" + matches[0]).encode("utf-8")
+    ).hexdigest()
+
+
 def create_knowledge_candidate(payload: dict[str, Any]) -> dict[str, Any]:
     import psycopg
 
@@ -171,9 +203,7 @@ def review_knowledge_candidate(candidate_id: str, *, decision: str, reviewer_tok
         raise ValueError("Review decision must be approve or reject.")
     if not isinstance(reviewer_token, str) or len(reviewer_token.strip()) < 32 or len(reviewer_token) > 256:
         raise ValueError("Reviewer token must be private and at least 32 characters.")
-    reviewer_hash = hashlib.sha256(
-        ("frieren-neural-knowledge-review-v1:" + reviewer_token.strip()).encode("utf-8")
-    ).hexdigest()
+    reviewer_hash = _reviewer_identity_hash(reviewer_token)
 
     with psycopg.connect(_database_url(), connect_timeout=3) as connection:
         with connection.transaction():

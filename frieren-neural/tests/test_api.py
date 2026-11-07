@@ -737,6 +737,15 @@ def test_learning_signal_postgres_migration_deduplication_retention_and_aggregat
 
     reviewer_one = "reviewer-one-private-token-12345678901234567890"
     reviewer_two = "reviewer-two-private-token-12345678901234567890"
+    monkeypatch.setenv("FRIEREN_KNOWLEDGE_REVIEWERS", json.dumps({
+        "reviewer_one": reviewer_one,
+        "reviewer_two": reviewer_two,
+    }))
+    unauthorized_review = api_client.post(
+        f"/learning/knowledge/candidates/{candidate_id}/reviews",
+        headers=headers, json={"decision": "approve", "reviewer_token": "unregistered-reviewer-token-1234567890"},
+    )
+    assert unauthorized_review.status_code == 403
     first_review = api_client.post(
         f"/learning/knowledge/candidates/{candidate_id}/reviews",
         headers=headers, json={"decision": "approve", "reviewer_token": reviewer_one},

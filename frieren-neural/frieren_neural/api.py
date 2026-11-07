@@ -533,7 +533,7 @@ def review_knowledge_candidate(
         )
     except ValueError as error:
         message = str(error)
-        status_code = 422 if "ID is invalid" in message or "Reviewer token" in message else 409
+        status_code = 403 if "not authorized" in message else 422 if "ID is invalid" in message or "Reviewer token" in message else 409
         raise HTTPException(status_code=status_code, detail=message) from error
     except RuntimeError as error:
         raise HTTPException(status_code=503, detail="Knowledge storage is not configured.") from error
