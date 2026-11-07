@@ -34,7 +34,12 @@ function validReport() {
       sources: ['Pinned Apache-2.0 corpus'],
       licenses: ['Apache-2.0']
     },
-    heldout_metrics: { loss: 1.2, perplexity: 3.2, dataset_sha256: 'e'.repeat(64), sample_count: 10, split: 'heldout', evaluation_version: 'test-v1' },
+    checkpoint_metadata: { loss_objective_version: 2 },
+    heldout_metrics: {
+      loss: 1.2, perplexity: 3.2, dataset_sha256: 'e'.repeat(64), sample_count: 10,
+      split: 'heldout', evaluation_version: 'test-v1',
+      loss_objective_version: 2, checkpoint_training_loss_objective_version: 2,
+    },
     baseline_comparison: { available: true, improved: true, baseline_checkpoint_sha256: 'c'.repeat(64), baseline_loss_objective_version: 2, baseline_reviewer_identity_hashes: ['c'.repeat(64), 'd'.repeat(64)] },
     metrics: {
       dimension_averages: Object.fromEntries(dimensions.map(key => [key, 3.8])),
