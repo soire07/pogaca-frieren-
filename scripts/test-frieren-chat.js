@@ -306,3 +306,18 @@ test('Poğaça Frieren keeps the existing free Groq path while Neural quality ap
   assert.equal(requestedUrl, 'https://api.groq.com/openai/v1/chat/completions');
   assert.equal(answer, 'Merhaba.');
 });
+
+
+test('Neural quality approval fails closed when the endpoint URL is missing instead of silently using Groq', async () => {
+  let fallbackCalled = false;
+  await assert.rejects(generateFrierenReply({
+    env: {
+      GROQ_API_KEY: 'free-fallback-key',
+      FRIEREN_NEURAL_QUALITY_APPROVED: '1',
+      FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(40)
+    },
+    userMessage: 'Merhaba',
+    fetchImpl: async () => { fallbackCalled = true; throw new Error('must not call upstream'); }
+  }), /FRIEREN_NEURAL_NOT_CONFIGURED/);
+  assert.equal(fallbackCalled, false);
+});
