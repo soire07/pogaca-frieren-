@@ -231,3 +231,38 @@ def test_verified_knowledge_search_rejects_tampered_content(tmp_path, monkeypatc
     monkeypatch.setitem(sys.modules, "psycopg", SimpleNamespace(connect=lambda *_args, **_kwargs: Connection()))
     with pytest.raises(RuntimeError, match="integrity"):
         search_verified_knowledge("tuple")
+
+
+def test_verified_knowledge_export_rejects_approval_array_that_differs_from_review_rows(tmp_path, monkeypatch):
+    import hashlib
+    import sys
+    from types import SimpleNamespace
+    from frieren_neural.knowledge import export_verified_knowledge
+
+    excerpt = "The tuple type is an immutable sequence type that stores an ordered collection of objects."
+    content = "A tuple is an immutable sequence in Python and can contain values of different types."
+    source_sha = hashlib.sha256(excerpt.encode("utf-8")).hexdigest()
+    content_sha = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    row = (
+        "00000000-0000-0000-0000-000000000001",
+        "Python tuple semantics", content, "Python language reference",
+        "https://docs.python.org/3/library/stdtypes.html#tuples", "v3.14",
+        "CC-BY-4.0", source_sha, content_sha,
+        __import__("datetime").datetime(2026, 1, 1, tzinfo=__import__("datetime").timezone.utc),
+        ["a" * 64, "b" * 64], excerpt,
+        "Python language reference", "https://docs.python.org/3/library/stdtypes.html#tuples", "v3.14",
+        source_sha, content_sha, "CC-BY-4.0", "promoted", ["a" * 64, "c" * 64],
+    )
+
+    class Cursor:
+        def fetchall(self): return [row]
+
+    class Connection:
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+        def execute(self, *_args): return Cursor()
+
+    monkeypatch.setenv("FRIEREN_DATABASE_URL", "postgresql://test.invalid/neural")
+    monkeypatch.setitem(sys.modules, "psycopg", SimpleNamespace(connect=lambda *_args, **_kwargs: Connection()))
+    with pytest.raises(RuntimeError, match="integrity"):
+        export_verified_knowledge(tmp_path / "review-tampered", license_name="CC-BY-4.0")

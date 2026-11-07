@@ -397,7 +397,7 @@ test('failed repair dispatch detects an already-started workflow and does not di
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async (_url, options) => {
       if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({
-        workflow_runs: [{ display_title: 'Frieren AI Repair · Guardian #42', html_url: 'https://github.com/example/actions/runs/123' }],
+        workflow_runs: [{ display_title: 'Frieren Neural Repair · Guardian #42', html_url: 'https://github.com/example/actions/runs/123' }],
       }) };
       posts += 1;
       return { ok: true, status: 204, json: async () => ({}) };
@@ -421,7 +421,7 @@ test('repair retry replaces a terminal failed workflow when no PR was created', 
     fetchImpl: async (url, options) => {
       requests.push({ url, method: options.method });
       if (options.method === 'GET' && url.includes('/actions/workflows/')) return { ok: true, status: 200, json: async () => ({
-        workflow_runs: [{ display_title: 'Frieren AI Repair · Guardian #43', status: 'completed', conclusion: 'failure', html_url: 'https://github.com/example/actions/runs/143' }],
+        workflow_runs: [{ display_title: 'Frieren Neural Repair · Guardian #43', status: 'completed', conclusion: 'failure', html_url: 'https://github.com/example/actions/runs/143' }],
       }) };
       if (options.method === 'GET' && url.includes('/pulls?')) return { ok: true, status: 200, json: async () => [] };
       return { ok: true, status: 204, json: async () => ({}) };
@@ -446,7 +446,7 @@ test('repair retry does not duplicate a terminal failed workflow that already cr
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async (url, options) => {
       if (options.method === 'GET' && url.includes('/actions/workflows/')) return { ok: true, status: 200, json: async () => ({
-        workflow_runs: [{ display_title: 'Frieren AI Repair · Guardian #44', status: 'completed', conclusion: 'cancelled', html_url: 'https://github.com/example/actions/runs/144' }],
+        workflow_runs: [{ display_title: 'Frieren Neural Repair · Guardian #44', status: 'completed', conclusion: 'cancelled', html_url: 'https://github.com/example/actions/runs/144' }],
       }) };
       if (options.method === 'GET' && url.includes('/pulls?')) return { ok: true, status: 200, json: async () => [{ head: { ref: 'ai-repair/guardian-44' } }] };
       posts += 1;
@@ -472,7 +472,7 @@ test('repair retry does not confuse incident 4 with a workflow for incident 42',
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async (_url, options) => {
       if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({
-        workflow_runs: [{ display_title: 'Frieren AI Repair · Guardian #42', html_url: 'https://github.com/example/actions/runs/142' }],
+        workflow_runs: [{ display_title: 'Frieren Neural Repair · Guardian #42', html_url: 'https://github.com/example/actions/runs/142' }],
       }) };
       posts += 1;
       return { ok: true, status: 204, json: async () => ({}) };
@@ -610,7 +610,7 @@ test('retry reports an existing workflow without claiming persistence when state
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async (_url, options) => {
       if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({
-        workflow_runs: [{ display_title: 'Frieren AI Repair · Guardian #42', html_url: 'https://github.com/example/actions/runs/420' }],
+        workflow_runs: [{ display_title: 'Frieren Neural Repair · Guardian #42', html_url: 'https://github.com/example/actions/runs/420' }],
       }) };
       posts += 1;
       return { ok: true, status: 204, json: async () => ({}) };
