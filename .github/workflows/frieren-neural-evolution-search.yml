@@ -1,6 +1,11 @@
 name: Frieren Neural isolated candidate evolution
 
 on:
+  push:
+    branches:
+      - test/frieren-neural-render-free
+    paths:
+      - "frieren-neural/.candidate-search-request"
   workflow_dispatch:
     inputs:
       training_run_id:
@@ -39,11 +44,27 @@ jobs:
         run: |
           python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
           python -m pip install --no-deps -e .
+      - name: Resolve completed baseline training run
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            run_id="${{ inputs.training_run_id }}"
+            candidate_steps="${{ inputs.candidate_steps }}"
+          else
+            run_id="$(tr -d '[:space:]' < .candidate-search-request)"
+            candidate_steps="500"
+          fi
+          [[ "$run_id" =~ ^[0-9]+$ ]]
+          [[ "$candidate_steps" =~ ^[0-9]+$ ]]
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "candidate_steps=$candidate_steps" >> "$GITHUB_OUTPUT"
       - name: Download immutable training checkpoint and corpus artifacts
         uses: actions/download-artifact@v4
         with:
           repository: ${{ github.repository }}
-          run-id: ${{ inputs.training_run_id }}
+          run-id: ${{ steps.request.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: frieren-neural/source-artifacts
       - name: Locate and verify the completed 24,000-step baseline
@@ -75,7 +96,7 @@ jobs:
             --heldout-data "${{ steps.baseline.outputs.root }}/corpus/turkish-chat-max-25k/heldout" \
             --baseline-checkpoint "${{ steps.baseline.outputs.root }}/checkpoints/frieren-neural-chat-max-25k.pt" \
             --output-dir ./evolution-candidates \
-            --candidate-steps "${{ inputs.candidate_steps }}" \
+            --candidate-steps "${{ steps.request.outputs.candidate_steps }}" \
             --heldout-batches 25 --device cpu
       - name: Enforce baseline preservation and human-review gate
         run: |
