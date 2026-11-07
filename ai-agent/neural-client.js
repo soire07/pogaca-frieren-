@@ -4,8 +4,9 @@ const REQUEST_TIMEOUT_MS = 300_000;
 const MAX_REQUEST_TIMEOUT_MS = 360_000;
 
 export function isNeuralRequested(env = process.env) {
-  return Boolean(String(env.FRIEREN_NEURAL_API_URL || '').trim())
-    && env.FRIEREN_NEURAL_QUALITY_APPROVED === '1';
+  // The explicit quality flag selects Neural even when its URL/token is missing.
+  // Missing configuration must fail closed, never silently fall back to Groq.
+  return env.FRIEREN_NEURAL_QUALITY_APPROVED === '1';
 }
 
 export function isNeuralConfigured(env = process.env) {
