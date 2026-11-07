@@ -896,9 +896,10 @@ client.on(Events.InteractionCreate, async interaction => {
         },
         collectCodeContext: collectCodeContext,
       });
+      const providerLabel = neuralRequested ? 'Frieren Neural' : 'Groq';
       const report = [
-        '**Guardian–Groq bağlantı testi tamamlandı**',
-        'Sonuç: PASS — Groq yanıtı alındı ve JSON doğrulandı.',
+        '**Guardian–' + providerLabel + ' bağlantı testi tamamlandı**',
+        'Sonuç: PASS — ' + providerLabel + ' yanıtı alındı ve JSON doğrulandı.',
         'Model güveni: ' + review.confidence,
         'Kök neden yanıtı: ' + String(review.rootCause || 'Belirtilmedi').slice(0, 500),
         'Test önerileri: ' + (review.tests || []).slice(0, 3).join('; ').slice(0, 500),
@@ -906,11 +907,12 @@ client.on(Events.InteractionCreate, async interaction => {
         'Dosya değişikliği / GitHub dispatch: YOK',
       ].join('\n');
       await interaction.editReply(report.slice(0, 1900));
-      console.log('Guardian Groq self-test succeeded; proposal only, no repair dispatched.');
+      console.log('Guardian ' + providerLabel + ' self-test succeeded; proposal only, no repair dispatched.');
     } catch (error) {
-      const safeMessage = redactSecrets(error?.message || 'GUARDIAN_GROQ_SELF_TEST_FAILED').slice(0, 300);
-      console.error('Guardian Groq self-test failed:', safeMessage);
-      await interaction.editReply('**Guardian–Groq bağlantı testi başarısız**\n' + safeMessage + '\nOnarım veya GitHub işlemi başlatılmadı.').catch(() => {});
+      const providerLabel = neuralRequested ? 'Frieren Neural' : 'Groq';
+      const safeMessage = redactSecrets(error?.message || 'GUARDIAN_PROVIDER_SELF_TEST_FAILED').slice(0, 300);
+      console.error('Guardian ' + providerLabel + ' self-test failed:', safeMessage);
+      await interaction.editReply('**Guardian–' + providerLabel + ' bağlantı testi başarısız**\n' + safeMessage + '\nOnarım veya GitHub işlemi başlatılmadı.').catch(() => {});
     } finally {
       guardianReviewInProgress = false;
     }
