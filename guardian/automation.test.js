@@ -737,7 +737,7 @@ test("Neural review redacts incident secrets and identifiers before transmission
     },
   });
   assert.equal(result.status, "proposal_only");
-  assert.doesNotMatch(JSON.stringify(sent), /user@example\\.com|private-token|1553794496234262641|API_KEY=hidden/);
+  assert.doesNotMatch(JSON.stringify(sent), /user@example\.com|private-token|1553794496234262641|API_KEY=hidden/);
   assert.deepEqual(sent.incident.evidence.map(item => item.file), ["guardian/automation.js"]);
-  assert.doesNotMatch(contextQuestion, /user@example\\.com|private-token|1553794496234262641/);
+  assert.doesNotMatch(contextQuestion, /user@example\.com|private-token|1553794496234262641/);
 });
