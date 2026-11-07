@@ -2,6 +2,7 @@ import { buildMemoryContext, extractExplicitMemories, getRelevantMemories } from
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { detectNeuralLearningSignals } from '../frieren-neural-learning.js';
+import { submitNeuralLearningSignals } from '../frieren-neural-client.js';
 import {
   buildFrierenMessages,
   buildFrierenNeuralPrompt,
@@ -352,4 +353,87 @@ test('Neural detects corrections, uncertainty and repeated questions without ret
     { signal_type: 'uncertainty', dimension: 'grounding' },
     { signal_type: 'repeated_question', dimension: 'conversation_consistency' }
   ]);
+});
+
+
+test('Neural learning transport sends only allowlisted signal metadata to the central endpoint', async () => {
+  let request;
+  const env = {
+    FRIEREN_NEURAL_API_URL: 'https://neural.example.test/generate',
+    FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(48),
+    FRIEREN_NEURAL_QUALITY_APPROVED: '1'
+  };
+  const result = await submitNeuralLearningSignals({
+    env,
+    guildId: '12345678901234567',
+    userId: '22345678901234567',
+    signals: [
+      { signal_type: 'correction', dimension: 'correctness' },
+      { signal_type: 'uncertainty', dimension: 'grounding' },
+      { signal_type: 'repeated_question', dimension: 'conversation_consistency' },
+      { signal_type: 'unknown', dimension: 'grounding' }
+    ],
+    fetchImpl: async (url, options) => {
+      request = { url, options };
+      return { ok: true, status: 200, json: async () => ({ accepted: true, stored: 3 }) };
+    }
+  });
+  assert.equal(request.url, 'https://neural.example.test/learning/signals');
+  assert.equal(request.options.method, 'POST');
+  assert.equal(request.options.headers.authorization, 'Bearer ' + env.FRIEREN_NEURAL_API_TOKEN);
+  assert.deepEqual(JSON.parse(request.options.body), {
+    guild_id: '12345678901234567',
+    user_id: '22345678901234567',
+    signals: [
+      { signal_type: 'correction', dimension: 'correctness' },
+      { signal_type: 'uncertainty', dimension: 'grounding' },
+      { signal_type: 'repeated_question', dimension: 'conversation_consistency' }
+    ]
+  });
+  assert.equal(JSON.parse(request.options.body).prompt, undefined);
+  assert.equal(JSON.parse(request.options.body).message, undefined);
+  assert.deepEqual(result, { stored: 3 });
+});
+
+test('Neural learning transport rejects invalid Discord scope before network access', async () => {
+  let called = false;
+  await assert.rejects(submitNeuralLearningSignals({
+    env: {
+      FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
+      FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(48),
+      FRIEREN_NEURAL_QUALITY_APPROVED: '1'
+    },
+    guildId: 'not-a-discord-id',
+    userId: '22345678901234567',
+    signals: [{ signal_type: 'correction', dimension: 'correctness' }],
+    fetchImpl: async () => { called = true; }
+  }), /FRIEREN_NEURAL_LEARNING_SCOPE_INVALID/);
+  assert.equal(called, false);
+});
+
+test('Neural learning transport remains disabled until the explicit quality gate and credentials are configured', async () => {
+  let called = false;
+  const result = await submitNeuralLearningSignals({
+    env: { FRIEREN_NEURAL_API_URL: 'https://neural.example.test', FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(48) },
+    guildId: '12345678901234567',
+    userId: '22345678901234567',
+    signals: [{ signal_type: 'correction', dimension: 'correctness' }],
+    fetchImpl: async () => { called = true; }
+  });
+  assert.deepEqual(result, { stored: 0 });
+  assert.equal(called, false);
+});
+
+test('Neural learning transport reports upstream failures without exposing request content', async () => {
+  await assert.rejects(submitNeuralLearningSignals({
+    env: {
+      FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
+      FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(48),
+      FRIEREN_NEURAL_QUALITY_APPROVED: '1'
+    },
+    guildId: '12345678901234567',
+    userId: '22345678901234567',
+    signals: [{ signal_type: 'correction', dimension: 'correctness' }],
+    fetchImpl: async () => ({ ok: false, status: 503 })
+  }), /FRIEREN_NEURAL_LEARNING_HTTP_503/);
 });

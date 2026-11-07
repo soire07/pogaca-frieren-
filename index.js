@@ -32,6 +32,7 @@ import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { runCommandTestSuite } from './scripts/live-command-test.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
+import { getFrierenNeuralHealthResponse } from './frieren-neural-health.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
 import { startGuardianMonitor } from './guardian/monitor.js';
 import { processGuardianIncident, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking } from './guardian/automation.js';
@@ -558,7 +559,7 @@ const stopGuardianMonitor = startGuardianMonitor({
 });
 await client.login(process.env.DISCORD_TOKEN);
 
-// Frieren AI runs as an independent Render service; the main bot never starts a second Discord client.
+// Frieren Neural is the single central inference service; Poğaça Frieren is its Discord-facing client.
 
 process.once('SIGTERM', async () => {
   stopGuardianMonitor?.();
@@ -594,40 +595,10 @@ createServer(withHttpErrorBoundary(async (req, res) => {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(payload));
   };
-  if (req.method === 'GET' && ['/ai-health', '/ai-ready', '/ai-bridge-health'].includes(req.url)) {
-    try {
-      const aiBase = String(process.env.FRIEREN_AI_PUBLIC_URL || '').trim();
-      if (!aiBase) {
-        return sendJson(503, { status: 'not_ready', service: 'frieren-ai-agent', reason: 'ai_service_not_configured' });
-      }
-      const parsedAiBase = new URL(aiBase);
-      if (parsedAiBase.protocol !== 'https:' || parsedAiBase.username || parsedAiBase.password) {
-        return sendJson(503, { status: 'not_ready', service: 'frieren-ai-agent', reason: 'invalid_ai_service_url' });
-      }
-      const aiPath = req.url === '/ai-health' ? '/live'
-        : req.url === '/ai-ready' ? '/health' : '/bridge-health';
-      const headers = { accept: 'application/json' };
-      if (aiPath !== '/live') {
-        const bridgeSecret = String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
-        if (bridgeSecret.length < 32) {
-          return sendJson(503, { status: 'not_ready', service: 'frieren-ai-agent', reason: 'bridge_secret_not_configured' });
-        }
-        headers['x-frieren-health-secret'] = bridgeSecret;
-      }
-      const response = await fetch(new URL(aiPath, parsedAiBase).toString(), {
-        headers,
-        signal: AbortSignal.timeout(5_000),
-      });
-      const body = await response.text();
-      res.writeHead(response.status, {
-        'Content-Type': response.headers.get('content-type') || 'application/json; charset=utf-8',
-        'Cache-Control': 'no-store',
-      });
-      res.end(body);
-    } catch {
-      sendJson(503, { status: 'not_ready', service: 'frieren-ai-agent', reason: 'upstream_unavailable' });
-    }
-    return;
+  if (req.method === 'GET' && ['/neural-health', '/neural-ready', '/ai-health', '/ai-ready', '/ai-bridge-health'].includes(req.url)) {
+    // The old /ai-* paths remain aliases for existing dashboards, but now report the central Neural service.
+    const result = await getFrierenNeuralHealthResponse({ env: process.env, fetchImpl: fetch, timeoutMs: 5_000 });
+    return sendJson(result.status, result.payload);
   }
   if (req.method === 'GET' && req.url === '/uptimerobot-status') {
     const apiKey = process.env.UPTIMEROBOT_API_KEY;

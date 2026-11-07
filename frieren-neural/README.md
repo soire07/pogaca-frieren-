@@ -4,6 +4,8 @@ Frieren Neural is the single central AI service for Poğaça Frieren. It owns in
 
 There is no separate Frieren AI or Frieren Guard bot/service in the target architecture. Their former capabilities belong inside Neural as internal modules. Neural uses no paid hosted LLM API. Personal memories, server context, and general knowledge must remain isolated.
 
+**Migration status:** this PR routes the legacy `/ai-health`, `/ai-ready`, and `/ai-bridge-health` compatibility paths to the central Neural health endpoint. The old `ai-agent/` implementation, its Render service, and the Owner Panel's legacy service controls have not yet been decommissioned; the Render account currently denies service inspection. Guardian monitoring still executes inside the Poğaça Node process rather than inside the Python Neural service. Do not interpret the target architecture statement as proof those runtime migrations are complete.
+
 ## Current scope
 
 - A compact decoder-only Transformer (GPT-style) implemented with PyTorch, retained as a research baseline.
@@ -320,6 +322,6 @@ When Poğaça is using the approved central Neural endpoint, the bot locally det
 
 Neural HMAC-pseudonymizes guild and user scopes with its API token before storage. User hashes are scoped to their guild, so one person's signals are not merged across servers. The database stores only the pseudonymous scope hashes, signal type, dimension, and timestamp; it applies a one-hour per-user/type cooldown and removes records older than 30 days when new signals arrive. The insights endpoint returns aggregate counts only.
 
-Before enabling this feature on a Neural database, apply migrations/002_learning_signals.sql to the dedicated FRIEREN_DATABASE_URL. The migration is deliberately not auto-applied to production. Until it is applied, signal storage returns a safe 503 and the Discord reply remains unaffected.
+Before enabling this feature, configure FRIEREN_DATABASE_URL to a dedicated Neural/test PostgreSQL database (never Poğaça's production DATABASE_URL) and apply migrations/002_learning_signals.sql there. The migration is deliberately not auto-applied to production. Until it is applied, signal storage returns a safe 503 and the Discord reply remains unaffected.
 
 These signals are learning priorities, not training examples. They do not mutate model weights, create facts, change source code, or deploy anything. They can inform the existing quality-gated curriculum only after independently verified sources, held-out evaluation, and required human review. The 24,000-step candidate remains NOT READY until the two-reviewer quality gate is completed.
