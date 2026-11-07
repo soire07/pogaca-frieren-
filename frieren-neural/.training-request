@@ -31,3 +31,6 @@ Training retry 8 (2026-11-07): Ensure the newly declared NumPy runtime dependenc
 
 
 Training retry 9 (2026-11-07): Re-run after correcting four checkpoint-compatibility error messages so the existing regression tests distinguish legacy loss objective, dialogue encoding, corpus fingerprint, and warm-start lineage failures. Preserve the optimized vectorized BPE, exact 24k continuous training plan, original corpus and held-out split, and all quality gates.
+
+
+Training retry 10 (2026-11-07): Replace the still-pre-optimizer legacy BPE preparation attempt with the verified vectorized tokenizer run. The earlier 24k attempt spent over 35 minutes in the preflight tokenizer step and had not started optimizer training. Use the current test branch's NumPy BPE implementation, which passed exact merge-order parity and CI benchmark, plus checkpoint-tokenizer reuse for resume/candidate runs. Preserve the same pinned corpus, 24k continuous step plan, architecture, seed, held-out set, and objective. Cancel only superseded in-progress/pending training attempts in this same isolated workflow concurrency group so the optimized run can start; no production services or databases are affected.
