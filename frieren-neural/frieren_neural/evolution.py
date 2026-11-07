@@ -27,8 +27,16 @@ PLAYBOOK = {
 }
 
 
+def _valid_sha(value: object, length: int) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == length
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
 def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5) -> dict[str, Any]:
-    """Create a reviewed-data curriculum plan; never self-grade or auto-promote."""
+    """Create a curriculum plan only from a fully evidenced, independently reviewed report."""
     if not 0.0 <= weak_threshold <= 4.0:
         raise ValueError("weak_threshold must be between 0 and 4.")
     if not isinstance(report, dict):
@@ -37,25 +45,103 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
     review = report.get("human_review")
     metrics = report.get("metrics")
     comparison = report.get("baseline_comparison")
-    ready = (
-        report.get("decision") == "READY FOR STAGED TEST"
-        and isinstance(review, dict) and review.get("completed") is True
-        and isinstance(review.get("reviewers_required"), int)
-        and review["reviewers_required"] >= 2
-        and isinstance(metrics, dict)
-        and isinstance(metrics.get("dimension_averages"), dict)
+    provenance = report.get("training_provenance")
+    heldout = report.get("heldout_metrics")
+    reviewer_hashes = review.get("reviewer_identity_hashes") if isinstance(review, dict) else None
+    template_hashes = report.get("review_template", {}).get("reviewers")
+    outputs = report.get("outputs")
+    blocking_reasons: list[str] = []
+
+    if report.get("decision") != "READY FOR STAGED TEST":
+        blocking_reasons.append("quality_report_not_ready")
+    if report.get("prompt_set_version") != "tr-conversation-v1":
+        blocking_reasons.append("prompt_set_version_mismatch")
+    if not _valid_sha(report.get("checkpoint_sha256"), 64):
+        blocking_reasons.append("checkpoint_fingerprint_missing")
+    if not _valid_sha(report.get("source_commit_sha"), 40):
+        blocking_reasons.append("source_commit_missing")
+    if not isinstance(report.get("blocking_reasons"), list) or report.get("blocking_reasons"):
+        blocking_reasons.append("quality_report_blockers_present")
+
+    reviewers_valid = (
+        isinstance(review, dict)
+        and review.get("completed") is True
+        and review.get("reviewers_required") == 2
+        and isinstance(reviewer_hashes, list)
+        and len(reviewer_hashes) == 2
+        and all(_valid_sha(value, 64) for value in reviewer_hashes)
+        and reviewer_hashes[0] != reviewer_hashes[1]
+        and template_hashes == reviewer_hashes
     )
+    if not reviewers_valid:
+        blocking_reasons.append("two_distinct_human_reviewers_required")
+
+    provenance_valid = (
+        isinstance(provenance, dict)
+        and _valid_sha(provenance.get("manifest_sha256"), 64)
+        and isinstance(provenance.get("licenses"), list)
+        and bool(provenance["licenses"])
+        and all(isinstance(license_name, str) and license_name.strip() for license_name in provenance["licenses"])
+    )
+    if not provenance_valid:
+        blocking_reasons.append("training_provenance_missing_or_invalid")
+
+    heldout_valid = (
+        isinstance(heldout, dict)
+        and isinstance(heldout.get("loss"), (int, float))
+        and not isinstance(heldout.get("loss"), bool)
+        and math.isfinite(heldout["loss"]) and heldout["loss"] >= 0
+        and isinstance(heldout.get("perplexity"), (int, float))
+        and not isinstance(heldout.get("perplexity"), bool)
+        and math.isfinite(heldout["perplexity"]) and heldout["perplexity"] >= 1
+        and _valid_sha(heldout.get("dataset_sha256"), 64)
+        and isinstance(heldout.get("sample_count"), int)
+        and not isinstance(heldout.get("sample_count"), bool)
+        and heldout["sample_count"] > 0
+        and heldout.get("split") == "heldout"
+        and isinstance(heldout.get("evaluation_version"), str)
+        and bool(heldout["evaluation_version"].strip())
+    )
+    if not heldout_valid:
+        blocking_reasons.append("heldout_evidence_missing_or_invalid")
+
+    baseline_valid = (
+        isinstance(comparison, dict)
+        and comparison.get("available") is True
+        and comparison.get("improved") is True
+        and _valid_sha(comparison.get("baseline_checkpoint_sha256"), 64)
+        and comparison.get("baseline_checkpoint_sha256") != report.get("checkpoint_sha256")
+    )
+    if not baseline_valid:
+        blocking_reasons.append("comparable_baseline_improvement_not_proven")
+
+    expected_output_ids = [f"TR-{index:03d}" for index in range(1, 25)]
+    outputs_valid = (
+        isinstance(outputs, list)
+        and [item.get("id") for item in outputs if isinstance(item, dict)] == expected_output_ids
+        and all(isinstance(item, dict) and isinstance(item.get("output"), str) and item["output"].strip() for item in outputs)
+    )
+    if not outputs_valid:
+        blocking_reasons.append("benchmark_outputs_incomplete")
+
+    averages = metrics.get("dimension_averages") if isinstance(metrics, dict) else None
+    if not isinstance(averages, dict):
+        blocking_reasons.append("dimension_metrics_missing")
+
     plan: dict[str, Any] = {
         "schema_version": 1,
         "engine": "frieren-neural-evolution",
         "status": "HOLD",
         "source_checkpoint_sha256": report.get("checkpoint_sha256"),
         "source_prompt_set_version": report.get("prompt_set_version"),
+        "training_manifest_sha256": provenance.get("manifest_sha256") if isinstance(provenance, dict) else None,
+        "heldout_dataset_sha256": heldout.get("dataset_sha256") if isinstance(heldout, dict) else None,
         "weak_threshold": weak_threshold,
         "priority_dimensions": [],
         "curriculum_actions": [],
         "guardrails": {
             "independent_human_review_required": True,
+            "distinct_reviewer_identity_hashes_required": True,
             "model_self_scoring_allowed": False,
             "unreviewed_synthetic_data_allowed": False,
             "automatic_source_code_mutation": False,
@@ -63,16 +149,14 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
             "preserve_previous_checkpoint": True,
             "require_same_benchmark_and_decoding_for_comparison": True,
         },
-        "blocking_reasons": [],
+        "blocking_reasons": blocking_reasons,
     }
-    if not ready:
-        plan["blocking_reasons"] = list(report.get("blocking_reasons") or ["independent_quality_gate_not_passed"])
+    if blocking_reasons:
         return plan
 
-    averages = metrics["dimension_averages"]
     for dimension, action in PLAYBOOK.items():
         value = averages.get(dimension)
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 4:
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 4:
             plan["blocking_reasons"].append(f"invalid_or_missing_dimension:{dimension}")
             continue
         if value < weak_threshold:
@@ -81,10 +165,6 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
 
     if plan["blocking_reasons"]:
         return plan
-    if not isinstance(comparison, dict) or comparison.get("available") is not True or comparison.get("improved") is not True:
-        plan["blocking_reasons"].append("comparable_baseline_improvement_not_proven")
-        return plan
-
     if not plan["curriculum_actions"]:
         plan["status"] = "NO_WEAK_DIMENSIONS"
         plan["next_action"] = "Expand the independent benchmark before changing the training corpus."
