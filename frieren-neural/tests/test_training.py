@@ -401,3 +401,33 @@ def test_generation_prompt_inserts_eos_between_completed_assistant_turns():
 
     single_turn = encode_generation_prompt("Kullanıcı: Merhaba.\nAsistan:", tokenizer)
     assert single_turn.count(tokenizer.eos_id) == 0
+
+
+
+def test_vectorized_batch_sampling_matches_cached_assistant_target_windows():
+    from frieren_neural.training import _sample_batch, _valid_batch_starts
+
+    data = torch.arange(20, dtype=torch.long)
+    mask = torch.tensor(
+        [False, False, False, True, True, False, False, False, True, True,
+         False, False, False, False, True, True, False, False, False, False],
+        dtype=torch.bool,
+    )
+    expected_starts = _valid_batch_starts(mask, 4)
+    assert torch.equal(expected_starts, torch.tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]))
+
+    generator = torch.Generator(device="cpu").manual_seed(77)
+    inputs, targets = _sample_batch(
+        data, batch_size=3, block_size=4, device=torch.device("cpu"),
+        generator=generator, target_mask=mask, valid_starts=expected_starts,
+    )
+    assert torch.equal(inputs[:, 1:], targets[:, :-1] - 1)
+    assert torch.all((targets == -100) | (targets >= 0))
+    assert torch.all((targets == -100).any(dim=1))
+
+
+def test_valid_batch_starts_rejects_windows_without_assistant_targets():
+    from frieren_neural.training import _valid_batch_starts
+
+    with pytest.raises(ValueError, match="no assistant targets"):
+        _valid_batch_starts(torch.zeros(12, dtype=torch.bool), 4)
