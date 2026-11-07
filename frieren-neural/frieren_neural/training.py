@@ -167,6 +167,7 @@ def load_corpus_manifest_metadata(path: str | Path, *, required_split: str | Non
     sample_count = dataset.get("dialogues")
     revision = dataset.get("revision")
     row_ids_sha256 = dataset.get("row_ids_sha256")
+    source_sha256 = dataset.get("source_sha256") or row_ids_sha256
     if required_split is not None and source_split != required_split:
         raise ValueError(f"Expected a {required_split} corpus split, got {source_split!r}.")
     if required_split is None and source_split not in {"heldout", "test"}:
@@ -175,8 +176,8 @@ def load_corpus_manifest_metadata(path: str | Path, *, required_split: str | Non
         raise ValueError("Corpus manifest must include a positive dialogue count.")
     if not isinstance(revision, str) or not re.fullmatch(r"[a-f0-9]{40}", revision):
         raise ValueError("Corpus manifest must pin a 40-character dataset revision.")
-    if not isinstance(row_ids_sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", row_ids_sha256):
-        raise ValueError("Corpus manifest must include a row ID SHA-256.")
+    if not isinstance(source_sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", source_sha256):
+        raise ValueError("Corpus manifest must include a source or row ID SHA-256.")
     dataset_id = dataset.get("id")
     if not isinstance(dataset_id, str) or not dataset_id.strip():
         raise ValueError("Corpus manifest dataset ID is required.")
@@ -188,9 +189,9 @@ def load_corpus_manifest_metadata(path: str | Path, *, required_split: str | Non
         "evaluation_version": HELDOUT_EVALUATION_VERSION,
         "dataset_id": dataset_id,
         "dataset_revision": revision,
+        "source_fingerprint_sha256": source_sha256,
         "row_ids_sha256": row_ids_sha256,
     }
-
 
 
 def encode_dialogue_stream_with_loss_mask(
