@@ -40,11 +40,11 @@ export async function assertGuardianAutomationEnabled(db) {
   if (result.rows?.[0]?.setting_value?.enabled === true) throw new Error('GUARDIAN_EMERGENCY_STOP_ENABLED');
 }
 
-export function getFrierenAiGuardianEndpoint(env = process.env) {
-  const base = String(env.FRIEREN_AI_PUBLIC_URL || '').trim();
-  if (!base) throw new Error('FRIEREN_AI_SERVICE_NOT_CONFIGURED');
+export function getFrierenNeuralGuardianEndpoint(env = process.env) {
+  const base = String(env.FRIEREN_NEURAL_API_URL || '').trim();
+  if (!base) throw new Error('FRIEREN_NEURAL_NOT_CONFIGURED');
   const parsed = new URL(base);
-  if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_AI_PUBLIC_URL');
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_NEURAL_API_URL');
   return new URL('/internal/guardian-review', parsed).toString();
 }
 
