@@ -72,7 +72,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          checkpoint="$(find source-artifacts -type f -path '*/checkpoints/frieren-neural-chat-max-25k.pt' -print -quit)"
+          checkpoint="$(find source-artifacts -type f -path '*/frieren-neural-chat-max-24k-candidate-*/checkpoints/frieren-neural-chat-max-25k.pt' -print -quit)"
           test -n "$checkpoint"
           root="${checkpoint%/checkpoints/frieren-neural-chat-max-25k.pt}"
           test -f "$root/corpus/turkish-chat-max-25k/train/corpus_manifest.json"
