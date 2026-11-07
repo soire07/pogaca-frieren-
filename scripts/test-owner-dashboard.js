@@ -9,7 +9,7 @@ import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOw
 
 
 test('Guardian repair status polling tracks the same isolated branch used for workflow dispatch', () => {
-  assert.equal(GUARDIAN_REPAIR_BRANCH, 'guardian-isolated-repair-test-v2');
+  assert.equal(GUARDIAN_REPAIR_BRANCH, 'neural-guardian-migration-stage');
   const urls = buildGuardianRepairTrackingUrls('https://api.github.com/', 990053);
   const runs = new URL(urls.runsUrl);
   const pulls = new URL(urls.pullRequestsUrl);
@@ -1263,8 +1263,8 @@ test('synthetic Neural → authenticated Owner Panel review → explicit owner a
     assert.equal(state.job.repair_dispatch_status, 'dispatched');
     assert.equal(state.githubRequests.length, 3);
     const dispatch = JSON.parse(state.githubRequests[2].body);
-    assert.equal(dispatch.ref, 'guardian-isolated-repair-test-v2');
-    assert.equal(dispatch.inputs.base_branch, 'guardian-isolated-repair-test-v2');
+    assert.equal(dispatch.ref, 'neural-guardian-migration-stage');
+    assert.equal(dispatch.inputs.base_branch, 'neural-guardian-migration-stage');
     assert.equal(dispatch.inputs.incident_id, String(incident.id));
     assert.equal(dispatch.inputs.mode, 'repair');
     assert.doesNotMatch(state.githubRequests[2].url, /merge|deploy/i);
