@@ -1,0 +1,41 @@
+Run a fresh isolated CPU candidate using dialogue encoding version 2. Do not resume any version-1 checkpoint: the new trainer inserts EOS after every assistant turn, and generation prompts now insert EOS between completed assistant turns while keeping the final assistant prefix open. The held-out evaluator must use the same chat-aware encoding.
+
+Keep the architecture and training budget fixed for a controlled comparison: 8,000 optimizer steps, batch size 4, block size 128, 128-dimensional model, 4 attention heads, 4 layers, and 1,024-token BPE vocabulary. Use 10 validation batches per evaluation interval to reduce metric noise.
+
+Run the complete test suite before training. Preserve the separate checksum-verified 525-record held-out test split. Generate the fixed 24-prompt Turkish quality report with the corrected newline and multi-turn prompt encoding. Archive checkpoint, training metrics, held-out metrics, quality report, and corpus manifests.
+
+Previous version-1 8,000-step candidate (NOT READY): train loss 0.599732, validation loss 4.279370, held-out loss 1.461223, held-out perplexity 4.311227. Inspect all 24 new responses, compare validation/held-out metrics, and verify that generation stops after the assistant turn without emitting the next user's message. Do not deploy or connect production services. Source revision: 5b9d58aa305b89b3fefffae5bacaf0384b7dadf7.
+
+
+Retry note (2026-11-06): The previous candidate run imported the pinned Apache-2.0 corpus successfully (16,241 accepted rows; 14,622 train / 1,619 held-out) but failed before optimizer steps with a role-alternation error. The training workflow now validates the exact train/validation split using the same tokenizer/encoder as train_model and reports the first offending dialogue before any expensive training. If that preflight passes, run the same isolated 8,000-step v2 candidate; never resume the legacy checkpoint. Keep all output artifacts and do not deploy.
+
+Retry trigger: run 2026-11-06 after the train/validation split preflight was added.
+
+Dependency fix (2026-11-06): Training CI installs test/runtime dependencies needed for FastAPI and Discord adapter tests, but deliberately excludes llama-cpp-python because candidate training does not require the GGUF serving runtime.
+
+Retry trigger 3: install FastAPI, Discord.py and psycopg explicitly before full pre-training pytest collection.
+
+Retry trigger 4 (2026-11-07): The prior pull-request synchronization cancelled the active CPU training job because the workflow shared a PR-level cancel-in-progress concurrency group. Training is now triggered only by an explicit marker push or workflow_dispatch, and same-branch runs queue instead of cancelling the active candidate. Restart the exact isolated 8,000-step v2 candidate with the same pinned Apache-2.0 corpus, held-out split, fixed quality report, and artifact requirements above. The Neural API health endpoint now returns HTTP 503 when the model is unavailable or generation capacity is busy; this change must pass the full API test suite before the candidate artifact is accepted. Do not deploy or connect production services.
+
+
+Training extension request 5 (2026-11-07): Train the existing from-scratch Frieren Neural GPT model; do not evaluate or substitute any alternate pretrained model. Preserve the same assistant-only objective, pinned Apache-2.0 Turkish Chat Max corpus, tokenizer, 128-dimension / 4-head / 4-layer architecture, 128-token context, batch size 4, seed 1337, and held-out split. Extend the same optimizer/checkpoint continuously from 8,000 to 16,000 and then 24,000 steps using resumable checkpoints; do not restart weights between stages. Run the complete tests and exact train/validation preflight before training. Archive each stage's checkpoint so interrupted CPU jobs can be resumed. At 24,000 steps, run held-out evaluation and the fixed 24-prompt Turkish quality suite, compare with the prior 8,000-step candidate, and inspect generated answers. This remains isolated candidate training only; no production service or bot integration until measured quality and independent review pass.
+
+
+Training retry 6 (2026-11-07): Retry the existing 24,000-step continuous candidate pipeline after correcting the quickstart test double to accept the resumable trainer's resume argument. Preserve the exact existing model, objective, corpus, tokenizer, held-out set, seed, architecture, and checkpoint chain. Do not switch models, restart from scratch, or touch production. Require all preflight tests and the full Neural CI to pass before optimizer training begins; archive all stage checkpoints and evaluation evidence.
+
+
+Training retry 7 (2026-11-07): Re-run the same isolated continuous 24,000-step v2 training pipeline after merging the deterministic vectorized BPE implementation. This is a performance-only tokenizer training change; preserve exact merge ordering, tokenizer IDs, corpus boundaries, architecture, optimizer-resume chain, seed, held-out split, and assistant-only objective. Require full preflight tests, exact train/validation encoding validation, and all three checkpoint stages. Archive checkpoints and 24-prompt/held-out evidence. No alternate pretrained model, no Frieren AI/Guard dependency, no production deployment.
+
+
+Training retry 8 (2026-11-07): Ensure the newly declared NumPy runtime dependency is explicitly installed in CPU-only training jobs before installing Frieren Neural with --no-deps. Repeat the exact same isolated 24k continuous v2 candidate after this environment fix; all existing model/data/objective constraints remain unchanged.
+
+
+Training retry 9 (2026-11-07): Re-run after correcting four checkpoint-compatibility error messages so the existing regression tests distinguish legacy loss objective, dialogue encoding, corpus fingerprint, and warm-start lineage failures. Preserve the optimized vectorized BPE, exact 24k continuous training plan, original corpus and held-out split, and all quality gates.
+
+
+Training retry 10 (2026-11-07): Replace the still-pre-optimizer legacy BPE preparation attempt with the verified vectorized tokenizer run. The earlier 24k attempt spent over 35 minutes in the preflight tokenizer step and had not started optimizer training. Use the current test branch's NumPy BPE implementation, which passed exact merge-order parity and CI benchmark, plus checkpoint-tokenizer reuse for resume/candidate runs. Preserve the same pinned corpus, 24k continuous step plan, architecture, seed, held-out set, and objective. Cancel only superseded in-progress/pending training attempts in this same isolated workflow concurrency group so the optimized run can start; no production services or databases are affected.
+
+
+Training retry 11 (2026-11-07): The exact BPE merge trainer is now vectorized and merge-order identical, and the BPE text encoder is also vectorized with reference-parity tests for overlapping pairs and Unicode. The current retry has not reached optimizer training; replace it with this final tokenizer-optimized run so all three training stages and the candidate warm-start path use the fast encoder. Keep the existing corpus, objective, model architecture, seed, continuous 8k→16k→24k checkpoint chain, and held-out evaluation unchanged. No production deployment.
+
+Training retry 12 (2026-11-07): Re-run the existing isolated 24,000-step continuous candidate after the quickstart test double was corrected to accept resume. This run must use the current branch head and run the full pytest suite before corpus preparation and training. Preserve the exact tokenizer, corpus, model architecture, optimizer/checkpoint continuity, held-out set, seed and assistant-only objective. Stop before training if any test or preflight fails. No production integration or deployment.
