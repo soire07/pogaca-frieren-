@@ -31,7 +31,7 @@ def _valid_sha(value: object, length: int) -> bool:
     return (
         isinstance(value, str)
         and len(value) == length
-        and all(character in "0123456789abcdef" for character in value)
+        and all(character.lower() in "0123456789abcdef" for character in value)
     )
 
 
