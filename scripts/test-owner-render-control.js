@@ -256,3 +256,24 @@ test('Frieren AI actions use only the new account API key', async () => {
     if (oldMain === undefined) delete process.env.RENDER_POGACA_API_KEY; else process.env.RENDER_POGACA_API_KEY = oldMain;
   }
 });
+
+
+test('missing production Frieren AI Render service is reported as not configured and is never probed via a stale URL', async () => {
+  const requested = [];
+  const status = await getRenderBotServiceStatuses({
+    services: {
+      ...RENDER_BOT_SERVICES,
+      frieren_ai: { ...RENDER_BOT_SERVICES.frieren_ai, id: null, url: '', dashboardUrl: null }
+    },
+    apiKey: '',
+    fetchImpl: async url => {
+      requested.push(String(url));
+      return { ok: true, status: 200, json: async () => ({ status: 'ok' }) };
+    }
+  });
+  assert.equal(status.services.frieren_ai.status, 'not_configured');
+  assert.equal(status.services.frieren_ai.health, 'not_configured');
+  assert.equal(status.services.frieren_ai.id, null);
+  assert.equal(status.services.frieren_ai.url, '');
+  assert.equal(requested.some(url => url.includes('pogaca-frieren-kltd') || url.includes('frieren-ai-agent')), false);
+});
