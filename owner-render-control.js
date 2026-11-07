@@ -2,28 +2,35 @@ const SNOWFLAKE = /^\d{17,20}$/;
 const OWNER = '1553794496234262641';
 const API_BASE = 'https://api.render.com/v1';
 
-export const RENDER_BOT_SERVICES = Object.freeze({
-  pogaca: Object.freeze({
-    key: 'pogaca',
-    name: 'Poğaça Frieren',
-    id: process.env.RENDER_POGACA_SERVICE_ID || process.env.RENDER_METRICS_SERVICE_ID || process.env.RENDER_SERVICE_ID || 'srv-dbf4vdvavr4c73cr6s00',
-    url: process.env.RENDER_POGACA_URL || 'https://pogaca-frieren.onrender.com',
-    healthPath: process.env.RENDER_POGACA_HEALTH_PATH || '/health',
-    dashboardUrl: 'https://dashboard.render.com/web/' + (process.env.RENDER_POGACA_SERVICE_ID || process.env.RENDER_METRICS_SERVICE_ID || process.env.RENDER_SERVICE_ID || 'srv-dbf4vdvavr4c73cr6s00'),
-    canSuspend: false,
-    allowedActions: Object.freeze(['restart'])
-  }),
-  frieren_ai: Object.freeze({
-    key: 'frieren_ai',
-    name: 'Frieren AI',
-    id: process.env.RENDER_FRIEREN_AI_SERVICE_ID || 'srv-dbj192flk1mc73805ia0',
-    url: process.env.RENDER_FRIEREN_AI_URL || 'https://pogaca-frieren-kltd.onrender.com',
-    healthPath: process.env.RENDER_FRIEREN_AI_HEALTH_PATH || '/live',
-    dashboardUrl: 'https://dashboard.render.com/web/' + (process.env.RENDER_FRIEREN_AI_SERVICE_ID || 'srv-dbj192flk1mc73805ia0'),
-    canSuspend: true,
-    allowedActions: Object.freeze(['restart', 'suspend', 'resume'])
-  })
-});
+export function resolveRenderBotServices(env = process.env) {
+  const aiServiceId = String(env.RENDER_FRIEREN_AI_SERVICE_ID || '').trim() || null;
+  const aiServiceUrl = String(env.RENDER_FRIEREN_AI_URL || '').trim();
+  const pogacaServiceId = env.RENDER_POGACA_SERVICE_ID || env.RENDER_METRICS_SERVICE_ID || env.RENDER_SERVICE_ID || 'srv-dbf4vdvavr4c73cr6s00';
+  return Object.freeze({
+    pogaca: Object.freeze({
+      key: 'pogaca',
+      name: 'Poğaça Frieren',
+      id: pogacaServiceId,
+      url: env.RENDER_POGACA_URL || 'https://pogaca-frieren.onrender.com',
+      healthPath: env.RENDER_POGACA_HEALTH_PATH || '/health',
+      dashboardUrl: 'https://dashboard.render.com/web/' + pogacaServiceId,
+      canSuspend: false,
+      allowedActions: Object.freeze(['restart'])
+    }),
+    frieren_ai: Object.freeze({
+      key: 'frieren_ai',
+      name: 'Frieren AI',
+      id: aiServiceId,
+      url: aiServiceUrl,
+      healthPath: env.RENDER_FRIEREN_AI_HEALTH_PATH || '/live',
+      dashboardUrl: aiServiceId ? 'https://dashboard.render.com/web/' + aiServiceId : null,
+      canSuspend: true,
+      allowedActions: Object.freeze(['restart', 'suspend', 'resume'])
+    })
+  });
+}
+
+export const RENDER_BOT_SERVICES = resolveRenderBotServices();
 
 function safeErrorCode(error) {
   const message = String(error?.message || 'unknown_error');
@@ -62,11 +69,20 @@ function getServiceApiToken(serviceKey, override) {
 
 export async function getRenderBotServiceStatuses({
   fetchImpl = globalThis.fetch,
-  apiKey
+  apiKey,
+  services = RENDER_BOT_SERVICES
 } = {}) {
-  const results = await Promise.all(Object.entries(RENDER_BOT_SERVICES).map(async ([key, service]) => {
+  const results = await Promise.all(Object.entries(services).map(async ([key, service]) => {
     const token = getServiceApiToken(key, apiKey);
-    const apiRequest = token
+    if (key === 'frieren_ai' && !service.id && !service.url) {
+      return {
+        key, name: service.name, id: null, url: '', dashboardUrl: null, plan: null,
+        suspended: null, suspenders: [], status: 'not_configured', health: 'not_configured',
+        healthStatus: null, healthPayload: null, apiError: null, apiConfigured: false,
+        updatedAt: null, canSuspend: service.canSuspend, allowedActions: []
+      };
+    }
+    const apiRequest = token && service.id
       ? (async () => {
           try {
             const response = await fetchImpl(API_BASE + '/services/' + encodeURIComponent(service.id), {
@@ -83,13 +99,14 @@ export async function getRenderBotServiceStatuses({
           }
         })()
       : Promise.resolve({ details: null, serviceApiError: null });
-    const deferAiHealth = key === 'frieren_ai' && Boolean(token);
+    const deferAiHealth = key === 'frieren_ai' && Boolean(token && service.id);
     const healthRequest = deferAiHealth ? Promise.resolve(null) : readHealth(service, fetchImpl);
     const [{ details, serviceApiError }, initialHealth] = await Promise.all([apiRequest, healthRequest]);
     const suspended = details?.suspended === 'suspended';
+    const healthService = { ...service, url: details?.serviceDetails?.url || service.url || '' };
     const healthResult = suspended
       ? { health: 'suspended', healthStatus: null, healthPayload: null }
-      : initialHealth || await readHealth(service, fetchImpl);
+      : initialHealth || await readHealth(healthService, fetchImpl);
     const finalHealth = healthResult;
     const status = suspended ? 'suspended' : finalHealth.health === 'healthy' ? 'running'
       : finalHealth.health === 'unhealthy' ? 'unhealthy' : 'unknown';
@@ -107,7 +124,7 @@ export async function getRenderBotServiceStatuses({
       healthStatus: finalHealth.healthStatus,
       healthPayload: finalHealth.healthPayload,
       apiError: serviceApiError,
-      apiConfigured: Boolean(token),
+      apiConfigured: Boolean(token && service.id),
       updatedAt: details?.updatedAt || null,
       canSuspend: service.canSuspend,
       allowedActions: service.allowedActions
@@ -129,12 +146,14 @@ async function updateActionAudit(client, auditId, details) {
 
 export async function executeRenderServiceAction(db, input = {}, {
   apiKey,
-  fetchImpl = globalThis.fetch
+  fetchImpl = globalThis.fetch,
+  services = RENDER_BOT_SERVICES
 } = {}) {
   const serviceKey = String(input.serviceKey || '');
   const action = String(input.action || '');
-  const service = RENDER_BOT_SERVICES[serviceKey];
+  const service = services[serviceKey];
   if (!service || !service.allowedActions.includes(action)) throw new Error('RENDER_ACTION_NOT_ALLOWED');
+  if (!service.id) throw new Error('RENDER_SERVICE_NOT_CONFIGURED');
   if (!(input.confirm === true || input.confirm === 'yes')) throw new Error('RENDER_ACTION_CONFIRM_REQUIRED');
   const reason = String(input.reason || '').trim();
   const actorId = String(input.actorId || OWNER).trim();
