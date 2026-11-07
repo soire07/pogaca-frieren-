@@ -54,6 +54,7 @@ function renderNeuralKnowledgeWorkspace(data = {}) {
   const notice = data.notice === 'knowledge_candidate_submitted' ? '<p class="notice">Bilgi adayı kaydedildi ve iki bağımsız inceleme bekliyor.</p>'
     : data.notice === 'knowledge_candidate_promoted' ? '<p class="notice">Bilgi adayı iki ayrı onay aldı ve doğrulanmış bilgi deposuna eklendi.</p>'
     : data.notice === 'knowledge_candidate_rejected' ? '<p class="notice warn">Bilgi adayı reddedildi; arama ve eğitim verisine dahil edilmeyecek.</p>'
+    : data.notice === 'knowledge_candidate_reviewed' ? '<p class="notice">İnceleme kaydedildi; ikinci bağımsız onay bekleniyor.</p>'
     : data.notice === 'knowledge_action_failed' ? '<p class="notice warn">Bilgi deposu işlemi başarısız oldu. API bağlantısını, tokenı ve aday verisini kontrol et.</p>' : '';
   const connection = knowledge.status === 'not_configured'
     ? '<p class="notice warn">Bilgi deposu için FRIEREN_NEURAL_API_URL ve FRIEREN_NEURAL_API_TOKEN gerekli.</p>'
@@ -69,7 +70,7 @@ function renderNeuralKnowledgeWorkspace(data = {}) {
     + '<label>Açık lisans</label><select name="license" required><option value="CC BY 4.0">CC BY 4.0</option><option value="CC BY-SA 4.0">CC BY-SA 4.0</option><option value="Apache 2.0">Apache 2.0</option><option value="MIT">MIT</option><option value="CC0-1.0">CC0-1.0</option></select>'
     + '<label>Kaynak metin alıntısı (40–6000 karakter)</label><textarea name="sourceExcerpt" minlength="40" maxlength="6000" required></textarea>'
     + '<p class="small">Telif koşullarını ve alıntı sınırlarını gözet. E-posta, Discord kimliği, token, parola veya özel kullanıcı mesajı ekleme.</p>'
-    + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Kaynağın açık lisanslı olduğunu ve özel veri içermediğini doğruluyorum</label><button class="btn">Bilgi adayını incelemeye gönder</button></form>'
+    + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Kaynağın açık lisanslı olduğunu ve özel veri içermediğini doğruluyorum</label><button class="btn"' + (knowledge.status === 'ready' ? '' : ' disabled') + '>Bilgi adayını incelemeye gönder</button></form>'
     + '<h3>Bilgi adayları</h3>' + candidateRows + '</section>';
 }
 
