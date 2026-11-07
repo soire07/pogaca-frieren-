@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
+import numpy as np
+
 PAD_TOKEN = "<pad>"
 BOS_TOKEN = "<bos>"
 EOS_TOKEN = "<eos>"
@@ -128,35 +130,67 @@ class BPETokenizer:
             raise ValueError(f"vocab_size must be at least {cls.BASE_VOCAB_SIZE}.")
         if min_frequency < 1:
             raise ValueError("min_frequency must be positive.")
-        sequences = [list(text.encode("utf-8")) for text in texts if text]
+        sequences = [
+            np.frombuffer(text.encode("utf-8"), dtype=np.uint8).astype(np.int32)
+            for text in texts if text
+        ]
         if not sequences:
             raise ValueError("BPE training requires at least one non-empty text.")
+
+        # Keep document boundaries with a sentinel that can never be merged.
+        # The dense pair histogram and vectorized merge preserve the original
+        # frequency/tie-breaking and left-to-right non-overlap semantics.
+        separator = np.array([-1], dtype=np.int32)
+        pieces: list[np.ndarray] = []
+        for index, sequence in enumerate(sequences):
+            if index:
+                pieces.append(separator)
+            pieces.append(sequence)
+        combined = np.concatenate(pieces)
         merges: list[tuple[int, int]] = []
+
         for _ in range(vocab_size - cls.BASE_VOCAB_SIZE):
-            counts: dict[tuple[int, int], int] = {}
-            for sequence in sequences:
-                for pair in zip(sequence, sequence[1:]):
-                    counts[pair] = counts.get(pair, 0) + 1
-            if not counts:
+            left = combined[:-1]
+            right = combined[1:]
+            valid = (left >= 0) & (right >= 0)
+            if not np.any(valid):
                 break
-            best_pair, frequency = min(counts.items(), key=lambda item: (-item[1], item[0]))
+            pair_keys = left[valid].astype(np.int64) * vocab_size + right[valid]
+            if vocab_size <= 2048:
+                counts = np.bincount(pair_keys, minlength=vocab_size * vocab_size)
+                best_key = int(np.argmax(counts))
+                frequency = int(counts[best_key])
+            else:
+                unique_keys, unique_counts = np.unique(pair_keys, return_counts=True)
+                best_index = int(np.argmax(unique_counts))
+                best_key = int(unique_keys[best_index])
+                frequency = int(unique_counts[best_index])
             if frequency < min_frequency:
                 break
+
+            best_pair = (best_key // vocab_size, best_key % vocab_size)
             new_id = cls.BASE_VOCAB_SIZE + len(merges)
-            updated_sequences: list[list[int]] = []
-            for sequence in sequences:
-                updated: list[int] = []
-                index = 0
-                while index < len(sequence):
-                    if index + 1 < len(sequence) and (sequence[index], sequence[index + 1]) == best_pair:
-                        updated.append(new_id)
-                        index += 2
-                    else:
-                        updated.append(sequence[index])
-                        index += 1
-                updated_sequences.append(updated)
-            sequences = updated_sequences
+            matches = (left == best_pair[0]) & (right == best_pair[1])
+
+            # Only equal-token pairs can overlap. Select every other position
+            # inside each consecutive match run, matching the old greedy scan.
+            if best_pair[0] == best_pair[1]:
+                positions = np.arange(matches.size)
+                run_starts = matches & ~np.concatenate((np.array([False]), matches[:-1]))
+                last_run_start = np.maximum.accumulate(np.where(run_starts, positions, -1))
+                selected = matches & ((positions - last_run_start) % 2 == 0)
+            else:
+                selected = matches
+
+            merge_positions = np.flatnonzero(selected)
+            if merge_positions.size == 0:
+                raise RuntimeError("BPE pair histogram selected a pair with no merge positions.")
+            combined[merge_positions] = new_id
+            keep = np.ones(combined.size, dtype=bool)
+            keep[merge_positions + 1] = False
+            combined = combined[keep]
             merges.append(best_pair)
+
         return cls(merges=tuple(merges))
 
     @property
