@@ -597,12 +597,10 @@ def test_learning_signal_postgres_migration_deduplication_retention_and_aggregat
 
     from urllib.parse import urlparse
     if os.environ.get("CI") != "true":
-        import pytest
         pytest.skip("PostgreSQL integration test runs only in GitHub Actions.")
     database_url = "postgresql://postgres:postgres@localhost:5432/neural_test"
     parsed = urlparse(database_url)
     if parsed.hostname not in {"localhost", "127.0.0.1"} or parsed.path.lstrip("/") != "neural_test":
-        import pytest
         pytest.skip("Refusing to run destructive migration test outside the isolated neural_test database.")
     monkeypatch.setenv("FRIEREN_DATABASE_URL", database_url)
     monkeypatch.setenv("FRIEREN_API_TOKEN", "ci-neural-test-token-with-more-than-32-characters")
