@@ -97,6 +97,7 @@ def test_report_applies_quality_gate_to_human_scores():
     assert report["decision"] == "READY FOR STAGED TEST"
     assert report["metrics"]["overall_average"] == 4.0
     assert report["metrics"]["instruction_adherence_3_or_4_rate"] == 1.0
+    assert report["baseline_comparison"]["baseline_reviewer_identity_hashes"] == ["c" * 64, "d" * 64]
 
 
 def test_report_blocks_critical_failure_even_when_average_is_high():
