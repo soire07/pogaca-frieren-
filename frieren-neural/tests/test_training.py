@@ -421,7 +421,7 @@ def test_vectorized_batch_sampling_matches_cached_assistant_target_windows():
         data, batch_size=3, block_size=4, device=torch.device("cpu"),
         generator=generator, target_mask=mask, valid_starts=expected_starts,
     )
-    assert torch.all((targets[:, :-1] == -100) | (inputs[:, 1:] == targets[:, :-1] - 1))
+    assert torch.all((targets[:, :-1] == -100) | (inputs[:, 1:] == targets[:, :-1]))
     assert torch.all((targets == -100) | (targets >= 0))
     assert torch.all((targets == -100).any(dim=1))
 
