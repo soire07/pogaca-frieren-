@@ -438,8 +438,14 @@ def test_warm_start_candidate_uses_parent_weights_without_overwriting_parent(tmp
 
     from frieren_neural.training import load_checkpoint
 
-    corpus = ["Kullanıcı: Frieren kimdir?\nAsistan: Bir büyücüdür. " * 12]
-    heldout = ["Kullanıcı: Fern kimdir?\nAsistan: Bir büyücüdür. " * 12]
+    corpus = ["\n\n---\n\n".join(
+        f"Kullanıcı: Frieren kimdir {index}?\nAsistan: Bir büyücüdür."
+        for index in range(12)
+    )]
+    heldout = ["\n\n---\n\n".join(
+        f"Kullanıcı: Fern kimdir {index}?\nAsistan: Bir büyücüdür."
+        for index in range(12)
+    )]
     baseline = tmp_path / "baseline.pt"
     config = TrainingConfig(
         max_steps=2, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
