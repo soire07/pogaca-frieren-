@@ -41,10 +41,14 @@ test('legacy standalone bot health diagnostics are manual-only with bounded retr
   assert.ok(!source.includes('https://pogaca-frieren-kltd.onrender.com/live'));
 });
 
-test('Neural evaluation cannot write quality reports to production without explicit opt-in', async () => {
+test('isolated Neural evaluation stores its report only as a GitHub artifact and never writes production', async () => {
   const source = await workflow('frieren-neural-active-gguf-eval.yml');
-  assert.ok(source.includes("vars.FRIEREN_NEURAL_REPORT_UPLOAD_ENABLED == 'true'"));
-  assert.ok(source.includes('FRIEREN_NEURAL_REPORT_UPLOAD_ENABLED=true only after production write approval'));
+  assert.ok(source.includes('contents: read'));
+  assert.ok(!source.includes('id-token: write'));
+  assert.ok(!source.includes('GUARDIAN_URL'));
+  assert.ok(!source.includes('/internal/neural-quality-report'));
+  assert.ok(!source.includes('FRIEREN_NEURAL_REPORT_UPLOAD_ENABLED'));
+  assert.ok(source.includes('Upload real-model evaluation report'));
 });
 
 test('Neural training workflows install only declared extras and use the CPU wheel', async () => {
