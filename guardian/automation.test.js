@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubDispatchError, getGuardianProposalFingerprint } from './automation.js';
+import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubDispatchError, classifyGuardianGithubReadError, getGuardianProposalFingerprint } from './automation.js';
 
 const incident = {
   id: 42,
@@ -614,4 +614,12 @@ test('approved Guardian dispatch reports the fine-grained PAT Actions permission
   assert.equal(result.status, 'dispatch_failed');
   assert.equal(result.reason, 'GUARDIAN_GITHUB_ACTIONS_WRITE_REQUIRED');
   assert.equal(finished.at(-1).status, 'failed');
+});
+
+
+test('GitHub read 403 responses identify the missing fine-grained permission by endpoint', () => {
+  assert.equal(classifyGuardianGithubReadError('actions', 403), 'GUARDIAN_GITHUB_ACTIONS_READ_REQUIRED');
+  assert.equal(classifyGuardianGithubReadError('pull_requests', 403), 'GUARDIAN_GITHUB_PULL_REQUESTS_READ_REQUIRED');
+  assert.equal(classifyGuardianGithubReadError('checks', 403), 'GUARDIAN_GITHUB_CHECKS_READ_REQUIRED');
+  assert.equal(classifyGuardianGithubReadError('actions', 401), 'GUARDIAN_GITHUB_READ_HTTP_401');
 });
