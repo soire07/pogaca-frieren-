@@ -64,7 +64,7 @@ export default {
     }
     if(action==='takimlar'){
       const teams=await listGuildTeams(pool,interaction.guildId);
-      return interaction.editReply({content:teams.length?teams.map(t=>'• **'+t.team_name+'** · '+t.member_count+'/10 · UUID: `'+t.team_id+'`').join('\\n'):'Henüz takım kurulmamış.'});
+      return interaction.editReply({content:teams.length?teams.map(t=>'• **'+t.team_name+'** · '+t.member_count+'/10 · UUID: `'+t.team_id+'`').join('\n'):'Henüz takım kurulmamış.'});
     }
     if(action==='takim-katil'){
       const result=await joinGuildTeam(pool,{...teamInput,teamId:interaction.options.getString('takim')});
@@ -86,9 +86,9 @@ export default {
     if(action==='lig-durum'){
       const data=await getGuildTeamLeagueDashboard(pool,interaction.guildId,interaction.options.getString('lig'));
       if(!data)return interaction.editReply({content:'Lig bulunamadı.'});
-      const table=data.table.map((t,i)=>(i+1)+'. **'+t.team_name+'** · '+t.points+' puan · '+t.wins+'G '+t.draws+'B '+t.losses+'M · AV '+t.goal_difference).join('\\n');
-      const fixtures=data.fixtures.slice(0,15).map(x=>'Tur '+x.round_number+': **'+x.home_team+'** - **'+x.away_team+'** · '+dateText(x.scheduled_at)+' · '+x.status+(x.home_score===null?'':' · '+x.home_score+'-'+x.away_score)).join('\\n');
-      return interaction.editReply({content:'**'+data.league.season_name+'** · '+data.league.status+'\\n**Puan Tablosu**\\n'+(table||'Kayıtlı takım yok.')+'\\n**Fikstür**\\n'+(fixtures||'Henüz fikstür yok.')});
+      const table=data.table.map((t,i)=>(i+1)+'. **'+t.team_name+'** · '+t.points+' puan · '+t.wins+'G '+t.draws+'B '+t.losses+'M · AV '+t.goal_difference).join('\n');
+      const fixtures=data.fixtures.slice(0,15).map(x=>'Tur '+x.round_number+': **'+x.home_team+'** - **'+x.away_team+'** · '+dateText(x.scheduled_at)+' · '+x.status+(x.home_score===null?'':' · '+x.home_score+'-'+x.away_score)).join('\n');
+      return interaction.editReply({content:'**'+data.league.season_name+'** · '+data.league.status+'\n**Puan Tablosu**\n'+(table||'Kayıtlı takım yok.')+'\n**Fikstür**\n'+(fixtures||'Henüz fikstür yok.')});
     }
     if(action==='lig-skor'){
       const result=await reportGuildTeamFixtureScore(pool,{guildId:interaction.guildId,fixtureId:interaction.options.getString('mac'),teamId:interaction.options.getString('takim'),actorId:interaction.user.id,ownScore:interaction.options.getInteger('skor'),opponentScore:interaction.options.getInteger('rakip_skor')});
