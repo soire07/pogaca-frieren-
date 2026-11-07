@@ -273,10 +273,13 @@ def _learning_insights() -> list[dict[str, str | int]]:
 
 def _guardian_safe_path(value: object) -> bool:
     path = str(value or "")
-    return bool(path) and len(path) <= 180 and not path.startswith(("/", "\\\\"))
-    and not re.match(r"^[a-z]:", path, re.IGNORECASE)
-    and all(part not in {"", ".", ".."} for part in re.split(r"[/\\\\]", path))
-    and bool(re.fullmatch(r"[A-Za-z0-9_./-]+", path))
+    if not path or len(path) > 180 or path.startswith(("/", "\\")):
+        return False
+    if re.match(r"^[a-z]:", path, re.IGNORECASE):
+        return False
+    if any(part in {"", ".", ".."} for part in re.split(r"[/\\]", path)):
+        return False
+    return bool(re.fullmatch(r"[A-Za-z0-9_./-]+", path))
 
 
 def _guardian_text(value: object, limit: int) -> str:
