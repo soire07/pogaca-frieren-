@@ -131,7 +131,8 @@ test('repair task is bounded and excludes raw incident summaries and credentials
   assert.match(task, /JavaScript\/Python/);
   assert.match(task, /pytest/);
   assert.match(task, /Git apply --check/);
-  assert.match(task, /npm run check başarılı olmadan PR açma/);
+  assert.match(task, /npm run check çalıştır/);
+  assert.match(task, /Başarısızsa PR açma/);
   assert.ok(task.endsWith('merge/deploy yapma.'));
   assert.equal(task.includes('Frieren AI yama önerisi'), false);
   assert.equal(task.includes('diff --git a/commands/example.js'), false);
