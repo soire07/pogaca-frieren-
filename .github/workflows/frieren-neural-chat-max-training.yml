@@ -51,7 +51,7 @@ jobs:
 
           documents = load_licensed_corpus("./corpus/turkish-chat-max-25k/train")
           train_text, validation_text = split_corpus_text(documents)
-          tokenizer = BPETokenizer.train([train_text], vocab_size=260)
+          tokenizer = BPETokenizer.train([train_text], vocab_size=1024, min_frequency=2)
           for split, text in (("train", train_text), ("validation", validation_text)):
               try:
                   token_ids, loss_mask = encode_dialogue_stream_with_loss_mask(text, tokenizer)
