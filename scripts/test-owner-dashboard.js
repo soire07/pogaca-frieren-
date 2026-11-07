@@ -1224,3 +1224,17 @@ test('Frieren AI readiness does not probe an unconfigured production service URL
   assert.deepEqual(result, { status: 'not_configured', reason: 'service_url_missing' });
   assert.equal(fetched, false);
 });
+
+
+test('Owner control center clearly blocks actions when production Frieren AI service is not configured', () => {
+  const html = renderOwnerControlCenter({
+    apiConfigured: false,
+    services: {
+      frieren_ai: { status: 'not_configured', health: 'not_configured', id: null, url: '', apiConfigured: false, allowedActions: [] },
+      pogaca: { status: 'running', health: 'healthy', apiConfigured: false, allowedActions: [] }
+    }
+  }, { ready: true }, 'csrf-test');
+  assert.match(html, /Üretim servisi yapılandırılmamış/);
+  assert.match(html, /Frieren AI üretim servisi Render hesabında bulunamadı/);
+  assert.doesNotMatch(html, /AI servisini başlat/);
+});
