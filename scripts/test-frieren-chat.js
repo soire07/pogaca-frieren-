@@ -1,4 +1,5 @@
 import { buildMemoryContext, extractExplicitMemories, getRelevantMemories } from '../frieren-memory.js';
+import { handleFrierenLearningCommand, parseFrierenLearningCommand } from '../frieren-learning.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -320,4 +321,72 @@ test('Neural quality approval fails closed when the endpoint URL is missing inst
     fetchImpl: async () => { fallbackCalled = true; throw new Error('must not call upstream'); }
   }), /FRIEREN_NEURAL_NOT_CONFIGURED/);
   assert.equal(fallbackCalled, false);
+});
+
+
+test('explicit Frieren learning requests are parsed while ordinary conversation is not automatically learned', () => {
+  assert.deepEqual(parseFrierenLearningCommand('bunu hatırla: Ben eski büyü kitaplarını toplamayı seviyorum.'), {
+    action: 'save', fact: 'Ben eski büyü kitaplarını toplamayı seviyorum.'
+  });
+  assert.deepEqual(parseFrierenLearningCommand('şunu öğren: Frieren evreninde mana gizleme önemli bir tekniktir.'), {
+    action: 'save', fact: 'Frieren evreninde mana gizleme önemli bir tekniktir.'
+  });
+  assert.equal(parseFrierenLearningCommand('Bugün yeni bir büyü öğrendim.'), null);
+  assert.deepEqual(parseFrierenLearningCommand('bunu hatırla: Şifrem 12345678'), { action: 'rejected', reason: 'sensitive' });
+  assert.deepEqual(parseFrierenLearningCommand('tüm belleğimi sil'), { action: 'clear' });
+});
+
+test('Frieren learning memory is private to the exact guild and user and can be explicitly removed', async () => {
+  const calls = [];
+  const db = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    return { rowCount: 1, rows: [] };
+  } };
+  const saved = await handleFrierenLearningCommand(db, {
+    guildId: 'guild-a', userId: 'user-a',
+    message: 'bunu hatırla: Ben eski büyü kitaplarını toplamayı seviyorum.'
+  });
+  assert.match(saved.reply, /yalnızca bu sunucudaki kişisel belleğine/);
+  assert.match(calls[0].sql, /INSERT INTO frieren_chat_memories/);
+  assert.deepEqual(calls[0].params.slice(0, 2), ['guild-a', 'user-a']);
+
+  const forgotten = await handleFrierenLearningCommand(db, {
+    guildId: 'guild-a', userId: 'user-a',
+    message: 'bunu unut: Ben eski büyü kitaplarını toplamayı seviyorum.'
+  });
+  assert.match(forgotten.reply, /sildim/);
+  assert.match(calls[1].sql, /DELETE FROM frieren_chat_memories WHERE guild_id=\\$1 AND user_id=\\$2 AND memory_key=\\$3/);
+  assert.deepEqual(calls[1].params.slice(0, 2), ['guild-a', 'user-a']);
+
+  const cleared = await handleFrierenLearningCommand(db, {
+    guildId: 'guild-b', userId: 'user-b', message: 'tüm belleğimi sil'
+  });
+  assert.match(cleared.reply, /kişisel belleğini temizledim/);
+  assert.deepEqual(calls[2].params, ['guild-b', 'user-b']);
+});
+
+test('Frieren explicit learning works without a configured model and does not call inference', async () => {
+  const replies = [];
+  const calls = [];
+  const message = {
+    guild: { id: 'guild-7' }, channelId: 'channel-1',
+    author: { id: 'user-9', bot: false },
+    mentions: { users: { has: id => id === 'bot-1' } },
+    content: '<@bot-1> bunu hatırla: Ben eski büyü kitaplarını toplamayı seviyorum.',
+    reply: async payload => replies.push(payload)
+  };
+  const db = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    if (sql.includes('SELECT setting_value')) return { rows: [{ setting_value: { enabled: true, style: 'calm', responseLength: 'concise', loreFocus: true } }] };
+    return { rows: [], rowCount: 1 };
+  } };
+  let inferenceCalled = false;
+  const handled = await (await import('../frieren-chat.js')).handleFrierenMentionMessage({
+    message, botUserId: 'bot-1', db, env: {},
+    fetchImpl: async () => { inferenceCalled = true; throw new Error('learning command must not call inference'); }
+  });
+  assert.equal(handled, true);
+  assert.equal(inferenceCalled, false);
+  assert.match(replies[0].content, /kişisel belleğine kaydettim/);
+  assert.ok(calls.some(call => call.sql.includes('INSERT INTO frieren_chat_memories')));
 });
