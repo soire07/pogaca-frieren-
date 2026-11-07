@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubDispatchError, classifyGuardianGithubReadError, getGuardianProposalFingerprint } from './automation.js';
+import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident, getNeuralGuardianEndpoint, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubDispatchError, classifyGuardianGithubReadError, getGuardianProposalFingerprint } from './automation.js';
 
 const incident = {
   id: 42,
@@ -142,7 +142,13 @@ test('autonomous incident handling respects the emergency stop before contacting
   assert.equal(jobs, 0);
 });
 
-test('high-severity incidents are reviewed but repair dispatch waits for explicit owner approval', async () => {
+test('Neural Guardian endpoint requires HTTPS and rejects legacy Frieren AI URLs', () => {
+  assert.equal(getNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'https://neural.example.test/generate' }), 'https://neural.example.test/internal/guardian-review');
+  assert.throws(() => getNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'http://neural.example.test' }), { message: 'INVALID_FRIEREN_NEURAL_API_URL' });
+  assert.throws(() => getNeuralGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://legacy.example.test' }), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' });
+});
+
+test('high-severity incidents are reviewed by Neural but repair dispatch waits for explicit owner approval', async () => {
   const calls = [];
   const store = {
     createGuardianReviewJob: async (_db, args) => { calls.push(['create', args]); return { id: 9, status: 'queued' }; },
@@ -155,10 +161,17 @@ test('high-severity incidents are reviewed but repair dispatch waits for explici
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
     incident,
     env: {
-      FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.test',
-      FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
-      FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
+      FRIEREN_NEURAL_API_URL: 'https://frieren-neural.test',
+      FRIEREN_NEURAL_API_TOKEN: 'x'.repeat(48),
+      FRIEREN_NEURAL_QUALITY_APPROVED: '1',
+      FRIEREN_NEURAL_GUARDIAN_ENABLED: '1',
     },
+    collectContext: async () => ({
+      text: 'FILE: guardian/automation.js\\nexport function test() {}',
+      files: ['guardian/automation.js'],
+      contextHash: 'a'.repeat(64),
+      sourceCommitSha: 'b'.repeat(40),
+    }),
     fetchImpl: async (url, options) => {
       requests.push({ url: String(url), options });
       return { ok: true, status: 200, json: async () => review };
@@ -168,7 +181,11 @@ test('high-severity incidents are reviewed but repair dispatch waits for explici
   assert.equal(result.status, 'proposal_ready');
   assert.equal(result.approvalRequired, true);
   assert.equal(requests.length, 1);
-  assert.equal(requests[0].url, 'https://frieren-ai.test/internal/guardian-review');
+  assert.equal(requests[0].url, 'https://frieren-neural.test/internal/guardian-review');
+  assert.equal(requests[0].options.headers.Authorization, 'Bearer ' + 'x'.repeat(48));
+  const requestBody = JSON.parse(requests[0].options.body);
+  assert.equal(requestBody.source_context_hash, 'a'.repeat(64));
+  assert.deepEqual(requestBody.source_context_files, ['guardian/automation.js']);
   assert.ok(calls.some(([name]) => name === 'finishReview'));
   assert.equal(calls.some(([name]) => name === 'reserve'), false);
 });
@@ -647,4 +664,22 @@ test('Guardian AI review fails closed without an explicitly configured productio
   assert.equal(result.reason, 'FRIEREN_AI_SERVICE_NOT_CONFIGURED');
   assert.equal(requests, 0);
   assert.equal(finished.at(-1).status, 'failed');
+});
+
+
+
+test('Guardian review stays disabled until Neural quality approval; legacy service is never used as fallback', async () => {
+  let requests = 0;
+  let jobs = 0;
+  const result = await processGuardianIncident({
+    db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
+    incident,
+    env: { FRIEREN_AI_PUBLIC_URL: 'https://legacy-frieren-ai.test', FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48) },
+    fetchImpl: async () => { requests += 1; throw new Error('must not call legacy service'); },
+    store: { createGuardianReviewJob: async () => { jobs += 1; } },
+  });
+  assert.equal(result.status, 'not_configured');
+  assert.equal(result.reason, 'FRIEREN_NEURAL_QUALITY_GATE_CLOSED');
+  assert.equal(requests, 0);
+  assert.equal(jobs, 0);
 });
