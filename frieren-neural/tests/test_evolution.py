@@ -153,3 +153,14 @@ def test_evolution_plan_holds_when_baseline_fingerprint_is_missing():
 
     assert plan["status"] == "HOLD"
     assert "comparable_baseline_improvement_not_proven" in plan["blocking_reasons"]
+
+
+
+def test_evolution_requires_approved_open_training_licenses():
+    report = _reviewed_report()
+    report["training_provenance"]["licenses"] = ["CC-BY-NC-4.0"]
+
+    plan = build_evolution_plan(report)
+
+    assert plan["status"] == "HOLD"
+    assert "training_provenance_missing_or_invalid" in plan["blocking_reasons"]
