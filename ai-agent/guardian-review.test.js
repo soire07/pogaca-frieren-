@@ -272,3 +272,14 @@ test('Guardian review HTTP route separates invalid input from AI upstream failur
   assert.ok(route.includes('reviewGuardianIncident('));
   assert.ok(!route.includes('guardian_review_failed'));
 });
+
+
+test('production Frieren AI health workflow fails closed and verifies the authenticated Poğaça bridge', async () => {
+  const workflow = await readFile(new URL('../.github/workflows/frieren-ai-health.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /FRIEREN_AI_HEALTH_URL is required/);
+  assert.match(workflow, /exit 1/);
+  assert.ok(workflow.includes("vars.FRIEREN_AI_HEALTH_URL || 'https://pogaca-frieren-kltd.onrender.com/health'"));
+  assert.ok(workflow.includes('https://pogaca-frieren.onrender.com/ai-bridge-health'));
+  assert.ok(workflow.includes("j.status==='ok' && j.reachable===true"));
+  assert.doesNotMatch(workflow, /not configured; skipping the production AI health probe/);
+});
