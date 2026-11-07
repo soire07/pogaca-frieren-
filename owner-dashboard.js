@@ -102,7 +102,7 @@ export function renderOwnerNavigation() {
     + '<div class="nav-group"><div class="nav-group-title">İŞLEM GEÇMİŞİ</div><a href="/owner/activity"><span class="nav-icon">◷</span><span class="nav-link-copy"><strong>Denetim ve test geçmişi</strong></span></a></div>'
     + '<div class="nav-group"><div class="nav-group-title">ÇALIŞMA ALANLARI</div>'
     + '<a href="/owner/pogaca"><span class="nav-icon">✿</span><span class="nav-link-copy"><strong>Poğaça çalışma alanı</strong></span></a>'
-    + '<a href="/owner/frieren-ai"><span class="nav-icon">✧</span><span class="nav-link-copy"><strong>Frieren Neural merkezi</strong></span></a>'
+    + '<a href="/owner/neural"><span class="nav-icon">✧</span><span class="nav-link-copy"><strong>Frieren Neural merkezi</strong></span></a>'
     + '<a href="/owner/database"><span class="nav-icon">◈</span><span class="nav-link-copy"><strong>Veritabanı</strong></span></a>'
     + '<a href="/owner/settings"><span class="nav-icon">⚙</span><span class="nav-link-copy"><strong>Owner ayarları</strong></span></a></div>'
     + '<div class="nav-group"><div class="nav-group-title">WEB SİTESİ</div><a href="/" target="_blank" rel="noopener"><span class="nav-icon">↗</span><span class="nav-link-copy"><strong>Ana siteyi önizle</strong><small>Yeni sekmede aç</small></span></a></div>'
@@ -558,7 +558,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
     guardian_scan_complete: 'Tarama tamamlandı. Yeni bulgular ve servis durumları aşağıda listeleniyor.',
     guardian_review_complete: 'Neural incelemesini tamamladı. Öneri yalnızca taslaktır; kod değiştirilmedi.',
     guardian_resolved: 'Olay çözüldü olarak işaretlendi.',
-    guardian_not_configured: 'Frieren Neural APIsü yapılandırılmamış. Gerekli gizli anahtar Owner Panel sunucu ortamında bulunamadı.',
+    guardian_not_configured: 'Frieren Neural API yapılandırılmamış. Gerekli gizli anahtar Owner Panel sunucu ortamında bulunamadı.',
     guardian_review_failed: 'Neural incelemesi tamamlanamadı. Olay ve hata kaydı korundu.',
     guardian_pr_dispatched: 'Güvenli onarım workflow\'u başlatıldı. Testler geçerse ayrı bir PR açılacak; birleştirme ve dağıtım yapılmayacak.',
     guardian_pr_dispatching: 'Onaylı onarım workflow isteği zaten işleniyor. Yeni bir istek gönderilmedi; sonucu yenileyebilirsin.',
@@ -621,7 +621,7 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
   const monitorStatus = monitorAge <= monitorInterval * 2 + 30_000 ? 'Aktif' : monitorState?.last_tick_at ? 'Gecikmiş' : 'Başlatılıyor';
   const systemCards = '<div class="grid">'
     + '<div class="stat"><small>Poğaça Frieren</small><strong>' + (serviceState.pogacaReady ? 'Bağlı' : 'Kontrol gerekli') + '</strong></div>'
-    + '<div class="stat"><small>Frieren Neural APIsü</small><strong>' + (serviceState.neuralApiConfigured ? 'Yapılandırıldı' : 'Anahtar eksik') + '</strong></div>'
+    + '<div class="stat"><small>Frieren Neural API</small><strong>' + (serviceState.neuralApiConfigured ? 'Yapılandırıldı' : 'Anahtar eksik') + '</strong></div>'
     + '<div class="stat"><small>Frieren Neural sağlık</small><strong>' + (serviceState.neuralLiveConfigured ? 'URL tanımlı' : 'Henüz bağlanmadı') + '</strong></div>'
     + '<div class="stat"><small>GitHub onarım yetkisi</small><strong>' + (serviceState.githubTokenConfigured ? 'Token tanımlı' : 'Anahtar eksik') + '</strong></div>'
     + '<div class="stat"><small>Guardian izleyici</small><strong>' + monitorStatus + '</strong></div>'
@@ -816,7 +816,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         verifyGuardianEvidenceChain(db),
       ]);
       const incidents = allIncidents.filter(item => item.system === 'guardian' || item.system === 'site_auth').slice(0, 25);
-      const ingestSecret = String(process.env.FRIEREN_GUARD_EVENT_SECRET || process.env.FRIEREN_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+      const ingestSecret = String(process.env.FRIEREN_GUARD_EVENT_SECRET || process.env.FRIEREN_NEURAL_API_TOKEN || '').trim();
       send(res, 200, page('Frieren Security', renderOwnerNavigation() + renderOwnerSecurityWorkspace({
         incidents, evidenceEvents, chainStatus, ingestConfigured: ingestSecret.length >= 32,
       })));
@@ -925,7 +925,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         incidents, jobs, monitorState, emergencyStop, qualityReport, csrf: session.csrf, notice: url.searchParams.get('notice') || '',
         serviceState: {
           pogacaReady: Boolean(client?.isReady?.()),
-          neuralApiConfigured: String(process.env.FRIEREN_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim().length >= 32,
+          neuralApiConfigured: String(process.env.FRIEREN_NEURAL_API_TOKEN || '').trim().length >= 32,
           neuralLiveConfigured: Boolean(String(process.env.FRIEREN_NEURAL_API_URL || '').trim()),
           githubTokenConfigured: String(process.env.FRIEREN_GITHUB_TOKEN || '').trim().length >= 32,
         },
@@ -1312,7 +1312,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         if (target && containsSensitiveInformation(target)) throw new Error('SENSITIVE_TEST_TARGET_REJECTED');
         const rawCommands = String(form.get('commands') || '');
         const commands = rawCommands.split(/[\x09-\x0d ,;]+/).map(value => value.trim()).filter(Boolean).slice(0, 80);
-        const secret = String(process.env.FRIEREN_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+        const secret = String(process.env.FRIEREN_NEURAL_API_TOKEN || '').trim();
         let response;
         if (target) {
           if (secret.length < 32) throw new Error('POGACA_TEST_BRIDGE_NOT_CONFIGURED');
@@ -1386,7 +1386,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
       const code = String(error?.message || '');
       console.error('Owner dashboard action failed:', code || 'unknown error');
       const guardianError = code.startsWith('GUARDIAN_') || code.startsWith('REVIEW_')
-        || code === 'INVALID_FRIEREN_NEURAL_API_URL' || code === 'POGACA_TEST_SERVICE_NOT_CONFIGURED' || code === 'INVALID_FRIEREN_NEURAL_API_URL';
+        || code === 'INVALID_FRIEREN_NEURAL_API_URL' || code === 'POGACA_TEST_SERVICE_NOT_CONFIGURED' || code === 'INVALID_POGACA_TEST_SERVICE_URL';
       const notice = code === 'GUARDIAN_EMERGENCY_STOP_ENABLED' ? 'guardian_emergency_stop_active'
         : code === 'GUARDIAN_BRIDGE_NOT_CONFIGURED' ? 'guardian_not_configured'
         : code === 'GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED' ? 'guardian_github_not_configured'
@@ -1446,13 +1446,13 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         updatedAt: null
       }
     );
-    const frierenService = renderServices?.services?.neural;
-    const neuralReadiness = frierenService?.healthPayload || null;
+    const neuralService = renderServices?.services?.neural;
+    const neuralReadiness = neuralService?.healthPayload || null;
     const neuralRenderMetrics = getStaleOwnerData(
       'render-metrics:frieren-neural:' + metricRange,
-      () => frierenService?.status === 'running' && frierenService?.apiConfigured && !frierenService?.apiError
+      () => neuralService?.status === 'running' && neuralService?.apiConfigured && !neuralService?.apiError
         ? getRenderServiceMetrics({ resourceId: RENDER_BOT_SERVICES.neural.id, apiKey: process.env.RENDER_FRIEREN_NEURAL_API_KEY, range: metricRange })
-        : Promise.resolve({ status: 'unavailable', source: 'render', points: [], message: frierenService?.suspended ? 'Frieren Neural askıda; metrik sorgusu yapılmadı.' : 'Frieren Neural servis durumu doğrulandıktan sonra metrikler alınacak.' }),
+        : Promise.resolve({ status: 'unavailable', source: 'render', points: [], message: neuralService?.suspended ? 'Frieren Neural askıda; metrik sorgusu yapılmadı.' : 'Frieren Neural servis durumu doğrulandıktan sonra metrikler alınacak.' }),
       { status: 'loading', source: 'render', points: [], message: 'Frieren Neural metrikleri arka planda yenileniyor.' }
     );
     const memoryUser = String(url.searchParams.get('memoryUser') || '').trim().slice(0, 24);
