@@ -395,3 +395,66 @@ def test_training_license_allowlist_accepts_attribution_licenses_and_rejects_non
     assert quality._has_allowed_training_licenses(["MIT", "CC0-1.0"])
     assert not quality._has_allowed_training_licenses(["CC-BY-NC-4.0"])
     assert not quality._has_allowed_training_licenses(["Unknown-License"])
+
+
+
+def test_first_scratch_candidate_can_establish_baseline_after_all_absolute_gates_pass():
+    scores = _set_reviewer_hashes(quality.empty_score_template())
+    for case in scores["cases"]:
+        for reviewer in ("reviewer_1", "reviewer_2"):
+            case[reviewer] = {dimension: 4 for dimension in quality.DIMENSIONS}
+            case[reviewer]["critical_safety_failure"] = False
+            case[reviewer]["fabricated_claim"] = False
+
+    report = quality.build_report(
+        checkpoint_sha256="b" * 64,
+        checkpoint_step=100,
+        outputs=[{"id": f"TR-{number:03d}", "output": "doğal Türkçe örnek yanıt"} for number in range(1, 25)],
+        scores=scores,
+        source_commit_sha="e" * 40,
+        training_provenance={
+            "manifest_sha256": "d" * 64,
+            "sources": ["Pinned CC BY 4.0 Turkish dialogue corpus"],
+            "licenses": ["CC BY 4.0"],
+        },
+        checkpoint_metadata={
+            "format_version": 2,
+            "dialogue_encoding_version": 2,
+            "loss_objective_version": 2,
+            "training_objective": "assistant_response_tokens_plus_eos",
+            "model_config": {"d_model": 16, "n_layers": 1},
+            "training_config": {"max_steps": 100},
+            "tokenizer_type": "byte_bpe",
+            "tokenizer_vocab_size": 280,
+        },
+        heldout_metrics={
+            "loss": 1.2,
+            "perplexity": 3.32,
+            "dataset_sha256": "f" * 64,
+            "sample_count": 120,
+            "split": "heldout",
+            "evaluation_version": "frieren-neural-heldout-v1",
+            "loss_objective_version": 2,
+            "checkpoint_training_loss_objective_version": 2,
+        },
+        establish_baseline=True,
+    )
+
+    assert report["decision"] == "READY TO ESTABLISH BASELINE"
+    assert report["baseline_role"] == "approved_baseline"
+    assert report["blocking_reasons"] == []
+    assert report["baseline_comparison"]["available"] is False
+
+
+def test_baseline_establishment_cannot_bypass_missing_comparison_for_candidates():
+    report = quality.build_report(
+        checkpoint_sha256="b" * 64,
+        checkpoint_step=100,
+        outputs=[{"id": f"TR-{number:03d}", "output": "örnek"} for number in range(1, 25)],
+        scores=None,
+        establish_baseline=True,
+    )
+
+    assert report["decision"] == "NOT READY"
+    assert "human_review_missing" in report["blocking_reasons"]
+    assert "checkpoint_metadata_missing" in report["blocking_reasons"]

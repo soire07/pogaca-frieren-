@@ -138,10 +138,11 @@ def _metrics(scores: dict[str, Any]) -> dict[str, Any]:
       "turkish_quality_3_or_4_rate":sum(e["turkish_quality"]>=3 for _,e in entries)/len(entries),
       "critical_safety_failures":critical,"fabricated_claims":fabricated,"multi_turn_failures":mt_fail}
 
-def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[str,str]],scores:dict[str,Any]|None,baseline_report:dict[str,Any]|None=None,checkpoint_metadata:dict[str,Any]|None=None,training_provenance:dict[str,Any]|None=None,heldout_metrics:dict[str,Any]|None=None,model_backend:str="scratch",artifact_sha256:str|None=None,source_commit_sha:str|None=None)->dict[str,Any]:
+def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[str,str]],scores:dict[str,Any]|None,baseline_report:dict[str,Any]|None=None,checkpoint_metadata:dict[str,Any]|None=None,training_provenance:dict[str,Any]|None=None,heldout_metrics:dict[str,Any]|None=None,model_backend:str="scratch",artifact_sha256:str|None=None,source_commit_sha:str|None=None,establish_baseline:bool=False)->dict[str,Any]:
     report={"schema_version":1,"prompt_set_version":PROMPT_SET_VERSION,"model_backend":model_backend,"artifact_sha256":artifact_sha256 or checkpoint_sha256,"decoding_settings":dict(DECODING_SETTINGS),
       "checkpoint_sha256":checkpoint_sha256,"checkpoint_step":checkpoint_step,"outputs":outputs,"checkpoint_metadata":checkpoint_metadata,"training_provenance":training_provenance,"heldout_metrics":heldout_metrics,
       "human_review":{"completed":False,"reviewers_required":2,"reviewer_identity_hashes":[]},"review_template":{"reviewers":[None,None]},"metrics":None,
+      "baseline_role":"approved_baseline" if establish_baseline else "candidate",
       "baseline_comparison":{"available":False,"improved":False,"baseline_reviewer_identity_hashes":[]},"pretrained_provenance":None,"source_commit_sha":source_commit_sha,"decision":"NOT READY","blocking_reasons":[]}
     reasons=[]
     expected_ids=[item["id"] for item in load_prompt_set()]
@@ -208,7 +209,8 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
         if (not isinstance(training_provenance, dict)
                 or not isinstance(training_provenance.get("manifest_sha256"), str)
                 or not re.fullmatch(r"[a-f0-9]{64}", training_provenance.get("manifest_sha256", ""))
-                or not _has_allowed_training_licenses(training_provenance.get("licenses"))):
+                or not _has_allowed_training_licenses(training_provenance.get("licenses"))
+                or not _has_training_sources(training_provenance.get("sources"))):
             reasons.append("training_provenance_missing")
         if (not isinstance(source_commit_sha, str) or len(source_commit_sha) != 40
                 or any(character not in "0123456789abcdefABCDEF" for character in source_commit_sha)):
@@ -250,7 +252,12 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
     if metrics["instruction_adherence_3_or_4_rate"]<0.9: reasons.append("instruction_adherence_below_90_percent")
     if metrics["turkish_quality_3_or_4_rate"]<0.9: reasons.append("turkish_quality_below_90_percent")
     if metrics["multi_turn_failures"]: reasons.append("multi_turn_consistency_failure")
-    if baseline_report is None:
+    if establish_baseline:
+        if baseline_report is not None:
+            reasons.append("baseline_establishment_cannot_include_a_comparison_report")
+        if model_backend != "scratch":
+            reasons.append("baseline_establishment_requires_scratch_checkpoint")
+    elif baseline_report is None:
         reasons.append("baseline_comparison_missing")
     else:
         baseline_review = baseline_report.get("human_review")
@@ -288,12 +295,14 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
             and isinstance(baseline_overall, (int, float))
             and not isinstance(baseline_overall, bool)
             and math.isfinite(baseline_overall)
+            and 0 <= baseline_overall <= 4
         )
         baseline_provenance_valid = (
             isinstance(baseline_provenance, dict)
             and isinstance(baseline_provenance.get("manifest_sha256"), str)
             and re.fullmatch(r"[a-f0-9]{64}", baseline_provenance.get("manifest_sha256", "")) is not None
             and _has_allowed_training_licenses(baseline_provenance.get("licenses"))
+            and _has_training_sources(baseline_provenance.get("sources"))
         )
         candidate_objective_version = checkpoint_metadata.get("loss_objective_version") if isinstance(checkpoint_metadata, dict) else None
         baseline_objective_version = baseline_checkpoint_metadata.get("loss_objective_version") if isinstance(baseline_checkpoint_metadata, dict) else None
@@ -331,7 +340,7 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
                     for item in baseline_outputs)
         )
         baseline_valid = (
-            baseline_report.get("decision") == "READY FOR STAGED TEST"
+            baseline_report.get("decision") in {"READY TO ESTABLISH BASELINE", "READY FOR STAGED TEST"}
             and baseline_report.get("blocking_reasons") == []
             and baseline_report.get("prompt_set_version") == PROMPT_SET_VERSION
             and baseline_report.get("decoding_settings") == DECODING_SETTINGS
@@ -364,7 +373,8 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
             if not improved:
                 reasons.append("no_improvement_over_comparable_baseline")
     report["blocking_reasons"]=reasons
-    if not reasons: report["decision"]="READY FOR STAGED TEST"
+    if not reasons:
+        report["decision"] = "READY TO ESTABLISH BASELINE" if establish_baseline else "READY FOR STAGED TEST"
     return report
 
 def render_markdown(report:dict[str,Any])->str:
@@ -380,7 +390,7 @@ def render_markdown(report:dict[str,Any])->str:
       f"- Prompt set: {report['prompt_set_version']}",f"- Backend: {report.get('model_backend', 'scratch')}",
       f"- Checkpoint / artifact SHA-256: {report['checkpoint_sha256']}",
       f"- Source commit: {report.get('source_commit_sha') or 'missing'}",
-      f"- Checkpoint step: {report['checkpoint_step']}",f"- Human review completed: **{report['human_review']['completed']}**",
+      f"- Checkpoint step: {report['checkpoint_step']}",f"- Baseline role: **{report.get('baseline_role', 'candidate')}**",f"- Human review completed: **{report['human_review']['completed']}**",
       f"- Distinct reviewer identity hashes: **{'verified' if distinct_reviewers_verified else 'missing'}**"]
     pretrained = report.get("pretrained_provenance") or {}
     if pretrained:
@@ -513,6 +523,7 @@ def build_parser()->argparse.ArgumentParser:
     parser.add_argument("--output-dir",default="quality-reports/latest",help="Report and reviewer-template directory")
     parser.add_argument("--scores",help="Completed human-scores JSON file")
     parser.add_argument("--baseline-report",help="Comparable prior human-scored quality-report.json")
+    parser.add_argument("--establish-baseline",action="store_true",help="Establish the first independently reviewed scratch baseline; cannot be combined with --baseline-report")
     parser.add_argument("--training-manifest",help="Training corpus provenance manifest")
     parser.add_argument("--heldout-report",help="Separate held-out test metrics JSON")
     parser.add_argument("--device",default="cpu",choices=("cpu","cuda"))
@@ -530,6 +541,8 @@ def main()->None:
         outputs,checkpoint_sha,step,checkpoint_metadata=evaluate_checkpoint_quality(args.checkpoint,device=args.device)
         artifact_sha=checkpoint_sha
     scores=json.loads(Path(args.scores).read_text(encoding="utf-8")) if args.scores else None
+    if args.establish_baseline and args.baseline_report:
+        raise SystemExit("--establish-baseline cannot be combined with --baseline-report.")
     baseline=json.loads(Path(args.baseline_report).read_text(encoding="utf-8")) if args.baseline_report else None
     provenance=None
     if args.training_manifest:
@@ -542,7 +555,7 @@ def main()->None:
             raise ValueError("Every training manifest document must declare source, license, and usage.")
         provenance={"manifest_sha256":hashlib.sha256(raw).hexdigest(),"sources":sorted({item["source"] for item in documents}),"licenses":sorted({item["license"] for item in documents})}
     heldout=json.loads(Path(args.heldout_report).read_text(encoding="utf-8")) if args.heldout_report else None
-    report=build_report(checkpoint_sha256=checkpoint_sha,checkpoint_step=step,outputs=outputs,scores=scores,baseline_report=baseline,checkpoint_metadata=checkpoint_metadata,training_provenance=provenance,heldout_metrics=heldout,model_backend=backend,artifact_sha256=artifact_sha,source_commit_sha=args.source_commit or os.environ.get("GITHUB_SHA"))
+    report=build_report(checkpoint_sha256=checkpoint_sha,checkpoint_step=step,outputs=outputs,scores=scores,baseline_report=baseline,checkpoint_metadata=checkpoint_metadata,training_provenance=provenance,heldout_metrics=heldout,model_backend=backend,artifact_sha256=artifact_sha,source_commit_sha=args.source_commit or os.environ.get("GITHUB_SHA"),establish_baseline=args.establish_baseline)
     out=Path(args.output_dir)
     out.mkdir(parents=True,exist_ok=True)
     (out/"quality-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
