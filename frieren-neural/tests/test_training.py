@@ -64,7 +64,7 @@ def test_training_writes_resumable_checkpoint_and_finite_metrics(tmp_path: Path)
     assert resumed["step"] == 5
     assert torch.isfinite(torch.tensor(resumed["validation_loss"]))
 
-    with pytest.raises(ValueError, match="Checkpoint corpus/model/training settings"):
+    with pytest.raises(ValueError, match="Training corpus does not match this checkpoint"):
         train_model(["Fern studies spells. Frieren learns magic. " * 8], checkpoint, replace(config, max_steps=6), resume=True)
 
 
@@ -688,7 +688,7 @@ def test_resume_rejects_a_different_pinned_training_manifest(tmp_path: Path):
     }
     changed = {**original, "source_fingerprint_sha256": "e" * 64}
     train_model(corpus, checkpoint, config, training_dataset_metadata=original)
-    with pytest.raises(ValueError, match="training dataset manifest does not match"):
+    with pytest.raises(ValueError, match="Training dataset manifest does not match this checkpoint"):
         train_model(
             corpus, checkpoint, config, resume=True,
             training_dataset_metadata=changed,
