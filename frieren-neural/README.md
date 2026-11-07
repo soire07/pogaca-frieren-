@@ -313,6 +313,10 @@ frieren-neural-evolve-search \
 
 The command stores each candidate separately and writes `candidate-search-report.json`. A lower held-out loss is only a shortlist signal: it does not prove better Turkish conversation quality. The parent checkpoint is never overwritten, and automatic promotion is disabled. Before a candidate can be accepted, it must pass the same 24-prompt benchmark, two independent human reviews, and all critical safety/fabrication checks. The model is not allowed to grade itself or train on unreviewed synthetic answers.
 
+The human score template requires two distinct, pseudonymous reviewer identity hashes. Each reviewer creates a private random token of at least 32 characters and computes its hash with `hash_reviewer_identity`; only the SHA-256 hash is stored in the score/report files. Raw reviewer tokens, names, and email addresses must not be submitted. Distinct hashes prevent accidental reuse of the same reviewer token, but do not cryptographically prove real-world identity; the review process must still ensure the two reviewers are genuinely independent.
+
+Held-out evaluation also requires a pinned corpus manifest fingerprint, split, sample count, and evaluation version. The evaluation CLI accepts the explicit `test` or `heldout` split and records it as held-out evidence; a training split cannot satisfy this gate.
+
 The sampler microbenchmark compares the vectorized implementation with the previous Python-loop implementation while asserting identical sampled tensors. The BPE benchmark also compares the exact merge sequence against the previous reference algorithm. CI records measured throughput; it does not assume that a speedup on one runner guarantees the same gain on every CPU.
 
 
