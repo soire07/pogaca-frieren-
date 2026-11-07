@@ -219,6 +219,7 @@ def test_licensed_corpus_rejects_path_traversal_and_unlisted_files(tmp_path: Pat
     (corpus_dir / "listed.txt").write_text("listed text", encoding="utf-8")
     (corpus_dir / "extra.txt").write_text("unlisted text", encoding="utf-8")
     manifest["documents"][0]["path"] = "listed.txt"
+    manifest["documents"][0]["sha256"] = __import__("hashlib").sha256(b"listed text").hexdigest()
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(ValueError, match="exactly match"):
         load_licensed_corpus(corpus_dir)
