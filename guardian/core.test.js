@@ -155,7 +155,15 @@ function readyNeuralReport() {
     human_review: { completed: true, reviewers_required: 2, reviewer_identity_hashes: ['a'.repeat(64), 'b'.repeat(64)] },
     review_template: { reviewers: ['a'.repeat(64), 'b'.repeat(64)] },
     checkpoint_metadata: { loss_objective_version: 2 },
-    training_provenance: { manifest_sha256: 'b'.repeat(64), licenses: ['Apache-2.0'] },
+    training_provenance: {
+      manifest_sha256: 'b'.repeat(64),
+      dataset_id: '3nesdeniz/turkish-daily-dialogues-5k',
+      dataset_revision: 'a'.repeat(40),
+      source_fingerprint_sha256: 'e'.repeat(64),
+      processed_sha256: 'f'.repeat(64),
+      sources: ['Pinned Apache-2.0 corpus'],
+      licenses: ['Apache-2.0']
+    },
     heldout_metrics: {
       loss: 1.2,
       perplexity: 3.32,
@@ -411,6 +419,15 @@ test('Neural Guardian blocks baseline evidence without two distinct reviewer has
 test('Neural Guardian rejects non-commercial or unknown training licenses', () => {
   const report = readyNeuralReport();
   report.training_provenance.licenses = ['CC-BY-NC-4.0'];
+  const result = evaluateNeuralQualityGate({ qualityReport: report });
+  assert.equal(result.canStage, false);
+  assert.ok(result.reasons.includes('NEURAL_TRAINING_PROVENANCE_MISSING'));
+});
+
+
+test('Neural Guardian rejects reports without pinned training dataset revision and file hashes', () => {
+  const report = readyNeuralReport();
+  delete report.training_provenance.processed_sha256;
   const result = evaluateNeuralQualityGate({ qualityReport: report });
   assert.equal(result.canStage, false);
   assert.ok(result.reasons.includes('NEURAL_TRAINING_PROVENANCE_MISSING'));

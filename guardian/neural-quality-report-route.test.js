@@ -24,7 +24,15 @@ function validReport() {
     blocking_reasons: [],
     human_review: { completed: true, reviewers_required: 2, reviewer_identity_hashes: ['a'.repeat(64), 'b'.repeat(64)] },
     review_template: { reviewers: ['a'.repeat(64), 'b'.repeat(64)] },
-    training_provenance: { manifest_sha256: 'b'.repeat(64), licenses: ['Apache-2.0'] },
+    training_provenance: {
+      manifest_sha256: 'b'.repeat(64),
+      dataset_id: '3nesdeniz/turkish-daily-dialogues-5k',
+      dataset_revision: 'a'.repeat(40),
+      source_fingerprint_sha256: 'e'.repeat(64),
+      processed_sha256: 'f'.repeat(64),
+      sources: ['Pinned Apache-2.0 corpus'],
+      licenses: ['Apache-2.0']
+    },
     heldout_metrics: { loss: 1.2, perplexity: 3.2, dataset_sha256: 'e'.repeat(64), sample_count: 10, split: 'heldout', evaluation_version: 'test-v1' },
     baseline_comparison: { available: true, improved: true, baseline_checkpoint_sha256: 'c'.repeat(64), baseline_loss_objective_version: 2, baseline_reviewer_identity_hashes: ['c'.repeat(64), 'd'.repeat(64)] },
     metrics: {

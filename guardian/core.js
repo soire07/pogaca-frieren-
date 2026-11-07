@@ -25,6 +25,18 @@ function hasAllowedNeuralTrainingLicenses(licenses) {
       && ALLOWED_NEURAL_TRAINING_LICENSES.has(license.trim().replace(/\s+/g, '-').toUpperCase()));
 }
 
+function hasPinnedNeuralTrainingProvenance(provenance) {
+  return provenance && typeof provenance === 'object'
+    && /^[a-f0-9]{64}$/i.test(String(provenance.manifest_sha256 || ''))
+    && typeof provenance.dataset_id === 'string' && provenance.dataset_id.trim().length > 0
+    && /^[a-f0-9]{40}$/i.test(String(provenance.dataset_revision || ''))
+    && /^[a-f0-9]{64}$/i.test(String(provenance.source_fingerprint_sha256 || ''))
+    && /^[a-f0-9]{64}$/i.test(String(provenance.processed_sha256 || ''))
+    && Array.isArray(provenance.sources) && provenance.sources.length > 0
+    && provenance.sources.every(source => typeof source === 'string' && source.trim().length > 0)
+    && hasAllowedNeuralTrainingLicenses(provenance.licenses);
+}
+
 const SECRET_PATTERNS = [
   /(authorization\s*:\s*bearer\s+)[A-Za-z0-9._~+\/-]+/gi,
   /(authorization\s*:\s*basic\s+)[A-Za-z0-9+/=]+/gi,
@@ -256,8 +268,7 @@ export function evaluateNeuralQualityGate({
   }
   if (!Array.isArray(report.blocking_reasons) || report.blocking_reasons.length) reasons.push('NEURAL_QUALITY_BLOCKERS_PRESENT');
   if (report.model_backend === 'ufakzeka') {
-    if (!/^[a-f0-9]{64}$/i.test(String(provenance.manifest_sha256 || ''))
-        || !hasAllowedNeuralTrainingLicenses(provenance.licenses)) {
+    if (!hasPinnedNeuralTrainingProvenance(provenance)) {
       reasons.push('NEURAL_TRAINING_PROVENANCE_MISSING');
     }
     const heldoutDatasetSha = String(heldout.dataset_sha256 || '');
@@ -270,8 +281,7 @@ export function evaluateNeuralQualityGate({
       reasons.push('NEURAL_HELDOUT_METRICS_INVALID');
     }
   } else {
-    if (!/^[a-f0-9]{64}$/i.test(String(provenance.manifest_sha256 || ''))
-        || !hasAllowedNeuralTrainingLicenses(provenance.licenses)) {
+    if (!hasPinnedNeuralTrainingProvenance(provenance)) {
       reasons.push('NEURAL_TRAINING_PROVENANCE_MISSING');
     }
     if (!finiteNumber(heldout.loss) || heldout.loss < 0
