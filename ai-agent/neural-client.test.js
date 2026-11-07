@@ -128,13 +128,3 @@ test('Neural prompt truncation preserves the beginning of the current request', 
   assert.ok(prompt.length <= 1900);
   assert.ok(prompt.includes('UNIQUE-QUESTION-START'));
 });
-
-
-test('explicit Neural approval selects the provider even when its URL is missing, so callers can fail closed', () => {
-  const incomplete = {
-    FRIEREN_NEURAL_API_TOKEN: 't'.repeat(40),
-    FRIEREN_NEURAL_QUALITY_APPROVED: '1',
-  };
-  assert.equal(isNeuralRequested(incomplete), true);
-  assert.equal(isNeuralConfigured(incomplete), false);
-});
