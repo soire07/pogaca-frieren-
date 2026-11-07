@@ -30,6 +30,12 @@ def _has_allowed_training_licenses(value: object) -> bool:
     return len(normalized) == len(value) and all(name in ALLOWED_TRAINING_LICENSES for name in normalized)
 
 
+def _has_training_sources(value: object) -> bool:
+    return isinstance(value, list) and bool(value) and all(
+        isinstance(source, str) and source.strip() for source in value
+    )
+
+
 PLAYBOOK = {
     "correctness": "curate independently verified question/answer examples; require source and answer checks",
     "instruction_adherence": "curate varied multi-constraint instruction-following dialogues with exact expected outputs",
@@ -95,6 +101,7 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
         isinstance(provenance, dict)
         and _valid_sha(provenance.get("manifest_sha256"), 64)
         and _has_allowed_training_licenses(provenance.get("licenses"))
+        and _has_training_sources(provenance.get("sources"))
     )
     if not provenance_valid:
         blocking_reasons.append("training_provenance_missing_or_invalid")
