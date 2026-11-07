@@ -388,6 +388,7 @@ export async function getFrierenAIReadiness({
   serviceUrl = RENDER_BOT_SERVICES.frieren_ai.url,
   healthPath = RENDER_BOT_SERVICES.frieren_ai.healthPath
 } = {}) {
+  if (!String(serviceUrl || '').trim()) return { status: 'not_configured', reason: 'service_url_missing' };
   try {
     const response = await fetchImpl(String(serviceUrl).replace(/\/$/, '') + healthPath, {
       headers: { Accept: 'application/json' },
