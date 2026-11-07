@@ -4,7 +4,7 @@ import { GUARDIAN_REPAIR_BRANCH, buildGuardianRepairTrackingUrls } from '../guar
 import { createHmac } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, renderOwnerSecurityWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest, getOwnerActionErrorDestination } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getFrierenAiScenarioEndpoint, getFrierenNeuralGuardianEndpoint, renderOwnerGuardianWorkspace, renderOwnerSecurityWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest, getOwnerActionErrorDestination } from '../owner-dashboard.js';
 
 
 
@@ -47,9 +47,10 @@ test('Frieren Security workspace clearly distinguishes active platform protectio
   assert.doesNotMatch(html, /gerçek zamanlı saldırı algılandı/i);
 });
 
-test('Guardian AI bridge endpoint requires HTTPS and targets the private review route', () => {
-  assert.equal(getFrierenAiGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.example/' }), 'https://frieren-ai.example/internal/guardian-review');
-  assert.throws(() => getFrierenAiGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'http://frieren-ai.example' }), { message: 'INVALID_FRIEREN_AI_PUBLIC_URL' });
+test('Guardian Neural endpoint requires HTTPS and targets the private review route', () => {
+  assert.equal(getFrierenNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'https://frieren-neural.example/' }), 'https://frieren-neural.example/internal/guardian-review');
+  assert.throws(() => getFrierenNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'http://frieren-neural.example' }), { message: 'INVALID_FRIEREN_NEURAL_API_URL' });
+  assert.throws(() => getFrierenNeuralGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://legacy.example' }), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' });
 });
 
 test('Guardian emergency stop is enforced server-side', async () => {
