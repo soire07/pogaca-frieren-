@@ -214,24 +214,34 @@ class BPETokenizer:
         return self.UNK_ID
 
     def encode(self, text: str, *, add_bos: bool = False, add_eos: bool = False) -> list[int]:
-        ids = list(text.encode("utf-8"))
+        ids = np.frombuffer(text.encode("utf-8"), dtype=np.uint8).astype(np.int32)
         for merge_index, pair in enumerate(self.merges):
-            new_id = self.BASE_VOCAB_SIZE + merge_index
-            merged: list[int] = []
-            index = 0
-            while index < len(ids):
-                if index + 1 < len(ids) and (ids[index], ids[index + 1]) == pair:
-                    merged.append(new_id)
-                    index += 2
-                else:
-                    merged.append(ids[index])
-                    index += 1
-            ids = merged
+            left = ids[:-1]
+            right = ids[1:]
+            positions = np.flatnonzero((left == pair[0]) & (right == pair[1]))
+            if positions.size == 0:
+                continue
+            if pair[0] == pair[1] and positions.size > 1:
+                # Greedy left-to-right replacement: skip the overlapping
+                # second pair, then continue with the next non-overlapping pair.
+                run_starts = np.concatenate((
+                    np.array([0]), np.flatnonzero(np.diff(positions) > 1) + 1
+                ))
+                group_starts = np.maximum.accumulate(
+                    np.where(np.isin(np.arange(positions.size), run_starts),
+                             np.arange(positions.size), 0)
+                )
+                positions = positions[(np.arange(positions.size) - group_starts) % 2 == 0]
+            ids[positions] = self.BASE_VOCAB_SIZE + merge_index
+            keep = np.ones(ids.size, dtype=bool)
+            keep[positions + 1] = False
+            ids = ids[keep]
+        result = ids.tolist()
         if add_bos:
-            ids.insert(0, self.bos_id)
+            result.insert(0, self.bos_id)
         if add_eos:
-            ids.append(self.eos_id)
-        return ids
+            result.append(self.eos_id)
+        return result
 
     def _expand(self, token_id: int, cache: dict[int, bytes]) -> bytes:
         if token_id in cache:
