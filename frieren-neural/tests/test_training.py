@@ -433,7 +433,7 @@ def test_valid_batch_starts_rejects_windows_without_assistant_targets():
         _valid_batch_starts(torch.zeros(12, dtype=torch.bool), 4)
 
 
-def test_warm_start_candidate_uses_parent_weights_without_overwriting_parent(tmp_path: Path):
+def test_warm_start_candidate_uses_parent_weights_without_overwriting_parent(tmp_path: Path, monkeypatch):
     import hashlib
 
     from frieren_neural.training import load_checkpoint
@@ -456,6 +456,12 @@ def test_warm_start_candidate_uses_parent_weights_without_overwriting_parent(tmp
     baseline_sha = hashlib.sha256(baseline.read_bytes()).hexdigest()
 
     from frieren_neural.evolution import run_candidate_search
+    from frieren_neural.tokenizer import BPETokenizer
+
+    def unexpected_tokenizer_training(*_args, **_kwargs):
+        raise AssertionError("warm-start candidates must reuse the parent tokenizer")
+
+    monkeypatch.setattr(BPETokenizer, "train", unexpected_tokenizer_training)
     report = run_candidate_search(
         corpus, heldout, baseline, tmp_path / "candidates",
         candidate_steps=1, heldout_batches=1, learning_rate_factors=(1.0,), device="cpu",
