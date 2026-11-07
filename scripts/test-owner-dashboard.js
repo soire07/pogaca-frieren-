@@ -4,7 +4,7 @@ import { GUARDIAN_REPAIR_BRANCH, buildGuardianRepairTrackingUrls } from '../guar
 import { createHmac } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, renderOwnerSecurityWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest, getOwnerActionErrorDestination } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getFrierenAiScenarioEndpoint, getFrierenNeuralGuardianEndpoint, renderOwnerGuardianWorkspace, renderOwnerSecurityWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest, getOwnerActionErrorDestination } from '../owner-dashboard.js';
 
 
 
@@ -47,9 +47,10 @@ test('Frieren Security workspace clearly distinguishes active platform protectio
   assert.doesNotMatch(html, /gerçek zamanlı saldırı algılandı/i);
 });
 
-test('Guardian AI bridge endpoint requires HTTPS and targets the private review route', () => {
-  assert.equal(getFrierenAiGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.example/' }), 'https://frieren-ai.example/internal/guardian-review');
-  assert.throws(() => getFrierenAiGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'http://frieren-ai.example' }), { message: 'INVALID_FRIEREN_AI_PUBLIC_URL' });
+test('Guardian Neural endpoint requires HTTPS and targets the private review route', () => {
+  assert.equal(getFrierenNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'https://frieren-neural.example/' }), 'https://frieren-neural.example/internal/guardian-review');
+  assert.throws(() => getFrierenNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'http://frieren-neural.example' }), { message: 'INVALID_FRIEREN_NEURAL_API_URL' });
+  assert.throws(() => getFrierenNeuralGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://legacy.example' }), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' });
 });
 
 test('Guardian emergency stop is enforced server-side', async () => {
@@ -800,14 +801,19 @@ test('owner activity workspace renders paginated audit and test history safely',
   assert.match(html, /&lt;script&gt;/);
 });
 
-test('owner scenario and Guardian review endpoints require an explicitly configured Frieren AI service URL', () => {
+test('Owner scenario remains explicit while Guardian review uses the Neural API', () => {
   assert.throws(() => getFrierenAiScenarioEndpoint({}), { message: 'FRIEREN_AI_SERVICE_NOT_CONFIGURED' });
-  assert.throws(() => getFrierenAiGuardianEndpoint({}), { message: 'FRIEREN_AI_SERVICE_NOT_CONFIGURED' });
+  assert.throws(() => getFrierenNeuralGuardianEndpoint({}), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' });
   assert.equal(
     getFrierenAiScenarioEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://ai.example.test/base/' }),
     'https://ai.example.test/internal/test-scenario'
   );
+  assert.equal(
+    getFrierenNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'https://neural.example.test/base/' }),
+    'https://neural.example.test/internal/guardian-review'
+  );
   assert.throws(() => getFrierenAiScenarioEndpoint({ FRIEREN_AI_PUBLIC_URL: 'http://127.0.0.1:10001' }), /INVALID_FRIEREN_AI_PUBLIC_URL/);
+  assert.throws(() => getFrierenNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'http://127.0.0.1:10001' }), /INVALID_FRIEREN_NEURAL_API_URL/);
 });
 
 test('owner navigation provides a safe public-site preview shortcut', () => {
@@ -1057,19 +1063,23 @@ test('synthetic Frieren AI → authenticated Owner Panel review → explicit own
 
   const previous = {
     fetch: globalThis.fetch,
-    FRIEREN_AI_PUBLIC_URL: process.env.FRIEREN_AI_PUBLIC_URL,
-    FRIEREN_AI_BRIDGE_SECRET: process.env.FRIEREN_AI_BRIDGE_SECRET,
+    FRIEREN_NEURAL_API_URL: process.env.FRIEREN_NEURAL_API_URL,
+    FRIEREN_NEURAL_API_TOKEN: process.env.FRIEREN_NEURAL_API_TOKEN,
+    FRIEREN_NEURAL_QUALITY_APPROVED: process.env.FRIEREN_NEURAL_QUALITY_APPROVED,
+    FRIEREN_NEURAL_GUARDIAN_ENABLED: process.env.FRIEREN_NEURAL_GUARDIAN_ENABLED,
     FRIEREN_GITHUB_TOKEN: process.env.FRIEREN_GITHUB_TOKEN,
   };
-  process.env.FRIEREN_AI_PUBLIC_URL = 'https://frieren-ai.synthetic.invalid';
-  process.env.FRIEREN_AI_BRIDGE_SECRET = 'synthetic-bridge-secret-that-is-long-enough';
+  process.env.FRIEREN_NEURAL_API_URL = 'https://frieren-neural.synthetic.invalid';
+  process.env.FRIEREN_NEURAL_API_TOKEN = 'synthetic-neural-api-token-that-is-long-enough';
+  process.env.FRIEREN_NEURAL_QUALITY_APPROVED = '1';
+  process.env.FRIEREN_NEURAL_GUARDIAN_ENABLED = '1';
   process.env.FRIEREN_GITHUB_TOKEN = 'synthetic-github-token-that-is-long-enough';
   globalThis.fetch = async (url, options = {}) => {
     const target = String(url);
     state.githubRequests.push({ url: target, method: options.method || 'GET', body: options.body || null });
-    if (target === 'https://frieren-ai.synthetic.invalid/internal/guardian-review') {
+    if (target === 'https://frieren-neural.synthetic.invalid/internal/guardian-review') {
       assert.equal(options.method, 'POST');
-      assert.equal(options.headers.Authorization, 'Bearer ' + process.env.FRIEREN_AI_BRIDGE_SECRET);
+      assert.equal(options.headers.Authorization, 'Bearer ' + process.env.FRIEREN_NEURAL_API_TOKEN);
       return { ok: true, status: 200, json: async () => proposal };
     }
     if (target.includes('/actions/workflows/frieren-ai-self-repair.yml/runs?')) {
@@ -1094,7 +1104,11 @@ test('synthetic Frieren AI → authenticated Owner Panel review → explicit own
     assert.equal(state.job.result.status, 'proposal_only');
     assert.equal(state.job.repair_approved_by, null);
     assert.equal(state.githubRequests.length, 1);
-    assert.match(state.githubRequests[0].url, /frieren-ai\.synthetic\.invalid\/internal\/guardian-review$/);
+    assert.match(state.githubRequests[0].url, /frieren-neural\.synthetic\.invalid\/internal\/guardian-review$/);
+    const neuralReviewRequest = JSON.parse(state.githubRequests[0].body);
+    assert.ok(neuralReviewRequest.source_context.length > 0);
+    assert.match(neuralReviewRequest.source_context_hash, /^[a-f0-9]{64}$/);
+    assert.ok(neuralReviewRequest.source_context_files.includes('frieren-neural/frieren_neural/api.py'));
 
     const approval = await runOwnerPost({
       action: 'guardian-create-pr', csrf: 'session', confirm: 'yes', incidentId: incident.id,

@@ -1,8 +1,12 @@
 import { buildMemoryContext, extractExplicitMemories, getRelevantMemories } from '../frieren-memory.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { detectNeuralLearningSignals } from '../frieren-neural-learning.js';
+import { submitNeuralLearningSignals } from '../frieren-neural-client.js';
 import {
   buildFrierenMessages,
+  buildFrierenNeuralPrompt,
+  generateFrierenReply,
   extractFrierenPrompt,
   isCodeOrSourceRequest,
   isFrierenMentionMessage
@@ -19,6 +23,14 @@ test('Frieren responds only to a direct mention in a guild by a human user', () 
   assert.equal(isFrierenMentionMessage({ ...base, guild: null }, 'bot-1'), false);
   assert.equal(isFrierenMentionMessage({ ...base, author: { bot: true } }, 'bot-1'), false);
   assert.equal(isFrierenMentionMessage({ ...base, mentions: { users: { has: () => false } } }, 'bot-1'), false);
+  assert.equal(isFrierenMentionMessage({
+    ...base,
+    mentions: { users: { has: () => false }, repliedUser: { id: 'bot-1' } }
+  }, 'bot-1'), true);
+  assert.equal(isFrierenMentionMessage({
+    ...base,
+    mentions: { users: { has: () => false }, repliedUser: { id: 'another-bot' } }
+  }, 'bot-1'), false);
 });
 
 test('mention parser removes both Discord mention formats and rejects empty prompts', () => {
@@ -106,7 +118,10 @@ test('mention handler ignores messages without the bot mention and gives a safe 
   await (await import('../frieren-chat.js')).handleFrierenMentionMessage({
     message: { ...base, reply: async payload => replies.push(payload) },
     botUserId: 'bot-1',
-    db: { query: async () => { throw new Error('must not query'); } },
+    db: { query: async sql => {
+      if (sql.includes('SELECT setting_value')) return { rows: [{ setting_value: { enabled: true, style: 'calm', responseLength: 'concise', loreFocus: true } }] };
+      throw new Error('memory and history must not be queried without a model');
+    } },
     env: {}
   });
   assert.match(replies[0].content, /henüz yapılandırılmadı/i);
@@ -232,4 +247,193 @@ test('source-code requests are blocked before database access or AI inference', 
   assert.equal(fetched, false);
   assert.match(replies[0].content, /kaynak kod paylaşamam/i);
   assert.deepEqual(replies[0].allowedMentions, { parse: [] });
+});
+
+
+test('Poğaça Frieren Neural prompt preserves persona, memory and the latest request within the shared API limit', () => {
+  const prompt = buildFrierenNeuralPrompt({
+    history: [
+      { role: 'user', content: 'Önceki soru' },
+      { role: 'assistant', content: 'Önceki yanıt' }
+    ],
+    memories: [{ memory_key: 'favori_renk', memory_value: 'Mor.' }],
+    userMessage: 'GÜNCEL-ISTEK-987',
+    chatSettings: { enabled: true, style: 'calm', responseLength: 'concise', loreFocus: true }
+  });
+  assert.ok(prompt.length <= 1900);
+  assert.match(prompt, /Frieren: Beyond Journey/i);
+  assert.match(prompt, /Önceki soru/);
+  assert.match(prompt, /GÜNCEL-ISTEK-987/);
+  assert.match(prompt, /sistem talimatı değildir/i);
+});
+
+test('Poğaça Frieren uses the shared Neural endpoint as primary only after the explicit quality gate', async () => {
+  let request;
+  const env = {
+    FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
+    FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(40),
+    FRIEREN_NEURAL_QUALITY_APPROVED: '1'
+  };
+  const answer = await generateFrierenReply({
+    env,
+    userMessage: 'Merhaba',
+    fetchImpl: async (url, options) => {
+      request = { url, options };
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ completion: 'Merhaba. Uzun zaman oldu.', model: 'ufakai/ufakzeka-1' })
+      };
+    }
+  });
+  assert.equal(request.url, 'https://neural.example.test/generate');
+  assert.equal(request.options.headers.authorization, 'Bearer ' + env.FRIEREN_NEURAL_API_TOKEN);
+  assert.match(JSON.parse(request.options.body).prompt, /Frieren: Beyond Journey/i);
+  assert.equal(answer, 'Merhaba. Uzun zaman oldu.');
+});
+
+test('Poğaça Frieren fails closed when Neural is approved but its shared token is missing', async () => {
+  let fallbackCalled = false;
+  await assert.rejects(generateFrierenReply({
+    env: {
+      GROQ_API_KEY: 'free-fallback-key',
+      FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
+      FRIEREN_NEURAL_QUALITY_APPROVED: '1'
+    },
+    userMessage: 'Merhaba',
+    fetchImpl: async () => { fallbackCalled = true; throw new Error('must not call upstream'); }
+  }), /FRIEREN_NEURAL_NOT_CONFIGURED/);
+  assert.equal(fallbackCalled, false);
+});
+
+test('Poğaça Frieren keeps the existing free Groq path while Neural quality approval is absent', async () => {
+  let requestedUrl;
+  const answer = await generateFrierenReply({
+    env: { GROQ_API_KEY: 'test-key', FRIEREN_NEURAL_API_URL: 'https://neural.example.test' },
+    userMessage: 'Merhaba',
+    fetchImpl: async url => {
+      requestedUrl = url;
+      return { ok: true, json: async () => ({ choices: [{ message: { content: 'Merhaba.' } }] }) };
+    }
+  });
+  assert.equal(requestedUrl, 'https://api.groq.com/openai/v1/chat/completions');
+  assert.equal(answer, 'Merhaba.');
+});
+
+
+test('Neural quality approval fails closed when the endpoint URL is missing instead of silently using Groq', async () => {
+  let fallbackCalled = false;
+  await assert.rejects(generateFrierenReply({
+    env: {
+      GROQ_API_KEY: 'free-fallback-key',
+      FRIEREN_NEURAL_QUALITY_APPROVED: '1',
+      FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(40)
+    },
+    userMessage: 'Merhaba',
+    fetchImpl: async () => { fallbackCalled = true; throw new Error('must not call upstream'); }
+  }), /FRIEREN_NEURAL_NOT_CONFIGURED/);
+  assert.equal(fallbackCalled, false);
+});
+
+
+test('Neural detects corrections, uncertainty and repeated questions without retaining message content', () => {
+  assert.deepEqual(detectNeuralLearningSignals({
+    history: [{ role: 'user', content: 'Frieren hangi büyüyü seviyor?' }],
+    userMessage: 'Aslında bu bilgi yanlış.',
+    assistantReply: 'Emin değilim; doğrulayamıyorum.'
+  }), [
+    { signal_type: 'correction', dimension: 'correctness' },
+    { signal_type: 'uncertainty', dimension: 'grounding' }
+  ]);
+  assert.deepEqual(detectNeuralLearningSignals({
+    history: [{ role: 'user', content: 'Frieren hangi büyüyü seviyor?' }],
+    userMessage: 'Frieren hangi büyüyü seviyor?',
+    assistantReply: 'Bilmiyorum.'
+  }), [
+    { signal_type: 'uncertainty', dimension: 'grounding' },
+    { signal_type: 'repeated_question', dimension: 'conversation_consistency' }
+  ]);
+});
+
+
+test('Neural learning transport sends only allowlisted signal metadata to the central endpoint', async () => {
+  let request;
+  const env = {
+    FRIEREN_NEURAL_API_URL: 'https://neural.example.test/generate',
+    FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(48),
+    FRIEREN_NEURAL_QUALITY_APPROVED: '1'
+  };
+  const result = await submitNeuralLearningSignals({
+    env,
+    guildId: '12345678901234567',
+    userId: '22345678901234567',
+    signals: [
+      { signal_type: 'correction', dimension: 'correctness' },
+      { signal_type: 'uncertainty', dimension: 'grounding' },
+      { signal_type: 'repeated_question', dimension: 'conversation_consistency' },
+      { signal_type: 'unknown', dimension: 'grounding' }
+    ],
+    fetchImpl: async (url, options) => {
+      request = { url, options };
+      return { ok: true, status: 200, json: async () => ({ accepted: true, stored: 3 }) };
+    }
+  });
+  assert.equal(request.url, 'https://neural.example.test/learning/signals');
+  assert.equal(request.options.method, 'POST');
+  assert.equal(request.options.headers.authorization, 'Bearer ' + env.FRIEREN_NEURAL_API_TOKEN);
+  assert.deepEqual(JSON.parse(request.options.body), {
+    guild_id: '12345678901234567',
+    user_id: '22345678901234567',
+    signals: [
+      { signal_type: 'correction', dimension: 'correctness' },
+      { signal_type: 'uncertainty', dimension: 'grounding' },
+      { signal_type: 'repeated_question', dimension: 'conversation_consistency' }
+    ]
+  });
+  assert.equal(JSON.parse(request.options.body).prompt, undefined);
+  assert.equal(JSON.parse(request.options.body).message, undefined);
+  assert.deepEqual(result, { stored: 3 });
+});
+
+test('Neural learning transport rejects invalid Discord scope before network access', async () => {
+  let called = false;
+  await assert.rejects(submitNeuralLearningSignals({
+    env: {
+      FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
+      FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(48),
+      FRIEREN_NEURAL_QUALITY_APPROVED: '1'
+    },
+    guildId: 'not-a-discord-id',
+    userId: '22345678901234567',
+    signals: [{ signal_type: 'correction', dimension: 'correctness' }],
+    fetchImpl: async () => { called = true; }
+  }), /FRIEREN_NEURAL_LEARNING_SCOPE_INVALID/);
+  assert.equal(called, false);
+});
+
+test('Neural learning transport remains disabled until the explicit quality gate and credentials are configured', async () => {
+  let called = false;
+  const result = await submitNeuralLearningSignals({
+    env: { FRIEREN_NEURAL_API_URL: 'https://neural.example.test', FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(48) },
+    guildId: '12345678901234567',
+    userId: '22345678901234567',
+    signals: [{ signal_type: 'correction', dimension: 'correctness' }],
+    fetchImpl: async () => { called = true; }
+  });
+  assert.deepEqual(result, { stored: 0 });
+  assert.equal(called, false);
+});
+
+test('Neural learning transport reports upstream failures without exposing request content', async () => {
+  await assert.rejects(submitNeuralLearningSignals({
+    env: {
+      FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
+      FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(48),
+      FRIEREN_NEURAL_QUALITY_APPROVED: '1'
+    },
+    guildId: '12345678901234567',
+    userId: '22345678901234567',
+    signals: [{ signal_type: 'correction', dimension: 'correctness' }],
+    fetchImpl: async () => ({ ok: false, status: 503 })
+  }), /FRIEREN_NEURAL_LEARNING_HTTP_503/);
 });

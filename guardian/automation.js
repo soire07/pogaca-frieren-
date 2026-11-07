@@ -7,6 +7,7 @@ import {
   updateGuardianRepairStatus,
 } from './store.js';
 import { redactGuardianText } from './core.js';
+import { collectCodeContext } from '../ai-agent/code-context.js';
 
 export { getGuardianProposalFingerprint };
 
@@ -193,15 +194,100 @@ async function persistDispatchedState(store, db, jobId, workflowUrl) {
   return saved === true;
 }
 
-function getReviewEndpoint(env) {
-  const base = String(env.FRIEREN_AI_PUBLIC_URL || '').trim();
-  if (!base) throw new Error('FRIEREN_AI_SERVICE_NOT_CONFIGURED');
+const GUARDIAN_REVIEW_SYSTEMS = new Set(["frieren_neural", "frieren_ai", "pogaca_frieren", "owner_panel", "guardian", "site_auth"]);
+
+function isSafeGuardianRelativePath(value) {
+  const path = String(value || "");
+  return Boolean(path) && !path.startsWith("/") && !path.startsWith("\\\\")
+    && !/^[a-z]:/i.test(path)
+    && !path.split(/[\\\\/]/).some(segment => segment === ".." || segment === ".");
+}
+
+export function normalizeNeuralGuardianIncident(value = {}) {
+  const system = GUARDIAN_REVIEW_SYSTEMS.has(value.system) ? value.system : "";
+  const title = redactGuardianText(value.title, 160);
+  const summary = redactGuardianText(value.summary, 1600);
+  const rawCode = String(value.code || "");
+  const code = /^[A-Z0-9_.:-]{1,80}$/i.test(rawCode) ? rawCode.toUpperCase() : "UNKNOWN";
+  if (!system || !title || !summary) throw new Error("INVALID_GUARDIAN_INCIDENT");
+  const evidence = Array.isArray(value.evidence) ? value.evidence.slice(0, 8).map(item => {
+    const file = String(item?.file || "");
+    if (file && !isSafeGuardianRelativePath(file)) return null;
+    return {
+      file: redactGuardianText(file, 180),
+      line: Number.isSafeInteger(Number(item?.line)) && Number(item.line) > 0 ? Number(item.line) : null,
+      message: redactGuardianText(item?.message || "", 400),
+    };
+  }).filter(Boolean) : [];
+  return { system, code, title, summary, evidence };
+}
+
+export function getNeuralGuardianEndpoint(env = process.env) {
+  const base = String(env.FRIEREN_NEURAL_API_URL || '').trim();
+  if (!base) throw new Error('FRIEREN_NEURAL_NOT_CONFIGURED');
   const parsed = new URL(base);
   if (parsed.protocol !== 'https:' || parsed.username || parsed.password) {
-    throw new Error('INVALID_FRIEREN_AI_PUBLIC_URL');
+    throw new Error('INVALID_FRIEREN_NEURAL_API_URL');
   }
   return new URL('/internal/guardian-review', parsed).toString();
 }
+
+export async function requestNeuralGuardianReview({
+  incident,
+  env = process.env,
+  fetchImpl = globalThis.fetch,
+  collectContext = collectCodeContext,
+} = {}) {
+  if (!incident || typeof fetchImpl !== "function") throw new Error("INVALID_NEURAL_GUARDIAN_REVIEW_INPUT");
+  const normalizedIncident = normalizeNeuralGuardianIncident(incident);
+  if (env.FRIEREN_NEURAL_QUALITY_APPROVED !== "1" || env.FRIEREN_NEURAL_GUARDIAN_ENABLED !== "1") {
+    throw new Error("FRIEREN_NEURAL_QUALITY_GATE_CLOSED");
+  }
+  const apiToken = String(env.FRIEREN_NEURAL_API_TOKEN || "").trim();
+  if (apiToken.length < 32) throw new Error("FRIEREN_NEURAL_API_TOKEN_NOT_CONFIGURED");
+  const endpoint = getNeuralGuardianEndpoint(env);
+  const configuredTimeout = Number(env.FRIEREN_NEURAL_REQUEST_TIMEOUT_MS);
+  const timeoutMs = Number.isFinite(configuredTimeout)
+    ? Math.max(15_000, Math.min(configuredTimeout, 300_000))
+    : 90_000;
+  const sourceContext = await collectContext({
+    rootDir: process.cwd(),
+    question: [normalizedIncident.system, normalizedIncident.code, normalizedIncident.title, normalizedIncident.summary,
+      ...normalizedIncident.evidence.map(item => [item.file, item.message].filter(Boolean).join(" "))].join(" "),
+    sourceCommitSha: env.GITHUB_SHA || null,
+    budget: 5_000,
+  });
+  if (!sourceContext || typeof sourceContext.text !== "string" || !sourceContext.text.trim()
+      || !Array.isArray(sourceContext.files) || !sourceContext.files.length
+      || !/^[a-f0-9]{64}$/i.test(String(sourceContext.contextHash || ""))) {
+    throw new Error("GUARDIAN_SOURCE_CONTEXT_UNAVAILABLE");
+  }
+  const response = await fetchImpl(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + apiToken,
+    },
+    body: JSON.stringify({
+      incident: normalizedIncident,
+      source_context: sourceContext.text,
+      source_context_files: sourceContext.files.slice(0, 12),
+      source_context_hash: sourceContext.contextHash,
+      source_commit_sha: sourceContext.sourceCommitSha || undefined,
+    }),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  const review = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const responseError = redactGuardianText(review?.error || review?.detail || review?.message || "UNKNOWN_NEURAL_ERROR", 80);
+    throw new Error("GUARDIAN_NEURAL_HTTP_" + response.status + "_" + responseError);
+  }
+  if (!review || typeof review !== "object" || Array.isArray(review)) {
+    throw new Error("GUARDIAN_NEURAL_RESPONSE_INVALID");
+  }
+  return review;
+}
+
 
 export async function processGuardianIncident({
   db,
@@ -214,6 +300,7 @@ export async function processGuardianIncident({
     reserveGuardianRepairDispatch,
     finishGuardianRepairDispatch,
   },
+  collectContext = collectCodeContext,
   actorId = 'guardian-auto',
 } = {}) {
   if (!db || !incident || !Number.isSafeInteger(Number(incident.id)) || Number(incident.id) <= 0) {
@@ -235,8 +322,13 @@ export async function processGuardianIncident({
     return { status: 'emergency_stop' };
   }
 
-  const bridgeSecret = String(env.FRIEREN_AI_BRIDGE_SECRET || env.FRIEREN_BRIDGE_SECRET || '').trim();
-  if (bridgeSecret.length < 32) return { status: 'not_configured', reason: 'GUARDIAN_BRIDGE_NOT_CONFIGURED' };
+  const apiToken = String(env.FRIEREN_NEURAL_API_TOKEN || '').trim();
+  if (env.FRIEREN_NEURAL_QUALITY_APPROVED !== '1' || env.FRIEREN_NEURAL_GUARDIAN_ENABLED !== '1') {
+    return { status: 'not_configured', reason: 'FRIEREN_NEURAL_QUALITY_GATE_CLOSED' };
+  }
+  if (apiToken.length < 32) return { status: 'not_configured', reason: 'FRIEREN_NEURAL_API_TOKEN_NOT_CONFIGURED' };
+  try { getNeuralGuardianEndpoint(env); }
+  catch (error) { return { status: 'not_configured', reason: safeErrorCode(error) }; }
 
   let job;
   try {
@@ -258,28 +350,7 @@ export async function processGuardianIncident({
 
   let review;
   try {
-    const response = await fetchImpl(getReviewEndpoint(env), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + bridgeSecret,
-      },
-      body: JSON.stringify({
-        incident: {
-          system: incident.system,
-          code: incident.code,
-          title: incident.title,
-          summary: incident.summary,
-          evidence: incident.evidence,
-        },
-      }),
-      signal: AbortSignal.timeout(60_000),
-    });
-    review = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const responseError = redactGuardianText(review?.error || review?.message || 'UNKNOWN_AI_ERROR', 80);
-      throw new Error('GUARDIAN_AI_HTTP_' + response.status + '_' + responseError);
-    }
+    review = await requestNeuralGuardianReview({ incident, env, fetchImpl, collectContext });
     await store.finishGuardianReviewJob(db, {
       jobId: job.id,
       status: 'completed',

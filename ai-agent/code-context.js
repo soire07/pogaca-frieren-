@@ -63,6 +63,8 @@ const GUARDIAN_CONTEXT_FILES = Object.freeze([
   'ai-agent/guardian-review.js',
   'ai-agent/guardian-review.test.js',
   'ai-agent/code-context.js',
+  'frieren-neural/frieren_neural/api.py',
+  'frieren-neural/tests/test_api.py',
 ]);
 
 const GENERIC_ROOTS = Object.freeze([
@@ -87,7 +89,7 @@ export async function collectCodeContext({ rootDir, question, sourceCommitSha = 
       const relative = path.posix.join(dir === '.' ? '' : dir, entry.name);
       if (entry.isDirectory()) {
         if (!['node_modules', '.git', 'coverage', '.render'].includes(entry.name)) await scan(relative, depth + 1);
-      } else if (entry.isFile() && entry.name.endsWith('.js')) {
+      } else if (entry.isFile() && /\.(?:js|py)$/.test(entry.name)) {
         const normalized = normalizeForSearch(relative);
         if (terms.some(term => normalized.includes(term))) candidates.add(relative);
         else {

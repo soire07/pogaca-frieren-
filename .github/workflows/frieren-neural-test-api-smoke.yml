@@ -1,0 +1,62 @@
+name: Frieren Neural Test API Smoke
+
+on:
+  push:
+    branches:
+      - test/frieren-neural-render-free
+    paths:
+      - ".github/workflows/frieren-neural-test-api-smoke.yml"
+      - "frieren-neural/frieren_neural/api.py"
+      - "frieren-neural/Dockerfile"
+      - "frieren-neural/tests/test_serving_container_dependencies.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/frieren-neural-test-api-smoke.yml"
+      - "frieren-neural/frieren_neural/api.py"
+      - "frieren-neural/Dockerfile"
+      - "frieren-neural/tests/test_serving_container_dependencies.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frieren-neural-test-api-smoke
+  cancel-in-progress: true
+
+jobs:
+  api-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check liveness endpoint
+        env:
+          NEURAL_TEST_URL: https://frieren-neural-test-1unz.onrender.com
+        run: |
+          set -euo pipefail
+          response="$(curl --silent --show-error --fail --connect-timeout 10 --max-time 20 "$NEURAL_TEST_URL/live")"
+          python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d == {"status":"alive","service":"frieren-neural"}' "$response"
+          echo "NEURAL_LIVENESS=PASS"
+
+      - name: Verify database-backed model health and generation
+        env:
+          NEURAL_TEST_URL: https://frieren-neural-test-1unz.onrender.com
+        run: |
+          set -euo pipefail
+          response="$(curl --silent --show-error --fail --connect-timeout 15 --max-time 360 "$NEURAL_TEST_URL/health")"
+          python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("status") == "ready"; assert d.get("model") == "ufakai/ufakzeka-1"; assert d.get("generation_smoke") == "pass"' "$response"
+          echo "DATABASE_LOCK_AND_MODEL_GENERATION=PASS"
+
+      - name: Check learning endpoints are present and protected
+        env:
+          NEURAL_TEST_URL: https://frieren-neural-test-1unz.onrender.com
+        run: |
+          set -euo pipefail
+          payload='{"guild_id":"12345678901234567","user_id":"22345678901234567","signals":[{"signal_type":"correction","dimension":"correctness"}]}'
+          signal_status="$(curl --silent --output /tmp/signal-response --write-out '%{http_code}' --connect-timeout 10 --max-time 20 -X POST "$NEURAL_TEST_URL/learning/signals" -H 'Content-Type: application/json' --data "$payload")"
+          insights_status="$(curl --silent --output /tmp/insights-response --write-out '%{http_code}' --connect-timeout 10 --max-time 20 "$NEURAL_TEST_URL/learning/insights")"
+          test "$signal_status" = "401"
+          test "$insights_status" = "401"
+          echo "LEARNING_SIGNAL_ROUTE_AUTH=PASS"
+          echo "LEARNING_INSIGHTS_ROUTE_AUTH=PASS"

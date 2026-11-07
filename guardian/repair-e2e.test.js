@@ -5,7 +5,7 @@ import { processGuardianIncident, processPendingGuardianRepairDispatch } from '.
 
 const incident = {
   id: 990042,
-  system: 'guardian_synthetic_test',
+  system: 'guardian',
   code: 'SYNTHETIC_REPAIR_E2E',
   severity: 'critical',
   title: 'Synthetic Guardian repair test',
@@ -101,12 +101,20 @@ async function prepareApprovedSyntheticJob(fixture) {
     db: fixture.db,
     incident,
     env: {
-      FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.invalid',
-      FRIEREN_AI_BRIDGE_SECRET: 'synthetic-bridge-secret-'.padEnd(48, 'x'),
+      FRIEREN_NEURAL_API_URL: 'https://frieren-neural.invalid',
+      FRIEREN_NEURAL_API_TOKEN: 'synthetic-neural-api-token-'.padEnd(48, 'x'),
+      FRIEREN_NEURAL_QUALITY_APPROVED: '1',
+      FRIEREN_NEURAL_GUARDIAN_ENABLED: '1',
       FRIEREN_GITHUB_TOKEN: 'synthetic-github-token-'.padEnd(48, 'y'),
     },
+    collectContext: async () => ({
+      text: 'FILE: guardian/automation.test.js\\nexport function syntheticRepairTest() {}',
+      files: ['guardian/automation.test.js'],
+      contextHash: 'a'.repeat(64),
+      sourceCommitSha: 'b'.repeat(40),
+    }),
     fetchImpl: async url => {
-      assert.equal(String(url), 'https://frieren-ai.invalid/internal/guardian-review');
+      assert.equal(String(url), 'https://frieren-neural.invalid/internal/guardian-review');
       return { ok: true, status: 200, json: async () => proposal };
     },
     store: {

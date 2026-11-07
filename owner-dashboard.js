@@ -16,7 +16,7 @@ import { RENDER_BOT_SERVICES, getRenderBotServiceStatuses, executeRenderServiceA
 import { getOwnerData, getStaleOwnerData } from './owner-data-cache.js';
 import { listSupportTicketsForOwner, getSupportTicketForOwner, replySupportTicketFromOwner, updateSupportTicketStatusFromOwner } from './account-center.js';
 import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
-import { classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubReadError, processPendingGuardianRepairDispatch, isRepairableProposal, buildGuardianRepairTrackingUrls } from './guardian/automation.js';
+import { classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubReadError, processPendingGuardianRepairDispatch, isRepairableProposal, buildGuardianRepairTrackingUrls, requestNeuralGuardianReview } from './guardian/automation.js';
 import { upsertGuardianIncident, getGuardianIncident, listGuardianIncidents, createGuardianReviewJob, finishGuardianReviewJob, listGuardianJobs, resolveGuardianIncident, getLatestGuardianJob, approveGuardianRepair, updateGuardianRepairStatus, getGuardianMonitorState, getLatestGuardianQualityReport } from './guardian/store.js';
 import { verifyGuardianEvidenceChain, listGuardianEvidenceEvents } from './guardian/security-events.js';
 
@@ -40,11 +40,11 @@ export async function assertGuardianAutomationEnabled(db) {
   if (result.rows?.[0]?.setting_value?.enabled === true) throw new Error('GUARDIAN_EMERGENCY_STOP_ENABLED');
 }
 
-export function getFrierenAiGuardianEndpoint(env = process.env) {
-  const base = String(env.FRIEREN_AI_PUBLIC_URL || '').trim();
-  if (!base) throw new Error('FRIEREN_AI_SERVICE_NOT_CONFIGURED');
+export function getFrierenNeuralGuardianEndpoint(env = process.env) {
+  const base = String(env.FRIEREN_NEURAL_API_URL || '').trim();
+  if (!base) throw new Error('FRIEREN_NEURAL_NOT_CONFIGURED');
   const parsed = new URL(base);
-  if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_AI_PUBLIC_URL');
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_NEURAL_API_URL');
   return new URL('/internal/guardian-review', parsed).toString();
 }
 
@@ -1091,22 +1091,17 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         try {
           const incident = await getGuardianIncident(db, form.get('incidentId'));
           if (!incident) throw new Error('GUARDIAN_INCIDENT_NOT_FOUND');
-          const secret = String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
-          if (secret.length < 32) throw new Error('GUARDIAN_BRIDGE_NOT_CONFIGURED');
           job = await createGuardianReviewJob(db, { incidentId: incident.id, actorId: OWNER_ID });
           if (job.reused && ['queued','running'].includes(job.status)) {
             redirect(res, '/owner/guardian?notice=guardian_review_complete');
             return true;
           }
           await assertGuardianAutomationEnabled(db);
-          const response = await fetch(getFrierenAiGuardianEndpoint(), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + secret },
-            body: JSON.stringify({ incident: { system: incident.system, code: incident.code, title: incident.title, summary: incident.summary, evidence: incident.evidence } }),
-            signal: AbortSignal.timeout(60_000),
+          const review = await requestNeuralGuardianReview({
+            incident,
+            env: process.env,
+            fetchImpl: fetch,
           });
-          const review = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error('GUARDIAN_AI_HTTP_' + response.status);
           await finishGuardianReviewJob(db, { jobId: job.id, status: 'completed', result: review });
           await auditOwnerAction(db, OWNER_ID, 'guardian.review.completed', String(incident.id), { jobId: job.id, resultStatus: review.status || 'proposal_only', applied: false });
           redirect(res, '/owner/guardian?notice=guardian_review_complete');
