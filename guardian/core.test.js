@@ -395,3 +395,13 @@ test('Neural Guardian blocks pretrained GGUF reports without independent held-ou
   assert.equal(result.canStage, false);
   assert.ok(result.reasons.includes('NEURAL_HELDOUT_METRICS_INVALID'));
 });
+
+
+
+test('Neural Guardian blocks baseline evidence without two distinct reviewer hashes', () => {
+  const report = readyNeuralReport();
+  report.baseline_comparison.baseline_reviewer_identity_hashes = ['c'.repeat(64), 'c'.repeat(64)];
+  const result = evaluateNeuralQualityGate({ qualityReport: report });
+  assert.equal(result.canStage, false);
+  assert.ok(result.reasons.includes('NEURAL_COMPARABLE_IMPROVED_BASELINE_REQUIRED'));
+});
