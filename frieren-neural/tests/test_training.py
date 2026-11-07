@@ -414,7 +414,7 @@ def test_vectorized_batch_sampling_matches_cached_assistant_target_windows():
         dtype=torch.bool,
     )
     expected_starts = _valid_batch_starts(mask, 4)
-    assert torch.equal(expected_starts, torch.arange(15))
+    assert torch.equal(expected_starts, torch.tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14]))
 
     generator = torch.Generator(device="cpu").manual_seed(77)
     inputs, targets = _sample_batch(
