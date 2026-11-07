@@ -756,6 +756,9 @@ def test_guardian_review_returns_only_a_human_reviewed_proposal_when_enabled(api
     monkeypatch.setenv("FRIEREN_NEURAL_GUARDIAN_ENABLED", "1")
     monkeypatch.setenv("FRIEREN_NEURAL_QUALITY_APPROVED", "1")
     payload = _guardian_review_payload()
+    payload["incident"]["summary"] = "DISCORD_TOKEN=private-token failed for user@example.com and 1553794496234262641"
+    payload["source_context"] += "\\nAPI_KEY=hidden"
+    payload["source_context_hash"] = hashlib.sha256(payload["source_context"].encode("utf-8")).hexdigest()
     completion = {
         "rootCause": "The request path has no bounded timeout.",
         "confidence": "medium",
@@ -765,7 +768,11 @@ def test_guardian_review_returns_only_a_human_reviewed_proposal_when_enabled(api
         "tests": ["Guardian timeout regression test"],
         "risks": ["Cancellation may not stop the upstream operation."],
     }
-    monkeypatch.setattr(api, "_generate_reply", lambda *args, **kwargs: (json.dumps(completion), 0, "test-model"))
+    prompts = []
+    def fake_generate(prompt, *args, **kwargs):
+        prompts.append(prompt)
+        return json.dumps(completion), 0, "test-model"
+    monkeypatch.setattr(api, "_generate_reply", fake_generate)
     response = api_client.post(
         "/internal/guardian-review", json=payload,
         headers={"Authorization": "Bearer " + "n" * 40},
@@ -779,6 +786,11 @@ def test_guardian_review_returns_only_a_human_reviewed_proposal_when_enabled(api
     assert result["affectedFiles"] == ["guardian/automation.js"]
     assert result["sourceContextHash"] == payload["source_context_hash"]
     assert result["sourceCommitSha"] == "a" * 40
+    assert len(prompts) == 1
+    assert "private-token" not in prompts[0]
+    assert "user@example.com" not in prompts[0]
+    assert "1553794496234262641" not in prompts[0]
+    assert "API_KEY=hidden" not in prompts[0]
 
 
 def test_guardian_review_rejects_tampered_source_context(api_client, monkeypatch):
