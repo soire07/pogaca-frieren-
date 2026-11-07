@@ -19,6 +19,7 @@ RUN python -m pip install --upgrade pip \
       --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu \
       fastapi==0.115.12 \
       uvicorn==0.34.0 \
+      psycopg[binary]==3.2.6 \
       llama-cpp-python==0.3.36
 
 COPY frieren-neural /app/frieren-neural
