@@ -249,7 +249,7 @@ test('Guardian review uses the hash-verified Neural review endpoint instead of r
 
 test('Neural Guardian review fails closed when the source context hash is missing', async () => {
   let calls = 0;
-  await assert.rejects(reviewGuardianIncident({
+  const result = await reviewGuardianIncident({
     groq: null,
     neuralEnv: {
       FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
@@ -269,11 +269,10 @@ test('Neural Guardian review fails closed when the source context hash is missin
       contextHash: null,
       sourceCommitSha: 'b'.repeat(40),
     }),
-  }), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' }).catch(async error => {
-    // The request must stop before model invocation; missing hash is handled as insufficient context.
-    assert.equal(calls, 0);
-    throw error;
   });
+  assert.equal(result.status, 'insufficient_context');
+  assert.equal(result.applied, false);
+  assert.equal(calls, 0);
 });
 
 test('Guardian does not fall back to Groq when a Neural URL is selected but its token is invalid', async () => {
