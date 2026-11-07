@@ -534,3 +534,30 @@ def test_resume_reuses_checkpoint_tokenizer_without_retraining(tmp_path: Path, m
     monkeypatch.setattr(BPETokenizer, "train", unexpected_tokenizer_training)
     resumed = train_model(corpus, checkpoint, replace(config, max_steps=2), resume=True, device="cpu")
     assert resumed["step"] == 2
+
+
+def test_candidate_search_reports_failure_when_no_trial_trains(tmp_path: Path, monkeypatch):
+    from frieren_neural import evolution
+
+    corpus = ["Frieren learns magic. Fern studies spells. " * 20]
+    heldout = ["Fern learns spells. Frieren studies magic. " * 20]
+    baseline = tmp_path / "baseline-failure-test.pt"
+    config = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        learning_rate=1e-3, validation_fraction=0.2, seed=17,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0, tokenizer_vocab_size=280,
+    )
+    train_model(corpus, baseline, config, device="cpu")
+
+    def fail_candidate(*_args, **_kwargs):
+        raise RuntimeError("synthetic isolated candidate failure")
+
+    monkeypatch.setattr(evolution, "train_model", fail_candidate)
+    report = evolution.run_candidate_search(
+        corpus, heldout, baseline, tmp_path / "failed-candidates",
+        candidate_steps=1, heldout_batches=1, learning_rate_factors=(1.0,), device="cpu",
+    )
+
+    assert report["status"] == "CANDIDATE_SEARCH_FAILED"
+    assert report["successful_trial_count"] == 0
+    assert report["failed_trial_count"] == 1
