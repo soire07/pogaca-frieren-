@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import frieren_neural.api as api
-from frieren_neural.discord_adapter import extract_answer
+from frieren_neural.chat_format import extract_answer
 
 
 @pytest.fixture
