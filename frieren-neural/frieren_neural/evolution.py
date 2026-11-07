@@ -181,7 +181,7 @@ def run_candidate_search(
         )
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "quality-report.json").write_text(
-            json.dumps(report, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8"
+            json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
         (folder / "quality-report.md").write_text(render_markdown(report), encoding="utf-8")
         (folder / "human-scores.template.json").write_text(
