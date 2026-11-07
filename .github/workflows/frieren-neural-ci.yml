@@ -64,3 +64,5 @@ jobs:
         run: python -m compileall -q benchmarks
       - name: Measure batch-sampler optimization against the previous implementation
         run: python benchmarks/benchmark_batch_sampling.py --iterations 100
+      - name: Measure vectorized BPE training against the previous implementation
+        run: python benchmarks/benchmark_bpe_training.py --vocab-size 340
