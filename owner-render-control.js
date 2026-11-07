@@ -147,7 +147,7 @@ async function updateActionAudit(client, auditId, details) {
 export async function executeRenderServiceAction(db, input = {}, {
   apiKey,
   fetchImpl = globalThis.fetch,
-  services = RENDER_BOT_SERVICES
+  services = resolveRenderBotServices()
 } = {}) {
   const serviceKey = String(input.serviceKey || '');
   const action = String(input.action || '');
