@@ -338,14 +338,16 @@ def _corpus_content_fingerprint(documents: Sequence[str]) -> str:
 def split_corpus_text(
     documents: Sequence[str], validation_fraction: float = 0.1
 ) -> tuple[str, str]:
-    """Chronologically split raw text before tokenizer training to prevent validation leakage."""
+    """Split complete dialogues by stable content hash to avoid source-order distribution bias.
+
+    Identical dialogue copies are kept in the same split, preventing exact-duplicate
+    leakage. Hash ordering makes the split deterministic and independent of source order.
+    """
     if not documents or any(not isinstance(item, str) or not item.strip() for item in documents):
         raise ValueError("documents must contain non-empty strings.")
     if not 0.0 < validation_fraction < 0.5:
         raise ValueError("validation_fraction must be between 0 and 0.5.")
     combined = "\n".join(item.strip() for item in documents)
-    # Preserve natural document boundaries whenever the corpus provides them.
-    # The Turkish dialogue importer separates each conversation with this marker.
     separator = "\n\n---\n\n"
     if len(documents) > 1:
         units = [item.strip() for item in documents]
@@ -358,18 +360,35 @@ def split_corpus_text(
         joiner = ""
 
     if units:
-        if len(units) < 2:
-            raise ValueError("Corpus must contain at least two complete documents for a boundary-safe split.")
+        groups: dict[str, list[str]] = {}
+        for item in units:
+            normalized = " ".join(item.split())
+            fingerprint = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+            groups.setdefault(fingerprint, []).append(item)
+        ordered_groups = sorted(groups.items())
+        if len(ordered_groups) < 2:
+            raise ValueError("Corpus must contain at least two distinct dialogues for a leakage-safe split.")
         target_validation_size = max(1, int(sum(map(len, units)) * validation_fraction))
-        validation_units: list[str] = []
+        validation_hashes: set[str] = set()
         validation_characters = 0
-        while len(units) - len(validation_units) > 1 and validation_characters < target_validation_size:
-            item = units.pop()
-            validation_units.insert(0, item)
-            validation_characters += len(item)
-        if not units or not validation_units:
+        for fingerprint, copies in reversed(ordered_groups):
+            if len(validation_hashes) >= len(ordered_groups) - 1:
+                break
+            validation_hashes.add(fingerprint)
+            validation_characters += sum(map(len, copies))
+            if validation_characters >= target_validation_size:
+                break
+        train_units = [
+            item for fingerprint, copies in ordered_groups if fingerprint not in validation_hashes
+            for item in copies
+        ]
+        validation_units = [
+            item for fingerprint, copies in ordered_groups if fingerprint in validation_hashes
+            for item in copies
+        ]
+        if not train_units or not validation_units:
             raise ValueError("Corpus must contain non-empty training and validation documents.")
-        return joiner.join(units), joiner.join(validation_units)
+        return joiner.join(train_units), joiner.join(validation_units)
 
     # Retain the legacy chronological character split for a single unstructured text.
     validation_size = max(1, int(len(combined) * validation_fraction))

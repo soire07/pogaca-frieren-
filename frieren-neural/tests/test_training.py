@@ -333,18 +333,34 @@ def test_generate_text_returns_prompt_plus_only_generated_tokens_before_eos(monk
     monkeypatch.setattr(model, "generate", lambda *_args, **_kwargs: generated)
     assert generate_text(model, tokenizer, prompt, max_new_tokens=8) == prompt + " cevap"
 
-def test_corpus_split_keeps_dialogues_intact_at_importer_boundaries():
+def test_corpus_split_keeps_dialogues_intact_and_is_independent_of_source_order():
     from frieren_neural.training import split_corpus_text
 
-    dialogues = [f"Kullanıcı: soru {index}\nAsistan: yanıt {index}" for index in range(10)]
+    dialogues = [f"Kullanıcı: soru {index}\nAsistan: yanıt {index}" for index in range(100)]
     corpus = "\n\n---\n\n".join(dialogues)
     train_text, validation_text = split_corpus_text([corpus], 0.2)
+    shuffled_text, shuffled_validation = split_corpus_text(["\n\n---\n\n".join(reversed(dialogues))], 0.2)
 
     train_dialogues = train_text.split("\n\n---\n\n")
     validation_dialogues = validation_text.split("\n\n---\n\n")
-    assert train_dialogues == dialogues[:8]
-    assert validation_dialogues == dialogues[8:]
+    assert train_dialogues == shuffled_text.split("\n\n---\n\n")
+    assert validation_dialogues == shuffled_validation.split("\n\n---\n\n")
     assert set(train_dialogues).isdisjoint(validation_dialogues)
+    assert len(validation_dialogues) > 0
+    assert len(train_dialogues) > len(validation_dialogues)
+
+
+def test_corpus_split_keeps_exact_duplicate_dialogues_in_one_partition():
+    from frieren_neural.training import split_corpus_text
+
+    repeated = "Kullanıcı: aynı soru\nAsistan: aynı yanıt"
+    dialogues = [repeated, repeated] + [
+        f"Kullanıcı: soru {index}\nAsistan: farklı yanıt {index}" for index in range(20)
+    ]
+    train_text, validation_text = split_corpus_text(["\n\n---\n\n".join(dialogues)], 0.2)
+    train_dialogues = train_text.split("\n\n---\n\n")
+    validation_dialogues = validation_text.split("\n\n---\n\n")
+    assert not (repeated in train_dialogues and repeated in validation_dialogues)
 
 
 def test_training_stream_ends_each_assistant_turn_before_next_user():
