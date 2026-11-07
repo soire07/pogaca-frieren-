@@ -24,6 +24,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--n-layers", type=int, default=2)
     parser.add_argument("--tokenizer-vocab-size", type=int, default=384)
     parser.add_argument("--seed", type=int, default=1337)
+    parser.add_argument("--resume", action="store_true", help="Resume a compatible assistant-only checkpoint.")
     return parser
 
 
@@ -42,7 +43,7 @@ def main() -> None:
         seed=args.seed,
     )
     documents = load_licensed_corpus(args.data)
-    metrics = train_model(documents, args.checkpoint, config, device="cpu")
+    metrics = train_model(documents, args.checkpoint, config, resume=args.resume, device="cpu")
     print(json.dumps(metrics, ensure_ascii=False, indent=2))
 
 
