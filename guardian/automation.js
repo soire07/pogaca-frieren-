@@ -300,8 +300,7 @@ export async function processGuardianIncident({
     return { status: 'not_configured', reason: 'FRIEREN_NEURAL_QUALITY_GATE_CLOSED' };
   }
   if (apiToken.length < 32) return { status: 'not_configured', reason: 'FRIEREN_NEURAL_API_TOKEN_NOT_CONFIGURED' };
-  let reviewEndpoint;
-  try { reviewEndpoint = getNeuralGuardianEndpoint(env); }
+  try { getNeuralGuardianEndpoint(env); }
   catch (error) { return { status: 'not_configured', reason: safeErrorCode(error) }; }
 
   let job;
