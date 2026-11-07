@@ -204,6 +204,64 @@ export function getNeuralGuardianEndpoint(env = process.env) {
   return new URL('/internal/guardian-review', parsed).toString();
 }
 
+export async function requestNeuralGuardianReview({
+  incident,
+  env = process.env,
+  fetchImpl = globalThis.fetch,
+  collectContext = collectCodeContext,
+} = {}) {
+  if (!incident || typeof fetchImpl !== "function") throw new Error("INVALID_NEURAL_GUARDIAN_REVIEW_INPUT");
+  if (env.FRIEREN_NEURAL_QUALITY_APPROVED !== "1" || env.FRIEREN_NEURAL_GUARDIAN_ENABLED !== "1") {
+    throw new Error("FRIEREN_NEURAL_QUALITY_GATE_CLOSED");
+  }
+  const apiToken = String(env.FRIEREN_NEURAL_API_TOKEN || "").trim();
+  if (apiToken.length < 32) throw new Error("FRIEREN_NEURAL_API_TOKEN_NOT_CONFIGURED");
+  const endpoint = getNeuralGuardianEndpoint(env);
+  const sourceContext = await collectContext({
+    rootDir: process.cwd(),
+    question: [incident.system, incident.code, incident.title, incident.summary,
+      ...(Array.isArray(incident.evidence) ? incident.evidence.map(item => [item?.file, item?.message].filter(Boolean).join(" ")) : [])].join(" "),
+    sourceCommitSha: env.GITHUB_SHA || null,
+    budget: 5_000,
+  });
+  if (!sourceContext || typeof sourceContext.text !== "string" || !sourceContext.text.trim()
+      || !Array.isArray(sourceContext.files) || !sourceContext.files.length
+      || !/^[a-f0-9]{64}$/i.test(String(sourceContext.contextHash || ""))) {
+    throw new Error("GUARDIAN_SOURCE_CONTEXT_UNAVAILABLE");
+  }
+  const response = await fetchImpl(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + apiToken,
+    },
+    body: JSON.stringify({
+      incident: {
+        system: incident.system,
+        code: incident.code,
+        title: incident.title,
+        summary: incident.summary,
+        evidence: incident.evidence,
+      },
+      source_context: sourceContext.text,
+      source_context_files: sourceContext.files.slice(0, 12),
+      source_context_hash: sourceContext.contextHash,
+      source_commit_sha: sourceContext.sourceCommitSha || undefined,
+    }),
+    signal: AbortSignal.timeout(90_000),
+  });
+  const review = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const responseError = redactGuardianText(review?.error || review?.detail || review?.message || "UNKNOWN_NEURAL_ERROR", 80);
+    throw new Error("GUARDIAN_NEURAL_HTTP_" + response.status + "_" + responseError);
+  }
+  if (!review || typeof review !== "object" || Array.isArray(review)) {
+    throw new Error("GUARDIAN_NEURAL_RESPONSE_INVALID");
+  }
+  return review;
+}
+
+
 export async function processGuardianIncident({
   db,
   incident,
@@ -266,44 +324,7 @@ export async function processGuardianIncident({
 
   let review;
   try {
-    const sourceContext = await collectContext({
-      rootDir: process.cwd(),
-      question: [incident.system, incident.code, incident.title, incident.summary,
-        ...(Array.isArray(incident.evidence) ? incident.evidence.map(item => [item?.file, item?.message].filter(Boolean).join(' ')) : [])].join(' '),
-      sourceCommitSha: env.GITHUB_SHA || null,
-      budget: 5_000,
-    });
-    if (!sourceContext || typeof sourceContext.text !== 'string' || !sourceContext.text.trim()
-        || !Array.isArray(sourceContext.files) || !sourceContext.files.length
-        || !/^[a-f0-9]{64}$/i.test(String(sourceContext.contextHash || ''))) {
-      throw new Error('GUARDIAN_SOURCE_CONTEXT_UNAVAILABLE');
-    }
-    const response = await fetchImpl(reviewEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + apiToken,
-      },
-      body: JSON.stringify({
-        incident: {
-          system: incident.system,
-          code: incident.code,
-          title: incident.title,
-          summary: incident.summary,
-          evidence: incident.evidence,
-        },
-        source_context: sourceContext.text,
-        source_context_files: sourceContext.files.slice(0, 12),
-        source_context_hash: sourceContext.contextHash,
-        source_commit_sha: sourceContext.sourceCommitSha || undefined,
-      }),
-      signal: AbortSignal.timeout(90_000),
-    });
-    review = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const responseError = redactGuardianText(review?.error || review?.message || 'UNKNOWN_AI_ERROR', 80);
-      throw new Error('GUARDIAN_AI_HTTP_' + response.status + '_' + responseError);
-    }
+    review = await requestNeuralGuardianReview({ incident, env, fetchImpl, collectContext });
     await store.finishGuardianReviewJob(db, {
       jobId: job.id,
       status: 'completed',
