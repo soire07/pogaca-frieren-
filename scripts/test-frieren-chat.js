@@ -355,7 +355,7 @@ test('Frieren learning memory is private to the exact guild and user and can be 
     message: 'bunu unut: Ben eski büyü kitaplarını toplamayı seviyorum.'
   });
   assert.match(forgotten.reply, /sildim/);
-  assert.match(calls[1].sql, /DELETE FROM frieren_chat_memories WHERE guild_id=\\$1 AND user_id=\\$2 AND memory_key=\\$3/);
+  assert.match(calls[1].sql, /DELETE FROM frieren_chat_memories WHERE guild_id=\$1 AND user_id=\$2 AND memory_key=\$3/);
   assert.deepEqual(calls[1].params.slice(0, 2), ['guild-a', 'user-a']);
 
   const cleared = await handleFrierenLearningCommand(db, {
