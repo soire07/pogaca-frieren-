@@ -116,6 +116,8 @@ def run_candidate_search(
     heldout_batches: int = 25,
     learning_rate_factors: tuple[float, ...] = (0.5, 1.0, 1.5),
     min_relative_improvement: float = 0.002,
+    training_provenance: dict[str, Any] | None = None,
+    source_commit_sha: str | None = None,
     device: str = "cpu",
 ) -> dict[str, Any]:
     """Train isolated warm-start candidates and rank them on the same untouched held-out data.
@@ -154,8 +156,43 @@ def run_candidate_search(
     if not math.isfinite(baseline_loss):
         raise ValueError("Baseline held-out loss is not finite.")
 
+    from .quality_evaluation import (
+        build_report, empty_score_template, evaluate_checkpoint_quality, render_markdown,
+    )
+
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
+
+    def write_quality_package(checkpoint: Path, metrics: dict[str, Any], folder: Path) -> str:
+        outputs, checkpoint_sha, step, checkpoint_metadata = evaluate_checkpoint_quality(
+            checkpoint, device=device
+        )
+        report = build_report(
+            checkpoint_sha256=checkpoint_sha,
+            checkpoint_step=step,
+            outputs=outputs,
+            scores=None,
+            checkpoint_metadata=checkpoint_metadata,
+            training_provenance=training_provenance,
+            heldout_metrics=metrics,
+            model_backend="scratch",
+            artifact_sha256=checkpoint_sha,
+            source_commit_sha=source_commit_sha,
+        )
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "quality-report.json").write_text(
+            json.dumps(report, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8"
+        )
+        (folder / "quality-report.md").write_text(render_markdown(report), encoding="utf-8")
+        (folder / "human-scores.template.json").write_text(
+            json.dumps(empty_score_template(), ensure_ascii=False, indent=2) + "\\n",
+            encoding="utf-8",
+        )
+        return str(folder / "quality-report.json")
+
+    baseline_quality_report = write_quality_package(
+        baseline_path, baseline_metrics, destination / "baseline-quality"
+    )
     trials: list[dict[str, Any]] = []
     for index, factor in enumerate(learning_rate_factors, start=1):
         candidate_path = destination / f"candidate-{index:02d}-lr-{factor:g}.pt"
@@ -177,6 +214,9 @@ def run_candidate_search(
             if not math.isfinite(loss):
                 raise ValueError("Candidate held-out loss is not finite.")
             candidate_sha = hashlib.sha256(candidate_path.read_bytes()).hexdigest()
+            quality_report_path = write_quality_package(
+                candidate_path, heldout, destination / f"{candidate_path.stem}-quality"
+            )
             trials.append({
                 "candidate_id": f"candidate-{index:02d}",
                 "learning_rate_factor": factor,
@@ -184,6 +224,7 @@ def run_candidate_search(
                 "checkpoint_sha256": candidate_sha,
                 "training": training_metrics,
                 "heldout": heldout,
+                "quality_report": quality_report_path,
                 "status": "IMPROVED_HELDOUT_PENDING_HUMAN_REVIEW"
                 if loss < baseline_loss * (1.0 - min_relative_improvement)
                 else "NO_PROVEN_HELDOUT_IMPROVEMENT",
@@ -205,6 +246,7 @@ def run_candidate_search(
         "engine": "frieren-neural-candidate-search",
         "status": "BEST_CANDIDATE_PENDING_INDEPENDENT_HUMAN_REVIEW" if improved
         else "BASELINE_RETAINED_NO_QUALITY_IMPROVEMENT_PROVEN",
+        "baseline_quality_report": baseline_quality_report,
         "baseline": {
             "checkpoint": str(baseline_path),
             "checkpoint_sha256": baseline_sha,
@@ -245,10 +287,22 @@ def search_main() -> None:
     parser.add_argument("--candidate-steps", type=int, default=500)
     parser.add_argument("--heldout-batches", type=int, default=25)
     parser.add_argument("--min-relative-improvement", type=float, default=0.002)
+    parser.add_argument("--training-manifest", default=None)
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
     from .training import load_licensed_corpus
 
+    training_provenance = None
+    manifest_path = Path(args.training_manifest) if args.training_manifest else Path(args.train_data) / "corpus_manifest.json"
+    if manifest_path.is_file():
+        raw_manifest = manifest_path.read_bytes()
+        manifest = json.loads(raw_manifest.decode("utf-8"))
+        entries = manifest.get("documents", []) if isinstance(manifest, dict) else []
+        training_provenance = {
+            "manifest_sha256": hashlib.sha256(raw_manifest).hexdigest(),
+            "sources": sorted({item["source"] for item in entries if isinstance(item, dict) and item.get("source")}),
+            "licenses": sorted({item["license"] for item in entries if isinstance(item, dict) and item.get("license")}),
+        }
     report = run_candidate_search(
         load_licensed_corpus(args.train_data),
         load_licensed_corpus(args.heldout_data),
@@ -257,6 +311,8 @@ def search_main() -> None:
         candidate_steps=args.candidate_steps,
         heldout_batches=args.heldout_batches,
         min_relative_improvement=args.min_relative_improvement,
+        training_provenance=training_provenance,
+        source_commit_sha=os.environ.get("GITHUB_SHA"),
         device=args.device,
     )
     print(json.dumps(report, ensure_ascii=False, indent=2))
