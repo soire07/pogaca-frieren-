@@ -835,6 +835,7 @@ def evaluate_checkpoint(
         "dataset_sha256": dataset_metadata.get("dataset_sha256") if isinstance(dataset_metadata, dict) else None,
         "sample_count": dataset_metadata.get("sample_count") if isinstance(dataset_metadata, dict) else None,
         "split": dataset_metadata.get("split") if isinstance(dataset_metadata, dict) else None,
+        "source_split": dataset_metadata.get("source_split") if isinstance(dataset_metadata, dict) else None,
         "evaluation_version": dataset_metadata.get("evaluation_version") if isinstance(dataset_metadata, dict) else None,
         "dataset_id": dataset_metadata.get("dataset_id") if isinstance(dataset_metadata, dict) else None,
         "dataset_revision": dataset_metadata.get("dataset_revision") if isinstance(dataset_metadata, dict) else None,
