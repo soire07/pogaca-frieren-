@@ -62,7 +62,8 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
     heldout = report.get("heldout_metrics")
     checkpoint_metadata = report.get("checkpoint_metadata")
     reviewer_hashes = review.get("reviewer_identity_hashes") if isinstance(review, dict) else None
-    template_hashes = report.get("review_template", {}).get("reviewers")
+    review_template = report.get("review_template")
+    template_hashes = review_template.get("reviewers") if isinstance(review_template, dict) else None
     outputs = report.get("outputs")
     blocking_reasons: list[str] = []
 
