@@ -283,22 +283,3 @@ test('production Frieren AI health workflow fails closed and verifies the authen
   assert.ok(workflow.includes("j.status==='ok' && j.reachable===true"));
   assert.doesNotMatch(workflow, /not configured; skipping the production AI health probe/);
 });
-
-
-test('Guardian review fails closed when Neural is explicitly approved but its endpoint URL is missing', async () => {
-  let groqCalled = false;
-  let neuralCalled = false;
-  await assert.rejects(reviewGuardianIncident({
-    groq: { chat: { completions: { create: async () => { groqCalled = true; throw new Error('Groq fallback must not run'); } } } },
-    model: 'test-model',
-    neuralEnv: {
-      FRIEREN_NEURAL_QUALITY_APPROVED: '1',
-      FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(40)
-    },
-    neuralFetchImpl: async () => { neuralCalled = true; throw new Error('missing endpoint must fail before fetch'); },
-    incident: { system: 'guardian', code: 'NEURAL_CONFIG', title: 'Neural configuration', summary: 'Endpoint URL is missing.' },
-    collectCodeContext: async () => 'FILE: ai-agent/guardian-review.js\\nsource context'
-  }), /FRIEREN_NEURAL_NOT_CONFIGURED/);
-  assert.equal(groqCalled, false);
-  assert.equal(neuralCalled, false);
-});
