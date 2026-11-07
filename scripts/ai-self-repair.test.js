@@ -351,15 +351,23 @@ test('repair patch accepts only the exact validated file set', () => {
   assert.deepEqual(calls.map(args => args[0]), ['status', 'apply', 'apply', 'diff', 'status']);
 });
 
-test('repair patch rejects additional allowed files changed outside the proposal', () => {
+test('repair patch rejects additional allowed files changed outside the proposal and rolls back', () => {
+  const calls = [];
+  let applied = false;
   const execFile = (args) => {
-    if (args[0] === 'status' && args[1] === '--porcelain') return '';
-    if (args[0] === 'status') return ' M rpg-mechanics.js\n M unrelated.js\n';
+    calls.push(args);
+    if (args[0] === 'status' && args[1] === '--porcelain') return applied ? ' M rpg-mechanics.js\\n M unrelated.js\\n' : '';
+    if (args[0] === 'apply' && args[1] === '--check') return '';
+    if (args[0] === 'apply' && args[1] === '--') { applied = true; return ''; }
+    if (args[0] === 'status' && args[1] === '--short') return ' M rpg-mechanics.js\\n M unrelated.js\\n';
+    if (args[0] === 'apply' && args[1] === '--reverse') { applied = false; return ''; }
     return '';
   };
   assert.throws(() => applyRepairPatch(validPatch, { execFile }), {
     message: 'REPAIR_CHANGED_FILE_SET_MISMATCH',
   });
+  assert.equal(applied, false);
+  assert.ok(calls.some(args => args[0] === 'apply' && args[1] === '--reverse'));
 });
 
 test('repair patch rolls back applied changes when post-apply validation fails', () => {
