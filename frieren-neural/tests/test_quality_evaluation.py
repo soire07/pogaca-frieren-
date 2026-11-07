@@ -5,11 +5,17 @@ import pytest
 from frieren_neural import quality_evaluation as quality
 
 
-def _set_reviewer_hashes(scores):
+def _outputs(text):
+    return [{"id": f"TR-{number:03d}", "output": text} for number in range(1, 25)]
+
+
+def _set_reviewer_hashes(scores, checkpoint_sha256=None, outputs=None):
     scores["reviewer_identity_hashes"] = {
         "reviewer_1": "a" * 64,
         "reviewer_2": "b" * 64,
     }
+    if checkpoint_sha256 is not None and outputs is not None:
+        scores["candidate_binding"] = quality.build_score_binding(checkpoint_sha256, outputs)
     return scores
 
 
@@ -43,7 +49,8 @@ def test_report_without_human_scores_is_not_ready_and_never_self_grades():
 
 
 def test_report_applies_quality_gate_to_human_scores():
-    scores = _set_reviewer_hashes(quality.empty_score_template())
+    outputs = _outputs("örnek yanıt")
+    scores = _set_reviewer_hashes(quality.empty_score_template(), "b" * 64, outputs)
     for case in scores["cases"]:
         for reviewer in ("reviewer_1", "reviewer_2"):
             case[reviewer] = {
@@ -51,10 +58,12 @@ def test_report_applies_quality_gate_to_human_scores():
             }
             case[reviewer]["critical_safety_failure"] = False
             case[reviewer]["fabricated_claim"] = False
+    baseline_outputs = _outputs("baseline response")
+    baseline_binding = quality.build_score_binding("0" * 64, baseline_outputs)
     report = quality.build_report(
         checkpoint_sha256="b" * 64,
         checkpoint_step=100,
-        outputs=[{"id": f"TR-{number:03d}", "output": "örnek yanıt"} for number in range(1, 25)],
+        outputs=outputs,
         scores=scores,
         source_commit_sha="e" * 40,
         training_provenance={"manifest_sha256":"d" * 64, "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64, "sample_count": 120, "sources":["Pinned CC BY 4.0 Turkish dialogue corpus"],"licenses":["CC BY 4.0"]},
@@ -100,9 +109,9 @@ def test_report_applies_quality_gate_to_human_scores():
                 "sample_count": 120, "split": "heldout", "evaluation_version": "frieren-neural-heldout-v1",
                 "loss_objective_version": 2, "checkpoint_training_loss_objective_version": 2,
             },
-            "outputs": [{"id": f"TR-{number:03d}", "output": "baseline response"} for number in range(1, 25)],
-            "human_review": {"completed": True, "reviewers_required": 2, "reviewer_identity_hashes": ["c" * 64, "d" * 64]},
-            "review_template": {"reviewers": ["c" * 64, "d" * 64]},
+            "outputs": baseline_outputs,
+            "human_review": {"completed": True, "reviewers_required": 2, "reviewer_identity_hashes": ["c" * 64, "d" * 64], "candidate_binding": baseline_binding},
+            "review_template": {"reviewers": ["c" * 64, "d" * 64], "candidate_binding": baseline_binding},
             "metrics": {
                 "dimension_averages": {dimension: 3.5 for dimension in quality.DIMENSIONS},
                 "overall_average": 3.5,
@@ -117,7 +126,8 @@ def test_report_applies_quality_gate_to_human_scores():
 
 
 def test_report_blocks_critical_failure_even_when_average_is_high():
-    scores = _set_reviewer_hashes(quality.empty_score_template())
+    outputs = _outputs("örnek yanıt")
+    scores = _set_reviewer_hashes(quality.empty_score_template(), "c" * 64, outputs)
     for case in scores["cases"]:
         for reviewer in ("reviewer_1", "reviewer_2"):
             reviewer_scores = {dimension: 4 for dimension in quality.DIMENSIONS}
@@ -128,7 +138,7 @@ def test_report_blocks_critical_failure_even_when_average_is_high():
     report = quality.build_report(
         checkpoint_sha256="c" * 64,
         checkpoint_step=100,
-        outputs=[{"id": f"TR-{number:03d}", "output": "örnek yanıt"} for number in range(1, 25)],
+        outputs=outputs,
         scores=scores,
     )
     assert report["decision"] == "NOT READY"
@@ -194,7 +204,8 @@ def test_cli_writes_machine_and_human_readable_report(tmp_path, monkeypatch):
 
 
 def test_report_blocks_mismatched_heldout_objective():
-    scores = _set_reviewer_hashes(quality.empty_score_template())
+    outputs = _outputs("örnek")
+    scores = _set_reviewer_hashes(quality.empty_score_template(), "e" * 64, outputs)
     for case in scores["cases"]:
         for reviewer in ("reviewer_1", "reviewer_2"):
             case[reviewer] = {
@@ -205,7 +216,7 @@ def test_report_blocks_mismatched_heldout_objective():
     report = quality.build_report(
         checkpoint_sha256="e" * 64,
         checkpoint_step=100,
-        outputs=[{"id": f"TR-{number:03d}", "output": "örnek"} for number in range(1, 25)],
+        outputs=outputs,
         scores=scores,
         checkpoint_metadata={
             "format_version": 2, "dialogue_encoding_version": 2,
@@ -333,7 +344,11 @@ def test_ufakzeka_report_requires_review_provenance_and_heldout_evidence(monkeyp
     artifact_sha = "a" * 64
     monkeypatch.setattr(gguf_runtime, "MODEL_SHA256", artifact_sha)
 
-    scores = _set_reviewer_hashes(quality.empty_score_template())
+    outputs = [
+        {"id": item["id"], "category": item["category"], "prompt": item["prompt"], "output": "Doğrulanmış test yanıtı."}
+        for item in quality.load_prompt_set()
+    ]
+    scores = _set_reviewer_hashes(quality.empty_score_template(), artifact_sha, outputs)
     for case in scores["cases"]:
         for reviewer in ("reviewer_1", "reviewer_2"):
             case[reviewer] = {
@@ -341,11 +356,6 @@ def test_ufakzeka_report_requires_review_provenance_and_heldout_evidence(monkeyp
                 "critical_safety_failure": False,
                 "fabricated_claim": False,
             }
-
-    outputs = [
-        {"id": item["id"], "category": item["category"], "prompt": item["prompt"], "output": "Doğrulanmış test yanıtı."}
-        for item in quality.load_prompt_set()
-    ]
     baseline = {
         "prompt_set_version": quality.PROMPT_SET_VERSION,
         "decoding_settings": quality.DECODING_SETTINGS,
@@ -425,7 +435,8 @@ def test_training_license_allowlist_accepts_attribution_licenses_and_rejects_non
 
 
 def test_first_scratch_candidate_can_establish_baseline_after_all_absolute_gates_pass():
-    scores = _set_reviewer_hashes(quality.empty_score_template())
+    outputs = _outputs("doğal Türkçe örnek yanıt")
+    scores = _set_reviewer_hashes(quality.empty_score_template(), "b" * 64, outputs)
     for case in scores["cases"]:
         for reviewer in ("reviewer_1", "reviewer_2"):
             case[reviewer] = {dimension: 4 for dimension in quality.DIMENSIONS}
@@ -435,7 +446,7 @@ def test_first_scratch_candidate_can_establish_baseline_after_all_absolute_gates
     report = quality.build_report(
         checkpoint_sha256="b" * 64,
         checkpoint_step=100,
-        outputs=[{"id": f"TR-{number:03d}", "output": "doğal Türkçe örnek yanıt"} for number in range(1, 25)],
+        outputs=outputs,
         scores=scores,
         source_commit_sha="e" * 40,
         training_provenance={
@@ -540,3 +551,29 @@ def test_quality_gate_rejects_checkpoint_attached_to_a_different_training_manife
 
     assert report["decision"] == "NOT READY"
     assert "checkpoint_training_data_mismatch" in report["blocking_reasons"]
+
+
+def test_human_scores_cannot_be_reused_for_another_checkpoint_or_output_set():
+    outputs = _outputs("candidate A response")
+    scores = _set_reviewer_hashes(quality.empty_score_template(), "a" * 64, outputs)
+    for case in scores["cases"]:
+        for reviewer in ("reviewer_1", "reviewer_2"):
+            case[reviewer] = {
+                **{dimension: 4 for dimension in quality.DIMENSIONS},
+                "critical_safety_failure": False,
+                "fabricated_claim": False,
+            }
+    with pytest.raises(ValueError, match="not bound to this exact checkpoint"):
+        quality.build_report(
+            checkpoint_sha256="b" * 64,
+            checkpoint_step=10,
+            outputs=outputs,
+            scores=scores,
+        )
+    with pytest.raises(ValueError, match="not bound to this exact checkpoint"):
+        quality.build_report(
+            checkpoint_sha256="a" * 64,
+            checkpoint_step=10,
+            outputs=_outputs("candidate B response"),
+            scores=scores,
+        )

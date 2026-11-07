@@ -1,11 +1,16 @@
 import pytest
 
 from frieren_neural.evolution import build_evolution_plan
-from frieren_neural.quality_evaluation import DIMENSIONS
+from frieren_neural.quality_evaluation import DIMENSIONS, build_score_binding
 
 
 def _reviewed_report():
     reviewer_hashes = ["a" * 64, "b" * 64]
+    outputs = [
+        {"id": f"TR-{index:03d}", "output": "Doğrulanmış örnek yanıt."}
+        for index in range(1, 25)
+    ]
+    candidate_binding = build_score_binding("a" * 64, outputs)
     return {
         "decision": "READY FOR STAGED TEST",
         "checkpoint_sha256": "a" * 64,
@@ -24,8 +29,9 @@ def _reviewed_report():
             "completed": True,
             "reviewers_required": 2,
             "reviewer_identity_hashes": reviewer_hashes,
+            "candidate_binding": candidate_binding,
         },
-        "review_template": {"reviewers": reviewer_hashes},
+        "review_template": {"reviewers": reviewer_hashes, "candidate_binding": candidate_binding},
         "training_provenance": {
             "manifest_sha256": "c" * 64, "dataset_id": "example/turkish",
             "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64,
@@ -47,11 +53,13 @@ def _reviewed_report():
             "baseline_checkpoint_sha256": "f" * 64,
             "baseline_loss_objective_version": 2,
             "baseline_reviewer_identity_hashes": ["c" * 64, "d" * 64],
+            "baseline_candidate_binding": {
+                "checkpoint_sha256": "f" * 64,
+                "outputs_sha256": "e" * 64,
+                "prompt_set_version": "tr-conversation-v1",
+            },
         },
-        "outputs": [
-            {"id": f"TR-{index:03d}", "output": "Doğrulanmış örnek yanıt."}
-            for index in range(1, 25)
-        ],
+        "outputs": outputs,
         "metrics": {"dimension_averages": {dimension: 4.0 for dimension in DIMENSIONS}},
     }
 
