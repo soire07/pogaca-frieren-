@@ -204,3 +204,48 @@ def test_optimized_bpe_training_never_merges_across_document_boundaries():
     joined = BPETokenizer.train(["xyxyxy"], vocab_size=261, min_frequency=2)
     assert separate.merges == ()
     assert joined.merges == ((120, 121),)
+
+
+def _reference_bpe_encode(text, merges, *, add_bos=False, add_eos=False):
+    ids = list(text.encode("utf-8"))
+    for merge_index, pair in enumerate(merges):
+        new_id = 260 + merge_index
+        merged = []
+        index = 0
+        while index < len(ids):
+            if index + 1 < len(ids) and (ids[index], ids[index + 1]) == pair:
+                merged.append(new_id)
+                index += 2
+            else:
+                merged.append(ids[index])
+                index += 1
+        ids = merged
+    if add_bos:
+        ids.insert(0, 257)
+    if add_eos:
+        ids.append(258)
+    return ids
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "aaaaaaa",
+        "abababababab",
+        "Merhaba dünya! Привет мир! 日本語 🐈",
+        "Kullanıcı: Frieren kimdir?\nAsistan: Bir büyücüdür.",
+        "xyxyxyxyzzzz",
+    ],
+)
+def test_vectorized_bpe_encode_matches_reference_for_overlapping_and_unicode_text(text):
+    from frieren_neural.tokenizer import BPETokenizer
+
+    tokenizer = BPETokenizer.train(
+        ["aaaaaaa", "abababababab", "Merhaba dünya! Привет мир! 日本語 🐈",
+         "Kullanıcı: Frieren kimdir?\nAsistan: Bir büyücüdür.", "xyxyxyxyzzzz"],
+        vocab_size=340, min_frequency=1,
+    )
+    assert tokenizer.encode(text) == _reference_bpe_encode(text, tokenizer.merges)
+    assert tokenizer.encode(text, add_bos=True, add_eos=True) == _reference_bpe_encode(
+        text, tokenizer.merges, add_bos=True, add_eos=True
+    )
