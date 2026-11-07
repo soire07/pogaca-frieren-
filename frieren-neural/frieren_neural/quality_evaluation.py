@@ -258,11 +258,20 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
     return report
 
 def render_markdown(report:dict[str,Any])->str:
+    reviewer_hashes = report.get("human_review", {}).get("reviewer_identity_hashes", [])
+    template_hashes = report.get("review_template", {}).get("reviewers", [])
+    distinct_reviewers_verified = (
+        isinstance(reviewer_hashes, list) and len(reviewer_hashes) == 2
+        and all(isinstance(value, str) and re.fullmatch(r"[a-f0-9]{64}", value) for value in reviewer_hashes)
+        and reviewer_hashes[0] != reviewer_hashes[1]
+        and template_hashes == reviewer_hashes
+    )
     lines=["# Frieren Neural — Turkish conversation quality report","",f"- Decision: **{report['decision']}**",
       f"- Prompt set: {report['prompt_set_version']}",f"- Backend: {report.get('model_backend', 'scratch')}",
       f"- Checkpoint / artifact SHA-256: {report['checkpoint_sha256']}",
       f"- Source commit: {report.get('source_commit_sha') or 'missing'}",
-      f"- Checkpoint step: {report['checkpoint_step']}",f"- Human review completed: **{report['human_review']['completed']}**"]
+      f"- Checkpoint step: {report['checkpoint_step']}",f"- Human review completed: **{report['human_review']['completed']}**",
+      f"- Distinct reviewer identity hashes: **{'verified' if distinct_reviewers_verified else 'missing'}**"]
     pretrained = report.get("pretrained_provenance") or {}
     if pretrained:
         lines.extend(["", "## Pretrained model provenance", "",
