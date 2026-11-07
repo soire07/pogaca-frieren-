@@ -251,3 +251,19 @@ test('Guardian does not fall back to Groq when a Neural URL is selected but its 
   }), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' });
   assert.equal(groqCalls, 0);
 });
+
+
+test('Guardian review HTTP route separates invalid input from AI upstream failures', async () => {
+  const source = await readFile(new URL('./index.js', import.meta.url), 'utf8');
+  const start = source.indexOf("if (req.url === '/internal/guardian-review' && req.method === 'POST')");
+  const end = source.indexOf("if (req.url === '/bridge-health')", start);
+  assert.ok(start >= 0 && end > start);
+  const route = source.slice(start, end);
+  assert.match(route, /request_json_invalid/);
+  assert.match(route, /incident_invalid/);
+  assert.match(route, /writeHead\\(400/);
+  assert.match(route, /guardian_review_upstream_failed/);
+  assert.match(route, /writeHead\\(502/);
+  assert.match(route, /reviewGuardianIncident\\(/);
+  assert.doesNotMatch(route, /catch \\(error\\) \\{[\\s\\S]*?writeHead\\(400/);
+});
