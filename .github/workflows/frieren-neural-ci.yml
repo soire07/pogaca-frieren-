@@ -5,6 +5,7 @@ on:
     branches:
       - frieren-neural-foundation
       - validation/ufakzeka-real-gguf
+      - test/frieren-neural-render-free
     paths:
       - ".github/workflows/frieren-neural-ci.yml"
       - ".github/workflows/frieren-neural-evolution-search.yml"
