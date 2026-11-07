@@ -16,7 +16,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 
@@ -192,9 +192,9 @@ def _authenticate(authorization: str | None) -> None:
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
+def health():
     if _model_backend() == "scratch" and not _checkpoint_path().is_file():
-        return {"status": "model_unavailable"}
+        return JSONResponse(status_code=503, content={"status": "model_unavailable"})
     generation_smoke = "skipped"
     try:
         with _generation_capacity(), _generation_lock:
@@ -203,10 +203,10 @@ def health() -> dict[str, str]:
                 generation_smoke = _run_generation_smoke()
     except HTTPException as error:
         if error.status_code == 503:
-            return {"status": "busy"}
+            return JSONResponse(status_code=503, content={"status": "busy"})
         raise
     except (OSError, RuntimeError, ValueError, KeyError, EOFError, ImportError, pickle.UnpicklingError):
-        return {"status": "model_unavailable"}
+        return JSONResponse(status_code=503, content={"status": "model_unavailable"})
     model_name = "ufakai/ufakzeka-1" if _model_backend() == "ufakzeka" else "frieren-neural-scratch"
     return {"status": "ready", "model": model_name, "generation_smoke": generation_smoke}
 
