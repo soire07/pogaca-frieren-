@@ -75,7 +75,7 @@ export async function requestNeuralGuardianReview({
     || (sourceCommitSha !== null && !/^[a-f0-9]{40}$/i.test(String(sourceCommitSha)))) {
     throw new Error('FRIEREN_NEURAL_GUARDIAN_CONTEXT_INVALID');
   }
-  const baseUrl = String(env.FRIEREN_NEURAL_API_URL).trim().replace(/\\/+$/, '').replace(/\\/generate$/, '');
+  const baseUrl = String(env.FRIEREN_NEURAL_API_URL).trim().replace(/\/+$/, '').replace(/\/generate$/, '');
   const endpoint = baseUrl + '/internal/guardian-review';
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Math.max(1000, Math.min(Number(timeoutMs) || 300_000, 360_000)));
