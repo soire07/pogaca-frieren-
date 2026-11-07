@@ -23,7 +23,7 @@ ALLOWED_TRAINING_LICENSES = {"APACHE-2.0", "MIT", "CC0-1.0", "CC-BY-4.0", "CC-BY
 def _has_allowed_training_licenses(value: object) -> bool:
     if not isinstance(value, list) or not value:
         return False
-    normalized = [re.sub(r"\\s+", "-", license_name.strip()).upper()
+    normalized = [re.sub(r"\s+", "-", license_name.strip()).upper()
                   for license_name in value if isinstance(license_name, str)]
     return len(normalized) == len(value) and all(license_name in ALLOWED_TRAINING_LICENSES for license_name in normalized)
 DECODING_SETTINGS = {"seed": 20261101, "temperature": 0.7, "top_k": 40, "max_new_tokens": 80}
