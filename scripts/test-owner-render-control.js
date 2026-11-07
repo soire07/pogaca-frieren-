@@ -58,15 +58,16 @@ test('Render service API and health checks start concurrently and expose the hea
   let releaseApi;
   const apiGate = new Promise(resolve => { releaseApi = resolve; });
   const pending = getRenderBotServiceStatuses({
+    services: configuredServices,
     apiKey: 'test-token',
     fetchImpl: async (url) => {
       const target = String(url);
       requested.push(target);
       if (target.includes('/v1/services/')) {
         await apiGate;
-        const ai = target.includes(RENDER_BOT_SERVICES.frieren_ai.id);
+        const ai = target.includes(configuredServices.frieren_ai.id);
         return { ok: true, status: 200, json: async () => ({
-          id: ai ? RENDER_BOT_SERVICES.frieren_ai.id : RENDER_BOT_SERVICES.pogaca.id,
+          id: ai ? configuredServices.frieren_ai.id : RENDER_BOT_SERVICES.pogaca.id,
           suspended: 'not_suspended', suspenders: [], serviceDetails: { plan: 'free' }
         }) };
       }
@@ -84,13 +85,14 @@ test('Render service API and health checks start concurrently and expose the hea
 test('Render status reads suspension state and does not health-ping a suspended AI service', async () => {
   const requested = [];
   const status = await getRenderBotServiceStatuses({
+    services: configuredServices,
     apiKey: 'test-token',
     fetchImpl: async (url, options) => {
       requested.push({ url: String(url), options });
       if (String(url).includes('/v1/services/')) {
-        const ai = String(url).includes(RENDER_BOT_SERVICES.frieren_ai.id);
+        const ai = String(url).includes(configuredServices.frieren_ai.id);
         return { ok: true, status: 200, json: async () => ({
-          id: ai ? RENDER_BOT_SERVICES.frieren_ai.id : RENDER_BOT_SERVICES.pogaca.id,
+          id: ai ? configuredServices.frieren_ai.id : RENDER_BOT_SERVICES.pogaca.id,
           suspended: ai ? 'suspended' : 'not_suspended',
           suspenders: ai ? ['user'] : [],
           dashboardUrl: 'https://dashboard.render.com/web/test',
@@ -160,6 +162,7 @@ test('Render AI resume uses the resume endpoint and is independently controllabl
     reason: 'AI testlerini çalıştıracağım', confirm: true
   }, {
     apiKey: 'server-only-token',
+    services: configuredServices,
     fetchImpl: async url => {
       requestUrl = String(url);
       return { ok: true, status: 202, json: async () => ({ message: 'Service resumed' }) };
@@ -167,7 +170,7 @@ test('Render AI resume uses the resume endpoint and is independently controllabl
   });
   assert.equal(result.accepted, true);
   assert.equal(result.httpStatus, 202);
-  assert.ok(requestUrl.endsWith('/v1/services/' + RENDER_BOT_SERVICES.frieren_ai.id + '/resume'));
+  assert.ok(requestUrl.endsWith('/v1/services/' + configuredServices.frieren_ai.id + '/resume'));
 });
 
 test('Render API cooldown prevents repeated actions on the same service', async () => {
@@ -178,6 +181,7 @@ test('Render API cooldown prevents repeated actions on the same service', async 
     reason: 'Test', confirm: true
   }, {
     apiKey: 'server-only-token',
+    services: configuredServices,
     fetchImpl: async () => { fetched = true; return { ok: true, status: 202, json: async () => ({}) }; }
   }), /RENDER_ACTION_COOLDOWN/);
   assert.equal(fetched, false);
@@ -191,6 +195,7 @@ test('Render API failures are written to the audit record without exposing respo
     reason: 'Test', confirm: true
   }, {
     apiKey: 'server-only-token',
+    services: configuredServices,
     fetchImpl: async () => ({ ok: false, status: 401, json: async () => ({ secret: 'never surface' }) })
   }), /RENDER_API_HTTP_401/);
   const update = calls.find(call => call.sql.includes('UPDATE owner_audit_logs'));
@@ -224,9 +229,9 @@ test('separate Render accounts use separate API keys and the migrated Frieren AI
         const target = String(url);
         if (target.includes('/v1/services/')) {
           auth.push({ target, authorization: options.headers.Authorization });
-          const ai = target.includes(RENDER_BOT_SERVICES.frieren_ai.id);
+          const ai = target.includes(configuredServices.frieren_ai.id);
           return { ok: true, status: 200, json: async () => ({
-            id: ai ? RENDER_BOT_SERVICES.frieren_ai.id : RENDER_BOT_SERVICES.pogaca.id,
+            id: ai ? configuredServices.frieren_ai.id : RENDER_BOT_SERVICES.pogaca.id,
             suspended: 'not_suspended', suspenders: [], serviceDetails: { plan: 'free' }
           }) };
         }
@@ -237,7 +242,7 @@ test('separate Render accounts use separate API keys and the migrated Frieren AI
     assert.equal(status.services.pogaca.apiConfigured, true);
     assert.equal(status.services.frieren_ai.apiConfigured, true);
     assert.deepEqual(auth.map(x => x.authorization).sort(), ['Bearer frieren-account-key', 'Bearer primary-account-key']);
-    assert.ok(auth.some(x => x.target.endsWith('/' + RENDER_BOT_SERVICES.frieren_ai.id)));
+    assert.ok(auth.some(x => x.target.endsWith('/' + configuredServices.frieren_ai.id)));
   } finally {
     if (oldMain === undefined) delete process.env.RENDER_POGACA_API_KEY; else process.env.RENDER_POGACA_API_KEY = oldMain;
     if (oldLegacy === undefined) delete process.env.RENDER_API_KEY; else process.env.RENDER_API_KEY = oldLegacy;
