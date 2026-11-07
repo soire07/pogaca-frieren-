@@ -397,16 +397,23 @@ def render_markdown(report:dict[str,Any])->str:
           f"- Dialogue encoding: v{metadata.get('dialogue_encoding_version')}",
           f"- Training objective: {metadata.get('training_objective')} (v{metadata.get('loss_objective_version')})"])
     heldout = report.get("heldout_metrics") or {}
-    if heldout and report.get("model_backend") == "ufakzeka":
+    if heldout:
         lines.extend(["", "## Independent held-out evidence", "",
-          f"- Split: {heldout.get('split')}",
+          f"- Split: {heldout.get('split')} (source split: {heldout.get('source_split', 'manifest')})",
           f"- Dataset SHA-256: {heldout.get('dataset_sha256')}",
           f"- Samples: {heldout.get('sample_count')}",
           f"- Evaluation version: {heldout.get('evaluation_version')}",
           f"- Loss: {heldout.get('loss')}",
-          f"- Perplexity: {heldout.get('perplexity')}"])
-    elif heldout:
-        lines.append(f"- Evaluation objective: v{heldout.get('loss_objective_version')}")
+          f"- Perplexity: {heldout.get('perplexity')}",
+          f"- Loss objective: v{heldout.get('loss_objective_version')}"])
+    baseline = report.get("baseline_comparison") or {}
+    if baseline.get("available"):
+        baseline_reviewers = baseline.get("baseline_reviewer_identity_hashes") or []
+        lines.extend(["", "## Baseline comparison", "",
+          f"- Baseline checkpoint SHA-256: {baseline.get('baseline_checkpoint_sha256')}",
+          f"- Improvement proven: {baseline.get('improved')}",
+          f"- Baseline loss objective: v{baseline.get('baseline_loss_objective_version')}",
+          f"- Distinct baseline reviewer hashes: **{len(baseline_reviewers) == 2 and baseline_reviewers[0] != baseline_reviewers[1]}**"])
     lines.extend(["", "## Blocking reasons", ""])
     lines.extend([f"- {x}" for x in report["blocking_reasons"]] or ["- None"])
     if report["metrics"]:
