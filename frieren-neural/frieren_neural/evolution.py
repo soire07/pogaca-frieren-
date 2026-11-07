@@ -129,6 +129,8 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
         and comparison.get("improved") is True
         and _valid_sha(comparison.get("baseline_checkpoint_sha256"), 64)
         and comparison.get("baseline_checkpoint_sha256") != report.get("checkpoint_sha256")
+        and isinstance(checkpoint_metadata, dict)
+        and comparison.get("baseline_loss_objective_version") == checkpoint_metadata.get("loss_objective_version")
         and isinstance(baseline_reviewer_hashes, list)
         and len(baseline_reviewer_hashes) == 2
         and all(_valid_sha(value, 64) for value in baseline_reviewer_hashes)
