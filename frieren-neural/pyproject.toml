@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "frieren-neural"
 version = "0.1.0"
-description = "From-scratch experimental decoder-only language model for Frieren AI"
+description = "Single central Frieren Neural inference and controlled self-improvement service"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -33,10 +33,6 @@ serve = [
   "uvicorn[standard]>=0.27",
   "psycopg[binary]>=3.2",
   "llama-cpp-python==0.3.36",
-]
-discord = [
-  "discord.py>=2.4",
-  "aiohttp>=3.9",
 ]
 data = [
   "datasets>=3.6,<5",
