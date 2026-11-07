@@ -596,9 +596,15 @@ def test_learning_signal_postgres_migration_deduplication_retention_and_aggregat
     import frieren_neural.api as api
 
     database_url = os.environ.get("FRIEREN_DATABASE_URL")
-    if not database_url:
+    from urllib.parse import urlparse
+    parsed = urlparse(database_url or "")
+    if (
+        os.environ.get("CI") != "true"
+        or parsed.hostname not in {"localhost", "127.0.0.1"}
+        or parsed.path.lstrip("/") != "neural_test"
+    ):
         import pytest
-        pytest.skip("FRIEREN_DATABASE_URL is only configured in the isolated PostgreSQL CI job.")
+        pytest.skip("Destructive migration integration test runs only against the isolated local neural_test CI database.")
 
     migration = Path(__file__).parents[1] / "migrations" / "002_learning_signals.sql"
     sql = migration.read_text(encoding="utf-8")
