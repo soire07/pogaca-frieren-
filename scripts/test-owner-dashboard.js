@@ -153,7 +153,7 @@ test('Guardian workspace renders incidents and review proposals as unapplied', (
     incidents: [{ id: 7, title: 'RPG timeout', severity: 'high', system: 'pogaca_frieren', code: 'TIMEOUT', status: 'open', occurrence_count: 2, last_seen: '2026-11-02T10:00:00Z', summary: 'Boss test timeout', evidence: [] }],
     jobs: [{ id: 9, incident_title: 'RPG timeout', agent: 'frieren_ai', system: 'pogaca_frieren', status: 'completed', created_at: '2026-11-02T10:01:00Z', result: { rootCause: 'A missing timeout guard.', confidence: 'medium', suggestedFix: 'Add a bounded timeout.', proposedPatch: 'diff --git a/file b/file', applied: false, tests: ['Add regression test.'], risks: [] } }],
   });
-  assert.match(html, /Neural Guardian/);
+  assert.match(html, /Neural Operations/);
   assert.match(html, /A missing timeout guard/);
   assert.match(html, /Önerilen yama taslağı \(uygulanmadı\)/);
   assert.match(html, /İnsan incelemesi gerekli/);
@@ -369,7 +369,7 @@ test('Frieren Neural readiness uses its central health endpoint', async () => {
     }
   });
   assert.equal(requestedUrl, 'https://frieren-neural.example/health');
-  assert.deepEqual(result, payload);
+  assert.deepEqual(result, { ...payload, service: 'frieren-neural' });
 });
 
 test('Frieren Neural readiness fails closed when its health endpoint is unavailable', async () => {
@@ -543,7 +543,7 @@ test('Owner Panel submits curated knowledge with the Neural API token only', asy
   };
   try {
     const { response } = await runOwnerPost({
-      action: 'neural-knowledge-submit',
+      action: 'neural-knowledge-submit', csrf: 'session',
       title: 'Python tuple semantics',
       content: 'A tuple is an immutable sequence in Python and preserves insertion order.',
       sourceTitle: 'Python language reference',
@@ -579,7 +579,7 @@ test('Owner Panel reviews a candidate without storing or reusing the reviewer to
   };
   try {
     const { response } = await runOwnerPost({
-      action: 'neural-knowledge-review',
+      action: 'neural-knowledge-review', csrf: 'session',
       candidateId: '123e4567-e89b-12d3-a456-426614174000',
       decision: 'approve',
       reviewerToken,
@@ -627,7 +627,7 @@ test('bot cards expose direct paths into their own management areas', () => {
   });
   assert.match(html, /href="#rpg"/);
   assert.match(html, /href="#behavior"/);
-  assert.match(html, /href="#memories"/);
+  assert.match(html, /href="\/owner\/neural"/);
   assert.match(html, /href="#approvals"/);
 });
 
@@ -780,7 +780,7 @@ test('bot control center exposes only the main bot and central Neural service', 
   }, { maintenance: false }, 'csrf-token',
   { status: 'available', cpuPercent: 12.3, memoryPercent: 45.6 },
   { status: 'available', cpuPercent: 5.5, memoryPercent: 30.1 });
-  assert.match(html, /Bot Kontrol Merkezi/);
+  assert.match(html, /Bot ve Neural Kontrol Merkezi/);
   assert.match(html, /CPU 12\.3% · RAM 45\.6%/);
   assert.match(html, /CPU 5\.5% · RAM 30\.1%/);
   assert.match(html, /Poğaça Frieren/);
@@ -803,7 +803,7 @@ test('bot control center hides lifecycle controls until a server-side Render API
   }, {}, 'csrf-token');
   assert.match(html, /RENDER_POGACA_API_KEY/);
   assert.match(html, /RENDER_FRIEREN_NEURAL_API_KEY/);
-  assert.match(html, /RENDER_POGACA_SERVICE_ID/);
+  assert.match(html, /RENDER_POGACA_API_KEY/);
   assert.match(html, /RENDER_FRIEREN_NEURAL_SERVICE_ID/);
   assert.doesNotMatch(html, /name="action" value="render-service-action"/);
   assert.doesNotMatch(html, /test-token|server-only-token/);
@@ -1313,7 +1313,7 @@ test('site-auth evidence never verifies the external Frieren Guard sender', () =
   assert.match(html, /Gönderici doğrulanmadı/);
   assert.doesNotMatch(html, /Canlı olay alındı/);
   assert.match(html, /Frieren web hesabı/);
-  assert.match(html, /Frieren Guard izleyicisi/);
+  assert.match(html, /Neural güvenlik modülü izleyicisi/);
 });
 
 test('Guardian workspace hides generic workflow history from the single-run evidence slot', () => {
@@ -1402,7 +1402,7 @@ test('Owner control center clearly blocks actions when production Frieren Neural
       pogaca: { status: 'running', health: 'healthy', apiConfigured: false, allowedActions: [] }
     }
   }, { ready: true }, 'csrf-test');
-  assert.match(html, /Üretim servisi yapılandırılmamış/);
+  assert.match(html, /Servis yapılandırılmamış/);
   assert.match(html, /Merkezi Neural Render servisi henüz bağlanmadı/);
   assert.doesNotMatch(html, /AI servisini başlat/);
 });
