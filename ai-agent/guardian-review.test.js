@@ -350,7 +350,12 @@ test('Guardian does not fall back to Groq when a Neural URL is selected but its 
     groq: { chat: { completions: { create: async () => { groqCalls += 1; return { choices: [] }; } } } },
     neuralEnv: { FRIEREN_NEURAL_API_URL: 'https://neural.example.test', FRIEREN_NEURAL_QUALITY_APPROVED: '1' },
     incident: { system: 'guardian', code: 'FAIL_CLOSED', title: 'Provider selection', summary: 'Neural URL exists but token is missing.' },
-    collectCodeContext: async () => 'FILE: ai-agent/guardian-review.js\\nsource',
+    collectCodeContext: async () => ({
+      text: 'FILE: ai-agent/guardian-review.js\\nsource',
+      files: ['ai-agent/guardian-review.js'],
+      contextHash: 'a'.repeat(64),
+      sourceCommitSha: 'b'.repeat(40),
+    }),
   }), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' });
   assert.equal(groqCalls, 0);
 });
