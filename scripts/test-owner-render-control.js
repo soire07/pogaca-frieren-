@@ -86,7 +86,7 @@ test('Render API service lookup is deferred before Neural health check when sepa
     }
   });
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(requested.length, 2);
+  assert.equal(requested.length, 3);
   releaseApi();
   const status = await pending;
   assert.equal(requested.length, 4);

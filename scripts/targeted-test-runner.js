@@ -49,7 +49,7 @@ export function buildTargetedTestPlan(target) {
 }
 
 export function runTargetedTests(target, {
-  rootDir = new URL('../', import.meta.url).pathname,
+  rootDir = process.cwd(),
   timeoutMs = Math.max(30_000, Math.min(Number(process.env.FRIEREN_TEST_TIMEOUT_MS) || 240_000, 300_000)),
   env = process.env,
   spawnImpl = spawn,
