@@ -486,3 +486,17 @@ def test_warm_start_rejects_different_training_corpus(tmp_path: Path):
             ["Fern studies spells. " * 30], tmp_path / "candidate.pt", config,
             initialize_from=checkpoint, device="cpu",
         )
+
+
+def test_training_tokenizer_fallback_requires_strictly_more_tokens_than_context(tmp_path: Path):
+    corpus = ["Frieren studies magic. " * 30]
+    checkpoint = tmp_path / "context-boundary.pt"
+    config = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0,
+        tokenizer_vocab_size=512, tokenizer_min_frequency=2,
+    )
+    result = train_model(corpus, checkpoint, config, device="cpu")
+    assert result["step"] == 1
+    saved = torch.load(checkpoint, map_location="cpu", weights_only=True)
+    assert saved["tokenizer"]["type"] == "byte_bpe"
