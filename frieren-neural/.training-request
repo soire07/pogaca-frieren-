@@ -37,3 +37,5 @@ Training retry 10 (2026-11-07): Replace the still-pre-optimizer legacy BPE prepa
 
 
 Training retry 11 (2026-11-07): The exact BPE merge trainer is now vectorized and merge-order identical, and the BPE text encoder is also vectorized with reference-parity tests for overlapping pairs and Unicode. The current retry has not reached optimizer training; replace it with this final tokenizer-optimized run so all three training stages and the candidate warm-start path use the fast encoder. Keep the existing corpus, objective, model architecture, seed, continuous 8k→16k→24k checkpoint chain, and held-out evaluation unchanged. No production deployment.
+
+Training retry 12 (2026-11-07): Re-run the existing isolated 24,000-step continuous candidate after the quickstart test double was corrected to accept resume. This run must use the current branch head and run the full pytest suite before corpus preparation and training. Preserve the exact tokenizer, corpus, model architecture, optimizer/checkpoint continuity, held-out set, seed and assistant-only objective. Stop before training if any test or preflight fails. No production integration or deployment.
