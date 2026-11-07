@@ -39,20 +39,20 @@ export function renderOwnerWorkspace(kind, data = {}) {
     '<article class="panel"><h3>' + title + '</h3><p class="muted">' + description + '</p>' + link(href, label) + '</article>';
   const heading = (title, subtitle) => '<section class="hero"><span class="tag">FRIEREN OWNER · WORKSPACE</span><h1>' + title + '</h1><p class="muted">' + subtitle + '</p></section>';
   if (kind === 'ai') {
-    const ai = data.aiReadiness;
-    const ready = ai?.status === 'ok' && ai.discordReady === true && ai.memoryDatabaseReady === true && ai.modelConfigured === true;
+    const neural = data.neuralReadiness;
+    const ready = neural?.status === 'ready';
     const checks = [
-      ['Discord bağlantısı', ai?.discordReady],
-      ['Hafıza veritabanı', ai?.memoryDatabaseReady],
-      ['Model yapılandırması', ai?.modelConfigured]
+      ['Neural API', ready],
+      ['Model kimliği', Boolean(neural?.model)],
+      ['Üretim denemesi', neural?.generation_smoke === 'pass']
     ];
-    return heading('Frieren AI', 'Kod denetimi, senaryo testi ve kalıcı hafıza için ayrı yönetim alanı.')
+    return heading('Frieren Neural', 'Poğaça Frieren’in tek yapay zekâ motoru; model sağlığı, öğrenme ve mühendislik testleri.')
       + '<div class="grid"><div class="stat"><small>Genel durum</small><strong class="' + (ready ? 'good' : 'warn') + '">' + (ready ? 'Hazır' : 'Kontrol gerekli') + '</strong></div>'
-      + '<div class="stat"><small>İzinli sunucu</small><strong>Test sunucusu</strong><div class="small">1564945192803639356</div></div></div>'
-      + '<section class="panel"><h2>Servis kontrolleri</h2>' + checks.map(([label, value]) =>
-        '<div class="rowitem"><strong>' + label + '</strong><span class="' + (value === true ? 'good' : 'bad') + '"> · ' + (value === true ? 'Hazır' : value === false ? 'Başarısız' : 'Veri alınamadı') + '</span></div>'
-      ).join('') + '<p class="small">Bu ekran yalnızca test sunucusu için sentetik komut senaryoları çalıştırır; gerçek kullanıcı işlemi yapmaz.</p></section>'
-      + '<section class="panel"><h2>Poğaça sohbet kişiliği</h2><p class="muted">Bu ayarlar Poğaça Frieren’in etiketle açılan sohbet davranışını etkiler. Frieren AI kod/test ajanının çalışma sunucusu bu ayarlardan bağımsızdır.</p>'
+      + '<div class="stat"><small>Model</small><strong>' + escapeHtml(neural?.model || 'Bilinmiyor') + '</strong></div></div>'
+      + '<section class="panel"><h2>Neural servis kontrolleri</h2>' + checks.map(([label, value]) =>
+        '<div class="rowitem"><strong>' + label + '</strong><span class="' + (value ? 'good' : 'bad') + '"> · ' + (value ? 'Hazır' : 'Başarısız veya veri yok') + '</span></div>'
+      ).join('') + '<p class="small">Bu sağlık kontrolü model yanıtı ve servis hazırlığını doğrular; eğitim veya model terfisi başlatmaz.</p></section>'
+      + '<section class="panel"><h2>Poğaça sohbet kişiliği</h2><p class="muted">Bu ayarlar Poğaça Frieren’in etiketle açılan sohbet davranışını aynı merkezi Frieren Neural motoruyla yönetir.</p>'
       + (data.notice === 'chat_settings_saved' ? '<p class="notice">Sohbet tercihleri kaydedildi.</p>' : '')
       + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="frieren-chat-settings">'
       + '<label><input type="checkbox" name="enabled" value="yes"' + (data.chatSettings?.enabled !== false ? ' checked' : '') + ' style="display:inline;width:auto"> Etiketle sohbet özelliği açık</label>'
