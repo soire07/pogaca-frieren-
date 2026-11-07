@@ -47,7 +47,7 @@ jobs:
       - name: Install CPU-only PyTorch
         run: python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
       - name: Install package and test dependencies
-        run: python -m pip install --only-binary=llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu -e ".[dev,serve,discord]"
+        run: python -m pip install --only-binary=llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu -e ".[dev,serve]"
       - name: Run tests
         run: pytest
       - name: Validate candidate evolution workflow syntax
