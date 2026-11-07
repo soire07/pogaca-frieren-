@@ -77,6 +77,7 @@ def test_report_applies_quality_gate_to_human_scores():
             "decoding_settings": quality.DECODING_SETTINGS,
             "checkpoint_sha256": "0" * 64,
             "human_review": {"completed": True, "reviewer_identity_hashes": ["c" * 64, "d" * 64]},
+            "review_template": {"reviewers": ["c" * 64, "d" * 64]},
             "metrics": {
                 "dimension_averages": {dimension: 3.5 for dimension in quality.DIMENSIONS},
                 "overall_average": 3.5,
@@ -196,6 +197,7 @@ def test_report_blocks_mismatched_heldout_objective():
             "decoding_settings": quality.DECODING_SETTINGS,
             "checkpoint_sha256": "0" * 64,
             "human_review": {"completed": True, "reviewer_identity_hashes": ["c" * 64, "d" * 64]},
+            "review_template": {"reviewers": ["c" * 64, "d" * 64]},
             "metrics": {
                 "dimension_averages": {dimension: 3.5 for dimension in quality.DIMENSIONS},
                 "overall_average": 3.5,
@@ -298,6 +300,7 @@ def test_ufakzeka_report_requires_review_provenance_and_heldout_evidence(monkeyp
         "decoding_settings": quality.DECODING_SETTINGS,
         "checkpoint_sha256": "b" * 64,
         "human_review": {"completed": True, "reviewer_identity_hashes": ["c" * 64, "d" * 64]},
+            "review_template": {"reviewers": ["c" * 64, "d" * 64]},
         "metrics": {
             "dimension_averages": {dimension: 3.5 for dimension in quality.DIMENSIONS},
             "overall_average": 3.5,
