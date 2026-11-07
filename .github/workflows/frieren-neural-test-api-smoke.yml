@@ -7,6 +7,8 @@ on:
     paths:
       - ".github/workflows/frieren-neural-test-api-smoke.yml"
       - "frieren-neural/frieren_neural/api.py"
+      - "frieren-neural/Dockerfile"
+      - "frieren-neural/tests/test_serving_container_dependencies.py"
 
 permissions:
   contents: read
