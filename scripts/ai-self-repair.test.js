@@ -361,12 +361,12 @@ test('repair patch does not erase concurrent changes while rolling back its own 
   const execFile = (args) => {
     calls.push(args);
     if (args[0] === 'status' && args[1] === '--porcelain') {
-      if (patchApplied) return ' M rpg-mechanics.js\\n M unrelated.js\\n';
+      if (patchApplied) return ' M rpg-mechanics.js\n M unrelated.js\n';
       return unrelatedChange ? ' M unrelated.js\\n' : '';
     }
     if (args[0] === 'apply' && args[1] === '--check') return '';
     if (args[0] === 'apply' && args[1] === '--') { patchApplied = true; return ''; }
-    if (args[0] === 'status' && args[1] === '--short') { unrelatedChange = true; return ' M rpg-mechanics.js\\n M unrelated.js\\n'; }
+    if (args[0] === 'status' && args[1] === '--short') { unrelatedChange = true; return ' M rpg-mechanics.js\n M unrelated.js\n'; }
     if (args[0] === 'apply' && args[1] === '--reverse') { patchApplied = false; return ''; }
     return '';
   };
