@@ -51,9 +51,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    env:
-      FRIEREN_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/neural_test
-      FRIEREN_API_TOKEN: ci-neural-test-token-with-more-than-32-characters
     defaults:
       run:
         working-directory: frieren-neural
