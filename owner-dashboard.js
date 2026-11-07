@@ -325,6 +325,7 @@ export function renderOwnerControlCenter(renderServices, overview, csrf, renderM
   const apiConfigured = renderServices?.apiConfigured === true;
   const renderApiError = renderServices?.apiError || null;
   const serviceStatus = service => {
+    if (service?.status === 'not_configured') return { label: 'Üretim servisi yapılandırılmamış', css: 'warn' };
     if (service?.suspended === true || service?.status === 'suspended') return { label: 'Askıya alınmış', css: 'warn' };
     if (service?.suspended === null && service?.health === 'healthy') return { label: 'Health 200 · Render askı durumu bilinmiyor', css: 'good' };
     if (service?.suspended === null && service?.health === 'unhealthy') return { label: 'Health başarısız · Render askı durumu bilinmiyor', css: 'bad' };
@@ -348,7 +349,9 @@ export function renderOwnerControlCenter(renderServices, overview, csrf, renderM
       metricText ? escapeHtml(metricText) : ''
     ].filter(Boolean).join(' · ');
     let actions = '';
-    if (key === 'pogaca') {
+    if (key === 'frieren_ai' && service.status === 'not_configured') {
+      actions = '<p class="small">Frieren AI üretim servisi Render hesabında bulunamadı. Servis kimliği ve URL yapılandırılmadan yeniden başlatma veya AI bağlantısı denenmez.</p>';
+    } else if (key === 'pogaca') {
       actions = canControl
         ? renderRenderActionForm(key, 'restart', 'Yeniden başlat', csrf, 'Poğaça ve Owner Panel servisini yeniden başlatmayı onaylıyorum')
         : '<p class="small">Yeniden başlatma için Render API bağlantısı gerekli.</p>';
