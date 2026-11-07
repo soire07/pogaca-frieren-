@@ -53,7 +53,7 @@ export default {
       .addStringOption(option => option.setName('tur').setDescription('Etkinlik türü').addChoices({ name: 'Topluluk', value: 'community' }, { name: 'Boss / Raid', value: 'boss_raid' }, { name: 'Takım Turnuvası', value: 'tournament' }, { name: 'Anime Gecesi', value: 'anime_night' }))
       .addIntegerOption(option => option.setName('kapasite').setDescription('En fazla katılımcı (boş: sınırsız)').setMinValue(1).setMaxValue(500))),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: 'Etkinlikler yalnızca sunucularda kullanılabilir.' });
+    if (!interaction.guildId) return interaction.reply({ content: 'Etkinlikler yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     const action = interaction.options.getSubcommand();
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     try {
