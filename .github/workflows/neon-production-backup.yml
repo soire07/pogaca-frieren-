@@ -51,7 +51,7 @@ jobs:
               pg_dump --format=custom --no-owner --no-acl "$DATABASE_URL" --file="$filename"
               pg_restore --list "$filename" >/dev/null
               psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atqc \
-                "SELECT count(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_type = 'BASE TABLE'" \
+                "SELECT count(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_type = $BASE TABLE$" \
                 > /backup/source-public-table-count.txt
               test "$(cat /backup/source-public-table-count.txt)" -gt 0
             '
