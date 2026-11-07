@@ -560,9 +560,10 @@ test('Light Fallen begins as a special NPC quest and only unlocks as a boss afte
   assert.ok(npc, 'Light Fallen must exist as a special quest NPC');
   assert.equal(npc.requiresStoryPath, false);
   assert.equal(npc.questKey, 'light_fallen_trial');
-  assert.match(npc.objective, /üç boss/i);
-  assert.equal(npc.reward.coins, 1500);
-  assert.equal(npc.reward.xp, 750);
+  assert.match(npc.objective, /üç .*yankı/i);
+  assert.doesNotMatch(npc.objective, /boss|Light Fallen|Infinity/i);
+  assert.equal(npc.reward.coins, 3000);
+  assert.equal(npc.reward.xp, 1500);
   assert.equal(isRaidBossUnlocked('fallen-mage', []), false);
   assert.equal(isRaidBossUnlocked('fallen-mage', ['light_fallen_trial']), true);
   assert.equal(isRaidBossUnlocked('the-fool', []), true);

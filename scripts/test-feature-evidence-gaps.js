@@ -99,3 +99,15 @@ test('hug command addresses the selected recipient and remains a friendly intera
   assert.match(response, /<@target-1>/);
   assert.match(response, /Fern onaylı/);
 });
+
+test('sealed wanderer dialogue keeps the hidden identity and unlock reveal mysterious', () => {
+  const wanderer = NPC_SIDE_QUESTS.light_fallen;
+  assert.equal(wanderer.name, '♾️ Mühürlü Gezgin');
+  assert.match(wanderer.dialogue, /üç uzak yankı/i);
+  assert.match(wanderer.questDialogue, /üç yankı/i);
+  assert.equal(wanderer.objective, 'Üç kudretli karşılaşmanın yankısını topla.');
+  assert.doesNotMatch(wanderer.dialogue, /boss|Light Fallen|Infinity/i);
+  assert.doesNotMatch(wanderer.questDialogue, /boss|Light Fallen|Infinity/i);
+  assert.doesNotMatch(wanderer.objective, /boss|Light Fallen|Infinity/i);
+  assert.deepEqual(wanderer.reward, { coins: 3000, xp: 1500 });
+});
