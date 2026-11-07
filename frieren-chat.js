@@ -18,7 +18,10 @@ export function isFrierenMentionMessage(message, botUserId) {
     message?.author &&
     !message.author.bot &&
     botUserId &&
-    message.mentions?.users?.has?.(botUserId)
+    (
+      message.mentions?.users?.has?.(botUserId) ||
+      message.mentions?.repliedUser?.id === botUserId
+    )
   );
 }
 
