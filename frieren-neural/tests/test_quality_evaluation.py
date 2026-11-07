@@ -367,3 +367,11 @@ def test_hash_reviewer_identity_requires_private_high_entropy_token():
     second = quality.hash_reviewer_identity("private-reviewer-token-" + "b" * 40)
     assert len(first) == 64
     assert first != second
+
+
+
+def test_training_license_allowlist_accepts_attribution_licenses_and_rejects_noncommercial():
+    assert quality._has_allowed_training_licenses(["Apache-2.0", "CC BY 4.0"])
+    assert quality._has_allowed_training_licenses(["MIT", "CC0-1.0"])
+    assert not quality._has_allowed_training_licenses(["CC-BY-NC-4.0"])
+    assert not quality._has_allowed_training_licenses(["Unknown-License"])
