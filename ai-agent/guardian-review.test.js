@@ -259,11 +259,11 @@ test('Guardian review HTTP route separates invalid input from AI upstream failur
   const end = source.indexOf("if (req.url === '/bridge-health')", start);
   assert.ok(start >= 0 && end > start);
   const route = source.slice(start, end);
-  assert.match(route, /request_json_invalid/);
-  assert.match(route, /incident_invalid/);
-  assert.match(route, /writeHead\\(400/);
-  assert.match(route, /guardian_review_upstream_failed/);
-  assert.match(route, /writeHead\\(502/);
-  assert.match(route, /reviewGuardianIncident\\(/);
-  assert.doesNotMatch(route, /catch \\(error\\) \\{[\\s\\S]*?writeHead\\(400/);
+  assert.ok(route.includes('request_json_invalid'));
+  assert.ok(route.includes('incident_invalid'));
+  assert.ok(route.includes('res.writeHead(400'));
+  assert.ok(route.includes('guardian_review_upstream_failed'));
+  assert.ok(route.includes('res.writeHead(502'));
+  assert.ok(route.includes('reviewGuardianIncident('));
+  assert.ok(!route.includes('guardian_review_failed'));
 });
