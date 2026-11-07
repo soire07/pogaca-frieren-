@@ -588,7 +588,15 @@ def test_heldout_manifest_metadata_is_pinned_and_split_scoped(tmp_path: Path):
     assert len(metadata["dataset_sha256"]) == 64
     assert metadata["evaluation_version"] == "frieren-neural-heldout-v1"
 
-    with pytest.raises(ValueError, match="Expected a heldout"):
+    test_metadata = load_corpus_manifest_metadata(tmp_path, required_split="heldout")
+    assert test_metadata["source_split"] == "heldout"
+    manifest["dataset"]["split"] = "test"
+    (tmp_path / "corpus_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    test_metadata = load_corpus_manifest_metadata(tmp_path, required_split="test")
+    assert test_metadata["split"] == "heldout"
+    assert test_metadata["source_split"] == "test"
+
+    with pytest.raises(ValueError, match="Expected a train"):
         load_corpus_manifest_metadata(tmp_path, required_split="train")
 
 
