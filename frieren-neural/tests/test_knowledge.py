@@ -49,10 +49,10 @@ def test_knowledge_rejects_non_public_https_sources(url):
 
 
 @pytest.mark.parametrize("sensitive", [
-    "Contact alice@example.com for details.",
-    "API_KEY=super-secret-value",
+    "Contact alice@example.com for details and do not retain this private source text.",
+    "API_KEY=super-secret-value and this private credential must never be retained.",
     "Discord user 12345678901234567 requested this.",
-    "-----BEGIN PRIVATE KEY-----",
+    "-----BEGIN PRIVATE KEY----- this is a deliberately invalid secret-bearing test fixture.",
 ])
 def test_knowledge_rejects_private_or_secret_like_source_content(sensitive):
     with pytest.raises(ValueError, match="private or secret-like"):

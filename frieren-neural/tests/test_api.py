@@ -737,9 +737,11 @@ def test_learning_signal_postgres_migration_deduplication_retention_and_aggregat
 
     reviewer_one = "reviewer-one-private-token-12345678901234567890"
     reviewer_two = "reviewer-two-private-token-12345678901234567890"
+    reviewer_reject = "reviewer-reject-private-token-1234567890"
     monkeypatch.setenv("FRIEREN_KNOWLEDGE_REVIEWERS", json.dumps({
         "reviewer_one": reviewer_one,
         "reviewer_two": reviewer_two,
+        "reviewer_reject": reviewer_reject,
     }))
     unauthorized_review = api_client.post(
         f"/learning/knowledge/candidates/{candidate_id}/reviews",
@@ -830,7 +832,7 @@ def test_learning_signal_postgres_migration_deduplication_retention_and_aggregat
     rejected_id = rejected.json()["candidate_id"]
     rejection = api_client.post(
         f"/learning/knowledge/candidates/{rejected_id}/reviews",
-        headers=headers, json={"decision": "reject", "reviewer_token": "reviewer-reject-private-token-1234567890"},
+        headers=headers, json={"decision": "reject", "reviewer_token": reviewer_reject},
     )
     assert rejection.status_code == 200 and rejection.json()["status"] == "rejected"
     assert api_client.get(

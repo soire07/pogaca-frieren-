@@ -57,7 +57,7 @@ def test_report_applies_quality_gate_to_human_scores():
         outputs=[{"id": f"TR-{number:03d}", "output": "örnek yanıt"} for number in range(1, 25)],
         scores=scores,
         source_commit_sha="e" * 40,
-        training_provenance={"manifest_sha256":"d" * 64, "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64,"sources":["Pinned CC BY 4.0 Turkish dialogue corpus"],"licenses":["CC BY 4.0"]},
+        training_provenance={"manifest_sha256":"d" * 64, "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64, "sample_count": 120, "sources":["Pinned CC BY 4.0 Turkish dialogue corpus"],"licenses":["CC BY 4.0"]},
         checkpoint_metadata={
             "format_version": 2,
             "dialogue_encoding_version": 2,
