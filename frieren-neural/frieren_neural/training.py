@@ -448,12 +448,16 @@ def train_model(
     source_payload = None
     if source_path is not None:
         source_payload = torch.load(source_path, map_location=selected_device, weights_only=True)
-        if (not isinstance(source_payload, dict) or source_payload.get("format_version") != 2
-                or source_payload.get("dialogue_encoding_version") != DIALOGUE_ENCODING_VERSION
-                or source_payload.get("loss_objective_version") != LOSS_OBJECTIVE_VERSION):
-            raise ValueError("Source checkpoint has an incompatible format or training objective.")
+        if not isinstance(source_payload, dict) or source_payload.get("format_version") != 2:
+            raise ValueError("Source checkpoint has an incompatible format version.")
+        if source_payload.get("dialogue_encoding_version") != DIALOGUE_ENCODING_VERSION:
+            raise ValueError("Source checkpoint dialogue encoding is incompatible with this training run.")
+        if source_payload.get("loss_objective_version") != LOSS_OBJECTIVE_VERSION:
+            raise ValueError("Source checkpoint loss objective is incompatible with this training run.")
         if source_payload.get("corpus_sha256") != corpus_fingerprint:
-            raise ValueError("Source checkpoint corpus does not match this training run.")
+            if initialize_from is not None:
+                raise ValueError("Warm-start checkpoint corpus/model/training settings do not match this candidate.")
+            raise ValueError("Checkpoint corpus/model/training settings do not match this run.")
         saved_training_config = dict(source_payload.get("training_config", {}))
         current_training_config = asdict(settings)
         mutable_fields = ("max_steps",) if resume else ("max_steps", "learning_rate")
