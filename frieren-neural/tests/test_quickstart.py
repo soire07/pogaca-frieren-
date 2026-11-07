@@ -12,12 +12,13 @@ def test_small_training_cli_uses_conservative_cpu_defaults(monkeypatch, capsys):
     )
     monkeypatch.setattr(quickstart, "load_licensed_corpus", lambda path: ["Merhaba. " * 100])
 
-    def fake_train(documents, checkpoint, config, *, device):
+    def fake_train(documents, checkpoint, config, *, resume=False, device):
         captured.update(
             documents=documents,
             checkpoint=checkpoint,
             config=config,
             device=device,
+            resume=resume,
         )
         return {"step": config.max_steps, "checkpoint": checkpoint, "device": device}
 
