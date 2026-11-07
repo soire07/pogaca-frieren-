@@ -80,8 +80,22 @@ class LearningSignalsRequest(BaseModel):
     signals: list[LearningSignal] = Field(min_length=1, max_length=3)
 
 
+class GuardianEvidence(BaseModel):
+    file: str = Field(default="", max_length=180)
+    line: int | None = Field(default=None, ge=1)
+    message: str = Field(default="", max_length=400)
+
+
+class GuardianIncident(BaseModel):
+    system: Literal["frieren_neural", "frieren_ai", "pogaca_frieren", "owner_panel", "guardian"]
+    code: str = Field(pattern=r"^[A-Za-z0-9_.:-]{1,80}$")
+    title: str = Field(min_length=1, max_length=160)
+    summary: str = Field(min_length=1, max_length=1600)
+    evidence: list[GuardianEvidence] = Field(default_factory=list, max_length=8)
+
+
 class GuardianReviewRequest(BaseModel):
-    incident: dict[str, object]
+    incident: GuardianIncident
     source_context: str = Field(min_length=1, max_length=12_000)
     source_context_files: list[str] = Field(min_length=1, max_length=12)
     source_context_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
@@ -354,7 +368,7 @@ def guardian_review(
     ):
         raise HTTPException(status_code=503, detail="Guardian review is disabled until Neural passes its quality gate.")
 
-    incident = payload.incident
+    incident = payload.incident.model_dump()
     allowed_systems = {"frieren_neural", "frieren_ai", "pogaca_frieren", "owner_panel", "guardian"}
     system = _guardian_text(incident.get("system"), 40)
     title = _guardian_text(incident.get("title"), 160)
