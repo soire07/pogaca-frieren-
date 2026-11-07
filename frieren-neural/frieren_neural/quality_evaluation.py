@@ -26,6 +26,12 @@ def _has_allowed_training_licenses(value: object) -> bool:
     normalized = [re.sub(r"\s+", "-", license_name.strip()).upper()
                   for license_name in value if isinstance(license_name, str)]
     return len(normalized) == len(value) and all(license_name in ALLOWED_TRAINING_LICENSES for license_name in normalized)
+
+
+def _has_training_sources(value: object) -> bool:
+    return isinstance(value, list) and bool(value) and all(
+        isinstance(source, str) and source.strip() for source in value
+    )
 DECODING_SETTINGS = {"seed": 20261101, "temperature": 0.7, "top_k": 40, "max_new_tokens": 80}
 DIMENSIONS = ("correctness", "instruction_adherence", "turkish_quality", "grounding", "safety_privacy", "conversation_consistency")
 PROMPTS = (
@@ -160,7 +166,8 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
                 or not isinstance(training_provenance.get("manifest_sha256"), str)
                 or len(training_provenance["manifest_sha256"]) != 64
                 or any(char not in "0123456789abcdefABCDEF" for char in training_provenance["manifest_sha256"])
-                or not _has_allowed_training_licenses(training_provenance.get("licenses"))):
+                or not _has_allowed_training_licenses(training_provenance.get("licenses"))
+                or not _has_training_sources(training_provenance.get("sources"))):
             reasons.append("training_provenance_missing")
         heldout_valid = (
             isinstance(heldout_metrics, dict)
