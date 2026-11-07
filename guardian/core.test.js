@@ -405,3 +405,13 @@ test('Neural Guardian blocks baseline evidence without two distinct reviewer has
   assert.equal(result.canStage, false);
   assert.ok(result.reasons.includes('NEURAL_COMPARABLE_IMPROVED_BASELINE_REQUIRED'));
 });
+
+
+
+test('Neural Guardian rejects non-commercial or unknown training licenses', () => {
+  const report = readyNeuralReport();
+  report.training_provenance.licenses = ['CC-BY-NC-4.0'];
+  const result = evaluateNeuralQualityGate({ qualityReport: report });
+  assert.equal(result.canStage, false);
+  assert.ok(result.reasons.includes('NEURAL_TRAINING_PROVENANCE_MISSING'));
+});
