@@ -194,7 +194,7 @@ async function persistDispatchedState(store, db, jobId, workflowUrl) {
   return saved === true;
 }
 
-const GUARDIAN_REVIEW_SYSTEMS = new Set(["frieren_neural", "frieren_ai", "pogaca_frieren", "owner_panel", "guardian"]);
+const GUARDIAN_REVIEW_SYSTEMS = new Set(["frieren_neural", "frieren_ai", "pogaca_frieren", "owner_panel", "guardian", "site_auth"]);
 
 function isSafeGuardianRelativePath(value) {
   const path = String(value || "");
