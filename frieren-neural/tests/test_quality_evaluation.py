@@ -489,3 +489,52 @@ def test_baseline_establishment_cannot_bypass_missing_comparison_for_candidates(
     assert report["decision"] == "NOT READY"
     assert "human_review_missing" in report["blocking_reasons"]
     assert "checkpoint_metadata_missing" in report["blocking_reasons"]
+
+
+
+def test_quality_gate_rejects_checkpoint_attached_to_a_different_training_manifest():
+    report = quality.build_report(
+        checkpoint_sha256="a" * 64,
+        checkpoint_step=10,
+        outputs=[{"id": f"TR-{number:03d}", "output": "örnek"} for number in range(1, 25)],
+        scores=None,
+        source_commit_sha="e" * 40,
+        training_provenance={
+            "manifest_sha256": "d" * 64,
+            "dataset_id": "example/turkish",
+            "dataset_revision": "b" * 40,
+            "source_fingerprint_sha256": "c" * 64,
+            "processed_sha256": "d" * 64,
+            "sources": ["Pinned test corpus"],
+            "licenses": ["Apache-2.0"],
+        },
+        checkpoint_metadata={
+            "format_version": 2,
+            "dialogue_encoding_version": 2,
+            "loss_objective_version": 2,
+            "model_config": {"d_model": 16},
+            "training_config": {"max_steps": 10},
+            "tokenizer_type": "byte_bpe",
+            "tokenizer_vocab_size": 280,
+            "training_dataset": {
+                "dataset_sha256": "f" * 64,
+                "dataset_id": "example/turkish",
+                "dataset_revision": "b" * 40,
+                "source_fingerprint_sha256": "c" * 64,
+                "processed_sha256": "d" * 64,
+                "split": "train",
+                "sample_count": 10,
+            },
+        },
+        heldout_metrics={
+            "loss": 1.2, "perplexity": 3.32, "dataset_sha256": "e" * 64,
+            "sample_count": 10, "split": "heldout",
+            "evaluation_version": "frieren-neural-heldout-v1",
+            "loss_objective_version": 2,
+            "checkpoint_training_loss_objective_version": 2,
+        },
+        establish_baseline=True,
+    )
+
+    assert report["decision"] == "NOT READY"
+    assert "checkpoint_training_data_mismatch" in report["blocking_reasons"]

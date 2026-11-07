@@ -655,3 +655,28 @@ def test_evaluate_checkpoint_emits_heldout_manifest_provenance(monkeypatch):
     assert result["split"] == "heldout"
     assert result["source_split"] == "test"
     assert result["evaluation_version"] == training.HELDOUT_EVALUATION_VERSION
+
+
+def test_resume_rejects_a_different_pinned_training_manifest(tmp_path: Path):
+    corpus = ["Frieren studies magic. Fern studies spells. " * 8]
+    checkpoint = tmp_path / "manifest-bound.pt"
+    config = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0,
+    )
+    original = {
+        "dataset_sha256": "a" * 64,
+        "dataset_id": "example/turkish",
+        "dataset_revision": "b" * 40,
+        "source_fingerprint_sha256": "c" * 64,
+        "processed_sha256": "d" * 64,
+        "split": "train",
+        "sample_count": 10,
+    }
+    changed = {**original, "source_fingerprint_sha256": "e" * 64}
+    train_model(corpus, checkpoint, config, training_dataset_metadata=original)
+    with pytest.raises(ValueError, match="training dataset manifest does not match"):
+        train_model(
+            corpus, checkpoint, config, resume=True,
+            training_dataset_metadata=changed,
+        )
