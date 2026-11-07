@@ -362,6 +362,27 @@ test('repair patch rejects additional allowed files changed outside the proposal
   });
 });
 
+test('repair patch rolls back applied changes when post-apply validation fails', () => {
+  const calls = [];
+  let applied = false;
+  const execFile = (args) => {
+    calls.push(args);
+    if (args[0] === 'status' && args[1] === '--porcelain') return applied ? ' M rpg-mechanics.js\\n' : '';
+    if (args[0] === 'apply' && args[1] === '--check') return '';
+    if (args[0] === 'apply' && args[1] === '--') { applied = true; return ''; }
+    if (args[0] === 'diff' && args[1] === '--check') throw new Error('WHITESPACE_VALIDATION_FAILED');
+    if (args[0] === 'apply' && args[1] === '--reverse') { applied = false; return ''; }
+    if (args[0] === 'status' && args[1] === '--short') return applied ? ' M rpg-mechanics.js\\n' : '';
+    throw new Error('UNEXPECTED_COMMAND: ' + args.join(' '));
+  };
+  assert.throws(() => applyRepairPatch(validPatch, { execFile }), {
+    message: 'WHITESPACE_VALIDATION_FAILED',
+  });
+  assert.equal(applied, false);
+  assert.ok(calls.some(args => args[0] === 'apply' && args[1] === '--reverse'));
+  assert.equal(calls.at(-1)[0], 'status');
+});
+
 test('repair workflow output contains only the exact validated file paths', () => {
   assert.equal(
     formatRepairFilesOutput(['scripts/repair-a.js', 'rpg-mechanics.js']),
