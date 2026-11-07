@@ -28,7 +28,7 @@ concurrency:
 jobs:
   api-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 8
     steps:
       - name: Check liveness endpoint
         env:
@@ -38,6 +38,15 @@ jobs:
           response="$(curl --silent --show-error --fail --connect-timeout 10 --max-time 20 "$NEURAL_TEST_URL/live")"
           python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d == {"status":"alive","service":"frieren-neural"}' "$response"
           echo "NEURAL_LIVENESS=PASS"
+
+      - name: Verify database-backed model health and generation
+        env:
+          NEURAL_TEST_URL: https://frieren-neural-test-1unz.onrender.com
+        run: |
+          set -euo pipefail
+          response="$(curl --silent --show-error --fail --connect-timeout 15 --max-time 360 "$NEURAL_TEST_URL/health")"
+          python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("status") == "ready"; assert d.get("model") == "ufakai/ufakzeka-1"; assert d.get("generation_smoke") == "pass"' "$response"
+          echo "DATABASE_LOCK_AND_MODEL_GENERATION=PASS"
 
       - name: Check learning endpoints are present and protected
         env:
