@@ -1,11 +1,11 @@
-const SNOWFLAKE = /^\d{17,20}$/;
+const SNOWFLAKE = /^\\d{17,20}$/;
 const OWNER = '1553794496234262641';
 const API_BASE = 'https://api.render.com/v1';
 
 export function resolveRenderBotServices(env = process.env) {
-  const aiServiceId = String(env.RENDER_FRIEREN_AI_SERVICE_ID || '').trim() || null;
-  const aiServiceUrl = String(env.RENDER_FRIEREN_AI_URL || '').trim();
-  const pogacaServiceId = env.RENDER_POGACA_SERVICE_ID || env.RENDER_METRICS_SERVICE_ID || env.RENDER_SERVICE_ID || 'srv-dbf4vdvavr4c73cr6s00';
+  const pogacaServiceId = String(env.RENDER_POGACA_SERVICE_ID || env.RENDER_METRICS_SERVICE_ID || env.RENDER_SERVICE_ID || 'srv-dbf4vdvavr4c73cr6s00').trim();
+  const neuralServiceId = String(env.RENDER_FRIEREN_NEURAL_SERVICE_ID || '').trim() || null;
+  const neuralServiceUrl = String(env.RENDER_FRIEREN_NEURAL_URL || '').trim();
   return Object.freeze({
     pogaca: Object.freeze({
       key: 'pogaca',
@@ -17,15 +17,15 @@ export function resolveRenderBotServices(env = process.env) {
       canSuspend: false,
       allowedActions: Object.freeze(['restart'])
     }),
-    frieren_ai: Object.freeze({
-      key: 'frieren_ai',
-      name: 'Frieren AI',
-      id: aiServiceId,
-      url: aiServiceUrl,
-      healthPath: env.RENDER_FRIEREN_AI_HEALTH_PATH || '/live',
-      dashboardUrl: aiServiceId ? 'https://dashboard.render.com/web/' + aiServiceId : null,
-      canSuspend: true,
-      allowedActions: Object.freeze(['restart', 'suspend', 'resume'])
+    neural: Object.freeze({
+      key: 'neural',
+      name: 'Frieren Neural',
+      id: neuralServiceId,
+      url: neuralServiceUrl,
+      healthPath: '/health',
+      dashboardUrl: neuralServiceId ? 'https://dashboard.render.com/web/' + neuralServiceId : null,
+      canSuspend: false,
+      allowedActions: Object.freeze(['restart'])
     })
   });
 }
@@ -40,8 +40,9 @@ function safeErrorCode(error) {
 }
 
 async function readHealth(service, fetchImpl) {
+  if (!String(service.url || '').trim()) return { health: 'unavailable', healthStatus: null, healthPayload: null };
   try {
-    const response = await fetchImpl(service.url.replace(/\/$/, '') + service.healthPath, {
+    const response = await fetchImpl(service.url.replace(/\\/$/, '') + service.healthPath, {
       method: 'GET',
       headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(5000)
@@ -50,12 +51,9 @@ async function readHealth(service, fetchImpl) {
     if (response.ok) {
       try { healthPayload = await response.json(); } catch { healthPayload = null; }
     }
-    const isAiReadinessResponse = service.key === 'frieren_ai' && typeof healthPayload?.ready === 'boolean';
-    const healthy = response.ok && (!isAiReadinessResponse || healthPayload.ready === true);
-    const exposedPayload = isAiReadinessResponse && healthPayload.readiness && typeof healthPayload.readiness === 'object'
-      ? healthPayload.readiness
-      : healthPayload;
-    return { health: healthy ? 'healthy' : 'unhealthy', healthStatus: response.status, healthPayload: exposedPayload };
+    const isNeuralReadiness = service.key === 'neural' && typeof healthPayload?.status === 'string';
+    const healthy = response.ok && (!isNeuralReadiness || healthPayload.status === 'ready');
+    return { health: healthy ? 'healthy' : 'unhealthy', healthStatus: response.status, healthPayload };
   } catch {
     return { health: 'unavailable', healthStatus: null, healthPayload: null };
   }
@@ -64,7 +62,7 @@ async function readHealth(service, fetchImpl) {
 function getServiceApiToken(serviceKey, override) {
   if (override !== undefined) return String(override || '').trim();
   if (serviceKey === 'pogaca') return String(process.env.RENDER_POGACA_API_KEY || process.env.RENDER_API_KEY || '').trim();
-  return String(process.env.RENDER_FRIEREN_AI_API_KEY || '').trim();
+  return String(process.env.RENDER_FRIEREN_NEURAL_API_KEY || '').trim();
 }
 
 export async function getRenderBotServiceStatuses({
@@ -74,7 +72,7 @@ export async function getRenderBotServiceStatuses({
 } = {}) {
   const results = await Promise.all(Object.entries(services).map(async ([key, service]) => {
     const token = getServiceApiToken(key, apiKey);
-    if (key === 'frieren_ai' && !service.id && !service.url) {
+    if (!service.id && !service.url) {
       return {
         key, name: service.name, id: null, url: '', dashboardUrl: null, plan: null,
         suspended: null, suspenders: [], status: 'not_configured', health: 'not_configured',
@@ -99,17 +97,14 @@ export async function getRenderBotServiceStatuses({
           }
         })()
       : Promise.resolve({ details: null, serviceApiError: null });
-    const deferAiHealth = key === 'frieren_ai' && Boolean(token && service.id);
-    const healthRequest = deferAiHealth ? Promise.resolve(null) : readHealth(service, fetchImpl);
+    const deferNeuralHealth = key === 'neural' && Boolean(token && service.id);
+    const healthRequest = deferNeuralHealth ? Promise.resolve(null) : readHealth(service, fetchImpl);
     const [{ details, serviceApiError }, initialHealth] = await Promise.all([apiRequest, healthRequest]);
     const suspended = details?.suspended === 'suspended';
     const healthService = { ...service, url: details?.serviceDetails?.url || service.url || '' };
     const healthResult = suspended
       ? { health: 'suspended', healthStatus: null, healthPayload: null }
       : initialHealth || await readHealth(healthService, fetchImpl);
-    const finalHealth = healthResult;
-    const status = suspended ? 'suspended' : finalHealth.health === 'healthy' ? 'running'
-      : finalHealth.health === 'unhealthy' ? 'unhealthy' : 'unknown';
     return {
       key,
       name: service.name,
@@ -119,20 +114,21 @@ export async function getRenderBotServiceStatuses({
       plan: details?.serviceDetails?.plan || null,
       suspended: details ? suspended : null,
       suspenders: Array.isArray(details?.suspenders) ? details.suspenders : [],
-      status,
-      health: finalHealth.health,
-      healthStatus: finalHealth.healthStatus,
-      healthPayload: finalHealth.healthPayload,
+      status: suspended ? 'suspended' : healthResult.health === 'healthy' ? 'running'
+        : healthResult.health === 'unhealthy' ? 'unhealthy' : 'unknown',
+      health: healthResult.health,
+      healthStatus: healthResult.healthStatus,
+      healthPayload: healthResult.healthPayload,
       apiError: serviceApiError,
       apiConfigured: Boolean(token && service.id),
       updatedAt: details?.updatedAt || null,
       canSuspend: service.canSuspend,
-      allowedActions: service.allowedActions
+      allowedActions: suspended ? [] : service.allowedActions
     };
   }));
   const serviceMap = Object.fromEntries(results.map(service => [service.key, service]));
   const apiError = results.find(service => service.apiError)?.apiError || null;
-  return { apiConfigured: results.every(service => service.apiConfigured), apiError, services: serviceMap };
+  return { apiConfigured: results.some(service => service.apiConfigured), apiError, services: serviceMap };
 }
 
 async function updateActionAudit(client, auditId, details) {
@@ -208,7 +204,7 @@ export async function executeRenderServiceAction(db, input = {}, {
       await updateActionAudit(client, auditId, {
         result: 'failed',
         errorCode: safeErrorCode(error),
-        httpStatus: /^RENDER_API_HTTP_\d+$/.test(String(error?.message || '')) ? Number(String(error.message).split('_').at(-1)) : null
+        httpStatus: /^RENDER_API_HTTP_\\d+$/.test(String(error?.message || '')) ? Number(String(error.message).split('_').at(-1)) : null
       }).catch(() => {});
     }
     throw error;
