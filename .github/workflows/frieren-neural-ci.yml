@@ -13,6 +13,7 @@ on:
       - ".github/workflows/frieren-neural-active-gguf-eval.yml"
       - "frieren-neural/trigger-active-gguf-eval.txt"
       - "frieren-neural/frieren_neural/**"
+      - "frieren-neural/migrations/**"
       - "frieren-neural/benchmarks/**"
       - "frieren-neural/tests/**"
       - "frieren-neural/pyproject.toml"
@@ -21,6 +22,7 @@ on:
   pull_request:
     paths:
       - "frieren-neural/frieren_neural/**"
+      - "frieren-neural/migrations/**"
       - "frieren-neural/benchmarks/**"
       - "frieren-neural/tests/**"
       - "frieren-neural/pyproject.toml"
@@ -35,6 +37,23 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: neural_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d neural_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      FRIEREN_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/neural_test
+      FRIEREN_API_TOKEN: ci-neural-test-token-with-more-than-32-characters
     defaults:
       run:
         working-directory: frieren-neural

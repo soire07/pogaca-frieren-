@@ -586,3 +586,75 @@ def test_learning_scope_hash_is_pseudonymous_and_separates_users_and_guilds(monk
     assert user_a != other_user
     assert "12345678901234567" not in guild_a
     assert "22345678901234567" not in user_a
+
+
+
+def test_learning_signal_postgres_migration_deduplication_retention_and_aggregation(monkeypatch):
+    import os
+    from pathlib import Path
+    import psycopg
+    import frieren_neural.api as api
+
+    database_url = os.environ.get("FRIEREN_DATABASE_URL")
+    if not database_url:
+        import pytest
+        pytest.skip("FRIEREN_DATABASE_URL is only configured in the isolated PostgreSQL CI job.")
+
+    migration = Path(__file__).parents[1] / "migrations" / "002_learning_signals.sql"
+    sql = migration.read_text(encoding="utf-8")
+    with psycopg.connect(database_url) as connection:
+        connection.execute("DROP TABLE IF EXISTS neural_learning_signals")
+        connection.execute(sql)
+        connection.execute(sql)  # The migration must be safe to reapply.
+        connection.execute("TRUNCATE neural_learning_signals")
+
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "ci-neural-test-token-with-more-than-32-characters")
+    first_user = api.LearningSignalsRequest(
+        guild_id="55555555555555555",
+        user_id="66666666666666666",
+        signals=[
+            api.LearningSignal(signal_type="correction", dimension="correctness"),
+            api.LearningSignal(signal_type="uncertainty", dimension="grounding"),
+        ],
+    )
+    second_user = api.LearningSignalsRequest(
+        guild_id="55555555555555555",
+        user_id="77777777777777777",
+        signals=[api.LearningSignal(signal_type="correction", dimension="correctness")],
+    )
+
+    assert api._store_learning_signals(first_user) == 2
+    assert api._store_learning_signals(first_user) == 0  # One-hour per-user/type cooldown.
+    assert api._store_learning_signals(second_user) == 1  # User scopes must not collide.
+
+    insights = api._learning_insights()
+    assert insights == [
+        {"dimension": "correctness", "signal_type": "correction", "occurrences": 2},
+        {"dimension": "grounding", "signal_type": "uncertainty", "occurrences": 1},
+    ]
+
+    with psycopg.connect(database_url) as connection:
+        stored = connection.execute(
+            "SELECT guild_scope_hash, user_scope_hash FROM neural_learning_signals"
+        ).fetchall()
+        assert len(stored) == 3
+        serialized = repr(stored)
+        assert "55555555555555555" not in serialized
+        assert "66666666666666666" not in serialized
+        assert "77777777777777777" not in serialized
+        connection.execute(
+            "UPDATE neural_learning_signals SET created_at = now() - interval '31 days'"
+        )
+
+    third_user = api.LearningSignalsRequest(
+        guild_id="55555555555555555",
+        user_id="88888888888888888",
+        signals=[api.LearningSignal(signal_type="repeated_question", dimension="conversation_consistency")],
+    )
+    assert api._store_learning_signals(third_user) == 1
+    with psycopg.connect(database_url) as connection:
+        remaining = connection.execute("SELECT count(*) FROM neural_learning_signals").fetchone()[0]
+    assert remaining == 1
+    assert api._learning_insights() == [
+        {"dimension": "conversation_consistency", "signal_type": "repeated_question", "occurrences": 1}
+    ]
