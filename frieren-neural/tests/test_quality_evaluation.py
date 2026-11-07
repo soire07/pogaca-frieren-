@@ -57,7 +57,7 @@ def test_report_applies_quality_gate_to_human_scores():
         outputs=[{"id": f"TR-{number:03d}", "output": "örnek yanıt"} for number in range(1, 25)],
         scores=scores,
         source_commit_sha="e" * 40,
-        training_provenance={"manifest_sha256":"d"*64,"sources":["Pinned CC BY 4.0 Turkish dialogue corpus"],"licenses":["CC BY 4.0"]},
+        training_provenance={"manifest_sha256":"d", "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64*64,"sources":["Pinned CC BY 4.0 Turkish dialogue corpus"],"licenses":["CC BY 4.0"]},
         checkpoint_metadata={
             "format_version": 2,
             "dialogue_encoding_version": 2,
@@ -82,7 +82,7 @@ def test_report_applies_quality_gate_to_human_scores():
             "checkpoint_sha256": "0" * 64,
             "checkpoint_metadata": {"format_version": 2, "loss_objective_version": 2},
             "source_commit_sha": "f" * 40,
-            "training_provenance": {"manifest_sha256": "d" * 64, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"]},
+            "training_provenance": {"manifest_sha256": "d", "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64 * 64, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"]},
             "heldout_metrics": {
                 "loss": 1.5, "perplexity": 4.48, "dataset_sha256": "e" * 64,
                 "sample_count": 120, "split": "heldout", "evaluation_version": "frieren-neural-heldout-v1",
@@ -201,7 +201,7 @@ def test_report_blocks_mismatched_heldout_objective():
             "training_config": {"max_steps": 100}, "tokenizer_type": "byte_bpe",
             "tokenizer_vocab_size": 280,
         },
-        training_provenance={"manifest_sha256": "f" * 64, "sources": ["Pinned CC BY 4.0 Turkish dialogue corpus"], "licenses": ["CC BY 4.0"]},
+        training_provenance={"manifest_sha256": "f", "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64 * 64, "sources": ["Pinned CC BY 4.0 Turkish dialogue corpus"], "licenses": ["CC BY 4.0"]},
         heldout_metrics={
             "loss": 2.0, "perplexity": 7.39, "dataset_sha256": "e" * 64, "sample_count": 24, "split": "heldout", "evaluation_version": "frieren-neural-heldout-v1",
             "loss_objective_version": 1,
@@ -216,7 +216,7 @@ def test_report_blocks_mismatched_heldout_objective():
             "checkpoint_sha256": "0" * 64,
             "checkpoint_metadata": {"format_version": 2, "loss_objective_version": 2},
             "source_commit_sha": "f" * 40,
-            "training_provenance": {"manifest_sha256": "d" * 64, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"]},
+            "training_provenance": {"manifest_sha256": "d", "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64 * 64, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"]},
             "heldout_metrics": {
                 "loss": 1.5, "perplexity": 4.48, "dataset_sha256": "e" * 64,
                 "sample_count": 120, "split": "heldout", "evaluation_version": "frieren-neural-heldout-v1",
@@ -343,7 +343,7 @@ def test_ufakzeka_report_requires_review_provenance_and_heldout_evidence(monkeyp
         model_backend="ufakzeka",
         artifact_sha256=artifact_sha,
         source_commit_sha="d" * 40,
-        training_provenance={"manifest_sha256": "f" * 64, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"]},
+        training_provenance={"manifest_sha256": "f", "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64 * 64, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"]},
         heldout_metrics={
             "loss": 1.2,
             "perplexity": 3.32,
@@ -415,7 +415,7 @@ def test_first_scratch_candidate_can_establish_baseline_after_all_absolute_gates
         scores=scores,
         source_commit_sha="e" * 40,
         training_provenance={
-            "manifest_sha256": "d" * 64,
+            "manifest_sha256": "d", "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64 * 64,
             "sources": ["Pinned CC BY 4.0 Turkish dialogue corpus"],
             "licenses": ["CC BY 4.0"],
         },

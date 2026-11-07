@@ -14,7 +14,7 @@ import urllib.request
 from urllib.parse import urlparse
 import torch
 from .chat_format import format_benchmark_prompt
-from .training import LOSS_OBJECTIVE_VERSION, generate_text, load_checkpoint
+from .training import LOSS_OBJECTIVE_VERSION, generate_text, load_checkpoint, load_corpus_manifest_metadata
 
 PROMPT_SET_VERSION = "tr-conversation-v1"
 ALLOWED_TRAINING_LICENSES = {"APACHE-2.0", "MIT", "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0"}
@@ -31,6 +31,23 @@ def _has_allowed_training_licenses(value: object) -> bool:
 def _has_training_sources(value: object) -> bool:
     return isinstance(value, list) and bool(value) and all(
         isinstance(source, str) and source.strip() for source in value
+    )
+
+
+def _has_pinned_training_provenance(value: object) -> bool:
+    return (
+        isinstance(value, dict)
+        and isinstance(value.get("manifest_sha256"), str)
+        and re.fullmatch(r"[a-f0-9]{64}", value.get("manifest_sha256", "")) is not None
+        and isinstance(value.get("dataset_id"), str) and bool(value["dataset_id"].strip())
+        and isinstance(value.get("dataset_revision"), str)
+        and re.fullmatch(r"[a-f0-9]{40}", value.get("dataset_revision", "")) is not None
+        and isinstance(value.get("source_fingerprint_sha256"), str)
+        and re.fullmatch(r"[a-f0-9]{64}", value.get("source_fingerprint_sha256", "")) is not None
+        and isinstance(value.get("processed_sha256"), str)
+        and re.fullmatch(r"[a-f0-9]{64}", value.get("processed_sha256", "")) is not None
+        and _has_allowed_training_licenses(value.get("licenses"))
+        and _has_training_sources(value.get("sources"))
     )
 DECODING_SETTINGS = {"seed": 20261101, "temperature": 0.7, "top_k": 40, "max_new_tokens": 80}
 DIMENSIONS = ("correctness", "instruction_adherence", "turkish_quality", "grounding", "safety_privacy", "conversation_consistency")
@@ -206,11 +223,7 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
                     or checkpoint_metadata.get("dialogue_encoding_version") != 2
                     or checkpoint_metadata.get("loss_objective_version") not in (0, LOSS_OBJECTIVE_VERSION)):
                 reasons.append("checkpoint_metadata_incomplete")
-        if (not isinstance(training_provenance, dict)
-                or not isinstance(training_provenance.get("manifest_sha256"), str)
-                or not re.fullmatch(r"[a-f0-9]{64}", training_provenance.get("manifest_sha256", ""))
-                or not _has_allowed_training_licenses(training_provenance.get("licenses"))
-                or not _has_training_sources(training_provenance.get("sources"))):
+        if not _has_pinned_training_provenance(training_provenance):
             reasons.append("training_provenance_missing")
         if (not isinstance(source_commit_sha, str) or len(source_commit_sha) != 40
                 or any(character not in "0123456789abcdefABCDEF" for character in source_commit_sha)):
@@ -297,13 +310,7 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
             and math.isfinite(baseline_overall)
             and 0 <= baseline_overall <= 4
         )
-        baseline_provenance_valid = (
-            isinstance(baseline_provenance, dict)
-            and isinstance(baseline_provenance.get("manifest_sha256"), str)
-            and re.fullmatch(r"[a-f0-9]{64}", baseline_provenance.get("manifest_sha256", "")) is not None
-            and _has_allowed_training_licenses(baseline_provenance.get("licenses"))
-            and _has_training_sources(baseline_provenance.get("sources"))
-        )
+        baseline_provenance_valid = _has_pinned_training_provenance(baseline_provenance)
         candidate_objective_version = checkpoint_metadata.get("loss_objective_version") if isinstance(checkpoint_metadata, dict) else None
         baseline_objective_version = baseline_checkpoint_metadata.get("loss_objective_version") if isinstance(baseline_checkpoint_metadata, dict) else None
         baseline_objective_valid = (
@@ -392,6 +399,9 @@ def render_markdown(report:dict[str,Any])->str:
       f"- Prompt set: {report['prompt_set_version']}",f"- Backend: {report.get('model_backend', 'scratch')}",
       f"- Checkpoint / artifact SHA-256: {report['checkpoint_sha256']}",
       f"- Source commit: {report.get('source_commit_sha') or 'missing'}",
+      f"- Training dataset: {report.get('training_provenance', {}).get('dataset_id', 'missing')} @ {report.get('training_provenance', {}).get('dataset_revision', 'missing')}",
+      f"- Training source SHA-256: {report.get('training_provenance', {}).get('source_fingerprint_sha256', 'missing')}",
+      f"- Processed corpus SHA-256: {report.get('training_provenance', {}).get('processed_sha256', 'missing')}",
       f"- Checkpoint step: {report['checkpoint_step']}",f"- Baseline role: **{report.get('baseline_role', 'candidate')}**",f"- Human review completed: **{report['human_review']['completed']}**",
       f"- Distinct reviewer identity hashes: **{'verified' if distinct_reviewers_verified else 'missing'}**"]
     pretrained = report.get("pretrained_provenance") or {}
@@ -555,7 +565,16 @@ def main()->None:
             raise ValueError("Training manifest must use schema_version 1 and contain documents.")
         if any(not isinstance(item,dict) or not all(isinstance(item.get(key),str) and item[key].strip() for key in ("source","license","usage")) for item in documents):
             raise ValueError("Every training manifest document must declare source, license, and usage.")
-        provenance={"manifest_sha256":hashlib.sha256(raw).hexdigest(),"sources":sorted({item["source"] for item in documents}),"licenses":sorted({item["license"] for item in documents})}
+        manifest_metadata = load_corpus_manifest_metadata(Path(args.training_manifest).parent, required_split="train")
+        provenance = {
+            "manifest_sha256": manifest_metadata["dataset_sha256"],
+            "sources": sorted({item["source"] for item in documents}),
+            "licenses": sorted({item["license"] for item in documents}),
+            "dataset_id": manifest_metadata["dataset_id"],
+            "dataset_revision": manifest_metadata["dataset_revision"],
+            "source_fingerprint_sha256": manifest_metadata["source_fingerprint_sha256"],
+            "processed_sha256": manifest_metadata["processed_sha256"],
+        }
     heldout=json.loads(Path(args.heldout_report).read_text(encoding="utf-8")) if args.heldout_report else None
     report=build_report(checkpoint_sha256=checkpoint_sha,checkpoint_step=step,outputs=outputs,scores=scores,baseline_report=baseline,checkpoint_metadata=checkpoint_metadata,training_provenance=provenance,heldout_metrics=heldout,model_backend=backend,artifact_sha256=artifact_sha,source_commit_sha=args.source_commit or os.environ.get("GITHUB_SHA"),establish_baseline=args.establish_baseline)
     out=Path(args.output_dir)
