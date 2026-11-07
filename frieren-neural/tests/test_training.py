@@ -465,6 +465,13 @@ def test_warm_start_candidate_uses_parent_weights_without_overwriting_parent(tmp
     assert report["baseline"]["checkpoint_sha256"] == baseline_sha
     assert report["promotion"]["automatic_promotion"] is False
     assert report["promotion"]["human_review_required"] is True
+    baseline_review = tmp_path / "candidates" / "baseline-quality" / "quality-report.json"
+    assert baseline_review.is_file()
+    candidate_review = Path(report["trials"][0]["quality_report"])
+    assert candidate_review.is_file()
+    assert "human_review_missing" in __import__("json").loads(
+        candidate_review.read_text(encoding="utf-8")
+    )["blocking_reasons"]
     candidate = tmp_path / "candidates" / "candidate-01-lr-1.pt"
     assert candidate.is_file()
     _, _, metadata = load_checkpoint(candidate, device="cpu")
