@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto';
 
 const MAX_LEARNED_FACT_LENGTH = 300;
-const SENSITIVE_INFORMATION = /(password|passcode|parola|şifre|sifre|token|api[\\s_-]*key|secret|iban|credit[\\s_-]*card|kredi[\\s_-]*kart|adresim|ev adres|telefon numara|tc kimlik|hastal|ilaç|ilac|oyum|partim|dinim|cinsel|sexual|political affiliation)/iu;
+const SENSITIVE_INFORMATION = /(password|passcode|parola|şifre|sifre|token|api[\s_-]*key|secret|iban|credit[\s_-]*card|kredi[\s_-]*kart|adresim|ev adres|telefon numara|tc kimlik|hastal|ilaç|ilac|oyum|partim|dinim|cinsel|sexual|political affiliation)/iu;
 
 function clean(value) {
-  return String(value ?? '').replace(/\\s+/g, ' ').trim();
+  return String(value ?? '').replace(/\s+/g, ' ').trim();
 }
 
 function normalizeFact(value) {
@@ -25,7 +25,7 @@ export function parseFrierenLearningCommand(message) {
     return { action: 'clear' };
   }
 
-  const save = text.match(/^(?:bunu|şunu)\\s+(?:hatırla|öğren)(?:\\s*[:：]\\s*|\\s+)(.+)$/iu);
+  const save = text.match(/^(?:bunu|şunu)\s+(?:hatırla|öğren)(?:\s*[:：]\s*|\s+)(.+)$/iu);
   if (save) {
     const fact = clean(save[1]);
     if (fact.length < 8 || fact.length > MAX_LEARNED_FACT_LENGTH) return { action: 'rejected', reason: 'length' };
@@ -33,7 +33,7 @@ export function parseFrierenLearningCommand(message) {
     return { action: 'save', fact };
   }
 
-  const forget = text.match(/^(?:bunu|şunu)\\s+unut(?:\\s*[:：]\\s*|\\s+)(.+)$/iu);
+  const forget = text.match(/^(?:bunu|şunu)\s+unut(?:\s*[:：]\s*|\s+)(.+)$/iu);
   if (forget) {
     const fact = clean(forget[1]);
     if (fact.length < 8 || fact.length > MAX_LEARNED_FACT_LENGTH) return { action: 'rejected', reason: 'length' };
