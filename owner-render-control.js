@@ -153,11 +153,11 @@ export async function executeRenderServiceAction(db, input = {}, {
   const action = String(input.action || '');
   const service = services[serviceKey];
   if (!service || !service.allowedActions.includes(action)) throw new Error('RENDER_ACTION_NOT_ALLOWED');
-  if (!service.id) throw new Error('RENDER_SERVICE_NOT_CONFIGURED');
   if (!(input.confirm === true || input.confirm === 'yes')) throw new Error('RENDER_ACTION_CONFIRM_REQUIRED');
   const reason = String(input.reason || '').trim();
   const actorId = String(input.actorId || OWNER).trim();
   if (!SNOWFLAKE.test(actorId) || reason.length < 3 || reason.length > 200) throw new Error('INVALID_RENDER_ACTION');
+  if (!service.id) throw new Error('RENDER_SERVICE_NOT_CONFIGURED');
   const token = getServiceApiToken(serviceKey, apiKey);
   if (!token) throw new Error('RENDER_API_NOT_CONFIGURED');
 
