@@ -34,6 +34,23 @@ def _has_training_sources(value: object) -> bool:
     )
 
 
+def _checkpoint_training_data_matches(checkpoint_metadata: object, provenance: object) -> bool:
+    if not isinstance(checkpoint_metadata, dict) or not isinstance(provenance, dict):
+        return False
+    dataset = checkpoint_metadata.get("training_dataset")
+    if not isinstance(dataset, dict):
+        return False
+    expected = {
+        "dataset_sha256": provenance.get("manifest_sha256"),
+        "dataset_id": provenance.get("dataset_id"),
+        "dataset_revision": provenance.get("dataset_revision"),
+        "source_fingerprint_sha256": provenance.get("source_fingerprint_sha256"),
+        "processed_sha256": provenance.get("processed_sha256"),
+        "split": "train",
+    }
+    return all(dataset.get(key) == value for key, value in expected.items())
+
+
 def _has_pinned_training_provenance(value: object) -> bool:
     return (
         isinstance(value, dict)
@@ -225,6 +242,8 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
                 reasons.append("checkpoint_metadata_incomplete")
         if not _has_pinned_training_provenance(training_provenance):
             reasons.append("training_provenance_missing")
+        elif not _checkpoint_training_data_matches(checkpoint_metadata, training_provenance):
+            reasons.append("checkpoint_training_data_mismatch")
         if (not isinstance(source_commit_sha, str) or len(source_commit_sha) != 40
                 or any(character not in "0123456789abcdefABCDEF" for character in source_commit_sha)):
             reasons.append("source_commit_missing_or_invalid")
@@ -310,7 +329,10 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
             and math.isfinite(baseline_overall)
             and 0 <= baseline_overall <= 4
         )
-        baseline_provenance_valid = _has_pinned_training_provenance(baseline_provenance)
+        baseline_provenance_valid = (
+            _has_pinned_training_provenance(baseline_provenance)
+            and _checkpoint_training_data_matches(baseline_checkpoint_metadata, baseline_provenance)
+        )
         candidate_objective_version = checkpoint_metadata.get("loss_objective_version") if isinstance(checkpoint_metadata, dict) else None
         baseline_objective_version = baseline_checkpoint_metadata.get("loss_objective_version") if isinstance(baseline_checkpoint_metadata, dict) else None
         baseline_objective_valid = (
@@ -399,9 +421,9 @@ def render_markdown(report:dict[str,Any])->str:
       f"- Prompt set: {report['prompt_set_version']}",f"- Backend: {report.get('model_backend', 'scratch')}",
       f"- Checkpoint / artifact SHA-256: {report['checkpoint_sha256']}",
       f"- Source commit: {report.get('source_commit_sha') or 'missing'}",
-      f"- Training dataset: {report.get('training_provenance', {}).get('dataset_id', 'missing')} @ {report.get('training_provenance', {}).get('dataset_revision', 'missing')}",
-      f"- Training source SHA-256: {report.get('training_provenance', {}).get('source_fingerprint_sha256', 'missing')}",
-      f"- Processed corpus SHA-256: {report.get('training_provenance', {}).get('processed_sha256', 'missing')}",
+      f"- Training dataset: {(report.get('training_provenance') or {}).get('dataset_id', 'missing')} @ {(report.get('training_provenance') or {}).get('dataset_revision', 'missing')}",
+      f"- Training source SHA-256: {(report.get('training_provenance') or {}).get('source_fingerprint_sha256', 'missing')}",
+      f"- Processed corpus SHA-256: {(report.get('training_provenance') or {}).get('processed_sha256', 'missing')}",
       f"- Checkpoint step: {report['checkpoint_step']}",f"- Baseline role: **{report.get('baseline_role', 'candidate')}**",f"- Human review completed: **{report['human_review']['completed']}**",
       f"- Distinct reviewer identity hashes: **{'verified' if distinct_reviewers_verified else 'missing'}**"]
     pretrained = report.get("pretrained_provenance") or {}
