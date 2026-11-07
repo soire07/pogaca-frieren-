@@ -576,7 +576,7 @@ def test_heldout_manifest_metadata_is_pinned_and_split_scoped(tmp_path: Path):
             "license": "CC0-1.0",
             "split": "heldout",
             "dialogues": 12,
-            "row_ids_sha256": "b" * 64,
+            "source_sha256": "b" * 64,
         },
         "documents": [],
     }
@@ -585,6 +585,7 @@ def test_heldout_manifest_metadata_is_pinned_and_split_scoped(tmp_path: Path):
     assert metadata["split"] == "heldout"
     assert metadata["sample_count"] == 12
     assert metadata["dataset_revision"] == "a" * 40
+    assert metadata["source_fingerprint_sha256"] == "b" * 64
     assert len(metadata["dataset_sha256"]) == 64
     assert metadata["evaluation_version"] == "frieren-neural-heldout-v1"
 
