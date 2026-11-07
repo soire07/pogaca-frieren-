@@ -155,7 +155,6 @@ test('high-severity incidents are reviewed but repair dispatch waits for explici
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
     incident,
     env: {
-      FRIEREN_AI_PUBLIC_URL: 'https://pogaca-frieren-kltd.onrender.com',
       FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.test',
       FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
       FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
