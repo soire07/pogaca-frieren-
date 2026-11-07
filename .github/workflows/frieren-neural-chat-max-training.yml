@@ -52,7 +52,7 @@ jobs:
                   if not token_ids or len(token_ids) != len(loss_mask) or not any(loss_mask):
                       raise ValueError("empty token stream or assistant loss mask")
               except Exception as error:
-                  separator = "\\n\\n---\\n\\n"
+                  separator = "\n\n---\n\n"
                   for index, dialogue in enumerate(text.split(separator)):
                       try:
                           encode_dialogue_stream_with_loss_mask(dialogue, tokenizer)
@@ -193,7 +193,7 @@ jobs:
           assert metadata["step"] == 24000, metadata
           assert metadata["loss_objective_version"] == 2, metadata
           assert math.isfinite(metadata["train_loss"]) and math.isfinite(metadata["validation_loss"])
-          sample = generate_text(model, tokenizer, "Kullanıcı: Merhaba.\\nAsistan:", max_new_tokens=64, top_k=20)
+          sample = generate_text(model, tokenizer, "Kullanıcı: Merhaba.\nAsistan:", max_new_tokens=64, top_k=20)
           print(json.dumps({"checkpoint": "loadable", "metadata": metadata, "sample": sample}, ensure_ascii=False, indent=2))
           PY
       - name: Evaluate on the separate deterministic held-out split
