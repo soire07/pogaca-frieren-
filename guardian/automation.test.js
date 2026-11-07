@@ -168,7 +168,7 @@ test('high-severity incidents are reviewed but repair dispatch waits for explici
   assert.equal(result.status, 'proposal_ready');
   assert.equal(result.approvalRequired, true);
   assert.equal(requests.length, 1);
-  assert.equal(requests[0].url, 'https://pogaca-frieren-kltd.onrender.com/internal/guardian-review');
+  assert.equal(requests[0].url, 'https://frieren-ai.test/internal/guardian-review');
   assert.ok(calls.some(([name]) => name === 'finishReview'));
   assert.equal(calls.some(([name]) => name === 'reserve'), false);
 });
