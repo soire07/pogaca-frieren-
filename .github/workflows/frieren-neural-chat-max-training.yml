@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - test/frieren-neural-render-free
+      - feat/neural-single-core-integration-20261107
     paths:
       - frieren-neural/.training-request
 
