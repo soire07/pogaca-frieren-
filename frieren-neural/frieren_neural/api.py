@@ -285,13 +285,11 @@ def _guardian_safe_path(value: object) -> bool:
 def _guardian_text(value: object, limit: int) -> str:
     if not isinstance(value, str):
         return ""
-    return value.replace("\\x00", "").strip()[:limit]
+    return value.replace("\x00", "").strip()[:limit]
 
 
 def _parse_guardian_review(raw: str, allowed_files: set[str]) -> dict[str, object]:
     value = raw.strip()
-    value = re.sub(r"^\\s*```(?:json)?\\s*", "", value, flags=re.IGNORECASE)
-    value = re.sub(r"\\s*```\\s*$", "", value)
     start, end = value.find("{"), value.rfind("}")
     if start < 0 or end <= start:
         raise ValueError("GUARDIAN_REVIEW_INVALID_JSON")
@@ -316,7 +314,7 @@ def _parse_guardian_review(raw: str, allowed_files: set[str]) -> dict[str, objec
         return [text for item in items[:limit] if (text := _guardian_text(item, 300))]
 
     patch = _guardian_text(parsed.get("proposedPatch"), 10_000)
-    headers = re.findall(r"^diff --git a/([^\\s]+) b/([^\\s]+)$", patch, flags=re.MULTILINE)
+    headers = re.findall(r"^diff --git a/([^\s]+) b/([^\s]+)$", patch, flags=re.MULTILINE)
     patch_files = [left for left, right in headers if left == right]
     patch_valid = (
         bool(patch)
@@ -329,8 +327,6 @@ def _parse_guardian_review(raw: str, allowed_files: set[str]) -> dict[str, objec
     tests = safe_list(parsed.get("tests"), 10)
     if not patch_valid or not tests:
         patch = ""
-        if not patch_valid:
-            affected = [path for path in affected if path in allowed_files]
 
     return {
         "status": "proposal_only",
