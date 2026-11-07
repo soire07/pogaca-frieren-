@@ -338,3 +338,10 @@ Neural HMAC-pseudonymizes guild and user scopes with its API token before storag
 Before enabling this feature, configure FRIEREN_DATABASE_URL to a dedicated Neural/test PostgreSQL database (never Poğaça's production DATABASE_URL) and apply migrations/002_learning_signals.sql there. The migration is deliberately not auto-applied to production. Until it is applied, signal storage returns a safe 503 and the Discord reply remains unaffected.
 
 These signals are learning priorities, not training examples. They do not mutate model weights, create facts, change source code, or deploy anything. They can inform the existing quality-gated curriculum only after independently verified sources, held-out evaluation, and required human review. The 24,000-step candidate remains NOT READY until the two-reviewer quality gate is completed.
+
+
+## Curated knowledge candidates
+
+The API exposes authenticated `/learning/knowledge/candidates`, candidate review, and `/learning/knowledge/search` endpoints. A candidate must contain a public HTTPS source, a supported permissive license (Apache-2.0, MIT, CC0-1.0, CC-BY-4.0, or CC-BY-SA-4.0), a source excerpt, a short knowledge summary, and source/content SHA-256 fingerprints. Private messages, emails, Discord IDs, tokens, and password-like material are rejected. Sources are not fetched by the API, so these endpoints do not create an SSRF path.
+
+A candidate stays pending until two distinct reviewer tokens approve it; a rejection blocks promotion. Only promoted entries are searchable. Raw reviewer tokens are never stored; only domain-separated SHA-256 hashes are stored. Distinct tokens are pseudonymous evidence, not cryptographic proof of two real-world people, so the two reviewers must be operationally independent. Verified knowledge is not injected into generation or used for training automatically: it remains a curated store until model quality and a separate training-data review approve that next step.

@@ -52,7 +52,8 @@ test('Neural workspace exposes an authenticated test form and safely renders its
     chatSettings: { enabled: true, style: 'warm', responseLength: 'balanced', loreFocus: true },
     csrf: 'csrf-token',
     notice: 'test_saved',
-    testRuns: { rows: [{ id: 2, target: '<script>alert(1)</script>', status: 'FAIL', summary: { total: 4, pass: 3, fail: 1 }, details: { testFiles: [], failedStages: [] }, created_at: '2026-11-01T00:00:00Z' }] }
+    testRuns: { rows: [{ id: 2, target: '<script>alert(1)</script>', status: 'FAIL', summary: { total: 4, pass: 3, fail: 1 }, details: { testFiles: [], failedStages: [] }, created_at: '2026-11-01T00:00:00Z' }] },
+    knowledgeCandidates: { status: 'ready', candidates: [{ candidate_id: '123e4567-e89b-12d3-a456-426614174000', title: 'Python tuple semantics', source_title: 'Python reference', source_url: 'https://docs.python.org/3/', license: 'CC-BY-4.0', source_sha256: 'a'.repeat(64), status: 'pending_review', approval_count: 1 }] }
   });
   assert.match(html, /neural-test-run/);
   assert.match(html, /csrf-token/);
@@ -62,6 +63,11 @@ test('Neural workspace exposes an authenticated test form and safely renders its
   assert.match(html, /Test sonucu kaydedildi/);
   assert.match(html, /&lt;script&gt;/);
   assert.doesNotMatch(html, /<script>/);
+  assert.match(html, /neural-knowledge-submit/);
+  assert.match(html, /neural-knowledge-review/);
+  assert.match(html, /reviewerToken/);
+  assert.match(html, /1\/2 onay/);
+  assert.match(html, /özel Discord mesajları/);
 });
 
 

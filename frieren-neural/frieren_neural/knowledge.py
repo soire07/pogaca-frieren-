@@ -142,7 +142,7 @@ def list_knowledge_candidates(*, status: str | None = None, limit: int = 50) -> 
                       count(r.reviewer_identity_hash) FILTER (WHERE r.decision = 'approve') AS approvals
                FROM neural_knowledge_candidates c
                LEFT JOIN neural_knowledge_reviews r ON r.candidate_id = c.candidate_id
-               WHERE (%s IS NULL OR c.status = %s)
+               WHERE (%s::text IS NULL OR c.status = %s)
                GROUP BY c.candidate_id
                ORDER BY c.created_at DESC
                LIMIT %s""",
@@ -196,7 +196,10 @@ def review_knowledge_candidate(candidate_id: str, *, decision: str, reviewer_tok
                     (parsed_id,),
                 )
                 status = "rejected"
-                approvals = 0
+                approvals = connection.execute(
+                    "SELECT count(*) FROM neural_knowledge_reviews WHERE candidate_id=%s AND decision='approve'",
+                    (parsed_id,),
+                ).fetchone()[0]
             else:
                 reviewers = connection.execute(
                     """SELECT reviewer_identity_hash FROM neural_knowledge_reviews
@@ -211,7 +214,7 @@ def review_knowledge_candidate(candidate_id: str, *, decision: str, reviewer_tok
                            (candidate_id, title, content, source_title, source_url, source_revision,
                             license, source_sha256, content_sha256, approved_by_hashes)
                            SELECT candidate_id, title, content, source_title, source_url, source_revision,
-                                  license, source_sha256, content_sha256, %s
+                                  license, source_sha256, content_sha256, %s::char(64)[]
                            FROM neural_knowledge_candidates WHERE candidate_id=%s
                            ON CONFLICT (candidate_id) DO NOTHING""",
                         ([reviewers[0][0], reviewers[1][0]], parsed_id),

@@ -530,6 +530,74 @@ test('Owner targeted test scenarios use the Poğaça internal bridge, never the 
   }
 });
 
+test('Owner Panel submits curated knowledge with the Neural API token only', async () => {
+  const oldUrl = process.env.FRIEREN_NEURAL_API_URL;
+  const oldToken = process.env.FRIEREN_NEURAL_API_TOKEN;
+  const oldFetch = globalThis.fetch;
+  process.env.FRIEREN_NEURAL_API_URL = 'https://neural.example/generate';
+  process.env.FRIEREN_NEURAL_API_TOKEN = 'central-neural-api-token-with-more-than-32-characters';
+  let request;
+  globalThis.fetch = async (url, options) => {
+    request = { url: String(url), options };
+    return { ok: true, status: 200, json: async () => ({ status: 'pending_review' }) };
+  };
+  try {
+    const { response } = await runOwnerPost({
+      action: 'neural-knowledge-submit',
+      title: 'Python tuple semantics',
+      content: 'A tuple is an immutable sequence in Python and preserves insertion order.',
+      sourceTitle: 'Python language reference',
+      sourceExcerpt: 'The tuple type is an immutable sequence type that stores an ordered collection of objects.',
+      sourceUrl: 'https://docs.python.org/3/library/stdtypes.html#tuples',
+      sourceRevision: 'v3.14',
+      license: 'CC BY 4.0',
+      confirm: 'yes'
+    }, { query: async () => ({ rows: [{ id: 1 }], rowCount: 1 }) });
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.Location, '/owner/neural?notice=knowledge_candidate_submitted');
+    assert.equal(request.url, 'https://neural.example/learning/knowledge/candidates');
+    assert.equal(request.options.headers.Authorization, 'Bearer central-neural-api-token-with-more-than-32-characters');
+    assert.equal(JSON.parse(request.options.body).license, 'CC BY 4.0');
+  } finally {
+    if (oldUrl === undefined) delete process.env.FRIEREN_NEURAL_API_URL; else process.env.FRIEREN_NEURAL_API_URL = oldUrl;
+    if (oldToken === undefined) delete process.env.FRIEREN_NEURAL_API_TOKEN; else process.env.FRIEREN_NEURAL_API_TOKEN = oldToken;
+    globalThis.fetch = oldFetch;
+  }
+});
+
+test('Owner Panel reviews a candidate without storing or reusing the reviewer token', async () => {
+  const oldUrl = process.env.FRIEREN_NEURAL_API_URL;
+  const oldToken = process.env.FRIEREN_NEURAL_API_TOKEN;
+  const oldFetch = globalThis.fetch;
+  process.env.FRIEREN_NEURAL_API_URL = 'https://neural.example';
+  process.env.FRIEREN_NEURAL_API_TOKEN = 'central-neural-api-token-with-more-than-32-characters';
+  const reviewerToken = 'reviewer-private-token-12345678901234567890';
+  let request;
+  globalThis.fetch = async (url, options) => {
+    request = { url: String(url), options };
+    return { ok: true, status: 200, json: async () => ({ status: 'promoted', approval_count: 2 }) };
+  };
+  try {
+    const { response } = await runOwnerPost({
+      action: 'neural-knowledge-review',
+      candidateId: '123e4567-e89b-12d3-a456-426614174000',
+      decision: 'approve',
+      reviewerToken,
+      confirm: 'yes'
+    }, { query: async () => ({ rows: [], rowCount: 0 }) });
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.Location, '/owner/neural?notice=knowledge_candidate_promoted');
+    assert.equal(request.url, 'https://neural.example/learning/knowledge/candidates/123e4567-e89b-12d3-a456-426614174000/reviews');
+    assert.equal(request.options.headers.Authorization, 'Bearer central-neural-api-token-with-more-than-32-characters');
+    assert.equal(JSON.parse(request.options.body).reviewer_token, reviewerToken);
+  } finally {
+    if (oldUrl === undefined) delete process.env.FRIEREN_NEURAL_API_URL; else process.env.FRIEREN_NEURAL_API_URL = oldUrl;
+    if (oldToken === undefined) delete process.env.FRIEREN_NEURAL_API_TOKEN; else process.env.FRIEREN_NEURAL_API_TOKEN = oldToken;
+    globalThis.fetch = oldFetch;
+  }
+});
+
+
 test('owner maintenance action uses the atomic database operation and redirects on success', async () => {
   let query = '';
   const db = { query: async sql => { query = sql; return { rows: [], rowCount: 1 }; } };
