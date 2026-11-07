@@ -507,3 +507,22 @@ def test_training_tokenizer_fallback_requires_strictly_more_tokens_than_context(
     assert result["step"] == 1
     saved = torch.load(checkpoint, map_location="cpu", weights_only=True)
     assert saved["tokenizer"]["type"] == "byte_bpe"
+
+
+def test_resume_reuses_checkpoint_tokenizer_without_retraining(tmp_path: Path, monkeypatch):
+    from frieren_neural.tokenizer import BPETokenizer
+
+    corpus = ["Frieren studies magic. Fern studies spells. " * 20]
+    checkpoint = tmp_path / "reuse-tokenizer.pt"
+    config = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0, tokenizer_vocab_size=280,
+    )
+    train_model(corpus, checkpoint, config, device="cpu")
+
+    def unexpected_tokenizer_training(*_args, **_kwargs):
+        raise AssertionError("resume must reuse the checkpoint tokenizer")
+
+    monkeypatch.setattr(BPETokenizer, "train", unexpected_tokenizer_training)
+    resumed = train_model(corpus, checkpoint, replace(config, max_steps=2), resume=True, device="cpu")
+    assert resumed["step"] == 2
