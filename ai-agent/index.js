@@ -152,7 +152,6 @@ const healthServer = createServer(async (req, res) => {
       res.end(JSON.stringify({ error: 'agent_busy' }));
       return;
     }
-    guardianReviewInProgress = true;
     let raw = '';
     try {
       for await (const chunk of req) {
@@ -163,8 +162,29 @@ const healthServer = createServer(async (req, res) => {
           return;
         }
       }
-      const body = raw ? JSON.parse(raw) : {};
-      const incident = normalizeGuardianReviewIncident(body.incident);
+    } catch {
+      res.writeHead(400, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'request_body_invalid' }));
+      return;
+    }
+    let body;
+    try {
+      body = raw ? JSON.parse(raw) : {};
+    } catch {
+      res.writeHead(400, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'request_json_invalid' }));
+      return;
+    }
+    let incident;
+    try {
+      incident = normalizeGuardianReviewIncident(body.incident);
+    } catch {
+      res.writeHead(400, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'incident_invalid' }));
+      return;
+    }
+    guardianReviewInProgress = true;
+    try {
       const review = await reviewGuardianIncident({
         groq,
         model: resolveAiModel(process.env),
@@ -175,8 +195,11 @@ const healthServer = createServer(async (req, res) => {
       res.writeHead(200, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ ...review, reviewedAt: new Date().toISOString() }));
     } catch (error) {
-      res.writeHead(400, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ error: String(error?.message || 'guardian_review_failed').slice(0, 100) }));
+      // Provider, model, context collection and parsing failures are upstream failures,
+      // not malformed client requests. Keep the response generic and avoid leaking secrets.
+      console.error('Guardian review upstream failed:', String(error?.name || 'Error').slice(0, 40));
+      res.writeHead(502, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'guardian_review_upstream_failed' }));
     } finally {
       guardianReviewInProgress = false;
     }
