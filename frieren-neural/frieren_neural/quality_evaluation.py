@@ -241,33 +241,64 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
     if metrics["multi_turn_failures"]: reasons.append("multi_turn_consistency_failure")
     if baseline_report is None:
         reasons.append("baseline_comparison_missing")
-    elif (baseline_report.get("prompt_set_version") != PROMPT_SET_VERSION
-          or baseline_report.get("decoding_settings") != DECODING_SETTINGS
-          or not isinstance(baseline_report.get("metrics"),dict)
-          or baseline_report.get("human_review",{}).get("completed") is not True
-          or baseline_report.get("human_review",{}).get("reviewers_required") != 2
-          or not isinstance(baseline_report.get("human_review",{}).get("reviewer_identity_hashes"), list)
-          or len(baseline_report.get("human_review",{}).get("reviewer_identity_hashes", [])) != 2
-          or any(not isinstance(value, str) or not re.fullmatch(r"[a-f0-9]{64}", value)
-                 for value in baseline_report.get("human_review",{}).get("reviewer_identity_hashes", []))
-          or len(set(baseline_report.get("human_review",{}).get("reviewer_identity_hashes", []))) != 2
-          or baseline_report.get("review_template",{}).get("reviewers")
-             != baseline_report.get("human_review",{}).get("reviewer_identity_hashes")
-          or not isinstance(baseline_report.get("checkpoint_sha256"),str)
-          or not re.fullmatch(r"[a-f0-9]{64}", baseline_report.get("checkpoint_sha256", ""))
-          or baseline_report.get("checkpoint_sha256") == checkpoint_sha256):
-        reasons.append("baseline_not_comparable")
     else:
-        bm=baseline_report["metrics"]
-        bd=bm.get("dimension_averages",{})
-        improved=all(d in bd and metrics["dimension_averages"][d]>bd[d] for d in DIMENSIONS) and metrics["overall_average"]>bm.get("overall_average",float("inf"))
-        report["baseline_comparison"]={
-            "available":True,
-            "improved":improved,
-            "baseline_checkpoint_sha256":baseline_report.get("checkpoint_sha256"),
-            "baseline_reviewer_identity_hashes": baseline_report["human_review"]["reviewer_identity_hashes"],
-        }
-        if not improved: reasons.append("no_improvement_over_comparable_baseline")
+        baseline_review = baseline_report.get("human_review")
+        baseline_reviewers = baseline_review.get("reviewer_identity_hashes") if isinstance(baseline_review, dict) else None
+        baseline_template = baseline_report.get("review_template")
+        baseline_template_reviewers = baseline_template.get("reviewers") if isinstance(baseline_template, dict) else None
+        baseline_metrics = baseline_report.get("metrics")
+        baseline_dimensions = baseline_metrics.get("dimension_averages") if isinstance(baseline_metrics, dict) else None
+        baseline_overall = baseline_metrics.get("overall_average") if isinstance(baseline_metrics, dict) else None
+        baseline_checkpoint_sha = baseline_report.get("checkpoint_sha256")
+        baseline_review_valid = (
+            isinstance(baseline_review, dict)
+            and baseline_review.get("completed") is True
+            and baseline_review.get("reviewers_required") == 2
+            and isinstance(baseline_reviewers, list)
+            and len(baseline_reviewers) == 2
+            and all(isinstance(value, str) and re.fullmatch(r"[a-f0-9]{64}", value) for value in baseline_reviewers)
+            and baseline_reviewers[0] != baseline_reviewers[1]
+            and baseline_template_reviewers == baseline_reviewers
+        )
+        baseline_metrics_valid = (
+            isinstance(baseline_dimensions, dict)
+            and all(
+                isinstance(baseline_dimensions.get(dimension), (int, float))
+                and not isinstance(baseline_dimensions.get(dimension), bool)
+                and math.isfinite(baseline_dimensions[dimension])
+                and 0 <= baseline_dimensions[dimension] <= 4
+                for dimension in DIMENSIONS
+            )
+            and isinstance(baseline_overall, (int, float))
+            and not isinstance(baseline_overall, bool)
+            and math.isfinite(baseline_overall)
+        )
+        baseline_valid = (
+            baseline_report.get("decision") == "READY FOR STAGED TEST"
+            and baseline_report.get("blocking_reasons") == []
+            and baseline_report.get("prompt_set_version") == PROMPT_SET_VERSION
+            and baseline_report.get("decoding_settings") == DECODING_SETTINGS
+            and baseline_review_valid
+            and baseline_metrics_valid
+            and isinstance(baseline_checkpoint_sha, str)
+            and re.fullmatch(r"[a-f0-9]{64}", baseline_checkpoint_sha) is not None
+            and baseline_checkpoint_sha != checkpoint_sha256
+        )
+        if not baseline_valid:
+            reasons.append("baseline_not_comparable")
+        else:
+            improved = (
+                all(metrics["dimension_averages"][dimension] > baseline_dimensions[dimension] for dimension in DIMENSIONS)
+                and metrics["overall_average"] > baseline_overall
+            )
+            report["baseline_comparison"] = {
+                "available": True,
+                "improved": improved,
+                "baseline_checkpoint_sha256": baseline_checkpoint_sha,
+                "baseline_reviewer_identity_hashes": baseline_reviewers,
+            }
+            if not improved:
+                reasons.append("no_improvement_over_comparable_baseline")
     report["blocking_reasons"]=reasons
     if not reasons: report["decision"]="READY FOR STAGED TEST"
     return report
