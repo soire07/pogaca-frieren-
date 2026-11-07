@@ -52,3 +52,44 @@ def test_evolution_plan_holds_when_baseline_improvement_is_not_proven():
 def test_evolution_plan_rejects_invalid_threshold():
     with pytest.raises(ValueError, match="weak_threshold"):
         build_evolution_plan(_reviewed_report(), weak_threshold=5)
+
+
+def test_candidate_search_cli_loads_manifest_provenance_and_commit(tmp_path, monkeypatch):
+    import json
+    from frieren_neural import evolution
+    from frieren_neural import training
+
+    train_dir = tmp_path / "train"
+    heldout_dir = tmp_path / "heldout"
+    train_dir.mkdir()
+    heldout_dir.mkdir()
+    manifest = {
+        "schema_version": 1,
+        "documents": [{
+            "path": "dialogues.txt",
+            "source": "pinned dataset",
+            "license": "Apache-2.0",
+            "usage": "permitted supervised fine-tuning",
+        }],
+    }
+    raw = json.dumps(manifest).encode("utf-8")
+    (train_dir / "corpus_manifest.json").write_bytes(raw)
+    observed = {}
+
+    monkeypatch.setattr(training, "load_licensed_corpus", lambda _path: ["dialogue"])
+    monkeypatch.setattr(evolution, "run_candidate_search", lambda *args, **kwargs: observed.update(kwargs) or {"status": "test"})
+    monkeypatch.setenv("GITHUB_SHA", "a" * 40)
+    monkeypatch.setattr("sys.argv", [
+        "frieren-neural-evolve-search",
+        "--train-data", str(train_dir),
+        "--heldout-data", str(heldout_dir),
+        "--baseline-checkpoint", str(tmp_path / "baseline.pt"),
+        "--output-dir", str(tmp_path / "out"),
+    ])
+
+    evolution.search_main()
+
+    assert observed["training_provenance"]["manifest_sha256"] == __import__("hashlib").sha256(raw).hexdigest()
+    assert observed["training_provenance"]["licenses"] == ["Apache-2.0"]
+    assert observed["source_commit_sha"] == "a" * 40
+    assert observed["candidate_steps"] == 500
