@@ -25,7 +25,7 @@ test('Neural workspace does not claim readiness when a dependency is missing', (
   const html = renderOwnerWorkspace('ai', { neuralReadiness: { status: 'unavailable', reason: 'not_ready' } });
   assert.match(html, /Kontrol gerekli/);
   assert.match(html, /Model kimliği/);
-  assert.match(html, /Model kimliği/);
+  assert.doesNotMatch(html, /1564945192803639356/);
 });
 
 test('Poğaça workspace exposes scoped player controls while keeping unsupported edits disabled', () => {
@@ -54,7 +54,7 @@ test('Neural workspace exposes an authenticated test form and safely renders its
     notice: 'test_saved',
     testRuns: { rows: [{ id: 2, target: '<script>alert(1)</script>', status: 'FAIL', summary: { total: 4, pass: 3, fail: 1 }, details: { testFiles: [], failedStages: [] }, created_at: '2026-11-01T00:00:00Z' }] }
   });
-  assert.match(html, /ai-test-run/);
+  assert.match(html, /neural-test-run/);
   assert.match(html, /csrf-token/);
   assert.match(html, /Testleri çalıştır/);
   assert.match(html, /frieren-chat-settings/);

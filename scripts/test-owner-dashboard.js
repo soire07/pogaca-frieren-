@@ -452,6 +452,44 @@ test('owner action endpoint rejects invalid CSRF tokens without changing state',
   assert.equal(calls, 0);
 });
 
+
+test('Owner targeted test scenarios use the Poğaça internal bridge, never the Neural API token or old AI service', async () => {
+  const oldBridge = process.env.FRIEREN_BRIDGE_SECRET;
+  const oldLegacy = process.env.FRIEREN_AI_BRIDGE_SECRET;
+  const oldNeural = process.env.FRIEREN_NEURAL_API_TOKEN;
+  const oldBase = process.env.OWNER_DASHBOARD_BASE_URL;
+  const oldFetch = globalThis.fetch;
+  process.env.FRIEREN_BRIDGE_SECRET = 'owner-bridge-secret-at-least-thirty-two-characters';
+  process.env.FRIEREN_AI_BRIDGE_SECRET = 'legacy-ai-bridge-secret-at-least-thirty-two-characters';
+  process.env.FRIEREN_NEURAL_API_TOKEN = 'neural-api-token-at-least-thirty-two-characters';
+  process.env.OWNER_DASHBOARD_BASE_URL = 'https://pogaca.example.test';
+  let request = null;
+  globalThis.fetch = async (url, options) => {
+    request = { url: String(url), options };
+    return { ok: true, status: 200, json: async () => ({
+      applicable: true, code: 0, timedOut: false, stdout: 'PASS', stderr: '', note: ''
+    }) };
+  };
+  try {
+    const db = { query: async () => ({ rows: [{ id: 7 }], rowCount: 1 }) };
+    const { response } = await runOwnerPost({
+      action: 'neural-test-run', target: 'boss damage regression', confirm: 'yes', csrf: 'session'
+    }, db);
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.Location, '/owner/neural?notice=test_saved');
+    assert.equal(request.url, 'https://pogaca.example.test/internal/test-scenario');
+    assert.equal(request.options.headers.Authorization, 'Bearer owner-bridge-secret-at-least-thirty-two-characters');
+    assert.equal(request.options.headers.Authorization.includes('neural-api-token'), false);
+    assert.deepEqual(JSON.parse(request.options.body), { target: 'boss damage regression' });
+  } finally {
+    if (oldBridge === undefined) delete process.env.FRIEREN_BRIDGE_SECRET; else process.env.FRIEREN_BRIDGE_SECRET = oldBridge;
+    if (oldLegacy === undefined) delete process.env.FRIEREN_AI_BRIDGE_SECRET; else process.env.FRIEREN_AI_BRIDGE_SECRET = oldLegacy;
+    if (oldNeural === undefined) delete process.env.FRIEREN_NEURAL_API_TOKEN; else process.env.FRIEREN_NEURAL_API_TOKEN = oldNeural;
+    if (oldBase === undefined) delete process.env.OWNER_DASHBOARD_BASE_URL; else process.env.OWNER_DASHBOARD_BASE_URL = oldBase;
+    globalThis.fetch = oldFetch;
+  }
+});
+
 test('owner maintenance action uses the atomic database operation and redirects on success', async () => {
   let query = '';
   const db = { query: async sql => { query = sql; return { rows: [], rowCount: 1 }; } };

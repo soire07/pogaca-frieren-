@@ -1307,12 +1307,12 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         redirect(res, '/owner/neural?notice=chat_settings_saved');
         return true;
       }
-      if (action === 'ai-test-run' && form.get('confirm') === 'yes') {
+      if (action === 'neural-test-run' && form.get('confirm') === 'yes') {
         const target = String(form.get('target') || '').trim().slice(0, 4000);
         if (target && containsSensitiveInformation(target)) throw new Error('SENSITIVE_TEST_TARGET_REJECTED');
         const rawCommands = String(form.get('commands') || '');
         const commands = rawCommands.split(/[\x09-\x0d ,;]+/).map(value => value.trim()).filter(Boolean).slice(0, 80);
-        const secret = String(process.env.FRIEREN_NEURAL_API_TOKEN || '').trim();
+        const secret = String(process.env.FRIEREN_BRIDGE_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || '').trim();
         let response;
         if (target) {
           if (secret.length < 32) throw new Error('POGACA_TEST_BRIDGE_NOT_CONFIGURED');

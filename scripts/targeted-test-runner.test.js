@@ -30,3 +30,12 @@ test('ordinary targeted requests use the existing request matcher', () => {
   const plan = buildTargetedTestPlan('balıkçılık seviye ve olta geliştirme');
   assert.deepEqual(plan.testArgs, ['scripts/test-request.js', 'balıkçılık seviye ve olta geliştirme']);
 });
+
+
+test('targeted test runner rejects empty and oversized requests before spawning a process', async () => {
+  const { runTargetedTests } = await import('./targeted-test-runner.js');
+  let spawned = false;
+  await assert.rejects(runTargetedTests('   ', { spawnImpl: () => { spawned = true; } }), /INVALID_TARGETED_TEST_TARGET/);
+  await assert.rejects(runTargetedTests('x'.repeat(4001), { spawnImpl: () => { spawned = true; } }), /INVALID_TARGETED_TEST_TARGET/);
+  assert.equal(spawned, false);
+});
