@@ -301,7 +301,7 @@ def _guardian_text(value: object, limit: int) -> str:
         return ""
     text = value.replace("\x00", "").strip()
     text = re.sub(
-        r"\b(API_KEY|PRIVATE_KEY|ACCESS_KEY|DATABASE_URL|DSN|[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD))\s*[:=]\s*['\"]?[^\s,;'\"<>]+",
+        r"\b((?:[A-Z0-9_]+_)?(?:TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|PRIVATE_KEY|ACCESS_KEY|DATABASE_URL|DSN))\s*[:=]\s*['\"]?[^\s,;'\"<>]+",
         lambda match: match.group(1) + "=[REDACTED]",
         text,
         flags=re.IGNORECASE,
