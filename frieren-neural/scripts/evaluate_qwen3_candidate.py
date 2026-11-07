@@ -84,13 +84,20 @@ def main() -> None:
             temperature=0.2,
             top_p=0.8,
             seed=20261107,
-            chat_format_kwargs={"enable_thinking": False},
         )
         choices = result.get("choices") or []
         message = (choices[0].get("message") or {}) if choices else {}
         completion = message.get("content")
         if not isinstance(completion, str) or not completion.strip():
             raise RuntimeError(f"Empty completion for {item['id']}")
+        # llama-cpp-python 0.3.36 does not expose chat_format_kwargs.
+        # Qwen3 may emit a visible think block; retain only its final answer.
+        if "<think>" in completion:
+            if "</think>" not in completion:
+                raise RuntimeError(f"Unterminated Qwen3 think block for {item['id']}")
+            completion = completion.split("</think>", 1)[1].strip()
+        if not completion:
+            raise RuntimeError(f"Qwen3 returned no final answer for {item['id']}")
         outputs.append(
             {
                 "id": item["id"],
