@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident as processGuardianIncidentRaw, getNeuralGuardianEndpoint, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubDispatchError, classifyGuardianGithubReadError, getGuardianProposalFingerprint } from './automation.js';
+import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident as processGuardianIncidentRaw, getNeuralGuardianEndpoint, requestNeuralGuardianReview, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubDispatchError, classifyGuardianGithubReadError, getGuardianProposalFingerprint } from './automation.js';
 
 const processGuardianIncident = options => {
   const legacyUrl = options?.env?.FRIEREN_AI_PUBLIC_URL;
@@ -703,4 +703,41 @@ test('Guardian review stays disabled until Neural quality approval; legacy servi
   assert.equal(result.reason, 'FRIEREN_NEURAL_QUALITY_GATE_CLOSED');
   assert.equal(requests, 0);
   assert.equal(jobs, 0);
+});
+
+
+
+test("Neural review redacts incident secrets and identifiers before transmission", async () => {
+  let sent;
+  let contextQuestion = "";
+  const result = await requestNeuralGuardianReview({
+    incident: {
+      system: "pogaca_frieren",
+      code: "COMMAND_TIMEOUT",
+      title: "Timeout for user@example.com",
+      summary: "DISCORD_TOKEN=private-token failed for 1553794496234262641",
+      evidence: [
+        { file: "guardian/automation.js", line: 7, message: "API_KEY=hidden" },
+        { file: "../secrets.env", line: 8, message: "must be excluded" },
+      ],
+    },
+    env: {
+      FRIEREN_NEURAL_API_URL: "https://neural.example.test",
+      FRIEREN_NEURAL_API_TOKEN: "x".repeat(48),
+      FRIEREN_NEURAL_QUALITY_APPROVED: "1",
+      FRIEREN_NEURAL_GUARDIAN_ENABLED: "1",
+    },
+    collectContext: async input => {
+      contextQuestion = input.question;
+      return { text: "FILE: guardian/automation.js\nexport function test() {}", files: ["guardian/automation.js"], contextHash: "a".repeat(64) };
+    },
+    fetchImpl: async (_url, options) => {
+      sent = JSON.parse(options.body);
+      return { ok: true, status: 200, json: async () => ({ status: "proposal_only", applied: false }) };
+    },
+  });
+  assert.equal(result.status, "proposal_only");
+  assert.doesNotMatch(JSON.stringify(sent), /user@example\\.com|private-token|1553794496234262641|API_KEY=hidden/);
+  assert.deepEqual(sent.incident.evidence.map(item => item.file), ["guardian/automation.js"]);
+  assert.doesNotMatch(contextQuestion, /user@example\\.com|private-token|1553794496234262641/);
 });
