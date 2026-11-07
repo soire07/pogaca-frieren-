@@ -30,6 +30,16 @@ const approvedIndexTask = [
   'İlgili dosyalar: index.js',
 ].join('\n');
 
+const validPythonPatch = [
+  'diff --git a/frieren-neural/frieren_neural/training.py b/frieren-neural/frieren_neural/training.py',
+  'index 1111111..2222222 100644',
+  '--- a/frieren-neural/frieren_neural/training.py',
+  '+++ b/frieren-neural/frieren_neural/training.py',
+  '@@ -1 +1 @@',
+  '-def safe_resume(): return False',
+  '+def safe_resume(): return True',
+].join('\n');
+
 const validIndexPatch = [
   'diff --git a/index.js b/index.js',
   'index 1111111..2222222 100644',
@@ -48,6 +58,15 @@ test('repair path allowlist accepts approved source, AI review, Guardian and tes
   assert.equal(isAllowedRepairPath('guardian/automation.test.js'), true);
   assert.equal(isAllowedRepairPath('guardian/core.js'), true);
   assert.equal(isAllowedRepairPath('scripts/test-owner-dashboard.js'), true);
+  assert.equal(isAllowedRepairPath('frieren-neural/frieren_neural/training.py'), true);
+  assert.equal(isAllowedRepairPath('frieren-neural/frieren_neural/model.py'), true);
+  assert.equal(isAllowedRepairPath('frieren-neural/tests/test_training.py'), true);
+  assert.equal(isAllowedRepairPath('frieren-neural/frieren_neural/api.py'), false);
+  assert.equal(isAllowedRepairPath('frieren-neural/frieren_neural/datasets.py'), false);
+  assert.equal(isAllowedRepairPath('frieren-neural/frieren_neural/quality_evaluation.py'), false);
+  assert.equal(isAllowedRepairPath('frieren-neural/frieren_neural/evolution.py'), false);
+  assert.equal(isAllowedRepairPath('frieren-neural/frieren_neural/gguf_runtime.py'), false);
+  assert.equal(isAllowedRepairPath('frieren-neural/pyproject.toml'), false);
   assert.equal(isAllowedRepairPath('scripts/ai-self-repair.js'), false);
   assert.equal(isAllowedRepairPath('owner-dashboard.js'), false);
   assert.equal(isAllowedRepairPath('ai-agent/index.js'), false);
@@ -60,6 +79,15 @@ test('repair path allowlist accepts approved source, AI review, Guardian and tes
   assert.equal(isAllowedRepairPath('database/migrations/001.js'), false);
   assert.equal(isAllowedRepairPath('../index.js'), false);
   assert.equal(isAllowedRepairPath('index.js'), false);
+});
+
+test('Python repair patch is limited to Neural source and regression tests', () => {
+  const task = 'Guardian incident #73\nİlgili dosyalar: frieren-neural/frieren_neural/training.py';
+  assert.deepEqual(validatePatchPaths(validPythonPatch, { task }), ['frieren-neural/frieren_neural/training.py']);
+  const protectedPatch = validPythonPatch.replaceAll('training.py', 'quality_evaluation.py');
+  assert.throws(() => validatePatchPaths(protectedPatch, {
+    task: 'Guardian incident #73\nİlgili dosyalar: frieren-neural/frieren_neural/quality_evaluation.py',
+  }), { message: 'REPAIR_PATH_NOT_ALLOWED' });
 });
 
 test('repair patch files must remain inside the affected-file list supplied by Guardian', () => {

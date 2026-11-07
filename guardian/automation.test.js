@@ -127,7 +127,9 @@ test('repair task is bounded and excludes raw incident summaries and credentials
   assert.match(task, /Guardian incident #42/);
   assert.ok(task.includes('İlgili dosyalar: commands/example.js'));
   assert.match(task, /A bounded timeout is missing/);
-  assert.match(task, /Frieren AI tarafından sağlanan unified diff yamayı yeniden model çağrısı yapmadan doğrula/);
+  assert.match(task, /Frieren Neural tarafından sağlanan unified diff yamayı model çağrısı yapmadan doğrula/);
+  assert.match(task, /JavaScript\/Python/);
+  assert.match(task, /pytest/);
   assert.match(task, /Git apply --check/);
   assert.match(task, /npm run check başarılı olmadan PR açma/);
   assert.ok(task.endsWith('merge/deploy yapma.'));
@@ -371,9 +373,9 @@ test('failed repair dispatch retries from the saved AI proposal without repeatin
   assert.equal(requests[1].options.method, 'POST');
   assert.equal(requests[1].url.endsWith('/dispatches'), true);
   const payload = JSON.parse(requests[1].options.body);
-  assert.equal(payload.ref, 'guardian-isolated-repair-test-v2');
+  assert.equal(payload.ref, 'neural-guardian-migration-stage');
   assert.equal(payload.inputs.mode, 'repair');
-  assert.equal(payload.inputs.base_branch, 'guardian-isolated-repair-test-v2');
+  assert.equal(payload.inputs.base_branch, 'neural-guardian-migration-stage');
   assert.equal(payload.inputs.incident_id, '42');
   assert.equal(payload.inputs.proposed_patch, review.proposedPatch);
   assert.equal(calls[0][0], 'reserve');

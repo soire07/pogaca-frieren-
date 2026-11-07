@@ -49,7 +49,17 @@ test('Guardian source context includes Neural Python API and regression tests', 
       'ai-agent/guardian-review.test.js',
       'ai-agent/code-context.js',
       'frieren-neural/frieren_neural/api.py',
+      'frieren-neural/frieren_neural/training.py',
+      'frieren-neural/frieren_neural/evolution.py',
+      'frieren-neural/frieren_neural/quality_evaluation.py',
+      'frieren-neural/frieren_neural/datasets.py',
+      'frieren-neural/frieren_neural/gguf_runtime.py',
       'frieren-neural/tests/test_api.py',
+      'frieren-neural/tests/test_training.py',
+      'frieren-neural/tests/test_evolution.py',
+      'frieren-neural/tests/test_quality_evaluation.py',
+      'frieren-neural/tests/test_datasets.py',
+      'frieren-neural/tests/test_gguf_runtime.py',
     ];
     for (const file of files) {
       await writeFile(path.join(rootDir, file), 'def or function guardian review source context test() {}\\n');
@@ -61,6 +71,9 @@ test('Guardian source context includes Neural Python API and regression tests', 
       budget: 5_000,
     });
     assert.ok(result.files.includes('frieren-neural/frieren_neural/api.py'));
+    assert.ok(result.files.includes('frieren-neural/frieren_neural/training.py'));
+    assert.ok(result.files.includes('frieren-neural/frieren_neural/quality_evaluation.py'));
+    assert.ok(result.files.includes('frieren-neural/tests/test_training.py'));
     assert.ok(result.files.includes('frieren-neural/tests/test_api.py'));
     assert.equal(result.sourceCommitSha, 'a'.repeat(40));
   } finally {

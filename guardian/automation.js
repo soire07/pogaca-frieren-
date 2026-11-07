@@ -11,13 +11,14 @@ import { collectCodeContext } from '../ai-agent/code-context.js';
 
 export { getGuardianProposalFingerprint };
 
-export const GUARDIAN_REPAIR_BRANCH = 'guardian-isolated-repair-test-v2';
+export const GUARDIAN_REPAIR_BRANCH = 'neural-guardian-migration-stage';
 const REPAIR_WORKFLOW = 'frieren-ai-self-repair.yml';
 const REPOSITORY = 'soire07/pogaca-frieren-';
 
 const GUARDIAN_REPAIR_TRACKING_BRANCHES = new Set([
   'main',
   'guardian-isolated-repair-test',
+  'guardian-isolated-repair-test-v2',
   GUARDIAN_REPAIR_BRANCH,
 ]);
 
@@ -155,8 +156,8 @@ export function buildGuardianRepairTask(incident = {}, review = {}) {
     'Çözüm: ' + redactGuardianText(review.suggestedFix, 180),
     'İlgili dosyalar: ' + safeList(review.affectedFiles, 5, 100).join(', '),
     'Test planı: ' + safeList(review.tests, 3, 100).join('; '),
-    'Görev: Frieren AI tarafından sağlanan unified diff yamayı yeniden model çağrısı yapmadan doğrula; en fazla dört izinli mevcut JavaScript dosyasıyla sınırlı kal.',
-    'Yamayı değiştirme veya yeniden üretme. Git apply --check, güvenlik/path kontrolleri ve npm run check başarılı olmadan PR açma; merge/deploy yapma.',
+    'Görev: Frieren Neural tarafından sağlanan unified diff yamayı model çağrısı yapmadan doğrula; en fazla dört izinli mevcut JavaScript/Python dosyasıyla sınırlı kal.',
+    'Python değişikliği varsa compileall ve tam pytest paketini; her durumda git apply --check, güvenlik/path kontrolleri ve npm run check çalıştır. Başarısızsa PR açma; merge/deploy yapma.',
   ];
   return lines.join('\n').slice(0, 1000);
 }
