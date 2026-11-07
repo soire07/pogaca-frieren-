@@ -1,0 +1,83 @@
+name: Frieren off-site PostgreSQL backup
+
+on:
+  workflow_run:
+    workflows:
+      - Render PostgreSQL safety backup
+    types:
+      - completed
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: frieren-postgres-offsite-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  offsite:
+    name: Copy verified backup to private Cloudflare R2
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check off-site storage configuration
+        id: config
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.CLOUDFLARE_R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ] || [ -z "$R2_BUCKET" ]; then
+            echo "::warning::Off-site copy skipped: Cloudflare R2 repository secrets are not configured."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      - name: Download the verified backup artifact from the source run
+        if: steps.config.outputs.configured == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: pogaca-frieren-postgres-${{ github.event.workflow_run.id }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: backup
+
+      - name: Verify the dump checksum before off-site upload
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          set -euo pipefail
+          cd backup
+          test -s SHA256SUMS
+          sha256sum --check SHA256SUMS
+          test "$(find . -maxdepth 1 -type f -name '*.dump' | wc -l)" -eq 1
+
+      - name: Upload private backup copy to Cloudflare R2
+        if: steps.config.outputs.configured == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.CLOUDFLARE_R2_BUCKET }}
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          endpoint="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          prefix="frieren-postgres/${SOURCE_RUN_ID}"
+          aws s3 cp backup/ "s3://${R2_BUCKET}/${prefix}/" \
+            --recursive --only-show-errors --endpoint-url "$endpoint" --region auto
+          mkdir -p verify-r2
+          aws s3 cp "s3://${R2_BUCKET}/${prefix}/" verify-r2/ \
+            --recursive --only-show-errors --endpoint-url "$endpoint" --region auto
+          (cd verify-r2 && sha256sum --check SHA256SUMS)
+          echo "Off-site backup upload and download verification succeeded: ${prefix}"
+
+      - name: Report that off-site storage still needs setup
+        if: steps.config.outputs.configured != 'true'
+        run: |
+          echo "::notice::Primary verified backup is safe in GitHub Actions. Configure the four Cloudflare R2 secrets to activate the independent off-site copy."
