@@ -1,6 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident, getNeuralGuardianEndpoint, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubDispatchError, classifyGuardianGithubReadError, getGuardianProposalFingerprint } from './automation.js';
+import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident as processGuardianIncidentRaw, getNeuralGuardianEndpoint, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubDispatchError, classifyGuardianGithubReadError, getGuardianProposalFingerprint } from './automation.js';
+
+const processGuardianIncident = options => {
+  const legacyUrl = options?.env?.FRIEREN_AI_PUBLIC_URL;
+  if (!legacyUrl || options?.env?.FRIEREN_NEURAL_API_URL) return processGuardianIncidentRaw(options);
+  return processGuardianIncidentRaw({
+    ...options,
+    env: {
+      ...options.env,
+      FRIEREN_NEURAL_API_URL: legacyUrl,
+      FRIEREN_NEURAL_API_TOKEN: 'x'.repeat(48),
+      FRIEREN_NEURAL_QUALITY_APPROVED: '1',
+      FRIEREN_NEURAL_GUARDIAN_ENABLED: '1',
+    },
+    collectContext: options.collectContext || (async () => ({
+      text: 'FILE: guardian/automation.js\nexport function fixture() {}',
+      files: ['guardian/automation.js'],
+      contextHash: 'a'.repeat(64),
+      sourceCommitSha: 'b'.repeat(40),
+    })),
+  });
+};
 
 const incident = {
   id: 42,
@@ -660,10 +681,10 @@ test('Guardian AI review fails closed without an explicitly configured productio
       finishGuardianReviewJob: async (_db, args) => { finished.push(args); return true; },
     },
   });
-  assert.equal(result.status, 'review_failed');
-  assert.equal(result.reason, 'FRIEREN_AI_SERVICE_NOT_CONFIGURED');
+  assert.equal(result.status, 'not_configured');
+  assert.equal(result.reason, 'FRIEREN_NEURAL_QUALITY_GATE_CLOSED');
   assert.equal(requests, 0);
-  assert.equal(finished.at(-1).status, 'failed');
+  assert.equal(finished.length, 0);
 });
 
 
@@ -671,7 +692,7 @@ test('Guardian AI review fails closed without an explicitly configured productio
 test('Guardian review stays disabled until Neural quality approval; legacy service is never used as fallback', async () => {
   let requests = 0;
   let jobs = 0;
-  const result = await processGuardianIncident({
+  const result = await processGuardianIncidentRaw({
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
     incident,
     env: { FRIEREN_AI_PUBLIC_URL: 'https://legacy-frieren-ai.test', FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48) },
