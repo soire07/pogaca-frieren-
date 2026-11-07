@@ -116,6 +116,11 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
     if not isinstance(report.get("blocking_reasons"), list) or report.get("blocking_reasons"):
         blocking_reasons.append("quality_report_blockers_present")
 
+    from .quality_evaluation import build_score_binding
+    try:
+        expected_candidate_binding = build_score_binding(report.get("checkpoint_sha256"), outputs)
+    except ValueError:
+        expected_candidate_binding = None
     reviewers_valid = (
         isinstance(review, dict)
         and review.get("completed") is True
@@ -125,6 +130,10 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
         and all(_valid_sha(value, 64) for value in reviewer_hashes)
         and reviewer_hashes[0] != reviewer_hashes[1]
         and template_hashes == reviewer_hashes
+        and expected_candidate_binding is not None
+        and review.get("candidate_binding") == expected_candidate_binding
+        and isinstance(review_template, dict)
+        and review_template.get("candidate_binding") == expected_candidate_binding
     )
     if not reviewers_valid:
         blocking_reasons.append("two_distinct_human_reviewers_required")
@@ -175,6 +184,10 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
         and len(baseline_reviewer_hashes) == 2
         and all(_valid_sha(value, 64) for value in baseline_reviewer_hashes)
         and baseline_reviewer_hashes[0] != baseline_reviewer_hashes[1]
+        and isinstance(comparison.get("baseline_candidate_binding"), dict)
+        and comparison["baseline_candidate_binding"].get("checkpoint_sha256") == comparison.get("baseline_checkpoint_sha256")
+        and comparison["baseline_candidate_binding"].get("prompt_set_version") == report.get("prompt_set_version")
+        and _valid_sha(comparison["baseline_candidate_binding"].get("outputs_sha256"), 64)
     )
     if not baseline_valid:
         blocking_reasons.append("comparable_baseline_improvement_not_proven")
