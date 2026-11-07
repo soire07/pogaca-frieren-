@@ -565,9 +565,14 @@ def test_candidate_search_reports_failure_when_no_trial_trains(tmp_path: Path, m
 
 
 def test_heldout_manifest_metadata_is_pinned_and_split_scoped(tmp_path: Path):
+    import hashlib
     import json
     from frieren_neural.training import load_corpus_manifest_metadata
 
+    corpus_file = tmp_path / "source.txt"
+    processed_content = "Frieren studies magic.\\n"
+    corpus_file.write_text(processed_content, encoding="utf-8")
+    processed_sha = hashlib.sha256(processed_content.encode("utf-8")).hexdigest()
     manifest = {
         "schema_version": 1,
         "dataset": {
@@ -577,15 +582,24 @@ def test_heldout_manifest_metadata_is_pinned_and_split_scoped(tmp_path: Path):
             "split": "heldout",
             "dialogues": 12,
             "source_sha256": "b" * 64,
+            "processed_sha256": processed_sha,
         },
-        "documents": [],
+        "documents": [{
+            "path": "source.txt",
+            "source": "Pinned test corpus",
+            "license": "CC0-1.0",
+            "usage": "Test-only fixture",
+            "sha256": processed_sha,
+        }],
     }
     (tmp_path / "corpus_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     metadata = load_corpus_manifest_metadata(tmp_path)
     assert metadata["split"] == "heldout"
     assert metadata["sample_count"] == 12
     assert metadata["dataset_revision"] == "a" * 40
+    assert metadata["dataset_id"] == "example/turkish-heldout"
     assert metadata["source_fingerprint_sha256"] == "b" * 64
+    assert metadata["processed_sha256"] == processed_sha
     assert len(metadata["dataset_sha256"]) == 64
     assert metadata["evaluation_version"] == "frieren-neural-heldout-v1"
 
@@ -597,7 +611,15 @@ def test_heldout_manifest_metadata_is_pinned_and_split_scoped(tmp_path: Path):
     assert test_metadata["split"] == "heldout"
     assert test_metadata["source_split"] == "test"
 
-    with pytest.raises(ValueError, match="Expected a train"):
+    manifest["dataset"]["split"] = "train"
+    (tmp_path / "corpus_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    train_metadata = load_corpus_manifest_metadata(tmp_path, required_split="train")
+    assert train_metadata["split"] == "train"
+
+    manifest["dataset"]["processed_sha256"] = "0" * 64
+    manifest["documents"][0]["sha256"] = "0" * 64
+    (tmp_path / "corpus_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ValueError, match="Processed corpus file SHA-256"):
         load_corpus_manifest_metadata(tmp_path, required_split="train")
 
 

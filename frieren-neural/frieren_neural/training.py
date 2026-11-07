@@ -150,25 +150,33 @@ def load_licensed_corpus(path: str | Path) -> list[str]:
 
 
 def load_corpus_manifest_metadata(path: str | Path, *, required_split: str | None = None) -> dict[str, Any]:
-    """Return a pinned manifest fingerprint and split metadata for evaluation evidence."""
+    """Validate a pinned corpus manifest and return source/split fingerprints."""
     root = Path(path)
     root_resolved = root.resolve()
     manifest_path = root / "corpus_manifest.json"
     if not manifest_path.is_file() or not manifest_path.resolve().is_relative_to(root_resolved):
-        raise ValueError("A corpus manifest inside the evaluation directory is required.")
+        raise ValueError("A corpus manifest inside the corpus directory is required.")
     raw_manifest = manifest_path.read_bytes()
     try:
         manifest = json.loads(raw_manifest.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ValueError("corpus_manifest.json must be valid UTF-8 JSON.") from error
-    dataset = manifest.get("dataset") if isinstance(manifest, dict) else None
-    if not isinstance(dataset, dict):
-        raise ValueError("Corpus manifest dataset metadata is required.")
+    if not isinstance(manifest, dict) or manifest.get("schema_version") != 1:
+        raise ValueError("Corpus manifest schema_version 1 is required.")
+    dataset = manifest.get("dataset")
+    documents = manifest.get("documents")
+    if not isinstance(dataset, dict) or not isinstance(documents, list) or len(documents) != 1:
+        raise ValueError("Corpus manifest must contain one pinned dataset document.")
+    document = documents[0]
+    if not isinstance(document, dict):
+        raise ValueError("Corpus manifest document metadata is invalid.")
     source_split = dataset.get("split")
     sample_count = dataset.get("dialogues")
     revision = dataset.get("revision")
-    row_ids_sha256 = dataset.get("row_ids_sha256")
-    source_sha256 = dataset.get("source_sha256") or row_ids_sha256
+    source_sha256 = dataset.get("source_sha256")
+    processed_sha256 = dataset.get("processed_sha256")
+    dataset_id = dataset.get("id")
+    license_name = dataset.get("license")
     if required_split is not None and source_split != required_split:
         raise ValueError(f"Expected a {required_split} corpus split, got {source_split!r}.")
     if required_split is None and source_split not in {"heldout", "test"}:
@@ -178,20 +186,38 @@ def load_corpus_manifest_metadata(path: str | Path, *, required_split: str | Non
     if not isinstance(revision, str) or not re.fullmatch(r"[a-f0-9]{40}", revision):
         raise ValueError("Corpus manifest must pin a 40-character dataset revision.")
     if not isinstance(source_sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", source_sha256):
-        raise ValueError("Corpus manifest must include a source or row ID SHA-256.")
-    dataset_id = dataset.get("id")
+        raise ValueError("Corpus manifest must include a source-file SHA-256.")
     if not isinstance(dataset_id, str) or not dataset_id.strip():
         raise ValueError("Corpus manifest dataset ID is required.")
+    if not isinstance(license_name, str) or not license_name.strip():
+        raise ValueError("Corpus manifest dataset license is required.")
+    document_path = document.get("path")
+    if not isinstance(document_path, str) or not document_path.strip():
+        raise ValueError("Corpus manifest document path is required.")
+    if any(not isinstance(document.get(key), str) or not document[key].strip()
+           for key in ("source", "license", "usage", "sha256")):
+        raise ValueError("Corpus manifest document source, license, usage, and SHA-256 are required.")
+    if document["license"] != license_name:
+        raise ValueError("Dataset and document licenses must match.")
+    if not re.fullmatch(r"[a-f0-9]{64}", processed_sha256 or "") or document["sha256"] != processed_sha256:
+        raise ValueError("Dataset processed-file SHA-256 must match its document fingerprint.")
+    document_file = (root / document_path).resolve()
+    if not document_file.is_relative_to(root_resolved) or not document_file.is_file():
+        raise ValueError("Corpus manifest document must resolve to a file inside the corpus directory.")
+    actual_processed_sha256 = hashlib.sha256(document_file.read_bytes()).hexdigest()
+    if actual_processed_sha256 != processed_sha256:
+        raise ValueError("Processed corpus file SHA-256 does not match the pinned manifest.")
     return {
         "dataset_sha256": hashlib.sha256(raw_manifest).hexdigest(),
         "sample_count": sample_count,
-        "split": "heldout",
+        "split": "heldout" if source_split in {"heldout", "test"} else source_split,
         "source_split": source_split,
         "evaluation_version": HELDOUT_EVALUATION_VERSION,
         "dataset_id": dataset_id,
         "dataset_revision": revision,
         "source_fingerprint_sha256": source_sha256,
-        "row_ids_sha256": row_ids_sha256,
+        "processed_sha256": processed_sha256,
+        "row_ids_sha256": dataset.get("row_ids_sha256"),
     }
 
 
