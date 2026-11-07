@@ -295,16 +295,16 @@ def export_verified_knowledge(output_dir: str | Path, *, license_name: str) -> d
             raise ValueError("Verified knowledge does not contain two distinct reviewer hashes.")
         if any(not re.fullmatch(r"[a-f0-9]{64}", str(value)) for value in reviewers):
             raise ValueError("Verified knowledge reviewer evidence is invalid.")
-        if re.search(r"(?im)^\\s*(?:Kullanıcı|Asistan)\\s*:", title + "\\n" + content):
+        if re.search(r"(?im)^\s*(?:Kullanıcı|Asistan)\s*:", title + "\\n" + content):
             raise ValueError("Verified knowledge contains a dialogue role marker.")
-        dialogues.append("Kullanıcı: " + title + "\\nAsistan: " + content + "\\n")
+        dialogues.append("Kullanıcı: " + title + "\nAsistan: " + content + "\n")
         source_records.append(
             str(source_title) + " <" + str(source_url) + ">" +
             (" @ " + str(source_revision) if source_revision else "")
         )
         source_hashes.append(source_sha)
 
-    corpus_text = "\\n".join(dialogues)
+    corpus_text = "\n".join(dialogues)
     processed_sha = hashlib.sha256(corpus_text.encode("utf-8")).hexdigest()
     source_fingerprint = hashlib.sha256("".join(sorted(source_hashes)).encode("ascii")).hexdigest()
     revision = hashlib.sha1(
@@ -330,7 +330,7 @@ def export_verified_knowledge(output_dir: str | Path, *, license_name: str) -> d
         }],
     }
     text_path.write_text(corpus_text, encoding="utf-8")
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return {
         "output_dir": str(output),
         "dataset_id": manifest["dataset"]["id"],

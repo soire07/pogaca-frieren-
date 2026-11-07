@@ -113,7 +113,7 @@ def test_verified_knowledge_export_writes_real_dialogue_newlines_and_valid_manif
 
     corpus_path = output / "verified-knowledge.txt"
     corpus = corpus_path.read_text(encoding="utf-8")
-    assert corpus == "Kullanıcı: " + title + "\\nAsistan: " + content + "\\n"
+    assert corpus == "Kullanıcı: " + title + "\nAsistan: " + content + "\n"
     manifest = json.loads((output / "corpus_manifest.json").read_text(encoding="utf-8"))
     assert manifest["dataset"]["dialogues"] == 1
     assert manifest["dataset"]["processed_sha256"] == hashlib.sha256(corpus.encode("utf-8")).hexdigest()
