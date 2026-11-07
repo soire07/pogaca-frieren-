@@ -246,6 +246,10 @@ export async function requestNeuralGuardianReview({
   const apiToken = String(env.FRIEREN_NEURAL_API_TOKEN || "").trim();
   if (apiToken.length < 32) throw new Error("FRIEREN_NEURAL_API_TOKEN_NOT_CONFIGURED");
   const endpoint = getNeuralGuardianEndpoint(env);
+  const configuredTimeout = Number(env.FRIEREN_NEURAL_REQUEST_TIMEOUT_MS);
+  const timeoutMs = Number.isFinite(configuredTimeout)
+    ? Math.max(15_000, Math.min(configuredTimeout, 300_000))
+    : 90_000;
   const sourceContext = await collectContext({
     rootDir: process.cwd(),
     question: [normalizedIncident.system, normalizedIncident.code, normalizedIncident.title, normalizedIncident.summary,
@@ -271,7 +275,7 @@ export async function requestNeuralGuardianReview({
       source_context_hash: sourceContext.contextHash,
       source_commit_sha: sourceContext.sourceCommitSha || undefined,
     }),
-    signal: AbortSignal.timeout(90_000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const review = await response.json().catch(() => ({}));
   if (!response.ok) {
