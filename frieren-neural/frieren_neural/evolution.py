@@ -36,6 +36,36 @@ def _has_training_sources(value: object) -> bool:
     )
 
 
+def _has_pinned_training_provenance(value: object) -> bool:
+    return (
+        isinstance(value, dict)
+        and _valid_sha(value.get("manifest_sha256"), 64)
+        and isinstance(value.get("dataset_id"), str) and bool(value["dataset_id"].strip())
+        and _valid_sha(value.get("dataset_revision"), 40)
+        and _valid_sha(value.get("source_fingerprint_sha256"), 64)
+        and _valid_sha(value.get("processed_sha256"), 64)
+        and _has_allowed_training_licenses(value.get("licenses"))
+        and _has_training_sources(value.get("sources"))
+    )
+
+
+def _checkpoint_training_data_matches(checkpoint_metadata: object, provenance: object) -> bool:
+    if not isinstance(checkpoint_metadata, dict) or not isinstance(provenance, dict):
+        return False
+    dataset = checkpoint_metadata.get("training_dataset")
+    if not isinstance(dataset, dict):
+        return False
+    expected = {
+        "dataset_sha256": provenance.get("manifest_sha256"),
+        "dataset_id": provenance.get("dataset_id"),
+        "dataset_revision": provenance.get("dataset_revision"),
+        "source_fingerprint_sha256": provenance.get("source_fingerprint_sha256"),
+        "processed_sha256": provenance.get("processed_sha256"),
+        "split": "train",
+    }
+    return all(dataset.get(key) == value for key, value in expected.items())
+
+
 PLAYBOOK = {
     "correctness": "curate independently verified question/answer examples; require source and answer checks",
     "instruction_adherence": "curate varied multi-constraint instruction-following dialogues with exact expected outputs",
@@ -98,10 +128,8 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
         blocking_reasons.append("two_distinct_human_reviewers_required")
 
     provenance_valid = (
-        isinstance(provenance, dict)
-        and _valid_sha(provenance.get("manifest_sha256"), 64)
-        and _has_allowed_training_licenses(provenance.get("licenses"))
-        and _has_training_sources(provenance.get("sources"))
+        _has_pinned_training_provenance(provenance)
+        and _checkpoint_training_data_matches(checkpoint_metadata, provenance)
     )
     if not provenance_valid:
         blocking_reasons.append("training_provenance_missing_or_invalid")
@@ -232,6 +260,7 @@ def run_candidate_search(
     learning_rate_factors: tuple[float, ...] = (0.5, 1.0, 1.5),
     min_relative_improvement: float = 0.002,
     training_provenance: dict[str, Any] | None = None,
+    training_dataset_metadata: dict[str, Any] | None = None,
     source_commit_sha: str | None = None,
     device: str = "cpu",
 ) -> dict[str, Any]:
@@ -320,6 +349,7 @@ def run_candidate_search(
             training_metrics = train_model(
                 training_documents, candidate_path, candidate_config,
                 initialize_from=baseline_path, device=device,
+                training_dataset_metadata=training_dataset_metadata,
             )
             heldout = evaluate_checkpoint(
                 candidate_path, heldout_documents, batch_size=base_config.batch_size,
@@ -410,19 +440,26 @@ def search_main() -> None:
     parser.add_argument("--training-manifest", default=None)
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
-    from .training import load_licensed_corpus
+    from .training import load_corpus_manifest_metadata, load_licensed_corpus
 
-    training_provenance = None
-    manifest_path = Path(args.training_manifest) if args.training_manifest else Path(args.train_data) / "corpus_manifest.json"
-    if manifest_path.is_file():
-        raw_manifest = manifest_path.read_bytes()
-        manifest = json.loads(raw_manifest.decode("utf-8"))
-        entries = manifest.get("documents", []) if isinstance(manifest, dict) else []
-        training_provenance = {
-            "manifest_sha256": hashlib.sha256(raw_manifest).hexdigest(),
-            "sources": sorted({item["source"] for item in entries if isinstance(item, dict) and item.get("source")}),
-            "licenses": sorted({item["license"] for item in entries if isinstance(item, dict) and item.get("license")}),
-        }
+    train_root = Path(args.train_data).resolve()
+    manifest_path = Path(args.training_manifest).resolve() if args.training_manifest else train_root / "corpus_manifest.json"
+    expected_manifest_path = train_root / "corpus_manifest.json"
+    if manifest_path != expected_manifest_path:
+        raise ValueError("--training-manifest must be the manifest inside --train-data.")
+    training_dataset_metadata = load_corpus_manifest_metadata(train_root, required_split="train")
+    raw_manifest = manifest_path.read_bytes()
+    manifest = json.loads(raw_manifest.decode("utf-8"))
+    entries = manifest.get("documents", []) if isinstance(manifest, dict) else []
+    training_provenance = {
+        "manifest_sha256": training_dataset_metadata["dataset_sha256"],
+        "sources": sorted({item["source"] for item in entries if isinstance(item, dict) and item.get("source")}),
+        "licenses": sorted({item["license"] for item in entries if isinstance(item, dict) and item.get("license")}),
+        "dataset_id": training_dataset_metadata["dataset_id"],
+        "dataset_revision": training_dataset_metadata["dataset_revision"],
+        "source_fingerprint_sha256": training_dataset_metadata["source_fingerprint_sha256"],
+        "processed_sha256": training_dataset_metadata["processed_sha256"],
+    }
     report = run_candidate_search(
         load_licensed_corpus(args.train_data),
         load_licensed_corpus(args.heldout_data),
@@ -432,6 +469,7 @@ def search_main() -> None:
         heldout_batches=args.heldout_batches,
         min_relative_improvement=args.min_relative_improvement,
         training_provenance=training_provenance,
+        training_dataset_metadata=training_dataset_metadata,
         source_commit_sha=os.environ.get("GITHUB_SHA"),
         device=args.device,
     )
