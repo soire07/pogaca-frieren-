@@ -109,5 +109,5 @@ test('sealed wanderer dialogue keeps the hidden identity and unlock reveal myste
   assert.doesNotMatch(wanderer.dialogue, /boss|Light Fallen|Infinity/i);
   assert.doesNotMatch(wanderer.questDialogue, /boss|Light Fallen|Infinity/i);
   assert.doesNotMatch(wanderer.objective, /boss|Light Fallen|Infinity/i);
-  assert.deepEqual(wanderer.reward, { coins: 1500, xp: 750 });
+  assert.deepEqual(wanderer.reward, { coins: 3000, xp: 1500 });
 });
