@@ -349,7 +349,23 @@ def split_corpus_text(
         raise ValueError("validation_fraction must be between 0 and 0.5.")
     combined = "\n".join(item.strip() for item in documents)
     separator = "\n\n---\n\n"
-    if len(documents) > 1:
+    if len(documents) > 1 and not all(item.lstrip().startswith("Kullanıcı: ") for item in documents):
+        # Generic multi-document corpora retain their established document-level split.
+        units = [item.strip() for item in documents]
+        joiner = "\n"
+        if len(units) < 2:
+            raise ValueError("Corpus must contain at least two complete documents for a boundary-safe split.")
+        target_validation_size = max(1, int(sum(map(len, units)) * validation_fraction))
+        validation_units: list[str] = []
+        validation_characters = 0
+        while len(units) - len(validation_units) > 1 and validation_characters < target_validation_size:
+            item = units.pop()
+            validation_units.insert(0, item)
+            validation_characters += len(item)
+        if not units or not validation_units:
+            raise ValueError("Corpus must contain non-empty training and validation documents.")
+        return joiner.join(units), joiner.join(validation_units)
+    elif len(documents) > 1:
         units = [item.strip() for item in documents]
         joiner = "\n"
     elif separator in combined:
