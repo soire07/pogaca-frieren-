@@ -105,12 +105,17 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
     if not heldout_valid:
         blocking_reasons.append("heldout_evidence_missing_or_invalid")
 
+    baseline_reviewer_hashes = comparison.get("baseline_reviewer_identity_hashes") if isinstance(comparison, dict) else None
     baseline_valid = (
         isinstance(comparison, dict)
         and comparison.get("available") is True
         and comparison.get("improved") is True
         and _valid_sha(comparison.get("baseline_checkpoint_sha256"), 64)
         and comparison.get("baseline_checkpoint_sha256") != report.get("checkpoint_sha256")
+        and isinstance(baseline_reviewer_hashes, list)
+        and len(baseline_reviewer_hashes) == 2
+        and all(_valid_sha(value, 64) for value in baseline_reviewer_hashes)
+        and baseline_reviewer_hashes[0] != baseline_reviewer_hashes[1]
     )
     if not baseline_valid:
         blocking_reasons.append("comparable_baseline_improvement_not_proven")
