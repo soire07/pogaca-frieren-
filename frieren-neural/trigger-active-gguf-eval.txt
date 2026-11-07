@@ -3,3 +3,5 @@ One-time validation trigger. The workflow must evaluate the exact pushed commit 
 Retry after upgrading llama-cpp-python to the release containing upstream ufakzeka pre-tokenizer support.
 
 Retry with Neural CI enabled on this validation branch; both Neural CI and the pinned GGUF evaluation must report against the same pushed commit.
+
+Isolated validation run 2026-11-07: execute the pinned ufakzeka Q8 GGUF on this PR branch, collect all 24 real outputs and retain the report only as a GitHub Actions artifact; do not upload to production.
