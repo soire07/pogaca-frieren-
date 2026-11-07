@@ -1,6 +1,6 @@
 import { DEFAULT_FRIEREN_CHAT_SETTINGS, getFrierenChatSettings, normalizeFrierenChatSettings } from './frieren-chat-settings.js';
 import { buildMemoryContext, getRelevantMemories, saveExplicitMemories } from './frieren-memory.js';
-import { generateNeuralReply, isNeuralConfigured, isNeuralRequested } from './ai-agent/neural-client.js';
+import { generateNeuralReply, isNeuralConfigured, isNeuralRequested } from './frieren-neural-client.js';
 const MAX_HISTORY_MESSAGES = 16;
 const MAX_HISTORY_CONTENT_LENGTH = 1000;
 const MAX_USER_MESSAGE_LENGTH = 1500;
