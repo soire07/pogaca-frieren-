@@ -299,7 +299,16 @@ def _guardian_safe_path(value: object) -> bool:
 def _guardian_text(value: object, limit: int) -> str:
     if not isinstance(value, str):
         return ""
-    return value.replace("\x00", "").strip()[:limit]
+    text = value.replace("\x00", "").strip()
+    text = re.sub(
+        r"\b(API_KEY|PRIVATE_KEY|ACCESS_KEY|DATABASE_URL|DSN|[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD))\s*[:=]\s*['\"]?[^\s,;'\"<>]+",
+        lambda match: match.group(1) + "=[REDACTED]",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r"\b\d{17,20}\b", "[ID]", text)
+    text = re.sub(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", "[EMAIL]", text, flags=re.IGNORECASE)
+    return text[:limit]
 
 
 def _parse_guardian_review(raw: str, allowed_files: set[str]) -> dict[str, object]:
@@ -384,6 +393,7 @@ def guardian_review(
     if not secrets.compare_digest(actual_hash, payload.source_context_hash):
         raise HTTPException(status_code=400, detail="Source context integrity check failed.")
 
+    safe_source_context = _guardian_text(payload.source_context, 12_000)
     evidence = incident.get("evidence")
     safe_evidence = []
     if isinstance(evidence, list):
@@ -401,7 +411,7 @@ def guardian_review(
 
     review_input = {
         "incident": {"system": system, "code": code.upper(), "title": title, "summary": summary, "evidence": safe_evidence},
-        "sourceContext": payload.source_context,
+        "sourceContext": safe_source_context,
         "requiredOutput": {
             "rootCause": "string", "confidence": "low|medium|high",
             "affectedFiles": "existing paths from sourceContextFiles only",
