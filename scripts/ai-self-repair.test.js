@@ -1,5 +1,8 @@
 import test from 'node:test';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
 import assert from 'node:assert/strict';
 import {
   isAllowedRepairPath,
@@ -389,6 +392,60 @@ test('repair patch rolls back applied changes when post-apply validation fails',
   assert.equal(applied, false);
   assert.ok(calls.some(args => args[0] === 'apply' && args[1] === '--reverse'));
   assert.equal(calls.at(-1)[0], 'status');
+});
+
+test('real git apply rolls back a patch when post-apply whitespace validation fails', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'frieren-neural-repair-rollback-'));
+  try {
+    const git = (args, options = {}) => execFileSync('git', args, {
+      cwd: root,
+      encoding: options.encoding || 'utf8',
+      input: options.input,
+      stdio: options.stdio || 'pipe',
+      env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1' },
+    });
+    await writeFile(path.join(root, 'rpg-mechanics.js'), 'const ready = false;\\n');
+    git(['init', '-q']);
+    git(['config', 'user.email', 'neural-tests@example.invalid']);
+    git(['config', 'user.name', 'Frieren Neural Tests']);
+    git(['add', 'rpg-mechanics.js']);
+    git(['commit', '-qm', 'baseline']);
+    const badWhitespacePatch = validPatch.replace(
+      '+const ready = true;',
+      '+const ready = true; ',
+    );
+    assert.throws(() => applyRepairPatch(badWhitespacePatch, { execFile: git }));
+    assert.equal(
+      await readFile(path.join(root, 'rpg-mechanics.js'), 'utf8'),
+      'const ready = false;\\n',
+    );
+    assert.equal(git(['status', '--porcelain', '--untracked-files=all']).trim(), '');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('real git status parsing returns the exact changed file after an accepted patch', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'frieren-neural-repair-status-'));
+  try {
+    const git = (args, options = {}) => execFileSync('git', args, {
+      cwd: root,
+      encoding: options.encoding || 'utf8',
+      input: options.input,
+      stdio: options.stdio || 'pipe',
+      env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1' },
+    });
+    await writeFile(path.join(root, 'rpg-mechanics.js'), 'const ready = false;\\n');
+    git(['init', '-q']);
+    git(['config', 'user.email', 'neural-tests@example.invalid']);
+    git(['config', 'user.name', 'Frieren Neural Tests']);
+    git(['add', 'rpg-mechanics.js']);
+    git(['commit', '-qm', 'baseline']);
+    assert.deepEqual(applyRepairPatch(validPatch, { execFile: git }), ['rpg-mechanics.js']);
+    assert.match(await readFile(path.join(root, 'rpg-mechanics.js'), 'utf8'), /const ready = true;/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('repair workflow output contains only the exact validated file paths', () => {
