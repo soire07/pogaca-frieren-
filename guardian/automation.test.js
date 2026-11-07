@@ -287,10 +287,10 @@ test('failed Guardian AI review preserves the sanitized upstream error without d
     },
   });
   assert.equal(result.status, 'review_failed');
-  assert.equal(result.reason, 'GUARDIAN_AI_HTTP_400_GROQ_INVALID_REQUEST');
+  assert.equal(result.reason, 'GUARDIAN_NEURAL_HTTP_400_GROQ_INVALID_REQUEST');
   assert.equal(finished.length, 1);
   assert.equal(finished[0].status, 'failed');
-  assert.equal(finished[0].error, 'GUARDIAN_AI_HTTP_400_GROQ_INVALID_REQUEST');
+  assert.equal(finished[0].error, 'GUARDIAN_NEURAL_HTTP_400_GROQ_INVALID_REQUEST');
 });
 
 test('Guardian AI proposal does not contact GitHub before Owner approval', async () => {
