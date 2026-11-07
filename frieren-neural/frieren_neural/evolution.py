@@ -231,7 +231,7 @@ def run_candidate_search(
         },
     }
     (destination / "candidate-search-report.json").write_text(
-        json.dumps(report, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8"
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     return report
 
