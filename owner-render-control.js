@@ -130,9 +130,9 @@ export async function getRenderBotServiceStatuses({
       allowedActions: service.allowedActions
     };
   }));
-  const services = Object.fromEntries(results.map(service => [service.key, service]));
+  const serviceMap = Object.fromEntries(results.map(service => [service.key, service]));
   const apiError = results.find(service => service.apiError)?.apiError || null;
-  return { apiConfigured: results.every(service => service.apiConfigured), apiError, services };
+  return { apiConfigured: results.every(service => service.apiConfigured), apiError, services: serviceMap };
 }
 
 async function updateActionAudit(client, auditId, details) {
