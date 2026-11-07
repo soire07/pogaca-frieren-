@@ -757,7 +757,7 @@ def test_guardian_review_returns_only_a_human_reviewed_proposal_when_enabled(api
     monkeypatch.setenv("FRIEREN_NEURAL_QUALITY_APPROVED", "1")
     payload = _guardian_review_payload()
     payload["incident"]["summary"] = "DISCORD_TOKEN=private-token failed for user@example.com and 1553794496234262641"
-    payload["source_context"] += "\\nAPI_KEY=hidden"
+    payload["source_context"] += "\nFRIEREN_API_KEY=hidden"
     payload["source_context_hash"] = hashlib.sha256(payload["source_context"].encode("utf-8")).hexdigest()
     completion = {
         "rootCause": "The request path has no bounded timeout.",
