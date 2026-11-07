@@ -169,7 +169,7 @@ print(generate_text(model, tokenizer, "Frieren ", max_new_tokens=80))
 
 ## Shared inference API
 
-The optional FastAPI service exposes health, authenticated server-to-server generation, and a same-origin browser chat. The Discord adapter calls the same inference core; neither client loads a separate model copy.
+The FastAPI service exposes health, authenticated server-to-server generation, and a same-origin browser chat. Poğaça Frieren is the only Discord client and calls this inference core; Neural itself does not run a separate Discord bot.
 
 ### Turkish-first model backend
 
@@ -241,7 +241,7 @@ Poğaça Frieren is the only Discord-facing bot. Its existing JavaScript chat ad
 2. **Training:** BPE, provenance checks, leakage-free split, training, evaluation, and deterministic resume are implemented.
 3. **Evaluation:** held-out perplexity, Turkish/English quality sets, and regression benchmarks.
 4. **Memory and tools:** separate retrieval/memory and tool execution from model weights.
-5. **Serving:** authenticated FastAPI inference API and Discord `/ask` adapter are implemented; a browser chat UI, hosting, and deployment remain.
+5. **Serving:** authenticated FastAPI inference API and browser chat are implemented; Poğaça Frieren is the sole Discord-facing adapter and its authenticated live integration remains to be verified.
 6. **Scaling:** improve data, tokenizer, model size, and training only when suitable compute is available.
 
 A genuinely capable model requires substantial clean data and compute. This is a small research model, not a ChatGPT-equivalent system.
