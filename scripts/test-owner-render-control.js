@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   RENDER_BOT_SERVICES,
+  resolveRenderBotServices,
   getRenderBotServiceStatuses,
   executeRenderServiceAction
 } from '../owner-render-control.js';
@@ -294,4 +295,19 @@ test('missing production Frieren AI Render service is reported as not configured
   assert.equal(status.services.frieren_ai.id, null);
   assert.equal(status.services.frieren_ai.url, '');
   assert.equal(requested.some(url => url.includes('pogaca-frieren-kltd') || url.includes('frieren-ai-agent')), false);
+});
+
+
+test('production Frieren AI Render configuration has no retired service defaults and accepts explicit service metadata', () => {
+  const missing = resolveRenderBotServices({});
+  assert.equal(missing.frieren_ai.id, null);
+  assert.equal(missing.frieren_ai.url, '');
+  assert.equal(missing.frieren_ai.dashboardUrl, null);
+  const configured = resolveRenderBotServices({
+    RENDER_FRIEREN_AI_SERVICE_ID: 'srv-ai-live',
+    RENDER_FRIEREN_AI_URL: 'https://ai.example.test'
+  });
+  assert.equal(configured.frieren_ai.id, 'srv-ai-live');
+  assert.equal(configured.frieren_ai.url, 'https://ai.example.test');
+  assert.equal(configured.frieren_ai.dashboardUrl, 'https://dashboard.render.com/web/srv-ai-live');
 });
