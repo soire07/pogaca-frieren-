@@ -47,7 +47,7 @@ export const NPC_SIDE_QUESTS = {
     dialogue: 'Bu yolun taşları dört kez susmuş… ama biri hâlâ adını hatırlıyor. Üç uzak yankı duyulmadan kapı açılmaz. Yolculuğuna devam et; bazı cevaplar, doğru soruyu sormadan gelmez.',
     questDialogue: 'Eski bir kayıtta üç yankıdan söz ediliyor. Her biri, kudretli bir karşılaşmanın ardından geride kalır. Üçünü de duyduğunda bu sayfayı yeniden aç.',
     objective: 'Üç kudretli karşılaşmanın yankısını topla.',
-    reward: { coins: 1500, xp: 750 },
+    reward: { coins: 3000, xp: 1500 },
     requirement: async (_client, _guildId, _userId, user) => {
       const count = Number(user.boss_defeats || 0);
       return { ok: count >= 3, progress: count + ' / 3 yankı' };
