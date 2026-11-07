@@ -152,9 +152,10 @@ def load_licensed_corpus(path: str | Path) -> list[str]:
 def load_corpus_manifest_metadata(path: str | Path, *, required_split: str | None = None) -> dict[str, Any]:
     """Return a pinned manifest fingerprint and split metadata for evaluation evidence."""
     root = Path(path)
+    root_resolved = root.resolve()
     manifest_path = root / "corpus_manifest.json"
-    if not manifest_path.is_file():
-        raise ValueError("A corpus manifest is required for held-out evaluation metadata.")
+    if not manifest_path.is_file() or not manifest_path.resolve().is_relative_to(root_resolved):
+        raise ValueError("A corpus manifest inside the evaluation directory is required.")
     raw_manifest = manifest_path.read_bytes()
     try:
         manifest = json.loads(raw_manifest.decode("utf-8"))
