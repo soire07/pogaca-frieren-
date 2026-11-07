@@ -41,6 +41,20 @@ test('legacy standalone bot health diagnostics are manual-only with bounded retr
   assert.ok(!source.includes('https://pogaca-frieren-kltd.onrender.com/live'));
 });
 
+test('Neural evaluation cannot write quality reports to production without explicit opt-in', async () => {
+  const source = await workflow('frieren-neural-active-gguf-eval.yml');
+  assert.ok(source.includes("vars.FRIEREN_NEURAL_REPORT_UPLOAD_ENABLED == 'true'"));
+  assert.ok(source.includes('FRIEREN_NEURAL_REPORT_UPLOAD_ENABLED=true only after production write approval'));
+});
+
+test('Neural training workflows install only declared extras and use the CPU wheel', async () => {
+  for (const name of ['frieren-neural-train.yml', 'frieren-neural-active-gguf-eval.yml']) {
+    const source = await workflow(name);
+    assert.ok(!source.includes('[dev,serve,discord]'), name + ' must not install a removed extra');
+    assert.ok(source.includes('--only-binary=llama-cpp-python'), name + ' must use the prebuilt CPU wheel');
+  }
+});
+
 test('Discord command sync skips unchanged definitions and unnecessary global writes', async () => {
   const source = await readFile(new URL('../deploy-commands.js', import.meta.url), 'utf8');
   assert.ok(source.includes('skipped command write to preserve daily quota'));
