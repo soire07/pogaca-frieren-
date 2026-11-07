@@ -74,6 +74,8 @@ def test_report_applies_quality_gate_to_human_scores():
             "checkpoint_training_loss_objective_version": 2,
         },
         baseline_report={
+            "decision": "READY FOR STAGED TEST",
+            "blocking_reasons": [],
             "prompt_set_version": quality.PROMPT_SET_VERSION,
             "decoding_settings": quality.DECODING_SETTINGS,
             "checkpoint_sha256": "0" * 64,
@@ -194,6 +196,8 @@ def test_report_blocks_mismatched_heldout_objective():
             "checkpoint_training_loss_objective_version": 2,
         },
         baseline_report={
+            "decision": "READY FOR STAGED TEST",
+            "blocking_reasons": [],
             "prompt_set_version": quality.PROMPT_SET_VERSION,
             "decoding_settings": quality.DECODING_SETTINGS,
             "checkpoint_sha256": "0" * 64,
