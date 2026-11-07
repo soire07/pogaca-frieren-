@@ -106,6 +106,15 @@ function safeErrorCode(error) {
     .slice(0, 100);
 }
 
+export function classifyGuardianGithubReadError(resource, status) {
+  const code = Number(status);
+  if (code !== 403) return 'GUARDIAN_GITHUB_READ_HTTP_' + (Number.isSafeInteger(code) ? code : 0);
+  if (resource === 'actions') return 'GUARDIAN_GITHUB_ACTIONS_READ_REQUIRED';
+  if (resource === 'pull_requests') return 'GUARDIAN_GITHUB_PULL_REQUESTS_READ_REQUIRED';
+  if (resource === 'checks') return 'GUARDIAN_GITHUB_CHECKS_READ_REQUIRED';
+  return 'GUARDIAN_GITHUB_READ_PERMISSION_REQUIRED';
+}
+
 export function classifyGuardianGithubDispatchError(status, message = '') {
   const code = Number(status);
   const detail = String(message || '');
@@ -320,23 +329,23 @@ export async function refreshGuardianRepairTracking({
     'X-GitHub-Api-Version': '2022-11-28',
   };
   const apiBase = 'https://api.github.com';
-  const fetchJson = async url => {
+  const fetchJson = async (url, resource) => {
     const response = await fetchImpl(url, { headers, signal: AbortSignal.timeout(10_000) });
-    if (!response.ok) throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + response.status);
+    if (!response.ok) throw new Error(classifyGuardianGithubReadError(resource, response.status));
     return response.json();
   };
 
   try {
     const baseBranch = await resolveGuardianRepairTrackingBranch(db, job.id);
     const urls = buildGuardianRepairTrackingUrls(apiBase, incident.id, baseBranch);
-    const runsPayload = await fetchJson(urls.runsUrl);
+    const runsPayload = await fetchJson(urls.runsUrl, 'actions');
     const runs = Array.isArray(runsPayload?.workflow_runs) ? runsPayload.workflow_runs : [];
     const totalRuns = Number(runsPayload?.total_count);
     if (Number.isSafeInteger(totalRuns) && totalRuns > runs.length) {
       return { status: 'tracking_incomplete', reason: 'GITHUB_RUN_LIST_TRUNCATED', listed: runs.length, total: totalRuns };
     }
     const run = findGuardianWorkflowRun(runs, incident.id, job.repair_dispatch_at);
-    const prs = await fetchJson(urls.pullRequestsUrl);
+    const prs = await fetchJson(urls.pullRequestsUrl, 'pull_requests');
     if (!Array.isArray(prs)) throw new Error('GUARDIAN_GITHUB_PR_LIST_INVALID');
     const pr = prs.find(item => item.head?.ref === urls.branchName) || null;
     const runId = run?.id || null;
@@ -350,7 +359,7 @@ export async function refreshGuardianRepairTracking({
         checksStatus = 'unknown';
       } else {
         const checksPayload = await fetchJson(apiBase + '/repos/' + REPOSITORY + '/commits/'
-          + encodeURIComponent(pr.head.sha) + '/check-runs?per_page=100');
+          + encodeURIComponent(pr.head.sha) + '/check-runs?per_page=100', 'checks');
         checksStatus = classifyGuardianPullRequestChecks({ ok: true, payload: checksPayload });
       }
     } else if (run?.status !== 'completed') {
@@ -439,7 +448,7 @@ export async function processPendingGuardianRepairDispatch({
     });
     if (!existingResponse.ok) {
       await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'failed' }).catch(() => {});
-      return { status: 'reconciliation_unavailable', jobId: Number(job.id), reason: 'GITHUB_RUN_LIST_HTTP_' + existingResponse.status };
+      return { status: 'reconciliation_unavailable', jobId: Number(job.id), reason: classifyGuardianGithubReadError('actions', existingResponse.status) };
     }
     const existingData = await existingResponse.json().catch(() => ({}));
     const listedRuns = Array.isArray(existingData.workflow_runs) ? existingData.workflow_runs : [];
@@ -468,7 +477,7 @@ export async function processPendingGuardianRepairDispatch({
         });
         if (!prResponse.ok) {
           await store.finishGuardianRepairDispatch(db, { jobId: job.id, status: 'failed' }).catch(() => {});
-          return { status: 'reconciliation_unavailable', jobId: Number(job.id), reason: 'GITHUB_PR_LIST_HTTP_' + prResponse.status };
+          return { status: 'reconciliation_unavailable', jobId: Number(job.id), reason: classifyGuardianGithubReadError('pull_requests', prResponse.status) };
         }
         const prs = await prResponse.json().catch(() => []);
         if (Array.isArray(prs) && prs.some(pr => pr.head?.ref === branchName)) {
