@@ -19,7 +19,7 @@ def _reviewed_report():
             "reviewer_identity_hashes": reviewer_hashes,
         },
         "review_template": {"reviewers": reviewer_hashes},
-        "training_provenance": {"manifest_sha256": "c" * 64, "licenses": ["Apache-2.0"]},
+        "training_provenance": {"manifest_sha256": "c" * 64, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"]},
         "heldout_metrics": {
             "loss": 1.2,
             "perplexity": 3.32,

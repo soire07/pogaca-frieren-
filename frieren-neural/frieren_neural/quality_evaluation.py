@@ -142,7 +142,7 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
     report={"schema_version":1,"prompt_set_version":PROMPT_SET_VERSION,"model_backend":model_backend,"artifact_sha256":artifact_sha256 or checkpoint_sha256,"decoding_settings":dict(DECODING_SETTINGS),
       "checkpoint_sha256":checkpoint_sha256,"checkpoint_step":checkpoint_step,"outputs":outputs,"checkpoint_metadata":checkpoint_metadata,"training_provenance":training_provenance,"heldout_metrics":heldout_metrics,
       "human_review":{"completed":False,"reviewers_required":2,"reviewer_identity_hashes":[]},"review_template":{"reviewers":[None,None]},"metrics":None,
-      "baseline_role":"approved_baseline" if establish_baseline else "candidate",
+      "baseline_role":"baseline_candidate" if establish_baseline else "candidate",
       "baseline_comparison":{"available":False,"improved":False,"baseline_reviewer_identity_hashes":[]},"pretrained_provenance":None,"source_commit_sha":source_commit_sha,"decision":"NOT READY","blocking_reasons":[]}
     reasons=[]
     expected_ids=[item["id"] for item in load_prompt_set()]
@@ -345,7 +345,7 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
             and baseline_report.get("prompt_set_version") == PROMPT_SET_VERSION
             and baseline_report.get("decoding_settings") == DECODING_SETTINGS
             and isinstance(baseline_source_commit, str)
-            and re.fullmatch(r"[a-f0-9]{40}", baseline_source_commit) is not None
+            and re.fullmatch(r"[a-f0-9]{40}", baseline_source_commit, flags=re.IGNORECASE) is not None
             and baseline_review_valid
             and baseline_metrics_valid
             and baseline_objective_valid
@@ -375,6 +375,8 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
     report["blocking_reasons"]=reasons
     if not reasons:
         report["decision"] = "READY TO ESTABLISH BASELINE" if establish_baseline else "READY FOR STAGED TEST"
+        if establish_baseline:
+            report["baseline_role"] = "approved_baseline"
     return report
 
 def render_markdown(report:dict[str,Any])->str:

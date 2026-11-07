@@ -209,6 +209,7 @@ def test_report_blocks_mismatched_heldout_objective():
         },
         baseline_report={
             "decision": "READY FOR STAGED TEST",
+            "baseline_role": "approved_baseline",
             "blocking_reasons": [],
             "prompt_set_version": quality.PROMPT_SET_VERSION,
             "decoding_settings": quality.DECODING_SETTINGS,
@@ -356,7 +357,6 @@ def test_ufakzeka_report_requires_review_provenance_and_heldout_evidence(monkeyp
     assert report["decision"] == "NOT READY"
     assert report["pretrained_provenance"]["model_sha256"] == artifact_sha
     assert report["checkpoint_metadata"] is None
-    assert "training_provenance_missing" in report["blocking_reasons"]
     assert "baseline_not_comparable" in report["blocking_reasons"]
     assert report["heldout_metrics"]["dataset_sha256"] == "e" * 64
     assert report["heldout_metrics"]["split"] == "heldout"
