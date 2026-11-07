@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRoundRobinFixtures, createGuildTeam, joinGuildTeam, reportGuildTeamFixtureScore, ensureGuildTeamLeagueSchema, validateGuildEventRaidTeam } from '../guild-team-leagues.js';
+import { buildRoundRobinFixtures, createGuildTeam, joinGuildTeam, createGuildTeamLeague, reportGuildTeamFixtureScore, ensureGuildTeamLeagueSchema, validateGuildEventRaidTeam } from '../guild-team-leagues.js';
+import eventCommand from '../etkinlik.js';
 
 const guildId='1539562273197260860';
 const captain='123456789012345678';
@@ -110,4 +111,62 @@ test('raid event rejects mixed or legacy A/B-only registrations and malformed ro
  assert.equal((await validateGuildEventRaidTeam(db,{guildId,eventId:fixtureId,userIds:[captain,member],leaderId:captain})).status,'team_mismatch_or_unregistered');
  assert.equal((await validateGuildEventRaidTeam(db,{guildId,eventId:fixtureId,userIds:[captain,member, '323456789012345678','423456789012345678','523456789012345678'],leaderId:captain})).status,'invalid_input');
  assert.equal((await validateGuildEventRaidTeam(db,{guildId,eventId:fixtureId,userIds:[captain,captain],leaderId:captain})).status,'invalid_input');
+});
+
+
+test('league creation rejects short names, invalid dates and reversed date ranges before writing', async () => {
+  let writes = 0;
+  const db = { async query() { writes++; return { rows: [], rowCount: 0 }; } };
+  await assert.rejects(() => createGuildTeamLeague(db, {
+    guildId, creatorId: captain, name: 'A',
+    startsAt: '2026-11-10T18:00:00.000Z', endsAt: '2026-11-20T18:00:00.000Z'
+  }), /LEAGUE_INPUT_INVALID/);
+  await assert.rejects(() => createGuildTeamLeague(db, {
+    guildId, creatorId: captain, name: '2026 Sezonu',
+    startsAt: 'not-a-date', endsAt: '2026-11-20T18:00:00.000Z'
+  }), /LEAGUE_INPUT_INVALID/);
+  await assert.rejects(() => createGuildTeamLeague(db, {
+    guildId, creatorId: captain, name: '2026 Sezonu',
+    startsAt: '2026-11-20T18:00:00.000Z', endsAt: '2026-11-10T18:00:00.000Z'
+  }), /LEAGUE_INPUT_INVALID/);
+  assert.equal(writes, 0);
+});
+
+test('league creation stores normalized timestamps for valid input', async () => {
+  let stored;
+  const db = { async query(_sql, params) {
+    stored = params;
+    return { rows: [{ league_id: leagueId, season_name: params[2], starts_at: params[3], ends_at: params[4], status: 'registration' }], rowCount: 1 };
+  } };
+  const result = await createGuildTeamLeague(db, {
+    guildId, creatorId: captain, name: '  2026 Sezonu  ',
+    startsAt: '2026-11-10T18:00:00+03:00', endsAt: '2026-11-20T18:00:00+03:00'
+  });
+  assert.equal(result.season_name, '2026 Sezonu');
+  assert.equal(stored[3], '2026-11-10T15:00:00.000Z');
+  assert.equal(stored[4], '2026-11-20T15:00:00.000Z');
+});
+
+test('event command defers database-backed league actions and gives invalid input a safe explanation', async () => {
+  const replies = [];
+  let deferred = false;
+  const interaction = {
+    guildId,
+    user: { id: captain },
+    options: {
+      getSubcommand: () => 'lig-olustur',
+      getString: name => ({
+        ad: '2026 Sezonu',
+        baslangic: 'not-a-date',
+        bitis: '2026-11-20T18:00:00.000Z'
+      })[name]
+    },
+    async deferReply(payload) { deferred = true; assert.equal(payload.flags, 64); },
+    async editReply(payload) { replies.push(payload); return payload; },
+    async reply() { throw new Error('deferred interaction must use editReply'); }
+  };
+  await eventCommand.execute(interaction);
+  assert.equal(deferred, true);
+  assert.match(replies.at(-1).content, /ISO 8601|başlangıç|tarih/i);
+  assert.doesNotMatch(replies.at(-1).content, /LEAGUE_INPUT_INVALID|not-a-date/i);
 });
