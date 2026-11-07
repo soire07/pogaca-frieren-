@@ -127,7 +127,7 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
     report={"schema_version":1,"prompt_set_version":PROMPT_SET_VERSION,"model_backend":model_backend,"artifact_sha256":artifact_sha256 or checkpoint_sha256,"decoding_settings":dict(DECODING_SETTINGS),
       "checkpoint_sha256":checkpoint_sha256,"checkpoint_step":checkpoint_step,"outputs":outputs,"checkpoint_metadata":checkpoint_metadata,"training_provenance":training_provenance,"heldout_metrics":heldout_metrics,
       "human_review":{"completed":False,"reviewers_required":2,"reviewer_identity_hashes":[]},"review_template":{"reviewers":[None,None]},"metrics":None,
-      "baseline_comparison":{"available":False,"improved":False},"pretrained_provenance":None,"source_commit_sha":source_commit_sha,"decision":"NOT READY","blocking_reasons":[]}
+      "baseline_comparison":{"available":False,"improved":False,"baseline_reviewer_identity_hashes":[]},"pretrained_provenance":None,"source_commit_sha":source_commit_sha,"decision":"NOT READY","blocking_reasons":[]}
     reasons=[]
     expected_ids=[item["id"] for item in load_prompt_set()]
     actual_ids=[item.get("id") for item in outputs if isinstance(item,dict)]
@@ -245,6 +245,7 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
           or baseline_report.get("decoding_settings") != DECODING_SETTINGS
           or not isinstance(baseline_report.get("metrics"),dict)
           or baseline_report.get("human_review",{}).get("completed") is not True
+          or baseline_report.get("human_review",{}).get("reviewers_required") != 2
           or not isinstance(baseline_report.get("human_review",{}).get("reviewer_identity_hashes"), list)
           or len(baseline_report.get("human_review",{}).get("reviewer_identity_hashes", [])) != 2
           or any(not isinstance(value, str) or not re.fullmatch(r"[a-f0-9]{64}", value)
@@ -260,7 +261,12 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
         bm=baseline_report["metrics"]
         bd=bm.get("dimension_averages",{})
         improved=all(d in bd and metrics["dimension_averages"][d]>bd[d] for d in DIMENSIONS) and metrics["overall_average"]>bm.get("overall_average",float("inf"))
-        report["baseline_comparison"]={"available":True,"improved":improved,"baseline_checkpoint_sha256":baseline_report.get("checkpoint_sha256")}
+        report["baseline_comparison"]={
+            "available":True,
+            "improved":improved,
+            "baseline_checkpoint_sha256":baseline_report.get("checkpoint_sha256"),
+            "baseline_reviewer_identity_hashes": baseline_report["human_review"]["reviewer_identity_hashes"],
+        }
         if not improved: reasons.append("no_improvement_over_comparable_baseline")
     report["blocking_reasons"]=reasons
     if not reasons: report["decision"]="READY FOR STAGED TEST"
