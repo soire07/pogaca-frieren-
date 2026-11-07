@@ -39,7 +39,7 @@ def test_report_without_human_scores_is_not_ready_and_never_self_grades():
     assert report["decision"] == "NOT READY"
     assert report["human_review"]["completed"] is False
     assert report["metrics"] is None
-    assert report["review_template"]["reviewers"] == ["reviewer_1", "reviewer_2"]
+    assert report["review_template"]["reviewers"] == [None, None]
 
 
 def test_report_applies_quality_gate_to_human_scores():
