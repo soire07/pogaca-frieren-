@@ -24,6 +24,20 @@ def test_health_does_not_expose_secrets_and_reports_missing_checkpoint(api_clien
     assert "token" not in response.text.lower()
 
 
+def test_health_returns_503_when_runtime_cannot_load_model(api_client, monkeypatch, tmp_path):
+    import frieren_neural.api as api
+
+    checkpoint = tmp_path / "broken.pt"
+    checkpoint.write_bytes(b"placeholder")
+    monkeypatch.setenv("FRIEREN_CHECKPOINT", str(checkpoint))
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "scratch")
+    monkeypatch.setattr(api, "_load_active_runtime", lambda: (_ for _ in ()).throw(RuntimeError("model load failed")))
+
+    response = api_client.get("/health")
+    assert response.status_code == 503
+    assert response.json() == {"status": "model_unavailable"}
+
+
 def test_generation_fails_closed_without_server_token(api_client, monkeypatch):
     monkeypatch.delenv("FRIEREN_API_TOKEN", raising=False)
     response = api_client.post("/generate", json={"prompt": "Frieren"})
