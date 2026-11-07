@@ -68,7 +68,7 @@ def test_report_applies_quality_gate_to_human_scores():
             "tokenizer_vocab_size": 280,
         },
         heldout_metrics={
-            "loss":2.0, "perplexity":7.39,
+            "loss":2.0, "perplexity":7.39, "dataset_sha256":"e"*64, "sample_count":24, "split":"heldout", "evaluation_version":"frieren-neural-heldout-v1",
             "loss_objective_version": 2,
             "checkpoint_training_loss_objective_version": 2,
         },
@@ -187,7 +187,7 @@ def test_report_blocks_mismatched_heldout_objective():
         },
         training_provenance={"manifest_sha256": "f" * 64, "licenses": ["CC BY 4.0"]},
         heldout_metrics={
-            "loss": 2.0, "perplexity": 7.39,
+            "loss": 2.0, "perplexity": 7.39, "dataset_sha256": "e" * 64, "sample_count": 24, "split": "heldout", "evaluation_version": "frieren-neural-heldout-v1",
             "loss_objective_version": 1,
             "checkpoint_training_loss_objective_version": 2,
         },
@@ -214,7 +214,7 @@ def test_report_blocks_missing_checkpoint_metadata():
         outputs=[{"id": f"TR-{number:03d}", "output": "örnek"} for number in range(1, 25)],
         scores=None,
         heldout_metrics={
-            "loss": 2.0, "perplexity": 7.39,
+            "loss": 2.0, "perplexity": 7.39, "dataset_sha256": "e" * 64, "sample_count": 24, "split": "heldout", "evaluation_version": "frieren-neural-heldout-v1",
             "loss_objective_version": 2,
             "checkpoint_training_loss_objective_version": 0,
         },
