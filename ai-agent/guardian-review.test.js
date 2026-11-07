@@ -101,6 +101,15 @@ test('Guardian review requests valid JSON and preserves the required test plan f
   assert.deepEqual(result.affectedFiles, ['guardian/automation.test.js']);
 });
 
+test('production Frieren AI health workflow fails closed and verifies the authenticated Poğaça bridge', async () => {
+  const workflow = await readFile(new URL('../.github/workflows/frieren-ai-health.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /FRIEREN_AI_HEALTH_URL is required/);
+  assert.match(workflow, /exit 1/);
+  assert.match(workflow, /https:\/\/pogaca-frieren\\.onrender\\.com\/ai-bridge-health/);
+  assert.match(workflow, /j\\.status==='ok' && j\\.reachable===true/);
+  assert.doesNotMatch(workflow, /not configured; skipping the production AI health probe/);
+});
+
 test('Guardian provider self-test is admin-only and cannot dispatch repairs', async () => {
   const source = await readFile(new URL('./index.js', import.meta.url), 'utf8');
   const registration = await readFile(new URL('./register-commands.js', import.meta.url), 'utf8');
