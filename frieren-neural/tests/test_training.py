@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import torch
 
-from frieren_neural.training import TrainingConfig, evaluate_loss, load_text_corpus, split_tokens, train_model
+from frieren_neural.training import TrainingConfig, evaluate_loss, load_checkpoint, load_text_corpus, split_tokens, train_model
 
 
 def test_load_text_corpus_reads_supported_files_in_stable_order(tmp_path: Path):
@@ -713,9 +713,15 @@ def test_warm_start_allows_a_new_pinned_dataset_and_preserves_parent_lineage(tmp
         initialize_from=baseline_checkpoint,
         training_dataset_metadata=candidate_dataset,
     )
+    train_model(
+        corpus, candidate_checkpoint, replace(candidate_config, max_steps=3),
+        resume=True,
+        training_dataset_metadata=candidate_dataset,
+    )
 
     _, _, metadata = load_checkpoint(candidate_checkpoint)
     assert metadata["training_dataset"] == candidate_dataset
     assert metadata["parent_training_dataset"] == baseline_dataset
     assert metadata["parent_checkpoint_sha256"] == hashlib.sha256(baseline_checkpoint.read_bytes()).hexdigest()
     assert metadata["parent_checkpoint_step"] == 1
+    assert metadata["step"] == 3
