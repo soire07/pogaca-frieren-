@@ -4,14 +4,13 @@ on:
   push:
     branches:
       - validation/ufakzeka-real-gguf
+      - feat/neural-single-core-integration-20261107
     paths:
       - "frieren-neural/trigger-active-gguf-eval.txt"
   workflow_dispatch:
 
 permissions:
-  actions: read
   contents: read
-  id-token: write
 
 jobs:
   active-gguf-evaluation:
@@ -67,55 +66,6 @@ jobs:
           print("QUALITY_DECISION=" + report["decision"])
           print("BLOCKING_REASONS=" + ",".join(report["blocking_reasons"]))
           PY
-      - name: Send quality report to Guardian using GitHub OIDC
-        if: success() && vars.FRIEREN_NEURAL_REPORT_UPLOAD_ENABLED == 'true'
-        env:
-          GUARDIAN_URL: https://pogaca-frieren.onrender.com/internal/neural-quality-report
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          import urllib.error
-          import urllib.parse
-          import urllib.request
-          from pathlib import Path
-
-          audience = "frieren-neural-guardian"
-          request_url = os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"]
-          separator = "&" if "?" in request_url else "?"
-          request_url += separator + urllib.parse.urlencode({"audience": audience})
-          oidc_request = urllib.request.Request(
-              request_url,
-              headers={"Authorization": "Bearer " + os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]},
-          )
-          with urllib.request.urlopen(oidc_request, timeout=15) as response:
-              oidc_token = json.loads(response.read())["value"]
-
-          report_path = Path("quality-reports/active-gguf/quality-report.json")
-          report_bytes = report_path.read_bytes()
-          upload_request = urllib.request.Request(
-              os.environ["GUARDIAN_URL"],
-              data=report_bytes,
-              headers={
-                  "Authorization": "Bearer " + oidc_token,
-                  "X-GitHub-Token": os.environ["GITHUB_TOKEN"],
-                  "Content-Type": "application/json",
-              },
-              method="POST",
-          )
-          try:
-              with urllib.request.urlopen(upload_request, timeout=25) as response:
-                  result = json.loads(response.read())
-                  print("GUARDIAN_UPLOAD_STATUS=" + str(response.status))
-                  print("GUARDIAN_DECISION=" + str(result.get("decision", "unknown")))
-          except urllib.error.HTTPError as error:
-              print("GUARDIAN_UPLOAD_HTTP_STATUS=" + str(error.code))
-              raise
-          PY
-      - name: Explain why production report upload was skipped
-        if: success() && vars.FRIEREN_NEURAL_REPORT_UPLOAD_ENABLED != 'true'
-        run: echo "Guardian report upload skipped; set FRIEREN_NEURAL_REPORT_UPLOAD_ENABLED=true only after production write approval."
       - name: Upload real-model evaluation report
         if: always()
         uses: actions/upload-artifact@v4
