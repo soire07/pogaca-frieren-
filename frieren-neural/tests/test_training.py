@@ -680,3 +680,42 @@ def test_resume_rejects_a_different_pinned_training_manifest(tmp_path: Path):
             corpus, checkpoint, config, resume=True,
             training_dataset_metadata=changed,
         )
+
+
+def test_warm_start_allows_a_new_pinned_dataset_and_preserves_parent_lineage(tmp_path: Path):
+    import hashlib
+
+    corpus = ["Frieren studies magic. Fern studies spells. " * 8]
+    baseline_checkpoint = tmp_path / "baseline-lineage.pt"
+    candidate_checkpoint = tmp_path / "candidate-lineage.pt"
+    base_config = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0,
+    )
+    baseline_dataset = {
+        "dataset_sha256": "a" * 64, "dataset_id": "example/base",
+        "dataset_revision": "b" * 40, "source_fingerprint_sha256": "c" * 64,
+        "processed_sha256": "d" * 64, "split": "train", "sample_count": 10,
+    }
+    candidate_dataset = {
+        "dataset_sha256": "e" * 64, "dataset_id": "example/verified-knowledge",
+        "dataset_revision": "f" * 40, "source_fingerprint_sha256": "1" * 64,
+        "processed_sha256": "2" * 64, "split": "train", "sample_count": 5,
+    }
+
+    train_model(corpus, baseline_checkpoint, base_config, training_dataset_metadata=baseline_dataset)
+    candidate_config = TrainingConfig(
+        max_steps=2, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0,
+    )
+    train_model(
+        corpus, candidate_checkpoint, candidate_config,
+        initialize_from=baseline_checkpoint,
+        training_dataset_metadata=candidate_dataset,
+    )
+
+    _, _, metadata = load_checkpoint(candidate_checkpoint)
+    assert metadata["training_dataset"] == candidate_dataset
+    assert metadata["parent_training_dataset"] == baseline_dataset
+    assert metadata["parent_checkpoint_sha256"] == hashlib.sha256(baseline_checkpoint.read_bytes()).hexdigest()
+    assert metadata["parent_checkpoint_step"] == 1

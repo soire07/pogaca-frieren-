@@ -616,12 +616,16 @@ def train_model(
     start_step = 0
     parent_checkpoint_sha256: str | None = None
     parent_checkpoint_step: int | None = None
+    parent_training_dataset: dict[str, Any] | None = None
 
     if initialize_from is not None:
         parent = source_payload
         if (parent.get("model_config") != asdict(model_config)
                 or parent.get("tokenizer") != tokenizer.to_dict()):
-            raise ValueError("Warm-start checkpoint corpus/model/training settings do not match this candidate.")
+            raise ValueError("Warm-start checkpoint model/tokenizer settings do not match this candidate.")
+        parent_training_dataset = _normalize_training_dataset_metadata(parent.get("training_dataset"))
+        if parent_training_dataset is None:
+            raise ValueError("Warm-start checkpoint is missing pinned training dataset provenance.")
         model.load_state_dict(parent["model_state"])
         parent_checkpoint_sha256 = hashlib.sha256(source_path.read_bytes()).hexdigest()
         parent_checkpoint_step = int(parent["step"])
@@ -650,6 +654,9 @@ def train_model(
             raise ValueError("Checkpoint corpus/model/training settings do not match this run (max_steps may increase).")
         model.load_state_dict(saved["model_state"])
         optimizer.load_state_dict(saved["optimizer_state"])
+        parent_checkpoint_sha256 = str(saved.get("parent_checkpoint_sha256") or "") or None
+        parent_checkpoint_step = int(saved.get("parent_checkpoint_step") or 0) or None
+        parent_training_dataset = _normalize_training_dataset_metadata(saved.get("parent_training_dataset"))
         start_step = int(saved["step"])
         if settings.max_steps < start_step:
             raise ValueError("max_steps cannot be lower than the checkpoint step when resuming.")
@@ -695,6 +702,7 @@ def train_model(
                 "corpus_sha256": corpus_fingerprint,
                 "corpus_content_sha256": corpus_content_fingerprint,
                 "training_dataset": normalized_training_dataset,
+                "parent_training_dataset": parent_training_dataset,
                 "model_state": model.state_dict(),
                 "optimizer_state": optimizer.state_dict(),
                 "batch_generator_state": batch_generator.get_state(),
@@ -780,6 +788,7 @@ def load_checkpoint(
         "tokenizer_type": str(payload["tokenizer"].get("type", "unknown")),
         "tokenizer_vocab_size": int(tokenizer.vocab_size),
         "training_dataset": _normalize_training_dataset_metadata(payload.get("training_dataset")),
+        "parent_training_dataset": _normalize_training_dataset_metadata(payload.get("parent_training_dataset")),
     }
     return model, tokenizer, metadata
 
