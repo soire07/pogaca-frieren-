@@ -351,6 +351,7 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
                 "available": True,
                 "improved": improved,
                 "baseline_checkpoint_sha256": baseline_checkpoint_sha,
+                "baseline_loss_objective_version": baseline_objective_version,
                 "baseline_reviewer_identity_hashes": baseline_reviewers,
             }
             if not improved:
