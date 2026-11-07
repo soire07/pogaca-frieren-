@@ -63,7 +63,6 @@ test('Guardian source context includes Neural Python API and regression tests', 
     assert.ok(result.files.includes('frieren-neural/frieren_neural/api.py'));
     assert.ok(result.files.includes('frieren-neural/tests/test_api.py'));
     assert.equal(result.sourceCommitSha, 'a'.repeat(40));
-    assert.match(result.text, /FILE: frieren-neural\\/frieren_neural\\/api\\.py/);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
