@@ -1,6 +1,7 @@
 import { DEFAULT_FRIEREN_CHAT_SETTINGS, getFrierenChatSettings, normalizeFrierenChatSettings } from './frieren-chat-settings.js';
 import { buildMemoryContext, getRelevantMemories, saveExplicitMemories } from './frieren-memory.js';
 import { generateNeuralReply, isNeuralConfigured, isNeuralRequested } from './ai-agent/neural-client.js';
+import { handleFrierenLearningCommand } from './frieren-learning.js';
 const MAX_HISTORY_MESSAGES = 16;
 const MAX_HISTORY_CONTENT_LENGTH = 1000;
 const MAX_USER_MESSAGE_LENGTH = 1500;
@@ -173,15 +174,6 @@ export async function handleFrierenMentionMessage({ message, botUserId, db, env 
     return true;
   }
 
-  const neuralRequested = isNeuralRequested(env);
-  if ((neuralRequested && !isNeuralConfigured(env)) || (!neuralRequested && !String(env.GROQ_API_KEY || '').trim())) {
-    await message.reply({
-      content: 'Sohbet yeteneğim henüz yapılandırılmadı. Biraz sonra tekrar dene.',
-      allowedMentions: { parse: [] }
-    });
-    return true;
-  }
-
   try {
     let chatSettings = DEFAULT_FRIEREN_CHAT_SETTINGS;
     try { chatSettings = await getFrierenChatSettings(db); } catch (settingsError) {
@@ -189,6 +181,24 @@ export async function handleFrierenMentionMessage({ message, botUserId, db, env 
     }
     if (!chatSettings.enabled) {
       await message.reply({ content: 'Şu anda sohbet özelliğim kapalı. Daha sonra tekrar deneyebilirsin.', allowedMentions: { parse: [] } });
+      return true;
+    }
+    const learning = await handleFrierenLearningCommand(db, {
+      guildId: message.guild.id,
+      userId: message.author.id,
+      message: userMessage
+    });
+    if (learning?.handled) {
+      await message.reply({ content: learning.reply, allowedMentions: { parse: [] }, failIfNotExists: false });
+      return true;
+    }
+
+    const neuralRequested = isNeuralRequested(env);
+    if ((neuralRequested && !isNeuralConfigured(env)) || (!neuralRequested && !String(env.GROQ_API_KEY || '').trim())) {
+      await message.reply({
+        content: 'Sohbet yeteneğim henüz yapılandırılmadı. Biraz sonra tekrar dene.',
+        allowedMentions: { parse: [] }
+      });
       return true;
     }
     await saveExplicitMemories(db, { guildId: message.guild.id, userId: message.author.id, message: userMessage });
