@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, getGuardianProposalFingerprint } from './automation.js';
+import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubDispatchError, getGuardianProposalFingerprint } from './automation.js';
 
 const incident = {
   id: 42,
@@ -588,4 +588,30 @@ test('GitHub workflow dispatch 403 explains the missing Actions write permission
   assert.equal(classifyGuardianGithubDispatchError(401, 'Bad credentials'), 'GUARDIAN_GITHUB_TOKEN_INVALID');
   assert.equal(classifyGuardianGithubDispatchError(404, 'Not Found'), 'GUARDIAN_GITHUB_WORKFLOW_NOT_FOUND');
   assert.equal(classifyGuardianGithubDispatchError(422, 'Workflow does not exist'), 'GUARDIAN_GITHUB_DISPATCH_INPUT_OR_REF_INVALID');
+});
+
+
+test('approved Guardian dispatch reports the fine-grained PAT Actions permission requirement on GitHub 403', async () => {
+  const finished = [];
+  const result = await processPendingGuardianRepairDispatch({
+    db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
+    job: {
+      id: 92,
+      result: review,
+      repair_approved_by: '1553794496234262641',
+      repair_approval_fingerprint: getGuardianProposalFingerprint(review),
+    },
+    incident,
+    env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
+    fetchImpl: async (_url, options) => options.method === 'GET'
+      ? { ok: true, status: 200, json: async () => ({ workflow_runs: [], total_count: 0 }) }
+      : { ok: false, status: 403, json: async () => ({ message: 'Resource not accessible by personal access token' }) },
+    store: {
+      reserveGuardianRepairDispatch: async () => ({ id: 92 }),
+      finishGuardianRepairDispatch: async (_db, value) => { finished.push(value); return true; },
+    },
+  });
+  assert.equal(result.status, 'dispatch_failed');
+  assert.equal(result.reason, 'GUARDIAN_GITHUB_ACTIONS_WRITE_REQUIRED');
+  assert.equal(finished.at(-1).status, 'failed');
 });
