@@ -79,6 +79,13 @@ def test_report_applies_quality_gate_to_human_scores():
             "prompt_set_version": quality.PROMPT_SET_VERSION,
             "decoding_settings": quality.DECODING_SETTINGS,
             "checkpoint_sha256": "0" * 64,
+            "source_commit_sha": "f" * 40,
+            "training_provenance": {"manifest_sha256": "d" * 64, "licenses": ["Apache-2.0"]},
+            "heldout_metrics": {
+                "loss": 1.5, "perplexity": 4.48, "dataset_sha256": "e" * 64,
+                "sample_count": 120, "split": "heldout", "evaluation_version": "frieren-neural-heldout-v1",
+            },
+            "outputs": [{"id": f"TR-{number:03d}", "output": "baseline response"} for number in range(1, 25)],
             "human_review": {"completed": True, "reviewers_required": 2, "reviewer_identity_hashes": ["c" * 64, "d" * 64]},
             "review_template": {"reviewers": ["c" * 64, "d" * 64]},
             "metrics": {
@@ -201,6 +208,13 @@ def test_report_blocks_mismatched_heldout_objective():
             "prompt_set_version": quality.PROMPT_SET_VERSION,
             "decoding_settings": quality.DECODING_SETTINGS,
             "checkpoint_sha256": "0" * 64,
+            "source_commit_sha": "f" * 40,
+            "training_provenance": {"manifest_sha256": "d" * 64, "licenses": ["Apache-2.0"]},
+            "heldout_metrics": {
+                "loss": 1.5, "perplexity": 4.48, "dataset_sha256": "e" * 64,
+                "sample_count": 120, "split": "heldout", "evaluation_version": "frieren-neural-heldout-v1",
+            },
+            "outputs": [{"id": f"TR-{number:03d}", "output": "baseline response"} for number in range(1, 25)],
             "human_review": {"completed": True, "reviewers_required": 2, "reviewer_identity_hashes": ["c" * 64, "d" * 64]},
             "review_template": {"reviewers": ["c" * 64, "d" * 64]},
             "metrics": {
