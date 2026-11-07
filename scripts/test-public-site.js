@@ -139,6 +139,15 @@ test('custom navigation script is served as a public static asset', async () => 
   assert.match(String(response.body), /Escape/);
 });
 
+test('public SEO landing page includes the exact Google site-verification meta tag in its head', async () => {
+  const response = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/tanitim', headers: {} }, response), true);
+  assert.equal(response.status, 200);
+  assert.match(response.headers['Content-Type'], /text\/html/);
+  assert.match(response.body, /<head>[\s\S]*<meta name="google-site-verification" content="zQvll4lo6fEkpcbHjwSdQeMbJggVxdAviEDKvLC0Ebc">[\s\S]*<\/head>/);
+  assert.equal((response.body.match(/name="google-site-verification"/g) || []).length, 1);
+});
+
 test('anonymous visitors must authenticate before viewing the homepage', async () => {
   const response = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/', headers: {} }, response), true);
