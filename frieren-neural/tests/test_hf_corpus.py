@@ -94,7 +94,8 @@ def test_prepare_corpus_writes_apache_manifest_and_loader_verifies_content_hash(
     assert manifest["dataset"]["filter"]["reasoning_field_included"] is False
     assert manifest["dataset"]["source_sha256"] == _source_rows_sha256(rows)
     assert len(manifest["dataset"]["source_sha256"]) == 64
-    assert manifest["documents"][0]["license"] == "Apache-2.0"
+    assert manifest["documents"][0]["license"] == manifest["dataset"]["license"] == "apache-2.0"
+    assert manifest["dataset"]["processed_sha256"] == manifest["documents"][0]["sha256"]
     assert len(manifest["documents"][0]["sha256"]) == 64
 
     corpus_file = train_dir / manifest["documents"][0]["path"]

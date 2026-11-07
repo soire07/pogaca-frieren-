@@ -178,6 +178,7 @@ def _write_split(
             "dialogues": len(dialogues),
             "row_ids_sha256": id_hash,
             "source_sha256": source_sha256,
+            "processed_sha256": text_hash,
             "filter": {
                 "language_mode": "tr_only",
                 "has_tools": False,
@@ -189,7 +190,7 @@ def _write_split(
         "documents": [{
             "path": relative_file,
             "source": f"{DATASET_URL} pinned to commit {revision}",
-            "license": "Apache-2.0",
+            "license": DATASET_LICENSE,
             "usage": (
                 "Apache-2.0 permits model training. Only visible Turkish user/assistant content is included; "
                 "hidden reasoning fields and tool calls are excluded. Retain Apache-2.0 attribution."
