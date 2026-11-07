@@ -122,3 +122,31 @@ def test_verified_knowledge_export_writes_real_dialogue_newlines_and_valid_manif
     metadata = load_corpus_manifest_metadata(output, required_split="train")
     assert metadata["sample_count"] == 1
     assert metadata["dataset_id"] == "frieren-neural/verified-knowledge"
+
+
+def test_reviewer_identity_requires_two_unique_preconfigured_credentials(monkeypatch):
+    import json
+    from frieren_neural.knowledge import _reviewer_identity_hash
+
+    first = "reviewer-one-private-token-12345678901234567890"
+    second = "reviewer-two-private-token-12345678901234567890"
+    monkeypatch.delenv("FRIEREN_KNOWLEDGE_REVIEWERS", raising=False)
+    with pytest.raises(RuntimeError, match="not configured"):
+        _reviewer_identity_hash(first)
+
+    monkeypatch.setenv("FRIEREN_KNOWLEDGE_REVIEWERS", json.dumps({
+        "reviewer_one": first,
+        "reviewer_two": second,
+    }))
+    first_hash = _reviewer_identity_hash(first)
+    second_hash = _reviewer_identity_hash(second)
+    assert first_hash != second_hash
+    with pytest.raises(ValueError, match="not authorized"):
+        _reviewer_identity_hash("unregistered-reviewer-token-1234567890")
+
+    monkeypatch.setenv("FRIEREN_KNOWLEDGE_REVIEWERS", json.dumps({
+        "reviewer_one": first,
+        "reviewer_two": first,
+    }))
+    with pytest.raises(RuntimeError, match="must be unique"):
+        _reviewer_identity_hash(first)
