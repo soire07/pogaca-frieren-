@@ -315,6 +315,13 @@ The command stores each candidate separately and writes `candidate-search-report
 
 The human score template requires two distinct, pseudonymous reviewer identity hashes. Each reviewer creates a private random token of at least 32 characters and computes its hash with `hash_reviewer_identity`; only the SHA-256 hash is stored in the score/report files. Raw reviewer tokens, names, and email addresses must not be submitted. Distinct hashes prevent accidental reuse of the same reviewer token, but do not cryptographically prove real-world identity; the review process must still ensure the two reviewers are genuinely independent.
 
+To generate a hash without echoing the private token in a terminal, run:
+
+```bash
+python -c "from getpass import getpass; from frieren_neural.quality_evaluation import hash_reviewer_identity; print(hash_reviewer_identity(getpass('Private reviewer token: ')))"
+```
+
+
 Held-out evaluation also requires a pinned corpus manifest fingerprint, split, sample count, and evaluation version. The evaluation CLI accepts the explicit `test` or `heldout` split and records it as held-out evidence; a training split cannot satisfy this gate. Corpus manifests include the pinned source revision, source SHA-256, processed-file SHA-256, license, split, and dialogue count. Training data is limited to permissive licenses (Apache-2.0, MIT, CC0-1.0, CC-BY-4.0, or CC-BY-SA-4.0); non-commercial, no-derivatives, and unknown licenses are rejected.
 
 The sampler microbenchmark compares the vectorized implementation with the previous Python-loop implementation while asserting identical sampled tensors. The BPE benchmark also compares the exact merge sequence against the previous reference algorithm. CI records measured throughput; it does not assume that a speedup on one runner guarantees the same gain on every CPU.
