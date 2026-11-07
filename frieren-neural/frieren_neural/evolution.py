@@ -344,7 +344,7 @@ def run_candidate_search(
         )
         (folder / "quality-report.md").write_text(render_markdown(report), encoding="utf-8")
         (folder / "human-scores.template.json").write_text(
-            json.dumps(empty_score_template(), ensure_ascii=False, indent=2) + "\n",
+            json.dumps(empty_score_template(checkpoint_sha256=checkpoint_sha, outputs=outputs), ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
         return str(folder / "quality-report.json")

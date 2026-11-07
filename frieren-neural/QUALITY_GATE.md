@@ -14,6 +14,7 @@ A lower next-token loss or a successful API health check does not establish that
 - Have two reviewers independently score each response where practical. Resolve disagreements before release.
 - Do not include private Discord messages, credentials, user data, scraped anime dialogue, copyrighted scripts, or hidden chain-of-thought in the benchmark.
 - Preserve raw outputs and reviewer scores as a versioned evaluation artifact; do not commit model weights or private datasets.
+- Bind each score sheet to the exact checkpoint SHA-256, canonical generated-output SHA-256, and prompt-set version. Reject reused or mismatched sheets.
 
 ## Fixed Turkish prompt set v1
 

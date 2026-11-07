@@ -201,3 +201,14 @@ def test_evolution_requires_approved_open_training_licenses():
 
     assert plan["status"] == "HOLD"
     assert "training_provenance_missing_or_invalid" in plan["blocking_reasons"]
+
+
+def test_evolution_plan_holds_when_review_sheet_is_not_bound_to_exact_outputs():
+    report = _reviewed_report()
+    report["human_review"]["candidate_binding"]["outputs_sha256"] = "0" * 64
+    report["review_template"]["candidate_binding"]["outputs_sha256"] = "0" * 64
+
+    plan = build_evolution_plan(report)
+
+    assert plan["status"] == "HOLD"
+    assert "two_distinct_human_reviewers_required" in plan["blocking_reasons"]

@@ -154,7 +154,7 @@ The command writes three files:
 - `quality-report.md`: reviewer-friendly report with all 24 prompts and outputs.
 - `human-scores.template.json`: blank two-reviewer score sheet.
 
-The model never grades itself. Two human reviewers independently score all six dimensions from 0 to 4 and mark critical safety/privacy failures and fabricated claims. A prior human-scored report with the same prompt-set version and decoding settings is required for a READY decision. Supply the completed score sheet and comparable baseline using `--scores` and `--baseline-report`. Without human scores or a comparable baseline, the decision remains `NOT READY`.
+The model never grades itself. Two human reviewers independently score all six dimensions from 0 to 4 and mark critical safety/privacy failures and fabricated claims. Every score template is cryptographically fingerprint-bound to the exact checkpoint SHA-256, all generated benchmark outputs, and prompt-set version; a score sheet cannot be reused for a different candidate or changed output. A prior human-scored report with the same prompt-set version and decoding settings is required for a READY decision. Supply the completed score sheet and comparable baseline using `--scores` and `--baseline-report`. Without human scores or a comparable baseline, the decision remains `NOT READY`.
 
 Training workflow runs generate and archive the prompt report automatically after training. This produces evidence for review; it does not auto-approve or deploy the checkpoint. The first baseline has not passed human review.
 
