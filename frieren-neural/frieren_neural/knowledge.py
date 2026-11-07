@@ -264,6 +264,86 @@ def review_knowledge_candidate(candidate_id: str, *, decision: str, reviewer_tok
     return {"candidate_id": parsed_id, "status": status, "approval_count": approvals}
 
 
+def _verified_entry_from_row(row: tuple[Any, ...]) -> dict[str, Any]:
+    """Re-check every persisted provenance link before exposing or exporting an entry."""
+    (
+        entry_id, title, content, source_title, source_url, source_revision,
+        stored_license, source_sha, content_sha, verified_at, reviewers,
+        source_excerpt, candidate_source_title, candidate_source_url,
+        candidate_source_revision, candidate_source_sha, candidate_content_sha,
+        candidate_license, candidate_status, actual_reviewers,
+    ) = row
+
+    try:
+        candidate = validate_knowledge_candidate({
+            "title": title,
+            "content": content,
+            "source_title": source_title,
+            "source_excerpt": source_excerpt,
+            "source_url": source_url,
+            "source_revision": source_revision,
+            "license": stored_license,
+        })
+    except (TypeError, ValueError) as error:
+        raise RuntimeError("Verified knowledge integrity check failed.") from error
+
+    reviewer_values = list(reviewers) if isinstance(reviewers, (list, tuple)) else []
+    actual_values = list(actual_reviewers) if isinstance(actual_reviewers, (list, tuple)) else []
+    valid_reviewer_hashes = (
+        len(reviewer_values) == 2
+        and len(actual_values) == 2
+        and reviewer_values[0] != reviewer_values[1]
+        and actual_values == reviewer_values
+        and all(re.fullmatch(r"[a-f0-9]{64}", str(value)) for value in reviewer_values)
+    )
+    if (
+        candidate_status != "promoted"
+        or candidate_source_title != source_title
+        or candidate_source_url != source_url
+        or candidate_source_revision != source_revision
+        or candidate_license != stored_license
+        or candidate_source_sha != source_sha
+        or candidate_content_sha != content_sha
+        or candidate["license"] != stored_license
+        or candidate["source_sha256"] != source_sha
+        or candidate["content_sha256"] != content_sha
+        or not valid_reviewer_hashes
+    ):
+        raise RuntimeError("Verified knowledge integrity check failed.")
+
+    return {
+        "entry_id": str(entry_id),
+        "title": title,
+        "content": content,
+        "source_title": source_title,
+        "source_url": source_url,
+        "source_revision": source_revision,
+        "license": stored_license,
+        "source_sha256": source_sha,
+        "content_sha256": content_sha,
+        "verified_at": verified_at.isoformat(),
+        "approved_by_hashes": reviewer_values,
+    }
+
+
+_VERIFIED_ENTRY_SELECT = """
+    SELECT e.entry_id::text, e.title, e.content, e.source_title, e.source_url,
+           e.source_revision, e.license, e.source_sha256, e.content_sha256,
+           e.verified_at, e.approved_by_hashes,
+           c.source_excerpt, c.source_title, c.source_url, c.source_revision,
+           c.source_sha256, c.content_sha256, c.license, c.status,
+           ARRAY(
+               SELECT r.reviewer_identity_hash
+               FROM neural_knowledge_reviews r
+               WHERE r.candidate_id = e.candidate_id AND r.decision = 'approve'
+               ORDER BY r.reviewed_at, r.reviewer_identity_hash
+               LIMIT 2
+           ) AS actual_approvals
+    FROM neural_knowledge_entries e
+    JOIN neural_knowledge_candidates c ON c.candidate_id = e.candidate_id
+"""
+
+
 def search_verified_knowledge(query: str, *, limit: int = 5) -> list[dict[str, Any]]:
     import psycopg
 
@@ -271,25 +351,26 @@ def search_verified_knowledge(query: str, *, limit: int = 5) -> list[dict[str, A
     safe_limit = max(1, min(int(limit), 10))
     with psycopg.connect(_database_url(), connect_timeout=3) as connection:
         rows = connection.execute(
-            """SELECT entry_id::text, title, content, source_title, source_url,
-                      source_revision, license, source_sha256, content_sha256, verified_at
-               FROM neural_knowledge_entries
-               WHERE to_tsvector('simple', title || ' ' || content)
-                     @@ plainto_tsquery('simple', %s)
-               ORDER BY ts_rank(to_tsvector('simple', title || ' ' || content),
-                                plainto_tsquery('simple', %s)) DESC, verified_at DESC
-               LIMIT %s""",
+            _VERIFIED_ENTRY_SELECT + """
+            WHERE to_tsvector('simple', e.title || ' ' || e.content)
+                  @@ plainto_tsquery('simple', %s)
+            ORDER BY ts_rank(to_tsvector('simple', e.title || ' ' || e.content),
+                             plainto_tsquery('simple', %s)) DESC, e.verified_at DESC
+            LIMIT %s
+            """,
             (search, search, safe_limit),
         ).fetchall()
-    return [{
-        "entry_id": row[0], "title": row[1], "content": row[2], "source_title": row[3],
-        "source_url": row[4], "source_revision": row[5], "license": row[6],
-        "source_sha256": row[7], "content_sha256": row[8], "verified_at": row[9].isoformat(),
-    } for row in rows]
+    return [
+        {
+            key: value for key, value in _verified_entry_from_row(row).items()
+            if key != "approved_by_hashes"
+        }
+        for row in rows
+    ]
 
 
 def export_verified_knowledge(output_dir: str | Path, *, license_name: str) -> dict[str, Any]:
-    """Export only two-reviewer-promoted knowledge as a pinned training corpus."""
+    """Export only two-reviewer-promoted knowledge after rechecking stored evidence."""
     import psycopg
 
     normalized_license = normalize_knowledge_license(license_name)
@@ -302,11 +383,10 @@ def export_verified_knowledge(output_dir: str | Path, *, license_name: str) -> d
 
     with psycopg.connect(_database_url(), connect_timeout=3) as connection:
         rows = connection.execute(
-            """SELECT title, content, source_title, source_url, source_revision,
-                      license, source_sha256, content_sha256, approved_by_hashes
-               FROM neural_knowledge_entries
-               WHERE license=%s
-               ORDER BY verified_at, entry_id""",
+            _VERIFIED_ENTRY_SELECT + """
+            WHERE e.license=%s
+            ORDER BY e.verified_at, e.entry_id
+            """,
             (normalized_license,),
         ).fetchall()
     if not rows:
@@ -316,25 +396,17 @@ def export_verified_knowledge(output_dir: str | Path, *, license_name: str) -> d
     source_records: list[str] = []
     source_hashes: list[str] = []
     for row in rows:
-        title, content, source_title, source_url, source_revision, stored_license, source_sha, content_sha, reviewers = row
-        if stored_license != normalized_license:
-            raise ValueError("Verified knowledge license changed after promotion.")
-        if hashlib.sha256(content.encode("utf-8")).hexdigest() != content_sha:
-            raise ValueError("Verified knowledge content fingerprint mismatch.")
-        if not re.fullmatch(r"[a-f0-9]{64}", source_sha or ""):
-            raise ValueError("Verified knowledge source fingerprint is invalid.")
-        if not isinstance(reviewers, list) or len(reviewers) != 2 or reviewers[0] == reviewers[1]:
-            raise ValueError("Verified knowledge does not contain two distinct reviewer hashes.")
-        if any(not re.fullmatch(r"[a-f0-9]{64}", str(value)) for value in reviewers):
-            raise ValueError("Verified knowledge reviewer evidence is invalid.")
-        if re.search(r"(?im)^\s*(?:Kullanıcı|Asistan)\s*:", title + "\n" + content):
-            raise ValueError("Verified knowledge contains a dialogue role marker.")
-        dialogues.append("Kullanıcı: " + title + "\nAsistan: " + content + "\n")
+        entry = _verified_entry_from_row(row)
+        if entry["license"] != normalized_license:
+            raise RuntimeError("Verified knowledge license changed after promotion.")
+        if re.search(r"(?im)^\s*(?:Kullanıcı|Asistan)\s*:", entry["title"] + "\n" + entry["content"]):
+            raise RuntimeError("Verified knowledge contains a dialogue role marker.")
+        dialogues.append("Kullanıcı: " + entry["title"] + "\nAsistan: " + entry["content"] + "\n")
         source_records.append(
-            str(source_title) + " <" + str(source_url) + ">" +
-            (" @ " + str(source_revision) if source_revision else "")
+            str(entry["source_title"]) + " <" + str(entry["source_url"]) + ">" +
+            (" @ " + str(entry["source_revision"]) if entry["source_revision"] else "")
         )
-        source_hashes.append(source_sha)
+        source_hashes.append(entry["source_sha256"])
 
     corpus_text = "\n".join(dialogues)
     processed_sha = hashlib.sha256(corpus_text.encode("utf-8")).hexdigest()

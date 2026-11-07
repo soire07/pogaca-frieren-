@@ -90,7 +90,7 @@ def test_verified_knowledge_export_writes_real_dialogue_newlines_and_valid_manif
         title, content, "Python language reference",
         "https://docs.python.org/3/library/stdtypes.html#tuples", "v3.14",
         "CC-BY-4.0", source_sha, content_sha, __import__("datetime").datetime(2026, 1, 1, tzinfo=__import__("datetime").timezone.utc),
-        ["a" * 64, "b" * 64], excerpt, source_sha, content_sha, "CC-BY-4.0", "promoted",
+        ["a" * 64, "b" * 64], excerpt, "Python language reference", "https://docs.python.org/3/library/stdtypes.html#tuples", "v3.14", source_sha, content_sha, "CC-BY-4.0", "promoted",
         ["a" * 64, "b" * 64],
     )
 
@@ -177,7 +177,7 @@ def test_verified_knowledge_export_rejects_tampered_source_excerpt(tmp_path, mon
         "https://docs.python.org/3/library/stdtypes.html#tuples", "v3.14",
         "CC-BY-4.0", source_sha, content_sha,
         __import__("datetime").datetime(2026, 1, 1, tzinfo=__import__("datetime").timezone.utc),
-        ["a" * 64, "b" * 64], excerpt + " tampered", source_sha, content_sha,
+        ["a" * 64, "b" * 64], excerpt + " tampered", "Python language reference", "https://docs.python.org/3/library/stdtypes.html#tuples", "v3.14", source_sha, content_sha,
         "CC-BY-4.0", "promoted", ["a" * 64, "b" * 64],
     )
 
@@ -212,6 +212,7 @@ def test_verified_knowledge_search_rejects_tampered_content(tmp_path, monkeypatc
         hashlib.sha256(content.encode("utf-8")).hexdigest(),
         __import__("datetime").datetime(2026, 1, 1, tzinfo=__import__("datetime").timezone.utc),
         ["a" * 64, "b" * 64], excerpt,
+        "Python language reference", "https://docs.python.org/3/library/stdtypes.html#tuples", "v3.14",
         hashlib.sha256(excerpt.encode("utf-8")).hexdigest(),
         hashlib.sha256(content.encode("utf-8")).hexdigest(),
         "CC-BY-4.0", "promoted", ["a" * 64, "b" * 64],

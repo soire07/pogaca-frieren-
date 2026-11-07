@@ -59,7 +59,7 @@ test('Guardian automatically reconciles a dispatched workflow, repair PR and che
       calls.push(String(url));
       if (String(url).includes('/actions/workflows/')) return { ok: true, json: async () => ({
         total_count: 1,
-        workflow_runs: [{ id: 9876, display_title: 'Frieren AI Repair · Guardian #42', status: 'completed', conclusion: 'success', html_url: 'https://github.com/soire07/pogaca-frieren-/actions/runs/9876' }],
+        workflow_runs: [{ id: 9876, display_title: 'Frieren Neural Repair · Guardian #42', status: 'completed', conclusion: 'success', html_url: 'https://github.com/soire07/pogaca-frieren-/actions/runs/9876' }],
       }) };
       if (String(url).includes('/pulls?')) return { ok: true, json: async () => [{
         number: 321, html_url: 'https://github.com/soire07/pogaca-frieren-/pull/321', state: 'open',
