@@ -245,8 +245,11 @@ def run_candidate_search(
     report = {
         "schema_version": 1,
         "engine": "frieren-neural-candidate-search",
-        "status": "BEST_CANDIDATE_PENDING_INDEPENDENT_HUMAN_REVIEW" if improved
-        else "BASELINE_RETAINED_NO_QUALITY_IMPROVEMENT_PROVEN",
+        "status": (
+            "CANDIDATE_SEARCH_FAILED" if not successful
+            else "BEST_CANDIDATE_PENDING_INDEPENDENT_HUMAN_REVIEW" if improved
+            else "BASELINE_RETAINED_NO_QUALITY_IMPROVEMENT_PROVEN"
+        ),
         "baseline_quality_report": baseline_quality_report,
         "baseline": {
             "checkpoint": str(baseline_path),
@@ -261,6 +264,8 @@ def run_candidate_search(
             "min_relative_improvement": min_relative_improvement,
             "device": device,
         },
+        "successful_trial_count": len(successful),
+        "failed_trial_count": sum(item.get("status") == "CANDIDATE_FAILED" for item in trials),
         "best_candidate_id": best["candidate_id"] if improved and best else None,
         "best_candidate_sha256": best["checkpoint_sha256"] if improved and best else None,
         "trials": trials,
