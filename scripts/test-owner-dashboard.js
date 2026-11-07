@@ -801,14 +801,19 @@ test('owner activity workspace renders paginated audit and test history safely',
   assert.match(html, /&lt;script&gt;/);
 });
 
-test('owner scenario and Guardian review endpoints require an explicitly configured Frieren AI service URL', () => {
+test('Owner scenario remains explicit while Guardian review uses the Neural API', () => {
   assert.throws(() => getFrierenAiScenarioEndpoint({}), { message: 'FRIEREN_AI_SERVICE_NOT_CONFIGURED' });
-  assert.throws(() => getFrierenAiGuardianEndpoint({}), { message: 'FRIEREN_AI_SERVICE_NOT_CONFIGURED' });
+  assert.throws(() => getFrierenNeuralGuardianEndpoint({}), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' });
   assert.equal(
     getFrierenAiScenarioEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://ai.example.test/base/' }),
     'https://ai.example.test/internal/test-scenario'
   );
+  assert.equal(
+    getFrierenNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'https://neural.example.test/base/' }),
+    'https://neural.example.test/internal/guardian-review'
+  );
   assert.throws(() => getFrierenAiScenarioEndpoint({ FRIEREN_AI_PUBLIC_URL: 'http://127.0.0.1:10001' }), /INVALID_FRIEREN_AI_PUBLIC_URL/);
+  assert.throws(() => getFrierenNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'http://127.0.0.1:10001' }), /INVALID_FRIEREN_NEURAL_API_URL/);
 });
 
 test('owner navigation provides a safe public-site preview shortcut', () => {
