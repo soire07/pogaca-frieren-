@@ -17,6 +17,19 @@ from typing import Any, Sequence
 
 from .training import TrainingConfig, evaluate_checkpoint, load_checkpoint, train_model
 
+ALLOWED_TRAINING_LICENSES = {"APACHE-2.0", "MIT", "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0"}
+
+
+def _has_allowed_training_licenses(value: object) -> bool:
+    if not isinstance(value, list) or not value:
+        return False
+    normalized = [
+        "-".join(license_name.strip().split()).upper()
+        for license_name in value if isinstance(license_name, str)
+    ]
+    return len(normalized) == len(value) and all(name in ALLOWED_TRAINING_LICENSES for name in normalized)
+
+
 PLAYBOOK = {
     "correctness": "curate independently verified question/answer examples; require source and answer checks",
     "instruction_adherence": "curate varied multi-constraint instruction-following dialogues with exact expected outputs",
@@ -79,9 +92,7 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
     provenance_valid = (
         isinstance(provenance, dict)
         and _valid_sha(provenance.get("manifest_sha256"), 64)
-        and isinstance(provenance.get("licenses"), list)
-        and bool(provenance["licenses"])
-        and all(isinstance(license_name, str) and license_name.strip() for license_name in provenance["licenses"])
+        and _has_allowed_training_licenses(provenance.get("licenses"))
     )
     if not provenance_valid:
         blocking_reasons.append("training_provenance_missing_or_invalid")
