@@ -9,7 +9,14 @@ def _reviewed_report():
     return {
         "decision": "READY FOR STAGED TEST",
         "checkpoint_sha256": "a" * 64,
-        "checkpoint_metadata": {"format_version": 2, "loss_objective_version": 2},
+        "checkpoint_metadata": {
+            "format_version": 2, "loss_objective_version": 2,
+            "training_dataset": {
+                "dataset_sha256": "c" * 64, "dataset_id": "example/turkish",
+                "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64,
+                "processed_sha256": "d" * 64, "split": "train", "sample_count": 120,
+            },
+        },
         "source_commit_sha": "e" * 40,
         "prompt_set_version": "tr-conversation-v1",
         "blocking_reasons": [],
@@ -19,7 +26,11 @@ def _reviewed_report():
             "reviewer_identity_hashes": reviewer_hashes,
         },
         "review_template": {"reviewers": reviewer_hashes},
-        "training_provenance": {"manifest_sha256": "c" * 64, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"]},
+        "training_provenance": {
+            "manifest_sha256": "c" * 64, "dataset_id": "example/turkish",
+            "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64,
+            "processed_sha256": "d" * 64, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"],
+        },
         "heldout_metrics": {
             "loss": 1.2,
             "perplexity": 3.32,
@@ -84,7 +95,8 @@ def test_evolution_plan_rejects_invalid_threshold():
         build_evolution_plan(_reviewed_report(), weak_threshold=5)
 
 
-def test_candidate_search_cli_loads_manifest_provenance_and_commit(tmp_path, monkeypatch):
+def test_candidate_search_cli_loads_pinned_manifest_provenance_and_commit(tmp_path, monkeypatch):
+    import hashlib
     import json
     from frieren_neural import evolution
     from frieren_neural import training
@@ -93,13 +105,24 @@ def test_candidate_search_cli_loads_manifest_provenance_and_commit(tmp_path, mon
     heldout_dir = tmp_path / "heldout"
     train_dir.mkdir()
     heldout_dir.mkdir()
+    processed = "dialogue"
+    (train_dir / "dialogues.txt").write_text(processed, encoding="utf-8")
+    processed_sha = hashlib.sha256(processed.encode("utf-8")).hexdigest()
     manifest = {
         "schema_version": 1,
-        "documents": [{
-            "path": "dialogues.txt",
-            "source": "pinned dataset",
+        "dataset": {
+            "id": "example/turkish",
+            "revision": "a" * 40,
             "license": "Apache-2.0",
-            "usage": "permitted supervised fine-tuning",
+            "split": "train",
+            "dialogues": 1,
+            "source_sha256": "b" * 64,
+            "processed_sha256": processed_sha,
+        },
+        "documents": [{
+            "path": "dialogues.txt", "source": "pinned dataset",
+            "license": "Apache-2.0", "usage": "permitted supervised fine-tuning",
+            "sha256": processed_sha,
         }],
     }
     raw = json.dumps(manifest).encode("utf-8")
@@ -119,11 +142,12 @@ def test_candidate_search_cli_loads_manifest_provenance_and_commit(tmp_path, mon
 
     evolution.search_main()
 
-    assert observed["training_provenance"]["manifest_sha256"] == __import__("hashlib").sha256(raw).hexdigest()
+    assert observed["training_provenance"]["manifest_sha256"] == hashlib.sha256(raw).hexdigest()
     assert observed["training_provenance"]["licenses"] == ["Apache-2.0"]
+    assert observed["training_provenance"]["dataset_id"] == "example/turkish"
+    assert observed["training_dataset_metadata"]["processed_sha256"] == processed_sha
     assert observed["source_commit_sha"] == "a" * 40
     assert observed["candidate_steps"] == 500
-
 
 
 def test_evolution_plan_holds_when_reviewer_hashes_are_missing_or_duplicated():

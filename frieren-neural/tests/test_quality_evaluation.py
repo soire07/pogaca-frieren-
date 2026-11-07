@@ -231,7 +231,14 @@ def test_report_blocks_mismatched_heldout_objective():
             "prompt_set_version": quality.PROMPT_SET_VERSION,
             "decoding_settings": quality.DECODING_SETTINGS,
             "checkpoint_sha256": "0" * 64,
-            "checkpoint_metadata": {"format_version": 2, "loss_objective_version": 2},
+            "checkpoint_metadata": {
+                "format_version": 2, "loss_objective_version": 2,
+                "training_dataset": {
+                    "dataset_sha256": "d" * 64, "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k",
+                    "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64,
+                    "processed_sha256": "c" * 64, "split": "train", "sample_count": 120,
+                },
+            },
             "source_commit_sha": "f" * 40,
             "training_provenance": {"manifest_sha256": "d" * 64, "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"]},
             "heldout_metrics": {
