@@ -354,23 +354,28 @@ test('repair patch accepts only the exact validated file set', () => {
   assert.deepEqual(calls.map(args => args[0]), ['status', 'apply', 'apply', 'diff', 'status']);
 });
 
-test('repair patch rejects additional allowed files changed outside the proposal and rolls back', () => {
+test('repair patch does not erase concurrent changes while rolling back its own patch', () => {
   const calls = [];
-  let applied = false;
+  let patchApplied = false;
+  const unrelatedChange = true;
   const execFile = (args) => {
     calls.push(args);
-    if (args[0] === 'status' && args[1] === '--porcelain') return applied ? ' M rpg-mechanics.js\n M unrelated.js\n' : '';
+    if (args[0] === 'status' && args[1] === '--porcelain') {
+      if (patchApplied) return ' M rpg-mechanics.js\\n M unrelated.js\\n';
+      return unrelatedChange ? ' M unrelated.js\\n' : '';
+    }
     if (args[0] === 'apply' && args[1] === '--check') return '';
-    if (args[0] === 'apply' && args[1] === '--') { applied = true; return ''; }
-    if (args[0] === 'status' && args[1] === '--short') return ' M rpg-mechanics.js\n M unrelated.js\n';
-    if (args[0] === 'apply' && args[1] === '--reverse') { applied = false; return ''; }
+    if (args[0] === 'apply' && args[1] === '--') { patchApplied = true; return ''; }
+    if (args[0] === 'status' && args[1] === '--short') return ' M rpg-mechanics.js\\n M unrelated.js\\n';
+    if (args[0] === 'apply' && args[1] === '--reverse') { patchApplied = false; return ''; }
     return '';
   };
   assert.throws(() => applyRepairPatch(validPatch, { execFile }), {
-    message: 'REPAIR_CHANGED_FILE_SET_MISMATCH',
+    message: 'REPAIR_ROLLBACK_FAILED',
   });
-  assert.equal(applied, false);
+  assert.equal(patchApplied, false);
   assert.ok(calls.some(args => args[0] === 'apply' && args[1] === '--reverse'));
+  assert.equal(calls.at(-1)[0], 'status');
 });
 
 test('repair patch rolls back applied changes when post-apply validation fails', () => {
