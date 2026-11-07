@@ -238,9 +238,11 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
           or baseline_report.get("human_review",{}).get("completed") is not True
           or not isinstance(baseline_report.get("human_review",{}).get("reviewer_identity_hashes"), list)
           or len(baseline_report.get("human_review",{}).get("reviewer_identity_hashes", [])) != 2
-          or len(set(baseline_report.get("human_review",{}).get("reviewer_identity_hashes", []))) != 2
           or any(not isinstance(value, str) or not re.fullmatch(r"[a-f0-9]{64}", value)
                  for value in baseline_report.get("human_review",{}).get("reviewer_identity_hashes", []))
+          or len(set(baseline_report.get("human_review",{}).get("reviewer_identity_hashes", []))) != 2
+          or baseline_report.get("review_template",{}).get("reviewers")
+             != baseline_report.get("human_review",{}).get("reviewer_identity_hashes")
           or not isinstance(baseline_report.get("checkpoint_sha256"),str)
           or not re.fullmatch(r"[a-f0-9]{64}", baseline_report.get("checkpoint_sha256", ""))
           or baseline_report.get("checkpoint_sha256") == checkpoint_sha256):
