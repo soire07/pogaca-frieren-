@@ -816,7 +816,7 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         verifyGuardianEvidenceChain(db),
       ]);
       const incidents = allIncidents.filter(item => item.system === 'guardian' || item.system === 'site_auth').slice(0, 25);
-      const ingestSecret = String(process.env.FRIEREN_GUARD_EVENT_SECRET || process.env.FRIEREN_NEURAL_API_TOKEN || '').trim();
+      const ingestSecret = String(process.env.FRIEREN_GUARD_EVENT_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
       send(res, 200, page('Frieren Security', renderOwnerNavigation() + renderOwnerSecurityWorkspace({
         incidents, evidenceEvents, chainStatus, ingestConfigured: ingestSecret.length >= 32,
       })));
