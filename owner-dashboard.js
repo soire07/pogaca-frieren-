@@ -1131,9 +1131,14 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
           actorId: OWNER_ID,
         });
         if (!['dispatched','already_dispatched'].includes(dispatch.status)) {
-          const prefix = dispatch.status === 'reconciliation_unavailable' || dispatch.status === 'reconciliation_incomplete'
-            ? 'GUARDIAN_GITHUB_READ_' : 'GUARDIAN_GITHUB_';
-          throw new Error(prefix + String(dispatch.status || 'dispatch_failed').toUpperCase());
+          if (String(dispatch.reason || '').startsWith('GUARDIAN_GITHUB_')) {
+            throw new Error(String(dispatch.reason));
+          }
+          if (dispatch.status === 'reconciliation_unavailable' || dispatch.status === 'reconciliation_incomplete') {
+            const statusCode = String(dispatch.reason || '').match(/HTTP_(\\d{3})/)?.[1] || 'UNKNOWN';
+            throw new Error('GUARDIAN_GITHUB_READ_HTTP_' + statusCode);
+          }
+          throw new Error('GUARDIAN_GITHUB_' + String(dispatch.reason || dispatch.status || 'DISPATCH_FAILED').toUpperCase());
         }
         redirect(res, '/owner/guardian?notice=guardian_pr_dispatched');
         return true;
@@ -1429,7 +1434,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         : /^RENDER_API_HTTP_(401|403)$/.test(code) ? 'render_api_auth_error'
         : /^RENDER_API_HTTP_(404|429|5\d\d)$/.test(code) ? 'render_api_service_error'
         : 'invalid';
-      redirect(res, '/owner?notice=' + notice);
+      redirect(res, getOwnerActionErrorDestination(actionName) + '?notice=' + notice);
     }
     return true;
   }
