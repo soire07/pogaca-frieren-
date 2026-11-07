@@ -7,6 +7,7 @@ on:
       - validation/ufakzeka-real-gguf
     paths:
       - ".github/workflows/frieren-neural-ci.yml"
+      - ".github/workflows/frieren-neural-evolution-search.yml"
       - ".github/workflows/frieren-neural-active-gguf-eval.yml"
       - "frieren-neural/trigger-active-gguf-eval.txt"
       - "frieren-neural/frieren_neural/**"
@@ -48,5 +49,18 @@ jobs:
         run: python -m pip install --only-binary=llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu -e ".[dev,serve,discord]"
       - name: Run tests
         run: pytest
+      - name: Validate candidate evolution workflow syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          workflow = Path("../.github/workflows/frieren-neural-evolution-search.yml")
+          parsed = yaml.safe_load(workflow.read_text(encoding="utf-8"))
+          assert isinstance(parsed, dict) and isinstance(parsed.get("jobs"), dict)
+          assert "candidate-search" in parsed["jobs"]
+          print("CANDIDATE_WORKFLOW_YAML=PASS")
+          PY
       - name: Compile isolated benchmark tools
         run: python -m compileall -q benchmarks
+      - name: Measure batch-sampler optimization against the previous implementation
+        run: python benchmarks/benchmark_batch_sampling.py --iterations 100

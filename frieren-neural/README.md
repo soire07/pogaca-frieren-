@@ -315,3 +315,23 @@ Set the exact same secret as `FRIEREN_NEURAL_GUARDIAN_SECRET` on the **Poğaça 
 When both variables are configured, running `frieren-neural-evaluate-quality` submits the report over HTTPS with bearer authentication. The Guardian endpoint rejects scratch-backend reports, mismatched artifact fingerprints, malformed benchmark IDs, and payloads over 1 MiB. It stores at most the 50 most recent reports. A successful upload means only that the report was stored; it is not CI, security, memory-isolation, merge, or deployment approval.
 
 If either variable is absent, the evaluator writes local JSON/Markdown reports without uploading. If only one is present, evaluation fails clearly instead of silently skipping the configured integration.
+
+
+## Quality-gated self-improvement loop
+
+Frieren Neural can now run isolated warm-start experiments from an existing scratch-model checkpoint. The candidate search preserves the exact tokenizer, architecture, corpus fingerprint, dialogue encoding, and assistant-only loss objective. It tests a bounded set of learning-rate variations with a fresh optimizer, then compares every candidate against the unchanged parent checkpoint on the same separate held-out corpus and deterministic evaluation seed.
+
+Run the search on a completed checkpoint:
+
+```bash
+frieren-neural-evolve-search \
+  --train-data ./corpus/turkish-chat-max-25k/train \
+  --heldout-data ./corpus/turkish-chat-max-25k/heldout \
+  --baseline-checkpoint ./checkpoints/frieren-neural-chat-max-25k.pt \
+  --output-dir ./evolution-candidates \
+  --candidate-steps 500 --heldout-batches 25
+```
+
+The command stores each candidate separately and writes `candidate-search-report.json`. A lower held-out loss is only a shortlist signal: it does not prove better Turkish conversation quality. The parent checkpoint is never overwritten, and automatic promotion is disabled. Before a candidate can be accepted, it must pass the same 24-prompt benchmark, two independent human reviews, and all critical safety/fabrication checks. The model is not allowed to grade itself or train on unreviewed synthetic answers.
+
+The sampler microbenchmark compares the vectorized implementation with the previous Python-loop implementation while asserting identical sampled tensors. CI records measured throughput; it does not assume that a speedup on one runner guarantees the same gain on every CPU.

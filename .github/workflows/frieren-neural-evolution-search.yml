@@ -1,0 +1,111 @@
+name: Frieren Neural isolated candidate evolution
+
+on:
+  workflow_dispatch:
+    inputs:
+      training_run_id:
+        description: Completed Turkish Chat Max training workflow run ID
+        required: true
+        type: string
+      candidate_steps:
+        description: Additional training steps per isolated candidate
+        required: true
+        default: "500"
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: frieren-neural-evolution-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  candidate-search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        working-directory: frieren-neural
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: frieren-neural/pyproject.toml
+      - name: Install CPU-only PyTorch and Frieren Neural
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+          python -m pip install --no-deps -e .
+      - name: Download immutable training checkpoint and corpus artifacts
+        uses: actions/download-artifact@v4
+        with:
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.training_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: frieren-neural/source-artifacts
+      - name: Locate and verify the completed 24,000-step baseline
+        id: baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          checkpoint="$(find source-artifacts -type f -path '*/checkpoints/frieren-neural-chat-max-25k.pt' -print -quit)"
+          test -n "$checkpoint"
+          root="${checkpoint%/checkpoints/frieren-neural-chat-max-25k.pt}"
+          test -f "$root/corpus/turkish-chat-max-25k/train/corpus_manifest.json"
+          test -f "$root/corpus/turkish-chat-max-25k/heldout/corpus_manifest.json"
+          python - "$checkpoint" <<'PY'
+          import sys
+          from frieren_neural.training import load_checkpoint
+          _, _, metadata = load_checkpoint(sys.argv[1], device="cpu")
+          assert metadata["step"] == 24000, metadata
+          assert metadata["loss_objective_version"] == 2, metadata
+          assert metadata["dialogue_encoding_version"] == 2, metadata
+          print("BASELINE_CHECKPOINT=PASS")
+          PY
+          echo "root=$root" >> "$GITHUB_OUTPUT"
+      - name: Run isolated learning-rate candidate search on the untouched held-out split
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          frieren-neural-evolve-search \
+            --train-data "${{ steps.baseline.outputs.root }}/corpus/turkish-chat-max-25k/train" \
+            --heldout-data "${{ steps.baseline.outputs.root }}/corpus/turkish-chat-max-25k/heldout" \
+            --baseline-checkpoint "${{ steps.baseline.outputs.root }}/checkpoints/frieren-neural-chat-max-25k.pt" \
+            --output-dir ./evolution-candidates \
+            --candidate-steps "${{ inputs.candidate_steps }}" \
+            --heldout-batches 25 --device cpu
+      - name: Enforce baseline preservation and human-review gate
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path("evolution-candidates/candidate-search-report.json").read_text(encoding="utf-8"))
+          assert report["promotion"]["automatic_promotion"] is False
+          assert report["promotion"]["human_review_required"] is True
+          assert report["baseline"]["step"] == 24000
+          assert report["status"] in {
+              "BEST_CANDIDATE_PENDING_INDEPENDENT_HUMAN_REVIEW",
+              "BASELINE_RETAINED_NO_QUALITY_IMPROVEMENT_PROVEN",
+          }
+          for trial in report["trials"]:
+              if trial["status"] == "IMPROVED_HELDOUT_PENDING_HUMAN_REVIEW":
+                  quality = json.loads(Path(trial["quality_report"]).read_text(encoding="utf-8"))
+                  assert quality["decision"] == "NOT READY"
+                  assert "human_review_missing" in quality["blocking_reasons"]
+          print("BASELINE_PRESERVED=PASS")
+          print("AUTOMATIC_PROMOTION=DISABLED")
+          print("HUMAN_REVIEW_GATE=PASS")
+          print("SEARCH_STATUS=" + report["status"])
+          PY
+      - name: Archive candidate checkpoints and review packages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frieren-neural-evolution-candidates-${{ github.run_id }}
+          path: |
+            frieren-neural/evolution-candidates/
+          if-no-files-found: warn
+          retention-days: 30

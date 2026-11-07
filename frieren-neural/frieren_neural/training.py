@@ -289,32 +289,47 @@ def split_tokens(tokens: Tensor, validation_fraction: float = 0.1) -> tuple[Tens
     return tokens[:training_size], tokens[training_size:]
 
 
+def _valid_batch_starts(target_mask: Tensor, block_size: int) -> Tensor:
+    """Precompute windows containing at least one supervised next-token target."""
+    if target_mask.dtype != torch.bool or target_mask.ndim != 1:
+        raise ValueError("target_mask must be a one-dimensional boolean tensor.")
+    if block_size < 1 or len(target_mask) <= block_size:
+        raise ValueError("target_mask must contain more tokens than block_size.")
+    windows = target_mask.unfold(0, block_size + 1, 1)[:, 1:]
+    starts = torch.nonzero(windows.any(dim=1), as_tuple=False).flatten()
+    if starts.numel() == 0:
+        raise ValueError("Token split contains no assistant targets in any training window.")
+    return starts
+
+
 def _sample_batch(
     data: Tensor, *, batch_size: int, block_size: int, device: torch.device,
     generator: torch.Generator, target_mask: Tensor | None = None,
+    valid_starts: Tensor | None = None,
 ) -> tuple[Tensor, Tensor]:
+    """Sample a batch with cached valid starts and vectorized tensor indexing."""
     if len(data) <= block_size:
         raise ValueError(f"Each token split must contain more than block_size ({block_size}) tokens.")
     if target_mask is not None:
         if target_mask.shape != data.shape or target_mask.dtype != torch.bool:
             raise ValueError("target_mask must be a boolean tensor matching the token stream.")
-        # A window must contain at least one supervised next-token target. The
-        # mask is shifted with targets, not inputs, to preserve causal alignment.
-        windows = target_mask.unfold(0, block_size + 1, 1)[:, 1:]
-        valid_starts = torch.nonzero(windows.any(dim=1), as_tuple=False).flatten()
-        if valid_starts.numel() == 0:
-            raise ValueError("Token split contains no assistant targets in any training window.")
+        if valid_starts is None:
+            valid_starts = _valid_batch_starts(target_mask, block_size)
+        if valid_starts.ndim != 1 or valid_starts.numel() == 0:
+            raise ValueError("valid_starts must be a non-empty one-dimensional tensor.")
         choices = torch.randint(valid_starts.numel(), (batch_size,), generator=generator)
         starts = valid_starts[choices]
     else:
         starts = torch.randint(len(data) - block_size, (batch_size,), generator=generator)
-    inputs = torch.stack([data[int(start) : int(start) + block_size] for start in starts])
-    targets = torch.stack([data[int(start) + 1 : int(start) + block_size + 1] for start in starts])
+
+    offsets = torch.arange(block_size + 1, dtype=torch.long)
+    indices = starts[:, None] + offsets[None, :]
+    sampled = data[indices]
+    inputs = sampled[:, :-1]
+    targets = sampled[:, 1:].clone()
     if target_mask is not None:
-        masks = torch.stack([
-            target_mask[int(start) + 1 : int(start) + block_size + 1] for start in starts
-        ])
-        targets = targets.masked_fill(~masks, -100)
+        masks = target_mask[indices[:, 1:]]
+        targets.masked_fill_(~masks, -100)
     return inputs.to(device), targets.to(device)
 
 
@@ -336,12 +351,13 @@ def evaluate_loss(
     model.eval()
     losses: list[float] = []
     generator = torch.Generator(device="cpu").manual_seed(seed)
+    valid_starts = _valid_batch_starts(target_mask, block_size) if target_mask is not None else None
     try:
         for _ in range(batches):
             inputs, targets = _sample_batch(
                 data, batch_size=batch_size, block_size=block_size,
                 device=next(model.parameters()).device, generator=generator,
-                target_mask=target_mask,
+                target_mask=target_mask, valid_starts=valid_starts,
             )
             _, loss = model(inputs, targets=targets)
             losses.append(float(loss.item()))
@@ -359,12 +375,20 @@ def _evaluate_pair(
     model.eval()
     generator = torch.Generator(device="cpu").manual_seed(seed)
     results = []
+    valid_start_sets = (
+        _valid_batch_starts(train_mask, config.block_size),
+        _valid_batch_starts(validation_mask, config.block_size),
+    )
     try:
-        for data, target_mask in ((train_data, train_mask), (validation_data, validation_mask)):
+        for data, target_mask, valid_starts in (
+            (train_data, train_mask, valid_start_sets[0]),
+            (validation_data, validation_mask, valid_start_sets[1]),
+        ):
             values = []
             for _ in range(config.eval_batches):
                 x, y = _sample_batch(data, batch_size=config.batch_size, block_size=config.block_size,
-                                     device=device, generator=generator, target_mask=target_mask)
+                                     device=device, generator=generator, target_mask=target_mask,
+                                     valid_starts=valid_starts)
                 _, loss = model(x, targets=y)
                 values.append(float(loss.item()))
             results.append(sum(values) / len(values))
@@ -392,15 +416,20 @@ def train_model(
     config: TrainingConfig | None = None,
     *,
     resume: bool = False,
+    initialize_from: str | Path | None = None,
     device: str | torch.device | None = None,
 ) -> dict[str, float | int | str]:
-    """Train a small GPT model and atomically save a resumable checkpoint."""
+    """Train a small GPT model, optionally warm-starting a separate candidate from a checkpoint."""
+
     settings = config or TrainingConfig()
     if not documents or any(not isinstance(item, str) or not item.strip() for item in documents):
         raise ValueError("documents must contain non-empty strings.")
     random.seed(settings.seed)
     torch.manual_seed(settings.seed)
     selected_device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
+    if selected_device.type == "cpu":
+        # Tiny CPU transformer workloads regress badly with large host thread pools.
+        torch.set_num_threads(max(1, min(4, os.cpu_count() or 1)))
     corpus_fingerprint = _corpus_fingerprint(documents)
     corpus_content_fingerprint = _corpus_content_fingerprint(documents)
     train_text, validation_text = split_corpus_text(documents, settings.validation_fraction)
@@ -415,7 +444,7 @@ def train_model(
         )
         train_ids, train_loss_mask = encode_dialogue_stream_with_loss_mask(train_text, tokenizer)
         validation_ids, validation_loss_mask = encode_dialogue_stream_with_loss_mask(validation_text, tokenizer)
-        if min(len(train_ids), len(validation_ids)) + 1 > settings.block_size:
+        if min(len(train_ids), len(validation_ids)) > settings.block_size:
             break
         if effective_vocab_size == BPETokenizer.BASE_VOCAB_SIZE:
             raise ValueError(
@@ -430,6 +459,9 @@ def train_model(
     validation_data = torch.tensor(validation_ids, dtype=torch.long)
     train_target_mask = torch.tensor(train_loss_mask, dtype=torch.bool)
     validation_target_mask = torch.tensor(validation_loss_mask, dtype=torch.bool)
+    # The assistant-only window scan is corpus-dependent, so perform it once,
+    # not on every optimizer step.
+    train_valid_starts = _valid_batch_starts(train_target_mask, settings.block_size)
 
     model_config = GPTConfig(
         vocab_size=tokenizer.vocab_size, d_model=settings.d_model, n_heads=settings.n_heads,
@@ -439,6 +471,36 @@ def train_model(
     optimizer = torch.optim.AdamW(model.parameters(), lr=settings.learning_rate, weight_decay=settings.weight_decay)
     checkpoint = Path(checkpoint_path)
     start_step = 0
+    parent_checkpoint_sha256: str | None = None
+    parent_checkpoint_step: int | None = None
+
+    if resume and initialize_from is not None:
+        raise ValueError("resume and initialize_from cannot be used together.")
+
+    if initialize_from is not None:
+        parent_path = Path(initialize_from)
+        if not parent_path.is_file():
+            raise FileNotFoundError(f"Warm-start checkpoint not found: {parent_path}")
+        if parent_path.resolve() == checkpoint.resolve():
+            raise ValueError("Candidate checkpoint must not overwrite its parent checkpoint.")
+        parent = torch.load(parent_path, map_location=selected_device, weights_only=True)
+        if (not isinstance(parent, dict) or parent.get("format_version") != 2
+                or parent.get("dialogue_encoding_version") != DIALOGUE_ENCODING_VERSION
+                or parent.get("loss_objective_version") != LOSS_OBJECTIVE_VERSION):
+            raise ValueError("Warm-start checkpoint has an incompatible format or training objective.")
+        parent_config = dict(parent.get("training_config", {}))
+        candidate_config = asdict(settings)
+        for mutable in ("max_steps", "learning_rate"):
+            parent_config.pop(mutable, None)
+            candidate_config.pop(mutable, None)
+        if (parent.get("model_config") != asdict(model_config)
+                or parent.get("tokenizer") != tokenizer.to_dict()
+                or parent.get("corpus_sha256") != corpus_fingerprint
+                or parent_config != candidate_config):
+            raise ValueError("Warm-start checkpoint corpus/model/training settings do not match this candidate.")
+        model.load_state_dict(parent["model_state"])
+        parent_checkpoint_sha256 = hashlib.sha256(parent_path.read_bytes()).hexdigest()
+        parent_checkpoint_step = int(parent["step"])
 
     if resume:
         if not checkpoint.is_file():
@@ -484,6 +546,7 @@ def train_model(
         x, y = _sample_batch(
             train_data, batch_size=settings.batch_size, block_size=settings.block_size,
             device=selected_device, generator=batch_generator, target_mask=train_target_mask,
+            valid_starts=train_valid_starts,
         )
         _, loss = model(x, targets=y)
         optimizer.zero_grad(set_to_none=True)
@@ -501,6 +564,8 @@ def train_model(
                 "dialogue_encoding_version": DIALOGUE_ENCODING_VERSION,
                 "loss_objective_version": LOSS_OBJECTIVE_VERSION,
                 "step": step,
+                "parent_checkpoint_sha256": parent_checkpoint_sha256,
+                "parent_checkpoint_step": parent_checkpoint_step,
                 "model_config": asdict(model_config),
                 "training_config": asdict(settings),
                 "tokenizer": tokenizer.to_dict(),
@@ -523,6 +588,8 @@ def train_model(
         "device": str(selected_device),
         "loss_objective_version": LOSS_OBJECTIVE_VERSION,
         "training_objective": "assistant_response_tokens_plus_eos",
+        "parent_checkpoint_sha256": parent_checkpoint_sha256 or "",
+        "parent_checkpoint_step": parent_checkpoint_step or 0,
     }
 
 
@@ -566,6 +633,8 @@ def load_checkpoint(
     metadata: dict[str, Any] = {
         "format_version": int(payload["format_version"]),
         "step": int(payload["step"]),
+        "parent_checkpoint_sha256": str(payload.get("parent_checkpoint_sha256") or ""),
+        "parent_checkpoint_step": int(payload.get("parent_checkpoint_step") or 0),
         "corpus_sha256": str(payload["corpus_sha256"]),
         "corpus_content_sha256": str(payload["corpus_content_sha256"]),
         "train_loss": float(payload["train_loss"]),

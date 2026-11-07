@@ -401,3 +401,109 @@ def test_generation_prompt_inserts_eos_between_completed_assistant_turns():
 
     single_turn = encode_generation_prompt("Kullanıcı: Merhaba.\nAsistan:", tokenizer)
     assert single_turn.count(tokenizer.eos_id) == 0
+
+
+
+def test_vectorized_batch_sampling_matches_cached_assistant_target_windows():
+    from frieren_neural.training import _sample_batch, _valid_batch_starts
+
+    data = torch.arange(20, dtype=torch.long)
+    mask = torch.tensor(
+        [False, False, False, True, True, False, False, False, True, True,
+         False, False, False, False, True, True, False, False, False, False],
+        dtype=torch.bool,
+    )
+    expected_starts = _valid_batch_starts(mask, 4)
+    assert torch.equal(expected_starts, torch.tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14]))
+
+    generator = torch.Generator(device="cpu").manual_seed(77)
+    inputs, targets = _sample_batch(
+        data, batch_size=3, block_size=4, device=torch.device("cpu"),
+        generator=generator, target_mask=mask, valid_starts=expected_starts,
+    )
+    assert torch.all((targets[:, :-1] == -100) | (inputs[:, 1:] == targets[:, :-1]))
+    assert torch.all((targets == -100) | (targets >= 0))
+    assert torch.all((targets == -100).any(dim=1))
+
+
+def test_valid_batch_starts_rejects_windows_without_assistant_targets():
+    from frieren_neural.training import _valid_batch_starts
+
+    with pytest.raises(ValueError, match="no assistant targets"):
+        _valid_batch_starts(torch.zeros(12, dtype=torch.bool), 4)
+
+
+def test_warm_start_candidate_uses_parent_weights_without_overwriting_parent(tmp_path: Path):
+    import hashlib
+
+    from frieren_neural.training import load_checkpoint
+
+    corpus = ["\n\n---\n\n".join(
+        f"Kullanıcı: Frieren kimdir {index}?\nAsistan: Bir büyücüdür."
+        for index in range(12)
+    )]
+    heldout = ["\n\n---\n\n".join(
+        f"Kullanıcı: Fern kimdir {index}?\nAsistan: Bir büyücüdür."
+        for index in range(12)
+    )]
+    baseline = tmp_path / "baseline.pt"
+    config = TrainingConfig(
+        max_steps=2, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        learning_rate=1e-3, validation_fraction=0.2, seed=41,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0, tokenizer_vocab_size=280,
+    )
+    train_model(corpus, baseline, config, device="cpu")
+    baseline_sha = hashlib.sha256(baseline.read_bytes()).hexdigest()
+
+    from frieren_neural.evolution import run_candidate_search
+    report = run_candidate_search(
+        corpus, heldout, baseline, tmp_path / "candidates",
+        candidate_steps=1, heldout_batches=1, learning_rate_factors=(1.0,), device="cpu",
+    )
+
+    assert hashlib.sha256(baseline.read_bytes()).hexdigest() == baseline_sha
+    assert report["baseline"]["checkpoint_sha256"] == baseline_sha
+    assert report["promotion"]["automatic_promotion"] is False
+    assert report["promotion"]["human_review_required"] is True
+    baseline_review = tmp_path / "candidates" / "baseline-quality" / "quality-report.json"
+    assert baseline_review.is_file()
+    candidate_review = Path(report["trials"][0]["quality_report"])
+    assert candidate_review.is_file()
+    assert "human_review_missing" in __import__("json").loads(
+        candidate_review.read_text(encoding="utf-8")
+    )["blocking_reasons"]
+    candidate = tmp_path / "candidates" / "candidate-01-lr-1.pt"
+    assert candidate.is_file()
+    _, _, metadata = load_checkpoint(candidate, device="cpu")
+    assert metadata["parent_checkpoint_sha256"] == baseline_sha
+    assert metadata["parent_checkpoint_step"] == 2
+    assert metadata["step"] == 1
+
+
+def test_warm_start_rejects_different_training_corpus(tmp_path: Path):
+    corpus = ["Frieren studies magic. " * 30]
+    checkpoint = tmp_path / "parent.pt"
+    config = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0,
+    )
+    train_model(corpus, checkpoint, config, device="cpu")
+    with pytest.raises(ValueError, match="Warm-start checkpoint corpus/model/training settings"):
+        train_model(
+            ["Fern studies spells. " * 30], tmp_path / "candidate.pt", config,
+            initialize_from=checkpoint, device="cpu",
+        )
+
+
+def test_training_tokenizer_fallback_requires_strictly_more_tokens_than_context(tmp_path: Path):
+    corpus = ["Frieren studies magic. " * 30]
+    checkpoint = tmp_path / "context-boundary.pt"
+    config = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        d_model=16, n_heads=2, n_layers=1, dropout=0.0,
+        tokenizer_vocab_size=512, tokenizer_min_frequency=2,
+    )
+    result = train_model(corpus, checkpoint, config, device="cpu")
+    assert result["step"] == 1
+    saved = torch.load(checkpoint, map_location="cpu", weights_only=True)
+    assert saved["tokenizer"]["type"] == "byte_bpe"
