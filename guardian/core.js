@@ -17,6 +17,14 @@ export const GUARDIAN_INCIDENT_STATUSES = Object.freeze([
   'ignored',
 ]);
 
+const ALLOWED_NEURAL_TRAINING_LICENSES = new Set(['APACHE-2.0', 'MIT', 'CC0-1.0', 'CC-BY-4.0', 'CC-BY-SA-4.0']);
+
+function hasAllowedNeuralTrainingLicenses(licenses) {
+  return Array.isArray(licenses) && licenses.length > 0
+    && licenses.every(license => typeof license === 'string'
+      && ALLOWED_NEURAL_TRAINING_LICENSES.has(license.trim().replace(/\\s+/g, '-').toUpperCase()));
+}
+
 const SECRET_PATTERNS = [
   /(authorization\s*:\s*bearer\s+)[A-Za-z0-9._~+\/-]+/gi,
   /(authorization\s*:\s*basic\s+)[A-Za-z0-9+/=]+/gi,
@@ -249,8 +257,7 @@ export function evaluateNeuralQualityGate({
   if (!Array.isArray(report.blocking_reasons) || report.blocking_reasons.length) reasons.push('NEURAL_QUALITY_BLOCKERS_PRESENT');
   if (report.model_backend === 'ufakzeka') {
     if (!/^[a-f0-9]{64}$/i.test(String(provenance.manifest_sha256 || ''))
-        || !Array.isArray(provenance.licenses) || !provenance.licenses.length
-        || provenance.licenses.some(license => typeof license !== 'string' || !license.trim())) {
+        || !hasAllowedNeuralTrainingLicenses(provenance.licenses)) {
       reasons.push('NEURAL_TRAINING_PROVENANCE_MISSING');
     }
     const heldoutDatasetSha = String(heldout.dataset_sha256 || '');
@@ -264,8 +271,7 @@ export function evaluateNeuralQualityGate({
     }
   } else {
     if (!/^[a-f0-9]{64}$/i.test(String(provenance.manifest_sha256 || ''))
-        || !Array.isArray(provenance.licenses) || !provenance.licenses.length
-        || provenance.licenses.some(license => typeof license !== 'string' || !license.trim())) {
+        || !hasAllowedNeuralTrainingLicenses(provenance.licenses)) {
       reasons.push('NEURAL_TRAINING_PROVENANCE_MISSING');
     }
     if (!finiteNumber(heldout.loss) || heldout.loss < 0
