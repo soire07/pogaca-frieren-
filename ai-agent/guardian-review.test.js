@@ -105,8 +105,8 @@ test('production Frieren AI health workflow fails closed and verifies the authen
   const workflow = await readFile(new URL('../.github/workflows/frieren-ai-health.yml', import.meta.url), 'utf8');
   assert.match(workflow, /FRIEREN_AI_HEALTH_URL is required/);
   assert.match(workflow, /exit 1/);
-  assert.match(workflow, /https:\/\/pogaca-frieren\\.onrender\\.com\/ai-bridge-health/);
-  assert.match(workflow, /j\\.status==='ok' && j\\.reachable===true/);
+  assert.ok(workflow.includes('https://pogaca-frieren.onrender.com/ai-bridge-health'));
+  assert.ok(workflow.includes("j.status==='ok' && j.reachable===true"));
   assert.doesNotMatch(workflow, /not configured; skipping the production AI health probe/);
 });
 
