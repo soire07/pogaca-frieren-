@@ -32,7 +32,11 @@ test('Frieren AI health checks use a six-hour cadence and bounded retries', asyn
   assert.ok(source.includes('timeout-minutes: 2'));
   assert.ok(source.includes('for attempt in {1..3}'));
   assert.ok(source.includes('vars.FRIEREN_AI_HEALTH_URL'));
-  assert.ok(source.includes('FRIEREN_AI_HEALTH_URL is not configured'));
+  assert.ok(source.includes('FRIEREN_AI_HEALTH_URL is required'));
+  assert.ok(source.includes("vars.FRIEREN_AI_HEALTH_URL || 'https://pogaca-frieren-kltd.onrender.com/health'"));
+  assert.ok(source.includes('https://pogaca-frieren.onrender.com/ai-bridge-health'));
+  assert.ok(source.includes("j.status==='ok' && j.reachable===true"));
+  assert.ok(!source.includes('not configured; skipping the production AI health probe'));
   assert.ok(!source.includes('https://pogaca-frieren-kltd.onrender.com/live'));
 });
 
