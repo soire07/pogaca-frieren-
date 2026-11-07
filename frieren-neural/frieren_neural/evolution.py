@@ -131,6 +131,8 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
         and _valid_sha(comparison.get("baseline_checkpoint_sha256"), 64)
         and comparison.get("baseline_checkpoint_sha256") != report.get("checkpoint_sha256")
         and isinstance(checkpoint_metadata, dict)
+        and isinstance(comparison.get("baseline_loss_objective_version"), int)
+        and not isinstance(comparison.get("baseline_loss_objective_version"), bool)
         and comparison.get("baseline_loss_objective_version") == checkpoint_metadata.get("loss_objective_version")
         and isinstance(baseline_reviewer_hashes, list)
         and len(baseline_reviewer_hashes) == 2
