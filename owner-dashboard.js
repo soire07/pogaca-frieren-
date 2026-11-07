@@ -49,6 +49,42 @@ export function getFrierenNeuralGuardianEndpoint(env = process.env) {
   return new URL('/internal/guardian-review', parsed).toString();
 }
 
+export function getFrierenNeuralKnowledgeEndpoint(env = process.env) {
+  const base = String(env.FRIEREN_NEURAL_API_URL || '').trim();
+  if (!base) throw new Error('FRIEREN_NEURAL_NOT_CONFIGURED');
+  const parsed = new URL(base);
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_NEURAL_API_URL');
+  return new URL('/learning/knowledge/candidates', parsed).toString();
+}
+
+export function getFrierenNeuralKnowledgeReviewEndpoint(candidateId, env = process.env) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(candidateId || ''))) {
+    throw new Error('INVALID_NEURAL_KNOWLEDGE_CANDIDATE_ID');
+  }
+  return getFrierenNeuralKnowledgeEndpoint(env) + '/' + encodeURIComponent(candidateId) + '/reviews';
+}
+
+export async function getNeuralKnowledgeCandidates({ env = process.env, fetchImpl = globalThis.fetch } = {}) {
+  const token = String(env.FRIEREN_NEURAL_API_TOKEN || '').trim();
+  if (token.length < 32 || !String(env.FRIEREN_NEURAL_API_URL || '').trim()) {
+    return { status: 'not_configured', candidates: [] };
+  }
+  try {
+    const response = await fetchImpl(getFrierenNeuralKnowledgeEndpoint(env) + '?limit=30', {
+      method: 'GET',
+      headers: { Accept: 'application/json', Authorization: 'Bearer ' + token },
+      signal: AbortSignal.timeout(5_000)
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !Array.isArray(payload.candidates)) {
+      return { status: 'unavailable', candidates: [], reason: 'knowledge_api_http_' + response.status };
+    }
+    return { status: 'ready', candidates: payload.candidates };
+  } catch {
+    return { status: 'unavailable', candidates: [], reason: 'knowledge_api_unreachable' };
+  }
+}
+
 
 export function getOwnerActionErrorDestination(action) {
   return String(action || '').startsWith('guardian-') ? '/owner/guardian' : '/owner';
@@ -863,7 +899,9 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
     try {
       const kind = workspaceKinds[url.pathname];
       const data = {};
-      if (kind === 'ai') { data.neuralReadiness = await getFrierenNeuralReadiness(); data.chatSettings = await getFrierenChatSettings(db); data.testRuns = await listOwnerTestRuns(db, { limit: 10 }); data.csrf = session.csrf; data.notice = url.searchParams.get('notice') || ''; }
+      if (kind === 'ai') {
+    data.neuralReadiness = await getFrierenNeuralReadiness();
+    data.knowledgeCandidates = await getNeuralKnowledgeCandidates(); data.chatSettings = await getFrierenChatSettings(db); data.testRuns = await listOwnerTestRuns(db, { limit: 10 }); data.csrf = session.csrf; data.notice = url.searchParams.get('notice') || ''; }
       if (kind === 'pogaca') {
         data.notice = url.searchParams.get('notice') || '';
         data.rpgMetrics = await getOwnerRpgMetrics(db);
@@ -1305,6 +1343,49 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
           loreFocus: form.get('loreFocus') === 'yes'
         }, OWNER_ID);
         redirect(res, '/owner/neural?notice=chat_settings_saved');
+        return true;
+      }
+      if (action === 'neural-knowledge-submit' && form.get('confirm') === 'yes') {
+        const token = String(process.env.FRIEREN_NEURAL_API_TOKEN || '').trim();
+        if (token.length < 32) throw new Error('NEURAL_KNOWLEDGE_NOT_CONFIGURED');
+        const payload = {
+          title: String(form.get('title') || '').trim(),
+          content: String(form.get('content') || '').trim(),
+          source_title: String(form.get('sourceTitle') || '').trim(),
+          source_excerpt: String(form.get('sourceExcerpt') || '').trim(),
+          source_url: String(form.get('sourceUrl') || '').trim(),
+          source_revision: String(form.get('sourceRevision') || '').trim() || null,
+          license: String(form.get('license') || '').trim()
+        };
+        const response = await fetch(getFrierenNeuralKnowledgeEndpoint(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(10_000)
+        });
+        if (!response.ok) throw new Error('NEURAL_KNOWLEDGE_SUBMIT_FAILED_' + response.status);
+        redirect(res, '/owner/neural?notice=knowledge_candidate_submitted');
+        return true;
+      }
+      if (action === 'neural-knowledge-review' && form.get('confirm') === 'yes') {
+        const token = String(process.env.FRIEREN_NEURAL_API_TOKEN || '').trim();
+        if (token.length < 32) throw new Error('NEURAL_KNOWLEDGE_NOT_CONFIGURED');
+        const candidateId = String(form.get('candidateId') || '').trim();
+        const decision = String(form.get('decision') || '');
+        const reviewerToken = String(form.get('reviewerToken') || '');
+        const endpoint = getFrierenNeuralKnowledgeReviewEndpoint(candidateId);
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ decision, reviewer_token: reviewerToken }),
+          signal: AbortSignal.timeout(10_000)
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error('NEURAL_KNOWLEDGE_REVIEW_FAILED_' + response.status);
+        const notice = result.status === 'promoted' ? 'knowledge_candidate_promoted'
+          : result.status === 'rejected' ? 'knowledge_candidate_rejected'
+            : 'knowledge_candidate_reviewed';
+        redirect(res, '/owner/neural?notice=' + notice);
         return true;
       }
       if (action === 'neural-test-run' && form.get('confirm') === 'yes') {

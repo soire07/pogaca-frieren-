@@ -33,6 +33,46 @@ export async function getOwnerDatabaseDiagnostics(db) {
   };
 }
 
+function renderNeuralKnowledgeWorkspace(data = {}) {
+  const knowledge = data.knowledgeCandidates || { status: 'not_configured', candidates: [] };
+  const candidates = Array.isArray(knowledge.candidates) ? knowledge.candidates : [];
+  const statusLabel = status => status === 'promoted' ? 'Doğrulanmış' : status === 'rejected' ? 'Reddedildi' : 'İnceleme bekliyor';
+  const candidateRows = candidates.length ? candidates.map(candidate => {
+    const status = String(candidate.status || 'pending_review');
+    const reviewForm = status === 'pending_review'
+      ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="neural-knowledge-review"><input type="hidden" name="candidateId" value="' + escapeHtml(candidate.candidate_id) + '">'
+        + '<label>Bağımsız değerlendirici özel tokenı (en az 32 karakter)</label><input type="password" name="reviewerToken" minlength="32" maxlength="256" autocomplete="off" required>'
+        + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu kaydı değerlendirdiğimi onaylıyorum</label>'
+        + '<div class="actions"><button class="btn" name="decision" value="approve">Onayla</button><button class="btn danger" name="decision" value="reject">Reddet</button></div></form>'
+      : '';
+    return '<article class="rowitem"><div class="actions"><strong>' + escapeHtml(candidate.title) + '</strong><span class="' + (status === 'promoted' ? 'good' : status === 'rejected' ? 'bad' : 'warn') + '">' + statusLabel(status) + '</span></div>'
+      + '<div class="small">' + escapeHtml(candidate.source_title) + ' · ' + escapeHtml(candidate.license) + ' · ' + Number(candidate.approval_count || 0) + '/2 onay</div>'
+      + '<a class="small" href="' + escapeHtml(candidate.source_url) + '" target="_blank" rel="noopener">Kaynağı aç</a>'
+      + '<div class="small">Kaynak SHA-256: ' + escapeHtml(candidate.source_sha256) + '</div>'
+      + reviewForm + '</article>';
+  }).join('') : '<p class="muted">Henüz bilgi adayı yok.</p>';
+  const notice = data.notice === 'knowledge_candidate_submitted' ? '<p class="notice">Bilgi adayı kaydedildi ve iki bağımsız inceleme bekliyor.</p>'
+    : data.notice === 'knowledge_candidate_promoted' ? '<p class="notice">Bilgi adayı iki ayrı onay aldı ve doğrulanmış bilgi deposuna eklendi.</p>'
+    : data.notice === 'knowledge_candidate_rejected' ? '<p class="notice warn">Bilgi adayı reddedildi; arama ve eğitim verisine dahil edilmeyecek.</p>'
+    : data.notice === 'knowledge_action_failed' ? '<p class="notice warn">Bilgi deposu işlemi başarısız oldu. API bağlantısını, tokenı ve aday verisini kontrol et.</p>' : '';
+  const connection = knowledge.status === 'not_configured'
+    ? '<p class="notice warn">Bilgi deposu için FRIEREN_NEURAL_API_URL ve FRIEREN_NEURAL_API_TOKEN gerekli.</p>'
+    : knowledge.status === 'unavailable' ? '<p class="notice warn">Bilgi deposu şu anda erişilemiyor. Var olan kayıtlar değiştirilmedi.</p>' : '';
+  return '<section class="panel" id="neural-knowledge"><h2>Doğrulanmış Bilgi Deposu</h2><p class="muted">Yalnızca açık lisanslı, kaynağı ve SHA-256 özeti kaydedilen içerikler aday olabilir. Özel Discord mesajları bu sisteme aktarılmaz. İki farklı değerlendirici tokenı gerekir; token hashleri farklı kişileri kriptografik olarak kanıtlamaz, bağımsız inceleme ayrıca sağlanmalıdır.</p>'
+    + notice + connection
+    + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="neural-knowledge-submit">'
+    + '<label>Bilgi başlığı</label><input name="title" minlength="5" maxlength="160" required>'
+    + '<label>Doğrulanmış kısa bilgi / özet</label><textarea name="content" minlength="30" maxlength="2500" required></textarea>'
+    + '<label>Kaynak başlığı</label><input name="sourceTitle" minlength="3" maxlength="180" required>'
+    + '<label>Kaynak HTTPS URL</label><input name="sourceUrl" type="url" maxlength="2048" required>'
+    + '<label>Kaynak sürümü / commit (isteğe bağlı)</label><input name="sourceRevision" maxlength="120">'
+    + '<label>Açık lisans</label><select name="license" required><option value="CC BY 4.0">CC BY 4.0</option><option value="CC BY-SA 4.0">CC BY-SA 4.0</option><option value="Apache 2.0">Apache 2.0</option><option value="MIT">MIT</option><option value="CC0-1.0">CC0-1.0</option></select>'
+    + '<label>Kaynak metin alıntısı (40–6000 karakter)</label><textarea name="sourceExcerpt" minlength="40" maxlength="6000" required></textarea>'
+    + '<p class="small">Telif koşullarını ve alıntı sınırlarını gözet. E-posta, Discord kimliği, token, parola veya özel kullanıcı mesajı ekleme.</p>'
+    + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Kaynağın açık lisanslı olduğunu ve özel veri içermediğini doğruluyorum</label><button class="btn">Bilgi adayını incelemeye gönder</button></form>'
+    + '<h3>Bilgi adayları</h3>' + candidateRows + '</section>';
+}
+
 export function renderOwnerWorkspace(kind, data = {}) {
   const link = (href, label) => '<a class="btn secondary" href="' + href + '">' + label + '</a>';
   const card = (title, description, href, label = 'Aç') =>
@@ -70,6 +110,7 @@ export function renderOwnerWorkspace(kind, data = {}) {
       + '<p class="small">Senaryo metni mevcut test dosyalarıyla eşleştirilir. Eşleşen test bulunamazsa veya hiçbir test gerçekten çalışmazsa sonuç BAŞARILI değil, TEST EDİLMEDİ olarak kaydedilir. PASS yalnızca seçilen testler geçerse verilir; bu, yazdığın senaryonun her ayrıntısının kapsandığı anlamına gelmez. Bu alan kendiliğinden yeni test kodu üretmez.</p>'
       + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Testleri şimdi çalıştırmayı onaylıyorum</label><button class="btn">Testleri çalıştır</button></form>'
       + (data.testRuns?.rows?.length ? '<section class="panel"><h3>Son test çalıştırmaları</h3>' + data.testRuns.rows.map(run => '<div class="rowitem"><div class="actions"><strong>#' + Number(run.id) + ' · ' + escapeHtml(String(run.target || '').slice(0, 180)) + '</strong><span class="' + (run.status === 'PASS' ? 'good' : run.status === 'FAIL' ? 'bad' : 'warn') + '">' + escapeHtml(run.status) + '</span></div><div class="small">' + Number(run.summary?.total || 0) + ' test · ' + Number(run.summary?.pass || 0) + ' PASS · ' + Number(run.summary?.fail || 0) + ' FAIL · ' + escapeHtml(new Date(run.created_at).toLocaleString('tr-TR')) + '</div>' + (Array.isArray(run.details?.testFiles) ? '<div class="small">Dosyalar: ' + escapeHtml(run.details.testFiles.join(', ')) + '</div>' : '') + (Array.isArray(run.details?.failedStages) && run.details.failedStages.length ? '<p class="notice warn">' + escapeHtml(run.details.failedStages.join(' · ')) + '</p>' : '') + '</div>').join('') + '<a href="/owner/activity">Tüm denetim ve test geçmişi</a></section>' : '<p class="muted">Henüz kaydedilmiş test çalıştırması yok.</p>') + '</section>'
+      + renderNeuralKnowledgeWorkspace(data)
       + '<div class="columns">' + card('Neural hafızası', 'Kayıtlı hafızaları görüntüle ve gerektiğinde sil.', '/owner#memories')
       + card('Teknik talepler', 'Kod değişikliği taleplerini onayla veya reddet.', '/owner#approvals')
       + card('Genel durum', 'Ana kontrol merkezine dön.', '/owner') + '</div>';

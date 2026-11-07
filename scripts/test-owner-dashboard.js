@@ -4,7 +4,7 @@ import { GUARDIAN_REPAIR_BRANCH, buildGuardianRepairTrackingUrls } from '../guar
 import { createHmac } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getPoğacaScenarioEndpoint, getFrierenNeuralGuardianEndpoint, renderOwnerGuardianWorkspace, renderOwnerSecurityWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenNeuralReadiness, handleOwnerDashboardRequest, getOwnerActionErrorDestination } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getPoğacaScenarioEndpoint, getFrierenNeuralGuardianEndpoint, getFrierenNeuralKnowledgeEndpoint, getFrierenNeuralKnowledgeReviewEndpoint, getNeuralKnowledgeCandidates, renderOwnerGuardianWorkspace, renderOwnerSecurityWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenNeuralReadiness, handleOwnerDashboardRequest, getOwnerActionErrorDestination } from '../owner-dashboard.js';
 
 
 
@@ -51,6 +51,46 @@ test('Guardian Neural endpoint requires HTTPS and targets the private review rou
   assert.equal(getFrierenNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'https://frieren-neural.example/' }), 'https://frieren-neural.example/internal/guardian-review');
   assert.throws(() => getFrierenNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'http://frieren-neural.example' }), { message: 'INVALID_FRIEREN_NEURAL_API_URL' });
   assert.throws(() => getFrierenNeuralGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://legacy.example' }), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' });
+});
+
+
+test('Neural knowledge endpoints require the central HTTPS API and server-side token', async () => {
+  assert.equal(
+    getFrierenNeuralKnowledgeEndpoint({ FRIEREN_NEURAL_API_URL: 'https://neural.example/generate' }),
+    'https://neural.example/learning/knowledge/candidates'
+  );
+  assert.equal(
+    getFrierenNeuralKnowledgeReviewEndpoint('123e4567-e89b-12d3-a456-426614174000', { FRIEREN_NEURAL_API_URL: 'https://neural.example' }),
+    'https://neural.example/learning/knowledge/candidates/123e4567-e89b-12d3-a456-426614174000/reviews'
+  );
+  assert.throws(() => getFrierenNeuralKnowledgeReviewEndpoint('../bad', { FRIEREN_NEURAL_API_URL: 'https://neural.example' }), /INVALID_NEURAL_KNOWLEDGE_CANDIDATE_ID/);
+  assert.throws(() => getFrierenNeuralKnowledgeEndpoint({ FRIEREN_NEURAL_API_URL: 'http://neural.example' }), /INVALID_FRIEREN_NEURAL_API_URL/);
+  const notConfigured = await getNeuralKnowledgeCandidates({ env: {} });
+  assert.deepEqual(notConfigured, { status: 'not_configured', candidates: [] });
+});
+
+test('Owner Panel fetches curated knowledge candidates with a server-only Neural token', async () => {
+  const oldUrl = process.env.FRIEREN_NEURAL_API_URL;
+  const oldToken = process.env.FRIEREN_NEURAL_API_TOKEN;
+  const oldFetch = globalThis.fetch;
+  process.env.FRIEREN_NEURAL_API_URL = 'https://neural.example/generate';
+  process.env.FRIEREN_NEURAL_API_TOKEN = 'central-neural-api-token-with-more-than-32-characters';
+  let request;
+  globalThis.fetch = async (url, options) => {
+    request = { url: String(url), options };
+    return { ok: true, status: 200, json: async () => ({ candidates: [{ candidate_id: 'abc', title: 'Test', status: 'pending_review' }] }) };
+  };
+  try {
+    const result = await getNeuralKnowledgeCandidates();
+    assert.equal(result.status, 'ready');
+    assert.equal(result.candidates.length, 1);
+    assert.equal(request.url, 'https://neural.example/learning/knowledge/candidates?limit=30');
+    assert.equal(request.options.headers.Authorization, 'Bearer central-neural-api-token-with-more-than-32-characters');
+  } finally {
+    if (oldUrl === undefined) delete process.env.FRIEREN_NEURAL_API_URL; else process.env.FRIEREN_NEURAL_API_URL = oldUrl;
+    if (oldToken === undefined) delete process.env.FRIEREN_NEURAL_API_TOKEN; else process.env.FRIEREN_NEURAL_API_TOKEN = oldToken;
+    globalThis.fetch = oldFetch;
+  }
 });
 
 test('Guardian emergency stop is enforced server-side', async () => {
