@@ -664,3 +664,17 @@ def test_learning_signal_postgres_migration_deduplication_retention_and_aggregat
     assert api._learning_insights() == [
         {"dimension": "conversation_consistency", "signal_type": "repeated_question", "occurrences": 1}
     ]
+
+
+
+def test_live_endpoint_does_not_load_model_or_acquire_generation_capacity(api_client, monkeypatch):
+    import frieren_neural.api as api
+
+    def unexpected(*args, **kwargs):
+        raise AssertionError("liveness must not load model or acquire capacity")
+
+    monkeypatch.setattr(api, "_load_active_runtime", unexpected)
+    monkeypatch.setattr(api, "_generation_capacity", unexpected)
+    response = api_client.get("/live")
+    assert response.status_code == 200
+    assert response.json() == {"status": "alive", "service": "frieren-neural"}

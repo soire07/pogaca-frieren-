@@ -597,7 +597,8 @@ createServer(withHttpErrorBoundary(async (req, res) => {
   };
   if (req.method === 'GET' && ['/neural-health', '/neural-ready', '/ai-health', '/ai-ready', '/ai-bridge-health'].includes(req.url)) {
     // The old /ai-* paths remain aliases for existing dashboards, but now report the central Neural service.
-    const result = await getFrierenNeuralHealthResponse({ env: process.env, fetchImpl: fetch, timeoutMs: 5_000 });
+    const healthPath = req.url === '/ai-health' ? 'live' : 'health';
+    const result = await getFrierenNeuralHealthResponse({ env: process.env, fetchImpl: fetch, timeoutMs: 5_000, healthPath });
     return sendJson(result.status, result.payload);
   }
   if (req.method === 'GET' && req.url === '/uptimerobot-status') {

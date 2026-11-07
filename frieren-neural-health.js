@@ -3,12 +3,14 @@ export async function getFrierenNeuralHealthResponse({
   env = process.env,
   fetchImpl = globalThis.fetch,
   timeoutMs = 5000,
+  healthPath = 'health',
 } = {}) {
   const unavailable = (reason, status = 503) => ({
     status,
     payload: { status: 'not_ready', service: 'frieren-neural', reason },
   });
   if (typeof fetchImpl !== 'function') return unavailable('fetch_unavailable');
+  if (!['health', 'live'].includes(healthPath)) return unavailable('invalid_health_path');
   const configured = String(env.FRIEREN_NEURAL_API_URL || '').trim();
   if (!configured) return unavailable('neural_service_not_configured');
   let endpoint;
@@ -19,7 +21,7 @@ export async function getFrierenNeuralHealthResponse({
       endpoint.username || endpoint.password
     ) return unavailable('invalid_neural_service_url');
     const basePath = endpoint.pathname.replace(/\/generate\/?$/i, '').replace(/\/+$/, '');
-    endpoint.pathname = basePath + '/health';
+    endpoint.pathname = basePath + '/' + healthPath;
     endpoint.search = '';
     endpoint.hash = '';
   } catch {

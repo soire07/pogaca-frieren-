@@ -273,6 +273,12 @@ def learning_insights(authorization: Annotated[str | None, Header()] = None) -> 
     return {"signals": _learning_insights()}
 
 
+@app.get("/live")
+def live() -> dict[str, str]:
+    """Cheap liveness probe; never loads model weights or waits for generation capacity."""
+    return {"status": "alive", "service": "frieren-neural"}
+
+
 @app.get("/health")
 def health():
     if _model_backend() == "scratch" and not _checkpoint_path().is_file():

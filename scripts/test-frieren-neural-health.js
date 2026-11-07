@@ -59,3 +59,19 @@ test('Neural health converts upstream failures into a bounded not-ready result',
   assert.equal(result.status, 503);
   assert.equal(result.payload.reason, 'neural_service_unreachable');
 });
+
+
+test('legacy /ai-health alias can use cheap Neural liveness instead of loading model weights', async () => {
+  let requested;
+  const result = await getFrierenNeuralHealthResponse({
+    env: { FRIEREN_NEURAL_API_URL: 'https://neural.example.test/generate' },
+    healthPath: 'live',
+    fetchImpl: async url => {
+      requested = url;
+      return { status: 200, text: async () => JSON.stringify({ status: 'alive', service: 'frieren-neural' }) };
+    }
+  });
+  assert.equal(requested, 'https://neural.example.test/live');
+  assert.equal(result.status, 200);
+  assert.equal(result.payload.status, 'alive');
+});
