@@ -616,6 +616,7 @@ def test_evaluate_checkpoint_emits_heldout_manifest_provenance(monkeypatch):
         "dataset_sha256": "c" * 64,
         "sample_count": 20,
         "split": "heldout",
+        "source_split": "test",
         "evaluation_version": training.HELDOUT_EVALUATION_VERSION,
         "dataset_id": "example/heldout",
         "dataset_revision": "d" * 40,
@@ -630,4 +631,5 @@ def test_evaluate_checkpoint_emits_heldout_manifest_provenance(monkeypatch):
     assert result["dataset_sha256"] == "c" * 64
     assert result["sample_count"] == 20
     assert result["split"] == "heldout"
+    assert result["source_split"] == "test"
     assert result["evaluation_version"] == training.HELDOUT_EVALUATION_VERSION
