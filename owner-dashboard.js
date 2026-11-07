@@ -851,7 +851,12 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
   }
 
   if (url.pathname === '/owner/frieren-ai/health' && req.method === 'GET') {
-    const aiBase = (process.env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).replace(/\/$/, '');
+    const aiBase = String(process.env.FRIEREN_AI_PUBLIC_URL || '').trim().replace(/\/$/, '');
+    if (!aiBase) {
+      res.writeHead(503, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ status: 'not_configured', error: 'Frieren AI üretim servis URL’si yapılandırılmamış.' }));
+      return true;
+    }
     const healthSecret = process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
     if (healthSecret.length < 32) {
       res.writeHead(503, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
@@ -1023,7 +1028,11 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
         }
         await db.query('SELECT 1');
         const healthSecret = String(process.env.FRIEREN_AI_HEALTH_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
-        const aiBase = String(process.env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).replace(/\/$/, '');
+        const aiBase = String(process.env.FRIEREN_AI_PUBLIC_URL || '').trim().replace(/\/$/, '');
+        if (!aiBase) {
+          await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_SERVICE_NOT_CONFIGURED', title: 'Frieren AI üretim servisi yapılandırılmamış', summary: 'Render hesabında doğrulanmış üretim AI servisi URL’si bulunamadı; test Neural servisi üretime bağlanmadı.', severity: 'high' });
+          found += 1;
+        } else {
         try {
           const liveResponse = await fetch(aiBase + '/live', { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(7000) });
           const livePayload = await liveResponse.json().catch(() => ({}));
@@ -1047,6 +1056,7 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
             await upsertGuardianIncident(db, { system: 'frieren_ai', code: 'AI_HEALTH_UNREACHABLE', title: 'Frieren AI sağlık endpointine ulaşılamadı', summary: String(error?.name || 'NetworkError') + ': Frieren AI sağlık kontrolü zaman aşımına uğradı veya bağlantı kurulamadı.', severity: 'high' });
             found += 1;
           }
+        }
         }
         const neuralLiveUrl = String(process.env.FRIEREN_NEURAL_LIVE_URL || '').trim();
         if (neuralLiveUrl) {
