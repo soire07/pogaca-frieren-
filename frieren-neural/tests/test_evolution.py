@@ -29,7 +29,7 @@ def _reviewed_report():
         "training_provenance": {
             "manifest_sha256": "c" * 64, "dataset_id": "example/turkish",
             "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64,
-            "processed_sha256": "d" * 64, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"],
+            "processed_sha256": "d" * 64, "sample_count": 120, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"],
         },
         "heldout_metrics": {
             "loss": 1.2,
@@ -146,6 +146,7 @@ def test_candidate_search_cli_loads_pinned_manifest_provenance_and_commit(tmp_pa
     assert observed["training_provenance"]["licenses"] == ["Apache-2.0"]
     assert observed["training_provenance"]["dataset_id"] == "example/turkish"
     assert observed["training_dataset_metadata"]["processed_sha256"] == processed_sha
+    assert observed["training_provenance"]["sample_count"] == 1
     assert observed["source_commit_sha"] == "a" * 40
     assert observed["candidate_steps"] == 500
 

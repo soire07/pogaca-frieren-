@@ -47,6 +47,7 @@ def _checkpoint_training_data_matches(checkpoint_metadata: object, provenance: o
         "source_fingerprint_sha256": provenance.get("source_fingerprint_sha256"),
         "processed_sha256": provenance.get("processed_sha256"),
         "split": "train",
+        "sample_count": provenance.get("sample_count"),
     }
     return all(dataset.get(key) == value for key, value in expected.items())
 
@@ -63,6 +64,9 @@ def _has_pinned_training_provenance(value: object) -> bool:
         and re.fullmatch(r"[a-f0-9]{64}", value.get("source_fingerprint_sha256", "")) is not None
         and isinstance(value.get("processed_sha256"), str)
         and re.fullmatch(r"[a-f0-9]{64}", value.get("processed_sha256", "")) is not None
+        and isinstance(value.get("sample_count"), int)
+        and not isinstance(value.get("sample_count"), bool)
+        and value["sample_count"] > 0
         and _has_allowed_training_licenses(value.get("licenses"))
         and _has_training_sources(value.get("sources"))
     )
@@ -424,6 +428,7 @@ def render_markdown(report:dict[str,Any])->str:
       f"- Training dataset: {(report.get('training_provenance') or {}).get('dataset_id', 'missing')} @ {(report.get('training_provenance') or {}).get('dataset_revision', 'missing')}",
       f"- Training source SHA-256: {(report.get('training_provenance') or {}).get('source_fingerprint_sha256', 'missing')}",
       f"- Processed corpus SHA-256: {(report.get('training_provenance') or {}).get('processed_sha256', 'missing')}",
+      f"- Training dialogue count: {(report.get('training_provenance') or {}).get('sample_count', 'missing')}",
       f"- Checkpoint step: {report['checkpoint_step']}",f"- Baseline role: **{report.get('baseline_role', 'candidate')}**",f"- Human review completed: **{report['human_review']['completed']}**",
       f"- Distinct reviewer identity hashes: **{'verified' if distinct_reviewers_verified else 'missing'}**"]
     pretrained = report.get("pretrained_provenance") or {}
@@ -596,6 +601,7 @@ def main()->None:
             "dataset_revision": manifest_metadata["dataset_revision"],
             "source_fingerprint_sha256": manifest_metadata["source_fingerprint_sha256"],
             "processed_sha256": manifest_metadata["processed_sha256"],
+            "sample_count": manifest_metadata["sample_count"],
         }
     heldout=json.loads(Path(args.heldout_report).read_text(encoding="utf-8")) if args.heldout_report else None
     report=build_report(checkpoint_sha256=checkpoint_sha,checkpoint_step=step,outputs=outputs,scores=scores,baseline_report=baseline,checkpoint_metadata=checkpoint_metadata,training_provenance=provenance,heldout_metrics=heldout,model_backend=backend,artifact_sha256=artifact_sha,source_commit_sha=args.source_commit or os.environ.get("GITHUB_SHA"),establish_baseline=args.establish_baseline)

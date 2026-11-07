@@ -30,6 +30,7 @@ function validReport() {
       dataset_revision: 'a'.repeat(40),
       source_fingerprint_sha256: 'e'.repeat(64),
       processed_sha256: 'f'.repeat(64),
+      sample_count: 120,
       sources: ['Pinned Apache-2.0 corpus'],
       licenses: ['Apache-2.0']
     },

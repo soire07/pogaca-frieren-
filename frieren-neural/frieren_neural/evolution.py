@@ -44,6 +44,7 @@ def _has_pinned_training_provenance(value: object) -> bool:
         and _valid_sha(value.get("dataset_revision"), 40)
         and _valid_sha(value.get("source_fingerprint_sha256"), 64)
         and _valid_sha(value.get("processed_sha256"), 64)
+        and isinstance(value.get("sample_count"), int) and not isinstance(value.get("sample_count"), bool) and value["sample_count"] > 0
         and _has_allowed_training_licenses(value.get("licenses"))
         and _has_training_sources(value.get("sources"))
     )
@@ -62,6 +63,7 @@ def _checkpoint_training_data_matches(checkpoint_metadata: object, provenance: o
         "source_fingerprint_sha256": provenance.get("source_fingerprint_sha256"),
         "processed_sha256": provenance.get("processed_sha256"),
         "split": "train",
+        "sample_count": provenance.get("sample_count"),
     }
     return all(dataset.get(key) == value for key, value in expected.items())
 
@@ -459,6 +461,7 @@ def search_main() -> None:
         "dataset_revision": training_dataset_metadata["dataset_revision"],
         "source_fingerprint_sha256": training_dataset_metadata["source_fingerprint_sha256"],
         "processed_sha256": training_dataset_metadata["processed_sha256"],
+        "sample_count": training_dataset_metadata["sample_count"],
     }
     report = run_candidate_search(
         load_licensed_corpus(args.train_data),

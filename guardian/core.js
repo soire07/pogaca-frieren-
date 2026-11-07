@@ -32,6 +32,7 @@ function hasPinnedNeuralTrainingProvenance(provenance) {
     && /^[a-f0-9]{40}$/i.test(String(provenance.dataset_revision || ''))
     && /^[a-f0-9]{64}$/i.test(String(provenance.source_fingerprint_sha256 || ''))
     && /^[a-f0-9]{64}$/i.test(String(provenance.processed_sha256 || ''))
+    && Number.isInteger(provenance.sample_count) && provenance.sample_count > 0
     && Array.isArray(provenance.sources) && provenance.sources.length > 0
     && provenance.sources.every(source => typeof source === 'string' && source.trim().length > 0)
     && hasAllowedNeuralTrainingLicenses(provenance.licenses);

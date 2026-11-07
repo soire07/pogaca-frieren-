@@ -94,7 +94,7 @@ def test_report_applies_quality_gate_to_human_scores():
                 },
             },
             "source_commit_sha": "f" * 40,
-            "training_provenance": {"manifest_sha256": "d" * 64, "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"]},
+            "training_provenance": {"manifest_sha256": "d" * 64, "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64, "sample_count": 120, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"]},
             "heldout_metrics": {
                 "loss": 1.5, "perplexity": 4.48, "dataset_sha256": "e" * 64,
                 "sample_count": 120, "split": "heldout", "evaluation_version": "frieren-neural-heldout-v1",
@@ -218,7 +218,7 @@ def test_report_blocks_mismatched_heldout_objective():
                 "processed_sha256": "c" * 64, "split": "train", "sample_count": 120,
             },
         },
-        training_provenance={"manifest_sha256": "f" * 64, "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64, "sources": ["Pinned CC BY 4.0 Turkish dialogue corpus"], "licenses": ["CC BY 4.0"]},
+        training_provenance={"manifest_sha256": "f" * 64, "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64, "sample_count": 120, "sources": ["Pinned CC BY 4.0 Turkish dialogue corpus"], "licenses": ["CC BY 4.0"]},
         heldout_metrics={
             "loss": 2.0, "perplexity": 7.39, "dataset_sha256": "e" * 64, "sample_count": 24, "split": "heldout", "evaluation_version": "frieren-neural-heldout-v1",
             "loss_objective_version": 1,
@@ -240,7 +240,7 @@ def test_report_blocks_mismatched_heldout_objective():
                 },
             },
             "source_commit_sha": "f" * 40,
-            "training_provenance": {"manifest_sha256": "d" * 64, "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"]},
+            "training_provenance": {"manifest_sha256": "d" * 64, "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64, "sample_count": 120, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"]},
             "heldout_metrics": {
                 "loss": 1.5, "perplexity": 4.48, "dataset_sha256": "e" * 64,
                 "sample_count": 120, "split": "heldout", "evaluation_version": "frieren-neural-heldout-v1",
@@ -367,7 +367,7 @@ def test_ufakzeka_report_requires_review_provenance_and_heldout_evidence(monkeyp
         model_backend="ufakzeka",
         artifact_sha256=artifact_sha,
         source_commit_sha="d" * 40,
-        training_provenance={"manifest_sha256": "f" * 64, "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"]},
+        training_provenance={"manifest_sha256": "f" * 64, "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64, "sample_count": 120, "sources": ["Pinned Apache-2.0 corpus"], "licenses": ["Apache-2.0"]},
         heldout_metrics={
             "loss": 1.2,
             "perplexity": 3.32,
@@ -440,6 +440,7 @@ def test_first_scratch_candidate_can_establish_baseline_after_all_absolute_gates
         source_commit_sha="e" * 40,
         training_provenance={
             "manifest_sha256": "d" * 64, "dataset_id": "3nesdeniz/turkish-daily-dialogues-5k", "dataset_revision": "a" * 40, "source_fingerprint_sha256": "b" * 64, "processed_sha256": "c" * 64,
+            "sample_count": 120,
             "sources": ["Pinned CC BY 4.0 Turkish dialogue corpus"],
             "licenses": ["CC BY 4.0"],
         },
@@ -505,6 +506,7 @@ def test_quality_gate_rejects_checkpoint_attached_to_a_different_training_manife
             "dataset_revision": "b" * 40,
             "source_fingerprint_sha256": "c" * 64,
             "processed_sha256": "d" * 64,
+            "sample_count": 10,
             "sources": ["Pinned test corpus"],
             "licenses": ["Apache-2.0"],
         },
