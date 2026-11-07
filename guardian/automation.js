@@ -106,11 +106,28 @@ function safeErrorCode(error) {
     .slice(0, 100);
 }
 
+export function classifyGuardianGithubDispatchError(status, message = '') {
+  const code = Number(status);
+  const detail = String(message || '');
+  if (code === 401) return 'GUARDIAN_GITHUB_TOKEN_INVALID';
+  if (code === 403 && /resource not accessible by personal access token/i.test(detail)) {
+    return 'GUARDIAN_GITHUB_ACTIONS_WRITE_REQUIRED';
+  }
+  if (code === 403 && /saml|single sign.on|sso/i.test(detail)) {
+    return 'GUARDIAN_GITHUB_SSO_AUTH_REQUIRED';
+  }
+  if (code === 404) return 'GUARDIAN_GITHUB_WORKFLOW_NOT_FOUND';
+  if (code === 422) return 'GUARDIAN_GITHUB_DISPATCH_INPUT_OR_REF_INVALID';
+  return 'GUARDIAN_GITHUB_DISPATCH_HTTP_' + (Number.isSafeInteger(code) ? code : 0) + '_' + safeErrorCode({ message: detail || 'UNKNOWN_GITHUB_ERROR' });
+}
+
 async function assertGithubWorkflowDispatched(response) {
   if (response.status === 204) return;
   const payload = await response.json().catch(() => ({}));
-  const detail = redactGuardianText(payload?.message || payload?.error || 'UNKNOWN_GITHUB_ERROR', 80);
-  throw new Error('GUARDIAN_GITHUB_DISPATCH_HTTP_' + response.status + '_' + (detail || 'UNKNOWN_GITHUB_ERROR'));
+  throw new Error(classifyGuardianGithubDispatchError(
+    response.status,
+    payload?.message || payload?.error || 'UNKNOWN_GITHUB_ERROR'
+  ));
 }
 
 function safeList(value, maxItems = 4, maxChars = 120) {
@@ -168,7 +185,8 @@ async function persistDispatchedState(store, db, jobId, workflowUrl) {
 }
 
 function getReviewEndpoint(env) {
-  const base = String(env.FRIEREN_AI_PUBLIC_URL || 'https://pogaca-frieren-kltd.onrender.com').trim();
+  const base = String(env.FRIEREN_AI_PUBLIC_URL || '').trim();
+  if (!base) throw new Error('FRIEREN_AI_SERVICE_NOT_CONFIGURED');
   const parsed = new URL(base);
   if (parsed.protocol !== 'https:' || parsed.username || parsed.password) {
     throw new Error('INVALID_FRIEREN_AI_PUBLIC_URL');
