@@ -17,6 +17,15 @@ from .chat_format import format_benchmark_prompt
 from .training import LOSS_OBJECTIVE_VERSION, generate_text, load_checkpoint
 
 PROMPT_SET_VERSION = "tr-conversation-v1"
+ALLOWED_TRAINING_LICENSES = {"APACHE-2.0", "MIT", "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0"}
+
+
+def _has_allowed_training_licenses(value: object) -> bool:
+    if not isinstance(value, list) or not value:
+        return False
+    normalized = [re.sub(r"\\s+", "-", license_name.strip()).upper()
+                  for license_name in value if isinstance(license_name, str)]
+    return len(normalized) == len(value) and all(license_name in ALLOWED_TRAINING_LICENSES for license_name in normalized)
 DECODING_SETTINGS = {"seed": 20261101, "temperature": 0.7, "top_k": 40, "max_new_tokens": 80}
 DIMENSIONS = ("correctness", "instruction_adherence", "turkish_quality", "grounding", "safety_privacy", "conversation_consistency")
 PROMPTS = (
@@ -151,9 +160,7 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
                 or not isinstance(training_provenance.get("manifest_sha256"), str)
                 or len(training_provenance["manifest_sha256"]) != 64
                 or any(char not in "0123456789abcdefABCDEF" for char in training_provenance["manifest_sha256"])
-                or not isinstance(training_provenance.get("licenses"), list)
-                or not training_provenance["licenses"]
-                or any(not isinstance(license, str) or not license.strip() for license in training_provenance["licenses"])):
+                or not _has_allowed_training_licenses(training_provenance.get("licenses"))):
             reasons.append("training_provenance_missing")
         heldout_valid = (
             isinstance(heldout_metrics, dict)
@@ -194,10 +201,7 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
         if (not isinstance(training_provenance, dict)
                 or not isinstance(training_provenance.get("manifest_sha256"), str)
                 or not re.fullmatch(r"[a-f0-9]{64}", training_provenance.get("manifest_sha256", ""))
-                or not isinstance(training_provenance.get("licenses"), list)
-                or not training_provenance["licenses"]
-                or any(not isinstance(license_name, str) or not license_name.strip()
-                       for license_name in training_provenance["licenses"])):
+                or not _has_allowed_training_licenses(training_provenance.get("licenses"))):
             reasons.append("training_provenance_missing")
         if (not isinstance(source_commit_sha, str) or len(source_commit_sha) != 40
                 or any(character not in "0123456789abcdefABCDEF" for character in source_commit_sha)):
