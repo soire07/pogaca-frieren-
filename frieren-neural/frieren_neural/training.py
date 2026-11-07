@@ -22,6 +22,7 @@ from .tokenizer import BPETokenizer
 
 
 SUPPORTED_SUFFIXES = {".txt", ".md"}
+HELDOUT_EVALUATION_VERSION = "frieren-neural-heldout-v1"
 DIALOGUE_SEPARATOR = "\n\n---\n\n"
 DIALOGUE_ENCODING_VERSION = 2
 LOSS_OBJECTIVE_VERSION = 2
@@ -145,6 +146,47 @@ def load_licensed_corpus(path: str | Path) -> list[str]:
     if actual_files != declared:
         raise ValueError("Manifest paths must exactly match all .txt/.md files in the corpus directory.")
     return documents
+
+
+
+def load_corpus_manifest_metadata(path: str | Path, *, required_split: str = "heldout") -> dict[str, Any]:
+    """Return a pinned manifest fingerprint and split metadata for evaluation evidence."""
+    root = Path(path)
+    manifest_path = root / "corpus_manifest.json"
+    if not manifest_path.is_file():
+        raise ValueError("A corpus manifest is required for held-out evaluation metadata.")
+    raw_manifest = manifest_path.read_bytes()
+    try:
+        manifest = json.loads(raw_manifest.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("corpus_manifest.json must be valid UTF-8 JSON.") from error
+    dataset = manifest.get("dataset") if isinstance(manifest, dict) else None
+    if not isinstance(dataset, dict):
+        raise ValueError("Corpus manifest dataset metadata is required.")
+    split = dataset.get("split")
+    sample_count = dataset.get("dialogues")
+    revision = dataset.get("revision")
+    row_ids_sha256 = dataset.get("row_ids_sha256")
+    if split != required_split:
+        raise ValueError(f"Expected a {required_split} corpus split, got {split!r}.")
+    if isinstance(sample_count, bool) or not isinstance(sample_count, int) or sample_count < 1:
+        raise ValueError("Corpus manifest must include a positive dialogue count.")
+    if not isinstance(revision, str) or not re.fullmatch(r"[a-f0-9]{40}", revision):
+        raise ValueError("Corpus manifest must pin a 40-character dataset revision.")
+    if not isinstance(row_ids_sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", row_ids_sha256):
+        raise ValueError("Corpus manifest must include a row ID SHA-256.")
+    dataset_id = dataset.get("id")
+    if not isinstance(dataset_id, str) or not dataset_id.strip():
+        raise ValueError("Corpus manifest dataset ID is required.")
+    return {
+        "dataset_sha256": hashlib.sha256(raw_manifest).hexdigest(),
+        "sample_count": sample_count,
+        "split": split,
+        "evaluation_version": HELDOUT_EVALUATION_VERSION,
+        "dataset_id": dataset_id,
+        "dataset_revision": revision,
+        "row_ids_sha256": row_ids_sha256,
+    }
 
 
 
@@ -753,7 +795,8 @@ def evaluate_checkpoint(
     batches: int = 20,
     seed: int = 1337,
     device: str | torch.device | None = None,
-) -> dict[str, float | int]:
+    dataset_metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Evaluate a checkpoint on a distinct, caller-supplied held-out corpus."""
     if not documents or any(not isinstance(item, str) or not item.strip() for item in documents):
         raise ValueError("Evaluation documents must contain non-empty strings.")
@@ -784,6 +827,13 @@ def evaluate_checkpoint(
         "perplexity": perplexity,
         "loss_objective_version": LOSS_OBJECTIVE_VERSION,
         "checkpoint_training_loss_objective_version": int(metadata["loss_objective_version"]),
+        "dataset_sha256": dataset_metadata.get("dataset_sha256") if isinstance(dataset_metadata, dict) else None,
+        "sample_count": dataset_metadata.get("sample_count") if isinstance(dataset_metadata, dict) else None,
+        "split": dataset_metadata.get("split") if isinstance(dataset_metadata, dict) else None,
+        "evaluation_version": dataset_metadata.get("evaluation_version") if isinstance(dataset_metadata, dict) else None,
+        "dataset_id": dataset_metadata.get("dataset_id") if isinstance(dataset_metadata, dict) else None,
+        "dataset_revision": dataset_metadata.get("dataset_revision") if isinstance(dataset_metadata, dict) else None,
+        "row_ids_sha256": dataset_metadata.get("row_ids_sha256") if isinstance(dataset_metadata, dict) else None,
     }
 
 
@@ -797,9 +847,10 @@ def evaluation_main() -> None:
     parser.add_argument("--device", default=None)
     args = parser.parse_args()
     documents = load_licensed_corpus(args.data)
+    dataset_metadata = load_corpus_manifest_metadata(args.data, required_split="heldout")
     metrics = evaluate_checkpoint(
         args.checkpoint, documents, batch_size=args.batch_size, batches=args.batches,
-        seed=args.seed, device=args.device
+        seed=args.seed, device=args.device, dataset_metadata=dataset_metadata
     )
     print(json.dumps(metrics, ensure_ascii=False, indent=2))
 
