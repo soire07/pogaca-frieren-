@@ -6,11 +6,14 @@ can promote a candidate into the verified knowledge index.
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import hmac
+import json
 import ipaddress
 import os
 import re
+from pathlib import Path
 from urllib.parse import urlparse
 from typing import Any
 
@@ -251,3 +254,102 @@ def search_verified_knowledge(query: str, *, limit: int = 5) -> list[dict[str, A
         "source_url": row[4], "source_revision": row[5], "license": row[6],
         "source_sha256": row[7], "content_sha256": row[8], "verified_at": row[9].isoformat(),
     } for row in rows]
+
+
+def export_verified_knowledge(output_dir: str | Path, *, license_name: str) -> dict[str, Any]:
+    """Export only two-reviewer-promoted knowledge as a pinned training corpus."""
+    import psycopg
+
+    normalized_license = normalize_knowledge_license(license_name)
+    output = Path(output_dir).resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    text_path = output / "verified-knowledge.txt"
+    manifest_path = output / "corpus_manifest.json"
+    if text_path.exists() or manifest_path.exists():
+        raise FileExistsError("Knowledge export destination already contains a corpus file.")
+
+    with psycopg.connect(_database_url(), connect_timeout=3) as connection:
+        rows = connection.execute(
+            """SELECT title, content, source_title, source_url, source_revision,
+                      license, source_sha256, content_sha256, approved_by_hashes
+               FROM neural_knowledge_entries
+               WHERE license=%s
+               ORDER BY verified_at, entry_id""",
+            (normalized_license,),
+        ).fetchall()
+    if not rows:
+        raise ValueError("No verified knowledge entries exist for the selected license.")
+
+    dialogues: list[str] = []
+    source_records: list[str] = []
+    source_hashes: list[str] = []
+    for row in rows:
+        title, content, source_title, source_url, source_revision, stored_license, source_sha, content_sha, reviewers = row
+        if stored_license != normalized_license:
+            raise ValueError("Verified knowledge license changed after promotion.")
+        if hashlib.sha256(content.encode("utf-8")).hexdigest() != content_sha:
+            raise ValueError("Verified knowledge content fingerprint mismatch.")
+        if not re.fullmatch(r"[a-f0-9]{64}", source_sha or ""):
+            raise ValueError("Verified knowledge source fingerprint is invalid.")
+        if not isinstance(reviewers, list) or len(reviewers) != 2 or reviewers[0] == reviewers[1]:
+            raise ValueError("Verified knowledge does not contain two distinct reviewer hashes.")
+        if any(not re.fullmatch(r"[a-f0-9]{64}", str(value)) for value in reviewers):
+            raise ValueError("Verified knowledge reviewer evidence is invalid.")
+        if re.search(r"(?im)^\\s*(?:Kullanıcı|Asistan)\\s*:", title + "\\n" + content):
+            raise ValueError("Verified knowledge contains a dialogue role marker.")
+        dialogues.append("Kullanıcı: " + title + "\\nAsistan: " + content + "\\n")
+        source_records.append(
+            str(source_title) + " <" + str(source_url) + ">" +
+            (" @ " + str(source_revision) if source_revision else "")
+        )
+        source_hashes.append(source_sha)
+
+    corpus_text = "\\n".join(dialogues)
+    processed_sha = hashlib.sha256(corpus_text.encode("utf-8")).hexdigest()
+    source_fingerprint = hashlib.sha256("".join(sorted(source_hashes)).encode("ascii")).hexdigest()
+    revision = hashlib.sha1(
+        (normalized_license + ":" + processed_sha + ":" + source_fingerprint).encode("ascii")
+    ).hexdigest()
+    manifest = {
+        "schema_version": 1,
+        "dataset": {
+            "id": "frieren-neural/verified-knowledge",
+            "revision": revision,
+            "license": normalized_license,
+            "split": "train",
+            "dialogues": len(dialogues),
+            "source_sha256": source_fingerprint,
+            "processed_sha256": processed_sha,
+        },
+        "documents": [{
+            "path": text_path.name,
+            "source": "Two-reviewer-approved public sources: " + " | ".join(source_records),
+            "license": normalized_license,
+            "usage": "Curated, two-reviewer-approved knowledge summaries for supervised fine-tuning; no private chat messages.",
+            "sha256": processed_sha,
+        }],
+    }
+    text_path.write_text(corpus_text, encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+    return {
+        "output_dir": str(output),
+        "dataset_id": manifest["dataset"]["id"],
+        "dataset_revision": revision,
+        "license": normalized_license,
+        "dialogues": len(dialogues),
+        "processed_sha256": processed_sha,
+        "source_fingerprint_sha256": source_fingerprint,
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Export only verified Neural knowledge as a pinned training corpus.")
+    parser.add_argument("--output", required=True, help="New or empty output directory.")
+    parser.add_argument("--license", required=True, help="One approved SPDX license for this corpus snapshot.")
+    args = parser.parse_args()
+    result = export_verified_knowledge(args.output, license_name=args.license)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()
