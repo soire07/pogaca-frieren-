@@ -255,6 +255,7 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
         baseline_overall = baseline_metrics.get("overall_average") if isinstance(baseline_metrics, dict) else None
         baseline_provenance = baseline_report.get("training_provenance")
         baseline_heldout = baseline_report.get("heldout_metrics")
+        baseline_checkpoint_metadata = baseline_report.get("checkpoint_metadata")
         baseline_outputs = baseline_report.get("outputs")
         baseline_source_commit = baseline_report.get("source_commit_sha")
         baseline_checkpoint_sha = baseline_report.get("checkpoint_sha256")
@@ -287,6 +288,15 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
             and re.fullmatch(r"[a-f0-9]{64}", baseline_provenance.get("manifest_sha256", "")) is not None
             and _has_allowed_training_licenses(baseline_provenance.get("licenses"))
         )
+        candidate_objective_version = checkpoint_metadata.get("loss_objective_version") if isinstance(checkpoint_metadata, dict) else None
+        baseline_objective_version = baseline_checkpoint_metadata.get("loss_objective_version") if isinstance(baseline_checkpoint_metadata, dict) else None
+        baseline_objective_valid = (
+            isinstance(baseline_checkpoint_metadata, dict)
+            and baseline_checkpoint_metadata.get("format_version") == 2
+            and isinstance(baseline_objective_version, int)
+            and not isinstance(baseline_objective_version, bool)
+            and baseline_objective_version == candidate_objective_version
+        )
         baseline_heldout_valid = (
             isinstance(baseline_heldout, dict)
             and isinstance(baseline_heldout.get("loss"), (int, float))
@@ -301,6 +311,8 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
             and not isinstance(baseline_heldout.get("sample_count"), bool)
             and baseline_heldout["sample_count"] > 0
             and baseline_heldout.get("split") == "heldout"
+            and baseline_heldout.get("loss_objective_version") == baseline_objective_version
+            and baseline_heldout.get("checkpoint_training_loss_objective_version") == baseline_objective_version
             and isinstance(baseline_heldout.get("evaluation_version"), str)
             and bool(baseline_heldout["evaluation_version"].strip())
         )
@@ -320,6 +332,7 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
             and re.fullmatch(r"[a-f0-9]{40}", baseline_source_commit) is not None
             and baseline_review_valid
             and baseline_metrics_valid
+            and baseline_objective_valid
             and baseline_provenance_valid
             and baseline_heldout_valid
             and baseline_outputs_valid
