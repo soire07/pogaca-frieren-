@@ -444,7 +444,7 @@ def train_model(
         )
         train_ids, train_loss_mask = encode_dialogue_stream_with_loss_mask(train_text, tokenizer)
         validation_ids, validation_loss_mask = encode_dialogue_stream_with_loss_mask(validation_text, tokenizer)
-        if min(len(train_ids), len(validation_ids)) + 1 > settings.block_size:
+        if min(len(train_ids), len(validation_ids)) > settings.block_size:
             break
         if effective_vocab_size == BPETokenizer.BASE_VOCAB_SIZE:
             raise ValueError(
