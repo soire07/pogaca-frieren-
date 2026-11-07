@@ -222,6 +222,7 @@ def _store_learning_signals(payload: LearningSignalsRequest) -> int:
         inserted = 0
         with psycopg.connect(database_url, connect_timeout=3) as connection:
             with connection.transaction():
+                connection.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (user_hash,))
                 connection.execute("DELETE FROM neural_learning_signals WHERE created_at < now() - interval '30 days'")
                 for signal in payload.signals:
                     row = connection.execute(

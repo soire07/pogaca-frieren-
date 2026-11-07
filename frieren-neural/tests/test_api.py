@@ -569,3 +569,20 @@ def test_learning_insights_are_aggregate_only_and_require_api_authentication(api
         {"dimension": "grounding", "signal_type": "uncertainty", "occurrences": 4}
     ]}
     assert "user_id" not in allowed.text
+
+
+
+def test_learning_scope_hash_is_pseudonymous_and_separates_users_and_guilds(monkeypatch):
+    import frieren_neural.api as api
+
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "s" * 48)
+    guild_a, user_a = api._learning_scope_hash("12345678901234567", "22345678901234567")
+    guild_b, user_b = api._learning_scope_hash("12345678901234567", "32345678901234567")
+    other_guild, other_user = api._learning_scope_hash("42345678901234567", "22345678901234567")
+    assert len(guild_a) == len(user_a) == 64
+    assert guild_a == guild_b
+    assert user_a != user_b
+    assert guild_a != other_guild
+    assert user_a != other_user
+    assert "12345678901234567" not in guild_a
+    assert "22345678901234567" not in user_a

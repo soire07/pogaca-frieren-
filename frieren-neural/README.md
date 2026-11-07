@@ -312,3 +312,14 @@ frieren-neural-evolve-search \
 The command stores each candidate separately and writes `candidate-search-report.json`. A lower held-out loss is only a shortlist signal: it does not prove better Turkish conversation quality. The parent checkpoint is never overwritten, and automatic promotion is disabled. Before a candidate can be accepted, it must pass the same 24-prompt benchmark, two independent human reviews, and all critical safety/fabrication checks. The model is not allowed to grade itself or train on unreviewed synthetic answers.
 
 The sampler microbenchmark compares the vectorized implementation with the previous Python-loop implementation while asserting identical sampled tensors. The BPE benchmark also compares the exact merge sequence against the previous reference algorithm. CI records measured throughput; it does not assume that a speedup on one runner guarantees the same gain on every CPU.
+
+
+## Conversation-derived learning signals (privacy-scoped, staged)
+
+When Poğaça is using the approved central Neural endpoint, the bot locally detects three limited improvement signals: explicit user corrections, Neural uncertainty phrases, and exact repeated questions within that user's recent conversation. It sends Neural only the Discord guild/user identifiers and the signal category/dimension; prompts, replies, channel IDs, memories, and message content are not sent to this endpoint or stored in this telemetry table.
+
+Neural HMAC-pseudonymizes guild and user scopes with its API token before storage. User hashes are scoped to their guild, so one person's signals are not merged across servers. The database stores only the pseudonymous scope hashes, signal type, dimension, and timestamp; it applies a one-hour per-user/type cooldown and removes records older than 30 days when new signals arrive. The insights endpoint returns aggregate counts only.
+
+Before enabling this feature on a Neural database, apply migrations/002_learning_signals.sql to the dedicated FRIEREN_DATABASE_URL. The migration is deliberately not auto-applied to production. Until it is applied, signal storage returns a safe 503 and the Discord reply remains unaffected.
+
+These signals are learning priorities, not training examples. They do not mutate model weights, create facts, change source code, or deploy anything. They can inform the existing quality-gated curriculum only after independently verified sources, held-out evaluation, and required human review. The 24,000-step candidate remains NOT READY until the two-reviewer quality gate is completed.
