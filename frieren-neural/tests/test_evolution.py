@@ -34,6 +34,7 @@ def _reviewed_report():
             "available": True,
             "improved": True,
             "baseline_checkpoint_sha256": "f" * 64,
+            "baseline_loss_objective_version": 2,
             "baseline_reviewer_identity_hashes": ["c" * 64, "d" * 64],
         },
         "outputs": [
