@@ -31,6 +31,7 @@ def _reviewed_report():
             "available": True,
             "improved": True,
             "baseline_checkpoint_sha256": "f" * 64,
+            "baseline_reviewer_identity_hashes": ["c" * 64, "d" * 64],
         },
         "outputs": [
             {"id": f"TR-{index:03d}", "output": "Doğrulanmış örnek yanıt."}
