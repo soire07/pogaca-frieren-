@@ -27,7 +27,8 @@ const STATE_COOKIE = 'frieren_owner_oauth_state';
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
 const MAX_BODY_BYTES = 24_576;
 export function getFrierenAiScenarioEndpoint(env = process.env) {
-  const base = String(env.FRIEREN_AI_PUBLIC_URL || 'https://pogaca-frieren-kltd.onrender.com').trim();
+  const base = String(env.FRIEREN_AI_PUBLIC_URL || '').trim();
+  if (!base) throw new Error('FRIEREN_AI_SERVICE_NOT_CONFIGURED');
   const parsed = new URL(base);
   if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_AI_PUBLIC_URL');
   return new URL('/internal/test-scenario', parsed).toString();
@@ -40,7 +41,8 @@ export async function assertGuardianAutomationEnabled(db) {
 }
 
 export function getFrierenAiGuardianEndpoint(env = process.env) {
-  const base = String(env.FRIEREN_AI_PUBLIC_URL || RENDER_BOT_SERVICES.frieren_ai.url).trim();
+  const base = String(env.FRIEREN_AI_PUBLIC_URL || '').trim();
+  if (!base) throw new Error('FRIEREN_AI_SERVICE_NOT_CONFIGURED');
   const parsed = new URL(base);
   if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('INVALID_FRIEREN_AI_PUBLIC_URL');
   return new URL('/internal/guardian-review', parsed).toString();
@@ -571,6 +573,10 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
     guardian_pr_dispatched: 'Güvenli onarım workflow\'u başlatıldı. Testler geçerse ayrı bir PR açılacak; birleştirme ve dağıtım yapılmayacak.',
     guardian_pr_dispatching: 'Onaylı onarım workflow isteği zaten işleniyor. Yeni bir istek gönderilmedi; sonucu yenileyebilirsin.',
     guardian_github_not_configured: 'GitHub Actions tetikleme anahtarı eksik. Poğaça Render ortamına FRIEREN_GITHUB_TOKEN eklenmeli.',
+    guardian_ai_service_not_configured: 'Frieren AI üretim servisi Render hesabında doğrulanamadı. FRIEREN_AI_PUBLIC_URL ve servis kaydı yapılandırılmadan Guard inceleme başlatmaz.',
+    guardian_github_actions_permission_required: 'GitHub token workflow_dispatch yetkisine sahip değil. Fine-grained token için bu depoda Actions: Read and write, Pull requests: Read ve Checks: Read izinlerini ver; ardından Poğaça Render içindeki FRIEREN_GITHUB_TOKEN değerini güncelle.',
+    guardian_github_sso_required: 'GitHub token için kuruluş SSO yetkilendirmesi gerekiyor. Tokenı GitHub kuruluş erişimi için yetkilendir.',
+    guardian_github_token_invalid: 'GitHub token geçersiz veya süresi dolmuş. FRIEREN_GITHUB_TOKEN değerini yenile.',
     guardian_pr_dispatch_failed: 'Onarım workflow\'u başlatılamadı. Job kaydı korundu; hata ayrıntıları sırları açığa çıkarmadan kaydedildi.',
     guardian_pr_status_failed: 'GitHub workflow veya PR durumu alınamadı. Token izinlerini ve Actions durumunu kontrol et.',
     guardian_pr_status_updated: 'GitHub Actions ve PR durumu yenilendi.',
@@ -1407,10 +1413,14 @@ if (action === 'guardian-emergency-stop' && form.get('confirm') === 'yes') {
       const code = String(error?.message || '');
       console.error('Owner dashboard action failed:', code || 'unknown error');
       const guardianError = code.startsWith('GUARDIAN_') || code.startsWith('REVIEW_')
-        || code === 'INVALID_FRIEREN_AI_PUBLIC_URL' || code === 'INVALID_FRIEREN_NEURAL_LIVE_URL';
+        || code === 'INVALID_FRIEREN_AI_PUBLIC_URL' || code === 'FRIEREN_AI_SERVICE_NOT_CONFIGURED' || code === 'INVALID_FRIEREN_NEURAL_LIVE_URL';
       const notice = code === 'GUARDIAN_EMERGENCY_STOP_ENABLED' ? 'guardian_emergency_stop_active'
         : code === 'GUARDIAN_BRIDGE_NOT_CONFIGURED' ? 'guardian_not_configured'
         : code === 'GUARDIAN_GITHUB_TOKEN_NOT_CONFIGURED' ? 'guardian_github_not_configured'
+        : code === 'GUARDIAN_GITHUB_ACTIONS_WRITE_REQUIRED' ? 'guardian_github_actions_permission_required'
+        : code === 'GUARDIAN_GITHUB_SSO_AUTH_REQUIRED' ? 'guardian_github_sso_required'
+        : code === 'GUARDIAN_GITHUB_TOKEN_INVALID' ? 'guardian_github_token_invalid'
+        : code === 'FRIEREN_AI_SERVICE_NOT_CONFIGURED' ? 'guardian_ai_service_not_configured'
         : guardianError ? (code.startsWith('GUARDIAN_GITHUB_READ_') ? 'guardian_pr_status_failed' : code.startsWith('GUARDIAN_GITHUB_') ? 'guardian_pr_dispatch_failed' : 'guardian_review_failed')
         : code === 'SENSITIVE_TEST_TARGET_REJECTED' ? 'test_target_sensitive'
         : code === 'SENSITIVE_MEMORY_REJECTED' ? 'memory_sensitive_rejected'
