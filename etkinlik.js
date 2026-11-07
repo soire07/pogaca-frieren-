@@ -8,6 +8,34 @@ const OWNER_ID = '1553794496234262641';
 const dateText = value => new Date(value).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Istanbul' });
 const eventTypeLabel = type => ({ boss_raid: 'Boss / Raid', tournament: 'Takım Turnuvası', anime_night: 'Anime Gecesi' })[type] || 'Topluluk';
 
+export function withSafeEventMentions(payload) {
+  return {
+    ...payload,
+    allowedMentions: { ...(payload?.allowedMentions || {}), parse: [] }
+  };
+}
+
+export function formatEventCommandError(error) {
+  const code = error?.message || error?.code;
+  const messages = {
+    TEAM_NAME_INVALID: 'Takım adı 3–32 karakter olmalı; başında/sonunda boşluk veya kontrol karakteri kullanma.',
+    TEAM_JOIN_INPUT_INVALID: 'Takım UUID biçimi geçersiz. /etkinlik takimlar komutuyla güncel kimlikleri görüntüle.',
+    LEAGUE_INPUT_INVALID: 'Lig adı en az 3 karakter olmalı. Başlangıç ve bitiş tarihlerini geçerli ISO 8601 biçiminde gir; bitiş başlangıçtan sonra olmalı.',
+    LEAGUE_ENTRY_INPUT_INVALID: 'Lig veya takım kimliği geçersiz. /etkinlik lig-durum ve /etkinlik takimlar ile kimlikleri kontrol et.',
+    LEAGUE_SCHEDULE_INPUT_INVALID: 'Lig kimliği geçersiz. UUID değerini eksiksiz kopyala.',
+    LEAGUE_TEAM_COUNT_INVALID: 'Fikstür için lige en az 2, en fazla 16 geçerli takım kaydedilmiş olmalı.',
+    LEAGUE_SCHEDULE_INVALID: 'İlk maç tarihi geçerli olmalı; tur aralığı 1–30 gün arasında olmalı.',
+    LEAGUE_DASHBOARD_INPUT_INVALID: 'Lig kimliği geçersiz. UUID değerini eksiksiz kopyala.',
+    FIXTURE_REPORT_INPUT_INVALID: 'Maç, takım veya oyuncu kimliği geçersiz.',
+    FIXTURE_SCORE_INVALID: 'Skorlar 0–99 arasında tam sayı olmalı.',
+    TEAM_PLAYER_INVALID: 'Sunucu veya oyuncu kimliği doğrulanamadı.',
+    EVENT_INPUT_INVALID: 'Başlık ve tarihleri kontrol et. Başlangıç gelecekte olmalı; bitiş başlangıçtan sonra gelmeli ve ISO 8601 saat dilimi içermeli.',
+    EVENT_TYPE_INVALID: 'Etkinlik türü geçersiz.'
+  };
+  if (error?.code === '23505') return 'Bu ad zaten kullanılıyor. Farklı bir takım veya lig adı dene.';
+  return messages[code] || 'Etkinlik işlemi tamamlanamadı. Veriler değiştirilmedi; biraz sonra tekrar dene.';
+}
+
 export default {
   data: new SlashCommandBuilder()
     .setName('etkinlik')
@@ -34,66 +62,69 @@ export default {
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({ content: 'Etkinlikler yalnızca sunucularda kullanılabilir.', flags: MessageFlags.Ephemeral });
     const action = interaction.options.getSubcommand();
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const respond = payload => interaction.editReply(withSafeEventMentions(payload));
+    try {
     const teamInput={guildId:interaction.guildId,userId:interaction.user.id};
     if(action==='takim-olustur'){
       const result=await createGuildTeam(pool,{guildId:interaction.guildId,captainId:interaction.user.id,name:interaction.options.getString('ad')});
-      return interaction.reply({content:result.status==='created'?'Takım kuruldu: **'+result.team.team_name+'** · UUID: `'+result.team.team_id+'`':result.status==='already_in_team'?'Zaten bir takımdasın.':'Bu takım adı kullanılıyor.',flags:MessageFlags.Ephemeral});
+      return respond({content:result.status==='created'?'Takım kuruldu: **'+result.team.team_name+'** · UUID: `'+result.team.team_id+'`':result.status==='already_in_team'?'Zaten bir takımdasın.':'Bu takım adı kullanılıyor.'});
     }
     if(action==='takimlar'){
       const teams=await listGuildTeams(pool,interaction.guildId);
-      return interaction.reply({content:teams.length?teams.map(t=>'• **'+t.team_name+'** · '+t.member_count+'/10 · UUID: `'+t.team_id+'`').join('\\n'):'Henüz takım kurulmamış.',flags:MessageFlags.Ephemeral});
+      return respond({content:teams.length?teams.map(t=>'• **'+t.team_name+'** · '+t.member_count+'/10 · UUID: `'+t.team_id+'`').join('\n'):'Henüz takım kurulmamış.'});
     }
     if(action==='takim-katil'){
       const result=await joinGuildTeam(pool,{...teamInput,teamId:interaction.options.getString('takim')});
       const messages={joined:'Takıma katıldın.',already_joined:'Zaten bu takımdasın.',already_in_team:'Başka bir takımın üyesisin.',team_full:'Takım 10 oyuncuya ulaştı.',not_found:'Takım bulunamadı.'};
-      return interaction.reply({content:messages[result.status]||'Takım kaydı tamamlanamadı.',flags:MessageFlags.Ephemeral});
+      return respond({content:messages[result.status]||'Takım kaydı tamamlanamadı.'});
     }
     if(action==='lig-olustur'){
       const league=await createGuildTeamLeague(pool,{guildId:interaction.guildId,creatorId:interaction.user.id,name:interaction.options.getString('ad'),startsAt:interaction.options.getString('baslangic'),endsAt:interaction.options.getString('bitis')});
-      return interaction.reply({content:'Sezon ligi oluşturuldu: **'+league.season_name+'** · UUID: `'+league.league_id+'`',flags:MessageFlags.Ephemeral});
+      return respond({content:'Sezon ligi oluşturuldu: **'+league.season_name+'** · UUID: `'+league.league_id+'`'});
     }
     if(action==='lig-kayit'){
       const result=await registerGuildTeamForLeague(pool,{guildId:interaction.guildId,teamId:interaction.options.getString('takim'),leagueId:interaction.options.getString('lig'),actorId:interaction.user.id});
-      return interaction.reply({content:result.status==='registered'?'Takım lige kaydedildi.':'Kayıt başarısız: takım kaptanı olmalı ve lig kayıt kabul etmeli.',flags:MessageFlags.Ephemeral});
+      return respond({content:result.status==='registered'?'Takım lige kaydedildi.':'Kayıt başarısız: takım kaptanı olmalı ve lig kayıt kabul etmeli.'});
     }
     if(action==='lig-fikstur'){
       const result=await scheduleGuildTeamLeague(pool,{guildId:interaction.guildId,leagueId:interaction.options.getString('lig'),actorId:interaction.user.id,startsAt:interaction.options.getString('baslangic'),intervalDays:interaction.options.getInteger('aralik')||7});
-      return interaction.reply({content:result.status==='scheduled'?'Fikstür oluşturuldu: **'+result.fixtureCount+' maç**.':'Fikstür oluşturulamadı: '+result.status,flags:MessageFlags.Ephemeral});
+      return respond({content:result.status==='scheduled'?'Fikstür oluşturuldu: **'+result.fixtureCount+' maç**.':'Fikstür oluşturulamadı: '+result.status});
     }
     if(action==='lig-durum'){
       const data=await getGuildTeamLeagueDashboard(pool,interaction.guildId,interaction.options.getString('lig'));
-      if(!data)return interaction.reply({content:'Lig bulunamadı.',flags:MessageFlags.Ephemeral});
-      const table=data.table.map((t,i)=>(i+1)+'. **'+t.team_name+'** · '+t.points+' puan · '+t.wins+'G '+t.draws+'B '+t.losses+'M · AV '+t.goal_difference).join('\\n');
-      const fixtures=data.fixtures.slice(0,15).map(x=>'Tur '+x.round_number+': **'+x.home_team+'** - **'+x.away_team+'** · '+dateText(x.scheduled_at)+' · '+x.status+(x.home_score===null?'':' · '+x.home_score+'-'+x.away_score)).join('\\n');
-      return interaction.reply({content:'**'+data.league.season_name+'** · '+data.league.status+'\\n**Puan Tablosu**\\n'+(table||'Kayıtlı takım yok.')+'\\n**Fikstür**\\n'+(fixtures||'Henüz fikstür yok.'),flags:MessageFlags.Ephemeral});
+      if(!data)return respond({content:'Lig bulunamadı.'});
+      const table=data.table.map((t,i)=>(i+1)+'. **'+t.team_name+'** · '+t.points+' puan · '+t.wins+'G '+t.draws+'B '+t.losses+'M · AV '+t.goal_difference).join('\n');
+      const fixtures=data.fixtures.slice(0,15).map(x=>'Tur '+x.round_number+': **'+x.home_team+'** - **'+x.away_team+'** · '+dateText(x.scheduled_at)+' · '+x.status+(x.home_score===null?'':' · '+x.home_score+'-'+x.away_score)).join('\n');
+      return respond({content:'**'+data.league.season_name+'** · '+data.league.status+'\n**Puan Tablosu**\n'+(table||'Kayıtlı takım yok.')+'\n**Fikstür**\n'+(fixtures||'Henüz fikstür yok.')});
     }
     if(action==='lig-skor'){
       const result=await reportGuildTeamFixtureScore(pool,{guildId:interaction.guildId,fixtureId:interaction.options.getString('mac'),teamId:interaction.options.getString('takim'),actorId:interaction.user.id,ownScore:interaction.options.getInteger('skor'),opponentScore:interaction.options.getInteger('rakip_skor')});
       const messages={awaiting_confirmation:'Sonuç kaydedildi; rakip takım kaptanının aynı sonucu bildirmesi bekleniyor.',completed:'İki takım da sonucu doğruladı. Puan tablosu güncellendi.',disputed:'Takımların skor bildirimleri uyuşmuyor. Sonuç inceleme gerektiriyor.',captain_required:'Bu işlem yalnızca takım kaptanına açık.',not_participant:'Takım bu maçta yer almıyor.',unavailable:'Maç kapalı veya sonuçlandırılmış.',not_found:'Maç bulunamadı.'};
-      return interaction.reply({content:messages[result.status]||'Skor bildirilemedi.',flags:MessageFlags.Ephemeral});
+      return respond({content:messages[result.status]||'Skor bildirilemedi.'});
     }
     if (action === 'liste') {
       const events = await listGuildEvents(pool, interaction.guildId, 15);
       const lines = events.map(event => `• **${event.title}** — ${dateText(event.starts_at)} · ${event.participants}${event.max_participants ? '/'+event.max_participants : ''} kişi\n  ${eventTypeLabel(event.event_type)} · ID: \`${event.event_id}\`\n  ${event.description || 'Açıklama yok.'}`);
-      return interaction.reply({ content: `**Yaklaşan Macera Etkinlikleri**\n${lines.join('\n') || 'Henüz planlanmış etkinlik yok.'}`, flags: MessageFlags.Ephemeral });
+      return respond({ content: `**Yaklaşan Macera Etkinlikleri**\n${lines.join('\n') || 'Henüz planlanmış etkinlik yok.'}` });
     }
     const eventId = interaction.options.getString('id');
     if (action === 'katil') {
       const result = await joinGuildEvent(pool, { guildId: interaction.guildId, eventId, userId: interaction.user.id, teamId: interaction.options.getString('takim') || null });
       const messages = { joined: result.teamName ? 'Boss/raid kaydın **'+result.teamName+'** takımına oluşturuldu.' : 'Etkinliğe kaydın oluşturuldu.', team_required: 'Boss/raid etkinliği için önce bir lonca takımı kur veya katıl, sonra takım UUID’sini seç.', not_team_member: 'Bu takımın üyesi değilsin.', invalid_team: 'Takım kimliği geçersiz. /etkinlik takimlar ile güncel UUID listesini al.', team_full: 'Seçtiğin raid takımı dolu.', team_not_supported: 'Bu etkinlik türünde takım seçimi desteklenmiyor.', already_joined: 'Bu etkinliğe zaten kayıtlısın.', full: 'Etkinlik kapasitesi doldu.', unavailable: 'Etkinlik bulunamadı veya kayıt süresi kapandı.' };
-      return interaction.reply({ content: messages[result.status] || 'Kayıt tamamlanamadı.', flags: MessageFlags.Ephemeral });
+      return respond({ content: messages[result.status] || 'Kayıt tamamlanamadı.' });
     }
     if (action === 'yoklama') {
       const result = await checkInGuildEvent(pool, { guildId: interaction.guildId, eventId, userId: interaction.user.id });
       const messages = { checked_in: 'Etkinlik katılımın doğrulandı. Etkinlik bitince /yasam etkinlik-odul ile ödülünü alabilirsin.', already_checked_in: 'Bu etkinlikte yoklaman zaten alındı.', not_eligible: 'Yoklama yalnızca kayıtlı katılımcılara, etkinlik başladıktan sonra açıktır.', invalid_event: 'Etkinlik kimliği geçersiz.' };
-      return interaction.reply({ content: messages[result.status] || 'Yoklama alınamadı.', flags: MessageFlags.Ephemeral });
+      return respond({ content: messages[result.status] || 'Yoklama alınamadı.' });
     }
     if (action === 'ayril') {
       const result = await leaveGuildEvent(pool, { guildId: interaction.guildId, eventId, userId: interaction.user.id });
-      return interaction.reply({ content: result.removed ? 'Etkinlik kaydın silindi.' : 'Aktif bir etkinlik kaydın bulunamadı.', flags: MessageFlags.Ephemeral });
+      return respond({ content: result.removed ? 'Etkinlik kaydın silindi.' : 'Aktif bir etkinlik kaydın bulunamadı.' });
     }
     if (action === 'olustur') {
-      if (interaction.user.id !== OWNER_ID) return interaction.reply({ content: 'Bu işlem yalnızca bot sahibine açıktır.', flags: MessageFlags.Ephemeral });
+      if (interaction.user.id !== OWNER_ID) return respond({ content: 'Bu işlem yalnızca bot sahibine açıktır.' });
       try {
         const result = await createGuildEvent(pool, {
           guildId: interaction.guildId,
@@ -106,13 +137,27 @@ export default {
           maxParticipants: interaction.options.getInteger('kapasite'),
           channelId: interaction.channelId
         });
-        return interaction.reply({ content: `Etkinlik oluşturuldu. Başlangıçtan 30 dakika önce bu kanalda hatırlatma gönderilecek. Kimlik: \`${result.eventId}\`\nKayıtlar **/etkinlik katil** ile açıldı.`, flags: MessageFlags.Ephemeral });
+        return respond({ content: `Etkinlik oluşturuldu. Başlangıçtan 30 dakika önce bu kanalda hatırlatma gönderilecek. Kimlik: \`${result.eventId}\`\nKayıtlar **/etkinlik katil** ile açıldı.` });
       } catch (error) {
-        if (error.message === 'EVENT_INPUT_INVALID') return interaction.reply({ content: 'Başlık ve tarihleri kontrol et. Başlangıç gelecekte olmalı; bitiş başlangıçtan sonra gelmeli ve ISO 8601 saat dilimi içermeli.', flags: MessageFlags.Ephemeral });
-        if (error.message === 'EVENT_TYPE_INVALID') return interaction.reply({ content: 'Etkinlik türü geçersiz.', flags: MessageFlags.Ephemeral });
+        if (error.message === 'EVENT_INPUT_INVALID') return respond({ content: 'Başlık ve tarihleri kontrol et. Başlangıç gelecekte olmalı; bitiş başlangıçtan sonra gelmeli ve ISO 8601 saat dilimi içermeli.' });
+        if (error.message === 'EVENT_TYPE_INVALID') return respond({ content: 'Etkinlik türü geçersiz.' });
         throw error;
       }
     }
-    return interaction.reply({ content: 'Bilinmeyen etkinlik işlemi.', flags: MessageFlags.Ephemeral });
+    return respond({ content: 'Bilinmeyen etkinlik işlemi.' });
+    } catch (error) {
+      const code = error?.message || error?.code;
+      const expectedInputError = Object.hasOwn({
+        TEAM_NAME_INVALID: true, TEAM_JOIN_INPUT_INVALID: true, LEAGUE_INPUT_INVALID: true,
+        LEAGUE_ENTRY_INPUT_INVALID: true, LEAGUE_SCHEDULE_INPUT_INVALID: true,
+        LEAGUE_TEAM_COUNT_INVALID: true, LEAGUE_SCHEDULE_INVALID: true,
+        LEAGUE_DASHBOARD_INPUT_INVALID: true, FIXTURE_REPORT_INPUT_INVALID: true,
+        FIXTURE_SCORE_INVALID: true, TEAM_PLAYER_INVALID: true,
+        EVENT_INPUT_INVALID: true, EVENT_TYPE_INVALID: true
+      }, code) || error?.code === '23505';
+      if (expectedInputError) console.warn('/etkinlik geçersiz giriş:', code);
+      else console.error('/etkinlik hatası:', error?.message || error);
+      return respond({ content: formatEventCommandError(error), allowedMentions: { parse: [] } });
+    }
   }
 };

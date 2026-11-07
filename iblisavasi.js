@@ -349,7 +349,7 @@ export default {
           }
           if (rewardResult.mastery) {
             spellMastery.set(spellUsed, Number(rewardResult.mastery.mastery_level));
-            actionText += `\\n📈 **${spellUsed.replaceAll('_', ' ')} ustalığı:** ${rewardResult.mastery.casts} kullanım · Seviye ${rewardResult.mastery.mastery_level}/10`;
+            actionText += `\n📈 **${spellUsed.replaceAll('_', ' ')} ustalığı:** ${rewardResult.mastery.casts} kullanım · Seviye ${rewardResult.mastery.mastery_level}/10`;
           }
 
           finished = true;

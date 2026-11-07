@@ -130,7 +130,7 @@ async function processDuePlayerMarketPriceAlerts(readyClient = client) {
       try {
         const user = await readyClient.users.fetch(alert.user_id);
         await user.send(
-          '🔔 **Kuzey Pazarı fiyat alarmı**\\n' +
+          '🔔 **Kuzey Pazarı fiyat alarmı**\n' +
           '**' + String(alert.item_key).slice(0, 120) + '** artık **' +
           Number(alert.price_coins).toLocaleString('tr-TR') + ' altın**. ' +
           'Hedefin: ' + Number(alert.target_price).toLocaleString('tr-TR') +
@@ -232,11 +232,11 @@ async function processDueGuildEventReminders(readyClient = client) {
           dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Istanbul'
         });
         await channel.send({
-          content: (event.event_type === 'boss_raid' ? '⚔️ **Boss / Raid etkinliği 30 dakika içinde başlıyor!**\\n' : event.event_type === 'tournament' ? '🏆 **Takım turnuvası 30 dakika içinde başlıyor!**\\n' : '⏰ **Lonca etkinliği 30 dakika içinde başlıyor!**\\n') +
+          content: (event.event_type === 'boss_raid' ? '⚔️ **Boss / Raid etkinliği 30 dakika içinde başlıyor!**\n' : event.event_type === 'tournament' ? '🏆 **Takım turnuvası 30 dakika içinde başlıyor!**\n' : '⏰ **Lonca etkinliği 30 dakika içinde başlıyor!**\n') +
             '**' + String(event.title).slice(0, 100) + '** · ' + when +
-            (event.description ? '\\n' + String(event.description).slice(0, 700) : '') +
-            (event.event_type === 'boss_raid' ? '\\nKatılan maceracılar /ortakboss komutundaki etkinlik_id alanına \\`' + event.event_id + '\\` yazarak baskını başlatabilir.' : '') +
-            (attendees.length ? '\\n\\nKayıtlı maceracılar: ' + attendees.map(id => '<@' + id + '>').join(' ') : ''),
+            (event.description ? '\n' + String(event.description).slice(0, 700) : '') +
+            (event.event_type === 'boss_raid' ? '\nKatılan maceracılar /ortakboss komutundaki etkinlik_id alanına `' + event.event_id + '` yazarak baskını başlatabilir.' : '') +
+            (attendees.length ? '\n\nKayıtlı maceracılar: ' + attendees.map(id => '<@' + id + '>').join(' ') : ''),
           allowedMentions: { parse: [], users: attendees }
         });
         await runGuildSpellAutomations(pool,readyClient,event.guild_id,'event_reminder',{event:event.title,boss:event.title}).catch(error=>console.warn('Etkinlik otomasyonu çalıştırılamadı:',error?.message||error));

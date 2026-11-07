@@ -71,7 +71,7 @@ export default {
     if (action === 'alarmlar') {
       const alerts = await listPlayerMarketPriceAlerts(pool, interaction.guildId, interaction.user.id, 10);
       const lines = alerts.map(alert => `• **${safeText(alert.item_key)}** ≤ ${Number(alert.target_price).toLocaleString('tr-TR')} altın · ${alert.status === 'active' ? 'Aktif' : 'Bildirildi'} · \`${alert.alert_id}\``);
-      return interaction.reply({ content: '**Kuzey Pazarı fiyat alarmların**\\n' + (lines.join('\\n') || 'Henüz fiyat alarmın yok.'), flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: '**Kuzey Pazarı fiyat alarmların**\n' + (lines.join('\n') || 'Henüz fiyat alarmın yok.'), flags: MessageFlags.Ephemeral });
     }
     if (action === 'alarm-sil') {
       const result = await cancelPlayerMarketPriceAlert(pool, {

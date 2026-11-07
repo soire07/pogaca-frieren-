@@ -30,7 +30,7 @@ export default {
         const book=await getFishCollection(pool,interaction.guildId,interaction.user.id);
         const lines=book.entries.map(item=>(item.fish?.emoji||'🐟')+' **'+(item.fish?.name||item.fish_key)+'** × '+item.quantity+' · '+(item.fish?.rarity||'Bilinmiyor'));
         const embed=new EmbedBuilder().setColor(0x78c8df).setTitle('📖 Kuzey Balık Defteri')
-          .setDescription(lines.join('\\n')||'Henüz balık yakalamadın. İlk avın için /balik avlan kullan.')
+          .setDescription(lines.join('\n')||'Henüz balık yakalamadın. İlk avın için /balik avlan kullan.')
           .setFooter({text:book.unique+'/'+book.totalSpecies+' tür · toplam '+book.caught+' yakalama'});
         return interaction.editReply({embeds:[embed]});
       }
@@ -67,9 +67,9 @@ export default {
       const result=await fishAtZone(pool,{guildId:interaction.guildId,userId:interaction.user.id,zoneKey:interaction.options.getString('bolge',true)});
       let embed;
       if(result.status==='caught'){
-        const baitText=result.baitUsed?'\\nYem: **'+(FISHING_BAITS.find(item=>item.key===result.baitUsed)?.name||result.baitUsed)+'**':'';
+        const baitText=result.baitUsed?'\nYem: **'+(FISHING_BAITS.find(item=>item.key===result.baitUsed)?.name||result.baitUsed)+'**':'';
         embed=new EmbedBuilder().setColor(0x78c8df).setTitle('🎣 Kuzey Kıtası’nda av')
-          .setDescription(result.fish.emoji+' **'+result.fish.name+'** yakaladın!\\nNadirlik: **'+result.fish.rarity+'**\\nBölge: **'+result.zone.name+'**\\nOlta: **'+FISHING_RODS[result.rodLevel-1].name+'**'+baitText);
+          .setDescription(result.fish.emoji+' **'+result.fish.name+'** yakaladın!\nNadirlik: **'+result.fish.rarity+'**\nBölge: **'+result.zone.name+'**\nOlta: **'+FISHING_RODS[result.rodLevel-1].name+'**'+baitText);
       } else if(result.status==='cooldown') embed=new EmbedBuilder().setColor(0xe0b45c).setTitle('⏳ Oltanı dinlendir').setDescription('Bir sonraki av için 30 dakika beklemelisin.');
       else if(result.status==='locked_zone') embed=new EmbedBuilder().setColor(0xe0b45c).setTitle('🔒 Bölge henüz keşfedilmedi').setDescription('**'+result.zone.name+'** için en az **'+result.requiredLevel+'. seviye** gerekiyor. Mevcut seviyen: '+result.level+'.');
       else embed=new EmbedBuilder().setColor(0xe07b72).setDescription('Bu balıkçılık işlemi gerçekleştirilemedi.');

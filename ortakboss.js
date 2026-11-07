@@ -335,7 +335,7 @@ export default {
           ? [auraBarrier ? `🛡️ ${auraBarrier === 'spell' ? 'Büyü' : 'Fiziksel'} Bariyer` : null, auraIllusion ? '🪞 Ruh İkizleri: Zoltraak yanılsamayı deler' : null, auraFinalStandPending ? '⚠️ SON DİRENİŞ: Savunma al!' : null].filter(Boolean).join(' · ')
           : '';
         const actionMessage = await interaction.editReply({
-          content: `**${BOSS.name}${BOSS.class === 'Infinity' ? ' · ♾️ INFINITY CLASS' : ''} · Tur ${rounds} · Evre ${bossPhase}/${BOSS.id === 'fallen-mage' && auraSecretForm ? 4 : 3} · ${auraFormLabel || 'Boss'}**\n${auraRoundWarning ? `⚠️ ${auraRoundWarning}\\n` : ''}❤️ Boss: ${bossHp}/${maxBossHp} HP\n${alive.map(i => `<@${fighters[i].userId}> (${fighters[i].mana}/${fighters[i].maxMana} mana)`).join(' · ')}\nHer oyuncu Saldır, Zoltraak, Heilen, Mana Kalkanı veya Savun seçsin. Zayıflık: **${BOSS.weaknessLabel}**. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
+          content: `**${BOSS.name}${BOSS.class === 'Infinity' ? ' · ♾️ INFINITY CLASS' : ''} · Tur ${rounds} · Evre ${bossPhase}/${BOSS.id === 'fallen-mage' && auraSecretForm ? 4 : 3} · ${auraFormLabel || 'Boss'}**\n${auraRoundWarning ? `⚠️ ${auraRoundWarning}\n` : ''}❤️ Boss: ${bossHp}/${maxBossHp} HP\n${alive.map(i => `<@${fighters[i].userId}> (${fighters[i].mana}/${fighters[i].maxMana} mana)`).join(' · ')}\nHer oyuncu Saldır, Zoltraak, Heilen, Mana Kalkanı veya Savun seçsin. Zayıflık: **${BOSS.weaknessLabel}**. 20 saniye içinde seçim yapmayan oyuncu savunur.`,
           embeds: [],
           components: [actionRow]
         });

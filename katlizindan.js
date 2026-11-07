@@ -481,7 +481,7 @@ export default {
           { name: '🛡️ Takım savunması ve desteği', value: `Savunma azaltımı uygulandı: ${defendedHits} kez\nŞifacı ${healerSupportEvents} kez iyileştirdi.`, inline: true },
           { name: '🏅 Kalıcı unvanlar', value: milestoneText.slice(0,1024), inline: false },
           { name: '🎁 Kişi başı ödül', value: `✨ ${totalXp} XP\n🥐 ${totalCoins} altın`, inline: true },
-          { name: '💎 Ganimet ve sandıklar', value: [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])].length ? [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])].map(item => `• ${item}`).join('\\n') : 'Bu sefer ganimet çıkmadı.', inline: true },
+          { name: '💎 Ganimet ve sandıklar', value: [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])].length ? [...chestRewards, ...(loot ? [loot] : []), ...(craftingLoot ? [craftingLoot] : [])].map(item => `• ${item}`).join('\n') : 'Bu sefer ganimet çıkmadı.', inline: true },
           { name: '⏳ Bekleme', value: '30 dakika', inline: true }
         )
         .setFooter({ text: 'Poğaça Frieren • Kat kat ilerleyin, takımınızı koruyun.' });
