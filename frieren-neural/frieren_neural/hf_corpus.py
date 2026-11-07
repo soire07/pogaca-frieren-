@@ -85,6 +85,21 @@ def _sha256_text(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def _source_rows_sha256(rows: Iterable[object]) -> str:
+    """Fingerprint the exact pinned source rows using canonical JSON and length framing."""
+    digest = hashlib.sha256(b"frieren-neural-source-rows-v1\\0")
+    for row in rows:
+        try:
+            encoded = json.dumps(
+                row, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+            ).encode("utf-8")
+        except (TypeError, ValueError) as error:
+            raise ValueError("Source dataset rows must be JSON-serializable for provenance hashing.") from error
+        digest.update(len(encoded).to_bytes(8, byteorder="big"))
+        digest.update(encoded)
+    return digest.hexdigest()
+
+
 def build_corpus(rows: Iterable[object]) -> tuple[list[str], list[str], dict[str, int], list[str], list[str]]:
     """Filter and deterministically split conversations by stable row ID."""
     train_dialogues: list[str] = []
@@ -141,7 +156,8 @@ def _stage_write(path: Path, content: str) -> Path:
 
 
 def _write_split(
-    root: Path, split: str, dialogues: list[str], row_ids: list[str], revision: str, stats: dict[str, int]
+    root: Path, split: str, dialogues: list[str], row_ids: list[str], revision: str,
+    source_sha256: str, stats: dict[str, int]
 ) -> dict[str, str | int]:
     split_dir = root / split
     split_dir.mkdir(parents=True, exist_ok=True)
@@ -161,6 +177,7 @@ def _write_split(
             "split": split,
             "dialogues": len(dialogues),
             "row_ids_sha256": id_hash,
+            "source_sha256": source_sha256,
             "filter": {
                 "language_mode": "tr_only",
                 "has_tools": False,
@@ -223,9 +240,13 @@ def prepare_turkish_chat_max_25k(
     if root.exists() and (not root.is_dir() or any(root.iterdir())):
         raise FileExistsError("Output directory must be new or empty; existing files are never overwritten.")
     root.mkdir(parents=True, exist_ok=True)
-    train, heldout, stats, train_ids, heldout_ids = build_corpus(rows)
-    train_result = _write_split(root, "train", train, train_ids, revision, stats)
-    heldout_result = _write_split(root, "heldout", heldout, heldout_ids, revision, stats)
+    # Materialize once so generators are supported and provenance hashes the exact
+    # complete source snapshot, including rows later excluded by filtering.
+    source_rows = list(rows)
+    source_sha256 = _source_rows_sha256(source_rows)
+    train, heldout, stats, train_ids, heldout_ids = build_corpus(source_rows)
+    train_result = _write_split(root, "train", train, train_ids, revision, source_sha256, stats)
+    heldout_result = _write_split(root, "heldout", heldout, heldout_ids, revision, source_sha256, stats)
     return {
         "dataset": DATASET_ID,
         "revision": revision,

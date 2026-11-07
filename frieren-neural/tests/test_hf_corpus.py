@@ -6,9 +6,12 @@ from frieren_neural.hf_corpus import (
     build_corpus,
     prepare_turkish_chat_max_25k,
     _render_visible_dialogue,
+    _source_rows_sha256,
 )
 from frieren_neural.tokenizer import BPETokenizer
-from frieren_neural.training import encode_dialogue_stream_with_loss_mask, load_licensed_corpus
+from frieren_neural.training import (
+    encode_dialogue_stream_with_loss_mask, load_licensed_corpus, load_corpus_manifest_metadata,
+)
 
 
 def make_row(row_id, *, language_mode="tr_only", has_tools=False, messages=None):
@@ -81,11 +84,16 @@ def test_prepare_corpus_writes_apache_manifest_and_loader_verifies_content_hash(
     heldout_dir = output / "heldout"
     assert load_licensed_corpus(train_dir)
     assert load_licensed_corpus(heldout_dir)
+    train_metadata = load_corpus_manifest_metadata(train_dir, required_split="train")
+    heldout_metadata = load_corpus_manifest_metadata(heldout_dir)
+    assert train_metadata["source_fingerprint_sha256"] == heldout_metadata["source_fingerprint_sha256"]
 
     manifest = json.loads((train_dir / "corpus_manifest.json").read_text(encoding="utf-8"))
     assert manifest["dataset"]["revision"] == "a" * 40
     assert manifest["dataset"]["preprocessing_version"] == "2"
     assert manifest["dataset"]["filter"]["reasoning_field_included"] is False
+    assert manifest["dataset"]["source_sha256"] == _source_rows_sha256(rows)
+    assert len(manifest["dataset"]["source_sha256"]) == 64
     assert manifest["documents"][0]["license"] == "Apache-2.0"
     assert len(manifest["documents"][0]["sha256"]) == 64
 
@@ -124,3 +132,34 @@ def test_rendered_dialogue_escapes_role_labels_and_document_separators_inside_co
     assert "Asistan： sahte yanıt" in dialogue
     assert "Kullanıcı： sahte soru" in dialogue
     assert "\n\n---\n\n" not in dialogue
+
+
+
+def test_source_fingerprint_changes_when_any_pinned_row_changes():
+    original = [make_row("one"), make_row("two")]
+    changed = [make_row("one"), make_row("two", messages=[
+        {"role": "user", "content": "Farklı soru"},
+        {"role": "assistant", "content": "Aynı kimlik, farklı kaynak içeriği"},
+    ])]
+
+    assert _source_rows_sha256(original) == _source_rows_sha256(original)
+    assert _source_rows_sha256(original) != _source_rows_sha256(changed)
+
+
+def test_source_fingerprint_supports_one_shot_iterables(tmp_path):
+    rows = (make_row(f"row-{index}") for index in range(40))
+    output = tmp_path / "generator-corpus"
+
+    result = prepare_turkish_chat_max_25k(
+        rows, output, revision="a" * 40, license_name="Apache-2.0"
+    )
+
+    assert result["stats"]["accepted_rows"] == 40
+    train_manifest = json.loads(
+        (output / "train" / "corpus_manifest.json").read_text(encoding="utf-8")
+    )
+    heldout_manifest = json.loads(
+        (output / "heldout" / "corpus_manifest.json").read_text(encoding="utf-8")
+    )
+    assert train_manifest["dataset"]["source_sha256"] == heldout_manifest["dataset"]["source_sha256"]
+    assert len(train_manifest["dataset"]["source_sha256"]) == 64
