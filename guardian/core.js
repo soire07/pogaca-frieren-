@@ -22,7 +22,7 @@ const ALLOWED_NEURAL_TRAINING_LICENSES = new Set(['APACHE-2.0', 'MIT', 'CC0-1.0'
 function hasAllowedNeuralTrainingLicenses(licenses) {
   return Array.isArray(licenses) && licenses.length > 0
     && licenses.every(license => typeof license === 'string'
-      && ALLOWED_NEURAL_TRAINING_LICENSES.has(license.trim().replace(/\\s+/g, '-').toUpperCase()));
+      && ALLOWED_NEURAL_TRAINING_LICENSES.has(license.trim().replace(/\s+/g, '-').toUpperCase()));
 }
 
 const SECRET_PATTERNS = [
