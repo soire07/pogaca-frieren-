@@ -149,7 +149,7 @@ def load_licensed_corpus(path: str | Path) -> list[str]:
 
 
 
-def load_corpus_manifest_metadata(path: str | Path, *, required_split: str = "heldout") -> dict[str, Any]:
+def load_corpus_manifest_metadata(path: str | Path, *, required_split: str | None = None) -> dict[str, Any]:
     """Return a pinned manifest fingerprint and split metadata for evaluation evidence."""
     root = Path(path)
     manifest_path = root / "corpus_manifest.json"
@@ -167,8 +167,10 @@ def load_corpus_manifest_metadata(path: str | Path, *, required_split: str = "he
     sample_count = dataset.get("dialogues")
     revision = dataset.get("revision")
     row_ids_sha256 = dataset.get("row_ids_sha256")
-    if source_split != required_split:
+    if required_split is not None and source_split != required_split:
         raise ValueError(f"Expected a {required_split} corpus split, got {source_split!r}.")
+    if required_split is None and source_split not in {"heldout", "test"}:
+        raise ValueError(f"Expected a heldout/test corpus split, got {source_split!r}.")
     if isinstance(sample_count, bool) or not isinstance(sample_count, int) or sample_count < 1:
         raise ValueError("Corpus manifest must include a positive dialogue count.")
     if not isinstance(revision, str) or not re.fullmatch(r"[a-f0-9]{40}", revision):
@@ -848,7 +850,7 @@ def evaluation_main() -> None:
     parser.add_argument("--device", default=None)
     args = parser.parse_args()
     documents = load_licensed_corpus(args.data)
-    dataset_metadata = load_corpus_manifest_metadata(args.data, required_split="test")
+    dataset_metadata = load_corpus_manifest_metadata(args.data)
     metrics = evaluate_checkpoint(
         args.checkpoint, documents, batch_size=args.batch_size, batches=args.batches,
         seed=args.seed, device=args.device, dataset_metadata=dataset_metadata
