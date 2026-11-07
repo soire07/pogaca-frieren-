@@ -14,7 +14,7 @@ function redactSecrets(value, env = process.env) {
 
 export function buildTargetedTestPlan(target) {
   const normalizedTarget = String(target || '').normalize('NFKD')
-    .replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase('tr-TR');
+    .replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('tr-TR');
   const memoryPrivacyCoverage = isMemoryPrivacyTarget(target);
   const commandInteractionCoverage = normalizedTarget.includes('command interaction coverage')
     || normalizedTarget.includes('interaction command coverage')
@@ -72,13 +72,13 @@ export function runTargetedTests(target, {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      const directNotice = plan.directSuiteNotice ? plan.directSuiteNotice + '\\n' : '';
+      const directNotice = plan.directSuiteNotice ? plan.directSuiteNotice + '\n' : '';
       const safeStdout = redactSecrets(stdout, env);
       const safeStderr = redactSecrets(stderr + error, env);
       const matcherNotice = selectionNotice && !safeStdout.includes('SEÇİLEN TEST DOSYALARI:')
-        ? selectionNotice + '\\n' : '';
+        ? selectionNotice + '\n' : '';
       const diagnosticOutput = plan.commandInteractionCoverage && safeStderr.trim()
-        ? '\\n=== HEDEFLİ TEST TANILAMALARI ===\\n' + safeStderr.trim() : '';
+        ? '\n=== HEDEFLİ TEST TANILAMALARI ===\n' + safeStderr.trim() : '';
       resolve({
         applicable: true, code, timedOut,
         stdout: (directNotice + matcherNotice + safeStdout + diagnosticOutput).slice(-20_000),
@@ -90,7 +90,7 @@ export function runTargetedTests(target, {
       const chunkText = chunk.toString();
       selectionScanBuffer = (selectionScanBuffer + chunkText).slice(-2_000);
       if (!selectionNotice) {
-        const match = selectionScanBuffer.match(/SEÇİLEN TEST DOSYALARI:[^\\r\\n]*/);
+        const match = selectionScanBuffer.match(/SEÇİLEN TEST DOSYALARI:[^\r\n]*/);
         if (match) selectionNotice = match[0];
       }
       stdout = (stdout + chunkText).slice(-10_000);

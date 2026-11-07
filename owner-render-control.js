@@ -1,4 +1,4 @@
-const SNOWFLAKE = /^\\d{17,20}$/;
+const SNOWFLAKE = /^\d{17,20}$/;
 const OWNER = '1553794496234262641';
 const API_BASE = 'https://api.render.com/v1';
 
@@ -42,7 +42,7 @@ function safeErrorCode(error) {
 async function readHealth(service, fetchImpl) {
   if (!String(service.url || '').trim()) return { health: 'unavailable', healthStatus: null, healthPayload: null };
   try {
-    const response = await fetchImpl(service.url.replace(/\\/$/, '') + service.healthPath, {
+    const response = await fetchImpl(service.url.replace(/\/$/, '') + service.healthPath, {
       method: 'GET',
       headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(5000)
@@ -204,7 +204,7 @@ export async function executeRenderServiceAction(db, input = {}, {
       await updateActionAudit(client, auditId, {
         result: 'failed',
         errorCode: safeErrorCode(error),
-        httpStatus: /^RENDER_API_HTTP_\\d+$/.test(String(error?.message || '')) ? Number(String(error.message).split('_').at(-1)) : null
+        httpStatus: /^RENDER_API_HTTP_\d+$/.test(String(error?.message || '')) ? Number(String(error.message).split('_').at(-1)) : null
       }).catch(() => {});
     }
     throw error;
