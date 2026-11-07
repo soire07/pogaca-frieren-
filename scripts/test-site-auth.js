@@ -235,7 +235,7 @@ test('public registration and password recovery routes redirect to Discord-only 
   assert.equal(await handleSiteAuthRequest({ method: 'GET', url: '/login', headers: {} }, login, { db: fakeDb(), sessionSecret: secret }), true);
   assert.equal(login.status, 200);
   assert.match(login.body, /Discord ile giriş yap/);
-  assert.match(login.body, /<head>[\\s\\S]*<meta name="google-site-verification" content="zQvll4lo6fEkpcbHjwSdQeMbJggVxdAviEDKvLC0Ebc">[\\s\\S]*<\\/head>/);
+  assert.match(login.body, /<head>[\s\\S]*<meta name="google-site-verification" content="zQvll4lo6fEkpcbHjwSdQeMbJggVxdAviEDKvLC0Ebc">[\s\\S]*<\/head>/);
   assert.equal((login.body.match(/name="google-site-verification"/g) || []).length, 1);
   assert.doesNotMatch(login.body, /name="password"|name="email"|Hesap oluştur|Şifremi unuttum/);
 });
