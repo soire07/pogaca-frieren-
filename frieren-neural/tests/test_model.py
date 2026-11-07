@@ -200,7 +200,7 @@ def test_optimized_bpe_training_preserves_reference_merge_order(texts, vocab_siz
 def test_optimized_bpe_training_never_merges_across_document_boundaries():
     from frieren_neural.tokenizer import BPETokenizer
 
-    separate = BPETokenizer.train(["ab", "cd"], vocab_size=261, min_frequency=1)
-    joined = BPETokenizer.train(["abcd"], vocab_size=261, min_frequency=1)
-    assert separate.merges == ((97, 98),)
-    assert joined.merges == ((97, 98),)
+    separate = BPETokenizer.train(["x", "y", "x", "y", "x", "y"], vocab_size=261, min_frequency=2)
+    joined = BPETokenizer.train(["xyxyxy"], vocab_size=261, min_frequency=2)
+    assert separate.merges == ()
+    assert joined.merges == ((120, 121),)
