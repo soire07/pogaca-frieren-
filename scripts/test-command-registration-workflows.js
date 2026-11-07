@@ -26,9 +26,10 @@ test('Poğaça test-guild registration is isolated and limited to five approved 
   assert.ok(!source.includes('1539562273197260860'));
 });
 
-test('Frieren AI health checks use a six-hour cadence and bounded retries', async () => {
+test('legacy standalone bot health diagnostics are manual-only with bounded retries', async () => {
   const source = await workflow('frieren-ai-health.yml');
-  assert.ok(source.includes('cron: "0 */6 * * *"'));
+  assert.ok(!source.includes('schedule:'), 'legacy health checks must not consume scheduled Actions quota');
+  assert.ok(source.includes('workflow_dispatch:'), 'legacy health diagnostics remain available manually');
   assert.ok(source.includes('timeout-minutes: 2'));
   assert.ok(source.includes('for attempt in {1..3}'));
   assert.ok(source.includes('vars.FRIEREN_AI_HEALTH_URL'));
