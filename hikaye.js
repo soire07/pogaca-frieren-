@@ -189,14 +189,14 @@ export default {
 
         const pathName = pathDetails[newChoices[0]]?.label ?? choiceLabel(decision);
         if (ending) {
-          resultMessage = '🌟 **' + ending.title + '**\\n' + ending.story + '\\n\\nİlk yolun: **' + pathName + '**\\nFinal kararın: **' + choiceLabel(decision) + '**\\n\\nToplam ödül: **' + rewardCoins + ' altın** ve **' + rewardXp + ' XP**' +
-            (gainedPoints ? '\\n✨ Seviye atladın: +' + gainedPoints + ' stat puanı.' : '') +
-            '\\n\\nAna hikâyenin ilk zinciri tamamlandı. Yeni bölümler sonraki güncellemelerde eklenecek.';
+          resultMessage = '🌟 **' + ending.title + '**\n' + ending.story + '\n\nİlk yolun: **' + pathName + '**\nFinal kararın: **' + choiceLabel(decision) + '**\n\nToplam ödül: **' + rewardCoins + ' altın** ve **' + rewardXp + ' XP**' +
+            (gainedPoints ? '\n✨ Seviye atladın: +' + gainedPoints + ' stat puanı.' : '') +
+            '\n\nAna hikâyenin ilk zinciri tamamlandı. Yeni bölümler sonraki güncellemelerde eklenecek.';
         } else {
-          resultMessage = '📖 **' + chapter.title + '** tamamlandı!\\n' +
-            (chapterIndex === 0 ? 'Seçtiğin yol: **' + pathName + '**\\n' : 'Yolun: **' + pathName + '**\\n') +
-            'Kararın: **' + choiceLabel(decision) + '**\\nÖdül: **' + rewardCoins + ' altın** ve **' + rewardXp + ' XP**' +
-            (gainedPoints ? '\\n✨ Seviye atladın: +' + gainedPoints + ' stat puanı.' : '');
+          resultMessage = '📖 **' + chapter.title + '** tamamlandı!\n' +
+            (chapterIndex === 0 ? 'Seçtiğin yol: **' + pathName + '**\n' : 'Yolun: **' + pathName + '**\n') +
+            'Kararın: **' + choiceLabel(decision) + '**\nÖdül: **' + rewardCoins + ' altın** ve **' + rewardXp + ' XP**' +
+            (gainedPoints ? '\n✨ Seviye atladın: +' + gainedPoints + ' stat puanı.' : '');
         }
       } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
