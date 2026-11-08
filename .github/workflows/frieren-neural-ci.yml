@@ -12,6 +12,8 @@ on:
       - ".github/workflows/frieren-neural-active-gguf-eval.yml"
       - "frieren-neural/trigger-active-gguf-eval.txt"
       - "frieren-neural/frieren_neural/**"
+      - "frieren-neural/tests/test_teacher_distillation.py"
+      - ".github/workflows/frieren-neural-teacher-drafts.yml"
       - "frieren-neural/migrations/**"
       - "frieren-neural/benchmarks/**"
       - "frieren-neural/tests/**"
