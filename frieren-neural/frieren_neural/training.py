@@ -614,7 +614,7 @@ def train_model(
             source_payload.get("training_config", {}).get(key) != asdict(settings).get(key)
             for key in model_setting_fields
         ):
-            raise ValueError("Checkpoint context, depth, dropout or tokenizer settings do not match this run.")
+            raise ValueError("Warm-start checkpoint model/tokenizer settings do not match this run.")
         if initialize_from is not None:
             source_width = int(source_payload.get("model_config", {}).get("d_model", 0))
             source_heads = int(source_payload.get("model_config", {}).get("n_heads", 0))
