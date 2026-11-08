@@ -6,3 +6,5 @@ Training: 1000 CPU steps, fresh optimizer, separate output checkpoint. No merge 
 Retry 1: use immutable artifact ID 13608530293; do not alter parent checkpoint.
 
 Retry 2: extract the single artifact with merge-multiple=true.
+
+Retry 3: download parent evidence into frieren-neural/parent-evidence to match job working directory.
