@@ -792,3 +792,51 @@ def test_warm_start_allows_a_new_pinned_dataset_and_preserves_parent_lineage(tmp
     assert metadata["parent_checkpoint_sha256"] == hashlib.sha256(baseline_checkpoint.read_bytes()).hexdigest()
     assert metadata["parent_checkpoint_step"] == 1
     assert metadata["step"] == 3
+
+
+def test_training_can_warm_start_a_wider_candidate_without_overwriting_parent(tmp_path: Path):
+    from frieren_neural.hf_corpus import prepare_turkish_chat_max_25k
+    from frieren_neural.training import load_corpus_manifest_metadata, load_licensed_corpus
+
+    rows = []
+    for index in range(40):
+        rows.append({
+            "id": f"warm-{index}",
+            "language_mode": "tr_only",
+            "has_tools": False,
+            "messages": [
+                {"role": "user", "content": f"Frieren büyü çalışması {index} nasıl yapılır?"},
+                {"role": "assistant", "content": f"Önce temel kuralları öğren, sonra {index} numaralı alıştırmayı çöz."},
+            ],
+        })
+    corpus_root = tmp_path / "licensed"
+    prepare_turkish_chat_max_25k(rows, corpus_root, revision="a" * 40, license_name="Apache-2.0")
+    train_dir = corpus_root / "train"
+    documents = load_licensed_corpus(train_dir)
+    provenance = load_corpus_manifest_metadata(train_dir, required_split="train")
+
+    parent_path = tmp_path / "parent.pt"
+    candidate_path = tmp_path / "expanded-candidate.pt"
+    base = TrainingConfig(
+        max_steps=1, eval_interval=1, eval_batches=1, batch_size=1, block_size=8,
+        seed=41, d_model=16, n_heads=2, n_layers=1, dropout=0.0,
+        tokenizer_vocab_size=280,
+    )
+    train_model(documents, parent_path, base, training_dataset_metadata=provenance, device="cpu")
+    parent_hash = __import__("hashlib").sha256(parent_path.read_bytes()).hexdigest()
+
+    expanded_config = replace(base, max_steps=2, d_model=32, n_heads=4)
+    result = train_model(
+        documents, candidate_path, expanded_config, initialize_from=parent_path,
+        training_dataset_metadata=provenance, device="cpu",
+    )
+
+    assert result["step"] == 2
+    assert result["parent_checkpoint_step"] == 1
+    assert result["parent_checkpoint_sha256"] == parent_hash
+    assert parent_path.is_file()
+    assert __import__("hashlib").sha256(parent_path.read_bytes()).hexdigest() == parent_hash
+    model, _, metadata = load_checkpoint(candidate_path, device="cpu")
+    assert metadata["model_config"]["d_model"] == 32
+    assert metadata["model_config"]["n_heads"] == 4
+    assert model.config.d_model == 32
