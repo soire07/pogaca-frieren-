@@ -25,6 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tokenizer-vocab-size", type=int, default=384)
     parser.add_argument("--seed", type=int, default=1337)
     parser.add_argument("--resume", action="store_true", help="Resume a compatible assistant-only checkpoint.")
+    parser.add_argument("--initialize-from", help="Create a separate candidate by safely widening a compatible parent checkpoint.")
     return parser
 
 
@@ -45,7 +46,8 @@ def main() -> None:
     documents = load_licensed_corpus(args.data)
     training_dataset_metadata = load_corpus_manifest_metadata(args.data, required_split="train")
     metrics = train_model(
-        documents, args.checkpoint, config, resume=args.resume, device="cpu",
+        documents, args.checkpoint, config, resume=args.resume,
+        initialize_from=args.initialize_from, device="cpu",
         training_dataset_metadata=training_dataset_metadata,
     )
     print(json.dumps(metrics, ensure_ascii=False, indent=2))
