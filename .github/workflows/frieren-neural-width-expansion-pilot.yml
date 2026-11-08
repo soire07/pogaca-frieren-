@@ -38,7 +38,7 @@ jobs:
           run-id: 42453599366
           github-token: ${{ secrets.GITHUB_TOKEN }}
           merge-multiple: true
-          path: ./parent-evidence
+          path: ./frieren-neural/parent-evidence
       - name: Install CPU-only training dependencies
         run: |
           python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
