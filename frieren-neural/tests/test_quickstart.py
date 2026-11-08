@@ -14,13 +14,14 @@ def test_small_training_cli_uses_conservative_cpu_defaults(monkeypatch, capsys):
     dataset_metadata = {"dataset_sha256": "a" * 64, "dataset_id": "example/tr", "dataset_revision": "b" * 40, "source_fingerprint_sha256": "c" * 64, "processed_sha256": "d" * 64, "split": "train", "sample_count": 1}
     monkeypatch.setattr(quickstart, "load_corpus_manifest_metadata", lambda path, required_split: dataset_metadata)
 
-    def fake_train(documents, checkpoint, config, *, resume=False, device, training_dataset_metadata=None):
+    def fake_train(documents, checkpoint, config, *, resume=False, initialize_from=None, device, training_dataset_metadata=None):
         captured.update(
             documents=documents,
             checkpoint=checkpoint,
             config=config,
             device=device,
             resume=resume,
+            initialize_from=initialize_from,
             training_dataset_metadata=training_dataset_metadata,
         )
         return {"step": config.max_steps, "checkpoint": checkpoint, "device": device}
@@ -38,6 +39,7 @@ def test_small_training_cli_uses_conservative_cpu_defaults(monkeypatch, capsys):
     assert captured["config"].n_layers == 2
     assert captured["config"].eval_batches == 3
     assert captured["training_dataset_metadata"] == dataset_metadata
+    assert captured["initialize_from"] is None
 
 
 
@@ -51,8 +53,8 @@ def test_small_training_cli_passes_resume_to_trainer(monkeypatch, capsys):
     dataset_metadata = {"dataset_sha256": "a" * 64, "dataset_id": "example/tr", "dataset_revision": "b" * 40, "source_fingerprint_sha256": "c" * 64, "processed_sha256": "d" * 64, "split": "train", "sample_count": 1}
     monkeypatch.setattr(quickstart, "load_corpus_manifest_metadata", lambda path, required_split: dataset_metadata)
 
-    def fake_train(documents, checkpoint, config, *, resume, device, training_dataset_metadata=None):
-        captured.update(resume=resume, steps=config.max_steps, device=device, training_dataset_metadata=training_dataset_metadata)
+    def fake_train(documents, checkpoint, config, *, resume, initialize_from=None, device, training_dataset_metadata=None):
+        captured.update(resume=resume, initialize_from=initialize_from, steps=config.max_steps, device=device, training_dataset_metadata=training_dataset_metadata)
         return {"step": config.max_steps, "checkpoint": checkpoint, "device": device}
 
     monkeypatch.setattr(quickstart, "train_model", fake_train)
@@ -60,4 +62,4 @@ def test_small_training_cli_passes_resume_to_trainer(monkeypatch, capsys):
 
     result = json.loads(capsys.readouterr().out)
     assert result["step"] == 16000
-    assert captured == {"resume": True, "steps": 16000, "device": "cpu", "training_dataset_metadata": dataset_metadata}
+    assert captured == {"resume": True, "initialize_from": None, "steps": 16000, "device": "cpu", "training_dataset_metadata": dataset_metadata}
