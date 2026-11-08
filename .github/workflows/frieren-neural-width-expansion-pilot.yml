@@ -33,7 +33,7 @@ jobs:
       - name: Download immutable 48K baseline artifact
         uses: actions/download-artifact@v4
         with:
-          name: frieren-neural-chat-max-48k-candidate-d6157a0033a82529e28355f11b0f54a4a8802506
+          artifact-ids: 13608530293
           repository: soire07/pogaca-frieren-
           run-id: 42453599366
           github-token: ${{ secrets.GITHUB_TOKEN }}
