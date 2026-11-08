@@ -1,0 +1,55 @@
+name: Frieren Neural — Temporary Teacher Drafts
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-review-drafts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        working-directory: frieren-neural
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/neural-single-core-integration-20261107
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: frieren-neural/pyproject.toml
+      - name: Install CPU-only PyTorch
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+      - name: Install Frieren Neural and pinned teacher runtime
+        run: |
+          python -m pip install -e .
+          python -m pip install "transformers==4.51.3" "safetensors>=0.4.5" "accelerate>=1.6,<2"
+      - name: Generate isolated Turkish training drafts
+        env:
+          HF_HUB_DISABLE_TELEMETRY: "1"
+          TOKENIZERS_PARALLELISM: "false"
+        run: python -m frieren_neural.teacher_distillation --output-dir benchmark-results/teacher-drafts --threads 2
+      - name: Verify generated data cannot enter training automatically
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path("benchmark-results/teacher-drafts/teacher-drafts-report.json").read_text())
+          rows = [json.loads(line) for line in Path("benchmark-results/teacher-drafts/teacher-drafts.jsonl").read_text().splitlines()]
+          assert report["automatic_training_ingestion"] is False
+          assert report["runtime_teacher_dependency"] is False
+          assert all(row["training_eligible"] is False for row in rows)
+          assert all(row["draft"]["human_review"]["approved"] is False for row in rows)
+          print(f"ISOLATION_GATE=PASS; drafts={len(rows)}")
+          PY
+      - name: Upload review-only teacher evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: frieren-neural-teacher-drafts
+          path: frieren-neural/benchmark-results/teacher-drafts/
+          if-no-files-found: error
+          retention-days: 30
