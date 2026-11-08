@@ -66,6 +66,20 @@ jobs:
               "heldout_manifest_sha256": heldout_meta["dataset_sha256"],
           })
           PY
+      - name: Evaluate preserved 48K baseline on the unchanged held-out split
+        run: |
+          set -o pipefail
+          frieren-neural-evaluate \
+            --data ./parent-evidence/corpus/turkish-chat-max-25k/heldout \
+            --checkpoint ./parent-evidence/checkpoints/frieren-neural-chat-max-25k.pt \
+            --batch-size 1 --batches 25 --device cpu | tee ./baseline-heldout-metrics.json
+      - name: Generate baseline 24-prompt outputs with the fixed benchmark
+        run: |
+          frieren-neural-evaluate-quality \
+            --checkpoint ./parent-evidence/checkpoints/frieren-neural-chat-max-25k.pt \
+            --output-dir ./quality-reports/baseline-48k \
+            --training-manifest ./parent-evidence/corpus/turkish-chat-max-25k/train/corpus_manifest.json \
+            --heldout-report ./baseline-heldout-metrics.json
       - name: Train isolated 2x-width candidate from the preserved 48K checkpoint
         run: |
           set -o pipefail
