@@ -193,3 +193,97 @@ class GPTLanguageModel(nn.Module):
         finally:
             self.train(was_training)
         return generated
+
+
+def load_expanded_weights(
+    model: GPTLanguageModel,
+    source_state: dict[str, Tensor],
+) -> None:
+    """Warm-start a wider model while preserving every compatible source weight.
+
+    Only width expansion is supported: vocabulary, context length and layer count
+    must remain unchanged. New channels retain the target model's seeded
+    initialization; the source subspace is copied without resizing or truncation.
+    """
+    target_config = model.config
+    target_state = model.state_dict()
+    if not isinstance(source_state, dict):
+        raise ValueError("Source model state must be a state dictionary.")
+
+    source_embedding = source_state.get("token_embedding.weight")
+    source_position = source_state.get("position_embedding.weight")
+    if not isinstance(source_embedding, Tensor) or not isinstance(source_position, Tensor):
+        raise ValueError("Source checkpoint is missing token or position embeddings.")
+    old_vocab, old_width = source_embedding.shape
+    old_context, position_width = source_position.shape
+    if position_width != old_width:
+        raise ValueError("Source embedding dimensions are inconsistent.")
+    if (
+        target_config.vocab_size != old_vocab
+        or target_config.max_seq_len != old_context
+        or target_config.n_layers != len(model.blocks)
+        or target_config.d_model < old_width
+        or target_config.d_model % target_config.n_heads
+    ):
+        raise ValueError("Expanded model must preserve vocabulary, context and layer count while widening channels.")
+
+    expanded: dict[str, Tensor] = {}
+    for name, target in target_state.items():
+        source = source_state.get(name)
+        if not isinstance(source, Tensor):
+            raise ValueError(f"Source checkpoint is missing tensor: {name}")
+        if source.shape == target.shape:
+            expanded[name] = source
+            continue
+
+        if name.endswith("attention.in_proj_weight"):
+            if source.shape != (3 * old_width, old_width) or target.shape != (3 * target_config.d_model, target_config.d_model):
+                raise ValueError(f"Unsupported attention projection shape for {name}.")
+            value = target.clone()
+            for projection in range(3):
+                value[
+                    projection * target_config.d_model:projection * target_config.d_model + old_width,
+                    :old_width,
+                ] = source[projection * old_width:(projection + 1) * old_width, :]
+            expanded[name] = value
+        elif name.endswith("attention.in_proj_bias"):
+            if source.shape != (3 * old_width,) or target.shape != (3 * target_config.d_model,):
+                raise ValueError(f"Unsupported attention bias shape for {name}.")
+            value = target.clone()
+            for projection in range(3):
+                value[projection * target_config.d_model:projection * target_config.d_model + old_width] = (
+                    source[projection * old_width:(projection + 1) * old_width]
+                )
+            expanded[name] = value
+        elif name == "token_embedding.weight":
+            value = target.clone()
+            value[:, :old_width] = source
+            expanded[name] = value
+        elif name == "position_embedding.weight":
+            value = target.clone()
+            value[:, :old_width] = source
+            expanded[name] = value
+        elif name.endswith("mlp.0.weight"):
+            value = target.clone()
+            value[:4 * old_width, :old_width] = source
+            expanded[name] = value
+        elif name.endswith("mlp.0.bias"):
+            value = target.clone()
+            value[:4 * old_width] = source
+            expanded[name] = value
+        elif name.endswith("mlp.2.weight"):
+            value = target.clone()
+            value[:old_width, :4 * old_width] = source
+            expanded[name] = value
+        elif name.endswith("mlp.2.bias") or name.endswith("norm_attention.weight") or name.endswith("norm_attention.bias") or name.endswith("norm_mlp.weight") or name.endswith("norm_mlp.bias") or name in {"final_norm.weight", "final_norm.bias"} or name.endswith("out_proj.bias"):
+            value = target.clone()
+            value[:old_width] = source
+            expanded[name] = value
+        elif name.endswith("out_proj.weight"):
+            value = target.clone()
+            value[:old_width, :old_width] = source
+            expanded[name] = value
+        else:
+            raise ValueError(f"No safe expansion mapping exists for parameter: {name}")
+
+    model.load_state_dict(expanded, strict=True)
