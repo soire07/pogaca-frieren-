@@ -255,7 +255,7 @@ def load_expanded_weights(
                     source[projection * old_width:(projection + 1) * old_width]
                 )
             expanded[name] = value
-        elif name == "token_embedding.weight":
+        elif name in {"token_embedding.weight", "output_projection.weight"}:
             value = target.clone()
             value[:, :old_width] = source
             expanded[name] = value
