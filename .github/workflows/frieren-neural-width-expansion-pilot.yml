@@ -37,6 +37,7 @@ jobs:
           repository: soire07/pogaca-frieren-
           run-id: 42453599366
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          merge-multiple: true
           path: ./parent-evidence
       - name: Install CPU-only training dependencies
         run: |
