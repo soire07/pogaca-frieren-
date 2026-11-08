@@ -18,7 +18,7 @@ from typing import Any, Sequence
 import torch
 from torch import Tensor
 
-from .model import GPTConfig, GPTLanguageModel
+from .model import GPTConfig, GPTLanguageModel, load_expanded_weights
 from .tokenizer import BPETokenizer
 
 
@@ -605,16 +605,25 @@ def train_model(
             saved_training_config.pop(mutable, None)
             current_training_config.pop(mutable, None)
         model_setting_fields = (
-            "block_size", "d_model", "n_heads", "n_layers", "dropout",
-            "tokenizer_vocab_size", "tokenizer_min_frequency",
+            ("block_size", "n_layers", "dropout", "tokenizer_vocab_size", "tokenizer_min_frequency")
+            if initialize_from is not None
+            else ("block_size", "d_model", "n_heads", "n_layers", "dropout",
+                  "tokenizer_vocab_size", "tokenizer_min_frequency")
         )
         if any(
             source_payload.get("training_config", {}).get(key) != asdict(settings).get(key)
             for key in model_setting_fields
         ):
-            if initialize_from is not None:
-                raise ValueError("Warm-start checkpoint model/tokenizer settings do not match this candidate.")
-            raise ValueError("Checkpoint model/tokenizer settings do not match this run.")
+            raise ValueError("Checkpoint context, depth, dropout or tokenizer settings do not match this run.")
+        if initialize_from is not None:
+            source_width = int(source_payload.get("model_config", {}).get("d_model", 0))
+            source_heads = int(source_payload.get("model_config", {}).get("n_heads", 0))
+            if settings.d_model < source_width or settings.n_heads < source_heads:
+                raise ValueError("Warm-start expansion cannot shrink model width or attention heads.")
+        if initialize_from is not None:
+            for mutable in ("d_model", "n_heads"):
+                saved_training_config.pop(mutable, None)
+                current_training_config.pop(mutable, None)
         if saved_training_config != current_training_config:
             raise ValueError("Source checkpoint training settings do not match this run.")
         if not isinstance(source_payload.get("tokenizer"), dict):
@@ -668,13 +677,21 @@ def train_model(
 
     if initialize_from is not None:
         parent = source_payload
-        if (parent.get("model_config") != asdict(model_config)
-                or parent.get("tokenizer") != tokenizer.to_dict()):
-            raise ValueError("Warm-start checkpoint model/tokenizer settings do not match this candidate.")
+        parent_config = parent.get("model_config")
+        if not isinstance(parent_config, dict) or parent.get("tokenizer") != tokenizer.to_dict():
+            raise ValueError("Warm-start checkpoint tokenizer or model metadata is incompatible.")
+        if (
+            parent_config.get("vocab_size") != model_config.vocab_size
+            or parent_config.get("max_seq_len") != model_config.max_seq_len
+            or parent_config.get("n_layers") != model_config.n_layers
+            or int(parent_config.get("d_model", 0)) > model_config.d_model
+            or int(parent_config.get("n_heads", 0)) > model_config.n_heads
+        ):
+            raise ValueError("Warm-start candidate must preserve vocabulary, context and depth and only expand width.")
         parent_training_dataset = _normalize_training_dataset_metadata(parent.get("training_dataset"))
         if parent_training_dataset is None:
             raise ValueError("Warm-start checkpoint is missing pinned training dataset provenance.")
-        model.load_state_dict(parent["model_state"])
+        load_expanded_weights(model, parent["model_state"])
         parent_checkpoint_sha256 = hashlib.sha256(source_path.read_bytes()).hexdigest()
         parent_checkpoint_step = int(parent["step"])
 
