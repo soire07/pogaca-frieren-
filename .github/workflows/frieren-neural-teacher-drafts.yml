@@ -2,11 +2,6 @@ name: Frieren Neural — Temporary Teacher Drafts
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - feat/neural-single-core-integration-20261107
-    paths:
-      - .github/teacher-drafts-one-shot.trigger
 
 permissions:
   contents: read
