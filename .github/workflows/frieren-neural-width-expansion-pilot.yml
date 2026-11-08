@@ -2,6 +2,11 @@ name: Frieren Neural Width Expansion Pilot
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feat/neural-single-core-integration-20261107
+    paths:
+      - frieren-neural/.width-expansion-pilot-request
 
 permissions:
   actions: read
