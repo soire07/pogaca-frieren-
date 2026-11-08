@@ -65,3 +65,14 @@ test('only the two approved news setup commands are globally registered', async 
   assert.ok(source.includes('putWithDiagnostics(globalRoute, globalCommands'));
   assert.ok(!source.includes("putWithDiagnostics(globalRoute, [], 'clear legacy global commands')"));
 });
+
+
+test('Neon backup restore waits for the target database to accept a query', async () => {
+  const source = await workflow('neon-production-backup.yml');
+  const restore = source.split('Restore into an isolated temporary PostgreSQL instance')[1] || '';
+  const readiness = "psql -U postgres -d restore_test -Atqc 'SELECT 1'";
+
+  assert.ok(restore.includes(readiness), 'readiness must verify the target database, not only the PostgreSQL server socket');
+  assert.ok(!restore.includes('pg_isready -U postgres -d restore_test'), 'pg_isready can succeed before POSTGRES_DB is created');
+  assert.ok(restore.indexOf(readiness) < restore.indexOf('pg_restore --exit-on-error'), 'restore must wait until the target database accepts queries');
+});
