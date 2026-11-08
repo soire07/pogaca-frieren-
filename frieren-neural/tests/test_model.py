@@ -264,3 +264,52 @@ def test_model_supports_512_token_context_for_longer_dialogues():
 
     assert logits.shape == (1, 512, 12)
     assert generated.shape == (1, 601)
+
+
+def test_width_expansion_preserves_source_weights_and_initializes_new_channels():
+    from frieren_neural.model import load_expanded_weights
+
+    torch.manual_seed(11)
+    source = GPTLanguageModel(GPTConfig(
+        vocab_size=12, d_model=16, n_heads=2, n_layers=1,
+        max_seq_len=16, dropout=0.0,
+    ))
+    torch.manual_seed(29)
+    expanded = GPTLanguageModel(GPTConfig(
+        vocab_size=12, d_model=32, n_heads=4, n_layers=1,
+        max_seq_len=16, dropout=0.0,
+    ))
+    original_new_channels = expanded.token_embedding.weight.detach().clone()
+    load_expanded_weights(expanded, source.state_dict())
+
+    assert torch.equal(expanded.token_embedding.weight[:, :16], source.token_embedding.weight)
+    assert torch.equal(expanded.position_embedding.weight[:, :16], source.position_embedding.weight)
+    assert torch.equal(
+        expanded.blocks[0].attention.attention.in_proj_weight[:16, :16],
+        source.blocks[0].attention.attention.in_proj_weight[:16, :16],
+    )
+    assert torch.equal(
+        expanded.blocks[0].attention.attention.in_proj_weight[32:48, :16],
+        source.blocks[0].attention.attention.in_proj_weight[16:32, :16],
+    )
+    assert torch.equal(
+        expanded.blocks[0].mlp[0].weight[:64, :16],
+        source.blocks[0].mlp[0].weight,
+    )
+    assert torch.equal(
+        expanded.token_embedding.weight[:, 16:],
+        original_new_channels[:, 16:],
+    )
+    assert expanded.output_projection.weight.data_ptr() == expanded.token_embedding.weight.data_ptr()
+
+
+def test_width_expansion_rejects_changed_vocab_context_or_depth():
+    from frieren_neural.model import load_expanded_weights
+
+    source = tiny_model()
+    incompatible = GPTLanguageModel(GPTConfig(
+        vocab_size=12, d_model=64, n_heads=4, n_layers=2,
+        max_seq_len=32, dropout=0.0,
+    ))
+    with pytest.raises(ValueError, match="preserve vocabulary"):
+        load_expanded_weights(incompatible, source.state_dict())
