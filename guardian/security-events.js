@@ -156,9 +156,12 @@ export async function verifyGuardianEvidenceChain(db, limit = 10_000) {
   let checked = 0;
   for (const row of result.rows || []) {
     checked += 1;
-    const storedPrevious = String(row.previous_hash || '');
+    // PostgreSQL CHAR(64) right-pads the short GENESIS value with spaces.
+    // node-postgres preserves that padding, so normalize only CHAR padding before comparison.
+    const storedPrevious = String(row.previous_hash || '').replace(/ +$/u, '');
+    const storedEventHash = String(row.event_hash || '').replace(/ +$/u, '');
     const expectedHash = createHash('sha256').update(previousHash + '\n' + canonicalJson(row.payload)).digest('hex');
-    if (storedPrevious !== previousHash || String(row.event_hash || '') !== expectedHash) {
+    if (storedPrevious !== previousHash || storedEventHash !== expectedHash) {
       firstInvalidSequence = Number(row.sequence_no) || checked;
       break;
     }
