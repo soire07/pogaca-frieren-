@@ -148,7 +148,7 @@ test('Guardian evidence chain appends with a previous hash and deduplicates even
 test('Guardian evidence-chain verifier handles PostgreSQL CHAR padding on the GENESIS link', async () => {
   const payloadObject = { eventId: 'one', severity: 'low' };
   const canonical = JSON.stringify(payloadObject);
-  const firstHash = createHash('sha256').update('GENESIS\\n' + canonical).digest('hex');
+  const firstHash = createHash('sha256').update('GENESIS\n' + canonical).digest('hex');
   const rows = [{
     sequence_no: 1,
     event_id: 'one',
