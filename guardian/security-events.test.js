@@ -145,6 +145,24 @@ test('Guardian evidence chain appends with a previous hash and deduplicates even
   assert.equal(statements.filter(x => x.sql.includes('INSERT INTO owner_guardian_evidence_chain')).length, 1);
 });
 
+test('Guardian evidence-chain verifier handles PostgreSQL CHAR padding on the GENESIS link', async () => {
+  const payloadObject = { eventId: 'one', severity: 'low' };
+  const canonical = JSON.stringify(payloadObject);
+  const firstHash = createHash('sha256').update('GENESIS\\n' + canonical).digest('hex');
+  const rows = [{
+    sequence_no: 1,
+    event_id: 'one',
+    payload: payloadObject,
+    previous_hash: 'GENESIS'.padEnd(64, ' '),
+    event_hash: firstHash,
+  }];
+  const result = await verifyGuardianEvidenceChain({ query: async () => ({ rows }) });
+  assert.equal(result.valid, true);
+  assert.equal(result.checked, 1);
+  assert.equal(result.firstInvalidSequence, null);
+  assert.equal(result.lastHash, firstHash);
+});
+
 test('Guardian evidence-chain verifier detects a modified payload or broken link', async () => {
   const payloadObject = { eventId: 'one', severity: 'high' };
   const canonical = JSON.stringify(payloadObject);
