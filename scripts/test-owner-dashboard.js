@@ -1123,7 +1123,7 @@ test('synthetic Frieren AI → authenticated Owner Panel review → explicit own
 
 test('Frieren Security renders real Guard incidents, verified network attribution and chain integrity', () => {
   const html = renderOwnerSecurityWorkspace({
-    ingestConfigured: true,
+    ingestSecretMode: 'dedicated',
     incidents: [{
       id: 42, title: 'WAF blocked request', severity: 'high', summary: 'Rate threshold exceeded',
       code: 'WAF_BLOCK', status: 'open', occurrence_count: 1, last_seen: '2026-11-05T12:00:00Z', system: 'guardian'
@@ -1136,7 +1136,10 @@ test('Frieren Security renders real Guard incidents, verified network attributio
     chainStatus: { valid: true, checked: 3, truncated: false, firstInvalidSequence: null }
   });
   assert.match(html, /WAF blocked request/);
-  assert.match(html, /Canlı olay alındı/);
+  assert.match(html, /İmzalı olay kaydı var/);
+  assert.doesNotMatch(html, /Canlı olay alındı/);
+  assert.match(html, /Ayrılmış Guard anahtarı/);
+  assert.match(html, /şu anda çevrimiçi olduğunu kanıtlamaz/);
   assert.match(html, /UPDATE\/DELETE\/TRUNCATE/);
   assert.match(html, /198\.51\.100\.42/);
   assert.match(html, /trusted_proxy/);
@@ -1146,14 +1149,15 @@ test('Frieren Security renders real Guard incidents, verified network attributio
 
 test('site-auth evidence never verifies the external Frieren Guard sender', () => {
   const html = renderOwnerSecurityWorkspace({
-    ingestConfigured: true,
+    ingestSecretMode: 'shared',
     evidenceEvents: [
       { sequence_no: 4, event_id: 'auth-event-0001', severity: 'high', received_at: '2026-11-05T12:00:00Z', source: 'frieren_site_auth', client_ip: '198.51.100.42', ip_source: 'socket_peer', event_hash: 'b'.repeat(64) },
       { sequence_no: 5, event_id: 'guardian-monitor-error-42', severity: 'high', received_at: '2026-11-05T12:01:00Z', source: 'frieren_guard_monitor', client_ip: null, ip_source: 'guardian_monitor', event_hash: 'c'.repeat(64) }
     ],
     chainStatus: { valid: true, checked: 1, truncated: false, firstInvalidSequence: null }
   });
-  assert.match(html, /Gönderici doğrulanmadı/);
+  assert.match(html, /Son 30 delilde imzalı olay yok/);
+  assert.match(html, /Ortak AI bridge anahtarı \(geçiş modu\)/);
   assert.doesNotMatch(html, /Canlı olay alındı/);
   assert.match(html, /Frieren web hesabı/);
   assert.match(html, /Frieren Guard izleyicisi/);
