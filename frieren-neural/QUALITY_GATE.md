@@ -4,7 +4,7 @@ Status: **blocking release gate**. This benchmark is an evaluation specification
 
 ## Why this exists
 
-A lower next-token loss or a successful API health check does not establish that a model can hold a useful Turkish conversation. Release decisions must include a fixed, human-reviewed prompt set and regression checks. Do not let the model grade its own answers.
+A lower next-token loss or a successful API health check does not establish that a model can hold a useful Turkish conversation. Release decisions use a fixed prompt set, deterministic answer contracts, safety checks, and regression comparisons. The candidate model never grades its own answers.
 
 ## Benchmark protocol
 
@@ -13,8 +13,8 @@ A lower next-token loss or a successful API health check does not establish that
 - Evaluate on CPU or a documented accelerator. Hardware differences must not change the prompt set or scoring rubric.
 - Release checks use deterministic per-prompt answer contracts, exact arithmetic, Python AST validation, multi-turn boundary checks, secret-pattern scanning, and reasoning-leak detection. The evaluator never asks the candidate model to grade itself.
 - Do not include private Discord messages, credentials, user data, scraped anime dialogue, copyrighted scripts, or hidden chain-of-thought in the benchmark.
-- Preserve raw outputs and reviewer scores as a versioned evaluation artifact; do not commit model weights or private datasets.
-- Bind each score sheet to the exact checkpoint SHA-256, canonical generated-output SHA-256, and prompt-set version. Reject reused or mismatched sheets.
+- Preserve raw outputs, per-case pass/fail evidence, checkpoint SHA-256, decoding settings, and evaluator version as a versioned artifact; do not commit model weights or private datasets.
+- Reject missing, duplicated, reordered, or mismatched prompt outputs. Compare candidate results against a recorded baseline generated with the same prompt set and decoding settings.
 
 ## Fixed Turkish prompt set v1
 
