@@ -13,6 +13,8 @@ test('public chat schema is additive and never destroys existing data',async()=>
 test('reaction schema upgrades the existing three-emoji database constraint',async()=>{
  const statements=[];await ensurePublicChatSchema({query:async sql=>{statements.push(sql);return{rows:[],rowCount:0};}});
  const upgrade=statements.find(sql=>sql.includes('pg_get_constraintdef')&&sql.includes('frieren_public_chat_reactions_emoji_check'));
+ assert.match(upgrade,/DO \\$\\$ BEGIN/);
+ assert.match(upgrade,/END \\$\\$/);
  assert.ok(upgrade,'schema must inspect and upgrade the existing three-emoji database constraint');
  assert.match(upgrade,/DROP CONSTRAINT IF EXISTS frieren_public_chat_reactions_emoji_check/);
  assert.match(upgrade,/ADD CONSTRAINT frieren_public_chat_reactions_emoji_check CHECK/);
@@ -82,6 +84,10 @@ test('members can soft-delete only their own recent messages',async()=>{
  assert.equal((await deleteOwnPublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000'})).status,'deleted');
  assert.match(sql,/account_id=\$2/);assert.match(sql,/deleted_at IS NULL/);assert.match(sql,/15 minutes/);assert.equal(params[1],account);
 });
+test('chat edits refuse deleted messages at the database boundary',async()=>{
+ const {updatePublicChatMessage}=await import('../public-chat.js');let sql='';const db={async query(q){if(q.startsWith('UPDATE frieren_public_chat_messages')){sql=q;return{rows:[],rowCount:0};}return{rows:[],rowCount:0};}};
+ const result=await updatePublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',body:'revize'});assert.equal(result.status,'not_found');assert.match(sql,/deleted_at IS NULL/);
+});
 test('chat edits are limited to the author and recent messages',async()=>{
  const {updatePublicChatMessage}=await import('../public-chat.js');let sql='',params;
  const db={async query(q,p){if(q.startsWith('UPDATE frieren_public_chat_messages')){sql=q;params=p;return{rows:[{message_id:p[0]}],rowCount:1};}return{rows:[],rowCount:0};}};
@@ -95,6 +101,10 @@ test('chat pinning and presence are account-scoped and expose only aggregate onl
  assert.deepEqual(await getPublicChatPresence(db),{online:3,typing:[]});
 });
 
+test('chat typing renews the live typing window for active accounts',async()=>{
+ const {setPublicChatTyping}=await import('../public-chat.js');let sql='';const db={async query(q){if(q.startsWith('INSERT INTO frieren_public_chat_presence'))sql=q;return{rows:[],rowCount:1};}};
+ await setPublicChatTyping(db,{accountId:account});assert.match(sql,/ON CONFLICT\\(account_id\\) DO UPDATE SET last_seen_at=NOW\\(\\),typing_until=NOW\\(\\)\\+INTERVAL '5 seconds'/);
+});
 test('typing indicators expire through short-lived account presence',async()=>{
  const {setPublicChatTyping}=await import('../public-chat.js');let sql='';
  const db={async query(q){if(q.startsWith('INSERT INTO frieren_public_chat_presence'))sql=q;return{rows:[],rowCount:1};}};
