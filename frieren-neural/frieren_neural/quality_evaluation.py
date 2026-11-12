@@ -1,4 +1,4 @@
-"""Reproducible Turkish conversation benchmark and human-scoring gate."""
+"""Reproducible Turkish benchmark, provider comparison, and human-scoring gate."""
 from __future__ import annotations
 import argparse
 import hashlib
@@ -471,7 +471,7 @@ def render_markdown(report:dict[str,Any])->str:
     )
     lines=["# Frieren Neural — Turkish conversation quality report","",f"- Decision: **{report['decision']}**",
       f"- Prompt set: {report['prompt_set_version']}",f"- Backend: {report.get('model_backend', 'scratch')}",
-      f"- Checkpoint / artifact SHA-256: {report['checkpoint_sha256']}",
+      f"- Candidate fingerprint / checkpoint SHA-256: {report['checkpoint_sha256']}",
       f"- Source commit: {report.get('source_commit_sha') or 'missing'}",
       f"- Training dataset: {(report.get('training_provenance') or {}).get('dataset_id', 'missing')} @ {(report.get('training_provenance') or {}).get('dataset_revision', 'missing')}",
       f"- Training source SHA-256: {(report.get('training_provenance') or {}).get('source_fingerprint_sha256', 'missing')}",
