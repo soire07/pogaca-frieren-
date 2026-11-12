@@ -43,8 +43,12 @@ jobs:
           CMAKE_ARGS: "-DGGML_NATIVE=OFF"
           FORCE_CMAKE: "1"
         run: python -m pip install --no-binary=llama-cpp-python "llama-cpp-python==0.3.16"
+      - name: Install focused regression-test dependencies
+        run: python -m pip install "pytest>=8.0" "fastapi>=0.110"
       - name: Compile benchmark
         run: python -m compileall -q benchmarks/qwen3_1_7b_gguf_q4_cpu.py
+      - name: Run Qwen isolation and review-binding regression tests
+        run: pytest -q tests/test_qwen3_1_7b_gguf_q4.py
       - name: Run checksum-verified 24-prompt Q4 benchmark
         env:
           HF_HUB_DISABLE_TELEMETRY: "1"
