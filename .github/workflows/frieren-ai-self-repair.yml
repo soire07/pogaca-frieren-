@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "Validate Groq without changing code, or generate a repair proposal"
+        description: "Validate the owner-approved saved patch or run a safe repair check"
         required: true
         default: validate
         type: choice
@@ -27,10 +27,10 @@ on:
       base_branch:
         description: "Isolated branch to test against"
         required: true
-        default: "guardian-isolated-repair-test-v2"
+        default: "main"
         type: choice
         options:
-          - guardian-isolated-repair-test-v2
+          - main
 
 permissions:
   contents: write
@@ -50,7 +50,7 @@ jobs:
           BASE_BRANCH: ${{ inputs.base_branch }}
         run: |
           case "$BASE_BRANCH" in
-            guardian-isolated-repair-test-v2) ;;
+            main) ;;
             *) echo "Unsupported repair target branch"; exit 1 ;;
           esac
           if [ "$GITHUB_REF_NAME" != "$BASE_BRANCH" ]; then
