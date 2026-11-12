@@ -814,19 +814,15 @@ def health():
     health_smoke_enabled = os.environ.get("FRIEREN_HEALTH_GENERATION_SMOKE", "").strip() == "1"
     logger.info("Health check started: backend=%s generation_smoke=%s", backend, health_smoke_enabled)
     try:
-        with _generation_capacity(), _generation_lock:
-            logger.info("Health check acquired generation capacity: backend=%s", backend)
-            _load_active_runtime()
-            logger.info("Health check runtime configured: backend=%s", backend)
-            if health_smoke_enabled:
-                logger.info("Health generation smoke started: backend=%s", backend)
-                generation_smoke = _run_generation_smoke()
-                logger.info("Health generation smoke completed: backend=%s", backend)
-    except HTTPException as error:
-        if error.status_code == 503:
-            return JSONResponse(status_code=503, content={"status": "busy"})
-        raise
-    except (OSError, RuntimeError, ValueError, KeyError, EOFError, ImportError, pickle.UnpicklingError) as error:
+        # Readiness checks must not wait on the shared generation advisory lock:
+        # that lock protects user inference, not provider configuration/health.
+        _load_active_runtime()
+        logger.info("Health check runtime configured: backend=%s", backend)
+        if health_smoke_enabled:
+            logger.info("Health generation smoke started: backend=%s", backend)
+            generation_smoke = _run_generation_smoke()
+            logger.info("Health generation smoke completed: backend=%s", backend)
+    except (OSError, RuntimeError, ValueError, KeyError, EOFError, ImportError, pickle.UnpicklingError, HTTPException) as error:
         backend = _model_backend()
         reason = _health_failure_reason(error, backend)
         if backend == "gemini":
