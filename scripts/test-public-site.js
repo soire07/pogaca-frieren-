@@ -330,6 +330,22 @@ test('linked site-account owner sees the Owner Panel navigation after Discord ac
   assert.equal(response.status, 200);
   assert.match(response.body, /href="\/owner"/);
   assert.match(response.body, /site-owner-badge/);
+
+  const nonOwnerAccount = { id: 'site_223e4567-e89b-42d3-a456-426614174000', username: 'Gezgin' };
+  const nonOwnerDb = {
+    async query(sql) {
+      if (sql.includes('SELECT user_id FROM site_discord_links')) {
+        return { rows: [{ user_id: '123456789012345678' }], rowCount: 1 };
+      }
+      if (sql.includes('SELECT 1 FROM frieren_profile_media')) {
+        return { rows: [], rowCount: 0 };
+      }
+      throw new Error('Unexpected non-owner navigation query: ' + sql);
+    }
+  };
+  const nonOwnerResponse = res();
+  await handlePublicSiteRequest(request('/kesfet', nonOwnerAccount), nonOwnerResponse, { db: nonOwnerDb });
+  assert.doesNotMatch(nonOwnerResponse.body, /href="\/owner"/);
 });
 
 test('logout clears the shared member session cookie', async () => {
