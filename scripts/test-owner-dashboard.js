@@ -8,8 +8,8 @@ import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOw
 
 
 
-test('Guardian repair status polling tracks the same isolated branch used for workflow dispatch', () => {
-  assert.equal(GUARDIAN_REPAIR_BRANCH, 'guardian-isolated-repair-test-v2');
+test('Guardian repair status polling tracks the current main branch used for workflow dispatch', () => {
+  assert.equal(GUARDIAN_REPAIR_BRANCH, 'main');
   const urls = buildGuardianRepairTrackingUrls('https://api.github.com/', 990053);
   const runs = new URL(urls.runsUrl);
   const pulls = new URL(urls.pullRequestsUrl);
@@ -956,7 +956,7 @@ test('Owner analytics exposes bounded time filters and labels the selected windo
 });
 
 
-test('synthetic Frieren AI → authenticated Owner Panel review → explicit owner approval → isolated workflow dispatch', async () => {
+test('synthetic Frieren AI → authenticated Owner Panel review → explicit owner approval → current-main workflow dispatch', async () => {
   const incident = {
     id: 990052,
     system: 'pogaca_frieren',
@@ -1106,8 +1106,8 @@ test('synthetic Frieren AI → authenticated Owner Panel review → explicit own
     assert.equal(state.job.repair_dispatch_status, 'dispatched');
     assert.equal(state.githubRequests.length, 3);
     const dispatch = JSON.parse(state.githubRequests[2].body);
-    assert.equal(dispatch.ref, 'guardian-isolated-repair-test-v2');
-    assert.equal(dispatch.inputs.base_branch, 'guardian-isolated-repair-test-v2');
+    assert.equal(dispatch.ref, 'main');
+    assert.equal(dispatch.inputs.base_branch, 'main');
     assert.equal(dispatch.inputs.incident_id, String(incident.id));
     assert.equal(dispatch.inputs.mode, 'repair');
     assert.doesNotMatch(state.githubRequests[2].url, /merge|deploy/i);
