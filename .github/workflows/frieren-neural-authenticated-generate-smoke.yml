@@ -54,4 +54,4 @@ jobs:
             python -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); assert isinstance(d.get("completion"), str) and d["completion"].strip()' "/tmp/generate-$index.json"
           done
           echo "AUTHENTICATED_GENERATE=PASS (3 sequential requests; no concurrency)"
-# Safe credential recheck trigger 2026-11-12 after Render env alignment
+# Recheck after API token whitespace normalization fix 2026-11-12
