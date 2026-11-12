@@ -368,8 +368,16 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
                     if baseline_by_id.get(case_id, {}).get("passed") is not True
                     and candidate_by_id.get(case_id, {}).get("passed") is True
                 ]
+                from .quality_evaluation import build_score_binding
+                try:
+                    baseline_binding = build_score_binding(baseline_report.get("checkpoint_sha256"), baseline_outputs)
+                except ValueError:
+                    baseline_binding = None
                 report["baseline_comparison"] = {
                     "available": True,
+                    "baseline_checkpoint_sha256": baseline_report.get("checkpoint_sha256"),
+                    "baseline_loss_objective_version": (baseline_report.get("checkpoint_metadata") or {}).get("loss_objective_version"),
+                    "baseline_candidate_binding": baseline_binding,
                     "improved": bool(improvements) and not regressions,
                     "baseline_cases_passed": baseline_auto.get("cases_passed"),
                     "candidate_cases_passed": automated.get("cases_passed"),
