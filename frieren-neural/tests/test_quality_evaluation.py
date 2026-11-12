@@ -44,6 +44,9 @@ def test_report_without_human_scores_is_not_ready_and_never_self_grades():
     )
     assert report["decision"] == "NOT READY"
     assert report["human_review"]["completed"] is False
+    assert report["human_review"]["reviewers_required"] == 0
+    assert report["automated_quality"]["evaluator_version"] == "tr-rule-gate-v1"
+    assert "human_review_missing" not in report["blocking_reasons"]
     assert report["metrics"] is None
     assert report["review_template"]["reviewers"] == [None, None]
 
