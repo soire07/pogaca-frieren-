@@ -960,3 +960,111 @@ def test_guardian_review_bounds_incident_fields_and_rejects_unsafe_context_paths
     unsafe_path["source_context_files"] = ["../secrets.env"]
     response = api_client.post("/internal/guardian-review", json=unsafe_path, headers=headers)
     assert response.status_code == 422
+
+
+def test_groq_backend_is_explicit_and_does_not_load_a_local_checkpoint(monkeypatch, tmp_path):
+    import frieren_neural.api as api
+
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "groq")
+    monkeypatch.setenv("GROQ_API_KEY", "g" * 48)
+    monkeypatch.setenv("FRIEREN_CHECKPOINT", str(tmp_path / "missing-local-checkpoint.pt"))
+
+    assert api._model_backend() == "groq"
+    assert api._load_active_runtime() == "openai/gpt-oss-20b"
+
+
+def test_groq_health_reports_the_pinned_model_without_exposing_credentials(api_client, monkeypatch):
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "groq")
+    monkeypatch.setenv("GROQ_API_KEY", "g" * 48)
+
+    response = api_client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ready",
+        "model": "openai/gpt-oss-20b",
+        "generation_smoke": "skipped",
+    }
+    assert "g" * 48 not in response.text
+
+
+def test_groq_generation_uses_pinned_model_and_hides_reasoning(monkeypatch):
+    import frieren_neural.api as api
+
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "groq")
+    monkeypatch.setenv("GROQ_API_KEY", "g" * 48)
+    captured = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, limit):
+            captured["read_limit"] = limit
+            return json.dumps({
+                "choices": [{"message": {"role": "assistant", "content": "Doğru ve kısa yanıt."}}]
+            }).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        captured["url"] = request.full_url
+        captured["headers"] = dict(request.header_items())
+        captured["timeout"] = timeout
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        return FakeResponse()
+
+    monkeypatch.setattr(api.urllib.request, "urlopen", fake_urlopen)
+
+    completion, step, model_name = api._generate_reply(
+        "Türkçe kısa bir yanıt ver.", max_new_tokens=128, temperature=0.3, top_k=20
+    )
+
+    assert completion == "Doğru ve kısa yanıt."
+    assert step == 0
+    assert model_name == "openai/gpt-oss-20b"
+    assert captured["url"] == "https://api.groq.com/openai/v1/chat/completions"
+    assert captured["timeout"] <= 45
+    assert captured["body"]["model"] == "openai/gpt-oss-20b"
+    assert captured["body"]["max_completion_tokens"] == 128
+    assert captured["body"]["reasoning_effort"] == "medium"
+    assert captured["body"]["reasoning_format"] == "hidden"
+    assert captured["body"]["messages"][-1] == {
+        "role": "user", "content": "Türkçe kısa bir yanıt ver."
+    }
+    assert captured["read_limit"] <= 65_537
+    assert "Bearer " + "g" * 48 in captured["headers"].get("Authorization", "")
+
+
+def test_groq_rate_limit_is_returned_as_retryable_429(api_client, monkeypatch):
+    import frieren_neural.api as api
+
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "groq")
+    monkeypatch.setenv("GROQ_API_KEY", "g" * 48)
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "a" * 48)
+    monkeypatch.setattr(
+        api, "_generate_groq_completion",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(api.GroqRateLimitError(11)),
+    )
+
+    response = api_client.post(
+        "/generate",
+        json={"prompt": "Merhaba"},
+        headers={"Authorization": "Bearer " + "a" * 48},
+    )
+
+    assert response.status_code == 429
+    assert response.headers["retry-after"] == "11"
+    assert "token" not in response.text.lower()
+
+
+def test_groq_health_fails_closed_when_provider_key_is_missing(api_client, monkeypatch):
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "groq")
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+
+    response = api_client.get("/health")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "model_unavailable"}
+    assert "GROQ_API_KEY" not in response.text
