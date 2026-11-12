@@ -184,7 +184,7 @@ export async function verifyGuardianEvidenceChain(db, limit = 10_000) {
 export async function listGuardianEvidenceEvents(db, limit = 20) {
   const safeLimit = Math.max(1, Math.min(Math.floor(Number(limit) || 20), 100));
   const result = await db.query(
-    "SELECT sequence_no,event_id,source,payload->>'sender' AS sender,received_at,observed_at,severity,client_ip,ip_source,event_hash FROM owner_guardian_evidence_chain ORDER BY sequence_no DESC LIMIT $1",
+    "SELECT sequence_no,event_id,source,payload->>'sender' AS sender,payload->>'eventType' AS event_type,received_at,observed_at,severity,client_ip,ip_source,event_hash FROM owner_guardian_evidence_chain ORDER BY sequence_no DESC LIMIT $1",
     [safeLimit]
   );
   return result.rows || [];
