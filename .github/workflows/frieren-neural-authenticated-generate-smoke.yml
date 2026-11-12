@@ -1,4 +1,5 @@
 name: Frieren Neural authenticated generate smoke
+# Comment-only update: re-run after the test API token was configured.
 
 on:
   workflow_dispatch:
