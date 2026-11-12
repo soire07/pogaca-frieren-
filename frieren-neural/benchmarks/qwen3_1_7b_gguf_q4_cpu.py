@@ -18,7 +18,12 @@ from typing import Any
 from frieren_neural.quality_evaluation import PROMPTS, PROMPT_SET_VERSION, empty_score_template
 from frieren_neural.qwen3_decoding import build_qwen3_chat_request
 
-MODEL_URL = "https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/daeb8e2d528a760970442092f6bf1e55c3b659eb/Qwen3-1.7B-Q4_K_M.gguf"
+MODEL_ID = "ggml-org/Qwen3-1.7B-GGUF"
+MODEL_FILE = "Qwen3-1.7B-Q4_K_M.gguf"
+MODEL_REVISION = "daeb8e2d528a760970442092f6bf1e55c3b659eb"
+MODEL_LICENSE = "Apache-2.0 (upstream declaration)"
+CANDIDATE_NAME = "Qwen3-1.7B-GGUF-Q4_K_M"
+MODEL_URL = f"https://huggingface.co/{MODEL_ID}/resolve/{MODEL_REVISION}/{MODEL_FILE}"
 MODEL_SHA256 = "d2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5"
 MODEL_MAX_SIZE_BYTES = 1400 * 1024 * 1024
 MAX_NEW_TOKENS = 256
@@ -64,7 +69,7 @@ def download_model(path: Path) -> None:
 def empty_review_template(outputs: list[dict[str, Any]]) -> dict[str, Any]:
     """Bind two-reviewer scoring to this exact model digest and generated outputs."""
     template = empty_score_template(checkpoint_sha256=MODEL_SHA256, outputs=outputs)
-    template["candidate"] = "Qwen3-1.7B-GGUF-Q4_K_M"
+    template["candidate"] = CANDIDATE_NAME
     return template
 
 
@@ -122,17 +127,17 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
     report = {
         "schema_version": 1,
         "decision": "HUMAN REVIEW REQUIRED — NOT APPROVED FOR DEPLOYMENT",
-        "model_id": "ggml-org/Qwen3-1.7B-GGUF",
-        "model_file": "Qwen3-1.7B-Q4_K_M.gguf",
+        "model_id": MODEL_ID,
+        "model_file": MODEL_FILE,
         "model_url": MODEL_URL,
         "model_sha256": MODEL_SHA256,
         "model_size_bytes": model_path.stat().st_size,
-        "license": "Apache-2.0 (upstream declaration)",
+        "license": MODEL_LICENSE,
         "prompt_set_version": PROMPT_SET_VERSION,
         "prompt_count": len(outputs),
         "device": "cpu",
         "quantization": "Q4_K_M",
-        "model_revision": "daeb8e2d528a760970442092f6bf1e55c3b659eb",
+        "model_revision": MODEL_REVISION,
         "threads": threads,
         "context_tokens": 1024,
         "max_new_tokens": MAX_NEW_TOKENS,
