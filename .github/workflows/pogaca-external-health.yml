@@ -1,0 +1,94 @@
+name: Poğaça external HTTP health checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/pogaca-external-health.yml'
+      - 'scripts/test-command-registration-workflows.js'
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pogaca-external-http-health
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    name: Probe public liveness and readiness endpoints
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Verify public /health and /ready endpoints
+        shell: bash
+        env:
+          BASE_URL: https://pogaca-frieren.onrender.com
+        run: |
+          set -u
+
+          check_endpoint() {
+            local path="$1"
+            local expected="$2"
+            local response_file="$RUNNER_TEMP/pogaca-health-response.json"
+            local attempt meta http_code elapsed
+
+            for attempt in 1 2 3; do
+              meta="$(curl --silent --show-error --connect-timeout 8 --max-time 15 \
+                --output "$response_file" --write-out '%{http_code} %{time_total}' \
+                "${BASE_URL}${path}" 2>&1)" || true
+              http_code="${meta%% *}"
+              elapsed="${meta#* }"
+              if [[ "$elapsed" == "$meta" ]]; then elapsed="unknown"; fi
+
+              if [[ "$http_code" == "200" ]] && node - "$response_file" "$expected" <<'NODE'
+          const fs = require('node:fs');
+          let payload;
+          try {
+            payload = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          } catch {
+            process.exit(1);
+          }
+          const expected = process.argv[3];
+          const common = payload.service === 'pogaca-frieren';
+          const passed = expected === 'liveness'
+            ? common && payload.status === 'alive'
+            : common && payload.status === 'ok'
+              && payload.checks?.discord === 'ok'
+              && payload.checks?.database === 'ok';
+          process.exit(passed ? 0 : 1);
+          NODE
+              then
+                echo "PASS ${path}: HTTP 200 (${elapsed}s), payload=${expected}"
+                return 0
+              fi
+
+              echo "::warning::${path} attempt ${attempt}/3 failed (HTTP ${http_code:-no-response}, time ${elapsed})."
+              if [[ "$attempt" -lt 3 ]]; then sleep 5; fi
+            done
+
+            echo "::error::External check failed for ${BASE_URL}${path} after 3 attempts."
+            if [[ -s "$response_file" ]]; then
+              echo "Response body (first 1000 bytes):"
+              head -c 1000 "$response_file"
+              echo
+            fi
+            return 1
+          }
+
+          check_endpoint /health liveness
+          health_result=$?
+          check_endpoint /ready readiness
+          ready_result=$?
+
+          if [[ "$health_result" -ne 0 || "$ready_result" -ne 0 ]]; then
+            exit 1
+          fi
+
+          echo "Both public endpoints are externally reachable and return the expected health payloads."
