@@ -98,3 +98,25 @@ test('Poğaça external HTTP health probe checks liveness and dependency readine
   assert.ok(!source.includes('FRIEREN_AI_HEALTH_URL'));
   assert.ok(!source.includes('DATABASE_URL'));
 });
+
+
+test('Neon backup counts public base tables consistently on source and restore', async () => {
+  const source = await workflow('neon-production-backup.yml');
+  const dump = source.split('Create custom-format Neon dump and source inventory')[1]?.split('Restore into an isolated temporary PostgreSQL instance')[0] || '';
+  const restore = source.split('Restore into an isolated temporary PostgreSQL instance')[1] || '';
+  const publicBaseTablePredicate = /table_schema = 'public' AND table_type = 'BASE TABLE'/;
+
+  assert.match(dump, publicBaseTablePredicate, 'source inventory must explicitly count public base tables');
+  assert.doesNotMatch(dump, /current_schema\\s*\\(/, 'source inventory must not depend on connection search_path');
+  assert.match(restore, publicBaseTablePredicate, 'restore inventory must use the same public base-table scope');
+
+  const catalog = [
+    ...Array.from({ length: 5 }, (_, index) => ({ schema: 'public', type: 'BASE TABLE', name: `public_${index}` })),
+    ...Array.from({ length: 3 }, (_, index) => ({ schema: 'adventurer', type: 'BASE TABLE', name: `adventurer_${index}` })),
+    ...Array.from({ length: 2 }, (_, index) => ({ schema: 'farming', type: 'BASE TABLE', name: `farming_${index}` })),
+    { schema: 'public', type: 'VIEW', name: 'public_view' }
+  ];
+  const countPublicBaseTables = rows => rows.filter(row => row.schema === 'public' && row.type === 'BASE TABLE').length;
+
+  assert.equal(countPublicBaseTables(catalog), 5, 'non-public schemas and views must not affect the public base-table count');
+});
