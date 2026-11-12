@@ -39,7 +39,7 @@ jobs:
           NEURAL_TEST_URL: https://frieren-neural-test-1unz.onrender.com
         run: |
           set -euo pipefail
-          health_status="$(curl --silent --show-error --output /tmp/neural-health.json --write-out '%{http_code}' --connect-timeout 15 --max-time 120 "$NEURAL_TEST_URL/health")"
+          health_status="$(curl --silent --show-error --output /tmp/neural-health.json --write-out '%{http_code}' --connect-timeout 15 --max-time 45 "$NEURAL_TEST_URL/health")"
           python -c 'import json,sys; d=json.load(open("/tmp/neural-health.json", encoding="utf-8")); assert sys.argv[1] == "200", d; assert d.get("status") == "ready"; assert d.get("model") == "gemini-3.8-flash"; assert d.get("generation_smoke") == "pass"' "$health_status"
           echo "GEMINI_HEALTH_AND_GENERATION=PASS"
 
