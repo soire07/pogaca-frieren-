@@ -107,7 +107,7 @@ test('Neon backup counts public base tables consistently on source and restore',
   const publicBaseTablePredicate = /table_schema = 'public' AND table_type = 'BASE TABLE'/;
 
   assert.match(dump, publicBaseTablePredicate, 'source inventory must explicitly count public base tables');
-  assert.doesNotMatch(dump, /current_schema\\s*\\(/, 'source inventory must not depend on connection search_path');
+  assert.doesNotMatch(dump, /current_schema\s*\(/, 'source inventory must not depend on connection search_path');
   assert.match(restore, publicBaseTablePredicate, 'restore inventory must use the same public base-table scope');
 
   const catalog = [
