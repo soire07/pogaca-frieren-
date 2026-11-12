@@ -804,11 +804,18 @@ def health():
     if _model_backend() == "scratch" and not _checkpoint_path().is_file():
         return JSONResponse(status_code=503, content={"status": "model_unavailable"})
     generation_smoke = "skipped"
+    backend = _model_backend()
+    health_smoke_enabled = os.environ.get("FRIEREN_HEALTH_GENERATION_SMOKE", "").strip() == "1"
+    logger.info("Health check started: backend=%s generation_smoke=%s", backend, health_smoke_enabled)
     try:
         with _generation_capacity(), _generation_lock:
+            logger.info("Health check acquired generation capacity: backend=%s", backend)
             _load_active_runtime()
-            if os.environ.get("FRIEREN_HEALTH_GENERATION_SMOKE", "").strip() == "1":
+            logger.info("Health check runtime configured: backend=%s", backend)
+            if health_smoke_enabled:
+                logger.info("Health generation smoke started: backend=%s", backend)
                 generation_smoke = _run_generation_smoke()
+                logger.info("Health generation smoke completed: backend=%s", backend)
     except HTTPException as error:
         if error.status_code == 503:
             return JSONResponse(status_code=503, content={"status": "busy"})
